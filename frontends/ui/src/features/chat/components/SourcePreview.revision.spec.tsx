@@ -2,7 +2,7 @@
  * A citation of an older Fassung says so, and reaches the current one.
  *
  * The cited document resolves by name through the by-name route, whose listing row carries the
- * reader-visible `fassung.supersededBy` (a newer document a person confirmed; one the reader may not
+ * reader-visible `revision.supersededBy` (a newer document a person confirmed; one the reader may not
  * open is not in it, name and all). The peek turns that into one muted line with the current
  * Fassung's name as the control. A document nobody replaced shows no line.
  */
@@ -76,7 +76,7 @@ const OLD = 'Statik_Index_B.pdf'
 const CURRENT = 'Statik_Index_C.pdf'
 
 const replaced = {
-  fassung: {
+  revision: {
     supersededBy: { id: 'doc-c', filename: CURRENT },
     supersedes: [],
     suggestion: null,
@@ -153,7 +153,7 @@ describe('a citation of an older revision', () => {
 
   test('a newer revision the reader may not open is not in the row, so the peek names nothing', async () => {
     const user = userEvent.setup()
-    rows[OLD.toLowerCase()] = row('doc-b', OLD, { fassung: null })
+    rows[OLD.toLowerCase()] = row('doc-b', OLD, { revision: null })
     render(<SourcePreviewChip citation={refTo(OLD)} />)
 
     await user.hover(await screen.findByRole('button', { name: /Preview source/ }))

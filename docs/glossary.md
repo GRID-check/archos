@@ -21,7 +21,9 @@ read German are listed after the table.
 | Fassung | `revision` (`lib/documents/revision-*`, `DocumentRevisions`, `revision_diff.py`) | `version`, which is the approval states |
 | the links between Fassungen | `RevisionLinks` (`revision-links.ts`) | `RevisionFacts`, the Index and Rev printed in a title block |
 | Büroablage, Archiv | `officeShelf` (`OFFICE_SHELF`, `lib/office-shelf`, `canManageOfficeShelf`) | `archive`, which already means soft-archived |
-| Steckbrief | `projectRecord` (`ProjectRecordView`, `project-record-types.ts`) | |
+| Steckbrief | `projectRecord` (`ProjectRecordView`, `project-record-types.ts`, `/api/projects/{id}/project-record`) | |
+| Grundstück, Bauwerk, Projekt (the scope of an intake question) | `plot`, `building`, `project` (`ProjectIntakeScope`); a building's id on the wire is `buildingId` | |
+| ja, nein, offen (an intake answer) | `yes`, `no`, `open` (`YesNoOpen`); the answer mode is `value`, `estimated`, `open` (`IntakeAnswerMode`) | |
 | Bundesland, Gemeinde | `federalState`, `municipality` | |
 | Gebäudeklasse, Bauwerk | `buildingClass`, `building` | |
 | Herleitung | `derivation` (`/dev/derivation`) | |
@@ -45,6 +47,10 @@ the [operator runbook](deployment/office-shelf-rename-runbook.md) has run.
 Qdrant points written before the payload rename still hold the German keys
 (`punkt_id`, `project_facts.bundesland`, ...); every read accepts both until the
 rewrite in [`qdrant-payload-rename-runbook.md`](deployment/qdrant-payload-rename-runbook.md).
+
+The `grid-fassung-link:` advisory-lock salt in `document_metadata_store.py` stays
+German for good: every running pod derives the same lock from it, so a rename
+would let two pods take different locks.
 
 ## Architecture and runtime
 

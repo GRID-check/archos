@@ -550,7 +550,7 @@ function ScrollRailIntoView(): null {
   useEffect(() => {
     const timer = setInterval(() => {
       if (scrolledIntoView) return clearInterval(timer)
-      const panel = document.querySelector('[data-testid="document-fassungen"]')
+      const panel = document.querySelector('[data-testid="document-revisions"]')
       if (!panel) return
       panel.scrollIntoView({ block: 'start', behavior: 'instant' })
       const box = panel.getBoundingClientRect()

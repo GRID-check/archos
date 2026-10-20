@@ -172,9 +172,8 @@ async function uploadAuditEvent(
       filename: event.filename.slice(0, 200),
       fileSize: event.fileSize,
       ...(event.replaced ? { replaced: true } : {}),
-      // The trail's key names are history: they stay as they were written (audit names move with R3).
-      ...(event.revisionOf ? { fassungOf: event.revisionOf.slice(0, 200) } : {}),
-      ...(event.revisionOfIgnored ? { fassungOfIgnored: event.revisionOfIgnored } : {}),
+      ...(event.revisionOf ? { revisionOf: event.revisionOf.slice(0, 200) } : {}),
+      ...(event.revisionOfIgnored ? { revisionOfIgnored: event.revisionOfIgnored } : {}),
     },
     request,
   })

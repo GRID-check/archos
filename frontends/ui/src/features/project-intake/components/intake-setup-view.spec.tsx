@@ -176,7 +176,7 @@ describe('IntakeSetupView', () => {
     it('says a Hochhaus has no building class', () => {
       setup({
         ...INTAKE_READY,
-        derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bldg3', hochhaus: true, missing: [] }],
+        derivations: [{ ...INTAKE_READY.derivations[1], buildingId: 'bldg3', hochhaus: true, missing: [] }],
       })
       expect(screen.getByTestId('intake-derivation-bldg3')).toHaveTextContent('High-rise')
     })

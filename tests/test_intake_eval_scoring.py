@@ -36,7 +36,7 @@ KEY = {
             "values": [{"key": "building_class@bldg1", "value": 1}],
         },
     ],
-    "fassung": {"keys": ["use_units@bldg1"], "current": 10, "older": 11},
+    "revision": {"keys": ["use_units@bldg1"], "current": 10, "older": 11},
 }
 
 
@@ -251,7 +251,7 @@ class TestCostAndFloors:
         traps = [{"id": "neighbour", "kind": "x", "resisted": False, "fell_for": [{"key": "k", "value": 1}]}]
         metrics = {
             **self._metrics(traps=traps),
-            "fassung": "handled",
+            "revision": "handled",
             "finish_called": True,
             "summary_check": {"grounded": True},
             "tool_calls": {"read_document": 3},

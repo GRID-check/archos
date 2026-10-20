@@ -8,7 +8,7 @@
  * A document's history lives in two places. Uploads under the SAME file name are
  * its own versions (ADR-0054, `document_versions`, with a review state each);
  * documents under OTHER names are stored as a confirmed link between two
- * documents (ADR-0099, `FileItem.fassung.history`). A person sees one document
+ * documents (ADR-0099, `FileItem.revision.history`). A person sees one document
  * with one history, so the two are merged here by date — a rule, not a layout
  * decision, and therefore pure and specced.
  *
@@ -247,7 +247,7 @@ export interface BuildTimelineInput {
   /** From the lifecycle read, any order. Empty when unread. */
   versions: readonly DocumentVersionView[]
   publishedVersionId: string | null
-  /** `FileItem.fassung.history`, or the direct links without dates. */
+  /** `FileItem.revision.history`, or the direct links without dates. */
   history: readonly RevisionHistoryEntry[]
   /** Ids of the documents this one replaces directly (`RevisionLinks.supersedes`). */
   directIds: ReadonlySet<string>

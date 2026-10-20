@@ -1,6 +1,6 @@
 """The Fassung route: a person confirms (or refuses) that one file replaces another.
 
-``PUT /v1/collections/{collection}/fassung`` is the only writer of ``superseded_by``.
+``PUT /v1/collections/{collection}/revision`` is the only writer of ``superseded_by``.
 Nothing is merged: the older file stays whole and readable by name. A model reads the
 two descriptions for the change line, over the summary gateway and traced as a
 ``change-summary`` generation; its failure never undoes the link. A refusal lifts
@@ -113,7 +113,7 @@ async def _put(app, body, gateway=None, headers=None):
     fake, _ = gateway or _gateway()
     async with _client(app) as client:
         with patch("httpx.AsyncClient", fake):
-            return await client.put(f"/v1/collections/{COLLECTION}/fassung", json=body, headers=headers)
+            return await client.put(f"/v1/collections/{COLLECTION}/revision", json=body, headers=headers)
 
 
 def _docs(store) -> dict[str, AvailableDocument]:
@@ -253,7 +253,7 @@ class TestLinking:
         fake, post = _gateway()
         with patch("aiq_api.routes.documents.limited_async_http_client", fake):
             async with _client(app) as client:
-                await client.put(f"/v1/collections/{COLLECTION}/fassung", json=LINK)
+                await client.put(f"/v1/collections/{COLLECTION}/revision", json=LINK)
 
         assert fake.call_args.kwargs["cls"] == provider_limiter.INTERACTIVE
         post.assert_called_once()
@@ -525,7 +525,7 @@ class TestTheChangeCallIsTraced:
 
         async with _client(app) as http:
             with patch("httpx.AsyncClient", MagicMock(return_value=client)):
-                await http.put(f"/v1/collections/{COLLECTION}/fassung", json=LINK)
+                await http.put(f"/v1/collections/{COLLECTION}/revision", json=LINK)
 
         direct_trace._provider.force_flush()
         (span,) = exporter.get_finished_spans()

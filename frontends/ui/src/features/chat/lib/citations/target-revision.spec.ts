@@ -2,7 +2,7 @@
  * A target remembers that its document is an older Fassung.
  *
  * The stored row a citation resolves against carries the reader-visible `supersededBy`
- * (`fassung.supersededBy` of the by-name listing row); the target hands it to the peek. A row nobody
+ * (`revision.supersededBy` of the by-name listing row); the target hands it to the peek. A row nobody
  * replaced, a base-corpus file and an unresolved name carry none.
  */
 

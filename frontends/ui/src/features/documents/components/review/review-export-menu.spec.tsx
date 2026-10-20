@@ -53,7 +53,7 @@ describe('ReviewExportMenu', () => {
     const user = await open()
     await user.click(await screen.findByRole('menuitem', { name: 'PDF' }))
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=open&fassung=current')
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=open&revision=current')
     await vi.waitFor(() =>
       expect(downloads).toEqual([{ href: 'blob:protokoll', download: 'Anmerkungen – Grundriss EG – Fassung 3.pdf' }])
     )
@@ -74,7 +74,7 @@ describe('ReviewExportMenu', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Word (.docx)' }))
 
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/documents/doc_1/annotations/export?format=docx&scope=all&fassung=all&includeProposals=1'
+      '/api/documents/doc_1/annotations/export?format=docx&scope=all&revision=all&includeProposals=1'
     )
   })
 
@@ -134,7 +134,7 @@ describe('filing the Protokoll in the project', () => {
     await user.click(screen.getByRole('menuitem', { name: 'File in the project' }))
 
     await vi.waitFor(() => expect(uploads).toHaveLength(1))
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=all&fassung=current')
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=pdf&scope=all&revision=current')
     const form = uploads[0] as FormData
     expect((form.get('file') as File).name).toBe('Minutes – Grundriss EG – 2026-10-18.pdf')
     expect(form.get('projectId')).toBe('proj_1')
@@ -173,7 +173,7 @@ describe('filing the Protokoll in the project', () => {
     await user.click(await screen.findByRole('menuitem', { name: 'File in the project' }))
 
     await vi.waitFor(() => expect(uploads).toHaveLength(1))
-    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=docx&scope=open&fassung=current')
+    expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc_1/annotations/export?format=docx&scope=open&revision=current')
     expect(((uploads[0] as FormData).get('file') as File).name).toBe('Minutes – Grundriss EG – 2026-10-18.docx')
   })
 

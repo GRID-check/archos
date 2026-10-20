@@ -1,6 +1,6 @@
 """The Fassung comparison route: two page images in one vision call, boxes and words out.
 
-``POST /v1/collections/{collection}/fassung-compare``. The model is a fake: what is pinned is
+``POST /v1/collections/{collection}/revision-compare``. The model is a fake: what is pinned is
 the contract (what is sent, what is parsed and dropped, what is cached, what is traced and
 what is refused), not the quality of any model's eyes. The pure parsing is exercised
 directly, the route through its real handler.
@@ -32,7 +32,7 @@ from aiq_api.routes.revision_compare import add_revision_compare_routes
 COLLECTION = "proj_a"
 OLDER = "Grundriss_EG_Index_B.pdf"
 NEWER = "Grundriss_EG_Index_C.pdf"
-URL = f"/v1/collections/{COLLECTION}/fassung-compare"
+URL = f"/v1/collections/{COLLECTION}/revision-compare"
 BODY = {"older": OLDER, "newer": NEWER, "page": 1}
 
 
@@ -272,7 +272,7 @@ class TestTracing:
 
         direct_trace._provider.force_flush()
         (span,) = exporter.get_finished_spans()
-        assert span.attributes["langfuse.trace.name"] == route.TRACE_NAME == "fassung-visual-compare"
+        assert span.attributes["langfuse.trace.name"] == route.TRACE_NAME == "revision-visual-compare"
         assert span.attributes["langfuse.observation.type"] == "generation"
         assert span.attributes["gen_ai.usage.input_tokens"] == 8000
         traced_input = span.attributes["langfuse.observation.input"]

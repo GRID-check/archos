@@ -309,7 +309,7 @@ const ITEMS: InboxItemView[] = [
   // and the excerpt is the first line of what changed: the row's only body.
   // „Fassungen vergleichen" opens the newer one with the comparison open.
   {
-    id: 'i-fassung',
+    id: 'i-revision',
     type: 'document.new_revision',
     state: 'unread',
     archived: false,
@@ -328,14 +328,14 @@ const ITEMS: InboxItemView[] = [
     // The open marks Index B leaves behind: the row says how many to check.
     variant: 'marks_earlier',
     openMarks: 4,
-    marksFassung: null,
+    marksRevision: null,
     answerIn: null,
     createdAt: ago(9),
     updatedAt: ago(9),
   },
   // A same-name Fassung: its open marks all sit on Fassung 2.
   {
-    id: 'i-fassung-marks',
+    id: 'i-revision-marks',
     type: 'document.new_revision',
     state: 'read',
     archived: false,
@@ -353,7 +353,7 @@ const ITEMS: InboxItemView[] = [
     mentions: [],
     variant: 'marks',
     openMarks: 3,
-    marksFassung: 2,
+    marksRevision: 2,
     answerIn: null,
     createdAt: ago(55),
     updatedAt: ago(55),

@@ -211,14 +211,14 @@ export type NeedOption = z.infer<typeof needOptionSchema>
  * A key the project still needs (`computeNeeds` in `needs.ts`): a question
  * whose conditions hold and that writes a profile key, scoped per building as
  * the wizard scopes it. `key` is the profile key (`storeys_above_ground@bldg1`),
- * `baseKey` the part before `@`, `bauwerkId` the `bldgN` or null for a project
+ * `baseKey` the part before `@`, `buildingId` the `bldgN` or null for a project
  * key. `decisive`: filling it could change the building class (never for a
  * `confirmed` one).
  */
 export const needSchema = z.object({
   key,
   baseKey: key,
-  bauwerkId: z.string().min(1).max(32).nullable(),
+  buildingId: z.string().min(1).max(32).nullable(),
   label: z.string().min(1).max(300),
   type: z.enum(INTAKE_NEED_TYPES),
   options: z.array(needOptionSchema).max(100).optional(),
@@ -235,7 +235,7 @@ export type Need = z.infer<typeof needSchema>
 export const suggestionSchema = z.object({
   key,
   baseKey: key,
-  bauwerkId: z.string().min(1).max(32).nullable(),
+  buildingId: z.string().min(1).max(32).nullable(),
   label: z.string().min(1).max(300),
   value: ProjectPrimitiveValueSchema,
   /** The value as a person reads it (option labels, unit). */
@@ -254,7 +254,7 @@ export type Suggestion = z.infer<typeof suggestionSchema>
  * read; `missing` the base keys it still needs.
  */
 export const derivationViewSchema = z.object({
-  bauwerkId: z.string().min(1).max(32),
+  buildingId: z.string().min(1).max(32),
   rule: z.enum(DERIVATION_RULES),
   /** The Fundstelle, as the derivation's evidence names it. */
   citation: z.string().min(1).max(300),

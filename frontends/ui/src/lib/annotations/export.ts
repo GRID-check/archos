@@ -120,11 +120,11 @@ const byNumber = (a: AnnotationView, b: AnnotationView): number => a.number - b.
  */
 export function selectMarks(
   annotations: readonly AnnotationView[],
-  options: Pick<AnnotationExportOptions, 'scope' | 'fassung' | 'includeProposals'>
+  options: Pick<AnnotationExportOptions, 'scope' | 'revision' | 'includeProposals'>
 ): ProtocolSelection {
   const wanted = annotations.filter(
     (annotation) =>
-      (options.fassung === 'all' || annotation.onCurrentRevision || isLive(annotation)) &&
+      (options.revision === 'all' || annotation.onCurrentRevision || isLive(annotation)) &&
       (options.scope === 'all' || isLive(annotation))
   )
   return {
@@ -261,7 +261,7 @@ const carriesEarlier = (selection: ProtocolSelection): boolean =>
  * of earlier Fassungen came along.
  */
 function revisionPart(options: AnnotationExportOptions, selection: ProtocolSelection, t: Translator): string {
-  if (options.fassung === 'all') return t('review.export.document.revisions.all')
+  if (options.revision === 'all') return t('review.export.document.revisions.all')
   if (!carriesEarlier(selection)) return t('review.export.document.revisions.current')
   return t(
     options.scope === 'open'
@@ -454,12 +454,12 @@ async function renderPdf(protocol: Protocol): Promise<Uint8Array> {
 /** „Anmerkungen – Grundriss EG – Fassung 3.pdf": what the office files it under. */
 export function protocolFileName(
   header: Pick<ProtocolHeader, 'documentName' | 'revision'>,
-  options: Pick<AnnotationExportOptions, 'format' | 'fassung'>,
+  options: Pick<AnnotationExportOptions, 'format' | 'revision'>,
   t: Translator
 ): string {
   const name = splitDocumentName(header.documentName).stem
   const stem =
-    options.fassung === 'all'
+    options.revision === 'all'
       ? t('review.export.document.fileNameAll', { name })
       : header.revision
         ? t('review.export.document.fileNameRevision', { name, number: header.revision.number })
@@ -489,7 +489,7 @@ async function readHeader(session: AuthorizedSession, doc: Document, now: Date):
   ])
   return {
     documentName: documentDisplayName(doc),
-    revision: revision,
+    revision,
     projectName: project?.name ?? null,
     exportedAt: now,
     exportedBy: session.name ?? session.email,
@@ -527,7 +527,7 @@ export async function exportAnnotationProtocol(
     metadata: {
       format: options.format,
       scope: options.scope,
-      fassung: options.fassung,
+      revision: options.revision,
       includeProposals: options.includeProposals,
       markCount: selection.marks.length,
       proposalCount: selection.proposals.length,

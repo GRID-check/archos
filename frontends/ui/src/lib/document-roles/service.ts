@@ -144,7 +144,7 @@ export async function declareDocumentRole(
 
   if (!isScopeInstanceValid(role, scopeInstanceId)) {
     throw new BadRequestError(
-      definition.scope === 'bauwerk'
+      definition.scope === 'building'
         ? `Role '${role}' belongs to one building and needs its id.`
         : `Role '${role}' takes no scope instance.`
     )
@@ -204,7 +204,7 @@ export async function declareDocumentRole(
     },
     replaced.map((binding) => binding.id),
     // The vocabulary can only check the SHAPE of an instance id — present for
-    // a `bauwerk` role, absent otherwise. Whether the building exists is a fact
+    // a `building` role, absent otherwise. Whether the building exists is a fact
     // about this project, checked against its own list in the insert's
     // transaction (`requireBuilding`). Without it any non-empty string was
     // accepted, and the binding matched no slot: invisible in the checklist and

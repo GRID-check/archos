@@ -90,7 +90,7 @@ if (typeof window !== 'undefined') {
 }
 
 const ANSWERS = {
-  B2: 'ja',
+  B2: 'yes',
   A5: ['Neubau', 'Abbruch'],
   'C2@bldg1': 'existing',
   'C2@bldg2': 'new_build',

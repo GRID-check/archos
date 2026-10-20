@@ -35,7 +35,7 @@ import {
 } from '@/lib/documents/name-probe-client'
 import { NAME_PROBE_MAX_NAMES, type RevisionCandidateMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeOfficeShelf } from '../../office-shelf/documents/fassung-candidates/route'
+import { POST as probeOfficeShelf } from '../../office-shelf/documents/revision-candidates/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
   [PROJECT_REVISION_CANDIDATES_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
@@ -60,7 +60,7 @@ beforeEach(() => {
   vi.mocked(probeOfficeShelfRevisionCandidates).mockReset().mockResolvedValue([MATCH])
 })
 
-describe('POST /api/documents/fassung-candidates', () => {
+describe('POST /api/documents/revision-candidates', () => {
   it('answers what the names continue on the project shelf', async () => {
     expect(await client.projectRevisions('proj_1', ['EG_Index_C.pdf'])).toEqual([MATCH])
     expect(probeProjectRevisionCandidates).toHaveBeenCalledWith(
@@ -116,7 +116,7 @@ describe('POST /api/documents/fassung-candidates', () => {
   })
 })
 
-describe('POST /api/office-shelf/documents/fassung-candidates', () => {
+describe('POST /api/office-shelf/documents/revision-candidates', () => {
   it('answers what the names continue in the Archiv', async () => {
     expect(await client.officeShelfRevisions(['EG_Index_C.pdf'])).toEqual([MATCH])
     expect(probeOfficeShelfRevisionCandidates).toHaveBeenCalledWith(

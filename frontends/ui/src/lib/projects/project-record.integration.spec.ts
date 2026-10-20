@@ -5,7 +5,7 @@
  * through the restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
- *     npx vitest run src/lib/projects/steckbrief.integration.spec.ts
+ *     npx vitest run src/lib/projects/project-record.integration.spec.ts
  *
  * Tenancy of `project_people` (row-level security and the composite foreign
  * key), the month CHECKs, the closed-project guard on a new person, erasure,

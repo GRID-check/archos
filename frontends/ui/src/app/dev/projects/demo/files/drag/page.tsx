@@ -101,7 +101,7 @@ function useProjectFetch(store: React.RefObject<Store>): void {
         path === '/api/organization/upload-screening' ||
         path.startsWith('/api/upload-batches') ||
         path === '/api/documents/name-matches' ||
-        path === '/api/documents/fassung-candidates' ||
+        path === '/api/documents/revision-candidates' ||
         path === '/api/v1/collections/demo'
       if (!ours) return real(input, init)
       // The collection the shelf ingests into, which an upload makes sure exists.
@@ -112,7 +112,7 @@ function useProjectFetch(store: React.RefObject<Store>): void {
         return json({ policy: { ...SUGGESTED_SCREENING_POLICY, enabled: false }, suggested: false, suggestion: SUGGESTED_SCREENING_POLICY })
       }
       if (path === '/api/documents/name-matches') return json({ documents: [] })
-      if (path === '/api/documents/fassung-candidates') return json({ candidates: [] })
+      if (path === '/api/documents/revision-candidates') return json({ candidates: [] })
       if (path.startsWith('/api/upload-batches')) return json({ ok: true })
       if (/\/thumbnail$/.test(path)) return new Response(null, { status: 404 })
 

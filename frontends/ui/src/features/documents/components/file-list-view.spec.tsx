@@ -240,7 +240,7 @@ describe('FileListView — Fassungen', () => {
   it('shows the count of a document with older Fassungen on its row', () => {
     renderList([
       doc('Gutachten_v3.pdf', {
-        fassung: {
+        revision: {
           supersededBy: null,
           supersedes: [{ id: 'v1', filename: 'Gutachten_v1.pdf' }],
           suggestion: null,
@@ -267,7 +267,7 @@ describe('FileListView — Fassungen', () => {
       doc('Gutachten_v1.pdf', {
         versionState: 'superseded',
         versionCount: 2,
-        fassung: {
+        revision: {
           supersededBy: { id: 'v3', filename: 'Gutachten_v3.pdf' },
           supersedes: [],
           suggestion: null,

@@ -71,7 +71,7 @@ describe('compareRevisionVisually', () => {
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-a', 'read')
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const [url, init] = mockFetch.mock.calls[0]
-    expect(url).toBe('http://backend.test/v1/collections/proj_abc/fassung-compare')
+    expect(url).toBe('http://backend.test/v1/collections/proj_abc/revision-compare')
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf', page: 2 })
     expect(init.headers).toMatchObject({ 'x-grid-organization-id': 'org-1', 'x-grid-user-id': 'user-1' })
@@ -83,7 +83,7 @@ describe('compareRevisionVisually', () => {
 
     await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)
 
-    expect(mockFetch.mock.calls[0][0]).toBe('http://backend.test/v1/collections/archiv_org%201/fassung-compare')
+    expect(mockFetch.mock.calls[0][0]).toBe('http://backend.test/v1/collections/archiv_org%201/revision-compare')
   })
 
   describe('privacy', () => {

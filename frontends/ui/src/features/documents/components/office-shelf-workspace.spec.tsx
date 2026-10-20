@@ -713,7 +713,7 @@ describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
     const OLDER = 'doc-older-b'
     beforeEach(() => {
       server.use(
-        http.post('/api/office-shelf/documents/fassung-candidates', async ({ request }) => {
+        http.post('/api/office-shelf/documents/revision-candidates', async ({ request }) => {
           const { names } = (await request.json()) as { names: string[] }
           return HttpResponse.json({
             candidates: names.map((name) => ({

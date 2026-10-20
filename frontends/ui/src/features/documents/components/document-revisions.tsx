@@ -10,12 +10,12 @@
  *    Freigabe durch Sabine Gruber"), and which Fassung Piloti answers from. When
  *    that is an older one, the header says so by number („Piloti antwortet
  *    weiter aus Fassung 1."), so the header and the rows below can no longer
- *    contradict each other (`lib/fassung-standing.ts`).
+ *    contradict each other (`lib/revision-standing.ts`).
  *  - **The body is one timeline, newest first, numbered „Fassung 3, 2, 1"**
  *    across the uploads under this name (`document_versions`, ADR-0054) and the
  *    older documents linked under other names (ADR-0099). The index or date the
  *    office gave a Fassung is a secondary tag; „aktuell" marks only the one
- *    Piloti answers from (`lib/fassung-timeline.ts`).
+ *    Piloti answers from (`lib/revision-timeline.ts`).
  *  - **Every fact once.** The state is in the header; the date and the person
  *    on a row's act line; a file name only where the row is another document.
  *    One visible action per row (Öffnen), the rest behind its ⋯.
@@ -179,12 +179,12 @@ export function DocumentRevisions({
   const { locale } = useLocale()
 
   // The rail is reused across files; a decision just made belongs to one.
-  const [facts, setFacts] = useState<RevisionLinks | null>(file.fassung ?? null)
+  const [facts, setFacts] = useState<RevisionLinks | null>(file.revision ?? null)
   const [busy, setBusy] = useState(false)
   // A decision answered after the rail moved to another file belongs to the old one.
   const currentId = useRef(file.id)
   currentId.current = file.id
-  useEffect(() => setFacts(file.fassung ?? null), [file.id, file.fassung])
+  useEffect(() => setFacts(file.revision ?? null), [file.id, file.revision])
 
   // The uploads under this very name are read where they can matter: for a
   // reader who may decide on them, and for a document the listing already knows

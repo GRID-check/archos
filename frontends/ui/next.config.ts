@@ -1,6 +1,7 @@
 import path from 'node:path'
 import type { NextConfig } from 'next'
 import type { withPostHogConfig } from '@posthog/nextjs-config'
+import { LEGACY_ROUTES } from './src/lib/api/legacy-routes'
 import { AVATAR_IMAGE_PATTERNS } from './src/lib/images/avatar-hosts'
 import { LOCAL_IMAGE_PATTERNS } from './src/lib/images/optimizable'
 import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
@@ -23,6 +24,18 @@ const requestBodyLimitMB = Math.ceil(requestBodyLimitBytes(process.env) / (1024 
 /** The config as written; the default export below adds PostHog source maps on the upload path. */
 export const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // Renamed paths keep answering for one release: the API paths in
+  // src/lib/api/legacy-routes.ts, and the office shelf's old page URL. A stored
+  // link (an inbox item, a shared link: `/app/archiv?doc=<id>`) and a bookmark
+  // keep working through the permanent redirect, query string included.
+  async redirects() {
+    return [
+      ...LEGACY_ROUTES.map(({ from, to }) => ({ source: from, destination: to, permanent: true })),
+      { source: '/app/archiv', destination: '/app/office-shelf', permanent: true },
+      { source: '/app/archiv/:path*', destination: '/app/office-shelf/:path*', permanent: true },
+    ]
+  },
 
   // PostHog's endpoints end in a slash (`/e/`, `/s/`, `/flags/`). With the
   // default, Next answers `/ingest/e/` with a 308 to `/ingest/e`, and a
@@ -128,18 +141,9 @@ export const nextConfig: NextConfig = {
     return config
   },
 
-  // The office shelf's old German URLs. A stored link (an inbox item, a shared
-  // link: `/app/archiv?doc=<id>`) and a bookmark keep working through the
-  // permanent redirect, query string included. The API paths are REWRITTEN, not
-  // redirected: an open tab or an agent pod mid-rollout calls `/api/archiv/*`
-  // with a body, and a rewrite answers it from the new route in place.
-  // Remove both after one release.
-  async redirects() {
-    return [
-      { source: '/app/archiv', destination: '/app/office-shelf', permanent: true },
-      { source: '/app/archiv/:path*', destination: '/app/office-shelf/:path*', permanent: true },
-    ]
-  },
+  // The office shelf's old API paths are REWRITTEN, not redirected: an open tab
+  // or an agent pod mid-rollout calls `/api/archiv/*` with a body, and a rewrite
+  // answers it from the new route in place. Remove after one release.
   async rewrites() {
     return [{ source: '/api/archiv/:path*', destination: '/api/office-shelf/:path*' }]
   },

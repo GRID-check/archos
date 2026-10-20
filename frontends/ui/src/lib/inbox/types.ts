@@ -98,7 +98,7 @@ export interface InboxItemView {
    * (`lib/documents/revision-notify.ts`). Absent, or null, otherwise.
    */
   openMarks?: number | null
-  marksFassung?: number | null
+  marksRevision?: number | null
   /**
    * Where the reader may answer the mark an open request is about (a mark's
    * Zuständige, Piloti's Rückfrage, a mention), as the server decides it: `row`

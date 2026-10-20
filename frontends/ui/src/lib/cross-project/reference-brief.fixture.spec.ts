@@ -64,7 +64,7 @@ interface FixtureOffice {
  */
 const PER_BUILDING: ReadonlySet<string> = new Set(
   projectIntakeDefinitionV1.stages
-    .filter((stage) => stage.scope === 'bauwerk')
+    .filter((stage) => stage.scope === 'building')
     .flatMap((stage) => stage.questions)
     .map((question) => /^\/facts\/([a-z_]+)\/value$/.exec(question.writesTo ?? '')?.[1])
     .filter((key): key is string => Boolean(key))

@@ -169,7 +169,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/citations/repository.integration.spec.ts \
     src/lib/profiler/repository.integration.spec.ts \
     src/lib/projects/project-status.integration.spec.ts \
-    src/lib/projects/steckbrief.integration.spec.ts \
+    src/lib/projects/project-record.integration.spec.ts \
     src/lib/projects/cleanup.integration.spec.ts \
     src/lib/feedback/repository.integration.spec.ts
 
@@ -2570,6 +2570,32 @@ apply_in grid_skill_names 0169_skill_names.sql
 apply_in grid_skill_names 0169_skill_names.sql
 check_in grid_skill_names "SELECT skill_name FROM jobs WHERE name = 'Wöchentlich'" "submission-check" "0169 re-applies, twice"
 echo "==> 0169 skill names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0172: the inbox payload's `marksFassung` becomes `marksRevision`, and
+# the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0172. Only the key moves,
+# the count stays; a payload with both keys keeps the new one's value; a row
+# without the old key is not touched (its `updated_at` stays).
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0172 inbox revision marks and their down migration on grid_revmarks"
+migrate_before grid_revmarks 0172_inbox_revision_marks
+sql_in grid_revmarks <<'SQL'
+INSERT INTO inbox_items (id, organization_id, recipient_user_id, type, resource_type, resource_id, group_key, actionable, payload, updated_at) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000173', 'org_0173', 'user_1', 'document.new_revision', 'document', 'd1', 'g1', false, '{"openMarks": 3, "marksFassung": 2}', '2026-01-01 10:00:00+00'),
+  ('a2a2a2a2-0000-4000-8000-000000000173', 'org_0173', 'user_1', 'document.new_revision', 'document', 'd2', 'g2', false, '{"openMarks": 1, "marksFassung": 1, "marksRevision": 4}', '2026-01-02 10:00:00+00'),
+  ('a3a3a3a3-0000-4000-8000-000000000173', 'org_0173', 'user_1', 'document.new_revision', 'document', 'd3', 'g3', false, '{"openMarks": 2}', '2026-01-03 10:00:00+00');
+SQL
+apply_in grid_revmarks 0172_inbox_revision_marks.sql
+check_in grid_revmarks "SELECT string_agg(payload::text, ' ' ORDER BY group_key) FROM inbox_items" '{"openMarks": 3, "marksRevision": 2} {"openMarks": 1, "marksRevision": 4} {"openMarks": 2}' "0172 renames the key, keeps the new key's value when both exist, and leaves other payloads alone"
+check_in grid_revmarks "SELECT count(*) FROM inbox_items WHERE updated_at <> ('2026-01-0' || right(group_key, 1) || ' 10:00:00+00')::timestamptz" "0" "0172 does not bump updated_at"
+apply_in grid_revmarks 0172_inbox_revision_marks.down.sql
+check_in grid_revmarks "SELECT string_agg(payload::text, ' ' ORDER BY group_key) FROM inbox_items" '{"openMarks": 3, "marksFassung": 2} {"openMarks": 1, "marksFassung": 1} {"openMarks": 2}' "down restores the old key"
+apply_in grid_revmarks 0172_inbox_revision_marks.sql
+apply_in grid_revmarks 0172_inbox_revision_marks.sql
+check_in grid_revmarks "SELECT payload->>'marksRevision' FROM inbox_items WHERE group_key = 'g1'" "2" "0172 re-applies, twice"
+echo "==> 0172 inbox revision marks and down migration verified"
 
 # ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.

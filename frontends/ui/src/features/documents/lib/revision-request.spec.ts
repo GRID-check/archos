@@ -10,7 +10,7 @@ const FACTS = {
   changeSummary: null,
 }
 
-describe('fassung-request', () => {
+describe('revision-request', () => {
   beforeEach(() => {
     vi.stubGlobal('fetch', mockFetch)
     mockFetch.mockReset()
@@ -18,12 +18,12 @@ describe('fassung-request', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('PUTs the older document and the flag to the newer one’s route', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify({ id: 'doc-b', fassung: FACTS, older: { id: 'doc-a', fassung: null } })))
+    mockFetch.mockResolvedValue(new Response(JSON.stringify({ id: 'doc-b', revision: FACTS, older: { id: 'doc-a', revision: null } })))
 
     const facts = await setRevisionLink('doc-b', 'doc-a', true)
 
     expect(facts).toEqual(FACTS)
-    expect(mockFetch).toHaveBeenCalledWith('/api/documents/doc-b/fassung', {
+    expect(mockFetch).toHaveBeenCalledWith('/api/documents/doc-b/revision', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ older: 'doc-a', linked: true }),
@@ -31,7 +31,7 @@ describe('fassung-request', () => {
   })
 
   it('answers the facts of both documents', async () => {
-    mockFetch.mockResolvedValue(new Response(JSON.stringify({ id: 'doc-b', fassung: FACTS, older: { id: 'doc-a', fassung: FACTS } })))
+    mockFetch.mockResolvedValue(new Response(JSON.stringify({ id: 'doc-b', revision: FACTS, older: { id: 'doc-a', revision: FACTS } })))
 
     expect(await requestRevisionLink('doc-b', 'doc-a', false)).toEqual({ newer: FACTS, older: FACTS })
   })

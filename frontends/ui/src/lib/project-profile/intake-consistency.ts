@@ -140,7 +140,7 @@ export function collectFreeTextFields(
 ): ConsistencyCheckField[] {
   const fields: ConsistencyCheckField[] = []
   for (const stage of definition.stages) {
-    if (stage.scope === 'bauwerk') continue
+    if (stage.scope === 'building') continue
     for (const question of stage.questions) {
       if (!isFreeText(question)) continue
       if (!evaluateIntakeCondition(question, answers)) continue
@@ -163,7 +163,7 @@ export function collectStructuredContextFields(
 ): ConsistencyCheckField[] {
   const fields: ConsistencyCheckField[] = []
   for (const stage of definition.stages) {
-    if (stage.scope === 'bauwerk') continue
+    if (stage.scope === 'building') continue
     for (const question of stage.questions) {
       if (
         isFreeText(question) ||

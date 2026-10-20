@@ -91,7 +91,7 @@ preselected, unless an earlier close of the project named one, which a reopen
 keeps as the next close's suggestion, as it keeps the Abschluss.
 
 **The Abschluss is the closing's.** `ended_on` is no longer a field of the
-Steckbrief: the Steckbrief edits the Beginn only (`PUT …/steckbrief` refuses an
+Steckbrief: the Steckbrief edits the Beginn only (`PUT …/project-record` refuses an
 `endedOn`), and a running project shows „laufend" where the Abschluss would be.
 Closing names the month, defaulting to this one, not after it and not before the
 Beginn (400 `abschluss-in-future` / `abschluss-before-beginn`); when the Beginn

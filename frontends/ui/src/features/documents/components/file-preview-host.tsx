@@ -410,7 +410,7 @@ export function FilePreviewHost({
           }}
           onOpenDocument={context.onOpenDocument}
           onRevisionChanged={(fileId, revision) => {
-            if (fileId === file.id) patchFile({ fassung: revision })
+            if (fileId === file.id) patchFile({ revision })
             context.onRevisionChanged?.(fileId, revision)
           }}
           onAssigneesChanged={(assignees) => patchFile({ assignees })}

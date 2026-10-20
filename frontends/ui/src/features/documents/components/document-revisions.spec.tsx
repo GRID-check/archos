@@ -17,8 +17,8 @@
  *
  * The visibility of each control per state and permission is proved over the
  * transition table in `../lib/document-lifecycle.spec.ts`; the merge, numbering
- * and standing rules over plain data in `../lib/fassung-timeline.spec.ts` and
- * `../lib/fassung-standing.spec.ts`. Copy another worker owns is read from the
+ * and standing rules over plain data in `../lib/revision-timeline.spec.ts` and
+ * `../lib/revision-standing.spec.ts`. Copy another worker owns is read from the
  * dictionary, so a wording change there does not break a behaviour pinned here.
  */
 
@@ -323,7 +323,7 @@ describe('DocumentRevisions — the header says where the newest Fassung stands'
     const user = userEvent.setup()
     const onOpenDocument = vi.fn()
     renderSection({
-      file: fileFixture({ fassung: facts({ supersededBy: ref('doc_2', 'EG_Index_D_2026-09-30.pdf') }) }),
+      file: fileFixture({ revision: facts({ supersededBy: ref('doc_2', 'EG_Index_D_2026-09-30.pdf') }) }),
       viewer: reviewer,
       client: clientOf([reviewed(1, 'published', { approvedBy: 'user_markus', publishedBy: 'user_markus' })]),
       onOpenDocument,
@@ -472,7 +472,7 @@ describe('DocumentRevisions — shut at rest, open when it is the reader’s tur
   it('opens itself for Piloti’s suggestion, which is waiting for an answer', async () => {
     renderSection({
       file: fileFixture({
-        fassung: facts({ suggestion: { of: ref('doc_0', 'Grundriss_B.pdf'), confidence: 0.9, reason: '', basis: 'name' } }),
+        revision: facts({ suggestion: { of: ref('doc_0', 'Grundriss_B.pdf'), confidence: 0.9, reason: '', basis: 'name' } }),
       }),
       canManage: true,
     })
@@ -482,7 +482,7 @@ describe('DocumentRevisions — shut at rest, open when it is the reader’s tur
   })
 
   it('opens itself on an older Fassung, so the newer one is the first row read', async () => {
-    renderSection({ file: fileFixture({ fassung: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }) })
+    renderSection({ file: fileFixture({ revision: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }) })
 
     expect(await toggle()).toHaveAttribute('aria-expanded', 'true')
     expect(screen.getAllByTestId('revision-timeline-row')[0]).toHaveAttribute('data-kind', 'newer')
@@ -501,7 +501,7 @@ describe('DocumentRevisions — controls only where the surface resolved permiss
     renderSection({
       file: fileFixture({
         versionCount: 2,
-        fassung: facts({
+        revision: facts({
           supersedes: [ref('doc_0', 'Grundriss_B.pdf')],
           history: [{ id: 'doc_0', filename: 'Grundriss_B.pdf', createdAt: '2026-07-01T00:00:00.000Z', changeSummary: null }],
           suggestion: { of: ref('doc_9', 'Grundriss_A.pdf'), confidence: 0.8, reason: '', basis: 'name' },
@@ -520,7 +520,7 @@ describe('DocumentRevisions — controls only where the surface resolved permiss
   it('does not read the versions of a single-upload document without a viewer', () => {
     const listVersions = vi.fn()
     renderSection({
-      file: fileFixture({ fassung: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }),
+      file: fileFixture({ revision: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }),
       client: fakeClient({ listVersions }),
     })
 
@@ -545,7 +545,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
 
   it('lists uploads and linked documents interleaved by date and numbers them Fassung 4, 3, 2, 1', async () => {
     await renderOpen({
-      file: fileFixture({ filename: 'EG_Index_C_2026-08-01.pdf', versionCount: 2, fassung: linked }),
+      file: fileFixture({ filename: 'EG_Index_C_2026-08-01.pdf', versionCount: 2, revision: linked }),
       viewer: reviewer,
       client: clientOf([
         makeVersion(1, 'superseded', { createdAt: '2026-06-20T08:00:00.000Z' }),
@@ -565,7 +565,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
 
   it('compares with the previous Fassung in one tap from its row, not only from its ⋯', async () => {
     compareOpened.mockClear()
-    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
+    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', revision: linked }), canManage: true })
     const rows = await screen.findAllByTestId('revision-timeline-row')
     // Only the Fassung directly before this one carries it.
     expect(screen.getAllByTestId('revision-compare-previous')).toHaveLength(1)
@@ -575,7 +575,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
   })
 
   it('tags rows with their index, says „aktuell" only on the one Piloti answers from, and never „Ersetzt"', async () => {
-    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
+    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', revision: linked }), canManage: true })
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     expect(rows).toHaveLength(3)
@@ -590,7 +590,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
 
   it('prefers the index the title block printed to the one in the name', async () => {
     await renderOpen({
-      file: { ...fileFixture({ filename: 'scan_0042.pdf', fassung: linked }), revisionFacts: { revision: 'C' } } as FileItem,
+      file: { ...fileFixture({ filename: 'scan_0042.pdf', revision: linked }), revisionFacts: { revision: 'C' } } as FileItem,
     })
 
     expect(within((await screen.findAllByTestId('revision-timeline-row'))[0]).getByTestId('revision-row-tag')).toHaveTextContent(
@@ -602,7 +602,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
     const long = 'Wohnanlage-Schlosspark_Bauteil-B_Grundriss_1OG_Einreichung_Index-C_2026-06-30.pdf'
     await renderOpen({
       file: fileFixture({
-        fassung: facts({ history: [{ id: 'doc_l', filename: long, createdAt: '2026-06-30T08:00:00Z', changeSummary: null }] }),
+        revision: facts({ history: [{ id: 'doc_l', filename: long, createdAt: '2026-06-30T08:00:00Z', changeSummary: null }] }),
       }),
     })
 
@@ -686,7 +686,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
   it('says what changed against the Fassung it replaced, by number, with Piloti’s caveat attached once', async () => {
     await renderOpen({
       file: fileFixture({
-        fassung: facts({
+        revision: facts({
           supersedes: [ref('doc_b', history[0].filename)],
           history,
           changeSummary: { text: '- Dachhöhe: 12 m → 14 m\n• Fenster: Typ A → Typ B\n\n2) Attika neu', basis: 'previous' },
@@ -707,7 +707,7 @@ describe('DocumentRevisions — one numbered timeline', () => {
 
   it('names the basis by its file when it is not in the timeline', async () => {
     await renderOpen({
-      file: fileFixture({ fassung: facts({ changeSummary: { text: '- Attika neu', basis: ref('doc_0', 'Grundriss_A.pdf') } }) }),
+      file: fileFixture({ revision: facts({ changeSummary: { text: '- Attika neu', basis: ref('doc_0', 'Grundriss_A.pdf') } }) }),
     })
 
     expect(await screen.findByTestId('revision-change')).toHaveTextContent(
@@ -795,7 +795,7 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
     })
     const history = [{ id: 'doc_a', filename: 'EG_Index_A.pdf', createdAt: '2026-06-01T09:00:00Z', changeSummary: null }]
     await renderOpen({
-      file: fileFixture({ versionCount: 2, fassung: facts({ history }) }),
+      file: fileFixture({ versionCount: 2, revision: facts({ history }) }),
       viewer: reviewer,
       client: clientOf([makeVersion(1, 'superseded'), makeVersion(2, 'published')], { diff }),
     })
@@ -844,7 +844,7 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
     const onOpenDocument = vi.fn()
     const history = [{ id: 'doc_a', filename: 'EG_Index_A_2026-06-01.pdf', createdAt: '2026-06-01T09:00:00Z', changeSummary: null }]
     await renderOpen({
-      file: fileFixture({ fassung: facts({ supersedes: [ref('doc_a', history[0].filename)], history }) }),
+      file: fileFixture({ revision: facts({ supersedes: [ref('doc_a', history[0].filename)], history }) }),
       onOpenDocument,
     })
 
@@ -861,7 +861,7 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
       { id: 'doc_a', filename: 'EG_Index_A_2026-06-01.pdf', createdAt: '2026-06-01T09:00:00Z', changeSummary: null },
     ]
     await renderOpen({
-      file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: facts({ supersedes: [ref('doc_b', history[0].filename)], history }) }),
+      file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', revision: facts({ supersedes: [ref('doc_b', history[0].filename)], history }) }),
       // Pages that never arrive: the sheet opens and says it is loading.
       compareSource: () => new Promise(() => undefined),
     })
@@ -888,7 +888,7 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
     const history = [{ id: 'doc_a', filename: 'Brandschutz_Index_A.md', createdAt: '2026-06-01T09:00:00Z', changeSummary: null }]
     try {
       await renderOpen({
-        file: fileFixture({ filename: 'Brandschutz_Index_B.md', fassung: facts({ supersedes: [ref('doc_a', history[0].filename)], history }) }),
+        file: fileFixture({ filename: 'Brandschutz_Index_B.md', revision: facts({ supersedes: [ref('doc_a', history[0].filename)], history }) }),
         compareSource: async () => {
           throw new NotComparableError()
         },
@@ -912,7 +912,7 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
 
   it('offers no visual comparison on the current Fassung, which has nothing to compare with itself', async () => {
     const history = [{ id: 'doc_a', filename: 'EG_Index_A_2026-06-01.pdf', createdAt: '2026-06-01T09:00:00Z', changeSummary: null }]
-    await renderOpen({ file: fileFixture({ fassung: facts({ supersedes: [ref('doc_a', history[0].filename)], history }) }) })
+    await renderOpen({ file: fileFixture({ revision: facts({ supersedes: [ref('doc_a', history[0].filename)], history }) }) })
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     expect(within(rows[0]).queryByTestId('revision-row-menu')).toBeNull()
@@ -977,7 +977,7 @@ describe('DocumentRevisions — the decisions on the newest Fassung', () => {
     const approve = vi.fn().mockResolvedValue(makeVersion(1, 'approved'))
     renderSection({
       file: fileFixture({
-        fassung: facts({ history: [{ id: 'doc_a', filename: 'EG_Index_A.pdf', createdAt: '2026-06-01T09:00:00Z', changeSummary: null }] }),
+        revision: facts({ history: [{ id: 'doc_a', filename: 'EG_Index_A.pdf', createdAt: '2026-06-01T09:00:00Z', changeSummary: null }] }),
       }),
       viewer: reviewer,
       names: { user_reviewer: 'DI Huber' },
@@ -1140,7 +1140,7 @@ describe('DocumentRevisions — the decisions on the newest Fassung', () => {
     renderSection({
       viewer: reviewer,
       client: fakeClient({ listVersions: () => Promise.reject(new Error('down')) }),
-      file: fileFixture({ fassung: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }),
+      file: fileFixture({ revision: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }),
     })
 
     expect(await screen.findByTestId('document-lifecycle-failed')).toHaveTextContent(copy.lifecycle.errors.loadFailed)
@@ -1154,7 +1154,7 @@ describe('DocumentRevisions — links between documents', () => {
   })
 
   it('lists the older Fassungen it replaces, this document first', async () => {
-    await renderOpen({ file: fileFixture({ fassung: twoOlder }) })
+    await renderOpen({ file: fileFixture({ revision: twoOlder }) })
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     expect(rows.map((row) => row.textContent)).toEqual([
@@ -1165,7 +1165,7 @@ describe('DocumentRevisions — links between documents', () => {
   })
 
   it('does not offer to unlink the newer file, which is the other document’s decision', async () => {
-    renderSection({ file: fileFixture({ fassung: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }), canManage: true })
+    renderSection({ file: fileFixture({ revision: facts({ supersededBy: ref('doc_2', 'Grundriss_D.pdf') }) }), canManage: true })
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     await openRowMenu(rows[0])
@@ -1180,7 +1180,7 @@ describe('DocumentRevisions — links between documents', () => {
     ]
     vi.mocked(requestRevisionLink).mockResolvedValueOnce(answer(facts({ supersedes: [ref('doc_b', history[0].filename)] })))
     await renderOpen({
-      file: fileFixture({ fassung: facts({ supersedes: [ref('doc_b', history[0].filename)], history }) }),
+      file: fileFixture({ revision: facts({ supersedes: [ref('doc_b', history[0].filename)], history }) }),
       canManage: true,
     })
 
@@ -1195,7 +1195,7 @@ describe('DocumentRevisions — links between documents', () => {
   })
 
   it('hides the unlink from a reader who may not manage the folder', async () => {
-    await renderOpen({ file: fileFixture({ fassung: twoOlder }), canManage: false })
+    await renderOpen({ file: fileFixture({ revision: twoOlder }), canManage: false })
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     await openRowMenu(rows[1])
@@ -1208,7 +1208,7 @@ describe('DocumentRevisions — links between documents', () => {
     const olderFacts = facts({ supersededBy: null })
     vi.mocked(requestRevisionLink).mockResolvedValueOnce(answer(EMPTY_REVISION_LINKS, olderFacts))
     const { container } = await renderOpen({
-      file: fileFixture({ fassung: facts({ supersedes: [ref('doc_0', 'Grundriss_A.pdf')] }) }),
+      file: fileFixture({ revision: facts({ supersedes: [ref('doc_0', 'Grundriss_A.pdf')] }) }),
       canManage: true,
       onRevisionChanged,
     })
@@ -1226,7 +1226,7 @@ describe('DocumentRevisions — links between documents', () => {
     let resolve: (value: ReturnType<typeof answer>) => void = () => undefined
     vi.mocked(requestRevisionLink).mockReturnValueOnce(new Promise((res) => (resolve = res)))
     const { rerender } = await renderOpen({
-      file: fileFixture({ fassung: facts({ supersedes: [ref('doc_0', 'Grundriss_A.pdf')] }) }),
+      file: fileFixture({ revision: facts({ supersedes: [ref('doc_0', 'Grundriss_A.pdf')] }) }),
       canManage: true,
     })
 
@@ -1234,7 +1234,7 @@ describe('DocumentRevisions — links between documents', () => {
     await user.click(await screen.findByTestId('revision-unlink'))
     rerender(
       section({
-        file: fileFixture({ id: 'doc_9', fassung: facts({ supersededBy: ref('doc_8', 'Neu.pdf') }) }),
+        file: fileFixture({ id: 'doc_9', revision: facts({ supersededBy: ref('doc_8', 'Neu.pdf') }) }),
         canManage: true,
       }),
     )
@@ -1246,11 +1246,11 @@ describe('DocumentRevisions — links between documents', () => {
 
   it('shows the new file’s facts, not the decision made on the previous one', async () => {
     const { rerender } = await renderOpen({
-      file: fileFixture({ fassung: facts({ supersedes: [ref('doc_0', 'Grundriss_A.pdf')] }) }),
+      file: fileFixture({ revision: facts({ supersedes: [ref('doc_0', 'Grundriss_A.pdf')] }) }),
     })
     expect(await screen.findByTestId('revision-timeline')).toHaveTextContent('Grundriss_A.pdf')
 
-    rerender(section({ file: fileFixture({ id: 'doc_9', fassung: facts({ supersededBy: ref('doc_8', 'Schnitt_AB.pdf') }) }) }))
+    rerender(section({ file: fileFixture({ id: 'doc_9', revision: facts({ supersededBy: ref('doc_8', 'Schnitt_AB.pdf') }) }) }))
 
     const timeline = await screen.findByTestId('revision-timeline')
     expect(timeline).toHaveTextContent('Schnitt_AB.pdf')
@@ -1261,7 +1261,7 @@ describe('DocumentRevisions — links between documents', () => {
 describe('DocumentRevisions — Piloti’s suggestion', () => {
   const suggested = (basis: 'name' | 'content' | 'title_block', reason = '') =>
     fileFixture({
-      fassung: facts({ suggestion: { of: ref('doc_0', 'Grundriss_B.pdf'), confidence: 0.9, reason, basis } }),
+      revision: facts({ suggestion: { of: ref('doc_0', 'Grundriss_B.pdf'), confidence: 0.9, reason, basis } }),
     })
   const confirmLabel = copy.preview.revision.confirm
   const dismissLabel = copy.preview.revision.dismiss

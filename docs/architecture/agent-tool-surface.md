@@ -354,6 +354,6 @@ been uploaded and read).
   named when that collection is a restricted folder this turn did not admit.
 - **The citation says it too (UI).** The by-name resolve a chip already makes
   (`POST /api/documents/by-name`) returns the listing row with
-  `fassung.supersededBy`, resolved for the reader by `loadRevisionLinks`. The peek
+  `revision.supersededBy`, resolved for the reader by `loadRevisionLinks`. The peek
   turns it into one line, „Ältere Fassung — aktuell: <Name>“, whose name opens the
   current Fassung (`CitationPeek`, `use-open-current-revision.ts`).

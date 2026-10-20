@@ -748,7 +748,7 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
 
     expect(ingestBody().revision_of).toBe('Grundriss_EG_Index_B.pdf')
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ fassungOf: OLDER_ID }) }),
+      expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ revisionOf: OLDER_ID }) }),
     )
   })
 
@@ -772,15 +772,15 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
     expect(result).toMatchObject({ revisionOfIgnored: reason })
     expect(ingestBody()).not.toHaveProperty('revision_of')
     const metadata = vi.mocked(recordAuditEvent).mock.calls.find(([event]) => event.action === 'document.uploaded')?.[0].metadata
-    expect(metadata).toMatchObject({ fassungOfIgnored: reason })
-    expect(metadata).not.toHaveProperty('fassungOf')
+    expect(metadata).toMatchObject({ revisionOfIgnored: reason })
+    expect(metadata).not.toHaveProperty('revisionOf')
   })
 
   it('sends no revision_of, and records none, for an upload nobody filed as a Fassung', async () => {
     await uploadDocument(session, makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), new Request('http://x'))
 
     expect(ingestBody()).not.toHaveProperty('revision_of')
-    expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('fassungOf')
+    expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('revisionOf')
   })
 })
 
@@ -2350,12 +2350,12 @@ describe('getDocumentStatus', () => {
   })
 
   it('carries the Fassung facts resolved for the reader, and null when there are none', async () => {
-    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', null)
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('revision', null)
 
     const facts = { supersededBy: { id: 'doc-2', filename: 'b.pdf' }, supersedes: [], suggestion: null, changeSummary: null }
     vi.mocked(loadRevisionLinks).mockResolvedValueOnce(new Map([[projectDoc.id, facts]]))
 
-    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', facts)
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('revision', facts)
   })
 
   it('carries the shelf for a document that is not on the project shelf', async () => {

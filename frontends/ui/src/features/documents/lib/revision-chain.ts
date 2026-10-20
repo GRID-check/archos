@@ -9,7 +9,7 @@
  * separate entries; they are counted on the document itself (`versionCount`).
  *
  * Pure: no React, no I/O. Reads only what the listing carries
- * (`FileItem.fassung`, resolved for this reader by the BFF).
+ * (`FileItem.revision`, resolved for this reader by the BFF).
  */
 
 import type { FileItem } from '../file-types'
@@ -21,7 +21,7 @@ import type { FileItem } from '../file-types'
  * ceiling), the older stays visible, or it would vanish without a trace.
  */
 export function isOlderRevision(file: FileItem, listedIds: ReadonlySet<string>): boolean {
-  const newer = file.fassung?.supersededBy
+  const newer = file.revision?.supersededBy
   return newer != null && listedIds.has(newer.id)
 }
 
@@ -39,7 +39,7 @@ export function withoutOlderRevisions(files: readonly FileItem[], showOlder: boo
  * links when a surface has no history.
  */
 export function revisionCount(file: FileItem): number {
-  const facts = file.fassung
+  const facts = file.revision
   if (!facts) return 1
   const older = facts.history?.length ?? facts.supersedes.length
   return older + 1

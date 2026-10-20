@@ -107,7 +107,7 @@ describe('POST /api/documents/by-name', () => {
     vi.mocked(resolveProjectDocumentsByName).mockResolvedValueOnce([
       {
         ...LISTED,
-        fassung: {
+        revision: {
           supersededBy: { id: 'doc_2', filename: 'Bestand-1962_Index_B.pdf' },
           supersedes: [],
           suggestion: null,
@@ -118,7 +118,7 @@ describe('POST /api/documents/by-name', () => {
 
     const [row] = await client.project('proj_1', ['Bestand-1962.pdf'])
 
-    expect(row?.fassung?.supersededBy).toEqual({ id: 'doc_2', filename: 'Bestand-1962_Index_B.pdf' })
+    expect(row?.revision?.supersededBy).toEqual({ id: 'doc_2', filename: 'Bestand-1962_Index_B.pdf' })
   })
 
   it('asks nothing for no names', async () => {

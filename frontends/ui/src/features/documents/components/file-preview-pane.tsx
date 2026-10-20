@@ -306,7 +306,7 @@ export function FilePreviewPane({
     (file.assignees ?? []).flatMap((person) => (person.name ? [[person.userId, person.name] as const] : [])),
   )
   const revisionsShown = showsRevisionsSection({
-    facts: file.fassung ?? null,
+    facts: file.revision ?? null,
     versionCount: file.versionCount,
     hasViewer: reviewViewer !== undefined,
   })
@@ -639,8 +639,8 @@ export function FilePreviewPane({
   // Where the document stands among its Fassungen under other names, as the
   // reader may see them: the review says it, and lists the open marks of the
   // documents this one replaces to carry them on.
-  const replacedBy = file.fassung?.supersededBy ?? null
-  const replaces = file.fassung?.supersedes
+  const replacedBy = file.revision?.supersededBy ?? null
+  const replaces = file.revision?.supersedes
   const reviewRevision = useMemo(() => ({ replacedBy, replaces: replaces ?? [] }), [replacedBy, replaces])
   const review = useDocumentReview(file.id, {
     enabled: reviewEnabled,

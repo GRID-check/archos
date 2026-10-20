@@ -133,7 +133,7 @@ function useStubbedChangeRoute(): void {
     const real = window.fetch
     window.fetch = async (input, init) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url
-      if (!url.endsWith('/fassung-compare')) return real(input, init)
+      if (!url.endsWith('/revision-compare')) return real(input, init)
       await new Promise((resolve) => setTimeout(resolve, 900))
       if (url.includes('/newer-503/')) return new Response(null, { status: 503 })
       const body: unknown = typeof init?.body === 'string' ? JSON.parse(init.body) : {}

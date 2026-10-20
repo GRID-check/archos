@@ -52,7 +52,7 @@ export function deriveForBuilding(
   }
   const result = deriveBuildingClass(known)
   return {
-    bauwerkId: buildingId,
+    buildingId: buildingId,
     rule: BUILDING_CLASS_DERIVATION.rule,
     citation: BUILDING_CLASS_DERIVATION.citation,
     value: result.value,

@@ -1184,6 +1184,13 @@
       "when": 1792454400057,
       "tag": "0171_office_shelf_scope_logs",
       "breakpoints": true
+    },
+    {
+      "idx": 172,
+      "version": "7",
+      "when": 1792454400073,
+      "tag": "0172_inbox_revision_marks",
+      "breakpoints": true
     }
   ]
 }

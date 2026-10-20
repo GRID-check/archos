@@ -1,8 +1,8 @@
 """Marking what changed between two Fassungen on the page, and saying it in words.
 
-``POST /v1/collections/{collection}/fassung-compare`` is the AI-native half of the
+``POST /v1/collections/{collection}/revision-compare`` is the AI-native half of the
 compare view (CONTEXT.md, „Fassung"). The BFF
-(``frontends/ui/src/lib/documents/fassung-compare-service.ts``) has already
+(``frontends/ui/src/lib/documents/revision-compare-service.ts``) has already
 decided that the caller may read both documents and that neither is held; this
 route gets two file names of ONE collection and a page number.
 
@@ -18,7 +18,7 @@ are the organization's vision credential (BYOK first, then ``AIQ_VLM_*``), and
 the model is the organization's ``ingest_vlm`` choice when it made one: a
 comparison is the same eyes on the same drawings as the page's caption. The
 call queues as interactive, since a person waits on it (ADR-0081), and is traced
-as a ``fassung-visual-compare`` generation with the pixels left out (ADR-0089).
+as a ``revision-visual-compare`` generation with the pixels left out (ADR-0089).
 
 **A second click costs no model call.** The result is cached under the content
 hashes of the two rendered pages (``revision_compare.cache_key``), so the same
@@ -64,7 +64,7 @@ from ._llm_json import message_content
 logger = logging.getLogger(__name__)
 
 #: The trace name of the vision call (``docs/observability/langfuse.md``).
-TRACE_NAME = "fassung-visual-compare"
+TRACE_NAME = "revision-visual-compare"
 
 #: Two page images and a JSON reply: a person is waiting, and a provider that has not
 #: answered in this long is not going to.
@@ -212,8 +212,14 @@ def _response(result: compare.CompareResult, model: str, cached: bool) -> Revisi
 def add_revision_compare_routes(router: APIRouter) -> None:
     """Register the Fassung comparison endpoint."""
 
+    # The pre-rename path, kept for one release: the BFF and this API deploy separately. Remove after one release.
     @router.post(
         "/v1/collections/{collection_name}/fassung-compare",
+        response_model=RevisionCompareResponse,
+        include_in_schema=False,
+    )
+    @router.post(
+        "/v1/collections/{collection_name}/revision-compare",
         response_model=RevisionCompareResponse,
         tags=["documents"],
         summary="Mark what changed between two Fassungen of a page, and say it in words",

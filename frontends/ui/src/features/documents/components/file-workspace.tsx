@@ -448,7 +448,7 @@ export function FileWorkspace({
         if (file) openRef.current(file)
       },
       // A link was confirmed or taken back: the section reports BOTH documents of it.
-      onRevisionChanged: (id, revision) => patchFile(id, { fassung: revision }),
+      onRevisionChanged: (id, revision) => patchFile(id, { revision }),
       // After a successful re-ingestion the document is back to 'pending'; the
       // dead-end failure UI clears and the badge flips to "Processing".
       onReingested: (id, status) => patchFile(id, { status, errorMessage: null }),

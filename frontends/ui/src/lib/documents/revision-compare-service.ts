@@ -2,7 +2,7 @@
  * Marking what changed between two Fassungen on the page, and saying it in words
  * (CONTEXT.md, „Fassung").
  *
- * `POST /api/documents/{newer}/fassung-compare` with the older document and a page.
+ * `POST /api/documents/{newer}/revision-compare` with the older document and a page.
  * The backend (`frontends/aiq_api/.../routes/fassung_compare.py`) renders that page of
  * both stored originals, asks the vision model once about the pair and caches the
  * answer; it knows the documents only as `(collection, file name)`, so everything it
@@ -44,7 +44,7 @@ import { parseRevisionVisualChanges, type RevisionVisualChanges } from './revisi
 const BACKEND_TIMEOUT_MS = 120_000
 
 const compareUrl = (backendUrl: string, collectionName: string): string =>
-  `${backendUrl}/v1/collections/${encodeURIComponent(collectionName)}/fassung-compare`
+  `${backendUrl}/v1/collections/${encodeURIComponent(collectionName)}/revision-compare`
 
 /** Load a document to be compared: readable, not held, active, in the working set. */
 async function loadForComparing(session: AuthorizedSession, documentId: string): Promise<Document> {

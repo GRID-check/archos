@@ -97,7 +97,7 @@ export interface DocumentRoleDefinition {
   /** German label, shown as the slot's name. */
   label: string
   /**
-   * Which level of the project model this role binds to. A `bauwerk` role
+   * Which level of the project model this role binds to. A `building` role
    * carries the building's instance id; `projekt` and (for now) `grundstueck`
    * roles carry none — see `roleRequiresScopeInstance`.
    *
@@ -127,28 +127,28 @@ export const DOCUMENT_ROLE_DEFINITIONS: readonly DocumentRoleDefinition[] = [
   {
     role: 'development_plan',
     label: 'Bebauungsplan',
-    scope: 'grundstueck',
+    scope: 'plot',
     cardinality: 'one',
-    recommendedWhen: [{ param: 'B2', op: 'equals', value: 'ja' }],
+    recommendedWhen: [{ param: 'B2', op: 'equals', value: 'yes' }],
     why: 'Grundlage für Bauklasse, Bebauungsweise, Dichte und Fluchtlinien.',
   },
   {
     role: 'zoning_plan',
     label: 'Flächenwidmungsplan',
-    scope: 'grundstueck',
+    scope: 'plot',
     cardinality: 'one',
     why: 'Zeigt, ob die geplante Nutzung am Standort grundsätzlich möglich ist.',
   },
   {
     role: 'land_register_extract',
     label: 'Grundbuchauszug',
-    scope: 'grundstueck',
+    scope: 'plot',
     cardinality: 'one',
   },
   {
     role: 'site_plan',
     label: 'Lageplan',
-    scope: 'grundstueck',
+    scope: 'plot',
     cardinality: 'one',
   },
   {
@@ -157,7 +157,7 @@ export const DOCUMENT_ROLE_DEFINITIONS: readonly DocumentRoleDefinition[] = [
     // the slot heading, the drop zone and the agent's context block. The list
     // of drawing types belongs in the explanation, not in the name.
     label: 'Bestandspläne',
-    scope: 'bauwerk',
+    scope: 'building',
     cardinality: 'many',
     recommendedWhen: [{ param: 'C2', op: 'equals', value: 'existing' }],
     why: 'Grundrisse, Schnitte und Ansichten. Ohne sie bleibt der Vergleich von Bestand und Zielzustand eine Schätzung.',
@@ -165,52 +165,52 @@ export const DOCUMENT_ROLE_DEFINITIONS: readonly DocumentRoleDefinition[] = [
   {
     role: 'existing_photos',
     label: 'Fotos / Bestandsaufnahme',
-    scope: 'bauwerk',
+    scope: 'building',
     cardinality: 'many',
     recommendedWhen: [{ param: 'C2', op: 'equals', value: 'existing' }],
   },
   {
     role: 'expert_report_ground',
     label: 'Baugrundgutachten',
-    scope: 'grundstueck',
+    scope: 'plot',
     cardinality: 'many',
   },
   {
     role: 'expert_report_noise',
     label: 'Lärmgutachten',
-    scope: 'grundstueck',
+    scope: 'plot',
     cardinality: 'many',
     why: 'Liefert die Pegel, die der Wizard bewusst nicht abfragt.',
   },
   {
     role: 'expert_report_pollutants',
     label: 'Schadstoffgutachten',
-    scope: 'projekt',
+    scope: 'project',
     cardinality: 'many',
     recommendedWhen: [{ param: 'A5', op: 'includes_any', value: ['demolition'] }],
   },
   {
     role: 'preliminary_design_study',
     label: 'Vorentwürfe & Studien',
-    scope: 'projekt',
+    scope: 'project',
     cardinality: 'many',
   },
   {
     role: 'authority_correspondence',
     label: 'Behördenkorrespondenz',
-    scope: 'projekt',
+    scope: 'project',
     cardinality: 'many',
   },
   {
     role: 'preliminary_decision',
     label: 'Vorbescheid',
-    scope: 'projekt',
+    scope: 'project',
     cardinality: 'many',
   },
   {
     role: 'other_project_basis',
     label: 'Sonstige Projektgrundlagen',
-    scope: 'projekt',
+    scope: 'project',
     cardinality: 'many',
   },
 ]
@@ -263,17 +263,17 @@ export function documentRoleLabel(role: DocumentRole): string {
  *
  * A `projekt` role takes none; anything narrower requires one. Stated as one
  * function so the API route, the service and the UI cannot each decide
- * differently — the case that produces silent breakage is a `bauwerk` role
+ * differently — the case that produces silent breakage is a `building` role
  * stored without its building, which then matches every building.
  */
 export function roleRequiresScopeInstance(role: DocumentRole): boolean {
-  // `bauwerk` only, deliberately. A project has many buildings and the wizard
+  // `building` only, deliberately. A project has many buildings and the wizard
   // mints an id for each, so a building role without one would match every
   // building. It has exactly ONE plot and mints no id for it (the data model
   // allows more, and v1 starts with one), so demanding an instance for a
   // `grundstueck` role would make the Bebauungsplan unbindable today. When
-  // plots become plural they get ids, and this reads `!== 'projekt'`.
-  return documentRoleDefinition(role).scope === 'bauwerk'
+  // plots become plural they get ids, and this reads `!== 'project'`.
+  return documentRoleDefinition(role).scope === 'building'
 }
 
 export function isScopeInstanceValid(role: DocumentRole, scopeInstanceId: string | null): boolean {
@@ -286,7 +286,7 @@ export function isScopeInstanceValid(role: DocumentRole, scopeInstanceId: string
  * Roles the checklist should push, given the intake answers so far.
  *
  * `instanceId` scopes the evaluation to one building, exactly as it does for a
- * question: without it, a `bauwerk` condition reads the project-global answer
+ * question: without it, a `building` condition reads the project-global answer
  * and every building gets the same recommendation.
  *
  * A role with no `recommendedWhen` is never *pushed*. It stays offerable — the

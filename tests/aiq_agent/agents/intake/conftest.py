@@ -36,7 +36,7 @@ NEEDS = [
     {
         "key": "storeys_above_ground@bldg1",
         "baseKey": "storeys_above_ground",
-        "bauwerkId": "bldg1",
+        "buildingId": "bldg1",
         "label": "Oberirdische Geschoße",
         "type": "number",
         "foundIn": ["Einreichplan", "Schnitte"],
@@ -46,7 +46,7 @@ NEEDS = [
     {
         "key": "construction_method",
         "baseKey": "construction_method",
-        "bauwerkId": None,
+        "buildingId": None,
         "label": "Bauweise",
         "type": "multi_select",
         "options": [{"token": "timber", "label": "Holzbau"}, {"token": "massivbau", "label": "Massivbau"}],
@@ -57,7 +57,7 @@ NEEDS = [
     {
         "key": "federal_state",
         "baseKey": "federal_state",
-        "bauwerkId": None,
+        "buildingId": None,
         "label": "Bundesland",
         "type": "single_select",
         "options": [{"token": "vienna", "label": "Wien"}, {"token": "tyrol", "label": "Tirol"}],

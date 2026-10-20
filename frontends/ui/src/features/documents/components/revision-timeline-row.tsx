@@ -61,7 +61,7 @@ export interface RevisionTimelineRowProps {
  * the file name only where it is another document, the state only where it is
  * worth a word.
  *
- * Presentational. Which rows exist and in which order is `lib/fassung-timeline.ts`;
+ * Presentational. Which rows exist and in which order is `lib/revision-timeline.ts`;
  * what the actions do belongs to `document-revisions.tsx`.
  */
 export function RevisionTimelineRow({
