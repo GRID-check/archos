@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Suggested follow-up questions now appear under every answer when your
+    office has chosen a model that always thinks before it answers. Before, those
+    suggestions quietly went missing on such models.
