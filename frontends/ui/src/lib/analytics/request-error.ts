@@ -20,6 +20,13 @@
  *   routes the visitor to the access screen (`isAuthzError`). Counted as
  *   exceptions they would be most of the free tier's 100K a month and none of
  *   its value.
+ * - **A form post naming no action we have is not an error either.** Next
+ *   throws "Failed to find Server Action" when a non-fetch multipart POST
+ *   carries action ids this build does not know, and answers it with a 404. Our
+ *   client calls every action by fetch, so what reaches that branch is a probe
+ *   for the server-action endpoint (they arrive in bursts, each with a fresh
+ *   distinct id and no session), or a form rendered by another build. Neither
+ *   is a defect we can fix, and a probe sweep would spend the free tier.
  * - **A hot route cannot burn the free tier.** A failing page that every
  *   client retries is the same exception thousands of times. Each fingerprint
  *   (route, error name, message) gets a burst per window from PostHog's own
@@ -50,6 +57,8 @@ import { scrubServerEvent } from './scrub-server-event'
 export const REQUEST_ERROR_BURST = 5
 export const REQUEST_ERROR_WINDOW_MS = 5 * 60_000
 const MESSAGE_FINGERPRINT_LENGTH = 120
+/** How Next's action handler opens the message for an action id this build lacks. */
+const UNKNOWN_ACTION_MESSAGE = 'Failed to find Server Action.'
 
 const quietLogger: Logger = {
   debug: () => {},
@@ -84,6 +93,9 @@ const fingerprintOf = ({ error, context }: OnRequestErrorBeforeCaptureContext): 
   return `${context.routePath ?? ''}|${name}|${message.slice(0, MESSAGE_FINGERPRINT_LENGTH)}`
 }
 
+const isUnknownActionError = (error: unknown): boolean =>
+  error instanceof Error && error.message.startsWith(UNKNOWN_ACTION_MESSAGE)
+
 /**
  * The package's `beforeCapture`: `false` skips the capture, an object is
  * merged into the event's properties.
@@ -92,6 +104,7 @@ export const beforeCapture = (
   capture: OnRequestErrorBeforeCaptureContext
 ): Record<string, unknown> | false => {
   if (isAuthzError(capture.error)) return false
+  if (isUnknownActionError(capture.error)) return false
   if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
   // The package's client is not ours to `register` on, so the super
   // properties every other server event carries travel per event here.
