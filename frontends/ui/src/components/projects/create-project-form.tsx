@@ -47,6 +47,7 @@ import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import type { ProjectSetup } from '@/lib/projects/create-project-schema'
 import { currentMonth, isMonth, type Month } from '@/lib/projects/month'
 import { abschlussBounds, abschlussProblem, defaultAbschluss, type ProjectOutcome } from '@/lib/projects/project-status'
+import { isRedirectSignal } from '@/lib/utils/redirect-signal'
 
 export type CreateProjectState = 'active' | 'closed'
 type AbschlussProblem = ReturnType<typeof abschlussProblem>
@@ -126,7 +127,17 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
       // Piloti reads, and be filed there.
       if (value.setup === 'self') forgetDrop()
       created.current = true
-      const result = await createProject({}, toFormData(value))
+      let result: Awaited<ReturnType<typeof createProject>>
+      try {
+        result = await createProject({}, toFormData(value))
+      } catch (error) {
+        // A created project answers with `redirect()`: Next has navigated to
+        // it already and rejects the call with the redirect. That rejection is
+        // the success, so it is recorded here and not rethrown.
+        if (!isRedirectSignal(error)) throw error
+        capturePosthog('project_created', { state: value.state, setup: value.setup })
+        return
+      }
       if (!result?.error) {
         capturePosthog('project_created', { state: value.state, setup: value.setup })
         return
