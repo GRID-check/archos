@@ -72,7 +72,7 @@ describe.skipIf(!url)('usage export repository against live Postgres', () => {
       completionTokens: 0,
       totalTokens,
       costUsd: '0.01000000',
-      costSource: 'openrouter' as const,
+      costSource: 'usage_field' as const,
       createdAt,
     })
     await withTenant({ organizationId: orgA }, () =>
