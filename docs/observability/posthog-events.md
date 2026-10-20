@@ -19,9 +19,13 @@ events. `tests/test_posthog_boundaries.py` enforces that.
   crossing a limit) is **personless**: the call site passes `null`, the event
   goes out with no distinct id of ours, and posthog-node gives it a fresh one
   with `$process_person_profile: false`, so no person is minted for it.
-- **Every server event carries `release` and `service`**, the deployed commit
-  (`GRID_GIT_SHA`) and the process (`OTEL_SERVICE_NAME`), registered once as
-  super properties of the server client.
+- **Every server event carries `release`, `service` and `app_host`**, the
+  deployed commit (`GRID_GIT_SHA`), the process (`OTEL_SERVICE_NAME`) and the
+  deployment's host (`app.piloti.at`, `app.dev.piloti.at`, from the pinned
+  redirect URI), registered once as super properties of the server client.
+  Staging and production share the project and both run `APP_ENV=production`,
+  so `app_host` is what tells their server events apart; before 2026-10-20
+  nothing did.
 - **Tenant context is a property, never a group.** `organization_id` (the WorkOS
   organization) is registered as a super property in the browser and set by
   `captureServer({ organizationId })` on the server. PostHog group analytics is
@@ -69,6 +73,8 @@ scheduled run, and cannot be trusted to survive a redirect or to be unblocked.
 | `annotation_created` | the person who set it, or for Piloti the person it acted for | `document_id`, `author_kind` (`person`, `piloti`), `kind` (the mark's kind), `status` (`open`, or `proposed` for Piloti's proposal), `organization_id` | `lib/annotations/service.ts`, `createAnnotation` and Piloti's `insertPilotiMarks`, once per mark. The service is the one door the review, the inbox, the chat's card and Piloti pass, so no surface counts twice or not at all |
 | `annotation_closed` | who closed it, or for Piloti the person it acted for | `document_id`, `status` (`resolved`, `dismissed`), `by` (`person`, `piloti`), `author_kind` (whose mark: `person`, `piloti`), `was` (`open`, `proposed`), `organization_id` | `lib/annotations/service.ts`, `updateAnnotation`, when a status move closes the mark. A carry's closing of the replaced document's mark is not a close |
 | `annotation_carried` | the carrier | `document_id` (where the mark was), `way` (`in_place`, `across`), `by`, `organization_id` | `lib/annotations/service.ts`, `carryToCurrent` (in place) and `carryAcross` (as a linked mark of the replacing document) |
+| `llm_usage_hourly` | personless | `hour` (ISO start of the UTC hour, also the event's timestamp), `model`, `activity` (`chat`, `ingest`, `dictation`), `purpose` (`agent`, or the backend's usage role: `rerank`, `decision`, `ingest_vision`, …), `user_id`, `project_id`, `own_key`, `billed` (false for dictation), `unit` (`credit`, `token`: the organization's), `amount` (in `unit`), `calls`, `prompt_tokens`, `completion_tokens`, `cached_tokens`, `reasoning_tokens`, `total_tokens`, `credits`, `cost_usd`, `price_usd`, `audio_seconds`, `organization_id` | `lib/analytics/usage-export.ts`, once per closed hour and group, sent by the scheduler's ten-minute ask (`/api/internal/analytics/usage-export`). Never twice: a cursor in `analytics_export_cursors` moves only after PostHog took the hour ([`org-spend-in-posthog.md`](org-spend-in-posthog.md)) |
+| `organization_budget_snapshot` | personless | `organization_name`, `unit`, `daily_limit`, `monthly_limit` (null: none), `limits_explicit` (false: the seeded allowance), `day_amount`, `month_amount`, `day_pct`, `month_pct`, `blocked`, `blocked_scope`, `member_limits`, `project_limits` (counts), `month_calls`, `month_tokens`, `month_credits`, `month_cost_usd`, `month_price_usd`, `organization_id` | `lib/analytics/usage-export.ts`, once per UTC hour per organization that spent in the last 35 days or set an organization limit. The organization's name is a business name, never a person's |
 | `annotation_due_reminders_sent` | personless | `checked`, `due_soon`, `overdue`, `already` (reminded of before for that date), `unreachable` (the Zuständige may no longer open the document), `failed`, `organization_id` | `lib/annotations/due-reminders.ts`, `runDueRemindersSlice`, once per organization's daily job when its last page is done |
 
 `$exception` events from the server come from `@posthog/next`'s request-error

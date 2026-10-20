@@ -17,6 +17,7 @@ that neither shows counts as a defect.
 | [`error-tracking.md`](error-tracking.md) | You want to know where an exception lands (PostHog error tracking, replacing err2issue per ADR-0100), what each runtime sends, and the volume limits |
 | [`langfuse-audit-2026-10.md`](langfuse-audit-2026-10.md) | You want to know what Langfuse offers, what we use, and what is still open |
 | [`posthog-events.md`](posthog-events.md) | You are adding or reading a PostHog product event: every browser and server event, its properties and the line that sends it, and the rules each follows |
+| [`org-spend-in-posthog.md`](org-spend-in-posthog.md) | You want an office's LLM spend, its limits or the platform's total cost in PostHog: where the numbers come from, the views and dashboards, and how to ask the PostHog MCP |
 | [`posthog-migration.md`](posthog-migration.md) | You are working on the PostHog switch ([ADR-0100](../adr/0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md)): what goes where, the free-tier budget, the checklist only a person can do |
 
 The deployment side (Langfuse's workloads, its access gates, retention) is
