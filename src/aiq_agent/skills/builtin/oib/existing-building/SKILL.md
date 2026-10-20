@@ -1,5 +1,5 @@
 ---
-name: bestand
+name: existing-building
 description: >
   Was nach Umbau, Nutzungsänderung oder größerer Renovierung noch bindet.
 metadata:
@@ -17,7 +17,7 @@ liest sich korrekt.
 
 Umbau, Zubau, Nutzungsänderung, größere Renovierung, Instandsetzung. Die Worte
 sind nicht synonym. Hol die Bestimmung, die sie für dieses Land unterscheidet,
-und ordne das Vorhaben dort ein. `vorhabensart` und `bestand_neubau` im
+und ordne das Vorhaben dort ein. `work_type` und `existing_or_new` im
 Projektkontext lesen, nicht überschreiben.
 
 Unklar → eine Frage. Nicht unter Neubau weiterarbeiten und es am Ende erwähnen.
@@ -31,7 +31,7 @@ verschiebt, ob eine größere Renovierung die Hülle neu aufrollt. Jedes davon
 ist eine holbare Klausel, kein Gefühl.
 
 Die Gebäudeklasse kann sich durch den Umbau ändern. Wenn sie sich ändert,
-ändert sich fast jede spätere Zahl. Dann `gebaeudeklasse` laden, bevor eine
+ändert sich fast jede spätere Zahl. Dann `building-class` laden, bevor eine
 Anforderung zitiert wird.
 
 ## 3. Abweichung, wenn die Anforderung nicht haltbar ist

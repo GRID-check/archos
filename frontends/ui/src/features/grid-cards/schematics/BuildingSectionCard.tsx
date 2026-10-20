@@ -35,7 +35,7 @@ const MARKER_STYLE: Record<
   NonNullable<SectionMarkerData['kind']>,
   { color: string; dash: string; width: number }
 > = {
-  fluchtniveau: { color: 'var(--text-color-feedback-info)', dash: '7 4', width: 1.4 },
+  escape_level: { color: 'var(--text-color-feedback-info)', dash: '7 4', width: 1.4 },
   threshold: { color: 'var(--text-color-feedback-warning)', dash: '7 4', width: 1.4 },
   reference: { color: 'var(--muted-foreground)', dash: '3 4', width: 1 },
 }

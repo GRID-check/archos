@@ -649,7 +649,7 @@ class TestARevisionChosenAtUpload:
         register_summary("proj_chosen", "Grundriss_EG_Index_B.txt", "Grundriss Erdgeschoss, Stiege im Süden.")
 
         _ingest(
-            live_ingestor, tmp_path, "proj_chosen", "Grundriss_EG_Index_C.txt", fassung_of="Grundriss_EG_Index_B.txt"
+            live_ingestor, tmp_path, "proj_chosen", "Grundriss_EG_Index_C.txt", revision_of="Grundriss_EG_Index_B.txt"
         )
 
         docs = _documents("proj_chosen")
@@ -661,6 +661,18 @@ class TestARevisionChosenAtUpload:
         assert model.asked("NEWER FASSUNG") == []
         assert docs["Grundriss_EG_Index_C.txt"].revision_suggestion is None
 
+    def test_a_job_queued_before_the_rename_still_carries_the_old_key(self, tmp_path, live_ingestor, stores, model):
+        """`fassung_of` was the config key until migration 0165; the queue outlives a deploy."""
+        from aiq_agent.knowledge import register_summary
+
+        register_summary("proj_queued", "Grundriss_EG_Index_B.txt", "Grundriss Erdgeschoss, Stiege im Süden.")
+
+        _ingest(
+            live_ingestor, tmp_path, "proj_queued", "Grundriss_EG_Index_C.txt", fassung_of="Grundriss_EG_Index_B.txt"
+        )
+
+        assert _documents("proj_queued")["Grundriss_EG_Index_B.txt"].superseded_by == "Grundriss_EG_Index_C.txt"
+
     def test_without_the_summary_model_the_link_is_still_written(self, tmp_path, live_ingestor, stores, model):
         # The person's choice does not wait for the model: only the change line needs it.
         from aiq_agent.knowledge import register_summary
@@ -668,7 +680,7 @@ class TestARevisionChosenAtUpload:
         live_ingestor.generate_summary_enabled = False
         register_summary("proj_nomodel", "B.txt", "Statik.")
 
-        _ingest(live_ingestor, tmp_path, "proj_nomodel", "C.txt", fassung_of="B.txt")
+        _ingest(live_ingestor, tmp_path, "proj_nomodel", "C.txt", revision_of="B.txt")
 
         docs = _documents("proj_nomodel")
         assert docs["B.txt"].superseded_by == "C.txt"
@@ -686,7 +698,7 @@ class TestARevisionChosenAtUpload:
         monkeypatch.setattr(document_classification, "fallback_summary_from_text", lambda _text: "")
         register_summary("proj_nosummary", "B.txt", "Statik.")
 
-        _ingest(live_ingestor, tmp_path, "proj_nosummary", "C.txt", fassung_of="B.txt")
+        _ingest(live_ingestor, tmp_path, "proj_nosummary", "C.txt", revision_of="B.txt")
 
         assert get_document_superseded_by("proj_nosummary", ["B.txt"]) == {"B.txt": "C.txt"}
         # The listing's reconciliation backfill writes C's row („Indexed document: C.txt“), and the
@@ -725,7 +737,7 @@ class TestARevisionChosenAtUpload:
         register_summary("proj_gone", "B.txt", "Statik.")
         model.judge = '{"of": "B.txt", "confidence": 0.9, "reason": "Gleiche Statik."}'
 
-        _ingest(live_ingestor, tmp_path, "proj_gone", "C.txt", fassung_of="Weg.txt")
+        _ingest(live_ingestor, tmp_path, "proj_gone", "C.txt", revision_of="Weg.txt")
 
         docs = _documents("proj_gone")
         assert all(doc.superseded_by is None for doc in docs.values())
@@ -739,7 +751,7 @@ class TestARevisionChosenAtUpload:
         register_summary("proj_loop", "C.txt", "Statik, neu.")
         set_document_superseded_by("proj_loop", "C.txt", "B.txt")
 
-        _ingest(live_ingestor, tmp_path, "proj_loop", "C.txt", fassung_of="B.txt")
+        _ingest(live_ingestor, tmp_path, "proj_loop", "C.txt", revision_of="B.txt")
 
         docs = _documents("proj_loop")
         assert docs["B.txt"].superseded_by is None
@@ -751,7 +763,7 @@ class TestARevisionChosenAtUpload:
         register_summary("proj_again", "B.txt", "Die alte Statik.")
         _seed_previous_version(live_ingestor, stores, "proj_again", "C.txt")
 
-        _ingest(live_ingestor, tmp_path, "proj_again", "C.txt", fassung_of="B.txt")
+        _ingest(live_ingestor, tmp_path, "proj_again", "C.txt", revision_of="B.txt")
 
         docs = _documents("proj_again")
         assert docs["B.txt"].superseded_by == "C.txt"
@@ -763,7 +775,7 @@ class TestARevisionChosenAtUpload:
 
         register_summary("oib_knowledge", "B.txt", "Statik.")
 
-        _ingest(live_ingestor, tmp_path, "oib_knowledge", "C.txt", fassung_of="B.txt")
+        _ingest(live_ingestor, tmp_path, "oib_knowledge", "C.txt", revision_of="B.txt")
 
         assert _documents("oib_knowledge")["B.txt"].superseded_by is None
 
@@ -775,7 +787,7 @@ class TestAPurgeThatCanBeUndone:
         from aiq_agent.knowledge import register_summary
 
         register_summary(collection, "B.txt", "Statik.")
-        _ingest(live_ingestor, tmp_path, collection, "C.txt", fassung_of="B.txt")
+        _ingest(live_ingestor, tmp_path, collection, "C.txt", revision_of="B.txt")
         assert _documents(collection)["B.txt"].superseded_by == "C.txt"
 
     def test_the_link_comes_back_when_the_newer_file_is_read_again(self, tmp_path, live_ingestor, stores, model):

@@ -1,5 +1,5 @@
 ---
-name: nutzungssicherheit
+name: safety-in-use
 description: >
   Treppe, Geländer, Türbreite. Die Zahl gehört gezeichnet.
 metadata:

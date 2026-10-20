@@ -36,7 +36,7 @@ const BINDINGS = [
   {
     id: 'b1',
     documentId: 'd1',
-    role: 'bebauungsplan',
+    role: 'development_plan',
     scopeInstanceId: null,
     confidence: 'declared',
     filename: 'bebauungsplan-1042.pdf',
@@ -45,8 +45,8 @@ const BINDINGS = [
   {
     id: 'b2',
     documentId: 'd2',
-    role: 'bestandsplan',
-    scopeInstanceId: 'bw1',
+    role: 'existing_plans',
+    scopeInstanceId: 'bldg1',
     confidence: 'declared',
     filename: 'bestand-eg.pdf',
     displayName: 'Bestand Erdgeschoß',
@@ -54,8 +54,8 @@ const BINDINGS = [
   {
     id: 'b3',
     documentId: 'd3',
-    role: 'bestandsplan',
-    scopeInstanceId: 'bw1',
+    role: 'existing_plans',
+    scopeInstanceId: 'bldg1',
     confidence: 'suggested',
     filename: 'schnitt-a-a.pdf',
     displayName: null,
@@ -92,13 +92,13 @@ if (typeof window !== 'undefined') {
 const ANSWERS = {
   B2: 'ja',
   A5: ['Neubau', 'Abbruch'],
-  'C2@bw1': 'bestand',
-  'C2@bw2': 'neubau',
+  'C2@bldg1': 'existing',
+  'C2@bldg2': 'new_build',
 }
 
 const BUILDINGS = [
-  { id: 'bw1', name: 'Bestandsgebäude Hoftrakt' },
-  { id: 'bw2', name: 'Neubau Straßentrakt' },
+  { id: 'bldg1', name: 'Bestandsgebäude Hoftrakt' },
+  { id: 'bldg2', name: 'Neubau Straßentrakt' },
 ]
 
 export default function DocumentRolesPreviewPage() {
@@ -112,7 +112,7 @@ export default function DocumentRolesPreviewPage() {
           <div className="rounded-xl border bg-card p-4">
             <DocumentRoleField
               projectId={PROJECT_ID}
-              role="bebauungsplan"
+              role="development_plan"
               label="Bebauungsplan ablegen"
             />
           </div>
@@ -123,8 +123,8 @@ export default function DocumentRolesPreviewPage() {
           <div className="rounded-xl border bg-card p-4">
             <DocumentRoleField
               projectId={PROJECT_ID}
-              role="bestandsplan"
-              scopeInstanceId="bw1"
+              role="existing_plans"
+              scopeInstanceId="bldg1"
               label="Bestandspläne — Bestandsgebäude Hoftrakt"
             />
           </div>

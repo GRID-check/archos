@@ -1,6 +1,6 @@
 /**
  * The Steckbrief of a project (ADR-0091): address, period, and everyone who
- * worked on it. The address is the profile fact `standort_adresse` and is
+ * worked on it. The address is the profile fact `site_address` and is
  * edited where every fact is, in the intake wizard; this service owns the
  * period and the people.
  *
@@ -90,7 +90,7 @@ function startOf(period: ProjectPeriodRow): { startedOn: Month | null; isDefault
 }
 
 function addressOf(profile: Awaited<ReturnType<typeof findProjectProfile>>): string | null {
-  const value = profile?.facts?.standort_adresse?.value
+  const value = profile?.facts?.site_address?.value
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null
 }
 

@@ -38,7 +38,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `conversation-source-projects.ts` | `conversation_source_projects` |
 | `document-access-log.ts` | `document_access_log` (the download log) |
 | `document-quarantine-decisions.ts` | `document_quarantine_decisions` (the content gate's decisions owed to the audit trail) |
-| `document-revision-announcements.ts` | `document_fassung_announcements` (which new Fassungen `document.new_fassung` has announced, once each) |
+| `document-revision-announcements.ts` | `document_revision_announcements` (which new Fassungen `document.new_revision` has announced, once each) |
 | `project-memory.ts` | `project_memory` (documented in [`project-memory-design.md`](../architecture/project-memory-design.md); the restricted-memory column below; `evidence` (0127, `jsonb`, CHECK array or NULL): the file names and pages a source-grounded decision was read from, set by the closing extraction) |
 | `jobs.ts` | `skills`, `jobs`, `job_runs` — the last two LEGACY since 0086; they are not written or read after the cutover and migration 0087 drops them |
 | `tasks.ts` | `tasks` — LEGACY since 0086, same |
@@ -209,6 +209,32 @@ produced by a different deployable. The shape is defined once in zod
 (`lib/runs/run-ledger-types.ts`) and exported to
 `frontends/ui/tests/fixtures/run-ledger.schema.json`, which the Python models
 (`src/aiq_agent/common/run_ledger.py`) validate against (ADR-0055, ADR-0062).
+
+**English names in the metadata (migrations `0163`, `0164`).** The closed
+vocabularies inside `metadata` were German identifiers and are English now.
+Migration `0163` rewrote, in one pass over the rows that hold an old name:
+`findings` status (`met` \| `not_met` \| `open` \| `not_applicable`) and
+grounding (`sourced` \| `derived` \| `open`); a callout's `kind` (`note` \|
+`warning` \| `deadline` \| `tip`); the run ledger's `status` (`created`,
+`running`, `waiting`, `done`, `failed`, `cancelled`, `interrupted`), its phases
+(`planning`, `researching`, `checking`, `writing`, `filed`) and the `grundlage`
+key, now `basis`; a citation's `kind` (`building_law`, `office`, `project`,
+`web`, `measurement`), `lane` (`building_law_oib`, `office_piloti`, …),
+`binding_status` (`binding`, `declared_binding`, `interpretive`, `unknown`),
+`rank` (`federal_law`, `state_law`, `ordinance`, `authority_info`,
+`external_standard`) and the key `punkt`, now `clause` (also on quote stamps);
+the Herleitung's trace lanes, its locator event `status.retrieval.clause` and
+the degraded reason `basis_unread`; and the card fields `staging_area`,
+`building_class`, the railing `context`, a section marker's `escape_level`, the
+`/drafts/` root of a draft's path and a document's `source` (`project` \|
+`office`), inside a `surface` card too. Migration `0164` did the same for the
+plan: the `plan_json` fence of a plan preview and the `approve {…}` reply
+(`basis`, `excluded`, `documents`; genre `inspection_report` \| `file_note` \|
+`comparison` \| `checklist` \| `report`; depth `quick_check` \| `expert_report`),
+`plan.documents` on `tasks`, `task_definitions` and `task_runs`, and
+`proposed_changes.payload.operations[].source`, with the CHECK that reads it.
+Both have a `.down.sql`. The readers keep one table per vocabulary for the old
+spellings (`LEGACY_*`, listed in each migration's header) for one release.
 
 **Indexes:** `messages_conversation_created_idx` on `(conversation_id, created_at)` — conversation history reads (migration `0014`; Postgres does not auto-index FK columns); `idx_messages_run_id` on `(run_id)` **partial**, `WHERE run_id IS NOT NULL` (migration `0091`) — a run message is a small minority of all messages, and an index entry per chat message would be paid for on every insert. Drizzle's builder cannot express a partial index, so it lives only in the migration.
 
@@ -587,7 +613,7 @@ pinned, the plan frozen, and review as an axis of its own.
 is why the vocabulary lives in one place — `TASK_KINDS` in
 `lib/db/schema/tasks.ts` — rather than in a column and a tuple that can disagree.
 It holds six members: `deep-research` and `chat` are `jobs.output` and describe
-how a JOB delivers its result; `compliance_check`, `einreichcheck`, `document`
+how a JOB delivers its result; `compliance_check`, `submission_check`, `document`
 and `revision` are what a person DELEGATES (`DELEGATABLE_TASK_KINDS`, derived as
 the complement rather than listed again). `status`, `review` and `filing_status`
 DO carry CHECKs naming their members.
@@ -955,6 +981,8 @@ carry access:
 | `permit_records.collection_name` | `text` | NOT NULL | the collection the document sat in when it was read |
 | `restricted_folder_ids` (both tables) | `uuid[]` | NULL, canonical, 1..20 when set | the document's restricting folders when it was read |
 | `permit_requirements.embedding` / `embedding_model` | `real[]` / `text` | NULL | ranked only against the current model's vectors |
+| `permit_records.kind` | `text` | NOT NULL, CHECK `permit_records_kind_check` | **Migration `0166`**: `approval` \| `information_request` \| `refusal` \| `other` (were `bewilligung` \| `nachforderung` \| `ablehnung` \| `sonstiges`) |
+| `permit_requirements.kind` | `text` | NOT NULL, CHECK `permit_requirements_kind_check` | **Migration `0166`**: `condition` \| `information_request` \| `note` (were `auflage` \| `nachforderung` \| `hinweis`) |
 
 The stored restriction is a snapshot of where the document was read, and no
 reader consults it for access. The search (`searchPermitRequirements`) joins
@@ -1060,10 +1088,10 @@ not yet audited.
 
 ---
 
-## document_fassung_announcements (migration 0130, ADR-0099)
+## document_revision_announcements (migration 0130, ADR-0099)
 
 Which new Fassungen have been announced to the people who followed the older
-document (`document.new_fassung`, `lib/documents/revision-notify.ts`). One row
+document (`document.new_revision`, `lib/documents/revision-notify.ts`). One row
 per Fassung: the newer document and the anchor its inbox item uses (the new
 version for a same-name Fassung, the older document for a confirmed link).
 `notifyNewRevision` inserts the row (`claimRevisionAnnouncement`, ON CONFLICT DO
@@ -1186,8 +1214,8 @@ This PostgreSQL entrypoint script runs on first container startup and creates tw
 | `job_info` | NAT JobStore metadata | `job_id` (PK), `status`, `config_file`, `error`, `output_path`, `created_at`, `updated_at`, `expiry_seconds`, `is_expired` |
 | `job_access` | Who may reach a job: its owner, and callers whose signed scope matches its organization and project or conversation (ADR-0084) | `job_id` (PK), `owner_auth_type`, `owner_subject`, `owner_email`, `conversation_id`, `project_collection`, `organization_id`, `created_at` |
 | `job_events` | SSE streaming event persistence | `id` (serial PK), `job_id`, `event_type`, `event_data`, `created_at` |
-| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`), `tags_set_by` (`TEXT`; nullable — `person` when a person chose the tags through the tag edit; ingest and the backfill then leave `tags` alone, and a re-ingest carries them to the new version), `topics` (`TEXT`, JSON list; nullable — open Themen the summary model recognised, or a person's; kept with the tags on the same `tags_set_by` marker), `capture` (`TEXT`, JSON object; nullable — what a camera wrote into a photo: `captured_at`, `latitude`, `longitude`, `camera`; the position is for the BFF and never rendered to a model), `superseded_by` (`TEXT`; nullable — on the OLDER document's row: the `filename` of the newer document in the same collection that a PERSON confirmed replaces it; written only by a person's confirmation (`PUT /v1/collections/{collection}/fassung` or `fassung_of` at upload, both through `link_revision`), kept across a re-ingest; a purge that can be undone leaves it and it reads as nothing until the newer row is back, a permanent delete of the newer document clears it; search leaves the file out of the ranking unless a call names it), `revision_suggestion` (`TEXT`, JSON object; nullable — on the NEWER document's row: Piloti's suggestion that it is a newer Fassung of another, `{of, confidence, reason, basis: title_block\|name\|content, dismissed, dismissed_of}`; advice only, links and hides nothing; `dismissed_of` lists every file a person refused, kept across every write so none is suggested again), `change_summary` (`TEXT`; nullable — German bullet lines on what changed against the Fassung `change_basis` names) `change_basis` (`TEXT`; nullable — the `filename` compared against: the document's own name for its previous upload, another name for a confirmed Fassung) and `revision_facts` (`TEXT`, JSON object; nullable — what the title block (Plankopf) of the document's first drawing page that has one says, read by the vision model during ingestion in the same call as the drawing analysis: `document_number` (Plannummer, as printed), `revision` (the Index as printed, letter or number), `revision_date` (ISO `YYYY-MM-DD`), `scale`, `title` (Planinhalt) and `page` (1-based, where it was read); present keys only, never guessed; replaced by a re-upload, so a re-upload without a title block clears it; decoded through `aiq_agent.knowledge.title_block.normalise_revision_facts`). `supersedes` (the files a document replaces) is derived on read, never stored |
-| `document_fassung_retained` | The Fassung facts a person made, kept while a purge that can be undone has taken the `document_metadata` row away (archive, folder bin, a publish that re-reads) | `collection` + `filename` (composite PK), `superseded_by`, `revision_suggestion` (refusals only), `change_summary` + `change_basis` (only when the basis is another file). Written by `DocumentMetadataStore.unregister` without `permanent`; taken back and deleted by the next `register` of the name; a permanent delete removes it and clears `superseded_by` pointing at the file. Created by the store at init, like `document_metadata` |
+| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`), `tags_set_by` (`TEXT`; nullable — `person` when a person chose the tags through the tag edit; ingest and the backfill then leave `tags` alone, and a re-ingest carries them to the new version), `topics` (`TEXT`, JSON list; nullable — open Themen the summary model recognised, or a person's; kept with the tags on the same `tags_set_by` marker), `capture` (`TEXT`, JSON object; nullable — what a camera wrote into a photo: `captured_at`, `latitude`, `longitude`, `camera`; the position is for the BFF and never rendered to a model), `superseded_by` (`TEXT`; nullable — on the OLDER document's row: the `filename` of the newer document in the same collection that a PERSON confirmed replaces it; written only by a person's confirmation (`PUT /v1/collections/{collection}/fassung` or `revision_of` at upload, both through `link_revision`), kept across a re-ingest; a purge that can be undone leaves it and it reads as nothing until the newer row is back, a permanent delete of the newer document clears it; search leaves the file out of the ranking unless a call names it), `revision_suggestion` (`TEXT`, JSON object; nullable — on the NEWER document's row: Piloti's suggestion that it is a newer Fassung of another, `{of, confidence, reason, basis: title_block\|name\|content, dismissed, dismissed_of}`; advice only, links and hides nothing; `dismissed_of` lists every file a person refused, kept across every write so none is suggested again), `change_summary` (`TEXT`; nullable — German bullet lines on what changed against the Fassung `change_basis` names) `change_basis` (`TEXT`; nullable — the `filename` compared against: the document's own name for its previous upload, another name for a confirmed Fassung) and `revision_facts` (`TEXT`, JSON object; nullable — what the title block (Plankopf) of the document's first drawing page that has one says, read by the vision model during ingestion in the same call as the drawing analysis: `document_number` (Plannummer, as printed), `revision` (the Index as printed, letter or number), `revision_date` (ISO `YYYY-MM-DD`), `scale`, `title` (Planinhalt) and `page` (1-based, where it was read); present keys only, never guessed; replaced by a re-upload, so a re-upload without a title block clears it; decoded through `aiq_agent.knowledge.title_block.normalise_revision_facts`). `supersedes` (the files a document replaces) is derived on read, never stored |
+| `document_revision_retained` | The Fassung facts a person made, kept while a purge that can be undone has taken the `document_metadata` row away (archive, folder bin, a publish that re-reads) | `collection` + `filename` (composite PK), `superseded_by`, `revision_suggestion` (refusals only), `change_summary` + `change_basis` (only when the basis is another file). Written by `DocumentMetadataStore.unregister` without `permanent`; taken back and deleted by the next `register` of the name; a permanent delete removes it and clears `superseded_by` pointing at the file. Created by the store at init, like `document_metadata` |
 
 Indexes: `job_info(status)`, `job_info(created_at)`, `job_access(owner_auth_type, owner_subject)`, `job_events(job_id)`, `job_events(job_id, id)`, `document_metadata(collection)`.
 
@@ -1769,7 +1797,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

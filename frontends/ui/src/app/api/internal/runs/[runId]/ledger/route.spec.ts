@@ -75,20 +75,20 @@ describe('POST /api/internal/runs/[runId]/ledger', () => {
   it('appends what the client sent, under the run id from the PATH', async () => {
     const step = {
       id: 'batch-1',
-      phase: 'recherchieren' as const,
+      phase: 'researching' as const,
       intent: 'OIB-2 auf Fluchtwegbreiten prüfen',
       startedAt: T0.toISOString(),
       docs: [],
     }
 
-    await expect(client.append(RUN, { steps: [step], status: 'laeuft' })).resolves.toEqual({
+    await expect(client.append(RUN, { steps: [step], status: 'running' })).resolves.toEqual({
       runId: RUN,
       ledger: LEDGER,
     })
     expect(applyRunLedgerOp).toHaveBeenCalledWith(RUN, {
       op: 'append',
       steps: [step],
-      status: 'laeuft',
+      status: 'running',
     })
   })
 
@@ -137,7 +137,7 @@ describe('POST /api/internal/runs/[runId]/ledger', () => {
       steps: [
         {
           id: 'batch-1',
-          phase: 'recherchieren',
+          phase: 'researching',
           intent: 'OIB-2 prüfen',
           startedAt: T0.toISOString(),
           docs: [],

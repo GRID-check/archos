@@ -13,6 +13,7 @@
  */
 
 import { z } from 'zod'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 
 /**
  * Legal rank of a pointer. The first three are RIS-backed law ranks (federal
@@ -21,17 +22,36 @@ import { z } from 'zod'
  * have no accessible full text.
  */
 export const NORM_RANKS = [
-  'bundesgesetz',
-  'landesgesetz',
-  'verordnung',
-  'behoerdliche_info',
-  'norm_extern',
+  'federal_law',
+  'state_law',
+  'ordinance',
+  'authority_info',
+  'external_standard',
 ] as const
-export const normRankSchema = z.enum(NORM_RANKS)
 export type NormRank = (typeof NORM_RANKS)[number]
 
+/**
+ * The German ranks a stored registry (the admin-edited row, a catalog an older
+ * admin tab is saving) still carries. Read-only: nothing writes these, and the
+ * next save stores the English ones. Mirrored by `LEGACY_NORM_RANK` in
+ * `src/aiq_agent/common/norm_registry.py`.
+ */
+export const LEGACY_NORM_RANK: Readonly<Record<string, NormRank>> = {
+  bundesgesetz: 'federal_law',
+  landesgesetz: 'state_law',
+  verordnung: 'ordinance',
+  behoerdliche_info: 'authority_info',
+  norm_extern: 'external_standard',
+}
+
+export const normRankSchema = z.preprocess(
+  (value) =>
+    typeof value === 'string' && Object.hasOwn(LEGACY_NORM_RANK, value) ? LEGACY_NORM_RANK[value] : value,
+  z.enum(NORM_RANKS)
+)
+
 /** The RIS-backed law ranks — application + document_number are required for these. */
-export const LAW_RANKS = ['bundesgesetz', 'landesgesetz', 'verordnung'] as const
+export const LAW_RANKS = ['federal_law', 'state_law', 'ordinance'] as const
 export type LawRank = (typeof LAW_RANKS)[number]
 
 /** True when the rank is one of the three RIS-backed law ranks. */
@@ -41,7 +61,7 @@ export function isLawRank(rank: NormRank): rank is LawRank {
 
 /**
  * Verification seed carried on an entry: the RIS query the admin curated, plus
- * optional disambiguators. `application`/`bundesland` are NOT stored here — the
+ * optional disambiguators. `application`/`federal_state` are NOT stored here — the
  * verify call derives them from the entry itself.
  */
 export const normVerifySeedSchema = z.object({
@@ -52,14 +72,26 @@ export const normVerifySeedSchema = z.object({
 })
 export type NormVerifySeed = z.infer<typeof normVerifySeedSchema>
 
+/**
+ * A stored registry (the admin-edited row, a catalog an older admin tab is
+ * saving) names the Land `bundesland`. Read-only: nothing writes that name, and
+ * the next save stores `federal_state`. Mirrored by `NormEntry` in
+ * `src/aiq_agent/common/norm_registry.py`.
+ */
+const renameLegacyNormEntry = (value: unknown): unknown => {
+  if (typeof value !== 'object' || value === null || !('bundesland' in value)) return value
+  const { bundesland, ...rest } = value as Record<string, unknown>
+  return 'federal_state' in rest ? rest : { ...rest, federal_state: bundesland }
+}
+
 /** One curated law pointer. Optional fields default so a minimal entry parses. */
-export const normEntrySchema = z.object({
+export const normEntrySchema = z.preprocess(renameLegacyNormEntry, z.object({
   id: z.string().min(1),
   title: z.string().min(1),
   short: z.string().min(1),
   rank: normRankSchema,
   /** Canonical Bundesland name ('Wien'), or '' for federal law. */
-  bundesland: z.string().default(''),
+  federal_state: z.string().default(''),
   topics: z.array(z.string()).default([]),
   relevance: z.string().default(''),
   /**
@@ -84,8 +116,16 @@ export const normEntrySchema = z.object({
    */
   verify: normVerifySeedSchema.nullish(),
   verified_at: z.string().default(''),
-})
+}))
 export type NormEntry = z.infer<typeof normEntrySchema>
+
+/** `states` is keyed by the federal-state token; a stored one still has the German tokens (`wien`). */
+function renameLegacyStateKeys(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return value
+  return Object.fromEntries(
+    Object.entries(value).map(([token, name]) => [normalizeProfileToken('federal_state', token), name])
+  )
+}
 
 /** The persisted registry file. `version` is the file-format literal. */
 export const normsFileSchema = z.object({
@@ -98,7 +138,7 @@ export const normsFileSchema = z.object({
    * round-trip so a registry that carries country-#2 overrides is not flattened.
    */
   language: z.string().default(''),
-  states: z.record(z.string(), z.string().nullable()).default({}),
+  states: z.preprocess(renameLegacyStateKeys, z.record(z.string(), z.string().nullable()).default({})),
   corpus_note: z.string().default(''),
   doctrine: z.string().default(''),
   parcel_tags: z.array(z.string()).default([]),
@@ -120,7 +160,7 @@ export type PutNormRegistryBody = z.infer<typeof putNormRegistryBodySchema>
 export const verifyNormRequestSchema = z.object({
   title_query: z.string().min(1),
   application: z.string().min(1),
-  bundesland: z.string().optional(),
+  federal_state: z.string().optional(),
   expect: z.string().optional(),
   exclude: z.array(z.string()).optional(),
   gesetzesnummer: z.string().optional(),

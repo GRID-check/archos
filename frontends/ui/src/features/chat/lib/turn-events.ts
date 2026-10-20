@@ -13,7 +13,10 @@
  * render.
  */
 
-import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
+import {
+  LEGACY_DEGRADED_REASON,
+  type StoredThinkingStep,
+} from '@/lib/conversations/message-provenance'
 import { stepEventLiveText, type StepEventTranslator } from './turn-event-keys'
 
 /**
@@ -128,13 +131,13 @@ export const deepResearchCutoff = (steps: readonly StatusRow[]): DeepResearchCut
  * `no_report_file` — the writer never persisted a report. `no_valid_citations`
  * — nothing in the answer is provably grounded. `cards_generation_failed` —
  * the report is whole, but its proposals could not be produced.
- * `grundlage_unread` — a document the reader named as Grundlage was never read.
+ * `basis_unread` — a document the reader named as Grundlage was never read.
  */
 export const ANSWER_DEGRADATIONS = [
   'no_report_file',
   'no_valid_citations',
   'cards_generation_failed',
-  'grundlage_unread',
+  'basis_unread',
 ] as const
 export type AnswerDegradation = (typeof ANSWER_DEGRADATIONS)[number]
 
@@ -147,7 +150,7 @@ export const answerDegradations = (steps: readonly StatusRow[]): AnswerDegradati
   if (detail?.degraded !== true) return []
   const out: AnswerDegradation[] = []
   for (const token of stringsOf(detail.reasons)) {
-    const reason = token as AnswerDegradation
+    const reason = (LEGACY_DEGRADED_REASON[token] ?? token) as AnswerDegradation
     if (ANSWER_DEGRADATIONS.includes(reason) && !out.includes(reason)) out.push(reason)
   }
   return out

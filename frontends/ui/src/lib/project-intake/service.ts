@@ -20,6 +20,7 @@
  * that is not the current reading's is refused with 409 `stale-reading`.
  */
 
+import { normalizeProfileKey, normalizeProfileValue } from '@/lib/project-profile/legacy-names'
 import 'server-only'
 import { ConflictError, ForbiddenError, NotFoundError, ServiceUnavailableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -364,8 +365,14 @@ function scoreDecisions(
 export async function applyIntakeDecisions(
   session: AuthorizedSession,
   projectId: string,
-  decisions: readonly IntakeDecision[]
+  sentDecisions: readonly IntakeDecision[]
 ): Promise<{ results: IntakeDecisionResult[]; intake: IntakeView }> {
+  // A tab that has not reloaded since the English names still sends the German ones.
+  const decisions = sentDecisions.map((decision) =>
+    decision.action === 'answer'
+      ? { ...decision, key: normalizeProfileKey(decision.key), value: normalizeProfileValue(decision.key, decision.value) }
+      : { ...decision, key: normalizeProfileKey(decision.key) }
+  )
   await requireProfileWriter(session, projectId)
   const row = await requireIntake(session.organizationId, projectId)
   const plan = await writeProfile(session, projectId, (profile) => {
@@ -472,9 +479,15 @@ export async function recordIntakeValues(
   session: AuthorizedSession,
   projectId: string,
   jobId: string,
-  values: readonly RecordValue[]
+  sentValues: readonly RecordValue[]
 ): Promise<InternalIntakeRecordResponse> {
   const { organizationId } = session
+  // An agent that has not rolled yet records under the German names.
+  const values = sentValues.map((value) => ({
+    ...value,
+    key: normalizeProfileKey(value.key),
+    value: normalizeProfileValue(value.key, value.value),
+  }))
   const row = await requireCurrentReading(session, projectId, jobId)
   const documents = await readableDocuments(organizationId, projectId)
   const readableFiles = new Set(documents.map((document) => document.fileName))
@@ -499,8 +512,9 @@ export async function withdrawIntakeValues(
   session: AuthorizedSession,
   projectId: string,
   jobId: string,
-  keys: readonly string[]
+  sentKeys: readonly string[]
 ): Promise<InternalIntakeWithdrawResponse> {
+  const keys = sentKeys.map(normalizeProfileKey)
   await requireCurrentReading(session, projectId, jobId)
   const results = await writeProfile(session, projectId, (current) => {
     const plan = planWithdraw(current, definition, keys, { now: new Date().toISOString(), readingId: jobId })

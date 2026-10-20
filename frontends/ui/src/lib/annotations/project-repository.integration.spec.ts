@@ -240,7 +240,7 @@ describe.skipIf(!url)('a project’s Offene Punkte against live Postgres', () =>
     const [mine] = (await read({ assigneeUserId: READER })).records
     expect(mine.replies.map((reply) => reply.body)).toEqual(['Erledige ich'])
     expect(mine.document).toMatchObject({ id: ids.a, filename: 'a-Grundriss.pdf', projectId: ids.project })
-    expect(mine.fassungNumber).toBeNull()
+    expect(mine.revisionNumber).toBeNull()
   })
 
   it('says whether the whole selection quotes a document not every member may open', async () => {

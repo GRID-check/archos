@@ -26,7 +26,7 @@ export function findingsBlocks(findings: unknown, t: Translator): DocBlock[] {
     const citations = item.citations.map((n) => `[${n}]`).join('')
     const status = item.status ? t(`findingsMatrix.status.${item.status}`) : ''
     const grounding =
-      item.grounding === 'belegt' ? '' : ` (${t(`findingsMatrix.grounding.${item.grounding}`)})`
+      item.grounding === 'sourced' ? '' : ` (${t(`findingsMatrix.grounding.${item.grounding}`)})`
     return [
       cell(item.area ? `${item.requirement} — ${item.area}` : item.requirement),
       cell(item.value ?? ''),

@@ -100,7 +100,7 @@ function profileOf(facts: Record<string, unknown> = {}, assumptions: Record<stri
   } as unknown as Project['profile']
 }
 
-const HOLZBAU = { bundesland: 'niederoesterreich', gebaeudeklasse: 4, bauweise: ['holzbau'], nutzungen: ['wohnen'] }
+const HOLZBAU = { federal_state: 'lower_austria', building_class: 4, construction_method: ['timber'], uses: ['residential'] }
 
 function closed(id: string, extra: Partial<Project> = {}): Project {
   return makeProject({
@@ -121,8 +121,8 @@ const current = makeProject({
   profile: profileOf(HOLZBAU),
 })
 const nearby = closed('closed-near', { profile: profileOf(HOLZBAU), startedOn: '2019-03-01', endedOn: '2021-11-30' })
-const mid = closed('closed-mid', { profile: profileOf({ bundesland: 'niederoesterreich' }, {}) })
-const far = closed('closed-far', { profile: profileOf({ bundesland: 'wien', gebaeudeklasse: 1, bauweise: ['massivbau'] }) })
+const mid = closed('closed-mid', { profile: profileOf({ federal_state: 'lower_austria' }, {}) })
+const far = closed('closed-far', { profile: profileOf({ federal_state: 'vienna', building_class: 1, construction_method: ['massivbau'] }) })
 const activeTwin = makeProject({ id: 'active-twin', organizationId: ORG, profile: profileOf(HOLZBAU), status: 'active' })
 const hidden = closed('closed-hidden', { profile: profileOf(HOLZBAU) })
 
@@ -204,7 +204,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
   })
 
   it('tells the projects that share something from the ones listed only because they are closed', async () => {
-    const unrelated = closed('closed-unrelated', { profile: profileOf({ bundesland: 'tirol' }) })
+    const unrelated = closed('closed-unrelated', { profile: profileOf({ federal_state: 'tyrol' }) })
     state.visible = [nearby, unrelated, current]
     const result = (await getSimilarProjects(session, 'current')).projects
     expect(result.map((project) => [project.id, project.alike])).toEqual([
@@ -215,7 +215,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
 
   it('marks a shared trait unconfirmed when either side has it only from its documents', async () => {
     const suggested = closed('closed-suggested', {
-      profile: profileOf({ bundesland: 'niederoesterreich' }, { gebaeudeklasse: suggestion(4) }),
+      profile: profileOf({ federal_state: 'lower_austria' }, { building_class: suggestion(4) }),
     })
     state.visible = [suggested, current]
     const [found] = (await getSimilarProjects(session, 'current')).projects
@@ -240,7 +240,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
     state.visible = [...many, current]
     const page = await getSimilarProjects(session, 'current')
     expect(page.more).toBe(3)
-    expect(page.basis.facts.find((fact) => fact.key === 'bauweise')?.value).toBe('Holzbau')
+    expect(page.basis.facts.find((fact) => fact.key === 'construction_method')?.value).toBe('Holzbau')
     // Only the kind of work is open and the briefing's to fill; HOLZBAU answers the rest.
     expect(page.basis.missing).toBe(1)
     expect(page.basis.editable).toBe(true)
@@ -258,14 +258,14 @@ describe('getSimilarProjects: what each project shares and records', () => {
     const byId = Object.fromEntries(result.map((project) => [project.id, project]))
     expect(byId['closed-near'].period).toEqual({ start: '2019-03-01', end: '2021-11-30' })
     expect(byId['closed-far'].period).toEqual({ start: '2019-02-01', end: '2024-05-03' })
-    expect(byId['closed-near'].bundesland).toEqual({ value: 'Niederösterreich', confirmed: true })
+    expect(byId['closed-near'].federal_state).toEqual({ value: 'Niederösterreich', confirmed: true })
   })
 
   it('marks an OIB edition read from the documents as unconfirmed, and a confirmed one as confirmed', async () => {
     const suggested = closed('closed-near', {
-      profile: profileOf(HOLZBAU, { oib_ausgabe: suggestion('2019') }),
+      profile: profileOf(HOLZBAU, { oib_edition: suggestion('2019') }),
     })
-    const confirmed = closed('closed-mid', { profile: profileOf({ bundesland: 'niederoesterreich', oib_ausgabe: '2015' }) })
+    const confirmed = closed('closed-mid', { profile: profileOf({ federal_state: 'lower_austria', oib_edition: '2015' }) })
     state.visible = [suggested, confirmed, far, current]
     const result = (await getSimilarProjects(session, 'current')).projects
     const byId = Object.fromEntries(result.map((project) => [project.id, project]))
@@ -276,11 +276,11 @@ describe('getSimilarProjects: what each project shares and records', () => {
 
   it('marks a federal state read from the documents as unconfirmed', async () => {
     const suggestedLand = closed('closed-near', {
-      profile: profileOf({ gebaeudeklasse: 4 }, { bundesland: suggestion('niederoesterreich') }),
+      profile: profileOf({ building_class: 4 }, { federal_state: suggestion('lower_austria') }),
     })
     state.visible = [suggestedLand, current]
     const [only] = (await getSimilarProjects(session, 'current')).projects
-    expect(only.bundesland).toEqual({ value: 'Niederösterreich', confirmed: false })
+    expect(only.federal_state).toEqual({ value: 'Niederösterreich', confirmed: false })
   })
 
   it('takes decisions from the project memory read: active project decisions and constraints only, at most five', async () => {
@@ -316,7 +316,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
   it('takes permit records through the memory clearance, at most five, each with at most four requirements', async () => {
     state.cleared.set('closed-near', ['folder-open'])
     const requirements = Array.from({ length: 6 }, (_, index) => ({
-      kind: 'auflage',
+      kind: 'condition',
       content: `Auflage ${index}`,
       evidence: null,
       legalBasis: null,
@@ -327,7 +327,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
       Array.from({ length: SIMILAR_PERMITS_MAX + 2 }, (_, index) => ({
         id: `r${index}`,
         fileName: `Bescheid ${index}.pdf`,
-        kind: 'bewilligung',
+        kind: 'approval',
         authority: 'Stadtgemeinde Mödling',
         issuedOn: '2020-06-18',
         requirements,
@@ -344,7 +344,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
     expect(near.permits[0]).toEqual({
       id: 'r0',
       fileName: 'Bescheid 0.pdf',
-      kind: 'bewilligung',
+      kind: 'approval',
       authority: 'Stadtgemeinde Mödling',
       issuedOn: '2020-06-18',
       requirements: requirements.slice(0, SIMILAR_PERMIT_REQUIREMENTS_MAX).map(({ kind, content }) => ({ kind, content })),

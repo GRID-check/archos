@@ -19,14 +19,14 @@ const at = '2026-09-20T08:00:00Z'
 
 const PROFILE: ProjectProfile = {
   facts: {
-    bundesland: { value: 'wien', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    federal_state: { value: 'vienna', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
     gebaeudeklasse: { value: 'GK4', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
-    fluchtniveau_m: { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    escape_level_m: { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
   },
   goals: {},
   unknowns: [],
   assumptions: {
-    geschosse_oberirdisch: { value: 5, status: 'unconfirmed', reason: 'geschätzt', source: 'agent_suggested', updatedAt: at },
+    storeys_above_ground: { value: 5, status: 'unconfirmed', reason: 'geschätzt', source: 'agent_suggested', updatedAt: at },
   },
 }
 
@@ -234,7 +234,7 @@ describe('quote stamps', () => {
   const QUOTE = '> „Wände sind in REI 90 auszuführen." [1]'
 
   it('says „Wortlaut belegt [N]" for a quote the server found verbatim', () => {
-    withData({ quoteStamps: [{ text: 'Wände sind in REI 90 auszuführen.', status: 'verbatim', number: 1, page: 4, punkt: '3.1' }] }, QUOTE)
+    withData({ quoteStamps: [{ text: 'Wände sind in REI 90 auszuführen.', status: 'verbatim', number: 1, page: 4, clause: '3.1' }] }, QUOTE)
     const stamp = screen.getByTestId('quote-stamp')
     expect(stamp).toHaveAttribute('data-status', 'verbatim')
     expect(stamp).toHaveTextContent('Wording verified [1]')

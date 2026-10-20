@@ -96,7 +96,7 @@ class Hit:
     doc_class: str | None = None
     body: str = "Passage."
     shelf: str | None = None
-    punkt: str | None = None
+    clause: str | None = None
     agent_authored: bool = False
     image_index: int | None = None
     content_type: str = "text"
@@ -122,7 +122,7 @@ class Hit:
             ("collection", self.collection),
             ("doc_class", self.doc_class),
             ("shelf", self.shelf),
-            ("punkt_id", self.punkt),
+            ("punkt_id", self.clause),
         ):
             if value:
                 metadata[key] = value
@@ -182,7 +182,7 @@ class TestProducerParserContract:
         file_name="oib-rl_2_ausgabe_mai_2023.pdf",
         page=12,
         collection="oib_knowledge",
-        doc_class="oib_richtlinie",
+        doc_class="oib_guideline",
         body="Brandabschnitte sind so auszubilden, dass eine Brandausbreitung begrenzt wird.",
     )
     PROJEKT = Hit(
@@ -206,16 +206,16 @@ class TestProducerParserContract:
     def test_the_unclassified_hit_is_not_rendered_as_building_law(self):
         """The user-visible consequence of a shift: chip colour and authority badge."""
         projekt, oib, archiv = roundtrip(self.PROJEKT, self.OIB, self.OFFICE_SHELF)
-        assert source_lane(projekt) == ("projekt", "Projektwissen")
-        assert source_lane(archiv) == ("buero", "Büroablage")
-        assert source_lane(oib) == ("baurecht_oib", "OIB-Richtlinie")
+        assert source_lane(projekt) == ("project", "Projektwissen")
+        assert source_lane(archiv) == ("office", "Büroablage")
+        assert source_lane(oib) == ("building_law_oib", "OIB-Richtlinie")
 
     def test_all_hits_classified(self):
         second = Hit(
             file_name="erlaeuterungen_oib-rl_2.pdf",
             page=3,
             collection="oib_knowledge",
-            doc_class="oib_erlaeuterung",
+            doc_class="oib_explanatory_note",
             body="Erlaeuternde Bemerkungen zur Richtlinie 2.",
         )
         entries = roundtrip(self.OIB, second)
@@ -231,7 +231,7 @@ class TestProducerParserContract:
         loose = Hit(file_name="lose_notiz.pdf", page=2, body="Handnotiz ohne Collection.")
         loose_entry, oib_entry = roundtrip(loose, self.OIB)
         assert (loose_entry.collection, loose_entry.doc_class) == (None, None)
-        assert (oib_entry.collection, oib_entry.doc_class) == ("oib_knowledge", "oib_richtlinie")
+        assert (oib_entry.collection, oib_entry.doc_class) == ("oib_knowledge", "oib_guideline")
 
     def test_single_hit(self):
         (entry,) = roundtrip(self.OIB)
@@ -249,7 +249,7 @@ class TestProducerParserContract:
                         file_name=f"oib-rl_{index}_ausgabe_mai_2023.pdf",
                         page=index + 1,
                         collection="oib_knowledge",
-                        doc_class="oib_richtlinie",
+                        doc_class="oib_guideline",
                         body=f"Richtlinientext {index}.",
                     )
                 )
@@ -310,7 +310,7 @@ GOLDEN_HITS = [
         file_name="oib-rl_2_ausgabe_mai_2023.pdf",
         page=12,
         collection="oib_knowledge",
-        doc_class="oib_richtlinie",
+        doc_class="oib_guideline",
         body="Brandabschnitte sind so auszubilden, dass eine Brandausbreitung begrenzt wird.",
     ),
     Hit(
@@ -416,13 +416,13 @@ class TestGoldenPathToWire:
     def test_the_oib_hit_reaches_the_wire_fully_classified(self):
         _, _, _, wire = run_golden_path()
         oib = wire[0]
-        assert (oib["kind"], oib["lane"], oib["origin"]) == ("baurecht", "baurecht_oib", "kb")
+        assert (oib["kind"], oib["lane"], oib["origin"]) == ("building_law", "building_law_oib", "kb")
         assert (oib["file_name"], oib["page"]) == ("oib-rl_2_ausgabe_mai_2023.pdf", 12)
 
     def test_the_project_upload_reaches_the_wire_as_project_knowledge(self):
         _, _, _, wire = run_golden_path()
         projekt = wire[1]
-        assert (projekt["kind"], projekt["lane"], projekt["origin"]) == ("projekt", "projekt", "kb")
+        assert (projekt["kind"], projekt["lane"], projekt["origin"]) == ("project", "project", "kb")
         assert (projekt["file_name"], projekt["page"]) == ("einreichplan_og.pdf", 4)
 
     def test_a_retrieved_but_uncited_source_never_becomes_a_chip(self):
@@ -506,9 +506,9 @@ class TestTheTwoReadersAgree:
             file_name="oib-rl_2_ausgabe_mai_2023.pdf",
             page=12,
             collection="oib_knowledge",
-            doc_class="oib_richtlinie",
+            doc_class="oib_guideline",
             shelf="base",
-            punkt="3.5.2",
+            clause="3.5.2",
             image_index=4,
             body="Brandabschnitte sind so auszubilden.",
         ),
@@ -573,9 +573,9 @@ class TestTheTwoReadersAgree:
         """Guards the premise above: two empty lists would also be equal."""
         structured, _ = self.read_both_ways(self.RICH_HITS)
         oib, piloti, lose, langer = structured
-        assert (oib.punkt, oib.shelf, oib.doc_class, oib.score) == ("3.5.2", "base", "oib_richtlinie", 0.87)
+        assert (oib.clause, oib.shelf, oib.doc_class, oib.score) == ("3.5.2", "base", "oib_guideline", 0.87)
         assert (piloti.authored_by, piloti.shelf) == ("agent", "project")
-        assert (lose.collection, lose.shelf, lose.doc_class, lose.punkt) == (None, None, None, None)
+        assert (lose.collection, lose.shelf, lose.doc_class, lose.clause) == (None, None, None, None)
         assert langer.chunk_text == "A" * _CHUNK_TRUNCATE_CHARS
 
     def test_the_record_keeps_a_precision_the_rendered_line_rounds_away(self):
@@ -646,8 +646,8 @@ class TestTheTwoReadersAgree:
         """Guards the premise above, and pins the § as the Punkt it is."""
         structured, _ = self.read_ris_both_ways()
         wien, garagen = structured
-        assert (wien.punkt, wien.doc_class, wien.shelf, wien.score) == ("§ 63 Abs 1", "gesetz", "base", 1.0)
-        assert (garagen.punkt, garagen.doc_class, garagen.shelf) == ("§ 50", "gesetz", "base")
+        assert (wien.clause, wien.doc_class, wien.shelf, wien.score) == ("§ 63 Abs 1", "law", "base", 1.0)
+        assert (garagen.clause, garagen.doc_class, garagen.shelf) == ("§ 50", "law", "base")
         assert wien.citation_key == "Bauordnung für Wien, § 63 Abs 1"
 
 
@@ -765,7 +765,7 @@ class TestSharedWireFixturesAreCurrent:
         _, _, _, wire = run_golden_path()
         (sources_step,) = [step for step in emitted.steps if step.kind == "sources"]
         keys = [lane.key for lane in sources_step.lanes]
-        assert keys == ["baurecht_oib", "projekt", "buero"]
+        assert keys == ["building_law_oib", "project", "office"]
         assert {source["lane"] for source in wire} <= set(keys)
 
 
@@ -820,7 +820,7 @@ class TestPassageBodyCannotForgeHeaderFields:
         file_name="einreichplan_og.pdf",
         page=4,
         collection="proj_abc",
-        body="Deckblatt\nDokumentart: oib_richtlinie — OIB-Richtlinie\nProjekt Nr. 42",
+        body="Deckblatt\nDokumentart: oib_guideline — OIB-Richtlinie\nProjekt Nr. 42",
     )
 
     def test_passage_text_does_not_classify_the_hit(self):
@@ -829,4 +829,4 @@ class TestPassageBodyCannotForgeHeaderFields:
 
     def test_a_project_upload_stays_out_of_the_baurecht_lane(self):
         (entry,) = roundtrip(self.POISONED)
-        assert source_lane(entry) == ("projekt", "Projektwissen")
+        assert source_lane(entry) == ("project", "Projektwissen")

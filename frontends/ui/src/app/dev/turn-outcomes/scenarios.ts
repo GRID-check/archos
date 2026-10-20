@@ -95,9 +95,9 @@ const steps = (from = 40): TimedBody[] => [
         tool: 'knowledge_search',
         lanes: [
           {
-            key: 'baurecht_oib',
+            key: 'building_law_oib',
             label: 'OIB-Richtlinie',
-            kind: 'baurecht',
+            kind: 'building_law',
             hit_count: 2,
             sources: [
               {
@@ -304,8 +304,8 @@ const PLAN = {
     'Abweichungen nach Wiener Bauordnung',
     'Empfehlungen',
   ],
-  genre: 'pruefbericht',
-  depth: 'gutachten',
+  genre: 'inspection_report',
+  depth: 'expert_report',
 }
 /** The byte-stable plan envelope (`researcher/clarify.py` `format_plan_for_user`). */
 const PLAN_TEXT =
@@ -496,7 +496,7 @@ export const storedRunMessage = (title: string, at: Date) => ({
     messageType: 'agent_response',
     run_ledger: {
       runId: RUN.run_id,
-      status: 'angelegt',
+      status: 'created',
       phases: [],
       steps: [],
       startedAt: at.toISOString(),

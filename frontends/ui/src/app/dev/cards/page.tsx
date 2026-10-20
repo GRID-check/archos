@@ -92,22 +92,22 @@ function Gallery() {
           both themes at once. */}
       <Section id="callout">
         <CalloutCard
-          kind="hinweis"
+          kind="note"
           text="Für Zu- und Umbauten im Bestand gelten die Anforderungen nur im Umfang des Eingriffs."
           detail="Wird die Gebäudeklasse durch den Zubau angehoben, ist das gesamte Gebäude neu zu beurteilen."
         />
         <CalloutCard
-          kind="achtung"
+          kind="warning"
           title="Gilt nur in Wien"
           text="Die Wiener Bauordnung weicht bei der Berechnung des Fluchtniveaus von den übrigen Ländern ab."
         />
         <CalloutCard
-          kind="frist"
+          kind="deadline"
           text="Die Bauverhandlung ist binnen sechs Wochen nach Einreichung anzuberaumen."
           detail="Die Frist ruht, solange die Behörde eine Ergänzung des Einreichplans verlangt hat."
         />
         <CalloutCard
-          kind="tipp"
+          kind="tip"
           text="Ein Schnitt durch das Treppenhaus mit eingetragenem Fluchtniveau erspart in der Regel eine Rückfrage der Behörde."
         />
       </Section>
@@ -234,7 +234,7 @@ function Gallery() {
             { label: '3.OG', height_m: 3.0 },
           ]}
           markers={[
-            { label: 'Fluchtniveau', height_m: 9.2, kind: 'fluchtniveau' },
+            { label: 'Fluchtniveau', height_m: 9.2, kind: 'escape_level' },
             { label: 'GK4-Grenze', height_m: 11, kind: 'threshold' },
           ]}
           reference={OIB2}
@@ -399,7 +399,7 @@ function Gallery() {
       <Section id="guardrail_check">
         <GuardrailCheckCard
           title="Absturzsicherung Dachterrasse"
-          context="dachterrasse"
+          context="roof_terrace"
           fall_height={{ label: 'Absturzhöhe', value: 13.5, required: 12, unit: 'm', comparator: '<=', status: 'warning' }}
           rail_height={{ label: 'Geländerhöhe', value: 100, required: 110, unit: 'cm', comparator: '>=', status: 'fail' }}
           max_opening={{ label: 'max. Öffnungsweite', value: 11, required: 12, unit: 'cm', comparator: '<=', status: 'pass' }}
@@ -418,13 +418,13 @@ function Gallery() {
           building_depth_m={14}
           route_width={{ label: 'Zufahrt Breite', value: 3.5, required: 3, unit: 'm', comparator: '>=', status: 'pass' }}
           gate_clearance_height={{ label: 'Durchfahrt lichte Höhe', value: 4.0, required: 4.0, unit: 'm', comparator: '>=', status: 'pass' }}
-          aufstellflaeche={{
+          staging_area={{
             width: { label: 'Breite', value: 5, required: 5, unit: 'm', comparator: '>=', status: 'pass' },
             length: { label: 'Länge', value: 11, required: 10, unit: 'm', comparator: '>=', status: 'pass' },
             distance_to_facade: { label: 'Abstand zur Fassade', value: 3, required: 10, unit: 'm', comparator: '<=', status: 'pass' },
           }}
           walk_distance_to_entrance={{ label: 'Weg zum Eingang', value: 34, required: 80, unit: 'm', comparator: '<=', status: 'pass' }}
-          gebaeudeklasse="GK 4"
+          building_class="GK 4"
           reference={{ document: 'TRVB F 134', section: 'Pkt. 4' }}
         />
       </Section>
@@ -466,7 +466,7 @@ function Gallery() {
             {
               type: 'task_created',
               task_id: '00000000-0000-4000-8000-0000000000f1',
-              kind: 'einreichcheck',
+              kind: 'submission_check',
               title: 'Einreichcheck: Bauansuchen Haus A',
               goal: 'Mach den Einreichcheck für das Bauansuchen bis Freitag',
               due_at: '2026-09-18T23:59:59.999Z',
@@ -492,8 +492,8 @@ function Gallery() {
                 title: 'Projektkontext aktualisieren: Wärmeversorgung und Fluchtniveau',
                 rationale: 'Sie haben im Gespräch eine Wärmepumpe und ein oberstes Fluchtniveau von 25 m genannt.',
                 patch: [
-                  { op: 'add', path: '/facts/waermeversorgung', value: 'waermepumpe' },
-                  { op: 'add', path: '/facts/fluchtniveau_m', value: 25 },
+                  { op: 'add', path: '/facts/heat_supply', value: 'waermepumpe' },
+                  { op: 'add', path: '/facts/escape_level_m', value: 25 },
                 ],
               },
             ] as GridCard[]}
@@ -536,19 +536,19 @@ function Gallery() {
                 operations: [
                   {
                     document: 'Grundriss EG.pdf',
-                    source: 'projekt',
+                    source: 'project',
                     current: 'Nachweise',
                     target_folder: 'Einreichung/Pläne',
                   },
                   {
                     document: 'Grundriss OG.pdf',
-                    source: 'projekt',
+                    source: 'project',
                     current: '',
                     target_folder: 'Einreichung/Pläne',
                   },
                   {
                     document: 'Schnitt A-A – Bestand und Neubau (Revision 3).pdf',
-                    source: 'projekt',
+                    source: 'project',
                     current: 'Nachweise',
                     target_folder: 'Einreichung/Pläne',
                   },

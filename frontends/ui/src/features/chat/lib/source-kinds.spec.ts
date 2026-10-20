@@ -13,6 +13,8 @@ import {
   asSourceKind,
   authorityTag,
   kindForLane,
+  modernizeLane,
+  modernizeSourceKind,
   scopeForQualifier,
   type Shelf,
   type SourceKind,
@@ -20,7 +22,7 @@ import {
 
 describe('asSourceKind', () => {
   test('accepts the four canonical kinds', () => {
-    for (const k of ['baurecht', 'buero', 'projekt', 'web'] as SourceKind[]) {
+    for (const k of ['building_law', 'office', 'project', 'web'] as SourceKind[]) {
       expect(asSourceKind(k)).toBe(k)
     }
   })
@@ -34,44 +36,66 @@ describe('asSourceKind', () => {
 })
 
 describe('KIND_TO_SIGNAL', () => {
-  test('maps the OIB corpus + RIS (baurecht) to the law tint family', () => {
-    expect(KIND_TO_SIGNAL.baurecht).toBe('law')
+  test('maps the OIB corpus + RIS (building_law) to the law tint family', () => {
+    expect(KIND_TO_SIGNAL.building_law).toBe('law')
   })
 
   test('maps office/project/web to their families', () => {
-    expect(KIND_TO_SIGNAL.buero).toBe('office')
-    expect(KIND_TO_SIGNAL.projekt).toBe('project')
+    expect(KIND_TO_SIGNAL.office).toBe('office')
+    expect(KIND_TO_SIGNAL.project).toBe('project')
     expect(KIND_TO_SIGNAL.web).toBe('auto')
+  })
+})
+
+describe('the German spellings a stored citation or lane still carries', () => {
+  test('a kind reads as its English name', () => {
+    expect(modernizeSourceKind('baurecht')).toBe('building_law')
+    expect(modernizeSourceKind('buero')).toBe('office')
+    expect(modernizeSourceKind('projekt')).toBe('project')
+    expect(modernizeSourceKind('messung')).toBe('measurement')
+    expect(modernizeSourceKind('web')).toBe('web')
+    expect(asSourceKind(modernizeSourceKind('baurecht'))).toBe('building_law')
+  })
+
+  test('a lane reads as its English key, and still means the same kind and tag', () => {
+    expect(modernizeLane('baurecht_oib_leitfaden')).toBe('building_law_oib_guide')
+    expect(modernizeLane('buero_piloti')).toBe('office_piloti')
+    expect(modernizeLane('norm_extern')).toBe('external_standard')
+    expect(kindForLane('baurecht_land')).toBe('building_law')
+    expect(kindForLane('behoerde')).toBe('building_law')
+    expect(authorityTag('norm_extern')).toBe('ÖNORM')
+    expect(authorityTag('baurecht_oib')).toBe('OIB')
+    expect(modernizeLane('building_law_oib')).toBe('building_law_oib')
   })
 })
 
 describe('authorityTag', () => {
   test('distinguishes OIB from RIS within the Baurecht family', () => {
-    expect(authorityTag('baurecht_oib')).toBe('OIB')
-    expect(authorityTag('baurecht_oib_leitfaden')).toBe('OIB')
-    expect(authorityTag('baurecht_ris')).toBe('RIS')
-    expect(authorityTag('baurecht_bund')).toBe('RIS')
-    expect(authorityTag('baurecht_verordnung')).toBe('RIS')
+    expect(authorityTag('building_law_oib')).toBe('OIB')
+    expect(authorityTag('building_law_oib_guide')).toBe('OIB')
+    expect(authorityTag('building_law_ris')).toBe('RIS')
+    expect(authorityTag('building_law_federal')).toBe('RIS')
+    expect(authorityTag('building_law_ordinance')).toBe('RIS')
   })
 
   test('tags external norms and authority info distinctly', () => {
-    expect(authorityTag('norm_extern')).toBe('ÖNORM')
-    expect(authorityTag('behoerde')).toBe('Behörde')
+    expect(authorityTag('external_standard')).toBe('ÖNORM')
+    expect(authorityTag('authority')).toBe('Behörde')
   })
 
   test('office/project/web carry no authority tag', () => {
-    expect(authorityTag('buero')).toBeNull()
-    expect(authorityTag('projekt')).toBeNull()
+    expect(authorityTag('office')).toBeNull()
+    expect(authorityTag('project')).toBeNull()
     expect(authorityTag('web')).toBeNull()
     expect(authorityTag(null)).toBeNull()
   })
 
   test('an unclassified document does not claim to be an Austrian legal source', () => {
-    // `baurecht_basis` is the lane of the DEFAULT doc_class — nobody has
-    // classified this document yet. Inheriting the `baurecht` prefix's RIS
+    // `building_law_base` is the lane of the DEFAULT doc_class — nobody has
+    // classified this document yet. Inheriting the `building_law` prefix's RIS
     // badge would let any upload wear the strongest provenance claim the UI
     // can make.
-    expect(authorityTag('baurecht_basis')).toBeNull()
+    expect(authorityTag('building_law_base')).toBeNull()
   })
 })
 
@@ -79,8 +103,8 @@ describe('the agent-authored lane', () => {
   test('is a sub-label inside the office kind, never a kind of its own', () => {
     // A published Piloti document IS office knowledge — it paints in the office
     // colour. What the lane adds is who wrote it.
-    expect(AGENT_AUTHORED_LANE).toBe('buero_piloti')
-    expect(kindForLane(AGENT_AUTHORED_LANE)).toBe('buero')
+    expect(AGENT_AUTHORED_LANE).toBe('office_piloti')
+    expect(kindForLane(AGENT_AUTHORED_LANE)).toBe('office')
     expect(asSourceKind(AGENT_AUTHORED_LANE)).toBeUndefined()
   })
 
@@ -108,9 +132,9 @@ describe('Shelf (ADR-0047)', () => {
 
   test('an unknown or missing shelf is UNKNOWN — never a default', () => {
     // The predecessor of this narrowing (`collectionScope`) failed OPEN and
-    // returned `baurecht`, so an unrecognised collection claimed to be
+    // returned `building_law`, so an unrecognised collection claimed to be
     // authoritative base law. Unknown must stay unknown.
-    expect(asShelf('baurecht')).toBeUndefined()
+    expect(asShelf('building_law')).toBeUndefined()
     expect(asShelf('projekt')).toBeUndefined()
     expect(asShelf('archiv_org1')).toBeUndefined()
     expect(asShelf('')).toBeUndefined()

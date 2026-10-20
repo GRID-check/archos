@@ -39,6 +39,7 @@ import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { useInvocableSkills } from '../hooks/use-invocable-skills'
 import { skillLabel } from '../lib/skill-activity'
+import { canonicalSkillName } from '@/lib/skills/legacy-names'
 
 export interface SkillsUsedDisclosureProps {
   /** Skill names the agent activated, in activation order. */
@@ -112,7 +113,8 @@ export const SkillsUsedDisclosure: FC<SkillsUsedDisclosureProps> = ({
 
           <ul className="flex flex-col gap-1.5">
             {skillsActivated.map((name) => {
-              const known = skills.find((skill) => skill.name === name)
+              // An answer given before the builtins were renamed (0169) lists the old name.
+              const known = skills.find((skill) => skill.name === name || skill.name === canonicalSkillName(name))
               // The ONE naming rule, shared with the live header line and the
               // Herleitung chip (features/skills/lib/skill-activity): an
               // authored title in proportional text, otherwise the bare

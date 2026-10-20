@@ -87,7 +87,7 @@ The CHECKs hold the lifecycle, so no code path can break it:
   (a card index names a card of one answer).
 - `scope` is known and is `project` exactly when `project_id` is set; a
   Büroablage proposal is a `file_operation` that moves one or more items, every
-  one with `source: buero` (`proposed_changes_archiv_move`, which reads a
+  one with `source: buero` (`proposed_changes_office_shelf_move`, which reads a
   missing key as a refusal, not as a pass).
 
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key

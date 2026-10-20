@@ -24,6 +24,7 @@
 import 'server-only'
 import { sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { executeRows } from '@/lib/db/execute-rows'
 import type { AnswerFeedbackReason, AnswerFeedbackVerdict, PlatformLessonStatus } from '@/lib/db/schema'
 import { isConversationTagKey, type ConversationTagKey } from '@/lib/conversations/tags'
@@ -53,7 +54,7 @@ export interface FeedbackExportRow {
   organizationId: string
   projectId: string | null
   projectName: string | null
-  /** The project profile's `facts.bundesland.value`, when the profile has one. */
+  /** The project profile's `facts.federal_state.value`, when the profile has one. */
   bundesland: string | null
   /** The persisted answer's conversation, else the one the client sent. */
   conversationId: string | null
@@ -203,7 +204,7 @@ export async function listFeedbackExportRows(
     select
       sel.*,
       p.name                                       as project_name,
-      p.profile->'facts'->'bundesland'->>'value'   as bundesland,
+      coalesce(p.profile->'facts'->'federal_state'->>'value', p.profile->'facts'->'bundesland'->>'value') as bundesland,
       usage.llm_calls,
       usage.models,
       usage.tokens_total,
@@ -368,6 +369,10 @@ export async function getProjectNames(projectIds: readonly string[]): Promise<Ma
 
 const text = (value: unknown): string | null => (typeof value === 'string' && value.trim() ? value : null)
 
+/** The Land as the English token, whichever spelling the row still holds (a profile an older pod wrote). */
+const federalStateToken = (value: string | null): string | null =>
+  value === null ? null : normalizeProfileToken('federal_state', value)
+
 const numberOrNull = (value: unknown): number | null => {
   if (value === null || value === undefined || value === '') return null
   const parsed = Number(value)
@@ -398,7 +403,7 @@ function toExportRow(row: Record<string, unknown>): FeedbackExportRow {
     organizationId: String(row.organization_id),
     projectId: text(row.project_id),
     projectName: text(row.project_name),
-    bundesland: text(row.bundesland),
+    bundesland: federalStateToken(text(row.bundesland)),
     conversationId: text(row.conversation_id),
     conversationFound: row.conversation_found === true,
     conversationTitle: text(row.conversation_title),

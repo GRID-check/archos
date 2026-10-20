@@ -27,6 +27,8 @@
  * each side, so a renamed key cannot ship green.
  */
 
+import { modernizeTurnEventKey } from './legacy-turn-event'
+
 /**
  * One PASSAGE a round returned: a document plus the page or Punkt it was
  * reached at. `name` is filename or URL — never empty.
@@ -155,7 +157,7 @@ function sanitizeEntry(input: unknown): RetrievalLedgerEntry | undefined {
   // "999 Treffer" over an empty list is exactly what this file exists to stop.
   const entry: RetrievalLedgerEntry = {
     index,
-    key: cap(input.key, MAX_KEY_CHARS) ?? '',
+    key: modernizeTurnEventKey(cap(input.key, MAX_KEY_CHARS) ?? ''),
     tools: capList(input.tools, MAX_TOOLS, MAX_TOOL_CHARS) ?? [],
     corpora: capList(input.corpora, MAX_CORPORA, MAX_CORPUS_CHARS) ?? [],
     docs,

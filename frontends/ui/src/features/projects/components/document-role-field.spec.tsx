@@ -61,7 +61,7 @@ describe('DocumentRoleField upload', () => {
     }))
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+    const { container } = render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, {
       target: {
@@ -85,7 +85,7 @@ describe('DocumentRoleField upload', () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+    const { container } = render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File(['plan'], 'Lageplan.pdf', { type: 'application/pdf' })] } })
 
@@ -107,7 +107,7 @@ describe('DocumentRoleField upload', () => {
     }))
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+    const { container } = render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, {
       target: {
@@ -163,7 +163,7 @@ describe('DocumentRoleField upload', () => {
     )
     vi.stubGlobal('fetch', fetchSpy)
 
-    const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+    const { container } = render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File(['plan'], 'Lageplan.pdf', { type: 'application/pdf' })] } })
 
@@ -179,7 +179,7 @@ describe('DocumentRoleField upload', () => {
   it('opens no batch when the screen holds back every file', async () => {
     const fetchSpy = vi.fn(async () => ({ ok: true, status: 201, json: async () => ({}) }))
     vi.stubGlobal('fetch', fetchSpy)
-    const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+    const { container } = render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
     const input = container.querySelector('input[type="file"]') as HTMLInputElement
     fireEvent.change(input, { target: { files: [new File(['fee'], 'Honorarnote.pdf', { type: 'application/pdf' })] } })
     await waitFor(() => expect(toast.error).toHaveBeenCalled())
@@ -196,7 +196,7 @@ describe('DocumentRoleField upload', () => {
         json: async () => (url === '/api/documents/upload' ? { documentId: 'doc-1' } : { replaced: [] }),
       }))
       vi.stubGlobal('fetch', fetchSpy)
-      render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+      render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
 
       fireEvent.drop(
         screen.getByTestId('document-role-drop'),
@@ -217,7 +217,7 @@ describe('DocumentRoleField upload', () => {
 
     it('says, in the reader’s language, to wait while an upload is running', async () => {
       vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})))
-      const { container } = render(<DocumentRoleField projectId="proj-1" role="lageplan" />)
+      const { container } = render(<DocumentRoleField projectId="proj-1" role="site_plan" />)
       const input = container.querySelector('input[type="file"]') as HTMLInputElement
       fireEvent.change(input, { target: { files: [new File(['a'], 'Lageplan.pdf', { type: 'application/pdf' })] } })
       await waitFor(() => expect(screen.getByRole('button', { name: /Upload file/ })).toBeDisabled())

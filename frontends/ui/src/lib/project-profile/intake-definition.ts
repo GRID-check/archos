@@ -1,3 +1,4 @@
+import { normalizeProfilePatchOperation } from './legacy-names'
 import { applyProjectProfilePatch, emptyProjectProfile } from './patch-engine'
 // Type-only, and deliberately so: `document-roles` imports the condition
 // evaluator from this module as a VALUE. A type import is erased at compile
@@ -30,9 +31,9 @@ import type {
 //   • yes_no_open 'offen'          → unknown
 //
 // The stable question `id` is the classification anchor; `writesTo` bridges it to
-// a descriptive storage key so the jurisdiction pipeline (facts.bundesland) and
+// a descriptive storage key so the jurisdiction pipeline (facts.federal_state) and
 // the LLM-consumed prompt view stay readable. Two bridges are load-bearing and
-// MUST NOT change key: A1 → project_name, A2_land → bundesland.
+// MUST NOT change key: A1 → project_name, A2_land → federal_state.
 // ---------------------------------------------------------------------------
 
 export type ProjectIntakeQuestionType =
@@ -138,7 +139,7 @@ export interface ProjectIntakeQuestion {
   optional?: boolean
   /**
    * For `info_placeholder`: the id of the system derivation that will appear
-   * here in phase 2 (e.g. `gebaeudeklasse`, `uvp`). Purely descriptive.
+   * here in phase 2 (e.g. `building_class`, `uvp`). Purely descriptive.
    */
   derives?: string
   /**
@@ -152,7 +153,7 @@ export interface ProjectIntakeQuestion {
    * The derivation this value is an input of. Descriptive here; `lib/project-intake`
    * reads it to know which gaps could change the building class.
    */
-  feeds?: 'gebaeudeklasse'
+  feeds?: 'building_class'
 }
 
 /** A per-use zone question set (module D `zone_definitions`). */
@@ -181,18 +182,18 @@ export interface ProjectIntakeDefinition {
 
 /** The use-catalog (D0), reused for both the multi-select and the zone expansion. */
 const USES: ProjectIntakeOption[] = [
-  { value: 'wohnen', label: 'Wohnen' },
-  { value: 'buero', label: 'Büro / Verwaltung' },
-  { value: 'handel', label: 'Handel / Verkauf' },
-  { value: 'gastro', label: 'Gastronomie' },
-  { value: 'beherbergung', label: 'Beherbergung' },
-  { value: 'versammlung', label: 'Versammlung / Veranstaltung' },
-  { value: 'bildung', label: 'Bildung / Betreuung' },
-  { value: 'gesundheit', label: 'Gesundheit / Pflege' },
-  { value: 'produktion', label: 'Produktion / Gewerbe / Lager' },
+  { value: 'residential', label: 'Wohnen' },
+  { value: 'office', label: 'Büro / Verwaltung' },
+  { value: 'retail', label: 'Handel / Verkauf' },
+  { value: 'catering', label: 'Gastronomie' },
+  { value: 'lodging', label: 'Beherbergung' },
+  { value: 'assembly', label: 'Versammlung / Veranstaltung' },
+  { value: 'education', label: 'Bildung / Betreuung' },
+  { value: 'healthcare', label: 'Gesundheit / Pflege' },
+  { value: 'production', label: 'Produktion / Gewerbe / Lager' },
   { value: 'garage', label: 'Garage / Stellplätze' },
-  { value: 'landwirtschaft', label: 'Landwirtschaft' },
-  { value: 'technik', label: 'Technik / Sonstiges' },
+  { value: 'agriculture', label: 'Landwirtschaft' },
+  { value: 'technical', label: 'Technik / Sonstiges' },
 ]
 
 /**
@@ -245,7 +246,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           required: true,
           placeholder: 'Straße, PLZ Ort',
           why: 'Aus der Gemeinde folgen örtliche Vorschriften wie Fernwärme-Anschlussgebiete oder Schutzzonen.',
-          writesTo: '/facts/standort_adresse/value',
+          writesTo: '/facts/site_address/value',
           foundIn: [FOUND_IN.titleBlock, FOUND_IN.submissionSitePlan, FOUND_IN.landRegister, FOUND_IN.permitDecision],
         },
         // Spec id A2_staat with AT/DE only. Kept as the shipped superset: the
@@ -253,7 +254,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
         // the backend jurisdiction pipeline), and CH/other already exist in
         // stored projects. The German federal state list rides with the German
         // question catalog (v2, per README Länder-Scope) — until then non-AT
-        // locations describe themselves in `standort_details`.
+        // locations describe themselves in `site_details`.
         {
           id: 'A2_country',
           core: true,
@@ -283,27 +284,27 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           conditions: [{ param: 'A2_country', op: 'excludes_any', value: ['de', 'ch', 'other'] }],
           why: 'Bestimmt, welche landesspezifischen Rechtstexte für den Standort herangezogen werden.',
           options: [
-            { value: 'wien', label: 'Wien' },
-            { value: 'niederoesterreich', label: 'Niederösterreich' },
-            { value: 'oberoesterreich', label: 'Oberösterreich' },
-            { value: 'steiermark', label: 'Steiermark' },
-            { value: 'kaernten', label: 'Kärnten' },
+            { value: 'vienna', label: 'Wien' },
+            { value: 'lower_austria', label: 'Niederösterreich' },
+            { value: 'upper_austria', label: 'Oberösterreich' },
+            { value: 'styria', label: 'Steiermark' },
+            { value: 'carinthia', label: 'Kärnten' },
             { value: 'salzburg', label: 'Salzburg' },
-            { value: 'tirol', label: 'Tirol' },
+            { value: 'tyrol', label: 'Tirol' },
             { value: 'vorarlberg', label: 'Vorarlberg' },
             { value: 'burgenland', label: 'Burgenland' },
-            { value: 'ausserhalb_oesterreichs', label: 'Außerhalb Österreichs' },
+            { value: 'outside_austria', label: 'Außerhalb Österreichs' },
           ],
-          writesTo: '/facts/bundesland/value',
+          writesTo: '/facts/federal_state/value',
           foundIn: [FOUND_IN.titleBlock, FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
         },
         {
-          id: 'standort_details',
+          id: 'site_details',
           label: 'Land & Region',
           help: 'Land und Region/Stadt, z. B. „Bayern, Deutschland" — für die Einordnung des anwendbaren Rechts.',
           type: 'text',
           conditions: [{ param: 'A2_country', op: 'includes_any', value: ['de', 'ch', 'other'] }],
-          writesTo: '/facts/standort_details/value',
+          writesTo: '/facts/site_details/value',
         },
         {
           id: 'A4',
@@ -312,17 +313,17 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'single_select',
           why: 'Steuert die Erwartung an die Antwortgüte und das Phasen-Nudging: in frühen Phasen werden Schätzwerte aktiv angeboten, vor der Einreichung an offene Schätzungen erinnert.',
           options: [
-            { value: 'grundlagenermittlung', label: 'Grundlagenermittlung' },
-            { value: 'vorentwurf', label: 'Vorentwurf' },
-            { value: 'entwurf', label: 'Entwurf' },
-            { value: 'einreichplanung', label: 'Einreichplanung' },
-            { value: 'ausfuehrungsplanung', label: 'Ausführungsplanung' },
-            { value: 'ausschreibung_vergabe', label: 'Ausschreibung & Vergabe' },
-            { value: 'ausfuehrung', label: 'Ausführung' },
-            { value: 'fertigstellung_uebergabe', label: 'Fertigstellung & Übergabe' },
-            { value: 'bestand_betrieb', label: 'Bestand & Betrieb' },
+            { value: 'basic_evaluation', label: 'Grundlagenermittlung' },
+            { value: 'preliminary_design', label: 'Vorentwurf' },
+            { value: 'design', label: 'Entwurf' },
+            { value: 'submission_planning', label: 'Einreichplanung' },
+            { value: 'execution_planning', label: 'Ausführungsplanung' },
+            { value: 'tendering', label: 'Ausschreibung & Vergabe' },
+            { value: 'construction', label: 'Ausführung' },
+            { value: 'completion_handover', label: 'Fertigstellung & Übergabe' },
+            { value: 'existing_operation', label: 'Bestand & Betrieb' },
           ],
-          writesTo: '/facts/projektphase/value',
+          writesTo: '/facts/project_phase/value',
           foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
@@ -333,15 +334,15 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           required: true,
           why: 'Steuert, welche Fragen und Themen für dieses Projekt überhaupt relevant sind.',
           options: [
-            { value: 'neubau', label: 'Neubau' },
-            { value: 'zubau', label: 'Zubau' },
-            { value: 'umbau', label: 'Umbau' },
-            { value: 'sanierung', label: 'Sanierung' },
-            { value: 'nutzungsaenderung', label: 'Nutzungsänderung' },
-            { value: 'abbruch', label: 'Abbruch' },
-            { value: 'aussenanlagen', label: 'Außenanlagen' },
+            { value: 'new_build', label: 'Neubau' },
+            { value: 'extension', label: 'Zubau' },
+            { value: 'conversion', label: 'Umbau' },
+            { value: 'refurbishment', label: 'Sanierung' },
+            { value: 'change_of_use', label: 'Nutzungsänderung' },
+            { value: 'demolition', label: 'Abbruch' },
+            { value: 'external_works', label: 'Außenanlagen' },
           ],
-          writesTo: '/facts/vorhabensart/value',
+          writesTo: '/facts/work_type/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision, FOUND_IN.titleBlock],
         },
       ],
@@ -362,16 +363,16 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           why: 'Hilft einzuschätzen, ob die geplante Nutzung an diesem Standort grundsätzlich möglich ist.',
           options: [
-            { value: 'wohngebiet', label: 'Wohngebiet' },
-            { value: 'gemischt', label: 'gemischtes Baugebiet' },
-            { value: 'kerngebiet', label: 'Kerngebiet' },
-            { value: 'betriebsgebiet', label: 'Betriebs-/Industriegebiet' },
-            { value: 'sondergebiet', label: 'Sondergebiet' },
-            { value: 'gruenland_sonder', label: 'Grünland mit Sonderwidmung' },
-            { value: 'sonstige', label: 'sonstige' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'residential', label: 'Wohngebiet' },
+            { value: 'mixed', label: 'gemischtes Baugebiet' },
+            { value: 'core', label: 'Kerngebiet' },
+            { value: 'commercial', label: 'Betriebs-/Industriegebiet' },
+            { value: 'special', label: 'Sondergebiet' },
+            { value: 'green_special', label: 'Grünland mit Sonderwidmung' },
+            { value: 'other', label: 'sonstige' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/flaechenwidmung/value',
+          writesTo: '/facts/zoning/value',
           foundIn: [FOUND_IN.zoning, FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
@@ -383,7 +384,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'text',
           optional: true,
           placeholder: 'z. B. W II g 12m – oder frei beschreiben',
-          writesTo: '/facts/flaechenwidmung_orig/value',
+          writesTo: '/facts/zoning_original/value',
           foundIn: [
             FOUND_IN.zoning,
             FOUND_IN.developmentPlan,
@@ -396,12 +397,12 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           core: true,
           label: 'Liegt ein Bebauungsplan vor?',
           type: 'yes_no_open',
-          writesTo: '/facts/bebauungsplan/value',
+          writesTo: '/facts/development_plan/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
         },
         {
           // Spec: unconditional `upload` for B-Plan OR FWP. Ours binds the
-          // `bebauungsplan` role, so it stays behind B2 = ja; the
+          // `development_plan` role, so it stays behind B2 = ja; the
           // Flächenwidmungsplan has its own Modul I slot. Same document space
           // either way (ADR: document_roles), so "dort abgelegte Dokumente hier
           // als erledigt anzeigen" holds by construction.
@@ -409,7 +410,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           core: true,
           label: 'Bebauungsplan ablegen',
           type: 'document_role',
-          role: 'bebauungsplan',
+          role: 'development_plan',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           why: 'Der Plan ist die Quelle für Bauklasse, Bebauungsweise, Dichte und Fluchtlinien — Piloti kann sich dann darauf beziehen.',
         },
@@ -421,7 +422,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           why: 'Höhenvorgaben der Landes-Bauordnung; Grundlage der Zulässigkeitsprüfung des Entwurfs.',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
-          writesTo: '/facts/max_gebaeudehoehe/value',
+          writesTo: '/facts/max_building_height/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
@@ -431,12 +432,12 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           options: [
-            { value: 'offen', label: 'offen' },
-            { value: 'gekuppelt', label: 'gekuppelt' },
-            { value: 'geschlossen', label: 'geschlossen' },
-            { value: 'noch_offen', label: 'noch offen' },
+            { value: 'open', label: 'offen' },
+            { value: 'semi_detached', label: 'gekuppelt' },
+            { value: 'closed', label: 'geschlossen' },
+            { value: 'undecided', label: 'noch offen' },
           ],
-          writesTo: '/facts/bebauungsweise/value',
+          writesTo: '/facts/development_pattern/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
@@ -446,7 +447,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           placeholder: 'z. B. 1.5',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
-          writesTo: '/facts/bebauungsdichte/value',
+          writesTo: '/facts/development_density/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
@@ -455,7 +456,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           kernset: true,
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
-          writesTo: '/facts/baufluchtlinien/value',
+          writesTo: '/facts/building_lines/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.sitePlan, FOUND_IN.permitDecision],
         },
         {
@@ -468,7 +469,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           placeholder: 'z. B. Schutzzone, Dachvorschriften, Begrünungspflicht',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
-          writesTo: '/facts/bebauungsplan_besonderes/value',
+          writesTo: '/facts/development_plan_notes/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
@@ -479,12 +480,12 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           placeholder: 'z. B. 1 Stellplatz je Wohnung',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
-          writesTo: '/facts/stellplatzregulativ/value',
+          writesTo: '/facts/parking_regulation/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           // v1.0's B4 + B5 (Altlast) + B9 (Baumbestand) + B10 (Schutzgebiet)
-          // as ONE multi-select. The storage key stays `gefahrenzonen`: the old
+          // as ONE multi-select. The storage key stays `hazard_zones`: the old
           // values are a strict subset of the new vocabulary, so every stored
           // answer remains valid, and a key rename would strand them.
           id: 'B4',
@@ -493,18 +494,18 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           why: 'Solche Punkte können Einschränkungen oder zusätzliche Verfahren mit sich bringen — der Assistent behält sie im Blick.',
           options: [
-            { value: 'hw_hq30', label: 'Hochwasser HQ30' },
-            { value: 'hw_hq100', label: 'Hochwasser HQ100' },
-            { value: 'wildbach_gelb', label: 'Wildbach/Lawine – gelbe Zone' },
-            { value: 'wildbach_rot', label: 'Wildbach/Lawine – rote Zone' },
-            { value: 'rutschung', label: 'Rutschung / Steinschlag' },
-            { value: 'altlast', label: 'Altlast / Verdachtsfläche' },
-            { value: 'baumbestand', label: 'geschützter Baumbestand' },
-            { value: 'schutzgebiet', label: 'Natur- oder Landschaftsschutzgebiet' },
-            { value: 'keine', label: 'keine' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'flood_hq30', label: 'Hochwasser HQ30' },
+            { value: 'flood_hq100', label: 'Hochwasser HQ100' },
+            { value: 'torrent_yellow', label: 'Wildbach/Lawine – gelbe Zone' },
+            { value: 'torrent_red', label: 'Wildbach/Lawine – rote Zone' },
+            { value: 'landslide', label: 'Rutschung / Steinschlag' },
+            { value: 'contaminated_land', label: 'Altlast / Verdachtsfläche' },
+            { value: 'tree_stock', label: 'geschützter Baumbestand' },
+            { value: 'protected_area', label: 'Natur- oder Landschaftsschutzgebiet' },
+            { value: 'none', label: 'keine' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/gefahrenzonen/value',
+          writesTo: '/facts/hazard_zones/value',
         },
         {
           id: 'B5',
@@ -513,15 +514,15 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           why: 'Die Lärmsituation beeinflusst typischerweise die Anforderungen an Fenster und Außenbauteile — exakte Pegel kommen später mit dem Gutachten.',
           options: [
-            { value: 'ruhig', label: 'ruhig' },
-            { value: 'innerstaedtisch', label: 'innerstädtisch üblich' },
-            { value: 'strasse', label: 'stark befahrene Straße' },
-            { value: 'bahn', label: 'Bahn' },
-            { value: 'flug', label: 'Fluglärm' },
-            { value: 'gewerbe', label: 'Gewerbelärm' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'quiet', label: 'ruhig' },
+            { value: 'urban', label: 'innerstädtisch üblich' },
+            { value: 'road', label: 'stark befahrene Straße' },
+            { value: 'rail', label: 'Bahn' },
+            { value: 'air', label: 'Fluglärm' },
+            { value: 'commercial', label: 'Gewerbelärm' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/laermsituation/value',
+          writesTo: '/facts/noise_situation/value',
         },
         {
           id: 'B6',
@@ -529,12 +530,12 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'single_select',
           why: 'Zeigt, ob Erschließungsthemen wie Anschlüsse oder Zufahrt im Projekt mitzudenken sind.',
           options: [
-            { value: 'ja', label: 'ja' },
-            { value: 'teilweise', label: 'teilweise' },
-            { value: 'nein', label: 'nein' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'yes', label: 'ja' },
+            { value: 'partial', label: 'teilweise' },
+            { value: 'no', label: 'nein' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/erschliessung/value',
+          writesTo: '/facts/servicing/value',
         },
         {
           id: 'B7',
@@ -542,19 +543,19 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'single_select',
           why: 'In manchen Gebieten gibt es Anschlussvorgaben — außerdem relevant für die Wahl der Wärmeversorgung.',
           options: [
-            { value: 'verfuegbar', label: 'verfügbar' },
-            { value: 'anschlussgebiet', label: 'Anschlussgebiet (Anschlusspflicht möglich)' },
-            { value: 'nicht_verfuegbar', label: 'nicht verfügbar' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'available', label: 'verfügbar' },
+            { value: 'connection_area', label: 'Anschlussgebiet (Anschlusspflicht möglich)' },
+            { value: 'unavailable', label: 'nicht verfügbar' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/fernwaerme_status/value',
+          writesTo: '/facts/district_heating_status/value',
         },
         {
           id: 'B8',
           label: 'Anbau an Nachbargebäude oder Bebauung nahe der Grundgrenze geplant?',
           type: 'yes_no_open',
           why: 'Bei Bebauung nahe der Grundgrenze spielen Abstände und Brandschutz zwischen Gebäuden eine größere Rolle.',
-          writesTo: '/facts/anbau_grundgrenze/value',
+          writesTo: '/facts/build_to_plot_boundary/value',
         },
       ],
     },
@@ -579,13 +580,13 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'single_select',
           why: 'Für sehr kleine und sonstige Bauwerke gelten deutlich reduzierte Anforderungen.',
           options: [
-            { value: 'gebaeude', label: 'Gebäude' },
-            { value: 'klein', label: 'Kleinstgebäude (bis 15 m²)' },
-            { value: 'sonstig', label: 'sonstiges Bauwerk (Flugdach, Stützmauer, Werbeanlage …)' },
+            { value: 'building', label: 'Gebäude' },
+            { value: 'small', label: 'Kleinstgebäude (bis 15 m²)' },
+            { value: 'other', label: 'sonstiges Bauwerk (Flugdach, Stützmauer, Werbeanlage …)' },
           ],
-          writesTo: '/facts/bauwerkstyp/value',
+          writesTo: '/facts/building_type/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.elevation, FOUND_IN.permitDecision],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'C2',
@@ -594,10 +595,10 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'single_select',
           why: 'Für Bestandsgebäude gibt es einen eigenen Fragenblock, weil dort teils andere Regeln gelten.',
           options: [
-            { value: 'neubau', label: 'Neubau' },
-            { value: 'bestand', label: 'Bestandsgebäude' },
+            { value: 'new_build', label: 'Neubau' },
+            { value: 'existing', label: 'Bestandsgebäude' },
           ],
-          writesTo: '/facts/errichtungsstatus/value',
+          writesTo: '/facts/construction_status/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision, FOUND_IN.floorPlan],
         },
         // -------------------------------------------------- Bestandsblock
@@ -613,8 +614,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           placeholder: 'z. B. 1962',
           why: 'Das Alter hilft einzuordnen, welche Regeln damals galten und was heute Bestandsschutz genießt.',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/baujahr_bestand/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_year_built/value',
           foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
@@ -623,8 +624,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'text',
           placeholder: 'z. B. Wohnhaus, Lagerhalle, Bürogebäude',
           why: 'Ändert sich die Nutzung, kann das zusätzliche Anforderungen auslösen.',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/bestand_nutzung/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_use/value',
         },
         {
           id: 'CB3',
@@ -632,8 +633,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Steht das Gebäude unter Denkmalschutz?',
           type: 'yes_no_open',
           why: 'Denkmalschutz bringt ein eigenes Verfahren und teils Erleichterungen bei anderen Anforderungen mit sich.',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/denkmalschutz/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/heritage_protection/value',
           foundIn: [FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
         },
         {
@@ -643,16 +644,16 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'multi_select',
           why: 'Die Art der Maßnahmen bestimmt, welche Anforderungen am Bestand überhaupt greifen.',
           options: [
-            { value: 'huelle_sanierung', label: 'Sanierung der Gebäudehülle' },
-            { value: 'umbau_innen', label: 'Umbau im Inneren' },
-            { value: 'aufstockung', label: 'Aufstockung' },
-            { value: 'zubau', label: 'Zubau' },
-            { value: 'nutzungsaenderung', label: 'Nutzungsänderung' },
-            { value: 'kernsanierung', label: 'Kernsanierung' },
-            { value: 'teilabbruch', label: 'Teilabbruch' },
+            { value: 'envelope_refurbishment', label: 'Sanierung der Gebäudehülle' },
+            { value: 'interior_conversion', label: 'Umbau im Inneren' },
+            { value: 'storey_addition', label: 'Aufstockung' },
+            { value: 'extension', label: 'Zubau' },
+            { value: 'change_of_use', label: 'Nutzungsänderung' },
+            { value: 'core_refurbishment', label: 'Kernsanierung' },
+            { value: 'partial_demolition', label: 'Teilabbruch' },
           ],
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/bestand_massnahmen/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_measures/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
         },
         {
@@ -660,8 +661,8 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Eingriff in die Tragstruktur geplant?',
           type: 'yes_no_open',
           why: 'Eingriffe ins Tragwerk sind statisch und im Verfahren gesondert zu betrachten.',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/tragstruktur_eingriff/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/structural_intervention/value',
         },
         {
           id: 'CB6',
@@ -669,41 +670,41 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Ab einem gewissen Sanierungsumfang gelten erhöhte energetische Anforderungen.',
           conditions: [
-            { param: 'C2', op: 'equals', value: 'bestand' },
-            { param: 'CB4', op: 'includes_any', value: ['huelle_sanierung', 'kernsanierung'] },
+            { param: 'C2', op: 'equals', value: 'existing' },
+            { param: 'CB4', op: 'includes_any', value: ['envelope_refurbishment', 'core_refurbishment'] },
           ],
-          writesTo: '/facts/groessere_renovierung/value',
+          writesTo: '/facts/major_renovation/value',
         },
         {
           id: 'CB7_og',
           label: 'Bestand heute: oberirdische Geschoße',
           type: 'number_tri',
           why: 'Der Vergleich von Bestand und Ziel zeigt, welche Teile eher wie ein Neubau und welche im Bestandsschutz zu behandeln sind.',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/bestand_geschosse_oberirdisch/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_storeys_above_ground/value',
         },
         {
           id: 'CB7_ug',
           label: 'Bestand heute: unterirdische Geschoße',
           type: 'number_tri',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/bestand_geschosse_unterirdisch/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_storeys_below_ground/value',
         },
         {
           id: 'CB7_bgf',
           label: 'Bestand heute: BGF der oberirdischen Geschoße',
           type: 'number_tri',
           unit: 'm²',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/bestand_bgf_oberirdisch/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_gfa_above_ground/value',
         },
         {
           id: 'CB7_fn',
           label: 'Bestand heute: Fluchtniveau',
           type: 'number_tri',
           unit: 'm',
-          conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
-          writesTo: '/facts/bestand_fluchtniveau_m/value',
+          conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
+          writesTo: '/facts/existing_escape_level_m/value',
         },
         // -------------------------------------------------- Zielgeometrie
         {
@@ -714,22 +715,22 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           why: 'Einer der wichtigsten Werte für die Einstufung des Gebäudes — außerdem relevant für die Aufzugsfrage.',
           hint: 'Immer den Zustand NACH Umsetzung aller Maßnahmen angeben – bei Aufstockung von drei auf fünf Geschoße also fünf.',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/geschosse_oberirdisch/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/storeys_above_ground/value',
           foundIn: [
             FOUND_IN.section,
             FOUND_IN.elevation,
             FOUND_IN.floorPlan,
             FOUND_IN.buildingDescription,
           ],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'C4',
           label: 'Anzahl unterirdischer Geschoße (Zielzustand)',
           type: 'number_tri',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/geschosse_unterirdisch/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/storeys_below_ground/value',
           foundIn: [FOUND_IN.section, FOUND_IN.floorPlan, FOUND_IN.buildingDescription],
         },
         {
@@ -740,34 +741,34 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           unit: 'm',
           why: 'Zentraler Wert für die Einstufung des Gebäudes — bei sehr hohen Gebäuden gelten eigene Hochhaus-Regeln.',
           hint: 'Höhendifferenz zwischen der Fußbodenoberkante des höchstgelegenen oberirdischen Geschoßes und der an das Gebäude angrenzenden Geländeoberfläche nach Fertigstellung im Mittel.',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/fluchtniveau_m/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/escape_level_m/value',
           foundIn: [FOUND_IN.section, FOUND_IN.fireSafety, FOUND_IN.buildingDescription],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'C6',
           label: 'Brutto-Grundfläche der oberirdischen Geschoße gesamt (Zielzustand)',
           type: 'number_tri',
           unit: 'm²',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/bgf_oberirdisch/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/gfa_above_ground/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.energyCertificate],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'C7',
           core: true,
           label: 'Anzahl Nutzungseinheiten (Wohnungen + Betriebseinheiten, Zielzustand)',
           type: 'number_tri',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/nutzungseinheiten/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/use_units/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           // v1.0's C7 with INVERTED polarity, so it writes a NEW key:
-          // `ne_unter_400` (ja = alle Einheiten bis 400 m²) stays untouched in
+          // `units_under_400` (ja = alle Einheiten bis 400 m²) stays untouched in
           // stored profiles and `answersFromProfile` bridges it, inverted, into
           // this question. Reusing the old key would silently flip the meaning
           // of every stored answer — and the GK derivation with it.
@@ -777,26 +778,26 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Hilft bei der Abgrenzung zwischen den Gebäudeklassen — erscheint nur, wenn es für die Einstufung wirklich gebraucht wird.',
           conditions: [
-            { param: 'C1', op: 'equals', value: 'gebaeude' },
+            { param: 'C1', op: 'equals', value: 'building' },
             { param: 'C3', op: 'lte', value: 4 },
           ],
-          writesTo: '/facts/einheiten_ueber_400/value',
+          writesTo: '/facts/units_over_400/value',
           foundIn: [FOUND_IN.floorPlan, FOUND_IN.buildingDescription, FOUND_IN.fireSafety],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'C9',
           label: 'Gebäudestellung',
           type: 'single_select',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
           options: [
-            { value: 'freistehend', label: 'freistehend' },
-            { value: 'angebaut', label: 'angebaut' },
-            { value: 'reihenhaus', label: 'Reihenhaus' },
+            { value: 'freestanding', label: 'freistehend' },
+            { value: 'attached', label: 'angebaut' },
+            { value: 'terraced', label: 'Reihenhaus' },
           ],
-          writesTo: '/facts/gebaeudestellung/value',
+          writesTo: '/facts/building_position/value',
           foundIn: [FOUND_IN.sitePlan, FOUND_IN.submissionSitePlan, FOUND_IN.buildingDescription],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'C9_zugang',
@@ -805,30 +806,30 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Unterscheidet bei freistehenden Gebäuden zwischen Gebäudeklasse 1 und 2 (OIB-Begriffsbestimmungen).',
           conditions: [
-            { param: 'C1', op: 'equals', value: 'gebaeude' },
-            { param: 'C9', op: 'equals', value: 'freistehend' },
+            { param: 'C1', op: 'equals', value: 'building' },
+            { param: 'C9', op: 'equals', value: 'freestanding' },
           ],
-          writesTo: '/facts/zugang_drei_seiten/value',
-          feeds: 'gebaeudeklasse',
+          writesTo: '/facts/access_three_sides/value',
+          feeds: 'building_class',
           foundIn: [FOUND_IN.sitePlan, FOUND_IN.submissionSitePlan],
         },
         {
           // Multi-select since v1.1 (a building can combine structures); the
-          // storage key stays `bauweise` — legacy single values are mapped by
+          // storage key stays `construction_method` — legacy single values are mapped by
           // the `answersFromProfile` bridge.
           id: 'C10',
           label: 'Tragstruktur / Bauweise (Mehrfachauswahl bei Kombination)',
           type: 'multi_select',
           why: 'Die Bauweise — besonders Holzbau — beeinflusst die Brandschutzanforderungen deutlich; Kombinationen bitte zusätzlich kurz beschreiben.',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
           options: [
-            { value: 'mauerwerk_massivbau', label: 'Mauerwerk / Massivbau' },
-            { value: 'stahlbeton', label: 'Stahlbeton' },
-            { value: 'holzbau', label: 'Holzbau' },
-            { value: 'stahlbau', label: 'Stahlbau' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'masonry_solid', label: 'Mauerwerk / Massivbau' },
+            { value: 'reinforced_concrete', label: 'Stahlbeton' },
+            { value: 'timber', label: 'Holzbau' },
+            { value: 'steel', label: 'Stahlbau' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/bauweise/value',
+          writesTo: '/facts/construction_method/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.structural, FOUND_IN.fireSafety],
         },
         {
@@ -837,31 +838,31 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'text',
           optional: true,
           placeholder: 'z. B. EG Stahlbeton, ab 1. OG Holzbau',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/bauweise_beschreibung/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/construction_method_description/value',
         },
         {
           id: 'C11',
           label: 'Konditionierung',
           type: 'single_select',
           why: 'Energieanforderungen und Energieausweis betreffen vor allem beheizte oder gekühlte Gebäude.',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
           options: [
-            { value: 'beheizt', label: 'beheizt' },
-            { value: 'beheizt_gekuehlt', label: 'beheizt + gekühlt' },
-            { value: 'teilkonditioniert', label: 'teilkonditioniert' },
-            { value: 'unkonditioniert', label: 'unkonditioniert' },
+            { value: 'heated', label: 'beheizt' },
+            { value: 'heated_cooled', label: 'beheizt + gekühlt' },
+            { value: 'partly_conditioned', label: 'teilkonditioniert' },
+            { value: 'unconditioned', label: 'unkonditioniert' },
           ],
-          writesTo: '/facts/konditionierung/value',
+          writesTo: '/facts/conditioning/value',
           foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription],
         },
         {
           id: 'C_GK_CONFIRM',
           label: 'Gebäudeklasse',
           type: 'info_placeholder',
-          derives: 'gebaeudeklasse',
+          derives: 'building_class',
           hint: 'Die Gebäudeklasse folgt aus Fluchtniveau, Geschoßanzahl, Fläche und Nutzung — immer auf Basis der Zielgeometrie. Sie wird hier noch nicht automatisch gesetzt. Solange sie im Brief offen ist, fragt Piloti nach, bevor eine Anforderung zitiert wird, die an der Klasse hängt.',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
         },
       ],
     },
@@ -882,9 +883,9 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Jede Nutzung bringt eigene Themen und Regelwerke mit — vom Brandschutz bis zu speziellen Genehmigungen.',
           hint: 'Mehrfachauswahl — je Nutzung folgen Kennzahlen.',
           options: USES,
-          writesTo: '/facts/nutzungen/value',
+          writesTo: '/facts/uses/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
-          feeds: 'gebaeudeklasse',
+          feeds: 'building_class',
         },
         {
           id: 'DX1',
@@ -892,7 +893,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Ist das Bauwerk (teilweise) öffentlich zugänglich / mit Publikumsverkehr?',
           type: 'yes_no_open',
           why: 'Öffentlich zugängliche Bereiche bringen typischerweise Barrierefreiheitsanforderungen mit sich.',
-          writesTo: '/facts/publikumsverkehr/value',
+          writesTo: '/facts/public_access/value',
           foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
@@ -901,7 +902,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Für Arbeitsstätten gelten zusätzlich Vorschriften des Arbeitnehmerschutzes.',
           hint: 'Aus den Nutzungen vorbelegt (z. B. Büro, Handel, Produktion) — hier bestätigen.',
-          writesTo: '/facts/arbeitsstaette/value',
+          writesTo: '/facts/workplace/value',
         },
       ],
       zoneCommon: [
@@ -910,101 +911,101 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Fläche der Zone (BGF)',
           type: 'number_tri',
           unit: 'm²',
-          writesTo: '/facts/zone_flaeche/value',
+          writesTo: '/facts/zone_area/value',
         },
         {
           id: 'D_lage',
           label: 'Geschoßlage',
           type: 'single_select',
           options: [
-            { value: 'oberirdisch', label: 'oberirdisch' },
-            { value: 'unterirdisch', label: 'unterirdisch' },
-            { value: 'beides', label: 'beides' },
+            { value: 'above_ground', label: 'oberirdisch' },
+            { value: 'below_ground', label: 'unterirdisch' },
+            { value: 'both', label: 'beides' },
           ],
-          writesTo: '/facts/zone_lage/value',
+          writesTo: '/facts/zone_position/value',
         },
       ],
       zoneDefinitions: {
-        wohnen: {
+        residential: {
           questions: [
             {
               id: 'D_we',
               label: 'Anzahl Wohneinheiten',
               type: 'number_tri',
-              writesTo: '/facts/wohneinheiten/value',
+              writesTo: '/facts/dwelling_units/value',
             },
             {
               id: 'D_wohnform',
               label: 'Wohnform',
               type: 'single_select',
               options: [
-                { value: 'klassisch', label: 'klassisch' },
-                { value: 'betreut', label: 'betreutes Wohnen' },
-                { value: 'heim', label: 'Heim' },
-                { value: 'studierende', label: 'Studierendenheim' },
+                { value: 'conventional', label: 'klassisch' },
+                { value: 'assisted', label: 'betreutes Wohnen' },
+                { value: 'care_home', label: 'Heim' },
+                { value: 'student', label: 'Studierendenheim' },
               ],
-              writesTo: '/facts/wohnform/value',
+              writesTo: '/facts/residential_form/value',
             },
           ],
         },
-        buero: {
+        office: {
           questions: [
             {
               id: 'D_an',
               label: 'Max. gleichzeitig anwesende Arbeitnehmer:innen',
               type: 'number_tri',
-              writesTo: '/facts/arbeitnehmer/value',
+              writesTo: '/facts/employees/value',
             },
           ],
         },
-        handel: {
+        retail: {
           questions: [
             {
               id: 'D_vkf',
               label: 'Verkaufsfläche',
               type: 'number_tri',
               unit: 'm²',
-              writesTo: '/facts/verkaufsflaeche/value',
+              writesTo: '/facts/sales_area/value',
             },
             {
               id: 'D_ekz',
               label: 'Teil eines Einkaufszentrums?',
               type: 'yes_no_open',
-              writesTo: '/facts/einkaufszentrum/value',
+              writesTo: '/facts/shopping_centre/value',
             },
           ],
         },
-        gastro: {
+        catering: {
           questions: [
             {
               id: 'D_plaetze',
               label: 'Max. Verabreichungsplätze / Personen',
               type: 'number_tri',
-              writesTo: '/facts/verabreichungsplaetze/value',
+              writesTo: '/facts/serving_places/value',
             },
           ],
         },
-        beherbergung: {
+        lodging: {
           questions: [
             {
               id: 'D_betten',
               label: 'Anzahl Gästebetten',
               type: 'number_tri',
-              writesTo: '/facts/gaestebetten/value',
+              writesTo: '/facts/guest_beds/value',
             },
           ],
         },
-        versammlung: {
+        assembly: {
           questions: [
             {
               id: 'D_pers',
               label: 'Max. gleichzeitig anwesende Personen',
               type: 'number_tri',
-              writesTo: '/facts/personen_max/value',
+              writesTo: '/facts/persons_max/value',
             },
           ],
         },
-        bildung: {
+        education: {
           questions: [
             {
               id: 'D_bildung',
@@ -1012,48 +1013,48 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
               type: 'single_select',
               options: [
                 { value: 'kindergarten', label: 'Kindergarten' },
-                { value: 'schule', label: 'Schule' },
-                { value: 'hochschule', label: 'Hochschule' },
-                { value: 'hort', label: 'Hort' },
+                { value: 'school', label: 'Schule' },
+                { value: 'university', label: 'Hochschule' },
+                { value: 'after_school_care', label: 'Hort' },
               ],
-              writesTo: '/facts/bildung_typ/value',
+              writesTo: '/facts/education_type/value',
             },
             {
               id: 'D_kinder',
               label: 'Anzahl Kinder / Schüler:innen',
               type: 'number_tri',
-              writesTo: '/facts/anzahl_kinder/value',
+              writesTo: '/facts/children_count/value',
             },
           ],
         },
-        gesundheit: {
+        healthcare: {
           questions: [
             {
               id: 'D_gesund',
               label: 'Einrichtungstyp',
               type: 'single_select',
               options: [
-                { value: 'ordination', label: 'Ordination' },
-                { value: 'krankenhaus', label: 'Krankenhaus' },
-                { value: 'pflegeheim', label: 'Pflegeheim' },
+                { value: 'practice', label: 'Ordination' },
+                { value: 'hospital', label: 'Krankenhaus' },
+                { value: 'nursing_home', label: 'Pflegeheim' },
               ],
-              writesTo: '/facts/gesundheit_typ/value',
+              writesTo: '/facts/healthcare_type/value',
             },
           ],
         },
-        produktion: {
+        production: {
           questions: [
             {
               id: 'D_gefstoffe',
               label: 'Lagerung / Verwendung gefährlicher Stoffe?',
               type: 'yes_no_open',
-              writesTo: '/facts/gefaehrliche_stoffe/value',
+              writesTo: '/facts/hazardous_substances/value',
             },
             {
               id: 'D_brandlast',
               label: 'Brandlastintensive Nutzung?',
               type: 'yes_no_open',
-              writesTo: '/facts/brandlast/value',
+              writesTo: '/facts/fire_load/value',
             },
           ],
         },
@@ -1063,53 +1064,53 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
               id: 'D_stp',
               label: 'Anzahl Pkw-Stellplätze',
               type: 'number_tri',
-              writesTo: '/facts/stellplaetze/value',
+              writesTo: '/facts/parking_spaces/value',
             },
             {
               id: 'D_garagenlage',
               label: 'Lage',
               type: 'single_select',
               options: [
-                { value: 'tiefgarage', label: 'Tiefgarage' },
-                { value: 'oberirdisch_geschlossen', label: 'oberirdisch geschlossen' },
-                { value: 'ueberdacht_offen', label: 'überdacht offen' },
-                { value: 'freistellplaetze', label: 'Freistellplätze' },
+                { value: 'underground', label: 'Tiefgarage' },
+                { value: 'above_ground_enclosed', label: 'oberirdisch geschlossen' },
+                { value: 'covered_open', label: 'überdacht offen' },
+                { value: 'open_air', label: 'Freistellplätze' },
               ],
-              writesTo: '/facts/garagenlage/value',
+              writesTo: '/facts/garage_position/value',
             },
             {
               id: 'D_garagenfl',
               label: 'Nutzfläche der Garage',
               type: 'number_tri',
               unit: 'm²',
-              writesTo: '/facts/garagenflaeche/value',
+              writesTo: '/facts/garage_area/value',
             },
             {
               id: 'D_lade',
               label: 'E-Ladepunkte geplant?',
               type: 'yes_no_open',
-              writesTo: '/facts/e_ladepunkte/value',
+              writesTo: '/facts/ev_charge_points/value',
             },
           ],
         },
-        landwirtschaft: {
+        agriculture: {
           questions: [
             {
               id: 'D_tiere',
               label: 'Tierhaltung?',
               type: 'yes_no_open',
-              writesTo: '/facts/tierhaltung/value',
+              writesTo: '/facts/livestock/value',
             },
           ],
         },
-        technik: {
+        technical: {
           questions: [
             {
               id: 'D_technik',
               label: 'Kurzbeschreibung',
               type: 'text',
               placeholder: 'z. B. Trafostation, Haustechnikzentrale',
-              writesTo: '/facts/technik_beschreibung/value',
+              writesTo: '/facts/technical_description/value',
             },
           ],
         },
@@ -1129,14 +1130,14 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'single_select',
           why: 'Relevant für Vorgaben zu erneuerbarer Wärme — bei fossilen Systemen im Neubau weist das System auf mögliche Konflikte hin.',
           options: [
-            { value: 'waermepumpe', label: 'Wärmepumpe' },
-            { value: 'fernwaerme', label: 'Fernwärme' },
-            { value: 'biomasse', label: 'Biomasse' },
+            { value: 'heat_pump', label: 'Wärmepumpe' },
+            { value: 'district_heating', label: 'Fernwärme' },
+            { value: 'biomass', label: 'Biomasse' },
             { value: 'solar_hybrid', label: 'Solar-Hybrid' },
             { value: 'gas', label: 'Gas (nur Bestand)' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/waermeversorgung/value',
+          writesTo: '/facts/heat_supply/value',
         },
         {
           // v1.0's E2 (PV) + E3 (Lüftung) + E4 (Kühlung) + E6 (Versickerung)
@@ -1149,13 +1150,13 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Für einzelne Technikthemen gibt es je nach Standort eigene Vorgaben oder Fördermöglichkeiten.',
           options: [
             { value: 'pv', label: 'PV-Anlage' },
-            { value: 'lueftung', label: 'mechanische Lüftung' },
-            { value: 'kuehlung', label: 'aktive Kühlung' },
-            { value: 'versickerung', label: 'Regenwasser-Versickerung' },
-            { value: 'keine', label: 'keine' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'ventilation', label: 'mechanische Lüftung' },
+            { value: 'cooling', label: 'aktive Kühlung' },
+            { value: 'infiltration', label: 'Regenwasser-Versickerung' },
+            { value: 'none', label: 'keine' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/technik_weitere/value',
+          writesTo: '/facts/further_technology/value',
         },
         {
           id: 'E3',
@@ -1164,29 +1165,29 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           why: 'Solche Anlagen sind oft Teil des Brandschutzkonzepts und bringen eigene technische Richtlinien mit.',
           options: [
-            { value: 'bma', label: 'Brandmeldeanlage' },
+            { value: 'fire_alarm', label: 'Brandmeldeanlage' },
             { value: 'sprinkler', label: 'Sprinkler' },
-            { value: 'rwa', label: 'RWA' },
-            { value: 'druckbelueftung', label: 'Druckbelüftung' },
-            { value: 'keine', label: 'keine' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'smoke_extraction', label: 'RWA' },
+            { value: 'pressurisation', label: 'Druckbelüftung' },
+            { value: 'none', label: 'keine' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/brandschutz_anlagen/value',
+          writesTo: '/facts/fire_safety_systems/value',
         },
         {
           id: 'E4',
           label: 'Aufzug geplant?',
           type: 'yes_no_open',
           hint: 'Die Aufzugspflicht wird später aus Geschoßanzahl und Landesrecht abgeleitet und gegen diese Angabe geprüft.',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/aufzug/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/elevator/value',
         },
         {
           id: 'E5',
           label: 'Feuerstätten / Rauchfänge geplant?',
           type: 'yes_no_open',
-          conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
-          writesTo: '/facts/feuerstaetten/value',
+          conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
+          writesTo: '/facts/fireplaces/value',
         },
       ],
     },
@@ -1204,7 +1205,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Betriebsanlagen benötigen ein Genehmigungsverfahren nach der Gewerbeordnung, parallel zur Baubewilligung.',
           hint: 'Im echten System aus den Nutzungen vorbelegt.',
-          writesTo: '/facts/betriebsanlage/value',
+          writesTo: '/facts/commercial_facility/value',
         },
         {
           id: 'F2',
@@ -1218,35 +1219,35 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Wasserrechtliche Bewilligung voraussichtlich nötig?',
           type: 'yes_no_open',
           hint: 'Vorbelegt aus Standortrisiken (B4) und Versickerung (E2).',
-          writesTo: '/facts/wasserrecht/value',
+          writesTo: '/facts/water_rights/value',
         },
         {
           // v1.0's F4 (Förderung) + F5 (Zertifizierung) as one multi-select.
-          // The storage key stays `foerderung`: old values are a subset, and
-          // the legacy `zertifizierung` single-select is bridged in.
+          // The storage key stays `funding`: old values are a subset, and
+          // the legacy `certification` single-select is bridged in.
           id: 'F4',
           label: 'Förderung oder Zertifizierung angestrebt?',
           type: 'multi_select',
           optional: true,
           why: 'Förderungen und Zertifizierungen bringen oft eigene, teils strengere Anforderungen mit.',
           options: [
-            { value: 'wohnbaufoerderung', label: 'Wohnbauförderung des Landes' },
-            { value: 'sanierungsfoerderung', label: 'Sanierungsförderung' },
+            { value: 'housing_subsidy', label: 'Wohnbauförderung des Landes' },
+            { value: 'refurbishment_subsidy', label: 'Sanierungsförderung' },
             { value: 'klimaaktiv', label: 'klimaaktiv' },
             { value: 'oegni_dgnb', label: 'ÖGNI / DGNB' },
             { value: 'leed_breeam', label: 'LEED / BREEAM' },
-            { value: 'keine', label: 'keine' },
-            { value: 'offen', label: 'noch offen' },
+            { value: 'none', label: 'keine' },
+            { value: 'open', label: 'noch offen' },
           ],
-          writesTo: '/facts/foerderung/value',
+          writesTo: '/facts/funding/value',
         },
         {
           id: 'F5',
           label: 'Schad- und Störstofferkundung / Rückbaukonzept relevant?',
           type: 'yes_no_open',
           why: 'Beim Abbruch sind Schadstoffe und Verwertung gesondert zu betrachten.',
-          conditions: [{ param: 'A5', op: 'includes_any', value: ['abbruch'] }],
-          writesTo: '/facts/rueckbaukonzept/value',
+          conditions: [{ param: 'A5', op: 'includes_any', value: ['demolition'] }],
+          writesTo: '/facts/demolition_concept/value',
         },
       ],
     },
@@ -1259,7 +1260,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
         'Geführter Freitext: alles, was der Assistent über die Zahlen hinaus wissen sollte. Alle Felder optional — je mehr Kontext, desto besser.',
       questions: [
         {
-          // v1.0's G1 + G2; the legacy `kontext_grundstueck` text is bridged
+          // v1.0's G1 + G2; the legacy `context_plot` text is bridged
           // into this field. G5 + G6 merged into G4 the same way.
           id: 'G1',
           core: true,
@@ -1268,7 +1269,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           placeholder:
             'Was ist das Projekt in 3–10 Sätzen? Städtebauliche Setzung, Konzept, Materialität, Besonderheiten von Grundstück und Nachbarschaft …',
-          writesTo: '/facts/kontext_beschreibung/value',
+          writesTo: '/facts/context_description/value',
         },
         {
           id: 'G2',
@@ -1277,7 +1278,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           placeholder:
             'Kosten- und Terminrahmen, Nachhaltigkeitsambition, Flexibilität, besondere Wünsche …',
-          writesTo: '/facts/kontext_ziele/value',
+          writesTo: '/facts/context_goals/value',
         },
         {
           id: 'G3',
@@ -1285,7 +1286,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'textarea',
           optional: true,
           placeholder: 'Nachbarn, Behördenvorgespräche, technische Risiken, Widmungskonflikte …',
-          writesTo: '/facts/kontext_konflikte/value',
+          writesTo: '/facts/context_conflicts/value',
         },
         {
           id: 'G4',
@@ -1294,7 +1295,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           optional: true,
           placeholder:
             'Geplante Abweichungen (z. B. Brandschutzkonzept mit Kompensation) und alles Weitere für den Assistenten.',
-          writesTo: '/facts/kontext_sonderloesungen/value',
+          writesTo: '/facts/context_special_solutions/value',
         },
       ],
     },
@@ -1333,6 +1334,30 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
 // Scope helpers — the four-scope model layered onto the flat profile store.
 // ---------------------------------------------------------------------------
 
+/** A building's instance id is this prefix and its number: `bldg1`, `bldg2`. */
+export const BUILDING_ID_PREFIX = 'bldg'
+
+/** The instance id in an answer or storage key: `…@bldg2`, at the end, before another `@` or before `__`. */
+export const BUILDING_ID_IN_KEY = new RegExp(`@(${BUILDING_ID_PREFIX}\\d+)(?:@|$)`)
+const BUILDING_ID_IN_ANSWER_KEY = new RegExp(`@(${BUILDING_ID_PREFIX}\\d+)(?:@|$|__)`)
+
+/** The number in an instance id, to put buildings in the order they were added. */
+export function buildingNumber(id: string): number {
+  return Number(id.slice(BUILDING_ID_PREFIX.length))
+}
+
+const BUILDING_ID = new RegExp(`^${BUILDING_ID_PREFIX}[1-9]\\d*$`)
+
+/** Whether `id` is a building instance id (`bldg1`). */
+export function isBuildingId(id: string): boolean {
+  return BUILDING_ID.test(id)
+}
+
+/** The short tag a person sees for a building without a name: „BW1" (Bauwerk 1), whatever the stored id is. */
+export function buildingTag(id: string): string {
+  return `BW${buildingNumber(id)}`
+}
+
 /** A repeatable building instance. */
 export interface BuildingInstance {
   id: string
@@ -1340,7 +1365,7 @@ export interface BuildingInstance {
 }
 
 export function defaultBuildings(): BuildingInstance[] {
-  return [{ id: 'bw1', name: 'Bauwerk 1' }]
+  return [{ id: `${BUILDING_ID_PREFIX}1`, name: 'Bauwerk 1' }]
 }
 
 /** The wizard's answer-state key for a question in a given scope instance. */
@@ -1364,6 +1389,9 @@ export function buildingIdFromAnswerKey(answerKey: string): string | null {
   return buildingId ?? null
 }
 
+/** A building's name in the wizard's answer state (the browser draft); the profile keeps it as the `building_name` fact. */
+const BUILDING_NAME_ANSWER_PREFIX = '__building_name@'
+
 /** The sibling key under which a number_tri question stores its answer mode. */
 export function modeKeyFor(answerKey: string): string {
   return `${answerKey}__mode`
@@ -1386,7 +1414,7 @@ function scopeOfQuestion(questionId: string): ProjectIntakeScope | null {
 // ---------------------------------------------------------------------------
 
 /**
- * The validated `bundesland` token vocabulary, read straight off the A2_land
+ * The validated `federal_state` token vocabulary, read straight off the A2_land
  * question's own options so it can never drift from what the wizard offers.
  * (Backlog T3-9: mirrored, not shared, by the Python backend's
  * `project_context._FEDERAL_STATE_TOKENS`.)
@@ -1396,7 +1424,7 @@ export const FEDERAL_STATE_TOKENS: readonly string[] = (() => {
   return question?.options?.map((option) => option.value) ?? []
 })()
 
-/** Whether `token` is a recognized `bundesland` (A2_land) intake answer. */
+/** Whether `token` is a recognized `federal_state` (A2_land) intake answer. */
 export function isValidFederalStateToken(token: string): boolean {
   return FEDERAL_STATE_TOKENS.includes(token)
 }
@@ -1515,7 +1543,7 @@ export function findIntakeQuestion(
 
 /**
  * The distinct scope instances (buildings) implied by the current answer state.
- * Reconstructed from `@bwN`-suffixed keys plus any stored building names, so an
+ * Reconstructed from `@bldgN`-suffixed keys plus any stored building names, so an
  * edit session can rebuild the building list the same way the wizard held it.
  */
 export function buildingsFromAnswers(
@@ -1523,13 +1551,13 @@ export function buildingsFromAnswers(
 ): BuildingInstance[] {
   const ids = new Set<string>()
   for (const key of Object.keys(answers)) {
-    const match = key.match(/@(bw\d+)(?:@|$|__)/)
+    const match = key.match(BUILDING_ID_IN_ANSWER_KEY)
     if (match) ids.add(match[1])
   }
-  const sorted = [...ids].sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)))
+  const sorted = [...ids].sort((a, b) => buildingNumber(a) - buildingNumber(b))
   if (sorted.length === 0) return defaultBuildings()
   return sorted.map((id, i) => {
-    const stored = answers[`__bwname@${id}`]
+    const stored = answers[`${BUILDING_NAME_ANSWER_PREFIX}${id}`]
     return { id, name: typeof stored === 'string' && stored ? stored : `Bauwerk ${i + 1}` }
   })
 }
@@ -1745,7 +1773,7 @@ export function buildIntakeProfile(
     for (const building of buildings) {
       ctx.patch.push({
         op: 'add',
-        path: `/facts/${encodeKey(`bauwerk_name@${building.id}`)}`,
+        path: `/facts/${encodeKey(`building_name@${building.id}`)}`,
         value: { value: building.name, confidence: 'confirmed', source: NOW_SOURCE, updatedAt: ctx.now },
       })
     }
@@ -1764,7 +1792,7 @@ export function buildIntakeProfile(
     }
   }
 
-  const federalStatePath = '/facts/bundesland'
+  const federalStatePath = '/facts/federal_state'
 
   // A patch value is either a bare primitive or a fact envelope
   // (`{ value, confidence, source, updatedAt }`) depending on which producer
@@ -1774,14 +1802,14 @@ export function buildIntakeProfile(
       ? (value as { value: unknown }).value
       : value
 
-  // Derive country from bundesland for legacy profiles.
+  // Derive country from federal_state for legacy profiles.
   const hasCountry = ctx.patch.some((p) => p.path === '/facts/country')
   const federalStatePatch = ctx.patch.find((p) => p.path === federalStatePath)
   if (!hasCountry && federalStatePatch) {
     const bToken = unwrapFactValue(federalStatePatch.value)
     if (
       typeof bToken === 'string' &&
-      bToken !== 'ausserhalb_oesterreichs' &&
+      bToken !== 'outside_austria' &&
       (FEDERAL_STATE_TOKENS as readonly string[]).includes(bToken)
     ) {
       ctx.patch.push({
@@ -1792,7 +1820,7 @@ export function buildIntakeProfile(
     }
   }
 
-  // Derive bundesland for non-AT country.
+  // Derive federal_state for non-AT country.
   const countryFact = ctx.patch.find((p) => p.path === '/facts/country')
   const hasFederalState = ctx.patch.some((p) => p.path === federalStatePath)
   const countryValue = unwrapFactValue(countryFact?.value)
@@ -1801,7 +1829,7 @@ export function buildIntakeProfile(
       op: 'add',
       path: federalStatePath,
       value: {
-        value: 'ausserhalb_oesterreichs',
+        value: 'outside_austria',
         confidence: 'confirmed',
         source: NOW_SOURCE,
         updatedAt: ctx.now,
@@ -1904,7 +1932,7 @@ function carryOverProvenance<Entry extends ProjectFact | ProjectAssumption>(
  * whole-profile PUT can never destroy knowledge the wizard doesn't own
  * (agent-recorded novel facts/goals/unknowns, assumptions).
  *
- * Intake-owned keys are matched by their base key ignoring any `@bwN` / `@zone`
+ * Intake-owned keys are matched by their base key ignoring any `@bldgN` / `@zone`
  * suffix, so every scope instance the wizard produced is treated as wizard-owned.
  */
 export function mergeIntakeProfile(
@@ -1914,7 +1942,7 @@ export function mergeIntakeProfile(
 ): ProjectProfile {
   if (!previous) return built
 
-  const intakeFactBaseKeys = new Set<string>(['project_name', 'bauwerk_name'])
+  const intakeFactBaseKeys = new Set<string>(['project_name', 'building_name'])
   const intakeGoalBaseKeys = new Set<string>()
   for (const question of flattenIntakeQuestions(definition)) {
     const target = resolveWriteTarget(question.writesTo)
@@ -1973,10 +2001,10 @@ export function answersFromProfile(
 } {
   const answers: Record<string, ProjectPrimitiveValue> = {}
 
-  // Rebuild the building list from stored bauwerk_name facts / suffixed keys.
+  // Rebuild the building list from stored building_name facts / suffixed keys.
   const foundIds = new Set<string>()
   const collectId = (key: string) => {
-    const m = key.match(/@(bw\d+)(?:@|$)/)
+    const m = key.match(BUILDING_ID_IN_KEY)
     if (m) foundIds.add(m[1])
   }
   Object.keys(profile.facts).forEach(collectId)
@@ -1986,9 +2014,9 @@ export function answersFromProfile(
     foundIds.size === 0
       ? defaultBuildings()
       : [...foundIds]
-          .sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)))
+          .sort((a, b) => buildingNumber(a) - buildingNumber(b))
           .map((id, i) => {
-            const stored = profile.facts[`bauwerk_name@${id}`]?.value
+            const stored = profile.facts[`building_name@${id}`]?.value
             return { id, name: typeof stored === 'string' && stored ? stored : `Bauwerk ${i + 1}` }
           })
 
@@ -2088,15 +2116,15 @@ export function answersFromProfile(
 // ---------------------------------------------------------------------------
 
 /** The four v1.0 booleans that v1.2's `E2` multi-select absorbed. */
-const LEGACY_TECHNOLOGY_KEYS = ['pv', 'lueftung', 'kuehlung', 'versickerung'] as const
+const LEGACY_TECHNOLOGY_KEYS = ['pv', 'ventilation', 'cooling', 'infiltration'] as const
 
-/** v1.0 `vorhabensart` → the v1.2 `CB4` measure it corresponds to. */
+/** v1.0 `work_type` (then `work_type`) → the v1.2 `CB4` measure it corresponds to. */
 const LEGACY_PLANNED_WORK_TO_MEASURE: Record<string, string> = {
-  sanierung: 'huelle_sanierung',
-  umbau: 'umbau_innen',
-  zubau: 'zubau',
-  nutzungsaenderung: 'nutzungsaenderung',
-  abbruch: 'teilabbruch',
+  refurbishment: 'envelope_refurbishment',
+  conversion: 'interior_conversion',
+  extension: 'extension',
+  change_of_use: 'change_of_use',
+  demolition: 'partial_demolition',
 }
 
 function legacyBoolean(profile: ProjectProfile, key: string): boolean | undefined {
@@ -2117,10 +2145,10 @@ function applyLegacyAnswerBridges(
   if (buildings.length === 1) {
     const buildingId = buildings[0].id
     const legacyExisting: Array<{ question: string; key: string; numeric: boolean }> = [
-      { question: 'CB1', key: 'baujahr_bestand', numeric: true },
-      { question: 'CB3', key: 'denkmalschutz', numeric: false },
-      { question: 'CB5', key: 'tragstruktur_eingriff', numeric: false },
-      { question: 'CB6', key: 'groessere_renovierung', numeric: false },
+      { question: 'CB1', key: 'existing_year_built', numeric: true },
+      { question: 'CB3', key: 'heritage_protection', numeric: false },
+      { question: 'CB5', key: 'structural_intervention', numeric: false },
+      { question: 'CB6', key: 'major_renovation', numeric: false },
     ]
     let bridgedAny = false
     for (const { question, key, numeric } of legacyExisting) {
@@ -2156,18 +2184,18 @@ function applyLegacyAnswerBridges(
     // gate so the bridged block is visible instead of orphaned behind an
     // unanswered C2.
     const c2Key = answerKeyFor('C2', buildingId)
-    if (bridgedAny && answers[c2Key] === undefined) answers[c2Key] = 'bestand'
+    if (bridgedAny && answers[c2Key] === undefined) answers[c2Key] = 'existing'
 
     // CB6 sits behind a CB4 measure as well, and legacy profiles have no CB4.
     // Without one the bridged answer renders nowhere and `buildIntakeProfile`
     // drops it on save. The measures are read off the project's own
-    // `vorhabensart` rather than invented: v1.0 only ever ASKED A10 when A5
+    // `work_type` rather than invented: v1.0 only ever ASKED A10 when A5
     // included `sanierung`, so the mapping restates what the old catalog
     // already implied.
     const cb4Key = answerKeyFor('CB4', buildingId)
     const cb6Key = answerKeyFor('CB6', buildingId)
     if (answers[cb6Key] !== undefined && !isIntakeAnswerProvided(answers[cb4Key])) {
-      const plannedWork = profile.facts['vorhabensart']?.value
+      const plannedWork = profile.facts['work_type']?.value
       const measures = new Set<string>()
       if (Array.isArray(plannedWork)) {
         for (const workType of plannedWork) {
@@ -2176,30 +2204,33 @@ function applyLegacyAnswerBridges(
         }
       }
       // CB6 only asks about the hull, so a bridged answer implies hull work
-      // even when `vorhabensart` named nothing that maps.
-      if (measures.size === 0) measures.add('huelle_sanierung')
+      // even when `work_type` named nothing that maps.
+      if (measures.size === 0) measures.add('envelope_refurbishment')
       answers[cb4Key] = [...measures]
     }
   }
 
   for (const building of buildings) {
-    // --- C8 inversion (v1.0 C7 `ne_unter_400`, ja = alle Einheiten bis 400 m²).
+    // --- C8 inversion (v1.0 C7 `units_under_400`, ja = alle Einheiten bis 400 m²).
     const c8Key = answerKeyFor('C8', building.id)
     if (answers[c8Key] === undefined) {
-      const legacy = profile.facts[`ne_unter_400@${building.id}`]?.value
+      const legacy = profile.facts[`units_under_400@${building.id}`]?.value
       if (typeof legacy === 'boolean') answers[c8Key] = legacy ? 'nein' : 'ja'
-      else if (profile.unknowns.includes(`ne_unter_400@${building.id}`)) answers[c8Key] = 'offen'
+      else if (profile.unknowns.includes(`units_under_400@${building.id}`)) answers[c8Key] = 'offen'
     }
 
-    // --- C10 single → multi (`bauweise`): map the legacy single token.
+    // --- C10 single → multi (`construction_method`): map the legacy single token.
     const c10Key = answerKeyFor('C10', building.id)
     const c10 = answers[c10Key]
     if (typeof c10 === 'string') {
       const mapped: Record<string, string[]> = {
-        massivbau: ['mauerwerk_massivbau'],
-        holzbau: ['holzbau'],
-        stahl: ['stahlbau'],
-        offen: ['offen'],
+        // `massivbau`, `stahl` and `hybrid` are v1.0 tokens no migration renamed
+        // (they are no option of the current question); the others are the
+        // current tokens, which is what a v1.0 profile holds after 0159.
+        massivbau: ['masonry_solid'],
+        timber: ['timber'],
+        stahl: ['steel'],
+        open: ['open'],
       }
       const replacement = mapped[c10]
       if (replacement) {
@@ -2208,10 +2239,10 @@ function applyLegacyAnswerBridges(
         // v1.0's `hybrid` named a combination without naming its members, and
         // v1.2 expresses a combination as the multi-select PLUS `C10_text`.
         // Deleting the answer dropped a construction type the user had actually
-        // stated: `bauweise` is intake-owned, so `mergeIntakeProfile` removed
+        // stated: `construction_method` is intake-owned, so `mergeIntakeProfile` removed
         // the stored fact too. It moves into the field built to hold exactly
         // this, and the user refines it when they next open the module.
-        answers[c10Key] = ['offen']
+        answers[c10Key] = ['open']
         const c10TextKey = answerKeyFor('C10_text', building.id)
         if (!isIntakeAnswerProvided(answers[c10TextKey])) {
           answers[c10TextKey] =
@@ -2222,14 +2253,14 @@ function applyLegacyAnswerBridges(
       }
     }
 
-    // --- E2 fusion: four legacy booleans into `technik_weitere`.
+    // --- E2 fusion: four legacy booleans into `further_technology`.
     const e2Key = answerKeyFor('E2', building.id)
     if (answers[e2Key] === undefined) {
       const technology: string[] = []
       if (legacyBoolean(profile, `pv@${building.id}`)) technology.push('pv')
-      if (legacyBoolean(profile, `lueftung@${building.id}`)) technology.push('lueftung')
-      if (legacyBoolean(profile, `kuehlung@${building.id}`)) technology.push('kuehlung')
-      if (legacyBoolean(profile, `versickerung@${building.id}`)) technology.push('versickerung')
+      if (legacyBoolean(profile, `ventilation@${building.id}`)) technology.push('ventilation')
+      if (legacyBoolean(profile, `cooling@${building.id}`)) technology.push('cooling')
+      if (legacyBoolean(profile, `infiltration@${building.id}`)) technology.push('infiltration')
       if (technology.length > 0) answers[e2Key] = technology
       else if (
         LEGACY_TECHNOLOGY_KEYS.every((key) => legacyBoolean(profile, `${key}@${building.id}`) === false)
@@ -2237,22 +2268,22 @@ function applyLegacyAnswerBridges(
         // All four answered and all four "no" is the explicit `keine`, not an
         // unanswered question — otherwise the migration puts a module the user
         // completed back on the completion checklist.
-        answers[e2Key] = ['keine']
+        answers[e2Key] = ['none']
       }
     }
   }
 
   // --- B4 fusion: legacy Altlast/Baumbestand/Schutzgebiet booleans join the
-  // stored `gefahrenzonen` values (already read into B4 — same key, wider
+  // stored `hazard_zones` values (already read into B4 — same key, wider
   // vocabulary).
   const b4Additions: string[] = []
-  if (legacyBoolean(profile, 'altlast')) b4Additions.push('altlast')
-  if (legacyBoolean(profile, 'baumbestand')) b4Additions.push('baumbestand')
-  if (legacyBoolean(profile, 'schutzgebiet')) b4Additions.push('schutzgebiet')
+  if (legacyBoolean(profile, 'contaminated_land')) b4Additions.push('contaminated_land')
+  if (legacyBoolean(profile, 'tree_stock')) b4Additions.push('tree_stock')
+  if (legacyBoolean(profile, 'protected_area')) b4Additions.push('protected_area')
   if (b4Additions.length > 0) {
     const current = Array.isArray(answers['B4']) ? (answers['B4'] as string[]) : []
     const merged = [
-      ...current.filter((value) => value !== 'keine'),
+      ...current.filter((value) => value !== 'none'),
       ...b4Additions.filter((v) => !current.includes(v)),
     ]
     answers['B4'] = merged
@@ -2262,26 +2293,26 @@ function applyLegacyAnswerBridges(
   // Only when all three were answered; a partial picture stays unanswered
   // rather than guessed.
   if (answers['B6'] === undefined) {
-    const sewer = legacyBoolean(profile, 'kanal')
-    const water = legacyBoolean(profile, 'trinkwasser')
-    const access = legacyBoolean(profile, 'zufahrt_feuerwehr')
+    const sewer = legacyBoolean(profile, 'sewer')
+    const water = legacyBoolean(profile, 'drinking_water')
+    const access = legacyBoolean(profile, 'fire_brigade_access')
     if (sewer !== undefined && water !== undefined && access !== undefined) {
       const yes = [sewer, water, access].filter(Boolean).length
-      // Never 'ja' from these three. The new question also covers electricity,
+      // Never 'yes' from these three. The new question also covers electricity,
       // which v1.0 never asked, so claiming full servicing would persist a fact
       // nobody stated. Anything short of all three is honestly 'teilweise';
       // all three leaves the electricity question for the user.
-      if (yes === 0) answers['B6'] = 'nein'
-      else if (yes < 3) answers['B6'] = 'teilweise'
+      if (yes === 0) answers['B6'] = 'no'
+      else if (yes < 3) answers['B6'] = 'partial'
     }
   }
 
   // --- B7 fusion: Anschlussgebiet beats bare availability.
   if (answers['B7'] === undefined) {
-    if (legacyBoolean(profile, 'fernwaerme_zone')) answers['B7'] = 'anschlussgebiet'
+    if (legacyBoolean(profile, 'district_heating_zone')) answers['B7'] = 'connection_area'
     else {
-      const fw = legacyBoolean(profile, 'fernwaerme')
-      if (fw !== undefined) answers['B7'] = fw ? 'verfuegbar' : 'nicht_verfuegbar'
+      const fw = legacyBoolean(profile, 'district_heating')
+      if (fw !== undefined) answers['B7'] = fw ? 'available' : 'unavailable'
     }
   }
 
@@ -2290,16 +2321,16 @@ function applyLegacyAnswerBridges(
   // `B3_bes` only renders behind `B2 = ja`, so a bridged value would be
   // invisible for a project with no Bebauungsplan — and then dropped on save,
   // because `buildIntakeProfile` skips a question whose condition is false.
-  // Left alone, `schutzzone_altstadt` is owned by no current question, so
+  // Left alone, `old_town_protection_zone` is owned by no current question, so
   // `mergeIntakeProfile` preserves it as an agent-visible fact. Not bridging
   // keeps it; bridging lost it.
 
   // --- F4 fusion: legacy Zertifizierung tokens are valid F4 values.
-  const zert = profile.facts['zertifizierung']?.value
-  if (typeof zert === 'string' && !['keine', 'offen'].includes(zert)) {
+  const zert = profile.facts['certification']?.value
+  if (typeof zert === 'string' && !['none', 'open'].includes(zert)) {
     const current = Array.isArray(answers['F4']) ? (answers['F4'] as string[]) : []
     if (!current.includes(zert))
-      answers['F4'] = [...current.filter((value) => value !== 'keine'), zert]
+      answers['F4'] = [...current.filter((value) => value !== 'none'), zert]
   }
 
   // --- G merges: appended, never overwritten.
@@ -2318,13 +2349,13 @@ function applyLegacyAnswerBridges(
     if (current.includes(legacy.trim())) return
     answers[answerKey] = `${current}\n\n${legacy}`
   }
-  appendText('G1', 'kontext_grundstueck')
-  appendText('G4', 'kontext_sonstiges')
+  appendText('G1', 'context_plot')
+  appendText('G4', 'context_other')
 }
 
 /**
  * Title-case a raw snake_case/space-separated profile key as a last-resort human
- * label (e.g. `hohe_gebaeude_details` -> "Hohe Gebaeude Details").
+ * label (e.g. `high_rise_details` -> "High Rise Details").
  */
 export function humanizeProfileKey(key: string): string {
   return key
@@ -2336,8 +2367,8 @@ export function humanizeProfileKey(key: string): string {
 }
 
 /**
- * Resolve a human label for a raw profile fact/goal key (e.g. `fluchtniveau_m`,
- * or a scoped `fluchtniveau_m@bw1`) from the intake question that writes it.
+ * Resolve a human label for a raw profile fact/goal key (e.g. `escape_level_m`,
+ * or a scoped `escape_level_m@bldg1`) from the intake question that writes it.
  */
 export function labelForProfileKey(definition: ProjectIntakeDefinition, key: string): string {
   const base = key.split('@')[0]
@@ -2351,10 +2382,10 @@ export function labelForProfileKey(definition: ProjectIntakeDefinition, key: str
 /**
  * Server-side vocabulary validation (defense-in-depth for the profile-patch
  * flow): reject add/replace operations whose value violates the intake question
- * that owns the key. Scoped keys (`<base>@bw1`) resolve to their base question.
+ * that owns the key. Scoped keys (`<base>@bldg1`) resolve to their base question.
  */
 export function validateProfilePatchVocabulary(patch: ProjectProfilePatchOperation[]): void {
-  for (const operation of patch) {
+  for (const operation of patch.map(normalizeProfilePatchOperation)) {
     if (operation.op === 'remove') continue
     const key = extractVocabKey(operation.path)
     if (!key) continue

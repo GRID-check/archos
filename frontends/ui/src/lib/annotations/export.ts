@@ -124,7 +124,7 @@ export function selectMarks(
 ): ProtocolSelection {
   const wanted = annotations.filter(
     (annotation) =>
-      (options.fassung === 'all' || annotation.onCurrentFassung || isLive(annotation)) &&
+      (options.fassung === 'all' || annotation.onCurrentRevision || isLive(annotation)) &&
       (options.scope === 'all' || isLive(annotation))
   )
   return {
@@ -208,12 +208,12 @@ function factLines(annotation: AnnotationView, t: Translator, f: Formatters): Do
     const overdue = isOverdue(annotation, f.today) ? ` · ${t('review.overdue')}` : ''
     blocks.push(labelled(t('review.export.document.due'), `${due}${overdue}`))
   }
-  if (!annotation.onCurrentFassung) {
+  if (!annotation.onCurrentRevision) {
     blocks.push(
       paragraph(
-        annotation.fassungNumber === null
+        annotation.revisionNumber === null
           ? t('annotations.earlierRevisionUnnumbered')
-          : t('annotations.earlierRevision', { number: annotation.fassungNumber }),
+          : t('annotations.earlierRevision', { number: annotation.revisionNumber }),
         'meta'
       )
     )
@@ -251,7 +251,7 @@ export function entryBlocks(annotation: AnnotationView, t: Translator, f: Format
 
 /** Whether the selection carries a mark set on an earlier Fassung. */
 const carriesEarlier = (selection: ProtocolSelection): boolean =>
-  [...selection.marks, ...selection.proposals].some((annotation) => !annotation.onCurrentFassung)
+  [...selection.marks, ...selection.proposals].some((annotation) => !annotation.onCurrentRevision)
 
 /**
  * Which Fassungen the Protokoll covers, as it IS: „aktuelle Fassung" only

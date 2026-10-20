@@ -59,8 +59,8 @@ const view = (overrides: Partial<AnnotationView>): AnnotationView => ({
   assigneeUserId: null,
   assigneeName: null,
   dueOn: null,
-  fassungNumber: 2,
-  onCurrentFassung: true,
+  revisionNumber: 2,
+  onCurrentRevision: true,
   createdBy: 'user_me',
   createdByName: 'Miriam Hofer',
   createdAt: '2026-10-01T08:00:00.000Z',
@@ -198,7 +198,7 @@ function Harness({
         piloti tool
       </button>
       {/* A mark of an earlier Fassung is not on the sheet: its thread opens on its own, as the review places it. */}
-      {selected && !selected.onCurrentFassung && (
+      {selected && !selected.onCurrentRevision && (
         <ThreadCard review={review} annotation={selected} placement="detached" canPickAssignee={canPickAssignee} />
       )}
       <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} onCheckFixed={checkFixed} />
@@ -276,9 +276,9 @@ describe('the review', () => {
       view({ id: 'b', number: 2 }),
       view({ id: 'p', number: 3, authorKind: 'piloti', status: 'proposed' }),
       // Open on an earlier Fassung of this document: a ghost, drawn and listed under Offen.
-      view({ id: 'ghost', number: 4, onCurrentFassung: false }),
+      view({ id: 'ghost', number: 4, onCurrentRevision: false }),
       // Closed on an earlier Fassung: listed under Erledigt, not drawn.
-      view({ id: 'gone', number: 5, onCurrentFassung: false, status: 'resolved' }),
+      view({ id: 'gone', number: 5, onCurrentRevision: false, status: 'resolved' }),
       view({ id: 'done', number: 6, status: 'resolved' }),
     ])
     let review: ReturnType<typeof useDocumentReview> | null = null
@@ -322,7 +322,7 @@ describe('the review', () => {
     serve([
       view({ id: 'a', number: 1 }),
       view({ id: 'b', number: 2, shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25, kind: 'question' }),
-      view({ id: 'c', number: 3, onCurrentFassung: false }),
+      view({ id: 'c', number: 3, onCurrentRevision: false }),
     ])
     render(<Harness transport={scriptedRoom().transport} />)
 
@@ -1791,7 +1791,7 @@ describe('a mark goes on with the current Fassung', () => {
         const mark = (lists[documentId] ?? []).find((annotation) => annotation.id === annotationId) as AnnotationView
         if (documentId === 'doc_1') {
           // Under its own name the mark moves in place: same id, same number, now on the sheet.
-          const moved = { ...mark, onCurrentFassung: true, fassungNumber: 3, carryTarget: null }
+          const moved = { ...mark, onCurrentRevision: true, revisionNumber: 3, carryTarget: null }
           lists.doc_1 = lists.doc_1.map((annotation) => (annotation.id === annotationId ? moved : annotation))
           return HttpResponse.json({ annotation: moved })
         }
@@ -1816,7 +1816,7 @@ describe('a mark goes on with the current Fassung', () => {
 
   it('carries a mark of an earlier Fassung from its card, keeping its number, and the card stops saying it is not drawn', async () => {
     const patched = serveDocuments({
-      doc_1: [view({ id: 'ann_4', number: 4, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE })],
+      doc_1: [view({ id: 'ann_4', number: 4, onCurrentRevision: false, revisionNumber: 2, carryTarget: HERE })],
     })
     render(<Harness transport={scriptedRoom().transport} />)
 
@@ -1837,10 +1837,10 @@ describe('a mark goes on with the current Fassung', () => {
   it('offers no carry the server says this reader’s carry would not go through: closed, read-only, or refused', async () => {
     serveDocuments({
       doc_1: [
-        view({ id: 'ann_closed', number: 1, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
-        view({ id: 'ann_ro', number: 2, onCurrentFassung: false, canEdit: false }),
+        view({ id: 'ann_closed', number: 1, onCurrentRevision: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+        view({ id: 'ann_ro', number: 2, onCurrentRevision: false, canEdit: false }),
         // Open and editable, and still no carry: the server named no target (a replacing document this reader may not write).
-        view({ id: 'ann_refused', number: 3, onCurrentFassung: false, carryTarget: null }),
+        view({ id: 'ann_refused', number: 3, onCurrentRevision: false, carryTarget: null }),
       ],
     })
     render(<Harness transport={scriptedRoom().transport} />)
@@ -1856,8 +1856,8 @@ describe('a mark goes on with the current Fassung', () => {
   it('carries every open mark of earlier Fassungen at once from the list', async () => {
     const patched = serveDocuments({
       doc_1: [
-        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 1, carryTarget: HERE }),
-        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+        view({ id: 'ann_1', number: 1, onCurrentRevision: false, revisionNumber: 1, carryTarget: HERE }),
+        view({ id: 'ann_2', number: 2, onCurrentRevision: false, revisionNumber: 2, carryTarget: HERE }),
         view({ id: 'ann_3', number: 3 }),
       ],
     })
@@ -1881,8 +1881,8 @@ describe('a mark goes on with the current Fassung', () => {
         id: `ann_${index + 1}`,
         documentId: from,
         number: index + 1,
-        onCurrentFassung: from === 'doc_b',
-        fassungNumber: 2,
+        onCurrentRevision: from === 'doc_b',
+        revisionNumber: 2,
         carryTarget: HERE,
       })
     )
@@ -1904,7 +1904,7 @@ describe('a mark goes on with the current Fassung', () => {
         const index = marks.findIndex((mark) => mark.id === annotationId)
         const mark = marks[index] as AnnotationView
         if (from === 'doc_1') {
-          marks[index] = { ...mark, onCurrentFassung: true, fassungNumber: 3, carryTarget: null }
+          marks[index] = { ...mark, onCurrentRevision: true, revisionNumber: 3, carryTarget: null }
           return HttpResponse.json({ annotation: marks[index] })
         }
         marks[index] = { ...mark, status: 'resolved', carryTarget: null }
@@ -2107,8 +2107,8 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
   it('asks Piloti, from the earlier Fassungen’ bar, to answer in each mark’s thread whether it is fixed, and changes nothing itself', async () => {
     const patched = serveLists({
       doc_1: [
-        view({ id: 'ann_2', number: 2, onCurrentFassung: false, fassungNumber: 1, carryTarget: HERE }),
-        view({ id: 'ann_1', number: 1, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+        view({ id: 'ann_2', number: 2, onCurrentRevision: false, revisionNumber: 1, carryTarget: HERE }),
+        view({ id: 'ann_1', number: 1, onCurrentRevision: false, revisionNumber: 2, carryTarget: HERE }),
         view({ id: 'ann_3', number: 3 }),
       ],
     })
@@ -2140,7 +2140,7 @@ describe('Piloti checks what is fixed in the current Fassung', () => {
   })
 
   it('offers no check where Piloti cannot be asked', async () => {
-    serveLists({ doc_1: [view({ id: 'ann_1', number: 1, onCurrentFassung: false, carryTarget: HERE })] })
+    serveLists({ doc_1: [view({ id: 'ann_1', number: 1, onCurrentRevision: false, carryTarget: HERE })] })
     render(<Harness transport={scriptedRoom().transport} />)
 
     const bar = await screen.findByTestId('review-earlier-bar')
@@ -2216,9 +2216,9 @@ describe('a mark of an earlier Fassung on the sheet', () => {
   it('draws an open one hollow where it stood, named by its Fassung, and opens its card to carry it on', async () => {
     serve([
       view({ id: 'ann_1', number: 1 }),
-      view({ id: 'ann_4', number: 4, x: 0.6, onCurrentFassung: false, fassungNumber: 2, carryTarget: HERE }),
+      view({ id: 'ann_4', number: 4, x: 0.6, onCurrentRevision: false, revisionNumber: 2, carryTarget: HERE }),
       // Closed on an earlier Fassung: nothing left to carry, nothing drawn.
-      view({ id: 'ann_5', number: 5, onCurrentFassung: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
+      view({ id: 'ann_5', number: 5, onCurrentRevision: false, status: 'resolved', closedBy: 'user_me', closedAt: '2026-10-02T08:00:00.000Z' }),
     ])
     render(<Harness transport={scriptedRoom().transport} />)
 
@@ -2243,8 +2243,8 @@ describe('a mark of an earlier Fassung on the sheet', () => {
         HttpResponse.json({
           annotations:
             params.id === 'doc_b'
-              ? [view({ id: 'ann_b4', documentId: 'doc_b', number: 4, onCurrentFassung: false, carryTarget: HERE })]
-              : [view({ id: 'ann_4', number: 4, onCurrentFassung: false, carryTarget: HERE })],
+              ? [view({ id: 'ann_b4', documentId: 'doc_b', number: 4, onCurrentRevision: false, carryTarget: HERE })]
+              : [view({ id: 'ann_4', number: 4, onCurrentRevision: false, carryTarget: HERE })],
           canAnnotate: true,
           pilotiWakes: false,
         })

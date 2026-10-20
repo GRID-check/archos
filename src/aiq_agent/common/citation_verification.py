@@ -112,7 +112,7 @@ class SourceEntry:
     # citation form Austrian building law uses; None for page-fallback chunks
     # and every document without a numbered outline. When several chunks
     # dedup onto one page entry the first stated Punkt survives (see ``add``).
-    punkt: str | None = None
+    clause: str | None = None
     # The retrieval score the knowledge layer printed for this passage, a true
     # cosine similarity. Carried so a reader can ask not only WHERE a passage
     # is but how nearly it matched; the best score of a page's chunks survives
@@ -121,17 +121,17 @@ class SourceEntry:
     # BINDING CLASSIFICATION carried to the client (see
     # ``binding_classification_for_entry``). Both default to the honest-unknown
     # value on purpose: a source that matched no catalogued norm must NEVER claim
-    # to bind — a fabricated "bindend" badge would be a false legal claim, so the
+    # to bind — a fabricated "binding" badge would be a false legal claim, so the
     # safe default is "we don't know". ``rank`` is the :data:`NormRank` of the
     # registry entry the source resolved to, or None when it matched none (an OIB
     # corpus document, or any unrecognised file — those carry no RIS rank).
-    # ``binding_status`` is the coarse bindingness the UI badges: ``bindend`` /
-    # ``verbindlich_erklaert`` / ``auslegend`` / ``unbekannt``. These are optional
+    # ``binding_status`` is the coarse bindingness the UI badges: ``binding`` /
+    # ``declared_binding`` / ``interpretive`` / ``unknown``. These are optional
     # carriers; the wire recomputes the classification fresh (it needs the
     # registry + Bundesland the raw entry lacks) and they round-trip through the
     # session-registry cache like the other fields.
     rank: str | None = None
-    binding_status: str = "unbekannt"
+    binding_status: str = "unknown"
     # WHERE ON THE PAGE the passage sits, as boxes the viewer draws (issue #433).
     # Stated by the producer for a passage read off a picture of the page (a
     # plan's Grundriss, a photo), never for running text, which the viewer
@@ -446,8 +446,8 @@ class SourceRegistry:
                                 existing.chunk_text = entry.chunk_text
                             elif entry.chunk_text not in existing.chunk_text:
                                 existing.chunk_text = f"{existing.chunk_text}\n\n{entry.chunk_text}"
-                        if existing.punkt is None and entry.punkt:
-                            existing.punkt = entry.punkt
+                        if existing.clause is None and entry.clause:
+                            existing.clause = entry.clause
                         if entry.score is not None and (existing.score is None or entry.score > existing.score):
                             existing.score = entry.score
                         _merge_regions(existing, entry.regions)
@@ -657,16 +657,20 @@ def _registry_from_cached_entries(entries: Any) -> SourceRegistry:
     """Rebuild a session's registry from the cached dicts ``persist_session_registry`` wrote.
 
     Every field a later turn can still read off an entry is restored, including
-    ``punkt`` and ``score``: they reach the wire (``source_entry_to_wire``), so
+    ``clause`` and ``score``: they reach the wire (``source_entry_to_wire``), so
     dropping them made a resumed conversation's chips lose the locus and the
     match strength that the same conversation had shown a minute earlier, on a
     replica move nobody could see.
     """
+    from aiq_agent.common.norm_registry import LEGACY_NORM_RANK
+
     registry = SourceRegistry()
     if isinstance(entries, list):
         for item in entries:
             if isinstance(item, dict):
                 try:
+                    rank = item.get("rank")
+                    status = item.get("binding_status", "unknown")
                     registry.add(
                         SourceEntry(
                             url=item.get("url"),
@@ -679,10 +683,10 @@ def _registry_from_cached_entries(entries: Any) -> SourceRegistry:
                             doc_class=item.get("doc_class"),
                             authored_by=item.get("authored_by"),
                             chunk_text=item.get("chunk_text"),
-                            punkt=item.get("punkt"),
+                            clause=item.get("clause", item.get("punkt")),
                             score=item.get("score"),
-                            rank=item.get("rank"),
-                            binding_status=item.get("binding_status", "unbekannt"),
+                            rank=LEGACY_NORM_RANK.get(rank, rank) if isinstance(rank, str) else rank,
+                            binding_status=LEGACY_BINDING_STATUS.get(status, status),
                             regions=[
                                 region
                                 for region in map(SourceRegion.from_cached, item.get("regions") or [])
@@ -1031,7 +1035,7 @@ def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
         # no surrounding blank lines, so ``verify_quoted_spans`` matches an
         # answer's quote against the passage and nothing else.
         chunk_text=hit.body.strip() or None,
-        punkt=(hit.punkt or "").strip() or None,
+        clause=(hit.clause or "").strip() or None,
         score=hit.score,
         regions=list(hit.regions[:_MAX_REGIONS_PER_SOURCE]),
         project_id=hit.project.id if hit.project else None,
@@ -1283,7 +1287,13 @@ def _parse_kl_doc_class(raw: str | None) -> str | None:
     """
     if not raw:
         return None
-    return raw.split("—")[0].split(" - ")[0].strip() or None
+    key = raw.split("—")[0].split(" - ")[0].strip() or None
+    if not key:
+        return None
+    from aiq_agent.knowledge.document_classification import canonical_doc_class
+
+    # A tool result kept in an older conversation names the German key.
+    return canonical_doc_class(key) or key
 
 
 def _parse_kl_authored_by(raw: str | None) -> str | None:
@@ -1311,7 +1321,7 @@ def _kl_entry(
     authored_by: str | None = None,
     chunk_text: str | None,
     tool_name: str,
-    punkt: str | None = None,
+    clause: str | None = None,
     score: float | None = None,
     project: tuple[str, str, str] | None = None,
     project_land_note: str | None = None,
@@ -1332,7 +1342,7 @@ def _kl_entry(
         doc_class=doc_class or None,
         authored_by=authored_by or None,
         chunk_text=chunk_text or None,
-        punkt=(punkt or "").strip() or None,
+        clause=(clause or "").strip() or None,
         score=score,
         project_id=project_id,
         project_name=project_name,
@@ -1403,7 +1413,7 @@ def _parse_knowledge_layer(content: str, tool_name: str) -> list[SourceEntry]:
                     authored_by=_parse_kl_authored_by(_first(_KL_PROVENANCE_RE, header)),
                     chunk_text=_kl_block_body(block),
                     tool_name=tool_name,
-                    punkt=_first(_KL_CLAUSE_RE, header),
+                    clause=_first(_KL_CLAUSE_RE, header),
                     project=_parse_kl_project(header),
                     project_land_note=_first(_KL_LAND_RE, header),
                     # The score line is the header's last line by definition of
@@ -2025,17 +2035,26 @@ def binding_note_for_entry(entry: SourceEntry, registry: NormRegistry | None = N
 # ---------------------------------------------------------------------------
 
 # NormRank -> coarse binding status. The exact partition the spec fixes:
-#   bundesgesetz/landesgesetz/verordnung -> bindend         (statute / ordinance)
-#   behoerdliche_info                    -> verbindlich_erklaert
+#   federal_law/state_law/ordinance -> binding            (statute / ordinance)
+#   authority_info                  -> declared_binding
 #     (the lane by which a Land declares OIB binding — e.g. the Wiener WBTV;
 #      OIB-Richtlinien themselves are treated as this, see ``_oib_binding_status``)
-#   norm_extern                          -> auslegend        (ÖNORM/Leitfaden: interpretive)
+#   external_standard               -> interpretive        (ÖNORM/Leitfaden: interpretive)
 _STATUS_FOR_RANK: dict[str, str] = {
-    "bundesgesetz": "bindend",
-    "landesgesetz": "bindend",
-    "verordnung": "bindend",
-    "behoerdliche_info": "verbindlich_erklaert",
-    "norm_extern": "auslegend",
+    "federal_law": "binding",
+    "state_law": "binding",
+    "ordinance": "binding",
+    "authority_info": "declared_binding",
+    "external_standard": "interpretive",
+}
+
+#: The German binding statuses an older pod wrote into the shared session cache
+#: (and onto the wire) before the English names. Read-only: nothing writes these.
+LEGACY_BINDING_STATUS: dict[str, str] = {
+    "bindend": "binding",
+    "verbindlich_erklaert": "declared_binding",
+    "auslegend": "interpretive",
+    "unbekannt": "unknown",
 }
 
 # Explicit "Dokumentart" (doc_class) keys for the OIB corpus, which is NOT in the
@@ -2043,9 +2062,9 @@ _STATUS_FOR_RANK: dict[str, str] = {
 # the normative text a Bundesland declares binding; its Leitfäden, Erläuterungen,
 # Begriffsbestimmungen, referenced-norm lists and change docs only interpret or
 # accompany it and never found a new requirement.
-_OIB_GUIDELINE_DOC_CLASSES = frozenset({"oib_richtlinie"})
+_OIB_GUIDELINE_DOC_CLASSES = frozenset({"oib_guideline"})
 _OIB_INTERPRETIVE_DOC_CLASSES = frozenset(
-    {"oib_leitfaden", "oib_erlaeuterung", "oib_begriffe", "oib_referenz", "oib_aenderung"}
+    {"oib_guide", "oib_explanatory_note", "oib_definitions", "oib_reference", "oib_amendment"}
 )
 
 
@@ -2056,14 +2075,14 @@ class BindingClassification:
     ``rank`` is the :data:`NormRank` of the registry entry the source resolved
     to (``None`` when it matched none — an OIB corpus document, or an
     unrecognised file). ``binding_status`` is the coarse bindingness the UI
-    badges: ``bindend`` / ``verbindlich_erklaert`` / ``auslegend`` /
-    ``unbekannt``. The default is ``unbekannt`` with no rank — the honest
+    badges: ``binding`` / ``declared_binding`` / ``interpretive`` /
+    ``unknown``. The default is ``unknown`` with no rank — the honest
     "we don't know" that a source matching nothing MUST get, because a
     fabricated binding badge would be a false legal claim.
     """
 
     rank: NormRank | None = None
-    binding_status: str = "unbekannt"
+    binding_status: str = "unknown"
 
 
 def _source_document_identifier(entry: SourceEntry) -> str | None:
@@ -2100,7 +2119,7 @@ def _match_registry_entry(
 
     Bundesland is respected via :func:`focus_entries`: a Wien entry is dropped
     for a Tirol project, so its rank is never claimed for the wrong jurisdiction
-    (the classification then falls through to ``unbekannt`` rather than lying).
+    (the classification then falls through to ``unknown`` rather than lying).
     """
     from aiq_agent.common.norm_registry import focus_entries
     from aiq_agent.common.norm_registry import load_registry
@@ -2142,19 +2161,21 @@ def _oib_binding_status(entry: SourceEntry) -> str | None:
     role is asserted. ``None`` when the source is not an OIB corpus document.
     """
     from aiq_agent.common.norm_registry import oib_doc_class
+    from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-    if entry.doc_class in _OIB_GUIDELINE_DOC_CLASSES:
-        return "verbindlich_erklaert"
-    if entry.doc_class in _OIB_INTERPRETIVE_DOC_CLASSES:
-        return "auslegend"
+    doc_class = canonical_doc_class(entry.doc_class) or entry.doc_class
+    if doc_class in _OIB_GUIDELINE_DOC_CLASSES:
+        return "declared_binding"
+    if doc_class in _OIB_INTERPRETIVE_DOC_CLASSES:
+        return "interpretive"
     if entry.citation_key:
         filename, _page = _parse_citation_key(entry.citation_key)
         basename = filename.rsplit("/", 1)[-1] if filename else ""
         oib_class = oib_doc_class(basename) if basename else None
         if oib_class == "richtlinie":
-            return "verbindlich_erklaert"
+            return "declared_binding"
         if oib_class is not None:
-            return "auslegend"
+            return "interpretive"
     return None
 
 
@@ -2169,12 +2190,12 @@ def binding_classification_for_entry(
     filename/title vs ``short``/``alias``/``title``) yields that entry's rank and
     the coarse status it maps to; an OIB corpus document (no registry entry)
     yields the status its Richtlinie/Leitfaden role implies with ``rank=None``;
-    anything else is ``unbekannt``.
+    anything else is ``unknown``.
 
     Fail-open EXACTLY like :func:`binding_note_for_entry`: a missing/invalid
-    registry (or any error) yields ``unbekannt``, never an exception — a binding
-    classification must never take a turn down. ``unbekannt`` is also the honest
-    default for a source that matched nothing: emitting a guessed "bindend" would
+    registry (or any error) yields ``unknown``, never an exception — a binding
+    classification must never take a turn down. ``unknown`` is also the honest
+    default for a source that matched nothing: emitting a guessed "binding" would
     be a false legal claim, so the safe direction is always "we don't know".
     """
     try:
@@ -2182,7 +2203,7 @@ def binding_classification_for_entry(
         if norm is not None:
             return BindingClassification(
                 rank=norm.rank,
-                binding_status=_STATUS_FOR_RANK.get(norm.rank, "unbekannt"),
+                binding_status=_STATUS_FOR_RANK.get(norm.rank, "unknown"),
             )
         status = _oib_binding_status(entry)
         if status is not None:
@@ -2506,7 +2527,7 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
 
     # Canonical source-kind: the coarse taxonomy every surface renders through
     # (chips, Herleitung fan-out, report). Derived from the rich lane
-    # classification so the OIB corpus and RIS share the same ``baurecht`` kind;
+    # classification so the OIB corpus and RIS share the same ``building_law`` kind;
     # the fine lane travels alongside as a sub-label. See ``source_kinds``.
     # The norm registry is static within a turn; load it at most once here
     # (only for RIS entries, mirroring both helpers' guard) and hand the same
@@ -2562,7 +2583,7 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
         "binding_note": binding_note_for_entry(entry, registry),
         # Structured binding status alongside the prose ``binding_note``. ``rank``
         # is dropped by the None-filter below when the source matched no catalogued
-        # norm; ``binding_status`` is ALWAYS emitted (``unbekannt`` included) — the
+        # norm; ``binding_status`` is ALWAYS emitted (``unknown`` included) — the
         # honest "we don't know" is a signal the UI needs, not an absence.
         "rank": classification.rank,
         "binding_status": classification.binding_status,
@@ -2571,7 +2592,7 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
         # WHERE within the document, in the law's own numbering, and HOW NEARLY
         # it matched. Both are absent (dropped by the None-filter) when the
         # producer did not state them — a web source has neither.
-        "punkt": entry.punkt,
+        "clause": entry.clause,
         "score": entry.score,
         # THE PASSAGE ITSELF — the one thing a reader checking a citation is
         # actually after, and the one field this serializer used to drop.
@@ -2621,7 +2642,7 @@ def _wire_project(entry: SourceEntry) -> dict[str, str] | None:
 #: which page) and placement (which kind, which lane) — never prose.
 #:
 #: Dropped structurally rather than by convention: no ``snippet`` (the
-#: retrieved passage), no ``content`` locator line, no ``score``/``punkt``,
+#: retrieved passage), no ``content`` locator line, no ``score``/``clause``,
 #: no ``[N]`` number, no binding claims. A reader checking "what else did it
 #: read" gets document chips; anything that could restate evidence stays on
 #: the cited channel.

@@ -10,7 +10,7 @@ import type { ResolvedSurfacedDocument } from '@/features/documents/hooks/use-su
 /** Open the cited/surfaced file in the chat peek. */
 export function peekFile(
   file: FileItem,
-  source: 'projekt' | 'buero' | null,
+  source: 'project' | 'office' | null,
   projectId?: string | null,
 ): void {
   openFilePeek({ file, source, projectId })
@@ -26,7 +26,7 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
   projectId,
 }) => {
   const t = useTranslations('chat')
-  const isOffice = entry.surfaced.source === 'buero'
+  const isOffice = entry.surfaced.source === 'office'
   const href = isOffice ? '/app/archiv' : projectId ? `/app/projects/${projectId}/files` : '/app/archiv'
   const actionLabel = isOffice || !projectId ? t('documentGrid.openInOfficeShelf') : t('documentGrid.openInFiles')
 

@@ -75,12 +75,12 @@ PROJECT_DIRECTIVE = "project"
 #: Mirrors ``PROJECT_KEYS`` in ``answer-directives.ts``. No ``parcel_area_m2``:
 #: the profile records no Grundstücksfläche.
 PROJECT_KEYS: dict[str, str] = {
-    "building_class": "gebaeudeklasse",
-    "escape_level_m": "fluchtniveau_m",
-    "use": "nutzungen",
-    "state": "bundesland",
-    "storeys": "geschosse_oberirdisch",
-    "gross_floor_area_m2": "bgf_oberirdisch",
+    "building_class": "building_class",
+    "escape_level_m": "escape_level_m",
+    "use": "uses",
+    "state": "federal_state",
+    "storeys": "storeys_above_ground",
+    "gross_floor_area_m2": "gfa_above_ground",
 }
 
 #: ``kind`` → (primary blocks, diagrams) an answer of that kind may carry.

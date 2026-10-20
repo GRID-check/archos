@@ -78,7 +78,7 @@ const BASE: TaskWireRow = {
   createdAt: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString(),
   finishedAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
   error: null,
-  runSummary: { status: 'fertig', rounds: 3, docs: 9 },
+  runSummary: { status: 'done', rounds: 3, docs: 9 },
 }
 
 /** The same task as it arrived before run messages existed: no run to read. */

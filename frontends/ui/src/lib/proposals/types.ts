@@ -34,7 +34,7 @@ export type ProposedChangeStatus = (typeof PROPOSED_CHANGE_STATUSES)[number]
 /**
  * The shelf a proposal is on (0146), `project_folders.scope`'s vocabulary. A
  * Büroablage (`archiv`) proposal has no project and can only move Büroablage
- * documents (`proposed_changes_archiv_move`).
+ * documents (`proposed_changes_office_shelf_move`).
  */
 export const PROPOSAL_SCOPES = ['project', 'archiv'] as const
 export type ProposalScope = (typeof PROPOSAL_SCOPES)[number]
@@ -65,7 +65,12 @@ const text = (max: number) => z.string().trim().min(1).max(max)
 export const fileOperationItemSchema = z
   .object({
     document: text(512).nullish(),
-    source: z.enum(['projekt', 'buero']).nullish(),
+    // A proposal stored (or a card an older pod emitted) before the English
+    // names says `project` / `office`; read-only, nothing writes these.
+    source: z.preprocess(
+      (value) => (value === 'project' ? 'project' : value === 'office' ? 'office' : value),
+      z.enum(['project', 'office']).nullish()
+    ),
     current: z.string().max(512).nullish(),
     target_folder: z.string().max(1024).nullish(),
     new_display_name: text(512).nullish(),

@@ -22,10 +22,10 @@ export interface RunBrief {
 }
 
 const STATUS_WORD: Record<FindingStatus, string> = {
-  erfuellt: 'erfüllt',
-  nicht_erfuellt: 'nicht erfüllt',
-  offen: 'offen',
-  nicht_anwendbar: 'nicht anwendbar',
+  met: 'erfüllt',
+  not_met: 'nicht erfüllt',
+  open: 'offen',
+  not_applicable: 'nicht anwendbar',
 }
 
 const findingLine = (finding: Finding): string => {
@@ -83,7 +83,7 @@ export function continuationBrief(message: ChatMessage): RunBrief {
   ].join('\n')
   const basis = reportDocuments(message)
   return basis.length > 0
-    ? { question, context, documents: { grundlage: basis, ausgeschlossen: [] } }
+    ? { question, context, documents: { basis: basis, excluded: [] } }
     : { question, context }
 }
 

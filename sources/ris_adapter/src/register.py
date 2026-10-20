@@ -646,8 +646,8 @@ def _format_catalog_entry(index: int, entry: NormEntry) -> str:
     """Format one curated catalog entry as an agent-readable pointer block."""
     lines = [f"--- Catalog match {index} ---"]
     lines.append(f"Title: {entry.title}")
-    if entry.bundesland:
-        lines.append(f"Bundesland: {entry.bundesland}")
+    if entry.federal_state:
+        lines.append(f"Bundesland: {entry.federal_state}")
     if entry.is_ris:
         lines.append(f"Application: {entry.application}")
         lines.append(f"Document number: {entry.document_number}")
@@ -656,7 +656,7 @@ def _format_catalog_entry(index: int, entry: NormEntry) -> str:
         if entry.full_law_url:
             lines.append(f"Entire consolidated law (all paragraphs): {entry.full_law_url}")
     elif entry.source_url:
-        # Non-RIS source (behoerdliche_info etc.): a plain link — NOT fetchable
+        # Non-RIS source (authority_info etc.): a plain link — NOT fetchable
         # via ris_fetch_document; the agent reads it with the web tools.
         lines.append(f"Not in RIS - web source: {entry.source_url}")
     else:

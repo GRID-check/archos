@@ -136,7 +136,7 @@ const ALL_TYPES = [
   'mail_import.failed',
   // A newer Fassung of a document you follow (ADR-0054): documents are not a
   // chat feature, and an office without collaboration still has uploaders.
-  'document.new_fassung',
+  'document.new_revision',
   // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
   // not a chat feature either.
   'piloti.work_done',
@@ -175,7 +175,7 @@ const OPERATIONAL_TYPES = [
   'mail_import.failed',
   // A newer Fassung of a document you follow (ADR-0054): documents are not a
   // chat feature, and an office without collaboration still has uploaders.
-  'document.new_fassung',
+  'document.new_revision',
   // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
   // not a chat feature either.
   'piloti.work_done',
@@ -419,10 +419,10 @@ describe('listInbox — projection', () => {
 
   it('carries the second name of a row (a new Fassung\'s newer document) and withholds it with the rest of the payload', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([
-      row({ id: 'ok', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
-      row({ id: 'junk', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
-      row({ id: 'inert', type: 'document.new_fassung', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
-      row({ id: 'gone', type: 'document.new_fassung', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'ok', type: 'document.new_revision', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
+      row({ id: 'junk', type: 'document.new_revision', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
+      row({ id: 'inert', type: 'document.new_revision', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'gone', type: 'document.new_revision', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
     ])
     vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
       if (resourceId === 'conv_gone') throw new NotFoundError()

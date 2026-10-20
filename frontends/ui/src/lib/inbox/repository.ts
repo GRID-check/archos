@@ -23,7 +23,7 @@ import {
   type NewInboxItem,
   type ShareableResourceType,
 } from '@/lib/db/schema'
-import type { InboxListFilter } from './types'
+import { legacyInboxTypeAliases, type InboxListFilter } from './types'
 import { MARKS_SET_GROUP_ANCHOR } from './registry'
 
 /** Hard cap for an inbox page. Read-time re-authorization cost scales with this. */
@@ -319,7 +319,8 @@ function typeFilter(types: InboxTypeScope | undefined) {
   // An empty set is not "no filter" — it is a reader who may see nothing, and
   // matching everything there would be the exact inversion of the gate.
   if (types.length === 0) return sql`false`
-  return inArray(inboxItems.type, [...types])
+  // The legacy spellings are strings the column type does not list; they match rows an older pod wrote.
+  return inArray(inboxItems.type, [...types, ...legacyInboxTypeAliases(types)] as InboxItemType[])
 }
 
 /**

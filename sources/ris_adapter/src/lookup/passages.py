@@ -25,7 +25,7 @@ from ris_adapter.register import _legal_status_note
 #: guesses everywhere else in this repo; here the producer KNOWS the class, and
 #: stating it is what puts the hit in the Rechtsquelle lane instead of "unknown"
 #: (``norm_registry.lane_for_hit`` reads doc_class first).
-DOC_CLASS = "gesetz"
+DOC_CLASS = "law"
 
 #: What the ``Relevance Score:`` line means for RIS. It is NOT a similarity:
 #: this tool resolves an ADDRESS, it does not embed anything. A passage the

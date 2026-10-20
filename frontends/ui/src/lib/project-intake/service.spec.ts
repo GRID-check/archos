@@ -149,7 +149,7 @@ const intake = (overrides: Partial<ProjectIntakeRow> = {}): ProjectIntakeRow => 
 const need = (key: string, extra: Partial<Need> = {}): Need => ({
   key,
   baseKey: key.split('@')[0],
-  bauwerkId: /@(bw\d+)/.exec(key)?.[1] ?? null,
+  bauwerkId: /@(bldg\d+)/.exec(key)?.[1] ?? null,
   label: key,
   type: 'text',
   foundIn: [],
@@ -198,13 +198,13 @@ beforeEach(() => {
   } as Partial<Project> as Project)
   vi.mocked(extractableDocuments).mockResolvedValue([document(), document({ documentId: DOC_B, fileName: 'Baubeschreibung.pdf', contentHash: null })])
   vi.mocked(computeNeeds).mockReturnValue([
-    need('bauwerkstyp@bw1', { type: 'single_select', options: [{ token: 'gebaeude', label: 'Gebäude' }, { token: 'klein', label: 'Klein' }] }),
-    need('gebaeudestellung@bw1', { type: 'single_select' }),
-    need('geschosse_oberirdisch@bw1', { type: 'number_tri', decisive: true }),
+    need('building_type@bldg1', { type: 'single_select', options: [{ token: 'building', label: 'Gebäude' }, { token: 'small', label: 'Klein' }] }),
+    need('building_position@bldg1', { type: 'single_select' }),
+    need('storeys_above_ground@bldg1', { type: 'number_tri', decisive: true }),
   ])
   vi.mocked(deriveBuildingClass).mockImplementation((inputs) =>
-    inputs.geschosse_oberirdisch === undefined
-      ? { value: null, hochhaus: false, applicable: true, missing: ['geschosse_oberirdisch'] }
+    inputs.storeys_above_ground === undefined
+      ? { value: null, hochhaus: false, applicable: true, missing: ['storeys_above_ground'] }
       : { value: 3, hochhaus: false, applicable: true, missing: [] }
   )
   vi.mocked(patchProjectProfile).mockResolvedValue({} as Partial<PatchedProjectProfile> as PatchedProjectProfile)
@@ -216,47 +216,47 @@ beforeEach(() => {
 describe('recordIntakeValues — what a value becomes', () => {
   it('refuses a job that is not the current reading, 409 stale-reading, before reading anything else', async () => {
     vi.mocked(findProjectIntake).mockResolvedValue(intake({ jobId: 'intake-job-0' }))
-    const refused = recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+    const refused = recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])
     await expect(refused).rejects.toBeInstanceOf(ConflictError)
     await expect(refused).rejects.toMatchObject({ details: { reason: 'stale-reading' } })
 
     vi.mocked(findProjectIntake).mockResolvedValue(intake({ status: 'ready' }))
-    await expect(recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])).rejects.toMatchObject({
+    await expect(recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])).rejects.toMatchObject({
       details: { reason: 'stale-reading' },
     })
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
 
   it('refuses outside the vocabulary, a dismissed value, a file outside the main collection and a key no question writes', async () => {
-    vi.mocked(findProjectIntake).mockResolvedValue(intake({ dismissed: [{ key: 'gebaeudestellung@bw1', value: 'angebaut' }] }))
+    vi.mocked(findProjectIntake).mockResolvedValue(intake({ dismissed: [{ key: 'building_position@bldg1', value: 'attached' }] }))
 
     const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
-      value('bauwerkstyp@bw1', 'hochhaus'),
-      value('gebaeudestellung@bw1', 'angebaut'),
-      value('bauwerkstyp@bw1', 'gebaeude', { fileName: 'Vertraulich/Honorar.pdf' }),
+      value('building_type@bldg1', 'hochhaus'),
+      value('building_position@bldg1', 'attached'),
+      value('building_type@bldg1', 'building', { fileName: 'Vertraulich/Honorar.pdf' }),
       value('nicht_im_assistenten', 'x'),
-      value('bauwerkstyp@bw1', ''),
-      value('bauwerkstyp@bw1', 'noch_offen'),
+      value('building_type@bldg1', ''),
+      value('building_type@bldg1', 'undecided'),
     ])
 
     expect(results).toEqual([
-      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'vocabulary' },
-      { key: 'gebaeudestellung@bw1', outcome: 'refused', reason: 'dismissed' },
-      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'unreadable-file' },
+      { key: 'building_type@bldg1', outcome: 'refused', reason: 'vocabulary' },
+      { key: 'building_position@bldg1', outcome: 'refused', reason: 'dismissed' },
+      { key: 'building_type@bldg1', outcome: 'refused', reason: 'unreadable-file' },
       { key: 'nicht_im_assistenten', outcome: 'refused', reason: 'unknown-key' },
-      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'vocabulary' },
-      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'vocabulary' },
+      { key: 'building_type@bldg1', outcome: 'refused', reason: 'vocabulary' },
+      { key: 'building_type@bldg1', outcome: 'refused', reason: 'vocabulary' },
     ])
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
 
   it('refuses a key in a scope its question is not asked in, or on a building the profile does not describe', async () => {
     const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
-      value('bundesland@bw1', 'wien'),
-      value('geschosse_oberirdisch', 3),
-      value('geschosse_oberirdisch@bw2', 3),
-      value('wohneinheiten@bw1@buero', 4),
-      value('gebaeudeklasse@bw1', 3),
+      value('federal_state@bldg1', 'vienna'),
+      value('storeys_above_ground', 3),
+      value('storeys_above_ground@bldg2', 3),
+      value('dwelling_units@bldg1@office', 4),
+      value('building_class@bldg1', 3),
     ])
 
     expect(results.map((result) => result.reason)).toEqual(['unknown-key', 'unknown-key', 'unknown-key', 'unknown-key', 'unknown-key'])
@@ -266,40 +266,40 @@ describe('recordIntakeValues — what a value becomes', () => {
   it('takes a value whose question is not asked yet: the Wohnungen before the Nutzungen that open them, in any order', async () => {
     // computeNeeds (mocked) lists neither: no answer opens their questions yet.
     const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
-      value('wohneinheiten@bw1@wohnen', 12),
-      value('nutzungen@bw1', ['wohnen']),
-      value('fluchtniveau_m@bw1', 7.2),
+      value('dwelling_units@bldg1@residential', 12),
+      value('uses@bldg1', ['residential']),
+      value('escape_level_m@bldg1', 7.2),
     ])
 
     expect(results).toEqual([
-      { key: 'wohneinheiten@bw1@wohnen', outcome: 'suggested' },
-      { key: 'nutzungen@bw1', outcome: 'suggested' },
-      { key: 'fluchtniveau_m@bw1', outcome: 'suggested' },
+      { key: 'dwelling_units@bldg1@residential', outcome: 'suggested' },
+      { key: 'uses@bldg1', outcome: 'suggested' },
+      { key: 'escape_level_m@bldg1', outcome: 'suggested' },
     ])
-    expect(op('/assumptions/wohneinheiten@bw1@wohnen')?.value).toMatchObject({ value: 12, source: 'agent_suggested' })
+    expect(op('/assumptions/dwelling_units@bldg1@residential')?.value).toMatchObject({ value: 12, source: 'agent_suggested' })
   })
 
   it('records on every building the profile describes, and adds none', async () => {
-    const fact = { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } as const
-    useProfile({ ...emptyProfile(), facts: { 'bauwerkstyp@bw1': fact, 'bauwerkstyp@bw2': fact } })
+    const fact = { value: 'building', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } as const
+    useProfile({ ...emptyProfile(), facts: { 'building_type@bldg1': fact, 'building_type@bldg2': fact } })
 
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('geschosse_oberirdisch@bw2', 3), value('geschosse_oberirdisch@bw3', 2)])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('storeys_above_ground@bldg2', 3), value('storeys_above_ground@bldg3', 2)])
 
     expect(results).toEqual([
-      { key: 'geschosse_oberirdisch@bw2', outcome: 'suggested' },
-      { key: 'geschosse_oberirdisch@bw3', outcome: 'refused', reason: 'unknown-key' },
+      { key: 'storeys_above_ground@bldg2', outcome: 'suggested' },
+      { key: 'storeys_above_ground@bldg3', outcome: 'refused', reason: 'unknown-key' },
     ])
   })
 
   it('writes a new value as a suggestion with its evidence, the quote masked before it is stored', async () => {
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])
 
-    expect(results).toEqual([{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }])
+    expect(results).toEqual([{ key: 'building_type@bldg1', outcome: 'suggested' }])
     expect(patchProjectProfile).toHaveBeenCalledTimes(1)
     expect(vi.mocked(patchProjectProfile).mock.calls[0][0]).toBe(SESSION)
-    const suggestion = op('/assumptions/bauwerkstyp@bw1')?.value
+    const suggestion = op('/assumptions/building_type@bldg1')?.value
     expect(suggestion).toMatchObject({
-      value: 'gebaeude',
+      value: 'building',
       status: 'unconfirmed',
       source: 'agent_suggested',
       reason: 'Einreichplan.pdf, S. 2: „Bauwerber: [Name], Gebäude"',
@@ -311,14 +311,14 @@ describe('recordIntakeValues — what a value becomes', () => {
   it('corroborates a confirmed fact with the same value: its evidence grows, the fact stays', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'gebaeudestellung@bw1': { value: 'freistehend', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
+      facts: { 'building_position@bldg1': { value: 'freestanding', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
     })
 
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('gebaeudestellung@bw1', 'freistehend')])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_position@bldg1', 'freestanding')])
 
-    expect(results).toEqual([{ key: 'gebaeudestellung@bw1', outcome: 'corroborated' }])
-    expect(op('/facts/gebaeudestellung@bw1')?.value).toMatchObject({
-      value: 'freistehend',
+    expect(results).toEqual([{ key: 'building_position@bldg1', outcome: 'corroborated' }])
+    expect(op('/facts/building_position@bldg1')?.value).toMatchObject({
+      value: 'freestanding',
       confidence: 'confirmed',
       evidence: [{ kind: 'document', fileName: 'Einreichplan.pdf' }],
     })
@@ -327,54 +327,54 @@ describe('recordIntakeValues — what a value becomes', () => {
   it('records a different value beside a confirmed fact as an alternative ON THE FACT, never over it, even when the key is no longer a need', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'fluchtniveau_m@bw1': { value: 6.5, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
+      facts: { 'escape_level_m@bldg1': { value: 6.5, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
     })
 
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('fluchtniveau_m@bw1', 7.2)])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('escape_level_m@bldg1', 7.2)])
 
-    expect(results).toEqual([{ key: 'fluchtniveau_m@bw1', outcome: 'contradiction' }])
-    const fact = op('/facts/fluchtniveau_m@bw1')?.value as { value: number; alternatives: Array<{ value: number }> }
+    expect(results).toEqual([{ key: 'escape_level_m@bldg1', outcome: 'contradiction' }])
+    const fact = op('/facts/escape_level_m@bldg1')?.value as { value: number; alternatives: Array<{ value: number }> }
     expect(fact.value).toBe(6.5)
     expect(fact.alternatives).toEqual([
       expect.objectContaining({ value: 7.2, evidence: [expect.objectContaining({ kind: 'document' })] }),
     ])
-    expect(op('/assumptions/fluchtniveau_m@bw1')).toBeUndefined()
+    expect(op('/assumptions/escape_level_m@bldg1')).toBeUndefined()
   })
 
   it('records a different value beside an earlier suggestion as an alternative on the suggestion', async () => {
     useProfile({
       ...emptyProfile(),
       assumptions: {
-        'bauwerkstyp@bw1': { value: 'klein', status: 'unconfirmed', reason: 'x', source: 'agent_suggested', updatedAt: NOW },
+        'building_type@bldg1': { value: 'small', status: 'unconfirmed', reason: 'x', source: 'agent_suggested', updatedAt: NOW },
       },
     })
 
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])
 
-    expect(results).toEqual([{ key: 'bauwerkstyp@bw1', outcome: 'contradiction' }])
-    expect(op('/assumptions/bauwerkstyp@bw1')?.value).toMatchObject({
-      value: 'klein',
-      alternatives: [{ value: 'gebaeude' }],
+    expect(results).toEqual([{ key: 'building_type@bldg1', outcome: 'contradiction' }])
+    expect(op('/assumptions/building_type@bldg1')?.value).toMatchObject({
+      value: 'small',
+      alternatives: [{ value: 'building' }],
     })
   })
 
   it('derives the building class when an input moved, as a suggestion with its derivation and inputs', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'bauwerkstyp@bw1': { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
+      facts: { 'building_type@bldg1': { value: 'building', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
     })
 
-    await recordIntakeValues(SESSION, PROJECT, JOB, [value('geschosse_oberirdisch@bw1', 3)])
+    await recordIntakeValues(SESSION, PROJECT, JOB, [value('storeys_above_ground@bldg1', 3)])
 
-    const derived = op('/assumptions/gebaeudeklasse@bw1')?.value as Record<string, unknown>
+    const derived = op('/assumptions/building_class@bldg1')?.value as Record<string, unknown>
     expect(derived).toMatchObject({ value: 3, source: 'agent_suggested', status: 'unconfirmed' })
     expect(derived.evidence).toEqual([
       expect.objectContaining({
         kind: 'derivation',
-        rule: 'gebaeudeklasse',
+        rule: 'building_class',
         inputs: expect.arrayContaining([
-          { key: 'bauwerkstyp@bw1', value: 'gebaeude', suggested: false },
-          { key: 'geschosse_oberirdisch@bw1', value: 3, suggested: true },
+          { key: 'building_type@bldg1', value: 'building', suggested: false },
+          { key: 'storeys_above_ground@bldg1', value: 3, suggested: true },
         ]),
       }),
     ])
@@ -383,14 +383,14 @@ describe('recordIntakeValues — what a value becomes', () => {
   it('refuses the building class a document states, beside a confirmed class too: it is derived, never recorded', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'gebaeudeklasse@bw1': { value: 4, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
+      facts: { 'building_class@bldg1': { value: 4, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
     })
 
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('gebaeudeklasse@bw1', 1), value('gebaeudeklasse@bw2', 1)])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_class@bldg1', 1), value('building_class@bldg2', 1)])
 
     expect(results).toEqual([
-      { key: 'gebaeudeklasse@bw1', outcome: 'refused', reason: 'unknown-key' },
-      { key: 'gebaeudeklasse@bw2', outcome: 'refused', reason: 'unknown-key' },
+      { key: 'building_class@bldg1', outcome: 'refused', reason: 'unknown-key' },
+      { key: 'building_class@bldg2', outcome: 'refused', reason: 'unknown-key' },
     ])
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
@@ -398,39 +398,39 @@ describe('recordIntakeValues — what a value becomes', () => {
   it('never derives over a confirmed building class: a different class becomes an alternative on the fact', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'gebaeudeklasse@bw1': { value: 2, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
+      facts: { 'building_class@bldg1': { value: 2, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
     })
 
-    await recordIntakeValues(SESSION, PROJECT, JOB, [value('geschosse_oberirdisch@bw1', 3)])
+    await recordIntakeValues(SESSION, PROJECT, JOB, [value('storeys_above_ground@bldg1', 3)])
 
-    expect(op('/assumptions/gebaeudeklasse@bw1')).toBeUndefined()
-    expect(op('/facts/gebaeudeklasse@bw1')?.value).toMatchObject({
+    expect(op('/assumptions/building_class@bldg1')).toBeUndefined()
+    expect(op('/facts/building_class@bldg1')?.value).toMatchObject({
       value: 2,
       alternatives: [{ value: 3, evidence: [expect.objectContaining({ kind: 'derivation' })] }],
     })
   })
 
   it('marks a suggestion with the reading that made it', async () => {
-    await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
-    expect(op('/assumptions/bauwerkstyp@bw1')?.value).toMatchObject({ readingId: JOB })
+    await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])
+    expect(op('/assumptions/building_type@bldg1')?.value).toMatchObject({ readingId: JOB })
   })
 
   it('names the needs the values opened, decisive first, from the needs before and after the same write', async () => {
     vi.mocked(computeNeeds).mockImplementation((current) =>
-      current.assumptions['bauwerkstyp@bw1']
+      current.assumptions['building_type@bldg1']
         ? [
-            need('geschosse_oberirdisch@bw1', { decisive: true }),
-            need('bauwerkstyp@bw1', { state: 'suggested' }),
-            need('gebaeudestellung@bw1'),
+            need('storeys_above_ground@bldg1', { decisive: true }),
+            need('building_type@bldg1', { state: 'suggested' }),
+            need('building_position@bldg1'),
           ]
-        : [need('bauwerkstyp@bw1', { decisive: true })]
+        : [need('building_type@bldg1', { decisive: true })]
     )
 
-    const { opened } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+    const { opened } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])
 
     expect(opened).toEqual([
-      { key: 'geschosse_oberirdisch@bw1', decisive: true },
-      { key: 'gebaeudestellung@bw1', decisive: false },
+      { key: 'storeys_above_ground@bldg1', decisive: true },
+      { key: 'building_position@bldg1', decisive: false },
     ])
     expect(computeNeeds).toHaveBeenCalledWith(expect.anything(), expect.anything(), { mode: 'active', dismissed: [] })
   })
@@ -440,9 +440,9 @@ describe('recordIntakeValues — what a value becomes', () => {
       .mockRejectedValueOnce(new ConflictError('Conflict: profile was modified by another request'))
       .mockResolvedValueOnce({} as Partial<PatchedProjectProfile> as PatchedProjectProfile)
 
-    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])
 
-    expect(results).toEqual([{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }])
+    expect(results).toEqual([{ key: 'building_type@bldg1', outcome: 'suggested' }])
     expect(patchProjectProfile).toHaveBeenCalledTimes(2)
     // The profile was read again for the second plan (once per attempt; the screen does not read it).
     expect(findProjectProfileInOrg).toHaveBeenCalledTimes(2)
@@ -451,7 +451,7 @@ describe('recordIntakeValues — what a value becomes', () => {
   it(`gives up after ${MAX_WRITE_ATTEMPTS} lost locks and says so`, async () => {
     vi.mocked(patchProjectProfile).mockRejectedValue(new ConflictError('Conflict'))
 
-    await expect(recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])).rejects.toBeInstanceOf(
+    await expect(recordIntakeValues(SESSION, PROJECT, JOB, [value('building_type@bldg1', 'building')])).rejects.toBeInstanceOf(
       ConflictError
     )
     expect(patchProjectProfile).toHaveBeenCalledTimes(MAX_WRITE_ATTEMPTS)
@@ -462,7 +462,7 @@ describe('recordIntakeValues — what a value becomes', () => {
 
 describe('withdrawIntakeValues — a reading takes back its own suggestion', () => {
   const suggested = (readingId?: string) => ({
-    value: 'einreichplanung',
+    value: 'submission_planning',
     status: 'unconfirmed' as const,
     reason: 'x',
     source: 'agent_suggested' as const,
@@ -473,41 +473,41 @@ describe('withdrawIntakeValues — a reading takes back its own suggestion', () 
   it('removes this reading’s suggestion with what was found beside it, and remembers nothing as dismissed', async () => {
     useProfile({
       ...emptyProfile(),
-      assumptions: { projektphase: { ...suggested(JOB), alternatives: [{ value: 'entwurf', evidence: [], recordedAt: NOW }] } },
+      assumptions: { project_phase: { ...suggested(JOB), alternatives: [{ value: 'design', evidence: [], recordedAt: NOW }] } },
     })
 
-    const { results } = await withdrawIntakeValues(SESSION, PROJECT, JOB, ['projektphase'])
+    const { results } = await withdrawIntakeValues(SESSION, PROJECT, JOB, ['project_phase'])
 
-    expect(results).toEqual([{ key: 'projektphase', outcome: 'withdrawn' }])
-    expect(written()).toEqual([{ op: 'remove', path: '/assumptions/projektphase' }])
+    expect(results).toEqual([{ key: 'project_phase', outcome: 'withdrawn' }])
+    expect(written()).toEqual([{ op: 'remove', path: '/assumptions/project_phase' }])
     expect(addIntakeDismissed).not.toHaveBeenCalled()
   })
 
   it('refuses a confirmed value, another reading’s suggestion, the derived class and a key with nothing suggested', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'bauwerkstyp@bw1': { value: 'gebaeude', confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
+      facts: { 'building_type@bldg1': { value: 'building', confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
       assumptions: {
-        projektphase: suggested('intake-job-0'),
-        'gebaeudeklasse@bw1': { ...suggested(), value: 3 },
-        bundesland: { ...suggested(JOB), value: 'wien', source: 'onboarding_default' },
+        project_phase: suggested('intake-job-0'),
+        'building_class@bldg1': { ...suggested(), value: 3 },
+        federal_state: { ...suggested(JOB), value: 'vienna', source: 'onboarding_default' },
       },
     })
 
     const { results } = await withdrawIntakeValues(SESSION, PROJECT, JOB, [
-      'bauwerkstyp@bw1',
-      'projektphase',
-      'gebaeudeklasse@bw1',
-      'bundesland',
-      'waermeversorgung@bw1',
+      'building_type@bldg1',
+      'project_phase',
+      'building_class@bldg1',
+      'federal_state',
+      'heat_supply@bldg1',
     ])
 
     expect(results).toEqual([
-      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'confirmed' },
-      { key: 'projektphase', outcome: 'refused', reason: 'not-this-reading' },
-      { key: 'gebaeudeklasse@bw1', outcome: 'refused', reason: 'not-this-reading' },
-      { key: 'bundesland', outcome: 'refused', reason: 'not-this-reading' },
-      { key: 'waermeversorgung@bw1', outcome: 'refused', reason: 'nothing-suggested' },
+      { key: 'building_type@bldg1', outcome: 'refused', reason: 'confirmed' },
+      { key: 'project_phase', outcome: 'refused', reason: 'not-this-reading' },
+      { key: 'building_class@bldg1', outcome: 'refused', reason: 'not-this-reading' },
+      { key: 'federal_state', outcome: 'refused', reason: 'not-this-reading' },
+      { key: 'heat_supply@bldg1', outcome: 'refused', reason: 'nothing-suggested' },
     ])
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
@@ -515,47 +515,47 @@ describe('withdrawIntakeValues — a reading takes back its own suggestion', () 
   it('takes the derived class with a withdrawn input it was derived from', async () => {
     useProfile({
       ...emptyProfile(),
-      facts: { 'bauwerkstyp@bw1': { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
+      facts: { 'building_type@bldg1': { value: 'building', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
       assumptions: {
-        'geschosse_oberirdisch@bw1': { ...suggested(JOB), value: 3 },
-        'gebaeudeklasse@bw1': {
+        'storeys_above_ground@bldg1': { ...suggested(JOB), value: 3 },
+        'building_class@bldg1': {
           ...suggested(),
           value: 3,
-          evidence: [{ kind: 'derivation', rule: 'gebaeudeklasse', citation: 'OIB', inputs: [] }],
+          evidence: [{ kind: 'derivation', rule: 'building_class', citation: 'OIB', inputs: [] }],
         },
       },
     })
 
-    await withdrawIntakeValues(SESSION, PROJECT, JOB, ['geschosse_oberirdisch@bw1'])
+    await withdrawIntakeValues(SESSION, PROJECT, JOB, ['storeys_above_ground@bldg1'])
 
-    expect(op('/assumptions/geschosse_oberirdisch@bw1')).toEqual({ op: 'remove', path: '/assumptions/geschosse_oberirdisch@bw1' })
-    expect(op('/assumptions/gebaeudeklasse@bw1')).toEqual({ op: 'remove', path: '/assumptions/gebaeudeklasse@bw1' })
+    expect(op('/assumptions/storeys_above_ground@bldg1')).toEqual({ op: 'remove', path: '/assumptions/storeys_above_ground@bldg1' })
+    expect(op('/assumptions/building_class@bldg1')).toEqual({ op: 'remove', path: '/assumptions/building_class@bldg1' })
   })
 
   it('leaves a withdrawn value free for a later reading, where a dismissed one stays refused', async () => {
-    useProfile({ ...emptyProfile(), assumptions: { 'bauwerkstyp@bw1': { ...suggested(JOB), value: 'gebaeude' } } })
-    await withdrawIntakeValues(SESSION, PROJECT, JOB, ['bauwerkstyp@bw1'])
+    useProfile({ ...emptyProfile(), assumptions: { 'building_type@bldg1': { ...suggested(JOB), value: 'building' } } })
+    await withdrawIntakeValues(SESSION, PROJECT, JOB, ['building_type@bldg1'])
     expect(addIntakeDismissed).not.toHaveBeenCalled()
 
     // The next reading, on the profile the withdrawal left; a person dismissed another value meanwhile.
     useProfile(emptyProfile())
     vi.mocked(findProjectIntake).mockResolvedValue(
-      intake({ jobId: 'intake-job-2', dismissed: [{ key: 'gebaeudestellung@bw1', value: 'angebaut' }] })
+      intake({ jobId: 'intake-job-2', dismissed: [{ key: 'building_position@bldg1', value: 'attached' }] })
     )
     const { results } = await recordIntakeValues(SESSION, PROJECT, 'intake-job-2', [
-      value('bauwerkstyp@bw1', 'gebaeude'),
-      value('gebaeudestellung@bw1', 'angebaut'),
+      value('building_type@bldg1', 'building'),
+      value('building_position@bldg1', 'attached'),
     ])
 
     expect(results).toEqual([
-      { key: 'bauwerkstyp@bw1', outcome: 'suggested' },
-      { key: 'gebaeudestellung@bw1', outcome: 'refused', reason: 'dismissed' },
+      { key: 'building_type@bldg1', outcome: 'suggested' },
+      { key: 'building_position@bldg1', outcome: 'refused', reason: 'dismissed' },
     ])
   })
 
   it('refuses a job that is not the current reading', async () => {
     vi.mocked(findProjectIntake).mockResolvedValue(intake({ jobId: 'intake-job-9' }))
-    await expect(withdrawIntakeValues(SESSION, PROJECT, JOB, ['projektphase'])).rejects.toMatchObject({
+    await expect(withdrawIntakeValues(SESSION, PROJECT, JOB, ['project_phase'])).rejects.toMatchObject({
       details: { reason: 'stale-reading' },
     })
     expect(patchProjectProfile).not.toHaveBeenCalled()
@@ -571,7 +571,7 @@ describe('intakeNeeds', () => {
     const answer = await intakeNeeds(SESSION, PROJECT, JOB)
 
     expect(answer.unreadFiles).toEqual(['Baubeschreibung.pdf'])
-    expect(answer.needs.map((entry) => entry.key)).toContain('bauwerkstyp@bw1')
+    expect(answer.needs.map((entry) => entry.key)).toContain('building_type@bldg1')
     expect(answer).toMatchObject({ description: 'Wohnhausanlage, Zubau', location: null, mode: 'active', previousSummary: null })
   })
 
@@ -741,14 +741,14 @@ describe('applyIntakeDecisions', () => {
   })
 
   it('confirms a suggestion as a fact with its evidence, and scores it accepted on the reading’s trace', async () => {
-    useProfile({ ...emptyProfile(), assumptions: { 'geschosse_oberirdisch@bw1': suggested(3) } })
+    useProfile({ ...emptyProfile(), assumptions: { 'storeys_above_ground@bldg1': suggested(3) } })
 
     const { results, intake: view } = await applyIntakeDecisions(SESSION, PROJECT, [
-      { key: 'geschosse_oberirdisch@bw1', action: 'confirm' },
+      { key: 'storeys_above_ground@bldg1', action: 'confirm' },
     ])
 
-    expect(results).toEqual([{ key: 'geschosse_oberirdisch@bw1', ok: true }])
-    expect(op('/facts/geschosse_oberirdisch@bw1')?.value).toMatchObject({
+    expect(results).toEqual([{ key: 'storeys_above_ground@bldg1', ok: true }])
+    expect(op('/facts/storeys_above_ground@bldg1')?.value).toMatchObject({
       value: 3,
       confidence: 'confirmed',
       source: 'user_confirmed',
@@ -764,52 +764,52 @@ describe('applyIntakeDecisions', () => {
     useProfile({
       ...emptyProfile(),
       assumptions: {
-        'geschosse_oberirdisch@bw1': suggested(3, {
+        'storeys_above_ground@bldg1': suggested(3, {
           alternatives: [{ value: 4, evidence: [{ kind: 'document', fileName: 'B.pdf', page: 1, quote: '4 G' }], recordedAt: NOW }],
         }),
       },
     })
 
-    await applyIntakeDecisions(SESSION, PROJECT, [{ key: 'geschosse_oberirdisch@bw1', action: 'confirm', alternativeIndex: 0 }])
+    await applyIntakeDecisions(SESSION, PROJECT, [{ key: 'storeys_above_ground@bldg1', action: 'confirm', alternativeIndex: 0 }])
 
-    expect(op('/facts/geschosse_oberirdisch@bw1')?.value).toMatchObject({ value: 4, evidence: [{ fileName: 'B.pdf' }] })
+    expect(op('/facts/storeys_above_ground@bldg1')?.value).toMatchObject({ value: 4, evidence: [{ fileName: 'B.pdf' }] })
   })
 
   it('dismisses a suggestion, remembers the value, and scores it dismissed', async () => {
-    useProfile({ ...emptyProfile(), assumptions: { 'bauwerkstyp@bw1': suggested('klein') } })
+    useProfile({ ...emptyProfile(), assumptions: { 'building_type@bldg1': suggested('small') } })
 
-    await applyIntakeDecisions(SESSION, PROJECT, [{ key: 'bauwerkstyp@bw1', action: 'dismiss' }])
+    await applyIntakeDecisions(SESSION, PROJECT, [{ key: 'building_type@bldg1', action: 'dismiss' }])
 
-    expect(op('/assumptions/bauwerkstyp@bw1')).toEqual({ op: 'remove', path: '/assumptions/bauwerkstyp@bw1' })
-    expect(addIntakeDismissed).toHaveBeenCalledWith(ORG, PROJECT, [{ key: 'bauwerkstyp@bw1', value: 'klein' }])
+    expect(op('/assumptions/building_type@bldg1')).toEqual({ op: 'remove', path: '/assumptions/building_type@bldg1' })
+    expect(addIntakeDismissed).toHaveBeenCalledWith(ORG, PROJECT, [{ key: 'building_type@bldg1', value: 'small' }])
     expect(recordDecisionScore).toHaveBeenCalledWith(expect.objectContaining({ decision: 'dismissed' }))
   })
 
   it('writes an answer as a fact with the person as its evidence, and a key marked unknown into the unknowns', async () => {
     await applyIntakeDecisions(SESSION, PROJECT, [
-      { key: 'geschosse_oberirdisch@bw1', action: 'answer', value: 4 },
-      { key: 'fluchtniveau_m@bw1', action: 'unknown' },
+      { key: 'storeys_above_ground@bldg1', action: 'answer', value: 4 },
+      { key: 'escape_level_m@bldg1', action: 'unknown' },
     ])
 
-    expect(op('/facts/geschosse_oberirdisch@bw1')?.value).toMatchObject({
+    expect(op('/facts/storeys_above_ground@bldg1')?.value).toMatchObject({
       value: 4,
       source: 'user_confirmed',
       evidence: [{ kind: 'person', userId: 'user_1' }],
     })
-    expect(op('/unknowns')).toEqual({ op: 'replace', path: '/unknowns', value: ['fluchtniveau_m@bw1'] })
+    expect(op('/unknowns')).toEqual({ op: 'replace', path: '/unknowns', value: ['escape_level_m@bldg1'] })
     expect(recordDecisionScore).not.toHaveBeenCalled()
   })
 
   it('reports a decision that cannot apply and still applies the others', async () => {
     const { results } = await applyIntakeDecisions(SESSION, PROJECT, [
-      { key: 'bauwerkstyp@bw1', action: 'confirm' },
-      { key: 'bauwerkstyp@bw1', action: 'answer', value: 'hochhaus' },
-      { key: 'bauwerkstyp@bw1', action: 'answer', value: 'gebaeude' },
+      { key: 'building_type@bldg1', action: 'confirm' },
+      { key: 'building_type@bldg1', action: 'answer', value: 'hochhaus' },
+      { key: 'building_type@bldg1', action: 'answer', value: 'building' },
     ])
 
     expect(results.map((result) => result.ok)).toEqual([false, false, true])
     expect(results[0].reason).toBe('nothing-to-confirm')
-    expect(op('/facts/bauwerkstyp@bw1')?.value).toMatchObject({ value: 'gebaeude' })
+    expect(op('/facts/building_type@bldg1')?.value).toMatchObject({ value: 'building' })
   })
 
   it('needs profile write', async () => {
@@ -897,7 +897,7 @@ describe('getIntakeView', () => {
     const view = await getIntakeView(SESSION, PROJECT)
 
     expect(view).toMatchObject({ canDecide: false, canComplete: false, counts: { unreadDocuments: 2 } })
-    expect(view.questions.map((question) => question.key)).toEqual(['geschosse_oberirdisch@bw1'])
+    expect(view.questions.map((question) => question.key)).toEqual(['storeys_above_ground@bldg1'])
   })
 
   it('is a 404 for a project set up without an intake', async () => {

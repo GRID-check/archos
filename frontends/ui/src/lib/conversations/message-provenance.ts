@@ -31,6 +31,8 @@
 
 import type { SourceSignal } from '@/features/layout/lib/source-presets'
 import type { Shelf, SourceKind } from '@/features/chat/lib/source-kinds'
+import { modernizeLane, modernizeSourceKind } from '@/features/chat/lib/source-kinds'
+import { modernizeTurnEventKey, modernizeTurnEventValueName } from './legacy-turn-event'
 import type { RetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeRetrievalLedger } from './message-retrieval-ledger'
 import { sanitizeQuoteStamps, type QuoteStamp } from './message-quote-stamps'
@@ -172,7 +174,7 @@ export type TruncationReason = (typeof TRUNCATION_REASONS)[number]
  * - `no_valid_citations` nothing the answer cited survived verification.
  * - `cards_generation_failed` the report is whole, but the proposals a job
  *   derives from it afterwards could not be produced.
- * - `grundlage_unread` a document the reader named as Grundlage was never
+ * - `basis_unread` a document the reader named as Grundlage was never
  *   read; the report names which at its end.
  *
  * An EMPTY list is not a claim of "degraded in zero ways" — it is the ordinary
@@ -296,8 +298,17 @@ export const ANSWER_DEGRADED_REASONS = [
   'no_report_file',
   'no_valid_citations',
   'cards_generation_failed',
-  'grundlage_unread',
+  'basis_unread',
 ] as const
+
+/**
+ * The degraded-reason token a stored message may still carry from before the
+ * English names. Read-only: nothing writes it. Applied where a stored reason is
+ * read (`sanitizeProvenance`, the stored `degraded` step).
+ */
+export const LEGACY_DEGRADED_REASON: Readonly<Record<string, AnswerDegradedReason>> = {
+  grundlage_unread: 'basis_unread',
+}
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -379,8 +390,16 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
   if (input.scope === 'deep') step.scope = 'deep'
   const { turnEvent } = sanitizeTurnEvent(input.turnEvent)
   if (turnEvent) step.turnEvent = turnEvent
+  // A lane stored before the English names carries `baurecht_oib` / `buero`.
   const traceLanes = Array.isArray(input.traceLanes)
-    ? input.traceLanes.slice(0, MAX_TRACE_LANES).filter(isTraceLane)
+    ? input.traceLanes
+        .slice(0, MAX_TRACE_LANES)
+        .filter(isTraceLane)
+        .map((lane) => ({
+          ...lane,
+          key: modernizeLane(lane.key) ?? lane.key,
+          ...(lane.kind ? { kind: modernizeSourceKind(lane.kind) as SourceKind } : {}),
+        }))
     : []
   if (traceLanes.length > 0) step.traceLanes = traceLanes
   const round = nonNegativeInt(input.round)
@@ -413,12 +432,13 @@ export function sanitizeThinkingSteps(input: unknown): StoredThinkingStep[] | un
 /** The hoisted turn event, whitelisted and capped like everything else here. */
 function sanitizeTurnEvent(input: unknown): { turnEvent?: StoredThinkingStep['turnEvent'] } {
   if (!isRecord(input)) return {}
-  const key = cap(input.key, MAX_TURN_EVENT_KEY_CHARS)
-  if (!key) return {}
+  const stored = cap(input.key, MAX_TURN_EVENT_KEY_CHARS)
+  if (!stored) return {}
+  const key = modernizeTurnEventKey(stored)
   const values: Record<string, string> = {}
   if (isRecord(input.values)) {
     for (const [name, value] of Object.entries(input.values).slice(0, MAX_TURN_EVENT_VALUES)) {
-      const safeName = cap(name, MAX_TURN_EVENT_VALUE_KEY_CHARS)
+      const safeName = cap(modernizeTurnEventValueName(key, name), MAX_TURN_EVENT_VALUE_KEY_CHARS)
       const safeValue = cap(value, MAX_TURN_EVENT_VALUE_CHARS)
       if (safeName && safeValue !== undefined) values[safeName] = safeValue
     }
@@ -514,7 +534,12 @@ export function sanitizeProvenance(input: unknown): MessageProvenance | null {
     const reasons = [
       ...new Set(
         input.degradedReasons
-          .map((reason) => oneOf(reason, ANSWER_DEGRADED_REASONS))
+          .map((reason) =>
+            oneOf(
+              typeof reason === 'string' ? (LEGACY_DEGRADED_REASON[reason] ?? reason) : reason,
+              ANSWER_DEGRADED_REASONS
+            )
+          )
           .filter((reason): reason is AnswerDegradedReason => reason !== undefined)
       ),
     ]

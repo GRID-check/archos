@@ -1,4 +1,4 @@
-"""`list_files(fassungen_of=…)` renders one document's whole chain of Fassungen, newest first.
+"""`list_files(revisions_of=…)` renders one document's whole chain of Fassungen, newest first.
 
 The questions it answers are „Welche Fassungen gibt es von X?“ and „Was hat sich zwischen Index B und C
 geändert?“. The chain is joined two ways, a link a PERSON confirmed (`superseded_by`, across file
@@ -260,7 +260,7 @@ class TestAskingForTheName:
         text = render_revisions(_floor_plan(), "pdf")
 
         assert "2 verschiedenen Dokumenten" in text
-        assert "fassungen_of=" in text and not _numbered(text)
+        assert "revisions_of=" in text and not _numbered(text)
 
     def test_a_name_that_matches_nothing_points_at_the_name_filter(self):
         text = render_revisions(_floor_plan(), "Fundament")
@@ -337,10 +337,10 @@ class TestTheTool:
 
     async def test_the_argument_is_in_the_schema(self, scope):
         async with list_files(ListFilesConfig(), _builder()) as info:
-            assert "fassungen_of" in info.input_schema.model_fields
+            assert "revisions_of" in info.input_schema.model_fields
 
     async def test_it_returns_the_chain_instead_of_a_listing(self, scope):
-        text = await self._call(fassungen_of="Plan_Index_A.pdf", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="project")
 
         assert _names(text) == ["Plan_Index_B.pdf", "Plan_Index_A.pdf"]
         assert "geändert gegenüber Plan_Index_A.pdf: Wand neu" in text
@@ -348,7 +348,7 @@ class TestTheTool:
 
     async def test_every_other_filter_is_ignored(self, scope):
         text = await self._call(
-            fassungen_of="Plan_Index_A.pdf",
+            revisions_of="Plan_Index_A.pdf",
             shelf="project",
             folder="gibt-es-nicht",
             doc_class="ungueltig",
@@ -359,14 +359,14 @@ class TestTheTool:
         assert _names(text) == ["Plan_Index_B.pdf", "Plan_Index_A.pdf"]
 
     async def test_a_name_on_two_shelves_is_two_documents_and_is_not_merged(self, scope):
-        text = await self._call(fassungen_of="Plan_Index_A.pdf")
+        text = await self._call(revisions_of="Plan_Index_A.pdf")
 
         assert "2 verschiedenen Dokumenten" in text
 
     async def test_a_shelf_the_turn_did_not_ask_for_is_refused_as_the_listing_does(self, scope, monkeypatch):
         monkeypatch.setattr("aiq_agent.common.focus_file.get_turn_shelves", lambda: frozenset({"project"}))
 
-        text = await self._call(fassungen_of="Plan_Index_A.pdf", shelf="archiv")
+        text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="archiv")
 
         assert "beschränkt" in text and not _numbered(text)
 
@@ -379,18 +379,18 @@ class TestTheTool:
             ]
         )
 
-        text = await self._call(fassungen_of="Gehalt_Index_A.pdf", shelf="project")
+        text = await self._call(revisions_of="Gehalt_Index_A.pdf", shelf="project")
 
         assert _names(text) == ["Gehalt_Index_A.pdf"]
         assert "Gehalt_Index_B.pdf" not in text
 
     async def test_a_blank_argument_is_an_ordinary_listing(self, scope):
-        text = await self._call(fassungen_of="  ", shelf="project")
+        text = await self._call(revisions_of="  ", shelf="project")
 
         assert "2 Datei(en) auf Projektwissen" in text
 
     def test_the_description_says_when_to_call_it(self):
-        assert "fassungen_of" in _LIST_FILES_DESCRIPTION
+        assert "revisions_of" in _LIST_FILES_DESCRIPTION
         assert "Index B und C" in _LIST_FILES_DESCRIPTION
 
 
@@ -429,7 +429,7 @@ class TestComparing:
             return await info.single_fn(info.input_schema(**kwargs))
 
     async def test_the_previous_revision_by_default_says_what_moved(self, scope, stored):
-        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
         assert "„Plan_Index_A.pdf“ (älter) → „Plan_Index_B.pdf“ (neuer)" in text
         assert "Seite 2: Werte: Fluchtweglänge 38 m → 42 m." in text
@@ -437,21 +437,21 @@ class TestComparing:
         assert "Wand neu" in text
 
     async def test_the_order_follows_the_chain_not_the_arguments(self, scope, stored):
-        text = await self._call(fassungen_of="Plan_Index_A.pdf", compare_to="Plan_Index_B.pdf", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_A.pdf", compare_to="Plan_Index_B.pdf", shelf="project")
         assert "„Plan_Index_A.pdf“ (älter) → „Plan_Index_B.pdf“ (neuer)" in text
 
     async def test_reading_both_files_is_reported_for_the_admission(self, scope, stored):
-        await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
         assert stored == [{"proj_1"}]
 
     async def test_a_file_outside_the_chain_is_refused_with_the_chain(self, scope, stored):
-        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="Schnitt.pdf", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="Schnitt.pdf", shelf="project")
         assert "ist keine Fassung dieses Dokuments" in text
         assert "Plan_Index_A.pdf" in text
         assert stored == []
 
     async def test_a_document_with_one_revision_has_nothing_to_compare(self, scope, stored):
-        text = await self._call(fassungen_of="Plan_Index_A.pdf", compare_to="vorige", shelf="archiv")
+        text = await self._call(revisions_of="Plan_Index_A.pdf", compare_to="vorige", shelf="archiv")
         assert "nichts zu vergleichen" in text
 
     async def test_identical_revisions_with_several_chunks_on_a_page_compare_as_unchanged(
@@ -473,7 +473,7 @@ class TestComparing:
                 record.ordinal = ordinal
             write("proj_1", records)
 
-        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
         assert "Seiten: 1 → 1; 1 unverändert, 0 geändert." in text
         assert "Im gelesenen Inhalt unterscheiden sich die beiden Dateien nicht." in text
@@ -488,7 +488,7 @@ class TestComparing:
 
         monkeypatch.setattr(store_module.QdrantStore, "scroll", down)
 
-        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
         assert text.startswith(FETCH_FAILED_MARKER)
         assert "nicht erreichbar" in text
@@ -496,5 +496,5 @@ class TestComparing:
         assert stored == []
 
     async def test_a_file_the_index_does_not_hold_is_said_not_compared(self, scope, qdrant_store):  # noqa: ARG002
-        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
         assert "nicht im Index" in text

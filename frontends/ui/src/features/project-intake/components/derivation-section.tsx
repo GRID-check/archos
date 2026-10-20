@@ -15,7 +15,7 @@ import { IntakeSection } from './intake-atoms'
 /**
  * Ableitungen: the building class of each building, with the inputs it was read
  * from (the ones only suggested are marked), its Fundstelle, and what it still
- * lacks. Confirming it is deciding on the suggestion `gebaeudeklasse@bwN`,
+ * lacks. Confirming it is deciding on the suggestion `building_class@bldgN`,
  * which the derivation carries: the review's modules leave the derived class
  * out, so this is the one way to write it.
  */

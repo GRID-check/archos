@@ -50,7 +50,7 @@ export interface CarryLink {
  * service shows them only to a reader who may open that document.
  */
 export interface AnnotationRecord extends DocumentAnnotationRow {
-  fassungNumber: number | null
+  revisionNumber: number | null
   replies: DocumentAnnotationReplyRow[]
   /** The replaced document's mark this one went on from; absent from a fake that predates carrying. */
   carriedFrom?: CarryLink | null
@@ -65,7 +65,7 @@ export const carriedCopy = alias(documentAnnotations, 'carried_copy')
 /** The columns every read of a mark selects; `project-repository.ts` selects them too. */
 export const selection = {
   row: documentAnnotations,
-  fassungNumber: documentVersions.versionNumber,
+  revisionNumber: documentVersions.versionNumber,
   fromId: carriedSource.id,
   fromDocumentId: carriedSource.documentId,
   fromNumber: carriedSource.number,
@@ -76,7 +76,7 @@ export const selection = {
 
 export type SelectedRow = {
   row: DocumentAnnotationRow
-  fassungNumber: number | null
+  revisionNumber: number | null
   fromId: string | null
   fromDocumentId: string | null
   fromNumber: number | null
@@ -119,9 +119,9 @@ export async function withThreads(organizationId: string, rows: SelectedRow[]): 
     organizationId,
     rows.map(({ row }) => row.id)
   )
-  return rows.map(({ row, fassungNumber: revisionNumber, ...links }) => ({
+  return rows.map(({ row, revisionNumber, ...links }) => ({
     ...row,
-    fassungNumber: revisionNumber === null ? null : Number(revisionNumber),
+    revisionNumber: revisionNumber === null ? null : Number(revisionNumber),
     replies: threads.get(row.id) ?? [],
     carriedFrom: linkOf(links.fromId, links.fromDocumentId, links.fromNumber),
     carriedTo: linkOf(links.toId, links.toDocumentId, links.toNumber),

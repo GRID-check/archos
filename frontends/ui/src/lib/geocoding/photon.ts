@@ -32,7 +32,7 @@ const MAX_REDIRECTS = 2
 const LAND_OPTIONS: ReadonlyArray<{ token: string; keys: string[] }> = (
   findIntakeQuestion(projectIntakeDefinitionV1, 'A2_land')?.options ?? []
 )
-  .filter((option) => option.value !== 'ausserhalb_oesterreichs')
+  .filter((option) => option.value !== 'outside_austria')
   .map((option) => ({ token: option.value, keys: [...matchKeys(option.label), option.value] }))
 
 /**
@@ -110,17 +110,17 @@ function toResult(raw: unknown): GeocodeResult | null {
 
   // Vienna is a city-state: Photon names no state for it, only the city.
   const federalState =
-    federalStateToken(properties.state ?? null) ?? (municipality && federalStateToken(municipality) === 'wien' ? 'wien' : null)
-  const state = properties.state ?? (federalState === 'wien' ? 'Wien' : null)
+    federalStateToken(properties.state ?? null) ?? (municipality && federalStateToken(municipality) === 'vienna' ? 'vienna' : null)
+  const state = properties.state ?? (federalState === 'vienna' ? 'Wien' : null)
 
   return {
     label,
     lat,
     lon,
     country: 'at',
-    bundesland: federalState,
+    federalState,
     state,
-    gemeinde: municipality,
+    municipality,
     postcode: properties.postcode ?? null,
     kind: kindOf(properties),
   }

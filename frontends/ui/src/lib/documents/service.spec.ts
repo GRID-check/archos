@@ -710,7 +710,7 @@ describe('uploadDocument ingest dispatch', () => {
  * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0099):
  * the browser sends the older document's ID, the upload checks it before a byte
  * is stored (`resolveRevisionOf`), the ingest job gets the older document's FILE
- * NAME as `fassung_of`, and the trail records the choice. Each link has its own
+ * NAME as `revision_of`, and the trail records the choice. Each link has its own
  * spec (`revision-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
  * the chain between them.
  */
@@ -742,11 +742,11 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
 
     await uploadDocument(
       session,
-      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), revisionOf: OLDER_ID },
       new Request('http://x'),
     )
 
-    expect(ingestBody().fassung_of).toBe('Grundriss_EG_Index_B.pdf')
+    expect(ingestBody().revision_of).toBe('Grundriss_EG_Index_B.pdf')
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ fassungOf: OLDER_ID }) }),
     )
@@ -764,22 +764,22 @@ describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
 
     const result = await uploadDocument(
       session,
-      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), revisionOf: OLDER_ID },
       new Request('http://x'),
     )
 
     expect(putCalls()).toHaveLength(1)
-    expect(result).toMatchObject({ fassungOfIgnored: reason })
-    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    expect(result).toMatchObject({ revisionOfIgnored: reason })
+    expect(ingestBody()).not.toHaveProperty('revision_of')
     const metadata = vi.mocked(recordAuditEvent).mock.calls.find(([event]) => event.action === 'document.uploaded')?.[0].metadata
     expect(metadata).toMatchObject({ fassungOfIgnored: reason })
     expect(metadata).not.toHaveProperty('fassungOf')
   })
 
-  it('sends no fassung_of, and records none, for an upload nobody filed as a Fassung', async () => {
+  it('sends no revision_of, and records none, for an upload nobody filed as a Fassung', async () => {
     await uploadDocument(session, makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), new Request('http://x'))
 
-    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    expect(ingestBody()).not.toHaveProperty('revision_of')
     expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('fassungOf')
   })
 })
@@ -1253,7 +1253,7 @@ describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0116)', 
   })
 
   it('sends the pre-filters and the boost in the one request, and nothing when there are none', async () => {
-    const boost = { facts: { bundesland: 'wien', gebaeudeklasse: [4], bauweise: [], nutzungen: [], vorhabensart: [] }, weights: { bundesland: 4 } }
+    const boost = { facts: { federal_state: 'vienna', building_class: [4], construction_method: [], uses: [], work_type: [] }, weights: { federal_state: 4 } }
     mockFetch.mockResolvedValueOnce(ok([]))
     await fetchGroupedSemanticHits(['proj_a'], 'q', 10, 900, { filters: { document_types: ['Bescheid'] }, boost })
     expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({ filters: { document_types: ['Bescheid'] }, boost })

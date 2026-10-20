@@ -971,7 +971,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     }
     // The fixture's walls carry Pset_WallCommon.FireRating REI 90, so the
     // fire rule must actually decide rather than fall through to undecidable.
-    const fire = rules.find((rule) => rule.ruleId === 'oib2-feuerwiderstand-tragend')
+    const fire = rules.find((rule) => rule.ruleId === 'oib2-fire-resistance-load-bearing')
     expect(fire?.applicable).toBe(true)
     expect((fire?.passed ?? 0) + (fire?.failed ?? 0)).toBeGreaterThan(0)
     expect(result.summary).toContain('keine Rechtsauskunft')
@@ -987,7 +987,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     */
     const result = await run(bimQuerySchema.parse({ op: 'compliance' }))
     const fire = (result.compliance ?? []).find(
-      (rule) => rule.ruleId === 'oib2-feuerwiderstand-tragend'
+      (rule) => rule.ruleId === 'oib2-fire-resistance-load-bearing'
     )
     expect(fire?.applicable).toBe(true)
     expect(fire?.passed).toBe(0)
@@ -999,12 +999,12 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
   it('derives project facts from the model, each with its evidence', async () => {
     const result = await run({ op: 'profile' })
     const suggestions = result.profileSuggestions ?? []
-    const storeys = suggestions.find((entry) => entry.key === 'geschosse_oberirdisch')
+    const storeys = suggestions.find((entry) => entry.key === 'storeys_above_ground')
     expect(storeys?.value).toBe(2)
     expect(storeys?.evidence).toContain('Erdgeschoss')
     // Never asserted as settled: every suggestion carries a confidence, and
     // the Fluchtniveau's can never be better than medium.
-    expect(suggestions.find((entry) => entry.key === 'fluchtniveau')?.confidence).toBe('medium')
+    expect(suggestions.find((entry) => entry.key === 'escape_level')?.confidence).toBe('medium')
   })
 
   it('compares two revisions by GlobalId', async () => {
@@ -1036,7 +1036,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       { modelId: revisionModelId, organizationId: ORG }
     )
     const fire = (result.complianceChanges ?? []).find(
-      (change) => change.ruleId === 'oib2-feuerwiderstand-tragend'
+      (change) => change.ruleId === 'oib2-fire-resistance-load-bearing'
     )
     expect(fire?.trend).toBe('broken')
     expect(fire?.before.failed).toBeLessThan(fire?.after.failed ?? 0)
@@ -1069,7 +1069,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     await repository.upsertBimCheckConfirmation({
       organizationId: ORG,
       projectId: FIXTURE_PROJECT,
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       modelId,
       confirmedBy: 'a.muster',
       note: 'Mit dem Brandschutzplaner abgeklärt.',
@@ -1089,7 +1089,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     const current = attachConfirmations(rules.compliance ?? [], confirmations, modelId)
     expect(
       outstandingRules(current).map((rule) => rule.ruleId)
-    ).not.toContain('oib2-feuerwiderstand-tragend')
+    ).not.toContain('oib2-fire-resistance-load-bearing')
 
     // Against a LATER revision of the SAME building: still recorded, no
     // longer covering. The series has to be passed, because a confirmation
@@ -1098,7 +1098,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       modelId,
       revisionModelId,
     ])
-    const stale = later.find((rule) => rule.ruleId === 'oib2-feuerwiderstand-tragend')
+    const stale = later.find((rule) => rule.ruleId === 'oib2-fire-resistance-load-bearing')
     expect(stale?.confirmation).not.toBeNull()
     expect(stale?.confirmationStale).toBe(true)
   })
@@ -1113,7 +1113,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     await repository.upsertBimCheckConfirmation({
       organizationId: ORG,
       projectId: FIXTURE_PROJECT,
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       modelId: otherBuildingId,
       confirmedBy: 'c.nachbar',
       note: 'Nebengebäude, mit dem Brandschutzplaner abgeklärt.',
@@ -1143,7 +1143,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       revisionModelId,
     ])
     const rule = attached.find(
-      (entry: { ruleId: string }) => entry.ruleId === 'oib2-feuerwiderstand-tragend'
+      (entry: { ruleId: string }) => entry.ruleId === 'oib2-fire-resistance-load-bearing'
     )
     expect(rule?.confirmation?.confirmedBy).not.toBe('c.nachbar')
   })
@@ -1154,7 +1154,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     await repository.upsertBimCheckConfirmation({
       organizationId: ORG,
       projectId: FIXTURE_PROJECT,
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       modelId,
       confirmedBy: 'b.beispiel',
       note: null,
@@ -1181,7 +1181,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     await repository.deleteBimCheckConfirmation({
       organizationId: ORG,
       projectId: FIXTURE_PROJECT,
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       modelIds: [modelId, revisionModelId],
     })
     const left = await repository.listBimCheckConfirmations(ORG, FIXTURE_PROJECT, REVIEWER_READER)

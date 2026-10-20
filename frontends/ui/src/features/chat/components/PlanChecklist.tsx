@@ -19,17 +19,18 @@ import { Input } from '@/components/ui/input'
 import { DocumentsDialog } from '@/features/runs/components/DocumentsDialog'
 import { useTranslations } from '@/i18n'
 import { planDocumentLabel, sanitizePlanDocuments, type PlanDocument } from '@/lib/runs/plan-documents'
+import { modernizePlan } from '@/lib/runs/plan-vocabulary'
 import { cn } from '@/lib/utils'
 
 export const PLAN_GENRES = [
-  'pruefbericht',
-  'aktenvermerk',
-  'vergleich',
-  'checkliste',
-  'bericht',
+  'inspection_report',
+  'file_note',
+  'comparison',
+  'checklist',
+  'report',
 ] as const
 export type PlanGenre = (typeof PLAN_GENRES)[number]
-export const PLAN_DEPTHS = ['kurzpruefung', 'gutachten'] as const
+export const PLAN_DEPTHS = ['quick_check', 'expert_report'] as const
 export type PlanDepth = (typeof PLAN_DEPTHS)[number]
 
 export interface PlanShape {
@@ -38,9 +39,9 @@ export interface PlanShape {
   genre: PlanGenre
   depth: PlanDepth
   /** File names the run must read in full, from the inventory below. */
-  grundlage: string[]
+  basis: string[]
   /** File names the run may not use. */
-  ausgeschlossen: string[]
+  excluded: string[]
   /** What the run can read: the turn's inventory, as the backend listed it. */
   documents: PlanDocument[]
 }
@@ -58,29 +59,29 @@ export function parsePlanFence(content: string): PlanShape | null {
   const match = PLAN_FENCE_RE.exec(content)
   if (!match?.[1]) return null
   try {
-    const raw = JSON.parse(match[1]) as Record<string, unknown>
+    const raw = modernizePlan(JSON.parse(match[1])) as Record<string, unknown>
     const sections = Array.isArray(raw.sections)
       ? raw.sections.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
       : []
     if (typeof raw.title !== 'string' || sections.length === 0) return null
     const genre = (PLAN_GENRES as readonly string[]).includes(String(raw.genre))
       ? (raw.genre as PlanGenre)
-      : 'bericht'
+      : 'report'
     const depth = (PLAN_DEPTHS as readonly string[]).includes(String(raw.depth))
       ? (raw.depth as PlanDepth)
-      : 'gutachten'
+      : 'expert_report'
     const names = (value: unknown): string[] =>
       Array.isArray(value)
         ? value.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
         : []
-    const documents = sanitizePlanDocuments({ grundlage: raw.unterlagen })?.grundlage ?? []
+    const documents = sanitizePlanDocuments({ basis: raw.documents })?.basis ?? []
     return {
       title: raw.title,
       sections,
       genre,
       depth,
-      grundlage: names(raw.grundlage),
-      ausgeschlossen: names(raw.ausgeschlossen),
+      basis: names(raw.basis),
+      excluded: names(raw.excluded),
       documents: documents,
     }
   } catch {
@@ -110,15 +111,15 @@ export function approvalReply(
     original.genre === edited.genre &&
     original.depth === edited.depth &&
     sameList(original.sections, edited.sections) &&
-    sameList(original.grundlage, edited.grundlage) &&
-    sameList(original.ausgeschlossen, edited.ausgeschlossen)
+    sameList(original.basis, edited.basis) &&
+    sameList(original.excluded, edited.excluded)
   if (same && dataSources.length === 0) return 'approve'
   return `approve ${JSON.stringify({
     sections: edited.sections,
     genre: edited.genre,
     depth: edited.depth,
-    grundlage: edited.grundlage,
-    ausgeschlossen: edited.ausgeschlossen,
+    basis: edited.basis,
+    excluded: edited.excluded,
     ...(dataSources.length > 0 ? { data_sources: [...dataSources] } : {}),
   })}`
 }
@@ -135,7 +136,7 @@ export function planFromReply(original: PlanShape, reply: string | undefined): P
   if (!match?.[1]) return original
   let edits: Record<string, unknown>
   try {
-    edits = JSON.parse(match[1]) as Record<string, unknown>
+    edits = modernizePlan(JSON.parse(match[1])) as Record<string, unknown>
   } catch {
     return original
   }
@@ -147,8 +148,8 @@ export function planFromReply(original: PlanShape, reply: string | undefined): P
     ...(sections && sections.length > 0 ? { sections } : {}),
     ...((PLAN_GENRES as readonly unknown[]).includes(edits.genre) ? { genre: edits.genre as PlanGenre } : {}),
     ...((PLAN_DEPTHS as readonly unknown[]).includes(edits.depth) ? { depth: edits.depth as PlanDepth } : {}),
-    ...(strings(edits.grundlage) ? { grundlage: strings(edits.grundlage)! } : {}),
-    ...(strings(edits.ausgeschlossen) ? { ausgeschlossen: strings(edits.ausgeschlossen)! } : {}),
+    ...(strings(edits.basis) ? { basis: strings(edits.basis)! } : {}),
+    ...(strings(edits.excluded) ? { excluded: strings(edits.excluded)! } : {}),
   }
 }
 
@@ -167,7 +168,7 @@ export const PlanChecklist: FC<{
     const doc = plan.documents.find((row) => row.name.trim().toLocaleLowerCase() === key)
     return doc ? planDocumentLabel(doc) : name
   }
-  const dropName = (list: 'grundlage' | 'ausgeschlossen', name: string): void =>
+  const dropName = (list: 'basis' | 'excluded', name: string): void =>
     onChange({ ...plan, [list]: plan[list].filter((item) => item !== name) })
 
   const remove = (index: number) =>
@@ -261,32 +262,32 @@ export const PlanChecklist: FC<{
           picker over the thread names them; the chips here are the receipt of
           that choice, each one strikable. Shown whenever the turn has something
           to name, so the section is where the reader learns it can be done. */}
-      {(plan.documents.length > 0 || plan.grundlage.length > 0 || plan.ausgeschlossen.length > 0) && (
+      {(plan.documents.length > 0 || plan.basis.length > 0 || plan.excluded.length > 0) && (
         <div className="flex flex-col gap-1.5" data-testid="plan-documents">
           <span className="text-muted-foreground text-xs font-medium">
             {t('agentPrompt.plan.documents.label')}
           </span>
           <NamedRow
             label={t('agentPrompt.plan.documents.basis')}
-            names={plan.grundlage}
+            names={plan.basis}
             labelOf={labelOf}
             disabled={disabled}
             variant="default"
             removeLabel={(name) => t('agentPrompt.plan.documents.removeRead', { name })}
-            onRemove={(name) => dropName('grundlage', name)}
+            onRemove={(name) => dropName('basis', name)}
             testId="plan-basis"
           />
           <NamedRow
             label={t('agentPrompt.plan.documents.excluded')}
-            names={plan.ausgeschlossen}
+            names={plan.excluded}
             labelOf={labelOf}
             disabled={disabled}
             variant="destructive"
             removeLabel={(name) => t('agentPrompt.plan.documents.removeExcluded', { name })}
-            onRemove={(name) => dropName('ausgeschlossen', name)}
+            onRemove={(name) => dropName('excluded', name)}
             testId="plan-excluded"
           />
-          {plan.grundlage.length === 0 && plan.ausgeschlossen.length === 0 && (
+          {plan.basis.length === 0 && plan.excluded.length === 0 && (
             <span className="text-muted-foreground text-xs">
               {t('agentPrompt.plan.documents.none')}
             </span>
@@ -309,8 +310,8 @@ export const PlanChecklist: FC<{
                 open={picking}
                 onOpenChange={setPicking}
                 documents={plan.documents}
-                grundlage={plan.grundlage}
-                ausgeschlossen={plan.ausgeschlossen}
+                basis={plan.basis}
+                excluded={plan.excluded}
                 onChange={(next) => onChange({ ...plan, ...next })}
               />
             </div>

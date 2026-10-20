@@ -10,7 +10,7 @@ const WOHNHAUS: SimilarProject = {
   id: 'proj-mödling',
   name: 'Wohnhaus Mödling',
   period: { start: '2019-03-01', end: '2021-11-30' },
-  bundesland: { value: 'Niederösterreich', confirmed: true },
+  federal_state: { value: 'Niederösterreich', confirmed: true },
   oibEdition: { value: '2019', confirmed: false },
   alike: true,
   sharedTraits: [
@@ -32,10 +32,10 @@ const WOHNHAUS: SimilarProject = {
     {
       id: 'p1',
       fileName: 'Baubewilligung.pdf',
-      kind: 'bewilligung',
+      kind: 'approval',
       authority: 'Stadtgemeinde Mödling',
       issuedOn: '2020-06-18',
-      requirements: [{ kind: 'auflage', content: 'Brandschutzkonzept vor Baubeginn vorlegen.' }],
+      requirements: [{ kind: 'condition', content: 'Brandschutzkonzept vor Baubeginn vorlegen.' }],
     },
   ],
 }
@@ -56,7 +56,7 @@ const UNRELATED: SimilarProject = { ...CONFIRMED, id: 'proj-wels', name: 'Halle 
 /** A page whose current project has only its Land recorded: the briefing can still add the rest. */
 function page(projects: SimilarProject[], more = 0, editable = true): SimilarProjectsPage {
   const basis = fingerprintOf({
-    facts: { bundesland: { value: 'niederoesterreich', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } },
+    facts: { federal_state: { value: 'niederoesterreich', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } },
     goals: {},
     unknowns: [],
     assumptions: {},

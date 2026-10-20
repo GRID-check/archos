@@ -14,11 +14,32 @@
 
 export const FINDINGS_VERSION = 1
 
-export const FINDING_STATUSES = ['erfuellt', 'nicht_erfuellt', 'offen', 'nicht_anwendbar'] as const
+export const FINDING_STATUSES = ['met', 'not_met', 'open', 'not_applicable'] as const
 export type FindingStatus = (typeof FINDING_STATUSES)[number]
 
-export const FINDING_GROUNDINGS = ['belegt', 'abgeleitet', 'offen'] as const
+export const FINDING_GROUNDINGS = ['sourced', 'derived', 'open'] as const
 export type FindingGrounding = (typeof FINDING_GROUNDINGS)[number]
+
+/**
+ * The spellings messages carried before the English names. Rows stored by an
+ * older build (and written by a pod that has not rolled yet) still hold them;
+ * the migration rewrites the table once, this keeps the rows in flight
+ * readable. Read-only: nothing writes these.
+ */
+export const LEGACY_FINDING_STATUS: Readonly<Record<string, FindingStatus>> = {
+  erfuellt: 'met',
+  nicht_erfuellt: 'not_met',
+  offen: 'open',
+  nicht_anwendbar: 'not_applicable',
+}
+export const LEGACY_FINDING_GROUNDING: Readonly<Record<string, FindingGrounding>> = {
+  belegt: 'sourced',
+  abgeleitet: 'derived',
+  offen: 'open',
+}
+
+const legacy = <T extends string>(value: unknown, table: Readonly<Record<string, T>>): unknown =>
+  typeof value === 'string' && Object.hasOwn(table, value) ? table[value] : value
 
 const MAX_FINDINGS = 40
 const MAX_LABEL_CHARS = 200
@@ -82,8 +103,8 @@ const sanitizeReference = (value: unknown): FindingReference | undefined => {
 const sanitizeFinding = (value: unknown): Finding | null => {
   if (!isRecord(value)) return null
   const requirement = text(value.requirement, MAX_LABEL_CHARS)
-  const status = oneOf(value.status, FINDING_STATUSES)
-  const grounding = oneOf(value.grounding, FINDING_GROUNDINGS)
+  const status = oneOf(legacy(value.status, LEGACY_FINDING_STATUS), FINDING_STATUSES)
+  const grounding = oneOf(legacy(value.grounding, LEGACY_FINDING_GROUNDING), FINDING_GROUNDINGS)
   if (!requirement || !grounding) return null
   // A status the contract does not know is dropped as a whole row: a wrong
   // verdict is worse than none. An ABSENT status is a row without one.
@@ -124,7 +145,7 @@ export const hasFindingStatuses = (findings: Findings): boolean =>
   findings.items.some((item) => item.status !== undefined)
 
 export const findingCounts = (findings: Findings): Record<FindingStatus, number> => {
-  const counts = { erfuellt: 0, nicht_erfuellt: 0, offen: 0, nicht_anwendbar: 0 }
+  const counts = { met: 0, not_met: 0, open: 0, not_applicable: 0 }
   for (const item of findings.items) if (item.status) counts[item.status] += 1
   return counts
 }

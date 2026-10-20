@@ -4,7 +4,7 @@ The registry is a FLAT catalog (``configs/norms/<country>/registry.yml``): one e
 per legal norm. Entries that carry a ``verify`` seed are re-checked against the live
 OGD-RIS search API; only the machine-derived pointer fields
 (``application``/``document_number``/``citation_url``/``full_law_url``/``verified_at``)
-are written back. Every curated field (title/short/rank/bundesland/topics/relevance/
+are written back. Every curated field (title/short/rank/federal_state/topics/relevance/
 aliases/binding_note/review_note/verify) is left untouched. Entries WITHOUT a verify
 seed are skipped with a logged note.
 
@@ -124,15 +124,15 @@ async def verify_entry(client: RisClient, entry) -> dict:
     """Live-verify ONE registry entry and return its merged pointer fields.
 
     ``entry`` is a NormEntry (or any object exposing ``id``/``application``/
-    ``bundesland``/``verify``). Reused by the build loop below and by the future
+    ``federal_state``/``verify``). Reused by the build loop below and by the future
     admin verify API. Raises SystemExit on an ambiguous/missing hit.
     """
     verify = entry.verify
     if verify is None:
         raise ValueError(f"entry '{entry.id}' has no verify seed")
     params: dict[str, str] = {"Titel": verify.title_query}
-    if entry.bundesland:
-        params[f"Bundesland.{_FEDERAL_STATE_PARAMS[entry.bundesland]}"] = "true"
+    if entry.federal_state:
+        params[f"Bundesland.{_FEDERAL_STATE_PARAMS[entry.federal_state]}"] = "true"
     hits = []
     page = 1
     while True:

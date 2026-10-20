@@ -66,12 +66,12 @@ class TestWhatIsAsked:
 
     def test_skills_riding_the_prompt_get_a_choice_with_none_and_one_fits_noul_each(self):
         facts = TurnFacts(
-            question="q", skills=[("brandschutz", "Brandabschnitt, Fluchtweg."), ("hygiene", "Aufenthaltsraum.")]
+            question="q", skills=[("fire-safety", "Brandabschnitt, Fluchtweg."), ("hygiene", "Aufenthaltsraum.")]
         )
         questions = questions_for(facts)
-        assert set(questions["skill"]["criteria"]) == {"brandschutz", "hygiene", "none"}
-        assert "fits_brandschutz" in questions and "fits_hygiene" in questions
-        assert "Brandabschnitt" in questions["fits_brandschutz"]["criteria"]["true"]
+        assert set(questions["skill"]["criteria"]) == {"fire-safety", "hygiene", "none"}
+        assert "fits_fire-safety" in questions and "fits_hygiene" in questions
+        assert "Brandabschnitt" in questions["fits_fire-safety"]["criteria"]["true"]
 
     def test_the_previous_exchange_rides_the_state_bounded(self):
         state = TurnFacts(question="und in GK 4?", previous_message="x" * 1000, previous_answer="y" * 1000).state()
@@ -290,12 +290,12 @@ class TestThePrefetch:
 class TestTheSkillsShapes:
     """The chosen skill's preferred cards ride the turn — what `use_skill` used to hand over."""
 
-    SKILL_CARDS = {"brandschutz": ["fire_compartment", "egress_diagram"], "hygiene": ["daylight_incidence"]}
+    SKILL_CARDS = {"fire-safety": ["fire_compartment", "egress_diagram"], "hygiene": ["daylight_incidence"]}
 
     def test_the_skills_cards_come_first_then_the_nouls_picks_capped_and_deduped(self):
         decided = TurnDecisions(
             decided=True,
-            skill="brandschutz",
+            skill="fire-safety",
             skill_p=0.8,
             skill_fit=0.9,
             cards=(("egress_diagram", 0.9), ("stair_diagram", 0.7)),
@@ -303,31 +303,31 @@ class TestTheSkillsShapes:
         assert attached_card_types(decided, self.SKILL_CARDS) == ["fire_compartment", "egress_diagram", "stair_diagram"]
 
     def test_the_cookbooks_abstention_a_low_fit_or_none_attaches_no_skill(self):
-        name_match = TurnDecisions(decided=True, skill="brandschutz", skill_p=0.8, skill_fit=0.05)
+        name_match = TurnDecisions(decided=True, skill="fire-safety", skill_p=0.8, skill_fit=0.05)
         assert name_match.chosen_skill is None and attached_card_types(name_match, self.SKILL_CARDS) == []
         none = TurnDecisions(decided=True, skill="none", skill_p=0.9, skill_fit=None)
         assert none.chosen_skill is None
         unsure = TurnDecisions(decided=True, skill="hygiene", skill_p=0.5, skill_fit=0.9)
         assert unsure.chosen_skill is None
         # A weak fit on a confident choice still loads: a body is ~400 tokens and an offer.
-        weak_fit = TurnDecisions(decided=True, skill="waermeschutz", skill_p=0.64, skill_fit=0.13)
-        assert weak_fit.chosen_skill == "waermeschutz"
+        weak_fit = TurnDecisions(decided=True, skill="thermal-protection", skill_p=0.64, skill_fit=0.13)
+        assert weak_fit.chosen_skill == "thermal-protection"
 
     async def test_the_choice_and_its_fit_are_read_back(self):
         decision = Decision(
             answers={
                 "skill": {
                     "type": "choice",
-                    "choice": "brandschutz",
-                    "probabilities": {"brandschutz": 0.7, "none": 0.3},
+                    "choice": "fire-safety",
+                    "probabilities": {"fire-safety": 0.7, "none": 0.3},
                 },
-                "fits_brandschutz": {"type": "noul", "noul": 0.85},
+                "fits_fire-safety": {"type": "noul", "noul": 0.85},
                 "self_contained": {"type": "noul", "noul": 0.2},
             }
         )
         with patch("aiq_agent.common.decisions.decide", new_callable=AsyncMock, return_value=decision):
-            decided = await decide_turn(TurnFacts(question="und in GK 4?", skills=[("brandschutz", "b")]))
-        assert decided.chosen_skill == "brandschutz" and decided.skill_fit == 0.85
+            decided = await decide_turn(TurnFacts(question="und in GK 4?", skills=[("fire-safety", "b")]))
+        assert decided.chosen_skill == "fire-safety" and decided.skill_fit == 0.85
         assert decided.self_contained == 0.2 and not decided.searchable
 
 

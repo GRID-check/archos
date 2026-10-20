@@ -62,7 +62,7 @@ const run = {
   definitionId: 'job-1',
   projectId: 'proj-1',
   organizationId: 'org-1',
-  kind: 'einreichcheck',
+  kind: 'submission_check',
   title: 'Einreichcheck: Haus A',
   requesterUserId: 'user-1',
   backendJobId: BACKEND_JOB_ID,

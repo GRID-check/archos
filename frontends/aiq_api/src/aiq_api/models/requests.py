@@ -5,6 +5,7 @@ from typing import Annotated
 from typing import Any
 from typing import Literal
 
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
@@ -13,6 +14,10 @@ from pydantic import ValidationError
 from pydantic import ValidationInfo
 from pydantic import ValidatorFunctionWrapHandler
 from pydantic import field_validator
+from pydantic import model_validator
+
+from aiq_agent.profile_names import legacy_profile_token
+from aiq_agent.profile_names import normalize_profile_token
 
 logger = logging.getLogger(__name__)
 
@@ -89,8 +94,19 @@ class ScreeningPolicy(BaseModel):
 
 ProjectStatus = Literal["active", "paused", "closed"]
 
-#: A token as the intake stores it (``niederoesterreich``, ``holzbau``).
+#: A token as the intake stores it (``lower_austria``, ``timber``).
 _FactToken = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
+
+#: The five facts: the wire name (``federal_state``) and the name the vector store's ``project_facts`` payload
+#: still has (``bundesland``). Qdrant keeps the German names and tokens until its own rename (an index
+#: rebuild), so :meth:`ProjectFacts.to_store` translates at the one place that writes or filters them.
+_FACT_FIELDS: dict[str, str] = {
+    "federal_state": "bundesland",
+    "building_class": "gebaeudeklasse",
+    "construction_method": "bauweise",
+    "uses": "nutzungen",
+    "work_type": "vorhabensart",
+}
 
 
 class ProjectFacts(BaseModel):
@@ -101,15 +117,55 @@ class ProjectFacts(BaseModel):
     facts a search is boosted by.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    bundesland: _FactToken | None = Field(None, description="The Land token; null for a site abroad or unknown")
-    gebaeudeklasse: list[Annotated[int, Field(ge=1, le=5)]] = Field(
-        default_factory=list, max_length=20, description="Every building's Gebäudeklasse"
+    # The German names (``bundesland``) are what a BFF that has not rolled yet sends; read-only.
+    federal_state: _FactToken | None = Field(
+        None,
+        validation_alias=AliasChoices("federal_state", "bundesland"),
+        description="The Land token; null for a site abroad or unknown",
     )
-    bauweise: list[_FactToken] = Field(default_factory=list, max_length=20)
-    nutzungen: list[_FactToken] = Field(default_factory=list, max_length=40)
-    vorhabensart: list[_FactToken] = Field(default_factory=list, max_length=20)
+    building_class: list[Annotated[int, Field(ge=1, le=5)]] = Field(
+        default_factory=list,
+        max_length=20,
+        validation_alias=AliasChoices("building_class", "gebaeudeklasse"),
+        description="Every building's Gebäudeklasse",
+    )
+    construction_method: list[_FactToken] = Field(
+        default_factory=list, max_length=20, validation_alias=AliasChoices("construction_method", "bauweise")
+    )
+    uses: list[_FactToken] = Field(
+        default_factory=list, max_length=40, validation_alias=AliasChoices("uses", "nutzungen")
+    )
+    work_type: list[_FactToken] = Field(
+        default_factory=list, max_length=20, validation_alias=AliasChoices("work_type", "vorhabensart")
+    )
+
+    @model_validator(mode="after")
+    def _english_tokens(self) -> "ProjectFacts":
+        """A German token (``wien``) from a BFF that has not rolled yet is read as the English one."""
+        if self.federal_state is not None:
+            self.federal_state = normalize_profile_token("federal_state", self.federal_state)
+        for name in ("construction_method", "uses", "work_type"):
+            setattr(self, name, [normalize_profile_token(name, token) for token in getattr(self, name)])
+        return self
+
+    def to_store(self) -> dict[str, Any]:
+        """The facts as the vector store's payload spells them: German keys, German tokens.
+
+        The store is renamed on its own (an index rebuild); until then this is the one place that
+        translates, for the payload a point carries and the filter and boost that read it.
+        """
+        dumped = self.model_dump(mode="json")
+        out: dict[str, Any] = {}
+        for name, store_key in _FACT_FIELDS.items():
+            value = dumped[name]
+            if name == "federal_state" and isinstance(value, str):
+                value = legacy_profile_token(name, value)
+            elif isinstance(value, list) and name != "building_class":
+                value = [legacy_profile_token(name, token) for token in value]
+            out[store_key] = value
+        return out
 
 
 class ProjectFactsUpdate(BaseModel):
@@ -223,8 +279,11 @@ class IngestRequest(BaseModel):
             "guess about a string the BFF already knows."
         ),
     )
-    fassung_of: str | None = Field(
+    revision_of: str | None = Field(
         None,
+        # ``fassung_of`` is what a BFF that has not rolled yet sends (renamed with migration 0165);
+        # a request and a queued job carry either. Remove after one release.
+        validation_alias=AliasChoices("revision_of", "fassung_of"),
         max_length=512,
         description=(
             "File name of the document in this collection that this file replaces, when a person chose "
@@ -289,13 +348,32 @@ class SimilarityWeights(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    bundesland: float = Field(0, ge=0, le=100)
-    gebaeudeklasse: float = Field(0, ge=0, le=100)
-    gebaeudeklasse_adjacent: float = Field(0, ge=0, le=100)
-    bauweise: float = Field(0, ge=0, le=100)
-    nutzung: float = Field(0, ge=0, le=100)
-    nutzung_max: float = Field(0, ge=0, le=100)
-    vorhabensart: float = Field(0, ge=0, le=100)
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    # The German names are what a BFF that has not rolled yet sends; read-only.
+    federal_state: float = Field(0, ge=0, le=100, validation_alias=AliasChoices("federal_state", "bundesland"))
+    building_class: float = Field(0, ge=0, le=100, validation_alias=AliasChoices("building_class", "gebaeudeklasse"))
+    building_class_adjacent: float = Field(
+        0, ge=0, le=100, validation_alias=AliasChoices("building_class_adjacent", "gebaeudeklasse_adjacent")
+    )
+    construction_method: float = Field(
+        0, ge=0, le=100, validation_alias=AliasChoices("construction_method", "bauweise")
+    )
+    use: float = Field(0, ge=0, le=100, validation_alias=AliasChoices("use", "nutzung"))
+    use_max: float = Field(0, ge=0, le=100, validation_alias=AliasChoices("use_max", "nutzung_max"))
+    work_type: float = Field(0, ge=0, le=100, validation_alias=AliasChoices("work_type", "vorhabensart"))
+
+    def to_store(self) -> dict[str, float]:
+        """The weights as ``knowledge_layer.qdrant.boost`` names them (still German; renamed with the store)."""
+        return {
+            "bundesland": self.federal_state,
+            "gebaeudeklasse": self.building_class,
+            "gebaeudeklasse_adjacent": self.building_class_adjacent,
+            "bauweise": self.construction_method,
+            "nutzung": self.use,
+            "nutzung_max": self.use_max,
+            "vorhabensart": self.work_type,
+        }
 
 
 class SearchBoost(BaseModel):
@@ -558,7 +636,7 @@ MAX_DIGEST_SAMPLES = 60
 class FeedbackDigestTopic(BaseModel):
     """Votes on one OIB topic tag, for the digest's per-topic reading."""
 
-    topic: str = Field(..., description="Conversation topic tag key (e.g. 'brandschutz')")
+    topic: str = Field(..., description="Conversation topic tag key (e.g. 'fire_safety')")
     up: int = Field(0, ge=0, description="Helpful votes on conversations carrying this tag")
     down: int = Field(0, ge=0, description="Unhelpful votes on conversations carrying this tag")
 

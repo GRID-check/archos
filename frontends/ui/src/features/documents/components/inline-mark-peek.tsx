@@ -60,7 +60,7 @@ export function InlineMarkPeek({
   }, [hovered, canHover])
 
   const mark = review.annotations.find(
-    (annotation) => annotation.id === shownId && annotation.page === page && annotation.onCurrentFassung
+    (annotation) => annotation.id === shownId && annotation.page === page && annotation.onCurrentRevision
   )
   if (!canHover || !mark) return null
   const author = mark.authorKind === 'piloti' ? 'Piloti' : mark.createdByName

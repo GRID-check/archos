@@ -204,7 +204,7 @@ describe('chat storage, one key per conversation', () => {
       ...conv('running', 1, 2_000),
       messages: [
         text('r-a', 'Recherche läuft', {
-          runLedger: { runId: 'run-1', status: 'laeuft', phases: [] } as unknown as ChatMessage['runLedger'],
+          runLedger: { runId: 'run-1', status: 'running', phases: [] } as unknown as ChatMessage['runLedger'],
         }),
       ],
     }

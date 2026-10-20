@@ -66,7 +66,7 @@ const renderBrief = (
       onReadAgain={vi.fn()}
       collapsed={false}
       onCollapsedChange={vi.fn()}
-      missing={[{ role: 'grundbuchauszug', label: 'Land register extract', buildingName: null }]}
+      missing={[{ role: 'land_register_extract', label: 'Land register extract', buildingName: null }]}
       {...props}
     />
   )

@@ -31,7 +31,7 @@ const wire = (overrides: Partial<WireCitationSource>): WireCitationSource => ({
   file_name: 'Grundriss.pdf',
   page: 2,
   origin: 'kb',
-  kind: 'projekt',
+  kind: 'project',
   ...overrides,
 })
 
@@ -58,11 +58,11 @@ describe('the shelf arrives explicitly', () => {
 
   test('the model takes the shelf the payload states', () => {
     expect(documentFor(wire({ shelf: 'session' })).shelf).toBe('session')
-    expect(documentFor(wire({ shelf: 'base', kind: 'baurecht' })).shelf).toBe('base')
+    expect(documentFor(wire({ shelf: 'base', kind: 'building_law' })).shelf).toBe('base')
   })
 
   test('the shelf outranks the collection id, which no longer says anything', () => {
-    // The prefix table is deleted: `proj_alpha` used to force `projekt` on this
+    // The prefix table is deleted: `proj_alpha` used to force `project` on this
     // document no matter what the payload said.
     const doc = documentFor(wire({ collection: 'proj_alpha', shelf: 'session' }))
 
@@ -82,14 +82,14 @@ describe('an unknown shelf renders unattributed', () => {
   test('a payload with no shelf leaves the document unattributed', () => {
     // Not "base", not "project": nothing. The collection id is present and would
     // have been prefix-matched into a shelf before ADR-0047.
-    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'buero' }))
+    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'office' }))
 
     expect(doc.shelf).toBeUndefined()
     expect(documentShelfLabel(doc, t)).toBeUndefined()
   })
 
   test('an unrecognised shelf value is dropped, not defaulted to base law', () => {
-    const doc = documentFor(wire({ shelf: 'baurecht', collection: 'oib_knowledge' }))
+    const doc = documentFor(wire({ shelf: 'building_law', collection: 'oib_knowledge' }))
 
     expect(doc.shelf).toBeUndefined()
     expect(documentShelfLabel(doc, t)).toBeUndefined()
@@ -98,9 +98,9 @@ describe('an unknown shelf renders unattributed', () => {
   test('an unattributed document still renders its display taxonomy', () => {
     // Shelf and SourceKind are separate axes: losing the shelf must not cost the
     // document its provenance family, it must only stop it claiming a shelf.
-    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'buero' }))
+    const doc = documentFor(wire({ collection: 'archiv_org1', kind: 'office' }))
 
-    expect(doc.kind).toBe('buero')
+    expect(doc.kind).toBe('office')
     expect(documentTabLabel(doc, t)).toBe('Büroablage')
   })
 
@@ -116,7 +116,7 @@ describe('an unknown shelf renders unattributed', () => {
 
 describe('a private session attachment is not project knowledge', () => {
   test('a session source is labelled "Private Sitzung", never "Projektwissen"', () => {
-    const doc = documentFor(wire({ shelf: 'session', kind: 'projekt' }))
+    const doc = documentFor(wire({ shelf: 'session', kind: 'project' }))
 
     expect(documentShelfLabel(doc, t)).toBe('Private Sitzung')
     expect(documentTabLabel(doc, t)).toBe('Private Sitzung')
@@ -124,14 +124,14 @@ describe('a private session attachment is not project knowledge', () => {
   })
 
   test('a genuine project document is still Projektwissen', () => {
-    const doc = documentFor(wire({ shelf: 'project', kind: 'projekt' }))
+    const doc = documentFor(wire({ shelf: 'project', kind: 'project' }))
 
     expect(documentTabLabel(doc, t)).toBe('Projektwissen')
   })
 
   test('a fine lane label still wins — the shelf does not overwrite the taxonomy', () => {
     const doc = documentFor(
-      wire({ shelf: 'base', kind: 'baurecht', lane: 'baurecht_oib', lane_label: 'OIB-Richtlinie' })
+      wire({ shelf: 'base', kind: 'building_law', lane: 'building_law_oib', lane_label: 'OIB-Richtlinie' })
     )
 
     expect(doc.shelf).toBe('base')

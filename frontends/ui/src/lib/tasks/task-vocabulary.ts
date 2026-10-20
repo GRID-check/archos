@@ -15,11 +15,25 @@ export const TASK_KINDS = [
   'deep-research',
   'chat',
   'compliance_check',
-  'einreichcheck',
+  'submission_check',
   'document',
   'revision',
 ] as const
 export type TaskKind = (typeof TASK_KINDS)[number]
+
+/**
+ * Kinds as they were stored before migration 0167. A Python agent that has not
+ * rolled yet still asks for `einreichcheck`; the wire maps it
+ * (`canonicalTaskKind`) so the old name is never written again. Remove after one
+ * release.
+ */
+export const LEGACY_TASK_KINDS: Readonly<Record<string, TaskKind>> = {
+  einreichcheck: 'submission_check',
+}
+
+/** The current kind for a value that may be a legacy one; anything else passes through for validation. */
+export const canonicalTaskKind = (value: unknown): unknown =>
+  typeof value === 'string' ? (LEGACY_TASK_KINDS[value] ?? value) : value
 
 /** The lifecycle. `queued` from creation until the worker reports. */
 export const TASK_STATUSES = ['queued', 'running', 'succeeded', 'failed', 'interrupted'] as const

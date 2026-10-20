@@ -57,7 +57,7 @@ const TASKS: TaskWireRow[] = [
     goal: 'Die Fluchtweglänge im Atrium stimmt nicht; OIB 2.3 gilt hier, nicht 2.',
     status: 'running',
     requesterName: 'Maria Huber',
-    runSummary: { status: 'laeuft', rounds: 3, docs: 9 },
+    runSummary: { status: 'running', rounds: 3, docs: 9 },
   }),
   row({
     id: 'task-1b',
@@ -77,11 +77,11 @@ const TASKS: TaskWireRow[] = [
     review: 'accepted',
     conversationId: 'conv-2',
     runMessageId: 'msg-2',
-    runSummary: { status: 'fertig', rounds: 4, docs: 11 },
+    runSummary: { status: 'done', rounds: 4, docs: 11 },
   }),
   row({
     id: 'task-3',
-    kind: 'einreichcheck',
+    kind: 'submission_check',
     title: 'Einreichcheck vor Abgabe',
     goal: 'Was fehlt noch für die Einreichung am 30.9.?',
     review: 'rejected',
@@ -101,7 +101,7 @@ const TASKS: TaskWireRow[] = [
     finishedAt: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000 + 20 * 60 * 1000).toISOString(),
     conversationId: 'conv-4',
     runMessageId: 'msg-4',
-    runSummary: { status: 'fehlgeschlagen', rounds: 2, docs: 5 },
+    runSummary: { status: 'failed', rounds: 2, docs: 5 },
   }),
 ]
 

@@ -344,12 +344,12 @@ class TestNoInProcessFallback:
 
 class TestUpload:
     def test_an_upload_queues_its_job_at_once_with_the_admins_doc_class(self, ingestor):
-        queued = oib_sync.store_and_request("plan.pdf", b"%PDF plan", "oib_leitfaden")
+        queued = oib_sync.store_and_request("plan.pdf", b"%PDF plan", "oib_guide")
 
         assert queued is True
         assert _row("plan.pdf").sha256 == _sha(b"%PDF plan")
         claim = ingest_queue.claim_next("worker-1", stale_seconds=180, max_attempts=3)
-        assert ingest_dispatch.decode(claim.payload).config["doc_class"] == "oib_leitfaden"
+        assert ingest_dispatch.decode(claim.payload).config["doc_class"] == "oib_guide"
 
     def test_a_cycle_after_an_upload_queues_nothing_more(self, ingestor):
         oib_sync.store_and_request("plan.pdf", b"%PDF plan")
@@ -418,7 +418,7 @@ class TestUpload:
 
         monkeypatch.setattr(corpus_store, "put", slow_put)
         upload = threading.Thread(
-            target=oib_sync.store_and_request, args=("plan.pdf", b"%PDF plan", "gesetz"), daemon=True
+            target=oib_sync.store_and_request, args=("plan.pdf", b"%PDF plan", "law"), daemon=True
         )
         upload.start()
         assert in_put.wait(10)
@@ -431,7 +431,7 @@ class TestUpload:
         cycle.join(10)
 
         claim = ingest_queue.claim_next("worker-1", stale_seconds=180, max_attempts=3)
-        assert ingest_dispatch.decode(claim.payload).config["doc_class"] == "gesetz"
+        assert ingest_dispatch.decode(claim.payload).config["doc_class"] == "law"
         assert _queued() == 0
 
 

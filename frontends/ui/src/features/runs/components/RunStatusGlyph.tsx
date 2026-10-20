@@ -20,7 +20,7 @@
  * new one pops in from 60% — `AnimatePresence mode="wait"`, keyed by the glyph
  * rather than the status, so `angelegt → laeuft` (spinner to spinner) swaps
  * nothing. `delay` holds the swap back for a choreography that has something
- * to finish first (the rail's last check, on `fertig`); it reaches the leaving
+ * to finish first (the rail's last check, on `done`); it reaches the leaving
  * glyph through `custom`, because an exit transition is read at the moment of
  * leaving and the leaving glyph was rendered before anyone knew the delay.
  */
@@ -37,22 +37,22 @@ import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import type { RunStatus } from '@/lib/runs/run-ledger-types'
 import { cn } from '@/lib/utils'
 
-type IconStatus = Exclude<RunStatus, 'angelegt' | 'laeuft'>
+type IconStatus = Exclude<RunStatus, 'created' | 'running'>
 
 const GLYPH_TONE: Record<IconStatus, string> = {
-  wartet: 'text-brand',
-  fertig: 'text-success',
-  fehlgeschlagen: 'text-error',
-  abgebrochen: 'text-muted-foreground',
-  unterbrochen: 'text-warning',
+  waiting: 'text-brand',
+  done: 'text-success',
+  failed: 'text-error',
+  cancelled: 'text-muted-foreground',
+  interrupted: 'text-warning',
 }
 
 const GLYPH_ICON: Record<IconStatus, typeof Clock> = {
-  wartet: Clock,
-  fertig: CheckCircle2,
-  fehlgeschlagen: XCircle,
-  abgebrochen: CircleSlash,
-  unterbrochen: AlertTriangle,
+  waiting: Clock,
+  done: CheckCircle2,
+  failed: XCircle,
+  cancelled: CircleSlash,
+  interrupted: AlertTriangle,
 }
 
 /** The slot and the icon inside it: the bar's 20px, or the line's 16px. */
@@ -63,7 +63,7 @@ const SIZE = {
 
 /** Which face a status wears; two statuses share the spinner. */
 const glyphKey = (status: RunStatus): 'spinner' | IconStatus =>
-  status === 'angelegt' || status === 'laeuft' ? 'spinner' : status
+  status === 'created' || status === 'running' ? 'spinner' : status
 
 /**
  * Out on a snap, in on a snap from 60% — the scale is the "pop", and 40% of a

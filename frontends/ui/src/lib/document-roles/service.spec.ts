@@ -41,7 +41,7 @@ const repo = vi.hoisted(() => ({
   heldDocumentIds: [] as string[],
   // A project whose intake was never saved: the column holds `{}`, which
   // `findProjectProfile` hands out as this empty profile (never `null` for an
-  // existing project). The implicit first building (`bw1`) is the only one.
+  // existing project). The implicit first building (`bldg1`) is the only one.
   // Modelling it as `null` here is how the 500 on the real value went unseen.
   profile: emptyProfile() as ProjectProfile | null,
 }))
@@ -132,7 +132,7 @@ function binding(overrides: Partial<DocumentRoleBinding> = {}): DocumentRoleBind
     id: 'binding-1',
     projectId: 'proj-1',
     documentId: 'doc-1',
-    role: 'bebauungsplan',
+    role: 'development_plan',
     scopeInstanceId: null,
     confidence: 'declared',
     source: 'user',
@@ -168,7 +168,7 @@ describe('declareDocumentRole', () => {
   it('refuses a building role with no building', async () => {
     await expect(
       declareDocumentRole(
-        { projectId: 'proj-1', documentId: 'doc-1', role: 'bestandsplan' },
+        { projectId: 'proj-1', documentId: 'doc-1', role: 'existing_plans' },
         session
       )
     ).rejects.toThrow(/needs its id/)
@@ -177,7 +177,7 @@ describe('declareDocumentRole', () => {
   it('refuses a project role that carries a building', async () => {
     await expect(
       declareDocumentRole(
-        { projectId: 'proj-1', documentId: 'doc-1', role: 'vorbescheid', scopeInstanceId: 'bw1' },
+        { projectId: 'proj-1', documentId: 'doc-1', role: 'preliminary_decision', scopeInstanceId: 'bldg1' },
         session
       )
     ).rejects.toThrow(/takes no scope instance/)
@@ -186,13 +186,13 @@ describe('declareDocumentRole', () => {
   it('answers "not in this project" instead of letting the foreign key raise', async () => {
     repo.documentInProject = false
     await expect(
-      declareDocumentRole({ projectId: 'proj-1', documentId: 'doc-9', role: 'lageplan' }, session)
+      declareDocumentRole({ projectId: 'proj-1', documentId: 'doc-9', role: 'site_plan' }, session)
     ).rejects.toThrow(/Document not found in this project/)
   })
 
   it('checks write permission before doing anything', async () => {
     await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'lageplan' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'site_plan' },
       session
     )
     expect(requireProjectAccess).toHaveBeenCalledWith(session, 'proj-1', [
@@ -203,13 +203,13 @@ describe('declareDocumentRole', () => {
 
   it('records the declaration with its provenance', async () => {
     await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'lageplan' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'site_plan' },
       session
     )
     expect(repo.inserted[0]).toMatchObject({
       organizationId: 'org-1',
       createdBy: 'user-1',
-      role: 'lageplan',
+      role: 'site_plan',
       confidence: 'declared',
       source: 'user',
     })
@@ -220,7 +220,7 @@ describe('declareDocumentRole', () => {
       {
         projectId: 'proj-1',
         documentId: 'doc-1',
-        role: 'lageplan',
+        role: 'site_plan',
         confidence: 'suggested',
         source: 'classifier',
       },
@@ -232,7 +232,7 @@ describe('declareDocumentRole', () => {
   it('replaces the holder of a single-holder role and reports what it displaced', async () => {
     repo.bindings = [binding({ id: 'old', documentId: 'doc-old', filename: 'alt-bplan.pdf' })]
     const result = await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-new', role: 'bebauungsplan' },
+      { projectId: 'proj-1', documentId: 'doc-new', role: 'development_plan' },
       session
     )
     expect(repo.deleted).toEqual(['old'])
@@ -242,10 +242,10 @@ describe('declareDocumentRole', () => {
 
   it('keeps every sheet of a many-holder role', async () => {
     repo.bindings = [
-      binding({ id: 'sheet-1', documentId: 'doc-a', role: 'bestandsplan', scopeInstanceId: 'bw1' }),
+      binding({ id: 'sheet-1', documentId: 'doc-a', role: 'existing_plans', scopeInstanceId: 'bldg1' }),
     ]
     const result = await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-b', role: 'bestandsplan', scopeInstanceId: 'bw1' },
+      { projectId: 'proj-1', documentId: 'doc-b', role: 'existing_plans', scopeInstanceId: 'bldg1' },
       session
     )
     expect(repo.deleted).toEqual([])
@@ -255,7 +255,7 @@ describe('declareDocumentRole', () => {
   it('treats declaring the same binding twice as a no-op, not a unique violation', async () => {
     repo.bindings = [binding({ id: 'already', documentId: 'doc-1' })]
     const result = await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'bebauungsplan' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'development_plan' },
       session
     )
     expect(result.binding.id).toBe('already')
@@ -309,7 +309,7 @@ describe('declareDocumentRole — a repeat can confirm', () => {
     repo.bindings = [binding({ confidence: 'suggested', source: 'classifier' })]
 
     const result = await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'bebauungsplan' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'development_plan' },
       session
     )
 
@@ -326,7 +326,7 @@ describe('declareDocumentRole — a repeat can confirm', () => {
     repo.bindings = [binding({ confidence: 'declared', source: 'user' })]
 
     await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'bebauungsplan' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'development_plan' },
       session
     )
 
@@ -340,7 +340,7 @@ describe('declareDocumentRole — a repeat can confirm', () => {
       {
         projectId: 'proj-1',
         documentId: 'doc-1',
-        role: 'bebauungsplan',
+        role: 'development_plan',
         confidence: 'suggested',
         source: 'classifier',
       },
@@ -369,12 +369,12 @@ describe('declareDocumentRole — the building has to exist', () => {
         {
           projectId: 'proj-1',
           documentId: 'doc-1',
-          role: 'bestandsplan',
-          scopeInstanceId: 'bw9',
+          role: 'existing_plans',
+          scopeInstanceId: 'bldg9',
         },
         session
       )
-    ).rejects.toThrow(/bw9/)
+    ).rejects.toThrow(/bldg9/)
 
     // The vocabulary can only check the SHAPE of an instance id. An accepted
     // string that names no building produced a binding matching no generated
@@ -385,7 +385,7 @@ describe('declareDocumentRole — the building has to exist', () => {
 
   it('accepts the implicit first building before any profile is saved', async () => {
     await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'bestandsplan', scopeInstanceId: 'bw1' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'existing_plans', scopeInstanceId: 'bldg1' },
       session
     )
     expect(repo.inserted).toHaveLength(1)
@@ -394,13 +394,13 @@ describe('declareDocumentRole — the building has to exist', () => {
   it('accepts a building the stored profile actually names', async () => {
     repo.profile = {
       facts: {
-        'bauwerk_name@bw1': {
+        'building_name@bldg1': {
           value: 'Haupthaus',
           confidence: 'confirmed',
           source: 'onboarding',
           updatedAt: '2026-01-01T00:00:00.000Z',
         },
-        'bauwerk_name@bw2': {
+        'building_name@bldg2': {
           value: 'Hoftrakt',
           confidence: 'confirmed',
           source: 'onboarding',
@@ -413,7 +413,7 @@ describe('declareDocumentRole — the building has to exist', () => {
     }
 
     await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-1', role: 'bestandsplan', scopeInstanceId: 'bw2' },
+      { projectId: 'proj-1', documentId: 'doc-1', role: 'existing_plans', scopeInstanceId: 'bldg2' },
       session
     )
     expect(repo.inserted).toHaveLength(1)
@@ -432,18 +432,18 @@ describe('bauwerkIds', () => {
   it('names exactly the buildings the profile has', () => {
     // building 1 was removed in the wizard; 2 and 3 remain.
     const saved: ProjectProfile = {
-      facts: { 'bauwerk_name@bw2': fact('Hoftrakt'), 'bauwerk_name@bw3': fact('Garage') },
+      facts: { 'building_name@bldg2': fact('Hoftrakt'), 'building_name@bldg3': fact('Garage') },
       goals: {},
       unknowns: [],
       assumptions: {},
     }
 
-    expect(buildingIds(saved)).toEqual(['bw2', 'bw3'])
+    expect(buildingIds(saved)).toEqual(['bldg2', 'bldg3'])
   })
 
   it('names the implicit first building of a profile that names none, or of no profile', () => {
-    expect(buildingIds(emptyProfile())).toEqual(['bw1'])
-    expect(buildingIds(null)).toEqual(['bw1'])
+    expect(buildingIds(emptyProfile())).toEqual(['bldg1'])
+    expect(buildingIds(null)).toEqual(['bldg1'])
   })
 })
 
@@ -458,7 +458,7 @@ describe('restricted folders (ADR-0087)', () => {
   it('lists no binding to a document in a folder the session may not see', async () => {
     repo.bindings = [
       binding({ id: 'open', documentId: 'doc-1', filename: 'bplan.pdf' }),
-      binding({ id: 'fee', documentId: 'doc-fee', role: 'lageplan', filename: 'Honorarnote.pdf' }),
+      binding({ id: 'fee', documentId: 'doc-fee', role: 'site_plan', filename: 'Honorarnote.pdf' }),
     ]
 
     const listed = await listDocumentRoles('proj-1', session)
@@ -473,7 +473,7 @@ describe('restricted folders (ADR-0087)', () => {
 
   it('answers a hidden document like a missing one when asked to bind it', async () => {
     await expect(
-      declareDocumentRole({ projectId: 'proj-1', documentId: 'doc-fee', role: 'lageplan' }, session)
+      declareDocumentRole({ projectId: 'proj-1', documentId: 'doc-fee', role: 'site_plan' }, session)
     ).rejects.toThrow(/Document not found in this project/)
     expect(repo.inserted).toHaveLength(0)
   })
@@ -483,7 +483,7 @@ describe('restricted folders (ADR-0087)', () => {
     // hidden one is displaced; the answer must not hand its filename over.
     repo.bindings = [binding({ id: 'fee', documentId: 'doc-fee', filename: 'Honorarnote.pdf' })]
     const result = await declareDocumentRole(
-      { projectId: 'proj-1', documentId: 'doc-new', role: 'bebauungsplan' },
+      { projectId: 'proj-1', documentId: 'doc-new', role: 'development_plan' },
       session
     )
     expect(repo.deleted).toEqual(['fee'])

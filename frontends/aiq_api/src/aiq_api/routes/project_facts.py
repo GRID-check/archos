@@ -58,7 +58,7 @@ def add_project_facts_routes(router: APIRouter):
             # One set_payload over the whole scope: off the event loop, as the
             # store's other blocking calls are.
             applied = await asyncio.to_thread(
-                retrieval.set_project_facts, collection_name, request.facts.model_dump(mode="json"), request.status
+                retrieval.set_project_facts, collection_name, request.facts.to_store(), request.status
             )
         except Exception as e:
             logger.exception("Mirroring project facts onto %s failed", collection_name)

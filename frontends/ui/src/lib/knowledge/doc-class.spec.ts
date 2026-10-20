@@ -21,9 +21,11 @@ import {
   DEFAULT_DOC_CLASS,
   DOC_CLASSES,
   DOC_CLASS_LABELS,
+  asDocClass,
   docClassAuthority,
   docClassSignal,
   isOibBinding,
+  LEGACY_DOC_CLASSES,
 } from './doc-class'
 
 // frontends/ui/src/lib/knowledge → repo root is four levels up from src/.
@@ -68,6 +70,26 @@ describe('doc-class vocabulary parity', () => {
   })
 })
 
+describe('keys written before the English names', () => {
+  test('are the backend LEGACY_DOC_CLASSES, each mapped onto a current class', () => {
+    const source = readFileSync(BACKEND_SOURCE, 'utf-8')
+    const block = source.match(/LEGACY_DOC_CLASSES: dict\[str, str\] = \{([\s\S]*?)\}/)
+    expect(block, 'LEGACY_DOC_CLASSES not found').toBeTruthy()
+    const pairs = [...block![1].matchAll(/^\s*"([^"]+)":\s*"([^"]+)",/gm)].map((m) => [m[1], m[2]])
+    expect(LEGACY_DOC_CLASSES).toEqual(Object.fromEntries(pairs))
+    for (const [legacy, current] of pairs) {
+      expect(DOC_CLASSES as readonly string[]).toContain(current)
+      expect(asDocClass(legacy)).toBe(current)
+    }
+  })
+
+  test('a current key and an unknown one narrow as before', () => {
+    expect(asDocClass('law')).toBe('law')
+    expect(asDocClass('nonsense')).toBeUndefined()
+    expect(asDocClass(null)).toBeUndefined()
+  })
+})
+
 describe('doc-class badge derivation', () => {
   test('every base class tints in the law family', () => {
     for (const dc of DOC_CLASSES) {
@@ -76,10 +98,10 @@ describe('doc-class badge derivation', () => {
   })
 
   test('authority tag matches the OIB / RIS / ÖNORM rung', () => {
-    expect(docClassAuthority('oib_richtlinie')).toBe('OIB')
-    expect(docClassAuthority('oib_begriffe')).toBe('OIB')
-    expect(docClassAuthority('norm_extern')).toBe('ÖNORM')
-    expect(docClassAuthority('gesetz')).toBe('RIS')
+    expect(docClassAuthority('oib_guideline')).toBe('OIB')
+    expect(docClassAuthority('oib_definitions')).toBe('OIB')
+    expect(docClassAuthority('external_standard')).toBe('ÖNORM')
+    expect(docClassAuthority('law')).toBe('RIS')
   })
 
   test('isOibBinding is true exactly for the oib_* classes', () => {

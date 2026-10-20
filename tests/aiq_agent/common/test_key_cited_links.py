@@ -22,7 +22,7 @@ def _registry() -> SourceRegistry:
                 source_type="knowledge_layer",
                 tool_name="ris_lookup_tool",
                 collection="ris/LrKons/Wien",
-                punkt=punkt,
+                clause=punkt,
             )
         )
     return registry

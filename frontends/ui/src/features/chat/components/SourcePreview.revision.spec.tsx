@@ -61,7 +61,7 @@ const refTo = (fileName: string): CitationRef => {
     citationKey: `${fileName}, p.3`,
     fileName,
     collection: 'proj_1',
-    kind: 'projekt',
+    kind: 'project',
     page: 3,
     number: 1,
     isCited: true,
@@ -123,7 +123,7 @@ describe('a citation of an older revision', () => {
     expect(open.openFilePeek).toHaveBeenCalledWith(
       expect.objectContaining({
         file: expect.objectContaining({ id: 'doc-c', filename: CURRENT }),
-        source: 'projekt',
+        source: 'project',
         projectId: 'project-1',
       })
     )

@@ -10,16 +10,16 @@ import {
   type PendingRoleBind,
 } from './pending-role-binds'
 
-const plan = (documentId: string, scopeInstanceId = 'bw2'): PendingRoleBind => ({
+const plan = (documentId: string, scopeInstanceId = 'bldg2'): PendingRoleBind => ({
   documentId,
   filename: `${documentId}.pdf`,
-  role: 'bestandsplan',
+  role: 'existing_plans',
   scopeInstanceId,
 })
 
 describe('pending role binds', () => {
   it('without a stored profile, only the default building is saved', () => {
-    expect([...persistedBuildingIds(null, null)]).toEqual(['bw1'])
+    expect([...persistedBuildingIds(null, null)]).toEqual(['bldg1'])
   })
 
   it('a many-holder slot keeps every document, once each', () => {
@@ -29,16 +29,16 @@ describe('pending role binds', () => {
   })
 
   it('a single-holder slot keeps only the newest choice', () => {
-    const first: PendingRoleBind = { ...plan('a'), role: 'lageplan' }
-    const second: PendingRoleBind = { ...plan('b'), role: 'lageplan' }
+    const first: PendingRoleBind = { ...plan('a'), role: 'site_plan' }
+    const second: PendingRoleBind = { ...plan('b'), role: 'site_plan' }
 
     expect(withPendingBind([first], second)).toEqual([second])
   })
 
   it('removing a building drops its held bindings and no other', () => {
-    const pending = [plan('a', 'bw2'), plan('b', 'bw3')]
+    const pending = [plan('a', 'bldg2'), plan('b', 'bldg3')]
 
-    expect(withoutBuilding(pending, 'bw2')).toEqual([plan('b', 'bw3')])
+    expect(withoutBuilding(pending, 'bldg2')).toEqual([plan('b', 'bldg3')])
   })
 
   it('taking one back leaves the rest', () => {
@@ -65,8 +65,8 @@ describe('pending role binds', () => {
     expect(url).toBe('/api/projects/proj-1/document-roles')
     expect(JSON.parse(String(init?.body))).toEqual({
       documentId: 'a',
-      role: 'bestandsplan',
-      scopeInstanceId: 'bw2',
+      role: 'existing_plans',
+      scopeInstanceId: 'bldg2',
     })
   })
 

@@ -72,8 +72,8 @@ const readSource = (overrides: Partial<CitationSource> = {}): CitationSource => 
   timestamp: new Date('2026-09-01T10:00:00.000Z'),
   fileName: 'oib-rl_2.pdf',
   page: 12,
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   ...overrides,
 })
 

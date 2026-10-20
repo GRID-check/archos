@@ -25,13 +25,27 @@ from pydantic import Field
 FINDINGS_VERSION = 1
 
 #: Whether the requirement is met, in the reader's words on the wire.
-FindingStatus = Literal["erfuellt", "nicht_erfuellt", "offen", "nicht_anwendbar"]
+FindingStatus = Literal["met", "not_met", "open", "not_applicable"]
 #: How the finding stands on its evidence: quoted from a source, derived from
 #: cited values, or still without a source.
-FindingGrounding = Literal["belegt", "abgeleitet", "offen"]
+FindingGrounding = Literal["sourced", "derived", "open"]
 
-FINDING_STATUSES: tuple[FindingStatus, ...] = ("erfuellt", "nicht_erfuellt", "offen", "nicht_anwendbar")
-FINDING_GROUNDINGS: tuple[FindingGrounding, ...] = ("belegt", "abgeleitet", "offen")
+FINDING_STATUSES: tuple[FindingStatus, ...] = ("met", "not_met", "open", "not_applicable")
+FINDING_GROUNDINGS: tuple[FindingGrounding, ...] = ("sourced", "derived", "open")
+
+#: Spellings written before the English names (messages stored by an older
+#: build, a pod that has not rolled yet). Read-only: nothing writes these.
+LEGACY_FINDING_STATUS: dict[str, FindingStatus] = {
+    "erfuellt": "met",
+    "nicht_erfuellt": "not_met",
+    "offen": "open",
+    "nicht_anwendbar": "not_applicable",
+}
+LEGACY_FINDING_GROUNDING: dict[str, FindingGrounding] = {
+    "belegt": "sourced",
+    "abgeleitet": "derived",
+    "offen": "open",
+}
 
 MAX_FINDINGS = 40
 MAX_LABEL_CHARS = 200
@@ -114,6 +128,12 @@ def sanitize_findings(raw: Any) -> dict[str, Any] | None:
 def _trimmed(item: dict[str, Any]) -> dict[str, Any]:
     """Cut the free text to the bounds instead of refusing the row for length."""
     out = dict(item)
+    status = out.get("status")
+    if isinstance(status, str):
+        out["status"] = LEGACY_FINDING_STATUS.get(status, status)
+    grounding = out.get("grounding")
+    if isinstance(grounding, str):
+        out["grounding"] = LEGACY_FINDING_GROUNDING.get(grounding, grounding)
     for key, limit in (
         ("requirement", MAX_LABEL_CHARS),
         ("value", MAX_VALUE_CHARS),

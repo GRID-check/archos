@@ -34,4 +34,4 @@ export const hasLiveRun = (messages: ChatMessage[]): boolean => messages.some(is
 
 /** A run in this thread finished with a report. */
 export const hasFinishedRun = (messages: ChatMessage[]): boolean =>
-  messages.some((message) => message.runLedger && runDisplayStatus(message.runLedger) === 'fertig')
+  messages.some((message) => message.runLedger && runDisplayStatus(message.runLedger) === 'done')

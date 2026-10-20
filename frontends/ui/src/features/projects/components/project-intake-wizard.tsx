@@ -39,8 +39,11 @@ import {
   type PendingRoleBind,
 } from '../lib/pending-role-binds'
 import {
+  BUILDING_ID_PREFIX,
   answerKeyFor,
   buildingIdFromAnswerKey,
+  buildingNumber,
+  buildingTag,
   answersFromProfile,
   buildIntakeProfile,
   buildingsFromAnswers,
@@ -211,9 +214,13 @@ export function ProjectIntakeWizard({
   // Modules where the user chose "alle anzeigen" despite Schnellstart.
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
 
-  const STORAGE_KEY = `intake-draft-${projectId}`
+  // `-v2`: the answers a draft holds are keyed by building id and use-token names
+  // that changed (migration 0159), so a draft from before is not restorable. It
+  // is dropped, not read: a draft is one tab's unsent work.
+  const STORAGE_KEY = `intake-draft-v2-${projectId}`
+  const LEGACY_STORAGE_KEY = `intake-draft-${projectId}`
   const isEdit = mode === 'edit'
-  const bwCounter = useRef(1)
+  const buildingCounter = useRef(1)
   // The active module-stepper button, scrolled into view whenever the step changes
   // so the current pill never hides off the right edge on a narrow screen.
 
@@ -234,6 +241,11 @@ export function ProjectIntakeWizard({
 
         let restored = false
         try {
+          localStorage.removeItem(LEGACY_STORAGE_KEY)
+        } catch {
+          /* storage may be blocked */
+        }
+        try {
           const raw = localStorage.getItem(STORAGE_KEY)
           if (raw) {
             const parsed = JSON.parse(raw) as IntakeDraft
@@ -249,7 +261,7 @@ export function ProjectIntakeWizard({
                     : buildingsFromAnswers(parsed.answers)
                 setBuildings(draftBuildings)
                 updatePendingBinds(() => pendingBindsFromDraft(parsed.pendingBinds))
-                bwCounter.current = maxBwNumber(draftBuildings)
+                buildingCounter.current = maxBuildingNumber(draftBuildings)
                 setAnswers(pruneStaleConditionalAnswers(parsed.answers, data))
                 if (typeof parsed.currentStep === 'number') setCurrentStep(parsed.currentStep)
                 restored = true
@@ -270,7 +282,7 @@ export function ProjectIntakeWizard({
           if (initialProfile) {
             const seeded = answersFromProfile(initialProfile, data)
             setBuildings(seeded.buildings)
-            bwCounter.current = maxBwNumber(seeded.buildings)
+            buildingCounter.current = maxBuildingNumber(seeded.buildings)
             setAnswers(pruneStaleConditionalAnswers(seeded.answers, data))
           } else if (projectName && !isEdit) {
             // Seed the project name captured at creation so A1 opens prefilled.
@@ -541,8 +553,8 @@ export function ProjectIntakeWizard({
 
   // --- Bauwerk management (module C's C0 affordance) ---
   const addBuilding = useCallback(() => {
-    bwCounter.current += 1
-    const id = `bw${bwCounter.current}`
+    buildingCounter.current += 1
+    const id = `${BUILDING_ID_PREFIX}${buildingCounter.current}`
     setBuildings((prev) => [...prev, { id, name: `Bauwerk ${prev.length + 1}` }])
   }, [])
 
@@ -1395,10 +1407,10 @@ function zoneQuestionsFor(
   return out
 }
 
-/** The highest bwN number present, so newly-added buildings never reuse an id. */
-function maxBwNumber(buildings: BuildingInstance[]): number {
+/** The highest building number present, so newly-added buildings never reuse an id. */
+function maxBuildingNumber(buildings: BuildingInstance[]): number {
   return buildings.reduce((max, bw) => {
-    const n = Number(bw.id.replace(/^bw/, ''))
+    const n = buildingNumber(bw.id)
     return Number.isFinite(n) ? Math.max(max, n) : max
   }, 1)
 }
@@ -1442,7 +1454,7 @@ function BuildingStage({
         <div key={bw.id} className="bg-card shadow-xs overflow-hidden rounded-2xl border">
           <div className="bg-muted/40 flex items-center gap-3 border-b px-4 py-2.5">
             <Badge variant="default" className="font-mono">
-              {bw.id.toUpperCase()}
+              {buildingTag(bw.id)}
             </Badge>
             {canManage ? (
               <>

@@ -86,25 +86,25 @@ vi.mock('@/lib/projects/repository', () => ({
  */
 const PROFILE = {
   facts: {
-    standort_adresse: {
+    site_address: {
       value: 'Simmeringer Hauptstraße 24, 1110 Wien',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-08-01T00:00:00.000Z',
     },
-    bundesland: {
+    federal_state: {
       value: 'wien',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-08-01T00:00:00.000Z',
     },
-    gebaeudeklasse: {
+    building_class: {
       value: 'GK4',
       confidence: 'confirmed',
       source: 'user_confirmed',
       updatedAt: '2026-08-01T00:00:00.000Z',
     },
-    projektphase: {
+    project_phase: {
       value: 'einreichplanung',
       confidence: 'confirmed',
       source: 'onboarding',
@@ -391,7 +391,7 @@ describe('fileResearchReport', () => {
   })
 
   /**
-   * A cover identifies; it does not summarise. `projektphase` is a confirmed
+   * A cover identifies; it does not summarise. `project_phase` is a confirmed
    * fact of the same profile and is deliberately not on the sheet — this is the
    * assertion that the selection is a selection.
    */

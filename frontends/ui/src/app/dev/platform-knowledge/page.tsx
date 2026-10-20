@@ -23,20 +23,20 @@ import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 
 /** Each fixture document with the type it really has, so the type column reads true. */
 const DOCUMENTS: [title: string, docClass: string][] = [
-  ['OIB-Richtlinie 2 — Brandschutz, Ausgabe 2023', 'oib_richtlinie'],
-  ['OIB-Leitfaden Barrierefreiheit', 'oib_leitfaden'],
-  ['OIB-Erläuterungen zu Richtlinie 4', 'oib_erlaeuterung'],
-  ['OIB-Begriffsbestimmungen 2023', 'oib_begriffe'],
-  ['OIB-Referenzdokument Energieausweis', 'oib_referenz'],
-  ['OIB-Änderungsdokument 2023/2019', 'oib_aenderung'],
-  ['ÖNORM B 1600 — Barrierefreies Bauen', 'norm_extern'],
-  ['Wiener Bauordnung — Konsolidierte Fassung', 'gesetz'],
-  ['Praxisnotiz Fluchtwegbreiten', 'sonstiges'],
-  ['OIB-Richtlinie 3 — Hygiene, Ausgabe 2023', 'oib_richtlinie'],
-  ['OIB-Richtlinie 5 — Schallschutz, Ausgabe 2023', 'oib_richtlinie'],
-  ['ÖNORM B 8110-1 — Wärmeschutz', 'norm_extern'],
-  ['Niederösterreichische Bautechnikverordnung', 'gesetz'],
-  ['Merkblatt Rauchwarnmelder', 'sonstiges'],
+  ['OIB-Richtlinie 2 — Brandschutz, Ausgabe 2023', 'oib_guideline'],
+  ['OIB-Leitfaden Barrierefreiheit', 'oib_guide'],
+  ['OIB-Erläuterungen zu Richtlinie 4', 'oib_explanatory_note'],
+  ['OIB-Begriffsbestimmungen 2023', 'oib_definitions'],
+  ['OIB-Referenzdokument Energieausweis', 'oib_reference'],
+  ['OIB-Änderungsdokument 2023/2019', 'oib_amendment'],
+  ['ÖNORM B 1600 — Barrierefreies Bauen', 'external_standard'],
+  ['Wiener Bauordnung — Konsolidierte Fassung', 'law'],
+  ['Praxisnotiz Fluchtwegbreiten', 'other'],
+  ['OIB-Richtlinie 3 — Hygiene, Ausgabe 2023', 'oib_guideline'],
+  ['OIB-Richtlinie 5 — Schallschutz, Ausgabe 2023', 'oib_guideline'],
+  ['ÖNORM B 8110-1 — Wärmeschutz', 'external_standard'],
+  ['Niederösterreichische Bautechnikverordnung', 'law'],
+  ['Merkblatt Rauchwarnmelder', 'other'],
 ]
 
 /** Lifecycle per row, by index: the states the Issues number and the status column exist for. */
@@ -56,7 +56,7 @@ const FILES = DOCUMENTS.map(([title, docClass], index) => ({
       ? 'Brandschutzanforderungen für Gebäude: Tragfähigkeit im Brandfall, Brandabschnitte, Fluchtwege und Rauchableitung.'
       : null,
   docClass,
-  docClassSuggestion: index === 8 ? 'oib_leitfaden' : null,
+  docClassSuggestion: index === 8 ? 'oib_guide' : null,
   displayTitle: title,
 }))
 

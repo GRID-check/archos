@@ -347,11 +347,11 @@ export interface DispatchIngestExtras {
   /**
    * The FILE NAME of the document in this collection that these bytes replace,
    * when a person filed the upload as its new Fassung (ADR-0099). Sent as
-   * `fassung_of`; once the file has been read, the ingest job writes the link
+   * `revision_of`; once the file has been read, the ingest job writes the link
    * `PUT /v1/collections/{c}/revision-links` writes. Absent for every other dispatch,
    * and then not sent at all.
    */
-  fassungOf?: string | null
+  revisionOf?: string | null
 }
 
 /**
@@ -495,7 +495,7 @@ export async function dispatchIngest(
     // Only a bulk dispatch says so: the backend's default is interactive.
     ...(extras.priority === 'bulk' ? { priority: 'bulk' } : {}),
     // Only an upload a person filed as a new Fassung says so (ADR-0099).
-    ...(extras.fassungOf ? { fassung_of: extras.fassungOf } : {}),
+    ...(extras.revisionOf ? { revision_of: extras.revisionOf } : {}),
     // Absent for every human document, and the Python side treats absent,
     // null and a non-agent author identically (`parse_agent_provenance`).
     // Spread so the four keys are the four keys, never a nested object the
@@ -1081,7 +1081,7 @@ export interface UploadDocumentInput {
    */
   uploadBatchId?: string | null
   /** See `ShelfUploadInput.revisionOf`: the document this is filed as the new Fassung of. */
-  fassungOf?: string | null
+  revisionOf?: string | null
   /** See `ShelfUploadInput.priority`: `bulk` for a machine filing on a person's behalf. */
   priority?: IngestPriority
 }
@@ -1208,7 +1208,7 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
    * Fassung of, already checked (`resolveRevisionOf`). Read by the ingest paths
    * only: an IFC model's digest is not the file the row names.
    */
-  fassungOf?: string | null
+  revisionOf?: string | null
 }
 
 export interface DispatchDocumentResult {
@@ -1359,7 +1359,7 @@ export async function dispatchDocument(
       fileName: row.filename,
       provenance: input.provenance ?? null,
       priority: input.priority,
-      fassungOf: input.fassungOf ?? null,
+      revisionOf: input.revisionOf ?? null,
     }
   )
 }
@@ -1627,7 +1627,7 @@ export async function beginRenditionIngest(
     ...documentWorkPayload(input),
     fileName,
     provenance: input.provenance ?? null,
-    fassungOf: input.fassungOf ?? null,
+    revisionOf: input.revisionOf ?? null,
   })
 }
 
@@ -1648,7 +1648,7 @@ export async function runOfficeRenditionJob(
   const input = {
     ...dispatchInputOf(organizationId, payload),
     provenance: payload.provenance ?? null,
-    fassungOf: payload.fassungOf ?? null,
+    revisionOf: payload.revisionOf ?? payload.fassungOf ?? null,
   }
   if (!(await jobStillOwnsRow(input))) return
 
@@ -1687,7 +1687,7 @@ async function ingestThroughRendition(input: DispatchDocumentInput, fileName: st
       // structure-preserving extractor (see `extractsFromRendition`).
       extractionRef: indexesRendition ? renditionRef : null,
       priority: input.priority,
-      fassungOf: input.fassungOf ?? null,
+      revisionOf: input.revisionOf ?? null,
     }
   )
 }

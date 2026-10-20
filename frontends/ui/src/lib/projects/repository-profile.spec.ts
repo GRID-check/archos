@@ -50,20 +50,20 @@ describe('findProjectProfile', () => {
 
     expect(profile).toEqual({ facts: {}, goals: {}, unknowns: [], assumptions: {} })
     expect(answersFromProfile(profile!, projectIntakeDefinitionV1).buildings).toEqual([
-      { id: 'bw1', name: 'Bauwerk 1' },
+      { id: 'bldg1', name: 'Bauwerk 1' },
     ])
   })
 
   it('keeps the well-formed parts of a partly malformed profile', async () => {
     const fact = {
-      value: 'wien',
+      value: 'vienna',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-09-30T00:00:00Z',
     }
-    const profile = await storedProfile({ facts: { bundesland: fact, broken: 3 } })
+    const profile = await storedProfile({ facts: { federal_state: fact, broken: 3 } })
 
-    expect(profile?.facts).toEqual({ bundesland: fact })
+    expect(profile?.facts).toEqual({ federal_state: fact })
     expect(profile?.unknowns).toEqual([])
   })
 

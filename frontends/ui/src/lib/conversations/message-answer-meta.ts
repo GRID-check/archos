@@ -40,8 +40,20 @@ const MAX_TEXT_CHARS = 300
 const MAX_DETAIL_CHARS = 600
 const MAX_REFERENCE_CHARS = 120
 
-export const CALLOUT_KINDS = ['hinweis', 'achtung', 'frist', 'tipp'] as const
+export const CALLOUT_KINDS = ['note', 'warning', 'deadline', 'tip'] as const
 export type AnswerCalloutKind = (typeof CALLOUT_KINDS)[number]
+
+/**
+ * The German kinds a callout carried before the English names. Rows stored by
+ * an older build, or written by a pod that has not rolled yet, still hold
+ * them; read-only, nothing writes these.
+ */
+export const LEGACY_CALLOUT_KIND: Readonly<Record<string, AnswerCalloutKind>> = {
+  hinweis: 'note',
+  achtung: 'warning',
+  frist: 'deadline',
+  tipp: 'tip',
+}
 
 /** Exclusive answer shapes. A verdict is kept only for `ruling`. */
 export const ANSWER_KINDS = ['direct', 'walkthrough', 'ruling', 'handoff'] as const
@@ -162,7 +174,8 @@ function sanitizeKind(input: unknown): AnswerKind | undefined {
 
 function sanitizeCallout(input: unknown): AnswerMetaCallout | undefined {
   if (!isRecord(input)) return undefined
-  const kind = typeof input.kind === 'string' ? input.kind : ''
+  const raw = typeof input.kind === 'string' ? input.kind : ''
+  const kind = Object.hasOwn(LEGACY_CALLOUT_KIND, raw) ? LEGACY_CALLOUT_KIND[raw]! : raw
   if (!(CALLOUT_KINDS as readonly string[]).includes(kind)) return undefined
   const text = cap(input.text, MAX_TEXT_CHARS)
   if (!text) return undefined

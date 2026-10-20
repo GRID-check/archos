@@ -127,7 +127,7 @@ const addWireCitations = (
       tool: citation.tool,
       locus: {
         page,
-        punkt: citation.punkt,
+        clause: citation.clause,
         score: citation.score,
         number: citation.number,
         // A wire source with no explicit flag is a source the backend chose to

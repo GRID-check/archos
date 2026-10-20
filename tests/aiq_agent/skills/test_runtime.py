@@ -98,7 +98,7 @@ def test_a_stored_auto_invoke_off_no_longer_hides_a_skill() -> None:
     nobody able to bring it back. The key still parses; it decides nothing.
     """
     silent = Skill(
-        name="einreichcheck",
+        name="submission-check",
         description="Was diesem Bauansuchen noch fehlt.",
         body="body",
         metadata={"grid-auto-invoke": "false"},
@@ -107,7 +107,7 @@ def test_a_stored_auto_invoke_off_no_longer_hides_a_skill() -> None:
     runtime = SkillRuntime(skills=(S1, silent))
     block = runtime.prompt_block() or ""
     assert "`alpha`: Erster Skill." in block
-    assert "`einreichcheck`: Was diesem Bauansuchen noch fehlt." in block
+    assert "`submission-check`: Was diesem Bauansuchen noch fehlt." in block
     assert runtime.build_tools()
 
 
@@ -142,6 +142,21 @@ def test_what_was_delivered_is_reported_in_call_order() -> None:
     # Re-invoking the same skill does not duplicate it.
     tool.invoke({"skill_name": "alpha"})
     assert runtime.activated == ("alpha", "beta")
+
+
+def test_the_old_name_of_a_renamed_builtin_opens_it_and_records_the_new_one() -> None:
+    """A schedule's stored prompt says `/einreichcheck`; the model may call `use_skill` with it (migration 0169)."""
+    renamed = Skill(
+        name="submission-check",
+        description="Was diesem Bauansuchen noch fehlt.",
+        body="renamed body",
+        metadata={},
+        origin="platform",
+    )
+    runtime = SkillRuntime(skills=(renamed,))
+
+    assert _use_skill(runtime).invoke({"skill_name": "einreichcheck"}) == "renamed body"
+    assert runtime.activated == ("submission-check",)
 
 
 def test_unknown_skill_message_lists_available_names() -> None:

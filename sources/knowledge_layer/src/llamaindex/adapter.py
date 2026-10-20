@@ -4843,14 +4843,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     base_corpus = legacy_shelf_for_collection_name(collection_name) is None
                     # The Dokumentart an admin chose at upload (`config["doc_class"]`, validated
                     # by the route) beats a stored one and the guess: choosing is the point.
-                    from aiq_agent.knowledge.document_classification import is_valid_doc_class
+                    from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-                    requested_doc_class = config.get("doc_class")
-                    explicit_doc_class = (
-                        requested_doc_class
-                        if isinstance(requested_doc_class, str) and is_valid_doc_class(requested_doc_class)
-                        else None
-                    )
+                    # A job queued before the English keys carries the German one.
+                    explicit_doc_class = canonical_doc_class(config.get("doc_class"))
                     doc_class = (
                         explicit_doc_class or stored_doc_class or (guess_doc_class(file_name) if base_corpus else None)
                     )
@@ -5509,7 +5505,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # that one. A job is one file; a name meant for it is never read for
                     # another. The base corpus has no Fassungen: it replaces by its own hash
                     # registry.
-                    confirmed_older = (config.get("fassung_of") or "").strip() or None
+                    # ``fassung_of`` is the key a job queued before the rename carries.
+                    confirmed_older = (config.get("revision_of") or config.get("fassung_of") or "").strip() or None
                     if base_corpus or len(file_paths) != 1:
                         confirmed_older = None
                     # Whether the summary model reads Fassungen for this file: a suggestion,

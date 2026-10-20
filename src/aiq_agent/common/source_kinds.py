@@ -5,16 +5,16 @@ sources section).
 The product surfaces five *coarse* source kinds, four of them mirroring the
 click-dummy ``TYPES`` registry:
 
-- ``baurecht`` — authoritative building law: the OIB Richtlinien corpus **and**
+- ``building_law`` — authoritative building law: the OIB Richtlinien corpus **and**
   RIS (Bauordnung, Verordnungen, Bundes-/Landesrecht) **and** external Normen.
   OIB corpus hits and RIS hits are the *same* kind — they differ only in the
   fine sub-lane, never in the pathway or the chip.
-- ``buero`` — Büroablage (the organization's standards, details, experience).
-- ``projekt`` — Projektwissen (this project's plans, Bescheide, uploads).
+- ``office`` — Büroablage (the organization's standards, details, experience).
+- ``project`` — Projektwissen (this project's plans, Bescheide, uploads).
 - ``web`` — web-search results.
-- ``messung`` — a value measured off the project's BIM model.
+- ``measurement`` — a value measured off the project's BIM model.
 
-``messung`` is the odd one out and deliberately so. The first four are
+``measurement`` is the odd one out and deliberately so. The first four are
 RETRIEVED PASSAGES: a chunk of a document that a citation resolves to, captured
 into :class:`~aiq_agent.common.citation_verification.SourceRegistry` and
 verifiable by reading the passage back. A measurement has no passage. It
@@ -73,23 +73,23 @@ class SourceKind:
 #: tokens + the mirror in ``frontends/ui/.../source-kinds.ts``) to introduce a
 #: new kind — every rendering surface picks it up automatically.
 SOURCE_KINDS: dict[str, SourceKind] = {
-    "baurecht": SourceKind(
-        key="baurecht",
+    "building_law": SourceKind(
+        key="building_law",
         label="Baurecht & Richtlinien",
         description="Bauordnung, OIB-Richtlinien, Normen.",
-        css_token="baurecht",
+        css_token="building_law",
     ),
-    "buero": SourceKind(
-        key="buero",
+    "office": SourceKind(
+        key="office",
         label="Büroablage",
         description="Standards, Details und Erfahrung deines Büros.",
-        css_token="buero",
+        css_token="office",
     ),
-    "projekt": SourceKind(
-        key="projekt",
+    "project": SourceKind(
+        key="project",
         label="Projektwissen",
         description="Unterlagen, Bescheide und Dateien dieses Projekts.",
-        css_token="projekt",
+        css_token="project",
     ),
     "web": SourceKind(
         key="web",
@@ -97,14 +97,14 @@ SOURCE_KINDS: dict[str, SourceKind] = {
         description="Rechercheergebnisse aus dem Web.",
         css_token="web",
     ),
-    "messung": SourceKind(
-        key="messung",
+    "measurement": SourceKind(
+        key="measurement",
         label="Modellmessung",
         description="Am BIM-Modell gemessen — mit Herkunft, Toleranz und Methode.",
         # The one kind whose ``css_token`` is honest about the promise this
         # field's docstring makes: ``--source-model`` really exists on the
         # frontend. The older four predate the `--source-*` families and name
-        # the KIND (`baurecht`) where the token names the SIGNAL (`law`); they
+        # the KIND (`building_law`) where the token names the SIGNAL (`law`); they
         # are left alone rather than renamed, because the tokens are what
         # `KIND_TO_SIGNAL` resolves to and nothing reads this field.
         css_token="model",
@@ -112,7 +112,7 @@ SOURCE_KINDS: dict[str, SourceKind] = {
 }
 
 #: The fine lane of a PUBLISHED, human-approved, agent-authored document, and
-#: the German sub-label it renders as. A ``buero`` kind — office knowledge, in
+#: the German sub-label it renders as. An ``office`` kind — office knowledge, in
 #: the office colour — with its own lane inside that kind, because "the office
 #: approved this" and "Piloti wrote it and the office approved it" are different
 #: claims and only the second one needs the reader to be told.
@@ -128,13 +128,13 @@ SOURCE_KINDS: dict[str, SourceKind] = {
 #: it (the grounding block via ``provenance.provenance_label``, the frontend
 #: from the ``provenance`` payload), so the lane table stays a taxonomy rather
 #: than a sentence with a hole in it.
-AGENT_AUTHORED_LANE = "buero_piloti"
+AGENT_AUTHORED_LANE = "office_piloti"
 AGENT_AUTHORED_LANE_LABEL = "Piloti-Dokument"
 
 #: The kind a model-derived measurement renders as. Named rather than spelled
 #: out at the call sites so the one place that decides "this is a measurement,
 #: not a retrieved passage" is greppable.
-MEASUREMENT_SOURCE_KIND = "messung"
+MEASUREMENT_SOURCE_KIND = "measurement"
 
 #: Fail-open kind for an unclassifiable source, matching ``lane_for_hit``'s
 #: ``("web", "Web")`` fallback.
@@ -146,21 +146,21 @@ DEFAULT_SOURCE_KIND = "web"
 TOOL_RESULT_SOURCE_TYPE = "tool_result"
 
 # Fine lane stratum-key → coarse source kind. A prefix match on the lane family
-# keeps this table small and forward-compatible: any new ``baurecht_*`` sub-lane
-# (a new OIB document class, a new RIS rank) maps to ``baurecht`` without a code
+# keeps this table small and forward-compatible: any new ``building_law_*`` sub-lane
+# (a new OIB document class, a new RIS rank) maps to ``building_law`` without a code
 # change here. Kept in sync with ``norm_registry``'s ``_RANK_LANES`` /
 # ``_OIB_CLASS_LANES`` and ``lane_for_hit``.
 _LANE_KIND_PREFIXES: tuple[tuple[str, str], ...] = (
-    ("baurecht", "baurecht"),  # baurecht_oib*, baurecht_ris, baurecht_bund/land/verordnung
-    ("behoerde", "baurecht"),  # behördliche Information — authoritative building law
-    ("norm_extern", "baurecht"),  # externe Normen belong to the Baurecht kind
-    ("buero", "buero"),
-    ("projekt", "projekt"),
+    ("building_law", "building_law"),  # building_law_oib*, _ris, _federal/_state/_ordinance
+    ("authority", "building_law"),  # behördliche Information — authoritative building law
+    ("external_standard", "building_law"),  # externe Normen belong to the Baurecht kind
+    ("office", "office"),
+    ("project", "project"),
     ("web", "web"),
     # No retrieval lane maps here — ``lane_for_hit`` cannot produce it, because
     # nothing retrieves a measurement. The measurement channel stamps this lane
     # on itself, and the entry exists so the two ends agree when it does.
-    ("messung", "messung"),
+    ("measurement", "measurement"),
 )
 
 

@@ -27,18 +27,18 @@ this design says so and builds the version that fits.
 | Projektbeteiligte with roles at creation | Not at creation. The Steckbrief already holds people (ADR-0091, ADR-0101) | People are kept apart from the profile and the prompt on purpose, and a step at creation breaks the one-minute target |
 | Ablage-Onboarding: folder tree, blacklist, role permissions | Upload, folder access per role and the content check stay as they are. Each folder says what belongs in it, and on every upload Piloti proposes the folder a file belongs in, learned from the office's other projects, confirmed folder by folder (see „Ablage" below) | Upload and access are built (ADR-0078, ADR-0087, ADR-0088, ADR-0086). What was missing is the sorting, and a folder that says what it holds |
 | Create a project as „abgeschlossen" and fill it from its documents | The project is created **active with a closing intent** (outcome and period), read, and closed when the person finishes the review | A closed project is read-only (ADR-0090) and refuses profile writes. ADR-0096 reads a closed project the same way: reopen, read, close |
-| Historical editions of the law per Stichtag | The intake records the OIB edition the project's documents name (`oib_ausgabe`); the corpus holds one edition today | Keeping every edition of the law is corpus work, not intake work. It stays open, as the ticket says |
+| Historical editions of the law per Stichtag | The intake records the OIB edition the project's documents name (`oib_edition`); the corpus holds one edition today | Keeping every edition of the law is corpus work, not intake work. It stays open, as the ticket says |
 | Delta review when a new Stand arrives | A finished upload batch on a project with an intake starts a reading of the documents not read yet (by content hash, so a new Fassung counts). A value that differs from a confirmed one is shown as a contradiction, never written over it | `settleUploadBatches` is where "these documents are read" first becomes true on the server |
 
 Quality of life, because a minute is the target:
 
 - **Same address, earlier project.** When the address typed matches an existing
-  project's `standort_adresse` (or one within 50 m), the dialog says so and
+  project's `site_address` (or one within 50 m), the dialog says so and
   links it: a duplicate is avoided, and an earlier project on the same plot is
   often the best source (Bestandspläne, Bescheide).
 - **The folder names the project.** Dropping a folder onto the create dialog
   fills the name from the folder name and uploads it after creation. The address
-  may stay empty when documents follow: the agent proposes `standort_adresse`
+  may stay empty when documents follow: the agent proposes `site_address`
   from the title blocks like any other value.
 - **A Rückfrage is answered by dropping the document on it.** The question names
   the document that would answer it; dropping a file there files it and starts a
@@ -116,7 +116,7 @@ budget only `finish_intake` runs, and a run that stops, times out or fails is
 finished with a summary written in code.
 
 Two answers let the model see what its own work changed. A `record` answer
-names the needs the values opened (`bauwerkstyp = gebaeude` opens the
+names the needs the values opened (`building_type = gebaeude` opens the
 Gebäude's Geschoße, Fluchtniveau and areas, decisive ones marked), computed
 from the needs before and after the same write; a model that read the opening
 needs once and never asked again finished with them unseen. And
@@ -196,7 +196,7 @@ a pure function. The agent's `intake_needs` returns its result.
 
 1. Every question whose conditions hold for the answers known so far (facts,
    then suggestions, through `answersFromProfile`) and that writes a profile
-   key, scoped per Bauwerk as the wizard scopes it (`key@bwN`). The Bundesland
+   key, scoped per Bauwerk as the wizard scopes it (`key@bldgN`). The Bundesland
    is asked unless another country was chosen (`excludes_any` on `A2_country`):
    a reading finds „Bundesland: Wien“ long before any document names Austria.
 2. Minus what is confirmed, and minus keys a person marked unknown. A key with
@@ -211,11 +211,11 @@ a pure function. The agent's `intake_needs` returns its result.
 
 ## The Gebäudeklasse derivation
 
-`lib/project-intake/derivations.ts`. Nine inputs per Bauwerk: `bauwerkstyp`
-(only a Gebäude has a class), `gebaeudestellung`, `zugang_drei_seiten` (asked
-by the wizard's question `C9_zugang`, added for this), `geschosse_oberirdisch`,
-`fluchtniveau_m`, `bgf_oberirdisch`, `nutzungseinheiten`, `einheiten_ueber_400`
-and `nutzungen` (a reines Wohngebäude opens GK 2 up to 800 m²). Fundstelle:
+`lib/project-intake/derivations.ts`. Nine inputs per Bauwerk: `building_type`
+(only a Gebäude has a class), `building_position`, `access_three_sides` (asked
+by the wizard's question `C9_zugang`, added for this), `storeys_above_ground`,
+`escape_level_m`, `gfa_above_ground`, `use_units`, `units_over_400`
+and `uses` (a reines Wohngebäude opens GK 2 up to 800 m²). Fundstelle:
 OIB-Richtlinien, Begriffsbestimmungen (Ausgabe Mai 2023), „Gebäudeklassen".
 
 The repository holds GK 4 verbatim and GK 1–3 and 5 only as the office's own
@@ -230,11 +230,11 @@ Reihenhaus takes the Bauwerk's Fluchtniveau, not each unit's.
 22 m, 400 and 800 m², and 3 and 4 Geschoße.
 
 When every input it needs has a value (confirmed or suggested), the intake
-writes `gebaeudeklasse@bwN` as an assumption, the class as a number 1..5 (as
+writes `building_class@bldgN` as an assumption, the class as a number 1..5 (as
 `similarity.ts` and the experience reading store it), with `derivation`
 evidence naming its inputs and whether any is still only suggested. A
 Fluchtniveau above 22 m is no Gebäudeklasse: the derivation says Hochhaus
-(OIB-RL 2.3) and writes nothing; the applicability panel reads `fluchtniveau_m`
+(OIB-RL 2.3) and writes nothing; the applicability panel reads `escape_level_m`
 itself.
 
 ## Data
@@ -270,7 +270,7 @@ alternatives?: ProfileAlternative[] // on both, ≤ 5
 ProfileEvidence =
   | { kind: 'document', fileName, page: number | null, quote }      // quote masked (ADR-0086), ≤ 400
   | { kind: 'geocoder', provider: 'photon', label, resolvedAt }
-  | { kind: 'derivation', rule: 'gebaeudeklasse', citation, inputs: [{ key, value, suggested }] }
+  | { kind: 'derivation', rule: 'building_class', citation, inputs: [{ key, value, suggested }] }
   | { kind: 'person', userId, at }
 ProfileAlternative = { value, evidence: ProfileEvidence[], recordedAt }
 readingId?: string                  // on ProjectAssumptionSchema: the reading (job id) that suggested it
@@ -302,7 +302,7 @@ All zod lives in `frontends/ui/src/lib/project-intake/types.ts` (no
   contradictions: Suggestion[],
   questions: Need[],                         // decisive, open
   groups: [{ stage: 'A'..'G', title, items: Suggestion[] }],
-  derivations: [{ bauwerkId, rule: 'gebaeudeklasse', value: 1..5 | null, hochhaus: boolean, inputs, missing: string[] }],
+  derivations: [{ bauwerkId, rule: 'building_class', value: 1..5 | null, hochhaus: boolean, inputs, missing: string[] }],
 }
 Suggestion = { key, baseKey, bauwerkId, label, value, display, state: 'suggested' | 'confirmed' | 'contested',
                evidence: ProfileEvidence[], alternatives: ProfileAlternative[], decisive }
@@ -327,7 +327,7 @@ question writes, in the scope that question is asked in, or on a Bauwerk the
 profile does not describe, is refused (`unknown-key`; `questionForKey` in
 `needs.ts`), while a key whose question is not asked yet is taken, so the
 Wohnungen found before the Nutzungen that open them are kept and a batch has no
-order dependency; `gebaeudeklasse@bwN` is always refused, beside a confirmed
+order dependency; `building_class@bldgN` is always refused, beside a confirmed
 class too, because the class is derived from its inputs and only proposed (and
 it is what an injected line asks for); a value a person dismissed is refused; evidence from a
 file outside `extractableFileNames` is refused; a value equal to a confirmed
@@ -335,7 +335,7 @@ fact corroborates it (its evidence is added); a different one becomes an
 alternative on the fact (a contradiction); a different suggestion already
 present becomes an alternative on the assumption; the quote is masked before it
 is stored. After each `record` and `withdraw`, the derivation runs and writes
-or refreshes `gebaeudeklasse@bwN`, and removes a derived class whose inputs
+or refreshes `building_class@bldgN`, and removes a derived class whose inputs
 are gone.
 
 The Python tool checks first: a quote it cannot find (NFC, folded whitespace and
@@ -413,3 +413,32 @@ what it means for the intake:
 - People from documents into the Steckbrief.
 - Restricted folders: never read by the intake; their documents may not feed a
   profile every member reads.
+
+## The profile's names are English (migrations 0159 to 0162)
+
+The profile's keys, option tokens and building ids are English: `federal_state`,
+`uses@bldg1@residential`, `construction_method=timber`, `building_class@bldg1`
+(rule `building_class`). Labels and copy stay German; only the stored name changed.
+
+- **One table.** `frontends/ui/src/lib/project-profile/legacy-names.json` maps
+  every old key, the tokens per new key (`offen` is `open` under a zoning, but
+  `ja` is only `yes` under `servicing`, so a token is never renamed on its own),
+  the derivation rule and the building prefix. `legacy-names.ts` and
+  `aiq_agent/profile_names.py` are generated from it and held to it by specs;
+  migration 0159 embeds the same table.
+- **One release of tolerance.** Readers accept the old names and map them with
+  `normalizeLegacyProfile`, `normalizeProfilePatchOperation`,
+  `normalizeLegacyPromptView` (TypeScript) and `normalize_prompt_view` (Python);
+  nothing writes them. A pod that has not rolled can still write German names
+  during a deploy; the next read renames them. Delete the tolerance (and the
+  `legacy-names` files) in the release after the one that ships 0159.
+- **What the migrations rewrite.** 0159 `projects.profile` and
+  `profile_prompt_view` (and bumps `profile_version`); 0160
+  `project_intakes.dismissed` and `location`; 0161
+  `document_roles.scope_instance_id` (`bwN` to `bldgN`) and the patches of
+  `project_profile` proposals; 0162 adds `permit_records.federal_state` beside
+  `bundesland`, kept in step by a trigger until a later migration drops the old
+  column. A key the table does not know (an agent-invented fact) is kept as is,
+  so scan the distinct keys before deploying.
+- **Qdrant stays German** until the retrieval rename: `ProjectFacts.to_store()`
+  and `SimilarityWeights.to_store()` translate at the aiq_api boundary.

@@ -348,7 +348,7 @@ Keep verbatim: a row with no `detail` is not a button (line 58).
 1. **Cap the width at `max-w-[46ch]`.** A remark narrower than the prose around it reads as an aside; one that spans the column reads as a section. This single change makes it identifiable at a glance and costs one class.
 2. It is the only card with **no eyebrow row of its own** — the kind word and the title share one baseline (line 106). Preserve that as identity; do not "fix" it.
 **Unmistakable.** The only card narrower than the column.
-**Degradation.** Unknown `kind` already falls back to `hinweis` (line 87) and must, because `kind` arrives through a `z.any()` union member. Long compound title wraps under the kind word (already `flex-wrap`).
+**Degradation.** Unknown `kind` already falls back to `note` (line 87) and must, because `kind` arrives through a `z.any()` union member. Long compound title wraps under the kind word (already `flex-wrap`).
 **Effort: S.**
 
 #### `legal_basis` *(retired, ADR-0069)*

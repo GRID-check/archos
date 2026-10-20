@@ -81,7 +81,7 @@ function checkFossilNewBuildConflict(
   definition: ProjectIntakeDefinition
 ): DeterministicConsistencyFinding[] {
   const plannedWork = answers['A5']
-  const isNewBuild = Array.isArray(plannedWork) && plannedWork.includes('neubau')
+  const isNewBuild = Array.isArray(plannedWork) && plannedWork.includes('new_build')
   if (!isNewBuild) return []
 
   const findings: DeterministicConsistencyFinding[] = []

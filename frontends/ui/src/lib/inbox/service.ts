@@ -65,6 +65,7 @@ import {
   MARKS_SET_GROUP_ANCHOR,
 } from './registry'
 import {
+  canonicalInboxType,
   isMarkAnchored,
   type InboxAnswerPlace,
   type InboxItemState,
@@ -684,7 +685,7 @@ function toItemView(
 
   return {
     id: row.id,
-    type: row.type,
+    type: canonicalInboxType(row.type) as InboxItemType,
     state: deriveState(row),
     archived: row.archivedAt !== null,
     actionable: row.actionable,

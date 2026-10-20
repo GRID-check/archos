@@ -145,14 +145,14 @@ describe.skipIf(!url)('project intakes against live Postgres', () => {
 
   it('appends dismissed values, from two writers alike', async () => {
     await Promise.all([
-      repo.addIntakeDismissed(ORG, ids.project, [{ key: 'bauwerkstyp@bw1', value: 'klein' }]),
-      repo.addIntakeDismissed(ORG, ids.project, [{ key: 'geschosse_oberirdisch@bw1', value: 4 }]),
+      repo.addIntakeDismissed(ORG, ids.project, [{ key: 'building_type@bldg1', value: 'small' }]),
+      repo.addIntakeDismissed(ORG, ids.project, [{ key: 'storeys_above_ground@bldg1', value: 4 }]),
     ])
     const row = await repo.findProjectIntake(ORG, ids.project)
     expect(row?.dismissed).toEqual(
       expect.arrayContaining([
-        { key: 'bauwerkstyp@bw1', value: 'klein' },
-        { key: 'geschosse_oberirdisch@bw1', value: 4 },
+        { key: 'building_type@bldg1', value: 'small' },
+        { key: 'storeys_above_ground@bldg1', value: 4 },
       ])
     )
   })

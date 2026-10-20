@@ -33,7 +33,7 @@ export function feedbackExportRecord(overrides: Partial<FeedbackExportRecord> = 
     question: 'Wie lang darf der Fluchtweg in GK 4 sein, und warum?',
     answer: 'Höchstens 40 m, gemessen bis zum Ausgang ins Freie.',
     answeredAt: new Date('2026-10-06T08:14:10.000Z'),
-    topics: ['brandschutz', 'nutzungssicherheit'],
+    topics: ['fire_safety', 'safety_in_use'],
     answerMode: 'deep',
     answerConfidence: 'medium',
     confidenceCappedReason: 'quote_unverified',

@@ -219,7 +219,7 @@ context/memory, model overrides, budget, disabled sources) — one audited case
 (async-job submit, §8b) simply forgot one. `frontends/ui/src/lib/request-context.ts`
 is now the single builder: `buildGridRequestContextWireHeaders` returns every
 individual header PLUS one consolidated, signed `X-Grid-Request-Context`
-header (base64url JSON of the same fields, plus the structured `bundesland`
+header (base64url JSON of the same fields, plus the structured `federal_state`
 fact — §6b) and `X-Grid-Request-Context-Sig` (hex HMAC-SHA256 of the raw
 JSON, keyed on `GRID_INTERNAL_API_TOKEN`). Legacy HTTP/job producers retain
 this **dual-write transition**. Authenticated WebSocket handshakes instead
@@ -1416,7 +1416,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   plus behoerdliche_info for non-RIS practice guidance with a plain
   `source_url`, e.g. the MA-37 Merkblätter, and norm_extern for
   ÖNORM/TRVB stubs without accessible full text),
-  `bundesland` (canonical name, empty = federal), `topics`, `relevance`, the
+  `federal_state` (canonical name, empty = federal), `topics`, `relevance`, the
   **verified** RIS pointer (application, document number, citation URL,
   entire-consolidated-law URL), optional `aliases`, `binding_note` (curated
   prose legal fact rendered into researcher prompts — e.g. how the WBTV makes
@@ -1482,11 +1482,11 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
    Austrian corpus only, comparative guidance, recommend local verification.
 - **Bundesland** — `resolve_federal_state`: the validated envelope token wins
    (`ausserhalb_oesterreichs` → None is final), then the structured
-   `bundesland=<token>` prompt fact, then free-text state-name probing.
+   `federal_state=<token>` prompt fact, then free-text state-name probing.
    `focus_entries` drops other states' law and sorts the project's state first;
    the same rule filters `ris_search`'s catalog short-circuit and
    `ris_catalog_lookup` before truncation. When the country is non-AT, the
-   profile save derives `bundesland=ausserhalb_oesterreichs`, so the downstream
+   profile save derives `federal_state=ausserhalb_oesterreichs`, so the downstream
    pipeline consistently treats non-Austrian projects as jurisdiction-neutral.
 - **Hard limits** — Every research-facing prompt now includes a **Project Hard
    Limits & Grounding** block that instructs agents to treat confirmed wizard
@@ -1658,7 +1658,7 @@ therefore read identical numbers from one code path.
 Each carries its own blind spot in the payload rather than in a footnote:
 `roomsWithoutArea` per storey and per building, `missing` per take-off row, and
 an `evidence` string plus a confidence on every derived fact. `profile` is
-deliberately advisory — `geschosse_oberirdisch` picks a Gebäudeklasse, so the
+deliberately advisory — `storeys_above_ground` picks a Gebäudeklasse, so the
 suggestions travel to the user through the existing `project_profile_patch`
 confirm-the-patch card (ADR-0030), never as a direct write.
 
@@ -1698,8 +1698,8 @@ A compliance answer carries one more path: `_bcf_link` appends a
 the open requirements can also hand over the BCF file that puts them back in
 ArchiCAD or Revit. It is addressed by file NAME for the same reason the tool
 itself is — a UUID carried through a conversation is a reliable source of
-hallucinated identifiers — and it carries the same `gebaeudeklasse` /
-`hauptnutzung` the run used, so the archive can never be built against
+hallucinated identifiers — and it carries the same `building_class` /
+`main_use` the run used, so the archive can never be built against
 thresholds the answer did not apply.
 
 ### Geometry stays in the browser

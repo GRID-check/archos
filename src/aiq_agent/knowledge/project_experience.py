@@ -70,7 +70,10 @@ ERROR_NO_MODEL = "no_model"
 ERROR_EXTRACTION_FAILED = "extraction_failed"
 
 DecisionKind = Literal["decision", "constraint"]
-Outcome = Literal["accepted", "auflage", "rejected", "unknown"]
+Outcome = Literal["accepted", "condition", "rejected", "unknown"]
+
+#: The German outcome an extraction from before the rename may still carry.
+LEGACY_OUTCOME = {"auflage": "condition"}
 
 
 class _Wire(BaseModel):
@@ -138,8 +141,17 @@ class DraftedDecision(_Wire):
         description=(f"German, at most {MAX_DECISION_CHARS} characters, naming what was asked, what was done and why."),
     )
     outcome: Outcome = Field(
-        description=("accepted; auflage (accepted with a condition); rejected; unknown when the documents do not say."),
+        description=(
+            "accepted; condition (accepted with a condition, an Auflage); rejected; "
+            "unknown when the documents do not say."
+        ),
     )
+
+    @field_validator("outcome", mode="before")
+    @classmethod
+    def _legacy_outcome(cls, value: Any) -> Any:
+        return LEGACY_OUTCOME.get(value, value) if isinstance(value, str) else value
+
     evidence: list[Evidence] = Field(description="Where the documents state it. At least one.")
 
     @field_validator("content", mode="before")
@@ -240,7 +252,7 @@ DECISION_SYSTEM_PROMPT = (
     "made: a construction method, a material, an escape route, a deviation from a norm, a procedure. A constraint "
     "is a condition the project had to meet: an Auflage of a permit, a demand of an authority, a condition of an "
     "expert opinion. Write each draft in German in content, at most 600 characters, naming what was asked, what "
-    "was done and why. Set outcome to accepted, auflage (accepted with a condition), rejected, or unknown when the "
+    "was done and why. Set outcome to accepted, condition (accepted with a condition), rejected, or unknown when the "
     "documents do not say. Give evidence: the file name, the page as its [Seite N] marker gives it, and the "
     "verbatim quote that states it, at most 300 characters. Draft only what the documents state, at most 12 items. "
     "The section 'Already known' lists decisions that are recorded already; draft only what is not among them. "

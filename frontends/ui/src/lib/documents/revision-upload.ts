@@ -44,7 +44,7 @@ const olderIdSchema = z.string().uuid()
 export function readRevisionOf(value: FormDataEntryValue | null): string | null {
   if (typeof value !== 'string' || value.trim() === '') return null
   const parsed = olderIdSchema.safeParse(value.trim())
-  if (!parsed.success) throw new BadRequestError('fassungOf must be a document id', { reason: 'invalid_fassung_of' })
+  if (!parsed.success) throw new BadRequestError('revisionOf must be a document id', { reason: 'invalid_revision_of' })
   return parsed.data
 }
 
@@ -69,13 +69,13 @@ export type RevisionOfIgnoredReason = (typeof REVISION_OF_IGNORED_REASONS)[numbe
 /** The checked choice: the older file's name to link, or why the choice was dropped. */
 export interface ResolvedRevisionOf {
   /** The older file's name for the ingest job; null for nothing to link. */
-  fassungOf: string | null
+  revisionOf: string | null
   /** Set when a choice was made and dropped; the upload goes on without it. */
   ignored: RevisionOfIgnoredReason | null
 }
 
-const NOTHING: ResolvedRevisionOf = { fassungOf: null, ignored: null }
-const ignoredFor = (reason: RevisionOfIgnoredReason): ResolvedRevisionOf => ({ fassungOf: null, ignored: reason })
+const NOTHING: ResolvedRevisionOf = { revisionOf: null, ignored: null }
+const ignoredFor = (reason: RevisionOfIgnoredReason): ResolvedRevisionOf => ({ revisionOf: null, ignored: reason })
 
 /** The older document, or null when this reader may not see or change it. Anything else still throws. */
 async function olderForLinking(session: AuthorizedSession, olderId: string) {
@@ -105,5 +105,5 @@ export async function resolveRevisionOf(
   // The same gate as every `(collection, filename)` call: a machine-authored row owns no chunks over there.
   if (!collectionFileRef(older)) return ignoredFor('unavailable')
   if (documentNameKey(older.filename) === documentNameKey(target.filename)) return NOTHING
-  return { fassungOf: older.filename, ignored: null }
+  return { revisionOf: older.filename, ignored: null }
 }

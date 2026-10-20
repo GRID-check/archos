@@ -11,7 +11,7 @@
     landesrechtlichen Bestimmungen abgewichen werden, wenn der Bauwerber nachweist, dass das gleiche Schutzniveau
     erreicht wird. 1 Begriffsbestimmungen ... 2 Baulicher Schallschutz 2.1 Anforderungen an den Schallschutz von
     Außenbauteilen
-  doc_class: oib_richtlinie
+  doc_class: oib_guideline
 
 - file_name: Garagen_Parkdecks_2023.pdf
   text: |
@@ -21,7 +21,7 @@
     Inhaltsverzeichnis: 0 Vorbemerkungen, 1 Begriffsbestimmungen, 2 Überdachte Stellplätze, 3 Garagen mit einer
     Nutzfläche von mehr als 50 m² bis 250 m², 4 Garagen mit einer Nutzfläche von mehr als 250 m², 5 Parkdecks,
     6 Garagen mit einer Nutzfläche von mehr als 10.000 m² je Geschoß. 3.1 Wände, Decken und Stützen müssen ...
-  doc_class: oib_richtlinie
+  doc_class: oib_guideline
 
 - file_name: Abweichungen_BS_Konzepte_Leitfaden.pdf
   text: |
@@ -32,7 +32,7 @@
     Richtlinie 2 bzw. 2.1 bis 2.3 nachgewiesen werden können und wie ein Brandschutzkonzept aufzubauen ist.
     Er richtet sich an Planende, Sachverständige und Behörden. 1 Allgemeines 1.1 Grundsätze für Abweichungen:
     Das Schutzniveau der Richtlinie gilt als erreicht, wenn ...
-  doc_class: oib_leitfaden
+  doc_class: oib_guide
 
 - file_name: EB_RL5_2023_web.pdf
   text: |
@@ -43,7 +43,7 @@
     II. Zu den einzelnen Bestimmungen
     Zu Punkt 2.2: Die Anforderungen an den Schallschutz von Außenbauteilen orientieren sich am maßgeblichen
     Außenlärmpegel, weil ...
-  doc_class: oib_erlaeuterung
+  doc_class: oib_explanatory_note
 
 - file_name: Definitionen_Stand2023.pdf
   text: |
@@ -56,7 +56,7 @@
     Brandabschnitt: Bereich, der durch brandabschnittsbildende Wände und/oder Decken von Teilen eines Gebäudes
     getrennt ist.
     Fluchtniveau: Höhendifferenz zwischen der Fußbodenoberkante des höchstgelegenen oberirdischen Geschoßes ...
-  doc_class: oib_begriffe
+  doc_class: oib_definitions
 
 - file_name: normenliste_mai23.pdf
   text: |
@@ -67,7 +67,7 @@
     ÖNORM B 1600 Barrierefreies Bauen – Planungsgrundlagen, Ausgabe 2012-02-15 (zitiert in RL 4)
     ÖNORM B 8110-3 Wärmeschutz im Hochbau – Teil 3: Ermittlung der operativen Temperatur ..., 2020-02-15 (RL 6)
     ÖNORM EN 13501-1 Klassifizierung von Bauprodukten und Bauarten zu ihrem Brandverhalten ...
-  doc_class: oib_referenz
+  doc_class: oib_reference
 
 - file_name: Aenderungen_2019_2023_RL2.pdf
   text: |
@@ -78,7 +78,7 @@
     Punkt 3.1.2 alt: "... in Gebäuden der Gebäudeklasse 4 ..." | neu: "... in Gebäuden der Gebäudeklassen 4 und 5
     mit nicht mehr als sechs oberirdischen Geschoßen ..."
     Tabelle 1b: Zeile 3 geändert, neue Fußnote (5) eingefügt.
-  doc_class: oib_aenderung
+  doc_class: oib_amendment
 
 - file_name: B1600_2012.pdf
   text: |

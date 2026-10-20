@@ -98,7 +98,7 @@ describe('EvidenceChips', () => {
     render(
       ui([
         { kind: 'geocoder', provider: 'photon', label: 'Lacknergasse 12, 1170 Wien', resolvedAt: '2026-10-14T08:30:00.000Z' },
-        { kind: 'derivation', rule: 'gebaeudeklasse', citation: 'OIB', inputs: [] },
+        { kind: 'derivation', rule: 'building_class', citation: 'OIB', inputs: [] },
         { kind: 'person', userId: 'u', at: '2026-10-14T08:30:00.000Z' },
       ])
     )

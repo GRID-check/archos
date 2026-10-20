@@ -32,7 +32,7 @@ export const POST = apiRoute(
       originPath: typeof originPath === 'string' ? originPath : null,
       screeningRelease: readScreeningRelease(formData.get('screeningRelease')),
       uploadBatchId: readUploadBatchId(formData.get('uploadBatchId')),
-      fassungOf: readRevisionOf(formData.get('fassungOf')),
+      revisionOf: readRevisionOf(formData.get('revisionOf') ?? formData.get('fassungOf')),
     })
   },
   { authz: { enforcedBy: 'uploadOfficeShelfDocument (canManageOfficeShelf)' }, limits: { rule: DOCUMENT_UPLOAD_LIMIT } }

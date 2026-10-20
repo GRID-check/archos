@@ -107,7 +107,7 @@ async def doc_class():
     bad = []
     for r, d in zip(rows, ds):
         c, dist = d.choice("doc_class")
-        if c != "sonstiges" and dist.get(c, 0) >= dc.DOC_CLASS_SUGGESTION_THRESHOLD:
+        if c != "other" and dist.get(c, 0) >= dc.DOC_CLASS_SUGGESTION_THRESHOLD:
             offered += 1
             if c == r["doc_class"]:
                 right += 1
@@ -116,7 +116,7 @@ async def doc_class():
                 bad.append((r["file_name"], c, r["doc_class"]))
     return {
         "rows": len(rows),
-        "non_default": sum(1 for r in rows if r["doc_class"] != "sonstiges"),
+        "non_default": sum(1 for r in rows if r["doc_class"] != "other"),
         "offered": offered,
         "right": right,
         "wrong": wrong,

@@ -96,9 +96,9 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
 
   const requirement = (
     content: string,
-    extra: { vector?: number[]; model?: string; evidence?: string | null; kind?: 'auflage' | 'nachforderung' | 'hinweis' } = {}
+    extra: { vector?: number[]; model?: string; evidence?: string | null; kind?: 'condition' | 'information_request' | 'note' } = {}
   ): import('./repository').PermitRequirementInput => ({
-    kind: extra.kind ?? 'auflage',
+    kind: extra.kind ?? 'condition',
     content,
     evidence: extra.evidence ?? null,
     legalBasis: null,
@@ -123,10 +123,10 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
         fileName,
         restrictedFolderIds: null,
         model: 'summary-model',
-        kind: 'nachforderung',
+        kind: 'information_request',
         authority: 'Magistratsabteilung 37',
         municipality: 'Wien',
-        bundesland: 'wien',
+        federalState: 'wien',
         issuedOn: '2020-03-14',
         reference: 'MA37/1/2020',
         requirements,
@@ -198,7 +198,7 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
       requirement('Das Brandschutzkonzept ist für die Fluchtwege bis 40 m zu ergänzen.', { vector: FIRE }),
     ], { authority: 'Stadtgemeinde Baden', municipality: 'Baden' })
     await store(ORG, ids.moedling, await document(ORG, ids.moedling, 'Mängelbehebung_Moedling.pdf'), 'Mängelbehebung_Moedling.pdf', [
-      requirement('Fluchtwegbreiten sind in allen Grundrissen zu bemaßen.', { vector: FIRE, kind: 'nachforderung' }),
+      requirement('Fluchtwegbreiten sind in allen Grundrissen zu bemaßen.', { vector: FIRE, kind: 'information_request' }),
       // The same meaning from another embedder: noise of the right shape, never compared.
       requirement('Tragwerk nachweisen.', { vector: STATICS, model: 'another-embedder' }),
     ], { authority: 'Stadtgemeinde Mödling', municipality: 'Mödling' })
@@ -330,7 +330,7 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
       expect(found[0]).toMatchObject({
         projectId: ids.baden,
         fileName: 'Baubescheid_Baden.pdf',
-        kind: 'nachforderung',
+        kind: 'information_request',
         authority: 'Stadtgemeinde Baden',
         municipality: 'Baden',
         issuedOn: '2020-03-14',
@@ -338,7 +338,7 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
         restrictedFolderIds: null,
       })
       expect(found[0].requirements[0]).toEqual({
-        kind: 'auflage',
+        kind: 'condition',
         content: 'Ein statischer Nachweis der Deckenkonstruktion ist vorzulegen.',
         evidence: 'Gutachten eines Ziviltechnikers',
         legalBasis: null,
@@ -525,7 +525,7 @@ describe.skipIf(!url)('permit records against live Postgres', () => {
     it('lists only open records to a reader cleared for none of the folders, each with its requirements in document order', async () => {
       const open = await list(ids.moedling, [])
       expect(open.map((record) => record.fileName)).toEqual(['Mängelbehebung_Moedling.pdf'])
-      expect(open[0]).toMatchObject({ authority: 'Stadtgemeinde Mödling', issuedOn: '2020-03-14', kind: 'nachforderung' })
+      expect(open[0]).toMatchObject({ authority: 'Stadtgemeinde Mödling', issuedOn: '2020-03-14', kind: 'information_request' })
       expect(open[0].requirements.map((item) => item.content)).toEqual([
         'Fluchtwegbreiten sind in allen Grundrissen zu bemaßen.',
         'Tragwerk nachweisen.',

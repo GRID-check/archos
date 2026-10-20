@@ -4,7 +4,7 @@
  * (ADR-0111, `docs/design/agentic-project-intake.md`).
  *
  * The address search's hit is evidence, not a guess: a person chose it from the
- * geocoder's list, so `standort_adresse`, `country` and `bundesland` go onto the
+ * geocoder's list, so `site_address`, `country` and `federal_state` go onto the
  * profile as confirmed facts, the first one carrying the geocoder as its source.
  * A Bundesland chosen by hand (no geocoder configured) is a fact without
  * evidence.
@@ -55,15 +55,15 @@ export function intakeSeedFacts(
   now: Date
 ): Record<string, ProjectFact> {
   const { location } = input
-  const federalState = location?.bundesland ?? input.bundesland ?? null
+  const federalState = location?.federalState ?? input.bundesland ?? null
   const facts: Record<string, ProjectFact> = {}
   if (location) {
-    facts.standort_adresse = fact(location.label, now, [
+    facts.site_address = fact(location.label, now, [
       { kind: 'geocoder', provider: 'photon', label: location.label, resolvedAt: now.toISOString() },
     ])
   }
   if (location || federalState) facts.country = fact('at', now)
-  if (federalState) facts.bundesland = fact(federalState, now)
+  if (federalState) facts.federal_state = fact(federalState, now)
   return facts
 }
 

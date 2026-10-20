@@ -79,7 +79,7 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "WHEN TO CALL — any question that needs a passage from a stored document. "
     "If the user named a file and asked what it says, pass `file_name=` that "
     "exact indexed name (from the inventory or the user). Narrow with "
-    "`doc_class=` (Dokumentart key, e.g. oib_richtlinie) or `title_contains=` "
+    "`doc_class=` (Dokumentart key, e.g. oib_guideline) or `title_contains=` "
     "when you already know the class or a title fragment. Pass `folder=` (the "
     "path the inventory prints after 'Ordner:', e.g. Brandschutz/Fluchtwege) "
     "when the user scoped the question to a folder — it also covers everything "
@@ -110,7 +110,7 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "try again; do not invent a citation around a gap you could still close. "
     "Never invent a `file_name`; take it from the inventory or the user. The "
     "OIB base corpus "
-    "is not enumerated there — reach it by `doc_class` (e.g. `oib_richtlinie`) "
+    "is not enumerated there — reach it by `doc_class` (e.g. `oib_guideline`) "
     "or by plain semantic search, never a guessed name. Do not pass a raw "
     "`filters` object unless you need `content_type`. "
     "A query that names a Richtlinie and nothing else ('OIB 2', "
@@ -1298,9 +1298,9 @@ def _lane_detail(hit) -> str | None:
     comma inside one locus would read as two.
     """
     page = f"p.{hit.page}" if hit.page is not None else ""
-    if not hit.punkt:
+    if not hit.clause:
         return page or None
-    return f"Pkt. {hit.punkt} {page}".strip()
+    return f"Pkt. {hit.clause} {page}".strip()
 
 
 def _lane_sources(hits, opened_files: frozenset[str]) -> list[TraceLaneSource]:
@@ -1520,7 +1520,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         doc_class=_hit_doc_class(chunk, resolved),
         display_title=_hit_display_title(chunk, resolved_titles) or chunk.file_name,
         folder_path=_hit_folder_path(chunk, resolved_folders),
-        punkt=_metadata_text(metadata.get("punkt_id")),
+        clause=_metadata_text(metadata.get("punkt_id")),
         score=chunk.score,
         content_type=chunk.content_type.value,
         provenance=_hit_provenance(chunk),
@@ -1978,8 +1978,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 inventory or the user). Never invent a name. Base-corpus
                 files are not listed in the inventory — filter those with
                 `doc_class` instead.
-            doc_class (str | None): Dokumentart key (e.g. "oib_richtlinie",
-                "gesetz"). Store-authoritative; reclassifications apply
+            doc_class (str | None): Dokumentart key (e.g. "oib_guideline",
+                "law"). Store-authoritative; reclassifications apply
                 without re-ingest.
             title_contains (str | None): Case-insensitive substring of the
                 file name OR display title.
@@ -2021,14 +2021,17 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             )
         if doc_class is not None:
             from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-            from aiq_agent.knowledge.document_classification import is_valid_doc_class
+            from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-            if not is_valid_doc_class(doc_class):
+            # A conversation that already holds a search by the German key invites the model to repeat it.
+            current_doc_class = canonical_doc_class(doc_class)
+            if current_doc_class is None:
                 valid = ", ".join(DOCUMENT_CLASSES)
                 return (
                     f"Invalid doc_class {doc_class!r}. Valid values: {valid}. "
                     "Omit `doc_class` to search every Dokumentart."
                 )
+            doc_class = current_doc_class
 
         # Platform-tunable counts (Platform → Retrieval), resolved per call so
         # an admin save takes effect without a redeploy; fail-open to the YAML

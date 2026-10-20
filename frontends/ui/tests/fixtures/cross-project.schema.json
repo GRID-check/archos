@@ -101,77 +101,77 @@
         "projectFacts": {
           "type": "object",
           "properties": {
-            "bundesland": {
+            "federal_state": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "wien",
-                  "niederoesterreich",
-                  "oberoesterreich",
-                  "steiermark",
-                  "kaernten",
+                  "vienna",
+                  "lower_austria",
+                  "upper_austria",
+                  "styria",
+                  "carinthia",
                   "salzburg",
-                  "tirol",
+                  "tyrol",
                   "vorarlberg",
                   "burgenland"
                 ]
               },
               "maxItems": 9
             },
-            "gebaeudeklasse": {
+            "building_class": {
               "type": "array",
               "items": {
                 "type": "integer"
               },
               "maxItems": 5
             },
-            "bauweise": {
+            "construction_method": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "mauerwerk_massivbau",
-                  "stahlbeton",
-                  "holzbau",
-                  "stahlbau"
+                  "masonry_solid",
+                  "reinforced_concrete",
+                  "timber",
+                  "steel"
                 ]
               },
               "maxItems": 4
             },
-            "nutzungen": {
+            "uses": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "wohnen",
-                  "buero",
-                  "handel",
-                  "gastro",
-                  "beherbergung",
-                  "versammlung",
-                  "bildung",
-                  "gesundheit",
-                  "produktion",
+                  "residential",
+                  "office",
+                  "retail",
+                  "catering",
+                  "lodging",
+                  "assembly",
+                  "education",
+                  "healthcare",
+                  "production",
                   "garage",
-                  "landwirtschaft",
-                  "technik"
+                  "agriculture",
+                  "technical"
                 ]
               },
               "maxItems": 12
             },
-            "vorhabensart": {
+            "work_type": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "neubau",
-                  "zubau",
-                  "umbau",
-                  "sanierung",
-                  "nutzungsaenderung",
-                  "abbruch",
-                  "aussenanlagen"
+                  "new_build",
+                  "extension",
+                  "conversion",
+                  "refurbishment",
+                  "change_of_use",
+                  "demolition",
+                  "external_works"
                 ]
               },
               "maxItems": 7
@@ -210,7 +210,7 @@
                       "closed"
                     ]
                   },
-                  "bundesland": {
+                  "federal_state": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -225,7 +225,7 @@
                   "id",
                   "name",
                   "status",
-                  "bundesland"
+                  "federal_state"
                 ],
                 "additionalProperties": true
               },
@@ -322,7 +322,7 @@
                       "closed"
                     ]
                   },
-                  "bundesland": {
+                  "federal_state": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -337,7 +337,7 @@
                   "id",
                   "name",
                   "status",
-                  "bundesland"
+                  "federal_state"
                 ],
                 "additionalProperties": true
               },
@@ -350,10 +350,10 @@
               "kind": {
                 "type": "string",
                 "enum": [
-                  "bewilligung",
-                  "nachforderung",
-                  "ablehnung",
-                  "sonstiges"
+                  "approval",
+                  "information_request",
+                  "refusal",
+                  "other"
                 ]
               },
               "authority": {
@@ -404,9 +404,9 @@
                     "kind": {
                       "type": "string",
                       "enum": [
-                        "auflage",
-                        "nachforderung",
-                        "hinweis"
+                        "condition",
+                        "information_request",
+                        "note"
                       ]
                     },
                     "content": {
@@ -496,7 +496,7 @@
                       "closed"
                     ]
                   },
-                  "bundesland": {
+                  "federal_state": {
                     "anyOf": [
                       {
                         "type": "string"
@@ -511,7 +511,7 @@
                   "id",
                   "name",
                   "status",
-                  "bundesland"
+                  "federal_state"
                 ],
                 "additionalProperties": true
               },
@@ -622,7 +622,7 @@
                 "closed"
               ]
             },
-            "bundesland": {
+            "federal_state": {
               "anyOf": [
                 {
                   "type": "string"
@@ -637,7 +637,7 @@
             "id",
             "name",
             "status",
-            "bundesland"
+            "federal_state"
           ],
           "additionalProperties": true
         },
@@ -650,10 +650,10 @@
         "kind": {
           "type": "string",
           "enum": [
-            "bewilligung",
-            "nachforderung",
-            "ablehnung",
-            "sonstiges"
+            "approval",
+            "information_request",
+            "refusal",
+            "other"
           ]
         },
         "authority": {
@@ -704,9 +704,9 @@
               "kind": {
                 "type": "string",
                 "enum": [
-                  "auflage",
-                  "nachforderung",
-                  "hinweis"
+                  "condition",
+                  "information_request",
+                  "note"
                 ]
               },
               "content": {
@@ -799,77 +799,77 @@
         "projectFacts": {
           "type": "object",
           "properties": {
-            "bundesland": {
+            "federal_state": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "wien",
-                  "niederoesterreich",
-                  "oberoesterreich",
-                  "steiermark",
-                  "kaernten",
+                  "vienna",
+                  "lower_austria",
+                  "upper_austria",
+                  "styria",
+                  "carinthia",
                   "salzburg",
-                  "tirol",
+                  "tyrol",
                   "vorarlberg",
                   "burgenland"
                 ]
               },
               "maxItems": 9
             },
-            "gebaeudeklasse": {
+            "building_class": {
               "type": "array",
               "items": {
                 "type": "integer"
               },
               "maxItems": 5
             },
-            "bauweise": {
+            "construction_method": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "mauerwerk_massivbau",
-                  "stahlbeton",
-                  "holzbau",
-                  "stahlbau"
+                  "masonry_solid",
+                  "reinforced_concrete",
+                  "timber",
+                  "steel"
                 ]
               },
               "maxItems": 4
             },
-            "nutzungen": {
+            "uses": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "wohnen",
-                  "buero",
-                  "handel",
-                  "gastro",
-                  "beherbergung",
-                  "versammlung",
-                  "bildung",
-                  "gesundheit",
-                  "produktion",
+                  "residential",
+                  "office",
+                  "retail",
+                  "catering",
+                  "lodging",
+                  "assembly",
+                  "education",
+                  "healthcare",
+                  "production",
                   "garage",
-                  "landwirtschaft",
-                  "technik"
+                  "agriculture",
+                  "technical"
                 ]
               },
               "maxItems": 12
             },
-            "vorhabensart": {
+            "work_type": {
               "type": "array",
               "items": {
                 "type": "string",
                 "enum": [
-                  "neubau",
-                  "zubau",
-                  "umbau",
-                  "sanierung",
-                  "nutzungsaenderung",
-                  "abbruch",
-                  "aussenanlagen"
+                  "new_build",
+                  "extension",
+                  "conversion",
+                  "refurbishment",
+                  "change_of_use",
+                  "demolition",
+                  "external_works"
                 ]
               },
               "maxItems": 7
@@ -913,7 +913,7 @@
                   "closed"
                 ]
               },
-              "bundesland": {
+              "federal_state": {
                 "anyOf": [
                   {
                     "type": "string"
@@ -990,7 +990,7 @@
               "id",
               "name",
               "status",
-              "bundesland",
+              "federal_state",
               "collection",
               "address",
               "period",
@@ -1054,7 +1054,7 @@
                 "closed"
               ]
             },
-            "bundesland": {
+            "federal_state": {
               "anyOf": [
                 {
                   "type": "string"
@@ -1131,7 +1131,7 @@
             "id",
             "name",
             "status",
-            "bundesland",
+            "federal_state",
             "collection",
             "address",
             "period",

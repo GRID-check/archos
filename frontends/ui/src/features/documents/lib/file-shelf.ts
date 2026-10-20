@@ -137,7 +137,7 @@ export interface FileShelf {
 }
 
 export interface CardExtras {
-  source?: 'projekt' | 'buero' | null
+  source?: 'project' | 'office' | null
   sourceLabel?: string
   footerLead?: ReactNode
 }

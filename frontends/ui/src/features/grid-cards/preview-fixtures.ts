@@ -100,7 +100,7 @@ const RAW_FIXTURES: CardInput[] = [
     title: 'Projektkontext aktualisieren: Fluchtniveau',
     rationale:
       'Sie haben angegeben, dass das oberste Fluchtniveau bei 25 m liegt — damit ist das Gebäude ein Hochhaus (> 22 m) und OIB-Richtlinie 2.3 wird anwendbar.',
-    patch: [{ op: 'add', path: '/facts/fluchtniveau', value: '>22m' }],
+    patch: [{ op: 'add', path: '/facts/escape_level', value: '>22m' }],
     preview: [{ label: 'Fluchtniveau', before: '11–22 m', after: '> 22 m' }],
   },
   {
@@ -139,7 +139,7 @@ const RAW_FIXTURES: CardInput[] = [
     // card can offer beyond „angelegt".
     type: 'task_created',
     task_id: '00000000-0000-4000-8000-0000000000f1',
-    kind: 'einreichcheck',
+    kind: 'submission_check',
     title: 'Einreichcheck: Bauansuchen Haus A',
     goal: 'Mach den Einreichcheck für das Bauansuchen bis Freitag',
     due_at: '2026-09-18T23:59:59.999Z',
@@ -154,19 +154,19 @@ const RAW_FIXTURES: CardInput[] = [
     operations: [
       {
         document: 'Grundriss EG.pdf',
-        source: 'projekt',
+        source: 'project',
         current: 'Nachweise',
         target_folder: 'Einreichung/Pläne',
       },
       {
         document: 'Grundriss OG.pdf',
-        source: 'projekt',
+        source: 'project',
         current: '',
         target_folder: 'Einreichung/Pläne',
       },
       {
         document: 'Schnitt A-A.pdf',
-        source: 'projekt',
+        source: 'project',
         current: 'Nachweise',
         target_folder: 'Einreichung/Pläne',
       },
@@ -222,7 +222,7 @@ const RAW_FIXTURES: CardInput[] = [
       { label: '3.OG', height_m: 3.0 },
     ],
     markers: [
-      { label: 'Fluchtniveau', height_m: 9.2, kind: 'fluchtniveau' },
+      { label: 'Fluchtniveau', height_m: 9.2, kind: 'escape_level' },
       { label: 'GK4-Grenze', height_m: 11, kind: 'threshold' },
     ],
     reference: OIB2,
@@ -333,7 +333,7 @@ const RAW_FIXTURES: CardInput[] = [
   {
     type: 'guardrail_check',
     title: 'Absturzsicherung Dachterrasse',
-    context: 'dachterrasse',
+    context: 'roof_terrace',
     fall_height: { label: 'Absturzhöhe', value: 13.5, required: 12, unit: 'm', comparator: '<=', status: 'warning' },
     rail_height: { label: 'Geländerhöhe', value: 100, required: 110, unit: 'cm', comparator: '>=', status: 'fail' },
     max_opening: { label: 'max. Öffnungsweite', value: 11, required: 12, unit: 'cm', comparator: '<=', status: 'pass' },
@@ -357,7 +357,7 @@ const RAW_FIXTURES: CardInput[] = [
       comparator: '>=',
       status: 'pass',
     },
-    aufstellflaeche: {
+    staging_area: {
       width: { label: 'Breite', value: 5, required: 5, unit: 'm', comparator: '>=', status: 'pass' },
       length: { label: 'Länge', value: 11, required: 10, unit: 'm', comparator: '>=', status: 'pass' },
       distance_to_facade: {
@@ -377,7 +377,7 @@ const RAW_FIXTURES: CardInput[] = [
       comparator: '<=',
       status: 'pass',
     },
-    gebaeudeklasse: 'GK 4',
+    building_class: 'GK 4',
     reference: { document: 'TRVB F 134', section: 'Pkt. 4' },
   },
   // A composition (ADR-0065): two variants of one question as tabs, each a

@@ -70,15 +70,15 @@ def bff(monkeypatch):
 def _record() -> PermitRecord:
     return PermitRecord.model_validate(
         {
-            "kind": "bewilligung",
+            "kind": "approval",
             "authority": "Stadtgemeinde Baden",
             "municipality": "Baden",
-            "bundesland": "niederoesterreich",
+            "federal_state": "lower_austria",
             "issued_on": "2020-09-14",
             "reference": None,
             "requirements": [
                 {
-                    "kind": "auflage",
+                    "kind": "condition",
                     "content": "Das Brandschutzgutachten vom 3. Juli 2020 ist einzuhalten.",
                     "evidence": None,
                     "legal_basis": None,
@@ -103,15 +103,15 @@ def test_a_record_is_posted_to_the_contracts_path_with_the_token_and_the_exact_b
         "fileName": "Baubescheid_Baden_2020.pdf",
         "model": "fake/model",
         "record": {
-            "kind": "bewilligung",
+            "kind": "approval",
             "authority": "Stadtgemeinde Baden",
             "municipality": "Baden",
-            "bundesland": "niederoesterreich",
+            "federalState": "lower_austria",
             "issuedOn": "2020-09-14",
             "reference": None,
             "requirements": [
                 {
-                    "kind": "auflage",
+                    "kind": "condition",
                     "content": "Das Brandschutzgutachten vom 3. Juli 2020 ist einzuhalten.",
                     "evidence": None,
                     "legalBasis": None,

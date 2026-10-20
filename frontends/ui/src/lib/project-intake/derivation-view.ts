@@ -9,7 +9,7 @@
  * computed against. Each input says whether it is only suggested.
  *
  * Writing: when every input that matters has a value, the class is written as
- * the suggestion `gebaeudeklasse@bwN` with `derivation` evidence. It is never
+ * the suggestion `building_class@bldgN` with `derivation` evidence. It is never
  * written over a confirmed class: a different one becomes an alternative on
  * the fact, as a document's would. A Hochhaus, or a building that is no
  * building, gets nothing.
@@ -24,15 +24,15 @@ import { sameProfileValue, suggestedAssumption, withAlternative } from './profil
 import type { DerivationView } from './types'
 
 /** The profile key the class of one building is stored under. */
-export const buildingClassKey = (buildingId: string): string => `gebaeudeklasse@${buildingId}`
+export const buildingClassKey = (buildingId: string): string => `building_class@${buildingId}`
 
 /** Whether `key` holds a class, of a building or flat: derived here, never recorded by a reading. */
-export const isBuildingClassKey = (key: string): boolean => key.split('@')[0] === 'gebaeudeklasse'
+export const isBuildingClassKey = (key: string): boolean => key.split('@')[0] === 'building_class'
 
 /** The reason a derived suggestion carries, beside its evidence. Read by a person and by the agent's prompt view. */
 export const DERIVED_REASON = `Abgeleitet: ${BUILDING_CLASS_DERIVATION.citation}`
 
-/** The buildings the profile describes, in order (`bw1` when it names none). */
+/** The buildings the profile describes, in order (`bldg1` when it names none). */
 export function buildingIdsOf(profile: ProjectProfile, definition: ProjectIntakeDefinition): string[] {
   return answersFromProfile(profile, definition).buildings.map((building) => building.id)
 }

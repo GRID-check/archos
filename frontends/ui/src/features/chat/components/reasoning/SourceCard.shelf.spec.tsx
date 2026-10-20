@@ -4,7 +4,7 @@
  * `shelf.spec.ts` pins the model; this pins what a reader actually sees on the
  * card's folder tab — the surface where the defect was visible: a file the user
  * attached privately to one chat was cited as "Projektwissen", i.e. as office
- * knowledge filed against the project, because a `('s_', 'projekt')` prefix row
+ * knowledge filed against the project, because a `('s_', 'project')` prefix row
  * was the only guess available.
  */
 
@@ -26,7 +26,7 @@ const document = (shelf: Shelf | undefined): CitedDocument => ({
   fileName: 'Grundriss.pdf',
   collection: 's_9f2a4c',
   shelf,
-  kind: 'projekt',
+  kind: 'project',
   tint: 'project',
   loci: [{ key: 'p:2', page: 2, isCited: true, number: 1 }],
 })

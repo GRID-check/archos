@@ -1,10 +1,10 @@
 """`POST /v1/ingest` carries the Fassung a person chose at upload (ADR-0099).
 
 The upload dialog offers „Als neue Fassung von X ablegen"; the BFF checks the
-person may change X and sends X's file name as `fassung_of`. The route's part is
+person may change X and sends X's file name as `revision_of`. The route's part is
 to let it reach the job config untouched, where the ingest job writes the link
 once the new file has been read. The BFF twin is `dispatch.spec.ts`, which
-asserts the same `fassung_of` key on the request body.
+asserts the same `revision_of` key on the request body.
 """
 
 from unittest.mock import MagicMock
@@ -60,10 +60,10 @@ def _config(mock_ingestor) -> dict:
 
 @pytest.mark.asyncio
 async def test_the_chosen_older_file_reaches_the_ingest_job_config(app, mock_ingestor):
-    response = await _ingest(app, {**BODY, "fassung_of": "Grundriss_EG_Index_B.pdf"})
+    response = await _ingest(app, {**BODY, "revision_of": "Grundriss_EG_Index_B.pdf"})
 
     assert response.status_code == 202
-    assert _config(mock_ingestor)["fassung_of"] == "Grundriss_EG_Index_B.pdf"
+    assert _config(mock_ingestor)["revision_of"] == "Grundriss_EG_Index_B.pdf"
 
 
 @pytest.mark.asyncio
@@ -71,32 +71,43 @@ async def test_an_upload_that_chose_nothing_carries_no_key(app, mock_ingestor):
     response = await _ingest(app, BODY)
 
     assert response.status_code == 202
-    assert "fassung_of" not in _config(mock_ingestor)
+    assert "revision_of" not in _config(mock_ingestor)
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("blank", [None, "", "   "])
 async def test_a_blank_choice_is_no_choice(app, mock_ingestor, blank):
-    response = await _ingest(app, {**BODY, "fassung_of": blank})
+    response = await _ingest(app, {**BODY, "revision_of": blank})
 
     assert response.status_code == 202
-    assert "fassung_of" not in _config(mock_ingestor)
+    assert "revision_of" not in _config(mock_ingestor)
 
 
 @pytest.mark.asyncio
 async def test_the_name_is_trimmed(app, mock_ingestor):
-    await _ingest(app, {**BODY, "fassung_of": "  Grundriss_EG_Index_B.pdf "})
+    await _ingest(app, {**BODY, "revision_of": "  Grundriss_EG_Index_B.pdf "})
 
-    assert _config(mock_ingestor)["fassung_of"] == "Grundriss_EG_Index_B.pdf"
+    assert _config(mock_ingestor)["revision_of"] == "Grundriss_EG_Index_B.pdf"
 
 
 @pytest.mark.asyncio
 async def test_a_name_longer_than_a_file_name_is_refused(app, mock_ingestor):
-    response = await _ingest(app, {**BODY, "fassung_of": "x" * 513})
+    response = await _ingest(app, {**BODY, "revision_of": "x" * 513})
 
     assert response.status_code == 422
     mock_ingestor.submit_job.assert_not_called()
 
 
 def test_the_request_model_defaults_to_no_choice():
-    assert IngestRequest(file_ref="http://x/y.pdf", collection="c").fassung_of is None
+    assert IngestRequest(file_ref="http://x/y.pdf", collection="c").revision_of is None
+
+
+@pytest.mark.asyncio
+async def test_a_bff_that_has_not_rolled_yet_still_sends_the_old_key(app, mock_ingestor):
+    """`fassung_of` was the key until migration 0165; the job config carries the new one."""
+    response = await _ingest(app, {**BODY, "fassung_of": "Grundriss_EG_Index_B.pdf"})
+
+    assert response.status_code == 202
+    config = _config(mock_ingestor)
+    assert config["revision_of"] == "Grundriss_EG_Index_B.pdf"
+    assert "fassung_of" not in config

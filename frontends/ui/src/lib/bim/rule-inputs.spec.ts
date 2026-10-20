@@ -96,7 +96,7 @@ const MODEL: BimElement[] = [
   }),
 ]
 
-const FACTS = { gebaeudeklasse: 4 as const, hauptnutzung: 'wohnen', storeys: STOREYS }
+const FACTS = { gebaeudeklasse: 4 as const, hauptnutzung: 'residential', storeys: STOREYS }
 
 describe('projected rule inputs', () => {
   it('produces exactly the verdicts the full elements produce', () => {

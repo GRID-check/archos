@@ -52,8 +52,8 @@ const session = { userId: 'user-1', organizationId: 'org-1' } as never
 
 const storedProfile: ProjectProfile = {
   facts: {
-    bundesland: {
-      value: 'wien',
+    federal_state: {
+      value: 'vienna',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-01-01T00:00:00.000Z',
@@ -232,7 +232,7 @@ describe('saveProjectProfile optimistic concurrency (If-Match)', () => {
 
 /**
  * Fix 1 (WP-C): every profile write path must drop BOTH profile-derived caches,
- * not just `promptview:` — otherwise the structured `bundesland` served on the
+ * not just `promptview:` — otherwise the structured `federal_state` served on the
  * WS handshake stays stale for the 5-min TTL after a location change.
  *
  * `@/lib/cache` is mocked here, so `./prompt-view` runs for real and we assert
@@ -246,18 +246,18 @@ describe('profile writes invalidate both profile-derived cache keys (Fix 1)', ()
     vi.mocked(updateProjectProfileIfVersion).mockResolvedValue(storedState)
   })
 
-  it('saveProjectProfile drops promptview: AND bundesland:', async () => {
+  it('saveProjectProfile drops promptview-v2: AND federal-state:', async () => {
     await saveProjectProfile(session, 'proj-1', storedProfile, 5)
 
-    expect(invalidateCached).toHaveBeenCalledWith('promptview:org-1:proj-1')
-    expect(invalidateCached).toHaveBeenCalledWith('bundesland:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('promptview-v2:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('federal-state:org-1:proj-1')
   })
 
-  it('patchProjectProfile drops promptview: AND bundesland:', async () => {
+  it('patchProjectProfile drops promptview-v2: AND federal-state:', async () => {
     await patchProjectProfile(session, 'proj-1', [])
 
-    expect(invalidateCached).toHaveBeenCalledWith('promptview:org-1:proj-1')
-    expect(invalidateCached).toHaveBeenCalledWith('bundesland:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('promptview-v2:org-1:proj-1')
+    expect(invalidateCached).toHaveBeenCalledWith('federal-state:org-1:proj-1')
   })
 })
 
@@ -286,7 +286,7 @@ describe('generateProjectSummary', () => {
     const [url, init] = mockFetch.mock.calls[0]
     expect(url).toBe('http://backend:8000/v1/generate-summary')
     const body = JSON.parse(String((init as RequestInit).body))
-    // Labels, not machine tokens: "bundesland=wien" must never leak into the prose.
+    // Labels, not machine tokens: "federal_state=vienna" must never leak into the prose.
     expect(body.profile_text).toBe('Bundesland: Wien')
     expect(body.locale).toBe('de')
     // The locale is persisted alongside the prose so a later UI language switch

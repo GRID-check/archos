@@ -19,8 +19,8 @@ const WIEN = {
   id: 'bauo-wien',
   title: 'Bauordnung für Wien',
   short: 'BO Wien',
-  rank: 'landesgesetz',
-  bundesland: 'Wien',
+  rank: 'state_law',
+  federal_state: 'Wien',
   topics: ['Bewilligung'],
   relevance: 'hoch',
   application: 'LrW',
@@ -38,8 +38,8 @@ const OIB = {
   id: 'oib-rl2-2023',
   title: 'OIB-Richtlinie 2 — Brandschutz',
   short: 'OIB-RL 2',
-  rank: 'verordnung',
-  bundesland: '',
+  rank: 'ordinance',
+  federal_state: '',
   topics: ['Brandschutz'],
   relevance: 'hoch',
   application: 'BrKons',
@@ -56,8 +56,8 @@ const MERKBLATT = {
   id: 'ma37-fluchtwege',
   title: 'MA 37 — Merkblatt Fluchtwege',
   short: 'MA 37 FW',
-  rank: 'behoerdliche_info',
-  bundesland: 'Wien',
+  rank: 'authority_info',
+  federal_state: 'Wien',
   topics: ['Fluchtwege'],
   relevance: 'mittel',
   application: '',
@@ -251,7 +251,7 @@ describe('NormRegistry', () => {
     expect(JSON.parse((verifyCall![1] as RequestInit).body as string)).toMatchObject({
       title_query: 'Bauordnung für Wien',
       application: 'LrW',
-      bundesland: 'Wien',
+      federal_state: 'Wien',
     })
 
     await user().click(candidate)

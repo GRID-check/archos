@@ -32,7 +32,7 @@ const kbSource = (overrides: Record<string, unknown> = {}) => ({
   source_type: 'knowledge_layer',
   tool: 'knowledge_search',
   origin: 'kb',
-  kind: 'baurecht',
+  kind: 'building_law',
   lane: 'oib',
   lane_label: 'OIB-Richtlinie',
   file_name: 'OIB-RL-2.pdf',
@@ -48,7 +48,7 @@ describe('encodeBackendSources', () => {
       source_type: 'knowledge_layer',
       origin: 'kb',
       shelf: 'base',
-      kind: 'baurecht',
+      kind: 'building_law',
       lane: 'oib',
       lane_label: 'OIB-Richtlinie',
       collection: 'oib_base',
@@ -342,8 +342,8 @@ describe('normalizeAgentAnswerMetadata', () => {
           citation_key: 'OIB-RL-3.pdf, p.4',
           file_name: 'OIB-RL-3.pdf',
           page: 4,
-          kind: 'baurecht',
-          lane: 'baurecht_oib',
+          kind: 'building_law',
+          lane: 'building_law_oib',
         },
       ],
     })
@@ -354,7 +354,7 @@ describe('normalizeAgentAnswerMetadata', () => {
     expect(decoded![0]).toMatchObject({ fileName: 'OIB-RL-3.pdf', page: 4 })
   })
 
-  it('stores read_sources as identity + placement only — no prose, punkt or score', () => {
+  it('stores read_sources as identity + placement only — no prose, clause or score', () => {
     // A document the answer never cited must not carry evidence text into the
     // row: the passage surfaces read the stored envelope, and prose stored
     // under an uncited document would let it ground highlights it never earned.
@@ -366,13 +366,13 @@ describe('normalizeAgentAnswerMetadata', () => {
           file_name: 'OIB-RL-3.pdf',
           page: 4,
           collection: 'oib_base',
-          kind: 'baurecht',
-          lane: 'baurecht_oib',
+          kind: 'building_law',
+          lane: 'building_law_oib',
           lane_label: 'OIB-Richtlinie',
           title: 'OIB-Richtlinie 3',
           content: '[KB] OIB-RL-3.pdf, p.4 — Die Fluchtweglänge darf 40 m nicht überschreiten.',
           snippet: 'Die Fluchtweglänge darf 40 m nicht überschreiten.',
-          punkt: '3.5.2',
+          clause: '3.5.2',
           score: 0.87,
           number: 2,
           source_type: 'knowledge_layer',
@@ -387,7 +387,7 @@ describe('normalizeAgentAnswerMetadata', () => {
     for (const key of [
       'content',
       'snippet',
-      'punkt',
+      'clause',
       'score',
       'number',
       'source_type',
@@ -401,16 +401,38 @@ describe('normalizeAgentAnswerMetadata', () => {
     expect(decoded![0]).toMatchObject({ fileName: 'OIB-RL-3.pdf', page: 4 })
   })
 
+  it('stores the English names for a source an older pod still describes in German', () => {
+    const result = normalizeAgentAnswerMetadata({
+      sources: [
+        kbSource({
+          kind: 'baurecht',
+          lane: 'baurecht_oib_leitfaden',
+          binding_status: 'verbindlich_erklaert',
+          rank: 'landesgesetz',
+          punkt: '3.5.2',
+        } as Record<string, unknown>),
+      ],
+    })
+    const stored = (result?.citations as { sources: Record<string, unknown>[] }).sources[0]
+    expect(stored).toMatchObject({
+      kind: 'building_law',
+      lane: 'building_law_oib_guide',
+      binding_status: 'declared_binding',
+      clause: '3.5.2',
+    })
+    expect(stored).not.toHaveProperty('punkt')
+  })
+
   it('keeps storing the passage fields for cited sources', () => {
     // The stripping above is read-only: a cited source still needs its
     // passage, its Punkt and its score.
     const result = normalizeAgentAnswerMetadata({
-      sources: [kbSource({ punkt: '3.5.2', score: 0.87 })],
+      sources: [kbSource({ clause: '3.5.2', score: 0.87 })],
     })
     const stored = (result?.citations as { sources: Record<string, unknown>[] }).sources[0]
     expect(stored).toMatchObject({
       content: '[KB] OIB-Richtlinie 2, S. 18',
-      punkt: '3.5.2',
+      clause: '3.5.2',
       score: 0.87,
     })
   })

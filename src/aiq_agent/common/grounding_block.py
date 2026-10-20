@@ -168,7 +168,7 @@ class GroundingHit(BaseModel):
     folder_path: str | None
     #: The locus in the document's own numbering, readable: ``3.5.2`` for the
     #: corpus, ``§ 63 Abs 1`` for a law. Never squeezed to one token.
-    punkt: str | None
+    clause: str | None
     #: Required, because the ``Relevance Score:`` line is also the grammar's
     #: header/body delimiter: a hit with no score would render a body that
     #: reads as more header.
@@ -382,8 +382,8 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
         yield f"Herkunft: {_line(provenance_label(hit.provenance))}"
     if hit.page is not None:
         yield f"Page: {hit.page}"
-    if hit.punkt:
-        yield f"Punkt: {_line(hit.punkt)}"
+    if hit.clause:
+        yield f"Punkt: {_line(hit.clause)}"
     if hit.status_note:
         yield f"Rechtlicher Hinweis: {_line(hit.status_note)}"
     yield f"Citation: {_line(hit.citation_key)}"
@@ -421,8 +421,9 @@ def _doc_class_label(doc_class: str) -> str:
     tier that must load without it.
     """
     from aiq_agent.knowledge.document_classification import DOCUMENT_CLASS_LABELS
+    from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-    return DOCUMENT_CLASS_LABELS.get(doc_class, doc_class)
+    return DOCUMENT_CLASS_LABELS.get(canonical_doc_class(doc_class) or doc_class, doc_class)
 
 
 # ---------------------------------------------------------------------------

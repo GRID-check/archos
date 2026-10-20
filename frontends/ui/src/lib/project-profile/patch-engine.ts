@@ -3,6 +3,7 @@
 // wizard can build its profile through the exact same engine that chat-driven
 // profile edits (ProjectProfilePatchCard) use — a single source of truth for how
 // a ProjectProfile is shaped and validated.
+import { normalizeProfilePatchOperation } from './legacy-names'
 import {
   ProjectPrimitiveValueSchema,
   ProjectProfilePatchOperationSchema,
@@ -24,7 +25,9 @@ export function applyProjectProfilePatch(
 ): ProjectProfile {
   const next = structuredClone(ProjectProfileSchema.parse(profile))
 
-  for (const operation of patch) {
+  for (const legacyOperation of patch) {
+    // A proposal or a card stored before the rename still names the old keys.
+    const operation = normalizeProfilePatchOperation(legacyOperation)
     assertSafePath(operation.path)
     const parsedOperation = ProjectProfilePatchOperationSchema.parse(operation)
     applyPatchOperation(next, parsedOperation)
@@ -227,8 +230,8 @@ export function pruneResolvedUnknowns(profile: ProjectProfile): ProjectProfile {
 /**
  * Drop assumptions superseded by a confirmed fact under the same key: once the
  * user has answered (wizard, patch card, or Brief confirm), the unconfirmed
- * default must not linger next to the fact — a stale `bundesland=wien`
- * assumption beside a confirmed `bundesland=tirol` fact would feed the agent
+ * default must not linger next to the fact — a stale `federal_state=wien`
+ * assumption beside a confirmed `federal_state=tirol` fact would feed the agent
  * two contradictory jurisdictions.
  */
 export function pruneResolvedAssumptions(profile: ProjectProfile): ProjectProfile {

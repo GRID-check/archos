@@ -128,7 +128,7 @@ describe('reviewUploadFiling', () => {
       payload: {
         operation: 'move',
         operations: [
-          { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Bescheide', reason: 'Ein Bescheid der MA 37.' },
+          { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Bescheide', reason: 'Ein Bescheid der MA 37.' },
         ],
         basis: 'name',
         new_folder: null,
@@ -205,7 +205,7 @@ describe('reviewUploadFiling', () => {
           kind: 'file_operation',
           payload: {
             operation: 'move',
-            operations: [{ document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Bescheide' }],
+            operations: [{ document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Bescheide' }],
             basis: 'name',
           },
         },
@@ -228,7 +228,7 @@ describe('reviewUploadFiling', () => {
       expect.objectContaining({
         projectId: null,
         payload: expect.objectContaining({
-          operations: [expect.objectContaining({ source: 'buero', target_folder: 'Bescheide' })],
+          operations: [expect.objectContaining({ source: 'office', target_folder: 'Bescheide' })],
         }),
       })
     )

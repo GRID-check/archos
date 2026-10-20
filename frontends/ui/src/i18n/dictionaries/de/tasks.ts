@@ -111,7 +111,7 @@ export const tasks: typeof en.tasks = {
     'deep-research': 'Recherche',
     chat: 'Chat',
     compliance_check: 'Normprüfung',
-    einreichcheck: 'Einreichcheck',
+    submission_check: 'Einreichcheck',
     document: 'Dokument',
     revision: 'Überarbeitung',
   },

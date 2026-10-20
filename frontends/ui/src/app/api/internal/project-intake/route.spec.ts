@@ -70,7 +70,7 @@ const post = (body: unknown, token = SECRET) =>
 const RECORD: InternalIntakeRequest = {
   op: 'record',
   jobId: JOB,
-  values: [{ key: 'bauwerkstyp@bw1', value: 'gebaeude', evidence: { fileName: 'Einreichplan.pdf', page: 2, quote: 'Wohngebäude' } }],
+  values: [{ key: 'building_type@bldg1', value: 'building', evidence: { fileName: 'Einreichplan.pdf', page: 2, quote: 'Wohngebäude' } }],
 }
 
 beforeEach(() => {
@@ -80,10 +80,10 @@ beforeEach(() => {
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
   vi.mocked(intakeNeeds).mockResolvedValue({ needs: [], unreadFiles: ['Einreichplan.pdf'], description: null, location: null, mode: 'active', previousSummary: null })
   vi.mocked(recordIntakeValues).mockResolvedValue({
-    results: [{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }],
-    opened: [{ key: 'geschosse_oberirdisch@bw1', decisive: true }],
+    results: [{ key: 'building_type@bldg1', outcome: 'suggested' }],
+    opened: [{ key: 'storeys_above_ground@bldg1', decisive: true }],
   })
-  vi.mocked(withdrawIntakeValues).mockResolvedValue({ results: [{ key: 'projektphase', outcome: 'withdrawn' }] })
+  vi.mocked(withdrawIntakeValues).mockResolvedValue({ results: [{ key: 'project_phase', outcome: 'withdrawn' }] })
   vi.mocked(finishIntakeReading).mockResolvedValue({ status: 'ready' })
 })
 
@@ -122,9 +122,9 @@ describe('POST /api/internal/project-intake', () => {
   })
 
   it('withdraws the reading’s own suggestions by key', async () => {
-    const withdrawn = await post({ op: 'withdraw', jobId: JOB, keys: ['projektphase'] })
+    const withdrawn = await post({ op: 'withdraw', jobId: JOB, keys: ['project_phase'] })
     INTERNAL_INTAKE_RESPONSE_SCHEMAS.withdraw.parse(await withdrawn.json())
-    expect(withdrawIntakeValues).toHaveBeenCalledWith(SESSION, PROJECT, JOB, ['projektphase'])
+    expect(withdrawIntakeValues).toHaveBeenCalledWith(SESSION, PROJECT, JOB, ['project_phase'])
     expect((await post({ op: 'withdraw', jobId: JOB, keys: [] })).status).toBe(400)
   })
 

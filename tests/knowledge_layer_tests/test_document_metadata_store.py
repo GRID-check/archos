@@ -330,36 +330,111 @@ class TestDocumentMetadataStore:
             engine.dispose()
             DocumentMetadataStore.dispose_engine(db_url)
 
+    def test_the_retained_table_is_renamed_in_place_and_keeps_its_rows(self):
+        """`document_fassung_retained` became `document_revision_retained` (migration 0165 era)."""
+        from sqlalchemy import create_engine
+        from sqlalchemy import inspect
+        from sqlalchemy import text
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'retained.db'}"
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)  # a current database
+            engine = create_engine(db_url)
+            with engine.begin() as conn:
+                conn.execute(text("ALTER TABLE document_revision_retained RENAME TO document_fassung_retained"))
+                conn.execute(
+                    text(
+                        "INSERT INTO document_fassung_retained (collection, filename, superseded_by) "
+                        "VALUES ('c', 'neu.pdf', 'alt.pdf')"
+                    )
+                )
+
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+
+            inspector = inspect(engine)
+            assert inspector.has_table("document_revision_retained")
+            assert not inspector.has_table("document_fassung_retained")
+            with engine.connect() as conn:
+                rows = conn.execute(text("SELECT filename, superseded_by FROM document_revision_retained")).all()
+            assert [tuple(row) for row in rows] == [("neu.pdf", "alt.pdf")]
+            engine.dispose()
+            DocumentMetadataStore.dispose_engine(db_url)
+
+    def test_a_pod_that_has_not_rolled_yet_recreates_the_old_table_and_its_rows_are_moved_across(self):
+        from sqlalchemy import create_engine
+        from sqlalchemy import text
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            db_url = f"sqlite:///{Path(tmpdir) / 'both.db'}"
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+            engine = create_engine(db_url)
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "CREATE TABLE document_fassung_retained (collection VARCHAR(256) NOT NULL, "
+                        "filename VARCHAR(512) NOT NULL, superseded_by TEXT, revision_suggestion TEXT, "
+                        "change_summary TEXT, change_basis TEXT, PRIMARY KEY (collection, filename))"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO document_revision_retained (collection, filename, superseded_by) "
+                        "VALUES ('c', 'kept.pdf', 'new-table.pdf')"
+                    )
+                )
+                conn.execute(
+                    text(
+                        "INSERT INTO document_fassung_retained (collection, filename, superseded_by) "
+                        "VALUES ('c', 'kept.pdf', 'old-table.pdf'), ('c', 'moved.pdf', 'x.pdf')"
+                    )
+                )
+
+            DocumentMetadataStore._tables_initialized.discard(db_url)
+            DocumentMetadataStore(db_url)
+
+            with engine.connect() as conn:
+                rows = conn.execute(
+                    text("SELECT filename, superseded_by FROM document_revision_retained ORDER BY filename")
+                ).all()
+                left = conn.execute(text("SELECT count(*) FROM document_fassung_retained")).scalar()
+            assert [tuple(row) for row in rows] == [("kept.pdf", "new-table.pdf"), ("moved.pdf", "x.pdf")]
+            assert left == 0
+            engine.dispose()
+            DocumentMetadataStore.dispose_engine(db_url)
+
     def test_set_and_get_doc_class_roundtrip(self, store):
         """set_doc_class updates an existing row; get_doc_class reads it back."""
         store.register("coll", "doc.pdf", "A summary.")
         assert store.get_doc_class("coll", "doc.pdf") is None  # default null
-        assert store.set_doc_class("coll", "doc.pdf", "oib_richtlinie") is True
-        assert store.get_doc_class("coll", "doc.pdf") == "oib_richtlinie"
+        assert store.set_doc_class("coll", "doc.pdf", "oib_guideline") is True
+        assert store.get_doc_class("coll", "doc.pdf") == "oib_guideline"
         # It also surfaces on the AvailableDocument read.
         docs = store.get_all("coll")
-        assert docs[0].doc_class == "oib_richtlinie"
+        assert docs[0].doc_class == "oib_guideline"
 
     def test_set_doc_class_without_row_returns_false(self, store):
         """set_doc_class never creates a row: no summary → False, still null."""
-        assert store.set_doc_class("coll", "missing.pdf", "gesetz") is False
+        assert store.set_doc_class("coll", "missing.pdf", "law") is False
         assert store.get_doc_class("coll", "missing.pdf") is None
 
     def test_a_doc_class_suggestion_is_stored_beside_the_class_never_as_it(self, store):
         """ADR-0064 use 8: the decided Dokumentart waits for a person."""
         store.register("coll", "doc.pdf", "A summary.")
-        store.set_doc_class("coll", "doc.pdf", "sonstiges")
-        assert store.set_doc_class_suggestion("coll", "doc.pdf", "gesetz") is True
-        assert store.get_doc_class("coll", "doc.pdf") == "sonstiges"
-        assert store.get_doc_class_suggestions_batch("coll", ["doc.pdf", "other.pdf"]) == {"doc.pdf": "gesetz"}
+        store.set_doc_class("coll", "doc.pdf", "other")
+        assert store.set_doc_class_suggestion("coll", "doc.pdf", "law") is True
+        assert store.get_doc_class("coll", "doc.pdf") == "other"
+        assert store.get_doc_class_suggestions_batch("coll", ["doc.pdf", "other.pdf"]) == {"doc.pdf": "law"}
         assert store.set_doc_class_suggestion("coll", "doc.pdf", None) is True
         assert store.get_doc_class_suggestions_batch("coll", ["doc.pdf"]) == {}
-        assert store.set_doc_class_suggestion("coll", "missing.pdf", "gesetz") is False
+        assert store.set_doc_class_suggestion("coll", "missing.pdf", "law") is False
 
     def test_set_doc_class_clear(self, store):
         """A None value clears the stored doc_class back to null."""
         store.register("coll", "doc.pdf", "A summary.")
-        store.set_doc_class("coll", "doc.pdf", "gesetz")
+        store.set_doc_class("coll", "doc.pdf", "law")
         assert store.set_doc_class("coll", "doc.pdf", None) is True
         assert store.get_doc_class("coll", "doc.pdf") is None
 
@@ -411,8 +486,8 @@ class TestDocumentMetadataStore:
 
             # Existing rows survive with a null doc_class; new writes round-trip.
             assert store.get_doc_class("c", "old.pdf") is None
-            store.set_doc_class("c", "old.pdf", "oib_leitfaden")
-            assert store.get_doc_class("c", "old.pdf") == "oib_leitfaden"
+            store.set_doc_class("c", "old.pdf", "oib_guide")
+            assert store.get_doc_class("c", "old.pdf") == "oib_guide"
 
             engine.dispose()
             DocumentMetadataStore.dispose_engine(db_url)

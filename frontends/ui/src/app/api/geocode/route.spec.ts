@@ -55,9 +55,9 @@ describe('GET /api/geocode', () => {
     const provider = stubProvider(PHOTON_MARIAHILFER)
     const response = await client.search('Mariahilfer Straße 10 Wien', 2)
     expect(response.enabled).toBe(true)
-    expect(response.results.map((r) => [r.label, r.bundesland, r.kind])).toEqual([
-      ['Museumsquartier, 1070 Wien', 'wien', 'place'],
-      ['Mariahilfer Straße, 1060 Wien', 'wien', 'street'],
+    expect(response.results.map((r) => [r.label, r.federalState, r.kind])).toEqual([
+      ['Museumsquartier, 1070 Wien', 'vienna', 'place'],
+      ['Mariahilfer Straße, 1060 Wien', 'vienna', 'street'],
     ])
     const url = (provider.mock.calls[0] as unknown as [URL])[0]
     expect(url.searchParams.get('q')).toBe('Mariahilfer Straße 10 Wien')

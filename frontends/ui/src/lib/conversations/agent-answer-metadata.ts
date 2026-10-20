@@ -52,6 +52,8 @@
  */
 
 import { CITATIONS_PAYLOAD_VERSION } from '@/features/chat/lib/citations'
+import { modernizeLane, modernizeSourceKind } from '@/features/chat/lib/source-kinds'
+import { LEGACY_BINDING_STATUS } from '@/features/chat/lib/wire-citation'
 import type { WireCitationSource } from '@/features/chat/types'
 import { sanitizeProvenance, type MessageProvenance } from './message-provenance'
 import { toProjectStatus, type ProjectStatus } from '@/lib/projects/project-status'
@@ -189,7 +191,7 @@ export type StoredCitationSource = Partial<
     | 'lane_label'
     | 'binding_note'
     | 'binding_status'
-    | 'punkt'
+    | 'clause'
     | 'score'
     | 'snippet'
   >
@@ -244,11 +246,18 @@ function normalizeSource(input: unknown): StoredCitationSource | null {
     source_type: text(input.source_type, MAX_IDENTIFIER),
     origin: text(input.origin, MAX_IDENTIFIER),
     shelf: text(input.shelf, MAX_IDENTIFIER),
-    kind: text(input.kind, MAX_IDENTIFIER),
-    lane: text(input.lane, MAX_IDENTIFIER),
+    // An older pod (rolling deploy) still sends the German kinds, lanes and
+    // binding statuses; the row stores the English ones.
+    kind: text(modernizeSourceKind(input.kind as string | undefined), MAX_IDENTIFIER),
+    lane: text(modernizeLane(input.lane as string | undefined), MAX_IDENTIFIER),
     lane_label: text(input.lane_label, MAX_TEXT),
     binding_note: text(input.binding_note, MAX_TEXT),
-    binding_status: text(input.binding_status, MAX_IDENTIFIER),
+    binding_status: text(
+      typeof input.binding_status === 'string'
+        ? (LEGACY_BINDING_STATUS[input.binding_status] ?? input.binding_status)
+        : input.binding_status,
+      MAX_IDENTIFIER
+    ),
     tool: text(input.tool, MAX_IDENTIFIER),
     // WHERE in the document, and the words themselves.
     //
@@ -259,7 +268,7 @@ function normalizeSource(input: unknown): StoredCitationSource | null {
     // passage reached a live tab and was lost on exactly the turns a reader
     // comes back to, and the loss was invisible because a citation with no
     // passage opens the page and marks nothing, which is a supported outcome.
-    punkt: text(input.punkt, MAX_IDENTIFIER),
+    clause: text(input.clause ?? input.punkt, MAX_IDENTIFIER),
     score:
       typeof input.score === 'number' && Number.isFinite(input.score) ? input.score : undefined,
     snippet: text(input.snippet, MAX_SNIPPET),
@@ -297,7 +306,7 @@ function normalizeSource(input: unknown): StoredCitationSource | null {
  * Identity + placement only — the same eleven fields the live wire schema
  * kept (the read-source schema of the pre-v2 socket client). A document the
  * answer never cited must never carry prose into storage: `content`,
- * `snippet`, `punkt` and `score` would let an uncited document ground the
+ * `snippet`, `clause` and `score` would let an uncited document ground the
  * passage surfaces (the viewer highlight, the "Zitierte Stelle" box) that read
  * the stored envelope. An entry with no identity at all is not a weaker
  * disclosure row — it is not a row, and drops to null like above.

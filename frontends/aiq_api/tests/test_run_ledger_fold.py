@@ -129,11 +129,11 @@ class TestTheMapping:
     def test_the_five_phase_keys_are_the_contracts(self) -> None:
         """A phase that folds to a key the schema does not know is a lost run."""
         assert set(PHASE_KEYS.values()) == set(RUN_PHASES)
-        assert PHASE_KEYS[PHASE_PLANNING_STARTED] == "planen"
-        assert PHASE_KEYS[PHASE_RESEARCH_STARTED] == "recherchieren"
-        assert PHASE_KEYS[PHASE_CITATION_VERIFICATION_STARTED] == "pruefen"
-        assert PHASE_KEYS[PHASE_WRITING_STARTED] == "schreiben"
-        assert PHASE_KEYS[PHASE_DONE] == "abgelegt"
+        assert PHASE_KEYS[PHASE_PLANNING_STARTED] == "planning"
+        assert PHASE_KEYS[PHASE_RESEARCH_STARTED] == "researching"
+        assert PHASE_KEYS[PHASE_CITATION_VERIFICATION_STARTED] == "checking"
+        assert PHASE_KEYS[PHASE_WRITING_STARTED] == "writing"
+        assert PHASE_KEYS[PHASE_DONE] == "filed"
 
     def test_it_listens_for_the_spelling_the_runner_writes(self) -> None:
         """The fold names the event types itself (the runner imports it, not the
@@ -148,10 +148,10 @@ class TestTheMapping:
         fold.observe(phase_event(PHASE_RESEARCH_STARTED, batch_index=1))
         ledger = fold.snapshot()
 
-        assert [entry["phase"] for entry in ledger["phases"]] == ["planen", "recherchieren"]
+        assert [entry["phase"] for entry in ledger["phases"]] == ["planning", "researching"]
         assert ledger["phases"][0]["endedAt"], "the phase the run left has to say it ended"
         assert "endedAt" not in ledger["phases"][1]
-        assert ledger["status"] == "laeuft"
+        assert ledger["status"] == "running"
 
     async def test_a_research_round_states_its_own_intent(self) -> None:
         """The batch's ``conclusion`` IS the step's intent — never a tool name."""
@@ -172,7 +172,7 @@ class TestTheMapping:
         # A batch that stated nothing still names itself, because a step with no
         # intent is one the contract refuses and the reader cannot read.
         assert steps[1]["intent"] == "Recherche-Runde 2"
-        assert all(step["phase"] == "recherchieren" for step in steps)
+        assert all(step["phase"] == "researching" for step in steps)
         assert all("tool" not in step for step in steps)
 
     async def test_a_source_lands_on_the_open_step_with_its_locus(self) -> None:
@@ -183,7 +183,7 @@ class TestTheMapping:
                 file_name="oib-richtlinie-2.pdf",
                 title="OIB-Richtlinie 2 Brandschutz",
                 shelf="baurecht",
-                punkt="2.3.1",
+                clause="2.3.1",
                 page=12,
             )
         )
@@ -227,11 +227,11 @@ class TestTheMapping:
         await fold.close()
 
         ledger = fold.snapshot()
-        assert ledger["status"] == "fehlgeschlagen"
+        assert ledger["status"] == "failed"
         assert ledger["error"]["reason"] == "Der Anbieter hat abgebrochen."
         # Derived from the phases that genuinely ended — „beim Recherchieren
         # gescheitert, Planen war fertig" rather than „failed".
-        assert ledger["error"]["completedBefore"] == ["planen"]
+        assert ledger["error"]["completedBefore"] == ["planning"]
         assert [body.error.reason for body in client.finishes] == ["Der Anbieter hat abgebrochen."]
 
     async def test_a_cancelled_run_is_its_status_and_sends_no_finish(self) -> None:
@@ -241,9 +241,9 @@ class TestTheMapping:
         fold.observe({"type": "job.cancelled", "data": {}})
         await fold.close()
 
-        assert fold.snapshot()["status"] == "abgebrochen"
+        assert fold.snapshot()["status"] == "cancelled"
         assert client.finishes == []
-        assert client.appends[-1].status == "abgebrochen"
+        assert client.appends[-1].status == "cancelled"
 
     async def test_a_salvaged_run_is_interrupted_and_still_has_its_result(self) -> None:
         fold, _store, client = make_fold()
@@ -253,7 +253,7 @@ class TestTheMapping:
         await fold.close()
 
         ledger = fold.snapshot()
-        assert ledger["status"] == "unterbrochen"
+        assert ledger["status"] == "interrupted"
         assert ledger["result"]["reportMessageId"] == "msg-1"
         assert "error" not in ledger
         assert client.finishes[-1].result.report_message_id == "msg-1"
@@ -266,7 +266,7 @@ class TestTheMapping:
         await fold.close()
 
         ledger = fold.snapshot()
-        assert ledger["status"] == "fertig"
+        assert ledger["status"] == "done"
         assert ledger["result"]["fileId"] == "doc-7"
         assert ledger["finishedAt"]
         assert client.finishes[-1].result.file_id == "doc-7"
@@ -277,7 +277,7 @@ class TestTheBasis:
 
     async def test_the_named_documents_are_on_the_first_snapshot_and_the_first_append(self) -> None:
         fold, store, client = make_fold(
-            grundlage=[
+            basis=[
                 {"name": "Einreichplan.pdf", "title": "Einreichplan", "shelf": "project"},
                 {"name": "", "shelf": "project"},
             ]
@@ -285,16 +285,16 @@ class TestTheBasis:
         fold.observe(phase_event(PHASE_PLANNING_STARTED))
         await fold.flush(force=True)
 
-        assert snapshots(store)[0]["grundlage"] == [
+        assert snapshots(store)[0]["basis"] == [
             {"name": "Einreichplan.pdf", "title": "Einreichplan", "shelf": "project", "loci": []}
         ]
-        assert [doc.name for doc in client.appends[0].grundlage] == ["Einreichplan.pdf"]
+        assert [doc.name for doc in client.appends[0].basis] == ["Einreichplan.pdf"]
         # Sent once: a quiet flush repeats neither the list nor the step.
         await fold.flush(force=True)
-        assert all(body.grundlage is None for body in client.appends[1:])
+        assert all(body.basis is None for body in client.appends[1:])
 
     async def test_a_document_added_while_the_run_goes_joins_the_list_once_and_flushes_at_once(self) -> None:
-        fold, store, client = make_fold(grundlage=[{"name": "Einreichplan.pdf"}])
+        fold, store, client = make_fold(basis=[{"name": "Einreichplan.pdf"}])
         fold.observe(phase_event(PHASE_RESEARCH_STARTED, batch_index=1))
         await fold.flush(force=True)
 
@@ -304,15 +304,15 @@ class TestTheBasis:
         fold.add_basis({"name": "brandschutzkonzept.pdf"})
         await fold.flush()
 
-        assert [doc["name"] for doc in snapshots(store)[-1]["grundlage"]] == [
+        assert [doc["name"] for doc in snapshots(store)[-1]["basis"]] == [
             "Einreichplan.pdf",
             "Brandschutzkonzept.pdf",
         ]
-        sent = [[doc.name for doc in body.grundlage] for body in client.appends if body.grundlage is not None]
+        sent = [[doc.name for doc in body.basis] for body in client.appends if body.basis is not None]
         assert sent == [["Einreichplan.pdf"], ["Einreichplan.pdf", "Brandschutzkonzept.pdf"]]
 
     async def test_the_basis_validates_against_the_bff_schema(self, schema: dict[str, Any]) -> None:
-        fold, store, client = make_fold(grundlage=[{"name": "Einreichplan.pdf", "shelf": "project"}])
+        fold, store, client = make_fold(basis=[{"name": "Einreichplan.pdf", "shelf": "project"}])
         fold.observe(phase_event(PHASE_PLANNING_STARTED))
         await fold.flush(force=True)
 
@@ -384,7 +384,7 @@ class TestTheFlush:
         await fold.flush(force=True)
 
         sent = [step.id for body in client.appends for step in (body.steps or [])]
-        assert sent == ["planen", "planen"], "what the store did not take is offered again"
+        assert sent == ["planning", "planning"], "what the store did not take is offered again"
 
     async def test_without_a_run_id_it_narrates_and_posts_nothing(self) -> None:
         """No run id is no identity: the route would 404, so no doomed POST."""
@@ -444,7 +444,7 @@ class TestTheContract:
         fold, store, client = make_fold()
         fold.observe(phase_event(PHASE_PLANNING_STARTED))
         fold.observe(phase_event(PHASE_RESEARCH_STARTED, batch_index=1, conclusion="OIB-2 auf Fluchtwege prüfen"))
-        fold.observe(source_event(file_name="oib-richtlinie-2.pdf", shelf="baurecht", punkt="2.3.1", page=12))
+        fold.observe(source_event(file_name="oib-richtlinie-2.pdf", shelf="baurecht", clause="2.3.1", page=12))
         fold.observe(todo_event([{"content": "Bestand klären", "status": "pending"}]))
         await fold.flush(force=True)
         fold.observe(phase_event(PHASE_WRITING_STARTED))

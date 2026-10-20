@@ -91,7 +91,7 @@ class TurnFacts:
     #: The conversation drew on another project through a cross-project lookup
     #: (ADR-0094): nothing from it is remembered, so reflection does not run.
     drew_on_other_projects: bool = False
-    bundesland: str | None = None
+    federal_state: str | None = None
 
     #: Which path the turn took, observed after the answer (``meta`` for a
     #: direct reply, ``shallow``, ``deep``, ``error``); see

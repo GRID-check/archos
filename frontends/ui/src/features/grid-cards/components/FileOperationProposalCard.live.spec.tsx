@@ -58,8 +58,8 @@ vi.mock('@/features/chat/store', () => {
 })
 
 const OPERATIONS = [
-  { document: 'Grundriss EG.pdf', source: 'projekt' as const, current: 'Nachweise', target_folder: 'Einreichung' },
-  { document: 'Grundriss OG.pdf', source: 'projekt' as const, current: '', target_folder: 'Einreichung' },
+  { document: 'Grundriss EG.pdf', source: 'project' as const, current: 'Nachweise', target_folder: 'Einreichung' },
+  { document: 'Grundriss OG.pdf', source: 'project' as const, current: '', target_folder: 'Einreichung' },
 ]
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
@@ -145,8 +145,8 @@ describe('FileOperationProposalCard with a proposal_id — what it shows', () =>
         payload: {
           operation: 'move',
           operations: [
-            { document: 'Brief.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief an die Behörde.' },
-            { document: 'Mail.pdf', source: 'projekt', target_folder: 'Korrespondenz' },
+            { document: 'Brief.pdf', source: 'project', target_folder: 'Korrespondenz', reason: 'Ein Brief an die Behörde.' },
+            { document: 'Mail.pdf', source: 'project', target_folder: 'Korrespondenz' },
           ],
           new_folder: { path: 'Korrespondenz', description: 'Briefe und Mails mit Behörden' },
         },
@@ -183,7 +183,7 @@ describe('FileOperationProposalCard with a proposal_id — what it shows', () =>
         results: [{ label: 'Brief.pdf', ok: true }],
         payload: {
           operation: 'move',
-          operations: [{ document: 'Brief.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
+          operations: [{ document: 'Brief.pdf', source: 'project', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
           new_folder: { path: 'Korrespondenz' },
         },
       })

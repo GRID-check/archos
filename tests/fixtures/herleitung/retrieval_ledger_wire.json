@@ -22,7 +22,7 @@
   },
   {
     "index": 1,
-    "key": "status.retrieval.punkt",
+    "key": "status.retrieval.clause",
     "tools": ["read_passage"],
     "corpora": ["knowledge"],
     "reason": "Die Grundregel steht.",
@@ -45,7 +45,7 @@
   },
   {
     "index": 2,
-    "key": "status.retrieval.punkt",
+    "key": "status.retrieval.clause",
     "tools": ["read_passage"],
     "corpora": ["knowledge"],
     "reason": "Die Fluchtweglänge hängt an drei Punkten.",

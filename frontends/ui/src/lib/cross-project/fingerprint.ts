@@ -28,7 +28,7 @@ import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profil
 import { confirmedSimilarityFacts, similarityFacts, type SharedTrait, type SimilarityFacts } from './similarity'
 
 /** The fingerprint's facts, in the order the similarity weighs them. */
-export const FINGERPRINT_KEYS = ['bundesland', 'gebaeudeklasse', 'bauweise', 'nutzungen', 'vorhabensart'] as const
+export const FINGERPRINT_KEYS = ['federal_state', 'building_class', 'construction_method', 'uses', 'work_type'] as const
 export type FingerprintKey = (typeof FINGERPRINT_KEYS)[number]
 
 const DEFINITION = projectIntakeDefinitionV1
@@ -57,7 +57,7 @@ export function factLabel(key: string, token: string): string {
 
 /** A shared trait as a reader sees it: the Gebäudeklasse as „GK n", the rest in the intake's own words. */
 export function sharedTraitLabel(trait: SharedTrait): string {
-  return trait.key === 'gebaeudeklasse' ? `GK ${trait.value}` : factLabel(trait.key, trait.value)
+  return trait.key === 'building_class' ? `GK ${trait.value}` : factLabel(trait.key, trait.value)
 }
 
 /** A question that writes or derives a fact, and whether it is asked once per building. */
@@ -113,16 +113,16 @@ function valueOf(key: FingerprintKey, facts: SimilarityFacts): string | null {
   const list = (values: readonly string[]) =>
     values.length > 0 ? values.map((value) => factLabel(key, value)).join('/') : null
   switch (key) {
-    case 'bundesland':
-      return facts.bundesland ? factLabel(key, facts.bundesland) : null
-    case 'gebaeudeklasse':
-      return facts.gebaeudeklasse.length > 0 ? facts.gebaeudeklasse.map((gk) => `GK ${gk}`).join('/') : null
-    case 'bauweise':
-      return list(facts.bauweise)
-    case 'nutzungen':
-      return list(facts.nutzungen)
-    case 'vorhabensart':
-      return list(facts.vorhabensart)
+    case 'federal_state':
+      return facts.federal_state ? factLabel(key, facts.federal_state) : null
+    case 'building_class':
+      return facts.building_class.length > 0 ? facts.building_class.map((gk) => `GK ${gk}`).join('/') : null
+    case 'construction_method':
+      return list(facts.construction_method)
+    case 'uses':
+      return list(facts.uses)
+    case 'work_type':
+      return list(facts.work_type)
   }
 }
 

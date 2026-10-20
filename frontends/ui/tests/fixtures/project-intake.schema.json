@@ -345,7 +345,7 @@
                 "country": {
                   "const": "at"
                 },
-                "bundesland": {
+                "federalState": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -365,7 +365,7 @@
                     }
                   ]
                 },
-                "gemeinde": {
+                "municipality": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -399,9 +399,9 @@
                 "lat",
                 "lon",
                 "country",
-                "bundesland",
+                "federalState",
                 "state",
-                "gemeinde",
+                "municipality",
                 "postcode",
                 "kind"
               ],
@@ -753,7 +753,7 @@
             "rule": {
               "type": "string",
               "enum": [
-                "gebaeudeklasse"
+                "building_class"
               ]
             },
             "citation": {
@@ -896,7 +896,7 @@
                 "country": {
                   "const": "at"
                 },
-                "bundesland": {
+                "federalState": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -916,7 +916,7 @@
                     }
                   ]
                 },
-                "gemeinde": {
+                "municipality": {
                   "anyOf": [
                     {
                       "type": "string"
@@ -950,9 +950,9 @@
                 "lat",
                 "lon",
                 "country",
-                "bundesland",
+                "federalState",
                 "state",
-                "gemeinde",
+                "municipality",
                 "postcode",
                 "kind"
               ],
@@ -1202,7 +1202,7 @@
                         "rule": {
                           "type": "string",
                           "enum": [
-                            "gebaeudeklasse"
+                            "building_class"
                           ]
                         },
                         "citation": {
@@ -1396,7 +1396,7 @@
                               "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "gebaeudeklasse"
+                                  "building_class"
                                 ]
                               },
                               "citation": {
@@ -1789,7 +1789,7 @@
                               "rule": {
                                 "type": "string",
                                 "enum": [
-                                  "gebaeudeklasse"
+                                  "building_class"
                                 ]
                               },
                               "citation": {
@@ -1983,7 +1983,7 @@
                                     "rule": {
                                       "type": "string",
                                       "enum": [
-                                        "gebaeudeklasse"
+                                        "building_class"
                                       ]
                                     },
                                     "citation": {
@@ -2130,7 +2130,7 @@
               "rule": {
                 "type": "string",
                 "enum": [
-                  "gebaeudeklasse"
+                  "building_class"
                 ]
               },
               "citation": {
@@ -2346,7 +2346,7 @@
                                 "rule": {
                                   "type": "string",
                                   "enum": [
-                                    "gebaeudeklasse"
+                                    "building_class"
                                   ]
                                 },
                                 "citation": {
@@ -2540,7 +2540,7 @@
                                       "rule": {
                                         "type": "string",
                                         "enum": [
-                                          "gebaeudeklasse"
+                                          "building_class"
                                         ]
                                       },
                                       "citation": {

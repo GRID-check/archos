@@ -53,7 +53,7 @@ const health = (overrides: Partial<FeedbackHealth> = {}): FeedbackHealth =>
       { organizationId: 'org_loud', up: 5, down: 9, voters: 2 },
       { organizationId: 'org_quiet', up: 35, down: 1, voters: 10 },
     ],
-    topics: [{ topic: 'brandschutz', up: 20, down: 6, voters: 8 }],
+    topics: [{ topic: 'fire_safety', up: 20, down: 6, voters: 8 }],
     turns: [],
     ...overrides,
   }) as FeedbackHealth
@@ -145,7 +145,7 @@ describe('getFeedbackDigest — what leaves the process', () => {
         answer: 'A LONG GENERATED ANSWER',
         question: 'Wie lang darf ein Fluchtweg sein?',
         conversationTitle: 'Flucht',
-        topics: ['brandschutz'],
+        topics: ['fire_safety'],
       },
     ] as never)
 
@@ -197,7 +197,7 @@ describe('getFeedbackDigest — what leaves the process', () => {
    * out the other, and under the same filters as the figures.
    */
   it('samples both directions, each under the request’s filters', async () => {
-    const query = narrowed({ topics: ['brandschutz'] }, { organizationIds: ['org_loud'] })
+    const query = narrowed({ topics: ['fire_safety'] }, { organizationIds: ['org_loud'] })
     await getFeedbackDigest(health(), query)
 
     const calls = vi.mocked(listFeedbackTurns).mock.calls

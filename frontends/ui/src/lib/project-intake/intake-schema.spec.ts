@@ -80,7 +80,7 @@ describe('project intake JSON Schema', () => {
         op: 'record',
         jobId: 'job-1',
         values: [
-          { key: 'geschosse_oberirdisch@bw1', value: 4, evidence: { fileName: 'EP_Schnitt.pdf', page: 2, quote: '4 Geschoße' } },
+          { key: 'storeys_above_ground@bldg1', value: 4, evidence: { fileName: 'EP_Schnitt.pdf', page: 2, quote: '4 Geschoße' } },
         ],
       }).success
     ).toBe(true)

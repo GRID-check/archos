@@ -243,7 +243,7 @@ export interface ProjectAddressRow {
   id: string
   name: string
   status: ProjectStatus
-  /** `standort_adresse` on the profile, as stored. */
+  /** `site_address` on the profile, as stored. */
   address: string | null
   /** The geocoder's hit kept with an intake, as stored. */
   location: GeocodeResult | null
@@ -263,7 +263,8 @@ export async function listProjectAddressesInOrg(organizationId: string): Promise
         id: projects.id,
         name: projects.name,
         status: projects.status,
-        address: sql<string | null>`${projects.profile} #>> '{facts,standort_adresse,value}'`,
+        // `standort_adresse` is the key an older pod still writes during a rolling deploy (migration 0159).
+        address: sql<string | null>`COALESCE(${projects.profile} #>> '{facts,site_address,value}', ${projects.profile} #>> '{facts,standort_adresse,value}')`,
         location: projectIntakes.location,
       })
       .from(projects)
@@ -272,7 +273,7 @@ export async function listProjectAddressesInOrg(organizationId: string): Promise
         and(
           eq(projects.organizationId, organizationId),
           isNull(projects.deletedAt),
-          sql`(${projects.profile} #>> '{facts,standort_adresse,value}' IS NOT NULL OR ${projectIntakes.location} IS NOT NULL)`
+          sql`(COALESCE(${projects.profile} #>> '{facts,site_address,value}', ${projects.profile} #>> '{facts,standort_adresse,value}') IS NOT NULL OR ${projectIntakes.location} IS NOT NULL)`
         )
       )
       .orderBy(desc(projects.createdAt))

@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { declareDocumentRole, listDocumentRoles } from '@/lib/document-roles/service'
 import { loadMissingDocuments } from '@/lib/document-roles/prompt-loader'
-import { DOCUMENT_ROLES } from '@/lib/project-profile/document-roles'
+import { canonicalDocumentRole, DOCUMENT_ROLES } from '@/lib/project-profile/document-roles'
 
 type Params = { id: string }
 
@@ -16,7 +16,7 @@ const declareSchema = z.object({
   documentId: z.string().uuid(),
   // Enumerated from the vocabulary rather than restated, so a role added there
   // is accepted here without a second edit — and one removed is rejected.
-  role: z.enum(DOCUMENT_ROLES),
+  role: z.preprocess(canonicalDocumentRole, z.enum(DOCUMENT_ROLES)),
   scopeInstanceId: z.string().min(1).max(64).nullable().optional(),
   // `confidence` and `source` are deliberately NOT accepted from the caller.
   //

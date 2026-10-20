@@ -23,19 +23,19 @@ const id = (n: number) => `00000000-0000-4000-8000-0000000002${String(n).padStar
 export const DEMO_PROJECT_ID = 'proj-demo'
 
 const FILE_ITEMS = [
-  { document: 'Grundriss EG.pdf', source: 'projekt' as const, current: 'Nachweise', target_folder: 'Einreichung/Pläne' },
-  { document: 'Grundriss OG.pdf', source: 'projekt' as const, current: '', target_folder: 'Einreichung/Pläne' },
+  { document: 'Grundriss EG.pdf', source: 'project' as const, current: 'Nachweise', target_folder: 'Einreichung/Pläne' },
+  { document: 'Grundriss OG.pdf', source: 'project' as const, current: '', target_folder: 'Einreichung/Pläne' },
   {
     document: 'Schnitt A-A – Bestand und Neubau (Revision 3).pdf',
-    source: 'projekt' as const,
+    source: 'project' as const,
     current: 'Nachweise',
     target_folder: 'Einreichung/Pläne',
   },
 ]
 
 const PROFILE_PATCH = [
-  { op: 'add' as const, path: '/facts/waermeversorgung', value: 'waermepumpe' },
-  { op: 'add' as const, path: '/facts/fluchtniveau_m', value: 25 },
+  { op: 'add' as const, path: '/facts/heat_supply', value: 'heat_pump' },
+  { op: 'add' as const, path: '/facts/escape_level_m', value: 25 },
 ]
 
 /** The proposals a preview may show, by the id a card carries. */
@@ -152,8 +152,8 @@ const seed = (): Map<string, ProposedChangeView> =>
 /** The profile the demo project has, so „vorher“ differs from „nachher“. */
 const PROFILE_NOW: ProjectProfile = {
   facts: {
-    waermeversorgung: { value: 'gas', confidence: 'confirmed', source: 'onboarding', updatedAt: '2026-01-01T00:00:00.000Z' },
-    fluchtniveau_m: { value: 11, confidence: 'confirmed', source: 'onboarding', updatedAt: '2026-01-01T00:00:00.000Z' },
+    heat_supply: { value: 'gas', confidence: 'confirmed', source: 'onboarding', updatedAt: '2026-01-01T00:00:00.000Z' },
+    escape_level_m: { value: 11, confidence: 'confirmed', source: 'onboarding', updatedAt: '2026-01-01T00:00:00.000Z' },
   },
   goals: {},
   unknowns: [],

@@ -37,7 +37,7 @@ export const useOpenCurrentRevision = (): ((current: RevisionRef) => Promise<voi
         toast.error(t('citationPeek.currentRevisionUnavailable'))
         return
       }
-      openFile({ file: toFileItem(row), corpus: projekt ? 'projekt' : 'buero' })
+      openFile({ file: toFileItem(row), corpus: projekt ? 'project' : 'office' })
     },
     [projectId, openFile, t]
   )

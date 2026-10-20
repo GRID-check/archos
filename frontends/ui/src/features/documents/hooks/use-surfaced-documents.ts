@@ -21,7 +21,7 @@ export interface SurfacedDocument {
   snippet?: string | null
   page?: number | null
   score?: number | null
-  source?: 'projekt' | 'buero' | null
+  source?: 'project' | 'office' | null
 }
 
 /**
@@ -32,7 +32,7 @@ export interface SurfacedDocument {
  * the question the other way round — {@link storedFileIndex}, which is how an
  * answer's prose reaches a file the reader attached to this very conversation.
  */
-export type DocumentCorpus = 'projekt' | 'buero' | 'session'
+export type DocumentCorpus = 'project' | 'office' | 'session'
 
 /** A surfaced document resolved (or not) to its live document row. */
 export interface ResolvedSurfacedDocument {
@@ -42,7 +42,7 @@ export interface ResolvedSurfacedDocument {
   /** The live document row (id, status, thumbnail…) or `null` when unresolvable. */
   file: FileItem | null
   /** Which corpus the resolved row came from (drives the provenance badge). */
-  docSource: 'projekt' | 'buero' | null
+  docSource: 'project' | 'office' | null
 }
 
 interface SurfacedIndex {
@@ -151,10 +151,10 @@ const corpusLookup = (corpus: Map<string, FileItem>, fileName: string): FileItem
 export async function resolveStoredDocument(
   projectId: string | null,
   fileName: string,
-  source: 'projekt' | 'buero',
+  source: 'project' | 'office',
 ): Promise<FileItem | null> {
   const index = await loadNamedIndex(projectId, [fileName])
-  return corpusLookup(source === 'buero' ? index.officeShelf : index.project, fileName) ?? null
+  return corpusLookup(source === 'office' ? index.officeShelf : index.project, fileName) ?? null
 }
 
 /**
@@ -200,8 +200,8 @@ export async function storedFileIndex(
   const byName = new Map<string, StoredFile>()
   const corpora: ReadonlyArray<readonly [DocumentCorpus, Map<string, FileItem>]> = [
     ['session', index.session],
-    ['buero', index.officeShelf],
-    ['projekt', index.project],
+    ['office', index.officeShelf],
+    ['project', index.project],
   ]
   // Written least-specific first, so the project's copy overwrites the rest.
   for (const [corpus, rows] of corpora) {
@@ -327,8 +327,8 @@ export function useSurfacedDocuments(
         // never cross over (that would open the wrong file). Cross-corpus
         // resolution is allowed only when the tool gave no source, purely as a
         // best-effort last resort.
-        if (surfaced.source === 'projekt' || surfaced.source === 'buero') {
-          const map = surfaced.source === 'buero' ? index.officeShelf : index.project
+        if (surfaced.source === 'project' || surfaced.source === 'office') {
+          const map = surfaced.source === 'office' ? index.officeShelf : index.project
           const hit = corpusLookup(map, surfaced.file_name)
           return hit
             ? { key, surfaced, file: hit, docSource: surfaced.source }
@@ -336,9 +336,9 @@ export function useSurfacedDocuments(
         }
 
         const inProject = corpusLookup(index.project, surfaced.file_name)
-        if (inProject) return { key, surfaced, file: inProject, docSource: 'projekt' }
+        if (inProject) return { key, surfaced, file: inProject, docSource: 'project' }
         const inOfficeShelf = corpusLookup(index.officeShelf, surfaced.file_name)
-        if (inOfficeShelf) return { key, surfaced, file: inOfficeShelf, docSource: 'buero' }
+        if (inOfficeShelf) return { key, surfaced, file: inOfficeShelf, docSource: 'office' }
         return { key, surfaced, file: null, docSource: null }
       }),
     [documents, index]

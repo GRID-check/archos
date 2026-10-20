@@ -142,13 +142,13 @@ async function resolveSubmitContext(
 
   if (projectId) {
     // Structured jurisdiction fact (backlog T3-9 follow-up, 2026-07-16,
-    // user-mandated) — rides the envelope's `bundesland` field. Best-effort:
+    // user-mandated) — rides the envelope's `federalState` field. Best-effort:
     // a lookup failure must not block job submission; the backend falls back
     // to prompt-text parsing of `project_context` (unaffected either way).
     try {
       const federalState = await loadProjectFederalState(projectId, session?.organizationId)
       if (federalState) {
-        input.bundesland = federalState
+        input.federalState = federalState
       }
     } catch (error) {
       console.warn('[Deep Research API] Failed to load federal-state fact:', error)

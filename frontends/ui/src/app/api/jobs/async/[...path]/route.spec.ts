@@ -37,7 +37,7 @@ vi.mock('@/lib/model-config/service', () => ({
   getEffectiveModelOverrides: vi.fn(),
 }))
 
-// Structured bundesland fact lookup (backlog T3-9 follow-up, 2026-07-16,
+// Structured federalState fact lookup (backlog T3-9 follow-up, 2026-07-16,
 // user-mandated) — avoids pulling in the real @/lib/db chain; controlled
 // per-test below like getEffectiveModelOverrides.
 vi.mock('@/lib/project-profile/prompt-view', () => ({
@@ -401,7 +401,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const decoded = JSON.parse(
       Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
     )
-    expect(decoded.bundesland).toBe('tirol')
+    expect(decoded.federalState).toBe('tyrol')
   })
 
   it('omits the federal state from the envelope cleanly when the project has no valid fact', async () => {
@@ -418,7 +418,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const decoded = JSON.parse(
       Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
     )
-    expect(decoded.bundesland).toBeUndefined()
+    expect(decoded.federalState).toBeUndefined()
   })
 
   it('still proxies the submission without the federal state when the lookup throws (best-effort)', async () => {
@@ -436,7 +436,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
     const decoded = JSON.parse(
       Buffer.from(headers['X-Grid-Request-Context'], 'base64url').toString('utf8')
     )
-    expect(decoded.bundesland).toBeUndefined()
+    expect(decoded.federalState).toBeUndefined()
   })
 })
 

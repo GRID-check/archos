@@ -9,19 +9,19 @@
     "status": "active",
     "startedOn": "2026-03-01",
     "facts": {
-      "bundesland": "niederoesterreich",
-      "gebaeudeklasse": 4,
-      "bauweise": [
-        "holzbau"
+      "federal_state": "lower_austria",
+      "building_class": 4,
+      "construction_method": [
+        "timber"
       ],
-      "nutzungen": [
-        "wohnen"
+      "uses": [
+        "residential"
       ],
-      "vorhabensart": [
-        "neubau"
+      "work_type": [
+        "new_build"
       ],
-      "standort_adresse": "Hochstraße 12, 2380 Perchtoldsdorf",
-      "geschosse_oberirdisch": 4
+      "site_address": "Hochstraße 12, 2380 Perchtoldsdorf",
+      "storeys_above_ground": 4
     },
     "summary": "Viergeschoßiger Holzwohnbau mit 14 Wohnungen, Stiegenhaus zentral, Einreichplanung läuft."
   },
@@ -34,18 +34,18 @@
       "startedOn": "2020-01-01",
       "endedOn": "2022-09-01",
       "facts": {
-        "bundesland": "niederoesterreich",
-        "gebaeudeklasse": 4,
-        "bauweise": [
-          "holzbau"
+        "federal_state": "lower_austria",
+        "building_class": 4,
+        "construction_method": [
+          "timber"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Wiener Straße 40, 2500 Baden"
+        "site_address": "Wiener Straße 40, 2500 Baden"
       },
       "summary": "Viergeschoßiger Holzwohnbau (CLT) mit Stiegenhaus in Stahlbeton; Brandschutz über Gutachten mit Kapselung.",
       "documents": [
@@ -133,18 +133,18 @@
       "startedOn": "2019-03-01",
       "endedOn": "2021-06-01",
       "facts": {
-        "bundesland": "niederoesterreich",
-        "gebaeudeklasse": 4,
-        "bauweise": [
-          "mauerwerk_massivbau"
+        "federal_state": "lower_austria",
+        "building_class": 4,
+        "construction_method": [
+          "masonry_solid"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Brunner Gasse 7, 2340 Mödling"
+        "site_address": "Brunner Gasse 7, 2340 Mödling"
       },
       "summary": "Wohnhausanlage in Massivbau mit außenliegender Fluchttreppe; Mängelbehebungsauftrag der Baubehörde zur Fluchtwegbreite.",
       "documents": [
@@ -230,18 +230,18 @@
       "startedOn": "2017-05-01",
       "endedOn": "2020-02-01",
       "facts": {
-        "bundesland": "wien",
-        "gebaeudeklasse": 5,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "vienna",
+        "building_class": 5,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "buero"
+        "uses": [
+          "office"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Wagramer Straße 150, 1220 Wien"
+        "site_address": "Wagramer Straße 150, 1220 Wien"
       },
       "summary": "Achtgeschoßiges Bürogebäude, Fluchtniveau 24,5 m, Sicherheitstreppenhaus mit Druckbelüftung.",
       "documents": [
@@ -308,19 +308,19 @@
       "status": "active",
       "startedOn": "2025-02-01",
       "facts": {
-        "bundesland": "oberoesterreich",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "holzbau",
-          "stahlbeton"
+        "federal_state": "upper_austria",
+        "building_class": 3,
+        "construction_method": [
+          "timber",
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "bildung"
+        "uses": [
+          "education"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Hafenstraße 3, 4020 Linz"
+        "site_address": "Hafenstraße 3, 4020 Linz"
       },
       "summary": "Dreigeschoßige Volksschule als Holz-Hybridbau, in Ausführungsplanung.",
       "documents": [
@@ -376,16 +376,16 @@
       "startedOn": "2021-04-01",
       "endedOn": "2022-03-01",
       "facts": {
-        "bundesland": "niederoesterreich",
-        "gebaeudeklasse": 1,
-        "bauweise": [
-          "holzbau"
+        "federal_state": "lower_austria",
+        "building_class": 1,
+        "construction_method": [
+          "timber"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ]
       },
       "summary": "Freistehendes Einfamilienhaus in Holzriegelbauweise.",
@@ -442,17 +442,17 @@
       "startedOn": "2018-02-01",
       "endedOn": "2019-11-01",
       "facts": {
-        "bundesland": "wien",
-        "gebaeudeklasse": 4,
-        "bauweise": [
-          "stahlbau",
-          "holzbau"
+        "federal_state": "vienna",
+        "building_class": 4,
+        "construction_method": [
+          "steel",
+          "timber"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "zubau"
+        "work_type": [
+          "extension"
         ]
       },
       "summary": "Dachgeschoßausbau mit zwei Geschoßen auf einem Gründerzeithaus.",
@@ -519,18 +519,18 @@
       "startedOn": "2020-09-01",
       "endedOn": "2022-04-01",
       "facts": {
-        "bundesland": "vorarlberg",
-        "gebaeudeklasse": 2,
-        "bauweise": [
-          "holzbau"
+        "federal_state": "vorarlberg",
+        "building_class": 2,
+        "construction_method": [
+          "timber"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Kirchstraße 18, 6922 Wolfurt"
+        "site_address": "Kirchstraße 18, 6922 Wolfurt"
       },
       "summary": "Vier Reihenhäuser in Holzbauweise mit gemeinsamer Erdwärmepumpe.",
       "documents": [
@@ -585,18 +585,18 @@
       "startedOn": "2016-04-01",
       "endedOn": "2018-10-01",
       "facts": {
-        "bundesland": "salzburg",
-        "gebaeudeklasse": 4,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "salzburg",
+        "building_class": 4,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Ignaz-Harrer-Straße 30, 5020 Salzburg"
+        "site_address": "Ignaz-Harrer-Straße 30, 5020 Salzburg"
       },
       "summary": "Wohnanlage mit 48 Wohnungen in Stahlbeton, zwei Stiegenhäuser, Fernwärme.",
       "documents": [
@@ -642,18 +642,18 @@
       "startedOn": "2015-05-01",
       "endedOn": "2017-12-01",
       "facts": {
-        "bundesland": "tirol",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "tyrol",
+        "building_class": 3,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "beherbergung"
+        "uses": [
+          "lodging"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Münchner Straße 22, 6100 Seefeld in Tirol"
+        "site_address": "Münchner Straße 22, 6100 Seefeld in Tirol"
       },
       "summary": "Hotel mit 38 Zimmern auf 1.180 m Seehöhe.",
       "documents": [
@@ -699,18 +699,18 @@
       "startedOn": "2016-09-01",
       "endedOn": "2017-11-01",
       "facts": {
-        "bundesland": "oberoesterreich",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "stahlbau"
+        "federal_state": "upper_austria",
+        "building_class": 3,
+        "construction_method": [
+          "steel"
         ],
-        "nutzungen": [
-          "produktion"
+        "uses": [
+          "production"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Pernauer Straße 4, 4600 Wels"
+        "site_address": "Pernauer Straße 4, 4600 Wels"
       },
       "summary": "Produktionshalle mit Büroanbau, Stahlbau mit Sandwichpaneelen.",
       "documents": [
@@ -756,18 +756,18 @@
       "startedOn": "2018-03-01",
       "endedOn": "2019-09-01",
       "facts": {
-        "bundesland": "steiermark",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "styria",
+        "building_class": 3,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "bildung"
+        "uses": [
+          "education"
         ],
-        "vorhabensart": [
-          "zubau"
+        "work_type": [
+          "extension"
         ],
-        "standort_adresse": "Franz-Josef-Straße 11, 8700 Leoben"
+        "site_address": "Franz-Josef-Straße 11, 8700 Leoben"
       },
       "summary": "Zubau mit vier Klassen und Ganztagesbetreuung an eine bestehende Volksschule.",
       "documents": [
@@ -812,18 +812,18 @@
       "startedOn": "2017-02-01",
       "endedOn": "2019-06-01",
       "facts": {
-        "bundesland": "kaernten",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "carinthia",
+        "building_class": 3,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "gesundheit"
+        "uses": [
+          "healthcare"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Draustraße 61, 9500 Villach"
+        "site_address": "Draustraße 61, 9500 Villach"
       },
       "summary": "Pflegeheim mit 64 Betten in drei Wohngruppen je Geschoß.",
       "documents": [
@@ -879,18 +879,18 @@
       "startedOn": "2019-06-01",
       "endedOn": "2020-08-01",
       "facts": {
-        "bundesland": "burgenland",
-        "gebaeudeklasse": 2,
-        "bauweise": [
-          "holzbau"
+        "federal_state": "burgenland",
+        "building_class": 2,
+        "construction_method": [
+          "timber"
         ],
-        "nutzungen": [
-          "bildung"
+        "uses": [
+          "education"
         ],
-        "vorhabensart": [
-          "zubau"
+        "work_type": [
+          "extension"
         ],
-        "standort_adresse": "Hauptplatz 6, 7400 Oberwart"
+        "site_address": "Hauptplatz 6, 7400 Oberwart"
       },
       "summary": "Eingeschoßiger Zubau mit zwei Gruppenräumen in Holzbauweise.",
       "documents": [
@@ -936,18 +936,18 @@
       "startedOn": "2017-07-01",
       "endedOn": "2019-03-01",
       "facts": {
-        "bundesland": "steiermark",
-        "gebaeudeklasse": 5,
-        "bauweise": [
-          "mauerwerk_massivbau"
+        "federal_state": "styria",
+        "building_class": 5,
+        "construction_method": [
+          "masonry_solid"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "umbau"
+        "work_type": [
+          "conversion"
         ],
-        "standort_adresse": "Annenstraße 28, 8020 Graz"
+        "site_address": "Annenstraße 28, 8020 Graz"
       },
       "summary": "Generalsanierung eines Gründerzeithauses mit 32 Wohnungen.",
       "documents": [
@@ -993,18 +993,18 @@
       "startedOn": "2019-01-01",
       "endedOn": "2020-10-01",
       "facts": {
-        "bundesland": "wien",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "mauerwerk_massivbau"
+        "federal_state": "vienna",
+        "building_class": 3,
+        "construction_method": [
+          "masonry_solid"
         ],
-        "nutzungen": [
-          "wohnen"
+        "uses": [
+          "residential"
         ],
-        "vorhabensart": [
-          "sanierung"
+        "work_type": [
+          "refurbishment"
         ],
-        "standort_adresse": "Hütteldorfer Straße 140, 1140 Wien"
+        "site_address": "Hütteldorfer Straße 140, 1140 Wien"
       },
       "summary": "Thermische Sanierung einer Wohnhausanlage der Nachkriegszeit.",
       "documents": [
@@ -1061,18 +1061,18 @@
       "startedOn": "2014-03-01",
       "endedOn": "2015-06-01",
       "facts": {
-        "bundesland": "oberoesterreich",
-        "gebaeudeklasse": 2,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "upper_austria",
+        "building_class": 2,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "versammlung"
+        "uses": [
+          "assembly"
         ],
-        "vorhabensart": [
-          "zubau"
+        "work_type": [
+          "extension"
         ],
-        "standort_adresse": "Marktplatz 2, 4643 Pettenbach"
+        "site_address": "Marktplatz 2, 4643 Pettenbach"
       },
       "summary": "Zubau eines Veranstaltungssaales an das Gemeindeamt.",
       "documents": [
@@ -1107,18 +1107,18 @@
       "startedOn": "2018-08-01",
       "endedOn": "2019-05-01",
       "facts": {
-        "bundesland": "tirol",
-        "gebaeudeklasse": 2,
-        "bauweise": [
-          "stahlbau"
+        "federal_state": "tyrol",
+        "building_class": 2,
+        "construction_method": [
+          "steel"
         ],
-        "nutzungen": [
-          "handel"
+        "uses": [
+          "retail"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Südtiroler Platz 5, 9900 Lienz"
+        "site_address": "Südtiroler Platz 5, 9900 Lienz"
       },
       "summary": "Lebensmittelmarkt in Stahlbauweise mit Parkdeck.",
       "documents": [
@@ -1163,18 +1163,18 @@
       "startedOn": "2013-10-01",
       "endedOn": "2015-02-01",
       "facts": {
-        "bundesland": "kaernten",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "carinthia",
+        "building_class": 3,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "buero"
+        "uses": [
+          "office"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Völkermarkter Straße 90, 9020 Klagenfurt"
+        "site_address": "Völkermarkter Straße 90, 9020 Klagenfurt"
       },
       "summary": "Dreigeschoßiges Bürogebäude mit Flachdach und Grünfläche.",
       "documents": [
@@ -1219,18 +1219,18 @@
       "startedOn": "2021-05-01",
       "endedOn": "2022-09-01",
       "facts": {
-        "bundesland": "vorarlberg",
-        "gebaeudeklasse": 3,
-        "bauweise": [
-          "stahlbeton"
+        "federal_state": "vorarlberg",
+        "building_class": 3,
+        "construction_method": [
+          "reinforced_concrete"
         ],
-        "nutzungen": [
-          "bildung"
+        "uses": [
+          "education"
         ],
-        "vorhabensart": [
-          "zubau"
+        "work_type": [
+          "extension"
         ],
-        "standort_adresse": "Marktstraße 14, 6850 Dornbirn"
+        "site_address": "Marktstraße 14, 6850 Dornbirn"
       },
       "summary": "Aufstockung einer Mittelschule um ein Geschoß mit Fachklassen.",
       "documents": [
@@ -1265,18 +1265,18 @@
       "startedOn": "2015-09-01",
       "endedOn": "2016-12-01",
       "facts": {
-        "bundesland": "oberoesterreich",
-        "gebaeudeklasse": 2,
-        "bauweise": [
-          "stahlbau"
+        "federal_state": "upper_austria",
+        "building_class": 2,
+        "construction_method": [
+          "steel"
         ],
-        "nutzungen": [
-          "versammlung"
+        "uses": [
+          "assembly"
         ],
-        "vorhabensart": [
-          "neubau"
+        "work_type": [
+          "new_build"
         ],
-        "standort_adresse": "Sportzentrum 1, 4400 Steyr"
+        "site_address": "Sportzentrum 1, 4400 Steyr"
       },
       "summary": "Dreifachturnhalle mit Zuschauergalerie.",
       "documents": [
@@ -1310,18 +1310,18 @@
       "startedOn": "2020-02-01",
       "endedOn": "2020-11-01",
       "facts": {
-        "bundesland": "kaernten",
-        "gebaeudeklasse": 2,
-        "bauweise": [
-          "holzbau"
+        "federal_state": "carinthia",
+        "building_class": 2,
+        "construction_method": [
+          "timber"
         ],
-        "nutzungen": [
-          "gesundheit"
+        "uses": [
+          "healthcare"
         ],
-        "vorhabensart": [
-          "sanierung"
+        "work_type": [
+          "refurbishment"
         ],
-        "standort_adresse": "Tiroler Straße 9, 9800 Spittal an der Drau"
+        "site_address": "Tiroler Straße 9, 9800 Spittal an der Drau"
       },
       "summary": "Umbau einer Praxis mit Barrierefreiheit und neuer Lüftung.",
       "documents": [
@@ -1355,7 +1355,7 @@
       "collection": "proj_eval_eisenstadt",
       "status": "closed",
       "facts": {
-        "bundesland": "burgenland"
+        "federal_state": "burgenland"
       },
       "summary": null,
       "documents": [
@@ -1377,7 +1377,7 @@
       "collection": "proj_eval_hallein",
       "status": "closed",
       "facts": {
-        "bundesland": "salzburg"
+        "federal_state": "salzburg"
       },
       "summary": null,
       "documents": [
@@ -1414,19 +1414,19 @@
         "status": "active",
         "startedOn": "2026-05-01",
         "facts": {
-          "bundesland": "wien",
-          "gebaeudeklasse": 5,
-          "bauweise": [
-            "mauerwerk_massivbau"
+          "federal_state": "vienna",
+          "building_class": 5,
+          "construction_method": [
+            "masonry_solid"
           ],
-          "nutzungen": [
-            "buero"
+          "uses": [
+            "office"
           ],
-          "vorhabensart": [
-            "umbau"
+          "work_type": [
+            "conversion"
           ],
-          "standort_adresse": "Landstraßer Hauptstraße 70, 1030 Wien",
-          "geschosse_oberirdisch": 6
+          "site_address": "Landstraßer Hauptstraße 70, 1030 Wien",
+          "storeys_above_ground": 6
         },
         "summary": "Umbau eines Gründerzeit-Bürohauses, sechs Geschoße, neues Stiegenhaus im Hof, Bestand Ziegelmauerwerk."
       }

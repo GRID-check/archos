@@ -31,7 +31,7 @@ const BASE: BimModelHeaderView = {
 
 const CHANGES: BimComplianceChange[] = [
   {
-    ruleId: 'oib4-treppe-steigungsverhaeltnis',
+    ruleId: 'oib4-stair-rise-run-ratio',
     titleDe: 'Treppen — Steigungsverhältnis',
     richtlinie: 'OIB 4',
     trend: 'broken',
@@ -39,7 +39,7 @@ const CHANGES: BimComplianceChange[] = [
     after: { passed: 2, failed: 1, undecidable: 0 },
   },
   {
-    ruleId: 'oib2-feuerwiderstand-tragend',
+    ruleId: 'oib2-fire-resistance-load-bearing',
     titleDe: 'Tragende Bauteile — Feuerwiderstand',
     richtlinie: 'OIB 2',
     trend: 'undecidable',
@@ -47,7 +47,7 @@ const CHANGES: BimComplianceChange[] = [
     after: { passed: 0, failed: 0, undecidable: 34 },
   },
   {
-    ruleId: 'oib4-tuer-durchgangsbreite',
+    ruleId: 'oib4-door-clear-width',
     titleDe: 'Türen — lichte Durchgangsbreite',
     richtlinie: 'OIB 4',
     trend: 'resolved',

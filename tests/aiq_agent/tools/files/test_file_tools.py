@@ -92,7 +92,7 @@ class TestResolution:
     def test_an_exact_name_resolves_with_its_shelf_and_folder(self):
         hit = resolve.resolve_document("Brandschutzkonzept.pdf")
         assert isinstance(hit, resolve.ResolvedDocument)
-        assert (hit.source, hit.folder_path) == ("projekt", "Nachweise")
+        assert (hit.source, hit.folder_path) == ("project", "Nachweise")
 
     def test_the_name_without_its_extension_is_the_same_name(self):
         hit = resolve.resolve_document("brandschutzkonzept")
@@ -146,7 +146,7 @@ class TestProposalsNeverWrite:
         assert card["operations"] == [
             {
                 "document": "Brandschutzkonzept.pdf",
-                "source": "projekt",
+                "source": "project",
                 "current": "Nachweise",
                 "target_folder": "Einreichung",
             }

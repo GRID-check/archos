@@ -14,12 +14,12 @@ import { RunBlockLine } from './RunBlockLine'
 const T0 = new Date('2026-09-16T08:00:00.000Z')
 
 function researched(): RunLedger {
-  let ledger = openPhase(emptyRunLedger('run-1', T0), 'recherchieren', T0)
+  let ledger = openPhase(emptyRunLedger('run-1', T0), 'researching', T0)
   ledger = appendStep(
     ledger,
     {
       id: 'r1',
-      phase: 'recherchieren',
+      phase: 'researching',
       intent: 'Fluchtweglängen klären',
       startedAt: T0.toISOString(),
       docs: [
@@ -42,10 +42,10 @@ describe('RunBlockLine', () => {
       />,
     )
     const line = screen.getByTestId('run-block-line')
-    expect(line).toHaveAttribute('data-status', 'laeuft')
+    expect(line).toHaveAttribute('data-status', 'running')
     expect(screen.getByTestId('run-line-status')).toHaveTextContent('Running')
     expect(line).toHaveTextContent('Running · Brandschutzkonzept — Fluchtwege · 1 round · 2 documents')
-    expect(screen.getByTestId('run-glyph-laeuft')).toBeInTheDocument()
+    expect(screen.getByTestId('run-glyph-running')).toBeInTheDocument()
     expect(screen.getByTestId('run-line-open')).toHaveAttribute(
       'href',
       '/app/chat?session=s1&run=run-1#message-m1',
@@ -62,18 +62,18 @@ describe('RunBlockLine', () => {
 
   it('takes the status it is given over the ledger’s, and a word for a row with no ledger', () => {
     const { unmount } = render(
-      <RunBlockLine ledger={setRunStatus(researched(), 'wartet', T0)} status="fertig" title="A" />,
+      <RunBlockLine ledger={setRunStatus(researched(), 'waiting', T0)} status="done" title="A" />,
     )
-    expect(screen.getByTestId('run-glyph-fertig')).toBeInTheDocument()
+    expect(screen.getByTestId('run-glyph-done')).toBeInTheDocument()
     unmount()
 
-    render(<RunBlockLine ledger={null} status="fehlgeschlagen" title="B" />)
+    render(<RunBlockLine ledger={null} status="failed" title="B" />)
     expect(screen.getByTestId('run-line-status')).toHaveTextContent('Failed')
-    expect(screen.getByTestId('run-glyph-fehlgeschlagen')).toBeInTheDocument()
+    expect(screen.getByTestId('run-glyph-failed')).toBeInTheDocument()
   })
 
   it('takes tallies it is given, and reads without a title inside a surface that names the run', () => {
-    render(<RunBlockLine ledger={null} status="fertig" tallies={{ rounds: 3, docs: 9 }} />)
+    render(<RunBlockLine ledger={null} status="done" tallies={{ rounds: 3, docs: 9 }} />)
     const line = screen.getByTestId('run-block-line')
     // No ledger, no title: the word, then the tallies straight after it.
     expect(line).toHaveTextContent(/^Done · 3 rounds · 9 documents$/)

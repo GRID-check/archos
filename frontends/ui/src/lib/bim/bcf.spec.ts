@@ -26,7 +26,7 @@ const MODEL: BcfModelRef = {
 
 function result(overrides: Partial<BimRuleResultWithConfirmation> = {}): BimRuleResultWithConfirmation {
   return {
-    ruleId: 'oib2-feuerwiderstand-tragend',
+    ruleId: 'oib2-fire-resistance-load-bearing',
     richtlinie: 'OIB 2',
     clause: '3.1',
     titleDe: 'Feuerwiderstand tragender Bauteile',
@@ -223,7 +223,7 @@ describe('buildComplianceBcf', () => {
       build([
         result({
           confirmation: {
-            ruleId: 'oib2-feuerwiderstand-tragend',
+            ruleId: 'oib2-fire-resistance-load-bearing',
             modelId: 'model-3',
             confirmedBy: 'brandschutz@example.at',
             note: 'Gutachten Kraus vom 12.03. liegt vor',
@@ -250,7 +250,7 @@ describe('buildComplianceBcf', () => {
       build([
         result({
           confirmation: {
-            ruleId: 'oib2-feuerwiderstand-tragend',
+            ruleId: 'oib2-fire-resistance-load-bearing',
             modelId: 'model-2',
             confirmedBy: 'brandschutz@example.at',
             note: null,
@@ -271,7 +271,7 @@ describe('buildComplianceBcf', () => {
       build([
         result({
           confirmation: {
-            ruleId: 'oib2-feuerwiderstand-tragend',
+            ruleId: 'oib2-fire-resistance-load-bearing',
             modelId: 'model-2',
             confirmedBy: 'brandschutz@example.at',
             note: 'Gutachten liegt vor',

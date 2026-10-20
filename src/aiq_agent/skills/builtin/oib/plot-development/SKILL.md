@@ -1,5 +1,5 @@
 ---
-name: bebauung
+name: plot-development
 description: >
   Was aufs Grundstück darf: Bauklasse und Gebäudehöhe, Bauwich, Widmung, GFZ,
   Stellplätze. Land und Gemeinde, nicht OIB.

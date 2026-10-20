@@ -218,7 +218,7 @@ class TestDropUngroundedTrailerValues:
         meta = {
             "v": 1,
             "callout": {
-                "kind": "frist",
+                "kind": "deadline",
                 "text": "Die Frist beachten.",
                 "detail": "Sie betraegt vier Wochen.",
             },
@@ -226,13 +226,13 @@ class TestDropUngroundedTrailerValues:
 
         dropped = self._drop(meta, [_oib_entry()])
 
-        assert dropped == {"v": 1, "callout": {"kind": "frist", "text": "Die Frist beachten."}}
+        assert dropped == {"v": 1, "callout": {"kind": "deadline", "text": "Die Frist beachten."}}
 
     def test_a_callout_detail_naming_the_source_survives(self):
         meta = {
             "v": 1,
             "callout": {
-                "kind": "frist",
+                "kind": "deadline",
                 "text": "Die Frist beachten.",
                 "detail": "Vier Wochen nach OIB-Richtlinie 2.",
             },

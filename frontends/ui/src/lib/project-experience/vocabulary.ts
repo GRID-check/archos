@@ -23,7 +23,7 @@ const OIB_EDITIONS = ['2007', '2011', '2015', '2019', '2023', '2025'] as const
 const BUILDING_CLASSES = ['1', '2', '3', '4', '5'] as const
 
 /** The fact's options as the intake wizard shows them, read off the question that writes it. */
-function intakeEntry(key: Exclude<FingerprintKey, 'gebaeudeklasse'>): ExperienceVocabularyEntry {
+function intakeEntry(key: Exclude<FingerprintKey, 'building_class'>): ExperienceVocabularyEntry {
   const writesTo = `/facts/${key}/value`
   const question = flattenIntakeQuestions(projectIntakeDefinitionV1).find((item) => item.writesTo === writesTo)
   if (!question?.options?.length) throw new Error(`The intake definition has no options for ${writesTo}`)
@@ -39,15 +39,15 @@ function intakeEntry(key: Exclude<FingerprintKey, 'gebaeudeklasse'>): Experience
 /** Built on each call: the intake definition is static and the build is cheap. */
 export function experienceVocabulary(): ExperienceVocabulary {
   return {
-    bundesland: intakeEntry('bundesland'),
-    gebaeudeklasse: {
+    federal_state: intakeEntry('federal_state'),
+    building_class: {
       multiple: false,
       options: BUILDING_CLASSES.map((grade) => ({ token: grade, label: `GK ${grade}` })),
     },
-    bauweise: intakeEntry('bauweise'),
-    nutzungen: intakeEntry('nutzungen'),
-    vorhabensart: intakeEntry('vorhabensart'),
-    oib_ausgabe: {
+    construction_method: intakeEntry('construction_method'),
+    uses: intakeEntry('uses'),
+    work_type: intakeEntry('work_type'),
+    oib_edition: {
       multiple: false,
       options: OIB_EDITIONS.map((year) => ({ token: year, label: `OIB-Richtlinien ${year}` })),
     },

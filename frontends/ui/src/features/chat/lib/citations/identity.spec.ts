@@ -689,7 +689,7 @@ describe('two documents are not one because their names share a guideline', () =
       entries: [{ number: 1, markdown: '[KB] oib-rl_2.1_ausgabe_mai_2023.pdf, p.9' }],
     })
 
-    expect(doc!.lane).toBe('baurecht_oib')
+    expect(doc!.lane).toBe('building_law_oib')
     expect(doc!.authority).toBe('OIB')
   })
 })

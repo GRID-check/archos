@@ -1,5 +1,5 @@
 ---
-name: einreichcheck
+name: submission-check
 description: >
   Was diesem Bauansuchen für dieses Land noch fehlt.
 metadata:

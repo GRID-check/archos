@@ -6,6 +6,8 @@
 // stored profile_display) means every project benefits immediately — no
 // re-save required.
 import {
+  BUILDING_ID_IN_KEY,
+  buildingTag,
   flattenIntakeQuestions,
   formatIntakeAnswer,
   projectIntakeDefinitionV1,
@@ -64,10 +66,10 @@ const HIDDEN_FACT_KEYS = new Set(['project_name'])
 
 /** Structural facts hidden from the sheet (used only to name scope instances). */
 function isHiddenFactKey(key: string): boolean {
-  return HIDDEN_FACT_KEYS.has(key) || key.startsWith('bauwerk_name@')
+  return HIDDEN_FACT_KEYS.has(key) || key.startsWith('building_name@')
 }
 
-/** The base (scope-suffix-stripped) form of a storage key: `x@bw1@wohnen` → `x`. */
+/** The base (scope-suffix-stripped) form of a storage key: `x@bldg1@residential` → `x`. */
 function baseKeyOf(key: string): string {
   return key.split('@')[0]
 }
@@ -105,7 +107,7 @@ export function buildProjectBriefView(rawProfile: unknown): ProjectBriefView {
 
   const factKeys = Object.keys(profile.facts)
   // Facts are ordered by the intake position of their BASE key (so a scoped
-  // `geschosse_oberirdisch@bw1` sits with module C), scope instances kept
+  // `storeys_above_ground@bldg1` sits with module C), scope instances kept
   // together; keys no question covers are appended, sorted.
   const orderedBaseKeys = flattenIntakeQuestions(projectIntakeDefinitionV1)
     .map((question) => question.writesTo?.match(/^\/facts\/([^/]+)/)?.[1])
@@ -119,10 +121,10 @@ export function buildProjectBriefView(rawProfile: unknown): ProjectBriefView {
 
   /** " · <building name>" suffix for a scoped key, when it names one. */
   const scopeSuffix = (key: string): string => {
-    const m = key.match(/@(bw\d+)/)
+    const m = key.match(BUILDING_ID_IN_KEY)
     if (!m) return ''
-    const name = profile.facts[`bauwerk_name@${m[1]}`]?.value
-    return typeof name === 'string' && name ? ` · ${name}` : ` · ${m[1].toUpperCase()}`
+    const name = profile.facts[`building_name@${m[1]}`]?.value
+    return typeof name === 'string' && name ? ` · ${name}` : ` · ${buildingTag(m[1])}`
   }
 
   for (const key of orderedKeys) {
@@ -193,7 +195,7 @@ export function buildProjectBriefView(rawProfile: unknown): ProjectBriefView {
  * same label resolution as the Project Brief panel — question labels ("Building
  * class") and option labels ("Open land (Freiland)") instead of raw keys and
  * enum tokens — so the generated prose can't leak machine vocabulary like
- * "fluchtniveau" or "abweichender_bebauungsplan" into the sentence. Unknowns
+ * "escape_level" or "deviating_development_plan" into the sentence. Unknowns
  * and unconfirmed assumptions are deliberately excluded: the summary should
  * describe what the project IS, not enumerate what's missing.
  */

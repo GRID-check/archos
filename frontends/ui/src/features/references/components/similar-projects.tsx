@@ -93,8 +93,8 @@ function SimilarProjectCard({ projectId, project }: { projectId: string; project
         <dl className="grid gap-1.5">
           <ReferenceRow label={t('fields.period')}>{periodYears(project.period)}</ReferenceRow>
           <ReferenceRow label={t('fields.bundesland')}>
-            {project.bundesland ? (
-              <ReferenceFactText fact={project.bundesland}>{project.bundesland.value}</ReferenceFactText>
+            {project.federal_state ? (
+              <ReferenceFactText fact={project.federal_state}>{project.federal_state.value}</ReferenceFactText>
             ) : (
               t('fields.notRecorded')
             )}

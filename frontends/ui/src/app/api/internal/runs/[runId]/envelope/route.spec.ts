@@ -69,8 +69,8 @@ const runContext: RunContext = {
   budget: { remainingOrgUsd: 12.5, remainingUserUsd: null, remainingProjectUsd: null },
   modelOverrides: { deep_research: 'model-b' },
   collectionScope: ['oib_base', 'proj_x'],
-  projectContext: 'bundesland=wien',
-  bundesland: 'wien',
+  projectContext: 'federal_state=vienna',
+  federalState: 'vienna',
   projectMemory: null,
   memoryReflectionEnabled: true,
   orgInstructions: 'Antworte knapp.',
@@ -146,7 +146,7 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
     expect(payload).toMatchObject({
       modelOverrides: { deep_research: 'model-b' },
       budget: { remainingOrgUsd: 12.5 },
-      bundesland: 'wien',
+      federalState: 'vienna',
       memoryReflectionEnabled: true,
       orgInstructions: 'Antworte knapp.',
       // Who the run acts as, by name, read afresh at every renewal: nobody is
@@ -283,7 +283,7 @@ describe('capabilityOf', () => {
     expect(capabilityOf({ trigger: 'delegated', kind: 'deep-research', definitionId: null })).toBe(
       FEATURE_FLAGS.deepResearch,
     )
-    expect(capabilityOf({ trigger: 'delegated', kind: 'einreichcheck', definitionId: 'def-1' })).toBe(
+    expect(capabilityOf({ trigger: 'delegated', kind: 'submission_check', definitionId: 'def-1' })).toBe(
       FEATURE_FLAGS.taskAutomation,
     )
   })

@@ -73,7 +73,7 @@ export interface SimilarProject {
   name: string
   period: ReferencePeriod
   /** The Land, as its wizard label; null when the project names none. */
-  bundesland: ReferenceFact<string> | null
+  federal_state: ReferenceFact<string> | null
   /** The OIB edition the project was planned under, as its token (`2019`); null when none is known. */
   oibEdition: ReferenceFact<string> | null
   /**

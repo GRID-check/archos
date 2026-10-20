@@ -190,12 +190,12 @@ describe('aggregate coercion', () => {
     // Regression: detail.lanes was written by build_turn_events and never read.
     const execute = mockExecute([
       { dimension: 'lane', label: 'oib', turns: '6' },
-      { dimension: 'origin', label: 'baurecht', turns: '4' },
+      { dimension: 'origin', label: 'building_law', turns: '4' },
       { dimension: 'tool', label: 'ris_search_tool', turns: '2' },
     ])
     expect(await aggregateDefectiveSourceMix(SEPTEMBER)).toEqual([
       { dimension: 'lane', label: 'oib', turns: 6 },
-      { dimension: 'origin', label: 'baurecht', turns: 4 },
+      { dimension: 'origin', label: 'building_law', turns: 4 },
       { dimension: 'tool', label: 'ris_search_tool', turns: 2 },
     ])
     expect(sqlText(execute)).toContain("detail -> 'lanes'")

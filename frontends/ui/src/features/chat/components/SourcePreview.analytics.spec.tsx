@@ -44,14 +44,14 @@ describe('SourceDocumentDialog analytics', () => {
       title: 'Bauordnung',
       content: 'Bauordnung',
       origin: 'ris',
-      kind: 'baurecht',
+      kind: 'building_law',
     })
     const { rerender } = render(<SourceDocumentDialog citation={view} onClose={() => {}} />)
 
     await waitFor(() => expect(screen.getByTestId('ris-dialog')).toBeInTheDocument())
     expect(capturePosthog).toHaveBeenCalledTimes(1)
     expect(capturePosthog).toHaveBeenCalledWith('citation_opened', {
-      source_kind: 'baurecht',
+      source_kind: 'building_law',
       verified: false,
       viewer: 'ris',
     })
@@ -67,7 +67,7 @@ describe('SourceDocumentDialog analytics', () => {
         title: 'Bauordnung',
         content: 'Bauordnung',
         origin: 'ris',
-        kind: 'baurecht',
+        kind: 'building_law',
       },
       '#quote'
     )
@@ -82,7 +82,7 @@ describe('SourceDocumentDialog analytics', () => {
       title: 'Bauordnung',
       content: 'Bauordnung',
       origin: 'ris',
-      kind: 'baurecht',
+      kind: 'building_law',
     })
     render(<SourceDocumentDialog citation={view} onClose={() => {}} />)
     await waitFor(() => expect(capturePosthog).toHaveBeenCalled())

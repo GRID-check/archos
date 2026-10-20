@@ -39,7 +39,7 @@ def _hit(**overrides) -> GroundingHit:
         "doc_class": None,
         "display_title": "plan.pdf",
         "folder_path": None,
-        "punkt": None,
+        "clause": None,
         "score": 0.7,
         "content_type": "drawing",
         "provenance": None,

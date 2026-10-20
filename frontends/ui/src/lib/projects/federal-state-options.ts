@@ -17,4 +17,4 @@ export interface FederalStateOption {
 
 export const FEDERAL_STATE_OPTIONS: readonly FederalStateOption[] = (
   flattenIntakeQuestions(projectIntakeDefinitionV1).find((question) => question.id === 'A2_land')?.options ?? []
-).filter((option) => option.value !== 'ausserhalb_oesterreichs')
+).filter((option) => option.value !== 'outside_austria')

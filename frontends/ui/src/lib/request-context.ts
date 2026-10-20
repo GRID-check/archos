@@ -44,7 +44,7 @@
  * doesn't belong to the "hand-forwarded, easy to drop" bug class this module
  * targets.
  *
- * `bundesland` (backlog T3-9 follow-up, 2026-07-16, user-mandated) is
+ * `federalState` (backlog T3-9 follow-up, 2026-07-16, user-mandated) is
  * DELIBERATELY envelope-only: unlike every field in the table above it never
  * had an individual `X-Grid-*` header to dual-write, so
  * `buildGridRequestContextHeaders` below has no case for it — only
@@ -138,14 +138,14 @@ export interface GridRequestContextInput {
    */
   memoryReflectionEnabled?: boolean
   /**
-   * → envelope payload field `bundesland` ONLY (backlog T3-9 follow-up,
+   * → envelope payload field `federalState` ONLY (backlog T3-9 follow-up,
    * 2026-07-16, user-mandated) — there is no individual `X-Grid-Bundesland`
    * header; see `buildGridRequestContextEnvelopePayload`'s docstring for why.
    * The validated jurisdiction token the intake wizard collects (PR #71) as
    * a structured project-profile fact (nine Bundesland tokens plus
-   * `ausserhalb_oesterreichs` — see
+   * `outside_austria` — see
    * `@/lib/project-profile/intake-definition`'s `FEDERAL_STATE_TOKENS`),
-   * carried STRUCTURED alongside the unchanged `bundesland=<token>` text
+   * carried STRUCTURED alongside the unchanged `federalState=<token>` text
    * line inside `projectContext` (still read by the LLM — this is a
    * parallel channel, not a replacement). Omitted when falsy: a producer
    * with no project scope (or an unresolved/unknown token) must omit the
@@ -153,12 +153,12 @@ export interface GridRequestContextInput {
    * (structured prompt-text line, then free-text probing) takes over
    * exactly as it did before this field existed.
    */
-  bundesland?: string | null
+  federalState?: string | null
   /**
    * → envelope payload field `conversationId` ONLY (ADR-0054). The chat turn
    * this request belongs to.
    *
-   * Envelope-only, like `bundesland` and for a stronger reason: it is the field
+   * Envelope-only, like `federalState` and for a stronger reason: it is the field
    * a BFF route AUTHORIZES on. The agent's document route reads the acting user
    * out of the verified payload and files in that person's session, so a
    * conversation id that travelled as its own unsigned header would be a
@@ -373,7 +373,7 @@ export interface GridRequestContextEnvelope {
  * required for the fixture's precomputed `header`/`signature` values to be
  * exact-match assertable rather than semantic-JSON-equal.
  *
- * `bundesland` (backlog T3-9 follow-up, 2026-07-16, user-mandated) was added
+ * `federalState` (backlog T3-9 follow-up, 2026-07-16, user-mandated) was added
  * LAST in the key order (after `memoryReflectionEnabled`) specifically so
  * every pre-existing fixture case's signed bytes stay byte-identical — an
  * earlier position would have required recomputing every prior case's
@@ -412,10 +412,10 @@ export function buildGridRequestContextEnvelopePayload(input: GridRequestContext
   if (input.memoryReflectionEnabled !== undefined) {
     payload.memoryReflectionEnabled = input.memoryReflectionEnabled
   }
-  if (input.bundesland) {
-    payload.bundesland = input.bundesland
+  if (input.federalState) {
+    payload.federalState = input.federalState
   }
-  // LAST in the key order, after `bundesland`, for the reason `bundesland` was
+  // LAST in the key order, after `federalState`, for the reason `federalState` was
   // last before them: every pre-existing fixture case's signed bytes stay
   // byte-identical, so the precomputed `header`/`signature` values keep
   // exact-matching on both sides of the language boundary.

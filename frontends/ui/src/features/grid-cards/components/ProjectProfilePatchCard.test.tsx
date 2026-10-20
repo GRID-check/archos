@@ -62,7 +62,7 @@ const storedProfile: ProjectProfile = {
 
 // What the patch will actually write — differs from the stored value.
 const patch: ProjectProfilePatchOperation[] = [
-  { op: 'add', path: '/facts/waermeversorgung', value: 'waermepumpe' },
+  { op: 'add', path: '/facts/heat_supply', value: 'waermepumpe' },
 ]
 
 interface StubbedFetch {

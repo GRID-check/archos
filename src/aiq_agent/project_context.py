@@ -41,6 +41,8 @@ from dataclasses import dataclass
 from typing import Any
 from typing import Literal
 
+from aiq_agent.profile_names import normalize_profile_token
+
 PROJECT_CONTEXT_HEADER = "x-grid-project-context"
 PROJECT_MEMORY_HEADER = "x-grid-project-memory"
 # The memory header carries the bounded digest (≤1800 chars) AND the block of
@@ -168,12 +170,12 @@ MODEL_OVERRIDES_HEADER = "x-grid-model-overrides"
 BUDGET_HEADER = "x-grid-budget"
 DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 
-# `bundesland` (backlog T3-9 follow-up, 2026-07-16, user-mandated): the
+# `federalState` (backlog T3-9 follow-up, 2026-07-16, user-mandated): the
 # validated jurisdiction token the intake wizard collects (PR #71) as a
 # structured project-profile fact, carried STRUCTURED on the signed envelope
 # instead of being re-parsed out of the `project_context` prompt text. This
 # is ENVELOPE-ONLY by design — unlike the headers above there never was an
-# individual `X-Grid-Bundesland` header to dual-write (see
+# individual `X-Grid-Federal-State` header to dual-write (see
 # `frontends/ui/src/lib/request-context.ts`'s module docstring for the TS
 # side of this decision), so `from_context`/`from_headers`'s legacy
 # individual-header fallback path simply has no source for it and leaves it
@@ -182,7 +184,7 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 # parsing exactly as before this field existed.
 #
 # Vocabulary mirrored (not imported) from `ris_catalog.py`'s
-# `_FEDERAL_STATE_TOKENS` / the intake wizard's `bundesland` question options
+# `_FEDERAL_STATE_TOKENS` / the intake wizard's `federal_state` question options
 # (`frontends/ui/src/lib/project-profile/intake-definition.ts`) — same
 # "parse independently, don't import" rationale as the headers above. An
 # unrecognized token is treated as absent (debug-logged, not raised): a
@@ -190,16 +192,16 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 # structured signal" rather than break the request.
 _FEDERAL_STATE_TOKENS = frozenset(
     {
-        "wien",
-        "niederoesterreich",
-        "oberoesterreich",
-        "steiermark",
-        "kaernten",
+        "vienna",
+        "lower_austria",
+        "upper_austria",
+        "styria",
+        "carinthia",
         "salzburg",
-        "tirol",
+        "tyrol",
         "vorarlberg",
         "burgenland",
-        "ausserhalb_oesterreichs",
+        "outside_austria",
     }
 )
 
@@ -207,7 +209,10 @@ logger = logging.getLogger(__name__)
 
 
 def _normalize_federal_state(value: Any) -> str | None:
-    """Validate a raw envelope `bundesland` value against the token vocabulary.
+    """Validate a raw envelope `federalState` value against the token vocabulary.
+
+    The German tokens (`wien`) are what an envelope minted by an older BFF, or one a
+    long-running job still carries, names; they are read as the English ones.
 
     Anything that isn't a known token — wrong type, typo, stale/unknown value
     from a future frontend — is treated as absent (debug-logged) so a caller
@@ -216,11 +221,11 @@ def _normalize_federal_state(value: Any) -> str | None:
     """
     if not isinstance(value, str):
         return None
-    token = value.strip().lower()
+    token = normalize_profile_token("federal_state", value.strip().lower())
     if token in _FEDERAL_STATE_TOKENS:
         return token
     if token:
-        logger.debug("GridRequestContext: unknown bundesland token %r — treating as absent", token)
+        logger.debug("GridRequestContext: unknown federal_state token %r — treating as absent", token)
     return None
 
 
@@ -445,9 +450,9 @@ class GridRequestContext:
     budget: dict[str, Any] | None = None
     disabled_sources: list[str] | None = None
     memory_reflection_enabled: bool = False
-    bundesland: str | None = None
+    federal_state: str | None = None
     #: The chat turn this request belongs to (ADR-0054). Envelope-only, like
-    #: `bundesland`: it is a field a BFF WRITE route authorizes on, so it may
+    #: `federal_state`: it is a field a BFF WRITE route authorizes on, so it may
     #: never arrive as an unsigned header a caller could choose.
     conversation_id: str | None = None
     #: Epoch MILLISECONDS the envelope was minted. Inside the signed bytes, so
@@ -592,7 +597,8 @@ class GridRequestContext:
             budget=_as_dict(payload.get("budget")),
             disabled_sources=_as_str_list(payload.get("disabledSources")),
             memory_reflection_enabled=bool(payload.get("memoryReflectionEnabled", False)),
-            bundesland=_normalize_federal_state(payload.get("bundesland")),
+            # `bundesland` is the field name an envelope minted before the English names carries.
+            federal_state=_normalize_federal_state(payload.get("federalState", payload.get("bundesland"))),
             conversation_id=_normalize_raw_id(payload.get("conversationId")),
             issued_at=_as_epoch_millis(payload.get("issuedAt")),
             # The bytes as received, not re-encoded from `payload`: a re-encode

@@ -221,7 +221,7 @@ def render_passages(fixture: Fixture, hits: list[tuple[Passage, float]], tool: s
             doc_class=None,
             display_title=passage.file.name,
             folder_path=passage.file.folder or None,
-            punkt=None,
+            clause=None,
             score=score,
             content_type="text",
             provenance=None,
@@ -323,15 +323,15 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
         offset: int | None = None,
         limit: int | None = None,
         topic: str | None = None,
-        fassungen_of: str | None = None,
+        revisions_of: str | None = None,
         compare_to: str | None = None,
     ) -> str:
         from knowledge_layer.browse import render_listing
         from knowledge_layer.browse import render_revisions
         from knowledge_layer.browse import select_files
 
-        if fassungen_of:
-            return render_revisions(rows, fassungen_of, default_shelves=("project",))
+        if revisions_of:
+            return render_revisions(rows, revisions_of, default_shelves=("project",))
         listing = select_files(
             rows,
             default_shelves=("project",),

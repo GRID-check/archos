@@ -53,7 +53,7 @@ const CONTEXT_INPUT: GridRequestContextInput = {
   projectMemory: '- Bevorzugt knappe Zitate',
   modelOverrides: { deep_research: 'openrouter/anthropic/claude-3.7-sonnet' },
   budget: { remainingOrgUsd: 42.5, remainingUserUsd: 10, remainingProjectUsd: 5.25 },
-  bundesland: 'Wien',
+  federalState: 'vienna',
   memoryReflectionEnabled: true,
 }
 

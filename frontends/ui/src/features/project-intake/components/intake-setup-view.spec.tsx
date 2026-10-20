@@ -141,23 +141,23 @@ describe('IntakeSetupView', () => {
     it('marks a decisive row, a confirmed one and a contested one in words', () => {
       setup(INTAKE_READY)
 
-      const row = screen.getByTestId('intake-suggestion-fluchtniveau_m@bw1')
+      const row = screen.getByTestId('intake-suggestion-escape_level_m@bldg1')
       expect(row).toHaveTextContent('Decisive')
       // A property of the value, not an alarm: neutral, with a glyph; warning is for the contradiction.
       const decisive = within(row).getByText('Decisive')
       expect(decisive.className).not.toMatch(/warning/)
       expect(decisive.querySelector('svg')).not.toBeNull()
       expect(
-        within(screen.getByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).getByText('Contradiction').className
+        within(screen.getByTestId('intake-suggestion-storeys_above_ground@bldg1')).getByText('Contradiction').className
       ).toMatch(/warning/)
       expect(screen.getByTestId('intake-suggestion-standort_adresse')).toHaveTextContent('Confirmed')
-      expect(screen.getByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).toHaveTextContent('Contradiction')
+      expect(screen.getByTestId('intake-suggestion-storeys_above_ground@bldg1')).toHaveTextContent('Contradiction')
     })
 
     it('shows the Gebäudeklasse of a Bauwerk with its inputs, and „still open“ with what is missing', () => {
       setup(INTAKE_READY)
 
-      const done = screen.getByTestId('intake-derivation-bw1')
+      const done = screen.getByTestId('intake-derivation-bldg1')
       expect(done).toHaveTextContent('GK 5')
       expect(done).toHaveTextContent('Anzahl oberirdischer Geschoße (Zielzustand): 6 · suggested')
       expect(done).toHaveTextContent('Gebäudestellung: angebaut')
@@ -167,7 +167,7 @@ describe('IntakeSetupView', () => {
       expect(suggested.closest('[data-slot="chip"]')?.className).not.toMatch(/warning/)
       expect(done).toHaveTextContent('OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023)')
 
-      const open = screen.getByTestId('intake-derivation-bw2')
+      const open = screen.getByTestId('intake-derivation-bldg2')
       expect(open).toHaveTextContent('still open')
       expect(open).toHaveTextContent('Still missing:')
       expect(within(open).queryByRole('button')).toBeNull()
@@ -176,9 +176,9 @@ describe('IntakeSetupView', () => {
     it('says a Hochhaus has no building class', () => {
       setup({
         ...INTAKE_READY,
-        derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bw3', hochhaus: true, missing: [] }],
+        derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bldg3', hochhaus: true, missing: [] }],
       })
-      expect(screen.getByTestId('intake-derivation-bw3')).toHaveTextContent('High-rise')
+      expect(screen.getByTestId('intake-derivation-bldg3')).toHaveTextContent('High-rise')
     })
 
     it('says the reading failed in an error alert, keeps what was found, and offers another', async () => {
@@ -258,8 +258,8 @@ describe('IntakeSetupView', () => {
 
     it('says a spreadsheet\'s source without a page', () => {
       setup(INTAKE_READY)
-      expect(screen.getByTestId('intake-suggestion-nutzungseinheiten@bw1')).toHaveTextContent('Wohnungsliste.xlsx')
-      expect(screen.getByTestId('intake-suggestion-nutzungseinheiten@bw1')).not.toHaveTextContent('Wohnungsliste.xlsx, p.')
+      expect(screen.getByTestId('intake-suggestion-use_units@bldg1')).toHaveTextContent('Wohnungsliste.xlsx')
+      expect(screen.getByTestId('intake-suggestion-use_units@bldg1')).not.toHaveTextContent('Wohnungsliste.xlsx, p.')
     })
   })
 
@@ -267,14 +267,14 @@ describe('IntakeSetupView', () => {
     it('confirms the profile\'s own value of a contradiction', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'confirm' }])
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'storeys_above_ground@bldg1', action: 'confirm' }])
     })
 
     it('confirms an alternative with its index', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /Use 7 for Anzahl oberirdischer Geschoße/ }))
       expect(onDecide).toHaveBeenCalledWith([
-        { key: 'geschosse_oberirdisch@bw1', action: 'confirm', alternativeIndex: 0 },
+        { key: 'storeys_above_ground@bldg1', action: 'confirm', alternativeIndex: 0 },
       ])
     })
 
@@ -283,13 +283,13 @@ describe('IntakeSetupView', () => {
       expect(screen.getAllByRole('button', { name: /Discard .* for Anzahl oberirdischer Geschoße/ })).toHaveLength(1)
       await userEvent.click(screen.getByRole('button', { name: /Discard 7 for Anzahl oberirdischer Geschoße/ }))
       expect(onDecide).toHaveBeenCalledWith([
-        { key: 'geschosse_oberirdisch@bw1', action: 'dismiss', alternativeIndex: 0 },
+        { key: 'storeys_above_ground@bldg1', action: 'dismiss', alternativeIndex: 0 },
       ])
     })
 
     it('answers a Rückfrage with the typed number, only once there is one', async () => {
       setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+      const card = screen.getByTestId('intake-question-gfa_above_ground@bldg1')
       const answer = within(card).getByRole('button', { name: /Use this answer for Brutto-Grundfläche/ })
       expect(answer).toBeDisabled()
 
@@ -297,33 +297,33 @@ describe('IntakeSetupView', () => {
       expect(answer).toBeEnabled()
       await userEvent.click(answer)
 
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'answer', value: 1250 }])
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'gfa_above_ground@bldg1', action: 'answer', value: 1250 }])
     })
 
     it('answers a yes/no Rückfrage with a boolean', async () => {
       setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-einheiten_ueber_400@bw1')
+      const card = screen.getByTestId('intake-question-units_over_400@bldg1')
 
       await userEvent.click(within(card).getByRole('button', { name: 'No' }))
       await userEvent.click(within(card).getByRole('button', { name: /Use this answer/ }))
 
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'einheiten_ueber_400@bw1', action: 'answer', value: false }])
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'units_over_400@bldg1', action: 'answer', value: false }])
     })
 
     it('answers a select Rückfrage with the option\'s token', async () => {
       setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-gebaeudestellung@bw1')
+      const card = screen.getByTestId('intake-question-building_position@bldg1')
 
       await userEvent.click(within(card).getByRole('combobox'))
       await userEvent.click(await screen.findByRole('option', { name: 'Reihenhaus' }))
       await userEvent.click(within(card).getByRole('button', { name: /Use this answer/ }))
 
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudestellung@bw1', action: 'answer', value: 'reihenhaus' }])
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'building_position@bldg1', action: 'answer', value: 'terraced' }])
     })
 
     it('says why Piloti asks and where the answer is usually found', async () => {
       setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+      const card = screen.getByTestId('intake-question-gfa_above_ground@bldg1')
 
       expect(card).toHaveTextContent('Usually found in: Einreichplan (Plankopf), Baubeschreibung')
       await userEvent.click(within(card).getByRole('button', { name: /why/i }))
@@ -333,12 +333,12 @@ describe('IntakeSetupView', () => {
     it('records „Nicht bekannt“ as unknown', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /^Brutto-Grundfläche.*: not known/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'unknown' }])
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'gfa_above_ground@bldg1', action: 'unknown' }])
     })
 
     it('hands a document in as a row of the card, with a drop ring only while a file is over it', () => {
       setup(INTAKE_READY)
-      const row = within(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).getByTestId('document-hand-in')
+      const row = within(screen.getByTestId('intake-question-gfa_above_ground@bldg1')).getByTestId('document-hand-in')
 
       expect(row.className).not.toMatch(/\bborder\b/)
       expect(row).not.toHaveAttribute('data-dragging')
@@ -349,7 +349,7 @@ describe('IntakeSetupView', () => {
 
     it('hands a document in on a Rückfrage by choosing it', async () => {
       setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+      const card = screen.getByTestId('intake-question-gfa_above_ground@bldg1')
       const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
 
       fireEvent.change(within(card).getByTestId('document-hand-in-input'), { target: { files: [file] } })
@@ -359,7 +359,7 @@ describe('IntakeSetupView', () => {
 
     it('hands a document in on a Rückfrage by dropping it there', () => {
       setup(INTAKE_READY)
-      const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
+      const card = screen.getByTestId('intake-question-gfa_above_ground@bldg1')
       const file = new File(['%PDF'], 'Flaechenaufstellung.pdf', { type: 'application/pdf' })
 
       fireEvent.drop(within(card).getByTestId('document-hand-in'), {
@@ -373,10 +373,10 @@ describe('IntakeSetupView', () => {
     it('confirms and dismisses one suggestion', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /Use 2023 for OIB-Ausgabe/ }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'confirm' }])
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_edition', action: 'confirm' }])
 
       await userEvent.click(screen.getByRole('button', { name: /Discard 2023 for OIB-Ausgabe/ }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_edition', action: 'dismiss' }])
     })
 
     it('„Alle übernehmen“ confirms the group\'s suggestions in one call, not the confirmed or contested ones', async () => {
@@ -386,17 +386,17 @@ describe('IntakeSetupView', () => {
 
       expect(onDecide).toHaveBeenCalledTimes(1)
       expect(onDecide).toHaveBeenCalledWith([
-        { key: 'bauwerkstyp@bw1', action: 'confirm' },
-        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
-        { key: 'gebaeudestellung@bw1', action: 'confirm' },
-        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
+        { key: 'building_type@bldg1', action: 'confirm' },
+        { key: 'escape_level_m@bldg1', action: 'confirm' },
+        { key: 'building_position@bldg1', action: 'confirm' },
+        { key: 'use_units@bldg1', action: 'confirm' },
       ])
     })
 
     it('confirms the building class through the suggestion its derivation carries', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /Use Gebäudeklasse GK 5 for Building 1/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
+      expect(onDecide).toHaveBeenCalledWith([{ key: 'building_class@bldg1', action: 'confirm' }])
     })
 
     it('holds every control while a call is in flight, without ever disabling one', async () => {

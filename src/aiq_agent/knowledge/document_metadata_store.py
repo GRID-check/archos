@@ -40,7 +40,9 @@ from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
 from aiq_agent.common.db_utils import present_columns
 from aiq_agent.common.db_utils import present_indexes
 from aiq_agent.common.db_utils import redact_db_url
+from aiq_agent.knowledge.document_classification import LEGACY_DOC_CLASSES
 from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from aiq_agent.knowledge.document_classification import canonical_doc_class
 from aiq_agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
@@ -103,7 +105,10 @@ _DOCUMENT_COLUMNS = (
 #: Where the Fassung facts a person made outlive a purge that can be undone (an archive, the folder
 #: bin, a publish that re-reads a document). One row per ``(collection, filename)`` whose metadata row
 #: went; the next :meth:`DocumentMetadataStore.register` of that name takes them back and deletes it.
-RETAINED_TABLE_NAME = "document_fassung_retained"
+RETAINED_TABLE_NAME = "document_revision_retained"
+#: The name this table had before the English rename: renamed in place on the first open that finds it
+#: (see :meth:`DocumentMetadataStore._create_retained_table`), the way ``summaries`` became ``document_metadata``.
+LEGACY_RETAINED_TABLE_NAME = "document_fassung_retained"
 
 #: What :data:`RETAINED_TABLE_NAME` keeps: the link a person confirmed, the suggestions a person
 #: refused, and the change line told against a linked Fassung (its basis is another file).
@@ -121,6 +126,11 @@ class LinkOutcome(StrEnum):
     LOOP = "loop"
     #: ``older`` has no metadata row in the collection; nothing was written.
     MISSING = "missing"
+
+
+def _current_doc_class(value: str | None) -> str | None:
+    """``value`` in the current vocabulary; a value outside it (a future class) as stored."""
+    return canonical_doc_class(value) or value
 
 
 def dismissed_revisions(suggestion: Any) -> list[str]:
@@ -436,11 +446,60 @@ class DocumentMetadataStore:
 
         self._ensure_index(conn)
         self._create_retained_table(conn)
+        self._rename_legacy_doc_classes(conn)
 
-    def _create_retained_table(self, conn) -> None:
-        """Create :data:`RETAINED_TABLE_NAME` if it is missing: the Fassung facts a reversible purge keeps."""
+    def _rename_legacy_doc_classes(self, conn) -> None:
+        """Rewrite a ``doc_class`` still spelled the German way to the English key (idempotent).
+
+        The nine Dokumentart keys became English; a row written before, or by a pod that has not
+        rolled yet, still holds one. Reads map them anyway (:func:`canonical_doc_class`), so this
+        only keeps the stored values honest: it touches nothing once no row holds an old key.
+        Remove with ``LEGACY_DOC_CLASSES``, after one release.
+        """
         from sqlalchemy import text
 
+        names = list(LEGACY_DOC_CLASSES.items())
+        for column in ("doc_class", "doc_class_suggestion"):
+            old_keys = ", ".join(f"'{legacy}'" for legacy, _ in names)
+            cases = " ".join(f"WHEN '{legacy}' THEN '{current}'" for legacy, current in names)
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(
+                text(
+                    f"UPDATE {TABLE_NAME} SET {column} = CASE {column} {cases} ELSE {column} END "
+                    f"WHERE {column} IN ({old_keys})"
+                )
+            )
+
+    def _create_retained_table(self, conn) -> None:
+        """Make :data:`RETAINED_TABLE_NAME` exist: the Fassung facts a reversible purge keeps.
+
+        A table still under :data:`LEGACY_RETAINED_TABLE_NAME` is renamed in place, rows kept. A pod
+        that has not rolled yet creates the legacy table again beside the new one; its rows are moved
+        across (a name already retained under the new table wins) and the legacy table is emptied, not
+        dropped, so that pod keeps working until it is replaced.
+        """
+        from sqlalchemy import inspect
+        from sqlalchemy import text
+
+        inspector = inspect(conn)
+        has_legacy = inspector.has_table(LEGACY_RETAINED_TABLE_NAME)
+        if has_legacy and not inspector.has_table(RETAINED_TABLE_NAME):
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(text(f"ALTER TABLE {LEGACY_RETAINED_TABLE_NAME} RENAME TO {RETAINED_TABLE_NAME}"))
+            logger.info("Renamed '%s' to '%s' (rows preserved)", LEGACY_RETAINED_TABLE_NAME, RETAINED_TABLE_NAME)
+            return
+        if has_legacy:
+            columns = ", ".join(("collection", "filename", *_RETAINED_COLUMNS))
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(
+                text(
+                    f"INSERT INTO {RETAINED_TABLE_NAME} ({columns}) SELECT {columns} FROM {LEGACY_RETAINED_TABLE_NAME} "
+                    "WHERE true ON CONFLICT (collection, filename) DO NOTHING"
+                )
+            )
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(text(f"DELETE FROM {LEGACY_RETAINED_TABLE_NAME}"))
+            return
         conn.execute(
             # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
@@ -809,7 +868,7 @@ class DocumentMetadataStore:
         for ``(collection, filename)`` — so ingestion/edit callers never create a
         summary-less, NOT NULL-violating row. A ``None`` value clears the column.
         """
-        return self._update_column(collection, filename, "doc_class", doc_class)
+        return self._update_column(collection, filename, "doc_class", _current_doc_class(doc_class))
 
     def get_doc_class(self, collection: str, filename: str) -> str | None:
         """Return the stored explicit ``doc_class`` for a document, or ``None`` (sync).
@@ -818,11 +877,12 @@ class DocumentMetadataStore:
         set" — callers treat both as "no explicit class yet" and fall back to the
         filename guess.
         """
-        return self._get_column(collection, filename, "doc_class")
+        return _current_doc_class(self._get_column(collection, filename, "doc_class"))
 
     def get_doc_classes_batch(self, collection: str, filenames: list[str]) -> dict[str, str]:
         """Return stored explicit ``doc_class`` values for many documents in one query."""
-        return self._get_column_batch(collection, filenames, "doc_class")
+        found = self._get_column_batch(collection, filenames, "doc_class")
+        return {name: _current_doc_class(value) for name, value in found.items()}
 
     def set_doc_class_suggestion(self, collection: str, filename: str, doc_class: str | None) -> bool:
         """Store (or clear, with ``None``) the decided Dokumentart a human has not confirmed.
@@ -831,11 +891,12 @@ class DocumentMetadataStore:
         page, which offers it to the platform owner. Same UPDATE-only contract
         as :meth:`set_doc_class`.
         """
-        return self._update_column(collection, filename, "doc_class_suggestion", doc_class)
+        return self._update_column(collection, filename, "doc_class_suggestion", _current_doc_class(doc_class))
 
     def get_doc_class_suggestions_batch(self, collection: str, filenames: list[str]) -> dict[str, str]:
         """Stored Dokumentart suggestions for many documents in one query."""
-        return self._get_column_batch(collection, filenames, "doc_class_suggestion")
+        found = self._get_column_batch(collection, filenames, "doc_class_suggestion")
+        return {name: _current_doc_class(value) for name, value in found.items()}
 
     def set_display_title(self, collection: str, filename: str, display_title: str | None) -> bool:
         """Replace only the ``display_title`` of an existing metadata row (sync).
@@ -1502,7 +1563,7 @@ class DocumentMetadataStore:
             file_name=row[0],
             summary=row[1],
             tags=self._decode_tags(row[2]),
-            doc_class=row[3] or None,
+            doc_class=_current_doc_class(row[3] or None),
             display_title=row[4] or None,
             folder_path=row[5] or None,
             added_at=self._iso_date(row[6]) if len(row) > 6 else None,

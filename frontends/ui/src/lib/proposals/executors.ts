@@ -63,11 +63,11 @@ import { folderPathKey } from '@/lib/projects/folders'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { FileOperationItem, FileOperationPayload, NewFolder, ProposedChangeResult } from './types'
 
-type Shelf = 'projekt' | 'buero'
+type Shelf = 'project' | 'office'
 
 export interface ExecutionContext {
   session: AuthorizedSession
-  /** The project; null for a Büroablage proposal, whose items are all `buero` (0146). */
+  /** The project; null for a Büroablage proposal, whose items are all `office` (0146). */
   projectId: string | null
   /** The deciding person's request, for the services' audit trail. */
   request: Request
@@ -86,7 +86,7 @@ const nameKey = (name: string): string => name.normalize('NFC').trim().toLowerCa
 /** A folder path, keyed for comparison segment by segment. */
 const pathKey = folderPathKey
 
-const shelfOf = (item: FileOperationItem): Shelf => (item.source === 'buero' ? 'buero' : 'projekt')
+const shelfOf = (item: FileOperationItem): Shelf => (item.source === 'office' ? 'office' : 'project')
 
 /** `null` for the shelf root (an empty path), the folder id, or a throw. */
 function folderIdForPath(folders: readonly FolderRow[], path: string | null | undefined): string | null {
@@ -105,7 +105,7 @@ function folderIdForPath(folders: readonly FolderRow[], path: string | null | un
 async function documentIdFor(item: FileOperationItem, { session, projectId }: ExecutionContext): Promise<string> {
   const name = item.document ?? ''
   const rows =
-    shelfOf(item) === 'buero'
+    shelfOf(item) === 'office'
       ? await resolveOfficeShelfDocumentsByName(session, [name])
       : await resolveProjectDocumentsByName(session, requireProject(projectId), [name])
   const wanted = nameKey(name)
@@ -130,7 +130,7 @@ export async function resolveItemDocuments(
 ): Promise<Array<{ id: string; name: string }> | null> {
   const named = items.filter((item) => (item.document ?? '').trim().length > 0)
   const byShelf = (shelf: Shelf) => [...new Set(named.filter((item) => shelfOf(item) === shelf).map((item) => item.document ?? ''))]
-  const [projekt, office] = [byShelf('projekt'), byShelf('buero')]
+  const [projekt, office] = [byShelf('project'), byShelf('office')]
   if (projekt.length > 0 && !projectId) return null
   const rows = [
     ...(projekt.length > 0 && projectId ? await resolveProjectDocumentsByName(session, projectId, projekt) : []),
@@ -211,7 +211,7 @@ async function makeNewFolder(
 ): Promise<string> {
   const input = { parentId: null, paths: [folder.path] }
   const outcome =
-    shelf === 'buero'
+    shelf === 'office'
       ? await ensureOfficeShelfFolderPaths(session, input)
       : await ensureProjectFolderPaths({ ...input, projectId: requireProject(projectId) }, session)
   if (!outcome.ok) throw new Error(outcome.error)
@@ -220,7 +220,7 @@ async function makeNewFolder(
   const madeHere = outcome.folders.some((created) => created.id === id)
   if (madeHere && folder.description) {
     const described =
-      shelf === 'buero'
+      shelf === 'office'
         ? await updateOfficeShelfFolder(session, { folderId: id, description: folder.description })
         : await updateProjectFolder(
             { projectId: requireProject(projectId), folderId: id, description: folder.description },
@@ -246,7 +246,7 @@ const EXECUTORS: Record<FileOperationPayload['operation'], Executor> = {
   },
 
   create_folder: async (item, context) => {
-    const parentId = folderIdForPath(await context.folders('projekt'), item.parent_folder)
+    const parentId = folderIdForPath(await context.folders('project'), item.parent_folder)
     const outcome = await createProjectFolder(
       { projectId: requireProject(context.projectId), parentId, name: item.folder_name ?? '' },
       context.session
@@ -295,7 +295,7 @@ export async function applyFileOperations(
   const { operation, operations: items } = payload
   const cache = new Map<Shelf, Promise<FolderRow[]>>()
   const loadFolders = (shelf: Shelf): Promise<FolderRow[]> =>
-    shelf === 'buero' ? listOfficeShelfFolders(base.session) : listProjectFolders(requireProject(base.projectId), base.session)
+    shelf === 'office' ? listOfficeShelfFolders(base.session) : listProjectFolders(requireProject(base.projectId), base.session)
   const made = new Map<Shelf, Promise<string>>()
   const newFolder = operation === 'move' ? (payload.new_folder ?? null) : null
   const context: ExecutionContext = {

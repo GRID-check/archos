@@ -18,7 +18,7 @@ const WRITTEN_KEY = /^\/(?:facts|goals)\/([^/]+)/
 
 let questionsByKey: Map<string, ProjectIntakeQuestion> | null = null
 
-/** The wizard question that writes a base key (`geschosse_oberirdisch`), once per page load. */
+/** The wizard question that writes a base key (`storeys_above_ground`), once per page load. */
 function questionFor(baseKey: string): ProjectIntakeQuestion | undefined {
   if (!questionsByKey) {
     questionsByKey = new Map()
@@ -35,7 +35,7 @@ export const baseKeyOf = (key: string): string => key.split('@')[0]
 /** A value as a person reads it: the option's label, the unit, Ja and Nein. */
 export function displayValue(key: string, value: ProjectPrimitiveValue): string {
   const baseKey = baseKeyOf(key)
-  if (baseKey === 'gebaeudeklasse') return `GK ${String(value)}`
+  if (baseKey === 'building_class') return `GK ${String(value)}`
   const question = questionFor(baseKey)
   return question ? formatIntakeAnswer(question, value) : String(value)
 }
@@ -43,7 +43,7 @@ export function displayValue(key: string, value: ProjectPrimitiveValue): string 
 /** What the wizard calls a key, per building or not. */
 export const keyLabel = (key: string): string => labelForProfileKey(projectIntakeDefinitionV1, key)
 
-/** `bw3` → 3, for „Bauwerk 3". */
+/** `bldg3` → 3, for „Bauwerk 3". */
 export function buildingNumber(buildingId: string): string {
   return /\d+/.exec(buildingId)?.[0] ?? buildingId
 }

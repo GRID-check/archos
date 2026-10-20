@@ -52,13 +52,13 @@ describe('GET /api/platform/answer-feedback/digest', () => {
 
   it('passes the scope, the ratings filters and the locale through', async () => {
     isOwner.value = true
-    await GET(request('?from=2026-10-01&to=2026-10-07&org=org_2&topic=brandschutz&reason=inaccurate&locale=en'))
+    await GET(request('?from=2026-10-01&to=2026-10-07&org=org_2&topic=fire_safety&reason=inaccurate&locale=en'))
 
     expect(getAnswerFeedbackDigest).toHaveBeenCalledWith(
       expect.anything(),
       {
         scope: { from: '2026-10-01', to: '2026-10-07', organizationIds: ['org_2'], projectIds: [] },
-        ratings: expect.objectContaining({ topics: ['brandschutz'], reasons: ['inaccurate'] }),
+        ratings: expect.objectContaining({ topics: ['fire_safety'], reasons: ['inaccurate'] }),
       },
       { locale: 'en', refresh: false }
     )

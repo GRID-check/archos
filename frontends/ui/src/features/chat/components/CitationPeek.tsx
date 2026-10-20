@@ -82,21 +82,21 @@ interface CitationPeekProps {
 /**
  * Whether the source BINDS, as a compact pill beside the tier label.
  *
- * Orthogonal to the authority badge (which names OIB/RIS): `bindend` for
- * statute and ordinance, `verbindlich_erklaert` for an OIB-Richtlinie a Land
- * declared binding, `auslegend` for interpretive material. The classification
+ * Orthogonal to the authority badge (which names OIB/RIS): `binding` for
+ * statute and ordinance, `declared_binding` for an OIB-Richtlinie a Land
+ * declared binding, `interpretive` for interpretive material. The classification
  * the reader most wants — "does this actually apply to me?" — and the reason
  * the backend went to the trouble of carrying rank onto every source.
  *
- * `unbekannt` never reaches here: it is dropped to undefined at the wire, so an
+ * `unknown` never reaches here: it is dropped to undefined at the wire, so an
  * unclassified source shows no pill rather than a hedged one. Colour is never
  * the only carrier — the German word is always spelled out (the a11y rule the
  * rest of this file follows).
  */
 const BINDING_TONE: Record<string, string> = {
-  bindend: 'border-transparent bg-[var(--source-law,var(--foreground))] text-[var(--background)]',
-  verbindlich_erklaert: 'border-[var(--source-law,var(--foreground))] text-foreground',
-  auslegend: 'border-border text-muted-foreground',
+  binding: 'border-transparent bg-[var(--source-law,var(--foreground))] text-[var(--background)]',
+  declared_binding: 'border-[var(--source-law,var(--foreground))] text-foreground',
+  interpretive: 'border-border text-muted-foreground',
 }
 
 const BindingStatusChip: FC<{ status?: string }> = ({ status }) => {
@@ -148,7 +148,7 @@ export const LocusLine: FC<{ citation: CitationRef }> = ({ citation }) => {
   // identifier Austrian building law actually cites by, in favour of saying
   // nothing. The chunker measures it against the corpus's contents pages
   // precisely so it can be shown.
-  const clause = citation.locus?.punkt?.trim()
+  const clause = citation.locus?.clause?.trim()
   const text = citation.locus
     ? page != null
       ? clause

@@ -275,7 +275,7 @@ def resolve_land(jurisdiction: str, instrument: str, question: str) -> tuple[str
     """The Bundesland to work in, and WHERE it came from.
 
     Precedence is the caller's explicit word, then the instrument they named,
-    then the question, then the project brief's structured ``bundesland=``
+    then the question, then the project brief's structured ``federal_state=``
     fact. Both halves travel: a miss states the assumption AND its source,
     because "Wien, because you said so" and "Wien, because the project is in
     Wien" call for different corrections.

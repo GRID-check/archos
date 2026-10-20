@@ -87,24 +87,24 @@ const RED_WASH = 'bg-[color-mix(in_oklch,var(--signal-error)_6%,transparent)]'
 const SLATE_EDGE = 'bg-muted-foreground/40'
 
 const TONES: Record<CalloutKind, CalloutTone> = {
-  hinweis: {
-    label: (t) => t('cards.callout.hinweis'),
+  note: {
+    label: (t) => t('cards.callout.note'),
     icon: Info,
     ink: 'text-muted-foreground',
     iconTone: 'muted',
     edge: SLATE_EDGE,
     wash: '',
   },
-  achtung: {
-    label: (t) => t('cards.callout.achtung'),
+  warning: {
+    label: (t) => t('cards.callout.warning'),
     icon: AlertTriangle,
     ink: 'text-error',
     iconTone: 'destructive',
     edge: 'bg-danger',
     wash: RED_WASH,
   },
-  frist: {
-    label: (t) => t('cards.callout.frist'),
+  deadline: {
+    label: (t) => t('cards.callout.deadline'),
     icon: CalendarClock,
     ink: 'text-warning',
     iconTone: 'warning',
@@ -115,8 +115,8 @@ const TONES: Record<CalloutKind, CalloutTone> = {
   // would put a second green beside the takeaways' distillation marker with a
   // different meaning, and the viewport's chromatic budget is spent already
   // (takeaway green, Frist amber, Achtung red, evidence lane tint).
-  tipp: {
-    label: (t) => t('cards.callout.tipp'),
+  tip: {
+    label: (t) => t('cards.callout.tip'),
     icon: Lightbulb,
     ink: 'text-muted-foreground',
     iconTone: 'muted',
@@ -128,10 +128,10 @@ const TONES: Record<CalloutKind, CalloutTone> = {
 export const CalloutCard: FC<CalloutCardProps> = ({ kind, text, title, detail, flat = false }) => {
   const t = useTranslations('chat')
   const [open, setOpen] = useState(false)
-  // `?? TONES.hinweis`, because `kind` arrives through a `z.any()`-typed union
+  // `?? TONES.note`, because `kind` arrives through a `z.any()`-typed union
   // member: an unknown value must render as a neutral remark rather than crash
   // the whole answer's card block.
-  const tone = TONES[kind] ?? TONES.hinweis
+  const tone = TONES[kind] ?? TONES.note
   const Icon = tone.icon
 
   const body = (

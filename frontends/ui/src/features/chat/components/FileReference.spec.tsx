@@ -35,7 +35,7 @@ const file = (overrides: Partial<FileItem> = {}): FileItem => ({
 
 const stored = (overrides: Partial<StoredFile> = {}): StoredFile => ({
   file: file(),
-  corpus: 'projekt',
+  corpus: 'project',
   ...overrides,
 })
 
@@ -119,7 +119,7 @@ describe('FileReferenceLink', () => {
     const user = userEvent.setup()
     renderReference({
       href: fileReferenceHref('pd8280-2.pdf'),
-      resolve: () => stored({ corpus: 'buero' }),
+      resolve: () => stored({ corpus: 'office' }),
     })
     await user.click(screen.getByTestId('file-reference'))
     expect(useChatStore.getState().composerSubject?.shelf).toBe('archiv')
@@ -169,7 +169,7 @@ describe('FileReferenceLink', () => {
     const user = userEvent.setup()
     renderReference({
       href: fileReferenceHref('pd8280-2.pdf'),
-      resolve: () => stored({ corpus: 'buero' }),
+      resolve: () => stored({ corpus: 'office' }),
     })
     await user.click(screen.getByTestId('file-reference'))
     expect(useFilePreviewStore.getState().context.scope).toBe('officeShelf')

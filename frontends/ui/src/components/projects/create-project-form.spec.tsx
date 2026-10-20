@@ -41,9 +41,9 @@ const hauptstrasse: GeocodeResult = {
   lat: 48.2,
   lon: 16.37,
   country: 'at',
-  bundesland: 'wien',
+  federalState: 'vienna',
   state: 'Wien',
-  gemeinde: 'Wien',
+  municipality: 'Wien',
   postcode: '1010',
   kind: 'address',
 }
@@ -52,9 +52,9 @@ const moedling: GeocodeResult = {
   lat: 48.08,
   lon: 16.28,
   country: 'at',
-  bundesland: 'niederoesterreich',
+  federalState: 'lower_austria',
   state: 'Niederösterreich',
-  gemeinde: 'Mödling',
+  municipality: 'Mödling',
   postcode: '2340',
   kind: 'address',
 }

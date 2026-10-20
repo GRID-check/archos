@@ -89,7 +89,7 @@ const COMPOSITIONS = validateGridCards([
         id: 'gelaender',
         component: 'guardrail_check',
         title: 'Geländer Balkon 3. OG',
-        context: 'balkon',
+        context: 'balcony',
         fall_height: { label: 'Absturzhöhe', value: 9.2, required: 12, unit: 'm', comparator: '<=', status: 'pass' },
         rail_height: { label: 'Geländerhöhe', value: 100, required: 100, unit: 'cm', comparator: '>=', status: 'pass' },
         max_opening: { label: 'max. Öffnungsweite', value: 11, required: 12, unit: 'cm', comparator: '<=', status: 'pass' },

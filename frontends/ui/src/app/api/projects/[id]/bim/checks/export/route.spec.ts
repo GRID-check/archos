@@ -75,7 +75,7 @@ describe('GET /api/projects/[id]/bim/checks/export', () => {
     expect(exportAccessibleComplianceBcf).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org-1' }),
       'proj-1',
-      { modelId: MODEL_ID, modelName: null, gebaeudeklasse: 4, hauptnutzung: 'wohnen' }
+      { modelId: MODEL_ID, modelName: null, gebaeudeklasse: 4, hauptnutzung: 'residential' }
     )
   })
 

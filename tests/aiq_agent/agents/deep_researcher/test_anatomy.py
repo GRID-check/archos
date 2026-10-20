@@ -27,13 +27,13 @@ DRAFT = {
         {"text": "Tragende Bauteile brauchen REI 60.", "detail": "Tabelle 1b."},
         {"text": "Im Keller gilt REI 90.", "detail": None},
     ],
-    "callout": {"kind": "achtung", "text": "Wien weicht bei Stiegenhäusern ab.", "title": None, "detail": None},
+    "callout": {"kind": "warning", "text": "Wien weicht bei Stiegenhäusern ab.", "title": None, "detail": None},
     "findings": [
         {
             "requirement": "Feuerwiderstand tragender Bauteile",
             "value": "REI 60",
-            "status": "erfuellt",
-            "grounding": "belegt",
+            "status": "met",
+            "grounding": "sourced",
             "reference": {"document": "OIB-Richtlinie 2", "section": "Tabelle 1b", "page": 12},
             "citations": [1],
             "comment": None,
@@ -69,7 +69,7 @@ async def test_the_masthead_and_the_findings_come_off_one_call():
     assert anatomy.answer_meta["summary"].startswith("REI 60")
     assert len(anatomy.answer_meta["takeaways"]) == 2
     assert anatomy.findings is not None
-    assert anatomy.findings["items"][0]["status"] == "erfuellt"
+    assert anatomy.findings["items"][0]["status"] == "met"
     assert llm.calls == 1
 
 

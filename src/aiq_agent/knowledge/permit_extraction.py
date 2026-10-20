@@ -50,21 +50,48 @@ MAX_TEXT_CHARS = 24_000
 MAX_REQUIREMENTS = 60
 MAX_CONTENT_CHARS = 1000
 
-#: Intake vocabulary for ``bundesland`` (``norm_registry.BUNDESLAND_TOKENS``,
-#: without ``ausserhalb_oesterreichs``: a permit is by definition Austrian).
+#: Intake vocabulary for ``federal_state`` (``norm_registry.FEDERAL_STATE_TOKENS``,
+#: without ``outside_austria``: a permit is by definition Austrian).
 FederalStateToken = Literal[
-    "wien",
-    "niederoesterreich",
-    "oberoesterreich",
-    "steiermark",
-    "kaernten",
+    "vienna",
+    "lower_austria",
+    "upper_austria",
+    "styria",
+    "carinthia",
     "salzburg",
-    "tirol",
+    "tyrol",
     "vorarlberg",
     "burgenland",
 ]
-RecordKind = Literal["bewilligung", "nachforderung", "ablehnung", "sonstiges"]
-RequirementKind = Literal["auflage", "nachforderung", "hinweis"]
+RecordKind = Literal["approval", "information_request", "refusal", "other"]
+RequirementKind = Literal["condition", "information_request", "note"]
+
+#: The kinds as they were stored before migration 0166. A record read from an older BFF carries them;
+#: :func:`canonical_record_kind` and :func:`canonical_requirement_kind` map them so a German kind is
+#: never written again. Remove after one release.
+LEGACY_RECORD_KINDS: dict[str, str] = {
+    "bewilligung": "approval",
+    "nachforderung": "information_request",
+    "ablehnung": "refusal",
+    "sonstiges": "other",
+}
+LEGACY_REQUIREMENT_KINDS: dict[str, str] = {
+    "auflage": "condition",
+    "nachforderung": "information_request",
+    "hinweis": "note",
+}
+
+
+def canonical_record_kind(value: object) -> str:
+    """The current record kind for ``value``, which may be a legacy one; anything else as text."""
+    text = str(value)
+    return LEGACY_RECORD_KINDS.get(text, text)
+
+
+def canonical_requirement_kind(value: object) -> str:
+    """The current requirement kind for ``value``, which may be a legacy one; anything else as text."""
+    text = str(value)
+    return LEGACY_REQUIREMENT_KINDS.get(text, text)
 
 
 def is_permit_decision(tags: Iterable[str] | None) -> bool:
@@ -108,9 +135,9 @@ class PermitRequirement(BaseModel):
 
     kind: RequirementKind = Field(
         description=(
-            "auflage: a condition attached to a granted permit. nachforderung: something the authority "
-            "demands to be submitted or remedied before it decides. hinweis: a remark the notice makes "
-            "that binds nobody."
+            "condition: a condition attached to a granted permit (Auflage). information_request: something the "
+            "authority demands to be submitted or remedied before it decides (Nachforderung). note: a remark "
+            "the notice makes that binds nobody."
         )
     )
     content: str = Field(
@@ -151,9 +178,9 @@ class PermitRecord(BaseModel):
 
     kind: RecordKind = Field(
         description=(
-            "bewilligung: the permit is granted (with or without Auflagen). nachforderung: the authority "
+            "approval: the permit is granted (with or without Auflagen). information_request: the authority "
             "demands more documents or remedies (Nachforderung, Mängelbehebungsauftrag, Verbesserungsauftrag) "
-            "and has not decided yet. ablehnung: the application is refused or dismissed. sonstiges: any other "
+            "and has not decided yet. refusal: the application is refused or dismissed. other: any other "
             "notice in the procedure (Bauverhandlung, Fristverlängerung, Anzeigebestätigung, Benützungsbewilligung)."
         )
     )
@@ -166,7 +193,7 @@ class PermitRecord(BaseModel):
     municipality: str | None = Field(
         description="The Gemeinde the procedure is in, as the document writes it. null when it does not say."
     )
-    bundesland: FederalStateToken | None = Field(
+    federal_state: FederalStateToken | None = Field(
         description="The Bundesland of the procedure, only when the document makes it clear. null otherwise."
     )
     issued_on: str | None = Field(
@@ -208,7 +235,7 @@ class PermitRecord(BaseModel):
             "kind": self.kind,
             "authority": self.authority,
             "municipality": self.municipality,
-            "bundesland": self.bundesland,
+            "federalState": self.federal_state,
             "issuedOn": self.issued_on,
             "reference": self.reference,
             "requirements": [
@@ -245,7 +272,7 @@ PERMIT_SYSTEM_PROMPT = (
     "If it is one, fill the fields:\n"
     "- kind: what the notice does in the procedure. You decide it; the descriptions in the schema say what "
     "each value means.\n"
-    "- authority, municipality, bundesland, issued_on, reference: as the document states them. Never guess "
+    "- authority, municipality, federal_state, issued_on, reference: as the document states them. Never guess "
     "a value the document does not support; use null.\n"
     "- requirements: every separate item the notice grants as a condition, demands, or remarks, one entry "
     "each, in document order. Keep the document's own wording as close as you can. Name the proof it asks "

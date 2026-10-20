@@ -56,7 +56,7 @@ export function OfficeShelfWorkspace({
       const provenance = (file.tags ?? []).slice(0, 3).join(' · ')
       const line = t('library.provenance', { source: provenance })
       return {
-        source: 'buero',
+        source: 'office',
         sourceLabel: t(`library.kind.${kind}` as 'library.kind.document'),
         ...(provenance !== ''
           ? {

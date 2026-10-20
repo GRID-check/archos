@@ -34,6 +34,7 @@ import {
 } from './repository'
 import type { DocumentRoleBinding, DocumentRoleReader } from './repository'
 import type { ProjectProfile } from '@/lib/project-profile/types'
+import { normalizeBuildingId } from '@/lib/project-profile/legacy-names'
 
 export type { DocumentRoleBinding } from './repository'
 
@@ -138,7 +139,8 @@ export async function declareDocumentRole(
   }
   const role: DocumentRole = input.role
   const definition = documentRoleDefinition(role)
-  const scopeInstanceId = input.scopeInstanceId ?? null
+  // A tab that has not reloaded still sends `bw1`.
+  const scopeInstanceId = input.scopeInstanceId == null ? null : normalizeBuildingId(input.scopeInstanceId)
 
   if (!isScopeInstanceValid(role, scopeInstanceId)) {
     throw new BadRequestError(

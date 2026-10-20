@@ -49,7 +49,7 @@ export type BimCheckStatus = 'pass' | 'fail' | 'undecidable'
 export interface BimRuleFacts {
   /** `1` … `5`, as the intake vocabulary records it. */
   gebaeudeklasse?: number | null
-  /** Intake use token: `wohnen`, `buero`, `beherbergung`, … */
+  /** Intake main-use token: `residential`, `office`, `lodging`, … */
   hauptnutzung?: string | null
   /**
    * The model's storeys with their elevations, from `summary.storeys`.
@@ -670,9 +670,28 @@ function ratedSoundReduction(raw: string | number | boolean | null): number | nu
   return null
 }
 
+/**
+ * Rule ids as they were stored before the English names (migration 0167 rewrote
+ * `bim_check_confirmations.rule_id`). A stale browser tab, an older pod and a
+ * card in a stored answer can still carry one; `canonicalBimRuleId` maps it so
+ * the old name is never written again. Remove after one release.
+ */
+export const LEGACY_BIM_RULE_IDS: Readonly<Record<string, string>> = {
+  'oib4-treppe-steigungsverhaeltnis': 'oib4-stair-rise-run-ratio',
+  'oib4-tuer-durchgangsbreite': 'oib4-door-clear-width',
+  'oib3-raumhoehe': 'oib3-room-height',
+  'oib2-feuerwiderstand-tragend': 'oib2-fire-resistance-load-bearing',
+  'oib6-u-wert-aussenwand': 'oib6-u-value-external-wall',
+  'oib6-u-wert-fenster': 'oib6-u-value-window',
+  'oib5-schalldaemmung-deklariert': 'oib5-sound-insulation-declared',
+}
+
+/** The current id for a rule id that may be a legacy one; any other value passes through. */
+export const canonicalBimRuleId = (ruleId: string): string => LEGACY_BIM_RULE_IDS[ruleId] ?? ruleId
+
 export const BIM_RULES: RuleDefinition[] = [
   {
-    id: 'oib4-treppe-steigungsverhaeltnis',
+    id: 'oib4-stair-rise-run-ratio',
     richtlinie: 'OIB 4',
     clause: '2.2',
     titleDe: 'Treppen — Steigungsverhältnis',
@@ -711,7 +730,7 @@ export const BIM_RULES: RuleDefinition[] = [
     },
   },
   {
-    id: 'oib4-tuer-durchgangsbreite',
+    id: 'oib4-door-clear-width',
     richtlinie: 'OIB 4',
     clause: '3',
     titleDe: 'Türen — lichte Durchgangsbreite',
@@ -766,7 +785,7 @@ export const BIM_RULES: RuleDefinition[] = [
     },
   },
   {
-    id: 'oib3-raumhoehe',
+    id: 'oib3-room-height',
     richtlinie: 'OIB 3',
     clause: '2',
     titleDe: 'Aufenthaltsräume — lichte Raumhöhe',
@@ -824,7 +843,7 @@ export const BIM_RULES: RuleDefinition[] = [
     },
   },
   {
-    id: 'oib2-feuerwiderstand-tragend',
+    id: 'oib2-fire-resistance-load-bearing',
     richtlinie: 'OIB 2',
     clause: '3',
     titleDe: 'Tragende Bauteile — Feuerwiderstand',
@@ -916,7 +935,7 @@ export const BIM_RULES: RuleDefinition[] = [
     },
   },
   {
-    id: 'oib6-u-wert-aussenwand',
+    id: 'oib6-u-value-external-wall',
     richtlinie: 'OIB 6',
     clause: '4.1',
     titleDe: 'Außenwände — Wärmedurchgangskoeffizient',
@@ -924,7 +943,7 @@ export const BIM_RULES: RuleDefinition[] = [
     ifcTypes: ['IfcWall', 'IfcWallStandardCase'],
     scope: isExternal,
     notApplicable: (facts) =>
-      facts.hauptnutzung === 'lager' || facts.hauptnutzung === 'landwirtschaft'
+      facts.hauptnutzung === 'storage' || facts.hauptnutzung === 'agriculture'
         ? 'OIB 6 gilt für unkonditionierte Lager-/landwirtschaftliche Gebäude nicht ohne Weiteres'
         : null,
     judge: (element) => {
@@ -953,14 +972,14 @@ export const BIM_RULES: RuleDefinition[] = [
     },
   },
   {
-    id: 'oib6-u-wert-fenster',
+    id: 'oib6-u-value-window',
     richtlinie: 'OIB 6',
     clause: '4.1',
     titleDe: 'Fenster — Wärmedurchgangskoeffizient',
     thresholdDe: 'U ≤ 1,40 W/m²K',
     ifcTypes: ['IfcWindow'],
     notApplicable: (facts) =>
-      facts.hauptnutzung === 'lager' || facts.hauptnutzung === 'landwirtschaft'
+      facts.hauptnutzung === 'storage' || facts.hauptnutzung === 'agriculture'
         ? 'OIB 6 gilt für unkonditionierte Lager-/landwirtschaftliche Gebäude nicht ohne Weiteres'
         : null,
     judge: (element) => {
@@ -986,7 +1005,7 @@ export const BIM_RULES: RuleDefinition[] = [
     },
   },
   {
-    id: 'oib5-schalldaemmung-deklariert',
+    id: 'oib5-sound-insulation-declared',
     richtlinie: 'OIB 5',
     clause: '3',
     titleDe: 'Trennbauteile — Schalldämmung deklariert',
@@ -996,7 +1015,7 @@ export const BIM_RULES: RuleDefinition[] = [
     // internal ones — an external wall's Schallschutz is a different clause.
     scope: (element) => !isExternal(element),
     notApplicable: (facts) =>
-      facts.hauptnutzung && !['wohnen', 'beherbergung', 'gesundheit', 'buero', 'versammlung'].includes(facts.hauptnutzung)
+      facts.hauptnutzung && !['residential', 'lodging', 'healthcare', 'office', 'assembly'].includes(facts.hauptnutzung)
         ? 'OIB 5 ist für diese Nutzung nicht lärmempfindlich einschlägig'
         : null,
     judge: (element) => {

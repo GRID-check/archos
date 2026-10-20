@@ -7,15 +7,15 @@ const at = '2026-09-20T08:00:00Z'
 
 const profile: ProjectProfile = {
   facts: {
-    bundesland: { value: 'niederoesterreich', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
-    'fluchtniveau_m@bw1': { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
-    bgf_oberirdisch: { value: 1450, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
-    nutzungen: { value: ['wohnen', 'buero'], confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    federal_state: { value: 'lower_austria', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    'escape_level_m@bldg1': { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    gfa_above_ground: { value: 1450, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    uses: { value: ['residential', 'office'], confidence: 'confirmed', source: 'onboarding', updatedAt: at },
   },
   goals: {},
-  unknowns: ['gebaeudeklasse'],
+  unknowns: ['building_class'],
   assumptions: {
-    geschosse_oberirdisch: { value: 5, status: 'unconfirmed', reason: 'geschätzt', source: 'agent_suggested', updatedAt: at },
+    storeys_above_ground: { value: 5, status: 'unconfirmed', reason: 'geschätzt', source: 'agent_suggested', updatedAt: at },
   },
 }
 
@@ -38,7 +38,7 @@ describe('bindProjectFact', () => {
 
   it('prints a Gebäudeklasse as „GK 4" whichever way it is stored', () => {
     expect(['GK4', 'GK 4', 4, '4'].map(buildingClassNumber)).toEqual([4, 4, 4, 4])
-    const resolve = projectFactResolver({ facts: { gebaeudeklasse: { value: 'GK4', confidence: 'confirmed', source: 'onboarding', updatedAt: at } } })
+    const resolve = projectFactResolver({ facts: { building_class: { value: 'GK4', confidence: 'confirmed', source: 'onboarding', updatedAt: at } } })
     expect(resolve('building_class')).toMatchObject({ text: 'GK 4', number: 4 })
   })
 

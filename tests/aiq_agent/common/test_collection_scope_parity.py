@@ -116,8 +116,8 @@ def test_the_agent_authored_lane_matches(mirror_source: str):
     assert key.group(1) == AGENT_AUTHORED_LANE
     assert label.group(1) == AGENT_AUTHORED_LANE_LABEL
     # And the mirror's own lane→kind table places it in the office family
-    # without a row of its own: the ``buero`` prefix already covers it.
-    assert AGENT_AUTHORED_LANE.startswith("buero_")
+    # without a row of its own: the ``office`` prefix already covers it.
+    assert AGENT_AUTHORED_LANE.startswith("office_")
 
 
 def test_the_lane_fallback_kinds_match(mirror_source: str):

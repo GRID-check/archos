@@ -24,7 +24,7 @@
  *
  * ## The vocabularies are ASCII keys; the German is rendered from a dictionary
  *
- * `planen` and `laeuft` are KEYS. The reader sees „Planen" and „läuft", and the
+ * `planning` and `running` are KEYS. The reader sees „Planen" and „läuft", and the
  * umlaut lives in `src/i18n/dictionaries` where every other user-facing string
  * lives. A key with an umlaut in it is a key that arrives differently normalised
  * depending on who serialised it, which is a bug nobody can see.
@@ -46,10 +46,10 @@ import { z } from 'zod'
  * The five phases a run walks, in order.
  *
  * A tuple, so the set is enumerable at runtime and the type is derived rather
- * than restated. `abgelegt` is a phase and not a status because filing is work
+ * than restated. `filed` is a phase and not a status because filing is work
  * the run does — it takes time and it can be the thing that failed.
  */
-export const RUN_PHASES = ['planen', 'recherchieren', 'pruefen', 'schreiben', 'abgelegt'] as const
+export const RUN_PHASES = ['planning', 'researching', 'checking', 'writing', 'filed'] as const
 export type RunPhase = (typeof RUN_PHASES)[number]
 
 /**
@@ -57,32 +57,95 @@ export type RunPhase = (typeof RUN_PHASES)[number]
  *
  * Not `task_runs.status` — that column is the row's lifecycle and it keeps its
  * own CHECK. These are what the reader is told, derived from the row plus a
- * pending ask plus this ledger's terminal fields. `wartet` is the one with no
+ * pending ask plus this ledger's terminal fields. `waiting` is the one with no
  * column behind it at all: a run that has asked the person a question is not
  * running and is not finished, and showing it as either is how a run sits
  * unanswered for a day.
  */
 export const RUN_STATUSES = [
-  'angelegt',
-  'laeuft',
-  'wartet',
-  'fertig',
-  'fehlgeschlagen',
-  'abgebrochen',
-  'unterbrochen',
+  'created',
+  'running',
+  'waiting',
+  'done',
+  'failed',
+  'cancelled',
+  'interrupted',
 ] as const
 export type RunStatus = (typeof RUN_STATUSES)[number]
 
 /** The states from which nothing more happens on its own. */
 export const TERMINAL_RUN_STATUSES = [
-  'fertig',
-  'fehlgeschlagen',
-  'abgebrochen',
-  'unterbrochen',
+  'done',
+  'failed',
+  'cancelled',
+  'interrupted',
 ] as const satisfies readonly RunStatus[]
 
 export function isTerminalRunStatus(status: RunStatus): boolean {
   return (TERMINAL_RUN_STATUSES as readonly RunStatus[]).includes(status)
+}
+
+// ---------------------------------------------------------------------------
+// Spellings from before the English names
+// ---------------------------------------------------------------------------
+
+/**
+ * The German phase keys a stored ledger (or a pod that has not rolled yet)
+ * still carries. Read-only: nothing writes these. The migration rewrote the
+ * table once; this keeps the rows and requests in flight readable.
+ */
+export const LEGACY_RUN_PHASE: Readonly<Record<string, RunPhase>> = {
+  planen: 'planning',
+  recherchieren: 'researching',
+  pruefen: 'checking',
+  schreiben: 'writing',
+  abgelegt: 'filed',
+}
+
+/** The German status keys, same arrangement as {@link LEGACY_RUN_PHASE}. */
+export const LEGACY_RUN_STATUS: Readonly<Record<string, RunStatus>> = {
+  angelegt: 'created',
+  laeuft: 'running',
+  wartet: 'waiting',
+  fertig: 'done',
+  fehlgeschlagen: 'failed',
+  abgebrochen: 'cancelled',
+  unterbrochen: 'interrupted',
+}
+
+const isLooseRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+const mapped = (value: unknown, table: Readonly<Record<string, string>>): unknown =>
+  typeof value === 'string' && Object.hasOwn(table, value) ? table[value] : value
+
+const mapPhaseOf = (entry: unknown): unknown =>
+  isLooseRecord(entry) ? { ...entry, phase: mapped(entry.phase, LEGACY_RUN_PHASE) } : entry
+
+/**
+ * A ledger, or an append request, with the English phases, statuses and
+ * `basis` key, whichever spelling it arrived in. Anything that is not an
+ * object is returned as it is. Applied where untrusted ledgers enter:
+ * `sanitizeRunLedger` (stored rows) and the internal ledger route (an older
+ * worker mid-deploy).
+ */
+export function modernizeRunLedger(raw: unknown): unknown {
+  if (!isLooseRecord(raw)) return raw
+  const out: Record<string, unknown> = { ...raw }
+  if ('status' in out) out.status = mapped(out.status, LEGACY_RUN_STATUS)
+  if (Array.isArray(out.phases)) out.phases = out.phases.map(mapPhaseOf)
+  if (Array.isArray(out.steps)) out.steps = out.steps.map(mapPhaseOf)
+  if (isLooseRecord(out.error) && Array.isArray(out.error.completedBefore)) {
+    out.error = {
+      ...out.error,
+      completedBefore: out.error.completedBefore.map((phase) => mapped(phase, LEGACY_RUN_PHASE)),
+    }
+  }
+  if ('grundlage' in out) {
+    if (!('basis' in out)) out.basis = out.grundlage
+    delete out.grundlage
+  }
+  return out
 }
 
 // ---------------------------------------------------------------------------
@@ -264,7 +327,7 @@ export const runLedgerSchema = z
      * The documents the reader named as Grundlage (`loci` empty: the receipt
      * is read off the steps). Absent when none was named.
      */
-    grundlage: z.array(runLedgerDocSchema).max(MAX_BASIS_DOCS).optional(),
+    basis: z.array(runLedgerDocSchema).max(MAX_BASIS_DOCS).optional(),
     startedAt: instantSchema,
     updatedAt: instantSchema,
     finishedAt: instantSchema.optional(),
@@ -293,7 +356,7 @@ export const runLedgerAppendRequestSchema = z
     phases: z.array(runPhaseEntrySchema).max(RUN_PHASES.length).optional(),
     status: z.enum(RUN_STATUSES).optional(),
     /** The whole Grundlage list as it now stands; a live addition re-sends it. */
-    grundlage: z.array(runLedgerDocSchema).max(MAX_BASIS_DOCS).optional(),
+    basis: z.array(runLedgerDocSchema).max(MAX_BASIS_DOCS).optional(),
   })
   .strict()
 

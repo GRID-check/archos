@@ -141,7 +141,7 @@ export async function openFiledDocument(target: FiledDocumentTarget): Promise<bo
   const file = fileItemFromStatus(row)
   openFilePeek({
     file: row.authoredBy === 'agent' ? { ...file, authoredBy: 'agent' } : file,
-    source: 'projekt',
+    source: 'project',
     projectId: target.projectId,
     projectName: target.projectName,
     canCollaborate: target.canCollaborate,

@@ -297,7 +297,7 @@ export default function IngestionStatesDevPage(): JSX.Element {
             <div key={note} className="space-y-1" data-testid={`peek-${note}`}>
               <p className="font-mono text-[11px] text-muted-foreground">{note}</p>
               <div className="w-72 max-w-full rounded-lg border bg-popover p-3 shadow-sm">
-                <FileReferencePeek stored={{ file, corpus: 'projekt' }} onOpen={noop} />
+                <FileReferencePeek stored={{ file, corpus: 'project' }} onOpen={noop} />
               </div>
             </div>
           ))}

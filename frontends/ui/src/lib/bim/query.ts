@@ -20,6 +20,7 @@
 
 import 'server-only'
 import { and, ilike, inArray, or, sql, type SQL } from 'drizzle-orm'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { likeContains } from '@/lib/text/like-pattern'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/errors'
@@ -142,16 +143,24 @@ export type BimPropertyFilter = z.infer<typeof propertyFilterSchema>
  * now a rejection the agent is told to correct, not a quiet non-answer.
  */
 export const BIM_MAIN_USE = [
-  'wohnen',
-  'buero',
-  'beherbergung',
-  'versammlung',
-  'gesundheit',
-  'landwirtschaft',
-  'produzierend',
-  'lager',
-  'sonstiges',
+  'residential',
+  'office',
+  'lodging',
+  'assembly',
+  'healthcare',
+  'agriculture',
+  'manufacturing',
+  'storage',
+  'other',
 ] as const
+
+/**
+ * A request from a tab that has not reloaded, or an agent image that has not
+ * rolled, still names the main use in German (`wohnen`). Read-only; remove with
+ * `legacy-names.ts`.
+ */
+export const canonicalBimMainUse = (value: unknown): unknown =>
+  typeof value === 'string' ? normalizeProfileToken('main_use', value) : value
 
 /** The Hauptnutzung values the rule catalogue understands. */
 export type BimMainUse = (typeof BIM_MAIN_USE)[number]
@@ -241,7 +250,7 @@ export const bimQuerySchema = z.discriminatedUnion('op', [
      * a pass, which is the exact failure this subsystem exists to prevent.
      */
     gebaeudeklasse: z.number().int().min(1).max(5).nullish(),
-    hauptnutzung: z.enum(BIM_MAIN_USE).nullish(),
+    hauptnutzung: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()),
   }).strict(),
   z.object({
     /** The same catalog over two revisions, reporting only what MOVED. */
@@ -249,7 +258,7 @@ export const bimQuerySchema = z.discriminatedUnion('op', [
     /** The OLDER revision; this model is the newer one. */
     baseModelId: z.string().uuid().optional(),
     gebaeudeklasse: z.number().int().min(1).max(5).nullish(),
-    hauptnutzung: z.enum(BIM_MAIN_USE).nullish(),
+    hauptnutzung: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()),
   }).strict(),
   z.object({ op: z.literal('profile') }).strict(),
   z.object({

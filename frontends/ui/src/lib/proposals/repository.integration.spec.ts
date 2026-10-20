@@ -46,7 +46,7 @@ const OTHER_USER = `${USER}_2`
 
 const PAYLOAD: FileOperationPayload = {
   operation: 'move',
-  operations: [{ document: 'Grundriss EG.pdf', source: 'projekt', target_folder: 'Einreichung' }],
+  operations: [{ document: 'Grundriss EG.pdf', source: 'project', target_folder: 'Einreichung' }],
 }
 
 describe('the proposed-changes suite is not silently skipped in CI', () => {
@@ -339,7 +339,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
   describe('the Büroablage (0146)', () => {
     const OFFICE_SHELF_MOVE: FileOperationPayload = {
       operation: 'move',
-      operations: [{ document: 'ÖNORM B 1800.pdf', source: 'buero', target_folder: 'Normen', reason: 'Eine Norm.' }],
+      operations: [{ document: 'ÖNORM B 1800.pdf', source: 'office', target_folder: 'Normen', reason: 'Eine Norm.' }],
       basis: 'name',
     }
     const shelved = (organizationId: string, payload: FileOperationPayload = OFFICE_SHELF_MOVE) =>
@@ -373,7 +373,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
 
     it('refuses a Büroablage proposal that would reach into a project', async () => {
       await expect(
-        shelved(ORG, { operation: 'move', operations: [{ document: 'a.pdf', source: 'projekt', target_folder: 'X' }] })
+        shelved(ORG, { operation: 'move', operations: [{ document: 'a.pdf', source: 'project', target_folder: 'X' }] })
       ).rejects.toThrow()
       await expect(
         shelved(ORG, { operation: 'create_folder', operations: [{ folder_name: 'X' }] })

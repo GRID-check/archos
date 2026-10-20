@@ -22,7 +22,7 @@ def _entry(
     citation_key: str,
     *,
     collection: str = "oib_knowledge",
-    punkt: str | None = None,
+    clause: str | None = None,
     tool_name: str = "knowledge_search",
 ) -> SourceEntry:
     return SourceEntry(
@@ -32,14 +32,14 @@ def _entry(
         tool_name=tool_name,
         collection=collection,
         shelf="base",
-        punkt=punkt,
+        clause=clause,
         chunk_text="Die Fluchtweglänge darf 40 m nicht überschreiten.",
     )
 
 
 class TestAppend:
     def test_a_first_capture_becomes_a_line(self):
-        lines = merge_digest(None, [_entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", punkt="3.5.2")], turn=1)
+        lines = merge_digest(None, [_entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", clause="3.5.2")], turn=1)
 
         assert lines == ["oib-rl_2_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 12 | Punkte 3.5.2 | Turn 1"]
 
@@ -58,7 +58,7 @@ class TestAppend:
             None,
             [
                 _entry("plan.pdf, p.1"),
-                _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", punkt="3.5.2"),
+                _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", clause="3.5.2"),
             ],
             turn=1,
         )
@@ -78,8 +78,8 @@ class TestDedupe:
         lines = merge_digest(
             None,
             [
-                _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", punkt="3.5.2"),
-                _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.30", punkt="4.1"),
+                _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", clause="3.5.2"),
+                _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.30", clause="4.1"),
             ],
             turn=2,
         )
@@ -87,7 +87,7 @@ class TestDedupe:
         assert lines == ["oib-rl_2_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 12, 30 | Punkte 3.5.2, 4.1 | Turn 2"]
 
     def test_the_same_passage_twice_counts_once(self):
-        capture = _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", punkt="3.5.2")
+        capture = _entry("oib-rl_2_ausgabe_mai_2023.pdf, p.12", clause="3.5.2")
 
         assert merge_digest(None, [capture, capture], turn=1) == [
             "oib-rl_2_ausgabe_mai_2023.pdf | oib_knowledge | Seiten 12 | Punkte 3.5.2 | Turn 1"

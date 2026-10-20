@@ -8,16 +8,16 @@ const findings: Findings = {
   items: [
     {
       requirement: 'Zweiter Fluchtweg',
-      status: 'offen',
-      grounding: 'offen',
+      status: 'open',
+      grounding: 'open',
       citations: [],
       comment: 'Fluchtniveau unbekannt.',
     },
     {
       requirement: 'Feuerwiderstand',
       value: 'REI 60',
-      status: 'erfuellt',
-      grounding: 'belegt',
+      status: 'met',
+      grounding: 'sourced',
       citations: [1],
       reference: { document: 'OIB-RL 2', section: 'Tabelle 1b' },
     },
@@ -67,11 +67,11 @@ describe('continuationBrief', () => {
       })
     )
     expect(brief.documents).toEqual({
-      grundlage: [
+      basis: [
         { name: 'Einreichplan.pdf', title: 'Einreichplan EG', shelf: 'project' },
         { name: 'Muster.pdf', shelf: 'archiv' },
       ],
-      ausgeschlossen: [],
+      excluded: [],
     })
   })
 
@@ -80,7 +80,7 @@ describe('continuationBrief', () => {
       message({
         findings: {
           v: 1,
-          items: [{ requirement: 'Kriterium A', value: '12 m', grounding: 'belegt', citations: [] }],
+          items: [{ requirement: 'Kriterium A', value: '12 m', grounding: 'sourced', citations: [] }],
         },
       })
     )
@@ -92,7 +92,7 @@ describe('continuationBrief', () => {
 describe('previousRunFindings', () => {
   const ledger = {
     runId: 'r',
-    status: 'fertig',
+    status: 'done',
     phases: [],
     steps: [],
     startedAt: 'x',

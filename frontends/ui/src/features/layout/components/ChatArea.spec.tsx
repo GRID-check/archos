@@ -461,7 +461,7 @@ describe('ChatArea', () => {
   test('dispatches a message with a run ledger to the run block', () => {
     const runLedger = {
       runId: 'run-1',
-      status: 'laeuft' as const,
+      status: 'running' as const,
       phases: [],
       steps: [],
       startedAt: '2026-09-16T08:00:00.000Z',
@@ -496,7 +496,7 @@ describe('ChatArea', () => {
     render(<ChatArea isAuthenticated={true} />)
 
     const block = screen.getByTestId('run-block')
-    expect(block).toHaveAttribute('data-status', 'laeuft')
+    expect(block).toHaveAttribute('data-status', 'running')
     expect(block).toHaveTextContent('Normprüfung: Fluchtwege')
     expect(mockUseRunLedger).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2549,7 +2549,7 @@ describe('ChatArea — opening a thread, its endings and its dock', () => {
           id: 'run-message-1',
           runLedger: {
             runId: 'run-1',
-            status: 'laeuft',
+            status: 'running',
             phases: [],
             steps: [],
             startedAt: '2026-10-09T08:00:00.000Z',

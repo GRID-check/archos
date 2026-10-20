@@ -110,7 +110,7 @@ describe('the lookups act as the envelope’s person, in the envelope’s conver
   })
 
   it('hands the fact filter to the service as sent, and refuses one it does not know rather than ignoring it', async () => {
-    const projectFacts = { bundesland: ['tirol'], gebaeudeklasse: [4] }
+    const projectFacts = { federal_state: ['tyrol'], building_class: [4] }
     await search(request('/api/internal/cross-project/search', { query: 'Dachdetail', projectFacts }))
     await projects(request('/api/internal/cross-project/projects', { projectFacts }))
 
@@ -118,7 +118,7 @@ describe('the lookups act as the envelope’s person, in the envelope’s conver
     expect(vi.mocked(listLookupProjects).mock.calls[0][1]).toMatchObject({ projectFacts })
     const unknown = { query: 'Dach', projectFacts: { farbe: ['rot'] } }
     expect((await search(request('/api/internal/cross-project/search', unknown))).status).toBe(400)
-    expect((await projects(request('/api/internal/cross-project/projects', { projectFacts: { bundesland: ['mars'] } }))).status).toBe(400)
+    expect((await projects(request('/api/internal/cross-project/projects', { projectFacts: { federal_state: ['mars'] } }))).status).toBe(400)
   })
 
   it('refuses a request with no envelope, and one whose turn has no conversation', async () => {

@@ -173,8 +173,8 @@ class TestRetrieval:
             round_index=1,
         )
         payload = _live(steps)[0]
-        assert payload.key == "status.retrieval.punkt"
-        assert payload.values == {"document": "OIB-Richtlinie 2", "punkt": "3.5.2"}
+        assert payload.key == "status.retrieval.clause"
+        assert payload.values == {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}
         assert payload.tools == ["read_passage"]
 
     def test_a_page_locator_uses_its_own_key(self, steps) -> None:
@@ -249,7 +249,7 @@ class TestRetrieval:
             "edit_file": "status.action.draftEdit",
         }
         for index, (verb, key) in enumerate(verbs.items()):
-            turn_status.emit_retrieval([{"name": verb, "args": {"file_path": "/entwuerfe/a.md"}}], round_index=index)
+            turn_status.emit_retrieval([{"name": verb, "args": {"file_path": "/drafts/a.md"}}], round_index=index)
         assert [payload.key for payload in _live(steps)] == list(verbs.values())
 
     def test_a_file_verb_is_an_action_and_never_a_retrieval(self, steps) -> None:
@@ -259,7 +259,7 @@ class TestRetrieval:
         invented slug and the query slot belongs to the reader's words.
         """
         turn_status.emit_retrieval(
-            [{"name": "write_file", "args": {"file_path": "/entwuerfe/aktenvermerk.md", "content": "# A"}}],
+            [{"name": "write_file", "args": {"file_path": "/drafts/aktenvermerk.md", "content": "# A"}}],
             round_index=0,
         )
         payload = _live(steps)[0]
@@ -560,7 +560,7 @@ class TestTheSubjectDocument:
 
     def test_it_is_a_technical_record_with_no_key(self) -> None:
         step = turn_status.subject_document_step(
-            loaded=True, document_id="doc-9", version_id="ver-9", state="draft", path="/entwuerfe/Befund.md", chars=42
+            loaded=True, document_id="doc-9", version_id="ver-9", state="draft", path="/drafts/Befund.md", chars=42
         )
         # No key, therefore no dictionary entry, therefore nothing rendered on
         # the live line: the reader is already looking at the file it names.
@@ -573,7 +573,7 @@ class TestTheSubjectDocument:
                 "document_id": "doc-9",
                 "version_id": "ver-9",
                 "state": "draft",
-                "path": "/entwuerfe/Befund.md",
+                "path": "/drafts/Befund.md",
                 "chars": 42,
             },
         )
@@ -615,7 +615,7 @@ _ID_RE = re.compile(r"^[A-Za-z][A-Za-z0-9]*(?:[._,][A-Za-z0-9]+)*$")
 #: own name plus the number the corpus gives the passage. Each is the same
 #: string in every locale by definition (a proper noun, or a figure), so they
 #: are exempt from the id rule — and every OTHER value must be an id.
-_ECHOED_BACK = {"query", "skill", "document", "punkt", "page"}
+_ECHOED_BACK = {"query", "skill", "document", "clause", "page"}
 
 #: Words that would betray German copy having leaked back into emitted data.
 #: Crude on purpose: it is a tripwire, not a language detector, and it is the
@@ -669,20 +669,20 @@ def _every_live_payload(steps) -> list:
     )
     turn_status.emit_retrieval([{"name": "remember", "args": {"text": "x"}}], round_index=2)
     turn_status.emit_retrieval([{"name": "emit_card", "args": {"kind": "x"}}], round_index=3)
-    turn_status.emit_retrieval([{"name": "ls", "args": {"path": "/entwuerfe/"}}], round_index=4)
-    turn_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/entwuerfe/a.md"}}], round_index=5)
-    turn_status.emit_retrieval([{"name": "write_file", "args": {"file_path": "/entwuerfe/a.md"}}], round_index=6)
-    turn_status.emit_retrieval([{"name": "edit_file", "args": {"file_path": "/entwuerfe/a.md"}}], round_index=7)
+    turn_status.emit_retrieval([{"name": "ls", "args": {"path": "/drafts/"}}], round_index=4)
+    turn_status.emit_retrieval([{"name": "read_file", "args": {"file_path": "/drafts/a.md"}}], round_index=5)
+    turn_status.emit_retrieval([{"name": "write_file", "args": {"file_path": "/drafts/a.md"}}], round_index=6)
+    turn_status.emit_retrieval([{"name": "edit_file", "args": {"file_path": "/drafts/a.md"}}], round_index=7)
     turn_status.emit_retrieval(
         [{"name": "propose_file_change", "args": {"operation": "move", "document": "plan.pdf"}}],
         round_index=8,
     )
     turn_status.emit_retrieval(
-        [{"name": "file_draft", "args": {"path": "/entwuerfe/a.md"}}],
+        [{"name": "file_draft", "args": {"path": "/drafts/a.md"}}],
         round_index=9,
     )
     turn_status.emit_retrieval(
-        [{"name": "file_draft", "args": {"path": "/entwuerfe/a.md", "submit": True}}],
+        [{"name": "file_draft", "args": {"path": "/drafts/a.md", "submit": True}}],
         round_index=10,
     )
     turn_status.emit_retrieval(

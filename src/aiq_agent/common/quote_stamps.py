@@ -40,7 +40,7 @@ from aiq_agent.common.citation_verification import source_entry_to_wire
 
 #: What the reader needs to open the passage: the fields a citation chip opens
 #: its document from (``source_entry_to_wire``), and nothing that restates it.
-_LOCATION_KEYS = ("title", "file_name", "page", "punkt", "url")
+_LOCATION_KEYS = ("title", "file_name", "page", "clause", "url")
 
 #: A cited passage and the ``[N]`` it carries in the answer, or ``None``.
 Cited = tuple[SourceEntry, int | None]

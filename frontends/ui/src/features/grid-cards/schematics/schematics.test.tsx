@@ -47,7 +47,7 @@ describe('BuildingSectionCard', () => {
           { label: '3.OG', height_m: 3.0 },
         ]}
         markers={[
-          { label: 'Fluchtniveau', height_m: 9.2, kind: 'fluchtniveau' },
+          { label: 'Fluchtniveau', height_m: 9.2, kind: 'escape_level' },
           { label: 'GK4-Grenze', height_m: 11, kind: 'threshold' },
         ]}
         reference={{
@@ -284,7 +284,7 @@ describe('GuardrailCheckCard', () => {
     render(
       <GuardrailCheckCard
         title="Absturzsicherung Dachterrasse"
-        context="dachterrasse"
+        context="roof_terrace"
         fall_height={{
           label: 'Absturzhöhe',
           value: 13.5,
@@ -336,7 +336,7 @@ describe('GuardrailCheckCard', () => {
     render(
       <GuardrailCheckCard
         title="Absturzsicherung Balkon"
-        context="balkon"
+        context="balcony"
         fall_height={{ label: 'Absturzhöhe', value: 6, unit: 'm', status: 'pass' }}
         rail_height={{ label: 'Geländerhöhe', value: null, required: 100, unit: 'cm', comparator: '>=', status: 'needs_input' }}
         max_opening={{ label: 'max. Öffnungsweite', value: 12, required: 12, unit: 'cm', comparator: '<=', status: 'pass' }}
@@ -379,7 +379,7 @@ describe('FireAccessPlanCard', () => {
           comparator: '>=',
           status: 'pass',
         }}
-        aufstellflaeche={{
+        staging_area={{
           width: { label: 'Aufstellfläche Breite', value: 5, required: 5, unit: 'm', comparator: '>=', status: 'pass' },
           length: { label: 'Aufstellfläche Länge', value: 11, required: 10, unit: 'm', comparator: '>=', status: 'pass' },
           distance_to_facade: { label: 'Abstand zur Fassade', value: 1, unit: 'm', status: 'pass' },
@@ -392,7 +392,7 @@ describe('FireAccessPlanCard', () => {
           comparator: '<=',
           status: 'pass',
         }}
-        gebaeudeklasse="GK 4"
+        building_class="GK 4"
         reference={{ document: 'OIB-Richtlinie 2', section: 'Pkt. 8.2', edition: 'Ausgabe Mai 2023' }}
       />
     )

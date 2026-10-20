@@ -923,7 +923,7 @@ def precedent_envelope(office: dict, conversation_id: str, secret: str, current:
             "conversationId": conversation_id,
             "issuedAt": int(time.time() * 1000),
             "contextTransport": "bff",
-            "bundesland": current.get("facts", {}).get("bundesland"),
+            "federalState": current.get("facts", {}).get("federal_state"),
         },
         ensure_ascii=False,
     )

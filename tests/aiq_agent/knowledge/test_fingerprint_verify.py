@@ -13,18 +13,18 @@ from aiq_agent.knowledge.project_experience import VocabularyEntry
 from aiq_agent.knowledge.project_experience import VocabularyOption
 
 VOCABULARY = {
-    "bundesland": VocabularyEntry(
+    "federal_state": VocabularyEntry(
         multiple=False,
-        options=[VocabularyOption(token="wien", label="Wien"), VocabularyOption(token="tirol", label="Tirol")],
+        options=[VocabularyOption(token="vienna", label="Wien"), VocabularyOption(token="tyrol", label="Tirol")],
     ),
-    "bauweise": VocabularyEntry(
+    "construction_method": VocabularyEntry(
         multiple=True,
         options=[
-            VocabularyOption(token="holzbau", label="Holzbau"),
-            VocabularyOption(token="stahlbeton", label="Stahlbeton"),
+            VocabularyOption(token="timber", label="Holzbau"),
+            VocabularyOption(token="reinforced_concrete", label="Stahlbeton"),
         ],
     ),
-    "gebaeudeklasse": VocabularyEntry(multiple=False, options=[VocabularyOption(token="4", label="4")]),
+    "building_class": VocabularyEntry(multiple=False, options=[VocabularyOption(token="4", label="4")]),
 }
 
 
@@ -54,7 +54,9 @@ def _answering(monkeypatch: pytest.MonkeyPatch, by_value: dict[str, float | None
 def test_a_value_its_quote_does_not_state_is_not_suggested(monkeypatch):
     _answering(monkeypatch, {"Wien": 0.04})
 
-    kept = verify_fingerprint([_value("bundesland", "wien", "Baubehörde Wien, MA 37, Gutachten für Baden")], VOCABULARY)
+    kept = verify_fingerprint(
+        [_value("federal_state", "vienna", "Baubehörde Wien, MA 37, Gutachten für Baden")], VOCABULARY
+    )
 
     assert kept == []
 
@@ -63,16 +65,17 @@ def test_a_multi_valued_value_keeps_the_tokens_its_quote_states(monkeypatch):
     _answering(monkeypatch, {"Holzbau": 0.92, "Stahlbeton": 0.05})
 
     [kept] = verify_fingerprint(
-        [_value("bauweise", ["holzbau", "stahlbeton"], "Brettsperrholz-Wände und -Decken")], VOCABULARY
+        [_value("construction_method", ["timber", "reinforced_concrete"], "Brettsperrholz-Wände und -Decken")],
+        VOCABULARY,
     )
 
-    assert kept.value == ["holzbau"]
+    assert kept.value == ["timber"]
 
 
 def test_the_state_is_the_fact_the_value_and_the_quotes_nothing_else(monkeypatch):
     seen = _answering(monkeypatch, {"Tirol": 0.9})
 
-    verify_fingerprint([_value("bundesland", "tirol", "Bauplatz in Seefeld in Tirol")], VOCABULARY)
+    verify_fingerprint([_value("federal_state", "tyrol", "Bauplatz in Seefeld in Tirol")], VOCABULARY)
 
     assert seen == [
         {"fact": "Bundesland", "value": "Tirol", "quotes": ["Bauplatz in Seefeld in Tirol"], "language": "de"}
@@ -82,14 +85,14 @@ def test_the_state_is_the_fact_the_value_and_the_quotes_nothing_else(monkeypatch
 def test_the_building_class_is_left_to_the_pen_which_may_derive_it(monkeypatch):
     seen = _answering(monkeypatch, {})
 
-    kept = verify_fingerprint([_value("gebaeudeklasse", "4", "Fluchtniveau 9,8 m, vier Geschoße")], VOCABULARY)
+    kept = verify_fingerprint([_value("building_class", "4", "Fluchtniveau 9,8 m, vier Geschoße")], VOCABULARY)
 
     assert seen == [] and kept[0].value == "4"
 
 
 def test_a_decision_that_did_not_run_leaves_the_reading_as_it_was(monkeypatch):
     _answering(monkeypatch, {"Wien": None})
-    value = _value("bundesland", "wien", "Wien 7, Neubaugasse")
+    value = _value("federal_state", "vienna", "Wien 7, Neubaugasse")
 
     assert verify_fingerprint([value], VOCABULARY) == [value]
 
@@ -99,7 +102,7 @@ def test_a_failing_client_leaves_the_reading_as_it_was(monkeypatch):
         raise RuntimeError("down")
 
     monkeypatch.setattr("aiq_agent.common.decisions.decide_many_blocking", broken)
-    value = _value("bundesland", "wien", "Wien 7, Neubaugasse")
+    value = _value("federal_state", "vienna", "Wien 7, Neubaugasse")
 
     assert verify_fingerprint([value], VOCABULARY) == [value]
 
@@ -107,7 +110,7 @@ def test_a_failing_client_leaves_the_reading_as_it_was(monkeypatch):
 def test_a_value_stated_only_through_what_a_reader_knows_is_kept(monkeypatch):
     """Measured: „Stadtgemeinde Mödling" scored 0.24 for Niederösterreich. Only a clear contradiction drops."""
     _answering(monkeypatch, {"Wien": 0.24})
-    value = _value("bundesland", "wien", "Magistratsabteilung 37")
+    value = _value("federal_state", "vienna", "Magistratsabteilung 37")
 
     assert verify_fingerprint([value], VOCABULARY) == [value]
     assert fingerprint_verify.STATED_THRESHOLD < 0.24

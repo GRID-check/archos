@@ -546,7 +546,7 @@ describe('cards that are the app talking, not the answer', () => {
   const delegation = {
     type: 'task_created',
     task_id: '00000000-0000-4000-8000-0000000000f1',
-    kind: 'einreichcheck',
+    kind: 'submission_check',
     title: 'Einreichcheck: Bauansuchen Haus A',
     goal: 'Mach den Einreichcheck für das Bauansuchen bis Freitag',
     due_at: null,
@@ -672,7 +672,7 @@ describe('every string in the document comes from a dictionary', () => {
       type: 'building_section',
       title: 'Schnitt',
       storeys: [{ label: 'EG', height_m: 3, below_grade: false }],
-      markers: [{ label: 'Fluchtniveau', height_m: 9.8, kind: 'fluchtniveau' }],
+      markers: [{ label: 'Fluchtniveau', height_m: 9.8, kind: 'escape_level' }],
       reference: { document: 'OIB 2' },
     },
     {
@@ -724,7 +724,7 @@ describe('every string in the document comes from a dictionary', () => {
     {
       type: 'guardrail_check',
       title: 'Geländer',
-      context: 'balkon',
+      context: 'balcony',
       fall_height: { label: 'Absturzhöhe', value: 8, unit: 'm', status: 'pass' },
       rail_height: { label: 'Höhe', value: 100, required: 100, unit: 'cm', status: 'pass' },
       max_opening: { label: 'Öffnung', value: 11, required: 12, unit: 'cm', status: 'pass' },
@@ -735,7 +735,7 @@ describe('every string in the document comes from a dictionary', () => {
     {
       type: 'fire_access_plan',
       title: 'Feuerwehrzufahrt',
-      gebaeudeklasse: 'GK 4',
+      building_class: 'GK 4',
       parcel_width_m: 20,
       parcel_depth_m: 30,
       building_width_m: 10,
@@ -748,11 +748,11 @@ describe('every string in the document comes from a dictionary', () => {
         unit: 'm',
         status: 'pass',
       },
-      // `AufstellflaechePlan`: two `DimensionCheck`s and an optional third. The
+      // `StagingAreaPlan`: two `DimensionCheck`s and an optional third. The
       // `{label, width_m, length_m}` this used to be is a shape the card has
       // never had, so the assertion below was checking the walker against
       // something the backend cannot emit.
-      aufstellflaeche: {
+      staging_area: {
         width: { label: 'Aufstellfläche Breite', value: 5, required: 5, unit: 'm', status: 'pass' },
         length: {
           label: 'Aufstellfläche Länge',

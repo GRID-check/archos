@@ -153,7 +153,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
       await db.execute(sql`
         insert into projects (id, organization_id, name, created_by, collection_name, profile)
         values (${PROJECT}::uuid, ${ORG}, 'Wohnanlage West', ${USER}, ${`p_feedback_${STAMP}`},
-                '{"facts": {"bundesland": {"value": "tirol"}}, "goals": {}, "unknowns": [], "assumptions": {}}'::jsonb)
+                '{"facts": {"federal_state": {"value": "tyrol"}}, "goals": {}, "unknowns": [], "assumptions": {}}'::jsonb)
       `)
       await db.execute(sql`update conversations set project_id = ${PROJECT}::uuid where id = ${CHAT}`)
       // The ledger: two calls for A1's turn, one of them in another
@@ -177,7 +177,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
     await withTenant({ organizationId: OTHER_ORG, userId: USER }, async () => {
       await db.execute(sql`
         insert into conversations (id, organization_id, created_by, title, tags)
-        values (${OTHER_CHAT}, ${OTHER_ORG}, ${USER}, 'Vertraulich', array['schallschutz'])
+        values (${OTHER_CHAT}, ${OTHER_ORG}, ${USER}, 'Vertraulich', array['sound_insulation'])
       `)
       await db.execute(sql`
         insert into messages (id, conversation_id, role, content, created_at) values
@@ -195,7 +195,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
     await withTenant({ organizationId: CLAIM_ORG, userId: USER }, async () => {
       await db.execute(sql`
         insert into conversations (id, organization_id, created_by, title, tags)
-        values (${CLAIM_CHAT}, ${CLAIM_ORG}, ${USER}, 'Eigene', array['brandschutz'])
+        values (${CLAIM_CHAT}, ${CLAIM_ORG}, ${USER}, 'Eigene', array['fire_safety'])
       `)
       await db.execute(sql`
         insert into messages (id, conversation_id, role, content, created_at)
@@ -365,7 +365,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
       expect(byMessage.get(CLAIM_A)).toMatchObject({
         conversationId: CLAIM_CHAT,
         conversationTitle: 'Eigene',
-        topics: ['brandschutz'],
+        topics: ['fire_safety'],
       })
     })
 
@@ -379,16 +379,16 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
 
     it('decides the topic rollup and the topic filter the same way', async () => {
       const health = await platform(() => repo.getFeedbackHealth(ask(CLAIM_ORG), { turnLimit: 0 }))
-      expect(health.topics.map((row) => [row.topic, row.down])).toEqual([['brandschutz', 1]])
+      expect(health.topics.map((row) => [row.topic, row.down])).toEqual([['fire_safety', 1]])
 
       const borrowed = await platform(() =>
-        repo.getFeedbackHealth(ask(CLAIM_ORG, { topics: ['schallschutz'] }), { turnLimit: 0 }),
+        repo.getFeedbackHealth(ask(CLAIM_ORG, { topics: ['sound_insulation'] }), { turnLimit: 0 }),
       )
       expect(borrowed.totals.down).toBe(0)
       expect(borrowed.ratedAnswers).toBe(0)
 
       const own = await platform(() =>
-        repo.getFeedbackHealth(ask(CLAIM_ORG, { topics: ['brandschutz'] }), { turnLimit: 0 }),
+        repo.getFeedbackHealth(ask(CLAIM_ORG, { topics: ['fire_safety'] }), { turnLimit: 0 }),
       )
       expect(own.totals.down).toBe(1)
       expect(own.ratedAnswers).toBe(1)
@@ -442,7 +442,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
         jobId: null,
         projectId: PROJECT,
         projectName: 'Wohnanlage West',
-        bundesland: 'tirol',
+        bundesland: 'tyrol',
         conversationTitle: 'Fluchtwege',
         conversationFound: true,
         topics: [],

@@ -109,7 +109,7 @@ vi.mock('@/features/documents/hooks/use-surfaced-documents', async (importOrigin
         key: `${surfaced.file_name}-${position}`,
         surfaced,
         file: { ...RESOLVED_FILE, filename: surfaced.file_name },
-        docSource: 'projekt' as const,
+        docSource: 'project' as const,
       })),
       isLoading: false,
       error: false,

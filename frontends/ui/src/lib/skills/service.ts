@@ -35,6 +35,7 @@ import {
   type SkillCategoryListItem,
   type SkillSnapshot,
 } from './types'
+import { canonicalSkillName } from './legacy-names'
 import { findPlatformSkill, listPlatformSkills, type PlatformSkill } from './platform-skills'
 
 // ---------------------------------------------------------------------------
@@ -117,7 +118,7 @@ function toCurated(row: {
  *     Platform → Skills. We author a skill there, every organization can switch
  *     it on, and the body stays ours.
  *   - builtin FILES that opt in with `grid-catalog: curated`. The architect
- *     job playbooks (`einreichcheck`, `bestand`) ship this way: listed on the
+ *     job playbooks (`submission-check`, `existing-building`) ship this way: listed on the
  *     Skills tab, on until the org turns them off. A dashboard offer still
  *     starts off.
  *
@@ -337,7 +338,8 @@ export async function setCuratedSkillEnabled(
   assertSkillsFeatureOn(session)
   if (!canManageSkills(session)) throw new ForbiddenError('You need org skills management rights.')
 
-  const offer = (await curatedOffers()).find((skill) => skill.name === name)
+  // A tab that has not reloaded since the rename (0169) names the builtin the old way.
+  const offer = (await curatedOffers()).find((skill) => skill.name === canonicalSkillName(name))
   if (!offer) throw new NotFoundError(`Unknown platform skill "${name}".`)
 
   await repository.upsertCuratedSkillActivation({
@@ -666,7 +668,10 @@ export async function resolveSkillSnapshot(
   //
   // Cost: this lookup is in-memory. Reaching it AFTER `curatedOffers()` meant
   // every machinery snapshot paid a `platform_skills` query to learn nothing.
-  const platform = findPlatformSkill(name)
+  // The org-row lookup above takes the name as given (an org may own a skill by
+  // the old name); the builtin lookups below also accept a renamed builtin's old name.
+  const platformName = canonicalSkillName(name)
+  const platform = findPlatformSkill(platformName)
   if (platform && !isCuratedPlatformSkill(platform.metadata)) {
     return {
       name: platform.name,
@@ -681,7 +686,7 @@ export async function resolveSkillSnapshot(
   // newly attach one the org has not taken up. Jobs that attached it BEFORE it
   // was switched off keep running: they pinned a snapshot at save time and
   // never come back through here.
-  const offer = (await curatedOffers()).find((skill) => skill.name === name)
+  const offer = (await curatedOffers()).find((skill) => skill.name === platformName)
   if (offer) {
     const activations = await repository.listCuratedSkillActivations(organizationId)
     if (!isActivated(activations, offer.name)) {

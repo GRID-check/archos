@@ -81,7 +81,7 @@ from aiq_agent.common.turn_status import record_lane_hit
 #: The fine lane a measurement is filed under, and its German sub-label. A lane
 #: is the Herleitung card's folder tab; measurements have exactly one, because
 #: unlike Baurecht they carry no authority ladder to sit on.
-MEASUREMENT_LANE = "messung"
+MEASUREMENT_LANE = "measurement"
 MEASUREMENT_LANE_LABEL = "Modellmessung"
 
 #: Provenance → the German verb the renderer puts in front of the value.

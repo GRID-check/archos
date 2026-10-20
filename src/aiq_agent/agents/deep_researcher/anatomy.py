@@ -53,8 +53,8 @@ class _Finding(BaseModel):
     model_config = ConfigDict(extra="forbid")
     requirement: str
     value: str | None
-    status: Literal["erfuellt", "nicht_erfuellt", "offen", "nicht_anwendbar"] | None
-    grounding: Literal["belegt", "abgeleitet", "offen"]
+    status: Literal["met", "not_met", "open", "not_applicable"] | None
+    grounding: Literal["sourced", "derived", "open"]
     reference: _Reference | None
     citations: list[int]
     comment: str | None
@@ -69,7 +69,7 @@ class _Takeaway(BaseModel):
 
 class _Callout(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    kind: Literal["hinweis", "achtung", "frist", "tipp"]
+    kind: Literal["note", "warning", "deadline", "tip"]
     text: str
     title: str | None
     detail: str | None
@@ -130,12 +130,12 @@ SYSTEM_PROMPT = (
     "- `callout`: at most the ONE sentence that changes what the reader does (a Frist, a "
     "Landesabweichung, a condition skimming misses), or null.\n"
     "- `findings`: one row per requirement the report read against the project. `requirement` is a noun "
-    "phrase; `value` the copyable value or null; `status` one of erfuellt / nicht_erfuellt / offen / "
-    'nicht_anwendbar, where "offen" means the report could not decide (missing project fact, pending '
+    "phrase; `value` the copyable value or null; `status` one of met / not_met / open / "
+    'not_applicable, where "open" means the report could not decide (missing project fact, pending '
     "Behörde) — or null when the report STATES the row without judging it (a Vergleich's criterion, an "
     "Aktenvermerk's point), so a table of results never wears a verdict it did not give; `grounding` is "
-    "belegt when a cited passage states it, abgeleitet when it is computed or "
-    "inferred from cited values, offen when no source carries it; `reference` the document and Punkt or "
+    "sourced when a cited passage states it, derived when it is computed or "
+    "inferred from cited values, open when no source carries it; `reference` the document and Punkt or "
     "page the report names; `citations` the [N] numbers the report attaches to it; `comment` what "
     "qualifies the status in one sentence or null; `area` the section it belongs to or null. "
     "Keep the report's order. A report with no requirement-shaped content returns an empty list.\n"

@@ -52,7 +52,7 @@ describe('POST /api/archiv/documents/upload', () => {
       originPath: 'Normen/plan.pdf',
       screeningRelease: false,
       uploadBatchId: null,
-      fassungOf: null,
+      revisionOf: null,
     })
   })
 
@@ -64,24 +64,24 @@ describe('POST /api/archiv/documents/upload', () => {
       originPath: null,
       screeningRelease: false,
       uploadBatchId: null,
-      fassungOf: null,
+      revisionOf: null,
     })
   })
 
   it('passes on the document the reader filed it as the new Fassung of', async () => {
     const older = '0b8f3c1e-0d3a-4d2e-9a53-6d1f9d6c2b11'
-    await post({ fassungOf: older })
+    await post({ revisionOf: older })
 
     expect(uploadOfficeShelfDocument).toHaveBeenCalledWith(
       expect.anything(),
       expect.any(File),
       expect.any(Request),
-      expect.objectContaining({ fassungOf: older }),
+      expect.objectContaining({ revisionOf: older }),
     )
   })
 
   it('refuses a revision-of value that is not a document id', async () => {
-    const response = await post({ fassungOf: 'Grundriss_EG_Index_B.pdf' })
+    const response = await post({ revisionOf: 'Grundriss_EG_Index_B.pdf' })
 
     expect(response.status).toBe(400)
     expect(uploadOfficeShelfDocument).not.toHaveBeenCalled()

@@ -249,12 +249,12 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
   it('reads the Fassung number it was set on, and keeps the mark when that version goes', async () => {
     const [onOld] = await insert(ids.document, [mark()], { versionId: ids.v1 })
     const [onNew] = await insert(ids.document, [mark()], { versionId: ids.v2 })
-    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, onOld.id)))?.fassungNumber).toBe(1)
-    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, onNew.id)))?.fassungNumber).toBe(2)
+    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, onOld.id)))?.revisionNumber).toBe(1)
+    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, onNew.id)))?.revisionNumber).toBe(2)
 
     await inOrg(ORG, () => db.execute(sql`delete from document_versions where id = ${ids.v1}::uuid`))
     const after = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, onOld.id))
-    expect(after).toMatchObject({ versionId: null, fassungNumber: null })
+    expect(after).toMatchObject({ versionId: null, revisionNumber: null })
   })
 
   it('carries a mark to the current Fassung in place, once: compared against the Fassung it was read on', async () => {
@@ -267,7 +267,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       )
     expect(await carry()).toMatchObject({ versionId: ids.v2, number: row.number })
     expect(await carry()).toBeNull()
-    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.fassungNumber).toBe(2)
+    expect((await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id)))?.revisionNumber).toBe(2)
   })
 
   it('carries a mark of a replaced document as a linked mark, closes the original, and refuses a second copy', async () => {

@@ -39,7 +39,7 @@ const ensureCloseClearsSubject = (): void => {
 
 export interface OpenFilePeekOptions {
   file: FileItem
-  source: 'projekt' | 'buero' | 'session' | null
+  source: 'project' | 'office' | 'session' | null
   projectId?: string | null
   projectName?: string | null
   canCollaborate?: boolean
@@ -68,9 +68,9 @@ export function openFilePeek(options: OpenFilePeekOptions): void {
   ensureCloseClearsSubject()
 
   useFilePreviewStore.getState().open(options.file, options.presentation ?? 'peek', {
-    projectId: options.source === 'projekt' ? (options.projectId ?? undefined) : undefined,
+    projectId: options.source === 'project' ? (options.projectId ?? undefined) : undefined,
     projectName: options.projectName ?? undefined,
-    scope: options.source === 'buero' ? 'officeShelf' : 'files',
+    scope: options.source === 'office' ? 'officeShelf' : 'files',
     canManage: false,
     canCollaborate: options.canCollaborate,
   })
@@ -79,7 +79,7 @@ export function openFilePeek(options: OpenFilePeekOptions): void {
 
   boundSubjectId = options.file.id
   const shelf =
-    options.source === 'buero' ? 'archiv' : options.source === 'session' ? 'session' : options.source === 'projekt' ? 'project' : undefined
+    options.source === 'office' ? 'archiv' : options.source === 'session' ? 'session' : options.source === 'project' ? 'project' : undefined
   useChatStore.getState().setComposerSubject({
     resourceType: 'document',
     resourceId: options.file.id,

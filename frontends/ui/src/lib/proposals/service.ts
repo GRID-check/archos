@@ -297,7 +297,7 @@ const alreadyDecided = (row: ProposedChangeRow) =>
 
 const beingApplied = () => new ConflictError('This proposal is being applied', { reason: 'proposal-applying' })
 
-/** The project of a kind that always has one; `proposed_changes_archiv_move` makes a miss a bug. */
+/** The project of a kind that always has one; `proposed_changes_office_shelf_move` makes a miss a bug. */
 function projectOf(row: ProposedChangeRow): string {
   if (!row.projectId) throw new Error(`A ${row.kind} proposal without a project`)
   return row.projectId

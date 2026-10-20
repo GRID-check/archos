@@ -7,6 +7,7 @@
 
 import { z } from 'zod'
 import { gridCardSchema, projectProfilePatchCardSchema } from './generated'
+import { modernizeGridCard } from './legacy'
 
 export { gridCardSchema, projectProfilePatchCardSchema }
 
@@ -36,7 +37,7 @@ export type ProjectProfilePatchCardData = z.infer<typeof projectProfilePatchCard
 export function validateGridCards(raw: unknown): (GridCard | undefined)[] {
   if (!Array.isArray(raw)) return []
   return raw.map((item) => {
-    const result = gridCardSchema.safeParse(item)
+    const result = gridCardSchema.safeParse(modernizeGridCard(item))
     if (result.success) {
       return result.data
     }

@@ -272,7 +272,7 @@ const DEFAULT_FAILURE_REASON = 'Der Lauf ist fehlgeschlagen.'
 export function ledgerOpForEnding(ending: RunEnding, at: Date): RunLedgerRequest {
   if (ending.status === 'success') return { op: 'finish', result: { filedAt: at.toISOString() } }
   // A cancelled run has no finish op; „abgebrochen" travels as a status (ADR-0062).
-  if (ending.status === 'interrupted') return { op: 'append', status: 'abgebrochen' }
+  if (ending.status === 'interrupted') return { op: 'append', status: 'cancelled' }
   return { op: 'finish', error: { reason: (ending.error || DEFAULT_FAILURE_REASON).slice(0, 400) } }
 }
 
@@ -311,7 +311,7 @@ export async function settleRunLedger(
  * Tell the requester when their run stops to ask them something, and settle
  * that row when the run moves on.
  *
- * `wartet` is the one status with no column behind it: it exists only in the
+ * `waiting` is the one status with no column behind it: it exists only in the
  * ledger, so this fold is the only place that sees a run enter or leave it.
  * The row is `job.waiting`, actionable, anchored on the run — and resolved by
  * the ledger's next status, which is what keeps an actionable row out of the
@@ -323,8 +323,8 @@ export async function settleRunLedger(
  * ledger.
  */
 async function notifyWaiting(run: TaskRun, before: RunLedger, after: RunLedger): Promise<void> {
-  const wasWaiting = runDisplayStatus(before) === 'wartet'
-  const isWaiting = runDisplayStatus(after) === 'wartet'
+  const wasWaiting = runDisplayStatus(before) === 'waiting'
+  const isWaiting = runDisplayStatus(after) === 'waiting'
   if (wasWaiting === isWaiting) return
   const groupKey = inboxGroupKey('job.waiting', 'project', run.projectId, run.id)
   try {
@@ -541,7 +541,7 @@ async function jobControlCaller(
  *
  * The row and the ledger stay as they are. The backend marks the job
  * interrupted, the worker sees it and stops, the ledger's terminal flush
- * arrives as `abgebrochen` through the same route every other flush uses, and
+ * arrives as `cancelled` through the same route every other flush uses, and
  * the outcome callback closes the row. Writing „abgebrochen" here as well would
  * be a second author of the run's status, and the two would disagree exactly
  * when the cancel did not take.
@@ -611,7 +611,7 @@ export async function addRunDocument(
 /**
  * „Jetzt schreiben": the run stops researching after its current batch and
  * writes the report from what is there. Same gate as a cancel, the same run
- * row, the same view answered — the ledger turns `unterbrochen` when the
+ * row, the same view answered — the ledger turns `interrupted` when the
  * report lands, never because the button was pressed.
  */
 export async function writeNowRun(

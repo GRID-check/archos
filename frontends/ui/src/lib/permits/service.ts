@@ -79,7 +79,7 @@ export async function storePermitRecord(body: StorePermitRecordRequest): Promise
         kind: record.kind,
         authority: record.authority,
         municipality: record.municipality,
-        bundesland: record.bundesland,
+        federalState: record.federalState,
         issuedOn: record.issuedOn,
         reference: record.reference,
         requirements,

@@ -414,7 +414,7 @@ class TestPilotiAgent:
                 {"text": "Unter 12 m Absturzhöhe genügen 100 cm."},
                 {"text": "Gemessen wird ab fertigem Fußboden.", "detail": "Aufkantungen zählen mit."},
             ],
-            "callout": {"kind": "achtung", "text": "Ab 12 m Absturzhöhe sind 110 cm erforderlich."},
+            "callout": {"kind": "warning", "text": "Ab 12 m Absturzhöhe sind 110 cm erforderlich."},
             "confidence": {"level": "medium", "reason": "eine Fundstelle, nicht am Projekt gemessen"},
             "summary": "Die Terrasse ist damit ohne erhöhte Umwehrung einreichbar; Aufkantungen beim Aufmaß mitzählen.",
         }
@@ -462,7 +462,7 @@ class TestPilotiAgent:
         assert result.answer_meta["summary"].startswith("Die Terrasse ist damit")
         assert result.answer_meta["verdict"]["reference"]["document"] == "OIB-Richtlinie 4"
         assert len(result.answer_meta["takeaways"]) == 2
-        assert result.answer_meta["callout"]["kind"] == "achtung"
+        assert result.answer_meta["callout"]["kind"] == "warning"
 
     @pytest.mark.asyncio
     async def test_run_accepts_the_bare_object_json_mode_produces(self, mock_llm_provider, mock_llm, real_tool):
@@ -494,7 +494,7 @@ class TestPilotiAgent:
 
         final_content = result.messages[-1].content
         assert final_content.count("[[callout]]") == 1
-        assert result.answer_meta is not None and result.answer_meta["callout"]["kind"] == "achtung"
+        assert result.answer_meta is not None and result.answer_meta["callout"]["kind"] == "warning"
 
     @pytest.mark.asyncio
     async def test_run_strips_the_marker_when_no_callout_survived(self, mock_llm_provider, mock_llm, real_tool):
@@ -3045,7 +3045,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
 
     @staticmethod
     def _measurement_sources(result):
-        return [s for s in (result.verified_sources or []) if s.get("kind") == "messung"]
+        return [s for s in (result.verified_sources or []) if s.get("kind") == "measurement"]
 
     # -- the property that must not regress -----------------------------------
 
@@ -3224,7 +3224,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         result, _ = await _run_with_captured_registry(agent, state)
 
         (card,) = self._measurement_sources(result)
-        assert card["lane"] == "messung"
+        assert card["lane"] == "measurement"
         assert card["title"] == "clearHeight"
         measurement = card["measurement"]
         assert measurement["provenance"] == "computed"
@@ -3499,8 +3499,8 @@ def _render_researcher_prompt(*, drafting_enabled: bool = False) -> str:
     )
 
 
-def _entwuerfe_block() -> str:
-    return _render_researcher_prompt(drafting_enabled=True).split("<entwuerfe>")[1].split("</entwuerfe>")[0]
+def _drafts_block() -> str:
+    return _render_researcher_prompt(drafting_enabled=True).split("<drafts>")[1].split("</drafts>")[0]
 
 
 class TestTheWorkingDirectoryBlock:
@@ -3516,25 +3516,25 @@ class TestTheWorkingDirectoryBlock:
 
     def test_a_turn_without_the_tools_is_never_told_to_write(self):
         """A prompt describing a tool the model was not given is a promise it cannot keep."""
-        assert "<entwuerfe>" not in _render_researcher_prompt(drafting_enabled=False)
+        assert "<drafts>" not in _render_researcher_prompt(drafting_enabled=False)
 
     def test_the_anaphora_resolves_against_the_previous_answer(self):
         """„kannst du daraus ein File machen" has an antecedent only the
         transcript holds, so no tool description can resolve it."""
-        block = _entwuerfe_block()
+        block = _drafts_block()
         assert "`daraus`/`davon`/`das`" in block
         assert "vorige Antwort dieser Unterhaltung" in block
         assert "ohne Rückfrage nach Format oder Inhalt" in block
 
     def test_a_conversation_without_a_project_is_told_what_happens(self):
-        block = _entwuerfe_block()
+        block = _drafts_block()
         assert "Ohne Projekt" in block
         assert "bleibt der Entwurf im Arbeitsordner" in block
 
     def test_the_workflow_the_tools_own_is_no_longer_in_the_prompt(self):
         """The cut itself. Each of these was a sentence about how to hold a
         tool, charged on every call of every turn (ADR-0060 (d))."""
-        block = _entwuerfe_block()
+        block = _drafts_block()
         for teaching in ("`write_file`", "`edit_file`", "`file_draft`", "`submit=true`", "`reviewer`"):
             assert teaching not in block, teaching
 
@@ -3554,12 +3554,12 @@ class TestTheWorkingDirectoryBlock:
             state,
             [{"name": "web_search_tool", "description": "Search"}],
         )
-        assert "<entwuerfe>" in with_tools
-        assert "<entwuerfe>" not in without
+        assert "<drafts>" in with_tools
+        assert "<drafts>" not in without
 
 
 class TestTheDraftingRulesLiveInTheTools:
-    """Every rule the `<entwuerfe>` block dropped, in the description that owns it.
+    """Every rule the `<drafts>` block dropped, in the description that owns it.
 
     A tool owns its whole contract (ADR-0060 (d)), so a rule deleted from the
     prompt has to be findable in the schema the provider already sends. These
@@ -3641,7 +3641,7 @@ class TestTheDelegationRulesLiveInTheTool:
         (`delegation.ts::TASK_ENGINES`, `docs/architecture/system-overview.md`).
         """
         description = self._description()
-        for kind in ("compliance_check", "einreichcheck", "document", "revision"):
+        for kind in ("compliance_check", "submission_check", "document", "revision"):
             assert f"`{kind}`" in description
 
     def test_it_names_the_requests_a_person_actually_makes(self):
@@ -3874,7 +3874,7 @@ class TestATurnThatWritesADraft:
                 self._call(
                     "write_file",
                     {
-                        "file_path": "/entwuerfe/aktenvermerk.md",
+                        "file_path": "/drafts/aktenvermerk.md",
                         "content": "# Aktenvermerk\n\nPunkt 3: Fluchtweg.\n",
                     },
                     "1",
@@ -3882,7 +3882,7 @@ class TestATurnThatWritesADraft:
                 self._call(
                     "edit_file",
                     {
-                        "file_path": "/entwuerfe/aktenvermerk.md",
+                        "file_path": "/drafts/aktenvermerk.md",
                         "old_string": "Punkt 3: Fluchtweg.",
                         "new_string": "Punkt 3: Fluchtweg, gekürzt.",
                     },
@@ -3900,7 +3900,7 @@ class TestATurnThatWritesADraft:
 
         result = await agent.run(ResearchAgentState(messages=[HumanMessage(content="Schreib den Aktenvermerk")]))
 
-        stored = backend._get_store().get(("conversation", "conv-1", "drafts"), "/entwuerfe/aktenvermerk.md")
+        stored = backend._get_store().get(("conversation", "conv-1", "drafts"), "/drafts/aktenvermerk.md")
         assert stored is not None, "the turn left no file"
         assert stored.value["content"] == "# Aktenvermerk\n\nPunkt 3: Fluchtweg, gekürzt.\n"
 
@@ -3960,10 +3960,10 @@ class TestATurnThatWritesADraft:
             side_effect=[
                 self._call(
                     "write_file",
-                    {"file_path": "/entwuerfe/aktenvermerk.md", "content": "# Aktenvermerk\n\nFluchtweg.\n"},
+                    {"file_path": "/drafts/aktenvermerk.md", "content": "# Aktenvermerk\n\nFluchtweg.\n"},
                     "1",
                 ),
-                self._call("file_draft", {"path": "/entwuerfe/aktenvermerk.md"}, "2"),
+                self._call("file_draft", {"path": "/drafts/aktenvermerk.md"}, "2"),
                 AIMessage(content="Der Aktenvermerk liegt als Entwurf im Projekt."),
             ]
         )

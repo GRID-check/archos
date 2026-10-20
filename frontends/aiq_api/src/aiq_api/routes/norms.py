@@ -19,6 +19,7 @@ from fastapi import Depends
 from fastapi import Header
 from fastapi import HTTPException
 from fastapi import status
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -64,7 +65,8 @@ class NormsVerifyRequest(BaseModel):
 
     title_query: str
     application: str
-    bundesland: str = ""
+    # An admin tab that has not reloaded still sends `bundesland`; read-only.
+    federal_state: str = Field("", validation_alias=AliasChoices("federal_state", "bundesland"))
     expect: str = ""
     exclude: list[str] = Field(default_factory=list)
     gesetzesnummer: str = ""
@@ -85,14 +87,14 @@ def _rejection_reasons(norms_file: NormsFile) -> list[str]:
         seen.add(entry.id)
         if entry.application and entry.application not in KNOWN_APPLICATIONS:
             problems.append(f"entry '{entry.id}': unknown RIS application '{entry.application}'")
-        if entry.rank in ("bundesgesetz", "landesgesetz", "verordnung") and not entry.is_ris:
+        if entry.rank in ("federal_law", "state_law", "ordinance") and not entry.is_ris:
             problems.append(
                 f"entry '{entry.id}': rank '{entry.rank}' requires a RIS pointer "
-                "(application + document number) — use rank 'behoerdliche_info' or "
-                "'norm_extern' for non-RIS sources"
+                "(application + document number) — use rank 'authority_info' or "
+                "'external_standard' for non-RIS sources"
             )
-        if entry.bundesland and entry.bundesland not in BUNDESLAENDER:
-            problems.append(f"entry '{entry.id}': unknown Bundesland '{entry.bundesland}'")
+        if entry.federal_state and entry.federal_state not in BUNDESLAENDER:
+            problems.append(f"entry '{entry.id}': unknown Bundesland '{entry.federal_state}'")
     return problems
 
 
@@ -162,12 +164,12 @@ def add_norm_routes(router: APIRouter) -> None:
         from ris_adapter.client import RisError
 
         params: dict[str, str] = {"Titel": body.title_query}
-        if body.bundesland:
-            flag = _FEDERAL_STATE_PARAMS.get(body.bundesland)
+        if body.federal_state:
+            flag = _FEDERAL_STATE_PARAMS.get(body.federal_state)
             if flag is None:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Unknown Bundesland '{body.bundesland}'",
+                    detail=f"Unknown Bundesland '{body.federal_state}'",
                 )
             params[f"Bundesland.{flag}"] = "true"
 

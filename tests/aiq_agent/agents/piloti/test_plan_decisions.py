@@ -53,14 +53,14 @@ def _answering(genre: str, genre_p: float, depth: str, depth_p: float):
 @pytest.mark.asyncio
 async def test_a_confident_answer_becomes_the_preselection():
     shape = await decide_plan_shape(
-        "Prüfen Sie den Brandschutz", "GK 4", transport=_answering("pruefbericht", 0.9, "kurzpruefung", 0.7)
+        "Prüfen Sie den Brandschutz", "GK 4", transport=_answering("inspection_report", 0.9, "quick_check", 0.7)
     )
-    assert shape.genre == "pruefbericht" and shape.depth == "kurzpruefung" and shape.decided
+    assert shape.genre == "inspection_report" and shape.depth == "quick_check" and shape.decided
 
 
 @pytest.mark.asyncio
 async def test_a_doubtful_answer_proposes_nothing():
-    shape = await decide_plan_shape("q", None, transport=_answering("bericht", 0.3, "gutachten", 0.4))
+    shape = await decide_plan_shape("q", None, transport=_answering("report", 0.3, "expert_report", 0.4))
     assert shape.genre is None and shape.depth is None and not shape.decided
 
 

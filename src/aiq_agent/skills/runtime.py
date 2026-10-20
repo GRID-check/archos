@@ -12,7 +12,7 @@ instance): it owns the ordered activation list that surfaces as
 Why the shortcut: a ``use_skill`` call ends a message, so the body arrives one
 full-context call later — the whole prefix and every message re-sent, 3-8 s
 of latency, and a second round when the body says to load another (the
-Brandschutz method opens with "load ``gebaeudeklasse`` first"). The chat
+Brandschutz method opens with "load ``building-class`` first"). The chat
 office's own methods are ~400 tokens each and ~3 800 tokens together
 (``tests/aiq_agent/skills/test_runtime.py`` measures it), which is the cost
 of one such round about ten times over. ADR-0060 rejected inlining on the
@@ -62,6 +62,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Sequence
 
+from .builtin import canonical_skill_name
 from .models import Skill
 from .models import preferred_cards
 
@@ -214,7 +215,8 @@ class SkillRuntime:
         """
         added: list[str] = []
         inlined = {skill.name for skill in self._inlined}
-        for name in names:
+        for raw in names:
+            name = canonical_skill_name(raw)
             skill = self._by_name.get(name)
             if skill is None or name in inlined:
                 continue
@@ -287,7 +289,7 @@ class SkillRuntime:
         accepted: list[str] = []
         inlined = {skill.name for skill in self._inlined}
         for raw in names:
-            name = str(raw).strip().strip("`")
+            name = canonical_skill_name(str(raw).strip().strip("`"))
             if name not in inlined:
                 logger.debug("skills_applied names %r, which was not inlined this run; ignored", name)
                 continue
@@ -347,14 +349,14 @@ class SkillRuntime:
         @langchain_tool(_TOOL_NAME)
         def use_skill(skill_name: str) -> str:
             """Return the full instructions of ``skill_name``, or an error listing the available skills."""
-            skill = runtime._by_name.get(skill_name)
+            skill = runtime._by_name.get(canonical_skill_name(skill_name))
             if skill is None:
                 available = ", ".join(sorted(runtime._by_name))
                 return (
                     f"Unknown skill '{skill_name}'. Available skills: {available}. "
                     f"Call `{_TOOL_NAME}` with one of those names."
                 )
-            runtime._record_activation(skill_name)
+            runtime._record_activation(skill.name)
             cards_block = _preferred_cards_block(skill)
             return f"{skill.body}\n\n{cards_block}" if cards_block else skill.body
 

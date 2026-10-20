@@ -40,7 +40,7 @@ const recorded = (
   status,
   payload: {
     operation: 'move',
-    operations: items.map(([document, target]) => ({ document, source: 'projekt', target_folder: target })),
+    operations: items.map(([document, target]) => ({ document, source: 'project', target_folder: target })),
     basis: extra.basis === undefined ? 'name' : extra.basis,
   },
   originConversationId: null,
@@ -61,8 +61,8 @@ describe('planFiling', () => {
       basis: 'name',
       new_folder: null,
       operations: [
-        { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Bescheide', reason: 'd1 gehört nach Bescheide.' },
-        { document: 'EG.pdf', source: 'projekt', target_folder: 'Bescheide', reason: 'd3 gehört nach Bescheide.' },
+        { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Bescheide', reason: 'd1 gehört nach Bescheide.' },
+        { document: 'EG.pdf', source: 'project', target_folder: 'Bescheide', reason: 'd3 gehört nach Bescheide.' },
       ],
     })
   })
@@ -80,7 +80,7 @@ describe('planFiling', () => {
         operations: [
           {
             document: 'Fristerstreckung.pdf',
-            source: 'buero',
+            source: 'office',
             target_folder: 'Korrespondenz',
             reason: 'd2 gehört nach Korrespondenz.',
           },

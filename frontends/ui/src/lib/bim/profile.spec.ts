@@ -1,7 +1,7 @@
 /**
  * Derived project facts.
  *
- * `geschosse_oberirdisch` picks a Gebäudeklasse and a Gebäudeklasse decides what
+ * `storeys_above_ground` picks a Gebäudeklasse and a Gebäudeklasse decides what
  * the fire-safety answer is, so the interesting assertions are the refusals: the
  * suggestion that is NOT made when the model does not support it, and the
  * confidence that stays medium even when the arithmetic is exact.
@@ -60,8 +60,8 @@ function suggestion(input: ReturnType<typeof deriveProfileSuggestions>, key: str
 describe('deriveProfileSuggestions', () => {
   it('counts a storey at exactly 0 as above ground', () => {
     const derived = deriveProfileSuggestions({ summary: summary(HOUSE), spaceNames: [] })
-    expect(suggestion(derived, 'geschosse_oberirdisch')?.value).toBe(3)
-    expect(suggestion(derived, 'geschosse_unterirdisch')?.value).toBe(1)
+    expect(suggestion(derived, 'storeys_above_ground')?.value).toBe(3)
+    expect(suggestion(derived, 'storeys_below_ground')?.value).toBe(1)
   })
 
   it('drops to medium confidence when some storeys have no elevation', () => {
@@ -69,7 +69,7 @@ describe('deriveProfileSuggestions', () => {
       summary: summary([...HOUSE, storey('Dachgeschoss', null)]),
       spaceNames: [],
     })
-    expect(suggestion(derived, 'geschosse_oberirdisch')?.confidence).toBe('medium')
+    expect(suggestion(derived, 'storeys_above_ground')?.confidence).toBe('medium')
   })
 
   it('omits the storey counts entirely when nothing is placed', () => {
@@ -77,8 +77,8 @@ describe('deriveProfileSuggestions', () => {
       summary: summary([storey('Erdgeschoss', null)]),
       spaceNames: [],
     })
-    expect(suggestion(derived, 'geschosse_oberirdisch')).toBeUndefined()
-    expect(suggestion(derived, 'fluchtniveau')).toBeUndefined()
+    expect(suggestion(derived, 'storeys_above_ground')).toBeUndefined()
+    expect(suggestion(derived, 'escape_level')).toBeUndefined()
   })
 
   it('bands the Fluchtniveau from the highest OCCUPIED storey', () => {
@@ -88,7 +88,7 @@ describe('deriveProfileSuggestions', () => {
       summary: summary([...HOUSE, storey('Dachebene', 12, 0)]),
       spaceNames: [],
     })
-    expect(suggestion(derived, 'fluchtniveau')?.value).toBe('<=7m')
+    expect(suggestion(derived, 'escape_level')?.value).toBe('<=7m')
   })
 
   it('picks the next band up for a taller building', () => {
@@ -96,7 +96,7 @@ describe('deriveProfileSuggestions', () => {
       summary: summary([storey('EG', 0), storey('OG8', 9)]),
       spaceNames: [],
     })
-    expect(suggestion(derived, 'fluchtniveau')?.value).toBe('7-11m')
+    expect(suggestion(derived, 'escape_level')?.value).toBe('7-11m')
   })
 
   it('never claims better than medium confidence on the Fluchtniveau', () => {
@@ -104,7 +104,7 @@ describe('deriveProfileSuggestions', () => {
     // route. A storey elevation is a proxy for that, and the difference decides
     // a Gebäudeklasse — so this stays a proposal however exact the number is.
     const derived = deriveProfileSuggestions({ summary: summary(HOUSE), spaceNames: [] })
-    expect(suggestion(derived, 'fluchtniveau')?.confidence).toBe('medium')
+    expect(suggestion(derived, 'escape_level')?.confidence).toBe('medium')
   })
 
   it('reads the main use from the room names', () => {
@@ -112,7 +112,7 @@ describe('deriveProfileSuggestions', () => {
       summary: summary(HOUSE),
       spaceNames: ['WE 01 Wohnzimmer', 'WE 01 Schlafzimmer', 'WE 02 Küche', 'Flur', 'Technik'],
     })
-    expect(suggestion(derived, 'hauptnutzung')?.value).toBe('wohnen')
+    expect(suggestion(derived, 'main_use')?.value).toBe('residential')
   })
 
   it('ignores circulation and service rooms', () => {
@@ -120,7 +120,7 @@ describe('deriveProfileSuggestions', () => {
       summary: summary(HOUSE),
       spaceNames: ['Kellerabteil Lager', 'Technikraum Lager', 'Garage Lager'],
     })
-    expect(suggestion(derived, 'hauptnutzung')).toBeUndefined()
+    expect(suggestion(derived, 'main_use')).toBeUndefined()
   })
 
   it('says nothing when one room matches, because one room is a coincidence', () => {
@@ -128,7 +128,7 @@ describe('deriveProfileSuggestions', () => {
       summary: summary(HOUSE),
       spaceNames: ['Büro', 'Raum 1', 'Raum 2', 'Raum 3'],
     })
-    expect(suggestion(derived, 'hauptnutzung')).toBeUndefined()
+    expect(suggestion(derived, 'main_use')).toBeUndefined()
   })
 
   it('says nothing for a tie, rather than guessing a mixed-use building', () => {
@@ -136,14 +136,14 @@ describe('deriveProfileSuggestions', () => {
       summary: summary(HOUSE),
       spaceNames: ['Wohnzimmer', 'Schlafzimmer', 'Büro 1', 'Büro 2'],
     })
-    expect(suggestion(derived, 'hauptnutzung')).toBeUndefined()
+    expect(suggestion(derived, 'main_use')).toBeUndefined()
   })
 
   it('offers the room count as the room count, at the lowest confidence', () => {
     // Rooms are not Nutzungseinheiten — a flat is several rooms — and the
     // evidence line has to say so.
     const derived = deriveProfileSuggestions({ summary: summary(HOUSE, 12), spaceNames: [] })
-    const units = suggestion(derived, 'anzahl_einheiten')
+    const units = suggestion(derived, 'unit_count')
     expect(units?.value).toBe(12)
     expect(units?.confidence).toBe('low')
     expect(units?.evidence).toContain('nicht dasselbe')
@@ -170,6 +170,6 @@ describe('renderProfileSuggestions', () => {
     const rendered = renderProfileSuggestions(
       deriveProfileSuggestions({ summary: summary(HOUSE), spaceNames: [] })
     )
-    expect(rendered.split('\n')[0]).toMatch(/^geschosse_oberirdisch = 3 \(high\) — /)
+    expect(rendered.split('\n')[0]).toMatch(/^storeys_above_ground = 3 \(high\) — /)
   })
 })

@@ -120,7 +120,7 @@ export const tasks = {
     'deep-research': 'Research',
     chat: 'Chat',
     compliance_check: 'Compliance check',
-    einreichcheck: 'Submission check',
+    submission_check: 'Submission check',
     document: 'Document',
     revision: 'Revision',
   },

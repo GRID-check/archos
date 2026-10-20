@@ -35,7 +35,7 @@ describe('the registry names a push policy for every type', () => {
     for (const type of ['mention.requested', 'piloti.asks_you', 'job.waiting', 'document.review_requested'] as const) {
       expect(isPushWanted(type, DEFAULT_PUSH_PREFERENCES)).toBe(true)
     }
-    for (const type of ['conversation.activity', 'upload.completed', 'document.new_fassung'] as const) {
+    for (const type of ['conversation.activity', 'upload.completed', 'document.new_revision'] as const) {
       expect(isPushWanted(type, DEFAULT_PUSH_PREFERENCES)).toBe(false)
     }
   })

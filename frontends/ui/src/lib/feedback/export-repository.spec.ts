@@ -106,7 +106,7 @@ describe('listFeedbackExportRows', () => {
         conversation_id: 's_1',
         conversation_found: true,
         conversation_title: 'T',
-        topics: ['brandschutz', 'not_a_tag'],
+        topics: ['fire_safety', 'not_a_tag'],
         project_id: null,
         answer: 'A',
         answered_at: '2026-10-06T08:14:10.000Z',
@@ -131,7 +131,7 @@ describe('listFeedbackExportRows', () => {
     expect(row).toMatchObject({
       reason: 'other',
       comment: null,
-      topics: ['brandschutz'],
+      topics: ['fire_safety'],
       answerMode: 'shallow',
       answerConfidence: null,
       sourcesCited: 3,
@@ -151,12 +151,12 @@ describe('getFeedbackExportTotals', () => {
     const execute = capture([{ votes: '6', up: '3', down: '3', voters: '5', organizations: '2' }])
     const totals = await getFeedbackExportTotals({
       scope: { ...all.scope, organizationIds: ['org_9'] },
-      ratings: { ...NO_RATINGS_FILTERS, topics: ['statik'] },
+      ratings: { ...NO_RATINGS_FILTERS, topics: ['structural'] },
     })
     const { sql, params } = queryOf(execute)
 
     expect(totals).toEqual({ votes: 6, up: 3, down: 3, voters: 5, organizations: 2 })
-    expect(params).toEqual(expect.arrayContaining(['org_9', 'statik']))
+    expect(params).toEqual(expect.arrayContaining(['org_9', 'structural']))
     // The question lateral's `limit 1` is per vote; the set itself has no bound.
     expect(sql).not.toMatch(/limit \$\d+/i)
   })
@@ -201,7 +201,7 @@ describe('the shared vote scope, per filter', () => {
       /f\.verdict = 'down' and coalesce\(f\.reason, 'other'\) in \(\$\d+, \$\d+\)/,
       ['inaccurate', 'other'],
     ],
-    ['topics, any of them', { topics: ['brandschutz', 'statik'] }, /c\.tags && array\[\$\d+, \$\d+\]::text\[\]/, ['brandschutz', 'statik']],
+    ['topics, any of them', { topics: ['fire_safety', 'structural'] }, /c\.tags && array\[\$\d+, \$\d+\]::text\[\]/, ['fire_safety', 'structural']],
     ['answer modes, report from the job id', { modes: ['report', 'deep'] }, /then 'report' else m\.metadata->'provenance'->>'routingDecision' end\) in \(/, ['deep', 'report']],
     ['confidence', { confidences: ['low'] }, /m\.metadata->'provenance'->>'answerConfidence'\) in \(\$\d+\)/, ['low']],
     ['a comment', { hasComment: true }, /nullif\(btrim\(f\.comment\), ''\) is not null/, []],
@@ -225,7 +225,7 @@ describe('the shared vote scope, per filter', () => {
 describe('countFeedbackVotes', () => {
   it('stops counting one past the cap, under the same scope', async () => {
     const execute = capture([{ votes: '5001' }])
-    const counted = await countFeedbackVotes(withRatings({ topics: ['statik'] }), 5000)
+    const counted = await countFeedbackVotes(withRatings({ topics: ['structural'] }), 5000)
     const { sql, params } = queryOf(execute)
 
     expect(counted).toBe(5001)
@@ -241,7 +241,7 @@ describe('getFeedbackFacets', () => {
       { facet: 'verdict', key: 'up', votes: '12' },
       { facet: 'verdict', key: 'down', votes: '3' },
       { facet: 'reason', key: 'inaccurate', votes: '2' },
-      { facet: 'topic', key: 'brandschutz', votes: '7' },
+      { facet: 'topic', key: 'fire_safety', votes: '7' },
       { facet: 'topic', key: 'not_a_tag', votes: '1' },
       { facet: 'mode', key: 'deep', votes: '4' },
       { facet: 'confidence', key: 'high', votes: '9' },
@@ -268,7 +268,7 @@ describe('getFeedbackFacets', () => {
       { key: 'too_slow', votes: 0 },
       { key: 'other', votes: 0 },
     ])
-    expect(facets.topics).toEqual([{ key: 'brandschutz', votes: 7 }])
+    expect(facets.topics).toEqual([{ key: 'fire_safety', votes: 7 }])
     expect(facets.modes.find((entry) => entry.key === 'deep')?.votes).toBe(4)
     expect(facets.confidences.find((entry) => entry.key === 'high')?.votes).toBe(9)
     expect(facets).toMatchObject({ withComment: 2, withExpectedAnswer: 1 })

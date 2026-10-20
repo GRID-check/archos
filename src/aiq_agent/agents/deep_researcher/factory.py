@@ -157,20 +157,20 @@ class DeepResearchGraphContext:
             norm_doctrine=doctrine_for(self.project_context),
             jurisdiction_grounding=JURISDICTION_GROUNDING,
             parcel_note=parcel_note(self.available_documents),
-            grundlage=self.grundlage,
-            ausgeschlossen=self.ausgeschlossen,
+            basis=self.basis,
+            excluded=self.excluded,
             **values,
         )
 
     @property
-    def grundlage(self) -> list[dict[str, Any]]:
+    def basis(self) -> list[dict[str, Any]]:
         docs = self.state.plan_documents
-        return [doc.model_dump() for doc in docs.grundlage] if docs else []
+        return [doc.model_dump() for doc in docs.basis] if docs else []
 
     @property
-    def ausgeschlossen(self) -> list[dict[str, Any]]:
+    def excluded(self) -> list[dict[str, Any]]:
         docs = self.state.plan_documents
-        return [doc.model_dump() for doc in docs.ausgeschlossen] if docs else []
+        return [doc.model_dump() for doc in docs.excluded] if docs else []
 
     def middleware(self, base: Sequence[Any]) -> list[Any]:
         return [*base, *self.visibility_middleware]

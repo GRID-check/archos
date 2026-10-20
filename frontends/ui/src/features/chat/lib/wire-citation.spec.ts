@@ -23,8 +23,8 @@ const KB_WIRE: WireCitationSource = {
   origin: 'kb',
   file_name: 'oib-rl_2_ausgabe_mai_2023.pdf',
   page: 12,
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   lane_label: 'OIB-Richtlinie',
   number: 1,
 }
@@ -45,8 +45,8 @@ describe('normalizeOrigin', () => {
 describe('citationFromWire', () => {
   test('carries the canonical taxonomy fields through', () => {
     const citation = citationFromWire(KB_WIRE)
-    expect(citation.kind).toBe('baurecht')
-    expect(citation.lane).toBe('baurecht_oib')
+    expect(citation.kind).toBe('building_law')
+    expect(citation.lane).toBe('building_law_oib')
     expect(citation.laneLabel).toBe('OIB-Richtlinie')
     expect(citation.number).toBe(1)
     expect(citation.fileName).toBe('oib-rl_2_ausgabe_mai_2023.pdf')
@@ -63,15 +63,29 @@ describe('citationFromWire', () => {
   })
 
   test('keeps a real binding classification', () => {
-    expect(citationFromWire({ ...KB_WIRE, binding_status: 'verbindlich_erklaert' }).bindingStatus).toBe(
-      'verbindlich_erklaert',
+    expect(citationFromWire({ ...KB_WIRE, binding_status: 'declared_binding' }).bindingStatus).toBe(
+      'declared_binding',
     )
   })
 
-  test('drops unbekannt to undefined so it renders as no badge, not a hedge', () => {
+  test('reads the German binding statuses an older pod or a stored row still carries', () => {
+    expect(citationFromWire({ ...KB_WIRE, binding_status: 'verbindlich_erklaert' }).bindingStatus).toBe(
+      'declared_binding',
+    )
+    expect(citationFromWire({ ...KB_WIRE, binding_status: 'unbekannt' }).bindingStatus).toBeUndefined()
+  })
+
+  test('reads the German kind, lane and Punkt a stored citation still carries', () => {
+    const citation = citationFromWire({ ...KB_WIRE, kind: 'baurecht', lane: 'baurecht_oib', punkt: '3.5.2' })
+    expect(citation.kind).toBe('building_law')
+    expect(citation.lane).toBe('building_law_oib')
+    expect(citation.clause).toBe('3.5.2')
+  })
+
+  test('drops unknown to undefined so it renders as no badge, not a hedge', () => {
     // The one direction a legal signal must not fail in: absence reads as
     // "not known", never as "not binding".
-    expect(citationFromWire({ ...KB_WIRE, binding_status: 'unbekannt' }).bindingStatus).toBeUndefined()
+    expect(citationFromWire({ ...KB_WIRE, binding_status: 'unknown' }).bindingStatus).toBeUndefined()
     expect(citationFromWire(KB_WIRE).bindingStatus).toBeUndefined()
   })
 })
@@ -108,7 +122,7 @@ describe('mergeCitation', () => {
     const cited = citationFromWire({ citation_key: KB_WIRE.citation_key }, { isCited: true })
     const merged = mergeCitation(discovered, cited)
     expect(merged.isCited).toBe(true)
-    expect(merged.kind).toBe('baurecht')
+    expect(merged.kind).toBe('building_law')
     expect(merged.title).toBe('OIB-Richtlinie 2')
     expect(merged.page).toBe(12)
   })
@@ -142,7 +156,7 @@ describe('dedupeBufferedCitations', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0].isCited).toBe(true)
     // The replayed row must be as rich as the live one.
-    expect(rows[0].kind).toBe('baurecht')
+    expect(rows[0].kind).toBe('building_law')
     expect(rows[0].page).toBe(12)
   })
 
@@ -166,7 +180,7 @@ describe('citationsFromWireList', () => {
   test('normalizes every entry and skips non-objects', () => {
     const list = citationsFromWireList([KB_WIRE, null, 'nope', { url: 'https://example.com/a' }])
     expect(list).toHaveLength(2)
-    expect(list?.[0].kind).toBe('baurecht')
+    expect(list?.[0].kind).toBe('building_law')
   })
 
   test('an empty or absent list yields undefined', () => {

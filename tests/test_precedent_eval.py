@@ -69,7 +69,7 @@ class TestTheFixtureBff:
             "id": "b0000000-0000-4000-8000-000000000002",
             "name": "Holzwohnbau Baden, Wiener Straße",
             "status": "closed",
-            "bundesland": "niederoesterreich",
+            "federal_state": "lower_austria",
         }
 
     def test_a_search_walks_the_projects_in_the_similar_order_production_ranks(self, bff):
@@ -99,11 +99,11 @@ class TestTheFixtureBff:
         assert (permit["fileName"], permit["collection"], permit["kind"], permit["restricted"]) == (
             "MA37_Nachforderung_Druckbelueftung.pdf",
             "proj_eval_wien22",
-            "nachforderung",
+            "information_request",
             False,
         )
         assert permit["project"]["name"] == "Bürogebäude Wien 22, Wagramer Straße"
-        assert permit["project"]["bundesland"] == "wien"
+        assert permit["project"]["federal_state"] == "vienna"
         assert "Prüfbericht" in permit["requirements"][0]["content"]
         assert len(body["permits"]) <= 8
         assert all(0 < len(found["requirements"]) <= 6 for found in body["permits"])
@@ -125,7 +125,7 @@ class TestTheFixtureBff:
         status, brief = _post(bff, "/api/internal/cross-project/brief", {"projectId": listing["projects"][0]["id"]})
         assert status == 200
         _validator("CrossProjectBriefResponse").validate(brief)
-        assert "bundesland=niederoesterreich" in brief["facts"]
+        assert "federal_state=lower_austria" in brief["facts"]
 
         assert _post(bff, "/api/internal/cross-project/brief", {"projectId": "nope"})[0] == 404
 
@@ -186,7 +186,7 @@ def test_the_envelope_the_suite_mints_is_one_the_agent_accepts():
         "suite-1-traufe-frueher-1",
         "bff",
     )
-    assert context.bundesland == "niederoesterreich"
+    assert context.federal_state == "lower_austria"
     assert GridRequestContext.from_envelope(header, signature, "another-secret") is None
 
 
@@ -224,8 +224,8 @@ class TestTheScenarios:
     def test_a_hit_says_its_land_in_another_offices_search(self):
         hits = FixtureOffice(scenario="wien-bestand").search({"query": "Kapselung Gipsfaserplatten"})["hits"]
 
-        assert hits[0]["project"]["bundesland"] == "niederoesterreich"
-        assert {"wien", "niederoesterreich"} <= {hit["project"]["bundesland"] for hit in hits}
+        assert hits[0]["project"]["federal_state"] == "lower_austria"
+        assert {"vienna", "lower_austria"} <= {hit["project"]["federal_state"] for hit in hits}
 
 
 def _concept_embedder(concepts: dict[str, list[str]]):
@@ -286,7 +286,7 @@ class TestTheSearchRanksByMeaning:
         context = GridRequestContext.from_envelope(header, signature, TOKEN)
 
         assert context is not None
-        assert (context.project_id, context.bundesland) == ("a3000000-0000-4000-8000-000000000009", "wien")
+        assert (context.project_id, context.federal_state) == ("a3000000-0000-4000-8000-000000000009", "vienna")
 
     def test_an_unknown_scenario_is_refused_rather_than_answered_from_the_default(self):
         with pytest.raises(KeyError):

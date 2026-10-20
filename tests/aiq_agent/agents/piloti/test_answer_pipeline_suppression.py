@@ -44,7 +44,7 @@ WINDOW_PROSE = "x" * 500
 #: Below both floors: the trailer shrinks to the callout alone.
 SHORT_PROSE = "x" * 300
 
-_CALLOUT = {"kind": "frist", "text": "Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."}
+_CALLOUT = {"kind": "deadline", "text": "Die Bauverhandlung ist binnen sechs Wochen anzuberaumen."}
 _TAKEAWAYS = [
     {"text": "Massgeblich ist das Fluchtniveau, nicht die Geschosszahl"},
     {"text": "Tragende Bauteile mindestens REI 60", "detail": "Nach OIB-Richtlinie 2, Tabelle 1b."},
@@ -162,7 +162,7 @@ class TestCalloutSurvival:
         final = await finalize_answer(messages, registry=registry, tools=[], repair=None)
 
         assert final.answer_meta is not None
-        assert final.answer_meta["callout"]["kind"] == "frist"
+        assert final.answer_meta["callout"]["kind"] == "deadline"
         assert final.content is not None and final.content.count("[[callout]]") == 1
 
 

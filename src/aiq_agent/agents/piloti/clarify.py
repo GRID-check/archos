@@ -74,6 +74,7 @@ from aiq_agent.common.agent_tools import load_agent_tools
 from aiq_agent.common.plan_documents import MAX_PLAN_DOCUMENTS
 from aiq_agent.common.plan_documents import PlanDocuments
 from aiq_agent.common.plan_documents import documents_from_plan
+from aiq_agent.common.plan_vocabulary import modernize_plan
 from aiq_agent.common.request_llm_context import RequestLLMContext
 from aiq_agent.common.request_llm_context import read_request_llm_context
 from aiq_agent.common.turn_status import emit_step
@@ -306,6 +307,7 @@ def apply_plan_edits(plan: PlanResponse, edits_json: str) -> PlanResponse:
     edits = _parse_edits(edits_json)
     if edits is None:
         return plan
+    edits = modernize_plan(edits)
     data = plan.model_dump()
     sections = edits.get("sections")
     if isinstance(sections, list):
@@ -315,7 +317,7 @@ def apply_plan_edits(plan: PlanResponse, edits_json: str) -> PlanResponse:
     for key in ("genre", "depth"):
         if isinstance(edits.get(key), str):
             data[key] = edits[key]
-    for key in ("grundlage", "ausgeschlossen"):
+    for key in ("basis", "excluded"):
         if isinstance(edits.get(key), list):
             data[key] = _names(edits[key])
     try:
@@ -339,7 +341,7 @@ def plan_data_sources(edits_json: str) -> list[str] | None:
 
 def plan_documents(plan: PlanResponse, inventory: list[dict[str, Any]] | None) -> PlanDocuments | None:
     """The plan's Unterlagen, resolved against what this turn can actually read."""
-    return documents_from_plan(plan.grundlage, plan.ausgeschlossen, inventory)
+    return documents_from_plan(plan.basis, plan.excluded, inventory)
 
 
 def _inventory_rows(inventory: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
@@ -381,7 +383,7 @@ def format_plan_for_user(plan: PlanResponse, inventory: list[dict[str, Any]] | N
     if rows:
         # What the run can read, so the card's picker needs no second fetch
         # and can only ever name a document this turn could find.
-        payload["unterlagen"] = rows
+        payload["documents"] = rows
     plan_json = json.dumps(payload, ensure_ascii=False)
     return (
         f"**Research Plan Preview**\n\n"
@@ -454,15 +456,15 @@ def approved_plan_context(plan: PlanResponse, documents: PlanDocuments | None = 
         f"**Approved Research Plan**\n\nTitle: {plan.title}\nGenre: {plan.genre}\nDepth: {plan.depth}\n\n"
         f"Sections (required components, in this order):\n{sections_text}"
     )
-    if documents and documents.grundlage:
+    if documents and documents.basis:
         text += (
             "\n\nGrundlage (documents to read in full, each through its own research query; "
-            f"a report that could not reach one names it as unread):\n{_document_lines(documents.grundlage)}"
+            f"a report that could not reach one names it as unread):\n{_document_lines(documents.basis)}"
         )
-    if documents and documents.ausgeschlossen:
+    if documents and documents.excluded:
         text += (
             "\n\nAusgeschlossen (documents that may not be used: never searched, never cited):\n"
-            f"{_document_lines(documents.ausgeschlossen)}"
+            f"{_document_lines(documents.excluded)}"
         )
     return text
 

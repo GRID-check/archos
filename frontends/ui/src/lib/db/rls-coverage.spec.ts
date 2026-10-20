@@ -169,6 +169,9 @@ const BOUNDARY_MIGRATIONS = [
   // Platform bookkeeping with no tenant data, so a PLATFORM table: every
   // tenant reads, only the platform role (the exporter) writes.
   '0154_analytics_export_cursors.sql',
+  // Renames document_fassung_announcements to document_revision_announcements and
+  // secures it under the new name, as 0043 did for jobs.
+  '0165_revision_names.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

@@ -35,7 +35,7 @@ export const POST = apiRoute(
         screeningRelease: readScreeningRelease(formData.get('screeningRelease')),
         uploadBatchId: readUploadBatchId(formData.get('uploadBatchId')),
         // The older document, when the reader filed this as its new Fassung (ADR-0099); checked by the service.
-        fassungOf: readRevisionOf(formData.get('fassungOf')),
+        revisionOf: readRevisionOf(formData.get('revisionOf') ?? formData.get('fassungOf')),
       },
       request
     )

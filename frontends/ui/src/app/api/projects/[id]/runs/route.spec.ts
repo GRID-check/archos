@@ -96,13 +96,13 @@ describe('POST /api/projects/[id]/runs', () => {
     const response = await post({
       conversationId: 's_conv',
       question: 'Fortschreibung: Bericht',
-      documents: { grundlage: [{ name: 'Einreichplan.pdf', shelf: 'project' }], ausgeschlossen: [] },
+      documents: { basis: [{ name: 'Einreichplan.pdf', shelf: 'project' }], excluded: [] },
     })
     expect(response.status).toBe(201)
     expect(commissionResearchRun).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user_1' }),
       expect.objectContaining({
-        documents: { grundlage: [{ name: 'Einreichplan.pdf', shelf: 'project' }], ausgeschlossen: [] },
+        documents: { basis: [{ name: 'Einreichplan.pdf', shelf: 'project' }], excluded: [] },
       })
     )
   })

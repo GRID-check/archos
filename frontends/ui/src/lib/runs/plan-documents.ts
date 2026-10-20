@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod'
+import { modernizePlan } from './plan-vocabulary'
 
 export const MAX_PLAN_DOCUMENTS = 20
 const MAX_NAME_CHARS = 256
@@ -25,12 +26,16 @@ export const planDocumentSchema = z
 
 export type PlanDocument = z.infer<typeof planDocumentSchema>
 
-export const planDocumentsSchema = z
-  .object({
-    grundlage: z.array(planDocumentSchema).max(MAX_PLAN_DOCUMENTS).default([]),
-    ausgeschlossen: z.array(planDocumentSchema).max(MAX_PLAN_DOCUMENTS).default([]),
-  })
-  .strict()
+export const planDocumentsSchema = z.preprocess(
+  // A tab opened before the rename still sends `grundlage` / `ausgeschlossen`.
+  modernizePlan,
+  z
+    .object({
+      basis: z.array(planDocumentSchema).max(MAX_PLAN_DOCUMENTS).default([]),
+      excluded: z.array(planDocumentSchema).max(MAX_PLAN_DOCUMENTS).default([]),
+    })
+    .strict()
+)
 
 export type PlanDocuments = z.infer<typeof planDocumentsSchema>
 
@@ -39,7 +44,7 @@ export const planDocumentLabel = (doc: PlanDocument): string => doc.title ?? doc
 
 /** Nothing named on either list. */
 export const isEmptyPlanDocuments = (docs: PlanDocuments | null | undefined): boolean =>
-  !docs || (docs.grundlage.length === 0 && docs.ausgeschlossen.length === 0)
+  !docs || (docs.basis.length === 0 && docs.excluded.length === 0)
 
 /**
  * Reduce an untrusted payload to the contract, or null when nothing survives.
@@ -48,8 +53,8 @@ export const isEmptyPlanDocuments = (docs: PlanDocuments | null | undefined): bo
  */
 export function sanitizePlanDocuments(input: unknown): PlanDocuments | null {
   const parsed = z
-    .object({ grundlage: z.array(z.unknown()).optional(), ausgeschlossen: z.array(z.unknown()).optional() })
-    .safeParse(input)
+    .object({ basis: z.array(z.unknown()).optional(), excluded: z.array(z.unknown()).optional() })
+    .safeParse(modernizePlan(input))
   if (!parsed.success) return null
   const seen = new Set<string>()
   const take = (rows: unknown[] | undefined): PlanDocument[] => {
@@ -66,8 +71,8 @@ export function sanitizePlanDocuments(input: unknown): PlanDocuments | null {
     }
     return out
   }
-  const excluded = take(parsed.data.ausgeschlossen)
-  const basis = take(parsed.data.grundlage)
+  const excluded = take(parsed.data.excluded)
+  const basis = take(parsed.data.basis)
   if (basis.length === 0 && excluded.length === 0) return null
-  return { grundlage: basis, ausgeschlossen: excluded }
+  return { basis: basis, excluded: excluded }
 }

@@ -68,7 +68,7 @@ describe('handed_off', () => {
     expect(messages.map((m) => m.id)).toEqual(['turn-1', 'run-msg-1', 'other'])
     const run = messages[1]!
     expect(run).toMatchObject({ role: 'assistant', messageType: 'agent_response', content: '' })
-    expect(run.runLedger).toMatchObject({ runId: 'run-1', status: 'angelegt', steps: [] })
+    expect(run.runLedger).toMatchObject({ runId: 'run-1', status: 'created', steps: [] })
     expect(run.runTitle).toBe('Prüfe die Fluchtwege im 3. OG')
   })
 

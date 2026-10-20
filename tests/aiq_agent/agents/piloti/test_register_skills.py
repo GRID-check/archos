@@ -505,7 +505,7 @@ async def test_the_envelope_names_reach_the_runtime_after_the_run():
     decides what it means (ADR-0063); ``skills_activated`` is read after that."""
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
     config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=True)
-    resolved = (_skill("gebaeudeklasse"),)
+    resolved = (_skill("building-class"),)
     runtime = _skill_runtime(resolved)
 
     def _accept(names):
@@ -516,7 +516,7 @@ async def test_the_envelope_names_reach_the_runtime_after_the_run():
     stub = _make_agent_stub()
 
     async def _run(state, turn=None):
-        state.skills_applied = ["gebaeudeklasse"]
+        state.skills_applied = ["building-class"]
         return state
 
     with (
@@ -531,5 +531,5 @@ async def test_the_envelope_names_reach_the_runtime_after_the_run():
         result = await run_fn(ResearchAgentState(messages=[HumanMessage(content="Welche GK?")]))
         await gen.aclose()
 
-    runtime.record_applied.assert_called_once_with(["gebaeudeklasse"])
-    assert result.skills_activated == ["gebaeudeklasse"]
+    runtime.record_applied.assert_called_once_with(["building-class"])
+    assert result.skills_activated == ["building-class"]

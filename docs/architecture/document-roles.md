@@ -32,7 +32,7 @@ binding carries four things a column cannot:
    sheets.
 3. The binding has its own provenance: who declared it, when, and whether a
    person confirmed it or a classifier guessed it.
-4. The binding is **scoped**. "Bestandsplan of Bauwerk bw2" is not a project
+4. The binding is **scoped**. "Bestandsplan of Bauwerk bldg2" is not a project
    fact, and a project mixing a Neubau and a Bestand is what the intake concept
    exists for.
 
@@ -79,7 +79,7 @@ being filed into one — the correct rule, not a limitation.
   project", and catches the soft-deleted case the FK cannot see.
 - **A building binding needs a saved building.** The service accepts a
   `bauwerk` binding only for a building the stored profile names. During a first
-  intake, every building but `bw1` exists only in the wizard's draft, so the
+  intake, every building but `bldg1` exists only in the wizard's draft, so the
   wizard holds those bindings (`features/projects/lib/pending-role-binds.ts`),
   shows them as "wird beim Speichern zugeordnet", keeps them in the draft, and
   sends them once the save has made the building real. Removing the building in

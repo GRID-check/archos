@@ -754,8 +754,8 @@ describe('useFileUpload — durable document uploads', () => {
     })
 
     const bodies = new Map(xhr.requests.map((request) => [(request.body as FormData).get('file'), request.body as FormData]))
-    expect(bodies.get(filed)?.get('fassungOf')).toBe('doc-older')
-    expect(bodies.get(plain)?.has('fassungOf')).toBe(false)
+    expect(bodies.get(filed)?.get('revisionOf')).toBe('doc-older')
+    expect(bodies.get(plain)?.has('revisionOf')).toBe(false)
   })
 
   test('retries a file into the same Fassung it was filed as', async () => {
@@ -785,7 +785,7 @@ describe('useFileUpload — durable document uploads', () => {
       await pending
     })
 
-    expect((xhr.last().body as FormData).get('fassungOf')).toBe('doc-older')
+    expect((xhr.last().body as FormData).get('revisionOf')).toBe('doc-older')
   })
 
   test('records where each file went and what the reader released, for a retry to repeat', async () => {

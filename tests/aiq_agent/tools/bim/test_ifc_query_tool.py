@@ -534,7 +534,7 @@ class TestComplianceOperation:
         assert build(operation="compliance", gebaeudeklasse=4, hauptnutzung="Wohnen") == {
             "op": "compliance",
             "gebaeudeklasse": 4,
-            "hauptnutzung": "wohnen",
+            "hauptnutzung": "residential",
         }
 
     def test_a_fact_that_was_not_supplied_is_omitted_rather_than_defaulted(self):
@@ -572,19 +572,26 @@ class TestComplianceOperation:
         # the description presents as merely imprecise.
         assert build(operation="compliance", hauptnutzung="Wohngebäude") == {"op": "compliance"}
 
+    def test_the_german_main_use_a_profile_or_model_still_says_is_passed_as_the_english_one(self):
+        assert build(operation="compliance", hauptnutzung="Wohnen") == {
+            "op": "compliance",
+            "hauptnutzung": "residential",
+        }
+        assert build(operation="compliance", hauptnutzung="lager") == {"op": "compliance", "hauptnutzung": "storage"}
+
     def test_every_main_use_the_catalogue_knows_is_passed_through(self):
-        # Mirrors `BIM_HAUPTNUTZUNG` in lib/bim/query.ts. A value dropped here
+        # Mirrors `BIM_MAIN_USE` in lib/bim/query.ts. A value dropped here
         # is a rule that stands down for no reason.
         for value in (
-            "wohnen",
-            "buero",
-            "beherbergung",
-            "versammlung",
-            "gesundheit",
-            "landwirtschaft",
-            "produzierend",
-            "lager",
-            "sonstiges",
+            "residential",
+            "office",
+            "lodging",
+            "assembly",
+            "healthcare",
+            "agriculture",
+            "manufacturing",
+            "storage",
+            "other",
         ):
             assert build(operation="compliance", hauptnutzung=value.upper()) == {
                 "op": "compliance",
@@ -605,7 +612,7 @@ class TestComplianceOperation:
                     {
                         "path": "Pset_WallCommon.FireRating",
                         "elements": 34,
-                        "rules": ["oib2-feuerwiderstand-tragend"],
+                        "rules": ["oib2-fire-resistance-load-bearing"],
                     }
                 ],
             },
@@ -656,7 +663,7 @@ class TestComplianceOperation:
                 "summary": "…",
                 "compliance": [
                     {
-                        "ruleId": "oib4-tuer-durchgangsbreite",
+                        "ruleId": "oib4-door-clear-width",
                         "titleDe": "Türen — lichte Durchgangsbreite",
                         "richtlinie": "OIB 4",
                         "failed": 3,
@@ -668,7 +675,7 @@ class TestComplianceOperation:
             "p1",
         )
 
-        assert "Regel oib4-tuer-durchgangsbreite" in rendered
+        assert "Regel oib4-door-clear-width" in rendered
         assert "3 nicht erfüllt" in rendered
 
     def test_a_clean_rule_is_not_offered_as_a_card_row(self):
@@ -682,7 +689,7 @@ class TestComplianceOperation:
                 "summary": "…",
                 "compliance": [
                     {
-                        "ruleId": "oib3-raumhoehe",
+                        "ruleId": "oib3-room-height",
                         "titleDe": "Aufenthaltsräume — lichte Raumhöhe",
                         "richtlinie": "OIB 3",
                         "failed": 0,
@@ -694,7 +701,7 @@ class TestComplianceOperation:
             "p1",
         )
 
-        assert "oib3-raumhoehe" not in rendered
+        assert "oib3-room-height" not in rendered
 
     def test_an_undecidable_rule_is_work_too(self):
         # "The model does not publish the value" is the state this whole
@@ -737,11 +744,11 @@ class TestComplianceOperation:
             },
             "p1",
             4,
-            "wohnen",
+            "residential",
         )
         assert (
             "BCF-Export der offenen Punkte: /api/projects/p1/bim/checks/export"
-            "?model=Haus-A_V3.ifc&gebaeudeklasse=4&hauptnutzung=wohnen" in rendered
+            "?model=Haus-A_V3.ifc&gebaeudeklasse=4&hauptnutzung=residential" in rendered
         )
 
     def test_the_bcf_link_carries_no_fact_the_run_did_not_have(self):
@@ -912,10 +919,10 @@ class TestBuildingClassValidation:
             {"resolved": True, "op": "compliance", "model": {"filename": "haus.ifc"}, "summary": "…"},
             "p1",
             9,
-            "wohnen",
+            "residential",
         )
 
-        assert "checks/export?model=haus.ifc&hauptnutzung=wohnen" in rendered
+        assert "checks/export?model=haus.ifc&hauptnutzung=residential" in rendered
         assert "gebaeudeklasse" not in rendered
 
 

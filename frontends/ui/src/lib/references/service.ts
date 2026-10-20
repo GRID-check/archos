@@ -64,8 +64,8 @@ const READ_CONCURRENCY = 4
  */
 function federalStateOfProject(profile: Project['profile'] | null): ReferenceFact<string> | null {
   const confirmed = federalStateOf(profile)
-  const token = confirmed ?? similarityFacts(profile).bundesland
-  return token ? { value: factLabel('bundesland', token), confirmed: confirmed !== null } : null
+  const token = confirmed ?? similarityFacts(profile).federal_state
+  return token ? { value: factLabel('federal_state', token), confirmed: confirmed !== null } : null
 }
 
 /** A period as the page shows it: a closed project with no recorded end ends when it was closed. */
@@ -153,7 +153,7 @@ async function referenceOf(
     id: project.id,
     name: project.name,
     period: periodOf(project),
-    bundesland: federalStateOfProject(project.profile),
+    federal_state: federalStateOfProject(project.profile),
     oibEdition: oibEditionOf(project.profile),
     alike: similarity(current.facts, similarityFacts(project.profile)) > 0,
     sharedTraits: sharedTraitsOf(current, project.profile),

@@ -34,29 +34,29 @@ from pydantic import Field
 #: The five phases a run walks, in order. ASCII keys; the German with its
 #: umlauts is rendered from the frontend's dictionaries, because a key with an
 #: umlaut in it arrives differently normalised depending on who serialised it.
-RUN_PHASES: tuple[str, ...] = ("planen", "recherchieren", "pruefen", "schreiben", "abgelegt")
-RunPhase = Literal["planen", "recherchieren", "pruefen", "schreiben", "abgelegt"]
+RUN_PHASES: tuple[str, ...] = ("planning", "researching", "checking", "writing", "filed")
+RunPhase = Literal["planning", "researching", "checking", "writing", "filed"]
 
 #: The seven display states a run is shown in. NOT ``task_runs.status`` — that
 #: column is the row's lifecycle and keeps its own CHECK; these are what the
 #: reader is told.
 RUN_STATUSES: tuple[str, ...] = (
-    "angelegt",
-    "laeuft",
-    "wartet",
-    "fertig",
-    "fehlgeschlagen",
-    "abgebrochen",
-    "unterbrochen",
+    "created",
+    "running",
+    "waiting",
+    "done",
+    "failed",
+    "cancelled",
+    "interrupted",
 )
 RunStatus = Literal[
-    "angelegt",
-    "laeuft",
-    "wartet",
-    "fertig",
-    "fehlgeschlagen",
-    "abgebrochen",
-    "unterbrochen",
+    "created",
+    "running",
+    "waiting",
+    "done",
+    "failed",
+    "cancelled",
+    "interrupted",
 ]
 
 MAX_RUN_ID_CHARS = 64
@@ -162,7 +162,7 @@ class RunLedger(_Wire):
     error: RunError | None = None
     #: The documents the reader named as Grundlage (loci empty: the receipt is
     #: read off the steps). Absent when none was named.
-    grundlage: list[RunLedgerDoc] | None = Field(default=None, max_length=MAX_BASIS_DOCS)
+    basis: list[RunLedgerDoc] | None = Field(default=None, max_length=MAX_BASIS_DOCS)
     started_at: str = Field(alias="startedAt")
     updated_at: str = Field(alias="updatedAt")
     finished_at: str | None = Field(default=None, alias="finishedAt")
@@ -198,7 +198,7 @@ class RunLedgerAppendRequest(_Wire):
     phases: list[RunPhaseEntry] | None = Field(default=None, max_length=len(RUN_PHASES))
     status: RunStatus | None = None
     #: The whole Grundlage list as it now stands (a live addition re-sends it).
-    grundlage: list[RunLedgerDoc] | None = Field(default=None, max_length=MAX_BASIS_DOCS)
+    basis: list[RunLedgerDoc] | None = Field(default=None, max_length=MAX_BASIS_DOCS)
 
 
 class RunLedgerFinishRequest(_Wire):

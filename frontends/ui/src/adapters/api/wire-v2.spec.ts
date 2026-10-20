@@ -80,7 +80,7 @@ describe('chat wire v2 fixtures', () => {
       event.type === 'STEP_FINISHED' && event.step.kind === 'sources' ? [event.step] : []
     )
     expect(sources).toHaveLength(1)
-    expect(sources[0].lanes.map((lane) => lane.kind)).toEqual(['baurecht', 'projekt'])
+    expect(sources[0].lanes.map((lane) => lane.kind)).toEqual(['building_law', 'project'])
   })
 
   it('parses the out-of-band refusals', () => {

@@ -159,7 +159,7 @@ def _capture_page(entry: Any) -> int | None:
 
 
 def _capture_clause(entry: Any) -> str | None:
-    punkt = str(getattr(entry, "punkt", None) or "").strip()
+    punkt = str(getattr(entry, "clause", None) or "").strip()
     return punkt or None
 
 

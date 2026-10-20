@@ -1595,7 +1595,7 @@ def test_the_row_is_the_typed_result_in_wire_spelling():
             cards=[KeyedCard(key="k1", card={"type": "fact"})],
             answer_meta={"verdict": "ok"},
             routing_decision="shallow",
-            skills_activated=["brandschutz"],
+            skills_activated=["fire-safety"],
             retry_after_seconds=3,
         ),
     )
@@ -1604,7 +1604,7 @@ def test_the_row_is_the_typed_result_in_wire_spelling():
         "cards": [{"type": "fact"}],
         "answer_meta": {"verdict": "ok"},
         "routing_decision": "shallow",
-        "skills_activated": ["brandschutz"],
+        "skills_activated": ["fire-safety"],
     }
 
 

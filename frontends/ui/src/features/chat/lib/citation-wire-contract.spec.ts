@@ -69,8 +69,8 @@ describe('wire payload → citation chips', () => {
       {
         number: 1,
         origin: 'kb',
-        kind: 'baurecht',
-        lane: 'baurecht_oib',
+        kind: 'building_law',
+        lane: 'building_law_oib',
         laneLabel: 'OIB-Richtlinie',
         fileName: 'oib-rl_2_ausgabe_mai_2023.pdf',
         page: 12,
@@ -78,8 +78,8 @@ describe('wire payload → citation chips', () => {
       {
         number: 2,
         origin: 'kb',
-        kind: 'projekt',
-        lane: 'projekt',
+        kind: 'project',
+        lane: 'project',
         fileName: 'einreichplan_og.pdf',
         page: 4,
       },

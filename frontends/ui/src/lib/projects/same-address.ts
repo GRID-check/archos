@@ -5,7 +5,7 @@
  * An earlier project on the same plot is the best source a new one has
  * (Bestandspläne, Bescheide), and a duplicate is cheaper to avoid than to merge
  * (`docs/design/agentic-project-intake.md`, „Quality of life"). A project is at
- * the address when its profile's `standort_adresse` is the same line once case,
+ * the address when its profile's `site_address` is the same line once case,
  * diacritics and punctuation are folded away, or when the geocoder's hit kept
  * with its intake lies within {@link SAME_ADDRESS_RADIUS_M} of the chosen one.
  *

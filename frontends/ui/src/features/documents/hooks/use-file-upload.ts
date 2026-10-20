@@ -562,7 +562,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           formData.append('file', file)
           if (options?.screeningReleased?.(file)) formData.append('screeningRelease', 'name')
           const revisionOf = shelf === 'session' ? null : revisionOfFile(file)
-          if (revisionOf) formData.append('fassungOf', revisionOf)
+          if (revisionOf) formData.append('revisionOf', revisionOf)
           if (batchId) formData.append('uploadBatchId', batchId)
           // Where the file sat before it came here. Set by a folder INPUT
           // (`webkitdirectory`) and stamped onto a dropped tree's files by

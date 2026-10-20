@@ -31,17 +31,17 @@ import { findingCounts, hasFindingStatuses } from '@/lib/conversations/message-f
 import { cn } from '@/lib/utils'
 
 const STATUS_ICON: Record<FindingStatus, typeof CircleCheck> = {
-  erfuellt: CircleCheck,
-  nicht_erfuellt: CircleX,
-  offen: CircleHelp,
-  nicht_anwendbar: CircleMinus,
+  met: CircleCheck,
+  not_met: CircleX,
+  open: CircleHelp,
+  not_applicable: CircleMinus,
 }
 
 const STATUS_VARIANT: Record<FindingStatus, 'success' | 'destructive' | 'warning' | 'muted'> = {
-  erfuellt: 'success',
-  nicht_erfuellt: 'destructive',
-  offen: 'warning',
-  nicht_anwendbar: 'muted',
+  met: 'success',
+  not_met: 'destructive',
+  open: 'warning',
+  not_applicable: 'muted',
 }
 
 const referenceText = (
@@ -86,7 +86,7 @@ export function droppedFrom(previous: Findings | undefined, current: Findings): 
 const STACKED_CELL =
   '@max-[30rem]/matrix:flex @max-[30rem]/matrix:items-baseline @max-[30rem]/matrix:gap-3 @max-[30rem]/matrix:py-0 @max-[30rem]/matrix:pr-0 @max-[30rem]/matrix:before:w-[30%] @max-[30rem]/matrix:before:shrink-0 @max-[30rem]/matrix:before:text-xs @max-[30rem]/matrix:before:text-muted-foreground @max-[30rem]/matrix:before:content-[attr(data-label)]'
 
-const OPEN_STATUSES: ReadonlySet<FindingStatus> = new Set(['offen', 'nicht_erfuellt'])
+const OPEN_STATUSES: ReadonlySet<FindingStatus> = new Set(['open', 'not_met'])
 
 const RequirementText: FC<{ finding: Finding; change: FindingChange }> = ({ finding, change }) => {
   const t = useTranslations('chat')
@@ -191,7 +191,7 @@ const FindingRow: FC<{
                 {t(`findings.status.${finding.status}`)}
               </Chip>
             )}
-            {finding.grounding !== 'belegt' && (
+            {finding.grounding !== 'sourced' && (
               <Chip size="sm" variant="outline">
                 {t(`findings.grounding.${finding.grounding}`)}
               </Chip>

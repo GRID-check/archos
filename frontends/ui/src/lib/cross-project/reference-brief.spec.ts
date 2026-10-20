@@ -58,15 +58,15 @@ const closed = (index: number, extra: Partial<Project> = {}, facts: Record<strin
 
 describe('renderReferenceBrief', () => {
   it('lists only closed projects, never the current one, most alike first, with what they share', () => {
-    const current = closed(1, {}, { bundesland: 'niederoesterreich', gebaeudeklasse: 4 })
+    const current = closed(1, {}, { federal_state: 'lower_austria', building_class: 4 })
     const brief = renderReferenceBrief(current, [
       current,
-      project(2, {}, { bundesland: 'niederoesterreich', gebaeudeklasse: 4 }),
-      closed(3, { startedOn: '2018-03-01', endedOn: '2020-11-01' }, { bundesland: 'wien', gebaeudeklasse: 4 }),
+      project(2, {}, { federal_state: 'lower_austria', building_class: 4 }),
+      closed(3, { startedOn: '2018-03-01', endedOn: '2020-11-01' }, { federal_state: 'vienna', building_class: 4 }),
       closed(
         4,
         { profileDisplay: { title: 'P4', summary: 'Holzbau mit   Sicherheitstreppenhaus.', keyFacts: [], missingInfo: [] } },
-        { bundesland: 'niederoesterreich', gebaeudeklasse: 4, bauweise: ['holzbau', 'stahlbeton'], vorhabensart: 'neubau' }
+        { federal_state: 'lower_austria', building_class: 4, construction_method: ['timber', 'reinforced_concrete'], work_type: 'new_build' }
       ),
     ])!
 

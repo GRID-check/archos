@@ -26,19 +26,19 @@ def _chunk(file_name, score, content="passage", page=1):
 
 class TestSourceForCollection:
     def test_project_and_office_shelf_and_base(self):
-        assert _source_for_collection("proj_abc") == "projekt"
-        assert _source_for_collection("archiv_org1") == "buero"
+        assert _source_for_collection("proj_abc") == "project"
+        assert _source_for_collection("archiv_org1") == "office"
         assert _source_for_collection("oib_knowledge") is None
         assert _source_for_collection("s_conversation") is None
 
     def test_signed_shelf_map_does_not_fall_back_to_prefix(self):
         """A custom project collection the BFF already labeled must retrieve."""
-        signed = {"custom_project_store": "projekt"}
-        assert _source_for_target("custom_project_store", signed) == "projekt"
+        signed = {"custom_project_store": "project"}
+        assert _source_for_target("custom_project_store", signed) == "project"
         assert _source_for_target("proj_abc", signed) is None
 
     def test_names_only_scope_still_uses_the_legacy_prefix(self):
-        assert _source_for_target("proj_abc", {}) == "projekt"
+        assert _source_for_target("proj_abc", {}) == "project"
         assert _source_for_target("custom_project_store", {}) is None
 
 
@@ -100,9 +100,9 @@ class TestNameResolution:
 class TestAggregateSurfaced:
     def test_mode_one_is_the_winner_only(self):
         hits = [
-            (_chunk("a.pdf", 0.9, "best a", page=3), "projekt"),
-            (_chunk("b.pdf", 0.88, "almost"), "projekt"),
-            (_chunk("c.pdf", 0.5, "weak"), "buero"),
+            (_chunk("a.pdf", 0.9, "best a", page=3), "project"),
+            (_chunk("b.pdf", 0.88, "almost"), "project"),
+            (_chunk("c.pdf", 0.5, "weak"), "office"),
         ]
         out = _aggregate_surfaced(hits, MAX_SURFACED_FILES, mode="one")
         assert [d["file_name"] for d in out] == ["a.pdf"]
@@ -110,61 +110,61 @@ class TestAggregateSurfaced:
 
     def test_mode_many_keeps_close_matches_drops_the_tail(self):
         hits = [
-            (_chunk("a.pdf", 0.90), "projekt"),
-            (_chunk("b.pdf", 0.86), "projekt"),
-            (_chunk("c.pdf", 0.50), "projekt"),
+            (_chunk("a.pdf", 0.90), "project"),
+            (_chunk("b.pdf", 0.86), "project"),
+            (_chunk("c.pdf", 0.50), "project"),
         ]
         out = _aggregate_surfaced(hits, 12, mode="many")
         assert [d["file_name"] for d in out] == ["a.pdf", "b.pdf"]
 
     def test_mode_many_collapses_when_the_winner_is_clear(self):
         hits = [
-            (_chunk("citationhealth.light.png", 0.88), "projekt"),
-            (_chunk("image.png", 0.61), "projekt"),
-            (_chunk("Haus.ifc", 0.60), "projekt"),
+            (_chunk("citationhealth.light.png", 0.88), "project"),
+            (_chunk("image.png", 0.61), "project"),
+            (_chunk("Haus.ifc", 0.60), "project"),
         ]
         out = _aggregate_surfaced(hits, 12, mode="many")
         assert [d["file_name"] for d in out] == ["citationhealth.light.png"]
 
     def test_mode_many_does_not_mix_images_with_ifc(self):
         hits = [
-            (_chunk("citationhealth.light.png", 0.80), "projekt"),
-            (_chunk("Haus.ifc", 0.79), "projekt"),
-            (_chunk("Duplex.ifc", 0.78), "projekt"),
+            (_chunk("citationhealth.light.png", 0.80), "project"),
+            (_chunk("Haus.ifc", 0.79), "project"),
+            (_chunk("Duplex.ifc", 0.78), "project"),
         ]
         out = _aggregate_surfaced(hits, 12, mode="many")
         assert [d["file_name"] for d in out] == ["citationhealth.light.png"]
 
     def test_query_hint_keeps_only_that_kind(self):
         hits = [
-            (_chunk("citationhealth.light.png", 0.70), "projekt"),
-            (_chunk("Brandschutz.pdf", 0.85), "projekt"),
-            (_chunk("Haus.ifc", 0.84), "projekt"),
+            (_chunk("citationhealth.light.png", 0.70), "project"),
+            (_chunk("Brandschutz.pdf", 0.85), "project"),
+            (_chunk("Haus.ifc", 0.84), "project"),
         ]
         out = _aggregate_surfaced(hits, 12, mode="many", query="citation health screenshot")
         assert [d["file_name"] for d in out] == ["citationhealth.light.png"]
 
     def test_mode_many_caps(self):
-        hits = [(_chunk(f"f{i}.pdf", 0.90 - i * 0.005), "projekt") for i in range(20)]
+        hits = [(_chunk(f"f{i}.pdf", 0.90 - i * 0.005), "project") for i in range(20)]
         out = _aggregate_surfaced(hits, 12, mode="many")
         assert 1 <= len(out) <= MAX_SURFACED_FILES
 
     def test_drops_weak_matches_below_quality_floor(self):
         hits = [
-            (_chunk("strong.pdf", MIN_SURFACE_SCORE + 0.1), "projekt"),
-            (_chunk("weak.pdf", MIN_SURFACE_SCORE - 0.1), "projekt"),
+            (_chunk("strong.pdf", MIN_SURFACE_SCORE + 0.1), "project"),
+            (_chunk("weak.pdf", MIN_SURFACE_SCORE - 0.1), "project"),
         ]
         out = _aggregate_surfaced(hits, MAX_SURFACED_FILES, mode="many")
         assert [d["file_name"] for d in out] == ["strong.pdf"]
 
     def test_long_snippet_truncated(self):
-        hits = [(_chunk("a.pdf", 0.8, "x" * 500), "projekt")]
+        hits = [(_chunk("a.pdf", 0.8, "x" * 500), "project")]
         [doc] = _aggregate_surfaced(hits, MAX_SURFACED_FILES, mode="one")
         assert doc["snippet"].endswith("…")
         assert len(doc["snippet"]) <= 302
 
     def test_skips_chunks_without_file_name(self):
-        hits = [(_chunk("", 0.8), "projekt"), (_chunk("a.pdf", 0.8), "projekt")]
+        hits = [(_chunk("", 0.8), "project"), (_chunk("a.pdf", 0.8), "project")]
         out = _aggregate_surfaced(hits, MAX_SURFACED_FILES, mode="one")
         assert [d["file_name"] for d in out] == ["a.pdf"]
 
@@ -181,7 +181,7 @@ class TestDocumentGridCardSchema:
                     "snippet": "Der zweite Fluchtweg…",
                     "page": 3,
                     "score": 0.82,
-                    "source": "projekt",
+                    "source": "project",
                 },
             ],
         }
@@ -190,8 +190,8 @@ class TestDocumentGridCardSchema:
             "title": "Relevante Dokumente – Fluchtwege",
             "query": "Fluchtwege",
             "documents": [
-                {"file_name": "Brandschutz.pdf", "source": "projekt"},
-                {"file_name": "Schnitt.pdf", "source": "projekt"},
+                {"file_name": "Brandschutz.pdf", "source": "project"},
+                {"file_name": "Schnitt.pdf", "source": "project"},
             ],
         }
         one_out = grid_card_adapter.validate_python(one).model_dump(exclude_none=True)
@@ -374,7 +374,7 @@ class TestBriefingNamesTheFolder:
             [
                 {
                     "file_name": "Brandschutzplan_EG.pdf",
-                    "source": "projekt",
+                    "source": "project",
                     "summary": "Brandschutzplan Erdgeschoss",
                     "snippet": "Fluchtwege freihalten",
                     "page": 3,
@@ -391,7 +391,7 @@ class TestBriefingNamesTheFolder:
             [
                 {
                     "file_name": "Brandschutzplan_EG.pdf",
-                    "source": "projekt",
+                    "source": "project",
                     "summary": "Brandschutzplan Erdgeschoss",
                     "snippet": "Fluchtwege freihalten",
                     "page": 3,
@@ -406,8 +406,8 @@ class TestBriefingNamesTheFolder:
         text = _briefing_for_agent(
             "Pläne",
             [
-                {"file_name": "a.pdf", "source": "projekt", "summary": "Lageplan EG", "_folder_path": "Brandschutz"},
-                {"file_name": "b.pdf", "source": "buero", "summary": "Schnitt AA"},
+                {"file_name": "a.pdf", "source": "project", "summary": "Lageplan EG", "_folder_path": "Brandschutz"},
+                {"file_name": "b.pdf", "source": "office", "summary": "Schnitt AA"},
             ],
             "many",
         )
@@ -422,7 +422,7 @@ class TestBriefing:
             [
                 {
                     "file_name": "Brandschutzplan_EG.pdf",
-                    "source": "projekt",
+                    "source": "project",
                     "summary": "Brandschutzplan Erdgeschoss",
                     "snippet": "x" * 400,
                     "page": 3,
@@ -444,13 +444,13 @@ class TestBriefing:
             [
                 {
                     "file_name": "a.pdf",
-                    "source": "projekt",
+                    "source": "project",
                     "summary": "Lageplan EG",
                     "snippet": "long " * 80,
                 },
                 {
                     "file_name": "b.pdf",
-                    "source": "buero",
+                    "source": "office",
                     "summary": "Schnitt AA",
                     "snippet": "long " * 80,
                 },

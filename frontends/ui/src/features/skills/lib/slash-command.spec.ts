@@ -70,6 +70,7 @@ describe('resolveSlashInvocation', () => {
   it('resolves a known skill and reports the argument after it', () => {
     expect(resolveSlashInvocation('/oib-brandschutz Stiegenhaus prüfen', NAMES)).toEqual({
       skillName: 'oib-brandschutz',
+      token: 'oib-brandschutz',
       argument: 'Stiegenhaus prüfen',
     })
   })
@@ -77,8 +78,18 @@ describe('resolveSlashInvocation', () => {
   it('resolves a bare invocation — the skill body is the instruction', () => {
     expect(resolveSlashInvocation('/oib-brandschutz', NAMES)).toEqual({
       skillName: 'oib-brandschutz',
+      token: 'oib-brandschutz',
       argument: '',
     })
+  })
+
+  it('resolves the old name of a renamed builtin to the skill it now is, and keeps the typed token', () => {
+    expect(resolveSlashInvocation('/einreichcheck bis Freitag', ['submission-check', 'hygiene'])).toEqual({
+      skillName: 'submission-check',
+      token: 'einreichcheck',
+      argument: 'bis Freitag',
+    })
+    expect(resolveSlashInvocation('/einreichcheck', ['hygiene'])).toBeNull()
   })
 
   it('never invents a skill from text that merely starts with a slash', () => {
@@ -103,6 +114,14 @@ describe('resolveSlashInvocation', () => {
 })
 
 describe('filterSlashCommands', () => {
+  it('finds a renamed builtin by the name it had', () => {
+    const renamed = [
+      { name: 'submission-check', description: 'Was diesem Bauansuchen noch fehlt.' },
+      { name: 'hygiene', description: 'Aufenthaltsraum.' },
+    ]
+    expect(filterSlashCommands(renamed, 'einreich').map((skill) => skill.name)).toEqual(['submission-check'])
+  })
+
   it('returns everything for an empty fragment', () => {
     expect(filterSlashCommands(SKILLS, '')).toHaveLength(3)
   })

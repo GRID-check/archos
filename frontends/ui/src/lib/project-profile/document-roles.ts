@@ -18,7 +18,7 @@
  *
  * A role is a fourth, genuinely different axis: a DECLARED, SCOPED binding
  * between a document and a slot in the project model. Scoped is the part the
- * other three cannot express — "Bestandsplan *of building bw2*" — and without it
+ * other three cannot express — "Bestandsplan *of building bldg2*" — and without it
  * the whole thing is useless for the mixed Neubau/Bestand projects the intake
  * concept exists to serve.
  *
@@ -40,22 +40,47 @@ import type { ProjectPrimitiveValue } from './types'
  * Bestand") that no downstream consumer can match on.
  */
 export const DOCUMENT_ROLES = [
-  'bebauungsplan',
-  'flaechenwidmungsplan',
-  'grundbuchauszug',
-  'lageplan',
-  'bestandsplan',
-  'foto_bestand',
-  'gutachten_baugrund',
-  'gutachten_laerm',
-  'gutachten_schadstoffe',
-  'vorentwurf_studie',
-  'behoerdenkorrespondenz',
-  'vorbescheid',
-  'sonstige_projektgrundlage',
+  'development_plan',
+  'zoning_plan',
+  'land_register_extract',
+  'site_plan',
+  'existing_plans',
+  'existing_photos',
+  'expert_report_ground',
+  'expert_report_noise',
+  'expert_report_pollutants',
+  'preliminary_design_study',
+  'authority_correspondence',
+  'preliminary_decision',
+  'other_project_basis',
 ] as const
 
 export type DocumentRole = (typeof DOCUMENT_ROLES)[number]
+
+/**
+ * The roles as they were stored before migration 0167. A browser tab that has
+ * not reloaded and an older pod can still send one; `canonicalDocumentRole`
+ * maps it so the German value is never written again. Remove after one release.
+ */
+export const LEGACY_DOCUMENT_ROLES: Readonly<Record<string, DocumentRole>> = {
+  bebauungsplan: 'development_plan',
+  flaechenwidmungsplan: 'zoning_plan',
+  grundbuchauszug: 'land_register_extract',
+  lageplan: 'site_plan',
+  bestandsplan: 'existing_plans',
+  foto_bestand: 'existing_photos',
+  gutachten_baugrund: 'expert_report_ground',
+  gutachten_laerm: 'expert_report_noise',
+  gutachten_schadstoffe: 'expert_report_pollutants',
+  vorentwurf_studie: 'preliminary_design_study',
+  behoerdenkorrespondenz: 'authority_correspondence',
+  vorbescheid: 'preliminary_decision',
+  sonstige_projektgrundlage: 'other_project_basis',
+}
+
+/** The current role for a value that may be a legacy one; anything else passes through for validation. */
+export const canonicalDocumentRole = (value: unknown): unknown =>
+  typeof value === 'string' ? (LEGACY_DOCUMENT_ROLES[value] ?? value) : value
 
 /**
  * How many documents a role can hold.
@@ -100,7 +125,7 @@ export interface DocumentRoleDefinition {
  */
 export const DOCUMENT_ROLE_DEFINITIONS: readonly DocumentRoleDefinition[] = [
   {
-    role: 'bebauungsplan',
+    role: 'development_plan',
     label: 'Bebauungsplan',
     scope: 'grundstueck',
     cardinality: 'one',
@@ -108,82 +133,82 @@ export const DOCUMENT_ROLE_DEFINITIONS: readonly DocumentRoleDefinition[] = [
     why: 'Grundlage für Bauklasse, Bebauungsweise, Dichte und Fluchtlinien.',
   },
   {
-    role: 'flaechenwidmungsplan',
+    role: 'zoning_plan',
     label: 'Flächenwidmungsplan',
     scope: 'grundstueck',
     cardinality: 'one',
     why: 'Zeigt, ob die geplante Nutzung am Standort grundsätzlich möglich ist.',
   },
   {
-    role: 'grundbuchauszug',
+    role: 'land_register_extract',
     label: 'Grundbuchauszug',
     scope: 'grundstueck',
     cardinality: 'one',
   },
   {
-    role: 'lageplan',
+    role: 'site_plan',
     label: 'Lageplan',
     scope: 'grundstueck',
     cardinality: 'one',
   },
   {
-    role: 'bestandsplan',
+    role: 'existing_plans',
     // Short, because this label is repeated with a building name after it, in
     // the slot heading, the drop zone and the agent's context block. The list
     // of drawing types belongs in the explanation, not in the name.
     label: 'Bestandspläne',
     scope: 'bauwerk',
     cardinality: 'many',
-    recommendedWhen: [{ param: 'C2', op: 'equals', value: 'bestand' }],
+    recommendedWhen: [{ param: 'C2', op: 'equals', value: 'existing' }],
     why: 'Grundrisse, Schnitte und Ansichten. Ohne sie bleibt der Vergleich von Bestand und Zielzustand eine Schätzung.',
   },
   {
-    role: 'foto_bestand',
+    role: 'existing_photos',
     label: 'Fotos / Bestandsaufnahme',
     scope: 'bauwerk',
     cardinality: 'many',
-    recommendedWhen: [{ param: 'C2', op: 'equals', value: 'bestand' }],
+    recommendedWhen: [{ param: 'C2', op: 'equals', value: 'existing' }],
   },
   {
-    role: 'gutachten_baugrund',
+    role: 'expert_report_ground',
     label: 'Baugrundgutachten',
     scope: 'grundstueck',
     cardinality: 'many',
   },
   {
-    role: 'gutachten_laerm',
+    role: 'expert_report_noise',
     label: 'Lärmgutachten',
     scope: 'grundstueck',
     cardinality: 'many',
     why: 'Liefert die Pegel, die der Wizard bewusst nicht abfragt.',
   },
   {
-    role: 'gutachten_schadstoffe',
+    role: 'expert_report_pollutants',
     label: 'Schadstoffgutachten',
     scope: 'projekt',
     cardinality: 'many',
-    recommendedWhen: [{ param: 'A5', op: 'includes_any', value: ['abbruch'] }],
+    recommendedWhen: [{ param: 'A5', op: 'includes_any', value: ['demolition'] }],
   },
   {
-    role: 'vorentwurf_studie',
+    role: 'preliminary_design_study',
     label: 'Vorentwürfe & Studien',
     scope: 'projekt',
     cardinality: 'many',
   },
   {
-    role: 'behoerdenkorrespondenz',
+    role: 'authority_correspondence',
     label: 'Behördenkorrespondenz',
     scope: 'projekt',
     cardinality: 'many',
   },
   {
-    role: 'vorbescheid',
+    role: 'preliminary_decision',
     label: 'Vorbescheid',
     scope: 'projekt',
     cardinality: 'many',
   },
   {
-    role: 'sonstige_projektgrundlage',
+    role: 'other_project_basis',
     label: 'Sonstige Projektgrundlagen',
     scope: 'projekt',
     cardinality: 'many',

@@ -453,6 +453,22 @@ migrate_until() {
     if [ "$tag" = "$last" ]; then break; fi
   done
 }
+# `migrate_before <db> <tag>`: the chain up to the entry that PRECEDES <tag> in the journal, so a
+# block that tests a migration starts from whatever the chain holds before it, whoever added
+# the entries in between (the English-names migrations 0165 to 0169 do not name their neighbours).
+migrate_before() {
+  local previous
+  previous=$(node -e '
+    const j = require("./drizzle/meta/_journal.json");
+    const at = j.entries.findIndex((e) => e.tag === process.argv[1]);
+    if (at < 1) process.exit(1);
+    console.log(j.entries[at - 1].tag);
+  ' "$2") || {
+    echo "migrate_before: $2 is not in the journal, or is its first entry" >&2
+    exit 1
+  }
+  migrate_until "$1" "$previous"
+}
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
   $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
@@ -2147,3 +2163,531 @@ apply_in grid_reply_edit 0152_annotation_reply_edits.sql
 apply_in grid_reply_edit 0152_annotation_reply_edits.sql
 check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document_annotation_replies" "null" "0152 re-applies, twice"
 echo "==> 0152 reply edits and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0163: the names stored in a message's metadata become English, and
+# the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0163, seeded with one
+# assistant message that holds every family the migration rewrites in its OLD
+# spelling (findings, a callout, the run ledger, citations, the Herleitung's
+# lanes and locator event, quote stamps, cards and a surface), one that is
+# already English, and one with an old-looking word on a path the migration does
+# not own. The up rewrites exactly the first, a second run changes nothing, the
+# down restores the old spellings byte for byte on those paths, and the up
+# re-applies twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0163 message metadata names and their down migration on grid_msgnames"
+migrate_before grid_msgnames 0163_message_metadata_english
+sql_in grid_msgnames <<'SQL'
+INSERT INTO conversations (id, organization_id, created_by) VALUES ('s_0162', 'org_0162', 'user_1');
+INSERT INTO messages (id, conversation_id, organization_id, role, content, metadata) VALUES
+  ('a0000000-0000-4000-8000-000000000162', 's_0162', 'org_0162', 'assistant', 'Bericht', '{
+    "findings": {"v": 1, "items": [
+      {"requirement": "R", "status": "nicht_erfuellt", "grounding": "abgeleitet"},
+      {"requirement": "S", "status": "offen", "grounding": "offen"},
+      {"requirement": "T", "grounding": "belegt"}]},
+    "answerMeta": {"v": 1, "callout": {"kind": "frist", "text": "Binnen sechs Wochen."}},
+    "run_ledger": {"runId": "r1", "status": "laeuft",
+      "phases": [{"phase": "planen", "startedAt": "2026-01-01T00:00:00.000Z", "endedAt": "2026-01-01T00:01:00.000Z"},
+                 {"phase": "recherchieren", "startedAt": "2026-01-01T00:01:00.000Z"}],
+      "steps": [{"id": "runde-1", "phase": "recherchieren", "intent": "x", "startedAt": "2026-01-01T00:01:00.000Z", "docs": []}],
+      "error": {"reason": "x", "completedBefore": ["planen"]},
+      "grundlage": [{"name": "a.pdf", "loci": []}],
+      "startedAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:01:00.000Z"},
+    "citations": {"v": 1, "sources": [
+      {"content": "c", "kind": "baurecht", "lane": "baurecht_oib_leitfaden", "binding_status": "verbindlich_erklaert", "rank": "landesgesetz", "punkt": "3.5.2", "shelf": "archiv"},
+      {"content": "d", "kind": "projekt", "lane": "projekt", "binding_status": "unbekannt"}]},
+    "provenance": {"degradedReasons": ["grundlage_unread", "no_report_file"],
+      "thinkingSteps": [
+        {"id": "s1", "userMessageId": "u", "kind": "sources", "traceLanes": [{"key": "buero_piloti", "label": "x", "kind": "buero", "hitCount": 1, "sources": [], "signal": "office"}]},
+        {"id": "s2", "userMessageId": "u", "kind": "retrieval", "turnEvent": {"key": "status.retrieval.punkt", "values": {"document": "D", "punkt": "3.1"}}},
+        {"id": "s3", "userMessageId": "u", "kind": "retrieval", "turnEvent": {"key": "status.retrieval.plain", "values": {"punkt": "kept"}}}],
+      "retrievalLedger": [{"index": 0, "key": "status.retrieval.punkt"}],
+      "quoteStamps": [{"text": "q", "status": "verbatim", "punkt": "3.1"}]},
+    "cards": [
+      {"type": "fire_access_plan", "aufstellflaeche": {"width": 1}, "gebaeudeklasse": "GK 4"},
+      {"type": "guardrail_check", "context": "dachterrasse"},
+      {"type": "building_section", "markers": [{"label": "F", "height_m": 1, "kind": "fluchtniveau"}, {"label": "G", "height_m": 2, "kind": "threshold"}]},
+      {"type": "document_draft", "path": "/entwuerfe/a.md"},
+      {"type": "document_grid", "documents": [{"file_name": "a", "source": "buero"}]},
+      {"type": "surface", "components": [{"id": "root", "component": "Column", "children": ["g"]}, {"id": "g", "component": "guardrail_check", "context": "balkon"}, {"id": "t", "component": "Text", "text": "x"}]},
+      {"type": "calculation", "title": "bleibt", "status": "offen"}]
+  }'),
+  ('a0000000-0000-4000-8000-000000000163', 's_0162', 'org_0162', 'assistant', 'Neu', '{
+    "findings": {"v": 1, "items": [{"requirement": "R", "status": "open", "grounding": "open"}]},
+    "run_ledger": {"runId": "r2", "status": "done", "phases": [{"phase": "filed", "startedAt": "2026-01-01T00:00:00.000Z"}], "steps": [], "startedAt": "2026-01-01T00:00:00.000Z", "updatedAt": "2026-01-01T00:00:00.000Z"},
+    "citations": {"v": 1, "sources": [{"content": "c", "kind": "building_law", "lane": "building_law_oib", "clause": "3.5.2"}]}
+  }'),
+  ('a0000000-0000-4000-8000-000000000164', 's_0162', 'org_0162', 'assistant', 'Fremd', '{
+    "note": {"status": "offen", "kind": "baurecht"},
+    "cards": [{"type": "calculation", "title": "Rechenweg", "kind": "projekt", "status": "erfuellt"}]
+  }'),
+  ('a0000000-0000-4000-8000-000000000165', 's_0162', 'org_0162', 'user', 'Frage', NULL);
+INSERT INTO citation_events (organization_id, conversation_id, turn_id, agent, kind, severity, detail) VALUES
+  ('org_0162', 's_0162', 't1', 'shallow', 'turn_verified', 'info', '{"lanes": {"baurecht_oib": 2, "projekt": 1, "web": 3}, "origins": {"kb": 3}}');
+SQL
+OLD_0162=$(cat <<'SQL'
+SELECT md5(string_agg(coalesce(metadata::text, '-'), '|' ORDER BY id)) FROM messages WHERE id <> 'a0000000-0000-4000-8000-000000000163'
+SQL
+)
+BEFORE_0162=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_msgnames -tAc "$OLD_0162")
+apply_in grid_msgnames 0163_message_metadata_english.sql
+M_0162="SELECT metadata FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'"
+check_in grid_msgnames "SELECT (metadata @> '{\"findings\": {\"items\": [{\"status\": \"not_met\", \"grounding\": \"derived\"}, {\"status\": \"open\", \"grounding\": \"open\"}, {\"grounding\": \"sourced\"}]}}')::text FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "true" "0163 rewrites a finding's status and grounding"
+check_in grid_msgnames "SELECT metadata #>> '{answerMeta,callout,kind}' FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "deadline" "0163 rewrites a callout kind"
+check_in grid_msgnames "SELECT (metadata #>> '{run_ledger,status}') || ',' || (metadata #>> '{run_ledger,phases,0,phase}') || ',' || (metadata #>> '{run_ledger,phases,1,phase}') || ',' || (metadata #>> '{run_ledger,steps,0,phase}') || ',' || (metadata #>> '{run_ledger,error,completedBefore,0}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "running,planning,researching,researching,planning" "0163 rewrites the run ledger's status and phases"
+check_in grid_msgnames "SELECT ((metadata -> 'run_ledger') ? 'grundlage')::text || ',' || (metadata #>> '{run_ledger,basis,0,name}') || ',' || (metadata #>> '{run_ledger,steps,0,id}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "false,a.pdf,runde-1" "0163 renames the ledger's basis key and leaves the step id"
+check_in grid_msgnames "SELECT (metadata #>> '{citations,sources,0,kind}') || ',' || (metadata #>> '{citations,sources,0,lane}') || ',' || (metadata #>> '{citations,sources,0,binding_status}') || ',' || (metadata #>> '{citations,sources,0,rank}') || ',' || (metadata #>> '{citations,sources,0,clause}') || ',' || ((metadata #> '{citations,sources,0}') ? 'punkt')::text || ',' || (metadata #>> '{citations,sources,0,shelf}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "building_law,building_law_oib_guide,declared_binding,state_law,3.5.2,false,archiv" "0163 rewrites a citation's kind, lane, binding status, rank and Punkt, and leaves its shelf"
+check_in grid_msgnames "SELECT (metadata #>> '{citations,sources,1,kind}') || ',' || (metadata #>> '{citations,sources,1,lane}') || ',' || (metadata #>> '{citations,sources,1,binding_status}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "project,project,unknown" "0163 rewrites a project citation"
+check_in grid_msgnames "SELECT (metadata #>> '{provenance,degradedReasons}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" '["basis_unread", "no_report_file"]' "0163 rewrites a degraded reason and keeps the others"
+check_in grid_msgnames "SELECT (metadata #>> '{provenance,thinkingSteps,0,traceLanes,0,key}') || ',' || (metadata #>> '{provenance,thinkingSteps,0,traceLanes,0,kind}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "office_piloti,office" "0163 rewrites a trace lane's key and kind"
+check_in grid_msgnames "SELECT (metadata #> '{provenance,thinkingSteps,1,turnEvent}')::text FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" '{"key": "status.retrieval.clause", "values": {"clause": "3.1", "document": "D"}}' "0163 renames the locator event's key and its value"
+check_in grid_msgnames "SELECT (metadata #>> '{provenance,thinkingSteps,2,turnEvent,values,punkt}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "kept" "0163 leaves a value named punkt on another event"
+check_in grid_msgnames "SELECT (metadata #>> '{provenance,retrievalLedger,0,key}') || ',' || (metadata #>> '{provenance,quoteStamps,0,clause}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "status.retrieval.clause,3.1" "0163 rewrites the ledger's key and a quote stamp's Punkt"
+check_in grid_msgnames "SELECT (metadata #>> '{cards,0,staging_area,width}') || ',' || (metadata #>> '{cards,0,building_class}') || ',' || ((metadata #> '{cards,0}') ? 'aufstellflaeche')::text FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "1,GK 4,false" "0163 renames a fire access card's fields"
+check_in grid_msgnames "SELECT (metadata #>> '{cards,1,context}') || ',' || (metadata #>> '{cards,2,markers,0,kind}') || ',' || (metadata #>> '{cards,2,markers,1,kind}') || ',' || (metadata #>> '{cards,3,path}') || ',' || (metadata #>> '{cards,4,documents,0,source}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "roof_terrace,escape_level,threshold,/drafts/a.md,office" "0163 rewrites a railing context, a section marker, a draft path and a document source"
+check_in grid_msgnames "SELECT (metadata #>> '{cards,5,components,1,context}') || ',' || (metadata #>> '{cards,5,components,2,text}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" "balcony,x" "0163 rewrites a card inside a surface"
+check_in grid_msgnames "SELECT (metadata #> '{cards,6}')::text FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000162'" '{"type": "calculation", "title": "bleibt", "status": "offen"}' "0163 leaves a card it has no rule for"
+check_in grid_msgnames "SELECT (metadata #>> '{run_ledger,status}') || ',' || (metadata #>> '{findings,items,0,status}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000163'" "done,open" "0163 leaves English metadata alone"
+check_in grid_msgnames "SELECT (metadata #> '{note}')::text || (metadata #>> '{cards,0,kind}') || (metadata #>> '{cards,0,status}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000164'" '{"kind": "baurecht", "status": "offen"}projekterfuellt' "0163 leaves an old-looking word on a path it does not own"
+check_in grid_msgnames "SELECT count(*) FROM messages WHERE metadata IS NULL" "1" "0163 leaves a message without metadata alone"
+check_in grid_msgnames "SELECT (SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_object_keys(detail -> 'lanes') k) FROM citation_events WHERE conversation_id = 's_0162'" "building_law_oib,project,web" "0163 renames the lane keys of a citation event and keeps their counts"
+AFTER_ONCE_0162=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_msgnames -tAc "$OLD_0162")
+apply_in grid_msgnames 0163_message_metadata_english.sql
+check_in grid_msgnames "$OLD_0162" "$AFTER_ONCE_0162" "0163 changes nothing the second time"
+apply_in grid_msgnames 0163_message_metadata_english.down.sql
+check_in grid_msgnames "$OLD_0162" "$BEFORE_0162" "down restores every stored byte of the metadata the migration took"
+check_in grid_msgnames "SELECT (SELECT string_agg(k, ',' ORDER BY k) FROM jsonb_object_keys(detail -> 'lanes') k) FROM citation_events WHERE conversation_id = 's_0162'" "baurecht_oib,projekt,web" "down restores a citation event's lane keys"
+check_in grid_msgnames "SELECT (metadata #>> '{run_ledger,status}') || ',' || (metadata #>> '{findings,items,0,status}') FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000163'" "fertig,offen" "down turns a message the new build wrote back into German too"
+apply_in grid_msgnames 0163_message_metadata_english.sql
+apply_in grid_msgnames 0163_message_metadata_english.sql
+check_in grid_msgnames "$OLD_0162" "$AFTER_ONCE_0162" "0163 re-applies, twice"
+echo "==> 0163 message metadata names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0164: the research plan's stored keys and values become English, and
+# the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0164. A plan preview
+# whose fence holds the old keys and values (and prose OUTSIDE the fence that
+# mentions the same words), the reader's `approve {…}` reply as a user message
+# and as the card's stored answer, a task, a standing task and a run that froze
+# the reader's documents, and a Büroablage proposal whose payload names its
+# shelf. The up rewrites the fence and the reply as text (nothing else in the
+# message), the documents' keys, the payloads and the CHECK that reads them; a
+# second run changes nothing; the down restores the bytes; the up re-applies
+# twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0164 plan names and their down migration on grid_plannames"
+migrate_before grid_plannames 0164_plan_documents_english
+sql_in grid_plannames <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000163', 'org_0163', 'Plan 0164', 'user_1', 'proj_0163');
+INSERT INTO conversations (id, organization_id, created_by, project_id) VALUES ('s_0163', 'org_0163', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000163');
+INSERT INTO messages (id, conversation_id, organization_id, role, content, metadata) VALUES
+  ('a0000000-0000-4000-8000-000000000263', 's_0163', 'org_0163', 'assistant',
+   E'**Research Plan Preview**\n\nDie grundlage ist unklar: "grundlage": kein Schluessel hier.\n\n```plan_json\n{"title": "Pruefung \\"grundlage\\": x", "sections": ["A"], "genre": "pruefbericht", "depth": "kurzpruefung", "grundlage": ["Einreichplan.pdf"], "ausgeschlossen": [], "unterlagen": [{"name": "Einreichplan.pdf"}]}\n```\n\n---\nReply **approve**',
+   NULL),
+  ('a0000000-0000-4000-8000-000000000264', 's_0163', 'org_0163', 'user',
+   'approve {"sections":["A"],"genre":"aktenvermerk","depth":"gutachten","grundlage":["a.pdf"],"ausgeschlossen":["b.pdf"],"data_sources":["knowledge_base"]}', NULL),
+  ('a0000000-0000-4000-8000-000000000265', 's_0163', 'org_0163', 'assistant', 'Plan', '{"promptState": {"response": "approve {\"genre\":\"vergleich\",\"grundlage\":[]}", "respondedAt": "2026-01-01T00:00:00.000Z"}}'),
+  ('a0000000-0000-4000-8000-000000000266', 's_0163', 'org_0163', 'assistant', E'Ein ```plan_json\n{"genre": "report", "basis": []}\n```', NULL),
+  ('a0000000-0000-4000-8000-000000000267', 's_0163', 'org_0163', 'user', 'Bitte "grundlage": pruefen, genre pruefbericht', NULL);
+INSERT INTO tasks (id, organization_id, project_id, kind, title, plan, requester_user_id) VALUES
+  ('eeeeeeee-0000-4000-8000-000000000163', 'org_0163', 'aaaaaaaa-0000-4000-8000-000000000163', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"grundlage": [{"name": "a.pdf", "shelf": "project"}], "ausgeschlossen": [{"name": "b.pdf"}]}}', 'user_1'),
+  ('eeeeeeee-0000-4000-8000-000000000164', 'org_0163', 'aaaaaaaa-0000-4000-8000-000000000163', 'document', 'Ohne',
+   '{"prompt": "x", "skill": {}, "dataSources": null}', 'user_1');
+INSERT INTO task_definitions (organization_id, project_id, kind, title, plan, requester_user_id, trigger) VALUES
+  ('org_0163', 'aaaaaaaa-0000-4000-8000-000000000163', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"grundlage": [{"name": "a.pdf"}], "ausgeschlossen": []}}', 'user_1', 'manual');
+INSERT INTO task_runs (organization_id, project_id, kind, title, plan, requester_user_id, trigger, status, skill_snapshot) VALUES
+  ('org_0163', 'aaaaaaaa-0000-4000-8000-000000000163', 'document', 'Dokument',
+   '{"prompt": "x", "skill": {}, "dataSources": null, "documents": {"grundlage": [], "ausgeschlossen": [{"name": "c.pdf"}]}}', 'user_1', 'delegated', 'succeeded', '{}');
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES
+  ('c1c1c1c1-0000-4000-8000-000000000163', 'org_0163', NULL, 'archiv', 'file_operation',
+   '{"operation": "move", "operations": [{"document": "a.pdf", "source": "buero", "target_folder": "x"}, {"document": "b.pdf", "source": "buero"}]}', 'piloti', 'user_1'),
+  ('c1c1c1c1-0000-4000-8000-000000000164', 'org_0163', 'aaaaaaaa-0000-4000-8000-000000000163', 'project', 'file_operation',
+   '{"operation": "move", "operations": [{"document": "c.pdf", "source": "projekt", "target_folder": "x"}]}', 'piloti', 'user_1');
+SQL
+PLAN_0163="SELECT md5(coalesce((SELECT string_agg(content, '|' ORDER BY id) FROM messages WHERE id <> 'a0000000-0000-4000-8000-000000000266'), '') || (SELECT string_agg(coalesce(metadata::text, '-'), '|' ORDER BY id) FROM messages) || (SELECT string_agg(plan::text, '|' ORDER BY title, id) FROM tasks) || (SELECT string_agg(plan::text, '|') FROM task_definitions) || (SELECT string_agg(plan::text, '|') FROM task_runs) || (SELECT string_agg(payload::text, '|' ORDER BY id) FROM proposed_changes))"
+BEFORE_0163=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_plannames -tAc "$PLAN_0163")
+apply_in grid_plannames 0164_plan_documents_english.sql
+check_in grid_plannames "SELECT content FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000263'" $'**Research Plan Preview**\n\nDie grundlage ist unklar: "grundlage": kein Schluessel hier.\n\n```plan_json\n{"title": "Pruefung \\"grundlage\\": x", "sections": ["A"], "genre": "inspection_report", "depth": "quick_check", "basis": ["Einreichplan.pdf"], "excluded": [], "documents": [{"name": "Einreichplan.pdf"}]}\n```\n\n---\nReply **approve**' "0164 rewrites the keys and values inside the fence and nothing outside it, nor an escaped quote inside a title"
+check_in grid_plannames "SELECT content FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000264'" 'approve {"sections":["A"],"genre":"file_note","depth":"expert_report","basis":["a.pdf"],"excluded":["b.pdf"],"data_sources":["knowledge_base"]}' "0164 rewrites an approval reply"
+check_in grid_plannames "SELECT metadata #>> '{promptState,response}' FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000265'" 'approve {"genre":"comparison","basis":[]}' "0164 rewrites the answered card's reply"
+check_in grid_plannames "SELECT content FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000266'" $'Ein ```plan_json\n{"genre": "report", "basis": []}\n```' "0164 leaves a plan that is already English"
+check_in grid_plannames "SELECT content FROM messages WHERE id = 'a0000000-0000-4000-8000-000000000267'" 'Bitte "grundlage": pruefen, genre pruefbericht' "0164 leaves a message that has neither a fence nor an approval"
+check_in grid_plannames "SELECT (plan -> 'documents')::text FROM tasks WHERE id = 'eeeeeeee-0000-4000-8000-000000000163'" '{"basis": [{"name": "a.pdf", "shelf": "project"}], "excluded": [{"name": "b.pdf"}]}' "0164 renames the keys of a task's documents"
+check_in grid_plannames "SELECT (plan ? 'documents')::text FROM tasks WHERE id = 'eeeeeeee-0000-4000-8000-000000000164'" "false" "0164 does not invent documents on a task that named none"
+check_in grid_plannames "SELECT ((SELECT plan -> 'documents' FROM task_definitions)::text) || ((SELECT plan -> 'documents' FROM task_runs)::text)" '{"basis": [{"name": "a.pdf"}], "excluded": []}{"basis": [], "excluded": [{"name": "c.pdf"}]}' "0164 renames the keys on a standing task and on a run"
+check_in grid_plannames "SELECT (payload #>> '{operations,0,source}') || ',' || (payload #>> '{operations,1,source}') FROM proposed_changes WHERE id = 'c1c1c1c1-0000-4000-8000-000000000163'" "office,office" "0164 rewrites a Büroablage proposal's sources"
+check_in grid_plannames "SELECT payload #>> '{operations,0,source}' FROM proposed_changes WHERE id = 'c1c1c1c1-0000-4000-8000-000000000164'" "project" "0164 rewrites a project proposal's source"
+refused_in grid_plannames "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0163', NULL, 'archiv', 'file_operation', '{\"operation\": \"move\", \"operations\": [{\"document\": \"x.pdf\", \"source\": \"buero\"}]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "the CHECK still accepts the old source"
+check_in grid_plannames "SELECT convalidated::text FROM pg_constraint WHERE conname = 'proposed_changes_archiv_move' AND conrelid = 'proposed_changes'::regclass" "true" "the CHECK is validated"
+sql_in grid_plannames <<'SQL'
+INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES
+  ('org_0163', NULL, 'archiv', 'file_operation', '{"operation": "move", "operations": [{"document": "x.pdf", "source": "office"}]}', 'piloti', 'user_1');
+SQL
+sql_in grid_plannames <<'SQL'
+DELETE FROM proposed_changes WHERE payload #>> '{operations,0,document}' = 'x.pdf';
+SQL
+AFTER_ONCE_0163=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_plannames -tAc "$PLAN_0163")
+apply_in grid_plannames 0164_plan_documents_english.sql
+check_in grid_plannames "$PLAN_0163" "$AFTER_ONCE_0163" "0164 changes nothing the second time"
+apply_in grid_plannames 0164_plan_documents_english.down.sql
+check_in grid_plannames "$PLAN_0163" "$BEFORE_0163" "down restores every stored byte of what the migration took"
+refused_in grid_plannames "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0163', NULL, 'archiv', 'file_operation', '{\"operation\": \"move\", \"operations\": [{\"document\": \"x.pdf\", \"source\": \"office\"}]}', 'piloti', 'user_1')" "proposed_changes_archiv_move" "down put the CHECK back on the old source"
+apply_in grid_plannames 0164_plan_documents_english.sql
+apply_in grid_plannames 0164_plan_documents_english.sql
+check_in grid_plannames "$PLAN_0163" "$AFTER_ONCE_0163" "0164 re-applies, twice"
+echo "==> 0164 plan names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0165: the Fassung table, a constraint and an inbox type take English
+# names, and the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0165. The announcement
+# table is renamed with its key and its policy (still one, still tenant-scoped);
+# the Büroablage CHECK keeps refusing what it refused under its new name; an
+# inbox row of the old type moves to the new one together with its group key,
+# and a row of another type is left alone. The down puts every name back, and
+# the up re-applies twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0165 revision names and their down migration on grid_revnames"
+migrate_before grid_revnames 0165_revision_names
+sql_in grid_revnames <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000164', 'org_0165', 'Namen 0165', 'user_1', 'proj_0165');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
+VALUES ('d1d1d1d1-0000-4000-8000-000000000164', 'org_0165', 'user_1', 'neu.pdf', 'k/0165/neu', 'proj_0165', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000164');
+INSERT INTO document_fassung_announcements (organization_id, document_id, anchor_id) VALUES
+  ('org_0165', 'd1d1d1d1-0000-4000-8000-000000000164', 'd2d2d2d2-0000-4000-8000-000000000164'),
+  ('org_other', 'd1d1d1d1-0000-4000-8000-000000000164', 'd3d3d3d3-0000-4000-8000-000000000164');
+INSERT INTO inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id, anchor_id, group_key, actionable) VALUES
+  ('org_0165', 'user_1', 'document.new_fassung', 'document', 'd1d1d1d1-0000-4000-8000-000000000164', 'd2d2d2d2-0000-4000-8000-000000000164',
+   'document.new_fassung:document:d1d1d1d1-0000-4000-8000-000000000164:d2d2d2d2-0000-4000-8000-000000000164', false),
+  ('org_0165', 'user_1', 'job.completed', 'document', 'd1d1d1d1-0000-4000-8000-000000000164', NULL,
+   'job.completed:document:d1d1d1d1-0000-4000-8000-000000000164', false);
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of)
+VALUES ('c1c1c1c1-0000-4000-8000-000000000164', 'org_0165', NULL, 'archiv', 'file_operation',
+        '{"operation":"move","operations":[{"document":"Norm.pdf","source":"office","target_folder":"Normen"}]}', 'piloti', 'user_1');
+SQL
+apply_in grid_revnames 0165_revision_names.sql
+check_in grid_revnames "SELECT (to_regclass('document_revision_announcements') IS NOT NULL AND to_regclass('document_fassung_announcements') IS NULL)::text" "true" "0165 renames the announcement table"
+check_in grid_revnames "SELECT count(*) FROM document_revision_announcements" "2" "0165 keeps the announcements"
+check_in grid_revnames "SELECT string_agg(conname, ',' ORDER BY conname) FROM pg_constraint WHERE conrelid = 'document_revision_announcements'::regclass" "document_revision_announcements_document_fkey,document_revision_announcements_pk" "0165 renames the key and the foreign key"
+check_in grid_revnames "SELECT relrowsecurity::text || ':' || (SELECT count(*) FROM pg_policy WHERE polrelid = 'document_revision_announcements'::regclass)::text FROM pg_class WHERE relname = 'document_revision_announcements'" "true:1" "the renamed table is secured by exactly one policy"
+RW164=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_revnames -qtA \
+  -c "SET grid.organization_id = 'org_0165'" \
+  -c "SELECT count(*) FROM document_revision_announcements")
+if [ "$RW164" != "1" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_revnames: the runtime role saw another organization's announcements, or not its own (got: $RW164)" >&2
+  exit 1
+fi
+check_in grid_revnames "SELECT string_agg(type, ',' ORDER BY type) FROM inbox_items" "document.new_revision,job.completed" "0165 gives the inbox row the new type and leaves the others"
+check_in grid_revnames "SELECT group_key FROM inbox_items WHERE type = 'document.new_revision'" "document.new_revision:document:d1d1d1d1-0000-4000-8000-000000000164:d2d2d2d2-0000-4000-8000-000000000164" "0165 moves the group key with the type"
+check_in grid_revnames "SELECT (count(*) FILTER (WHERE conname = 'proposed_changes_office_shelf_move') - count(*) FILTER (WHERE conname = 'proposed_changes_archiv_move'))::text FROM pg_constraint WHERE conrelid = 'proposed_changes'::regclass" "1" "0165 renames the Büroablage constraint"
+refused_in grid_revnames "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0165', NULL, 'archiv', 'memory', '{}', 'piloti', 'user_1')" "proposed_changes_office_shelf_move" "the renamed constraint still refuses a Büroablage proposal that is not a move"
+apply_in grid_revnames 0165_revision_names.down.sql
+check_in grid_revnames "SELECT (to_regclass('document_fassung_announcements') IS NOT NULL AND to_regclass('document_revision_announcements') IS NULL)::text" "true" "down gives the announcement table its name back"
+check_in grid_revnames "SELECT string_agg(conname, ',' ORDER BY conname) FROM pg_constraint WHERE conrelid = 'document_fassung_announcements'::regclass" "document_fassung_announcements_document_fkey,document_fassung_announcements_pk" "down restores the key names"
+check_in grid_revnames "SELECT string_agg(type, ',' ORDER BY type) FROM inbox_items" "document.new_fassung,job.completed" "down restores the inbox type"
+check_in grid_revnames "SELECT group_key FROM inbox_items WHERE type = 'document.new_fassung'" "document.new_fassung:document:d1d1d1d1-0000-4000-8000-000000000164:d2d2d2d2-0000-4000-8000-000000000164" "down restores the group key"
+check_in grid_revnames "SELECT count(*) FROM pg_constraint WHERE conname = 'proposed_changes_archiv_move' AND conrelid = 'proposed_changes'::regclass" "1" "down restores the Büroablage constraint name"
+apply_in grid_revnames 0165_revision_names.sql
+apply_in grid_revnames 0165_revision_names.sql
+check_in grid_revnames "SELECT count(*) FROM document_revision_announcements" "2" "0165 re-applies, twice"
+echo "==> 0165 revision names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0166: English kinds on permit records and their requirements, and
+# the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0166. Every German kind
+# is rewritten and the new CHECK refuses the old spelling; `nachforderung` is
+# the one word both tables share and becomes `information_request` in both.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0166 permit kinds and their down migration on grid_permit_kinds"
+migrate_before grid_permit_kinds 0166_permit_kinds
+sql_in grid_permit_kinds <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000165', 'org_0166', 'Bescheide 0166', 'user_1', 'proj_0166');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000165', 'org_0166', 'user_1', 'a.pdf', 'k/0166/a', 'proj_0166', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000165'),
+  ('d2d2d2d2-0000-4000-8000-000000000165', 'org_0166', 'user_1', 'b.pdf', 'k/0166/b', 'proj_0166', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000165'),
+  ('d3d3d3d3-0000-4000-8000-000000000165', 'org_0166', 'user_1', 'c.pdf', 'k/0166/c', 'proj_0166', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000165'),
+  ('d4d4d4d4-0000-4000-8000-000000000165', 'org_0166', 'user_1', 'd.pdf', 'k/0166/d', 'proj_0166', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000165');
+INSERT INTO permit_records (id, organization_id, project_id, document_id, collection_name, file_name, kind, model) VALUES
+  ('e1e1e1e1-0000-4000-8000-000000000165', 'org_0166', 'aaaaaaaa-0000-4000-8000-000000000165', 'd1d1d1d1-0000-4000-8000-000000000165', 'proj_0166', 'a.pdf', 'bewilligung', 'm'),
+  ('e2e2e2e2-0000-4000-8000-000000000165', 'org_0166', 'aaaaaaaa-0000-4000-8000-000000000165', 'd2d2d2d2-0000-4000-8000-000000000165', 'proj_0166', 'b.pdf', 'nachforderung', 'm'),
+  ('e3e3e3e3-0000-4000-8000-000000000165', 'org_0166', 'aaaaaaaa-0000-4000-8000-000000000165', 'd3d3d3d3-0000-4000-8000-000000000165', 'proj_0166', 'c.pdf', 'ablehnung', 'm'),
+  ('e4e4e4e4-0000-4000-8000-000000000165', 'org_0166', 'aaaaaaaa-0000-4000-8000-000000000165', 'd4d4d4d4-0000-4000-8000-000000000165', 'proj_0166', 'd.pdf', 'sonstiges', 'm');
+INSERT INTO permit_requirements (organization_id, record_id, project_id, position, kind, content) VALUES
+  ('org_0166', 'e1e1e1e1-0000-4000-8000-000000000165', 'aaaaaaaa-0000-4000-8000-000000000165', 1, 'auflage', 'Brandschutzkonzept vorlegen.'),
+  ('org_0166', 'e2e2e2e2-0000-4000-8000-000000000165', 'aaaaaaaa-0000-4000-8000-000000000165', 1, 'nachforderung', 'Statischen Nachweis ergänzen.'),
+  ('org_0166', 'e2e2e2e2-0000-4000-8000-000000000165', 'aaaaaaaa-0000-4000-8000-000000000165', 2, 'hinweis', 'Frist beachten.');
+SQL
+apply_in grid_permit_kinds 0166_permit_kinds.sql
+check_in grid_permit_kinds "SELECT string_agg(kind, ',' ORDER BY file_name) FROM permit_records" "approval,information_request,refusal,other" "0166 rewrites every record kind"
+check_in grid_permit_kinds "SELECT string_agg(kind, ',' ORDER BY position, kind) FROM permit_requirements" "condition,information_request,note" "0166 rewrites every requirement kind"
+refused_in grid_permit_kinds "UPDATE permit_records SET kind = 'bewilligung' WHERE file_name = 'a.pdf'" "permit_records_kind_check" "the old record kind was accepted"
+refused_in grid_permit_kinds "UPDATE permit_requirements SET kind = 'auflage' WHERE position = 1 AND kind = 'condition'" "permit_requirements_kind_check" "the old requirement kind was accepted"
+check_in grid_permit_kinds "SELECT count(*) FROM pg_constraint WHERE conname IN ('permit_records_kind_check', 'permit_requirements_kind_check') AND convalidated" "2" "both CHECKs are validated"
+apply_in grid_permit_kinds 0166_permit_kinds.down.sql
+check_in grid_permit_kinds "SELECT string_agg(kind, ',' ORDER BY file_name) FROM permit_records" "bewilligung,nachforderung,ablehnung,sonstiges" "down restores the record kinds"
+check_in grid_permit_kinds "SELECT string_agg(kind, ',' ORDER BY position, kind) FROM permit_requirements" "auflage,nachforderung,hinweis" "down restores the requirement kinds"
+refused_in grid_permit_kinds "UPDATE permit_records SET kind = 'approval' WHERE file_name = 'a.pdf'" "permit_records_kind_check" "down left the English record kind accepted"
+apply_in grid_permit_kinds 0166_permit_kinds.sql
+apply_in grid_permit_kinds 0166_permit_kinds.sql
+check_in grid_permit_kinds "SELECT string_agg(kind, ',' ORDER BY file_name) FROM permit_records" "approval,information_request,refusal,other" "0166 re-applies, twice"
+echo "==> 0166 permit kinds and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0167: the task kind, the document roles and the BIM rule ids take
+# English values, and the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0167. A role or a rule
+# id that exists under both spellings for the same key (an older pod wrote the
+# old one after the migration ran) keeps the new one. Nothing else moves.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0167 task, role and rule names and their down migration on grid_task_names"
+migrate_before grid_task_names 0167_task_role_and_rule_names
+sql_in grid_task_names <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000166', 'org_0167', 'Namen 0167', 'user_1', 'proj_0167');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000166', 'org_0167', 'user_1', 'plan.pdf', 'k/0167/plan', 'proj_0167', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000166'),
+  ('d2d2d2d2-0000-4000-8000-000000000166', 'org_0167', 'user_1', 'modell.ifc', 'k/0167/modell', 'proj_0167', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000166');
+INSERT INTO tasks (organization_id, project_id, kind, title, plan, requester_user_id) VALUES
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'einreichcheck', 'Einreichcheck', '{"prompt":"x","skill":{},"dataSources":null}', 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'document', 'Dokument', '{"prompt":"x","skill":{},"dataSources":null}', 'user_1');
+INSERT INTO task_definitions (organization_id, project_id, kind, title, plan, requester_user_id, trigger) VALUES
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'einreichcheck', 'Einreichcheck', '{"prompt":"x","skill":{},"dataSources":null}', 'user_1', 'manual');
+INSERT INTO task_runs (organization_id, project_id, kind, title, plan, requester_user_id, trigger, status, skill_snapshot) VALUES
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'einreichcheck', 'Einreichcheck', '{"prompt":"x","skill":{},"dataSources":null}', 'user_1', 'delegated', 'succeeded', '{}'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'compliance_check', 'Normprüfung', '{"prompt":"x","skill":{},"dataSources":null}', 'user_1', 'delegated', 'succeeded', '{}');
+INSERT INTO document_roles (organization_id, project_id, document_id, role, scope_instance_id, created_by) VALUES
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'd1d1d1d1-0000-4000-8000-000000000166', 'bebauungsplan', NULL, 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'd1d1d1d1-0000-4000-8000-000000000166', 'bestandsplan', 'b1', 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'd1d1d1d1-0000-4000-8000-000000000166', 'lageplan', NULL, 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'd1d1d1d1-0000-4000-8000-000000000166', 'site_plan', NULL, 'user_2');
+INSERT INTO bim_models (id, organization_id, project_id, document_id, status)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000166', 'org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'd2d2d2d2-0000-4000-8000-000000000166', 'completed');
+INSERT INTO bim_check_confirmations (organization_id, project_id, rule_id, model_id, confirmed_by) VALUES
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'oib2-feuerwiderstand-tragend', 'f1f1f1f1-0000-4000-8000-000000000166', 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'oib3-raumhoehe', 'f1f1f1f1-0000-4000-8000-000000000166', 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'oib4-tuer-durchgangsbreite', 'f1f1f1f1-0000-4000-8000-000000000166', 'user_1'),
+  ('org_0167', 'aaaaaaaa-0000-4000-8000-000000000166', 'oib4-door-clear-width', 'f1f1f1f1-0000-4000-8000-000000000166', 'user_2');
+SQL
+apply_in grid_task_names 0167_task_role_and_rule_names.sql
+check_in grid_task_names "SELECT string_agg(kind, ',' ORDER BY kind) FROM tasks" "document,submission_check" "0167 renames the kind on tasks"
+check_in grid_task_names "SELECT string_agg(kind, ',') FROM task_definitions" "submission_check" "0167 renames the kind on task_definitions"
+check_in grid_task_names "SELECT string_agg(kind, ',' ORDER BY kind) FROM task_runs" "compliance_check,submission_check" "0167 renames the kind on task_runs and leaves the others"
+check_in grid_task_names "SELECT string_agg(role || ':' || coalesce(scope_instance_id, '-') || ':' || created_by, ',' ORDER BY role) FROM document_roles" "development_plan:-:user_1,existing_plans:b1:user_1,site_plan:-:user_2" "0167 renames the roles, and the binding that existed under both spellings keeps the new one"
+check_in grid_task_names "SELECT string_agg(rule_id || ':' || confirmed_by, ',' ORDER BY rule_id) FROM bim_check_confirmations" "oib2-fire-resistance-load-bearing:user_1,oib3-room-height:user_1,oib4-door-clear-width:user_2" "0167 renames the rule ids, and the confirmation that existed under both spellings keeps the new one"
+apply_in grid_task_names 0167_task_role_and_rule_names.down.sql
+check_in grid_task_names "SELECT string_agg(kind, ',' ORDER BY kind) FROM tasks" "document,einreichcheck" "down restores the task kind"
+check_in grid_task_names "SELECT string_agg(role, ',' ORDER BY role) FROM document_roles" "bebauungsplan,bestandsplan,lageplan" "down restores the roles"
+check_in grid_task_names "SELECT string_agg(rule_id, ',' ORDER BY rule_id) FROM bim_check_confirmations" "oib2-feuerwiderstand-tragend,oib3-raumhoehe,oib4-tuer-durchgangsbreite" "down restores the rule ids"
+apply_in grid_task_names 0167_task_role_and_rule_names.sql
+apply_in grid_task_names 0167_task_role_and_rule_names.sql
+check_in grid_task_names "SELECT string_agg(role, ',' ORDER BY role) FROM document_roles" "development_plan,existing_plans,site_plan" "0167 re-applies, twice"
+echo "==> 0167 task, role and rule names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0168: English topic tags on conversations, and the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0168. Each array is
+# rewritten element by element in the order of first appearance, an old key
+# and its new spelling in one array collapse to one, a conversation without an
+# old key is not touched (its `updated_at` stays), and the rewrite does not
+# bump `updated_at` of one that is.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0168 conversation tag names and their down migration on grid_tag_names"
+migrate_before grid_tag_names 0168_conversation_tag_names
+sql_in grid_tag_names <<'SQL'
+INSERT INTO conversations (id, organization_id, created_by, tags, updated_at) VALUES
+  ('s_0168_a', 'org_0168', 'user_1', ARRAY['brandschutz', 'statik', 'brandschutz'], '2026-01-01 10:00:00+00'),
+  ('s_0168_b', 'org_0168', 'user_1', ARRAY['allgemein'], '2026-01-02 10:00:00+00'),
+  ('s_0168_c', 'org_0168', 'user_1', ARRAY['hygiene'], '2026-01-03 10:00:00+00'),
+  ('s_0168_d', 'org_0168', 'user_1', ARRAY['fire_safety', 'brandschutz', 'energie'], '2026-01-04 10:00:00+00'),
+  ('s_0168_e', 'org_0168', 'user_1', '{}', '2026-01-05 10:00:00+00');
+SQL
+apply_in grid_tag_names 0168_conversation_tag_names.sql
+check_in grid_tag_names "SELECT string_agg(id || '=' || array_to_string(tags, '|'), ',' ORDER BY id) FROM conversations" "s_0168_a=fire_safety|structural,s_0168_b=general,s_0168_c=hygiene,s_0168_d=fire_safety|energy,s_0168_e=" "0168 rewrites the tags in order, without duplicates"
+check_in grid_tag_names "SELECT count(*) FROM conversations WHERE updated_at <> ('2026-01-0' || (ascii(right(id, 1)) - 96)::text || ' 10:00:00+00')::timestamptz" "0" "0168 does not bump updated_at"
+apply_in grid_tag_names 0168_conversation_tag_names.down.sql
+check_in grid_tag_names "SELECT string_agg(id || '=' || array_to_string(tags, '|'), ',' ORDER BY id) FROM conversations" "s_0168_a=brandschutz|statik,s_0168_b=allgemein,s_0168_c=hygiene,s_0168_d=brandschutz|energie,s_0168_e=" "down restores the German keys"
+apply_in grid_tag_names 0168_conversation_tag_names.sql
+apply_in grid_tag_names 0168_conversation_tag_names.sql
+check_in grid_tag_names "SELECT array_to_string(tags, '|') FROM conversations WHERE id = 's_0168_a'" "fire_safety|structural" "0168 re-applies, twice"
+echo "==> 0168 conversation tag names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0169: English names for the builtin skills, and the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0169. An
+# organization's decision about a playbook follows the rename, a clone that kept
+# the builtin's name keeps shadowing it, a job and a standing task keep naming
+# the skill, and a slash token inside a path is not one.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0169 skill names and their down migration on grid_skill_names"
+migrate_before grid_skill_names 0169_skill_names
+sql_in grid_skill_names <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000168', 'org_0169', 'Skills 0169', 'user_1', 'proj_0169');
+INSERT INTO platform_skills (name, description, body, created_by) VALUES
+  ('einreichcheck', 'd', 'b', 'platform'),
+  ('brandschutz', 'd', 'b', 'platform'),
+  ('fire-safety', 'd', 'b', 'platform');
+INSERT INTO curated_skill_activations (organization_id, skill_name, enabled, updated_by) VALUES
+  ('org_0169', 'einreichcheck', false, 'user_1'),
+  ('org_0169', 'bestand', true, 'user_1'),
+  ('org_0169', 'brandschutz', true, 'user_1'),
+  ('org_0169', 'fire-safety', false, 'user_2');
+INSERT INTO skills (organization_id, name, description, body, origin, cloned_from, created_by) VALUES
+  ('org_0169', 'einreichcheck', 'd', 'b', 'platform-clone', 'einreichcheck', 'user_1'),
+  ('org_0169', 'bestand', 'd', 'b', 'platform-clone', 'bestand', 'user_1'),
+  ('org_0169', 'existing-building', 'd', 'b', 'org', NULL, 'user_1'),
+  ('org_0169', 'brandschutz-check', 'd', 'b', 'platform-clone', 'brandschutz', 'user_1'),
+  ('org_0169', 'hausregeln', 'd', 'b', 'org', NULL, 'user_1');
+INSERT INTO jobs (id, project_id, organization_id, name, prompt, skill_name, skill_snapshot, output, enabled, schedule_timezone, created_by)
+VALUES
+  ('bbbbbbbb-0000-4000-8000-000000000168', 'aaaaaaaa-0000-4000-8000-000000000168', 'org_0169', 'Wöchentlich', '/einreichcheck bis Freitag; Ablage /brandschutz/eg bleibt', 'einreichcheck',
+   '{"name":"einreichcheck","description":"d","body":"b","metadata":{},"origin":"platform"}', 'chat', true, 'UTC', 'user_1'),
+  ('bbbbbbbb-0000-4000-8000-000000000169', 'aaaaaaaa-0000-4000-8000-000000000168', 'org_0169', 'Ohne Skill', 'Prüfe den Bestand', NULL, NULL, 'chat', true, 'UTC', 'user_1');
+INSERT INTO task_definitions (organization_id, project_id, kind, title, plan, requester_user_id, trigger) VALUES
+  ('org_0169', 'aaaaaaaa-0000-4000-8000-000000000168', 'compliance_check', 'Einreichcheck', '{"prompt":"Prüfe — /einreichcheck.","skill":{"name":"einreichcheck"},"dataSources":null}', 'user_1', 'manual');
+SQL
+apply_in grid_skill_names 0169_skill_names.sql
+check_in grid_skill_names "SELECT string_agg(name, ',' ORDER BY name) FROM platform_skills" "fire-safety,submission-check" "0169 renames the platform skills, and the one that existed under both names keeps the new one"
+check_in grid_skill_names "SELECT string_agg(skill_name || ':' || enabled::text || ':' || updated_by, ',' ORDER BY skill_name) FROM curated_skill_activations" "existing-building:true:user_1,fire-safety:false:user_2,submission-check:false:user_1" "0169 carries an organization's decision over to the new name"
+check_in grid_skill_names "SELECT string_agg(name || '<' || coalesce(cloned_from, '-'), ',' ORDER BY name) FROM skills" "bestand<existing-building,brandschutz-check<fire-safety,existing-building<-,hausregeln<-,submission-check<submission-check" "0169 renames a clone that kept the builtin's name (unless the organization already has the new one, as with bestand) and repoints cloned_from"
+check_in grid_skill_names "SELECT coalesce(skill_name, '-') || '|' || coalesce(skill_snapshot ->> 'name', '-') || '|' || prompt FROM jobs WHERE name = 'Wöchentlich'" "submission-check|submission-check|/submission-check bis Freitag; Ablage /brandschutz/eg bleibt" "0169 renames a job's skill and its slash token, and not a path"
+check_in grid_skill_names "SELECT prompt FROM jobs WHERE name = 'Ohne Skill'" "Prüfe den Bestand" "0169 leaves the words of a prompt alone"
+check_in grid_skill_names "SELECT (plan ->> 'prompt') || '|' || (plan #>> '{skill,name}') FROM task_definitions" "Prüfe — /submission-check.|submission-check" "0169 renames the skill of a standing task"
+apply_in grid_skill_names 0169_skill_names.down.sql
+check_in grid_skill_names "SELECT string_agg(name, ',' ORDER BY name) FROM platform_skills" "brandschutz,einreichcheck" "down restores the platform skill names (the new-only duplicate is the loss)"
+check_in grid_skill_names "SELECT string_agg(skill_name, ',' ORDER BY skill_name) FROM curated_skill_activations" "bestand,brandschutz,einreichcheck" "down restores the activations"
+check_in grid_skill_names "SELECT skill_name || '|' || prompt FROM jobs WHERE name = 'Wöchentlich'" "einreichcheck|/einreichcheck bis Freitag; Ablage /brandschutz/eg bleibt" "down restores a job's skill and slash token"
+apply_in grid_skill_names 0169_skill_names.sql
+apply_in grid_skill_names 0169_skill_names.sql
+check_in grid_skill_names "SELECT skill_name FROM jobs WHERE name = 'Wöchentlich'" "submission-check" "0169 re-applies, twice"
+echo "==> 0169 skill names and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
+#
+# On a database of its own, migrated to what precedes 0159, with a project whose
+# profile, prompt view, dismissed values, building bindings, proposed patch and
+# permit record all hold the German names. Each migration rewrites its own table;
+# a second run changes nothing; the down restores the German names.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0159-0162 English profile names and their down migrations on grid_profile_names"
+migrate_before grid_profile_names 0159_english_profile_names
+sql_in grid_profile_names <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name, profile, profile_prompt_view, profile_version) VALUES
+  ('aaaaaaaa-0000-4000-8000-000000000159', 'org_0159', 'Haus Wien', 'user_1', 'proj_0159',
+   '{"facts":{"bundesland":{"value":"wien","confidence":"confirmed","source":"onboarding","updatedAt":"x"},
+              "nutzungen@bw1":{"value":["wohnen","buero"],"confidence":"confirmed","source":"onboarding","updatedAt":"x"},
+              "wohneinheiten@bw1@wohnen":{"value":4,"confidence":"confirmed","source":"onboarding","updatedAt":"x"},
+              "gebaeudeklasse@bw1":{"value":3,"confidence":"confirmed","source":"derivation","updatedAt":"x",
+                "evidence":[{"kind":"derivation","rule":"gebaeudeklasse","inputs":[{"key":"geschosse_oberirdisch@bw1","value":3},{"key":"nutzungen@bw1","value":["wohnen"]}]}]},
+              "bauweise@bw1":{"value":["holzbau","offen"],"confidence":"confirmed","source":"onboarding","updatedAt":"x"},
+              "project_name":{"value":"Haus","confidence":"confirmed","source":"onboarding","updatedAt":"x"},
+              "agent_key":{"value":"wien","confidence":"confirmed","source":"onboarding","updatedAt":"x"}},
+     "goals":{}, "unknowns":["bgf_oberirdisch@bw1"],
+     "assumptions":{"erschliessung":{"value":"ja","confidence":"assumed","source":"onboarding","updatedAt":"x"}}}',
+   E'PROJECT_CONTEXT v1\n\nconfirmed:\n- bundesland=wien\n- nutzungen@bw1=wohnen,buero\n- agent_key=wien\n\nunknown:\n- bgf_oberirdisch@bw1\n\nassumptions:\n- erschliessung=ja', 5),
+  ('bbbbbbbb-0000-4000-8000-000000000159', 'org_0159', 'Leer', 'user_1', 'proj_0159b',
+   '{"facts":{},"goals":{},"unknowns":[],"assumptions":{}}', NULL, 1);
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000159', 'org_0159', 'user_1', 'a.pdf', 'k/0159/a', 'proj_0159', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000159'),
+  ('d2d2d2d2-0000-4000-8000-000000000159', 'org_0159', 'user_1', 'b.pdf', 'k/0159/b', 'proj_0159', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000159');
+INSERT INTO document_roles (organization_id, project_id, document_id, role, scope_instance_id, created_by) VALUES
+  ('org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'd1d1d1d1-0000-4000-8000-000000000159', 'drawing', 'bw1', 'user_1'),
+  ('org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'd2d2d2d2-0000-4000-8000-000000000159', 'drawing', 'bw2', 'user_1'),
+  ('org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'd2d2d2d2-0000-4000-8000-000000000159', 'drawing', 'bldg2', 'user_1'),
+  ('org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'd2d2d2d2-0000-4000-8000-000000000159', 'site_plan', NULL, 'user_1');
+INSERT INTO project_intakes (organization_id, project_id, created_by, dismissed, location) VALUES
+  ('org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'user_1',
+   '[{"key":"bundesland","value":"niederoesterreich"},{"key":"nutzungen@bw1","value":["wohnen"]}]',
+   '{"bundesland":"tirol","gemeinde":"Innsbruck","lat":47.2}');
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES
+  ('e1e1e1e1-0000-4000-8000-000000000159', 'org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'project', 'project_profile',
+   '{"title":"t","patch":[{"op":"add","path":"/facts/bundesland","value":{"value":"tirol","confidence":"confirmed"}},
+                          {"op":"replace","path":"/facts/nutzungen@bw1/value","value":["wohnen","buero"]},
+                          {"op":"add","path":"/unknowns/-","value":"geschosse_oberirdisch@bw1"}]}', 'piloti', 'user_1'),
+  ('e2e2e2e2-0000-4000-8000-000000000159', 'org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'project', 'memory',
+   '{"patch":[{"path":"/facts/bundesland"}]}', 'piloti', 'user_1');
+INSERT INTO permit_records (id, organization_id, project_id, document_id, collection_name, file_name, kind, bundesland, model) VALUES
+  ('f1f1f1f1-0000-4000-8000-000000000159', 'org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'd1d1d1d1-0000-4000-8000-000000000159',
+   'proj_0159', 'a.pdf', 'bewilligung', 'niederoesterreich', 'm');
+SQL
+
+PROFILE_0159="SELECT profile::text || ' v' || profile_version FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'"
+before_0159=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_profile_names -tAc "$PROFILE_0159")
+before_view_0159=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_profile_names -tAc "SELECT profile_prompt_view FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'")
+
+apply_in grid_profile_names 0159_english_profile_names.sql
+check_in grid_profile_names "SELECT string_agg(k, ',' ORDER BY k) FROM projects, jsonb_object_keys(profile->'facts') k WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" \
+  "agent_key,building_class@bldg1,construction_method@bldg1,dwelling_units@bldg1@residential,federal_state,project_name,uses@bldg1" \
+  "0159 renames the fact keys, the building id and the use zone; a key it does not know stays"
+check_in grid_profile_names "SELECT profile->'facts'->'federal_state'->>'value' || '|' || (profile->'facts'->'uses@bldg1'->>'value') || '|' || (profile->'facts'->'construction_method@bldg1'->>'value') || '|' || (profile->'facts'->'agent_key'->>'value') FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" \
+  'vienna|["residential", "office"]|["timber", "open"]|wien' \
+  "0159 renames the tokens under the key they sit under, and not the same word under a key it does not know"
+check_in grid_profile_names "SELECT profile->'facts'->'building_class@bldg1'->'evidence'->0->>'rule' || '|' || (profile->'facts'->'building_class@bldg1'->'evidence'->0->'inputs'->0->>'key') || '|' || (profile->'facts'->'building_class@bldg1'->'evidence'->0->'inputs'->1->'value'->>0) FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" \
+  "building_class|storeys_above_ground@bldg1|residential" "0159 renames a derivation's rule, its input keys and their values"
+check_in grid_profile_names "SELECT profile->'unknowns'->>0 || '|' || (profile->'assumptions'->'servicing'->>'value') FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" \
+  "gfa_above_ground@bldg1|yes" "0159 renames an unknown and an assumption (ja is yes only for servicing)"
+check_in grid_profile_names "SELECT profile_prompt_view FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" \
+  $'PROJECT_CONTEXT v1\n\nconfirmed:\n- federal_state=vienna\n- uses@bldg1=residential,office\n- agent_key=wien\n\nunknown:\n- gfa_above_ground@bldg1\n\nassumptions:\n- servicing=yes' \
+  "0159 rewrites the prompt view the agent parses, line by line"
+check_in grid_profile_names "SELECT profile_version FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" "6" "0159 bumps profile_version so an open wizard reloads"
+check_in grid_profile_names "SELECT profile_version FROM projects WHERE id = 'bbbbbbbb-0000-4000-8000-000000000159'" "1" "0159 leaves a profile without German names alone"
+apply_in grid_profile_names 0159_english_profile_names.sql
+check_in grid_profile_names "SELECT profile_version FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" "6" "0159 re-applies without a second bump"
+
+apply_in grid_profile_names 0160_english_intake_names.sql
+check_in grid_profile_names "SELECT dismissed::text FROM project_intakes" \
+  '[{"key": "federal_state", "value": "lower_austria"}, {"key": "uses@bldg1", "value": ["residential"]}]' "0160 renames a dismissed key and value"
+check_in grid_profile_names "SELECT location::text FROM project_intakes" \
+  '{"lat": 47.2, "federalState": "tyrol", "municipality": "Innsbruck"}' "0160 renames the location's fields and the Land's token"
+apply_in grid_profile_names 0160_english_intake_names.sql
+
+apply_in grid_profile_names 0161_english_building_ids.sql
+check_in grid_profile_names "SELECT string_agg(coalesce(scope_instance_id, '-') || ':' || role, ',' ORDER BY scope_instance_id, role) FROM document_roles" \
+  "bldg1:drawing,bldg2:drawing,-:site_plan" \
+  "0161 renames the building id of a binding, and drops the German duplicate of a binding that already exists in English"
+check_in grid_profile_names "SELECT payload->'patch'->0->>'path' || '|' || (payload->'patch'->0->'value'->>'value') || '|' || (payload->'patch'->1->>'path') || '|' || (payload->'patch'->2->>'value') FROM proposed_changes WHERE kind = 'project_profile'" \
+  "/facts/federal_state|tyrol|/facts/uses@bldg1/value|storeys_above_ground@bldg1" "0161 renames a proposed profile patch's paths and values"
+check_in grid_profile_names "SELECT payload::text FROM proposed_changes WHERE kind = 'memory'" '{"patch": [{"path": "/facts/bundesland"}]}' "0161 leaves a proposal of another kind alone"
+apply_in grid_profile_names 0161_english_building_ids.sql
+check_in grid_profile_names "SELECT count(*) FROM document_roles" "3" "0161 re-applies without losing a binding"
+
+apply_in grid_profile_names 0162_permit_federal_state.sql
+check_in grid_profile_names "SELECT bundesland || '|' || federal_state FROM permit_records" "niederoesterreich|lower_austria" "0162 backfills federal_state with the English token and keeps bundesland"
+sql_in grid_profile_names <<'SQL'
+INSERT INTO permit_records (organization_id, project_id, document_id, collection_name, file_name, kind, federal_state, model)
+VALUES ('org_0159', 'aaaaaaaa-0000-4000-8000-000000000159', 'd2d2d2d2-0000-4000-8000-000000000159', 'proj_0159', 'b.pdf', 'bewilligung', 'styria', 'm');
+SQL
+check_in grid_profile_names "SELECT bundesland || '|' || federal_state FROM permit_records WHERE file_name = 'b.pdf'" "steiermark|styria" "0162: a new pod's write fills the old column, so an older pod reads it"
+sql_in grid_profile_names <<<"UPDATE permit_records SET bundesland = 'tirol' WHERE file_name = 'a.pdf'"
+check_in grid_profile_names "SELECT federal_state FROM permit_records WHERE file_name = 'a.pdf'" "tyrol" "0162: an older pod's write fills the new column"
+apply_in grid_profile_names 0162_permit_federal_state.sql
+
+apply_in grid_profile_names 0162_permit_federal_state.down.sql
+check_in grid_profile_names "SELECT count(*) FROM information_schema.columns WHERE table_name = 'permit_records' AND column_name IN ('federal_state', 'bundesland')" "1" "0162 down drops the English column and keeps bundesland"
+check_in grid_profile_names "SELECT string_agg(file_name || ':' || bundesland, ',' ORDER BY file_name) FROM permit_records" "a.pdf:tirol,b.pdf:steiermark" "0162 down leaves the German tokens, as the trigger kept them"
+apply_in grid_profile_names 0161_english_building_ids.down.sql
+check_in grid_profile_names "SELECT string_agg(coalesce(scope_instance_id, '-') || ':' || role, ',' ORDER BY scope_instance_id, role) FROM document_roles" "bw1:drawing,bw2:drawing,-:site_plan" "0161 down restores the bwN building ids"
+check_in grid_profile_names "SELECT payload->'patch'->0->>'path' || '|' || (payload->'patch'->1->>'path') FROM proposed_changes WHERE kind = 'project_profile'" "/facts/bundesland|/facts/nutzungen@bw1/value" "0161 down restores the patch paths"
+apply_in grid_profile_names 0160_english_intake_names.down.sql
+check_in grid_profile_names "SELECT dismissed::text || location::text FROM project_intakes" \
+  '[{"key": "bundesland", "value": "niederoesterreich"}, {"key": "nutzungen@bw1", "value": ["wohnen"]}]{"lat": 47.2, "gemeinde": "Innsbruck", "bundesland": "tirol"}' "0160 down restores the German dismissed values and location"
+apply_in grid_profile_names 0159_english_profile_names.down.sql
+check_in grid_profile_names "$PROFILE_0159" "${before_0159%% v*} v7" "0159 down restores the profile exactly (its version moves forward, never back)"
+check_in grid_profile_names "SELECT profile_prompt_view FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" "$before_view_0159" "0159 down restores the prompt view exactly"
+echo "==> 0159-0162 English profile names and down migrations verified"

@@ -39,9 +39,9 @@ export const chat = {
     // terms of art an Austrian architect works in, and translating "verbindlich
     // erklärt" to "declared binding" loses the phrase they would search for.
     binding: {
-      bindend: 'Bindend',
-      verbindlich_erklaert: 'Verbindlich erklärt',
-      auslegend: 'Auslegend',
+      binding: 'Bindend',
+      declared_binding: 'Verbindlich erklärt',
+      interpretive: 'Auslegend',
     },
     openExternal: 'Open in RIS',
     // Office files (Word, Excel, PowerPoint, ODF, RTF) are shown as a PDF Piloti
@@ -54,9 +54,9 @@ export const chat = {
     // over `origins` because the origin token is kb/ris/web only, so a
     // knowledge-base copy of a legal text reads as project material.
     kinds: {
-      baurecht: 'Building law & guidelines',
-      buero: 'Office filing',
-      projekt: 'Project knowledge',
+      building_law: 'Building law & guidelines',
+      office: 'Office filing',
+      project: 'Project knowledge',
       praezedenz: 'Precedent',
       web: 'Web source',
     },
@@ -76,8 +76,8 @@ export const chat = {
     forQuery: '“{query}”',
     // Provenance badge on a card.
     source: {
-      projekt: 'Project',
-      buero: 'Office',
+      project: 'Project',
+      office: 'Office',
     },
     // A surfaced file that no longer resolves to a live document row — an honest,
     // actionable card (the assistant referenced it; open in Office filing / project
@@ -112,8 +112,8 @@ export const chat = {
     // Which shelf the file came from — the same distinction the sources draw:
     // shared project knowledge, Office filing, a private attachment.
     shelf: {
-      projekt: 'Project files',
-      buero: 'Office filing',
+      project: 'Project files',
+      office: 'Office filing',
       session: 'Attachment in this chat',
     },
     notIndexed: 'Filed, not read. You can open it, but Piloti does not cite it.',
@@ -226,12 +226,12 @@ export const chat = {
       note: 'Note',
     },
     status: {
-      erfuellt: 'met',
-      nicht_erfuellt: 'not met',
-      offen: 'open',
-      nicht_anwendbar: 'not applicable',
+      met: 'met',
+      not_met: 'not met',
+      open: 'open',
+      not_applicable: 'not applicable',
     },
-    grounding: { belegt: 'sourced', abgeleitet: 'derived', offen: 'unsourced' },
+    grounding: { sourced: 'sourced', derived: 'derived', open: 'unsourced' },
     clarify: 'Clarify',
     /** Under the matrix in a closed project, where „Clarify“ would be (ADR-0090). */
     clarifyClosed: 'Closed project: no new research to clarify open findings.',
@@ -322,7 +322,7 @@ export const chat = {
         'No citation survived verification — please check the figures yourself before relying on them',
       cards_generation_failed:
         'The report is complete, but the proposals derived from it could not be produced',
-      grundlage_unread:
+      basis_unread:
         'Not every document named as the basis was read — the end of the report lists which',
     },
     // The verification's own reasons for dropping a citation, in the reader's
@@ -454,10 +454,10 @@ export const chat = {
       eyebrow: 'What matters most',
     },
     callout: {
-      hinweis: 'Note',
-      achtung: 'Caution',
-      frist: 'Deadline',
-      tipp: 'Tip',
+      note: 'Note',
+      warning: 'Caution',
+      deadline: 'Deadline',
+      tip: 'Tip',
       more: 'More on this',
       less: 'Less',
     },
@@ -548,7 +548,7 @@ export const chat = {
       // The four kinds, in the words somebody would use to ask for them.
       kind: {
         complianceCheck: 'Compliance check',
-        einreichcheck: 'Submission check',
+        submissionCheck: 'Submission check',
         document: 'Document',
         revision: 'Revision',
       },
@@ -762,11 +762,11 @@ export const chat = {
       },
       guardrail: {
         context: {
-          balkon: 'Balcony',
+          balcony: 'Balcony',
           loggia: 'Loggia',
-          stiege: 'Stairs',
-          fenster: 'Window',
-          dachterrasse: 'Roof terrace',
+          staircase: 'Stairs',
+          window: 'Window',
+          roof_terrace: 'Roof terrace',
         },
         elevation: 'ELEVATION · {context}',
         fallHeight: 'Fall height',
@@ -810,14 +810,14 @@ export const chat = {
       removePoint: 'Remove section: {point}',
       genre: 'Kind of report',
       genres: {
-        pruefbericht: 'Compliance review',
-        aktenvermerk: 'Memo',
-        vergleich: 'Comparison',
-        checkliste: 'Checklist',
-        bericht: 'Report',
+        inspection_report: 'Compliance review',
+        file_note: 'Memo',
+        comparison: 'Comparison',
+        checklist: 'Checklist',
+        report: 'Report',
       },
       depth: 'Depth',
-      depths: { kurzpruefung: 'Short review', gutachten: 'Full opinion' },
+      depths: { quick_check: 'Short review', expert_report: 'Full opinion' },
       /** The documents the reader names for the run, and the sources it may use. */
       documents: {
         label: 'Documents',
@@ -1003,7 +1003,7 @@ export const chat = {
           // names the document instead of a corpus. `{document}` is the name
           // the publisher or the office gave it — a proper noun, sent as
           // itself and never translated.
-          punkt: 'Reading {document}, Pkt. {punkt} …',
+          clause: 'Reading {document}, Pkt. {clause} …',
           page: 'Reading {document}, p. {page} …',
           // Other formulations are being tried — the action, not the verdict:
           // the line says what is happening NOW, replacing the round's search
@@ -1251,7 +1251,7 @@ export const chat = {
             'No citation held up under checking. Please verify the figures yourself before using them.',
           noCards:
             'The report is complete, but the proposals derived from it could not be produced.',
-          grundlageUnread:
+          basisUnread:
             'Not every document named as the basis could be read; the answer does not reflect its contents. The end of the report lists which.',
         },
       },

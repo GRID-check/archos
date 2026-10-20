@@ -363,7 +363,7 @@ describe('DocumentReviewControls — two decisions in view, two behind ⋯', () 
         lifecycle="active"
         viewer={editor}
         onAct={() => undefined}
-        fassungNumber={5}
+        revisionNumber={5}
       />,
     )
 

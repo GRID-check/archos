@@ -104,9 +104,9 @@ describe('turn-answered', () => {
     const step = view.steps['sources:0:knowledge_search:1']
     expect(step).toMatchObject({ kind: 'sources', tool: 'knowledge_search', round: 0 })
     expect(step.traceLanes?.[0]).toEqual({
-      key: 'baurecht_oib',
+      key: 'building_law_oib',
       label: 'OIB-Richtlinie',
-      kind: 'baurecht',
+      kind: 'building_law',
       signal: 'law',
       hitCount: 3,
       sources: [
@@ -114,7 +114,7 @@ describe('turn-answered', () => {
         { name: 'oib-rl_2_ausgabe_mai_2023.pdf', title: 'OIB-Richtlinie 2, Ausgabe Mai 2023', detail: 'Tabelle 2b p.14', shelf: 'base', round: 0 },
       ],
     })
-    expect(step.traceLanes?.[1]).toMatchObject({ key: 'projekt', signal: 'project', sources: [{ name: 'Brandschutzkonzept_V3.pdf' }] })
+    expect(step.traceLanes?.[1]).toMatchObject({ key: 'project', signal: 'project', sources: [{ name: 'Brandschutzkonzept_V3.pdf' }] })
   })
 
   it('shows the masthead before the first word and streams the text', () => {

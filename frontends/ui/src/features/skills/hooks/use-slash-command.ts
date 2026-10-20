@@ -181,7 +181,7 @@ export function useSlashCommand({
     // user typed alongside it — dropping the skill must not cost them their
     // sentence.
     const start = text.search(/\S/)
-    const rest = text.slice(start + 1 + invocation.skillName.length).replace(/^[ \t]/, '')
+    const rest = text.slice(start + 1 + invocation.token.length).replace(/^[ \t]/, '')
     const next = `${text.slice(0, start)}${rest}`
     onReplaceText(next, start)
   }, [names, onReplaceText, text])

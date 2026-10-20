@@ -37,7 +37,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { buildComplianceBcf, type BcfExport } from './bcf'
 import { buildBimDerivedKeys } from './service'
-import { attachConfirmations } from './rules'
+import { attachConfirmations, canonicalBimRuleId } from './rules'
 import { revisionSeriesKey } from './revision-series'
 import {
   deleteBimCheckConfirmation,
@@ -392,7 +392,7 @@ export async function confirmAccessibleCheck(
   await upsertBimCheckConfirmation({
     organizationId: session.organizationId,
     projectId,
-    ruleId: input.ruleId,
+    ruleId: canonicalBimRuleId(input.ruleId),
     modelId: model.id,
     confirmedBy: session.userId,
     note: input.note,
@@ -533,7 +533,7 @@ export async function withdrawAccessibleCheck(
   await deleteBimCheckConfirmation({
     organizationId: session.organizationId,
     projectId,
-    ruleId,
+    ruleId: canonicalBimRuleId(ruleId),
     // Across the building's revisions: the panel may well have been showing a
     // confirmation from an earlier one, marked stale, and that is the one the
     // reader is taking back.

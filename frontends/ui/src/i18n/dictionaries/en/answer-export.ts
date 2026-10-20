@@ -74,12 +74,12 @@ export const answerExport = {
     reference: 'Reference',
     status: {
       label: 'Status',
-      erfuellt: 'met',
-      nicht_erfuellt: 'not met',
-      offen: 'open',
-      nicht_anwendbar: 'not applicable',
+      met: 'met',
+      not_met: 'not met',
+      open: 'open',
+      not_applicable: 'not applicable',
     },
-    grounding: { belegt: 'sourced', abgeleitet: 'derived', offen: 'unsourced' },
+    grounding: { sourced: 'sourced', derived: 'derived', open: 'unsourced' },
   },
   /**
    * Heading of the section an exported answer or filed report appends for the
@@ -208,15 +208,15 @@ export const answerExport = {
     },
     /** `guardrail_check.context` — where the railing sits. */
     context: {
-      balkon: 'Balkon',
+      balcony: 'Balkon',
       loggia: 'Loggia',
-      stiege: 'Stiege',
-      fenster: 'Fenster',
-      dachterrasse: 'Dachterrasse',
+      staircase: 'Stiege',
+      window: 'Fenster',
+      roof_terrace: 'Dachterrasse',
     },
     /** `building_section.markers.kind` — a section marker's role. */
     kind: {
-      fluchtniveau: 'Fluchtniveau',
+      escape_level: 'Fluchtniveau',
       threshold: 'Threshold',
       reference: 'Reference line',
     },
@@ -247,8 +247,8 @@ export const answerExport = {
     },
     /** `document_grid` — which library the document came out of. */
     source: {
-      projekt: 'Project',
-      buero: 'Office',
+      project: 'Project',
+      office: 'Office',
     },
     /** `egress_diagram` — the turn after a run of the escape route. */
     turn: {
@@ -375,8 +375,8 @@ export const answerExport = {
     route_width: 'Access-route width',
     walk_distance_to_entrance: 'Reach to the entrance',
     gate_clearance_height: 'Gateway clear height',
-    aufstellflaeche: 'Standing area',
-    gebaeudeklasse: 'Building class',
+    staging_area: 'Standing area',
+    building_class: 'Building class',
     // ThermalEnvelopeCard
     components: 'Components',
     // DocumentGridCard
@@ -399,7 +399,7 @@ export const answerExport = {
     step: 'From step',
     before: 'Before',
     after: 'After',
-    // AufstellflaechePlan
+    // StagingAreaPlan
     length: 'Length',
     distance_to_facade: 'Distance to the facade',
   },

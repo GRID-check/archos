@@ -1032,6 +1032,18 @@
       "additionalProperties": false,
       "description": "The server's check of one quote line ``> „…“ [N]`` (``common/quote_stamps.py``), in document order.\n\n``verbatim`` names the passage that holds the wording and the ``[N]`` it\ncarries (absent for a passage read but not cited); ``not_found`` means no\nretrieved passage holds it; ``unchecked`` means there was nothing to check\nagainst, or the span is too short to mean anything.",
       "properties": {
+        "clause": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Clause"
+        },
         "file_name": {
           "anyOf": [
             {
@@ -1068,18 +1080,6 @@
           ],
           "default": null,
           "title": "Page"
-        },
-        "punkt": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Punkt"
         },
         "status": {
           "enum": [
@@ -2586,9 +2586,9 @@
         },
         "kind": {
           "enum": [
-            "baurecht",
-            "buero",
-            "projekt",
+            "building_law",
+            "office",
+            "project",
             "web"
           ],
           "title": "Kind",

@@ -31,7 +31,7 @@ export type PhaseState = 'done' | 'active' | 'pending'
 
 /** The rounds and documents a run has reached — the only numbers the header shows. */
 export interface RunTallies {
-  /** Steps taken inside `recherchieren`: one step is one research round. */
+  /** Steps taken inside `researching`: one step is one research round. */
   rounds: number
   /** Distinct document names across every step, whatever phase reached them. */
   docs: number
@@ -55,14 +55,14 @@ const STATUS_SET: ReadonlySet<string> = new Set<string>(RUN_STATUSES)
  */
 export function runDisplayStatus(ledger: RunLedger): RunStatus {
   if (STATUS_SET.has(ledger.status)) return ledger.status
-  if (ledger.error) return 'fehlgeschlagen'
-  if (ledger.result) return 'fertig'
-  return ledger.phases.length > 0 ? 'laeuft' : 'angelegt'
+  if (ledger.error) return 'failed'
+  if (ledger.result) return 'done'
+  return ledger.phases.length > 0 ? 'running' : 'created'
 }
 
 /** The states in which the run is still doing, or waiting for, something. */
 export function isLiveStatus(status: RunStatus): boolean {
-  return status === 'angelegt' || status === 'laeuft' || status === 'wartet'
+  return status === 'created' || status === 'running' || status === 'waiting'
 }
 
 /** The phase the run is in: the LAST phase entry that has not ended, else null. */
@@ -104,7 +104,7 @@ export interface BasisReceiptRow {
 }
 
 export function basisReceipt(ledger: RunLedger): BasisReceiptRow[] {
-  const named = ledger.grundlage ?? []
+  const named = ledger.basis ?? []
   if (named.length === 0) return []
   const reached = new Map<string, string[]>()
   for (const step of ledger.steps) {
@@ -128,7 +128,7 @@ export function runTallies(ledger: RunLedger): RunTallies {
     for (const doc of step.docs) names.add(doc.name)
     findings += step.findings?.length ?? 0
   }
-  return { rounds: stepsInPhase(ledger, 'recherchieren').length, docs: names.size, findings }
+  return { rounds: stepsInPhase(ledger, 'researching').length, docs: names.size, findings }
 }
 
 /**
@@ -159,7 +159,7 @@ function ms(instant: string | undefined): number | null {
  * parse — an unreadable timestamp is a bug to fix upstream, not a negative
  * number to render.
  *
- * `wartet` stops the clock at `updatedAt`, which IS the instant the run asked
+ * `waiting` stops the clock at `updatedAt`, which IS the instant the run asked
  * its question: nothing folds into the ledger between the ask and the answer,
  * so that timestamp is the last thing the run did. Running it on to `now`
  * would make the pill read „68 h" on a Monday morning — a true number about
@@ -169,7 +169,7 @@ function ms(instant: string | undefined): number | null {
 export function elapsedMs(ledger: RunLedger, now: number): number {
   const started = ms(ledger.startedAt)
   if (started === null) return 0
-  const waiting = runDisplayStatus(ledger) === 'wartet' ? ms(ledger.updatedAt) : null
+  const waiting = runDisplayStatus(ledger) === 'waiting' ? ms(ledger.updatedAt) : null
   const ended = ms(ledger.finishedAt) ?? waiting ?? now
   return Math.max(0, ended - started)
 }

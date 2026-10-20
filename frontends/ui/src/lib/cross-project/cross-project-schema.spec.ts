@@ -57,23 +57,23 @@ describe('cross-project JSON Schema', () => {
 
     expect(crossProjectSearchRequestSchema.parse({ query: 'Dachdetail' }).projectFacts).toBeUndefined()
     expect(
-      facts({ bundesland: ['tirol'], gebaeudeklasse: [4, 5], bauweise: ['holzbau'], nutzungen: ['wohnen'], vorhabensart: ['neubau'] })
+      facts({ federal_state: ['tyrol'], building_class: [4, 5], construction_method: ['timber'], uses: ['residential'], work_type: ['new_build'] })
         .success
     ).toBe(true)
-    expect(listed({ bundesland: ['niederoesterreich'] }).success).toBe(true)
+    expect(listed({ federal_state: ['lower_austria'] }).success).toBe(true)
     // Each vocabulary is the wizard's, „noch offen" and a site abroad left out (neither is a value a project can match).
     expect(CROSS_PROJECT_FACT_FEDERAL_STATES).toContain('vorarlberg')
-    expect(CROSS_PROJECT_FACT_FEDERAL_STATES).not.toContain('ausserhalb_oesterreichs')
+    expect(CROSS_PROJECT_FACT_FEDERAL_STATES).not.toContain('outside_austria')
     expect(CROSS_PROJECT_FACT_CONSTRUCTION_METHODS).not.toContain('offen')
-    expect(CROSS_PROJECT_FACT_USES).toContain('gastro')
-    expect(CROSS_PROJECT_FACT_WORK_TYPES).toContain('nutzungsaenderung')
+    expect(CROSS_PROJECT_FACT_USES).toContain('catering')
+    expect(CROSS_PROJECT_FACT_WORK_TYPES).toContain('change_of_use')
     for (const refused of [
-      { bundesland: ['Tirol'] },
-      { bundesland: ['ausserhalb_oesterreichs'] },
-      { gebaeudeklasse: [6] },
-      { gebaeudeklasse: ['GK4'] },
-      { bauweise: ['offen'] },
-      { nutzungen: [] },
+      { federal_state: ['Tirol'] },
+      { federal_state: ['outside_austria'] },
+      { building_class: [6] },
+      { building_class: ['GK4'] },
+      { construction_method: ['open'] },
+      { uses: [] },
       { farbe: ['rot'] },
     ]) {
       expect(facts(refused).success, JSON.stringify(refused)).toBe(false)

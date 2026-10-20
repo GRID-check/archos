@@ -214,7 +214,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'document.assigned_to_you': { icon: 'user-plus', i18nKey: 'documentAssigned', tone: 'info' },
   'job.completed': { icon: 'check-circle', i18nKey: 'jobCompleted', tone: 'info' },
   'job.failed': { icon: 'alert-triangle', i18nKey: 'jobFailed', tone: 'warning' },
-  // The clock is the run block's own glyph for `wartet`, so the row and the
+  // The clock is the run block's own glyph for `waiting`, so the row and the
   // block say "waiting for you" with one shape.
   'job.waiting': { icon: 'clock', i18nKey: 'jobWaiting', tone: 'request' },
   'document.review_requested': {
@@ -228,7 +228,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'document.release_requested': { icon: 'shield-alert', i18nKey: 'documentReleaseRequested', tone: 'request' },
   'mail_import.completed': { icon: 'check-circle', i18nKey: 'mailImportCompleted', tone: 'info' },
   'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
-  'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewRevision', tone: 'info' },
+  'document.new_revision': { icon: 'layers', i18nKey: 'documentNewRevision', tone: 'info' },
   // Piloti's rows wear its face, as its marks and replies do on the page.
   'piloti.work_done': { icon: 'piloti', i18nKey: 'pilotiWorkDone', tone: 'info', anchor: 'mark' },
   'piloti.work_failed': { icon: 'piloti', i18nKey: 'pilotiWorkFailed', tone: 'warning', anchor: 'mark' },
@@ -239,6 +239,29 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
   // The chat mention's glyph: one sign for „someone asked you", wherever it was.
   'annotation.mentioned': { icon: 'at-sign', i18nKey: 'annotationMentioned', tone: 'request', anchor: 'mark' },
+}
+
+/**
+ * Types as they were stored before migration 0165. An older pod keeps writing
+ * `document.new_fassung` until it is replaced, and the migration ran before it
+ * was; the read path treats such a row as the current type
+ * (`canonicalInboxType`, and `legacyInboxTypeAliases` for the SQL filter) and
+ * nothing writes the old name again. Remove after one release.
+ */
+export const LEGACY_INBOX_TYPES: Readonly<Record<string, InboxItemType>> = {
+  'document.new_fassung': 'document.new_revision',
+}
+
+/** The current type for a stored `type` that may be a legacy one; anything else passes through. */
+export function canonicalInboxType(type: string): string {
+  return LEGACY_INBOX_TYPES[type] ?? type
+}
+
+/** The legacy spellings of these current types, so a SQL `IN` list also matches rows an older pod wrote. */
+export function legacyInboxTypeAliases(types: readonly InboxItemType[]): string[] {
+  return Object.entries(LEGACY_INBOX_TYPES)
+    .filter(([, current]) => types.includes(current))
+    .map(([legacy]) => legacy)
 }
 
 /**

@@ -2,8 +2,9 @@ import { foreignKey, pgTable, primaryKey, text, timestamp, uuid } from 'drizzle-
 import { documents } from './documents'
 
 /**
- * `document_fassung_announcements` — a new Fassung that `document.new_fassung`
- * has been announced for (migration 0130; CONTEXT.md „Fassung", ADR-0099).
+ * `document_revision_announcements` — a new Fassung that `document.new_revision`
+ * has been announced for (migration 0130, renamed from `document_fassung_announcements`
+ * by 0165; CONTEXT.md „Fassung", ADR-0099).
  *
  * Keyed by the newer document and the anchor the inbox item uses: the new
  * version for a same-name Fassung, the older document for a link.
@@ -13,7 +14,7 @@ import { documents } from './documents'
  * the row back. Cascades with the newer document.
  */
 export const documentRevisionAnnouncements = pgTable(
-  'document_fassung_announcements',
+  'document_revision_announcements',
   {
     organizationId: text('organization_id').notNull(),
     documentId: uuid('document_id').notNull(),
@@ -21,9 +22,9 @@ export const documentRevisionAnnouncements = pgTable(
     announcedAt: timestamp('announced_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (table) => ({
-    pk: primaryKey({ name: 'document_fassung_announcements_pk', columns: [table.documentId, table.anchorId] }),
+    pk: primaryKey({ name: 'document_revision_announcements_pk', columns: [table.documentId, table.anchorId] }),
     document: foreignKey({
-      name: 'document_fassung_announcements_document_fkey',
+      name: 'document_revision_announcements_document_fkey',
       columns: [table.documentId],
       foreignColumns: [documents.id],
     }).onDelete('cascade'),

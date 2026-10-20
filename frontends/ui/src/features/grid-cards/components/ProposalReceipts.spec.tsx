@@ -89,7 +89,7 @@ const memoryCard = (
   />
 )
 
-const PATCH: ProjectProfilePatchOperation[] = [{ op: 'add', path: '/facts/waermeversorgung', value: 'waermepumpe' }]
+const PATCH: ProjectProfilePatchOperation[] = [{ op: 'add', path: '/facts/heat_supply', value: 'waermepumpe' }]
 
 const profileProposal = (patch: Partial<ProfileProposal> = {}): ProfileProposal => ({
   ...proposalBase(),

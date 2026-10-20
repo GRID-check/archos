@@ -36,9 +36,9 @@ const location: GeocodeResult = {
   lat: 47.26,
   lon: 11.39,
   country: 'at',
-  bundesland: 'tirol',
+  federalState: 'tyrol',
   state: 'Tirol',
-  gemeinde: 'Innsbruck',
+  municipality: 'Innsbruck',
   postcode: '6020',
   kind: 'address',
 }
@@ -47,8 +47,8 @@ describe('intakeSeedFacts', () => {
   it('turns a chosen address into address, country and Bundesland, the address with its geocoder evidence', () => {
     const facts = intakeSeedFacts({ location }, NOW)
 
-    expect(Object.keys(facts).sort()).toEqual(['bundesland', 'country', 'standort_adresse'])
-    expect(facts.standort_adresse).toEqual({
+    expect(Object.keys(facts).sort()).toEqual(['country', 'federal_state', 'site_address'])
+    expect(facts.site_address).toEqual({
       value: 'Innrain 1, 6020 Innsbruck',
       confidence: 'confirmed',
       source: 'onboarding',
@@ -58,19 +58,19 @@ describe('intakeSeedFacts', () => {
       ],
     })
     expect(facts.country?.value).toBe('at')
-    expect(facts.bundesland?.value).toBe('tirol')
+    expect(facts.federal_state?.value).toBe('tyrol')
     expect(ProjectProfileSchema.parse({ facts })).toBeTruthy()
   })
 
   it('leaves the Bundesland out when the provider named none we can match', () => {
-    const facts = intakeSeedFacts({ location: { ...location, bundesland: null } }, NOW)
-    expect(Object.keys(facts).sort()).toEqual(['country', 'standort_adresse'])
+    const facts = intakeSeedFacts({ location: { ...location, federalState: null } }, NOW)
+    expect(Object.keys(facts).sort()).toEqual(['country', 'site_address'])
   })
 
   it('takes a Bundesland chosen by hand, without evidence', () => {
     const facts = intakeSeedFacts({ bundesland: 'salzburg' }, NOW)
-    expect(Object.keys(facts).sort()).toEqual(['bundesland', 'country'])
-    expect(facts.bundesland?.evidence).toBeUndefined()
+    expect(Object.keys(facts).sort()).toEqual(['country', 'federal_state'])
+    expect(facts.federal_state?.evidence).toBeUndefined()
   })
 
   it('is empty without an address or a Bundesland', () => {
@@ -121,7 +121,7 @@ describe('startProjectIntake', () => {
 
     expect(seedProjectProfile).toHaveBeenCalledTimes(1)
     const [, profile] = seedProjectProfile.mock.calls[0] as [unknown, { facts: Record<string, { value: unknown }> }]
-    expect(profile.facts.standort_adresse?.value).toBe('Innrain 1, 6020 Innsbruck')
+    expect(profile.facts.site_address?.value).toBe('Innrain 1, 6020 Innsbruck')
     expect(insertProjectIntake).toHaveBeenCalledWith('tx-profile', expect.objectContaining({ projectId: 'p1', status: 'waiting' }))
     expect(inProjectTransaction).not.toHaveBeenCalled()
   })

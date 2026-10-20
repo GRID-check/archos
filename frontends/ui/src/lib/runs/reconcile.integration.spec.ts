@@ -215,7 +215,7 @@ describe.skipIf(!url)('run reconciler SQL against live Postgres (migration 0096)
     })
     await runs.applyRunLedgerOp(ids.ghost, {
       op: 'append',
-      phases: [{ phase: 'recherchieren', startedAt: minutesAgo(39).toISOString() }],
+      phases: [{ phase: 'researching', startedAt: minutesAgo(39).toISOString() }],
     })
 
     // The ghost reaper's report: the row closes, the block hears nothing.
@@ -236,7 +236,7 @@ describe.skipIf(!url)('run reconciler SQL against live Postgres (migration 0096)
       findMessageInConversation(conversationId, messageId),
     )
     const ledger = (message?.metadata as Record<string, { status: string; error?: { reason: string } }>).run_ledger
-    expect(ledger.status).toBe('fehlgeschlagen')
+    expect(ledger.status).toBe('failed')
     expect(ledger.error?.reason).toBe('Job timed out')
 
     // Looked at once: the stamp moved it past its ending.

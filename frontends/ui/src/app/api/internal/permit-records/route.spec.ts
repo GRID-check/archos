@@ -14,14 +14,14 @@ import { POST } from './route'
 const DOC_ID = '4f9c1d2e-3b4a-4c5d-8e6f-7a8b9c0d1e2f'
 
 const record = {
-  kind: 'nachforderung',
+  kind: 'information_request',
   authority: 'Magistratsabteilung 37',
   municipality: 'Wien',
   bundesland: 'wien',
   issuedOn: '2020-03-14',
   reference: 'MA37/123456/2020',
   requirements: [
-    { kind: 'nachforderung', content: 'Statischer Nachweis vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
+    { kind: 'information_request', content: 'Statischer Nachweis vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
   ],
 }
 

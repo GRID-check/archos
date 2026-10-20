@@ -44,7 +44,7 @@ const crypto = require('crypto')
  * @property {object | null | undefined} [modelOverrides]
  * @property {object | null | undefined} [budget]
  * @property {ReadonlyArray<string> | undefined} [disabledSources]
- * @property {string | null | undefined} [bundesland]
+ * @property {string | null | undefined} [federalState]
  * @property {Requester | null | undefined} [requester] who `userId` is, by name (envelope-only)
  */
 
@@ -86,7 +86,7 @@ function requesterOf(value) {
  * @property {object | null} [budget]
  * @property {ReadonlyArray<string> | null} [disabledSources]
  * @property {boolean} [memoryReflectionEnabled]
- * @property {string | null} [bundesland]
+ * @property {string | null} [federalState]
  * @property {string | null} [conversationId]
  * @property {number | null} [issuedAt]
  * @property {'bff'} [contextTransport]
@@ -124,7 +124,7 @@ function buildGridRequestContextEnvelopeHeaders(input, secret) {
   if (input.budget) payload.budget = input.budget
   if (input.disabledSources && input.disabledSources.length > 0) payload.disabledSources = input.disabledSources
   if (input.memoryReflectionEnabled !== undefined) payload.memoryReflectionEnabled = input.memoryReflectionEnabled
-  if (input.bundesland) payload.bundesland = input.bundesland
+  if (input.federalState) payload.federalState = input.federalState
   if (input.conversationId) payload.conversationId = input.conversationId
   if (input.issuedAt !== undefined && input.issuedAt !== null) payload.issuedAt = input.issuedAt
   if (input.contextTransport !== 'bff' && input.orgInstructions) payload.orgInstructions = input.orgInstructions
@@ -213,7 +213,7 @@ function turnContextHeaders(data, { issuedAt, secret }) {
         budget: data.budget,
         disabledSources: data.disabledSources,
         memoryReflectionEnabled: data.memoryReflectionEnabled,
-        bundesland: data.bundesland,
+        federalState: data.federalState,
         // The conversation the BFF authorized, not the raw query param: a
         // caller-chosen value must never sit inside a signature a write route
         // trusts.

@@ -98,17 +98,17 @@ class TestDeepAgentsRuntimeRouting:
         )
         oib = oib_runtime.backend.ls("/skills/oib/")
         oib_names = [entry["path"].rstrip("/").rsplit("/", 1)[-1] for entry in (oib.entries or [])]
-        assert "brandschutz" in oib_names
-        assert "einreichcheck" not in oib_names
-        assert "bestand" not in oib_names
+        assert "fire-safety" in oib_names
+        assert "submission-check" not in oib_names
+        assert "existing-building" not in oib_names
         globbed = oib_runtime.backend.glob("**/SKILL.md", "/skills/oib/")
         glob_paths = [entry["path"] for entry in (globbed.matches or [])]
-        assert any("brandschutz" in path for path in glob_paths)
-        assert not any("einreichcheck" in path for path in glob_paths)
+        assert any("fire-safety" in path for path in glob_paths)
+        assert not any("submission-check" in path for path in glob_paths)
         grepped = oib_runtime.backend.grep("Gebäudeklasse", path="/skills/oib/")
         grep_paths = [match["path"] for match in (grepped.matches or [])]
         assert grep_paths
-        assert not any("einreichcheck" in path for path in grep_paths)
+        assert not any("submission-check" in path for path in grep_paths)
 
     def test_skills_only_adds_skills_route(self) -> None:
         runtime = DeepAgentsRuntime(
@@ -196,12 +196,12 @@ class TestDeepAgentsRuntimeRouting:
 
         assert [skill["name"] for skill in top_level_skills] == []
         assert sorted(skill["name"] for skill in synthesis_skills) == [
+            "inspection-report-writer",
             "long-form-report-writer",
-            "pruefbericht-writer",
         ]
         assert sorted(skill["path"] for skill in synthesis_skills) == [
+            "/skills/synthesis/inspection-report-writer/SKILL.md",
             "/skills/synthesis/long-form-report-writer/SKILL.md",
-            "/skills/synthesis/pruefbericht-writer/SKILL.md",
         ]
 
     def test_deepagents_subagent_skills_key_adds_skills_middleware(self) -> None:
