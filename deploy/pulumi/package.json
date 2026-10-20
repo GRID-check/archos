@@ -26,6 +26,6 @@
     "@pulumi/cloudflare": "^6.21.0",
     "@pulumi/kubernetes": "^4.34.2",
     "@pulumi/pulumi": "^3.268.0",
-    "js-yaml": "^5.2.2"
+    "js-yaml": "^5.4.3"
   }
 }
