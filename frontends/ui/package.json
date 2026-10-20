@@ -146,7 +146,7 @@
     "@types/uuid": "^10.0.0",
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
-    "@vitejs/plugin-react": "^5.1.2",
+    "@vitejs/plugin-react": "^6.1.2",
     "@vitest/coverage-v8": "^5.0.0",
     "autoprefixer": "^10.6.1",
     "concurrently": "^10.0.4",
