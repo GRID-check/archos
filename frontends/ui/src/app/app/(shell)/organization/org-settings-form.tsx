@@ -25,9 +25,13 @@ import { Switch } from '@/components/ui/switch'
 import { useTranslations, locales, localeNames, type Locale } from '@/i18n'
 import { CHAT_EFFORT_SETTING, CHAT_EFFORTS, type ChatEffort } from '@/lib/reasoning-settings/catalog'
 
+/** The select's value for "no office default": each member's browser decides. */
+const BROWSER_LANGUAGE = 'browser'
+
 interface OrgSettingsFormProps {
   initialDisplayName: string | null
-  initialDefaultLocale: Locale
+  /** Null until an admin chooses: members then start in their browser's language. */
+  initialDefaultLocale: Locale | null
   initialWebSearchEnabled: boolean
   /** Where a new chat's Aufwand dial starts (`settings.chatReasoningEffort`). */
   initialChatEffort: ChatEffort
@@ -43,7 +47,7 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
   const tChat = useTranslations('chat')
 
   const [displayName, setDisplayName] = useState(initialDisplayName ?? '')
-  const [defaultLocaleValue, setDefaultLocaleValue] = useState<Locale>(initialDefaultLocale)
+  const [defaultLocaleValue, setDefaultLocaleValue] = useState<Locale | null>(initialDefaultLocale)
   const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled)
   const [chatEffort, setChatEffort] = useState<ChatEffort>(initialChatEffort)
   const [saving, setSaving] = useState(false)
@@ -105,11 +109,18 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
 
       <Field className="sm:max-w-md">
         <FieldLabel>{t('settings.defaultLocale')}</FieldLabel>
-        <Select value={defaultLocaleValue} onValueChange={(v) => setDefaultLocaleValue(v as Locale)}>
+        {/* „Nicht festgelegt" is a value of its own, not a preselected
+            language: a preselected English was saved with every other field
+            and switched German offices to English (migration 0154). */}
+        <Select
+          value={defaultLocaleValue ?? BROWSER_LANGUAGE}
+          onValueChange={(v) => setDefaultLocaleValue(v === BROWSER_LANGUAGE ? null : (v as Locale))}
+        >
           <SelectTrigger className="w-full" aria-label={t('settings.defaultLocale')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
+            <SelectItem value={BROWSER_LANGUAGE}>{t('settings.defaultLocaleUnset')}</SelectItem>
             {locales.map((code) => (
               <SelectItem key={code} value={code}>
                 {localeNames[code]}
