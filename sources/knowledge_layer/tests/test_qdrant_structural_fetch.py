@@ -77,9 +77,9 @@ def _clause(file_name: str, punkt: str, depth: int, title: str, page: int, *, en
         f"{punkt} {title}\n\n{body or f'Text zu {title}. Weiterer Satz.'}",
         file_name,
         chunking="punkt",
-        clause_id=punkt,
-        clause_depth=depth,
-        clause_title=title,
+        punkt_id=punkt,
+        punkt_depth=depth,
+        punkt_title=title,
         page_label=str(page),
         page_end=str(end if end is not None else page),
     )
@@ -106,7 +106,7 @@ def _oib(file_name: str = OIB) -> list[dict[str, Any]]:
                 file_name,
                 chunking="table",
                 content_type="table",
-                clause_id="Tabelle 1a",
+                punkt_id="Tabelle 1a",
                 table_part=part,
                 page_label="11",
                 page_end="11",
@@ -124,7 +124,7 @@ def _report(file_name: str = REPORT, pages: int = 20) -> list[dict[str, Any]]:
 
 def _sheet() -> list[dict[str, Any]]:
     return [
-        _row(f"Blatt {name}: Positionen.", SHEET, chunking="table", page_label=name, clause_id=f"{name}: Zeilen 2-41")
+        _row(f"Blatt {name}: Positionen.", SHEET, chunking="table", page_label=name, punkt_id=f"{name}: Zeilen 2-41")
         for name in ("Übersicht", "Rohbau", "Ausbau")
     ]
 
@@ -136,9 +136,9 @@ def _markdown() -> list[dict[str, Any]]:
             f"Digest › {title}\n\nText zu {title}.",
             MARKDOWN,
             chunking="section",
-            clause_id=title,
-            clause_depth=depth,
-            clause_title=title,
+            punkt_id=title,
+            punkt_depth=depth,
+            punkt_title=title,
             section_order=order,
             line_start=line,
         )

@@ -202,7 +202,7 @@ def test_ne_keeps_points_without_the_field(store):
 
 
 def test_int_and_string_spellings_meet(store):
-    store.upsert("oib_knowledge", [_record("Punkt", "rl.pdf", clause_depth=1, page_label=4)])
+    store.upsert("oib_knowledge", [_record("Punkt", "rl.pdf", punkt_depth=1, page_label=4)])
     assert store.count("oib_knowledge", {"punkt_depth": {"$in": ["1"]}}) == 1
     assert store.count("oib_knowledge", {"page_label": {"$in": [4]}}) == 1
 
@@ -506,8 +506,8 @@ def test_the_metadata_keys_the_chunkers_write_are_filterable(store):
             _record(
                 "Punkt",
                 "rl2.pdf",
-                clause_path="5 Treppen > 5.1 Allgemein",
-                clause_parent_id="5",
+                punkt_path="5 Treppen > 5.1 Allgemein",
+                punkt_parent_id="5",
                 page_end="7",
                 section_part=2,
                 table_part=1,
