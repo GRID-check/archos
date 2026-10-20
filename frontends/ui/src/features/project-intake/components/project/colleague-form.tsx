@@ -113,13 +113,13 @@ export function ColleagueForm({
       <div className="sm:col-span-2">
         <FunctionField value={work} onChange={setWork} />
       </div>
-      <div className="flex gap-2 sm:col-span-2">
-        <BusyButton type="submit" size="sm" busy={busy} busyLabel={t('people.adding')} disabled={!member}>
-          {t('people.add')}
-        </BusyButton>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+      <div className="flex flex-col-reverse gap-2 pt-1 sm:col-span-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="ghost" onClick={onCancel}>
           {t('people.cancel')}
         </Button>
+        <BusyButton type="submit" busy={busy} busyLabel={t('people.adding')} disabled={!member}>
+          {t('people.add')}
+        </BusyButton>
       </div>
     </form>
   )

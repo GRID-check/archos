@@ -46,7 +46,7 @@ import type { IntakeDecision } from '@/lib/project-intake/types'
 installFixtureDocuments(INTAKE_FIXTURES.ready)
 
 /** The project the fixtures describe, named as the create dialog would have. */
-const FIXTURE_PROJECT_NAME = 'Wohnanlage Gartenstraße 12'
+const FIXTURE_PROJECT_NAME = 'Aufstockung Lacknergasse'
 
 function stateOf(value: string | string[] | undefined): IntakeFixtureName {
   const name = Array.isArray(value) ? value[0] : value

@@ -1,9 +1,10 @@
 'use client'
 
 /**
- * Step 1's Angaben: what the create dialog took, to check at a glance. Name,
- * status with its Zeitraum, the address with the Gemeinde and Bundesland the
- * geocoder named, and the short description.
+ * Step 1's „Projekt" card: what the create dialog took, to check at a glance.
+ * Name, the address with the Gemeinde and Bundesland the geocoder named, the
+ * status with its Zeitraum, and the short description. „Bearbeiten" opens the
+ * address and the description in a sheet, so the card stays a card.
  *
  * Each value is edited where it lives. The address and the description are
  * profile facts, so „Ändern" writes them as the person's answers through the
@@ -16,14 +17,14 @@
 
 import { useMemo, useState, type FormEvent, type JSX } from 'react'
 import Link from 'next/link'
-import { AlignLeft, CircleDot, MapPin, Pencil, Type } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 import { AddressField, type AddressValue } from '@/components/projects/address-field'
 import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Field, FieldLabel } from '@/components/ui/field'
-import { InspectorGroup, InspectorRow } from '@/components/ui/inspector-group'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Textarea } from '@/components/ui/textarea'
 import { useProjectPeriodText, useSteckbriefFormat } from '@/features/projects/components/steckbrief-editor'
 import { useTranslations } from '@/i18n'
@@ -31,8 +32,8 @@ import { MAX_INTAKE_DESCRIPTION_LENGTH, type IntakeDecision, type IntakeView } f
 import type { ProjectBasics } from '@/lib/projects/participants-client'
 import { createSameAddressClient, type SameAddressClient } from '@/lib/projects/same-address-client'
 import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
-import { IntakeSection } from '../intake-atoms'
 import { ADDRESS_KEY, BUNDESLAND_KEY, COUNTRY_KEY, DESCRIPTION_KEY, dialogFacts } from './dialog-facts'
+import { FactRow, StepCard } from './step-card'
 
 export interface DialogFactsSectionProps {
   view: IntakeView
@@ -82,61 +83,75 @@ export function DialogFactsSection({ view, projectId, project, steckbrief, canDe
   const facts = dialogFacts(view)
   const [editing, setEditing] = useState(false)
   const status = useStatusText(view, project, steckbrief)
-  const place = [facts.gemeinde, facts.bundesland].filter(Boolean).join(' · ')
+  // Wien is its own Bundesland: „Wien · Wien“ says nothing twice.
+  const place = [...new Set([facts.gemeinde, facts.bundesland].filter(Boolean))].join(' · ')
 
   return (
-    <IntakeSection
-      label={t('facts.label')}
-      description={t('intro')}
-      testId="project-step-facts"
-      action={
-        canDecide && !editing ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
+    <StepCard
+      title={t('facts.label')}
+      data-testid="project-step-facts"
+      aside={
+        canDecide ? (
+          <Button type="button" variant="ghost" size="sm" className="touch-target -mr-2 h-[30px] gap-1.5 px-2 text-[13px] font-normal"
+            aria-label={t('facts.editTitle')}
+            onClick={() => setEditing(true)}
+          >
             <Pencil aria-hidden />
             {t('facts.edit')}
           </Button>
         ) : undefined
       }
     >
-      {editing ? (
-        <FactsForm
-          projectId={projectId}
-          address={facts.address}
-          description={facts.description}
-          busy={busy}
-          onDecide={onDecide}
-          onDone={() => setEditing(false)}
-        />
-      ) : (
-        <InspectorGroup>
-          <InspectorRow label={t('facts.name')} icon={Type} data-testid="project-step-name">
-            {project?.name ?? '–'}
-          </InspectorRow>
-          <InspectorRow label={t('facts.status')} icon={CircleDot} data-testid="project-step-status">
-            {status}
-          </InspectorRow>
-          <InspectorRow label={t('facts.address')} icon={MapPin} data-testid="project-step-address">
-            {facts.address ?? <span className="text-muted-foreground font-normal">{t('facts.addressMissing')}</span>}
-            {place && (
-              <span className="text-muted-foreground block font-normal" data-testid="project-step-place">
-                {place}
-                {facts.bundeslandSuggested && (
-                  <Chip size="sm" variant="info" className="ml-1.5">
-                    {t('facts.suggested')}
-                  </Chip>
-                )}
-              </span>
-            )}
-          </InspectorRow>
-          <InspectorRow label={t('facts.description')} icon={AlignLeft} data-testid="project-step-description">
-            {facts.description ?? <span className="text-muted-foreground font-normal">{t('facts.descriptionMissing')}</span>}
-          </InspectorRow>
-        </InspectorGroup>
-      )}
-      <Button asChild variant="link" size="sm" className="h-auto px-0">
-        <Link href={`/app/projects/${encodeURIComponent(projectId)}`}>{t('facts.editInOverview')}</Link>
-      </Button>
-    </IntakeSection>
+      <dl>
+        <FactRow label={t('facts.name')} data-testid="project-step-name">
+          {project?.name ?? '–'}
+        </FactRow>
+        <FactRow label={t('facts.address')} data-testid="project-step-address">
+          {facts.address ?? <span className="text-muted-foreground">{t('facts.addressMissing')}</span>}
+          {place && (
+            <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5 text-xs" data-testid="project-step-place">
+              {place}
+              {facts.bundeslandSuggested && (
+                <Chip size="sm" variant="info">
+                  {t('facts.suggested')}
+                </Chip>
+              )}
+            </span>
+          )}
+        </FactRow>
+        <FactRow label={t('facts.status')} data-testid="project-step-status">
+          {status}
+        </FactRow>
+        <FactRow label={t('facts.description')} data-testid="project-step-description">
+          {facts.description ?? <span className="text-muted-foreground">{t('facts.descriptionMissing')}</span>}
+        </FactRow>
+      </dl>
+
+      <Sheet open={editing} onOpenChange={setEditing}>
+        <SheetContent closeLabel={t('facts.cancel')} data-testid="project-step-facts-sheet">
+          <SheetHeader>
+            <SheetTitle>{t('facts.editTitle')}</SheetTitle>
+            <SheetDescription>{t('facts.editDescription')}</SheetDescription>
+          </SheetHeader>
+          {editing && (
+            <FactsForm
+              projectId={projectId}
+              address={facts.address}
+              description={facts.description}
+              busy={busy}
+              onDecide={onDecide}
+              onDone={() => setEditing(false)}
+            />
+          )}
+          <p className="text-muted-foreground text-[13px]">
+            {t('facts.nameAndStatus')}{' '}
+            <Link href={`/app/projects/${encodeURIComponent(projectId)}`} className="text-foreground underline underline-offset-4">
+              {t('facts.editInOverview')}
+            </Link>
+          </p>
+        </SheetContent>
+      </Sheet>
+    </StepCard>
   )
 }
 
@@ -199,13 +214,13 @@ function FactsForm({
           onChange={(event) => setText(event.target.value)}
         />
       </Field>
-      <div className="flex gap-2">
-        <BusyButton type="submit" size="sm" busy={saving} blocked={busy} busyLabel={t('facts.saving')}>
-          {t('facts.save')}
-        </BusyButton>
-        <Button type="button" variant="ghost" size="sm" onClick={onDone}>
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <Button type="button" variant="ghost" onClick={onDone}>
           {t('facts.cancel')}
         </Button>
+        <BusyButton type="submit" busy={saving} blocked={busy} busyLabel={t('facts.saving')}>
+          {t('facts.save')}
+        </BusyButton>
       </div>
     </form>
   )

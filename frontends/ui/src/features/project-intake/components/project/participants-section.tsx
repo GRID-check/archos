@@ -1,11 +1,18 @@
 'use client'
 
 /**
- * Step 1's Beteiligte: everyone on the project in one list, and the two ways to
+ * Step 1's Beteiligte: everyone on the project in one card, and the two ways to
  * add someone. Colleagues from the office get a role in Piloti (the members
  * route, WorkOS); everyone else, the Statiker, the Bauherrschaft, a Fachplaner
  * without an account, is a Steckbrief row with a Funktion (ADR-0091). Both
- * records exist already; this list only shows them side by side.
+ * records exist already; this card only shows them side by side.
+ *
+ * The card is a list and nothing else (the approved mockup `Projekt.dc.html`):
+ * a row is a disc, the name and one line of what the person does. Everything a
+ * row can be asked to do is folded behind its one quiet control: „Rolle" for a
+ * colleague whose role the reader may change, a „…" for anyone else the reader
+ * may describe or remove. Adding or describing someone opens a sheet; former
+ * members fold under the list.
  *
  * What the reader may do is the server's answer, never guessed here: the
  * Steckbrief says whether people may be added or erased (`canEdit`,
@@ -15,14 +22,14 @@
  */
 
 import { useState, type JSX } from 'react'
-import { Pencil, Trash2, UserPlus, UserRoundPlus } from 'lucide-react'
+import { ChevronDown, Ellipsis, Plus } from 'lucide-react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
-import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemTitle } from '@/components/ui/item'
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
 import {
@@ -33,15 +40,14 @@ import {
   type ProjectRoster,
 } from '@/lib/projects/participants-client'
 import type { ProjectPersonInput, ProjectPersonView, SteckbriefView } from '@/lib/projects/steckbrief-types'
-import { IntakeSection } from '../intake-atoms'
+import { cn } from '@/lib/utils'
 import { ColleagueForm, type ColleagueChoice } from './colleague-form'
 import { colleagueCandidates, participantRows, type ParticipantRow } from './participants'
 import { PersonForm, type PersonDraft } from './person-form'
+import { PersonDisc, StepCard, StepCardRow } from './step-card'
 
-/** The Select's value for „Aus dem Projekt nehmen": Radix takes no empty string. */
-const REVOKE = 'revoke'
-
-type Adding = 'colleague' | 'external' | null
+/** What the sheet holds: a colleague to add, someone from outside to add, or a row to describe. */
+type SheetTask = { kind: 'colleague' } | { kind: 'external' } | { kind: 'describe'; row: ParticipantRow } | null
 
 export interface ParticipantsSectionProps {
   projectId: string
@@ -61,12 +67,14 @@ const personInput = (person: Pick<ProjectPersonView, 'startedOn' | 'endedOn' | '
   userId: person?.userId ?? null,
 })
 
+/** The quiet bordered button at the card's foot, 34px on a desk and 44px under a finger. */
+const ADD_CLASS = 'h-[34px] gap-1.5 px-3 text-[13px] font-normal pointer-coarse:h-11'
+
 export function ParticipantsSection({ projectId, client, steckbrief, roster, loading, reload }: ParticipantsSectionProps): JSX.Element {
   const t = useTranslations('intakeProjectStep')
   const tMembers = useTranslations('members')
   const tCommon = useTranslations('common')
-  const [adding, setAdding] = useState<Adding>(null)
-  const [editing, setEditing] = useState<string | null>(null)
+  const [task, setTask] = useState<SheetTask>(null)
   const [pending, setPending] = useState<string | null>(null)
   const [removing, setRemoving] = useState<ProjectPersonView | null>(null)
   const [revoking, setRevoking] = useState<ParticipantRow | null>(null)
@@ -93,36 +101,37 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
     return ok
   }
 
-  if (loading && !steckbrief) {
-    return (
-      <IntakeSection label={t('people.label')} description={t('people.description')} testId="project-step-people">
-        <div role="status" aria-label={t('people.loading')} className="space-y-2">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-12 w-full" />
-        </div>
-      </IntakeSection>
-    )
-  }
-
   if (!steckbrief) {
     return (
-      <IntakeSection label={t('people.label')} description={t('people.description')} testId="project-step-people">
-        <Alert variant="destructive">
-          <AlertDescription className="text-current">
-            <p>{t('people.loadFailed')}</p>
-            <Button type="button" size="sm" variant="outline" onClick={() => void reload()}>
+      <StepCard title={t('people.label')} data-testid="project-step-people">
+        {loading ? (
+          <div role="status" aria-label={t('people.loading')}>
+            {[0, 1, 2].map((index) => (
+              <StepCardRow key={index}>
+                <Skeleton className="size-8 rounded-full" />
+                <Skeleton className="h-8 flex-1" />
+              </StepCardRow>
+            ))}
+          </div>
+        ) : (
+          <StepCardRow className="flex-wrap justify-between">
+            <p className="text-sm">{t('people.loadFailed')}</p>
+            <Button type="button" size="sm" variant="outline" className={ADD_CLASS} onClick={() => void reload()}>
               {t('people.retry')}
             </Button>
-          </AlertDescription>
-        </Alert>
-      </IntakeSection>
+          </StepCardRow>
+        )}
+      </StepCard>
     )
   }
 
   const rows = participantRows(steckbrief.people, roster)
+  const current = rows.filter((row) => row.person.kind !== 'former')
+  const former = rows.filter((row) => row.person.kind === 'former')
   const candidates = colleagueCandidates(roster)
   const canAddColleague = roster !== null && steckbrief.canEdit
   const busy = pending !== null
+  const close = (): void => setTask(null)
 
   const addColleague = (choice: ColleagueChoice): void => {
     void run(
@@ -138,28 +147,26 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
         }
       },
       t('people.addedColleague', { name: choice.member.name })
-    ).then((ok) => ok && setAdding(null))
+    ).then((ok) => ok && close())
   }
 
   const addExternal = (draft: PersonDraft): void => {
     void run('external', () => client.savePerson(projectId, personInput(null, draft), null), t('people.addedExternal', { name: draft.name.trim() })).then(
-      (ok) => ok && setAdding(null)
+      (ok) => ok && close()
     )
   }
 
   const describe = (row: ParticipantRow, draft: PersonDraft): void => {
     const person = row.person
     void run(row.key, () => client.savePerson(projectId, personInput(person, { ...draft, name: person.userId ? person.name : draft.name }), person.id), t('people.saved')).then(
-      (ok) => ok && setEditing(null)
+      (ok) => ok && close()
     )
   }
 
-  const changeRole = (row: ParticipantRow, next: string): void => {
-    if (!row.membership) return
-    if (next === REVOKE) return setRevoking(row)
-    const role = next as ProjectMemberRoleSlug
+  const changeRole = (row: ParticipantRow, next: ProjectMemberRoleSlug): void => {
+    if (!row.membership || next === row.role) return
     const membershipId = row.membership.organizationMembershipId
-    void run(row.key, () => client.setRole(projectId, membershipId, role), t('people.roleChanged', { name: row.person.name, role: roleLabel(role) }))
+    void run(row.key, () => client.setRole(projectId, membershipId, next), t('people.roleChanged', { name: row.person.name, role: roleLabel(next) }))
   }
 
   const revoke = async (): Promise<void> => {
@@ -178,49 +185,101 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
     setRemoving(null)
   }
 
+  const item = (row: ParticipantRow): JSX.Element => (
+    <ParticipantItem
+      key={row.key}
+      row={row}
+      canEdit={steckbrief.canEdit}
+      canErase={steckbrief.canErase}
+      busy={busy}
+      roleLabel={roleLabel}
+      onDescribe={() => setTask({ kind: 'describe', row })}
+      onRole={(next) => changeRole(row, next)}
+      onRevoke={() => setRevoking(row)}
+      onRemove={() => setRemoving(row.person)}
+    />
+  )
+
+  const note = !steckbrief.canEdit ? t('people.readOnly') : roster === null ? t('people.membersByAdmins') : null
+
   return (
-    <IntakeSection label={t('people.label')} count={rows.length} description={t('people.description')} testId="project-step-people">
-      {rows.length === 0 && adding === null ? (
-        <p className="text-muted-foreground text-sm">{t('people.empty')}</p>
+    <StepCard
+      title={t('people.label')}
+      data-testid="project-step-people"
+      aside={
+        <span className="text-muted-foreground text-xs tabular-nums" data-testid="project-step-people-count">
+          {current.length}
+        </span>
+      }
+    >
+      {current.length === 0 ? (
+        <StepCardRow>
+          <p className="text-muted-foreground text-sm">{t('people.empty')}</p>
+        </StepCardRow>
       ) : (
-        <ItemList as="ul" aria-label={t('people.label')}>
-          {rows.map((row) =>
-            editing === row.key ? (
-              <Item as="li" key={row.key} className="block hover:bg-transparent">
-                <PersonForm
-                  initial={{ name: row.person.name, function: row.person.function ?? '', company: row.person.company ?? '' }}
-                  fixedName={row.person.userId ? row.person.name : null}
-                  busy={pending === row.key}
-                  submitLabel={t('people.save')}
-                  busyLabel={t('people.saving')}
-                  onSubmit={(draft) => describe(row, draft)}
-                  onCancel={() => setEditing(null)}
-                />
-              </Item>
-            ) : (
-              <ParticipantItem
-                key={row.key}
-                row={row}
-                canEdit={steckbrief.canEdit}
-                canErase={steckbrief.canErase}
-                busy={busy}
-                roleLabel={roleLabel}
-                onEdit={() => {
-                  setAdding(null)
-                  setEditing(row.key)
-                }}
-                onRole={(next) => changeRole(row, next)}
-                onRemove={() => setRemoving(row.person)}
-              />
-            )
+        <ul aria-label={t('people.label')}>{current.map(item)}</ul>
+      )}
+
+      {former.length > 0 && (
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="border-border/60 text-muted-foreground hover:text-foreground group flex min-h-11 w-full items-center gap-1.5 border-t px-4 text-left text-[13px] sm:px-[18px]"
+            >
+              {t('people.formerToggle', { count: former.length })}
+              <ChevronDown className="size-3.5 transition-transform group-data-[state=open]:rotate-180" aria-hidden />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <ul aria-label={t('people.formerLabel')}>{former.map(item)}</ul>
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {(steckbrief.canEdit || note) && (
+        <div className="border-border/60 flex flex-wrap items-center gap-2 border-t px-4 py-3.5 sm:px-[18px]">
+          {canAddColleague && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className={ADD_CLASS}
+              onClick={() => setTask({ kind: 'colleague' })}
+              disabled={candidates.length === 0}
+              title={candidates.length === 0 ? t('people.colleaguesNone') : undefined}
+            >
+              <Plus aria-hidden />
+              {t('people.addColleague')}
+            </Button>
           )}
-          {adding === 'colleague' && (
-            <Item as="li" className="block hover:bg-transparent">
-              <ColleagueForm candidates={candidates} busy={pending === 'colleague'} onSubmit={addColleague} onCancel={() => setAdding(null)} />
-            </Item>
+          {steckbrief.canEdit && (
+            <Button type="button" variant="outline" size="sm" className={ADD_CLASS} onClick={() => setTask({ kind: 'external' })}>
+              <Plus aria-hidden />
+              {t('people.addExternal')}
+            </Button>
           )}
-          {adding === 'external' && (
-            <Item as="li" className="block hover:bg-transparent">
+          {note && <p className="text-muted-foreground w-full text-xs leading-relaxed">{note}</p>}
+        </div>
+      )}
+
+      <Sheet open={task !== null} onOpenChange={(open) => !open && close()}>
+        <SheetContent closeLabel={t('people.cancel')} data-testid="project-step-person-sheet">
+          {task?.kind === 'colleague' && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{t('people.addColleagueTitle')}</SheetTitle>
+                <SheetDescription>{t('people.addColleagueDescription')}</SheetDescription>
+              </SheetHeader>
+              <ColleagueForm candidates={candidates} busy={pending === 'colleague'} onSubmit={addColleague} onCancel={close} />
+            </>
+          )}
+          {task?.kind === 'external' && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{t('people.addExternalTitle')}</SheetTitle>
+                <SheetDescription>{t('people.privacy')}</SheetDescription>
+              </SheetHeader>
               <PersonForm
                 initial={{ name: '', function: '', company: '' }}
                 fixedName={null}
@@ -228,50 +287,29 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
                 submitLabel={t('people.add')}
                 busyLabel={t('people.adding')}
                 onSubmit={addExternal}
-                onCancel={() => setAdding(null)}
+                onCancel={close}
               />
-            </Item>
+            </>
           )}
-        </ItemList>
-      )}
-
-      {steckbrief.canEdit && adding === null && (
-        <div className="flex flex-wrap items-center gap-2">
-          {canAddColleague && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditing(null)
-                setAdding('colleague')
-              }}
-              disabled={candidates.length === 0}
-              title={candidates.length === 0 ? t('people.colleaguesNone') : undefined}
-            >
-              <UserPlus aria-hidden />
-              {t('people.addColleague')}
-            </Button>
+          {task?.kind === 'describe' && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{task.row.person.name}</SheetTitle>
+                <SheetDescription>{task.row.person.userId ? t('people.describeMember') : t('people.privacy')}</SheetDescription>
+              </SheetHeader>
+              <PersonForm
+                initial={{ name: task.row.person.name, function: task.row.person.function ?? '', company: task.row.person.company ?? '' }}
+                fixedName={task.row.person.userId ? task.row.person.name : null}
+                busy={pending === task.row.key}
+                submitLabel={t('people.save')}
+                busyLabel={t('people.saving')}
+                onSubmit={(draft) => describe(task.row, draft)}
+                onCancel={close}
+              />
+            </>
           )}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setEditing(null)
-              setAdding('external')
-            }}
-          >
-            <UserRoundPlus aria-hidden />
-            {t('people.addExternal')}
-          </Button>
-        </div>
-      )}
-      <p className="text-muted-foreground text-xs leading-relaxed">
-        {[!steckbrief.canEdit ? t('people.readOnly') : roster === null ? t('people.membersByAdmins') : null, t('people.privacy')]
-          .filter(Boolean)
-          .join(' ')}
-      </p>
+        </SheetContent>
+      </Sheet>
 
       <ConfirmDialog
         open={removing !== null}
@@ -294,7 +332,7 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
         onConfirm={revoke}
         pending={busy}
       />
-    </IntakeSection>
+    </StepCard>
   )
 }
 
@@ -304,8 +342,9 @@ function ParticipantItem({
   canErase,
   busy,
   roleLabel,
-  onEdit,
+  onDescribe,
   onRole,
+  onRevoke,
   onRemove,
 }: {
   row: ParticipantRow
@@ -314,64 +353,91 @@ function ParticipantItem({
   /** A write is in flight: the controls stay where they are and wait. */
   busy: boolean
   roleLabel: (role: ProjectMemberRoleSlug) => string
-  onEdit: () => void
-  onRole: (next: string) => void
+  onDescribe: () => void
+  onRole: (next: ProjectMemberRoleSlug) => void
+  onRevoke: () => void
   onRemove: () => void
 }): JSX.Element {
   const t = useTranslations('intakeProjectStep')
   const { person } = row
-  const details = [person.function ?? (person.kind === 'member' ? t('people.functionMissing') : null), person.company].filter(Boolean).join(' · ')
+  const external = person.kind === 'added'
+  const tone = row.you ? 'you' : external ? 'external' : person.kind === 'former' ? 'former' : 'member'
+  const work = [person.function, person.company].filter(Boolean).join(' · ')
+  const fallback = person.kind === 'member' && !row.role ? t('people.member') : person.kind === 'former' ? t('people.former') : null
+
+  const entries: ActionMenuEntry[] = []
+  if (row.membership && row.role) {
+    entries.push({
+      type: 'radio-group',
+      value: row.role,
+      onValueChange: (value) => onRole(value as ProjectMemberRoleSlug),
+      items: PROJECT_MEMBER_ROLES.map((slug) => ({ value: slug, label: roleLabel(slug) })),
+    })
+  }
+  if (canEdit && person.kind !== 'former') {
+    if (entries.length > 0) entries.push({ type: 'separator' })
+    entries.push({ type: 'item', id: 'describe', label: person.userId ? t('people.describe') : t('people.editExternal'), onSelect: onDescribe, disabled: busy })
+  }
+  if (row.membership) entries.push({ type: 'item', id: 'revoke', label: t('people.revokeOption'), variant: 'destructive', onSelect: onRevoke, disabled: busy })
+  if (canErase && person.id && external) {
+    entries.push({ type: 'item', id: 'remove', label: t('people.removeOption'), variant: 'destructive', onSelect: onRemove, disabled: busy })
+  }
+
+  const trigger =
+    row.membership && row.role ? (
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        className="text-muted-foreground touch-target h-[30px] px-2.5 text-[13px] font-normal"
+        aria-label={t('people.roleFor', { name: person.name })}
+        disabled={busy}
+      >
+        {t('people.roleButton')}
+      </Button>
+    ) : (
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground touch-target size-[30px]"
+        aria-label={t('people.edit', { name: person.name })}
+        disabled={busy}
+      >
+        <Ellipsis className="size-4" aria-hidden />
+      </Button>
+    )
 
   return (
-    <Item as="li" className="py-2.5" data-testid="project-step-person" data-kind={person.kind}>
-      <ItemContent>
-        <div className="flex min-w-0 items-center gap-2">
-          <ItemTitle>{person.name}</ItemTitle>
-          {row.you && (
-            <Chip size="sm" variant="default">
-              {t('people.you')}
-            </Chip>
-          )}
-          <Chip size="sm" variant={person.kind === 'member' ? 'muted' : 'outline'}>
-            {person.kind === 'member' ? t('people.member') : person.kind === 'added' ? t('people.external') : t('people.former')}
-          </Chip>
+    <li data-testid="project-step-person" data-kind={person.kind}>
+      <StepCardRow className={cn(person.kind === 'former' && 'opacity-80')}>
+        <PersonDisc name={person.name} tone={tone} />
+        <div className="min-w-0 flex-1">
+          <p className="flex min-w-0 items-center gap-1.5 text-sm leading-[18px]">
+            <span className="truncate">{person.name}</span>
+            {row.you && (
+              <Chip size="sm" variant="muted">
+                {t('people.you')}
+              </Chip>
+            )}
+            {external && (
+              <Chip size="sm" variant="muted">
+                {t('people.external')}
+              </Chip>
+            )}
+          </p>
+          <p className="text-muted-foreground mt-0.5 truncate text-xs leading-4">
+            {[work, fallback].filter(Boolean).join(' · ')}
+            {row.role && (
+              <>
+                {work || fallback ? ' · ' : ''}
+                <span data-testid="project-step-role">{roleLabel(row.role)}</span>
+              </>
+            )}
+          </p>
         </div>
-        {details && <ItemDescription>{details}</ItemDescription>}
-      </ItemContent>
-      <ItemActions className="gap-1">
-        {row.membership && row.role ? (
-          <Select value={row.role} onValueChange={onRole} disabled={busy}>
-            <SelectTrigger size="sm" aria-label={t('people.roleFor', { name: person.name })} className="min-w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent align="end">
-              {PROJECT_MEMBER_ROLES.map((slug) => (
-                <SelectItem key={slug} value={slug}>
-                  {roleLabel(slug)}
-                </SelectItem>
-              ))}
-              <SelectSeparator />
-              <SelectItem value={REVOKE}>{t('people.revokeOption')}</SelectItem>
-            </SelectContent>
-          </Select>
-        ) : (
-          row.role && (
-            <Chip size="sm" variant="muted" data-testid="project-step-role">
-              {roleLabel(row.role)}
-            </Chip>
-          )
-        )}
-        {canEdit && person.kind !== 'former' && (
-          <Button variant="ghost" size="icon" className="size-8" aria-label={t('people.edit', { name: person.name })} disabled={busy} onClick={onEdit}>
-            <Pencil className="size-3.5" aria-hidden />
-          </Button>
-        )}
-        {canErase && person.id && person.kind !== 'member' && (
-          <Button variant="ghost" size="icon" className="hover:text-destructive size-8" aria-label={t('people.remove', { name: person.name })} disabled={busy} onClick={onRemove}>
-            <Trash2 className="size-3.5" aria-hidden />
-          </Button>
-        )}
-      </ItemActions>
-    </Item>
+        {entries.length > 0 && <ActionMenu mode="dropdown" entries={entries} trigger={trigger} contentClassName="w-60" />}
+      </StepCardRow>
+    </li>
   )
 }
