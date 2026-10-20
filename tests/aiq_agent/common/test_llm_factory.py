@@ -249,6 +249,51 @@ def test_a_bound_extra_body_does_not_displace_the_instances_without_a_cache_key(
     assert payload["extra_body"]["plugins"] == [{"id": "response-healing"}]
 
 
+@pytest.mark.parametrize("responses_api", [False, True])
+def test_a_chat_call_for_an_organization_goes_out_on_its_key(responses_api):
+    # Asserted on the WIRE: the per-call header has to survive langchain's
+    # payload builders and the OpenAI SDK's header merge on both APIs.
+    from unittest.mock import patch
+
+    import httpx
+    from langchain_core.messages import HumanMessage
+    from langchain_openai import ChatOpenAI
+
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+    from aiq_agent.common.llm_credentials import OrgKeys
+    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+
+    seen: list[httpx.Request] = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(500, json={"error": {"message": "stop"}})
+
+    llm = enforce_chat_request_contract(
+        ChatOpenAI(
+            model="openai/gpt-5.6-luna",
+            api_key="sk-shared",  # pragma: allowlist secret
+            base_url="https://openrouter.ai/api/v1",
+            use_responses_api=responses_api,
+            max_retries=0,
+            http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        )
+    )
+    token = _booked_to(organization_id="org_1")
+    try:
+        with (
+            patch(
+                "aiq_agent.common.llm_credentials.resolve_org_keys",
+                return_value=OrgKeys(per_org_keys=True, platform_key="sk-or-org"),
+            ),
+            pytest.raises(Exception),
+        ):
+            llm.invoke([HumanMessage(content="Hallo")])
+    finally:
+        grid_cost_tracker_var.reset(token)
+    assert seen and seen[0].headers["authorization"] == "Bearer sk-or-org"
+
+
 def test_a_turns_iterations_share_one_key():
     from langchain_core.messages import AIMessage
     from langchain_core.messages import ToolMessage

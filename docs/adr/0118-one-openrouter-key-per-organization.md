@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-20
 decision-makers: product owner, Grid engineering
 consulted: Grid engineering
@@ -63,25 +63,47 @@ OpenRouter is our gateway, so its keys are the virtual keys.
 What it means:
 
 - **Every organization has one platform-provisioned OpenRouter key.** The BFF
-  creates it when the organization is created and disables it when the
-  organization is deleted. A one-time backfill creates keys for existing
-  organizations. The keys are stored like BYOK keys (WorkOS Vault, ADR-0022),
-  as a credential of kind `platform`. BYOK credentials are kind `byok`.
-- **Which key a call uses:** the organization's BYOK key if it has one,
-  otherwise its platform key. **No fallback.** When neither can be resolved,
-  the call fails. The shared key never serves an organization's work again,
-  and the same rule replaces BYOK's fail-open (ADR-0022, §3).
+  creates it through OpenRouter's management API the first time the
+  organization needs one (`frontends/ui/src/lib/llm-credentials/org-keys.ts`),
+  so existing organizations need no backfill and a lost row heals itself. It
+  is stored like a BYOK key (WorkOS Vault or the local envelope, ADR-0022) in
+  its own table, `org_openrouter_keys` (migration 0154), whose partial unique
+  index allows one active key per organization: two replicas provisioning at
+  once cannot both win, and the loser deletes the key it created. A table of
+  its own rather than a kind on `org_llm_credentials`, because that table
+  allows one active credential per organization and an organization can hold
+  both.
+- **One endpoint serves both keys.** `/api/internal/llm-credential` answers
+  the organization's BYOK credential in use, its platform key, and whether the
+  deployment has per-organization keys at all. Any failure is a 503, never a
+  null key.
+- **Which key a call uses** is decided at the two seams every OpenRouter call
+  passes (`common/openrouter.py`'s transports and `llm_factory.prepare_request`,
+  `openrouter_key_for_call`): a call made for an organization keeps the
+  organization's BYOK key if it is already on it, and otherwise carries the
+  organization's platform key, whatever key the call site was built with.
+  The organization is the ambient cost tracker's, else the signed request
+  context's, the same identity the ledger books the call to.
+- **No fallback.** When an organization's keys cannot be resolved, the call is
+  refused (`OrgCredentialUnavailable`). The shared key never serves an
+  organization's work again, and the same rule replaces BYOK's fail-open
+  (ADR-0022, §3): a BYOK secret that cannot be revealed, or a credential that
+  cannot be applied, refuses the call instead of moving it to the platform.
 - **The shared key remains only for work with no organization:** the shared
   legal corpus, CLI runs, evals.
+- **A deployment without a management key has no per-organization keys.**
+  `OPENROUTER_MANAGEMENT_KEY` unset (local development, CI) makes the endpoint
+  answer `perOrgKeys: false`, and every call runs on the shared key. That is a
+  property of the deployment, not a runtime fallback: the Pulumi program
+  requires the secret (`requireSecret`), so no stack can run without it.
 - **The key limit is a backstop, not the budget.** It sits well above the
   organization's own limit, so it trips on runaways and leaks, never on normal
   use. The ledger keeps refusing a turn at its start (ADR-0015), which is the
   limit a user sees. OpenRouter answers 402 or 403 at the next call once a key
   limit is spent, which reaches the user as an answer cut off mid-turn.
-- **Zero data retention is also a guardrail on the key.** An OpenRouter
-  guardrail with `enforce_zdr` is attached to the keys of organizations under
-  zero data retention, and kept in step with the Organization → Models setting.
-  The body routing stays as well: two layers, either of which refuses.
+- **Revoking an organization's key** is done at OpenRouter: disabling it
+  there makes the organization's calls fail until it is enabled again. The BFF
+  has no organization-deletion flow yet; when one is built it disables the key.
 - **The `user` and `metadata` attribution stays.** A key never says which
   person or project inside the organization made a call.
 - **Billing does not change.** A platform key is billed to the platform's
@@ -92,8 +114,6 @@ What it means:
 
 * Good, because a leaked key, a runaway job or an abuse block costs one tenant,
   and can be revoked for that tenant alone.
-* Good, because zero data retention is enforced at OpenRouter as well as in our
-  request bodies.
 * Good, because OpenRouter's own dashboards and analytics show spend per tenant
   by key.
 * Good, because the lookup already exists: BYOK resolves an organization's key
@@ -109,29 +129,42 @@ What it means:
   inference key, so it gets its own secret and is never sent to Python.
 * Bad, because the backfill runs once against production, and an organization
   it misses cannot call a model at all.
-* Bad, because the zero data retention setting now lives in two places (our
-  database and the guardrail), and they must be kept in step.
+* Bad, because a cold key cache on the LangChain path is a blocking BFF
+  round-trip (3 s timeout) inside the call. The turn and job entry points
+  resolve the organization's keys first, off the event loop, so the call
+  finds them cached; the transports resolve a cold cache on a thread.
 * Neutral: OpenRouter governs rate limits for the whole account ("making
   additional accounts or API keys will not affect your rate limits"), so
   per-org keys add no capacity, and the fleet limiter (ADR-0081) is unchanged.
-* Neutral: embeddings currently resolve with `organization_id=None` (the
-  embedding endpoint and BYOK's base URL do not match). Tenant ingest and query
-  embeddings must move to the organization's platform key, which is always an
-  OpenRouter key, so that mismatch does not apply to them.
+* Neutral: embeddings still resolve with `organization_id=None` (the embedding
+  endpoint and BYOK's base URL do not match), and need not change: the seam
+  swaps the organization's platform key onto a tenant's ingest and query
+  embeddings like any other call.
 
 ### Confirmation
 
-Nothing enforces this yet; review is the only gate until the implementation
-lands. The implementation must add:
-
-- a test beside `tests/aiq_agent/common/test_openrouter_call_sites.py` that
-  fails when a call made inside an organization's cost tracker resolves the
-  shared key;
-- a test that a failed credential lookup refuses the call rather than falling
-  back;
-- a database constraint of at most one active `platform` credential per
-  organization;
-- a startup or scheduled check that every live organization has an active key.
+- `tests/aiq_agent/common/test_openrouter.py`
+  (`TestEveryCallForAnOrganizationCarriesItsKey`) and
+  `test_a_chat_call_for_an_organization_goes_out_on_its_key` in
+  `test_llm_factory.py` assert on the outgoing request that a call for an
+  organization carries its key and never the shared one, on the transports
+  and on the LangChain path (chat completions and Responses), and that keys
+  that cannot be resolved refuse the call.
+  `test_provider_limiter_call_sites.py` and `test_openrouter_call_sites.py`
+  keep every OpenRouter call on those two seams.
+- `test_llm_credentials.py`, `test_request_llm_context.py`,
+  `test_register_skills.py` and `stages/test_runner.py` assert that a key
+  lookup that fails refuses the turn, the job or the stage.
+- `uniq_org_openrouter_keys_active` allows one active key per organization;
+  CHECKs hold the secret column to its backend and the status vocabulary.
+  `org-keys.spec.ts` covers lazy provisioning, the race, and failing closed;
+  `route.spec.ts` the endpoint's contract.
+- `requireSecret("openrouterManagementKey")` fails `pulumi preview` on a stack
+  without the key; `deploy/pulumi/src/app/config.spec.ts` holds the env names
+  to what the BFF reads and keeps the management key off every backend pod.
+- Nothing checks that every live organization has a key: one is created on
+  first use, so a missing key costs that organization one round-trip, not an
+  outage.
 
 ## Pros and Cons of the Options
 
@@ -160,15 +193,15 @@ lands. The implementation must add:
 
 ## More Information
 
-- Rolls out in four changes after acceptance: (1) BFF key provisioning with the
-  `kind` migration and the backfill; (2) resolution order and no-fallback in
-  `credential_resolution.py` and `llm_credentials.py`; (3) embeddings on the
-  organization's key, with the tests named under Confirmation; (4) deployment:
-  the management key secret, its row in `environment-variables.md`, and the
-  backstop limit.
-- Open: the backstop's value (a multiple of the organization's monthly limit,
-  or a flat platform ceiling for organizations without one); key rotation
-  cadence; whether each environment gets its own OpenRouter workspace.
+- **Before the first deploy**, set the management key on each stack
+  (`esc env set … pulumiConfig.grid-oib:openrouterManagementKey … --secret`,
+  see `Pulumi.<stack>.yaml`), and choose the backstop
+  (`openrouterOrgKeyMonthlyLimitUsd`; unset creates keys without a limit).
+- Follow-ups: an OpenRouter guardrail with `enforce_zdr` on the keys of
+  organizations under zero data retention, kept in step with the
+  Organization → Models setting, so OpenRouter refuses a non-retaining
+  provider too; key rotation; whether each environment gets its own OpenRouter
+  workspace.
 - Supersedes, once accepted, the fail-open in ADR-0022 §3, and answers the
   "OpenRouter provisioned-key limits" alternative ADR-0015 rejected: that
   rejection was of one key's limit as the budget, which this ADR also rejects.

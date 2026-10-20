@@ -37,7 +37,10 @@ A call site picks the adapter for its shape and never writes its own merge:
   call for a provider slot (ADR-0081) and leaves the routing to the body.
 
 The same two seams (this module's transports and
-``llm_factory.prepare_request``) stamp every call with whose work it is:
+``llm_factory.prepare_request``) put the organization's own OpenRouter key on
+every call made for it (:func:`openrouter_key_for_call`, ADR-0118): never the
+shared key, and no call at all when its keys cannot be resolved. They also
+stamp every call with whose work it is:
 ``user`` and ``metadata`` from the ambient cost tracker
 (:func:`attribution_fields`), so OpenRouter's activity can be filtered by
 organization, person and project.
@@ -57,6 +60,7 @@ recoverable. See https://openrouter.ai/docs/guides/features/zdr.
 
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import json
 import logging
@@ -328,6 +332,83 @@ def _attribution_for(path: str) -> dict[str, Any]:
     return attribution_fields(metadata=path.endswith(_METADATA_PATHS))
 
 
+def _call_organization_id() -> str | None:
+    """The organization a call is made for: the ambient cost tracker's, else the request's.
+
+    The tracker first, so the key a call carries, its attribution and its ledger
+    row name the same organization. The request context is the signed envelope's
+    organization when one arrived (``project_context.GridRequestContext``).
+    """
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    tracker = grid_cost_tracker_var.get()
+    organization_id = getattr(tracker, "organization_id", None) if tracker is not None else None
+    if organization_id:
+        return str(organization_id)
+    try:
+        from aiq_agent.project_context import get_organization_id_from_context
+
+        return get_organization_id_from_context()
+    except Exception:  # noqa: BLE001 - outside a request there is no organization to name
+        logger.debug("No request context to read an organization from", exc_info=True)
+        return None
+
+
+def org_key_for(current_key: str | None, keys: Any) -> str | None:
+    """The key a call for an organization must carry instead of ``current_key``; None to leave it. Pure.
+
+    ``keys`` is the organization's ``llm_credentials.OrgKeys``. A call already on
+    the organization's own BYOK key, or on its platform key, keeps it. Every
+    other key (the deployment's shared key, a call-site env key) is replaced by
+    the organization's platform key (ADR-0118). Nothing changes on a deployment
+    without per-organization keys.
+    """
+    if not keys.per_org_keys:
+        return None
+    if keys.byok is not None and current_key == keys.byok.api_key:
+        return None
+    if current_key == keys.platform_key:
+        return None
+    return keys.platform_key
+
+
+def openrouter_key_for_call(current_key: str | None) -> str | None:
+    """The key this OpenRouter call must carry instead of ``current_key``, or None to leave it.
+
+    Blocks on a cold cache (one BFF round-trip per organization per minute).
+    Raises ``llm_credentials.OrgCredentialUnavailable`` when the organization's
+    keys cannot be resolved: the call must not go out (ADR-0118).
+    """
+    organization_id = _call_organization_id()
+    if not organization_id:
+        return None
+    from aiq_agent.common.llm_credentials import resolve_org_keys
+
+    return org_key_for(current_key, resolve_org_keys(organization_id))
+
+
+async def aopenrouter_key_for_call(current_key: str | None) -> str | None:
+    """:func:`openrouter_key_for_call` that resolves a cold cache off the event loop."""
+    organization_id = _call_organization_id()
+    if not organization_id:
+        return None
+    from aiq_agent.common.llm_credentials import cached_org_keys
+    from aiq_agent.common.llm_credentials import resolve_org_keys
+
+    keys = cached_org_keys(organization_id) or await asyncio.to_thread(resolve_org_keys, organization_id)
+    return org_key_for(current_key, keys)
+
+
+def _bearer(request: httpx.Request) -> str | None:
+    value = request.headers.get("authorization", "")
+    return value[7:] if value[:7].lower() == "bearer " else None
+
+
+def _rekey(request: httpx.Request, key: str | None) -> None:
+    if key:
+        request.headers["Authorization"] = f"Bearer {key}"
+
+
 def _shaped_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
     """``request`` with ``policy`` and the call's attribution merged into its JSON body.
 
@@ -491,6 +572,8 @@ class _PinningTransport(httpx.BaseTransport):
         self._inner = inner or httpx.HTTPTransport()
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
+        if targets_openrouter(str(request.url)):
+            _rekey(request, openrouter_key_for_call(_bearer(request)))
         request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return self._inner.handle_request(request)
@@ -527,6 +610,8 @@ class _AsyncPinningTransport(httpx.AsyncBaseTransport):
         self._inner = inner or httpx.AsyncHTTPTransport()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        if targets_openrouter(str(request.url)):
+            _rekey(request, await aopenrouter_key_for_call(_bearer(request)))
         request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return await self._inner.handle_async_request(request)

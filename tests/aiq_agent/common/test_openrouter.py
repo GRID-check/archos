@@ -26,6 +26,16 @@ from aiq_agent.common.openrouter import scoped_data_policy
 from aiq_agent.common.openrouter import targets_openrouter
 
 
+@pytest.fixture(autouse=True)
+def _fresh_key_cache():
+    """Every test resolves an organization's keys afresh; a cached answer would leak between them."""
+    from aiq_agent.common.llm_credentials import reset_credential_cache
+
+    reset_credential_cache()
+    yield
+    reset_credential_cache()
+
+
 class TestTargetsOpenRouter:
     @pytest.mark.parametrize(
         "url",
@@ -236,6 +246,94 @@ class TestAttributionNeverFailsACall:
         assert len(body["metadata"]) == 16
         assert theirs.items() <= body["metadata"].items()
         assert body["metadata"]["organization_id"] == "org_1" and "project_id" not in body["metadata"]
+
+
+def _org_keys(**kwargs):
+    from aiq_agent.common.llm_credentials import OrgKeys
+
+    return OrgKeys(**{"per_org_keys": True, "platform_key": "sk-or-org", **kwargs})
+
+
+class TestEveryCallForAnOrganizationCarriesItsKey:
+    """ADR-0118: the shared key never serves an organization's call."""
+
+    def _sent(self, url="https://openrouter.ai/api/v1/embeddings", key="sk-shared"):
+        seen: list[httpx.Request] = []
+
+        def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={})
+
+        client = pinned_http_client(NO_RETENTION_LIMITS)
+        client._transport._inner = httpx.MockTransport(handler)
+        client.post(url, json={"input": ["x"]}, headers={"Authorization": f"Bearer {key}"})
+        return seen[0]
+
+    def test_the_shared_key_is_replaced_by_the_organizations(self):
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys()),
+        ):
+            assert self._sent().headers["authorization"] == "Bearer sk-or-org"
+
+    def test_a_call_on_the_organizations_own_byok_key_keeps_it(self):
+        from aiq_agent.common.llm_credentials import OrgLLMCredential
+
+        byok = OrgLLMCredential("c", "openrouter", "https://openrouter.ai/api/v1", "sk-byok")
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys(byok=byok)),
+        ):
+            assert self._sent(key="sk-byok").headers["authorization"] == "Bearer sk-byok"
+
+    def test_no_organization_keeps_the_shared_key(self):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys") as resolve:
+            assert self._sent().headers["authorization"] == "Bearer sk-shared"
+        resolve.assert_not_called()
+
+    def test_a_deployment_without_per_org_keys_keeps_the_shared_key(self):
+        from aiq_agent.common.llm_credentials import NO_ORG_KEYS
+
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=NO_ORG_KEYS),
+        ):
+            assert self._sent().headers["authorization"] == "Bearer sk-shared"
+
+    def test_keys_that_cannot_be_resolved_refuse_the_call(self):
+        from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", side_effect=OrgCredentialUnavailable("down")),
+            pytest.raises(OrgCredentialUnavailable),
+        ):
+            self._sent()
+
+    def test_another_host_never_gets_the_organizations_key(self):
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys()),
+        ):
+            assert self._sent(url="https://api.openai.com/v1/embeddings").headers["authorization"] == "Bearer sk-shared"
+
+    async def test_the_async_transport_swaps_too(self):
+        seen: list[httpx.Request] = []
+
+        async def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={})
+
+        client = openrouter.pinned_async_http_client(NO_RETENTION_LIMITS)
+        client._transport._inner = httpx.MockTransport(handler)
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys()),
+        ):
+            await client.post(
+                "https://openrouter.ai/api/v1/rerank", json={}, headers={"Authorization": "Bearer sk-shared"}
+            )
+        assert seen[0].headers["authorization"] == "Bearer sk-or-org"
 
 
 class TestTheIngestScope:

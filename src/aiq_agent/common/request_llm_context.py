@@ -83,11 +83,12 @@ async def _read_model_overrides() -> dict[str, str]:
 
 
 async def _read_org_credential() -> OrgLLMCredential | None:
-    try:
-        return await asyncio.to_thread(get_org_llm_credential_from_context)
-    except Exception:  # noqa: BLE001 - see above; the env chain still has a credential
-        logger.debug("Org-credential lookup failed; continuing without", exc_info=True)
-        return None
+    """The organization's BYOK credential. NOT best-effort like the other dials.
+
+    A failed lookup raises ``OrgCredentialUnavailable`` and the turn fails: the
+    shared key is not a fallback for an organization's call (ADR-0118).
+    """
+    return await asyncio.to_thread(get_org_llm_credential_from_context)
 
 
 async def _read_reasoning_efforts() -> dict[str, str]:

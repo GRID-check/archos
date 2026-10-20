@@ -227,8 +227,18 @@ route, audio), and a host other than OpenRouter never receives them. The
 helper routes in `aiq_api` (titles, summaries, document comparison, dictation)
 run outside any tracker today, so they are neither tagged nor on the ledger. WorkOS ids only, never names or emails.
 Filter OpenRouter's activity by `user` to see one organization or person.
-`user` is also the identity OpenRouter isolates abuse blocks by. One key per
-organization, which isolates tenants at the gateway as well, is ADR-0118.
+`user` is also the identity OpenRouter isolates abuse blocks by.
+
+The same two seams put the organization's own OpenRouter key on every call made
+for it (ADR-0118, `openrouter_key_for_call`). The BFF creates that key through
+OpenRouter's management API the first time the organization needs one
+(`lib/llm-credentials/org-keys.ts`, table `org_openrouter_keys`) and serves it
+with the BYOK credential from `/api/internal/llm-credential`. A call already on
+the organization's BYOK key keeps it; every other key is replaced. There is no
+fallback: keys that cannot be resolved refuse the call
+(`OrgCredentialUnavailable`), and BYOK's old fail-open to the platform key is
+gone. Without `OPENROUTER_MANAGEMENT_KEY` on the BFF the deployment has no
+per-organization keys and every call runs on the shared key.
 
 ## Agent groups
 

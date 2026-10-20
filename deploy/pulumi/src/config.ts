@@ -1097,6 +1097,14 @@ export interface GridConfig {
   /** LLM / model-provider settings shared by backend + frontend. */
   llm: {
     openrouterApiKey: pulumi.Output<string>;
+    /**
+     * OpenRouter management key: the BFF creates each organization's own
+     * OpenRouter key with it (ADR-0118). Required, so a stack cannot run
+     * every tenant on the shared key by forgetting it.
+     */
+    openrouterManagementKey: pulumi.Output<string>;
+    /** Monthly backstop (USD) set on each organization's key when it is created; "" = none. */
+    openrouterOrgKeyMonthlyLimitUsd: string;
     tavilyApiKey: pulumi.Output<string>;
     embedModel: string;
     embedBaseUrl: string;
@@ -2957,6 +2965,8 @@ export function loadConfig(): GridConfig {
 
     llm: {
       openrouterApiKey: cfg.requireSecret("openrouterApiKey"),
+      openrouterManagementKey: cfg.requireSecret("openrouterManagementKey"),
+      openrouterOrgKeyMonthlyLimitUsd: cfg.get("openrouterOrgKeyMonthlyLimitUsd") ?? "",
       tavilyApiKey: cfg.requireSecret("tavilyApiKey"),
       embedModel: cfg.get("embedModel") ?? "openai/text-embedding-3-large",
       embedBaseUrl: cfg.get("embedBaseUrl") ?? "https://openrouter.ai/api/v1",

@@ -33,6 +33,11 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:openrouterApiKey      "sk-or-..." --secret
 
+#   # OpenRouter MANAGEMENT key (Settings → Management keys): creates each
+#   # organization's own OpenRouter key (ADR-0118). Required, no fallback.
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:openrouterManagementKey "sk-or-..." --secret
+
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:tavilyApiKey          "tvly-..." --secret
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:workosApiKey          "sk_live_..." --secret

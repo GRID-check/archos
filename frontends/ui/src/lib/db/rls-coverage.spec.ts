@@ -165,6 +165,9 @@ const BOUNDARY_MIGRATIONS = [
   // on for (ADR-0112). Keyed directly by its organization; the endpoint is
   // unique across tenants, so a device belongs to its last registrant.
   '0147_push_subscriptions.sql',
+  // Adds org_openrouter_keys — the OpenRouter key the platform provisions for
+  // each organization (ADR-0118). Keyed directly by its organization.
+  '0154_org_openrouter_keys.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

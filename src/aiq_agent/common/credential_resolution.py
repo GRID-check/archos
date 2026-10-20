@@ -217,8 +217,9 @@ def _resolve(
         raise ValueError(f"{NIM_UNSUPPORTED_MESSAGE} (base_url {base_url} points at the removed endpoint)")
 
     # 1. BYOK — the org's bring-your-own credential wins when we know the org.
-    #    Fail-open lives in resolve_org_llm_credential (a BYOK hiccup returns
-    #    None, so we fall through to the env chain below).
+    #    resolve_org_llm_credential fails closed (ADR-0118): a hiccup raises.
+    #    Without a BYOK credential the env chain below names the key, and the
+    #    OpenRouter seam swaps the organization's own key onto the request.
     if organization_id:
         from aiq_agent.common.llm_credentials import resolve_org_llm_credential
 

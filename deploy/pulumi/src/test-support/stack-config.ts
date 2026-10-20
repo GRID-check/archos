@@ -25,6 +25,7 @@ export function baseStackConfig(): Record<string, string> {
     "grid-oib:gridAdminToken": "admin", // pragma: allowlist secret
     "grid-oib:tavilyApiKey": "tavily", // pragma: allowlist secret
     "grid-oib:openrouterApiKey": "or", // pragma: allowlist secret
+    "grid-oib:openrouterManagementKey": "or-mgmt", // pragma: allowlist secret
     "grid-oib:dragonflyPassword": "df", // pragma: allowlist secret
     "grid-oib:rateLimitStorePassword": "rl", // pragma: allowlist secret
     // Qdrant is always deployed (ADR-0115) and refuses to plan without its

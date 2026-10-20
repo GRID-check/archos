@@ -88,11 +88,23 @@ class TestTheReader:
 
         for name in _READERS:
             monkeypatch.setattr(request_llm_context, name, boom)
+        monkeypatch.setattr(request_llm_context, "get_org_llm_credential_from_context", lambda: None)
 
         context = await read_request_llm_context()
 
         assert context.zdr_only is True, "a privacy control must not switch itself off"
         assert (context.model_overrides, context.reasoning_efforts, context.credential) == ({}, {}, None)
+
+    async def test_a_broken_key_lookup_fails_the_turn(self, monkeypatch):
+        # ADR-0118: the shared key is not a fallback for an organization's call.
+        from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+        def boom():
+            raise OrgCredentialUnavailable("bff down")
+
+        monkeypatch.setattr(request_llm_context, "get_org_llm_credential_from_context", boom)
+        with pytest.raises(OrgCredentialUnavailable):
+            await read_request_llm_context()
 
     def test_an_inactive_context_keeps_the_boot_provider(self):
         provider = _identity_provider()

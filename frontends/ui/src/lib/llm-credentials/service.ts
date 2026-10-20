@@ -11,7 +11,13 @@
 
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import { BadRequestError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
+import {
+  BadRequestError,
+  ConflictError,
+  NotFoundError,
+  ServiceUnavailableError,
+  UnprocessableError,
+} from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { getCached } from '@/lib/cache'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -239,7 +245,7 @@ export async function createCredential(
 /** Providers whose base URL is fixed — stored as NULL, resolved from the preset. */
 const PRESET_URL_PROVIDERS = new Set<LlmCredentialProvider>(['openrouter', 'openai'])
 
-/** Revoke the active credential; traffic falls back to the platform key. */
+/** Revoke the active credential; traffic moves to the organization's platform key (ADR-0118). */
 export async function revokeOrgCredential(
   session: AuthorizedSession,
   credentialId: string,
@@ -324,9 +330,8 @@ export async function isOrgOnOwnKey(organizationId: string): Promise<boolean> {
  * touching `last_used_at`. For callers that only need to know where requests
  * go (whether OpenRouter's zero data retention can apply), not to send one.
  *
- * One divergence, on the safe side for that question: a secret that fails to
- * reveal makes the backend fall back to the platform key, which this still
- * reports as the BYOK provider.
+ * A secret that fails to reveal makes the backend refuse the call (ADR-0118),
+ * so reporting the BYOK provider for it is the right answer here too.
  */
 export async function getActiveCredentialProvider(organizationId: string): Promise<string | null> {
   if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.byokLlm, organizationId))) {
@@ -350,7 +355,10 @@ export interface ResolvedCredential {
  * Just-in-time resolution for the internal endpoint. Re-checks the org
  * feature flag, decrypts, and throttles the
  * `last_used_at` bookkeeping write. Returns null when the org has no BYOK
- * credential — the backend then stays on the platform key.
+ * credential in use — the backend then runs on the organization's platform key
+ * (ADR-0118). A stored key that cannot be revealed THROWS: billing a BYOK
+ * organization's traffic to the platform because Vault hiccupped is the
+ * fallback ADR-0118 removed.
  */
 export async function resolveActiveCredentialForBackend(
   organizationId: string,
@@ -371,12 +379,12 @@ export async function resolveActiveCredentialForBackend(
   try {
     apiKey = await revealSecret(row)
   } catch (error) {
-    // Fail open to the platform key — never log key material, only the ref.
+    // Fail closed (ADR-0118) — never log key material, only the ref.
     console.error(
       `[LLM Credentials] secret reveal failed for org ${organizationId} credential ${row.id}:`,
       error,
     )
-    return null
+    throw new ServiceUnavailableError('The organization’s own LLM key could not be read')
   }
 
   const lastUsed = row.lastUsedAt?.getTime() ?? 0
