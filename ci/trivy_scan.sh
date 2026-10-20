@@ -13,6 +13,13 @@
 # GCR returns 429 and fails the job. The layer analysis under .trivy-cache/fanal
 # is safe to cache across runs (a digest cannot change); the DB is not, because
 # the advisories about a digest do.
+#
+# Vulnerabilities only (--scanners vuln). trivy's default also runs its secret
+# scanner, which this script never gated on by intent: a key inside a vendor's
+# image is theirs to rotate, not ours. On the Langfuse web image that scanner
+# walks 14 MB source maps and hit trivy's 5-minute deadline (`semaphore
+# acquire: context deadline exceeded`) on every promotion PR, which scans all
+# pins (#1102, #1104), so the check failed without reporting anything.
 set -euo pipefail
 
 pins="${1:?usage: trivy_scan.sh <pins file>}"
@@ -49,6 +56,7 @@ while read -r image; do
   [ -n "$image" ] || continue
   echo "=== trivy: $image"
   trivy image \
+    --scanners vuln \
     --skip-db-update \
     --ignorefile /config/.trivyignore.yaml \
     --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1 "$image" || failed=1

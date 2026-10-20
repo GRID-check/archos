@@ -350,6 +350,10 @@ Three things about the trivy job that are not obvious:
   scan reuses it with `--skip-db-update` ([`ci/trivy_scan.sh`](../../ci/trivy_scan.sh)).
   Five fresh `docker run --rm` pulls of
   `trivy-db` from GCR return 429 and fail the job with `failed=0`.
+- It runs the vulnerability scanner only (`--scanners vuln`). Trivy's default
+  also scans for secrets, which gates nothing here (a key in a vendor's image is
+  theirs to rotate) and walked the Langfuse web image's source maps past trivy's
+  5-minute deadline on every promotion PR.
 - What trivy learns by *walking* the images is cached across runs
   (`actions/cache`, keyed on the pin set and the trivy version). The
   vulnerability database is not, and the split is the point: a digest cannot
