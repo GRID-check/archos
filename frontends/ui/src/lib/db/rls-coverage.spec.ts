@@ -305,6 +305,7 @@ describe('row-level security coverage', () => {
     // role; securing one with an organization predicate would silently make it
     // unreadable for every tenant instead.
     expect(platform).toEqual([
+      'analytics_export_cursors',
       'platform_lesson_events',
       'platform_lesson_reports',
       'platform_lessons',
