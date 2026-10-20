@@ -1,0 +1,52 @@
+name: Pulumi login
+description: >-
+  Put a Pulumi Cloud access token into the job's environment for every later
+  step. With `oidc-organization` set it is a short-lived token exchanged for the
+  job's GitHub OIDC token (the job needs `permissions: id-token: write`), and no
+  long-lived PULUMI_ACCESS_TOKEN exists anywhere. Without it, the stored token
+  is used, for as long as the cut-over in docs/deployment/keyless-ci.md is not
+  done. Never both: an OIDC organization that is set but refused fails the job.
+
+inputs:
+  oidc-organization:
+    description: Pulumi organization to exchange the OIDC token with (repository variable PULUMI_OIDC_ORGANIZATION). Empty = use static-token.
+    required: false
+    default: ""
+  oidc-token-type:
+    description: >-
+      Pulumi token type: organization or team (Essentials and up), or personal
+      (every edition, including Free; then oidc-scope is user:<login>).
+    required: false
+    default: personal
+  oidc-scope:
+    description: "Scope for a personal (user:<login>) or team (team:<name>) token; empty for an organization token."
+    required: false
+    default: ""
+  static-token:
+    description: The stored PULUMI_ACCESS_TOKEN, until the OIDC cut-over.
+    required: false
+    default: ""
+
+runs:
+  using: composite
+  steps:
+    - name: Exchange the GitHub OIDC token for a Pulumi token
+      if: inputs.oidc-organization != ''
+      uses: pulumi/auth-actions@141415910c3beb54e03b48e9057c204c97b956f2 # v2.1.0
+      with:
+        organization: ${{ inputs.oidc-organization }}
+        requested-token-type: urn:pulumi:token-type:access_token:${{ inputs.oidc-token-type }}
+        scope: ${{ inputs.oidc-scope }}
+
+    - name: Use the stored Pulumi token
+      if: inputs.oidc-organization == ''
+      shell: bash
+      env:
+        STATIC_TOKEN: ${{ inputs.static-token }}
+      run: |
+        if [ -z "$STATIC_TOKEN" ]; then
+          echo "::error::No Pulumi credential: set PULUMI_OIDC_ORGANIZATION (docs/deployment/keyless-ci.md) or the PULUMI_ACCESS_TOKEN secret."
+          exit 1
+        fi
+        # A secret is masked in the log by GitHub already.
+        echo "PULUMI_ACCESS_TOKEN=$STATIC_TOKEN" >> "$GITHUB_ENV"
