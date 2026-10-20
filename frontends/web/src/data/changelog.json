@@ -134,6 +134,10 @@
           "key": "upgrade",
           "notes": [
             {
+              "en": "The built-in skills have English names: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development and /inspection-report-writer. The old names, such as /einreichcheck, still work when typed and in scheduled tasks, and typing one still finds the skill in the menu.",
+              "de": "Die integrierten Skills haben englische Namen: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development und /inspection-report-writer. Die bisherigen Namen, etwa /einreichcheck, funktionieren weiterhin bei der Eingabe und in geplanten Aufgaben. Wenn Sie einen davon eingeben, wird der Skill weiterhin im Menü angezeigt."
+            },
+            {
               "en": "An office's default language under Organisation → Einstellungen is now \"Nicht festgelegt\" until an administrator picks one, and each person then starts in their browser's language. Offices that had the English preset stored have it reset; set it again there if your office wants English.",
               "de": "Die Standardsprache eines Büros unter Organisation → Einstellungen ist jetzt „Nicht festgelegt“, bis ein Administrator eine Sprache auswählt. Anschließend startet jede Person in der Sprache ihres Browsers. Bei Büros, bei denen Englisch als Voreinstellung gespeichert war, wird diese zurückgesetzt. Wählen Sie Englisch dort erneut aus, wenn Ihr Büro Englisch verwenden möchte."
             }

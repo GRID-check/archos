@@ -2720,6 +2720,10 @@
     "de": "Die eingebauten Rollen Project Editor und Project Admin erhalten die neue Berechtigung zum Ablegen. Einer eigenen Projektrolle erteilen Sie sie selbst, oder Sie lassen sie weg, wenn Piloti nur antworten soll."
   },
   {
+    "en": "The built-in skills have English names: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development and /inspection-report-writer. The old names, such as /einreichcheck, still work when typed and in scheduled tasks, and typing one still finds the skill in the menu.",
+    "de": "Die integrierten Skills haben englische Namen: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development und /inspection-report-writer. Die bisherigen Namen, etwa /einreichcheck, funktionieren weiterhin bei der Eingabe und in geplanten Aufgaben. Wenn Sie einen davon eingeben, wird der Skill weiterhin im Menü angezeigt."
+  },
+  {
     "en": "The button that starts a conversation about a document now reads „Mit Piloti besprechen“, so it is clear it opens a chat with Piloti and not with a colleague.",
     "de": "Der Button für ein Gespräch über ein Dokument heißt jetzt „Mit Piloti besprechen“ und macht damit klar, dass sich ein Chat mit Piloti und nicht mit einer Kollegin oder einem Kollegen öffnet."
   },
