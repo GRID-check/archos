@@ -266,7 +266,7 @@ tasks:
         frontends/aiq_api/tests/test_research_queue_fair.py
 
   fe:test:shard:
-    desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/4 task fe:test:shard)'
+    desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/6 task fe:test:shard)'
     dir: '{{.UI}}'
     cmds:
       # `--reporter=blob` writes the blob that fe:test:merge stitches into one

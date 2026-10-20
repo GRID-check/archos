@@ -466,7 +466,7 @@ jobs:
           GRID_RLS_SUITE_REQUIRED: "1"
 
   frontend-test:
-    name: Frontend tests (shard ${{ matrix.shard }}/4)
+    name: Frontend tests (shard ${{ matrix.shard }}/6)
     needs: changes
     if: needs.changes.outputs.frontend == 'true'
     runs-on: ubuntu-latest
@@ -474,15 +474,13 @@ jobs:
     strategy:
       # One shard's failure should not hide the others' results.
       fail-fast: false
-      # Four, not six: under a runner cap each shard is a slot a queued run
-      # waits for. The price, measured on 2026-10-09:
-      # the test step took 2:05, 2:45, 2:33 and 4:04 per shard, so shard 4 is
-      # the run's critical path, about a minute behind the backend lane (3:16).
-      # vitest shards by FILE, so one shard carries the heavy files
-      # (InputArea.spec.tsx alone was 46s of 210s). Split the heavy files to
-      # balance it; adding shards back trades slots for that minute.
+      # Six. The suite is mostly per-file startup (import and setup are ~60%
+      # of a shard), so it scales with shards, and by 2026-10-19 four shards
+      # took 7-11 minutes each against ~3:30 for a backend core shard. The
+      # old reason for four, queued runner slots, did not hold up: job-level
+      # queueing was under three seconds in every run measured then.
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -493,7 +491,7 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       - run: task fe:install
-      - run: task fe:test:shard SHARD=${{ matrix.shard }}/4
+      - run: task fe:test:shard SHARD=${{ matrix.shard }}/6
       # Coverage is collected per shard and merged below: a shard only loads
       # its own slice of the app. Uploaded even when the shard failed, because
       # the merged report is where a reviewer looks.

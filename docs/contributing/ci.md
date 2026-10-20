@@ -66,7 +66,7 @@ It also lists the third-party image pins the change adds or moves
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
 | Backend suites (`backend-suites`) | backend tier | the aiq_api suite, the `sources/` suites, the migration test, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier | the vitest suite in 4 shards |
+| Frontend tests (`frontend-test`) | frontend tier | the vitest suite in 6 shards |
 | Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
 | Web, Infra, Standalone packages | their tier | `task web:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
@@ -230,12 +230,14 @@ nine minutes for a runner.
 
 So the rule is: work that shares a toolchain shares a job, unless splitting it
 shortens the critical path. Lint, the release-note checks and gitleaks share the
-Python job; tenant isolation rides with UI lint and types; the UI has four shards, not six. That
-costs about a minute of wall clock on an idle runner pool: on the first runs the
-slowest shard's tests took 4:04 against 3:16 for the backend lane, because
-vitest shards by file and the heavy files land together. Balancing the files is
-the fix for that minute; adding shards back spends slots on it. Security
-scans that cannot be caused by a change moved to the weekly run.
+Python job; tenant isolation rides with UI lint and types. Security scans that
+cannot be caused by a change moved to the weekly run.
+
+Splitting does shorten the critical path for the two test suites, and by
+2026-10-19 the slots were no longer the constraint: in eleven runs measured
+then, no job waited more than three seconds for a runner. So the backend core
+suite runs in four shards and the UI suite in six (it had four, and they had
+grown to 7 to 11 minutes each); see [The backend lane](#the-backend-lane).
 
 One duplicate remains outside this repository's files: GitHub's **CodeQL
 default setup** runs three analysis jobs on every PR push and a five-to-ten
