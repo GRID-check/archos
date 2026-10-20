@@ -60,11 +60,15 @@ It also lists the third-party image pins the change adds or moves
 | Job | Runs when | What it does |
 |---|---|---|
 | Plan (`changes`) | always | the three answers above, written to the run summary with the reason for each |
-| Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, release-note lint and (PRs) the release-note requirement, gitleaks over the full history of the commit under test |
+| Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, the tests of `ci/`, the workflows and the release-note pipeline (`task be:test:harness`), release-note lint and (PRs) the release-note requirement, gitleaks over the full history of the commit under test |
 | SAST (`semgrep`) | PRs touching code | Semgrep, diff-aware: blocks findings the PR introduces |
-| Backend tests (`backend`) | backend tier | core suite with the 65% coverage gate, the aiq_api suite, the `sources/` suites, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
+| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, aiq_api, `sources/`), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
+| Backend test database (`backend-testmon`) | every push to `develop` | records which test runs which code (`task be:test:testmon`) and caches it when green. Not a check |
+| Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
+| Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
+| Backend suites (`backend-suites`) | backend tier | the aiq_api suite, the `sources/` suites, the migration test, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
-| Frontend tests (`frontend-test`) | frontend tier | the vitest suite in 4 shards |
+| Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 6 shards; on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
 | Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
 | Web, Infra, Standalone packages | their tier | `task web:verify`; `task infra:types` + `infra:test`; `task pkg:test:*` |
 | Image vulns (`trivy`) | a pin added or moved | trivy on those pins |
@@ -228,19 +232,96 @@ nine minutes for a runner.
 
 So the rule is: work that shares a toolchain shares a job, unless splitting it
 shortens the critical path. Lint, the release-note checks and gitleaks share the
-Python job; the aiq_api and `sources/` suites ride with the core suite; tenant
-isolation rides with UI lint and types; the UI has four shards, not six. That
-costs about a minute of wall clock on an idle runner pool: on the first runs the
-slowest shard's tests took 4:04 against 3:16 for the backend lane, because
-vitest shards by file and the heavy files land together. Balancing the files is
-the fix for that minute; adding shards back spends slots on it. Security
-scans that cannot be caused by a change moved to the weekly run.
+Python job; tenant isolation rides with UI lint and types. Security scans that
+cannot be caused by a change moved to the weekly run.
+
+Splitting does shorten the critical path for the two test suites, and by
+2026-10-19 the slots were no longer the constraint: in eleven runs measured
+then, no job waited more than three seconds for a runner. So the backend core
+suite runs in four shards and the UI suite in six (it had four, and they had
+grown to 7 to 11 minutes each); see [The backend lane](#the-backend-lane).
 
 One duplicate remains outside this repository's files: GitHub's **CodeQL
 default setup** runs three analysis jobs on every PR push and a five-to-ten
 minute analysis on every `develop` push, beside Semgrep, which was adopted to
 replace CodeQL. Turning one of them off is a setting
 (Settings → Code security), and it is the largest remaining cost per push.
+
+## The backend lane
+
+Measured on 2026-10-19: CI runs took 13 to 15 minutes, and the one `backend`
+job was 13 to 14 of them. It ran the core suite (7:30 to 8:00), then aiq_api
+(1:20), then `sources/` (3:30), in one job, while every other check was done by
+minute three. Job-level queueing was under three seconds in every run looked at,
+so the runner cap was not what made the run long; this one job was.
+
+What it was made of, and what was done about each:
+
+- **The core suite is CPU, spread thin.** ~410 worker-seconds on a 4-core
+  sandbox, ~900 on a 2-vCPU runner. No test, import or fixture dominates
+  (the slowest is 15s; collection is ~12s per worker; coverage on Python 3.14
+  uses `sys.monitoring` and costs ~6%; `--dist` modes are within noise). The
+  only lever is more CPUs, so it runs as four shards. `pytest-split` assigns
+  tests by their recorded time in `tests/.test_durations`
+  (`task be:test:durations` refreshes it); a test missing from the file counts
+  at the average, so a stale file unbalances the shards and never drops a test.
+  Each shard writes coverage data and `backend-coverage` combines it and
+  applies the 65% gate, so the gate still sees the whole suite.
+- **`sources/` is Qdrant collection setup.** About 130 tests each create and
+  drop collections, and each collection was ~47 sequential payload-index
+  calls. It runs in its own job beside the shards.
+- **Most PRs ran the lane without touching backend code.** The backend filter
+  listed `releasenotes/**`, `ci/**` and every workflow because ~10 seconds of
+  tests read them, and most PRs carry a release note. Those tests now run in
+  Repo checks as `task be:test:harness`, and the filter no longer lists them.
+- **Plan's checkout fetched 1.1 GB.** Full history with every blob, ~29s on the
+  job every other job waits for. It is now blobless (`filter: blob:none`,
+  16 MB); the steps that read a file at the base fetch it on demand, with the
+  job token handed to git through that step's env (`ci/git_auth.sh`) rather
+  than written to `.git/config`.
+
+**A pull request runs only the Python tests its change reaches.** Sharding
+made the full suite ~5 minutes; a typical change reaches a few dozen tests.
+Every push to `develop` records, with pytest-testmon, which test executed which
+function, one database per suite, and caches it when every test passed. A pull
+request restores it and runs the tests whose recorded functions it changed,
+plus every test file that names a changed non-Python file (a config, a prompt,
+a schema), which coverage cannot connect to anything. The full sharded suite
+and the 65% coverage gate run on every push to `develop`, which the deploy
+waits for, so a test a selection missed turns `develop` red before staging,
+not production. [`ci/pr_selection.py`](../../ci/pr_selection.py) decides, and
+runs the full suite on a pull request whenever testmon cannot see the change:
+a conftest, the lockfile or a `pyproject.toml`, how the backend jobs run,
+Python outside the tested packages (tests load `scripts/` and
+`frontends/benchmarks/` by path or in a subprocess), package data no test
+names, or no recorded database. Known blind spot: a test that only exercises
+code in a subprocess is selected when its own file changes, not when the code
+it spawns does; the push run is what catches that.
+
+**The UI suite selects the same way, by import graph.** `vitest related`
+keeps the specs whose imports reach a changed file, split over the same six
+shards. Every spec that reads the tree from disk instead of importing it (the
+route, key and migration walkers; ~100 found by what they call, not by a
+list) runs on every selection, because no import graph connects them to a
+change. Changes to what every spec loads (the manifest, the vitest config and
+setup, the mocks the setup installs, tsconfig) run the whole suite. A median
+change still reaches ~45% of the specs, because shared modules sit behind
+barrels; the saving is the other half, and a leaf change reaches a handful.
+The coverage comment comes only from a full run.
+
+**What a later push to the same pull request re-runs.** Both selections are
+taken against the pull request's last green run, not its base: the tests that
+run passed, so the next push owes only what changed since. That set is the pull
+request's own diff since that run's head, plus every file the base branch
+changed since an hour before that run started (the merge commit CI tests
+carries both). The backend keeps its testmon database per pull request for the
+same reason, so tests that failed keep running until they pass. A push that
+only answers a review comment runs the few tests that comment touched, and one
+that touches nothing a UI spec reads runs no UI spec at all.
+
+Not done, and why: a prebuilt container with the toolchain and venv baked in
+saves ~28s of setup per backend job and costs 20 to 30s to pull and unpack on
+a fresh runner, and it goes stale on every `uv.lock` change.
 
 ## What GitHub offers, and what we use
 

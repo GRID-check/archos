@@ -13,7 +13,7 @@ none of the code below sends anything.
 | Runtime | Settings that switch it on | Where the exception is captured |
 |---|---|---|
 | Browser | `NEXT_PUBLIC_POSTHOG_HOST` + `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`, handed to the page through `AppConfig` | posthog-js autocapture (unhandled errors and rejections), and `capturePosthogException` from the two error boundaries |
-| BFF server | the same two variables, read by `posthog-server.ts` | `onRequestError` in `src/instrumentation.ts` |
+| BFF server | the same two variables, read by `posthog-server.ts` | `onRequestError` in `src/instrumentation.ts`, and `captureUpstreamError` for a 502 the BFF answers itself |
 | Python (agent and API) | `POSTHOG_HOST` + `POSTHOG_PROJECT_TOKEN` | a logging handler on the root logger, `observability/posthog_exceptions.py` |
 
 ## Browser
@@ -66,6 +66,21 @@ version); `lib/analytics/request-error.ts` builds it with our configuration:
 - Authorization denials are dropped, and each fingerprint (route, error name,
   message) gets 5 events per 5 minutes, through `@posthog/core`'s
   `BucketedRateLimiter`.
+
+`onRequestError` never sees an `ApiError`: `errorResponse` (`lib/api/handler.ts`)
+answers it, so it is not an error Next caught. Most of them are answers about
+the request (404, 409, 507) and belong nowhere. An `UpstreamError` (502) is a
+dependency down: object storage, the agent backend, the knowledge layer. Until
+2026-10-20 it left no trace, and SeaweedFS refusing every new organization's
+first upload was noticed only because a user read „Object storage is
+unavailable“. `errorResponse` now logs one `[upstream] <message> operation=…
+code=… requestId=…` line (no path, so one outage is one fingerprint) and hands
+the error to `captureUpstreamError` (`lib/analytics/upstream-error.ts`): a
+personless `$exception` with `source: bff-upstream-error`, `request_id`, and the
+thrower's `operation` and `code` when its details carry them. Same scrubber and
+super properties as every BFF event, and the same 5-per-5-minutes budget, keyed
+on message and code. An alert in PostHog on `source = bff-upstream-error` is
+what turns it into a page; that is configured in PostHog, not here.
 
 ## Python
 

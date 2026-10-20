@@ -297,7 +297,13 @@ class TestRisClientSearch:
         with pytest.raises(RisError, match="HTTP 503"):
             await client.search("BrKons")
 
-    async def test_transient_5xx_is_retried(self):
+    async def test_transient_5xx_is_retried(self, monkeypatch):
+        delays: list[float] = []
+
+        async def no_sleep(delay: float) -> None:  # the backoff is the client's, not the test's, to wait out
+            delays.append(delay)
+
+        monkeypatch.setattr("ris_adapter.client.asyncio.sleep", no_sleep)
         calls = {"count": 0}
 
         def handler(request: httpx.Request) -> httpx.Response:
@@ -310,6 +316,7 @@ class TestRisClientSearch:
         result = await client.search("BrKons")
 
         assert calls["count"] == 2
+        assert delays == [1]
         assert result.total == 42
 
     async def test_structured_500_error_is_not_retried(self):

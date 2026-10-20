@@ -60,6 +60,18 @@ def entries() -> list[overview.GoldenEntry]:
     return overview.load_golden(GOLDEN_PATH, known_files=frozenset(overview.FIXTURE_TEXTS))
 
 
+@pytest.fixture(scope="module")
+def off_report(entries) -> overview.Report:
+    """The HyDE-off run, shared: ``overview.run`` costs seconds and nothing mutates the report."""
+    return overview.run(entries)
+
+
+@pytest.fixture(scope="module")
+def no_draft_report(entries) -> overview.Report:
+    """HyDE on with a drafter that never has a draft, shared for the same reason."""
+    return overview.run(entries, hyde_drafter=lambda entry: None)
+
+
 def _cohort(report: overview.Report, label: str) -> overview.CohortScores:
     return next(scores for scores in report.cohorts if scores.label == label)
 
@@ -96,34 +108,33 @@ def test_hyde_gate_keeps_identifier_shaped_overview_queries_out(entries) -> None
     assert overview.hyde_fires("was weißt du über die oib-richtlinien") is True
 
 
-def test_hyde_on_without_drafts_is_the_baseline(entries) -> None:
+def test_hyde_on_without_drafts_is_the_baseline(off_report, no_draft_report) -> None:
     """Fail-open identity: with no draft available the on-mode ranking is
     byte-identical to off — per query and per cohort. This is the
     no-regression half of the ship condition, measured."""
-    off = overview.run(entries)
-    on = overview.run(entries, hyde_drafter=lambda entry: None)
+    off, on = off_report, no_draft_report
     assert _ranked_table(on) == _ranked_table(off)
     assert _cohort_table(on) == _cohort_table(off)
     assert all(not result.hyde_fired for result in on.results)
 
 
-def test_hyde_drafter_errors_degrade_to_the_baseline(entries) -> None:
+def test_hyde_drafter_errors_degrade_to_the_baseline(entries, off_report) -> None:
     """A failing drafter reads as no draft: same numbers as off, no exception."""
 
     def failing_drafter(entry: overview.GoldenEntry) -> str | None:
         raise RuntimeError("draft model down")
 
-    off = overview.run(entries)
+    off = off_report
     on = overview.run(entries, hyde_drafter=failing_drafter)
     assert _ranked_table(on) == _ranked_table(off)
     assert _cohort_table(on) == _cohort_table(off)
 
 
-def test_hyde_on_without_drafts_matches_the_pinned_baseline(entries) -> None:
+def test_hyde_on_without_drafts_matches_the_pinned_baseline(no_draft_report) -> None:
     """The measured on-vs-off numbers (fail-open): identical to the golden
     floors' baseline — no lift measurable without recorded drafts, no
     regression anywhere."""
-    report = overview.run(entries, hyde_drafter=lambda entry: None)
+    report = no_draft_report
     # Read from the golden test's BASELINE rather than restated: these numbers
     # were duplicated here once, and a retrieval correction moved one copy and
     # not the other. One place to re-record.

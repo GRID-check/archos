@@ -9,6 +9,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 vi.mock('server-only', () => ({}))
 
 import { errorResponse } from './handler'
+import { NotFoundError, UpstreamError } from './errors'
 
 describe('errorResponse', () => {
   it('turns a postgres invalid-uuid failure into a 404, not a 500 (#572)', () => {
@@ -125,6 +126,40 @@ describe('errorResponse', () => {
         cause: Object.assign(new Error('duplicate key'), { code: '23505' }),
       })
       expect(errorResponse(error, new Request('https://grid.test/api/things')).status).toBe(500)
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('logs an upstream failure, with the store code, and keeps the path out of the line', async () => {
+    // 2026-10-20: SeaweedFS out of volume slots refused every new organization's
+    // first upload, and the 502 reached the user without a line in any log.
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      const error = new UpstreamError('Object storage is unavailable', {
+        operation: 'ensureTenantBucket',
+        code: 'InternalError',
+      })
+
+      const response = errorResponse(error, new Request('https://grid.test/api/archiv/documents/upload'))
+
+      expect(response.status).toBe(502)
+      expect(spy).toHaveBeenCalledOnce()
+      const line = String(spy.mock.calls[0][0])
+      expect(line).toMatch(
+        /^\[upstream\] Object storage is unavailable operation=ensureTenantBucket code=InternalError requestId=/,
+      )
+      expect(line).not.toContain('/api/archiv')
+    } finally {
+      spy.mockRestore()
+    }
+  })
+
+  it('keeps an answer about the request out of the error log', () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(errorResponse(new NotFoundError(), new Request('https://grid.test/api/things/t1')).status).toBe(404)
+      expect(spy).not.toHaveBeenCalled()
     } finally {
       spy.mockRestore()
     }

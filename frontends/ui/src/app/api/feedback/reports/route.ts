@@ -3,7 +3,8 @@
  * idea, praise or a question) to the platform owners.
  *
  * Not `/api/feedback/answers`, which is the thumbs on one answer. Thin adapter
- * (ADR-0017): validation here, everything else in `submitProductFeedback`.
+ * (ADR-0017): validation here, everything else in `submitProductFeedback`,
+ * which also opens the report's PostHog Support ticket (ADR-0118).
  *
  * Open to every signed-in member with no feature flag: reporting a bug must not
  * depend on what the tenant bought. Bounded per person by

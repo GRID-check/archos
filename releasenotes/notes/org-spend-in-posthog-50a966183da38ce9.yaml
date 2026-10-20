@@ -1,0 +1,10 @@
+---
+operators:
+  - >
+    Each organization's name under Platform → Overview now opens its spend as
+    the office sees it on its Budgets page: today and this month against its
+    limits, the last 30 days, the model mix and what each member used.
+  - >
+    PostHog now receives every organization's LLM spend each hour and its
+    limits in an hourly snapshot, with two dashboards, one across all
+    organizations and one for a chosen organization.

@@ -1,0 +1,32 @@
+# Infra tier (deploy/pulumi).
+#
+# Included by the root Taskfile.yml with `flatten: true`: task names stay literal
+# (`infra:types`). Shared vars (UI, WEB, PY, ...) and env live in the root file.
+
+version: '3'
+
+tasks:
+  # ── infra (deploy/pulumi) ───────────────────────────────────────────────────
+
+  infra:types:
+    desc: Typecheck the Pulumi program and its policy pack
+    cmds:
+      - bun run --cwd deploy/pulumi typecheck
+      - bun run --cwd deploy/pulumi/policy typecheck
+
+  infra:test:
+    desc: Manifest tests for the Pulumi program (no cluster, no stack credentials)
+    # `typecheck` proves the program is well-typed; it proves nothing about the
+    # manifests, which is where every SeaweedFS bug in this repo's history has
+    # lived — a renamed flag, a Service missing the gRPC port `weed shell`
+    # needs, a liveness probe pointed at an endpoint that answers 423. All
+    # string-valued, all invisible to tsc. These run the program under
+    # `pulumi.runtime.setMocks` and assert the resource inputs directly.
+    cmds:
+      - bun run --cwd deploy/pulumi test
+
+  infra:preview:
+    desc: 'Pulumi preview (needs stack credentials)'
+    dir: deploy/pulumi
+    cmds:
+      - bun run preview

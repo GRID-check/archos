@@ -7,8 +7,20 @@ import { withTenant } from '@/lib/db/tenant-context'
 import { getWorkOS } from '@/lib/workos/client'
 import { NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
-import { BudgetValidationError, getOrgBudget, getSpendTotals, setBudgetPolicy } from './service'
-import { platformOrgBudgetPutSchema, type PlatformOrgBudget, type PlatformOrgBudgetInput } from './platform-contract'
+import { getOrganizationDisplayName, listOrganizationMembers } from '@/lib/organizations/service'
+import {
+  BudgetValidationError,
+  getOrganizationUsageOverview,
+  getOrgBudget,
+  getSpendTotals,
+  setBudgetPolicy,
+} from './service'
+import {
+  platformOrgBudgetPutSchema,
+  type PlatformOrgBudget,
+  type PlatformOrgBudgetInput,
+  type PlatformOrgUsage,
+} from './platform-contract'
 
 async function requireOrganization(organizationId: string): Promise<void> {
   try {
@@ -92,4 +104,26 @@ export async function savePlatformOrgBudget(
     })
   })
   return readBudget(session, organizationId)
+}
+
+/**
+ * One organization's spend as its own admins see it on Budgets: the meters,
+ * the 30-day trend, the model mix and the member table, for the platform's
+ * per-organization view. Read-only; limits stay on the budget dialog.
+ */
+export async function getPlatformOrgUsage(session: GridSession, organizationId: string): Promise<PlatformOrgUsage> {
+  await requirePlatformPermission(session, PLATFORM_PERMISSIONS.usageView)
+  await requireOrganization(organizationId)
+  const [usage, name, members] = await Promise.all([
+    withTenant({ organizationId, userId: session.userId }, () => getOrganizationUsageOverview(organizationId)),
+    getOrganizationDisplayName(organizationId),
+    // Labels only: an office whose directory WorkOS cannot list still shows its spend, by id.
+    listOrganizationMembers(organizationId).catch(() => []),
+  ])
+  const spenders = new Set((usage.perMember ?? []).map((entry) => entry.userId))
+  return {
+    organization: { id: organizationId, name },
+    usage,
+    members: members.filter((member) => spenders.has(member.id)),
+  }
 }

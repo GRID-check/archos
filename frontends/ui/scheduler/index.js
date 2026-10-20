@@ -34,7 +34,11 @@
  *      that comes later in the office's day, to catch that day's run up),
  *      POSTs the BFF's Frist reminder (`/api/internal/annotations/due-reminders`),
  *      which queues one job per organization with marks due today, tomorrow
- *      or in the last week (`sweepAnnotationDue`; `lib/annotations/due-reminders.ts`).
+ *      or in the last week (`sweepAnnotationDue`; `lib/annotations/due-reminders.ts`);
+ *  11. every ten minutes, POSTs the BFF's PostHog usage export
+ *      (`/api/internal/analytics/usage-export`), which sends the usage ledger's
+ *      closed hours and each organization's budget snapshot once an hour
+ *      (`sweepUsageExport`; `lib/analytics/usage-export.ts`).
  * See ADR-0046 and docs/architecture/agent-skills.md ("Scheduler worker").
  *
  * Environment:
@@ -148,6 +152,9 @@ function createStreaks(config) {
     // Daily at a set hour of the office's morning; its clock outlives the tick too.
     annotationDue: createFailureStreak({ label: `${LOG} Frist reminder`, escalateAfter: 3 }),
     annotationDueClock: { nextRunAt: 0 },
+    // Every ten minutes; the BFF's cursor decides what is due, this only paces the asking.
+    usageExport: createFailureStreak({ label: `${LOG} PostHog usage export`, escalateAfter: 3 }),
+    usageExportClock: { nextRunAt: 0 },
   }
 }
 
@@ -466,6 +473,39 @@ async function sweepAnnotationDue(config, fetchImpl, streak, clock, now = new Da
   return counts
 }
 
+/** Between two asks of the usage export. The BFF sends an hour once, so asking more often only reads a cursor. */
+const USAGE_EXPORT_INTERVAL_MS = 10 * 60 * 1000
+
+/**
+ * The PostHog usage export: POST {frontendUrl}/api/internal/analytics/usage-export
+ * every ten minutes, the first on the first tick. The BFF keeps the cursor, so
+ * this only paces it: a restart, a second replica or a failed post costs a
+ * repeated ask, never a repeated hour. While the backfill runs, each ask sends
+ * the next window and the next ask follows at once (`caughtUp` false). Never
+ * throws; logs what it sent. Returns the counts, or null when it did not run.
+ */
+async function sweepUsageExport(config, fetchImpl, streak, clock, now = new Date()) {
+  if (now.getTime() < clock.nextRunAt) return null
+  const counts = await postSweep(config, fetchImpl, streak, {
+    path: '/api/internal/analytics/usage-export',
+    label: 'PostHog usage export',
+  })
+  const behind = Boolean(counts && counts.usage && counts.usage.caughtUp === false)
+  clock.nextRunAt = behind ? now.getTime() : now.getTime() + USAGE_EXPORT_INTERVAL_MS
+  if (counts && counts.usage) {
+    console.log(
+      `${LOG} PostHog usage export: ${counts.usage.rows} hourly row(s) from ${counts.usage.from} to ${counts.usage.to}` +
+        (behind ? '; more history behind it, the next tick continues' : ''),
+    )
+  }
+  if (counts && counts.snapshot) {
+    console.log(
+      `${LOG} PostHog budget snapshot for ${counts.snapshot.hour}: ${counts.snapshot.organizations} organization(s)`,
+    )
+  }
+  return counts
+}
+
 /**
  * POST one of the BFF's internal sweeps and read its counts.
  *
@@ -582,6 +622,7 @@ async function tick(sql, config, fetchImpl, streaks) {
   await sweepConversationTraces(sql, config, fetchImpl, streaks.conversationTraces, streaks.conversationTracesClock)
   await sweepDownloadLogRetention(sql, streaks.downloadLog, streaks.downloadLogClock)
   await sweepAnnotationDue(config, fetchImpl, streaks.annotationDue, streaks.annotationDueClock)
+  await sweepUsageExport(config, fetchImpl, streaks.usageExport, streaks.usageExportClock)
   return fired
 }
 
@@ -683,6 +724,7 @@ module.exports = {
   sweepConversationTraces,
   sweepDownloadLogRetention,
   sweepAnnotationDue,
+  sweepUsageExport,
   tick,
   INTERNAL_TOKEN_HEADER,
 }

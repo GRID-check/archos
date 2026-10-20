@@ -14,6 +14,8 @@ import anywhere else would be a second store creeping back in.
 
 from __future__ import annotations
 
+import functools
+import os
 import pathlib
 import re
 
@@ -45,22 +47,40 @@ CHROMA_CLIENT_USE = re.compile(
 )
 
 
-def _offenders() -> list[str]:
+def _python_files(repo: pathlib.Path) -> list[pathlib.Path]:
+    """Every ``.py`` under ``repo`` outside :data:`NOT_OURS`, without descending into those trees."""
+    found: list[pathlib.Path] = []
+    for directory, subdirs, names in os.walk(repo):
+        subdirs[:] = [name for name in subdirs if name not in NOT_OURS]
+        found.extend(pathlib.Path(directory, name) for name in names if name.endswith(".py"))
+    return found
+
+
+@functools.cache
+def _real_python_files() -> tuple[pathlib.Path, ...]:
+    return tuple(_python_files(REPO))
+
+
+def _offenders(repo: pathlib.Path = REPO) -> list[str]:
     offenders: list[str] = []
-    for root in SEARCHED:
-        for path in (REPO / root).rglob("*.py"):
-            if ALLOWED in path.parents or "tests" in path.relative_to(REPO).parts:
-                continue
-            if IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
-                offenders.append(str(path.relative_to(REPO)))
+    files = _real_python_files() if repo == REPO else _python_files(repo)
+    roots = tuple(repo / root for root in SEARCHED)
+    allowed = repo / "sources" / "knowledge_layer" / "src" / "qdrant"
+    for path in files:
+        relative = path.relative_to(repo)
+        if not any(root in path.parents for root in roots) or allowed in path.parents or "tests" in relative.parts:
+            continue
+        if IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
+            offenders.append(str(relative))
     return offenders
 
 
-def _chroma_users(pattern: re.Pattern[str]) -> list[str]:
+def _chroma_users(pattern: re.Pattern[str], repo: pathlib.Path = REPO) -> list[str]:
     offenders: list[str] = []
-    for path in REPO.rglob("*.py"):
-        relative = path.relative_to(REPO)
-        if NOT_OURS & set(relative.parts) or str(relative).startswith(CHROMA_ALLOWED):
+    files = _real_python_files() if repo == REPO else _python_files(repo)
+    for path in files:
+        relative = path.relative_to(repo)
+        if str(relative).startswith(CHROMA_ALLOWED):
             continue
         if path == pathlib.Path(__file__).resolve():  # this file plants the strings it looks for
             continue
@@ -69,43 +89,44 @@ def _chroma_users(pattern: re.Pattern[str]) -> list[str]:
     return offenders
 
 
-def _chroma_importers() -> list[str]:
-    return _chroma_users(CHROMA_IMPORT)
+def _chroma_importers(repo: pathlib.Path = REPO) -> list[str]:
+    return _chroma_users(CHROMA_IMPORT, repo)
 
 
 def test_only_the_qdrant_package_imports_qdrant_client():
     assert _offenders() == []
 
 
-def test_the_boundary_check_would_see_an_offender():
+def _plant(root: pathlib.Path, relative: str, text: str) -> pathlib.Path:
+    """Write a file under a scratch repo, never the real one: parallel workers scan that tree."""
+    path = root / relative
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
+    return path
+
+
+def test_the_boundary_check_would_see_an_offender(tmp_path):
     """The check is not vacuous: a planted import outside the package is found."""
-    planted = REPO / "scripts" / "_planted_qdrant_import_check.py"
-    planted.write_text("from qdrant_client import QdrantClient\n", encoding="utf-8")
-    try:
-        assert "scripts/_planted_qdrant_import_check.py" in _offenders()
-    finally:
-        planted.unlink()
+    _plant(tmp_path, "scripts/_planted_qdrant_import_check.py", "from qdrant_client import QdrantClient\n")
+    assert "scripts/_planted_qdrant_import_check.py" in _offenders(tmp_path)
 
 
 def test_nothing_but_the_migration_imports_chromadb():
     assert _chroma_importers() == []
 
 
-def test_the_chroma_check_sees_an_offender_in_code_and_tests_alike():
+def test_the_chroma_check_sees_an_offender_in_code_and_tests_alike(tmp_path):
     planted = [
-        REPO / "src" / "_planted_chroma_check.py",
-        REPO / "tests" / "_planted_chroma_check.py",
-        REPO / "tests" / "_planted_chroma_skip_check.py",
+        _plant(tmp_path, "src/_planted_chroma_check.py", "import chromadb\n"),
+        _plant(
+            tmp_path,
+            "tests/_planted_chroma_check.py",
+            "from llama_index.vector_stores.chroma import ChromaVectorStore\n",
+        ),
+        _plant(tmp_path, "tests/_planted_chroma_skip_check.py", '    chromadb = pytest.importorskip("chromadb")\n'),
     ]
-    planted[0].write_text("import chromadb\n", encoding="utf-8")
-    planted[1].write_text("from llama_index.vector_stores.chroma import ChromaVectorStore\n", encoding="utf-8")
-    planted[2].write_text('    chromadb = pytest.importorskip("chromadb")\n', encoding="utf-8")
-    try:
-        found = _chroma_importers()
-        assert {str(path.relative_to(REPO)) for path in planted} <= set(found)
-    finally:
-        for path in planted:
-            path.unlink()
+    found = _chroma_importers(tmp_path)
+    assert {str(path.relative_to(tmp_path)) for path in planted} <= set(found)
 
 
 def test_nothing_reaches_for_a_chroma_client_by_name():
@@ -113,10 +134,10 @@ def test_nothing_reaches_for_a_chroma_client_by_name():
     assert _chroma_users(CHROMA_CLIENT_USE) == []
 
 
-def test_the_client_check_would_see_a_lookup_by_name():
-    planted = REPO / "scripts" / "_planted_chroma_client_check.py"
-    planted.write_text('client_of = getattr(retriever, "_get_chroma_client", None)\n', encoding="utf-8")
-    try:
-        assert "scripts/_planted_chroma_client_check.py" in _chroma_users(CHROMA_CLIENT_USE)
-    finally:
-        planted.unlink()
+def test_the_client_check_would_see_a_lookup_by_name(tmp_path):
+    _plant(
+        tmp_path,
+        "scripts/_planted_chroma_client_check.py",
+        'client_of = getattr(retriever, "_get_chroma_client", None)\n',
+    )
+    assert "scripts/_planted_chroma_client_check.py" in _chroma_users(CHROMA_CLIENT_USE, tmp_path)

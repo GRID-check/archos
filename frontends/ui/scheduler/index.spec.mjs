@@ -14,6 +14,7 @@ import {
   sweepConversationTraces,
   sweepDownloadLogRetention,
   sweepAnnotationDue,
+  sweepUsageExport,
   tick,
   INTERNAL_TOKEN_HEADER,
 } from './index.js'
@@ -365,6 +366,8 @@ describe('tick', () => {
       'http://frontend:3000/api/internal/folder-placement/sweep',
       // The daily Frist reminder catches up on the first tick of a start after 06:45.
       'http://frontend:3000/api/internal/annotations/due-reminders',
+      // The PostHog usage export asks on the first tick, then every ten minutes.
+      'http://frontend:3000/api/internal/analytics/usage-export',
     ])
   })
 
@@ -469,6 +472,55 @@ describe('sweepAnnotationDue (the daily Frist reminder)', () => {
     expect(await sweepAnnotationDue(config, fetchImpl, annotationDue, annotationDueClock, new Date('2026-10-17T04:45:00Z'))).toEqual(counts)
     expect(fetchImpl).toHaveBeenCalledTimes(1)
     expect(new Date(annotationDueClock.nextRunAt).toISOString()).toBe('2026-10-18T04:45:00.000Z')
+  })
+})
+
+describe('sweepUsageExport (the PostHog usage export, every ten minutes)', () => {
+  const config = { frontendUrl: 'http://frontend:3000', internalToken: 't', pollMs: 30000 }
+  const answered = (counts) => vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(counts) })
+  const now = new Date('2026-10-20T08:00:00Z')
+
+  it('asks on the first tick, then not again for ten minutes', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { usageExport, usageExportClock } = createStreaks(config)
+    const counts = {
+      enabled: true,
+      usage: { from: '2026-10-20T06:00:00.000Z', to: '2026-10-20T07:00:00.000Z', rows: 12, caughtUp: true },
+      snapshot: { hour: '2026-10-20T08:00:00.000Z', organizations: 3 },
+    }
+    const fetchImpl = answered(counts)
+
+    expect(await sweepUsageExport(config, fetchImpl, usageExport, usageExportClock, now)).toEqual(counts)
+    expect(fetchImpl).toHaveBeenCalledWith(
+      'http://frontend:3000/api/internal/analytics/usage-export',
+      expect.objectContaining({ method: 'POST', headers: { 'x-grid-internal-token': 't' } }),
+    )
+    expect(usageExportClock.nextRunAt).toBe(now.getTime() + 10 * 60 * 1000)
+    expect(await sweepUsageExport(config, fetchImpl, usageExport, usageExportClock, new Date(now.getTime() + 60_000))).toBeNull()
+    expect(fetchImpl).toHaveBeenCalledTimes(1)
+  })
+
+  it('asks again on the next tick while the backfill is behind', async () => {
+    vi.spyOn(console, 'log').mockImplementation(() => {})
+    const { usageExport, usageExportClock } = createStreaks(config)
+    const fetchImpl = answered({
+      enabled: true,
+      usage: { from: '2026-07-22T08:00:00.000Z', to: '2026-07-24T08:00:00.000Z', rows: 40, caughtUp: false },
+      snapshot: null,
+    })
+
+    await sweepUsageExport(config, fetchImpl, usageExport, usageExportClock, now)
+
+    expect(usageExportClock.nextRunAt).toBe(now.getTime())
+  })
+
+  it('waits ten minutes after a failed post: the BFF kept its cursor, so nothing is lost', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { usageExport, usageExportClock } = createStreaks(config)
+    const down = vi.fn().mockResolvedValue({ ok: false, status: 503, headers: new Headers(), text: () => Promise.resolve('') })
+
+    expect(await sweepUsageExport(config, down, usageExport, usageExportClock, now)).toBeNull()
+    expect(usageExportClock.nextRunAt).toBe(now.getTime() + 10 * 60 * 1000)
   })
 })
 

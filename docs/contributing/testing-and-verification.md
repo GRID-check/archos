@@ -11,7 +11,8 @@ task verify:fast   # the same, minus the slow production build
 task setup         # first-time toolchain install
 ```
 
-`Taskfile.yml` is the source of truth for what each check actually runs, and
+`Taskfile.yml` and the per-tier files in `taskfiles/` (included flat, so task names
+are unchanged) are the source of truth for what each check actually runs, and
 `task --list` prints the full set with descriptions. This page holds only what
 the Taskfile cannot say about itself.
 
@@ -109,10 +110,20 @@ release rather than trusting a green suite.
 
 CI calls the Taskfile, so there is no second copy of the commands. Only the
 scheduling differs: the frontend tier's card check, lint, types and the
-tenant-isolation suite share one job, the suite is sharded four ways
+tenant-isolation suite share one job, the suite is sharded six ways
 (`fe:test:shard`) and stitched back together by `fe:test:merge` for the coverage
 comment, and the production UI build runs inside the frontend image build
-rather than as `fe:build`. Locally `task fe:verify` runs lint, types, tests and
+rather than as `fe:build`. The backend core suite is sharded four ways too
+(`be:test:shard`, split by `tests/.test_durations`), and `be:test:coverage`
+combines the shards' data and applies the 65% gate that `be:test:ci` applies
+in one go locally. The tests of `ci/`, the workflows and the release notes run
+in the Repo checks job as `be:test:harness`, on every pull request. A pull
+request whose change testmon can see runs only the Python tests that change
+reaches (`be:test:affected`, from the database `be:test:testmon` records on
+every push to `develop`); the full suite runs on the push. To run the same
+selection locally, record once with `task be:test:testmon` and then
+`task be:test:affected SUITE=core`. The UI equivalent is
+`task fe:test:related SHARD=1/1 FILES="src/path/changed.ts"`. Locally `task fe:verify` runs lint, types, tests and
 build in order instead.
 
 What decides which jobs run (a pull request against its base, a push against the
@@ -350,6 +361,10 @@ Three things about the trivy job that are not obvious:
   scan reuses it with `--skip-db-update` ([`ci/trivy_scan.sh`](../../ci/trivy_scan.sh)).
   Five fresh `docker run --rm` pulls of
   `trivy-db` from GCR return 429 and fail the job with `failed=0`.
+- It runs the vulnerability scanner only (`--scanners vuln`). Trivy's default
+  also scans for secrets, which gates nothing here (a key in a vendor's image is
+  theirs to rotate) and walked the Langfuse web image's source maps past trivy's
+  5-minute deadline on every promotion PR.
 - What trivy learns by *walking* the images is cached across runs
   (`actions/cache`, keyed on the pin set and the trivy version). The
   vulnerability database is not, and the split is the point: a digest cannot
