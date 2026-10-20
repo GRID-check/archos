@@ -14,38 +14,34 @@
  */
 import 'server-only'
 
-import { BucketedRateLimiter, type Logger } from '@posthog/core'
-
 import type { UpstreamError } from '@/lib/api/errors'
 
 import { getPosthogServer } from './posthog-server'
 
 /**
- * The same budget as `request-error.ts`, written out rather than imported: that
- * module pulls `@posthog/next` in, and this one is loaded by every API route.
+ * The same budget as `request-error.ts` (5 per fingerprint per 5 minutes),
+ * counted here rather than with `@posthog/core`'s `BucketedRateLimiter`: only
+ * `request-error.ts` may import a PostHog package beside the two clients
+ * (`tests/test_posthog_boundaries.py`), and a fixed window is a few lines.
  */
 export const UPSTREAM_ERROR_BURST = 5
 const UPSTREAM_ERROR_WINDOW_MS = 5 * 60_000
 
-const quietLogger: Logger = {
-  debug: () => {},
-  info: () => {},
-  warn: (...args: unknown[]) => console.warn('[posthog]', ...args),
-  error: (...args: unknown[]) => console.error('[posthog]', ...args),
-  critical: (...args: unknown[]) => console.error('[posthog]', ...args),
-  createLogger: () => quietLogger,
+let windows = new Map<string, { startedAt: number; count: number }>()
+
+/** Whether this fingerprint has spent its burst in the current window. */
+const isRateLimited = (fingerprint: string, now: number): boolean => {
+  const window = windows.get(fingerprint)
+  if (!window || now - window.startedAt >= UPSTREAM_ERROR_WINDOW_MS) {
+    windows.set(fingerprint, { startedAt: now, count: 1 })
+    return false
+  }
+  window.count += 1
+  if (window.count === UPSTREAM_ERROR_BURST + 1) {
+    console.warn('[posthog] upstream error rate-limited:', fingerprint.slice(0, 160))
+  }
+  return window.count > UPSTREAM_ERROR_BURST
 }
-
-const newLimiter = (): BucketedRateLimiter<string> =>
-  new BucketedRateLimiter<string>({
-    bucketSize: UPSTREAM_ERROR_BURST + 1,
-    refillRate: UPSTREAM_ERROR_BURST + 1,
-    refillInterval: UPSTREAM_ERROR_WINDOW_MS,
-    _logger: quietLogger,
-    _onBucketRateLimited: (key) => console.warn('[posthog] upstream error rate-limited:', key.slice(0, 160)),
-  })
-
-let limiter = newLimiter()
 
 /** What an upstream error's details may say about itself; anything else is ignored. */
 export interface UpstreamContext {
@@ -67,7 +63,7 @@ export const captureUpstreamError = (error: UpstreamError, requestId: string): b
   const posthog = getPosthogServer()
   if (!posthog) return false
   const context = upstreamContext(error)
-  if (limiter.consumeRateLimit(`${error.message}|${context.code ?? ''}`)) return false
+  if (isRateLimited(`${error.message}|${context.code ?? ''}`, Date.now())) return false
   try {
     posthog.captureException(error, undefined, {
       source: 'bff-upstream-error',
@@ -82,5 +78,5 @@ export const captureUpstreamError = (error: UpstreamError, requestId: string): b
 }
 
 export const resetUpstreamErrorLimiterForTests = (): void => {
-  limiter = newLimiter()
+  windows = new Map()
 }
