@@ -1,6 +1,6 @@
 /**
  * No spec reaches the network. MSW answers what a spec mocks and lets the rest
- * through (`onUnhandledRequest: 'bypass'`), and what it lets through lands in
+ * through (`onUnhandledFrame: 'bypass'`), and what it lets through lands in
  * happy-dom's own fetch: an unmocked `/api/...` call from a rendered component,
  * an `<img>` or `<link>` the DOM loads. Each opened a real socket to
  * `localhost:3000`, where nothing listens, and teardown aborted it mid-flight.

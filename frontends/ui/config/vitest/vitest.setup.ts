@@ -296,7 +296,7 @@ refuseNetwork()
 beforeAll(() => {
   localStorageMock.clear()
   sessionStorageMock.clear()
-  return server.listen({ onUnhandledRequest: 'bypass' })
+  return server.listen({ onUnhandledFrame: 'bypass' })
 })
 
 afterEach(() => {

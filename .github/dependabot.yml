@@ -69,6 +69,13 @@ updates:
       # catalog), so an upgrade is its own change gated by the `features/a2ui`
       # tests, not a line in the weekly group.
       - dependency-name: "@a2ui/*"
+      # zod 4 is a migration, not a bump: 214 files import it, the card schemas
+      # are generated as zod 3 code (`json-schema-to-zod`), `lib/api/zod-json-schema.ts`
+      # walks zod 3 internals (`_def.typeName`, `ZodFirstPartyTypeKind`), and
+      # A2UI 0.11 types against zod 3. Dependabot's 4.6.7 PR broke 79 types
+      # and 157 spec files. Lift this in the change that does the migration.
+      - dependency-name: "zod"
+        update-types: ["version-update:semver-major"]
       # @ifc-lite/geometry 7.8.1 spawns a worker it does not ship
       # ('./geometry.worker.ts'), which fails `next build`, and every renderer
       # from 6.3.0 to 6.4.0 requires it. Exact versions only, so a release that
