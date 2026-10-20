@@ -137,7 +137,7 @@ describe('OIB 2 Tabelle 1b, row 1 — the storey decides the duration', () => {
       properties: { Pset_WallCommon: { LoadBearing: true, FireRating: rating } },
     })
   const fire = (elements: ReturnType<typeof element>[], buildingClass: 1 | 2 | 3 | 4 | 5) =>
-    runBimRules(elements, { gebaeudeklasse: buildingClass, storeys: STOREYS }).filter(
+    runBimRules(elements, { buildingClass: buildingClass, storeys: STOREYS }).filter(
       (r) => r.ruleId === 'oib2-fire-resistance-load-bearing'
     )[0]
 
@@ -175,7 +175,7 @@ describe('OIB 2 Tabelle 1b, row 1 — the storey decides the duration', () => {
     // Picking the above-ground row would pass a basement wall needing twice
     // the duration; picking the top row would fail a correct one. Neither
     // guess is safe, so the requirement is simply not determined.
-    const rule = runBimRules([wallOn('Keller', 'R 60')], { gebaeudeklasse: 3 }).filter(
+    const rule = runBimRules([wallOn('Keller', 'R 60')], { buildingClass: 3 }).filter(
       (r) => r.ruleId === 'oib2-fire-resistance-load-bearing'
     )[0]
 
@@ -194,7 +194,7 @@ describe('OIB 2 Tabelle 1b, row 1 — the storey decides the duration', () => {
           properties: { Pset_SlabCommon: { LoadBearing: true, FireRating: 'R 30' } },
         }),
       ],
-      { gebaeudeklasse: 5, storeys: STOREYS }
+      { buildingClass: 5, storeys: STOREYS }
     ).filter((r) => r.ruleId === 'oib2-fire-resistance-load-bearing')[0]
 
     expect(rule.passed + rule.failed + rule.undecidable).toBe(0)
@@ -230,7 +230,7 @@ describe('rules that never matched, and ticks that were not earned', () => {
           properties: { Pset_WallCommon: { IsExternal: true, ThermalTransmittance: 0.5 } },
         }),
       ],
-      { hauptnutzung: 'residential' }
+      { mainUse: 'residential' }
     ).filter((r) => r.ruleId === 'oib6-u-value-external-wall')
 
     expect(rule.failed).toBe(1)
@@ -285,7 +285,7 @@ describe('rules that never matched, and ticks that were not earned', () => {
 })
 
 describe('false verdicts a reviewer found by running the catalogue', () => {
-  const facts = { gebaeudeklasse: 4 as const, storeys: STOREYS }
+  const facts = { buildingClass: 4 as const, storeys: STOREYS }
 
   it('asks R of a column, not REI — a linear member cannot separate', () => {
     // `R 90` on a column is a correct declaration. Requiring REI of it (the
@@ -371,7 +371,7 @@ describe('false verdicts a reviewer found by running the catalogue', () => {
           properties: { Pset_WallCommon: { IsExternal: true, ThermalTransmittance: 0 } },
         }),
       ],
-      { hauptnutzung: 'residential' }
+      { mainUse: 'residential' }
     ).filter((r) => r.ruleId === 'oib6-u-value-external-wall')
 
     expect(rule.passed).toBe(0)
@@ -387,7 +387,7 @@ describe('false verdicts a reviewer found by running the catalogue', () => {
           properties: { Pset_WindowCommon: { ThermalTransmittance: 0 } },
         }),
       ],
-      { hauptnutzung: 'residential' }
+      { mainUse: 'residential' }
     ).filter((r) => r.ruleId === 'oib6-u-value-window')
 
     expect(rule.passed).toBe(0)
@@ -405,7 +405,7 @@ describe('false verdicts a reviewer found by running the catalogue', () => {
           properties: { Pset_WallCommon: { AcousticRating: 0 } },
         }),
       ],
-      { hauptnutzung: 'residential' }
+      { mainUse: 'residential' }
     ).filter((r) => r.ruleId === 'oib5-sound-insulation-declared')
 
     expect(rule.passed).toBe(0)
@@ -421,7 +421,7 @@ describe('false verdicts a reviewer found by running the catalogue', () => {
           properties: { Pset_WallCommon: { AcousticRating: 55 } },
         }),
       ],
-      { hauptnutzung: 'residential' }
+      { mainUse: 'residential' }
     ).filter((r) => r.ruleId === 'oib5-sound-insulation-declared')
 
     expect(rule.passed).toBe(1)
@@ -509,7 +509,7 @@ describe('a missing value is never a pass', () => {
       element({ ifcType: 'IfcWall', name: 'W2', properties: { Pset_WallCommon: { IsExternal: true } } }),
       element({ ifcType: 'IfcWindow', name: 'F1' }),
     ]
-    const results = runBimRules(bare, { gebaeudeklasse: 3, hauptnutzung: 'residential' })
+    const results = runBimRules(bare, { buildingClass: 3, mainUse: 'residential' })
     for (const result of results.filter((entry) => entry.applicable)) {
       expect(result.passed, `${result.ruleId} must not pass a bare element`).toBe(0)
     }
@@ -519,7 +519,7 @@ describe('a missing value is never a pass', () => {
   it('names the exact property that would settle each undecidable verdict', () => {
     const results = runBimRules(
       [element({ ifcType: 'IfcWall', name: 'W1', properties: { Pset_WallCommon: { LoadBearing: true } } })],
-      { gebaeudeklasse: 5, storeys: STOREYS }
+      { buildingClass: 5, storeys: STOREYS }
     )
     const rule = ruleOf(results, 'oib2-fire-resistance-load-bearing')
     expect(rule.undecidable).toBe(1)
@@ -602,12 +602,12 @@ describe('oib2-fire-resistance-load-bearing', () => {
     })
 
   it('passes a wall that meets its Gebäudeklasse', () => {
-    const rule = ruleOf(runBimRules([wall('REI 90')], { gebaeudeklasse: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
+    const rule = ruleOf(runBimRules([wall('REI 90')], { buildingClass: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
     expect(rule.passed).toBe(1)
   })
 
   it('fails a wall that is short of the minutes', () => {
-    const rule = ruleOf(runBimRules([wall('REI 30')], { gebaeudeklasse: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
+    const rule = ruleOf(runBimRules([wall('REI 30')], { buildingClass: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
     expect(rule.failed).toBe(1)
     expect(rule.failures[0].reading).toContain('erforderlich R 90')
   })
@@ -616,13 +616,13 @@ describe('oib2-fire-resistance-load-bearing', () => {
     // EI 90 is not R 90: the wall is load-bearing and the declaration says
     // nothing about load-bearing behaviour. Comparing 90 >= 90 alone would
     // call this compliant.
-    const rule = ruleOf(runBimRules([wall('EI 90')], { gebaeudeklasse: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
+    const rule = ruleOf(runBimRules([wall('EI 90')], { buildingClass: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
     expect(rule.failed).toBe(1)
   })
 
   it('ignores non-load-bearing walls entirely', () => {
     const rule = ruleOf(
-      runBimRules([wall(null, false)], { gebaeudeklasse: 5, storeys: STOREYS }),
+      runBimRules([wall(null, false)], { buildingClass: 5, storeys: STOREYS }),
       'oib2-fire-resistance-load-bearing'
     )
     expect(rule.passed + rule.failed + rule.undecidable).toBe(0)
@@ -676,7 +676,7 @@ describe('oib2-fire-resistance-load-bearing', () => {
       storeyName: storey.name,
     }))
     const rule = ruleOf(
-      runBimRules(walls, { gebaeudeklasse: 1, storeys: flat }),
+      runBimRules(walls, { buildingClass: 1, storeys: flat }),
       'oib2-fire-resistance-load-bearing'
     )
 
@@ -693,7 +693,7 @@ describe('oib2-fire-resistance-load-bearing', () => {
     ]
     const rule = ruleOf(
       runBimRules([{ ...wall(null), storeyName: '1.Obergeschoß' }], {
-        gebaeudeklasse: 1,
+        buildingClass: 1,
         storeys: stack,
       }),
       'oib2-fire-resistance-load-bearing'
@@ -706,7 +706,7 @@ describe('oib2-fire-resistance-load-bearing', () => {
     // 90 minutes. Scoring it against REI 90 on letters would mark a compliant
     // wall as failing, and a checker that raises false alarms on fire ratings
     // is one nobody reads. The value is shown, the verdict is withheld.
-    const rule = ruleOf(runBimRules([wall('F 90')], { gebaeudeklasse: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
+    const rule = ruleOf(runBimRules([wall('F 90')], { buildingClass: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing')
     expect(rule.failed).toBe(0)
     expect(rule.undecidable).toBe(1)
     expect(rule.unknowns[0].reading).toContain('F 90')
@@ -719,7 +719,7 @@ describe('oib2-fire-resistance-load-bearing', () => {
     // may be fine — or the reverse.
     for (const combined of ['R 30 / EI 90', 'REI 90/EI 30', 'R 30 und EI 90']) {
       const rule = ruleOf(
-        runBimRules([wall(combined)], { gebaeudeklasse: 3, storeys: STOREYS }),
+        runBimRules([wall(combined)], { buildingClass: 3, storeys: STOREYS }),
         'oib2-fire-resistance-load-bearing'
       )
       expect(rule.undecidable, combined).toBe(1)
@@ -731,13 +731,13 @@ describe('oib2-fire-resistance-load-bearing', () => {
     // The escape hatch must not swallow real failures: REI 30 against REI 90 is
     // comparable and short.
     expect(
-      ruleOf(runBimRules([wall('REI 30')], { gebaeudeklasse: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing').failed
+      ruleOf(runBimRules([wall('REI 30')], { buildingClass: 5, storeys: STOREYS }), 'oib2-fire-resistance-load-bearing').failed
     ).toBe(1)
   })
 
   it('reports an unreadable rating as undecidable, not as a failure', () => {
     const rule = ruleOf(
-      runBimRules([wall('feuerhemmend')], { gebaeudeklasse: 3, storeys: STOREYS }),
+      runBimRules([wall('feuerhemmend')], { buildingClass: 3, storeys: STOREYS }),
       'oib2-fire-resistance-load-bearing'
     )
     expect(rule.undecidable).toBe(1)
@@ -1112,7 +1112,7 @@ describe('a reading never contradicts the verdict printed beside it', () => {
 describe('applicability', () => {
   it('drops OIB 6 for an unconditioned storage building, with the reason', () => {
     const rule = ruleOf(
-      runBimRules([element({ ifcType: 'IfcWindow', name: 'F1' })], { hauptnutzung: 'storage' }),
+      runBimRules([element({ ifcType: 'IfcWindow', name: 'F1' })], { mainUse: 'storage' }),
       'oib6-u-value-window'
     )
     expect(rule.applicable).toBe(false)
@@ -1122,7 +1122,7 @@ describe('applicability', () => {
   it('keeps a rule with no in-scope elements rather than hiding it', () => {
     // "No load-bearing walls were checked" is information. Dropping the row
     // would make an incomplete model look like a short list of clean results.
-    const results = runBimRules([], { gebaeudeklasse: 3, hauptnutzung: 'residential' })
+    const results = runBimRules([], { buildingClass: 3, mainUse: 'residential' })
     expect(results).toHaveLength(BIM_RULES.length)
     expect(summarizeBimRules(results).rulesEmpty).toBeGreaterThan(0)
   })
@@ -1133,7 +1133,7 @@ describe('oib5-sound-insulation-declared', () => {
     // A missing AcousticRating is a gap in the model, not proof that the wall
     // fails the Richtlinie.
     const rule = ruleOf(
-      runBimRules([element({ ifcType: 'IfcWall', name: 'IW1' })], { hauptnutzung: 'residential' }),
+      runBimRules([element({ ifcType: 'IfcWall', name: 'IW1' })], { mainUse: 'residential' }),
       'oib5-sound-insulation-declared'
     )
     expect(rule.undecidable).toBe(1)
@@ -1147,7 +1147,7 @@ describe('oib5-sound-insulation-declared', () => {
       properties: { Pset_WallCommon: { AcousticRating: rating } },
     })
   const verdict = (rating: string | number) =>
-    ruleOf(runBimRules([wall(rating)], { hauptnutzung: 'residential' }), 'oib5-sound-insulation-declared')
+    ruleOf(runBimRules([wall(rating)], { mainUse: 'residential' }), 'oib5-sound-insulation-declared')
 
   it('refuses prose as a declaration', () => {
     // The bug, and the worst kind this catalogue can have: `numericProperty` is
@@ -1228,7 +1228,7 @@ describe('missingPropertyShoppingList', () => {
       element({ ifcType: 'IfcDoor', name: 'D1' }),
     ]
     const list = missingPropertyShoppingList(
-      runBimRules(elements, { gebaeudeklasse: 4, hauptnutzung: 'residential', storeys: STOREYS })
+      runBimRules(elements, { buildingClass: 4, mainUse: 'residential', storeys: STOREYS })
     )
     const fireRating = list.find((entry) => entry.path.includes('FireRating'))
     expect(fireRating?.elements).toBe(2)
@@ -1244,7 +1244,7 @@ describe('missingPropertyShoppingList', () => {
 
 describe('renderBimRules', () => {
   it('always carries the orientation caveat', () => {
-    const rendered = renderBimRules(runBimRules([], { gebaeudeklasse: 2, storeys: STOREYS }))
+    const rendered = renderBimRules(runBimRules([], { buildingClass: 2, storeys: STOREYS }))
     expect(rendered).toContain('keine Rechtsauskunft')
     expect(rendered).toContain('Nicht entscheidbar')
   })
@@ -1269,7 +1269,7 @@ describe('summarizeBimRules', () => {
           element({ ifcType: 'IfcDoor', name: 'ok', quantities: { Qto_DoorBaseQuantities: { ClearWidth: 900 } } }),
           element({ ifcType: 'IfcWindow', name: 'unknown' }),
         ],
-        { hauptnutzung: 'residential' }
+        { mainUse: 'residential' }
       )
     )
     expect(summary.rulesPassing).toBe(1)
@@ -1289,7 +1289,7 @@ describe('diffBimCompliance', () => {
         Pset_WallCommon: { LoadBearing: true, ...(rating === null ? {} : { FireRating: rating }) },
       },
     })
-  const facts = { gebaeudeklasse: 5 as const, storeys: STOREYS }
+  const facts = { buildingClass: 5 as const, storeys: STOREYS }
   const runOn = (rating: string | null) => runBimRules([wall(rating)], facts)
 
   it('names what a revision BROKE, first', () => {
@@ -1464,7 +1464,7 @@ describe('outstandingRules', () => {
       element({ ifcType: 'IfcDoor', name: 'narrow', quantities: { Qto_DoorBaseQuantities: { Width: 0.7 } } }),
       element({ ifcType: 'IfcWall', name: 'W1', properties: { Pset_WallCommon: { LoadBearing: true } } }),
     ],
-    { gebaeudeklasse: 3, storeys: STOREYS }
+    { buildingClass: 3, storeys: STOREYS }
   )
   const cover = (ruleId: string, modelId: string) => ({
     ruleId,

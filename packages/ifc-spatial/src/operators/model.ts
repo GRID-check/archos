@@ -108,11 +108,11 @@ export interface BriefingDialectEntry {
 }
 
 export interface BriefingRoomUse {
-  aufenthaltsraum: number
-  nebenraum: number
-  erschliessung: number
+  habitable_room: number
+  ancillary_room: number
+  circulation: number
   /** Spaces whose name matched no lexicon entry — including unnamed ones. */
-  unklassifiziert: number
+  unclassified: number
   /** False when the model publishes no spaces; the counts are then meaningless. */
   decidable: boolean
 }
@@ -288,10 +288,10 @@ export function briefing(graph: BuildingGraph): Briefing {
 
   const classified = classifyRooms(graph)
   const roomUse: BriefingRoomUse = {
-    aufenthaltsraum: classified.filter((r) => r.kind === 'aufenthaltsraum').length,
-    nebenraum: classified.filter((r) => r.kind === 'nebenraum').length,
-    erschliessung: classified.filter((r) => r.kind === 'erschliessung').length,
-    unklassifiziert: classified.filter((r) => r.kind === null).length,
+    habitable_room: classified.filter((r) => r.kind === 'habitable_room').length,
+    ancillary_room: classified.filter((r) => r.kind === 'ancillary_room').length,
+    circulation: classified.filter((r) => r.kind === 'circulation').length,
+    unclassified: classified.filter((r) => r.kind === null).length,
     decidable: spaceIds.length > 0,
   }
 
@@ -436,8 +436,8 @@ export function renderBriefing(graph: BuildingGraph): string {
     const use = b.roomUse
     add(
       '',
-      `Lexikonvorschlag (unbestätigt): ${use.aufenthaltsraum} Aufenthalts-, ${use.nebenraum} Neben-, ` +
-        `${use.erschliessung} Erschließungsräume, ${use.unklassifiziert} ohne Zuordnung`
+      `Lexikonvorschlag (unbestätigt): ${use.habitable_room} Aufenthalts-, ${use.ancillary_room} Neben-, ` +
+        `${use.circulation} Erschließungsräume, ${use.unclassified} ohne Zuordnung`
     )
     add('', 'Aufenthaltsraum ist eine rechtliche Einstufung — dieser Vorschlag ersetzt keine Prüfung')
   }
@@ -601,7 +601,19 @@ export function storeyHeights(
 
 // ── inventory() ─────────────────────────────────────────────────────────────
 
-export type RoomUseKind = 'aufenthaltsraum' | 'nebenraum' | 'erschliessung'
+export type RoomUseKind = 'habitable_room' | 'ancillary_room' | 'circulation'
+
+/** The German tokens `room_inventory` used to take. Remove after one release. */
+const LEGACY_ROOM_USE_KINDS: Record<string, RoomUseKind> = {
+  aufenthaltsraum: 'habitable_room',
+  nebenraum: 'ancillary_room',
+  erschliessung: 'circulation',
+}
+
+/** A tool argument as a `RoomUseKind`: the new token, or an old one mapped; anything else is returned as-is for `inventory` to refuse. */
+export function roomUseKindOf(token: string): RoomUseKind {
+  return (LEGACY_ROOM_USE_KINDS[token] ?? token) as RoomUseKind
+}
 
 export interface RoomProposal {
   globalId: string
@@ -641,7 +653,7 @@ export interface RoomProposal {
  * ## Why the longest match wins
  *
  * `Waschküche` contains `küche`. Ranking matches by the length of the matched
- * term puts a laundry in `nebenraum` where it belongs, instead of proposing it
+ * term puts a laundry in `ancillary_room` where it belongs, instead of proposing it
  * as a habitable room because it has a kitchen in its name.
  */
 export function inventory(graph: BuildingGraph, kind: RoomUseKind): Answer<RoomProposal[]> {
@@ -744,9 +756,9 @@ interface LexiconEntry {
 }
 
 const GERMAN_KIND: Record<RoomUseKind, string> = {
-  aufenthaltsraum: 'Aufenthaltsraum',
-  nebenraum: 'Nebenraum',
-  erschliessung: 'Erschließungsfläche',
+  habitable_room: 'Aufenthaltsraum',
+  ancillary_room: 'Nebenraum',
+  circulation: 'Erschließungsfläche',
 }
 
 /**
@@ -757,150 +769,150 @@ const GERMAN_KIND: Record<RoomUseKind, string> = {
  */
 const LEXICON: ReadonlyArray<LexiconEntry> = [
   // Aufenthaltsräume: rooms for more than transient occupancy.
-  { term: 'wohnzimmer', kind: 'aufenthaltsraum' },
-  { term: 'wohnraum', kind: 'aufenthaltsraum' },
-  { term: 'wohnkueche', kind: 'aufenthaltsraum' },
-  { term: 'wohnessbereich', kind: 'aufenthaltsraum' },
-  { term: 'wohnen', kind: 'aufenthaltsraum' },
-  { term: 'esszimmer', kind: 'aufenthaltsraum' },
-  { term: 'essplatz', kind: 'aufenthaltsraum' },
-  { term: 'essen', kind: 'aufenthaltsraum' },
-  { term: 'speisesaal', kind: 'aufenthaltsraum' },
-  { term: 'schlafzimmer', kind: 'aufenthaltsraum' },
-  { term: 'schlafraum', kind: 'aufenthaltsraum' },
-  { term: 'schlafen', kind: 'aufenthaltsraum' },
-  { term: 'kinderzimmer', kind: 'aufenthaltsraum' },
-  { term: 'jugendzimmer', kind: 'aufenthaltsraum' },
-  { term: 'gaestezimmer', kind: 'aufenthaltsraum' },
-  { term: 'zimmer', kind: 'aufenthaltsraum', weak: true, note: '„Zimmer" allein sagt die Nutzung nicht' },
+  { term: 'wohnzimmer', kind: 'habitable_room' },
+  { term: 'wohnraum', kind: 'habitable_room' },
+  { term: 'wohnkueche', kind: 'habitable_room' },
+  { term: 'wohnessbereich', kind: 'habitable_room' },
+  { term: 'wohnen', kind: 'habitable_room' },
+  { term: 'esszimmer', kind: 'habitable_room' },
+  { term: 'essplatz', kind: 'habitable_room' },
+  { term: 'essen', kind: 'habitable_room' },
+  { term: 'speisesaal', kind: 'habitable_room' },
+  { term: 'schlafzimmer', kind: 'habitable_room' },
+  { term: 'schlafraum', kind: 'habitable_room' },
+  { term: 'schlafen', kind: 'habitable_room' },
+  { term: 'kinderzimmer', kind: 'habitable_room' },
+  { term: 'jugendzimmer', kind: 'habitable_room' },
+  { term: 'gaestezimmer', kind: 'habitable_room' },
+  { term: 'zimmer', kind: 'habitable_room', weak: true, note: '„Zimmer" allein sagt die Nutzung nicht' },
   {
     term: 'kueche',
-    kind: 'aufenthaltsraum',
+    kind: 'habitable_room',
     note: 'Küchen zählen nur als Aufenthaltsraum, wenn sie zum nicht nur vorübergehenden Aufenthalt bestimmt sind — eine Kochnische nicht',
   },
-  { term: 'kochen', kind: 'aufenthaltsraum' },
-  { term: 'arbeitszimmer', kind: 'aufenthaltsraum' },
-  { term: 'arbeitsraum', kind: 'aufenthaltsraum' },
-  { term: 'arbeiten', kind: 'aufenthaltsraum' },
-  { term: 'bueroraum', kind: 'aufenthaltsraum' },
-  { term: 'buero', kind: 'aufenthaltsraum' },
-  { term: 'aufenthaltsraum', kind: 'aufenthaltsraum' },
-  { term: 'aufenthalt', kind: 'aufenthaltsraum' },
-  { term: 'wintergarten', kind: 'aufenthaltsraum' },
-  { term: 'gastraum', kind: 'aufenthaltsraum' },
-  { term: 'besprechungsraum', kind: 'aufenthaltsraum' },
-  { term: 'besprechung', kind: 'aufenthaltsraum' },
-  { term: 'konferenzraum', kind: 'aufenthaltsraum' },
-  { term: 'seminarraum', kind: 'aufenthaltsraum' },
-  { term: 'klassenzimmer', kind: 'aufenthaltsraum' },
-  { term: 'gruppenraum', kind: 'aufenthaltsraum' },
-  { term: 'spielzimmer', kind: 'aufenthaltsraum' },
-  { term: 'spielraum', kind: 'aufenthaltsraum' },
-  { term: 'atelier', kind: 'aufenthaltsraum' },
-  { term: 'ordination', kind: 'aufenthaltsraum' },
-  { term: 'verkaufsraum', kind: 'aufenthaltsraum' },
-  { term: 'bibliothek', kind: 'aufenthaltsraum' },
+  { term: 'kochen', kind: 'habitable_room' },
+  { term: 'arbeitszimmer', kind: 'habitable_room' },
+  { term: 'arbeitsraum', kind: 'habitable_room' },
+  { term: 'arbeiten', kind: 'habitable_room' },
+  { term: 'bueroraum', kind: 'habitable_room' },
+  { term: 'buero', kind: 'habitable_room' },
+  { term: 'aufenthaltsraum', kind: 'habitable_room' },
+  { term: 'aufenthalt', kind: 'habitable_room' },
+  { term: 'wintergarten', kind: 'habitable_room' },
+  { term: 'gastraum', kind: 'habitable_room' },
+  { term: 'besprechungsraum', kind: 'habitable_room' },
+  { term: 'besprechung', kind: 'habitable_room' },
+  { term: 'konferenzraum', kind: 'habitable_room' },
+  { term: 'seminarraum', kind: 'habitable_room' },
+  { term: 'klassenzimmer', kind: 'habitable_room' },
+  { term: 'gruppenraum', kind: 'habitable_room' },
+  { term: 'spielzimmer', kind: 'habitable_room' },
+  { term: 'spielraum', kind: 'habitable_room' },
+  { term: 'atelier', kind: 'habitable_room' },
+  { term: 'ordination', kind: 'habitable_room' },
+  { term: 'verkaufsraum', kind: 'habitable_room' },
+  { term: 'bibliothek', kind: 'habitable_room' },
 
   // Nebenräume: served rooms, not meant for lasting occupancy.
-  { term: 'badezimmer', kind: 'nebenraum' },
-  { term: 'baderaum', kind: 'nebenraum' },
-  { term: 'bad', kind: 'nebenraum' },
-  { term: 'dusche', kind: 'nebenraum' },
-  { term: 'duschbad', kind: 'nebenraum' },
-  { term: 'wc', kind: 'nebenraum' },
-  { term: 'toilette', kind: 'nebenraum' },
-  { term: 'sanitaer', kind: 'nebenraum' },
-  { term: 'abstellraum', kind: 'nebenraum' },
-  { term: 'abstell', kind: 'nebenraum' },
-  { term: 'abstellnische', kind: 'nebenraum' },
-  { term: 'vorratsraum', kind: 'nebenraum' },
-  { term: 'vorrat', kind: 'nebenraum' },
-  { term: 'speisekammer', kind: 'nebenraum' },
-  { term: 'speis', kind: 'nebenraum' },
-  { term: 'hauswirtschaftsraum', kind: 'nebenraum' },
-  { term: 'hausanschlussraum', kind: 'nebenraum' },
-  { term: 'hwr', kind: 'nebenraum' },
-  { term: 'technikraum', kind: 'nebenraum' },
-  { term: 'haustechnik', kind: 'nebenraum' },
-  { term: 'technik', kind: 'nebenraum' },
-  { term: 'heizraum', kind: 'nebenraum' },
-  { term: 'heizung', kind: 'nebenraum' },
-  { term: 'lueftungszentrale', kind: 'nebenraum' },
-  { term: 'elektroraum', kind: 'nebenraum' },
-  { term: 'serverraum', kind: 'nebenraum' },
-  { term: 'lagerraum', kind: 'nebenraum' },
-  { term: 'lager', kind: 'nebenraum' },
-  { term: 'kellerabteil', kind: 'nebenraum' },
-  { term: 'keller', kind: 'nebenraum' },
-  { term: 'waschkueche', kind: 'nebenraum' },
-  { term: 'waschraum', kind: 'nebenraum' },
-  { term: 'trockenraum', kind: 'nebenraum' },
-  { term: 'putzraum', kind: 'nebenraum' },
-  { term: 'muellraum', kind: 'nebenraum' },
-  { term: 'abfall', kind: 'nebenraum' },
-  { term: 'garage', kind: 'nebenraum' },
-  { term: 'carport', kind: 'nebenraum' },
-  { term: 'fahrradraum', kind: 'nebenraum' },
-  { term: 'kinderwagenraum', kind: 'nebenraum' },
-  { term: 'kinderwagen', kind: 'nebenraum' },
-  { term: 'schrankraum', kind: 'nebenraum' },
-  { term: 'ankleide', kind: 'nebenraum' },
-  { term: 'garderobe', kind: 'nebenraum' },
-  { term: 'sauna', kind: 'nebenraum' },
-  { term: 'dachboden', kind: 'nebenraum' },
-  { term: 'aufzugsschacht', kind: 'nebenraum' },
-  { term: 'schacht', kind: 'nebenraum', weak: true },
+  { term: 'badezimmer', kind: 'ancillary_room' },
+  { term: 'baderaum', kind: 'ancillary_room' },
+  { term: 'bad', kind: 'ancillary_room' },
+  { term: 'dusche', kind: 'ancillary_room' },
+  { term: 'duschbad', kind: 'ancillary_room' },
+  { term: 'wc', kind: 'ancillary_room' },
+  { term: 'toilette', kind: 'ancillary_room' },
+  { term: 'sanitaer', kind: 'ancillary_room' },
+  { term: 'abstellraum', kind: 'ancillary_room' },
+  { term: 'abstell', kind: 'ancillary_room' },
+  { term: 'abstellnische', kind: 'ancillary_room' },
+  { term: 'vorratsraum', kind: 'ancillary_room' },
+  { term: 'vorrat', kind: 'ancillary_room' },
+  { term: 'speisekammer', kind: 'ancillary_room' },
+  { term: 'speis', kind: 'ancillary_room' },
+  { term: 'hauswirtschaftsraum', kind: 'ancillary_room' },
+  { term: 'hausanschlussraum', kind: 'ancillary_room' },
+  { term: 'hwr', kind: 'ancillary_room' },
+  { term: 'technikraum', kind: 'ancillary_room' },
+  { term: 'haustechnik', kind: 'ancillary_room' },
+  { term: 'technik', kind: 'ancillary_room' },
+  { term: 'heizraum', kind: 'ancillary_room' },
+  { term: 'heizung', kind: 'ancillary_room' },
+  { term: 'lueftungszentrale', kind: 'ancillary_room' },
+  { term: 'elektroraum', kind: 'ancillary_room' },
+  { term: 'serverraum', kind: 'ancillary_room' },
+  { term: 'lagerraum', kind: 'ancillary_room' },
+  { term: 'lager', kind: 'ancillary_room' },
+  { term: 'kellerabteil', kind: 'ancillary_room' },
+  { term: 'keller', kind: 'ancillary_room' },
+  { term: 'waschkueche', kind: 'ancillary_room' },
+  { term: 'waschraum', kind: 'ancillary_room' },
+  { term: 'trockenraum', kind: 'ancillary_room' },
+  { term: 'putzraum', kind: 'ancillary_room' },
+  { term: 'muellraum', kind: 'ancillary_room' },
+  { term: 'abfall', kind: 'ancillary_room' },
+  { term: 'garage', kind: 'ancillary_room' },
+  { term: 'carport', kind: 'ancillary_room' },
+  { term: 'fahrradraum', kind: 'ancillary_room' },
+  { term: 'kinderwagenraum', kind: 'ancillary_room' },
+  { term: 'kinderwagen', kind: 'ancillary_room' },
+  { term: 'schrankraum', kind: 'ancillary_room' },
+  { term: 'ankleide', kind: 'ancillary_room' },
+  { term: 'garderobe', kind: 'ancillary_room' },
+  { term: 'sauna', kind: 'ancillary_room' },
+  { term: 'dachboden', kind: 'ancillary_room' },
+  { term: 'aufzugsschacht', kind: 'ancillary_room' },
+  { term: 'schacht', kind: 'ancillary_room', weak: true },
   // Freibereiche are neither: they cannot be Aufenthaltsräume, and calling them
   // Nebenräume is a stretch. They are placed here rather than left unmatched so
   // that a terrace never lands in the habitable-room proposal, and the `note`
   // carries the qualification into the reasons.
   {
     term: 'balkon',
-    kind: 'nebenraum',
+    kind: 'ancillary_room',
     note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn',
   },
   {
     term: 'terrasse',
-    kind: 'nebenraum',
+    kind: 'ancillary_room',
     note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn',
   },
   {
     term: 'loggia',
-    kind: 'nebenraum',
+    kind: 'ancillary_room',
     note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn',
   },
   {
     term: 'dachterrasse',
-    kind: 'nebenraum',
+    kind: 'ancillary_room',
     note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn',
   },
 
   // Erschließung: circulation.
-  { term: 'flur', kind: 'erschliessung' },
-  { term: 'gang', kind: 'erschliessung' },
-  { term: 'diele', kind: 'erschliessung' },
-  { term: 'vorraum', kind: 'erschliessung' },
-  { term: 'vorzimmer', kind: 'erschliessung' },
-  { term: 'stiegenhaus', kind: 'erschliessung' },
-  { term: 'stiege', kind: 'erschliessung' },
-  { term: 'treppenhaus', kind: 'erschliessung' },
-  { term: 'treppenraum', kind: 'erschliessung' },
-  { term: 'treppe', kind: 'erschliessung' },
-  { term: 'korridor', kind: 'erschliessung' },
-  { term: 'erschliessung', kind: 'erschliessung' },
-  { term: 'windfang', kind: 'erschliessung' },
-  { term: 'eingangsbereich', kind: 'erschliessung' },
-  { term: 'eingang', kind: 'erschliessung' },
-  { term: 'foyer', kind: 'erschliessung' },
-  { term: 'halle', kind: 'erschliessung', weak: true, note: '„Halle" kann Eingangshalle oder Nutzungshalle sein' },
-  { term: 'liftvorraum', kind: 'erschliessung' },
-  { term: 'aufzug', kind: 'erschliessung' },
-  { term: 'lift', kind: 'erschliessung' },
-  { term: 'laubengang', kind: 'erschliessung' },
-  { term: 'rampe', kind: 'erschliessung' },
-  { term: 'fluchtweg', kind: 'erschliessung' },
-  { term: 'schleuse', kind: 'erschliessung' },
-  { term: 'podest', kind: 'erschliessung' },
+  { term: 'flur', kind: 'circulation' },
+  { term: 'gang', kind: 'circulation' },
+  { term: 'diele', kind: 'circulation' },
+  { term: 'vorraum', kind: 'circulation' },
+  { term: 'vorzimmer', kind: 'circulation' },
+  { term: 'stiegenhaus', kind: 'circulation' },
+  { term: 'stiege', kind: 'circulation' },
+  { term: 'treppenhaus', kind: 'circulation' },
+  { term: 'treppenraum', kind: 'circulation' },
+  { term: 'treppe', kind: 'circulation' },
+  { term: 'korridor', kind: 'circulation' },
+  { term: 'erschliessung', kind: 'circulation' },
+  { term: 'windfang', kind: 'circulation' },
+  { term: 'eingangsbereich', kind: 'circulation' },
+  { term: 'eingang', kind: 'circulation' },
+  { term: 'foyer', kind: 'circulation' },
+  { term: 'halle', kind: 'circulation', weak: true, note: '„Halle" kann Eingangshalle oder Nutzungshalle sein' },
+  { term: 'liftvorraum', kind: 'circulation' },
+  { term: 'aufzug', kind: 'circulation' },
+  { term: 'lift', kind: 'circulation' },
+  { term: 'laubengang', kind: 'circulation' },
+  { term: 'rampe', kind: 'circulation' },
+  { term: 'fluchtweg', kind: 'circulation' },
+  { term: 'schleuse', kind: 'circulation' },
+  { term: 'podest', kind: 'circulation' },
 
   // ── English, because the export language is not the building's country ────
   //
@@ -912,77 +924,77 @@ const LEXICON: ReadonlyArray<LexiconEntry> = [
   // produces English room names for a building in Vienna. A lexicon that only
   // reads German silently reports "0 Aufenthaltsräume" about a house full of
   // them, which is worse than saying nothing.
-  { term: 'living room', kind: 'aufenthaltsraum' },
-  { term: 'livingroom', kind: 'aufenthaltsraum' },
-  { term: 'sitting room', kind: 'aufenthaltsraum' },
-  { term: 'family room', kind: 'aufenthaltsraum' },
-  { term: 'dining room', kind: 'aufenthaltsraum' },
-  { term: 'dining', kind: 'aufenthaltsraum' },
-  { term: 'lounge', kind: 'aufenthaltsraum' },
-  { term: 'kitchen', kind: 'aufenthaltsraum' },
-  { term: 'master bedroom', kind: 'aufenthaltsraum' },
-  { term: 'bedroom', kind: 'aufenthaltsraum' },
-  { term: 'bed room', kind: 'aufenthaltsraum' },
-  { term: 'guest room', kind: 'aufenthaltsraum' },
-  { term: 'nursery', kind: 'aufenthaltsraum' },
-  { term: 'children', kind: 'aufenthaltsraum' },
-  { term: 'study', kind: 'aufenthaltsraum' },
-  { term: 'home office', kind: 'aufenthaltsraum' },
-  { term: 'office', kind: 'aufenthaltsraum' },
-  { term: 'workroom', kind: 'aufenthaltsraum' },
-  { term: 'classroom', kind: 'aufenthaltsraum' },
-  { term: 'meeting room', kind: 'aufenthaltsraum' },
-  { term: 'living', kind: 'aufenthaltsraum', weak: true, note: '„living" allein kann auch Wohnbereich einer Erschließung sein' },
-  { term: 'room', kind: 'aufenthaltsraum', weak: true, note: '„room" allein sagt die Nutzung nicht' },
+  { term: 'living room', kind: 'habitable_room' },
+  { term: 'livingroom', kind: 'habitable_room' },
+  { term: 'sitting room', kind: 'habitable_room' },
+  { term: 'family room', kind: 'habitable_room' },
+  { term: 'dining room', kind: 'habitable_room' },
+  { term: 'dining', kind: 'habitable_room' },
+  { term: 'lounge', kind: 'habitable_room' },
+  { term: 'kitchen', kind: 'habitable_room' },
+  { term: 'master bedroom', kind: 'habitable_room' },
+  { term: 'bedroom', kind: 'habitable_room' },
+  { term: 'bed room', kind: 'habitable_room' },
+  { term: 'guest room', kind: 'habitable_room' },
+  { term: 'nursery', kind: 'habitable_room' },
+  { term: 'children', kind: 'habitable_room' },
+  { term: 'study', kind: 'habitable_room' },
+  { term: 'home office', kind: 'habitable_room' },
+  { term: 'office', kind: 'habitable_room' },
+  { term: 'workroom', kind: 'habitable_room' },
+  { term: 'classroom', kind: 'habitable_room' },
+  { term: 'meeting room', kind: 'habitable_room' },
+  { term: 'living', kind: 'habitable_room', weak: true, note: '„living" allein kann auch Wohnbereich einer Erschließung sein' },
+  { term: 'room', kind: 'habitable_room', weak: true, note: '„room" allein sagt die Nutzung nicht' },
 
-  { term: 'bathroom', kind: 'nebenraum' },
-  { term: 'shower room', kind: 'nebenraum' },
-  { term: 'bath', kind: 'nebenraum' },
-  { term: 'toilet', kind: 'nebenraum' },
-  { term: 'restroom', kind: 'nebenraum' },
-  { term: 'store room', kind: 'nebenraum' },
-  { term: 'storeroom', kind: 'nebenraum' },
-  { term: 'storage', kind: 'nebenraum' },
-  { term: 'utility room', kind: 'nebenraum' },
-  { term: 'utility', kind: 'nebenraum' },
-  { term: 'laundry', kind: 'nebenraum' },
-  { term: 'plant room', kind: 'nebenraum' },
-  { term: 'technical room', kind: 'nebenraum' },
-  { term: 'boiler room', kind: 'nebenraum' },
-  { term: 'basement', kind: 'nebenraum' },
-  { term: 'cellar', kind: 'nebenraum' },
-  { term: 'pantry', kind: 'nebenraum' },
-  { term: 'larder', kind: 'nebenraum' },
-  { term: 'wardrobe', kind: 'nebenraum' },
-  { term: 'closet', kind: 'nebenraum' },
-  { term: 'cloakroom', kind: 'nebenraum' },
-  { term: 'attic', kind: 'nebenraum' },
-  { term: 'bin store', kind: 'nebenraum' },
-  { term: 'bike store', kind: 'nebenraum' },
-  { term: 'balcony', kind: 'nebenraum', note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn' },
-  { term: 'terrace', kind: 'nebenraum', note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn' },
+  { term: 'bathroom', kind: 'ancillary_room' },
+  { term: 'shower room', kind: 'ancillary_room' },
+  { term: 'bath', kind: 'ancillary_room' },
+  { term: 'toilet', kind: 'ancillary_room' },
+  { term: 'restroom', kind: 'ancillary_room' },
+  { term: 'store room', kind: 'ancillary_room' },
+  { term: 'storeroom', kind: 'ancillary_room' },
+  { term: 'storage', kind: 'ancillary_room' },
+  { term: 'utility room', kind: 'ancillary_room' },
+  { term: 'utility', kind: 'ancillary_room' },
+  { term: 'laundry', kind: 'ancillary_room' },
+  { term: 'plant room', kind: 'ancillary_room' },
+  { term: 'technical room', kind: 'ancillary_room' },
+  { term: 'boiler room', kind: 'ancillary_room' },
+  { term: 'basement', kind: 'ancillary_room' },
+  { term: 'cellar', kind: 'ancillary_room' },
+  { term: 'pantry', kind: 'ancillary_room' },
+  { term: 'larder', kind: 'ancillary_room' },
+  { term: 'wardrobe', kind: 'ancillary_room' },
+  { term: 'closet', kind: 'ancillary_room' },
+  { term: 'cloakroom', kind: 'ancillary_room' },
+  { term: 'attic', kind: 'ancillary_room' },
+  { term: 'bin store', kind: 'ancillary_room' },
+  { term: 'bike store', kind: 'ancillary_room' },
+  { term: 'balcony', kind: 'ancillary_room', note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn' },
+  { term: 'terrace', kind: 'ancillary_room', note: 'Freibereich — kein Aufenthaltsraum, aber auch kein Nebenraum im engeren Sinn' },
 
-  { term: 'entrance hall', kind: 'erschliessung' },
-  { term: 'entrance', kind: 'erschliessung' },
-  { term: 'hallway', kind: 'erschliessung' },
-  { term: 'corridor', kind: 'erschliessung' },
-  { term: 'passage', kind: 'erschliessung' },
-  { term: 'lobby', kind: 'erschliessung' },
-  { term: 'foyer', kind: 'erschliessung' },
-  { term: 'staircase', kind: 'erschliessung' },
-  { term: 'stairwell', kind: 'erschliessung' },
-  { term: 'stairs', kind: 'erschliessung' },
-  { term: 'stair', kind: 'erschliessung' },
-  { term: 'landing', kind: 'erschliessung' },
-  { term: 'vestibule', kind: 'erschliessung' },
-  { term: 'porch', kind: 'erschliessung' },
-  { term: 'elevator', kind: 'erschliessung' },
-  { term: 'circulation', kind: 'erschliessung' },
-  { term: 'hall', kind: 'erschliessung', weak: true, note: '„hall" kann Eingangshalle oder Nutzungshalle sein' },
+  { term: 'entrance hall', kind: 'circulation' },
+  { term: 'entrance', kind: 'circulation' },
+  { term: 'hallway', kind: 'circulation' },
+  { term: 'corridor', kind: 'circulation' },
+  { term: 'passage', kind: 'circulation' },
+  { term: 'lobby', kind: 'circulation' },
+  { term: 'foyer', kind: 'circulation' },
+  { term: 'staircase', kind: 'circulation' },
+  { term: 'stairwell', kind: 'circulation' },
+  { term: 'stairs', kind: 'circulation' },
+  { term: 'stair', kind: 'circulation' },
+  { term: 'landing', kind: 'circulation' },
+  { term: 'vestibule', kind: 'circulation' },
+  { term: 'porch', kind: 'circulation' },
+  { term: 'elevator', kind: 'circulation' },
+  { term: 'circulation', kind: 'circulation' },
+  { term: 'hall', kind: 'circulation', weak: true, note: '„hall" kann Eingangshalle oder Nutzungshalle sein' },
 ]
 
 /** Confidence by how the term was found. Exact beats word beats substring. */
-const MATCH_CONFIDENCE = { exakt: 0.9, wort: 0.8, teil: 0.65 } as const
+const MATCH_CONFIDENCE = { exact: 0.9, word: 0.8, part: 0.65 } as const
 type MatchQuality = keyof typeof MATCH_CONFIDENCE
 /**
  * Terms shorter than this are only matched on a word boundary.
@@ -1089,7 +1101,7 @@ function classifyRooms(graph: BuildingGraph): ClassifiedRoom[] {
       if (lit) {
         confidence += 0.05
         because.push('Dem Raum ist mindestens ein Fenster zugeordnet (opensTo).')
-      } else if (kind === 'aufenthaltsraum') {
+      } else if (kind === 'habitable_room') {
         confidence -= 0.05
         because.push('Diesem Raum ist kein Fenster zugeordnet, obwohl das Modell Fensterzuordnungen führt.')
       }
@@ -1106,13 +1118,13 @@ function classifyRooms(graph: BuildingGraph): ClassifiedRoom[] {
 }
 
 const QUALITY_TEXT: Record<MatchQuality, string> = {
-  exakt: 'exakter Name',
-  wort: 'als ganzes Wort',
-  teil: 'als Wortbestandteil',
+  exact: 'exakter Name',
+  word: 'als ganzes Wort',
+  part: 'als Wortbestandteil',
 }
 
 function matchQuality(normalised: string, term: string): MatchQuality | null {
-  if (normalised === term) return 'exakt'
+  if (normalised === term) return 'exact'
   // Whole-word match by padding rather than by `new RegExp('(^| )' + term + '( |$)')`.
   //
   // Padding both sides with a space makes „starts-or-space" and „space-or-ends"
@@ -1126,8 +1138,8 @@ function matchQuality(normalised: string, term: string): MatchQuality | null {
   // away from being unsafe, and the escape that protects it sits ten lines
   // below where anyone editing this line would look. A comparison that cannot
   // backtrack at all needs no such argument.
-  if (` ${normalised} `.includes(` ${term} `)) return 'wort'
-  if (term.length >= MIN_SUBSTRING_TERM && normalised.includes(term)) return 'teil'
+  if (` ${normalised} `.includes(` ${term} `)) return 'word'
+  if (term.length >= MIN_SUBSTRING_TERM && normalised.includes(term)) return 'part'
   return null
 }
 

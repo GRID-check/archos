@@ -29,7 +29,7 @@ function filingSlug(path: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
-  return slug || 'entwurf'
+  return slug || 'draft'
 }
 
 export function normalizeDraftPath(path: string): string {

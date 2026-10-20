@@ -265,7 +265,7 @@ DISTANCE_MODES = {
 
 #: `what` on the `fire` operation — the OIB 2 geometry, in one place.
 FIRE_ASPECTS = {
-    "fluchtniveau": (
+    "escape_level": (
         "height of the topmost occupied floor above the lowest adjoining ground — the number the "
         "Gebäudeklasse hangs on. Returns a HEIGHT and never a class"
     ),
@@ -296,7 +296,7 @@ ENVELOPE_ASPECTS = {
         "which elements form the boundary between heated inside and outside, grouped by kind, each "
         "with its area and its DECLARED U-value. Every entry says which rung decided it — declared "
         "IsExternal and inferred from room contact are not the same claim — and the two lists that "
-        "make the total checkable come back with it: innenliegend (decided, left out) and "
+        "make the total checkable come back with it: interior (decided, left out) and "
         "unbestimmt (not decided, so neither counted nor discarded)"
     ),
     "areaByOrientation": (
@@ -324,7 +324,7 @@ VIEW_MODES = {
 KINDS = ("project", "site", "building", "storey", "space", "element", "opening", "group")
 
 #: `room_kind` on room_inventory.
-ROOM_KINDS = ("aufenthaltsraum", "nebenraum", "erschliessung")
+ROOM_KINDS = ("habitable_room", "ancillary_room", "circulation")
 
 #: `ifc_spatial.tools.MAX_BATCH` — the most GlobalIds one `measure` may carry.
 #: Mirrored for the same reason the vocabularies above are, and pinned against
@@ -388,6 +388,13 @@ _CASE_FOLDED: dict[str, tuple[str, ...]] = {
     "room_kind": ROOM_KINDS,
     "kind": _ALL_KINDS,
     "mode": (*DISTANCE_MODES, *VIEW_MODES),
+}
+
+
+#: German tokens these fields used to take, per field. Remove after one release.
+_LEGACY_TOKENS: dict[str, dict[str, str]] = {
+    "room_kind": {"aufenthaltsraum": "habitable_room", "nebenraum": "ancillary_room", "erschliessung": "circulation"},
+    "kind": {"fluchtniveau": "escape_level"},
 }
 
 
@@ -504,7 +511,7 @@ class IfcMeasureInput(BaseModel):
             "Three vocabularies on one field, scoped by operation.\n"
             "  'find_elements' and 'survey' — the spatial ROLE, not the IFC type (a room is 'space'): "
             f"{', '.join(KINDS)}.\n"
-            "  'fire' — which OIB 2 (Brandschutz) geometry, default 'fluchtniveau':\n"
+            "  'fire' — which OIB 2 (Brandschutz) geometry, default 'escape_level':\n"
             f"{_enum_lines(FIRE_ASPECTS, indent='    ')}\n"
             "  'envelope' — which OIB 6 (Wärmeschutz) geometry of the WHOLE building, default "
             "'thermalEnvelope':\n"
@@ -586,7 +593,8 @@ class IfcMeasureInput(BaseModel):
         for name, vocabulary in _CASE_FOLDED.items():
             asked = data.get(name)
             if isinstance(asked, str) and asked.strip():
-                data[name] = _canonical(asked, vocabulary)
+                legacy = _LEGACY_TOKENS.get(name, {}).get(asked.strip().lower())
+                data[name] = legacy or _canonical(asked, vocabulary)
         _record_misses(data)
         return data
 
@@ -691,7 +699,7 @@ _TOOL_DESCRIPTION = (
     "with clearHeight.\n"
     "  'room_inventory' — rooms grouped by a SUSPECTED use, inferred from their names. A proposal for "
     "a human to confirm, never a finding.\n"
-    "  'fire'           — the OIB 2 (Brandschutz) geometry. NO Gebäudeklasse: fluchtniveau returns a "
+    "  'fire'           — the OIB 2 (Brandschutz) geometry. NO Gebäudeklasse: escape_level returns a "
     "HEIGHT, and which class follows from it is a legal classification under OIB 2 plus Landesrecht.\n"
     "  'envelope'       — the OIB 6 (Wärmeschutz) geometry of the WHOLE building. Asking wall by wall "
     "is how the wall that was left out stays invisible, so it takes no element. No U-value is "
@@ -899,7 +907,7 @@ def _room_inventory_call(a: IfcMeasureInput) -> _EngineCall | str:
 
 
 def _fire_call(a: IfcMeasureInput) -> _EngineCall | str:
-    aspect = a.kind or "fluchtniveau"
+    aspect = a.kind or "escape_level"
     if aspect not in FIRE_ASPECTS:
         return f"Error: for operation 'fire', kind must be one of: {', '.join(FIRE_ASPECTS)}. Got '{a.kind}'."
     args: dict[str, Any] = {"what": aspect}
@@ -1312,8 +1320,8 @@ def _render_light_entry(answer: dict[str, Any], list_limit: int) -> list[str]:
         for e in value.get("openings") or []
     ]
     excluded = (
-        ("innenliegend", "NICHT gezählt (innenliegend)"),
-        ("unbestimmt", "NICHT gezählt (außen/innen unbestimmt)"),
+        ("interior", "NICHT gezählt (innenliegend)"),
+        ("undetermined", "NICHT gezählt (außen/innen unbestimmt)"),
     )
     for key, label in excluded:
         lines += [
@@ -1324,10 +1332,10 @@ def _render_light_entry(answer: dict[str, Any], list_limit: int) -> list[str]:
 
 
 def _leg_row(leg: dict[str, Any]) -> str:
-    door = leg.get("tuer") or {}
-    to = leg.get("nach") or {}
+    door = leg.get("door") or {}
+    to = leg.get("to") or {}
     target = "INS FREIE" if to.get("kind") == "outside" else to.get("name")
-    start = (leg.get("von") or {}).get("name")
+    start = (leg.get("from") or {}).get("name")
     return (
         f"- {start} → {target} durch „{door.get('name')}“ ({_num(leg.get('length'), 2)} m) "
         f"· GlobalId {door.get('globalId')}"
@@ -1353,7 +1361,7 @@ def _render_door_graph(answer: dict[str, Any], list_limit: int) -> list[str]:
     outside = sum(1 for e in edges if isinstance(e, dict) and e.get("external"))
     room_text = "1 Raum" if len(rooms) == 1 else f"{len(rooms)} Räume"
     door_text = "1 Türverbindung" if len(edges) == 1 else f"{len(edges)} Türverbindungen"
-    reached = {node for e in edges if isinstance(e, dict) for node in (e.get("verbindet") or [])}
+    reached = {node for e in edges if isinstance(e, dict) for node in (e.get("connects") or [])}
     stranded = [n for n in rooms if n.get("globalId") not in reached]
 
     def named(prefix: str, entry: dict[str, Any], tail: str) -> str:
@@ -1370,13 +1378,13 @@ def _render_door_graph(answer: dict[str, Any], list_limit: int) -> list[str]:
         lambda n: named("KEINE Türkante", n, "dieser Raum hat in dieser Datei keinen Ausgang"),
     )
     lines += listed(
-        value.get("unbestimmt") or [], list_limit, "unbestimmte Türen", lambda e: named("UNBESTIMMT", e, e.get("warum"))
+        value.get("undetermined") or [], list_limit, "unbestimmte Türen", lambda e: named("UNBESTIMMT", e, e.get("why"))
     )
     lines += listed(
-        value.get("ausgeschlossen") or [],
+        value.get("excluded") or [],
         list_limit,
         "ausgeschlossene Türen",
-        lambda e: named("NICHT als Kante gewertet", e, e.get("warum")),
+        lambda e: named("NICHT als Kante gewertet", e, e.get("why")),
     )
     return lines + _trailer(answer)
 
@@ -1385,7 +1393,7 @@ def _render_door_graph(answer: dict[str, Any], list_limit: int) -> list[str]:
 _ANSWER_SHAPES: tuple[tuple[Callable[[Any], bool], Callable[[dict[str, Any], int], list[str]]], ...] = (
     (lambda v: isinstance(v, dict) and "lightEntryArea" in v, _render_light_entry),
     (lambda v: isinstance(v, dict) and "legs" in v and "reachesOutside" in v, _render_egress),
-    (lambda v: isinstance(v, dict) and "nodes" in v and "edges" in v and "unbestimmt" in v, _render_door_graph),
+    (lambda v: isinstance(v, dict) and "nodes" in v and "edges" in v and "undetermined" in v, _render_door_graph),
 )
 
 
@@ -1523,8 +1531,8 @@ def _element_lines(payload: dict[str, Any]) -> list[str]:
         lines.append(f"Liegt in: {container.get('ifcType')} „{container.get('name')}“")
     if payload.get("available"):
         lines.append("Vorhandene Relationen: " + ", ".join(str(name) for name in payload["available"]))
-    if payload.get("hinweis"):
-        lines.append(f"Hinweis: {payload['hinweis']}")
+    if payload.get("note"):
+        lines.append(f"Hinweis: {payload['note']}")
     return lines
 
 

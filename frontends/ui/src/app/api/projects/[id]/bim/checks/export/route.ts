@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { exportAccessibleComplianceBcf } from '@/lib/bim/model-service'
-import { BIM_MAIN_USE, canonicalBimMainUse } from '@/lib/bim/query'
+import { BIM_MAIN_USE, canonicalBimMainUse, renameLegacyBimFactNames } from '@/lib/bim/query'
 import { BIM_EXPORT_LIMIT } from '@/lib/limits'
 
 type Params = { id: string }
@@ -22,7 +22,7 @@ type Params = { id: string }
  * that will not parse arrives as `null` so the rules that need it stand down
  * with a reason, rather than running against a guessed Gebäudeklasse.
  */
-const paramsSchema = z
+const paramsObjectSchema = z
   .object({
     modelId: z.string().uuid().optional(),
     /**
@@ -32,15 +32,18 @@ const paramsSchema = z
      * hallucinated identifiers.
      */
     model: z.string().trim().min(1).max(255).optional(),
-    gebaeudeklasse: z.coerce.number().int().min(1).max(5).nullish().catch(null),
+    buildingClass: z.coerce.number().int().min(1).max(5).nullish().catch(null),
     // `.catch(null)` degrades an unrecognised use to "not stated", which the
     // catalogue reports WITH its reason — rather than to a value that makes
     // rules stand down as "not applicable", which reads as a verdict.
-    hauptnutzung: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()).catch(null),
+    mainUse: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()).catch(null),
   })
   .refine((value) => Boolean(value.modelId ?? value.model), {
     message: 'modelId or model is required',
   })
+
+// `gebaeudeklasse` / `hauptnutzung` are still read for one release.
+const paramsSchema = z.preprocess(renameLegacyBimFactNames, paramsObjectSchema)
 
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) => {
@@ -49,8 +52,8 @@ export const GET = apiRoute<Params>(
     const bcf = await exportAccessibleComplianceBcf(session, params.id, {
       modelId: input.modelId ?? null,
       modelName: input.model ?? null,
-      gebaeudeklasse: input.gebaeudeklasse ?? null,
-      hauptnutzung: input.hauptnutzung ?? null,
+      buildingClass: input.buildingClass ?? null,
+      mainUse: input.mainUse ?? null,
     })
 
     return new NextResponse(new Uint8Array(bcf.bytes), {

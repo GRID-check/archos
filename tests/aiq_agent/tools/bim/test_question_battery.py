@@ -241,7 +241,7 @@ class TestAnswerable:
         assert "NICHT die lichte Raumhöhe" in rendered
 
     def test_the_room_use_is_proposed_and_never_asserted(self, ask):
-        rendered = ask(operation="room_inventory", room_kind="aufenthaltsraum")
+        rendered = ask(operation="room_inventory", room_kind="habitable_room")
         assert "vermutlich" in rendered
         assert "Living room" in rendered and "Bedroom" in rendered
         # Aufenthaltsraum is a legal classification, not a geometric property.
@@ -455,7 +455,7 @@ class TestNoAnswerEverBecomesAVerdict:
             {"operation": "measure", "global_id": BEDROOM, "measure": "floorArea"},
             {"operation": "overhang", "global_id": ROOF, "other_global_id": NORTH_WALL},
             {"operation": "light_incidence", "global_id": WINDOW, "angle_deg": 45, "swivel_deg": 30},
-            {"operation": "room_inventory", "room_kind": "aufenthaltsraum"},
+            {"operation": "room_inventory", "room_kind": "habitable_room"},
             {"operation": "storey_heights"},
         ],
     )

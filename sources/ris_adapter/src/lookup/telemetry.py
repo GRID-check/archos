@@ -68,9 +68,9 @@ def _span_context(question: str, address: Address, trace: LookupTrace, passages:
         # Whether this call cost an extractor LLM call at all: a named § does not.
         "deterministic": address.has_section,
     }
-    if address.bundesland:
-        context["bundesland"] = address.bundesland
-        context["bundesland_source"] = address.bundesland_source
+    if address.federal_state:
+        context["federal_state"] = address.federal_state
+        context["federal_state_source"] = address.federal_state_source
     if trace.application:
         context["application"] = trace.application
     if not passages:

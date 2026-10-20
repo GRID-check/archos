@@ -22,7 +22,7 @@ lets the next round ask a better question instead of guessing.
 from __future__ import annotations
 
 from ris_adapter.lookup.address import Address
-from ris_adapter.lookup.address import land_sentence
+from ris_adapter.lookup.address import federal_state_sentence
 from ris_adapter.lookup.trace import LookupTrace
 from ris_adapter.register import _KONSOLIDIERT_APPLICATIONS
 
@@ -33,7 +33,7 @@ def miss_message(question: str, address: Address, trace: LookupTrace) -> str:
         f"No RIS passage answered {question.strip()!r}.",
         f"Searched: {trace.searched or repr(question.strip())}"
         + (f" in RIS application {trace.application}." if trace.application else "."),
-        land_sentence(address),
+        federal_state_sentence(address),
     ]
     lines.extend(_candidate_lines(trace))
     lines.extend(_headings_lines(trace))
@@ -66,7 +66,7 @@ def _headings_lines(trace: LookupTrace) -> list[str]:
 
 def _retry_line(address: Address, trace: LookupTrace) -> str:
     """ONE concrete retry, chosen by what is missing."""
-    if not address.bundesland:
+    if not address.federal_state:
         return "Retry once: name the Bundesland, e.g. jurisdiction='Wien'."
     if not address.law and not trace.candidates:
         return "Retry once: name the law, e.g. instrument='Bauordnung für Wien'."

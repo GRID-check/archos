@@ -184,11 +184,11 @@ export const bim = {
      * `Gebäudeklasse` stays German in both locales — it is the legal term, it
      * appears on the Einreichung, and an English translation of it would name
      * nothing. `Hauptnutzung` has an English name and this is where it lives,
-     * matching `profile.key.hauptnutzung` on the same screen.
+     * matching `profile.key.main_use` on the same screen.
      */
     factName: {
-      gebaeudeklasse: 'Gebäudeklasse',
-      hauptnutzung: 'Main use',
+      buildingClass: 'Gebäudeklasse',
+      mainUse: 'Main use',
     },
     factsFailed:
       'The project brief could not be read, so the rules that depend on it stood down. This says nothing about the brief itself.',

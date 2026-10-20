@@ -67,8 +67,8 @@ def _passages_for(selection: Selection, address: Address, limit: int) -> list[Pa
     status_note = _legal_status_note(document.url) or ""
     collection = collection_for(candidate)
     out: list[Passage] = []
-    for rank, (section, absatz) in enumerate(selection.picks):
-        body, resolved = subsection_body(section, absatz)
+    for rank, (section, subsection) in enumerate(selection.picks):
+        body, resolved = subsection_body(section, subsection)
         label = f"{section.label} Abs {resolved}" if resolved else section.label
         out.append(
             Passage(
@@ -109,8 +109,8 @@ def collection_for(candidate: Candidate) -> str:
     is — and the lanes read the doc_class, never this string.
     """
     parts = ["ris", candidate.application or "kons"]
-    if candidate.bundesland:
-        parts.append(candidate.bundesland)
+    if candidate.federal_state:
+        parts.append(candidate.federal_state)
     return "/".join(parts)
 
 

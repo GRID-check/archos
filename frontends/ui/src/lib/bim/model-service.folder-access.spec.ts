@@ -156,8 +156,8 @@ describe('listings leave a hidden folder’s models out', () => {
     await exportAccessibleComplianceBcf(SESSION, 'project-a', {
       modelId: null,
       modelName: 'Haus-A.ifc',
-      gebaeudeklasse: null,
-      hauptnutzung: null,
+      buildingClass: null,
+      mainUse: null,
     }).catch(() => undefined)
     expect(listBimModels).toHaveBeenCalledWith(
       'org-1',

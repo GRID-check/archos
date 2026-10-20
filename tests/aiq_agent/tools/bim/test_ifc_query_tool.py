@@ -531,10 +531,10 @@ class TestComplianceOperation:
     """
 
     def test_compliance_takes_project_facts_not_element_filters(self):
-        assert build(operation="compliance", gebaeudeklasse=4, hauptnutzung="Wohnen") == {
+        assert build(operation="compliance", building_class=4, main_use="Wohnen") == {
             "op": "compliance",
-            "gebaeudeklasse": 4,
-            "hauptnutzung": "residential",
+            "buildingClass": 4,
+            "mainUse": "residential",
         }
 
     def test_a_fact_that_was_not_supplied_is_omitted_rather_than_defaulted(self):
@@ -544,7 +544,7 @@ class TestComplianceOperation:
 
     def test_an_out_of_range_building_class_is_dropped_not_clamped(self):
         # Clamping 9 to 5 would invent a requirement the project never stated.
-        assert build(operation="compliance", gebaeudeklasse=9) == {"op": "compliance"}
+        assert build(operation="compliance", building_class=9) == {"op": "compliance"}
 
     def test_compliance_refuses_filters_rather_than_dropping_them(self):
         # It used to drop them, which is the one thing the tool description
@@ -552,7 +552,7 @@ class TestComplianceOperation:
         # A rule run asked for with `{"storeys": ["Erdgeschoss"]}` came back as
         # a run over the WHOLE building, and the agent reported it as the
         # ground floor's — a wrong verdict, arrived at silently.
-        answer = build(operation="compliance", filters='{"ifcTypes": ["IfcWall"]}', gebaeudeklasse=2)
+        answer = build(operation="compliance", filters='{"ifcTypes": ["IfcWall"]}', building_class=2)
         assert isinstance(answer, str)
         assert "takes no filters" in answer
 
@@ -570,14 +570,14 @@ class TestComplianceOperation:
         # down. It did not: the value reached a `.strict()` object whose field
         # is an enum, so the WHOLE compliance run came back 400 — on a value
         # the description presents as merely imprecise.
-        assert build(operation="compliance", hauptnutzung="Wohngebäude") == {"op": "compliance"}
+        assert build(operation="compliance", main_use="Wohngebäude") == {"op": "compliance"}
 
     def test_the_german_main_use_a_profile_or_model_still_says_is_passed_as_the_english_one(self):
-        assert build(operation="compliance", hauptnutzung="Wohnen") == {
+        assert build(operation="compliance", main_use="Wohnen") == {
             "op": "compliance",
-            "hauptnutzung": "residential",
+            "mainUse": "residential",
         }
-        assert build(operation="compliance", hauptnutzung="lager") == {"op": "compliance", "hauptnutzung": "storage"}
+        assert build(operation="compliance", main_use="lager") == {"op": "compliance", "mainUse": "storage"}
 
     def test_every_main_use_the_catalogue_knows_is_passed_through(self):
         # Mirrors `BIM_MAIN_USE` in lib/bim/query.ts. A value dropped here
@@ -593,9 +593,9 @@ class TestComplianceOperation:
             "storage",
             "other",
         ):
-            assert build(operation="compliance", hauptnutzung=value.upper()) == {
+            assert build(operation="compliance", main_use=value.upper()) == {
                 "op": "compliance",
-                "hauptnutzung": value,
+                "mainUse": value,
             }, value
 
     def test_the_diff_operation_is_addressable(self):
@@ -748,7 +748,7 @@ class TestComplianceOperation:
         )
         assert (
             "BCF-Export der offenen Punkte: /api/projects/p1/bim/checks/export"
-            "?model=Haus-A_V3.ifc&gebaeudeklasse=4&hauptnutzung=residential" in rendered
+            "?model=Haus-A_V3.ifc&buildingClass=4&mainUse=residential" in rendered
         )
 
     def test_the_bcf_link_carries_no_fact_the_run_did_not_have(self):
@@ -759,8 +759,8 @@ class TestComplianceOperation:
             "p1",
         )
         assert "/api/projects/p1/bim/checks/export?model=haus.ifc" in rendered
-        assert "gebaeudeklasse" not in rendered
-        assert "hauptnutzung" not in rendered
+        assert "buildingClass" not in rendered
+        assert "mainUse" not in rendered
 
     def test_no_bcf_link_without_a_project_to_hang_it_on(self):
         rendered = _render(
@@ -898,19 +898,19 @@ class TestBuildingClassValidation:
     def test_an_impossible_building_class_reaches_neither_the_query_nor_the_link(self, value):
         from aiq_agent.tools.bim.register import _bcf_link
 
-        query = build(operation="compliance", gebaeudeklasse=value or 0)
-        assert "gebaeudeklasse" not in query
+        query = build(operation="compliance", building_class=value or 0)
+        assert "buildingClass" not in query
 
         # And the same value must not survive into the export URL, which is the
         # half that used to take it raw.
-        assert "gebaeudeklasse" not in _bcf_link("p1", "haus.ifc", value or 0, "")
+        assert "buildingClass" not in _bcf_link("p1", "haus.ifc", value or 0, "")
 
     @pytest.mark.parametrize("value", [1, 2, 3, 4, 5])
     def test_a_real_building_class_reaches_both(self, value):
         from aiq_agent.tools.bim.register import _bcf_link
 
-        assert build(operation="compliance", gebaeudeklasse=value)["gebaeudeklasse"] == value
-        assert f"gebaeudeklasse={value}" in _bcf_link("p1", "haus.ifc", value, "")
+        assert build(operation="compliance", building_class=value)["buildingClass"] == value
+        assert f"buildingClass={value}" in _bcf_link("p1", "haus.ifc", value, "")
 
     def test_the_rendered_export_link_drops_a_klasse_the_catalogue_refused(self):
         # The end-to-end shape of the bug: the tool is called with 9, the
@@ -922,8 +922,8 @@ class TestBuildingClassValidation:
             "residential",
         )
 
-        assert "checks/export?model=haus.ifc&hauptnutzung=residential" in rendered
-        assert "gebaeudeklasse" not in rendered
+        assert "checks/export?model=haus.ifc&mainUse=residential" in rendered
+        assert "buildingClass" not in rendered
 
 
 class TestWhatTheTraceRecords:
@@ -1177,3 +1177,12 @@ class TestTheToolBody:
         assert seen["compare_with_name"] is None
         assert answer == "Modell: haus.ifc\n3 Bauteile"
         assert outcome == "resolved"
+
+
+def test_the_german_fact_names_are_still_accepted_for_one_release():
+    from aiq_agent.tools.bim.register import IfcQueryInput
+
+    """Remove with the aliases on ``IfcQueryInput``."""
+    legacy = IfcQueryInput.model_validate({"operation": "compliance", "gebaeudeklasse": 4, "hauptnutzung": "office"})
+    assert (legacy.building_class, legacy.main_use) == (4, "office")
+    assert IfcQueryInput.model_validate({"building_class": 3}).building_class == 3

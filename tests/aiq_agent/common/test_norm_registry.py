@@ -284,7 +284,7 @@ def _render_registry() -> nr.NormRegistry:
 
 class TestRenderPromptBlock:
     def test_federal_lane_and_all_states_without_federal_state(self):
-        block = nr.render_prompt_block(_render_registry(), bundesland=None)
+        block = nr.render_prompt_block(_render_registry(), federal_state=None)
 
         assert "Bundesrecht:" in block
         assert "ASchG" in block
@@ -293,14 +293,14 @@ class TestRenderPromptBlock:
         assert "OIB-Korpus" in block  # static corpus pointer always present
 
     def test_focused_state_drops_other_states(self):
-        block = nr.render_prompt_block(_render_registry(), bundesland="Wien")
+        block = nr.render_prompt_block(_render_registry(), federal_state="Wien")
 
         assert "Bundesrecht:" in block
         assert "Landesrecht — Wien:" in block
         assert "Tirol" not in block  # other state's law entirely absent
 
     def test_binding_note_rendered(self):
-        block = nr.render_prompt_block(_render_registry(), bundesland="Wien")
+        block = nr.render_prompt_block(_render_registry(), federal_state="Wien")
 
         assert "Rechtliche Hinweise (kuratiert):" in block
         assert "Macht die OIB-Richtlinien in Wien verbindlich." in block
@@ -603,7 +603,7 @@ class TestNonRisEntries:
     def test_web_source_entry_loads_and_renders_with_source(self, tmp_path):
         registry = nr.load_registry(self._write(tmp_path, [self._base()]))
         assert registry is not None and registry.entries[0].id == "ma37"
-        block = nr.render_prompt_block(registry, bundesland="Wien")
+        block = nr.render_prompt_block(registry, federal_state="Wien")
         assert "Behördliche Informationen" in block
         assert "Quelle: https://www.wien.gv.at/x" in block
 
@@ -613,7 +613,7 @@ class TestNonRisEntries:
         # ``source_url`` whenever ``full_law_url`` was also set.
         entry = self._base(full_law_url="https://www.ris.bka.gv.at/GeltendeFassung/x")
         registry = nr.load_registry(self._write(tmp_path, [entry]))
-        block = nr.render_prompt_block(registry, bundesland="Wien")
+        block = nr.render_prompt_block(registry, federal_state="Wien")
         assert "Gesamt: https://www.ris.bka.gv.at/GeltendeFassung/x" in block
         assert "Quelle: https://www.wien.gv.at/x" in block
 

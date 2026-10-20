@@ -146,10 +146,10 @@ class SourceEntry:
     project_name: str | None = None
     project_status: str | None = None
     # The Bundesland line of that project's hit, as the producer states it
-    # (``SourceProject.land_note``): the label, plus the warning when the
+    # (``SourceProject.federal_state_note``): the label, plus the warning when the
     # project is in another Land than the chat's. Carried to the precedent
     # chip's meta line; None when the producer stated none.
-    project_land_note: str | None = None
+    project_federal_state_note: str | None = None
 
 
 @dataclass
@@ -695,7 +695,7 @@ def _registry_from_cached_entries(entries: Any) -> SourceRegistry:
                             project_id=item.get("project_id"),
                             project_name=item.get("project_name"),
                             project_status=item.get("project_status"),
-                            project_land_note=item.get("project_land_note"),
+                            project_federal_state_note=item.get("project_federal_state_note"),
                         )
                     )
                 except Exception:
@@ -1041,7 +1041,7 @@ def _entry_from_hit(hit: GroundingHit, tool_name: str) -> SourceEntry:
         project_id=hit.project.id if hit.project else None,
         project_name=hit.project.name if hit.project else None,
         project_status=hit.project.status if hit.project else None,
-        project_land_note=hit.project.land_note if hit.project else None,
+        project_federal_state_note=hit.project.federal_state_note if hit.project else None,
     )
 
 
@@ -1187,7 +1187,7 @@ _KL_PROVENANCE_RE = re.compile(r"^Herkunft:\s*(.+)$", re.MULTILINE)
 _KL_PROJECT_RE = re.compile(r"^Projekt:\s*(.+?)\s+—\s+(\S+)\s+\(project_id\s+([^\s)]+)\)\s*$", re.MULTILINE)
 _KL_CLAUSE_RE = re.compile(r"^Punkt:\s*(.+?)\s*$", re.MULTILINE)
 #: ``Bundesland: …`` under the ``Projekt:`` line (``grounding_block._header_lines``), when the project's Land is stated.
-_KL_LAND_RE = re.compile(r"^Bundesland:\s*(.+?)\s*$", re.MULTILINE)
+_KL_FEDERAL_STATE_RE = re.compile(r"^Bundesland:\s*(.+?)\s*$", re.MULTILINE)
 # The retrieval score ``_format_results`` prints, a true cosine similarity since
 # the audit's F6 fix. Parsed from the WHOLE block rather than the header region:
 # the header is defined as everything above this very line. A body could in
@@ -1324,7 +1324,7 @@ def _kl_entry(
     clause: str | None = None,
     score: float | None = None,
     project: tuple[str, str, str] | None = None,
-    project_land_note: str | None = None,
+    project_federal_state_note: str | None = None,
 ) -> SourceEntry:
     """Build a knowledge-layer :class:`SourceEntry` from one hit's fields.
 
@@ -1347,7 +1347,7 @@ def _kl_entry(
         project_id=project_id,
         project_name=project_name,
         project_status=_PROJECT_STATUS_BY_LABEL.get(status_label, status_label) if status_label else None,
-        project_land_note=project_land_note,
+        project_federal_state_note=project_federal_state_note,
     )
 
 
@@ -1415,7 +1415,7 @@ def _parse_knowledge_layer(content: str, tool_name: str) -> list[SourceEntry]:
                     tool_name=tool_name,
                     clause=_first(_KL_CLAUSE_RE, header),
                     project=_parse_kl_project(header),
-                    project_land_note=_first(_KL_LAND_RE, header),
+                    project_federal_state_note=_first(_KL_FEDERAL_STATE_RE, header),
                     # The score line is the header's last line by definition of
                     # ``_kl_block_header``, so it is read off the whole block.
                     score=_parse_kl_score(_first(_KL_SCORE_RE, block)),
@@ -2106,7 +2106,7 @@ def _source_document_identifier(entry: SourceEntry) -> str | None:
 def _match_registry_entry(
     entry: SourceEntry,
     registry: NormRegistry | None,
-    bundesland: str | None,
+    federal_state: str | None,
 ) -> Any:
     """The catalogued norm a source resolves to, or ``None``.
 
@@ -2138,11 +2138,11 @@ def _match_registry_entry(
         return None
 
     if is_ris:
-        for norm in focus_entries(registry.entries, bundesland):
+        for norm in focus_entries(registry.entries, federal_state):
             if norm.document_number and norm.document_number in entry.url:  # type: ignore[operator]
                 return norm
     if identifier:
-        candidates = focus_entries(match_entries(registry, identifier), bundesland)
+        candidates = focus_entries(match_entries(registry, identifier), federal_state)
         if candidates:
             return candidates[0]
     return None
@@ -2182,7 +2182,7 @@ def _oib_binding_status(entry: SourceEntry) -> str | None:
 def binding_classification_for_entry(
     entry: SourceEntry,
     registry: NormRegistry | None = None,
-    bundesland: str | None = None,
+    federal_state: str | None = None,
 ) -> BindingClassification:
     """Resolve a source to a structured :class:`BindingClassification`.
 
@@ -2199,7 +2199,7 @@ def binding_classification_for_entry(
     be a false legal claim, so the safe direction is always "we don't know".
     """
     try:
-        norm = _match_registry_entry(entry, registry, bundesland)
+        norm = _match_registry_entry(entry, registry, federal_state)
         if norm is not None:
             return BindingClassification(
                 rank=norm.rank,
@@ -2549,10 +2549,10 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
     # resolved structured-first (signed request context, then prompt text) so a
     # Wien entry is never claimed for a Tirol project; the resolution is fail-open.
     try:
-        bundesland = resolve_federal_state(None)
-    except Exception:  # bundesland resolution must never break wire serialization
-        bundesland = None
-    classification = binding_classification_for_entry(entry, registry, bundesland)
+        federal_state = resolve_federal_state(None)
+    except Exception:  # federal_state resolution must never break wire serialization
+        federal_state = None
+    classification = binding_classification_for_entry(entry, registry, federal_state)
 
     payload: dict[str, Any] = {
         # The [N] marker this source carries in the answer prose (when known).
@@ -2623,9 +2623,9 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
 
 
 def _wire_project(entry: SourceEntry) -> dict[str, str] | None:
-    """``{id, name, status[, landNote]}`` of the other project an entry came from, or None.
+    """``{id, name, status[, federalStateNote]}`` of the other project an entry came from, or None.
 
-    ``landNote`` is the project's Bundesland line verbatim, warning included.
+    ``federalStateNote`` is the project's Bundesland line verbatim, warning included.
     It is omitted when the producer stated none (older messages, a replayed
     turn whose text carries no ``Bundesland:`` line), and the browser reads
     absence as null.
@@ -2633,8 +2633,8 @@ def _wire_project(entry: SourceEntry) -> dict[str, str] | None:
     if not entry.project_id:
         return None
     project = {"id": entry.project_id, "name": entry.project_name or "", "status": entry.project_status or "active"}
-    if entry.project_land_note:
-        project["landNote"] = entry.project_land_note
+    if entry.project_federal_state_note:
+        project["federalStateNote"] = entry.project_federal_state_note
     return project
 
 

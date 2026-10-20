@@ -82,8 +82,8 @@ def _named_spaces(tmp_path: Path, names: list[str]) -> SpatialModel:
 
 def test_classifies_german_room_names(german: SpatialModel) -> None:
     rooms = {room.name: room for room in classify_rooms(german)}
-    assert rooms["Wohnzimmer"].kind == "aufenthaltsraum"
-    assert rooms["Kueche"].kind == "aufenthaltsraum"
+    assert rooms["Wohnzimmer"].kind == "habitable_room"
+    assert rooms["Kueche"].kind == "habitable_room"
     # The reason is part of the answer, not decoration: a reviewer has to be
     # able to disagree with the specific term that decided it.
     assert "wohnzimmer" in rooms["Wohnzimmer"].because[0]
@@ -97,9 +97,9 @@ def test_classifies_english_room_names(house: SpatialModel) -> None:
     English half of the lexicon exists at all.
     """
     rooms = {room.name: room for room in classify_rooms(house)}
-    assert rooms["Living room"].kind == "aufenthaltsraum"
-    assert rooms["Bedroom"].kind == "aufenthaltsraum"
-    assert rooms["Entrance hall"].kind == "erschliessung"
+    assert rooms["Living room"].kind == "habitable_room"
+    assert rooms["Bedroom"].kind == "habitable_room"
+    assert rooms["Entrance hall"].kind == "circulation"
     # "Roof" is a space in this file and is not a room use. Leaving it
     # unclassified is the right answer, not a failure to find one.
     assert rooms["Roof"].kind is None
@@ -110,11 +110,11 @@ def test_longest_match_wins_and_umlauts_fold(tmp_path: Path) -> None:
     rooms = {room.name: room for room in classify_rooms(model)}
 
     # `Waschküche` contains `küche`. Ranking by matched-term length is what puts
-    # a laundry in `nebenraum` instead of proposing it as a habitable room.
-    assert rooms["Waschküche"].kind == "nebenraum"
+    # a laundry in `ancillary_room` instead of proposing it as a habitable room.
+    assert rooms["Waschküche"].kind == "ancillary_room"
     # Same room, three spellings an exporter might emit, one classification.
-    assert {rooms["KÜCHE"].kind, rooms["Kueche"].kind, rooms["Küche"].kind} == {"aufenthaltsraum"}
-    assert rooms["Wohnküche"].kind == "aufenthaltsraum"
+    assert {rooms["KÜCHE"].kind, rooms["Kueche"].kind, rooms["Küche"].kind} == {"habitable_room"}
+    assert rooms["Wohnküche"].kind == "habitable_room"
 
 
 def test_short_terms_only_match_on_a_word_boundary(tmp_path: Path) -> None:
@@ -122,9 +122,9 @@ def test_short_terms_only_match_on_a_word_boundary(tmp_path: Path) -> None:
     model = _named_spaces(tmp_path, ["Badminton", "BAD-03", "WCB2", "WC 1"])
     rooms = {room.name: room for room in classify_rooms(model)}
     assert rooms["Badminton"].kind is None
-    assert rooms["BAD-03"].kind == "nebenraum"
+    assert rooms["BAD-03"].kind == "ancillary_room"
     assert rooms["WCB2"].kind is None
-    assert rooms["WC 1"].kind == "nebenraum"
+    assert rooms["WC 1"].kind == "ancillary_room"
 
 
 def test_weak_terms_are_capped_and_say_why(tmp_path: Path) -> None:
@@ -132,7 +132,7 @@ def test_weak_terms_are_capped_and_say_why(tmp_path: Path) -> None:
     rooms = {room.name: room for room in classify_rooms(model)}
     assert rooms["Zimmer"].confidence <= 0.55
     assert any("allein sagt die Nutzung nicht" in reason for reason in rooms["Zimmer"].because)
-    assert rooms["Halle"].kind == "erschliessung"
+    assert rooms["Halle"].kind == "circulation"
     assert rooms["Halle"].confidence <= 0.55
 
 
@@ -158,7 +158,7 @@ def test_lexicon_terms_are_already_normalised() -> None:
 
 
 def test_inventory_is_inferred_and_says_it_is_a_proposal(house: SpatialModel) -> None:
-    answer = inventory(house, "aufenthaltsraum")
+    answer = inventory(house, "habitable_room")
     assert answer.decidable
     assert answer.provenance == "inferred"
     assert {room.name for room in answer.value} == {"Living room", "Bedroom"}
@@ -170,7 +170,7 @@ def test_inventory_is_inferred_and_says_it_is_a_proposal(house: SpatialModel) ->
 def test_inventory_without_spaces_is_undecidable_not_empty(spaceless: SpatialModel) -> None:
     """ "No rooms in the export" and "no habitable rooms in the building" are
     different claims, and only the first one is true here."""
-    answer = inventory(spaceless, "aufenthaltsraum")
+    answer = inventory(spaceless, "habitable_room")
     assert answer.decidable is False
     assert answer.value is None
     assert answer.missing.what == "IfcSpace"

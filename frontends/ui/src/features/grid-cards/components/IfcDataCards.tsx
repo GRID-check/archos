@@ -603,10 +603,10 @@ export function IfcComplianceCard({
   const request = useMemo(
     () => ({
       op: 'compliance' as const,
-      ...(facts.gebaeudeklasse === null ? {} : { gebaeudeklasse: facts.gebaeudeklasse }),
-      ...(facts.hauptnutzung === null ? {} : { hauptnutzung: facts.hauptnutzung }),
+      ...(facts.buildingClass === null ? {} : { buildingClass: facts.buildingClass }),
+      ...(facts.mainUse === null ? {} : { mainUse: facts.mainUse }),
     }),
-    [facts.gebaeudeklasse, facts.hauptnutzung]
+    [facts.buildingClass, facts.mainUse]
   )
   // WAIT for the brief. Without the guard the catalogue runs once with no
   // Gebäudeklasse and again with it, and the first run is both discarded and
@@ -641,10 +641,10 @@ export function IfcComplianceCard({
   const bcfHref = useMemo(() => {
     if (!model || !projectId || !selected || rulesWithOpenWork(selected).length === 0) return null
     const query = new URLSearchParams({ modelId: model.id })
-    if (facts.gebaeudeklasse !== null) query.set('gebaeudeklasse', String(facts.gebaeudeklasse))
-    if (facts.hauptnutzung !== null) query.set('hauptnutzung', facts.hauptnutzung)
+    if (facts.buildingClass !== null) query.set('buildingClass', String(facts.buildingClass))
+    if (facts.mainUse !== null) query.set('mainUse', facts.mainUse)
     return `/api/projects/${projectId}/bim/checks/export?${query.toString()}`
-  }, [model, projectId, selected, facts.gebaeudeklasse, facts.hauptnutzung])
+  }, [model, projectId, selected, facts.buildingClass, facts.mainUse])
 
   return (
     <CardShell

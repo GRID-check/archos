@@ -235,7 +235,7 @@ def test_the_three_newly_wired_operators_answer_over_the_wire(session: _Session)
     answer = json.loads(graph["result"]["content"][0]["text"])
     assert answer["decidable"] is True
     assert len(answer["value"]["edges"]) == 3
-    assert "unbestimmt" in answer["value"] and "ausgeschlossen" in answer["value"]
+    assert "undetermined" in answer["value"] and "excluded" in answer["value"]
 
     sun = session.request(
         9,

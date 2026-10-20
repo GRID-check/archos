@@ -33,7 +33,7 @@ _REGISTRY = {
             "title": "Bauordnung für Wien",
             "short": "BO Wien",
             "rank": "state_law",
-            "bundesland": "Wien",
+            "federal_state": "Wien",
             "topics": ["bauordnung", "bauantrag"],
             "relevance": "State building code for Vienna",
             "application": "LrKons",

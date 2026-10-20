@@ -183,7 +183,7 @@ def test_the_bedroom_leaves_through_the_living_room_and_the_hall(house: SpatialM
     answer = ci.egress_path(house, BEDROOM)
     assert answer.value["spaces"] == [BEDROOM, LIVING, HALL]
     assert answer.value["doors"] == [DOOR_LIVING_BEDROOM, DOOR_HALL_LIVING, EXTERNAL_DOOR]
-    assert answer.value["legs"][-1]["nach"]["globalId"] == ci.OUTSIDE
+    assert answer.value["legs"][-1]["to"]["globalId"] == ci.OUTSIDE
     assert answer.value["length"] == pytest.approx(BEDROOM_EGRESS, abs=LENGTH_TOLERANCE)
 
 
@@ -205,9 +205,9 @@ def test_the_legs_add_up_to_the_length(house: SpatialModel) -> None:
 
 def test_the_legs_chain_room_to_room(house: SpatialModel) -> None:
     value = ci.egress_path(house, BEDROOM).value
-    assert value["legs"][0]["von"]["globalId"] == BEDROOM
+    assert value["legs"][0]["from"]["globalId"] == BEDROOM
     for previous, following in zip(value["legs"], value["legs"][1:], strict=False):
-        assert previous["nach"]["globalId"] == following["von"]["globalId"]
+        assert previous["to"]["globalId"] == following["from"]["globalId"]
 
 
 def test_the_tolerance_is_the_geometric_one_and_grows_with_the_route(house: SpatialModel) -> None:
@@ -308,7 +308,7 @@ def test_a_door_whose_rooms_cannot_be_resolved_is_reported_not_dropped() -> None
     """``house-with-rooms.ifc`` carries a door with no body at all.
 
     ``opens_to`` is undecidable for it, and the graph must not quietly become a
-    building with no doors: the door is listed under ``unbestimmt`` with the
+    building with no doors: the door is listed under ``undetermined`` with the
     German reason, and the caveat says how many routes are therefore unknown.
     """
     model = SpatialModel(str(TWO_ROOMS))
@@ -316,11 +316,11 @@ def test_a_door_whose_rooms_cannot_be_resolved_is_reported_not_dropped() -> None
     assert answer.decidable
     assert answer.value.edges == ()
     assert [entry["globalId"] for entry in answer.value.unresolved] == ["2Haus0Raeume00Door0001"]
-    assert "Körpergeometrie für" in answer.value.unresolved[0]["warum"]
+    assert "Körpergeometrie für" in answer.value.unresolved[0]["why"]
     # And it does NOT start with „keine": the renderer wraps `what` in
     # „dieser Export liefert … nicht", so a negated noun phrase produced
     # „liefert keine … nicht" — a double negation asserting the opposite.
-    assert not answer.value.unresolved[0]["warum"].startswith("kein")
+    assert not answer.value.unresolved[0]["why"].startswith("kein")
     assert "unbestimmt" in answer.caveat
     # The consequence, stated rather than hidden: no route out of either room.
     egress = ci.egress_path(model, "2Haus0Raeume00Space001")

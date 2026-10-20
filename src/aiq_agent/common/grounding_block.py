@@ -127,7 +127,7 @@ class SourceProject(BaseModel):
     #: Its Bundesland as the model reads it, with a warning when it is not
     #: the chat project's: a precedent from another Land was decided under
     #: another Bauordnung. Rendered as the ``Bundesland:`` line.
-    land_note: str | None = None
+    federal_state_note: str | None = None
 
 
 class GroundingHit(BaseModel):
@@ -368,8 +368,8 @@ def _header_lines(hit: GroundingHit) -> Iterator[str]:
     yield f"Source: {_line(hit.display_title)}"
     if hit.project is not None:
         yield f"Projekt: {_project_line(hit.project)}"
-        if hit.project.land_note:
-            yield f"Bundesland: {_line(hit.project.land_note)}"
+        if hit.project.federal_state_note:
+            yield f"Bundesland: {_line(hit.project.federal_state_note)}"
     if hit.collection:
         yield f"Collection: {_line(hit.collection)}"
     if hit.shelf is not None:

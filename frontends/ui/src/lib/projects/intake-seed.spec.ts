@@ -68,7 +68,7 @@ describe('intakeSeedFacts', () => {
   })
 
   it('takes a Bundesland chosen by hand, without evidence', () => {
-    const facts = intakeSeedFacts({ bundesland: 'salzburg' }, NOW)
+    const facts = intakeSeedFacts({ federalState: 'salzburg' }, NOW)
     expect(Object.keys(facts).sort()).toEqual(['country', 'federal_state'])
     expect(facts.federal_state?.evidence).toBeUndefined()
   })

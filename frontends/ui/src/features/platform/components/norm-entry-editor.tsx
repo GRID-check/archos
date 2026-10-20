@@ -155,7 +155,7 @@ export interface EntryFormValues {
   verify_title_query: string
   verify_expect: string
   verify_exclude: string
-  verify_gesetzesnummer: string
+  verify_statute_number: string
   verified_at: string
 }
 
@@ -187,7 +187,7 @@ function createEntryFormSchema(t: Translator) {
       verify_title_query: z.string(),
       verify_expect: z.string(),
       verify_exclude: z.string(),
-      verify_gesetzesnummer: z.string(),
+      verify_statute_number: z.string(),
       verified_at: z.string(),
     })
     .superRefine((values, ctx) => {
@@ -247,7 +247,7 @@ export function entryToForm(entry: NormEntry, isNew = false): EntryFormValues {
     verify_title_query: entry.verify?.title_query ?? '',
     verify_expect: entry.verify?.expect ?? '',
     verify_exclude: joinList(entry.verify?.exclude),
-    verify_gesetzesnummer: entry.verify?.gesetzesnummer ?? '',
+    verify_statute_number: entry.verify?.statute_number ?? '',
     verified_at: entry.verified_at,
   }
 }
@@ -256,7 +256,7 @@ export function formToEntry(values: EntryFormValues): NormEntry {
   const titleQuery = values.verify_title_query.trim()
   const exclude = splitList(values.verify_exclude)
   const expect = values.verify_expect.trim()
-  const statuteNumber = values.verify_gesetzesnummer.trim()
+  const statuteNumber = values.verify_statute_number.trim()
   // Any populated verification field is worth persisting on its own: the seed
   // schema defaults `title_query` to '', so keying the whole object off the
   // query would silently drop a curated expect/exclude/Gesetzesnummer on save.
@@ -266,7 +266,7 @@ export function formToEntry(values: EntryFormValues): NormEntry {
           title_query: titleQuery,
           exclude,
           ...(expect ? { expect } : {}),
-          ...(statuteNumber ? { gesetzesnummer: statuteNumber } : {}),
+          ...(statuteNumber ? { statute_number: statuteNumber } : {}),
         }
       : undefined
   const bindingNote = values.binding_note.trim()
@@ -504,7 +504,7 @@ export function NormEntryEditor({
     setIsVerifying(true)
     setCandidates(null)
     const exclude = splitList(values.verify_exclude)
-    const statuteNumber = values.verify_gesetzesnummer.trim()
+    const statuteNumber = values.verify_statute_number.trim()
     const expect = values.verify_expect.trim()
     fetch('/api/platform/norms/verify', {
       method: 'POST',
@@ -515,7 +515,7 @@ export function NormEntryEditor({
         ...(values.federalState.trim() ? { federal_state: values.federalState.trim() } : {}),
         ...(expect ? { expect } : {}),
         ...(exclude.length ? { exclude } : {}),
-        ...(statuteNumber ? { gesetzesnummer: statuteNumber } : {}),
+        ...(statuteNumber ? { statute_number: statuteNumber } : {}),
       }),
     })
       .then(async (r) => {
@@ -607,8 +607,8 @@ export function NormEntryEditor({
 
       {/* Suggestions for the Bundesland input; free text still round-trips. */}
       <datalist id={FEDERAL_STATE_LIST_ID}>
-        {BUNDESLAENDER.map((land) => (
-          <option key={land} value={land} />
+        {BUNDESLAENDER.map((state) => (
+          <option key={state} value={state} />
         ))}
       </datalist>
 
@@ -1052,7 +1052,7 @@ export function NormEntryEditor({
                       </form.AppField>
                     )}
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                      <form.AppField name="verify_gesetzesnummer">
+                      <form.AppField name="verify_statute_number">
                         {(field) => (
                           <field.TextField
                             label={t('norms.fields.statuteNumber')}

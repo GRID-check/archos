@@ -202,7 +202,7 @@ describe('AnswerSourcesRow precedents from another project (ADR-0094)', () => {
         id: 'p9',
         name: 'Wohnbau Graz',
         status: 'closed',
-        landNote: 'Steiermark — nicht das Bundesland dieses Projekts',
+        federalStateNote: 'Steiermark — nicht das Bundesland dieses Projekts',
       },
     }
     render(

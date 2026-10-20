@@ -220,7 +220,9 @@ class VerifySeed(BaseModel):
     title_query: str
     expect: str = ""
     exclude: list[str] = Field(default_factory=list)
-    gesetzesnummer: str = ""
+    # A stored registry (the admin-edited row, a seed file not yet re-saved) calls it
+    # `gesetzesnummer`; read for one release (remove after), the next save stores `statute_number`.
+    statute_number: str = Field(default="", validation_alias=AliasChoices("statute_number", "gesetzesnummer"))
 
 
 class NormEntry(BaseModel):
@@ -594,17 +596,17 @@ def doctrine_for(project_context: str | None) -> str:
     return NORM_DOCTRINE
 
 
-def focus_entries(entries: list[NormEntry], bundesland: str | None) -> list[NormEntry]:
+def focus_entries(entries: list[NormEntry], federal_state: str | None) -> list[NormEntry]:
     """Restrict matches to the known Bundesland and put that state's law first.
 
     State-law entries of OTHER states are dropped — a Tyrolean project must
     never be handed the Viennese Bauordnung. Federal/stateless entries always
     stay. With no known Bundesland this is a no-op.
     """
-    if not bundesland:
+    if not federal_state:
         return entries
-    kept = [entry for entry in entries if not entry.federal_state or entry.federal_state == bundesland]
-    return sorted(kept, key=lambda entry: 0 if entry.federal_state == bundesland else 1)
+    kept = [entry for entry in entries if not entry.federal_state or entry.federal_state == federal_state]
+    return sorted(kept, key=lambda entry: 0 if entry.federal_state == federal_state else 1)
 
 
 # ---------------------------------------------------------------------------
@@ -649,14 +651,16 @@ def _render_entry_line(entry: NormEntry) -> str:
     return line
 
 
-def render_prompt_block(registry: NormRegistry, bundesland: str | None = None, corpus_note: str | None = None) -> str:
+def render_prompt_block(
+    registry: NormRegistry, federal_state: str | None = None, corpus_note: str | None = None
+) -> str:
     """Compact catalog block: federal lane, then the focused state lane.
 
     Other states' law is dropped entirely (same rule as ``focus_entries``) —
     with no known Bundesland, all state lanes render, grouped by state.
     """
     lines = [_BLOCK_HEADER, ""]
-    focused = focus_entries(registry.entries, bundesland)
+    focused = focus_entries(registry.entries, federal_state)
     law = [entry for entry in focused if entry.rank in _LAW_RANKS]
     federal = [entry for entry in law if not entry.federal_state]
     if federal:
@@ -666,7 +670,7 @@ def render_prompt_block(registry: NormRegistry, bundesland: str | None = None, c
     for entry in law:
         if entry.federal_state:
             by_state.setdefault(entry.federal_state, []).append(entry)
-    for state in sorted(by_state, key=lambda s: (s != bundesland, s)):
+    for state in sorted(by_state, key=lambda s: (s != federal_state, s)):
         lines.append("")
         lines.append(f"Landesrecht — {state}:")
         lines.extend(_render_entry_line(entry) for entry in sorted(by_state[state], key=lambda e: e.short.lower()))
@@ -704,7 +708,7 @@ def render_block_for_prompt(project_context: str | None, norms_dir: str | None =
         corpus_note = profile.corpus_note if profile else None
     except Exception:  # noqa: BLE001
         logger.warning("norm_registry: corpus-note profile lookup failed", exc_info=True)
-    block = render_prompt_block(registry, bundesland=resolve_federal_state(project_context), corpus_note=corpus_note)
+    block = render_prompt_block(registry, federal_state=resolve_federal_state(project_context), corpus_note=corpus_note)
     try:
         from aiq_agent.common.applicability import render_project_block
 

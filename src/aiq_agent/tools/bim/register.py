@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 
@@ -98,11 +99,11 @@ _TOOL_DESCRIPTION = (
     "important one: it means the model does not publish the value, NOT that the building fails. "
     "Each row names the exact property (e.g. Pset_WallCommon.FireRating) that would settle it — "
     "report that list, it is what the architect has to add in their CAD. Pass "
-    "gebaeudeklasse and hauptnutzung from the project data when you know them; a rule that "
+    "building_class and main_use from the project data when you know them; a rule that "
     "needs a fact it was not given stands down WITH its reason rather than guessing. "
-    "hauptnutzung must be one of residential, office, lodging, assembly, healthcare, "
+    "main_use must be one of residential, office, lodging, assembly, healthcare, "
     "agriculture, manufacturing, storage, other — anything else makes rules stand down as "
-    "'not applicable', which reads as a verdict and is not one. gebaeudeklasse is 1-5.\n"
+    "'not applicable', which reads as a verdict and is not one. building_class is 1-5.\n"
     "  'compliance-diff' — the same catalogue over two revisions, reporting only the "
     "requirements whose STATUS MOVED. Set 'compare_with' to a substring of the OLDER file's "
     "name. This answers 'was hat sich der letzte Stand kaputt gemacht' — including a "
@@ -204,7 +205,7 @@ def _valid_main_use(value: str) -> str:
     it "stand down as not applicable". It did not: the value went into a
     `.strict()` object whose field is an enum, so `"wohngebäude"` produced a
     400 and the whole compliance run failed — on a value the description
-    presents as merely imprecise. Its sibling `_valid_gebaeudeklasse` is
+    presents as merely imprecise. Its sibling `_valid_building_class` is
     sanitised here for exactly this reason; this one was not.
     """
     # The German word (`wohnen`) is what a profile or a model that has not caught up still says.
@@ -220,7 +221,7 @@ def _valid_building_class(value: int | None) -> int:
     with it: the catalogue omits an invalid fact so the rules stand down with
     their reason, and the BCF link has to omit it for the same reason. Deciding
     that twice is how they came to disagree — the run happened at "no
-    Gebäudeklasse given" while the download link said `gebaeudeklasse=9`, so the
+    Gebäudeklasse given" while the download link said `buildingClass=9`, so the
     archive an architect opened was built against thresholds nobody chose.
     """
     return value if value and 1 <= value <= 5 else 0
@@ -263,11 +264,11 @@ def _element_link(
 def _bcf_link(
     project_id: str | None,
     filename: str | None,
-    # `None` as well as an out-of-range int: `_valid_gebaeudeklasse` is the one
+    # `None` as well as an out-of-range int: `_valid_building_class` is the one
     # place that decides what an impossible value means, and the annotation
     # should admit what callers actually pass it.
-    gebaeudeklasse: int | None = 0,
-    hauptnutzung: str = "",
+    building_class: int | None = 0,
+    main_use: str = "",
 ) -> str:
     """The download path for the open items as a BCF 2.1 file.
 
@@ -285,11 +286,11 @@ def _bcf_link(
     query = f"model={quote(filename, safe='')}"
     # Through the same gate the catalogue run went through, so the archive can
     # never carry a fact the verdicts did not use.
-    valid_klasse = _valid_building_class(gebaeudeklasse)
+    valid_klasse = _valid_building_class(building_class)
     if valid_klasse:
-        query = f"{query}&gebaeudeklasse={valid_klasse}"
-    if hauptnutzung:
-        query = f"{query}&hauptnutzung={quote(hauptnutzung, safe='')}"
+        query = f"{query}&buildingClass={valid_klasse}"
+    if main_use:
+        query = f"{query}&mainUse={quote(main_use, safe='')}"
     return f"/api/projects/{quote(project_id, safe='')}/bim/checks/export?{query}"
 
 
@@ -305,8 +306,10 @@ class IfcQueryInput(BaseModel):
     ifc_type: str = ""
     model_name: str = ""
     compare_with: str = ""
-    gebaeudeklasse: int = 0
-    hauptnutzung: str = ""
+    # The German names are read for one release (remove after): a conversation
+    # or a cached tool schema from before the rename still sends them.
+    building_class: int = Field(default=0, validation_alias=AliasChoices("building_class", "gebaeudeklasse"))
+    main_use: str = Field(default="", validation_alias=AliasChoices("main_use", "hauptnutzung"))
     limit: int = 0
 
 
@@ -347,8 +350,8 @@ class _QueryArgs:
     global_id: str
     ifc_type: str
     limit: int
-    gebaeudeklasse: int | None
-    hauptnutzung: str
+    building_class: int | None
+    main_use: str
 
 
 def _parse_filters(filters: str) -> dict[str, Any] | str:
@@ -375,12 +378,12 @@ def _compliance_query(op: str, args: _QueryArgs) -> dict[str, Any]:
     that need it stand down with their reason, which is the honest outcome.
     """
     query: dict[str, Any] = {"op": op}
-    klasse = _valid_building_class(args.gebaeudeklasse)
+    klasse = _valid_building_class(args.building_class)
     if klasse:
-        query["gebaeudeklasse"] = klasse
-    nutzung = _valid_main_use(args.hauptnutzung)
+        query["buildingClass"] = klasse
+    nutzung = _valid_main_use(args.main_use)
     if nutzung:
-        query["hauptnutzung"] = nutzung
+        query["mainUse"] = nutzung
     return query
 
 
@@ -462,8 +465,8 @@ def _build_query(
     global_id: str,
     ifc_type: str,
     limit: int,
-    gebaeudeklasse: int | None = 0,
-    hauptnutzung: str = "",
+    building_class: int | None = 0,
+    main_use: str = "",
 ) -> dict[str, Any] | str:
     """Assemble the endpoint's query object, or return an error string.
 
@@ -490,8 +493,8 @@ def _build_query(
         global_id=global_id.strip(),
         ifc_type=ifc_type.strip(),
         limit=max(1, min(limit, 200)),
-        gebaeudeklasse=gebaeudeklasse,
-        hauptnutzung=hauptnutzung,
+        building_class=building_class,
+        main_use=main_use,
     )
     return _QUERY_BUILDERS[operation](args)
 
@@ -509,8 +512,8 @@ class _RenderContext:
 
     project_id: str | None
     filename: str | None
-    gebaeudeklasse: int
-    hauptnutzung: str
+    building_class: int
+    main_use: str
 
     def link(self, global_id: Any, status: str = "info") -> str:
         link = _element_link(self.project_id, self.filename, global_id, status)
@@ -624,7 +627,7 @@ def _render_compliance(result: dict[str, Any], ctx: _RenderContext) -> _Lines:
     """The verdict lines are already in `summary`; this adds the shopping list, the rule ids and the BCF export."""
     lines: _Lines = listed(result.get("complianceShoppingList") or [], 15, "fehlende Merkmale", _shopping_row)
     lines += listed(result.get("compliance") or [], 40, "Regeln", lambda rule: _rule_rows(rule, ctx))
-    bcf = _bcf_link(ctx.project_id, ctx.filename, ctx.gebaeudeklasse, ctx.hauptnutzung)
+    bcf = _bcf_link(ctx.project_id, ctx.filename, ctx.building_class, ctx.main_use)
     if bcf:
         lines.append(f"BCF-Export der offenen Punkte: {bcf}")
     return lines
@@ -704,8 +707,8 @@ def _truncation_note(op: str) -> str:
 def _render(
     result: dict[str, Any],
     project_id: str | None = None,
-    gebaeudeklasse: int = 0,
-    hauptnutzung: str = "",
+    building_class: int = 0,
+    main_use: str = "",
 ) -> str:
     """Turn the endpoint's body into the string the model reads.
 
@@ -717,7 +720,7 @@ def _render(
     if not result.get("resolved"):
         return render_unresolved(result, "Das Modell konnte nicht abgefragt werden.")
     model = result.get("model") or {}
-    ctx = _RenderContext(project_id, model.get("filename"), gebaeudeklasse, hauptnutzung)
+    ctx = _RenderContext(project_id, model.get("filename"), building_class, main_use)
     op = str(result.get("op") or "")
     # The Herleitung's account of this round: the model file, read by this
     # operation. Only a RESOLVED result — an unresolved one read no file.
@@ -792,8 +795,8 @@ async def _query(arguments: IfcQueryInput, default_limit: int) -> str:
         global_id=arguments.global_id,
         ifc_type=arguments.ifc_type,
         limit=arguments.limit if arguments.limit > 0 else default_limit,
-        gebaeudeklasse=arguments.gebaeudeklasse,
-        hauptnutzung=arguments.hauptnutzung,
+        building_class=arguments.building_class,
+        main_use=arguments.main_use,
     )
     if isinstance(query, str):
         return query
@@ -812,7 +815,7 @@ async def _query(arguments: IfcQueryInput, default_limit: int) -> str:
         _trace(query, None, outcome=failure.outcome)
         return failure.text(exc)
     _trace(query, result)
-    return _render(result, project_id, arguments.gebaeudeklasse, arguments.hauptnutzung.strip().lower())
+    return _render(result, project_id, arguments.building_class, arguments.main_use.strip().lower())
 
 
 class IfcQueryConfig(FunctionBaseConfig, name="ifc_query"):

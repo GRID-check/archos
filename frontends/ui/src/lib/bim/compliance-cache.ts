@@ -6,7 +6,7 @@
  * A `ready` model is immutable: `completeBimModel` writes the element rows
  * once and nothing edits them afterwards — a new revision is a new row with a
  * new id. So a catalogue run is a pure function of
- * `(modelId, gebaeudeklasse, hauptnutzung)`, and the same three inputs can
+ * `(modelId, buildingClass, mainUse)`, and the same three inputs can
  * only ever produce the same verdicts. Recomputing is always *correct*; it is
  * just expensive.
  *

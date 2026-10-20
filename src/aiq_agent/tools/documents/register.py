@@ -153,7 +153,7 @@ def _slug(path: str) -> str:
     name = path.rsplit("/", 1)[-1]
     name = re.sub(r"\.md$", "", name, flags=re.IGNORECASE)
     slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-    return slug or "entwurf"
+    return slug or "draft"
 
 
 def _filing_hash(conversation_id: str, path: str) -> str:

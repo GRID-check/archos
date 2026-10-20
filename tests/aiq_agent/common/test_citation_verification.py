@@ -476,7 +476,7 @@ class TestGenericUrlExtractor:
         content = (
             "No RIS documents found for query 'Stellplatzverpflichtung' in application "
             "'LrKons'. Try different German search terms, another application (e.g. LrKons "
-            "for state building law with a bundesland), or drop filters."
+            "for state building law with a federal_state), or drop filters."
         )
         entries = extract_sources_from_tool_result("ris_search_tool", content, source_id="ris_search")
         assert entries == []
@@ -1933,14 +1933,14 @@ class TestSourceLane:
 class TestPrecedentLandOnTheWire:
     """A source from another project says which Land it is in, as the producer stated it (ADR-0094)."""
 
-    LAND_NOTE = "Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung"
+    FEDERAL_STATE_NOTE = "Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung"
     PROJECT_LINE = "Projekt: Wohnbau Graz — abgeschlossen (project_id 22222222-0000-4000-8000-000000000002)\n"
     RESULT = (
         "Found 1 relevant document(s):\n\n"
         "--- Result 1 ---\n"
         "Source: Detail Traufe\n"
         "{project}"
-        "{land}"
+        "{federal_state}"
         "Collection: proj_22\n"
         "Citation: Detail Traufe.pdf (Wohnbau Graz), p.3\n"
         "Content Type: text\n"
@@ -1948,7 +1948,7 @@ class TestPrecedentLandOnTheWire:
         "Die Traufe ist hinterlüftet ausgeführt."
     )
 
-    def _hit(self, land_note: str | None):
+    def _hit(self, federal_state_note: str | None):
         from aiq_agent.common.grounding_block import GroundingHit
         from aiq_agent.common.grounding_block import SourceProject
 
@@ -1972,46 +1972,48 @@ class TestPrecedentLandOnTheWire:
                 id="22222222-0000-4000-8000-000000000002",
                 name="Wohnbau Graz",
                 status="closed",
-                land_note=land_note,
+                federal_state_note=federal_state_note,
             ),
         )
 
-    def test_the_producers_land_note_reaches_the_wire_verbatim(self):
+    def test_the_producers_federal_state_note_reaches_the_wire_verbatim(self):
         from aiq_agent.common.citation_verification import _entry_from_hit
         from aiq_agent.common.citation_verification import source_entry_to_wire
 
-        entry = _entry_from_hit(self._hit(self.LAND_NOTE), "project_lookup")
+        entry = _entry_from_hit(self._hit(self.FEDERAL_STATE_NOTE), "project_lookup")
 
         assert source_entry_to_wire(entry)["project"] == {
             "id": "22222222-0000-4000-8000-000000000002",
             "name": "Wohnbau Graz",
             "status": "closed",
-            "landNote": self.LAND_NOTE,
+            "federalStateNote": self.FEDERAL_STATE_NOTE,
         }
 
-    def test_the_wire_states_no_land_note_the_producer_did_not_state(self):
+    def test_the_wire_states_no_federal_state_note_the_producer_did_not_state(self):
         from aiq_agent.common.citation_verification import _entry_from_hit
         from aiq_agent.common.citation_verification import source_entry_to_wire
 
         entry = _entry_from_hit(self._hit(None), "project_lookup")
 
-        assert "landNote" not in source_entry_to_wire(entry)["project"]
+        assert "federalStateNote" not in source_entry_to_wire(entry)["project"]
 
     def test_a_replayed_turn_reads_the_land_back_from_its_text(self):
         from aiq_agent.common.citation_verification import _parse_knowledge_layer
 
-        text = self.RESULT.format(project=self.PROJECT_LINE, land=f"Bundesland: {self.LAND_NOTE}\n")
+        text = self.RESULT.format(project=self.PROJECT_LINE, federal_state=f"Bundesland: {self.FEDERAL_STATE_NOTE}\n")
 
         (entry,) = _parse_knowledge_layer(text, "project_lookup")
 
-        assert entry.project_land_note == self.LAND_NOTE
+        assert entry.project_federal_state_note == self.FEDERAL_STATE_NOTE
 
     def test_a_replayed_hit_without_a_federal_state_line_states_none(self):
         from aiq_agent.common.citation_verification import _parse_knowledge_layer
 
-        (entry,) = _parse_knowledge_layer(self.RESULT.format(project=self.PROJECT_LINE, land=""), "project_lookup")
+        (entry,) = _parse_knowledge_layer(
+            self.RESULT.format(project=self.PROJECT_LINE, federal_state=""), "project_lookup"
+        )
 
-        assert entry.project_land_note is None
+        assert entry.project_federal_state_note is None
 
 
 class TestWireCitationNumber:
@@ -3398,7 +3400,7 @@ class TestBindingClassification:
                 "title": "OIB-Richtlinie 2 (in Wien verbindlich erklärt)",
                 "short": "OIB-RL 2",
                 "rank": "authority_info",
-                "bundesland": "Wien",
+                "federal_state": "Wien",
                 "aliases": ["oib-rl_2"],
             }
         )
@@ -3406,7 +3408,7 @@ class TestBindingClassification:
             citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.5",
             source_type="knowledge_layer",
         )
-        result = binding_classification_for_entry(entry, registry, bundesland="Wien")
+        result = binding_classification_for_entry(entry, registry, federal_state="Wien")
         assert result.rank == "authority_info"
         assert result.binding_status == "declared_binding"
 
@@ -3461,7 +3463,7 @@ class TestBindingClassification:
                 "title": "Bauordnung für Wien",
                 "short": "BO für Wien",
                 "rank": "state_law",
-                "bundesland": "Wien",
+                "federal_state": "Wien",
                 "aliases": ["bauordnung-wien-auszug"],
             }
         )
@@ -3469,11 +3471,11 @@ class TestBindingClassification:
             citation_key="bauordnung-wien-auszug.pdf, p.1",
             source_type="knowledge_layer",
         )
-        for_wien = binding_classification_for_entry(entry, registry, bundesland="Wien")
+        for_wien = binding_classification_for_entry(entry, registry, federal_state="Wien")
         assert for_wien.rank == "state_law"
         assert for_wien.binding_status == "binding"
 
-        for_tirol = binding_classification_for_entry(entry, registry, bundesland="Tirol")
+        for_tirol = binding_classification_for_entry(entry, registry, federal_state="Tirol")
         assert for_tirol.rank is None
         assert for_tirol.binding_status == "unknown"
 

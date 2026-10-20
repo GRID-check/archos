@@ -70,7 +70,7 @@ def _index_for(fetched: FetchedDocument, sections: list[Section]) -> str:
 
 
 async def _pick(picker, question, address: Address, sections, fetched) -> list[tuple[Section, str]]:
-    """``(section, absatz)`` pairs to return: deterministic first, LLM second."""
+    """``(section, subsection)`` pairs to return: deterministic first, LLM second."""
     if not sections:
         return _whole_document(fetched)
     if address.has_section:
@@ -90,13 +90,13 @@ def _addressed(section: Section, address: Address) -> list[tuple[Section, str]]:
     came back for Abs 4, 5 and 3 one lookup at a time (answer suite, 92 s). The
     § under its own key costs one passage and ends that.
     """
-    if not address.absatz or len(section.body) > SECTION_MAX_CHARS:
-        return [(section, address.absatz)]
+    if not address.subsection or len(section.body) > SECTION_MAX_CHARS:
+        return [(section, address.subsection)]
     # An Absatz the § does not carry resolves to the whole § already: a second
     # pick would be the same passage under the same citation key.
-    if not subsection_body(section, address.absatz)[1]:
-        return [(section, address.absatz)]
-    return [(section, address.absatz), (section, "")]
+    if not subsection_body(section, address.subsection)[1]:
+        return [(section, address.subsection)]
+    return [(section, address.subsection), (section, "")]
 
 
 def _is_addressed(section: Section, address: Address) -> bool:

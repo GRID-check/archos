@@ -137,7 +137,38 @@ class NormRegistryStore:
                 return
 
             ensure_schema(self._sync_engine, "norm_registry", self._create_table)
+            self._rewrite_legacy_keys()
             NormRegistryStore._tables_initialized.add(self.db_url)
+
+    #: Key spellings a stored row may still carry (`bundesland` -> `federal_state`,
+    #: `gesetzesnummer` -> `statute_number`). Remove with the read aliases in
+    #: ``norm_registry`` after one release.
+    _LEGACY_STORED_KEYS = ('"gesetzesnummer"', '"bundesland"')
+
+    def _rewrite_legacy_keys(self) -> None:
+        """Re-save a row that still carries a German key under the English one, once, at startup.
+
+        The row is read through the aliases either way; this only stops the old
+        names lingering until some admin happens to save. Same ``version``: the
+        content is unchanged, so an admin tab holding that version stays valid.
+        Fail-open like every other read here.
+        """
+        from sqlalchemy import text
+
+        try:
+            with self._sync_engine.begin() as conn:
+                rows = conn.execute(text("SELECT country, data FROM norm_registry")).fetchall()
+                for country, data in rows:
+                    if not any(key in data for key in self._LEGACY_STORED_KEYS):
+                        continue
+                    rewritten = NormsFile.model_validate_json(data).model_dump_json()
+                    conn.execute(
+                        text("UPDATE norm_registry SET data = :data WHERE country = :country"),
+                        {"data": rewritten, "country": country},
+                    )
+                    logger.info("norm_registry: rewrote legacy keys for %s", country)
+        except Exception:
+            logger.warning("norm_registry: legacy key rewrite skipped", exc_info=True)
 
     def _create_table(self, conn) -> None:
         from sqlalchemy import Column

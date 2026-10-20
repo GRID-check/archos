@@ -115,25 +115,25 @@ class TestAbsaetze:
     def test_the_named_subsection_is_cut_out_of_the_section(self):
         section = split_sections(_LAW)[0]
 
-        body, absatz = subsection_body(section, "2")
+        body, subsection = subsection_body(section, "2")
 
-        assert absatz == "2"
+        assert subsection == "2"
         assert body.startswith("(2) Die Baupläne")
         assert "Nachweis des Eigentums" not in body
 
     def test_the_run_in_first_subsection_is_found_too(self):
         """RIS writes "§ 63. (1) Dem …" on one line — Abs 1 has no line of its own."""
-        body, absatz = subsection_body(split_sections(_LAW)[0], "1")
+        body, subsection = subsection_body(split_sections(_LAW)[0], "1")
 
-        assert absatz == "1"
+        assert subsection == "1"
         assert "Nachweis des Eigentums" in body
         assert "Die Baupläne" not in body
 
     def test_a_subsection_the_section_does_not_have_returns_the_whole_section(self):
         """Never an empty passage, and never the wrong Absatz."""
-        body, absatz = subsection_body(split_sections(_LAW)[0], "9")
+        body, subsection = subsection_body(split_sections(_LAW)[0], "9")
 
-        assert absatz == ""
+        assert subsection == ""
         assert "Nachweis des Eigentums" in body
 
 

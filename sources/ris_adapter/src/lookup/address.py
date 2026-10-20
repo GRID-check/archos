@@ -92,10 +92,10 @@ _DOCUMENT_NUMBER_RE = re.compile(r"^(?=[A-Za-z0-9_.\-]*\d{4})[A-Za-z]{2,4}[A-Za-
 #: miss needs the PROVENANCE, not just the value: a wrong jurisdiction is the
 #: commonest silent RIS failure, and ``focus_entries`` drops other states' law
 #: without saying so.
-LAND_FROM_ARGUMENT = "jurisdiction argument"
-LAND_FROM_INSTRUMENT = "instrument argument"
-LAND_FROM_QUESTION = "the question"
-LAND_FROM_BRIEF = "the project brief"
+FEDERAL_STATE_FROM_ARGUMENT = "jurisdiction argument"
+FEDERAL_STATE_FROM_INSTRUMENT = "instrument argument"
+FEDERAL_STATE_FROM_QUESTION = "the question"
+FEDERAL_STATE_FROM_BRIEF = "the project brief"
 
 
 @dataclass(frozen=True)
@@ -108,12 +108,12 @@ class Address:
     numbers: tuple[str, ...] = ()
     #: The §§ a list named past :data:`MAX_ADDRESSED_SECTIONS`, not read.
     unread: tuple[str, ...] = ()
-    absatz: str = ""
+    subsection: str = ""
     law: str = ""
     url: str = ""
     document_number: str = ""
-    bundesland: str = ""
-    bundesland_source: str = ""
+    federal_state: str = ""
+    federal_state_source: str = ""
 
     @property
     def has_section(self) -> bool:
@@ -237,19 +237,19 @@ def parse_address(question: str, instrument: str, jurisdiction: str) -> Address:
     listed = items if len(items) > 1 else ()
     # An Absatz narrows ONE §; with a list it would narrow all of them to the
     # same number, which is never what "§ 5 Abs 2 und § 7" means.
-    absatz = None if listed else (SUBSECTION_RE.search(instrument) or SUBSECTION_RE.search(question or ""))
-    land, land_source = resolve_land(jurisdiction, instrument, question or "")
+    subsection = None if listed else (SUBSECTION_RE.search(instrument) or SUBSECTION_RE.search(question or ""))
+    federal_state, federal_state_source = assumed_federal_state(jurisdiction, instrument, question or "")
     return Address(
         kind=kind,
         number=section,
         numbers=listed[:MAX_ADDRESSED_SECTIONS],
         unread=listed[MAX_ADDRESSED_SECTIONS:],
-        absatz=absatz.group(1) if absatz else "",
+        subsection=subsection.group(1) if subsection else "",
         law=_law_name(instrument, url, number),
         url=url,
         document_number=number,
-        bundesland=land,
-        bundesland_source=land_source,
+        federal_state=federal_state,
+        federal_state_source=federal_state_source,
     )
 
 
@@ -271,7 +271,7 @@ def _law_name(instrument: str, url: str, number: str) -> str:
     return rest.strip(" ,.;-–")
 
 
-def resolve_land(jurisdiction: str, instrument: str, question: str) -> tuple[str, str]:
+def assumed_federal_state(jurisdiction: str, instrument: str, question: str) -> tuple[str, str]:
     """The Bundesland to work in, and WHERE it came from.
 
     Precedence is the caller's explicit word, then the instrument they named,
@@ -283,32 +283,32 @@ def resolve_land(jurisdiction: str, instrument: str, question: str) -> tuple[str
     if not _CATALOG_AVAILABLE:
         return "", ""
     for value, origin in (
-        (jurisdiction, LAND_FROM_ARGUMENT),
-        (instrument, LAND_FROM_INSTRUMENT),
-        (question, LAND_FROM_QUESTION),
+        (jurisdiction, FEDERAL_STATE_FROM_ARGUMENT),
+        (instrument, FEDERAL_STATE_FROM_INSTRUMENT),
+        (question, FEDERAL_STATE_FROM_QUESTION),
     ):
-        land = extract_federal_state(value) if value else None
-        if land:
-            return land, origin
-    return _land_from_brief()
+        federal_state = extract_federal_state(value) if value else None
+        if federal_state:
+            return federal_state, origin
+    return _federal_state_from_brief()
 
 
-def land_sentence(address: Address) -> str:
+def federal_state_sentence(address: Address) -> str:
     """The assumed jurisdiction and where it came from, as one sentence.
 
     Rendered on a HIT as well as on a miss: ``focus_entries`` silently drops
     every other state's law, so the assumption that did the dropping has to be
     visible in the result it produced, not only in the result it prevented.
     """
-    if not address.bundesland:
+    if not address.federal_state:
         return (
             "No Bundesland was resolved (not in the arguments, the question or the project brief), "
             "so state law was not narrowed to one Land."
         )
-    return f"Assumed Bundesland: {address.bundesland} (from {address.bundesland_source})."
+    return f"Assumed Bundesland: {address.federal_state} (from {address.federal_state_source})."
 
 
-def _land_from_brief() -> tuple[str, str]:
+def _federal_state_from_brief() -> tuple[str, str]:
     """The project brief's structured jurisdiction, or ``("", "")``.
 
     ``resolve_federal_state(None)`` reads the validated token off the signed
@@ -318,8 +318,8 @@ def _land_from_brief() -> tuple[str, str]:
     try:
         from aiq_agent.common.norm_registry import resolve_federal_state
 
-        land = resolve_federal_state(None)
+        federal_state = resolve_federal_state(None)
     except Exception:  # noqa: BLE001 — no request context is the normal case off-request
         logger.debug("ris_lookup: no project-brief jurisdiction available", exc_info=True)
         return "", ""
-    return (land, LAND_FROM_BRIEF) if land else ("", "")
+    return (federal_state, FEDERAL_STATE_FROM_BRIEF) if federal_state else ("", "")

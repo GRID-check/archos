@@ -735,7 +735,7 @@ class TestFindAndBrief:
     async def test_find_prints_each_projects_land_after_its_period_and_names_one_that_is_not_this_chats(
         self, monkeypatch, calls, turn, schema
     ) -> None:
-        """The Land is printed; one other than this chat's project's carries the Bauordnung warning of `_land_note`."""
+        """The Land is printed; one other than this chat's project's carries the warning of `_federal_state_note`."""
         monkeypatch.setattr(
             project_context, "get_signed_request_context", lambda: type("Context", (), {"federal_state": "vienna"})()
         )
