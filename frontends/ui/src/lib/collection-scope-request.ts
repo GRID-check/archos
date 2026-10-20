@@ -13,7 +13,7 @@ import {
   type ScopeContext,
   type ScopedCollection,
 } from '@/lib/collection-scope'
-import { archivCollectionName } from '@/lib/archiv/collection'
+import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 
 export interface RequestContext {
@@ -266,8 +266,8 @@ export async function buildCollectionScopeFromRequest(
   // Inject the org-wide Archiv collection for every authenticated request in an
   // org — this is what makes the Archiv "shared across every project"
   // (ADR-0024). Anonymous requests have no org, so none.
-  const archivCollection =
-    session?.organizationId && !anonymous ? archivCollectionName(session.organizationId) : undefined
+  const officeShelfCollection =
+    session?.organizationId && !anonymous ? officeShelfCollectionName(session.organizationId) : undefined
 
   // Every collection below is BUILT here, so its shelf is known here (ADR-0047:
   // the shelf travels as data). Nothing re-reads a name to recover it — the map
@@ -296,7 +296,7 @@ export async function buildCollectionScopeFromRequest(
   const shelfByCollection = new Map<string, CollectionShelf>()
   // The base knowledge corpus, and nothing else, is `base`.
   shelfByCollection.set(baseCollection, 'base')
-  if (archivCollection) shelfByCollection.set(archivCollection, 'archiv')
+  if (officeShelfCollection) shelfByCollection.set(officeShelfCollection, 'archiv')
   if (projectCollection) shelfByCollection.set(projectCollection, 'project')
   // A restricted folder's collection is the project's knowledge, filed apart.
   for (const restricted of restrictedCollections) shelfByCollection.set(restricted, 'project')
@@ -307,7 +307,7 @@ export async function buildCollectionScopeFromRequest(
     projectCollectionName: projectCollection,
     includeProject,
     conversationId: sessionCollection,
-    archivCollectionName: archivCollection,
+    officeShelfCollectionName: officeShelfCollection,
     baseCollection,
     restrictedCollections,
   } satisfies ScopeContext)

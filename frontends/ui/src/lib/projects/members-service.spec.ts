@@ -16,8 +16,8 @@ vi.mock('./repository', () => ({
   findProjectWorkosResourceId: vi.fn().mockResolvedValue('res_project_1'),
 }))
 
-const steckbrief = vi.hoisted(() => ({ recordMemberLeft: vi.fn(), recordMemberRejoined: vi.fn() }))
-vi.mock('./steckbrief-service', () => steckbrief)
+const projectRecord = vi.hoisted(() => ({ recordMemberLeft: vi.fn(), recordMemberRejoined: vi.fn() }))
+vi.mock('./project-record-service', () => projectRecord)
 
 vi.mock('@/lib/collaboration/cleanup', () => ({
   revokeCollaborationForProjectMember: vi.fn().mockResolvedValue(undefined),
@@ -73,8 +73,8 @@ beforeEach(() => {
   listRoleAssignmentsForResource.mockReset()
   removeRoleAssignment.mockClear()
   assignRole.mockClear()
-  steckbrief.recordMemberLeft.mockClear()
-  steckbrief.recordMemberRejoined.mockClear()
+  projectRecord.recordMemberLeft.mockClear()
+  projectRecord.recordMemberRejoined.mockClear()
 })
 
 describe('setProjectMemberRole — last-admin guard', () => {
@@ -188,33 +188,33 @@ describe('removeProjectRoleAssignment — last-admin guard', () => {
   })
 })
 
-describe('the Steckbrief keeps who worked on the project (ADR-0091)', () => {
+describe('the project record keeps who worked on the project (ADR-0091)', () => {
   const dated = (assignment: Assignment, createdAt: string): Assignment => ({ ...assignment, createdAt })
 
   it('someone taken off the project stays on as a former member, from the month they joined', async () => {
     stubAssignments([admin('ra_1', 'om_admin'), dated(editor('ra_2', 'om_editor'), '2024-02-14T10:00:00Z')])
     await setProjectMemberRole(session, 'p1', { organizationMembershipId: 'om_editor', roleSlug: '' }, request)
-    expect(steckbrief.recordMemberLeft).toHaveBeenCalledWith(session, 'p1', { userId: 'user_of_om_editor', since: '2024-02' })
-    expect(steckbrief.recordMemberRejoined).not.toHaveBeenCalled()
+    expect(projectRecord.recordMemberLeft).toHaveBeenCalledWith(session, 'p1', { userId: 'user_of_om_editor', since: '2024-02' })
+    expect(projectRecord.recordMemberRejoined).not.toHaveBeenCalled()
   })
 
   it('a role change is no leaving, and putting someone back makes them current again', async () => {
     stubAssignments([admin('ra_1', 'om_admin'), editor('ra_2', 'om_editor')])
     await setProjectMemberRole(session, 'p1', { organizationMembershipId: 'om_editor', roleSlug: 'project-viewer' }, request)
-    expect(steckbrief.recordMemberLeft).not.toHaveBeenCalled()
-    expect(steckbrief.recordMemberRejoined).not.toHaveBeenCalled()
+    expect(projectRecord.recordMemberLeft).not.toHaveBeenCalled()
+    expect(projectRecord.recordMemberRejoined).not.toHaveBeenCalled()
 
     await setProjectMemberRole(session, 'p1', { organizationMembershipId: 'om_new', roleSlug: 'project-editor' }, request)
-    expect(steckbrief.recordMemberRejoined).toHaveBeenCalledWith(session, 'p1', 'user_of_om_new')
+    expect(projectRecord.recordMemberRejoined).toHaveBeenCalledWith(session, 'p1', 'user_of_om_new')
   })
 
   it('removing an assignment keeps the member only when it was their last on the project', async () => {
     stubAssignments([admin('ra_1', 'om_admin'), editor('ra_2', 'om_editor'), editor('ra_3', 'om_editor')])
     await removeProjectRoleAssignment(session, 'p1', 'ra_2', request)
-    expect(steckbrief.recordMemberLeft).not.toHaveBeenCalled()
+    expect(projectRecord.recordMemberLeft).not.toHaveBeenCalled()
 
     stubAssignments([admin('ra_1', 'om_admin'), dated(editor('ra_3', 'om_editor'), '2025-01-05T08:00:00Z')])
     await removeProjectRoleAssignment(session, 'p1', 'ra_3', request)
-    expect(steckbrief.recordMemberLeft).toHaveBeenCalledWith(session, 'p1', { userId: 'user_of_om_editor', since: '2025-01' })
+    expect(projectRecord.recordMemberLeft).toHaveBeenCalledWith(session, 'p1', { userId: 'user_of_om_editor', since: '2025-01' })
   })
 })

@@ -15,8 +15,8 @@ import { FINGERPRINT_KEYS, factLabel, fingerprintLabels, fingerprintOf, type Fin
 
 type Answers = Record<string, ProjectPrimitiveValue>
 
-const built = (answers: Answers, bauwerke = [{ id: 'bw1', name: 'Bauwerk 1' }]) =>
-  buildIntakeProfile(answers, projectIntakeDefinitionV1, { bauwerke })
+const built = (answers: Answers, buildings = [{ id: 'bw1', name: 'Bauwerk 1' }]) =>
+  buildIntakeProfile(answers, projectIntakeDefinitionV1, { buildings })
 
 const byKey = (facts: FingerprintFact[]) => Object.fromEntries(facts.map((fact) => [fact.key, fact]))
 
@@ -78,7 +78,7 @@ describe('fingerprintOf', () => {
     expect(facts.bauweise).toMatchObject({ value: null, applies: true, editable: true })
   })
 
-  it('knows the wizard derives the Gebäudeklasse, so the briefing cannot fill it', () => {
+  it('knows the wizard derives the building class, so the briefing cannot fill it', () => {
     const facts = byKey(fingerprintOf(built({ A2_land: 'wien', 'C1@bw1': 'gebaeude' })))
 
     expect(facts.gebaeudeklasse).toMatchObject({ value: null, applies: true, editable: false })

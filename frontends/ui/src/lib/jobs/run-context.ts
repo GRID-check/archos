@@ -17,7 +17,7 @@ import { getBudgetStatus } from '@/lib/budgets/service'
 import { computeCollectionScope } from '@/lib/collection-scope'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
+import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { requesterOf, type GridBudgetSnapshot, type GridRequestContextInput } from '@/lib/request-context'
@@ -44,7 +44,7 @@ export async function resolveRunContext({ organizationId, projectId, userId }: R
     modelOverrides,
     collectionScope,
     projectContext,
-    bundesland,
+    federalState,
     projectMemory,
     memoryReflectionEnabled,
     orgInstructions,
@@ -54,7 +54,7 @@ export async function resolveRunContext({ organizationId, projectId, userId }: R
     getEffectiveModelOverrides(organizationId).catch(() => null),
     buildProjectCollectionScope(projectId, organizationId),
     loadProjectPromptView(projectId, organizationId).catch(() => null),
-    loadProjectBundesland(projectId, organizationId).catch(() => null),
+    loadProjectFederalState(projectId, organizationId).catch(() => null),
     buildProjectMemoryDigest(projectId, organizationId, { query: prompt }).catch(() => null),
     isMemoryReflectionEnabled(organizationId).catch(() => false),
     // The organization's standing instruction block. A scheduled or delegated
@@ -71,7 +71,7 @@ export async function resolveRunContext({ organizationId, projectId, userId }: R
     modelOverrides,
     collectionScope,
     projectContext,
-    bundesland,
+    bundesland: federalState,
     projectMemory,
     memoryReflectionEnabled,
     orgInstructions,

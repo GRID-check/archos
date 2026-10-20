@@ -25,10 +25,10 @@ function keys(findings: ReturnType<typeof check>): string[] {
 describe('checkIntakeConsistency — fossil heat source on a new build', () => {
   it('flags a gas heat supply on a new build (Erneuerbare-Wärme-Gesetz)', () => {
     const findings = check({ A5: ['neubau'], 'E1@bw1': 'gas' })
-    const finding = findings.find((f) => f.messageKey === 'fossilNeubauConflict')!
+    const finding = findings.find((f) => f.messageKey === 'fossilNewBuildConflict')!
     expect(finding).toBeDefined()
     expect(finding.severity).toBe('inconsistency')
-    expect(finding.params).toMatchObject({ bauwerk: 'Bauwerk 1' })
+    expect(finding.params).toMatchObject({ building: 'Bauwerk 1' })
     expect(finding.fields[0]).toBe('Art des Vorhabens (Projekt gesamt)')
   })
 
@@ -39,7 +39,7 @@ describe('checkIntakeConsistency — fossil heat source on a new build', () => {
       'E1@bw2': 'waermepumpe',
       'E1@bw3': 'gas',
     })
-    expect(findings.filter((f) => f.messageKey === 'fossilNeubauConflict')).toHaveLength(2)
+    expect(findings.filter((f) => f.messageKey === 'fossilNewBuildConflict')).toHaveLength(2)
   })
 
   it('does NOT flag gas on an existing-building project', () => {
@@ -59,7 +59,7 @@ describe('checkIntakeConsistency — fossil heat source on a new build', () => {
 describe('checkIntakeConsistency — profile entry point', () => {
   it('runs the rules against a reconstructed profile', () => {
     const profile = buildIntakeProfile({ A5: ['neubau'], 'E1@bw1': 'gas' }, definition)
-    expect(keys(checkIntakeConsistency(profile, definition))).toContain('fossilNeubauConflict')
+    expect(keys(checkIntakeConsistency(profile, definition))).toContain('fossilNewBuildConflict')
   })
 
   it('returns [] for a consistent (or too-sparse) profile', () => {

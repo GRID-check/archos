@@ -35,7 +35,7 @@ vi.mock('@/lib/documents/access', () => ({
   })),
 }))
 vi.mock('@/lib/projects/service', () => ({ listChatProjects: vi.fn(async () => state.reach) }))
-vi.mock('@/lib/archiv/repository', () => ({ findArchivDocumentsByFilenames: vi.fn(async () => []) }))
+vi.mock('@/lib/office-shelf/repository', () => ({ findOfficeShelfDocumentsByFilenames: vi.fn(async () => []) }))
 vi.mock('@/lib/documents/shelf-listing', () => ({ toListedDocuments: vi.fn(async () => []) }))
 vi.mock('@/lib/documents/service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/documents/service')>()
@@ -57,7 +57,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
 })
 
 import { ServiceUnavailableError } from '@/lib/api/errors'
-import { findArchivDocumentsByFilenames } from '@/lib/archiv/repository'
+import { findOfficeShelfDocumentsByFilenames } from '@/lib/office-shelf/repository'
 import { BACKEND_SEARCH_MAX_COLLECTIONS, hydrateProjectHits } from '@/lib/documents/service'
 import { findSimilarPassages, foldDocuments } from './service'
 
@@ -139,7 +139,7 @@ describe('a failed join to the documents', () => {
 
   it('is the error state for the Büroablage’s hits too', async () => {
     answering('archiv_org_1', 'musterdetail.pdf')
-    vi.mocked(findArchivDocumentsByFilenames).mockRejectedValueOnce(new Error('connection terminated'))
+    vi.mocked(findOfficeShelfDocumentsByFilenames).mockRejectedValueOnce(new Error('connection terminated'))
 
     await expect(findSimilarPassages(session, request)).rejects.toBeInstanceOf(ServiceUnavailableError)
   })

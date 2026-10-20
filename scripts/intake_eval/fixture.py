@@ -326,12 +326,12 @@ def list_files_tool(fixture: Fixture) -> StructuredTool:
         fassungen_of: str | None = None,
         compare_to: str | None = None,
     ) -> str:
-        from knowledge_layer.browse import render_fassungen
         from knowledge_layer.browse import render_listing
+        from knowledge_layer.browse import render_revisions
         from knowledge_layer.browse import select_files
 
         if fassungen_of:
-            return render_fassungen(rows, fassungen_of, default_shelves=("project",))
+            return render_revisions(rows, fassungen_of, default_shelves=("project",))
         listing = select_files(
             rows,
             default_shelves=("project",),

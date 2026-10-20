@@ -27,7 +27,7 @@ import {
   activePhase,
   completedBefore,
   elapsedMs,
-  grundlageReceipt,
+  basisReceipt,
   isLiveStatus,
   phaseDurationMs,
   phaseState,
@@ -199,7 +199,7 @@ describe('elapsedMs and phaseDurationMs', () => {
   })
 })
 
-describe('grundlageReceipt', () => {
+describe('basisReceipt', () => {
   it('reads every named document against the steps: read with its loci, or unread', () => {
     const ledger: RunLedger = {
       ...researching(),
@@ -208,7 +208,7 @@ describe('grundlageReceipt', () => {
         { name: 'Einreichplan.pdf', shelf: 'project', loci: [] },
       ],
     }
-    const receipt = grundlageReceipt(ledger)
+    const receipt = basisReceipt(ledger)
     expect(receipt.map((row) => [row.doc.name, row.read, row.loci])).toEqual([
       ['grundriss eg', true, ['S. 1']],
       ['Einreichplan.pdf', false, []],
@@ -234,10 +234,10 @@ describe('grundlageReceipt', () => {
       at(70)
     )
     const withNamed: RunLedger = { ...ledger, grundlage: [{ name: 'Grundriss EG', loci: [] }] }
-    expect(grundlageReceipt(withNamed)[0]?.loci).toEqual(['S. 1', 'Achse C–E', 'S. 2', 'S. 3'])
+    expect(basisReceipt(withNamed)[0]?.loci).toEqual(['S. 1', 'Achse C–E', 'S. 2', 'S. 3'])
   })
 
   it('is empty for a run nobody named documents for', () => {
-    expect(grundlageReceipt(researching())).toEqual([])
+    expect(basisReceipt(researching())).toEqual([])
   })
 })

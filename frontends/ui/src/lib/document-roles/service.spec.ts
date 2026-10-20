@@ -122,7 +122,7 @@ vi.mock('./repository', () => ({
   }),
 }))
 
-const { bauwerkIds, declareDocumentRole, listDocumentRoles, revokeDocumentRole } = await import('./service')
+const { buildingIds, declareDocumentRole, listDocumentRoles, revokeDocumentRole } = await import('./service')
 const { requireProjectAccess } = await import('@/lib/authz/projects')
 const { getHiddenFolderIds } = await import('@/lib/authz/folder-access')
 const repository = await import('./repository')
@@ -165,7 +165,7 @@ describe('declareDocumentRole', () => {
     expect(repo.inserted).toHaveLength(0)
   })
 
-  it('refuses a bauwerk role with no building', async () => {
+  it('refuses a building role with no building', async () => {
     await expect(
       declareDocumentRole(
         { projectId: 'proj-1', documentId: 'doc-1', role: 'bestandsplan' },
@@ -352,7 +352,7 @@ describe('declareDocumentRole — a repeat can confirm', () => {
   })
 })
 
-describe('declareDocumentRole — the Bauwerk has to exist', () => {
+describe('declareDocumentRole — the building has to exist', () => {
   beforeEach(() => {
     repo.bindings = []
     repo.inserted = []
@@ -430,7 +430,7 @@ describe('bauwerkIds', () => {
   })
 
   it('names exactly the buildings the profile has', () => {
-    // Bauwerk 1 was removed in the wizard; 2 and 3 remain.
+    // building 1 was removed in the wizard; 2 and 3 remain.
     const saved: ProjectProfile = {
       facts: { 'bauwerk_name@bw2': fact('Hoftrakt'), 'bauwerk_name@bw3': fact('Garage') },
       goals: {},
@@ -438,20 +438,20 @@ describe('bauwerkIds', () => {
       assumptions: {},
     }
 
-    expect(bauwerkIds(saved)).toEqual(['bw2', 'bw3'])
+    expect(buildingIds(saved)).toEqual(['bw2', 'bw3'])
   })
 
   it('names the implicit first building of a profile that names none, or of no profile', () => {
-    expect(bauwerkIds(emptyProfile())).toEqual(['bw1'])
-    expect(bauwerkIds(null)).toEqual(['bw1'])
+    expect(buildingIds(emptyProfile())).toEqual(['bw1'])
+    expect(buildingIds(null)).toEqual(['bw1'])
   })
 })
 
 describe('restricted folders (ADR-0087)', () => {
-  const HONORARE = 'folder-honorare'
+  const FEES = 'folder-honorare'
 
   beforeEach(() => {
-    vi.mocked(getHiddenFolderIds).mockResolvedValue([HONORARE])
+    vi.mocked(getHiddenFolderIds).mockResolvedValue([FEES])
     repo.hiddenDocumentIds = ['doc-fee']
   })
 
@@ -465,7 +465,7 @@ describe('restricted folders (ADR-0087)', () => {
 
     expect(getHiddenFolderIds).toHaveBeenCalledWith(session, 'proj-1')
     expect(repository.listProjectDocumentRoles).toHaveBeenCalledWith('proj-1', {
-      hiddenFolderIds: [HONORARE],
+      hiddenFolderIds: [FEES],
       documents: { kind: 'member', userId: 'user-1' },
     })
     expect(listed.map((b) => b.filename)).toEqual(['bplan.pdf'])

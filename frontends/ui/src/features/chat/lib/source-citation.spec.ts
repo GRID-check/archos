@@ -1,5 +1,5 @@
 import { describe, test, expect, vi } from 'vitest'
-import { toCslItem, toFachtext, toFachtextList, toQuoteList } from './source-citation'
+import { toCslItem, toTechnicalText, toTechnicalTextList, toQuoteList } from './source-citation'
 import { renderCitations } from './citation-export'
 import { renderCitations as renderOnServer } from '@/lib/citations/render'
 import { buildCitationModel, type CitationRef } from './citations'
@@ -65,7 +65,7 @@ const projectDoc = refFor({
 })
 
 describe('toCslItem', () => {
-  test('an OIB Richtlinie is a CSL standard with publisher, edition and page', () => {
+  test('an OIB guideline is a CSL standard with publisher, edition and page', () => {
     const csl = toCslItem(oib, NOW)
 
     expect(csl.type).toBe('standard')
@@ -116,23 +116,23 @@ describe('toCslItem', () => {
   })
 })
 
-describe('toFachtext', () => {
-  test('cites an OIB Richtlinie the way the OIB itself does', () => {
-    expect(toFachtext(oib, NOW)).toBe(
+describe('toTechnicalText', () => {
+  test('cites an OIB guideline the way the OIB itself does', () => {
+    expect(toTechnicalText(oib, NOW)).toBe(
       'OIB-Richtlinie 2 – Brandschutz, Ausgabe Mai 2023, S. 18 ' +
         '(Österreichisches Institut für Bautechnik, Wien).'
     )
   })
 
   test('cites a legal norm with its source and retrieval date', () => {
-    expect(toFachtext(law, NOW)).toBe(
+    expect(toTechnicalText(law, NOW)).toBe(
       'Bauordnung für Wien § 108, in: Rechtsinformationssystem des Bundes (RIS), ' +
         'abgerufen am 28.07.2026: https://www.ris.bka.gv.at/x.'
     )
   })
 
   test('numbers the bibliography the way the answer cites it', () => {
-    expect(toFachtextList([oib, law], NOW).split('\n')[1]).toMatch(/^\[2\] Bauordnung/)
+    expect(toTechnicalTextList([oib, law], NOW).split('\n')[1]).toMatch(/^\[2\] Bauordnung/)
   })
 })
 
@@ -160,7 +160,7 @@ describe('toQuoteList', () => {
   })
 
   test('falls back to Fachtext when no passage was retrieved', () => {
-    expect(toQuoteList([oib], NOW)).toBe(toFachtextList([oib], NOW))
+    expect(toQuoteList([oib], NOW)).toBe(toTechnicalTextList([oib], NOW))
   })
 })
 
@@ -307,8 +307,8 @@ describe('CSL ids are unique per reference', () => {
  * export then dropped it, so a citation an architect pastes into a Befund named
  * the PAGE — a fact about one edition's PDF — instead of the requirement.
  */
-describe('a Punkt is carried through to the citation', () => {
-  const withPunkt = refFor({
+describe('a clause is carried through to the citation', () => {
+  const withClause = refFor({
     id: 'p1',
     content: '',
     timestamp: NOW,
@@ -326,13 +326,13 @@ describe('a Punkt is carried through to the citation', () => {
   })
 
   test('rides on the CSL item as `section`, which is the field for it', () => {
-    expect(toCslItem(withPunkt, NOW).section).toBe('3.5.2')
+    expect(toCslItem(withClause, NOW).section).toBe('3.5.2')
   })
 
   test('is named before the page in the Fachtext form', () => {
     // The requirement identifies itself; the page only says where this edition
     // prints it.
-    const text = toFachtext(withPunkt, NOW)
+    const text = toTechnicalText(withClause, NOW)
 
     expect(text).toContain('Pkt. 3.5.2')
     expect(text).toContain('S. 12')
@@ -342,9 +342,9 @@ describe('a Punkt is carried through to the citation', () => {
   test('carries „Pkt." only before a bare number', () => {
     // A project document's section is addressed by what it is called („§ 4",
     // „Zeilen 2-41"); prefixing those with „Pkt." names nothing.
-    for (const punkt of ['§ 4', 'Zeilen 2-41', 'Geschoße', 'Tabelle 3']) {
-      const text = toFachtext({ ...withPunkt, locus: { ...withPunkt.locus!, punkt } }, NOW)
-      expect(text).toContain(`, ${punkt}, `)
+    for (const clause of ['§ 4', 'Zeilen 2-41', 'Geschoße', 'Tabelle 3']) {
+      const text = toTechnicalText({ ...withClause, locus: { ...withClause.locus!, punkt: clause } }, NOW)
+      expect(text).toContain(`, ${clause}, `)
       expect(text).not.toContain('Pkt.')
     }
   })
@@ -353,6 +353,6 @@ describe('a Punkt is carried through to the citation', () => {
     // A document-level reference has no Punkt, and inventing one would be the
     // same overstatement `refPage` refuses for pages.
     expect(toCslItem(oib, NOW).section).toBeUndefined()
-    expect(toFachtext(oib, NOW)).not.toContain('Pkt.')
+    expect(toTechnicalText(oib, NOW)).not.toContain('Pkt.')
   })
 })

@@ -487,7 +487,7 @@ settled stays settled.
 A mark is set on one Fassung, because a position is true of the sheet somebody
 looked at. When the document gets a new Fassung, its open marks stay open and
 are listed and drawn only as ghosts (above), and the people working on them are told how many to
-check (`document.new_fassung`, [`fassungen.md`](fassungen.md#notifications)).
+check (`document.new_fassung`, [`revisions.md`](revisions.md#notifications)).
 A mark that still holds goes on with the new Fassung: „Auf aktuelle Fassung
 übernehmen“ in its card's first line, for whoever may edit an open mark
 (`carryToCurrent`, `lib/annotations/service.ts`). It keeps its place on the
@@ -505,7 +505,7 @@ longer fits is resolved and set again instead.
   (`CARRY_AT_ONCE`, `inPool`); a mark moved in place takes its PATCH's
   answer, and nothing is read again.
 - **Under another name** (Index B confirmed as replaced by Index C, `supersededBy`
-  in `lib/documents/fassung.ts`; through a chain, its end, read only through
+  in `lib/documents/revision-links.ts`; through a chain, its end, read only through
   documents the carrier may open, `lib/annotations/carry.ts`: a link the shelf
   shows into a document the carrier cannot open, a closed folder, ends the walk
   at the last one they can) the mark cannot
@@ -524,7 +524,7 @@ longer fits is resolved and set again instead.
   every link expects it; C's card says „Übernommen aus „B“, Anmerkung 4“ and
   B's „Weiter in „C“ als Anmerkung 7“, each a link to the other review where
   the page addresses documents by `?doc=` (Dateien, the Büroablage; over the
-  chat the name stands without a link, `features/documents/lib/fassung-links.ts`).
+  chat the name stands without a link, `features/documents/lib/revision-links.ts`).
   Closing B's mark settles what it asked of people; its Zuständige is asked
   again on C's mark (`annotation.assigned_to_you`), unless they carried it
   themselves. A mark Piloti works is taken back first: its running turn writes
@@ -551,7 +551,7 @@ where it has a `carryTarget` (labelled for a screen reader with its number,
 last, not after each: thirty marks are thirty PATCHes and two reads; a mark
 that did not go leaves „Nicht alle Anmerkungen konnten übernommen werden“),
 and „Fassungen vergleichen“, the comparison the inbox row opens
-(`compareFassungHref`). A list of B that could not be read stays as its group,
+(`compareRevisionHref`). A list of B that could not be read stays as its group,
 saying so, with „Erneut versuchen“ (`retryCarried`). In B's review an open
 mark's card says „Dieses Dokument ist durch „C“ ersetzt.“ and offers
 „In „D“ übernehmen“, D being its `carryTarget`. The header says
@@ -651,7 +651,7 @@ live marks the pane's review holds, before the signature, Piloti's untaken
 proposals apart from the open ones as the chip tells them: „2 offene
 Anmerkungen und 12 Vorschläge von Piloti – trotzdem freigeben?“, with „In der Prüfansicht öffnen“ beside it
 as a link in the sentence (`openMarks`, handed down from `file-preview-pane.tsx`
-through `DocumentFassungen`; drawn as `Button variant="inline"`, underlined at
+through `DocumentRevisions`; drawn as `Button variant="inline"`, underlined at
 rest, because `link` is ink like the sentence around it and underlines only on
 hover). It informs and never blocks: approving with open points
 is the reviewer's call, approving without knowing about them is the mistake.
@@ -1550,7 +1550,7 @@ it, and the project is not closed (`protocolFiling`, `file-preview-pane.tsx`).
 
 ## Known debts
 
-- „Fassungen vergleichen“ compares two documents (`fassung-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried with only its ghost pin to show where it stood.
+- „Fassungen vergleichen“ compares two documents (`revision-compare-service.ts`); two versions under the same name have no visual comparison yet, so a mark of an earlier Fassung of the same document is carried with only its ghost pin to show where it stood.
 - A mark carried on to a replacing document starts a new thread there; the old one is read on the replaced document, by the link in the card. The two are not one timeline.
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.

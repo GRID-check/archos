@@ -13,7 +13,7 @@
  * than opening a viewer that cannot render.
  */
 
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import type { Shelf } from '../source-kinds'
 import { citedLoci, isHttpUrl, type CitationLocus, type CitedDocument } from './model'
 import { parseKbLocator, type KbCitationLocator } from './locator'
@@ -45,7 +45,7 @@ export interface StoredDocumentRef {
    * `fassung.supersededBy` of the resolved listing row (CONTEXT.md, „Fassung"). Set
    * means the row IS an older Fassung, and a citation of it says so.
    */
-  supersededBy?: FassungRef | null
+  supersededBy?: RevisionRef | null
 }
 
 /**
@@ -113,7 +113,7 @@ export type CitationTarget =
         | { type: 'stored'; id: string; filename: string; contentType: string | null }
         | { type: 'base'; fileName: string }
       /** Set when the cited document is an older Fassung: the one that replaces it. */
-      supersededBy?: FassungRef
+      supersededBy?: RevisionRef
     }
   | {
       /**
@@ -138,7 +138,7 @@ export type CitationTarget =
       snippet?: string
       document: { type: 'stored'; id: string; filename: string; contentType: string | null }
       /** Set when the cited document is an older Fassung: the one that replaces it. */
-      supersededBy?: FassungRef
+      supersededBy?: RevisionRef
     }
   | { kind: 'info'; title: string; snippet?: string }
 
@@ -177,7 +177,7 @@ const renditionPage = (filename: string, locus: CitationLocus | undefined): numb
 }
 
 /** The key a target carries when its document is an older Fassung, and nothing otherwise. */
-const supersededByOf = (row: StoredDocumentRef): { supersededBy?: FassungRef } =>
+const supersededByOf = (row: StoredDocumentRef): { supersededBy?: RevisionRef } =>
   row.supersededBy ? { supersededBy: row.supersededBy } : {}
 
 /** The document's filename + shelf, however it can be recovered. */

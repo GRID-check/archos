@@ -483,7 +483,7 @@ itself teaches nobody what it cost to find them.
     ingest whose check lands between those two steps still saw the row. Every
     immediate delete now purges once more after the row is gone, which closes
     it: the project and Archiv deletes (`deleteDocument`,
-    `deleteArchivDocument`), the single chat-attachment delete
+    `deleteOfficeShelfDocument`), the single chat-attachment delete
     (`deleteSessionDocument`) and a whole chat's attachment purge
     (`purgeSessionDocuments`, `lib/session-documents/cleanup.ts`, for the rows
     that pass erased). An ingest that asked before the row went has indexed by

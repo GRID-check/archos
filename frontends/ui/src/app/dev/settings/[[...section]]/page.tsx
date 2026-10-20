@@ -41,7 +41,7 @@ import { FIXTURE_PROJECT_ID, FIXTURE_USER_ID, HISTORY } from '../../_fixtures/up
 import { SIMILAR_PAGE } from '../../_fixtures/similar-projects'
 import { SimilarProjects } from '@/features/references/components/similar-projects'
 import { SimilarProjectsTile } from '@/features/projects/components/overview/similar-projects-tile'
-import { answerSteckbrief, useDevSteckbrief } from '../../_fixtures/steckbrief'
+import { answerProjectRecord, useDevProjectRecord } from '../../_fixtures/project-record'
 
 const PROJECT_ID = FIXTURE_PROJECT_ID
 
@@ -169,8 +169,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       // reaches the real route, so the shim never swallows work it does not own.
       const read = (init?.method ?? (input instanceof Request ? input.method : 'GET')) === 'GET'
       // The Steckbrief's reads and writes both: the fixture keeps the edits.
-      const steckbrief = await answerSteckbrief(PROJECT_ID, url, init)
-      if (steckbrief) return steckbrief
+      const projectRecord = await answerProjectRecord(PROJECT_ID, url, init)
+      if (projectRecord) return projectRecord
       if (read && url === `/api/projects/${PROJECT_ID}/uploads`)
         return Response.json({ uploads: HISTORY })
       if (read && url === `/api/projects/${PROJECT_ID}/members`) {
@@ -249,7 +249,7 @@ export default function SettingsDevPage({
   if (process.env.NODE_ENV !== 'development') notFound()
 
   const admin = search.get('as') !== 'viewer'
-  const steckbrief = useDevSteckbrief()
+  const projectRecord = useDevProjectRecord()
   const suffix = admin ? '' : '?as=viewer'
   const sections = visibleSettingsSections({ manageMembers: admin, manageBudget: admin })
   const current = (section?.[0] ?? 'overview') as ProjectSettingsSectionKey
@@ -288,7 +288,7 @@ export default function SettingsDevPage({
                 editProfile: admin,
                 manageMembers: admin,
               }}
-              steckbrief={{ ...steckbrief, canEdit: admin, canErase: admin }}
+              projectRecord={{ ...projectRecord, canEdit: admin, canErase: admin }}
               similar={
                 <SimilarProjectsTile
                   page={SIMILAR_PAGE}

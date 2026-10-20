@@ -54,7 +54,7 @@ sample house, so a filter that over-reaches fails too.
 
 `operators.adjacent_spaces` intersects the `bounds()` sets of two spaces and
 declares a neighbour on **any** shared element. It applies no filter for
-horizontal elements. `packages/ifc-spatial/test/fixtures/geschossdecke-und-fenster.ifc`
+horizontal elements. `packages/ifc-spatial/test/fixtures/floor-slab-and-window.ifc`
 was authored specifically to pin this down; its own header comment says:
 
 > „ONE SLAB UNDER MANY ROOMS. #26 is the floor of all three rooms … Two rooms
@@ -66,7 +66,7 @@ was authored specifically to pin this down; its own header comment says:
 Reproduce:
 
 ```python
-r = call("open_model", path=F + "geschossdecke-und-fenster.ifc")
+r = call("open_model", path=F + "floor-slab-and-window.ifc")
 h = r["model"]
 render("relations", call("relations", model=h, globalId="4Decke00000Space00001", relation="adjacentSpaces"))
 ```
@@ -283,7 +283,7 @@ it to the architect.
 so the template produces a sentence that means the opposite of what is intended:
 
 ```python
-r = call("open_model", path=F + "einheiten-fuss.ifc")
+r = call("open_model", path=F + "units-feet.ifc")
 h = r["model"]
 render("measure", call("measure", model=h, globalId="3Fuss000000Wall000001", measure="extent"))
 ```
@@ -414,9 +414,9 @@ BLIND  Geometrie-Pass noch nicht gelaufen (nur Topologie gelesen) → … sie si
        aber berechenbar, dieser Export trägt Geometrie
 ```
 
-`haus-mit-raeumen.ifc`, `einheiten-fuss.ifc`, `geschossdecke-und-fenster.ifc`
-and `strasse-ifc4x3.ifc` contain **no `Representation` on any product**.
-Reproduce: `print(call('open_model', path=F+'einheiten-fuss.ifc')['briefing'])`.
+`house-with-rooms.ifc`, `units-feet.ifc`, `floor-slab-and-window.ifc`
+and `road-ifc4x3.ifc` contain **no `Representation` on any product**.
+Reproduce: `print(call('open_model', path=F+'units-feet.ifc')['briefing'])`.
 
 This is a false capability claim in the one block whose whole job is to say what
 the file cannot answer, and it is the opposite of the failure the docstring above
@@ -476,7 +476,7 @@ renderer must not share a result; this is the third case, a *misleading* page,
 and it shares a result with a correct one.
 
 Related, same function: `view` on a model with no `IfcBuildingStorey` at all
-(`strasse-ifc4x3.ifc`) raises `ToolError` with „kein Bauteil **dieses
+(`road-ifc4x3.ifc`) raises `ToolError` with „kein Bauteil **dieses
 Geschoßes** trägt Geometrie, oder der Geschoßname trifft nichts" — a statement
 about a storey that does not exist. Agent-side it becomes „This is a problem with
 the arguments … check the GlobalId with operation='find_elements'", and no
@@ -661,7 +661,7 @@ These held up under deliberate attack and are worth stating as coverage:
   property's existence; no `minInclusive`, no enumerated value, no bound. The two
   non-exportable findings are listed with a reason instead of being silently
   dropped. Invariant 3 holds here.
-- **Length-unit resolution in `einheiten-fuss.ifc`.** Both traps (the stray
+- **Length-unit resolution in `units-feet.ifc`.** Both traps (the stray
   unassigned `DECI METRE` and the SI metre a foot is defined against) are
   answered correctly: `unit_scale = 0.3048`. Only the *area*-prefix case (finding
   7) is wrong.

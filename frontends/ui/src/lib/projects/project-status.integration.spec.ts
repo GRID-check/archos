@@ -33,7 +33,7 @@ const ROLES: Record<string, string[]> = {
 const PROJECT_MEMBERS = new Set(['om_member'])
 /** Who holds folder-editor on Verträge (its id once made): the member, and the outsider too. */
 const FOLDER_EDITORS = new Set(['om_member', 'om_outsider'])
-const vertraege = { id: '' }
+const contracts = { id: '' }
 
 vi.mock('@/lib/auth/membership-roles', () => ({
   resolveMembershipRoles: vi.fn(async (_org: string, userId: string) => ROLES[userId] ?? null),
@@ -54,8 +54,8 @@ vi.mock('@/lib/workos/client', () => ({
       // `heldFolderLevels`, for real: folder-editor gives folder:read and folder:write.
       listResourcesForMembership: vi.fn(async ({ organizationMembershipId }: { organizationMembershipId: string }) => ({
         autoPagination: async () =>
-          FOLDER_EDITORS.has(organizationMembershipId) && vertraege.id
-            ? [{ externalId: vertraege.id, resourceTypeSlug: 'folder' }]
+          FOLDER_EDITORS.has(organizationMembershipId) && contracts.id
+            ? [{ externalId: contracts.id, resourceTypeSlug: 'folder' }]
             : [],
       })),
     },
@@ -76,7 +76,7 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
   let repo: typeof import('./repository')
   let documentsRepo: typeof import('@/lib/documents/repository')
   let projectId: string
-  const folder = { vertraege: '', plaene: '', verwaltung: '' }
+  const folder = { contracts: '', plans: '', admin: '' }
 
   const inTenant = <T>(run: () => Promise<T>): Promise<T> => withTenant({ organizationId: ORG, userId: USER }, run)
   const firstId = (rows: Iterable<{ id: string }>): string => String(Array.from(rows)[0]?.id)
@@ -146,14 +146,14 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
     //   Verträge/   member, outsider: folder-editor   (restricted, its own collection)
     //   Pläne/      everyone reads
     //   Verwaltung/ inherits
-    folder.vertraege = await insertFolder('Verträge', { everyoneReads: false })
-    vertraege.id = folder.vertraege
-    folder.plaene = await insertFolder('Pläne', { everyoneReads: true })
-    folder.verwaltung = await insertFolder('Verwaltung', null)
+    folder.contracts = await insertFolder('Verträge', { everyoneReads: false })
+    contracts.id = folder.contracts
+    folder.plans = await insertFolder('Pläne', { everyoneReads: true })
+    folder.admin = await insertFolder('Verwaltung', null)
     await insertDocument('Lageplan.pdf', null)
-    await insertDocument('Einreichplan.pdf', folder.plaene)
-    await insertDocument('Protokoll.pdf', folder.verwaltung)
-    await insertDocument('Werkvertrag.pdf', folder.vertraege, access.restrictedCollectionName(COLLECTION, folder.vertraege))
+    await insertDocument('Einreichplan.pdf', folder.plans)
+    await insertDocument('Protokoll.pdf', folder.admin)
+    await insertDocument('Werkvertrag.pdf', folder.contracts, access.restrictedCollectionName(COLLECTION, folder.contracts))
   })
 
   /** Back to active from wherever a test left it. */
@@ -274,7 +274,7 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
     await inTenant(() => db.execute(sql`DELETE FROM task_definitions WHERE project_id = ${projectId}::uuid`))
   })
 
-  it('a close loses the race to a Beginn moved past its Abschluss: nothing changes, and no CHECK fires', async () => {
+  it('a close loses the race to a start moved past its closing: nothing changes, and no CHECK fires', async () => {
     await inTenant(() => db.execute(sql`UPDATE projects SET started_on = '2026-11-01', ended_on = NULL WHERE id = ${projectId}::uuid`))
     expect(await close()).toBeNull()
     await inTenant(() => db.execute(sql`UPDATE projects SET started_on = NULL WHERE id = ${projectId}::uuid`))
@@ -333,8 +333,8 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
     expect(await listedFor('plain')).toEqual(['Einreichplan.pdf', 'Lageplan.pdf', 'Protokoll.pdf'])
     const outsider = await access.getProjectFolderAccess(session('outsider'), projectId, COLLECTION)
     expect(outsider.clearedRestrictedCollections).toEqual([])
-    expect(await access.isFolderVisibleToMember(ORG, projectId, folder.vertraege, 'user_outsider')).toBe(false)
-    expect(await access.isFolderVisibleToMember(ORG, projectId, folder.vertraege, 'user_member')).toBe(true)
+    expect(await access.isFolderVisibleToMember(ORG, projectId, folder.contracts, 'user_outsider')).toBe(false)
+    expect(await access.isFolderVisibleToMember(ORG, projectId, folder.contracts, 'user_member')).toBe(true)
 
     await reopen()
     expect(await listedFor('member')).toEqual(before.member)

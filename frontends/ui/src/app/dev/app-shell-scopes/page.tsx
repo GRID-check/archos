@@ -56,7 +56,7 @@ const CHROME_FLAGS = {
   canViewOrganization: true,
   canManageOrganization: true,
   canManagePlatform: true,
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canAccessInbox: true,
 } as const
 
@@ -98,14 +98,14 @@ export default function AppShellScopesPreview(): JSX.Element {
       <ScopeColumn
         row
         caption="project scope — /app/projects/p-1/files"
-        tabBar={<PhoneTabBar projectId="p-1" canAccessArchiv canAccessInbox pathname="/app/projects/p-1/files" />}
+        tabBar={<PhoneTabBar projectId="p-1" canAccessOfficeShelf canAccessInbox pathname="/app/projects/p-1/files" />}
       >
         <AppSidebar projectId="p-1" projects={PROJECTS} showModels showSkills {...CHROME_FLAGS} />
       </ScopeColumn>
       <ScopeColumn
         row={false}
         caption="org scope — /app/projects"
-        tabBar={<PhoneTabBar projectId={null} canAccessArchiv canAccessInbox pathname="/app/projects" />}
+        tabBar={<PhoneTabBar projectId={null} canAccessOfficeShelf canAccessInbox pathname="/app/projects" />}
       >
         <OrgHeader {...CHROME_FLAGS} />
       </ScopeColumn>

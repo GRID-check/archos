@@ -186,7 +186,7 @@ describe('ProjectLifecycleCard', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
-  test('a project whose Beginn lies ahead closes in the Beginn\'s month, and offers nothing earlier', async () => {
+  test('a project whose start lies ahead closes in the start\'s month, and offers nothing earlier', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ items: [], considered: 0, aiUsed: false, aiError: null })))
     render(<ProjectLifecycleCard projectId="p1" lifecycle={{ ...ACTIVE, startedOn: '2099-01' }} />)
 

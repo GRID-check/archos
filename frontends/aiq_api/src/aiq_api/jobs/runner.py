@@ -1530,7 +1530,7 @@ async def run_agent_job(
                         event_store=event_store,
                         grundlage=[doc.model_dump() for doc in plan_documents.grundlage] if plan_documents else None,
                     )
-                    cancellation_monitor.on_document_added = run_ledger_fold.add_grundlage
+                    cancellation_monitor.on_document_added = run_ledger_fold.add_basis
                     event_store = run_ledger_fold.observing(event_store)
                     agent_event_callback = AgentEventCallback(event_store)
                     callbacks.append(agent_event_callback)

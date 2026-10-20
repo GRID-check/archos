@@ -2879,7 +2879,7 @@ class TestKnowledgeInventoryIsNotCitable:
         assert "NEVER the OIB corpus" in source
         assert "which files sit on which shelf" in source
 
-    def test_grouped_inventory_does_not_mix_oib_into_archiv(self):
+    def test_grouped_inventory_does_not_mix_oib_into_office_shelf(self):
         documents = [
             {"file_name": "oib-rl_2.pdf", "summary": "Brandschutz.", "shelf": "base", "collection": "oib_knowledge"},
             {
@@ -2890,9 +2890,9 @@ class TestKnowledgeInventoryIsNotCitable:
             },
         ]
         rendered = self._render(self._prompt("piloti/prompts/piloti.j2"), documents)
-        archiv = rendered.split("### Büroablage", 1)[1].split("### ", 1)[0]
-        assert "Buero-Standard.pdf" in archiv
-        assert "oib-rl_2.pdf" not in archiv
+        office_shelf = rendered.split("### Büroablage", 1)[1].split("### ", 1)[0]
+        assert "Buero-Standard.pdf" in office_shelf
+        assert "oib-rl_2.pdf" not in office_shelf
 
 
 class TestTheModelCardsAreActuallyAskedFor:

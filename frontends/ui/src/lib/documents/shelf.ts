@@ -21,10 +21,10 @@ import { documents, projectFolders } from '@/lib/db/schema'
 export type DocumentShelf = { kind: 'project'; projectId: string } | { kind: 'archiv' }
 
 /** The Archiv's shelf as a type: what an Archiv-only operation (a folder's re-filing delete) takes. */
-export type ArchivShelf = Extract<DocumentShelf, { kind: 'archiv' }>
+export type OfficeShelf = Extract<DocumentShelf, { kind: 'archiv' }>
 
 /** The org-wide Archiv. A constant, because it has no identity beyond the tenant. */
-export const ARCHIV_SHELF: ArchivShelf = { kind: 'archiv' }
+export const OFFICE_SHELF: OfficeShelf = { kind: 'archiv' }
 
 export function projectShelf(projectId: string): DocumentShelf {
   return { kind: 'project', projectId }
@@ -48,7 +48,7 @@ export function documentShelf(doc: {
   projectId: string | null
 }): DocumentShelf | null {
   if (doc.projectId) return projectShelf(doc.projectId)
-  if (doc.scope === 'archiv') return ARCHIV_SHELF
+  if (doc.scope === 'archiv') return OFFICE_SHELF
   return null
 }
 

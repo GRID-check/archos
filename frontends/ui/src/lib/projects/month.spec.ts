@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { dateToMonth, isMonth, isOrderedPeriod, monthToDate } from './month'
 
-describe('a Steckbrief month', () => {
+describe('a project record month', () => {
   it('is YYYY-MM with a real month', () => {
     expect(isMonth('2026-10')).toBe(true)
     expect(isMonth('2026-13')).toBe(false)

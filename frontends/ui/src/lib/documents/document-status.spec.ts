@@ -83,7 +83,7 @@ import { SURFACE_STATES, SURFACE_STATE_LABEL_KEYS, surfaceStateOf } from './surf
  * Directories rather than a file list on purpose: a new writer in one of them
  * is caught the day it lands, which is the whole point of scanning at all.
  */
-const WRITER_DIRS = ['src/lib/documents', 'src/lib/session-documents', 'src/lib/archiv']
+const WRITER_DIRS = ['src/lib/documents', 'src/lib/session-documents', 'src/lib/office-shelf']
 
 function sourceFiles(dir: string, found: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {

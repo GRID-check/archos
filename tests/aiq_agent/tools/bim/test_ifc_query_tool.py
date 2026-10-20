@@ -542,7 +542,7 @@ class TestComplianceOperation:
         # honest outcome; a default would silently pick the mildest class.
         assert build(operation="compliance") == {"op": "compliance"}
 
-    def test_an_out_of_range_gebaeudeklasse_is_dropped_not_clamped(self):
+    def test_an_out_of_range_building_class_is_dropped_not_clamped(self):
         # Clamping 9 to 5 would invent a requirement the project never stated.
         assert build(operation="compliance", gebaeudeklasse=9) == {"op": "compliance"}
 
@@ -565,14 +565,14 @@ class TestComplianceOperation:
             assert isinstance(answer, str), operation
             assert "takes no filters" in answer, operation
 
-    def test_an_unknown_hauptnutzung_is_omitted_rather_than_rejected(self):
+    def test_an_unknown_main_use_is_omitted_rather_than_rejected(self):
         # The description promises an unrecognised value makes the rules stand
         # down. It did not: the value reached a `.strict()` object whose field
         # is an enum, so the WHOLE compliance run came back 400 — on a value
         # the description presents as merely imprecise.
         assert build(operation="compliance", hauptnutzung="Wohngebäude") == {"op": "compliance"}
 
-    def test_every_hauptnutzung_the_catalogue_knows_is_passed_through(self):
+    def test_every_main_use_the_catalogue_knows_is_passed_through(self):
         # Mirrors `BIM_HAUPTNUTZUNG` in lib/bim/query.ts. A value dropped here
         # is a rule that stands down for no reason.
         for value in (
@@ -884,11 +884,11 @@ class TestTheDescriptionDescribesTheRealTool:
         assert "ONE-WAY" in description
 
 
-class TestGebaeudeklasseValidation:
+class TestBuildingClassValidation:
     """One gate, so the run and the download cannot disagree."""
 
     @pytest.mark.parametrize("value", [0, 6, 9, -1, None])
-    def test_an_impossible_gebaeudeklasse_reaches_neither_the_query_nor_the_link(self, value):
+    def test_an_impossible_building_class_reaches_neither_the_query_nor_the_link(self, value):
         from aiq_agent.tools.bim.register import _bcf_link
 
         query = build(operation="compliance", gebaeudeklasse=value or 0)
@@ -899,7 +899,7 @@ class TestGebaeudeklasseValidation:
         assert "gebaeudeklasse" not in _bcf_link("p1", "haus.ifc", value or 0, "")
 
     @pytest.mark.parametrize("value", [1, 2, 3, 4, 5])
-    def test_a_real_gebaeudeklasse_reaches_both(self, value):
+    def test_a_real_building_class_reaches_both(self, value):
         from aiq_agent.tools.bim.register import _bcf_link
 
         assert build(operation="compliance", gebaeudeklasse=value)["gebaeudeklasse"] == value

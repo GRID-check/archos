@@ -5,7 +5,7 @@
  * The project intake service (ADR-0111), with every seam it reaches through
  * mocked: the intake repository, the profile's one door
  * (`patchProjectProfile`), the readable files, the masking policy, the
- * submission, the inbox and the score. `computeNeeds` and the Gebäudeklasse
+ * submission, the inbox and the score. `computeNeeds` and the building class
  * rule are mocked too: what is under test is what the service does with their
  * answers, not the answers.
  *
@@ -57,7 +57,7 @@ vi.mock('./trigger', () => ({ enqueueIntakeRead: vi.fn(async () => true) }))
 vi.mock('./needs', async (importOriginal) => ({ ...(await importOriginal<typeof import('./needs')>()), computeNeeds: vi.fn() }))
 vi.mock('./derivations', async (original) => ({
   ...(await original<typeof import('./derivations')>()),
-  deriveGebaeudeklasse: vi.fn(),
+  deriveBuildingClass: vi.fn(),
 }))
 
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
@@ -74,7 +74,7 @@ import { projectClosedError } from '@/lib/projects/project-status'
 import { findProjectInOrg, findProjectProfileInOrg, type ProjectProfileState } from '@/lib/projects/repository'
 import { setProjectStatus } from '@/lib/projects/service'
 import { onIntakeCompleted, onIntakeReady } from './attention'
-import { deriveGebaeudeklasse } from './derivations'
+import { deriveBuildingClass } from './derivations'
 import { computeNeeds } from './needs'
 import {
   addIntakeDismissed,
@@ -202,7 +202,7 @@ beforeEach(() => {
     need('gebaeudestellung@bw1', { type: 'single_select' }),
     need('geschosse_oberirdisch@bw1', { type: 'number_tri', decisive: true }),
   ])
-  vi.mocked(deriveGebaeudeklasse).mockImplementation((inputs) =>
+  vi.mocked(deriveBuildingClass).mockImplementation((inputs) =>
     inputs.geschosse_oberirdisch === undefined
       ? { value: null, hochhaus: false, applicable: true, missing: ['geschosse_oberirdisch'] }
       : { value: 3, hochhaus: false, applicable: true, missing: [] }
@@ -250,7 +250,7 @@ describe('recordIntakeValues — what a value becomes', () => {
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
 
-  it('refuses a key in a scope its question is not asked in, or on a Bauwerk the profile does not describe', async () => {
+  it('refuses a key in a scope its question is not asked in, or on a building the profile does not describe', async () => {
     const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
       value('bundesland@bw1', 'wien'),
       value('geschosse_oberirdisch', 3),
@@ -279,7 +279,7 @@ describe('recordIntakeValues — what a value becomes', () => {
     expect(op('/assumptions/wohneinheiten@bw1@wohnen')?.value).toMatchObject({ value: 12, source: 'agent_suggested' })
   })
 
-  it('records on every Bauwerk the profile describes, and adds none', async () => {
+  it('records on every building the profile describes, and adds none', async () => {
     const fact = { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } as const
     useProfile({ ...emptyProfile(), facts: { 'bauwerkstyp@bw1': fact, 'bauwerkstyp@bw2': fact } })
 
@@ -358,7 +358,7 @@ describe('recordIntakeValues — what a value becomes', () => {
     })
   })
 
-  it('derives the Gebäudeklasse when an input moved, as a suggestion with its derivation and inputs', async () => {
+  it('derives the building class when an input moved, as a suggestion with its derivation and inputs', async () => {
     useProfile({
       ...emptyProfile(),
       facts: { 'bauwerkstyp@bw1': { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
@@ -380,7 +380,7 @@ describe('recordIntakeValues — what a value becomes', () => {
     ])
   })
 
-  it('refuses the Gebäudeklasse a document states, beside a confirmed class too: it is derived, never recorded', async () => {
+  it('refuses the building class a document states, beside a confirmed class too: it is derived, never recorded', async () => {
     useProfile({
       ...emptyProfile(),
       facts: { 'gebaeudeklasse@bw1': { value: 4, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
@@ -395,7 +395,7 @@ describe('recordIntakeValues — what a value becomes', () => {
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
 
-  it('never derives over a confirmed Gebäudeklasse: a different class becomes an alternative on the fact', async () => {
+  it('never derives over a confirmed building class: a different class becomes an alternative on the fact', async () => {
     useProfile({
       ...emptyProfile(),
       facts: { 'gebaeudeklasse@bw1': { value: 2, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },

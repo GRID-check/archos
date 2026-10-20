@@ -43,7 +43,7 @@ vi.mock('@/lib/model-config/service', () => ({
 
 vi.mock('@/lib/project-profile/prompt-view', () => ({
   loadProjectPromptView: vi.fn(),
-  loadProjectBundesland: vi.fn(),
+  loadProjectFederalState: vi.fn(),
 }))
 
 vi.mock('@/lib/collection-scope', () => ({
@@ -104,7 +104,7 @@ import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { computeCollectionScope } from '@/lib/collection-scope'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
+import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { resolveSelectableSkills, resolveSkillSnapshot } from '@/lib/skills/service'
 import { insertConversation } from '@/lib/conversations/repository'
 import { createRunMessage } from '@/lib/runs/service'
@@ -222,7 +222,7 @@ beforeEach(() => {
   vi.mocked(computeCollectionScope).mockReturnValue(['proj_x'])
   vi.mocked(getEffectiveModelOverrides).mockResolvedValue(null)
   vi.mocked(loadProjectPromptView).mockResolvedValue(null)
-  vi.mocked(loadProjectBundesland).mockResolvedValue(null)
+  vi.mocked(loadProjectFederalState).mockResolvedValue(null)
   vi.mocked(insertConversation).mockResolvedValue({ id: 's_conv_1' } as never)
   vi.mocked(repository.insertDefinition).mockImplementation(async (values) => ({ ...definitionRow(), ...values }) as TaskDefinition)
   vi.mocked(repository.updateDefinition).mockImplementation(async (_id, _org, patch) => ({ ...definitionRow(), ...patch }) as TaskDefinition)

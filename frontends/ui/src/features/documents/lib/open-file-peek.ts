@@ -70,7 +70,7 @@ export function openFilePeek(options: OpenFilePeekOptions): void {
   useFilePreviewStore.getState().open(options.file, options.presentation ?? 'peek', {
     projectId: options.source === 'projekt' ? (options.projectId ?? undefined) : undefined,
     projectName: options.projectName ?? undefined,
-    scope: options.source === 'buero' ? 'archiv' : 'files',
+    scope: options.source === 'buero' ? 'officeShelf' : 'files',
     canManage: false,
     canCollaborate: options.canCollaborate,
   })

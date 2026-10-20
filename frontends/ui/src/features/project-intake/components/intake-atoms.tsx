@@ -5,7 +5,7 @@ import { CountPill } from '@/components/ui/count-pill'
 
 /**
  * The setup page's own atoms: the section frame every part of the review sits
- * in, and the mark for a value that decides the Gebäudeklasse. One place, so
+ * in, and the mark for a value that decides the building class. One place, so
  * the four sections cannot drift apart on spacing or heading size.
  */
 

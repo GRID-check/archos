@@ -296,7 +296,7 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
     showViewReport: true,
   }
 
-  it('restores the Herleitung in the stored v2 shape', () => {
+  it('restores the derivation in the stored v2 shape', () => {
     const mapped = mapServerMessageToChatMessage(serverMessage({ metadata: { provenance } }))
 
     expect(mapped!.thinkingSteps).toHaveLength(1)

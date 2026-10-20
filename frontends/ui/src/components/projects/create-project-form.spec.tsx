@@ -110,7 +110,7 @@ describe('CreateProjectForm', () => {
     expect(capturePosthog).toHaveBeenCalledWith('project_created', { state: 'active', setup: 'piloti' })
   })
 
-  test('a closed project needs its outcome, then sends outcome, Beginn and Abschluss', async () => {
+  test('a closed project needs its outcome, then sends outcome, start and closing', async () => {
     const user = userEvent.setup()
     render(<CreateProjectForm />)
 
@@ -140,7 +140,7 @@ describe('CreateProjectForm', () => {
     expect(capturePosthog).toHaveBeenCalledWith('project_created', { state: 'closed', setup: 'piloti' })
   })
 
-  test('sends a chosen Beginn', async () => {
+  test('sends a chosen start', async () => {
     const user = userEvent.setup()
     render(<CreateProjectForm />)
 
@@ -155,7 +155,7 @@ describe('CreateProjectForm', () => {
     expect(sent()).toMatchObject({ outcome: 'completed', startedOn: '2019-06', endedOn: '2026-03' })
   })
 
-  test('an Abschluss in the future shows the error and keeps the submit shut', async () => {
+  test('a closing in the future shows the error and keeps the submit shut', async () => {
     const user = userEvent.setup()
     render(<CreateProjectForm />)
 
@@ -169,7 +169,7 @@ describe('CreateProjectForm', () => {
     expect(action).not.toHaveBeenCalled()
   })
 
-  test("the server's Abschluss reason lands on the Abschluss field, not in a general alert", async () => {
+  test("the server's closing reason lands on the closing field, not in a general alert", async () => {
     action.mockResolvedValue({ error: 'refused', reason: 'abschluss-before-beginn' })
     const user = userEvent.setup()
     render(<CreateProjectForm />)

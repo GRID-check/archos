@@ -106,7 +106,7 @@ const citations = [locus(5, 1, 'Garagen sind mechanisch zu entlüften.'), locus(
 const renderAnswer = () =>
   render(<AgentResponse content={answer} messageId="m1" citations={citations} routingDecision="deep" />)
 
-describe('a Fundstelle excerpt', () => {
+describe('a locus excerpt', () => {
   beforeEach(() => {
     resetSourcePreviewIndexCache()
     fetchMock.mockClear()

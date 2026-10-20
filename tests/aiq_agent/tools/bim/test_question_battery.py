@@ -42,7 +42,7 @@ pytest.importorskip("ifc_spatial.tools", reason="the spatial engine is not insta
 
 FIXTURES = Path(__file__).resolve().parents[3] / "packages" / "ifc-spatial" / "test" / "fixtures"
 HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-NO_NORTH = FIXTURES / "haus-mit-raeumen.ifc"
+NO_NORTH = FIXTURES / "house-with-rooms.ifc"
 
 #: The window the architect asked about, and what surrounds it.
 WINDOW = "3cUkl32yn9qRSPvBJVyWcE"
@@ -415,7 +415,7 @@ class TestHonestlyUnanswerable:
         assert "clearHeight" in rendered
 
     def test_a_file_without_rooms_says_so_about_the_export(self, ask):
-        """`einheiten-fuss.ifc` has one wall and nothing else.
+        """`units-feet.ifc` has one wall and nothing else.
 
         Every room question against it has to come back as a fact about what was
         exported, never as a fact about the building.
@@ -423,7 +423,7 @@ class TestHonestlyUnanswerable:
         import ifc_spatial.tools as engine
 
         tools = engine.create_tools()
-        handle = engine.call(tools, "open_model", {"path": str(FIXTURES / "einheiten-fuss.ifc")})
+        handle = engine.call(tools, "open_model", {"path": str(FIXTURES / "units-feet.ifc")})
         rendered = _render("briefing", {"briefing": handle["briefing"]}, source={}, handle="")
         assert "keine IfcSpace" in rendered
         assert "Räume wurden nicht exportiert" in rendered

@@ -132,14 +132,14 @@ describe('documentActionEntries', () => {
   })
 
   it('lists the destinations a listing sorted once, in that order, marking where the file is', () => {
-    const brandschutz = { id: 'f1', name: 'Brandschutz', parentId: null }
+    const fireSafety = { id: 'f1', name: 'Brandschutz', parentId: null }
     const fluchtwege = { id: 'f2', name: 'Fluchtwege', parentId: 'f1' }
     const entries = documentActionEntries({
       document: { ...DOCUMENT, folderId: 'f2' },
       labels: LABELS,
       ...handlers,
       destinations: [
-        { folder: brandschutz, label: 'Brandschutz' },
+        { folder: fireSafety, label: 'Brandschutz' },
         { folder: fluchtwege, label: 'Brandschutz / Fluchtwege' },
       ],
     })

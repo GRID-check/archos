@@ -52,7 +52,7 @@ describe('the older revisions filter', () => {
     await open()
     await userEvent.click(screen.getByLabelText('Older revisions'))
     expect(onFiltersChange).toHaveBeenCalledWith(
-      expect.objectContaining({ showOlderFassungen: true }),
+      expect.objectContaining({ showOlderRevisions: true }),
     )
   })
 
@@ -70,7 +70,7 @@ describe('the older revisions filter', () => {
   })
 
   test('counts the older revisions once on the trigger when they are shown', () => {
-    renderMenu({ filters: { ...NO_FILE_FILTERS, showOlderFassungen: true } })
+    renderMenu({ filters: { ...NO_FILE_FILTERS, showOlderRevisions: true } })
     expect(screen.getByTestId('file-filter-count')).toHaveTextContent('1')
   })
 })

@@ -138,7 +138,7 @@ class TestResolveTargetCollections:
 
 
 class TestRestrictScopeToTurn:
-    def test_session_focus_drops_archiv_but_keeps_the_building_code(self):
+    def test_session_focus_drops_office_shelf_but_keeps_the_building_code(self):
         """A subject narrows which DOCUMENTS the turn reads, not whether the law applies.
 
         Dropping ``base`` here made the product unable to answer its own central
@@ -153,7 +153,7 @@ class TestRestrictScopeToTurn:
         try:
             entries = [
                 ScopedCollection("oib_knowledge", Shelf.BASE),
-                ScopedCollection("archiv_org", Shelf.ARCHIV),
+                ScopedCollection("archiv_org", Shelf.OFFICE_SHELF),
                 ScopedCollection("s_1", Shelf.SESSION),
             ]
             kept = [entry.collection for entry in _restrict_scope_to_turn(entries)]
@@ -163,7 +163,7 @@ class TestRestrictScopeToTurn:
         finally:
             set_turn_intent()
 
-    def test_project_preset_drops_archiv(self):
+    def test_project_preset_drops_office_shelf(self):
         from aiq_agent.common.focus_file import set_turn_intent
         from aiq_agent.common.source_kinds import Shelf
         from aiq_agent.knowledge.scoping import ScopedCollection
@@ -172,7 +172,7 @@ class TestRestrictScopeToTurn:
         try:
             entries = [
                 ScopedCollection("oib_knowledge", Shelf.BASE),
-                ScopedCollection("archiv_org", Shelf.ARCHIV),
+                ScopedCollection("archiv_org", Shelf.OFFICE_SHELF),
                 ScopedCollection("proj_1", Shelf.PROJECT),
                 ScopedCollection("s_1", Shelf.SESSION),
             ]

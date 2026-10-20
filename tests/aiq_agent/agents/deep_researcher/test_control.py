@@ -59,20 +59,20 @@ def test_added_documents_are_drained_once_and_the_binding_is_per_run():
     assert take_added_documents() == []
 
 
-def test_the_report_names_the_grundlage_it_never_reached():
-    from aiq_agent.agents.deep_researcher.finalize import _append_unread_grundlage
+def test_the_report_names_the_basis_it_never_reached():
+    from aiq_agent.agents.deep_researcher.finalize import _append_unread_basis
 
-    german = _append_unread_grundlage("# Bericht\n\nDer Fluchtweg ist zulässig.", ["Einreichplan.pdf"])
+    german = _append_unread_basis("# Bericht\n\nDer Fluchtweg ist zulässig.", ["Einreichplan.pdf"])
     assert german.rstrip().endswith(
         "## Nicht gelesene Unterlagen\n\nDiese Unterlagen waren als Grundlage benannt "
         "und konnten nicht gelesen werden; ihr Inhalt ist oben nicht berücksichtigt:\n\n"
         "- Einreichplan.pdf"
     )
-    english = _append_unread_grundlage(
+    english = _append_unread_basis(
         "# Report\n\nThe escape route is compliant and the fire resistance is REI 60.", ["plan.pdf"]
     )
     assert "## Documents not read" in english and english.rstrip().endswith("- plan.pdf")
-    assert _append_unread_grundlage("# Bericht", []) == "# Bericht"
+    assert _append_unread_basis("# Bericht", []) == "# Bericht"
 
 
 def test_every_addition_stays_countable_after_it_was_taken():

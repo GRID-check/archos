@@ -422,7 +422,7 @@ node -e '
 done
 
 GRID_TEST_MIGRATION_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_steps" \
-  npx vitest run src/lib/conversations/herleitung-steps-v2.migration.spec.ts
+  npx vitest run src/lib/conversations/derivation-steps-v2.migration.spec.ts
 
 echo "==> 0097 step rewrite and down migration verified"
 

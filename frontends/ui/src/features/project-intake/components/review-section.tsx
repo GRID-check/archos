@@ -22,7 +22,7 @@ export function confirmAllDecisions(group: SuggestionGroup): IntakeDecision[] {
 /**
  * Prüfen: what Piloti found, grouped by the modules of the wizard. Each
  * suggestion is confirmed or dismissed on its own, or a whole module is
- * confirmed in one call. A value that decides the Gebäudeklasse says so.
+ * confirmed in one call. A value that decides the building class says so.
  */
 export function ReviewSection({
   groups,

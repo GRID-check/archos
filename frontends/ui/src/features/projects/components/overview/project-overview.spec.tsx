@@ -13,8 +13,8 @@ vi.mock('../project-lifecycle-card', () => ({
     <div data-testid="project-lifecycle-card" data-status={props.lifecycle.status} />
   ),
 }))
-vi.mock('../project-steckbrief', () => ({
-  ProjectSteckbrief: () => <div data-testid="project-steckbrief" />,
+vi.mock('../project-record', () => ({
+  ProjectRecord: () => <div data-testid="project-record" />,
 }))
 
 const ACTIVE: ProjectOverviewData['lifecycle'] = {
@@ -215,14 +215,14 @@ describe('ProjectOverview', () => {
     expect(screen.getByRole('menuitem', { name: 'Close project' })).toBeInTheDocument()
   })
 
-  test('viewers see no status control, but the Steckbrief and similar projects', () => {
+  test('viewers see no status control, but the project record and similar projects', () => {
     render(
       <ProjectOverview
         data={DATA}
         activity={ACTIVITY}
         usage={null}
         access={VIEWER}
-        steckbrief={{
+        projectRecord={{
           address: null,
           startedOn: null,
           startedOnIsDefault: false,
@@ -237,7 +237,7 @@ describe('ProjectOverview', () => {
     )
 
     expect(screen.queryByTestId('project-lifecycle-card')).not.toBeInTheDocument()
-    expect(screen.getByTestId('project-steckbrief')).toBeInTheDocument()
+    expect(screen.getByTestId('project-record')).toBeInTheDocument()
     expect(screen.getByTestId('similar-slot')).toBeInTheDocument()
   })
 

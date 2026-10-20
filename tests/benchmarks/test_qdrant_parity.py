@@ -194,10 +194,10 @@ def test_the_regex_scan_finds_the_phrase_with_either_spelling_and_honours_the_ba
     allowed = [chunk for chunk in inputs.chunks if view.allowed(chunk)]
     by_text = {chunk.chunk_id: chunk.text for chunk in allowed}
 
-    geschoss = channels.regex_oracle(allowed, "Geschoss")
+    storey = channels.regex_oracle(allowed, "Geschoss")
     section = channels.regex_oracle(allowed, "§ 8")
 
-    assert geschoss and {by_text[i] for i in geschoss} == {t for t in by_text.values() if "Geschoß" in t}
+    assert storey and {by_text[i] for i in storey} == {t for t in by_text.values() if "Geschoß" in t}
     assert len(section) == 1
     assert all(chunk.file_name != sample.CHANGES for chunk in allowed), "the base filter must drop excluded files"
 

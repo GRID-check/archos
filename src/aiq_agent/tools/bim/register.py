@@ -181,7 +181,7 @@ _TOOL_DESCRIPTION = (
 # The Hauptnutzung values the rule catalogue knows — mirroring
 # `BIM_HAUPTNUTZUNG` in `lib/bim/query.ts`, whose zod enum rejects anything
 # else outright.
-_HAUPTNUTZUNGEN = frozenset(
+_MAIN_USES = frozenset(
     {
         "wohnen",
         "buero",
@@ -196,7 +196,7 @@ _HAUPTNUTZUNGEN = frozenset(
 )
 
 
-def _valid_hauptnutzung(value: str) -> str:
+def _valid_main_use(value: str) -> str:
     """The Hauptnutzung if the catalogue knows it, else "" — see below.
 
     The tool description says an unrecognised value makes the rules that need
@@ -207,10 +207,10 @@ def _valid_hauptnutzung(value: str) -> str:
     sanitised here for exactly this reason; this one was not.
     """
     lowered = value.strip().lower()
-    return lowered if lowered in _HAUPTNUTZUNGEN else ""
+    return lowered if lowered in _MAIN_USES else ""
 
 
-def _valid_gebaeudeklasse(value: int | None) -> int:
+def _valid_building_class(value: int | None) -> int:
     """The Gebäudeklasse if it is one, else 0 — the single place that decides.
 
     OIB knows GK 1–5. A model asked for "Gebäudeklasse 9" will occasionally
@@ -283,7 +283,7 @@ def _bcf_link(
     query = f"model={quote(filename, safe='')}"
     # Through the same gate the catalogue run went through, so the archive can
     # never carry a fact the verdicts did not use.
-    valid_klasse = _valid_gebaeudeklasse(gebaeudeklasse)
+    valid_klasse = _valid_building_class(gebaeudeklasse)
     if valid_klasse:
         query = f"{query}&gebaeudeklasse={valid_klasse}"
     if hauptnutzung:
@@ -373,10 +373,10 @@ def _compliance_query(op: str, args: _QueryArgs) -> dict[str, Any]:
     that need it stand down with their reason, which is the honest outcome.
     """
     query: dict[str, Any] = {"op": op}
-    klasse = _valid_gebaeudeklasse(args.gebaeudeklasse)
+    klasse = _valid_building_class(args.gebaeudeklasse)
     if klasse:
         query["gebaeudeklasse"] = klasse
-    nutzung = _valid_hauptnutzung(args.hauptnutzung)
+    nutzung = _valid_main_use(args.hauptnutzung)
     if nutzung:
         query["hauptnutzung"] = nutzung
     return query

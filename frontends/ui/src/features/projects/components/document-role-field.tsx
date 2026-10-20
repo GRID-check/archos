@@ -48,7 +48,7 @@ import type { PendingRoleBind } from '../lib/pending-role-binds'
 interface DocumentRoleFieldProps {
   projectId: string
   role: DocumentRole
-  /** The building this binding belongs to, for a `bauwerk` role. */
+  /** The building this binding belongs to, for a `building` role. */
   scopeInstanceId?: string | null
   /** Rendered above the control; the question supplies its own label. */
   label?: string

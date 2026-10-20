@@ -160,7 +160,7 @@ class TestDropUngroundedTrailerValues:
             meta = {"v": 1, "verdict": {"value": value, "subject": "Angabe"}}
             assert self._drop(meta, [_oib_entry()]) is None, value
 
-    def test_a_takeaway_with_a_fundstelle_in_its_detail_survives(self):
+    def test_a_takeaway_with_a_locus_in_its_detail_survives(self):
         meta = {
             "v": 1,
             "takeaways": [
@@ -177,7 +177,7 @@ class TestDropUngroundedTrailerValues:
         assert dropped is not None
         assert [item["text"] for item in dropped["takeaways"]] == ["Massgeblich ist das Fluchtniveau"]
 
-    def test_a_takeaway_value_without_a_fundstelle_drops_the_item(self):
+    def test_a_takeaway_value_without_a_locus_drops_the_item(self):
         meta = {
             "v": 1,
             "takeaways": [
@@ -214,7 +214,7 @@ class TestDropUngroundedTrailerValues:
 
         assert dropped == {"v": 1, "takeaways": [{"text": "Massgeblich ist das Fluchtniveau"}]}
 
-    def test_a_callout_detail_with_a_value_but_no_fundstelle_drops_alone(self):
+    def test_a_callout_detail_with_a_value_but_no_locus_drops_alone(self):
         meta = {
             "v": 1,
             "callout": {

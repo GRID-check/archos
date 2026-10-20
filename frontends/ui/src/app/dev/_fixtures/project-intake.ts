@@ -44,8 +44,8 @@ export const fromDocument = (fileName: string, page: number | null, quote: strin
   quote,
 })
 
-const BAUBESCHREIBUNG = 'Baubeschreibung.pdf'
-const SCHNITT = 'E-02 Schnitt A-A.pdf'
+const BUILDING_DESCRIPTION = 'Baubeschreibung.pdf'
+const SECTION = 'E-02 Schnitt A-A.pdf'
 
 const suggestion = (
   key: string,
@@ -88,13 +88,13 @@ export const SUGGESTION_STOREYS = suggestion(
     state: 'contested',
     decisive: true,
     evidence: [
-      fromDocument(BAUBESCHREIBUNG, 3, 'Das Gebäude erhält nach der Aufstockung insgesamt sechs oberirdische Geschoße.'),
+      fromDocument(BUILDING_DESCRIPTION, 3, 'Das Gebäude erhält nach der Aufstockung insgesamt sechs oberirdische Geschoße.'),
     ],
     alternatives: [
       {
         value: 7,
         recordedAt: AT,
-        evidence: [fromDocument(SCHNITT, 1, 'EG, 1.OG, 2.OG, 3.OG, 4.OG, 5.OG, DG (neu)')],
+        evidence: [fromDocument(SECTION, 1, 'EG, 1.OG, 2.OG, 3.OG, 4.OG, 5.OG, DG (neu)')],
       },
     ],
   }
@@ -102,21 +102,21 @@ export const SUGGESTION_STOREYS = suggestion(
 
 export const SUGGESTION_ESCAPE_LEVEL = suggestion('fluchtniveau_m@bw1', 'Fluchtniveau (Zielzustand)', 18.4, '18.4 m', {
   decisive: true,
-  evidence: [fromDocument(SCHNITT, 1, 'Fluchtniveau +18,40 m über Gelände')],
+  evidence: [fromDocument(SECTION, 1, 'Fluchtniveau +18,40 m über Gelände')],
 })
 
 export const SUGGESTION_TYPE = suggestion('bauwerkstyp@bw1', 'Art des Bauwerks', 'gebaeude', 'Gebäude', {
-  evidence: [fromDocument(BAUBESCHREIBUNG, 1, 'Gegenstand des Verfahrens ist ein Wohngebäude in geschlossener Bauweise.')],
+  evidence: [fromDocument(BUILDING_DESCRIPTION, 1, 'Gegenstand des Verfahrens ist ein Wohngebäude in geschlossener Bauweise.')],
 })
 
 export const SUGGESTION_POSITION = suggestion('gebaeudestellung@bw1', 'Gebäudestellung', 'angebaut', 'angebaut', {
-  evidence: [fromDocument(BAUBESCHREIBUNG, 2, 'Das Haus ist beidseitig an die Nachbargebäude angebaut.')],
+  evidence: [fromDocument(BUILDING_DESCRIPTION, 2, 'Das Haus ist beidseitig an die Nachbargebäude angebaut.')],
 })
 
 export const SUGGESTION_UNITS = suggestion('nutzungseinheiten@bw1', 'Anzahl Nutzungseinheiten (Wohnungen + Betriebseinheiten, Zielzustand)', 14, '14', {
   decisive: true,
   evidence: [
-    fromDocument(BAUBESCHREIBUNG, 4, 'Im Bestand befinden sich 8 Wohnungen, im Dachgeschoß entstehen 6 weitere.'),
+    fromDocument(BUILDING_DESCRIPTION, 4, 'Im Bestand befinden sich 8 Wohnungen, im Dachgeschoß entstehen 6 weitere.'),
     fromDocument('Wohnungsliste.xlsx', null, 'Top 1 bis Top 14'),
   ],
 })
@@ -151,7 +151,7 @@ const GROUP_BASE: SuggestionGroup = {
   items: [SUGGESTION_ADDRESS, SUGGESTION_EDITION, SUGGESTION_PHASE],
 }
 
-const GROUP_BAUWERKE: SuggestionGroup = {
+const GROUP_BUILDINGS: SuggestionGroup = {
   stage: 'C',
   title: 'Bauwerke',
   items: [SUGGESTION_TYPE, SUGGESTION_STOREYS, SUGGESTION_ESCAPE_LEVEL, SUGGESTION_POSITION, SUGGESTION_UNITS],
@@ -258,7 +258,7 @@ export const INTAKE_READING: IntakeView = {
   readingStartedAt: '2026-10-14T08:31:00.000Z',
   groups: [
     { ...GROUP_BASE, items: [SUGGESTION_ADDRESS, SUGGESTION_EDITION] },
-    { ...GROUP_BAUWERKE, items: [SUGGESTION_TYPE, SUGGESTION_POSITION] },
+    { ...GROUP_BUILDINGS, items: [SUGGESTION_TYPE, SUGGESTION_POSITION] },
   ],
 }
 
@@ -280,7 +280,7 @@ export const INTAKE_READY: IntakeView = {
     '23 Dokumente gelesen. Die Geschoßanzahl ist widersprüchlich (Baubeschreibung: 6, Schnitt: 7); Fläche und Einheiten über 400 m² stehen in keinem Dokument.',
   contradictions: [SUGGESTION_STOREYS],
   questions: [QUESTION_AREA, QUESTION_POSITION, QUESTION_USE],
-  groups: [GROUP_BASE, GROUP_BAUWERKE],
+  groups: [GROUP_BASE, GROUP_BUILDINGS],
   derivations: [DERIVATION_READY, DERIVATION_OPEN],
 }
 
@@ -293,7 +293,7 @@ export const INTAKE_CLOSING: IntakeView = {
   summary: null,
   contradictions: [],
   questions: [],
-  groups: [GROUP_BASE, { ...GROUP_BAUWERKE, items: GROUP_BAUWERKE.items.map((item) => ({ ...item, decisive: false })) }],
+  groups: [GROUP_BASE, { ...GROUP_BUILDINGS, items: GROUP_BUILDINGS.items.map((item) => ({ ...item, decisive: false })) }],
   derivations: [DERIVATION_READY],
 }
 
@@ -305,7 +305,7 @@ export const INTAKE_COMPLETED: IntakeView = {
   contradictions: [],
   questions: [],
   summary: null,
-  groups: [GROUP_BASE, GROUP_BAUWERKE].map((group) => ({
+  groups: [GROUP_BASE, GROUP_BUILDINGS].map((group) => ({
     ...group,
     items: group.items.map((item) => ({ ...item, state: 'confirmed' as const, alternatives: [] })),
   })),

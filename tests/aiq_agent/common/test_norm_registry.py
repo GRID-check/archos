@@ -140,7 +140,7 @@ class TestLoader:
 
         assert [e.id for e in registry.entries] == ["good"]
 
-    def test_unknown_bundesland_dropped(self, tmp_path):
+    def test_unknown_federal_state_dropped(self, tmp_path):
         _write_registry(tmp_path, "at", [_entry("good"), _entry("bad", bundesland="Bayern")])
 
         registry = nr.load_registry(str(tmp_path))
@@ -220,7 +220,7 @@ class TestFocus:
 
         assert [e.id for e in focused] == ["garagengesetz-wien", "aschg"]  # Tirol dropped, federal kept
 
-    def test_noop_without_bundesland(self):
+    def test_noop_without_federal_state(self):
         entries = list(_match_registry().entries)
         assert nr.focus_entries(entries, None) == entries
 
@@ -230,21 +230,21 @@ class TestFocus:
 # ---------------------------------------------------------------------------
 
 
-class TestExtractBundesland:
+class TestExtractFederalState:
     def test_structured_token_beats_name_probing(self):
         # A Lower-Austrian project that also mentions Wien: the structured token wins.
-        assert nr.extract_bundesland("bundesland=niederoesterreich; Baustelle nahe Wien") == "Niederösterreich"
+        assert nr.extract_federal_state("bundesland=niederoesterreich; Baustelle nahe Wien") == "Niederösterreich"
 
     def test_structured_ausserhalb_returns_none(self):
-        assert nr.extract_bundesland("bundesland=ausserhalb_oesterreichs; Wien erwähnt") is None
+        assert nr.extract_federal_state("bundesland=ausserhalb_oesterreichs; Wien erwähnt") is None
 
     def test_umlaut_variants_probed(self):
-        assert nr.extract_bundesland("Bauvorhaben in Kärnten") == "Kärnten"
-        assert nr.extract_bundesland("Bauvorhaben in Kaernten") == "Kärnten"
+        assert nr.extract_federal_state("Bauvorhaben in Kärnten") == "Kärnten"
+        assert nr.extract_federal_state("Bauvorhaben in Kaernten") == "Kärnten"
 
-    def test_no_bundesland(self):
-        assert nr.extract_bundesland("kein Landesbezug") is None
-        assert nr.extract_bundesland(None) is None
+    def test_no_federal_state(self):
+        assert nr.extract_federal_state("kein Landesbezug") is None
+        assert nr.extract_federal_state(None) is None
 
 
 # ---------------------------------------------------------------------------
@@ -282,7 +282,7 @@ def _render_registry() -> nr.NormRegistry:
 
 
 class TestRenderPromptBlock:
-    def test_federal_lane_and_all_states_without_bundesland(self):
+    def test_federal_lane_and_all_states_without_federal_state(self):
         block = nr.render_prompt_block(_render_registry(), bundesland=None)
 
         assert "Bundesrecht:" in block
@@ -368,7 +368,7 @@ class TestLaneForHit:
     def test_oib_file(self):
         assert nr.lane_for_hit(file_name="oib-rl_2_ausgabe_mai_2023.pdf") == ("baurecht_oib", "OIB-Richtlinie")
 
-    def test_oib_leitfaden_file(self):
+    def test_oib_guide_file(self):
         assert nr.lane_for_hit(file_name="oib-rl_2_leitfaden_ausgabe_mai_2023.pdf") == (
             "baurecht_oib_leitfaden",
             "OIB-Leitfaden",
@@ -390,11 +390,11 @@ class TestLaneForHit:
             "Rechtsquelle (RIS)",
         )
 
-    def test_wien_gv_at_is_behoerde_lane(self):
-        behoerde = ("behoerde", "Behördliche Information")
-        assert nr.lane_for_hit(source_url="https://www.wien.gv.at/wohnen/baupolizei") == behoerde
-        assert nr.lane_for_hit(source_url="https://wien.gv.at/x") == behoerde
-        assert nr.lane_for_hit(source_url="https://WWW.WIEN.GV.AT/x") == behoerde
+    def test_wien_gv_at_is_authority_lane(self):
+        authority = ("behoerde", "Behördliche Information")
+        assert nr.lane_for_hit(source_url="https://www.wien.gv.at/wohnen/baupolizei") == authority
+        assert nr.lane_for_hit(source_url="https://wien.gv.at/x") == authority
+        assert nr.lane_for_hit(source_url="https://WWW.WIEN.GV.AT/x") == authority
 
     def test_lookalike_hosts_stay_web(self):
         # Host-boundary matching: a lookalike host or a domain mentioned in the
@@ -404,7 +404,7 @@ class TestLaneForHit:
         assert nr.lane_for_hit(source_url="https://wien.gv.at.evil.example/x") == ("web", "Web")
         assert nr.lane_for_hit(source_url="https://ris.bka.gv.at.evil.example/") == ("web", "Web")
 
-    def test_archiv_collection(self):
+    def test_office_shelf_collection(self):
         assert nr.lane_for_hit(collection="archiv_buero") == ("buero", "Büroablage")
 
     def test_project_collections(self):
@@ -509,7 +509,7 @@ class TestLaneForAgentAuthoredHit:
 class TestLaneForKnowledgeHit:
     """A retrieved document is something we hold — it can never be Web."""
 
-    def test_the_fail_open_lane_becomes_projektwissen(self):
+    def test_the_fail_open_lane_becomes_project_knowledge(self):
         # No doc_class, no recognizable collection prefix, no OIB filename:
         # lane_for_hit fails open to Web. For a knowledge-layer hit that value
         # means "no signal matched", not "this came off the internet".
@@ -544,7 +544,7 @@ class TestGuessDocClass:
     def test_oib_filenames(self, filename, expected):
         assert nr.guess_doc_class(filename) == expected
 
-    def test_unknown_filename_defaults_to_sonstiges(self):
+    def test_unknown_filename_defaults_to_other(self):
         assert nr.guess_doc_class("bauordnung_wien.pdf") == "sonstiges"
         assert nr.guess_doc_class("random.txt") == "sonstiges"
         assert nr.guess_doc_class("") == "sonstiges"
@@ -599,7 +599,7 @@ class TestNonRisEntries:
         entry.update(over)
         return entry
 
-    def test_web_source_entry_loads_and_renders_with_quelle(self, tmp_path):
+    def test_web_source_entry_loads_and_renders_with_source(self, tmp_path):
         registry = nr.load_registry(self._write(tmp_path, [self._base()]))
         assert registry is not None and registry.entries[0].id == "ma37"
         block = nr.render_prompt_block(registry, bundesland="Wien")
@@ -646,7 +646,7 @@ class TestParcelNote:
         assert nr.parcel_note([]) is None
         assert nr.parcel_note([{"file_name": "grundriss.pdf", "tags": ["Grundriss"]}]) is None
 
-    def test_tagged_bebauungsplan_is_named_as_governing(self):
+    def test_tagged_development_plan_is_named_as_governing(self):
         docs = [
             {"file_name": "bplan_7602.pdf", "tags": ["Bebauungsplan"], "summary": "x"},
             {"file_name": "fwp_wien.pdf", "tags": ["Flächenwidmungsplan"]},
@@ -686,13 +686,13 @@ class TestParcelNote:
 class TestGuessDisplayTitle:
     """The default display-title seed derived from the OIB filename convention."""
 
-    def test_richtlinie(self):
+    def test_guideline(self):
         assert nr.guess_display_title("oib-rl_2_ausgabe_mai_2023.pdf") == "OIB-Richtlinie 2, Ausgabe Mai 2023"
 
     def test_sub_number(self):
         assert nr.guess_display_title("oib-rl_2.3_ausgabe_mai_2023.pdf") == "OIB-Richtlinie 2.3, Ausgabe Mai 2023"
 
-    def test_leitfaden_underscore_and_hyphen_normalize(self):
+    def test_guide_underscore_and_hyphen_normalize(self):
         assert nr.guess_display_title("oib-rl_2_leitfaden_ausgabe_mai_2023.pdf") == (
             "OIB-Richtlinie 2 – Leitfaden, Ausgabe Mai 2023"
         )
@@ -791,7 +791,7 @@ class TestOibFamilies:
     that grows a 2.4 needs no code change.
     """
 
-    def test_a_richtlinie_with_parts_reports_all_of_them(self):
+    def test_a_guideline_with_parts_reports_all_of_them(self):
         from aiq_agent.common.norm_registry import oib_families
 
         families = oib_families(
@@ -806,7 +806,7 @@ class TestOibFamilies:
         assert [(f.key, f.members) for f in families] == [("2", ("2", "2.1", "2.2", "2.3"))]
         assert families[0].label == "OIB-Richtlinie 2"
 
-    def test_a_richtlinie_without_parts_is_still_a_family(self):
+    def test_a_guideline_without_parts_is_still_a_family(self):
         """One member is a fact about the corpus. It is a different statement
         from "we do not know what parts it has"."""
         from aiq_agent.common.norm_registry import oib_families
@@ -878,7 +878,7 @@ class TestFamilyQueryNumber:
             "gib mir eine Zusammenfassung der OIB 2",
         ],
     )
-    def test_a_question_about_the_richtlinie_itself_names_its_family(self, query):
+    def test_a_question_about_the_guideline_itself_names_its_family(self, query):
         from aiq_agent.common.norm_registry import family_query_number
 
         assert family_query_number(query) == "2"
@@ -1118,7 +1118,7 @@ class TestPublishedOibFilenames:
         assert nr.oib_family_member(file_name) is None
         assert nr.guess_display_title(file_name) is None
 
-    def test_every_published_aenderungen_file_is_excluded_from_retrieval(self):
+    def test_every_published_amendments_file_is_excluded_from_retrieval(self):
         config = yaml.safe_load((REPO_ROOT / "configs" / "config_oib_openrouter.yml").read_text(encoding="utf-8"))
         excluded = set(config["functions"]["knowledge_search"]["exclude_file_names"])
         published_diffs = {name for name, doc_class, *_ in PUBLISHED_OIB_2023 if doc_class == "aenderungen"}

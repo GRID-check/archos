@@ -170,7 +170,7 @@ const OPTIONS: AnnotationExportOptions = { format: 'md', scope: 'open', fassung:
 
 const HEADER: ProtocolHeader = {
   documentName: 'Grundriss EG.pdf',
-  fassung: { number: 3, total: 5, createdAt: '2026-08-14T10:00:00.000Z' },
+  revision: { number: 3, total: 5, createdAt: '2026-08-14T10:00:00.000Z' },
   projectName: 'Wohnhaus Lindengasse',
   exportedAt: new Date('2026-10-13T12:30:00.000Z'),
   exportedBy: 'Anna Berger',
@@ -303,7 +303,7 @@ describe('protocolFileName', () => {
     expect(protocolFileName(HEADER, { format: 'docx', fassung: 'all' }, t)).toBe(
       'Anmerkungen – Grundriss EG – alle Fassungen.docx'
     )
-    expect(protocolFileName({ ...HEADER, fassung: null }, { format: 'md', fassung: 'current' }, t)).toBe(
+    expect(protocolFileName({ ...HEADER, revision: null }, { format: 'md', fassung: 'current' }, t)).toBe(
       'Anmerkungen – Grundriss EG.md'
     )
   })

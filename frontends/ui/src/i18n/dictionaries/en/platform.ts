@@ -298,9 +298,9 @@ export const platform = {
       titlePlaceholder: 'Full title of the norm',
       rank: 'Rank',
       bundesland: 'Federal state',
-      bundeslandHint: 'Canonical name (e.g. Wien) — leave empty if it applies nationwide',
-      bundeslandRequired: 'Canonical name (e.g. Wien). A state act cannot be placed without it.',
-      bundeslandPlaceholder: 'Wien',
+      federalStateHint: 'Canonical name (e.g. Wien) — leave empty if it applies nationwide',
+      federalStateRequired: 'Canonical name (e.g. Wien). A state act cannot be placed without it.',
+      federalStatePlaceholder: 'Wien',
       application: 'RIS application (Anwendung)',
       applicationHint:
         'Which RIS body of law is searched: BrKons = consolidated federal law, LrKons = consolidated state law. Filled in from the kind.',
@@ -341,10 +341,10 @@ export const platform = {
       titleQuery: 'Stored RIS query',
       titleQueryHint: 'The query a later re-verification starts from.',
       titleQueryPlaceholder: 'RIS title search',
-      gesetzesnummer: 'Law number (Gesetzesnummer)',
-      gesetzesnummerHint:
+      statuteNumber: 'Law number (Gesetzesnummer)',
+      statuteNumberHint:
         'The RIS-internal number of the act across all its versions, e.g. 20001234. Narrows down ambiguous titles.',
-      gesetzesnummerPlaceholder: 'e.g. 20001234',
+      statuteNumberPlaceholder: 'e.g. 20001234',
       expect: 'Expected in the title',
       expectHint: 'Only hits whose title contains this text are offered.',
       exclude: 'Excluded from the title',
@@ -358,7 +358,7 @@ export const platform = {
       lawNeedsRis: 'No RIS hit taken over yet — search for the norm and pick a version.',
       needApplication: 'A law needs a RIS application',
       needDocumentNumber: 'A law needs a document number from RIS',
-      needBundesland: 'A state act needs the federal state it belongs to',
+      needFederalState: 'A state act needs the federal state it belongs to',
     },
     verify: {
       searchLabel: 'Title in RIS',

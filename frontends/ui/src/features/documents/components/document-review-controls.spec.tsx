@@ -9,7 +9,7 @@
  *
  * Two things this strip used to do are now somebody else's, and the last block
  * pins that it really stopped doing them: the WAITING LINE belongs to
- * `DocumentLifecycleStand` (it has to be said whether or not there are controls,
+ * `DocumentLifecyclePosition` (it has to be said whether or not there are controls,
  * and it used to be said only when there were none), and „Archivieren" belongs
  * to `DocumentArchiveAction` (it is item-level, it is a one-way door, and as a
  * fifth button in this row it was the whole of what a published upload offered).
@@ -153,9 +153,9 @@ describe('DocumentReviewControls — approving signs its stand', () => {
     expect(onAct).not.toHaveBeenCalled()
 
     // The act names its Geltungsstand: which version, as of when.
-    const stand = screen.getByTestId('document-review-approve-stand')
-    expect(stand).toHaveTextContent('Revision 2')
-    expect(stand).toHaveTextContent(formatAbsoluteTime('2026-09-03T10:15:00.000Z', 'en'))
+    const asOf = screen.getByTestId('document-review-approve-as-of')
+    expect(asOf).toHaveTextContent('Revision 2')
+    expect(asOf).toHaveTextContent(formatAbsoluteTime('2026-09-03T10:15:00.000Z', 'en'))
     // …the acting person and the moment…
     const acting = screen.getByTestId('document-review-approve-acting')
     expect(acting).toHaveTextContent('DI Huber')
@@ -368,8 +368,8 @@ describe('DocumentReviewControls — two decisions in view, two behind ⋯', () 
     )
 
     await userEvent.click(screen.getByTestId('document-lifecycle-approve'))
-    expect(screen.getByTestId('document-review-approve-stand')).toHaveTextContent(/\b5 ·/)
-    expect(screen.getByTestId('document-review-approve-stand')).not.toHaveTextContent(/\b2 ·/)
+    expect(screen.getByTestId('document-review-approve-as-of')).toHaveTextContent(/\b5 ·/)
+    expect(screen.getByTestId('document-review-approve-as-of')).not.toHaveTextContent(/\b2 ·/)
   })
 
   it('leaves out the publish heading and blurb where the header already says it, and keeps the button', () => {

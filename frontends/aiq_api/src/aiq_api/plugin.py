@@ -79,7 +79,6 @@ from .routes.dictation import add_dictation_routes
 from .routes.document_search import add_document_search_routes
 from .routes.documents import add_document_routes
 from .routes.drafts import add_draft_routes
-from .routes.fassung_compare import add_fassung_compare_routes
 from .routes.feedback_digest import add_feedback_digest_routes
 from .routes.filing_fit import add_filing_fit_routes
 from .routes.generate_conversation_title import add_generate_conversation_title_routes
@@ -94,6 +93,7 @@ from .routes.note_embeddings import add_note_embedding_routes
 from .routes.oib import add_oib_routes
 from .routes.project_experience import add_project_experience_routes
 from .routes.project_facts import add_project_facts_routes
+from .routes.revision_compare import add_revision_compare_routes
 from .routes.ris import add_ris_routes
 from .routes.similar_passages import add_similar_passages_routes
 from .routes.skill_review import add_skill_review_routes
@@ -325,7 +325,7 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
         add_document_routes,
         # What changed between two Fassungen of a page, marked on it and said in
         # words: one vision call for the pair, cached (CONTEXT.md, „Fassung").
-        add_fassung_compare_routes,
+        add_revision_compare_routes,
         add_document_search_routes,
         # A project's facts and status onto its points, for the cross-project
         # search's filters and likeness (design: qdrant-retrieval-design §7).

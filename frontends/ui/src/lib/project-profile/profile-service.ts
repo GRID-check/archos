@@ -26,8 +26,8 @@ import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projec
  */
 const PROFILE_WRITE: readonly ProjectPermission[] = ['project:memory:write', 'project:edit']
 import { getBackendUrl } from '@/lib/backend-proxy'
-import { deleteBindingsOutsideBauwerke } from '@/lib/document-roles/repository'
-import { bauwerkIds } from '@/lib/document-roles/service'
+import { deleteBindingsOutsideBuildings } from '@/lib/document-roles/repository'
+import { buildingIds } from '@/lib/document-roles/service'
 import { BadRequestError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Locale } from '@/i18n/config'
@@ -114,7 +114,7 @@ export async function saveProjectProfile(
   return persistProfile(projectId, session.organizationId, profile, current, {
     resetSummary: true,
     // The wizard is where buildings are removed, and this is its save: the
-    // bindings of a building it no longer has go with it. Removing a Bauwerk
+    // bindings of a building it no longer has go with it. Removing a building
     // used to keep them, invisible in every slot and still read by the agent
     // (as "Bestandspläne (bw2)"), and a building added later under the reused
     // id inherited them. In the save's transaction, under the row lock the
@@ -122,7 +122,7 @@ export async function saveProjectProfile(
     // a later save that brought the building back
     // (docs/architecture/document-roles.md).
     inTransaction: (tx, saved) =>
-      deleteBindingsOutsideBauwerke(projectId, bauwerkIds(saved.profile), tx).then(() => undefined),
+      deleteBindingsOutsideBuildings(projectId, buildingIds(saved.profile), tx).then(() => undefined),
   })
 }
 

@@ -85,20 +85,20 @@ describe('SourceCard — a ledger round speaks for its own slot', () => {
     expect(screen.queryByText('pp. 4, 9')).not.toBeInTheDocument()
   })
 
-  test('five Punkte of one document are one card listing all five', () => {
+  test('five clauses of one document are one card listing all five', () => {
     // The whole point of the fold: five opens used to be five identical cards.
-    const punkte = ['Pkt. 3.1', 'Pkt. 3.2', 'Pkt. 3.3', 'Pkt. 3.4', 'Pkt. 3.5']
+    const clauses = ['Pkt. 3.1', 'Pkt. 3.2', 'Pkt. 3.3', 'Pkt. 3.4', 'Pkt. 3.5']
     const { container } = render(
       <SourceCard
         document={document(loci)}
         hitLabel="2 hits"
         gapLabel="Nothing found"
-        loci={punkte.map((detail) => ({ detail, repeat: false }))}
+        loci={clauses.map((detail) => ({ detail, repeat: false }))}
       />
     )
 
     expect(container.querySelectorAll('[data-source-card]')).toHaveLength(1)
-    expect(screen.getByText(punkte.join(', '))).toBeInTheDocument()
+    expect(screen.getByText(clauses.join(', '))).toBeInTheDocument()
     // The round reached five new passages, so it did work: no repeat marker.
     expect(screen.queryByText(/already retrieved/)).not.toBeInTheDocument()
     expect(screen.getByText('2 hits')).toBeInTheDocument()

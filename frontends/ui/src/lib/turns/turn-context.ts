@@ -25,7 +25,7 @@
 import 'server-only'
 import type { GridSession } from '@/lib/auth/types'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
+import { loadProjectFederalState, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
@@ -183,8 +183,8 @@ export async function resolveTurnContext(
   const modelOverrides = organizationId
     ? await bestEffort('load model overrides', () => getEffectiveModelOverrides(organizationId))
     : null
-  const bundesland = effectiveProjectId
-    ? await bestEffort('load bundesland fact', () => loadProjectBundesland(effectiveProjectId, organizationId))
+  const federalState = effectiveProjectId
+    ? await bestEffort('load bundesland fact', () => loadProjectFederalState(effectiveProjectId, organizationId))
     : null
 
   if (!organizationId || !session?.userId) {
@@ -222,7 +222,7 @@ export async function resolveTurnContext(
   // but the lookups above were project-scoped.
   if (effectiveProjectId) {
     context.projectId = effectiveProjectId
-    if (bundesland) context.bundesland = bundesland
+    if (federalState) context.bundesland = federalState
   }
   return { ...context, memoryReflectionEnabled }
 }

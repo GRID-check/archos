@@ -1,5 +1,5 @@
 /**
- * The value model behind the ROI section (`Wertrechner.astro`).
+ * The value model behind the ROI section (`ValueCalculator.astro`).
  *
  * It lives here, not in the component, because it is arithmetic rather than
  * markup: the section renders it once on the server for the default office and

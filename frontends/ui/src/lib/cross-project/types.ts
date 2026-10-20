@@ -63,10 +63,10 @@ function factTokens(key: 'bundesland' | 'bauweise' | 'nutzungen' | 'vorhabensart
 }
 
 /** The intake's own vocabularies, read off its definition, so the filter cannot drift from what a profile holds. */
-export const CROSS_PROJECT_FACT_BUNDESLAENDER = factTokens('bundesland')
-export const CROSS_PROJECT_FACT_BAUWEISEN = factTokens('bauweise')
-export const CROSS_PROJECT_FACT_NUTZUNGEN = factTokens('nutzungen')
-export const CROSS_PROJECT_FACT_VORHABENSARTEN = factTokens('vorhabensart')
+export const CROSS_PROJECT_FACT_FEDERAL_STATES = factTokens('bundesland')
+export const CROSS_PROJECT_FACT_CONSTRUCTION_METHODS = factTokens('bauweise')
+export const CROSS_PROJECT_FACT_USES = factTokens('nutzungen')
+export const CROSS_PROJECT_FACT_WORK_TYPES = factTokens('vorhabensart')
 
 /**
  * Only projects with these facts (the fingerprint, `similarity.ts`): within a
@@ -80,11 +80,11 @@ export const CROSS_PROJECT_FACT_VORHABENSARTEN = factTokens('vorhabensart')
  */
 export const crossProjectFactsSchema = z
   .object({
-    bundesland: z.array(z.enum(CROSS_PROJECT_FACT_BUNDESLAENDER)).min(1).max(CROSS_PROJECT_FACT_BUNDESLAENDER.length),
+    bundesland: z.array(z.enum(CROSS_PROJECT_FACT_FEDERAL_STATES)).min(1).max(CROSS_PROJECT_FACT_FEDERAL_STATES.length),
     gebaeudeklasse: z.array(z.number().int().min(1).max(5)).min(1).max(5),
-    bauweise: z.array(z.enum(CROSS_PROJECT_FACT_BAUWEISEN)).min(1).max(CROSS_PROJECT_FACT_BAUWEISEN.length),
-    nutzungen: z.array(z.enum(CROSS_PROJECT_FACT_NUTZUNGEN)).min(1).max(CROSS_PROJECT_FACT_NUTZUNGEN.length),
-    vorhabensart: z.array(z.enum(CROSS_PROJECT_FACT_VORHABENSARTEN)).min(1).max(CROSS_PROJECT_FACT_VORHABENSARTEN.length),
+    bauweise: z.array(z.enum(CROSS_PROJECT_FACT_CONSTRUCTION_METHODS)).min(1).max(CROSS_PROJECT_FACT_CONSTRUCTION_METHODS.length),
+    nutzungen: z.array(z.enum(CROSS_PROJECT_FACT_USES)).min(1).max(CROSS_PROJECT_FACT_USES.length),
+    vorhabensart: z.array(z.enum(CROSS_PROJECT_FACT_WORK_TYPES)).min(1).max(CROSS_PROJECT_FACT_WORK_TYPES.length),
   })
   .partial()
   .strict()

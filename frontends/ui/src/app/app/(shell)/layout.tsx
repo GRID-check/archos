@@ -61,7 +61,7 @@ export default async function AppShellLayout({
       canManageOrganization={chrome.navFlags.canManageOrganization}
       canViewOrganization={chrome.navFlags.canViewOrganization}
       canManagePlatform={chrome.navFlags.canManagePlatform}
-      canAccessArchiv={chrome.navFlags.canAccessArchiv}
+      canAccessOfficeShelf={chrome.navFlags.canAccessOfficeShelf}
       canAccessInbox={chrome.navFlags.canAccessInbox}
       showSkills={chrome.showSkills}
       showModels={chrome.showModels}

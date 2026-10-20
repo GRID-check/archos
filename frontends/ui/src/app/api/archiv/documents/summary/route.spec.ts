@@ -18,14 +18,14 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/documents/shelf-summary', () => ({
-  summarizeArchivDocuments: vi.fn().mockResolvedValue({
+  summarizeOfficeShelfDocuments: vi.fn().mockResolvedValue({
     folders: [{ folderId: null, total: 2400, readable: 2390, reading: 0, failed: 10, held: 0, unindexed: 0, latest: null }],
     failed: [],
     failedTruncated: false,
   }),
 }))
 
-import { summarizeArchivDocuments } from '@/lib/documents/shelf-summary'
+import { summarizeOfficeShelfDocuments } from '@/lib/documents/shelf-summary'
 import { GET } from './route'
 
 const get = (query = '') =>
@@ -36,7 +36,7 @@ describe('GET /api/archiv/documents/summary', () => {
     const body = await (await get()).json()
 
     expect(body.folders[0]).toMatchObject({ folderId: null, total: 2400 })
-    expect(summarizeArchivDocuments).toHaveBeenLastCalledWith(expect.anything(), {
+    expect(summarizeOfficeShelfDocuments).toHaveBeenLastCalledWith(expect.anything(), {
       authoredBy: undefined,
       includeArchived: false,
     })
@@ -44,7 +44,7 @@ describe('GET /api/archiv/documents/summary', () => {
 
   it('takes the server filters of the listing', async () => {
     await get('?includeArchived=true&authoredBy=user')
-    expect(summarizeArchivDocuments).toHaveBeenLastCalledWith(expect.anything(), {
+    expect(summarizeOfficeShelfDocuments).toHaveBeenLastCalledWith(expect.anything(), {
       authoredBy: 'user',
       includeArchived: true,
     })

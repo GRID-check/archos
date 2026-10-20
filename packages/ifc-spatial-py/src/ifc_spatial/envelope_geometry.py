@@ -309,7 +309,7 @@ def _external_route(model: SpatialModel, element: Any) -> tuple[bool | None, str
 
     Note that rung 2 is not always geometry: :func:`~ifc_spatial.operators.enclosed_by`
     answers from ``IfcRelSpaceBoundary`` when the export writes them (as
-    ``geschossdecke-und-fenster.ifc`` does, which has boundaries and no bodies at
+    ``floor-slab-and-window.ifc`` does, which has boundaries and no bodies at
     all) and derives them from the solids only when it must. Its provenance is
     carried through instead of being assumed, because "die Datei sagt, diese Wand
     begrenzt zwei Räume" and "wir haben zwei Räume daran gemessen" are different
@@ -372,7 +372,7 @@ def _external_route(model: SpatialModel, element: Any) -> tuple[bool | None, str
                     f"auf der anderen liegt kein IfcSpace ({source})",
                 )
             # The side could not be established — no body, or no dominant plane.
-            # `geschossdecke-und-fenster.ifc` is exactly that case: declared
+            # `floor-slab-and-window.ifc` is exactly that case: declared
             # `IfcRelSpaceBoundary` and no geometry at all, so the count is the
             # only evidence there is.
             #
@@ -620,7 +620,7 @@ def envelope_area_by_orientation(model: SpatialModel) -> Answer[dict[str, Any]]:
     ``IfcGeometricRepresentationContext.TrueNorth``, and it is right to: a
     building rotated 40° would be reported as having a south facade it does not
     have, and nothing in the answer would show it. So this operator does not
-    invent one either. On such a file — ``haus-mit-raeumen.ifc`` is one — the
+    invent one either. On such a file — ``house-with-rooms.ifc`` is one — the
     areas still come back, opaque and transparent still separated, with
     ``orientationKnown`` false, no ``byOrientation`` at all, and the German
     remedy for setting the north. Withholding a correct total area over a

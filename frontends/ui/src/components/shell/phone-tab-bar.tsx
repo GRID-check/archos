@@ -48,7 +48,7 @@ import { orgPhoneTabs, projectPhoneTabs, type PhoneTab, type PhoneTabLabel } fro
 export interface PhoneTabBarProps {
   /** The project whose sections the bar carries, or null above a project. */
   projectId: string | null
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
   className?: string
   /**
@@ -60,7 +60,7 @@ export interface PhoneTabBarProps {
 
 export function PhoneTabBar({
   projectId,
-  canAccessArchiv,
+  canAccessOfficeShelf,
   canAccessInbox,
   className,
   pathname: pinnedPathname,
@@ -80,7 +80,7 @@ export function PhoneTabBar({
   // between them.
   const pillId = `phone-tab-pill-${React.useId()}`
 
-  const flags = { canAccessArchiv, canAccessInbox }
+  const flags = { canAccessOfficeShelf, canAccessInbox }
   const tabs = projectId
     ? projectPhoneTabs(projectId, pathname, flags)
     : orgPhoneTabs(pathname, flags)

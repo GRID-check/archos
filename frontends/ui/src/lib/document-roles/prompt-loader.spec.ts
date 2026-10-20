@@ -99,15 +99,15 @@ const RECOMMENDING_PROFILE = profileWith({
 
 describe('recommendedSlotsFor', () => {
   it('recommends nothing and names no building for a project with no profile', () => {
-    expect(recommendedSlotsFor(null)).toEqual({ recommended: [], bauwerkNames: {} })
+    expect(recommendedSlotsFor(null)).toEqual({ recommended: [], buildingNames: {} })
   })
 
   it('keeps a per-building recommendation at its building and names that building', () => {
-    const { recommended, bauwerkNames } = recommendedSlotsFor(RECOMMENDING_PROFILE)
+    const { recommended, buildingNames } = recommendedSlotsFor(RECOMMENDING_PROFILE)
 
     expect(recommended).toContainEqual({ role: 'bebauungsplan', scopeInstanceId: null })
     expect(recommended).toContainEqual({ role: 'bestandsplan', scopeInstanceId: 'bw1' })
-    expect(bauwerkNames).toEqual({ bw1: 'Hoftrakt' })
+    expect(buildingNames).toEqual({ bw1: 'Hoftrakt' })
   })
 })
 
@@ -124,8 +124,8 @@ describe('loadMissingDocuments', () => {
 
     expect(missing).toEqual(
       expect.arrayContaining([
-        { role: 'bebauungsplan', label: 'Bebauungsplan', bauwerkName: null },
-        { role: 'bestandsplan', label: 'Bestandspläne', bauwerkName: 'Hoftrakt' },
+        { role: 'bebauungsplan', label: 'Bebauungsplan', buildingName: null },
+        { role: 'bestandsplan', label: 'Bestandspläne', buildingName: 'Hoftrakt' },
       ])
     )
   })
@@ -140,7 +140,7 @@ describe('loadMissingDocuments', () => {
 
     expect(missing?.map((entry) => entry.role)).not.toContain('bebauungsplan')
     expect(missing).toEqual(
-      expect.arrayContaining([{ role: 'bestandsplan', label: 'Bestandspläne', bauwerkName: 'Hoftrakt' }])
+      expect.arrayContaining([{ role: 'bestandsplan', label: 'Bestandspläne', buildingName: 'Hoftrakt' }])
     )
   })
 

@@ -592,7 +592,7 @@ class TestRunIngestionImageBranch:
         assert not summary.startswith("[IMAGE from page")
         assert summary == "Ein Grundriss EG."
 
-    def test_a_photo_of_a_plan_gets_foto_beside_the_classifiers_grundriss(
+    def test_a_photo_of_a_plan_gets_foto_beside_the_classifiers_floor_plan(
         self, tmp_path, monkeypatch, ingestor, summary_db
     ):
         """The vision model typed the pixels a photograph; the classifier only read the caption and said Grundriss."""

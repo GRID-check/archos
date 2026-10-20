@@ -43,7 +43,7 @@ describe('deleteProjectFolder', () => {
     expect(result).toEqual({ documentsBinned: 2, foldersBinned: 1, purgeAfter: new Date('2026-10-20T03:00:00Z') })
   })
 
-  it('never re-files the contents into the parent: the shelf delete is the Archiv’s', async () => {
+  it('never re-files the contents into the parent: the shelf delete is the office shelf’s', async () => {
     await deleteProjectFolder({ projectId: 'proj-1', folderId: 'f-1' }, session)
 
     expect(deleteShelfFolder).not.toHaveBeenCalled()

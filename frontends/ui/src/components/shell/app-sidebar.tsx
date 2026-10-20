@@ -122,7 +122,7 @@ export interface AppSidebarProps {
    * Whether the org-wide Archiv is reachable (any member of an organization,
    * ADR-0024). Also gates the Archiv nav item.
    */
-  canAccessArchiv?: boolean
+  canAccessOfficeShelf?: boolean
   /** Whether the IFC/BIM model page is enabled (`ifc-models`, ADR-0045). */
   showModels?: boolean
   /** Whether the Agent Skills page is enabled (feature-flagged, default off — ADR-0046). */
@@ -186,7 +186,7 @@ function AppSidebarFrame({
   canManageOrganization = false,
   canViewOrganization = false,
   canManagePlatform = false,
-  canAccessArchiv = false,
+  canAccessOfficeShelf = false,
   showModels = false,
   showSkills = false,
   canAccessInbox,
@@ -219,7 +219,7 @@ function AppSidebarFrame({
   const projectGroups = railGroups({
     showSkills,
     showModels,
-    canAccessArchiv,
+    canAccessOfficeShelf,
     canAccessInbox,
   })
 

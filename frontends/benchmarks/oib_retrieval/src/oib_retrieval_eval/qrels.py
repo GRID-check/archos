@@ -9,7 +9,7 @@ Punkt 5.1.1" — because that is the citation an Austrian fire engineer writes d
 only label that survives a re-chunking. Retrieval, on the other hand, returns chunks, and
 the only thing every chunking strategy agrees on is which page a chunk came from. So the
 labels are authored as ``(richtlinie, punkt, grade)`` and expanded here, through the
-committed ``fixtures/punkt_index.json``, into the ``(file_name, page)`` units the metrics
+committed ``fixtures/clause_index.json``, into the ``(file_name, page)`` units the metrics
 score. A Punkt that spans three pages expands to three units at the same grade, and every
 one of them counts toward that question's recall denominator (see :mod:`metrics`).
 
@@ -53,7 +53,7 @@ class Unit(NamedTuple):
 
 
 @dataclass(frozen=True)
-class PunktLabel:
+class ClauseLabel:
     """One graded label: a Punkt of a Richtlinie, and how relevant it is to the question.
 
     Grades are 1-3 and the scale is stated here rather than in the fixture so every entry
@@ -88,7 +88,7 @@ class GoldenEntry:
     language: str
     question: str
     question_class: str
-    relevant: tuple[PunktLabel, ...]
+    relevant: tuple[ClauseLabel, ...]
     provenance: str
     label_method: str
     notes: str
@@ -171,8 +171,8 @@ class ForbiddenUnits:
         return file_name.startswith(self.prefixes)
 
 
-class PunktIndex:
-    """``fixtures/punkt_index.json``: 946 Punkte across 12 Richtlinien, as committed.
+class ClauseIndex:
+    """``fixtures/clause_index.json``: 946 Punkte across 12 Richtlinien, as committed.
 
     The index is ground truth for two different things, and both are load-bearing:
     it is the label vocabulary the golden set is written in, and it is the independent
@@ -181,39 +181,39 @@ class PunktIndex:
     ground truth that moves when the thing it measures moves is not a ground truth.
     """
 
-    __slots__ = ("_by_richtlinie", "unresolved")
+    __slots__ = ("_by_guideline", "unresolved")
 
     def __init__(self, payload: dict[str, Any]) -> None:
-        self._by_richtlinie: dict[str, dict[str, dict[str, Any]]] = {
+        self._by_guideline: dict[str, dict[str, dict[str, Any]]] = {
             key: value for key, value in payload.items() if key != "_unresolved"
         }
         self.unresolved: dict[str, Any] = payload.get("_unresolved", {})
 
     @property
-    def richtlinien(self) -> tuple[str, ...]:
-        return tuple(sorted(self._by_richtlinie))
+    def guidelines(self) -> tuple[str, ...]:
+        return tuple(sorted(self._by_guideline))
 
-    def punkte(self, richtlinie: str) -> dict[str, dict[str, Any]]:
+    def clauses(self, richtlinie: str) -> dict[str, dict[str, Any]]:
         try:
-            return self._by_richtlinie[richtlinie]
+            return self._by_guideline[richtlinie]
         except KeyError:
             raise KeyError(
-                f"Richtlinie {richtlinie!r} is not in the Punkt index; known: {', '.join(self.richtlinien)}"
+                f"Richtlinie {richtlinie!r} is not in the Punkt index; known: {', '.join(self.guidelines)}"
             ) from None
 
     def file_name(self, richtlinie: str) -> str:
         """The PDF every Punkt of this Richtlinie lives in (the index has exactly one)."""
-        punkte = self.punkte(richtlinie)
-        return next(iter(punkte.values()))["file_name"]
+        clauses = self.clauses(richtlinie)
+        return next(iter(clauses.values()))["file_name"]
 
-    def total_punkte(self) -> int:
-        return sum(len(punkte) for punkte in self._by_richtlinie.values())
+    def total_clauses(self) -> int:
+        return sum(len(clauses) for clauses in self._by_guideline.values())
 
     def units(self, richtlinie: str, punkt: str) -> tuple[Unit, ...]:
         """Every ``(file_name, page)`` this Punkt occupies, in page order."""
-        punkte = self.punkte(richtlinie)
+        clauses = self.clauses(richtlinie)
         try:
-            entry = punkte[punkt]
+            entry = clauses[punkt]
         except KeyError:
             raise KeyError(f"Punkt {punkt!r} is not in the index for Richtlinie {richtlinie!r}") from None
         return tuple(Unit(entry["file_name"], int(page)) for page in entry["pages"])
@@ -227,16 +227,16 @@ class PunktIndex:
         opinion, which is what keeps that measurement non-circular.
         """
         prefix = f"{punkt}."
-        return any(other != punkt and other.startswith(prefix) for other in self.punkte(richtlinie))
+        return any(other != punkt and other.startswith(prefix) for other in self.clauses(richtlinie))
 
-    def leaf_punkte(self, richtlinie: str) -> tuple[str, ...]:
-        return tuple(punkt for punkt in self.punkte(richtlinie) if not self.has_children(richtlinie, punkt))
+    def leaf_clauses(self, richtlinie: str) -> tuple[str, ...]:
+        return tuple(punkt for punkt in self.clauses(richtlinie) if not self.has_children(richtlinie, punkt))
 
 
-def load_punkt_index(path: str | Path) -> PunktIndex:
+def load_clause_index(path: str | Path) -> ClauseIndex:
     """Load the committed Punkt index."""
     with open(path, encoding="utf-8") as handle:
-        return PunktIndex(json.load(handle))
+        return ClauseIndex(json.load(handle))
 
 
 def load_golden(path: str | Path) -> GoldenSet:
@@ -259,7 +259,7 @@ def load_golden(path: str | Path) -> GoldenSet:
             question=raw["question"],
             question_class=raw["question_class"],
             relevant=tuple(
-                PunktLabel(richtlinie=str(label["richtlinie"]), punkt=str(label["punkt"]), grade=int(label["grade"]))
+                ClauseLabel(richtlinie=str(label["richtlinie"]), punkt=str(label["punkt"]), grade=int(label["grade"]))
                 for label in raw["relevant"]
             ),
             provenance=raw["provenance"],
@@ -287,7 +287,7 @@ def load_golden(path: str | Path) -> GoldenSet:
     )
 
 
-def expand(entry: GoldenEntry, index: PunktIndex) -> dict[Unit, int]:
+def expand(entry: GoldenEntry, index: ClauseIndex) -> dict[Unit, int]:
     """Expand one entry's Punkt labels into graded ``(file_name, page)`` units.
 
     When two labelled Punkte share a page (common: a page holds several Punkte), the
@@ -314,12 +314,12 @@ class Judgements:
         return frozenset(self.graded)
 
 
-def build_judgements(golden: GoldenSet, index: PunktIndex) -> tuple[Judgements, ...]:
+def build_judgements(golden: GoldenSet, index: ClauseIndex) -> tuple[Judgements, ...]:
     """Resolve every golden entry against the Punkt index, in file order."""
     return tuple(Judgements(entry=entry, graded=expand(entry, index)) for entry in golden.entries)
 
 
-def assert_siblings_share_qrels(golden: GoldenSet, index: PunktIndex) -> None:
+def assert_siblings_share_qrels(golden: GoldenSet, index: ClauseIndex) -> None:
     """Raise unless every German question and its English sibling expand identically.
 
     This is the load-bearing invariant of the language-parity number. The requirement is

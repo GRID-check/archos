@@ -98,7 +98,7 @@ export const projectIntake = {
   derivations: {
     heading: 'Derivations',
     description: 'The Gebäudeklasse of each building follows from the values above.',
-    bauwerk: 'Building {number}',
+    building: 'Building {number}',
     rule: 'Gebäudeklasse',
     value: 'GK {value}',
     open: 'still open',
@@ -107,7 +107,7 @@ export const projectIntake = {
     inputs: 'Based on',
     suggestedMark: 'suggested',
     confirm: 'Use Gebäudeklasse',
-    confirmAria: 'Use Gebäudeklasse {value} for {bauwerk}',
+    confirmAria: 'Use Gebäudeklasse {value} for {building}',
     confirmed: 'Confirmed',
   },
   evidence: {

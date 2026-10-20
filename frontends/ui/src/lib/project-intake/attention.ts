@@ -28,7 +28,7 @@ export async function onIntakeReady(input: {
   recipientUserId: string
   /** The project's name: the row's subject. */
   projectName: string | null
-  /** Questions that decide a Gebäudeklasse; named in the title when there are any. */
+  /** Questions that decide a building class; named in the title when there are any. */
   decisiveOpen: number
   /** The reading's own summary, already masked. */
   summary: string | null

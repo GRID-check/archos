@@ -336,7 +336,7 @@ const useBlobUrl = (build: () => Uint8Array<ArrayBuffer>): string | null => {
   return url
 }
 
-const buildBescheid = (): Uint8Array<ArrayBuffer> => buildPdf(PAGES)
+const buildPermitDecision = (): Uint8Array<ArrayBuffer> => buildPdf(PAGES)
 
 /**
  * `?variant=states`: the viewer's own states side by side, each in the frame a
@@ -346,7 +346,7 @@ const buildBescheid = (): Uint8Array<ArrayBuffer> => buildPdf(PAGES)
  * encrypted one asking for its password (`piloti`).
  */
 const StatesPreview = () => {
-  const bescheid = useBlobUrl(buildBescheid)
+  const permitDecision = useBlobUrl(buildPermitDecision)
   const locked = useBlobUrl(encryptedPdf)
   const pane = 'flex min-w-0 flex-col rounded-lg border border-border bg-card p-3'
   const label = 'mb-2 shrink-0 text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground'
@@ -354,12 +354,12 @@ const StatesPreview = () => {
     <div className="grid h-[calc(100dvh-3rem)] grid-cols-[minmax(0,1fr)_340px] grid-rows-2 gap-4">
       <div className={`${pane} row-span-1`} data-search-on-load>
         <p className={label}>Suche im Dokument</p>
-        {bescheid && <PdfDocumentView src={bescheid} title={`${TITLE}.pdf`} />}
+        {permitDecision && <PdfDocumentView src={permitDecision} title={`${TITLE}.pdf`} />}
         <SearchOnLoad query="Fluchtwege" />
       </div>
       <div className={`${pane} row-span-2`}>
         <p className={label}>Schmale Bühne (Chat-Seitenleiste)</p>
-        {bescheid && <PdfDocumentView src={bescheid} title={`${TITLE}.pdf`} page={2} />}
+        {permitDecision && <PdfDocumentView src={permitDecision} title={`${TITLE}.pdf`} page={2} />}
       </div>
       <div className="grid min-h-0 grid-cols-2 gap-4">
         <div className={pane}>
@@ -381,9 +381,9 @@ const StatesPreview = () => {
  * Fundstellen, the document and its controls.
  */
 const EnlargedPreview = () => {
-  const bescheid = useBlobUrl(buildBescheid)
-  return bescheid ? (
-    <PdfViewerDialog open onOpenChange={() => {}} fileName={FILE_NAME} title={`${TITLE}.pdf`} src={bescheid} />
+  const permitDecision = useBlobUrl(buildPermitDecision)
+  return permitDecision ? (
+    <PdfViewerDialog open onOpenChange={() => {}} fileName={FILE_NAME} title={`${TITLE}.pdf`} src={permitDecision} />
   ) : null
 }
 

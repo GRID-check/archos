@@ -45,7 +45,7 @@ export interface OrgHeaderProps {
   canManageOrganization: boolean
   canViewOrganization: boolean
   canManagePlatform: boolean
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
 }
 
@@ -56,7 +56,7 @@ export function OrgHeader({
   canManageOrganization,
   canViewOrganization,
   canManagePlatform,
-  canAccessArchiv,
+  canAccessOfficeShelf,
   canAccessInbox,
 }: OrgHeaderProps): JSX.Element {
   const pathname = usePathname() ?? ''
@@ -86,12 +86,12 @@ export function OrgHeader({
           {/* On a phone the two doorways live in the tab bar, under the thumb
               (`PhoneTabBar`), and feedback in the avatar menu; the band keeps
               search and the account. */}
-          {canAccessArchiv && (
+          {canAccessOfficeShelf && (
             <OrgHeaderIconLink
               href="/app/archiv"
               label={t('sections.archiv')}
               icon={Archive}
-              tourAnchor={TOUR_ANCHORS.archiv}
+              tourAnchor={TOUR_ANCHORS.officeShelf}
               active={pathname === '/app/archiv' || pathname.startsWith('/app/archiv/')}
             />
           )}

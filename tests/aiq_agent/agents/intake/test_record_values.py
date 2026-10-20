@@ -214,7 +214,7 @@ class TestTheBffDecides:
         assert "closest keys intake_needs listed: geschosse_oberirdisch@bw1" in text
         assert session.refusals["refused:unknown-key"] == 1
 
-    async def test_a_recorded_gebaeudeklasse_is_refused_as_derived(self, signed_run, route, session, pages_read):
+    async def test_a_recorded_building_class_is_refused_as_derived(self, signed_run, route, session, pages_read):
         route(
             record=lambda body: {
                 "results": [{"key": "gebaeudeklasse@bw1", "outcome": "refused", "reason": "unknown-key"}]

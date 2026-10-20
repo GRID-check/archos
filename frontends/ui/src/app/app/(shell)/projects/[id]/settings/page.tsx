@@ -10,7 +10,7 @@ import { getProjectActivity } from '@/lib/projects/activity'
 import { getProjectOverviewData } from '@/lib/projects/overview-query'
 import { projectOverviewReader } from '@/lib/projects/service'
 import { resolveProjectSettingsAccess } from '@/lib/projects/settings-access'
-import { getSteckbrief } from '@/lib/projects/steckbrief-service'
+import { getProjectRecord } from '@/lib/projects/project-record-service'
 import { getSimilarProjects } from '@/lib/references/service'
 import { BentoCell } from '@/components/ui/bento'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -42,13 +42,13 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
     const { id } = await params
     await requireProjectAccess(session, id, 'project:view')
 
-    const [data, access, activity, steckbrief, intake] = await Promise.all([
+    const [data, access, activity, projectRecord, intake] = await Promise.all([
       projectOverviewReader(session, id).then((reader) =>
         getProjectOverviewData(id, session.organizationId, reader)
       ),
       resolveProjectSettingsAccess(session, id),
       getProjectActivity(session, id),
-      getSteckbrief(session, id),
+      getProjectRecord(session, id),
       // Piloti's reading, while its review is open (ADR-0111): the hero links to it.
       findProjectIntake(session.organizationId, id),
     ])
@@ -61,7 +61,7 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
         data={data}
         activity={activity}
         usage={usage}
-        steckbrief={steckbrief}
+        projectRecord={projectRecord}
         setupOpen={intake !== null && intake.status !== 'completed'}
         similar={
           <Suspense

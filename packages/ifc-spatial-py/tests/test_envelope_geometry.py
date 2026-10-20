@@ -40,13 +40,13 @@ FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtu
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
 #: Declares IsExternal and ThermalTransmittance and has NO body on any element,
 #: and no TrueNorth.
-DECLARED_NO_GEOMETRY = FIXTURES / "haus-mit-raeumen.ifc"
+DECLARED_NO_GEOMETRY = FIXTURES / "house-with-rooms.ifc"
 #: Declares nothing at all, has no bodies, but DOES write IfcRelSpaceBoundary.
-BOUNDARIES_NO_PSETS = FIXTURES / "geschossdecke-und-fenster.ifc"
+BOUNDARIES_NO_PSETS = FIXTURES / "floor-slab-and-window.ifc"
 #: One wall, in FEET, with no psets, no geometry and no rooms.
-FEET = FIXTURES / "einheiten-fuss.ifc"
+FEET = FIXTURES / "units-feet.ifc"
 #: An IFC4X3 road — no building element of any kind.
-ROAD = FIXTURES / "strasse-ifc4x3.ifc"
+ROAD = FIXTURES / "road-ifc4x3.ifc"
 
 NORTH_WALL = "3cUkl32yn9qRSPvBJVyWw5"
 EAST_WALL = "3cUkl32yn9qRSPvBJVyWx4"
@@ -562,7 +562,7 @@ def test_compactness_on_the_hand_built_rooms(two_rooms: SpatialModel) -> None:
 def test_declared_space_boundaries_are_not_reported_as_geometry(
     tmp_path: Path,  # noqa: ARG001 — kept for symmetry with the other file-based tests
 ) -> None:
-    """``geschossdecke-und-fenster.ifc`` writes IfcRelSpaceBoundary and no bodies.
+    """``floor-slab-and-window.ifc`` writes IfcRelSpaceBoundary and no bodies.
 
     So the space-count rung answers from a DECLARATION, and saying "aus der
     Geometrie abgeleitet" about it would be a false claim about a file that has
@@ -585,7 +585,7 @@ def test_declared_space_boundaries_are_not_reported_as_geometry(
 
 
 def test_declared_without_geometry_never_reports_a_confident_zero() -> None:
-    """``haus-mit-raeumen.ifc``: four external elements and not one body.
+    """``house-with-rooms.ifc``: four external elements and not one body.
 
     ``totalArea`` is ``None``, not ``0.0``. Zero is a number an agent will put
     in a sentence, and "die Hüllfläche beträgt 0 m²" would be a statement about

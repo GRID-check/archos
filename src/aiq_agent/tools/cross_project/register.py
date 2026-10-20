@@ -79,7 +79,7 @@ from aiq_agent.common.grounding_block import GroundingBlock
 from aiq_agent.common.grounding_block import GroundingHit
 from aiq_agent.common.grounding_block import SourceProject
 from aiq_agent.common.grounding_block import render_grounding_block
-from aiq_agent.common.norm_registry import BUNDESLAND_TOKENS
+from aiq_agent.common.norm_registry import FEDERAL_STATE_TOKENS
 from aiq_agent.common.source_kinds import Shelf
 from aiq_agent.knowledge.restricted_collections import is_restricted_collection
 from aiq_agent.knowledge.restricted_use import note_collections_read
@@ -150,7 +150,7 @@ Scope = Annotated[Literal["similar", "closed", "all", "named"], BeforeValidator(
 #: value belongs to, and the schema the model sees stays one short enum.
 #: ``test_project_lookup.py`` holds these to the BFF's JSON Schema.
 _FACT_LABELS: dict[str, dict[str, str]] = {
-    "bundesland": {token: label for token, label in BUNDESLAND_TOKENS.items() if label},
+    "bundesland": {token: label for token, label in FEDERAL_STATE_TOKENS.items() if label},
     "gebaeudeklasse": {f"gk{grade}": f"GK {grade}" for grade in range(1, 6)},
     "bauweise": {
         "mauerwerk_massivbau": "Mauerwerk/Massivbau",
@@ -328,7 +328,7 @@ def _land_note(project: dict[str, Any]) -> str | None:
     theirs = project.get("bundesland")
     if not isinstance(theirs, str) or not theirs:
         return None
-    label = BUNDESLAND_TOKENS.get(theirs) or (
+    label = FEDERAL_STATE_TOKENS.get(theirs) or (
         "außerhalb Österreichs" if theirs == "ausserhalb_oesterreichs" else theirs
     )
     context = project_context.get_signed_request_context()

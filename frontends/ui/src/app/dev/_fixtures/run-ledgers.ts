@@ -28,13 +28,13 @@ const doc = (
 ): RunLedgerDoc => ({ name, shelf, loci, ...(repeat ? { repeat } : {}) })
 
 const OIB_2 = (loci: string[], repeat = false) => doc('OIB-Richtlinie 2, Ausgabe Mai 2023', 'base', loci, repeat)
-const BO_WIEN = doc('Bauordnung für Wien § 108', 'base', ['§ 108 Abs. 2'])
-const BSK = (loci: string[], repeat = false) => doc('Brandschutzkonzept Haus A', 'project', loci, repeat)
-const GRUNDRISS = doc('Grundriss EG', 'project', ['Achse C–E'])
+const VIENNA_BUILDING_CODE = doc('Bauordnung für Wien § 108', 'base', ['§ 108 Abs. 2'])
+const FIRE_SAFETY_CONCEPT = (loci: string[], repeat = false) => doc('Brandschutzkonzept Haus A', 'project', loci, repeat)
+const FLOOR_PLAN = doc('Grundriss EG', 'project', ['Achse C–E'])
 const OIB_2_3 = doc('OIB-Richtlinie 2.3, Ausgabe Mai 2023', 'base', ['Pkt. 3.1'])
-const ERL_OIB_2 = doc('Erläuterungen zu OIB-Richtlinie 2', 'base', ['S. 4'])
+const EXPLANATORY_OIB_2 = doc('Erläuterungen zu OIB-Richtlinie 2', 'base', ['S. 4'])
 const WBTV = doc('Wiener Bautechnikverordnung 2020', 'base', ['§ 2'])
-const CHECKLISTE = doc('Checkliste Brandschutz Einreichung', 'archiv', ['Abschnitt 3'])
+const CHECKLIST = doc('Checkliste Brandschutz Einreichung', 'archiv', ['Abschnitt 3'])
 const ONORM = doc('ÖNORM B 1300', 'base', ['Pkt. 5.2'])
 
 const PLAN_STEP = (at: Date): RunStep => ({
@@ -52,14 +52,14 @@ const ROUNDS = (at: (s: number) => Date): RunStep[] => [
     phase: 'recherchieren',
     intent: 'Klären, welche Fluchtweglängen OIB 2 für Gebäudeklasse 4 vorsieht',
     startedAt: at(20).toISOString(),
-    docs: [OIB_2(['Pkt. 5.1.1', 'S. 12']), BO_WIEN, BSK(['S. 7'])],
+    docs: [OIB_2(['Pkt. 5.1.1', 'S. 12']), VIENNA_BUILDING_CODE, FIRE_SAFETY_CONCEPT(['S. 7'])],
   },
   {
     id: 'r2',
     phase: 'recherchieren',
     intent: 'Prüfen, ob das Atrium als Ersatz für den Treppenraum gilt',
     startedAt: at(45).toISOString(),
-    docs: [OIB_2(['Pkt. 4.2', 'S. 18'], true), GRUNDRISS, OIB_2_3, ERL_OIB_2],
+    docs: [OIB_2(['Pkt. 4.2', 'S. 18'], true), FLOOR_PLAN, OIB_2_3, EXPLANATORY_OIB_2],
     openPoints: ['Landesabweichung Wien prüfen'],
   },
   {
@@ -67,7 +67,7 @@ const ROUNDS = (at: (s: number) => Date): RunStep[] => [
     phase: 'recherchieren',
     intent: 'Wiener Abweichungen zur Fluchtweglänge und die Rauchabschnitte nachlesen',
     startedAt: at(80).toISOString(),
-    docs: [WBTV, CHECKLISTE, ONORM, BSK(['S. 9'], true)],
+    docs: [WBTV, CHECKLIST, ONORM, FIRE_SAFETY_CONCEPT(['S. 9'], true)],
     openPoints: ['Nachweis der Rauchabschnitte im Atrium', 'Abstimmung mit der MA 37 offen'],
   },
 ]
@@ -131,12 +131,12 @@ const secondsAgo = (s: number): Date => new Date(NOW - s * 1000)
 const MORNING = new Date('2026-09-16T07:41:00.000Z')
 const morning = (s: number): Date => new Date(MORNING.getTime() + s * 1000)
 
-export const RUN_ANGELEGT: RunLedger = emptyRunLedger('run-angelegt', secondsAgo(3))
+export const RUN_CREATED: RunLedger = emptyRunLedger('run-angelegt', secondsAgo(3))
 
 /** Recherchieren live: 3 rounds, 9 documents, one re-read, open points. Started 1:42 ago. */
-export const RUN_LAEUFT: RunLedger = researched('run-laeuft', secondsAgo(102), 3)
+export const RUN_RUNNING: RunLedger = researched('run-laeuft', secondsAgo(102), 3)
 
-export const RUN_WARTET: RunLedger = setRunStatus(
+export const RUN_WAITING: RunLedger = setRunStatus(
   researched('run-wartet', secondsAgo(140), 2),
   'wartet',
   secondsAgo(80),
@@ -157,22 +157,22 @@ function finished(runId: string, fileId: string | undefined): RunLedger {
   )
 }
 
-export const RUN_FERTIG: RunLedger = finished('run-fertig', 'doc-brandschutz-fluchtwege')
-export const RUN_FERTIG_INLINE: RunLedger = finished('run-fertig-inline', undefined)
+export const RUN_DONE: RunLedger = finished('run-fertig', 'doc-brandschutz-fluchtwege')
+export const RUN_DONE_INLINE: RunLedger = finished('run-fertig-inline', undefined)
 
-export const RUN_FEHLGESCHLAGEN: RunLedger = (() => {
+export const RUN_FAILED: RunLedger = (() => {
   let ledger = researched('run-fehlgeschlagen', MORNING, 2)
   ledger = closePhase(ledger, 'recherchieren', morning(70))
   ledger = openPhase(ledger, 'pruefen', morning(70))
   return failRun(ledger, 'Das Budget war aufgebraucht, bevor die Prüfung fertig war.', morning(84))
 })()
 
-export const RUN_ABGEBROCHEN: RunLedger = (() => {
+export const RUN_CANCELLED: RunLedger = (() => {
   const ledger = setRunStatus(researched('run-abgebrochen', MORNING, 1), 'abgebrochen', morning(38))
   return { ...ledger, finishedAt: morning(38).toISOString() }
 })()
 
-export const RUN_UNTERBROCHEN: RunLedger = (() => {
+export const RUN_INTERRUPTED: RunLedger = (() => {
   let ledger = researched('run-unterbrochen', MORNING, 2)
   ledger = closePhase(ledger, 'recherchieren', morning(61))
   ledger = openPhase(ledger, 'schreiben', morning(61))

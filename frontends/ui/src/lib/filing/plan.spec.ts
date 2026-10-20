@@ -55,8 +55,8 @@ describe('planFiling', () => {
     )
     expect(plan.withdraw).toEqual([])
     expect(plan.create).toHaveLength(2)
-    const bescheide = plan.create.find((payload) => payload.operations[0].target_folder === 'Bescheide')
-    expect(bescheide).toMatchObject({
+    const permitDecisions = plan.create.find((payload) => payload.operations[0].target_folder === 'Bescheide')
+    expect(permitDecisions).toMatchObject({
       operation: 'move',
       basis: 'name',
       new_folder: null,

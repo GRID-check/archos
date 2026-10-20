@@ -144,7 +144,7 @@ def _target_collections(
                 continue
             if wanted is not None and entry_shelf != wanted:
                 continue
-            if wanted is None and entry_shelf not in (Shelf.PROJECT, Shelf.ARCHIV):
+            if wanted is None and entry_shelf not in (Shelf.PROJECT, Shelf.OFFICE_SHELF):
                 continue
             seen.add(collection)
             targets.append(collection)
@@ -153,7 +153,7 @@ def _target_collections(
         source = _source_for_collection(collection)
         if source is None or is_restricted_collection(collection):
             continue
-        if wanted is Shelf.ARCHIV and source != "buero":
+        if wanted is Shelf.OFFICE_SHELF and source != "buero":
             continue
         if wanted is Shelf.PROJECT and source != "projekt":
             continue
@@ -538,7 +538,7 @@ async def _retrieve_all(
         from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
 
         for entry in get_scoped_collections_from_context() or []:
-            if entry.shelf is Shelf.ARCHIV:
+            if entry.shelf is Shelf.OFFICE_SHELF:
                 source_by_collection[entry.collection] = "buero"
             elif entry.shelf is Shelf.PROJECT:
                 source_by_collection[entry.collection] = "projekt"

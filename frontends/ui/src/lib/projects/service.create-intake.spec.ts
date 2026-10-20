@@ -108,7 +108,7 @@ describe('createProject, set up by Piloti', () => {
     expect(project.id).toBe('p1')
   })
 
-  it('stores a closing as the intake intent and does not close the project, but keeps its Beginn', async () => {
+  it('stores a closing as the intake intent and does not close the project, but keeps its start', async () => {
     await createProject(
       session,
       { name: 'Schule Nord', setup: 'piloti', closing: { outcome: 'completed', startedOn: '2019-03', endedOn: '2022-08' } },
@@ -128,7 +128,7 @@ describe('createProject, set up by Piloti', () => {
     expect(recordAuditEvent.mock.calls.map(([event]) => (event as { action: string }).action)).toEqual(['project.created'])
   })
 
-  it('still refuses an Abschluss in the future before writing anything', async () => {
+  it('still refuses a closing in the future before writing anything', async () => {
     await expect(
       createProject(
         session,

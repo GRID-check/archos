@@ -76,7 +76,7 @@ import { sortedFolderDestinations } from '@/features/documents/lib/folder-path-l
 import { useFileSearch } from '@/features/documents/hooks/use-file-search'
 import { projectSearchScope } from '@/features/documents/lib/file-shelf'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
-import { FassungenFixture } from './fassungen-fixture'
+import { RevisionsFixture } from './revisions-fixture'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
 import { buildFolderBrief } from '@/features/documents/lib/folder-knowledge'
 
@@ -276,7 +276,7 @@ export default function FileBrowserDevPage(): JSX.Element {
   if (variant === 'folders-list') return <FoldersInListViewFixture />
   if (variant === 'folder-drop') return <FolderDropTargetFixture />
   if (variant === 'file-context') return <FileContextMenuFixture />
-  if (variant === 'fassungen') return <FassungenFixture />
+  if (variant === 'fassungen') return <RevisionsFixture />
   if (variant === 'phone-fab') return <PhoneUploadFabFixture />
   if (variant === 'select') return <SelectionFixture view="cards" />
   if (variant === 'select-list') return <SelectionFixture view="list" />

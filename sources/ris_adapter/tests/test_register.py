@@ -65,17 +65,17 @@ class TestBuildSearchParams:
 
         assert params == {"Suchworte": "Garage", "Titel": "Garagengesetz"}
 
-    def test_bundesland_filter_for_landesrecht(self):
+    def test_federal_state_filter_for_landesrecht(self):
         params = _build_search_params("LrKons", "Bauordnung", "", "Wien", "", "")
 
         assert params["Bundesland.SucheInWien"] == "true"
 
-    def test_bundesland_umlauts_normalized(self):
+    def test_federal_state_umlauts_normalized(self):
         params = _build_search_params("LrKons", "Bauordnung", "", "Kärnten", "", "")
 
         assert params["Bundesland.SucheInKaernten"] == "true"
 
-    def test_bundesland_ignored_for_bundesrecht(self):
+    def test_federal_state_ignored_for_bundesrecht(self):
         params = _build_search_params("BrKons", "Bauordnung", "", "Wien", "", "")
 
         assert not any(key.startswith("Bundesland") for key in params)
@@ -86,7 +86,7 @@ class TestBuildSearchParams:
         assert params["EntscheidungsdatumVon"] == "2020-01-01"
         assert params["EntscheidungsdatumBis"] == "2021-12-31"
 
-    def test_brkons_fassung_vom(self):
+    def test_brkons_revision_vom(self):
         params = _build_search_params("BrKons", "Garage", "", "", "2023-06-01", "")
 
         assert params["Fassung.FassungVom"] == "2023-06-01"
@@ -783,7 +783,7 @@ class TestRisSearchCatalogShortcut:
         assert "Curated RIS catalog match(es)" in output
         assert fake_client.search_calls == []
 
-    async def test_bundesland_argument_selects_that_states_law(self, fake_client, monkeypatch):
+    async def test_federal_state_argument_selects_that_states_law(self, fake_client, monkeypatch):
         catalog = NormRegistry(
             entries=[
                 _catalog_entry(),  # Wien

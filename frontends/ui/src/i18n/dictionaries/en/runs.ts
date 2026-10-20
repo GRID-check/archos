@@ -96,7 +96,7 @@ export const runs = {
    * The Unterlagen: the documents the reader named for the run. The receipt
    * says which were read and where; the picker over the thread names more.
    */
-  unterlagen: {
+  documents: {
     receiptLabel: 'Documents named for this task',
     receipt: '{read} of {total} named documents read',
     unread: 'not read',

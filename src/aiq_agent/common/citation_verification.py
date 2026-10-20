@@ -1171,7 +1171,7 @@ _KL_DOC_CLASS_RE = re.compile(r"^(?:Dokumentart|Doc-Class):\s*(.+)$", re.MULTILI
 # this sentence.
 _KL_PROVENANCE_RE = re.compile(r"^Herkunft:\s*(.+)$", re.MULTILINE)
 # The Punkt the excerpt belongs to, as the chunker established it
-# (``punkt_chunking.py``, measured 946/946 against the corpus's contents
+# (``clause_chunking.py``, measured 946/946 against the corpus's contents
 # pages) and ``_format_results`` states it. This is the citation form Austrian
 # building law actually uses ("OIB-RL 2, Pkt. 3.5.2"); until it was parsed here
 # the number reached the model as prose and died before the citation the reader
@@ -1181,7 +1181,7 @@ _KL_PROVENANCE_RE = re.compile(r"^Herkunft:\s*(.+)$", re.MULTILINE)
 # to ``§63Abs1`` to fit a one-token rule put an unreadable locus on every chip.
 #: ``Projekt: Name — abgeschlossen (project_id …)`` (``grounding_block._project_line``, ADR-0094).
 _KL_PROJECT_RE = re.compile(r"^Projekt:\s*(.+?)\s+—\s+(\S+)\s+\(project_id\s+([^\s)]+)\)\s*$", re.MULTILINE)
-_KL_PUNKT_RE = re.compile(r"^Punkt:\s*(.+?)\s*$", re.MULTILINE)
+_KL_CLAUSE_RE = re.compile(r"^Punkt:\s*(.+?)\s*$", re.MULTILINE)
 #: ``Bundesland: …`` under the ``Projekt:`` line (``grounding_block._header_lines``), when the project's Land is stated.
 _KL_LAND_RE = re.compile(r"^Bundesland:\s*(.+?)\s*$", re.MULTILINE)
 # The retrieval score ``_format_results`` prints, a true cosine similarity since
@@ -1403,7 +1403,7 @@ def _parse_knowledge_layer(content: str, tool_name: str) -> list[SourceEntry]:
                     authored_by=_parse_kl_authored_by(_first(_KL_PROVENANCE_RE, header)),
                     chunk_text=_kl_block_body(block),
                     tool_name=tool_name,
-                    punkt=_first(_KL_PUNKT_RE, header),
+                    punkt=_first(_KL_CLAUSE_RE, header),
                     project=_parse_kl_project(header),
                     project_land_note=_first(_KL_LAND_RE, header),
                     # The score line is the header's last line by definition of
@@ -2043,7 +2043,7 @@ _STATUS_FOR_RANK: dict[str, str] = {
 # the normative text a Bundesland declares binding; its Leitfäden, Erläuterungen,
 # Begriffsbestimmungen, referenced-norm lists and change docs only interpret or
 # accompany it and never found a new requirement.
-_OIB_RICHTLINIE_DOC_CLASSES = frozenset({"oib_richtlinie"})
+_OIB_GUIDELINE_DOC_CLASSES = frozenset({"oib_richtlinie"})
 _OIB_INTERPRETIVE_DOC_CLASSES = frozenset(
     {"oib_leitfaden", "oib_erlaeuterung", "oib_begriffe", "oib_referenz", "oib_aenderung"}
 )
@@ -2143,7 +2143,7 @@ def _oib_binding_status(entry: SourceEntry) -> str | None:
     """
     from aiq_agent.common.norm_registry import oib_doc_class
 
-    if entry.doc_class in _OIB_RICHTLINIE_DOC_CLASSES:
+    if entry.doc_class in _OIB_GUIDELINE_DOC_CLASSES:
         return "verbindlich_erklaert"
     if entry.doc_class in _OIB_INTERPRETIVE_DOC_CLASSES:
         return "auslegend"
@@ -2348,7 +2348,7 @@ _VALUE_KLASSE_RE = re.compile(
 #: A deadline span: ``4 Jahre``, ``sechs Wochen``, ``binnen``, ``unverzüglich``.
 #: Word-numbers are closed (ein–zwölf) because an open ``\w+`` before a time
 #: noun matches ``nächste Woche`` — a pointer, not a span.
-_VALUE_FRIST_RE = re.compile(
+_VALUE_DEADLINE_RE = re.compile(
     r"\b\d+\s*(?:Tag|Woche|Monat|Jahr|Stunde|Minute|Sekunde)\w*\b"
     r"|\b(?:ein(?:e|er|em|en|es)?|zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf)"
     r"\s+(?:Tag|Woche|Monat|Jahr|Stunde|Minute|Sekunde)\w*\b"
@@ -2365,7 +2365,7 @@ def _copyable_value_present(text: str) -> bool:
     """Whether ``text`` states a Zahl, Klasse or Frist a reader would copy."""
     if not text:
         return False
-    return bool(_VALUE_ZAHL_RE.search(text) or _VALUE_KLASSE_RE.search(text) or _VALUE_FRIST_RE.search(text))
+    return bool(_VALUE_ZAHL_RE.search(text) or _VALUE_KLASSE_RE.search(text) or _VALUE_DEADLINE_RE.search(text))
 
 
 def _turn_source_names(turn_sources: Sequence[SourceEntry]) -> frozenset[str]:
@@ -2512,7 +2512,7 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
     # (only for RIS entries, mirroring both helpers' guard) and hand the same
     # instance to source_lane and binding_note_for_entry so neither reloads it.
     from aiq_agent.common.norm_registry import load_registry
-    from aiq_agent.common.norm_registry import resolve_bundesland
+    from aiq_agent.common.norm_registry import resolve_federal_state
 
     # Load the registry once for anything that could resolve to a catalogued norm:
     # a RIS URL (source_lane/binding_note) OR a document identifier (the WIDENED
@@ -2528,7 +2528,7 @@ def source_entry_to_wire(entry: SourceEntry, *, number: int | None = None) -> di
     # resolved structured-first (signed request context, then prompt text) so a
     # Wien entry is never claimed for a Tirol project; the resolution is fail-open.
     try:
-        bundesland = resolve_bundesland(None)
+        bundesland = resolve_federal_state(None)
     except Exception:  # bundesland resolution must never break wire serialization
         bundesland = None
     classification = binding_classification_for_entry(entry, registry, bundesland)

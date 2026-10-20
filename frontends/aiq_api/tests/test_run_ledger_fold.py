@@ -245,7 +245,7 @@ class TestTheMapping:
         assert client.finishes == []
         assert client.appends[-1].status == "abgebrochen"
 
-    async def test_a_salvaged_run_is_unterbrochen_and_still_has_its_result(self) -> None:
+    async def test_a_salvaged_run_is_interrupted_and_still_has_its_result(self) -> None:
         fold, _store, client = make_fold()
         fold.observe(phase_event(PHASE_RESEARCH_STARTED, batch_index=1))
         fold.observe({"type": "job.degraded", "data": {"research_truncated": True}})
@@ -272,7 +272,7 @@ class TestTheMapping:
         assert client.finishes[-1].result.file_id == "doc-7"
 
 
-class TestTheGrundlage:
+class TestTheBasis:
     """The documents the reader named: on the ledger from the first snapshot, extended live."""
 
     async def test_the_named_documents_are_on_the_first_snapshot_and_the_first_append(self) -> None:
@@ -300,8 +300,8 @@ class TestTheGrundlage:
 
         from aiq_agent.common.plan_documents import PlanDocument
 
-        fold.add_grundlage(PlanDocument(name="Brandschutzkonzept.pdf", shelf="project"))
-        fold.add_grundlage({"name": "brandschutzkonzept.pdf"})
+        fold.add_basis(PlanDocument(name="Brandschutzkonzept.pdf", shelf="project"))
+        fold.add_basis({"name": "brandschutzkonzept.pdf"})
         await fold.flush()
 
         assert [doc["name"] for doc in snapshots(store)[-1]["grundlage"]] == [
@@ -311,7 +311,7 @@ class TestTheGrundlage:
         sent = [[doc.name for doc in body.grundlage] for body in client.appends if body.grundlage is not None]
         assert sent == [["Einreichplan.pdf"], ["Einreichplan.pdf", "Brandschutzkonzept.pdf"]]
 
-    async def test_the_grundlage_validates_against_the_bff_schema(self, schema: dict[str, Any]) -> None:
+    async def test_the_basis_validates_against_the_bff_schema(self, schema: dict[str, Any]) -> None:
         fold, store, client = make_fold(grundlage=[{"name": "Einreichplan.pdf", "shelf": "project"}])
         fold.observe(phase_event(PHASE_PLANNING_STARTED))
         await fold.flush(force=True)

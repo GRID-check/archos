@@ -26,9 +26,9 @@ export const UnresolvedCard: FC<{ entry: ResolvedSurfacedDocument; projectId?: s
   projectId,
 }) => {
   const t = useTranslations('chat')
-  const isBuero = entry.surfaced.source === 'buero'
-  const href = isBuero ? '/app/archiv' : projectId ? `/app/projects/${projectId}/files` : '/app/archiv'
-  const actionLabel = isBuero || !projectId ? t('documentGrid.openInArchive') : t('documentGrid.openInFiles')
+  const isOffice = entry.surfaced.source === 'buero'
+  const href = isOffice ? '/app/archiv' : projectId ? `/app/projects/${projectId}/files` : '/app/archiv'
+  const actionLabel = isOffice || !projectId ? t('documentGrid.openInOfficeShelf') : t('documentGrid.openInFiles')
 
   return (
     <a

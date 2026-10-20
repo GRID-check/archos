@@ -16,7 +16,7 @@ import { BookOpen, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { Input } from '@/components/ui/input'
-import { UnterlagenDialog } from '@/features/runs/components/UnterlagenDialog'
+import { DocumentsDialog } from '@/features/runs/components/DocumentsDialog'
 import { useTranslations } from '@/i18n'
 import { planDocumentLabel, sanitizePlanDocuments, type PlanDocument } from '@/lib/runs/plan-documents'
 import { cn } from '@/lib/utils'
@@ -42,11 +42,11 @@ export interface PlanShape {
   /** File names the run may not use. */
   ausgeschlossen: string[]
   /** What the run can read: the turn's inventory, as the backend listed it. */
-  unterlagen: PlanDocument[]
+  documents: PlanDocument[]
 }
 
 /** The source ids the composer shows: the Rahmen the run is approved under. */
-export interface PlanRahmen {
+export interface PlanFrame {
   ids: string[]
   labels: string[]
 }
@@ -73,7 +73,7 @@ export function parsePlanFence(content: string): PlanShape | null {
       Array.isArray(value)
         ? value.filter((s): s is string => typeof s === 'string' && s.trim().length > 0)
         : []
-    const unterlagen = sanitizePlanDocuments({ grundlage: raw.unterlagen })?.grundlage ?? []
+    const documents = sanitizePlanDocuments({ grundlage: raw.unterlagen })?.grundlage ?? []
     return {
       title: raw.title,
       sections,
@@ -81,7 +81,7 @@ export function parsePlanFence(content: string): PlanShape | null {
       depth,
       grundlage: names(raw.grundlage),
       ausgeschlossen: names(raw.ausgeschlossen),
-      unterlagen,
+      documents: documents,
     }
   } catch {
     return null
@@ -156,15 +156,15 @@ export const PlanChecklist: FC<{
   plan: PlanShape
   disabled?: boolean
   /** The composer's sources, shown as the Rahmen the run is approved under. */
-  rahmen?: PlanRahmen
+  frame?: PlanFrame
   onChange: (plan: PlanShape) => void
-}> = ({ plan, disabled = false, rahmen, onChange }) => {
+}> = ({ plan, disabled = false, frame, onChange }) => {
   const t = useTranslations('chat')
   const [draft, setDraft] = useState('')
   const [picking, setPicking] = useState(false)
   const labelOf = (name: string): string => {
     const key = name.trim().toLocaleLowerCase()
-    const doc = plan.unterlagen.find((row) => row.name.trim().toLocaleLowerCase() === key)
+    const doc = plan.documents.find((row) => row.name.trim().toLocaleLowerCase() === key)
     return doc ? planDocumentLabel(doc) : name
   }
   const dropName = (list: 'grundlage' | 'ausgeschlossen', name: string): void =>
@@ -261,37 +261,37 @@ export const PlanChecklist: FC<{
           picker over the thread names them; the chips here are the receipt of
           that choice, each one strikable. Shown whenever the turn has something
           to name, so the section is where the reader learns it can be done. */}
-      {(plan.unterlagen.length > 0 || plan.grundlage.length > 0 || plan.ausgeschlossen.length > 0) && (
-        <div className="flex flex-col gap-1.5" data-testid="plan-unterlagen">
+      {(plan.documents.length > 0 || plan.grundlage.length > 0 || plan.ausgeschlossen.length > 0) && (
+        <div className="flex flex-col gap-1.5" data-testid="plan-documents">
           <span className="text-muted-foreground text-xs font-medium">
-            {t('agentPrompt.plan.unterlagen.label')}
+            {t('agentPrompt.plan.documents.label')}
           </span>
           <NamedRow
-            label={t('agentPrompt.plan.unterlagen.grundlage')}
+            label={t('agentPrompt.plan.documents.basis')}
             names={plan.grundlage}
             labelOf={labelOf}
             disabled={disabled}
             variant="default"
-            removeLabel={(name) => t('agentPrompt.plan.unterlagen.removeRead', { name })}
+            removeLabel={(name) => t('agentPrompt.plan.documents.removeRead', { name })}
             onRemove={(name) => dropName('grundlage', name)}
-            testId="plan-grundlage"
+            testId="plan-basis"
           />
           <NamedRow
-            label={t('agentPrompt.plan.unterlagen.ausgeschlossen')}
+            label={t('agentPrompt.plan.documents.excluded')}
             names={plan.ausgeschlossen}
             labelOf={labelOf}
             disabled={disabled}
             variant="destructive"
-            removeLabel={(name) => t('agentPrompt.plan.unterlagen.removeExcluded', { name })}
+            removeLabel={(name) => t('agentPrompt.plan.documents.removeExcluded', { name })}
             onRemove={(name) => dropName('ausgeschlossen', name)}
-            testId="plan-ausgeschlossen"
+            testId="plan-excluded"
           />
           {plan.grundlage.length === 0 && plan.ausgeschlossen.length === 0 && (
             <span className="text-muted-foreground text-xs">
-              {t('agentPrompt.plan.unterlagen.none')}
+              {t('agentPrompt.plan.documents.none')}
             </span>
           )}
-          {!disabled && plan.unterlagen.length > 0 && (
+          {!disabled && plan.documents.length > 0 && (
             <div>
               <Button
                 type="button"
@@ -299,16 +299,16 @@ export const PlanChecklist: FC<{
                 variant="outline"
                 className="h-7 gap-1 px-2 text-xs pointer-coarse:h-11 pointer-coarse:px-3"
                 onClick={() => setPicking(true)}
-                data-testid="plan-unterlagen-pick"
+                data-testid="plan-documents-pick"
               >
                 <BookOpen className="size-3.5" aria-hidden />
-                {t('agentPrompt.plan.unterlagen.choose')}
+                {t('agentPrompt.plan.documents.choose')}
               </Button>
-              <UnterlagenDialog
+              <DocumentsDialog
                 mode="pick"
                 open={picking}
                 onOpenChange={setPicking}
-                documents={plan.unterlagen}
+                documents={plan.documents}
                 grundlage={plan.grundlage}
                 ausgeschlossen={plan.ausgeschlossen}
                 onChange={(next) => onChange({ ...plan, ...next })}
@@ -320,13 +320,13 @@ export const PlanChecklist: FC<{
       {/* The Rahmen: read-only here, because it IS the composer's Datengrundlage
           — the same chips one row below the thread. Changing it there changes
           what the run gets; this only says so. */}
-      {rahmen && rahmen.labels.length > 0 && (
-        <div className="flex flex-col gap-1.5" data-testid="plan-rahmen">
+      {frame && frame.labels.length > 0 && (
+        <div className="flex flex-col gap-1.5" data-testid="plan-frame">
           <span className="text-muted-foreground text-xs font-medium">
-            {t('agentPrompt.plan.rahmen')}
+            {t('agentPrompt.plan.frame')}
           </span>
           <div className="flex flex-wrap gap-1.5">
-            {rahmen.labels.map((label) => (
+            {frame.labels.map((label) => (
               <Chip key={label} size="sm" variant="secondary">
                 {label}
               </Chip>
@@ -334,7 +334,7 @@ export const PlanChecklist: FC<{
           </div>
           {!disabled && (
             <span className="text-muted-foreground text-xs">
-              {t('agentPrompt.plan.rahmenNote')}
+              {t('agentPrompt.plan.frameNote')}
             </span>
           )}
         </div>

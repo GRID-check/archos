@@ -111,7 +111,7 @@ export function ShortcutsCheatsheet({
   canViewOrganization = false,
   showKnowledge = false,
   showSkills = false,
-  canAccessArchiv = false,
+  canAccessOfficeShelf = false,
   canCollaborate = false,
   canAccessInbox = false,
 }: ShortcutsCheatsheetProps) {
@@ -127,11 +127,11 @@ export function ShortcutsCheatsheet({
         canViewOrganization,
         showKnowledge,
         showSkills,
-        canAccessArchiv,
+        canAccessOfficeShelf,
         canCollaborate,
         canAccessInbox,
       }),
-    [canViewOrganization, showKnowledge, showSkills, canAccessArchiv, canCollaborate, canAccessInbox],
+    [canViewOrganization, showKnowledge, showSkills, canAccessOfficeShelf, canCollaborate, canAccessInbox],
   )
   const columns = React.useMemo(() => splitColumns(sections), [sections])
 

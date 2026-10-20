@@ -29,7 +29,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
 import { createGeocodingClient, type GeocodingClient } from '@/lib/geocoding/client'
 import { GEOCODE_DEFAULT_LIMIT, type GeocodeResult } from '@/lib/geocoding/types'
-import { BUNDESLAND_OPTIONS } from '@/lib/projects/bundesland-options'
+import { FEDERAL_STATE_OPTIONS } from '@/lib/projects/federal-state-options'
 import { createSameAddressClient, type SameAddressClient } from '@/lib/projects/same-address-client'
 import { SameAddressNotice } from './same-address-notice'
 
@@ -58,7 +58,7 @@ export interface AddressFieldProps {
   onChange: (value: GeocodeResult | null) => void
   /** The Bundesland chosen by hand, used while there is no geocoder. */
   bundesland: string
-  onBundeslandChange: (value: string) => void
+  onFederalStateChange: (value: string) => void
   disabled?: boolean
   /** The address search; the real one unless a spec brings its own. */
   client?: GeocodingClient
@@ -68,8 +68,8 @@ export interface AddressFieldProps {
 export function AddressField({
   value,
   onChange,
-  bundesland,
-  onBundeslandChange,
+  bundesland: federalState,
+  onFederalStateChange,
   disabled = false,
   client,
   sameAddressClient,
@@ -80,20 +80,20 @@ export function AddressField({
   if (off) {
     return (
       <Field>
-        <FieldLabel htmlFor="create-project-bundesland">{t('form.bundeslandLabel')}</FieldLabel>
-        <Select value={bundesland} onValueChange={onBundeslandChange} disabled={disabled}>
+        <FieldLabel htmlFor="create-project-bundesland">{t('form.federalStateLabel')}</FieldLabel>
+        <Select value={federalState} onValueChange={onFederalStateChange} disabled={disabled}>
           <SelectTrigger id="create-project-bundesland" className="w-full">
-            <SelectValue placeholder={t('form.bundeslandPlaceholder')} />
+            <SelectValue placeholder={t('form.federalStatePlaceholder')} />
           </SelectTrigger>
           <SelectContent>
-            {BUNDESLAND_OPTIONS.map((option) => (
+            {FEDERAL_STATE_OPTIONS.map((option) => (
               <SelectItem key={option.value} value={option.value}>
                 {option.label}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
-        <FieldDescription>{t('form.bundeslandHelp')}</FieldDescription>
+        <FieldDescription>{t('form.federalStateHelp')}</FieldDescription>
       </Field>
     )
   }

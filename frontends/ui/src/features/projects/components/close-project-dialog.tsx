@@ -39,9 +39,9 @@ import type { CleanupProposal } from '@/lib/projects/cleanup-types'
 import { CLEANUP_PARTIALLY_UNDONE_REASON } from '@/lib/projects/cleanup-types'
 import { currentMonth, isMonth } from '@/lib/projects/month'
 import {
-  abschlussBounds,
-  abschlussProblem,
-  defaultAbschluss,
+  closingBounds,
+  closingProblem,
+  defaultClosing,
   type ProjectLifecycleView,
   type ProjectOutcome,
 } from '@/lib/projects/project-status'
@@ -77,7 +77,7 @@ export function CloseProjectDialog({
   const [step, setStep] = useState(0)
   const [furthest, setFurthest] = useState(0)
   const [outcome, setOutcome] = useState<ProjectOutcome | null>(lifecycle.suggestedOutcome ?? null)
-  const [endedOn, setEndedOn] = useState<string>(() => defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, thisMonth))
+  const [endedOn, setEndedOn] = useState<string>(() => defaultClosing(lifecycle.suggestedEndedOn, lifecycle.startedOn, thisMonth))
   const [load, setLoad] = useState<Load>({ state: 'loading' })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [pending, setPending] = useState(false)
@@ -89,7 +89,7 @@ export function CloseProjectDialog({
     setStep(0)
     setFurthest(0)
     setOutcome(lifecycle.suggestedOutcome ?? null)
-    setEndedOn(defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, currentMonth()))
+    setEndedOn(defaultClosing(lifecycle.suggestedEndedOn, lifecycle.startedOn, currentMonth()))
     setLoad({ state: 'loading' })
     setError(false)
   }, [open, lifecycle.suggestedOutcome, lifecycle.suggestedEndedOn, lifecycle.startedOn])
@@ -123,9 +123,9 @@ export function CloseProjectDialog({
 
   const proposal = load.state === 'ready' ? load.proposal : null
   const items = proposal?.items ?? []
-  const bounds = abschlussBounds(lifecycle.startedOn, thisMonth)
-  const abschlussError = abschlussProblem(endedOn, lifecycle.startedOn, thisMonth)
-  const endingAnswered = outcome !== null && abschlussError === null
+  const bounds = closingBounds(lifecycle.startedOn, thisMonth)
+  const closingError = closingProblem(endedOn, lifecycle.startedOn, thisMonth)
+  const endingAnswered = outcome !== null && closingError === null
   const last = step === STEPS.length - 1
 
   const goTo = (index: number): void => {
@@ -142,7 +142,7 @@ export function CloseProjectDialog({
     })
 
   const finish = async (remove: boolean): Promise<void> => {
-    if (!outcome || abschlussError || !isMonth(endedOn)) {
+    if (!outcome || closingError || !isMonth(endedOn)) {
       goTo(0)
       return
     }
@@ -225,13 +225,13 @@ export function CloseProjectDialog({
                 onChange={setEndedOn}
                 locale={locale}
                 monthLabel={t('lifecycle.closeDialog.endedOn.label')}
-                yearLabel={t('steckbrief.year')}
+                yearLabel={t('projectRecord.year')}
                 fromYear={bounds.min ? Number(bounds.min.slice(0, 4)) : undefined}
                 toYear={Number(bounds.max.slice(0, 4))}
-                invalid={abschlussError !== null}
+                invalid={closingError !== null}
               />
-              {abschlussError ? (
-                <FieldError>{t(`lifecycle.closeDialog.endedOn.${abschlussError}`)}</FieldError>
+              {closingError ? (
+                <FieldError>{t(`lifecycle.closeDialog.endedOn.${closingError}`)}</FieldError>
               ) : (
                 <FieldDescription>{t('lifecycle.closeDialog.endedOn.hint')}</FieldDescription>
               )}

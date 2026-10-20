@@ -606,10 +606,10 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
    * composite keys tie a parent and a document to the folder's own shelf.
    */
   describe('folders of a shelf', () => {
-    const ARCHIV_FOLDER_A = `00000000-0000-4000-8000-0000000a0001`
+    const OFFICE_SHELF_FOLDER_A = `00000000-0000-4000-8000-0000000a0001`
     const PROJECT_FOLDER_A = `00000000-0000-4000-8000-0000000a0002`
-    const DOC_ARCHIV_A = `00000000-0000-4000-8000-0000000d0001`
-    const DOC_ARCHIV_B = `00000000-0000-4000-8000-0000000d0002`
+    const DOC_OFFICE_SHELF_A = `00000000-0000-4000-8000-0000000d0001`
+    const DOC_OFFICE_SHELF_B = `00000000-0000-4000-8000-0000000d0002`
     const DOC_PROJECT_A = `00000000-0000-4000-8000-0000000d0003`
     let projectA: string
 
@@ -631,21 +631,21 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         projectA = String(project.id)
         await db.execute(
           sql`insert into project_folders (id, organization_id, scope, project_id, name, path)
-              values (${ARCHIV_FOLDER_A}, ${ORG_A}, 'archiv', NULL, 'Normen', 'Normen'),
+              values (${OFFICE_SHELF_FOLDER_A}, ${ORG_A}, 'archiv', NULL, 'Normen', 'Normen'),
                      (${PROJECT_FOLDER_A}, ${ORG_A}, 'project', ${projectA}, 'Plaene', 'Plaene')`,
         )
-        await insertDocument(ORG_A, { id: DOC_ARCHIV_A, scope: 'archiv', projectId: null })
+        await insertDocument(ORG_A, { id: DOC_OFFICE_SHELF_A, scope: 'archiv', projectId: null })
         await insertDocument(ORG_A, { id: DOC_PROJECT_A, scope: 'project', projectId: projectA })
       })
       await withTenant({ organizationId: ORG_B }, () =>
-        insertDocument(ORG_B, { id: DOC_ARCHIV_B, scope: 'archiv', projectId: null }),
+        insertDocument(ORG_B, { id: DOC_OFFICE_SHELF_B, scope: 'archiv', projectId: null }),
       )
     })
 
     afterAll(async () => {
       await withPlatformAccess('test cleanup', async () => {
         await db.execute(
-          sql`delete from documents where id in (${DOC_ARCHIV_A}, ${DOC_ARCHIV_B}, ${DOC_PROJECT_A})`,
+          sql`delete from documents where id in (${DOC_OFFICE_SHELF_A}, ${DOC_OFFICE_SHELF_B}, ${DOC_PROJECT_A})`,
         )
         await db.execute(sql`delete from project_folders where organization_id in (${ORG_A}, ${ORG_B})`)
       })
@@ -660,7 +660,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
       const seenByA = await withTenant({ organizationId: ORG_A }, () =>
         db.execute(sql`select id from project_folders order by path`),
       )
-      expect([...seenByA].map((row) => row.id)).toEqual([ARCHIV_FOLDER_A, PROJECT_FOLDER_A])
+      expect([...seenByA].map((row) => row.id)).toEqual([OFFICE_SHELF_FOLDER_A, PROJECT_FOLDER_A])
     })
 
     it('refuses to write an Archiv folder into another tenant', async () => {
@@ -680,7 +680,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         withTenant({ organizationId: ORG_B }, () =>
           db.execute(
             sql`insert into project_folders (organization_id, scope, parent_id, name, path)
-                values (${ORG_B}, 'archiv', ${ARCHIV_FOLDER_A}, 'child', 'Normen/child')`,
+                values (${ORG_B}, 'archiv', ${OFFICE_SHELF_FOLDER_A}, 'child', 'Normen/child')`,
           ),
         ),
       )
@@ -690,7 +690,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
     it('refuses to file another tenant\'s Archiv document into this tenant\'s folder', async () => {
       const cause = await rejectionCause(() =>
         withTenant({ organizationId: ORG_B }, () =>
-          db.execute(sql`update documents set folder_id = ${ARCHIV_FOLDER_A} where id = ${DOC_ARCHIV_B}`),
+          db.execute(sql`update documents set folder_id = ${OFFICE_SHELF_FOLDER_A} where id = ${DOC_OFFICE_SHELF_B}`),
         ),
       )
       // Either the policy (the folder is invisible to B) or the key; the folder
@@ -700,19 +700,19 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
 
     it('files an Archiv document into an Archiv folder, and nothing else into it', async () => {
       await withTenant({ organizationId: ORG_A }, () =>
-        db.execute(sql`update documents set folder_id = ${ARCHIV_FOLDER_A} where id = ${DOC_ARCHIV_A}`),
+        db.execute(sql`update documents set folder_id = ${OFFICE_SHELF_FOLDER_A} where id = ${DOC_OFFICE_SHELF_A}`),
       )
 
-      const intoArchiv = await rejectionCause(() =>
+      const intoOfficeShelf = await rejectionCause(() =>
         withTenant({ organizationId: ORG_A }, () =>
-          db.execute(sql`update documents set folder_id = ${ARCHIV_FOLDER_A} where id = ${DOC_PROJECT_A}`),
+          db.execute(sql`update documents set folder_id = ${OFFICE_SHELF_FOLDER_A} where id = ${DOC_PROJECT_A}`),
         ),
       )
-      expect(intoArchiv.message).toMatch(/violates foreign key/i)
+      expect(intoOfficeShelf.message).toMatch(/violates foreign key/i)
 
       const intoProject = await rejectionCause(() =>
         withTenant({ organizationId: ORG_A }, () =>
-          db.execute(sql`update documents set folder_id = ${PROJECT_FOLDER_A} where id = ${DOC_ARCHIV_A}`),
+          db.execute(sql`update documents set folder_id = ${PROJECT_FOLDER_A} where id = ${DOC_OFFICE_SHELF_A}`),
         ),
       )
       expect(intoProject.message).toMatch(/documents_folder_id_organization_id_scope_fkey/)
@@ -730,7 +730,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
         withTenant({ organizationId: ORG_A }, () =>
           db.execute(
             sql`insert into documents (organization_id, scope, conversation_id, folder_id, filename, storage_key, collection_name, created_by, status)
-                values (${ORG_A}, 'session', ${conversationId}, ${ARCHIV_FOLDER_A}, 's.pdf', 'k/s', ${'s_' + conversationId}, 'u', 'uploaded')`,
+                values (${ORG_A}, 'session', ${conversationId}, ${OFFICE_SHELF_FOLDER_A}, 's.pdf', 'k/s', ${'s_' + conversationId}, 'u', 'uploaded')`,
           ),
         ),
       )
@@ -741,7 +741,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
     })
 
     it('keeps the three owner columns telling one story', async () => {
-      const archivWithProject = await rejectionCause(() =>
+      const officeShelfWithProject = await rejectionCause(() =>
         withTenant({ organizationId: ORG_A }, () =>
           db.execute(
             sql`insert into project_folders (organization_id, scope, project_id, name, path)
@@ -749,7 +749,7 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
           ),
         ),
       )
-      expect(archivWithProject.message).toMatch(/project_folders_scope_owner_check/)
+      expect(officeShelfWithProject.message).toMatch(/project_folders_scope_owner_check/)
 
       const projectWithout = await rejectionCause(() =>
         withTenant({ organizationId: ORG_A }, () =>

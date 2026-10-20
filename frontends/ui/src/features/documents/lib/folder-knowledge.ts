@@ -25,7 +25,7 @@ import { documentReadFamily, type DocumentReadFamily } from '@/lib/documents/doc
 import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS, documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import type { FileItem, FolderItem } from '../file-types'
-import { withoutOlderFassungen } from './fassung-chain'
+import { withoutOlderRevisions } from './revision-chain'
 
 /**
  * Where a document stands with Piloti, in the five answers a reader acts on.
@@ -396,7 +396,7 @@ export function buildFolderBrief(
   folders: readonly FolderItem[],
   folderId: string | null
 ): FolderBrief {
-  const files = withoutOlderFassungen(allFiles, false)
+  const files = withoutOlderRevisions(allFiles, false)
   const subtree = filesInSubtree(files, folders, folderId)
   const tally = tallyOf(subtree)
 

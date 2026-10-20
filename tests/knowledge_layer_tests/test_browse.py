@@ -143,7 +143,7 @@ def scope(monkeypatch):
         lambda: [
             ScopedCollection("oib_knowledge", Shelf.BASE),
             ScopedCollection("proj_1", Shelf.PROJECT),
-            ScopedCollection("archiv_1", Shelf.ARCHIV),
+            ScopedCollection("archiv_1", Shelf.OFFICE_SHELF),
         ],
     )
     monkeypatch.setattr("aiq_agent.knowledge.ingest_status_store.in_flight_files", lambda collections: {})
@@ -684,7 +684,7 @@ class TestTheDokumentartProfile:
         )
         assert select_files(rows).types == [("Grundriss", 2), ("Schnitt", 2), ("Ansicht", 2), ("Bescheid", 1)]
 
-    def test_sonstiges_is_named_last_whatever_its_count(self):
+    def test_other_is_named_last_whatever_its_count(self):
         rows = _typed(("Sonstiges",), ("Sonstiges",), ("Sonstiges",), ("Grundriss",))
         assert select_files(rows).types == [("Grundriss", 1), ("Sonstiges", 3)]
 
@@ -874,7 +874,7 @@ def _revisions():
     )
 
 
-def test_an_older_fassung_is_marked_and_names_the_current_one():
+def test_an_older_revision_is_marked_and_names_the_current_one():
     text = render_listing(select_files(_revisions(), shelf="project"))
     older = next(line for line in text.splitlines() if line.startswith("- EG_Grundriss_Index_A"))
     current = next(line for line in text.splitlines() if line.startswith("- EG_Grundriss_Index_B"))
@@ -885,19 +885,19 @@ def test_an_older_fassung_is_marked_and_names_the_current_one():
     assert "Fassungen: 1 Dokument(e)" in text
 
 
-def test_a_folder_filter_keeps_the_mark_of_a_current_fassung_kept_elsewhere():
+def test_a_folder_filter_keeps_the_mark_of_a_current_revision_kept_elsewhere():
     """The older Fassung sits in ``alt/``; listing only it still names the current one."""
     text = render_listing(select_files(_revisions(), shelf="project", folder="alt"))
     assert "aktuell dem Namen nach: EG_Grundriss_Index_B_2026-07-02.pdf" in text
     assert "Fassungen: 1 Dokument(e)" in text
 
 
-def test_fassungen_never_span_two_shelves():
+def test_revisions_never_span_two_shelves():
     text = render_listing(select_files(_revisions(), shelf="archiv"))
     assert "Fassung" not in text
 
 
-def test_no_file_is_called_a_plan_in_the_fassung_marks():
+def test_no_file_is_called_a_plan_in_the_revision_marks():
     """CONTEXT.md, „Fassung“: a name with an index says a file has Fassungen, not what it is."""
     text = render_listing(select_files(_revisions(), shelf="project"))
     assert not any(word in text for word in ("Plan ", "Planstand", "Pläne"))

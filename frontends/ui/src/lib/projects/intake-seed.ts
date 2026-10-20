@@ -55,15 +55,15 @@ export function intakeSeedFacts(
   now: Date
 ): Record<string, ProjectFact> {
   const { location } = input
-  const bundesland = location?.bundesland ?? input.bundesland ?? null
+  const federalState = location?.bundesland ?? input.bundesland ?? null
   const facts: Record<string, ProjectFact> = {}
   if (location) {
     facts.standort_adresse = fact(location.label, now, [
       { kind: 'geocoder', provider: 'photon', label: location.label, resolvedAt: now.toISOString() },
     ])
   }
-  if (location || bundesland) facts.country = fact('at', now)
-  if (bundesland) facts.bundesland = fact(bundesland, now)
+  if (location || federalState) facts.country = fact('at', now)
+  if (federalState) facts.bundesland = fact(federalState, now)
   return facts
 }
 

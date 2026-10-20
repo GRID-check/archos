@@ -161,7 +161,7 @@ export const files = {
       location: 'Location',
     },
     /** Where the document stands among its Fassungen (document-fassungen.tsx). Never „plan“: a name does not say what a file is. */
-    fassung: {
+    revision: {
       unlink: 'Remove link',
       timeline: 'All revisions of this document',
       current: 'current',
@@ -820,10 +820,10 @@ export const files = {
     single: {
       // One dropped file that is a new revision of a document here, by its name
       // (same name, `update`) or by the name series it continues (`fassung`).
-      newFassungTitle: 'New revision of “{name}”?',
+      newRevisionTitle: 'New revision of “{name}”?',
       updateExplain:
         '“{name}” is already here under this name. The new file becomes the current revision; the previous one stays readable under “Revisions and approval”.',
-      fassungExplain:
+      revisionExplain:
         '“{file}” continues “{name}”: the index or date in its name is newer. The older revision stays readable, Piloti answers from the new one and notes what changed; the link can be undone later.',
       unclearTitle: 'Is “{file}” a new revision?',
       unclearExplain:
@@ -834,7 +834,7 @@ export const files = {
       unchangedExplain: '“{name}” is identical to this file. Nothing is uploaded.',
       refiled: 'The document is currently in another folder and moves to “{folder}”.',
       archived: 'The document is archived. The new revision is added to it and only shows in the list again once the document is restored.',
-      confirmFassung: 'File as a new revision',
+      confirmRevision: 'File as a new revision',
       confirmSeparate: 'Upload as a separate document',
     },
     destination: 'Its folder structure is recreated inside “{folder}”.',
@@ -876,7 +876,7 @@ export const files = {
     // same name (ADR-0054) or by a name series under another name (ADR-0099).
     // One concept, one word, whichever way Piloti recognised it (ADR-0099). Say
     // document, file, revision: a name with an index does not say what a file is.
-    fassung: {
+    revision: {
       title: '{count, plural, one {# new revision} other {# new revisions}}',
       consequence:
         'The older revision stays readable, Piloti answers from the new one and notes what changed; unticked files come in as separate documents, and any link can be undone later.',
@@ -899,7 +899,7 @@ export const files = {
     showAll: '{count, plural, one {Show the file} other {Show all # files}}',
     action: {
       new: 'New',
-      fassung: 'New revision',
+      revision: 'New revision',
       unchanged: 'Unchanged',
       collision: 'Conflict',
       duplicate: 'Already here',
@@ -908,8 +908,8 @@ export const files = {
     },
     confirm: '{count, plural, one {Upload # file} other {Upload # files}}',
     // The same, when some of them come in as a new revision: the button moves with the boxes.
-    confirmWithFassungen:
-      '{count, plural, one {Upload # file} other {Upload # files}}, {fassungen, plural, one {# as a new revision} other {# as new revisions}}',
+    confirmWithRevisions:
+      '{count, plural, one {Upload # file} other {Upload # files}}, {revisions, plural, one {# as a new revision} other {# as new revisions}}',
     // Nothing to upload, but the tree still says these belong elsewhere.
     confirmMoveOnly: '{count, plural, one {Move # document} other {Move # documents}}',
     nothingToDo: 'Nothing to upload',
@@ -1155,7 +1155,7 @@ export const files = {
     sliceEmpty: 'Nothing left here.',
   },
   /** The count on a document's card and row when it has Fassungen under other file names (ADR-0099). */
-  fassungBadge: {
+  revisionBadge: {
     count: '{count, plural, one {# revision} other {# revisions}}',
     countTitle: '{count, plural, one {# revision of this document} other {# revisions of this document}}',
     older: 'Older revision',
@@ -1239,7 +1239,7 @@ export const files = {
     alsoShowLabel: 'Also show',
     alsoShow: {
       retired: 'Retired',
-      olderFassungen: 'Older revisions',
+      olderRevisions: 'Older revisions',
     },
     // What the reader is missing when type or status emptied the level: the
     // fact that a filter, and not an empty folder, is the reason.
@@ -1358,7 +1358,7 @@ export const files = {
      * moment, and the checkbox is the signature.
      */
     approveConfirm: {
-      stand: 'Revision {number} · as of {date}',
+      asOf: 'Revision {number} · as of {date}',
       actingWithName: 'Acting: {name} · {date}',
       actingDateOnly: 'Acting: {date}',
       checkbox: 'I approve this revision',
@@ -1424,7 +1424,7 @@ export const files = {
       superseded: 'Replaced by a newer revision.',
       archived: 'Retired. Gone from the file list; Piloti stops citing it.',
       none: 'No revision yet.',
-      olderFassung: 'An older revision. Piloti answers from the newer one.',
+      olderRevision: 'An older revision. Piloti answers from the newer one.',
     },
     comment: {
       /** Rejecting needs a reason; asking for changes needs the changes. */
@@ -1536,9 +1536,9 @@ export const files = {
       defect: 'Defect',
     },
     cancel: 'Cancel',
-    earlierFassung: 'set on revision {number}',
-    earlierFassungUnnumbered: 'set on an earlier revision',
-    earlierFassungHint:
+    earlierRevision: 'set on revision {number}',
+    earlierRevisionUnnumbered: 'set on an earlier revision',
+    earlierRevisionHint:
       'Set before the current revision arrived. The place may have moved, so it is not drawn.',
     loadError: 'Annotations could not be loaded.',
     retry: 'Try again',
@@ -1631,7 +1631,7 @@ export const files = {
     nothingOpen: 'Nothing open',
     /** The list button on a phone shows the open count; its name says the chip's whole sentence. */
     listOpen: 'Annotations: {marks}',
-    fassung: 'Revision {number}',
+    revision: 'Revision {number}',
     offline: 'Connection interrupted',
     toolsLabel: 'Tools',
     offlineHint: 'Not connected right now. You can still annotate; what others do appears on the next load.',
@@ -1843,15 +1843,15 @@ export const files = {
     copyLink: 'Copy link',
     linkCopied: 'Link copied',
     linkCopyFailed: 'The link could not be copied.',
-    earlierFassung: 'From revision {number}. Not drawn on this sheet.',
-    earlierFassungGhost: 'From revision {number}. The hollow pin shows where it stood there.',
+    earlierRevision: 'From revision {number}. Not drawn on this sheet.',
+    earlierRevisionGhost: 'From revision {number}. The hollow pin shows where it stood there.',
     carry: 'Carry to the current revision',
     carryTo: 'Carry to “{name}”',
     carryMark: 'Carry annotation {number} to the current revision',
     carryMarkTo: 'Carry annotation {number} to “{name}”',
     carryAll: 'Carry all',
     carryFailed: 'Not every annotation could be carried on. Please try again.',
-    compareFassungen: 'Compare revisions',
+    compareRevisions: 'Compare revisions',
     earlierOpen: 'Open from earlier revisions: {count}',
     carriedGroup: 'From revision “{name}”',
     carriedGroupHint:
@@ -1865,7 +1865,7 @@ export const files = {
     checkFixed: {
       action: 'Have Piloti check what is fixed',
       running: 'Piloti is checking what is fixed …',
-      currentFassung: 'the current revision',
+      currentRevision: 'the current revision',
       seed:
         'Check whether {count, plural, one {open annotation {numbers}} other {open annotations {numbers}}} from an earlier revision {count, plural, one {is} other {are}} fixed in {current}. For each one, read it, look at the place in this document and answer in its thread, starting with “Fixed in {current}:” or “Still open:”, saying in one sentence how you can tell. Do not resolve or otherwise change any annotation: we decide that ourselves.',
       seedFrom:
@@ -1936,8 +1936,8 @@ export const files = {
         open: 'Open only',
         all: 'Resolved ones too',
       },
-      fassungLabel: 'Revision',
-      fassungen: {
+      revisionLabel: 'Revision',
+      revisions: {
         current: 'Current revision',
         all: 'All revisions',
       },
@@ -1962,18 +1962,18 @@ export const files = {
       document: {
         title: 'Annotations – {name}',
         fileName: 'Annotations – {name}',
-        fileNameFassung: 'Annotations – {name} – Revision {number}',
+        fileNameRevision: 'Annotations – {name} – Revision {number}',
         fileNameAll: 'Annotations – {name} – all revisions',
         document: 'Document',
-        fassung: 'Revision',
-        fassungOf: 'Revision {number} of {total} · as of {date}',
+        revision: 'Revision',
+        revisionOf: 'Revision {number} of {total} · as of {date}',
         project: 'Project',
         scope: 'Contents',
         scopes: {
           open: 'Open annotations',
           all: 'All annotations, resolved and dismissed ones too',
         },
-        fassungen: {
+        revisions: {
           current: 'current revision',
           all: 'all revisions',
           // Closed ones too, of the current revision only: what is still open from earlier ones is in it anyway.

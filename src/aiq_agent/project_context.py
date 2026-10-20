@@ -182,13 +182,13 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 # parsing exactly as before this field existed.
 #
 # Vocabulary mirrored (not imported) from `ris_catalog.py`'s
-# `_BUNDESLAND_TOKENS` / the intake wizard's `bundesland` question options
+# `_FEDERAL_STATE_TOKENS` / the intake wizard's `bundesland` question options
 # (`frontends/ui/src/lib/project-profile/intake-definition.ts`) — same
 # "parse independently, don't import" rationale as the headers above. An
 # unrecognized token is treated as absent (debug-logged, not raised): a
 # forward-incompatible token from a newer frontend must degrade to "no
 # structured signal" rather than break the request.
-_BUNDESLAND_TOKENS = frozenset(
+_FEDERAL_STATE_TOKENS = frozenset(
     {
         "wien",
         "niederoesterreich",
@@ -206,7 +206,7 @@ _BUNDESLAND_TOKENS = frozenset(
 logger = logging.getLogger(__name__)
 
 
-def _normalize_bundesland(value: Any) -> str | None:
+def _normalize_federal_state(value: Any) -> str | None:
     """Validate a raw envelope `bundesland` value against the token vocabulary.
 
     Anything that isn't a known token — wrong type, typo, stale/unknown value
@@ -217,7 +217,7 @@ def _normalize_bundesland(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     token = value.strip().lower()
-    if token in _BUNDESLAND_TOKENS:
+    if token in _FEDERAL_STATE_TOKENS:
         return token
     if token:
         logger.debug("GridRequestContext: unknown bundesland token %r — treating as absent", token)
@@ -592,7 +592,7 @@ class GridRequestContext:
             budget=_as_dict(payload.get("budget")),
             disabled_sources=_as_str_list(payload.get("disabledSources")),
             memory_reflection_enabled=bool(payload.get("memoryReflectionEnabled", False)),
-            bundesland=_normalize_bundesland(payload.get("bundesland")),
+            bundesland=_normalize_federal_state(payload.get("bundesland")),
             conversation_id=_normalize_raw_id(payload.get("conversationId")),
             issued_at=_as_epoch_millis(payload.get("issuedAt")),
             # The bytes as received, not re-encoded from `payload`: a re-encode

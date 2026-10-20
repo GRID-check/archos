@@ -10,7 +10,7 @@ reimplementing either:
   ``SentenceSplitter(chunk_size=1024, chunk_overlap=128)``, which is what
   ``adapter.py`` did before Punkt chunking (and still does for any file the Punkt chunker
   declines);
-* the NEW arm: ``knowledge_layer.llamaindex.punkt_chunking.punkt_documents``, then the
+* the NEW arm: ``knowledge_layer.llamaindex.clause_chunking.clause_documents``, then the
   SAME splitter, because production applies it downstream to whatever documents ingestion
   produced — leaving it off the new arm would credit it for over-long Punkte that
   production does in fact split.
@@ -49,8 +49,8 @@ CHUNK_OVERLAP = 128
 #: The two chunking strategies under test. ``page`` is what shipped; ``punkt`` is the
 #: replacement. Names are used as arm labels throughout the report.
 ARM_PAGE = "page"
-ARM_PUNKT = "punkt"
-ARMS = (ARM_PAGE, ARM_PUNKT)
+ARM_CLAUSE = "punkt"
+ARMS = (ARM_PAGE, ARM_CLAUSE)
 
 #: What one cached page looks like. Bump it whenever ``_extract_text_from_pdf`` changes
 #: the keys or the text it returns, so every entry written by the old extractor misses.
@@ -211,18 +211,18 @@ def page_documents(pages: list[dict[str, Any]], file_name: str, file_size: int) 
     ]
 
 
-def punkt_or_page_documents(pages: list[dict[str, Any]], file_name: str, file_size: int) -> list[Any]:
+def clause_or_page_documents(pages: list[dict[str, Any]], file_name: str, file_size: int) -> list[Any]:
     """The NEW arm's documents: Punkt-cut where possible, per-page where not.
 
-    ``punkt_documents`` returns ``None`` for the three files with no usable numbering
+    ``clause_documents`` returns ``None`` for the three files with no usable numbering
     (``Begriffsbestimmungen``, both ``Zitierte Normen``), and production then keeps the
     per-page behaviour. The harness reproduces that fallback rather than dropping those
     files, so the two arms index the same corpus and a recall difference cannot come from
     one arm simply having more of it.
     """
-    from knowledge_layer.llamaindex.punkt_chunking import punkt_documents
+    from knowledge_layer.llamaindex.clause_chunking import clause_documents
 
-    documents = punkt_documents(pages, file_name, file_size)
+    documents = clause_documents(pages, file_name, file_size)
     if documents is None:
         return page_documents(pages, file_name, file_size)
     return documents
@@ -265,7 +265,7 @@ def build_arm(arm: str, corpus_dir: Path | None = None, cache_dir: Path | None =
     if arm not in ARMS:
         raise ValueError(f"unknown arm {arm!r}; expected one of {ARMS}")
     corpus_dir = default_corpus_dir() if corpus_dir is None else corpus_dir
-    builder = page_documents if arm == ARM_PAGE else punkt_or_page_documents
+    builder = page_documents if arm == ARM_PAGE else clause_or_page_documents
 
     chunks: list[Chunk] = []
     for pdf_path in sorted(corpus_dir.glob("*.pdf")):

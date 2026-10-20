@@ -12,7 +12,7 @@ import type { JSX } from 'react'
 import { PageSheetSkeleton } from '@/components/shell/page-sheet-skeleton'
 import { getTranslations } from '@/i18n/server'
 
-export default async function ArchivLoading(): Promise<JSX.Element> {
+export default async function OfficeShelfLoading(): Promise<JSX.Element> {
   const t = await getTranslations('common')
   return <PageSheetSkeleton loadingLabel={t('states.loading')} />
 }

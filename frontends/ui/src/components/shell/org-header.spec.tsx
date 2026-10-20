@@ -41,7 +41,7 @@ const baseProps = {
   canManageOrganization: false,
   canViewOrganization: false,
   canManagePlatform: false,
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canAccessInbox: true,
 }
 
@@ -68,7 +68,7 @@ describe('OrgHeader — the org scope in one slim band', () => {
   })
 
   test('drops each doorway with its own gate', () => {
-    render(<OrgHeader {...baseProps} canAccessArchiv={false} canAccessInbox={false} />)
+    render(<OrgHeader {...baseProps} canAccessOfficeShelf={false} canAccessInbox={false} />)
     expect(screen.queryByLabelText('Office filing')).not.toBeInTheDocument()
     expect(screen.queryByLabelText('Inbox')).not.toBeInTheDocument()
     // The avatar stays — the header is never just a wordmark.

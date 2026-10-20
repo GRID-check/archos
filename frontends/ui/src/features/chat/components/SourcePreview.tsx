@@ -71,7 +71,7 @@ import {
   sourceSignalStyle,
 } from '@/features/layout/components/SourceSignalChip'
 import type { SourceTint } from '@/features/layout/lib/source-presets'
-import type { FassungRef } from '@/lib/documents/fassung'
+import type { RevisionRef } from '@/lib/documents/revision-links'
 import { useChatStore } from '../store'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
@@ -137,7 +137,7 @@ interface ListedRow {
   id: string
   filename: string
   contentType?: string | null
-  fassung?: { supersededBy?: FassungRef | null } | null
+  fassung?: { supersededBy?: RevisionRef | null } | null
 }
 
 const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
@@ -180,9 +180,9 @@ const loadSourcePreviewIndex = async (
   // fourth (`base`) is the corpus and has no row to list.
   return {
     storedDocuments: [
-      ...toRefs(answers.flatMap((answer) => answer.projekt), 'project'),
+      ...toRefs(answers.flatMap((answer) => answer.project), 'project'),
       ...lists.sessionDocuments,
-      ...toRefs(answers.flatMap((answer) => answer.buero), 'archiv'),
+      ...toRefs(answers.flatMap((answer) => answer.officeShelf), 'archiv'),
     ],
     baseCorpusFiles: lists.baseCorpusFiles,
   }
@@ -802,7 +802,7 @@ const LocusRail: FC<{
                   <span className="flex-1" />
                   <span className="shrink-0 text-xs font-medium tabular-nums">
                     {locus.punkt
-                      ? t('answerSources.punktPage', { punkt: locus.punkt, page: locus.page! })
+                      ? t('answerSources.clausePage', { clause: locus.punkt, page: locus.page! })
                       : t('answerSources.page', { page: locus.page! })}
                   </span>
                 </span>

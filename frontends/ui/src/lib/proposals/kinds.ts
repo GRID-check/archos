@@ -106,7 +106,7 @@ function requireNewFolderTarget(payload: FileOperationPayload): void {
  * `proposed_changes_archiv_move`, refused here first so the answer is a 422
  * and not a constraint error).
  */
-function requireArchivMove(typed: KindPayload): void {
+function requireOfficeShelfMove(typed: KindPayload): void {
   const fits =
     typed.kind === 'file_operation' &&
     typed.payload.operation === 'move' &&
@@ -131,7 +131,7 @@ function requireProfileVocabulary(payload: ProjectProfilePayload): void {
 
 /** Refuse, when it is proposed, what could only fail when it is applied. */
 export function requireProposable(typed: KindPayload, scope: ProposalScope = 'project'): void {
-  if (scope === 'archiv') requireArchivMove(typed)
+  if (scope === 'archiv') requireOfficeShelfMove(typed)
   if (typed.kind === 'file_operation') {
     requireItemFields(typed.payload)
     requireNewFolderTarget(typed.payload)

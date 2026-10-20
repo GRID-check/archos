@@ -30,7 +30,7 @@ import {
   extractIngestJobId,
   clearCollectionFilesCache,
   describeBackendIngestState,
-  readFassungNames,
+  readRevisionLinkNames,
   refreshCollectionFiles,
   type ReconcilableDocument,
 } from './reconcile-status'
@@ -564,7 +564,7 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     expect(JSON.stringify(result)).not.toContain('plan_0.pdf')
     const ref = collectionFileRef(row)
     if (!ref) throw new Error('a human row has a ref')
-    expect(await readFassungNames(ref)).toEqual({
+    expect(await readRevisionLinkNames(ref)).toEqual({
       supersededBy: 'plan_B.pdf',
       supersedes: ['plan_0.pdf'],
       suggestion: { of: 'plan_0.pdf', confidence: 1, reason: 'Index', basis: 'name' },
@@ -586,23 +586,23 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
       return found
     }
 
-    expect(await readFassungNames(ref('plan.pdf'))).toBeNull()
-    expect(await readFassungNames(ref('leer.pdf'))).toBeNull()
-    expect(await readFassungNames(ref('fehlt.pdf'))).toBeNull()
+    expect(await readRevisionLinkNames(ref('plan.pdf'))).toBeNull()
+    expect(await readRevisionLinkNames(ref('leer.pdf'))).toBeNull()
+    expect(await readRevisionLinkNames(ref('fehlt.pdf'))).toBeNull()
   })
 
   it('refreshes the cached listing, so the read after a write sees it', async () => {
     mockFetch.mockResolvedValueOnce(collectionResponse([{ file_name: 'plan.pdf', status: 'success' }]))
     const ref = collectionFileRef(makeRow())
     if (!ref) throw new Error('a human row has a ref')
-    expect(await readFassungNames(ref)).toBeNull()
+    expect(await readRevisionLinkNames(ref)).toBeNull()
 
     mockFetch.mockResolvedValueOnce(
       collectionResponse([{ file_name: 'plan.pdf', status: 'success', superseded_by: 'plan_B.pdf' }])
     )
     await refreshCollectionFiles('proj_abc')
 
-    expect((await readFassungNames(ref))?.supersededBy).toBe('plan_B.pdf')
+    expect((await readRevisionLinkNames(ref))?.supersededBy).toBe('plan_B.pdf')
   })
 
   it('omits fields the backend did not provide', async () => {
@@ -663,7 +663,7 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
    * stem on the same day. The backend list has exactly one entry for that name —
    * the human document's, because nothing machine-authored is ever ingested.
    */
-  const gutachtenListing = () =>
+  const expertReportListing = () =>
     collectionResponse([
       {
         file_id: 'f-1',
@@ -686,7 +686,7 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
 
   it('gives a machine-authored row none of the colliding human document\'s metadata', async () => {
     makeDbMock()
-    mockFetch.mockResolvedValue(gutachtenListing())
+    mockFetch.mockResolvedValue(expertReportListing())
 
     const [result] = await reconcileDocumentStatuses([collidingRow('agent')], 'org-1')
 
@@ -705,7 +705,7 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
 
   it('still enriches the human document that owns the colliding filename', async () => {
     makeDbMock()
-    mockFetch.mockResolvedValue(gutachtenListing())
+    mockFetch.mockResolvedValue(expertReportListing())
 
     const [result] = await reconcileDocumentStatuses([collidingRow('user')], 'org-1')
 
@@ -716,7 +716,7 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
 
   it('does not fetch a collection listing for a read of machine-authored rows only', async () => {
     makeDbMock()
-    mockFetch.mockResolvedValue(gutachtenListing())
+    mockFetch.mockResolvedValue(expertReportListing())
 
     await reconcileDocumentStatuses([collidingRow('agent')], 'org-1')
 

@@ -608,7 +608,7 @@ export function DocumentReviewMode({
   onOpenChange,
   review,
   documentName,
-  fassungLabel,
+  revisionLabel,
   canPickAssignee,
   focusRequest,
   popoutHref = null,
@@ -621,7 +621,7 @@ export function DocumentReviewMode({
   review: ReviewState
   documentName: string
   /** „Fassung 3", when the document has Fassungen to tell apart. */
-  fassungLabel?: string | null
+  revisionLabel?: string | null
   canPickAssignee: boolean
   /** A mark to open at, when the review was entered from one. */
   focusRequest?: { annotationId: string; key: number } | null
@@ -1054,14 +1054,14 @@ export function DocumentReviewMode({
   const exportMenu = annotations.length > 0 && (
     <ReviewExportMenu
       documentId={review.documentId}
-      hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
+      hasRevisions={annotations.some((annotation) => !annotation.onCurrentFassung)}
       hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
       // Filing is an upload into the document's folder: offered to whoever may write there, which is
       // what `canAnnotate` says (the document's write, folder included, ADR-0088). The upload checks again.
       filing={protocolFiling && review.canAnnotate ? { target: protocolFiling, documentName } : null}
     />
   )
-  const checkFixed = useCheckFixed(review, { documentName, fassungLabel: fassungLabel ?? null })
+  const checkFixed = useCheckFixed(review, { documentName, revisionLabel: revisionLabel ?? null })
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : close())}>
@@ -1097,12 +1097,12 @@ export function DocumentReviewMode({
             </DialogTitle>
             <DialogDescription className="text-muted-foreground text-xs sm:truncate">
               {[
-                fassungLabel,
+                revisionLabel,
                 // Another document replaces this one, or this one replaces another: the header says so.
-                review.fassung?.replacedBy
-                  ? t('review.replacedBy', { name: review.fassung.replacedBy.filename })
-                  : review.fassung?.replaces[0]
-                    ? t('review.replaces', { name: review.fassung.replaces[0].filename })
+                review.revision?.replacedBy
+                  ? t('review.replacedBy', { name: review.revision.replacedBy.filename })
+                  : review.revision?.replaces[0]
+                    ? t('review.replaces', { name: review.revision.replaces[0].filename })
                     : null,
                 // „2 offen · 12 Vorschläge": Piloti's untaken proposals are not counted as open, as in Dateien.
                 hasLiveMarks(review.counts) ? openMarksShortLabel(t, review.counts) : t('review.nothingOpen'),

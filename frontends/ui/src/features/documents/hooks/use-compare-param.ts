@@ -3,13 +3,13 @@
 import type { JSX } from 'react'
 import { useEffect, useRef } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useFassungCompare } from '../components/fassung-compare'
+import { useRevisionCompare } from '../components/revision-compare'
 import type { FileItem } from '../file-types'
-import { COMPARE_PARAM } from '../lib/fassung-compare-link'
+import { COMPARE_PARAM } from '../lib/revision-compare-link'
 
 /**
  * Open the visual comparison a link asks for: `?doc=<newer>&compare=<older>`
- * (`fassung-compare-link.ts`), the way the inbox row „… hat eine neue Fassung
+ * (`revision-compare-link.ts`), the way the inbox row „… hat eine neue Fassung
  * hochgeladen" says „Fassungen vergleichen".
  *
  * The comparison needs each file's name to pick a renderer (PDF, office
@@ -33,7 +33,7 @@ export function useCompareParam(files: readonly FileItem[], listingComplete = tr
   const searchParams = useSearchParams()
   const olderId = searchParams?.get(COMPARE_PARAM) ?? null
   const newerId = searchParams?.get('doc') ?? null
-  const { openFassungCompare, compareElement } = useFassungCompare()
+  const { openRevisionCompare, compareElement } = useRevisionCompare()
   const handled = useRef<string | null>(null)
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function useCompareParam(files: readonly FileItem[], listingComplete = tr
     if (!older && !listingComplete) return
     handled.current = key
     if (older && older.id !== newer.id) {
-      openFassungCompare(
+      openRevisionCompare(
         { id: older.id, filename: older.filename },
         { id: newer.id, filename: newer.filename }
       )
@@ -57,7 +57,7 @@ export function useCompareParam(files: readonly FileItem[], listingComplete = tr
     const query = params.toString()
     const path = pathname ?? ''
     router.replace(query ? `${path}?${query}` : path, { scroll: false })
-  }, [files, listingComplete, newerId, olderId, openFassungCompare, pathname, router, searchParams])
+  }, [files, listingComplete, newerId, olderId, openRevisionCompare, pathname, router, searchParams])
 
   return compareElement
 }

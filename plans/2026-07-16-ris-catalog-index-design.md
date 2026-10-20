@@ -165,7 +165,7 @@ Shipped in this PR on top of the original design:
   Project Brief for one-click confirm/correct, spliced into the stored prompt
   view, retired automatically once a confirmed fact exists
   (`pruneResolvedAssumptions` in `persistProfile`).
-- **Matcher** (`ris_catalog.py`): `extract_bundesland` reads the structured
+- **Matcher** (`ris_catalog.py`): `extract_federal_state` reads the structured
   `bundesland=<token>` prompt-view line as authoritative (free-text state-name
   probing is the fallback); new `focus_entries` drops other states' law and
   sorts the project's state first, federal law always kept.

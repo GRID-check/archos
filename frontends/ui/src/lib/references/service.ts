@@ -25,7 +25,7 @@ import { memoryOriginOf } from '@/lib/cross-project/decision-origin'
 import { oibEditionOf, projectPeriodOf } from '@/lib/cross-project/service'
 import { factLabel, fingerprintOf, sharedTraitLabel } from '@/lib/cross-project/fingerprint'
 import {
-  bundeslandOf,
+  federalStateOf,
   confirmedSimilarityFacts,
   holdsTrait,
   rankBySimilarity,
@@ -62,8 +62,8 @@ const READ_CONCURRENCY = 4
  * The Land as the page names it. A confirmed Land wins; a suggested one stands
  * in and is marked unconfirmed, as the cross-project lookups mark it.
  */
-function bundeslandOfProject(profile: Project['profile'] | null): ReferenceFact<string> | null {
-  const confirmed = bundeslandOf(profile)
+function federalStateOfProject(profile: Project['profile'] | null): ReferenceFact<string> | null {
+  const confirmed = federalStateOf(profile)
   const token = confirmed ?? similarityFacts(profile).bundesland
   return token ? { value: factLabel('bundesland', token), confirmed: confirmed !== null } : null
 }
@@ -153,7 +153,7 @@ async function referenceOf(
     id: project.id,
     name: project.name,
     period: periodOf(project),
-    bundesland: bundeslandOfProject(project.profile),
+    bundesland: federalStateOfProject(project.profile),
     oibEdition: oibEditionOf(project.profile),
     alike: similarity(current.facts, similarityFacts(project.profile)) > 0,
     sharedTraits: sharedTraitsOf(current, project.profile),

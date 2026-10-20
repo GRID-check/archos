@@ -263,7 +263,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     await inOrg(ORG, () => db.execute(sql`update document_annotations set version_id = ${restored}::uuid where id = ${row.id}::uuid`))
     const carry = () =>
       inOrg(ORG, () =>
-        repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', { fassung: { from: restored, to: ids.v2 } })
+        repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', { revision: { from: restored, to: ids.v2 } })
       )
     expect(await carry()).toMatchObject({ versionId: ids.v2, number: row.number })
     expect(await carry()).toBeNull()

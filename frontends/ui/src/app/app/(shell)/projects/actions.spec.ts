@@ -55,7 +55,7 @@ describe('createProject (server action)', () => {
     expect(createProjectInOrg).toHaveBeenCalledWith(session, { name: 'Seestadt', setup: 'self' })
   })
 
-  it('creates a closed project with its outcome, Beginn and Abschluss, and lands on the overview', async () => {
+  it('creates a closed project with its outcome, start and closing, and lands on the overview', async () => {
     await expect(
       createProject({}, form({ name: 'Volksschule', state: 'closed', outcome: 'completed', startedOn: '2019-03', endedOn: '2022-08' }))
     ).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/settings')
@@ -73,11 +73,11 @@ describe('createProject (server action)', () => {
     ).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/setup')
     expect(createProjectInOrg).toHaveBeenCalledWith(
       session,
-      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', bundesland: 'wien' })
+      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', federalState: 'wien' })
     )
   })
 
-  it('reads an empty Beginn as none', async () => {
+  it('reads an empty start as none', async () => {
     await expect(
       createProject({}, form({ name: 'Wettbewerb', state: 'closed', outcome: 'cancelled', startedOn: '', endedOn: '2026-09' }))
     ).rejects.toThrow('/settings')

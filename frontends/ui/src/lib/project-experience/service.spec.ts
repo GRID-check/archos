@@ -40,7 +40,7 @@ vi.mock('@/lib/cache', () => ({
 }))
 
 vi.mock('@/lib/document-roles/repository', () => ({
-  deleteBindingsOutsideBauwerke: vi.fn().mockResolvedValue(0),
+  deleteBindingsOutsideBuildings: vi.fn().mockResolvedValue(0),
 }))
 
 // Which files every member may open and a model may read is the SQL's subject

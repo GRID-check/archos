@@ -38,7 +38,7 @@ from aiq_agent.common.message_utils import content_to_text
 logger = logging.getLogger(__name__)
 
 #: The controlled tag that sends a document here (``DOCUMENT_TYPE_TAGS``).
-BESCHEID_TAG = "Bescheid"
+PERMIT_DECISION_TAG = "Bescheid"
 
 #: How much of the document the model reads. A Bescheid is two to eight pages,
 #: roughly 3-4 kB each, so 24 000 characters (about 6 000 tokens) reads a normal
@@ -52,7 +52,7 @@ MAX_CONTENT_CHARS = 1000
 
 #: Intake vocabulary for ``bundesland`` (``norm_registry.BUNDESLAND_TOKENS``,
 #: without ``ausserhalb_oesterreichs``: a permit is by definition Austrian).
-BundeslandToken = Literal[
+FederalStateToken = Literal[
     "wien",
     "niederoesterreich",
     "oberoesterreich",
@@ -67,9 +67,9 @@ RecordKind = Literal["bewilligung", "nachforderung", "ablehnung", "sonstiges"]
 RequirementKind = Literal["auflage", "nachforderung", "hinweis"]
 
 
-def is_bescheid(tags: Iterable[str] | None) -> bool:
+def is_permit_decision(tags: Iterable[str] | None) -> bool:
     """Whether the ingest's tag decision typed the document a Bescheid."""
-    return BESCHEID_TAG in (tags or ())
+    return PERMIT_DECISION_TAG in (tags or ())
 
 
 #: The type the classifier picks when it cannot tell: no evidence that a document is not a Bescheid.
@@ -89,7 +89,7 @@ def typed_as_something_else(tags: Iterable[str] | None) -> bool:
     from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
 
     given = set(tags or ())
-    return not is_bescheid(given) and any(tag in given for tag in DOCUMENT_TYPE_TAGS if tag != _UNDECIDED_TYPE)
+    return not is_permit_decision(given) and any(tag in given for tag in DOCUMENT_TYPE_TAGS if tag != _UNDECIDED_TYPE)
 
 
 def _blank_to_none(value: Any) -> Any:
@@ -166,7 +166,7 @@ class PermitRecord(BaseModel):
     municipality: str | None = Field(
         description="The Gemeinde the procedure is in, as the document writes it. null when it does not say."
     )
-    bundesland: BundeslandToken | None = Field(
+    bundesland: FederalStateToken | None = Field(
         description="The Bundesland of the procedure, only when the document makes it clear. null otherwise."
     )
     issued_on: str | None = Field(

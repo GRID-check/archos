@@ -12,7 +12,7 @@
  *     each fact, „offen", or „trifft nicht zu" where the intake does not ask it
  *     of this project, with one link to the intake wizard, the profile's one
  *     editor, when a fact it writes is open. (The period is the Steckbrief's,
- *     shown beside this debrief by `ClosingSteckbrief`.) A fact
+ *     shown beside this debrief by `ClosingProjectRecord`.) A fact
  *     the closing extraction suggested (`docs/design/closed-project-experience.md`)
  *     shows its evidence and „Übernehmen", which writes it through the ordinary
  *     profile patch; the OIB edition is shown beside the facts when it is known;

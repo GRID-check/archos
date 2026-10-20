@@ -87,7 +87,7 @@ export type IntakeNeedType = (typeof INTAKE_NEED_TYPES)[number]
 /**
  * `open`: nothing on the profile. `suggested`: only a suggestion, which a
  * reading may corroborate or contradict. `confirmed`: a person confirmed it;
- * listed only for a Gebäudeklasse input, never decisive, so a reading of a
+ * listed only for a building class input, never decisive, so a reading of a
  * newer Stand can corroborate it or bring a contradiction a person decides.
  */
 export const NEED_STATES = ['open', 'suggested', 'confirmed'] as const
@@ -106,7 +106,7 @@ export const RECORD_OUTCOMES = ['suggested', 'corroborated', 'contradiction', 'r
 /**
  * Why a recorded value was refused: a token outside the question's options,
  * a key no wizard question writes (or a scope suffix that question is not
- * asked in, or a Bauwerk the profile does not describe), a value a person
+ * asked in, or a building the profile does not describe), a value a person
  * dismissed, or evidence from a file outside the project's main collection
  * (`extractableFileNames`). A key whose question is not asked yet is not
  * refused: a reading may find a value before the answer that opens it.
@@ -124,7 +124,7 @@ export const WITHDRAW_OUTCOMES = ['withdrawn', 'refused'] as const
 /**
  * Why a withdrawal was refused: nothing is suggested under the key, a person
  * confirmed it (a fact), or the suggestion is not this reading's own (an
- * earlier reading's, the derived Gebäudeklasse, a default). A reading takes
+ * earlier reading's, the derived building class, a default). A reading takes
  * back only what it suggested itself.
  */
 export const WITHDRAW_REFUSAL_REASONS = ['nothing-suggested', 'confirmed', 'not-this-reading'] as const
@@ -143,7 +143,7 @@ export const MAX_INTAKE_DECISIONS = 60
 export const MAX_UNREAD_FILES = 200
 /** Most file names one `finish` reports as read. */
 export const MAX_DOCUMENTS_READ = 500
-/** Most needs one answer lists: every question, per Bauwerk, with room. */
+/** Most needs one answer lists: every question, per building, with room. */
 export const MAX_INTAKE_NEEDS = 500
 
 const key = z.string().min(1).max(200)
@@ -209,10 +209,10 @@ export type NeedOption = z.infer<typeof needOptionSchema>
 
 /**
  * A key the project still needs (`computeNeeds` in `needs.ts`): a question
- * whose conditions hold and that writes a profile key, scoped per Bauwerk as
+ * whose conditions hold and that writes a profile key, scoped per building as
  * the wizard scopes it. `key` is the profile key (`geschosse_oberirdisch@bw1`),
  * `baseKey` the part before `@`, `bauwerkId` the `bwN` or null for a project
- * key. `decisive`: filling it could change the Gebäudeklasse (never for a
+ * key. `decisive`: filling it could change the building class (never for a
  * `confirmed` one).
  */
 export const needSchema = z.object({
@@ -248,9 +248,9 @@ export const suggestionSchema = z.object({
 export type Suggestion = z.infer<typeof suggestionSchema>
 
 /**
- * A derivation for one Bauwerk. `value` is the class 1..5, or null while an
+ * A derivation for one building. `value` is the class 1..5, or null while an
  * input is missing or when the building is a Hochhaus (Fluchtniveau above
- * 22 m, OIB-RL 2.3), which has no Gebäudeklasse. `inputs` are the values it
+ * 22 m, OIB-RL 2.3), which has no building class. `inputs` are the values it
  * read; `missing` the base keys it still needs.
  */
 export const derivationViewSchema = z.object({
@@ -453,7 +453,7 @@ export type OpenedNeed = z.infer<typeof openedNeedSchema>
 
 /**
  * `record`: one result per value, in request order, and the needs the values
- * opened (`bauwerkstyp = gebaeude` opens the Gebäude's questions), decisive
+ * opened (`bauwerkstyp = gebaeude` opens the building's questions), decisive
  * ones first, so the reading learns what its own record asked for next.
  */
 export const internalIntakeRecordResponseSchema = z.object({

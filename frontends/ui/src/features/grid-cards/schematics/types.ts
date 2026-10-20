@@ -89,7 +89,7 @@ export interface ObstructionData {
 }
 
 /** The fire-brigade Aufstellfläche geometry. */
-export interface AufstellflaechePlanData {
+export interface StagingAreaPlanData {
   width: DimensionCheckData
   length: DimensionCheckData
   distance_to_facade?: DimensionCheckData | null

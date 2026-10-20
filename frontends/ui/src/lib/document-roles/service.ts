@@ -21,7 +21,7 @@ import { lockProjectProfile } from '@/lib/projects/repository'
 import type { DbTransaction } from '@/lib/storage/repository'
 import {
   answersFromProfile,
-  defaultBauwerke,
+  defaultBuildings,
   projectIntakeDefinitionV1,
 } from '@/lib/project-profile/intake-definition'
 import {
@@ -50,14 +50,14 @@ const WRITE_PERMISSIONS = ['project:documents:write', 'project:edit'] as const
  *
  * The profile the wizard writes is the only place the building list lives. A
  * project with no profile yet still has the implicit first building
- * (`defaultBauwerke`), so declaring against it before the intake is saved
+ * (`defaultBuildings`), so declaring against it before the intake is saved
  * keeps working.
  */
-export function bauwerkIds(profile: ProjectProfile | null): string[] {
-  const bauwerke = profile
-    ? answersFromProfile(profile, projectIntakeDefinitionV1).bauwerke
-    : defaultBauwerke()
-  return bauwerke.map((bauwerk) => bauwerk.id)
+export function buildingIds(profile: ProjectProfile | null): string[] {
+  const buildings = profile
+    ? answersFromProfile(profile, projectIntakeDefinitionV1).buildings
+    : defaultBuildings()
+  return buildings.map((building) => building.id)
 }
 
 /**
@@ -69,10 +69,10 @@ export function bauwerkIds(profile: ProjectProfile | null): string[] {
  * save could remove the building between the check and the insert and leave a
  * binding to nowhere.
  */
-function requireBauwerk(projectId: string, bauwerkId: string) {
+function requireBuilding(projectId: string, buildingId: string) {
   return async (tx: DbTransaction): Promise<void> => {
-    if (!bauwerkIds(await lockProjectProfile(tx, projectId)).includes(bauwerkId)) {
-      throw new BadRequestError(`Bauwerk '${bauwerkId}' does not exist in this project.`)
+    if (!buildingIds(await lockProjectProfile(tx, projectId)).includes(buildingId)) {
+      throw new BadRequestError(`Building '${buildingId}' does not exist in this project.`)
     }
   }
 }
@@ -143,7 +143,7 @@ export async function declareDocumentRole(
   if (!isScopeInstanceValid(role, scopeInstanceId)) {
     throw new BadRequestError(
       definition.scope === 'bauwerk'
-        ? `Role '${role}' belongs to one Bauwerk and needs its id.`
+        ? `Role '${role}' belongs to one building and needs its id.`
         : `Role '${role}' takes no scope instance.`
     )
   }
@@ -204,10 +204,10 @@ export async function declareDocumentRole(
     // The vocabulary can only check the SHAPE of an instance id — present for
     // a `bauwerk` role, absent otherwise. Whether the building exists is a fact
     // about this project, checked against its own list in the insert's
-    // transaction (`requireBauwerk`). Without it any non-empty string was
+    // transaction (`requireBuilding`). Without it any non-empty string was
     // accepted, and the binding matched no slot: invisible in the checklist and
     // the agent's context, and impossible to find and remove.
-    scopeInstanceId !== null ? requireBauwerk(input.projectId, scopeInstanceId) : undefined
+    scopeInstanceId !== null ? requireBuilding(input.projectId, scopeInstanceId) : undefined
   )
 
   // The agent's project context carries the bindings, and it is cached for five

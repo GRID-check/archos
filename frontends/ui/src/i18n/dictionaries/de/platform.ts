@@ -299,9 +299,9 @@ export const platform: typeof en.platform = {
       titlePlaceholder: 'Voller Titel der Norm',
       rank: 'Rang',
       bundesland: 'Bundesland',
-      bundeslandHint: 'Kanonischer Name (z. B. Wien) — leer lassen, wenn österreichweit gültig',
-      bundeslandRequired: 'Kanonischer Name (z. B. Wien). Ohne Bundesland lässt sich ein Landesgesetz nicht einordnen.',
-      bundeslandPlaceholder: 'Wien',
+      federalStateHint: 'Kanonischer Name (z. B. Wien) — leer lassen, wenn österreichweit gültig',
+      federalStateRequired: 'Kanonischer Name (z. B. Wien). Ohne Bundesland lässt sich ein Landesgesetz nicht einordnen.',
+      federalStatePlaceholder: 'Wien',
       application: 'RIS-Anwendung (Application)',
       applicationHint:
         'Der RIS-Bestand, in dem gesucht wird: BrKons = Bundesrecht konsolidiert, LrKons = Landesrecht konsolidiert. Wird aus der Art der Quelle vorbelegt.',
@@ -346,10 +346,10 @@ export const platform: typeof en.platform = {
       titleQuery: 'Hinterlegte RIS-Abfrage',
       titleQueryHint: 'Die Abfrage, mit der eine spätere Neuverifizierung beginnt.',
       titleQueryPlaceholder: 'RIS-Titelsuche',
-      gesetzesnummer: 'Gesetzesnummer',
-      gesetzesnummerHint:
+      statuteNumber: 'Gesetzesnummer',
+      statuteNumberHint:
         'Die RIS-interne Nummer des Gesetzes über alle Fassungen hinweg, z. B. 20001234. Grenzt mehrdeutige Titel ein.',
-      gesetzesnummerPlaceholder: 'z. B. 20001234',
+      statuteNumberPlaceholder: 'z. B. 20001234',
       expect: 'Im Titel erwartet',
       expectHint: 'Es werden nur Treffer angeboten, deren Titel diesen Text enthält.',
       exclude: 'Im Titel ausgeschlossen',
@@ -363,7 +363,7 @@ export const platform: typeof en.platform = {
       lawNeedsRis: 'Noch kein RIS-Treffer übernommen — suchen Sie die Norm und wählen Sie eine Fassung.',
       needApplication: 'Ein Gesetz benötigt eine RIS-Anwendung',
       needDocumentNumber: 'Ein Gesetz benötigt eine Dokumentnummer aus dem RIS',
-      needBundesland: 'Ein Landesgesetz benötigt das zugehörige Bundesland',
+      needFederalState: 'Ein Landesgesetz benötigt das zugehörige Bundesland',
     },
     verify: {
       searchLabel: 'Titel im RIS',

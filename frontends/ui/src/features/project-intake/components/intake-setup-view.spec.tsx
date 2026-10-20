@@ -173,7 +173,7 @@ describe('IntakeSetupView', () => {
       expect(within(open).queryByRole('button')).toBeNull()
     })
 
-    it('says a Hochhaus has no Gebäudeklasse', () => {
+    it('says a Hochhaus has no building class', () => {
       setup({
         ...INTAKE_READY,
         derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bw3', hochhaus: true, missing: [] }],
@@ -393,7 +393,7 @@ describe('IntakeSetupView', () => {
       ])
     })
 
-    it('confirms the Gebäudeklasse through the suggestion its derivation carries', async () => {
+    it('confirms the building class through the suggestion its derivation carries', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /Use Gebäudeklasse GK 5 for Building 1/ }))
       expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
@@ -534,20 +534,20 @@ describe('IntakeSetupView', () => {
   })
 
   describe('Ablage: Piloti\'s open filing suggestions', () => {
-    const [bescheide] = INTAKE_FILING
+    const [permitDecisions] = INTAKE_FILING
     const onSettled = vi.fn()
     const filing = (entries = suggestionsByFolder(INTAKE_FILING)) => ({ filing: { entries, onSettled } })
-    let current = bescheide.proposal
+    let current = permitDecisions.proposal
 
     beforeEach(() => {
       useFakeStream()
-      current = bescheide.proposal
+      current = permitDecisions.proposal
       server.use(
         http.get('/api/proposals/:id', ({ params }) =>
           HttpResponse.json({ proposal: INTAKE_FILING.find((entry) => entry.proposal.id === params.id)?.proposal ?? current })
         ),
-        http.post(`/api/proposals/${bescheide.proposal.id}/apply`, () => {
-          current = { ...bescheide.proposal, status: 'applied', canDecide: false, results: [] }
+        http.post(`/api/proposals/${permitDecisions.proposal.id}/apply`, () => {
+          current = { ...permitDecisions.proposal, status: 'applied', canDecide: false, results: [] }
           return HttpResponse.json({ proposal: current })
         })
       )
@@ -579,8 +579,8 @@ describe('IntakeSetupView', () => {
       const user = userEvent.setup()
       setup(INTAKE_READY, filing())
 
-      const [bescheideLine] = screen.getAllByTestId('filing-bar-line')
-      await user.click(await within(bescheideLine).findByRole('button', { name: 'Move' }))
+      const [permitDecisionsLine] = screen.getAllByTestId('filing-bar-line')
+      await user.click(await within(permitDecisionsLine).findByRole('button', { name: 'Move' }))
 
       expect(await screen.findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
       await vi.waitFor(() => expect(onSettled).toHaveBeenCalled())

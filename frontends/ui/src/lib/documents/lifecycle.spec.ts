@@ -105,8 +105,8 @@ vi.mock('./version-content', () => ({
   writeVersionContent: vi.fn(),
 }))
 vi.mock('@/lib/storage/discard', () => ({ discardObject: vi.fn() }))
-/** The new-Fassung announcement is `fassung-notify.spec.ts`'s; here only that the transitions ask for it. */
-vi.mock('./fassung-notify', () => ({ announceNewFassung: vi.fn().mockResolvedValue(undefined) }))
+/** The new-Fassung announcement is `revision-notify.spec.ts`'s; here only that the transitions ask for it. */
+vi.mock('./revision-notify', () => ({ announceNewRevision: vi.fn().mockResolvedValue(undefined) }))
 // The restricted-folder refusal (ADR-0087) is decided in `restricted-egress.ts`
 // and pinned in its own spec; here only the join is under test.
 vi.mock('@/lib/conversations/restricted-egress', async () => {
@@ -135,7 +135,7 @@ import { findDocumentInOrg } from './repository'
 import { discardObject } from '@/lib/storage/discard'
 import { purgeIngestedChunks } from './collection-file-ref'
 import { dispatchDocument } from './service'
-import { announceNewFassung } from './fassung-notify'
+import { announceNewRevision } from './revision-notify'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { recordAuditEvent } from '@/lib/audit/service'
@@ -866,8 +866,8 @@ describe('transitionDocumentVersion — effects', () => {
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
 
-    expect(announceNewFassung).toHaveBeenCalledTimes(1)
-    expect(announceNewFassung).toHaveBeenCalledWith({
+    expect(announceNewRevision).toHaveBeenCalledTimes(1)
+    expect(announceNewRevision).toHaveBeenCalledWith({
       organizationId: 'org_1',
       actorUserId: session.userId,
       newerId: 'doc_1',
@@ -883,7 +883,7 @@ describe('transitionDocumentVersion — effects', () => {
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
 
-    expect(announceNewFassung).not.toHaveBeenCalled()
+    expect(announceNewRevision).not.toHaveBeenCalled()
   })
 
   it('publishes a version approved before approval became one step', async () => {
@@ -1191,7 +1191,7 @@ describe('createDocumentVersion — a human upload', () => {
 
     await upload()
 
-    expect(announceNewFassung).toHaveBeenCalledWith(
+    expect(announceNewRevision).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: 'org_1',
         actorUserId: session.userId,
@@ -1202,7 +1202,7 @@ describe('createDocumentVersion — a human upload', () => {
       }),
     )
 
-    vi.mocked(announceNewFassung).mockClear()
+    vi.mocked(announceNewRevision).mockClear()
     vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
       version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_first' }),
       superseded: [],
@@ -1210,7 +1210,7 @@ describe('createDocumentVersion — a human upload', () => {
 
     await upload()
 
-    expect(announceNewFassung).not.toHaveBeenCalled()
+    expect(announceNewRevision).not.toHaveBeenCalled()
   })
 
   it('refuses an upload claimed by a machine caller', async () => {

@@ -41,7 +41,7 @@ const baseProps = {
   canManageOrganization: false,
   canViewOrganization: false,
   canManagePlatform: false,
-  canAccessArchiv: true,
+  canAccessOfficeShelf: true,
   canAccessInbox: true,
   showSkills: false,
   showModels: false,
@@ -70,7 +70,7 @@ describe('AppShellChrome — which chrome stands', () => {
 })
 
 describe('AppShellChrome — overlay routes keep the chrome of the covered page', () => {
-  test('opening the Archiv over a project keeps the project rail standing', () => {
+  test('opening the office shelf over a project keeps the project rail standing', () => {
     // An intercepted navigation changes the URL to /app/archiv while the
     // segment below keeps rendering the project page. Flipping the rail into
     // the org header UNDER the sheet is the reflow this logic exists to

@@ -149,11 +149,11 @@ describe('legacy citation keys still parse', () => {
   })
 
   test('a German qualifier in a persisted key names the shelf', () => {
-    const [buero] = buildCitationModel({ citations: [legacy('Plan.pdf (Büroablage), p.3')] })
+    const [officeShelf] = buildCitationModel({ citations: [legacy('Plan.pdf (Büroablage), p.3')] })
     const [projekt] = buildCitationModel({ citations: [legacy('Plan.pdf (Projektwissen), p.3')] })
     const [basis] = buildCitationModel({ citations: [legacy('Plan.pdf (Basiswissen), p.3')] })
 
-    expect(buero?.shelf).toBe('archiv')
+    expect(officeShelf?.shelf).toBe('archiv')
     expect(projekt?.shelf).toBe('project')
     expect(basis?.shelf).toBe('base')
   })

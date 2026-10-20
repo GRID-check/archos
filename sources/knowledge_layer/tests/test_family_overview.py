@@ -45,10 +45,10 @@ FAMILY_QUERY = "was weißt du über die OIB 2"
 TOPIC_QUERY = "Fluchtweglänge GK 4 in der OIB 2"
 
 
-def _punkt_chunk(file_name: str, punkt: str, depth: int, title: str, page: int, content: str = "") -> Chunk:
+def _clause_chunk(file_name: str, clause: str, depth: int, title: str, page: int, content: str = "") -> Chunk:
     return Chunk(
-        chunk_id=f"{file_name}:{punkt}",
-        content=content or f"{punkt} {title} — Text",
+        chunk_id=f"{file_name}:{clause}",
+        content=content or f"{clause} {title} — Text",
         score=0.71,
         file_name=file_name,
         page_number=page,
@@ -56,7 +56,7 @@ def _punkt_chunk(file_name: str, punkt: str, depth: int, title: str, page: int, 
         content_type=ContentType.TEXT,
         metadata={
             "chunking": "punkt",
-            "punkt_id": punkt,
+            "punkt_id": clause,
             "punkt_depth": depth,
             "punkt_title": title,
             "page_label": str(page),
@@ -67,18 +67,18 @@ def _punkt_chunk(file_name: str, punkt: str, depth: int, title: str, page: int, 
 def _outline_of(number: str, file_name: str) -> list[Chunk]:
     """One member as the store holds it: Punkt 0, two chapters, one sub-Punkt."""
     return [
-        _punkt_chunk(file_name, "0", 1, "Vorbemerkungen", 2, content=f"Teil {number} gilt für …"),
-        _punkt_chunk(file_name, "1", 1, "Begriffsbestimmungen", 3),
-        _punkt_chunk(file_name, "2", 1, "Anforderungen", 4),
-        _punkt_chunk(file_name, "2.1", 2, "Abstände", 4),
+        _clause_chunk(file_name, "0", 1, "Vorbemerkungen", 2, content=f"Teil {number} gilt für …"),
+        _clause_chunk(file_name, "1", 1, "Begriffsbestimmungen", 3),
+        _clause_chunk(file_name, "2", 1, "Anforderungen", 4),
+        _clause_chunk(file_name, "2.1", 2, "Abstände", 4),
     ]
 
 
 def _ranked() -> list[Chunk]:
     """What similarity returns for the same query: two passages, deep in one part."""
     return [
-        _punkt_chunk(MEMBERS["2"], "3.5.2", 3, "Fluchtwege", 12, content="Die Fluchtweglänge …"),
-        _punkt_chunk(MEMBERS["2.3"], "4.1", 2, "Hochhäuser", 5, content="Für Hochhäuser gilt …"),
+        _clause_chunk(MEMBERS["2"], "3.5.2", 3, "Fluchtwege", 12, content="Die Fluchtweglänge …"),
+        _clause_chunk(MEMBERS["2.3"], "4.1", 2, "Hochhäuser", 5, content="Für Hochhäuser gilt …"),
     ]
 
 
@@ -300,7 +300,7 @@ class TestWhereMembershipComesFrom:
 
 
 class TestTheOneTrailer:
-    async def test_one_gliederung_per_member_under_its_own_title(self, corpus):
+    async def test_one_outline_per_member_under_its_own_title(self, corpus):
         corpus(MEMBERS)
 
         out = await _search()
@@ -317,7 +317,7 @@ class TestTheOneTrailer:
 
         assert out.count(rp._OUTLINE_INSTRUCTION) == 1
 
-    async def test_the_index_lists_chapters_and_not_sub_punkte(self, corpus):
+    async def test_the_index_lists_chapters_and_not_sub_clauses(self, corpus):
         """Four members at the single-document budget is 4 to 6k tokens of index
         framing far less evidence, so a family prints depth 1 only."""
         corpus(MEMBERS)
@@ -359,7 +359,7 @@ class TestTheBlockIsStillOneRecordSet:
         assert [source["name"] for source in lane["sources"]][:4] == list(MEMBERS.values())
         assert [source["detail"] for source in lane["sources"]][:4] == ["Pkt. 0 p.2"] * 4
 
-    async def test_a_punkt_addressed_hit_is_listed_by_its_punkt(self, corpus):
+    async def test_a_clause_addressed_hit_is_listed_by_its_clause(self, corpus):
         """The locus a reader of a normative document can act on is the Punkt.
         The page rides along because the frontend takes the preview's page out
         of this string."""
@@ -487,7 +487,7 @@ class TestOneRoundNotFive:
     async def test_a_scope_passage_the_search_also_ranked_is_not_repeated(self, corpus):
         """One passage, one citation key: a repeat would spend a result slot on
         text the block already carries."""
-        corpus(MEMBERS, ranked=[_punkt_chunk(MEMBERS["2"], "0", 1, "Vorbemerkungen", 2, content="Teil 2 gilt für …")])
+        corpus(MEMBERS, ranked=[_clause_chunk(MEMBERS["2"], "0", 1, "Vorbemerkungen", 2, content="Teil 2 gilt für …")])
 
         out = await _search()
 
@@ -497,7 +497,7 @@ class TestOneRoundNotFive:
 def _ranked_many() -> list[Chunk]:
     """What a real family query ranks around the overview: many passages, mostly guidance."""
     return [
-        _punkt_chunk(MEMBERS["2"], f"3.{i}", 2, f"Abschnitt {i}", 10 + i, content=f"Passage {i} …")
+        _clause_chunk(MEMBERS["2"], f"3.{i}", 2, f"Abschnitt {i}", 10 + i, content=f"Passage {i} …")
         for i in range(1, 11)
     ]
 

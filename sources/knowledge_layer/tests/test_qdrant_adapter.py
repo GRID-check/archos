@@ -78,7 +78,7 @@ async def test_retrieve_applies_the_callers_filter(retriever):
     _ingest(
         retriever,
         "oib_knowledge",
-        [_row("Punkt eins", "rl2.pdf", punkt_id="1"), _row("Seite", "rl2.pdf", chunking="page")],
+        [_row("Punkt eins", "rl2.pdf", clause_id="1"), _row("Seite", "rl2.pdf", chunking="page")],
     )
     result = await retriever.retrieve("Punkt", "oib_knowledge", top_k=5, filters={"chunking": {"$ne": "page"}})
     assert [chunk.content for chunk in result.chunks] == ["Punkt eins"]
@@ -667,20 +667,20 @@ async def test_health_is_qdrants(retriever, monkeypatch):
 # ---------------------------------------------------------------- superseded follows the newer row
 
 
-def test_removing_the_newer_fassung_makes_the_older_one_findable_again(retriever, metadata_store):
+def test_removing_the_newer_revision_makes_the_older_one_findable_again(retriever, metadata_store):
     """A link counts only while the newer row exists; the points must say what the rows say.
 
     Left ``superseded: true``, the ``superseded != true`` pre-filter hid the
     Fassung that had become the current one from every search.
     """
-    from aiq_agent.knowledge import link_document_fassung
+    from aiq_agent.knowledge import link_document_revision
     from aiq_agent.knowledge import register_summary
     from aiq_agent.knowledge import unregister_summary
 
     _ingest(retriever, "proj_a", [_row("Alte Statik", "alt.pdf"), _row("Neue Statik", "neu.pdf")])
     register_summary("proj_a", "alt.pdf", "A")
     register_summary("proj_a", "neu.pdf", "N")
-    link_document_fassung("proj_a", "alt.pdf", "neu.pdf")
+    link_document_revision("proj_a", "alt.pdf", "neu.pdf")
     store = store_module.get_store()
     assert store.count("proj_a", {"superseded": True, "file_name": "alt.pdf"}) == 1
 

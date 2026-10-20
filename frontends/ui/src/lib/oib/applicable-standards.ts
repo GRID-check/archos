@@ -8,15 +8,15 @@
  * and explains, in one line, why each is relevant.
  *
  * What it reads. The intake wizard stores a building's facts under a suffix per
- * Bauwerk (`fluchtniveau_m@bw1`), so every read takes the flat key and each
+ * building (`fluchtniveau_m@bw1`), so every read takes the flat key and each
  * `<key>@<bwN>` copy. A use zone's copy (`<key>@bw1@wohnen`) is that zone's detail
  * and is skipped.
- *   - `hauptnutzung`: stated flat; else the one D0 use the Bauwerke share
+ *   - `hauptnutzung`: stated flat; else the one D0 use the buildings share
  *     (`nutzungen`) that is also a verdict token. Two or more, or none: unknown.
- *   - `gebaeudeklasse`: `4` or `GK4`; the highest class across the Bauwerke.
+ *   - `gebaeudeklasse`: `4` or `GK4`; the highest class across the buildings.
  *   - `fluchtniveau`: the band stated flat; else the band of the highest
- *     `fluchtniveau_m` (metres) across the Bauwerke.
- *   - `geschosse_unterirdisch`: the highest count across the Bauwerke.
+ *     `fluchtniveau_m` (metres) across the buildings.
+ *   - `geschosse_unterirdisch`: the highest count across the buildings.
  * The Python twin, `src/aiq_agent/common/applicability.py`, reads the same keys
  * from the prompt view and must give the same verdicts.
  */
@@ -91,10 +91,10 @@ function maxNumber(values: ReadonlyArray<number | undefined>): number | undefine
 
 /**
  * The Fluchtniveau band the rules read: the stated `fluchtniveau`, else the band of
- * the highest `fluchtniveau_m` across the Bauwerke. Each band takes its upper bound
+ * the highest `fluchtniveau_m` across the buildings. Each band takes its upper bound
  * inclusively: exactly 7 m is `<=7m`, 11 m is `7-11m`, 22 m is `11-22m`.
  */
-export function fluchtniveauBand(profile: ProjectProfile | null): string | undefined {
+export function escapeLevelBand(profile: ProjectProfile | null): string | undefined {
   const stated = factString(profile, 'fluchtniveau')
   if (stated !== undefined) return stated
   const metres = maxNumber(factValuesByBase(profile, 'fluchtniveau_m').map(asNumber))
@@ -112,7 +112,7 @@ export function fluchtniveauBand(profile: ProjectProfile | null): string | undef
  * `landwirtschaft`). `produzierend`, `lager` and `sonstiges` are never a D0 token,
  * and `produktion` is not `produzierend`, so no mapping between them is invented.
  */
-const HAUPTNUTZUNG_TOKENS: ReadonlySet<string> = new Set([
+const MAIN_USE_TOKENS: ReadonlySet<string> = new Set([
   'produzierend',
   'lager',
   'landwirtschaft',
@@ -125,10 +125,10 @@ const HAUPTNUTZUNG_TOKENS: ReadonlySet<string> = new Set([
 ])
 
 /**
- * The main use: the stated `hauptnutzung`; else, only when the Bauwerke's `nutzungen`
+ * The main use: the stated `hauptnutzung`; else, only when the buildings' `nutzungen`
  * together name exactly one verdict token, that token. Two or none: unknown.
  */
-function hauptnutzungOf(profile: ProjectProfile | null): string | undefined {
+function mainUseOf(profile: ProjectProfile | null): string | undefined {
   const stated = factString(profile, 'hauptnutzung')
   if (stated !== undefined) return stated
   const uses = new Set(
@@ -140,20 +140,20 @@ function hauptnutzungOf(profile: ProjectProfile | null): string | undefined {
   // (`produktion`) is unknown, and an unknown use may be the Betriebsbau.
   if (uses.size !== 1) return undefined
   const [only] = uses
-  return HAUPTNUTZUNG_TOKENS.has(only) ? only : undefined
+  return MAIN_USE_TOKENS.has(only) ? only : undefined
 }
 
 /** `4` or `GK4` (either case) as its class number, else undefined. */
-function gebaeudeklasseClass(value: ProjectPrimitiveValue): number | undefined {
+function buildingClassNumber(value: ProjectPrimitiveValue): number | undefined {
   if (typeof value === 'number') return [1, 2, 3, 4, 5].includes(value) ? value : undefined
   if (typeof value !== 'string') return undefined
   const match = /^(?:GK)?([1-5])$/.exec(value.trim().toUpperCase())
   return match ? Number(match[1]) : undefined
 }
 
-/** The Gebäudeklasse across the Bauwerke: the highest class named, as `GK<n>`. */
-function gebaeudeklasseOf(profile: ProjectProfile | null): string | undefined {
-  const top = maxNumber(factValuesByBase(profile, 'gebaeudeklasse').map(gebaeudeklasseClass))
+/** The building class across the buildings: the highest class named, as `GK<n>`. */
+function buildingClassOf(profile: ProjectProfile | null): string | undefined {
+  const top = maxNumber(factValuesByBase(profile, 'gebaeudeklasse').map(buildingClassNumber))
   return top === undefined ? undefined : `GK${top}`
 }
 
@@ -185,10 +185,10 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
     return genericSix()
   }
 
-  const hauptnutzung = hauptnutzungOf(profile)
-  const gebaeudeklasse = gebaeudeklasseOf(profile)
-  const fluchtniveau = fluchtniveauBand(profile)
-  const geschosseUnterirdisch = maxNumber(
+  const mainUse = mainUseOf(profile)
+  const buildingClass = buildingClassOf(profile)
+  const escapeLevel = escapeLevelBand(profile)
+  const storeysBelowGround = maxNumber(
     factValuesByBase(profile, 'geschosse_unterirdisch').map(asNumber)
   )
 
@@ -203,14 +203,14 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
   )
 
   // OIB 2.1 — Betriebsbauten (industrial & commercial).
-  if (hauptnutzung === 'produzierend' || hauptnutzung === 'lager') {
+  if (mainUse === 'produzierend' || mainUse === 'lager') {
     standards.push(
       annotate('OIB 2.1', 'required', 'Manufacturing/storage use is a Betriebsbau.')
     )
   } else if (
-    hauptnutzung === 'landwirtschaft' ||
-    hauptnutzung === 'sonstiges' ||
-    hauptnutzung === undefined
+    mainUse === 'landwirtschaft' ||
+    mainUse === 'sonstiges' ||
+    mainUse === undefined
   ) {
     standards.push(
       annotate('OIB 2.1', 'check', 'Applies if the building qualifies as a Betriebsbau.')
@@ -219,7 +219,7 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
   // else: omit (clearly not a Betriebsbau).
 
   // OIB 2.2 — garages & covered parking.
-  if (geschosseUnterirdisch !== undefined && geschosseUnterirdisch >= 1) {
+  if (storeysBelowGround !== undefined && storeysBelowGround >= 1) {
     standards.push(
       annotate('OIB 2.2', 'check', 'Applies if the project includes a garage or covered parking.')
     )
@@ -227,11 +227,11 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
   // else: omit.
 
   // OIB 2.3 — high-rise (Hochhaus).
-  if (fluchtniveau === '>22m') {
+  if (escapeLevel === '>22m') {
     standards.push(
       annotate('OIB 2.3', 'required', 'Top escape level over 22 m — the building is a Hochhaus.')
     )
-  } else if (gebaeudeklasse === 'GK5' && fluchtniveau === undefined) {
+  } else if (buildingClass === 'GK5' && escapeLevel === undefined) {
     standards.push(
       annotate(
         'OIB 2.3',
@@ -253,10 +253,10 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
 
   // OIB 4 — always; stronger for publicly used buildings.
   const publicUse =
-    hauptnutzung === 'beherbergung' ||
-    hauptnutzung === 'gesundheit' ||
-    hauptnutzung === 'versammlung' ||
-    hauptnutzung === 'buero'
+    mainUse === 'beherbergung' ||
+    mainUse === 'gesundheit' ||
+    mainUse === 'versammlung' ||
+    mainUse === 'buero'
   standards.push(
     annotate(
       'OIB 4',
@@ -269,11 +269,11 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
 
   // OIB 5 — sound protection; required for occupied/noise-sensitive uses.
   const noiseSensitive =
-    hauptnutzung === 'wohnen' ||
-    hauptnutzung === 'beherbergung' ||
-    hauptnutzung === 'gesundheit' ||
-    hauptnutzung === 'buero' ||
-    hauptnutzung === 'versammlung'
+    mainUse === 'wohnen' ||
+    mainUse === 'beherbergung' ||
+    mainUse === 'gesundheit' ||
+    mainUse === 'buero' ||
+    mainUse === 'versammlung'
   standards.push(
     noiseSensitive
       ? annotate('OIB 5', 'required', 'Sound protection is required for occupied/noise-sensitive uses.')
@@ -281,7 +281,7 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
   )
 
   // OIB 6 — energy & thermal performance; storage/agricultural may be partly exempt.
-  if (hauptnutzung === 'lager' || hauptnutzung === 'landwirtschaft') {
+  if (mainUse === 'lager' || mainUse === 'landwirtschaft') {
     standards.push(
       annotate(
         'OIB 6',

@@ -2,7 +2,7 @@
 
 /**
  * Dev preview for the document-role surfaces — the real `DocumentRoleField` and
- * `ProjektgrundlagenStep` with a module-scope fetch shim and no backend, so the
+ * `ProjectBasisStep` with a module-scope fetch shim and no backend, so the
  * design can be reviewed and screenshotted (`docs/ux/visual-screenshots.md`).
  * Not linked from anywhere; 404s outside development.
  *
@@ -28,7 +28,7 @@ import { notFound } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
 import { DocumentRoleField } from '@/features/projects/components/document-role-field'
-import { ProjektgrundlagenStep } from '@/features/projects/components/projektgrundlagen-step'
+import { ProjectBasisStep } from '@/features/projects/components/project-basis-step'
 
 const PROJECT_ID = 'preview-project'
 
@@ -96,7 +96,7 @@ const ANSWERS = {
   'C2@bw2': 'neubau',
 }
 
-const BAUWERKE = [
+const BUILDINGS = [
   { id: 'bw1', name: 'Bestandsgebäude Hoftrakt' },
   { id: 'bw2', name: 'Neubau Straßentrakt' },
 ]
@@ -132,7 +132,7 @@ export default function DocumentRolesPreviewPage() {
 
         <section className="flex flex-col gap-3">
           <h2 className="text-lg font-semibold tracking-tight">Modul I · Projektgrundlagen</h2>
-          <ProjektgrundlagenStep projectId={PROJECT_ID} answers={ANSWERS} bauwerke={BAUWERKE} />
+          <ProjectBasisStep projectId={PROJECT_ID} answers={ANSWERS} buildings={BUILDINGS} />
         </section>
       </main>
     </I18nProvider>

@@ -220,15 +220,15 @@ function coverRows(
   const location = briefFact(facts, 'standort_adresse')
   if (location) rows.push({ label: t('reportCover.location'), value: location })
 
-  const bundesland = briefFact(facts, 'bundesland')
-  if (bundesland) rows.push({ label: t('reportCover.bundesland'), value: bundesland })
+  const federalState = briefFact(facts, 'bundesland')
+  if (federalState) rows.push({ label: t('reportCover.bundesland'), value: federalState })
 
   // `fields.gebaeudeklasse` and not a new key: the .docx already labels this
   // exact fact on a card, and two names for the Gebäudeklasse across the two
   // documents an architect puts side by side is the drift `answerExport` exists
   // to prevent.
-  const gebaeudeklasse = briefFact(facts, 'gebaeudeklasse')
-  if (gebaeudeklasse) rows.push({ label: t('fields.gebaeudeklasse'), value: gebaeudeklasse })
+  const buildingClass = briefFact(facts, 'gebaeudeklasse')
+  if (buildingClass) rows.push({ label: t('fields.gebaeudeklasse'), value: buildingClass })
 
   rows.push({
     label: t('createdAt'),

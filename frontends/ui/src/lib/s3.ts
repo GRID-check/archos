@@ -166,7 +166,7 @@ export function buildStorageKey(
  * convention holds, folder segments included (ADR-0078): the one thing that
  * differs between the two is the owner prefix.
  */
-export function buildArchivStorageKey(
+export function buildOfficeShelfStorageKey(
   organizationId: string,
   documentId: string,
   filename: string,

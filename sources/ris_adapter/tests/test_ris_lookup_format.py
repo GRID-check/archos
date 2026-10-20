@@ -58,7 +58,7 @@ async def test_the_knowledge_parser_reads_it_as_evidence(lookup, catalog):
     assert "Dem Ansuchen um Baubewilligung" in (entry.chunk_text or "")
 
 
-async def test_only_the_named_absatz_is_returned(lookup, catalog):
+async def test_only_the_named_subsection_is_returned(lookup, catalog):
     """``Abs 1`` means Abs 1 — the Absätze after it stay out of the passage."""
     output = await lookup.run(question=_QUESTION, instrument="§ 63 Abs 1 BO Wien")
 
@@ -67,7 +67,7 @@ async def test_only_the_named_absatz_is_returned(lookup, catalog):
     assert "Die Baupläne müssen von einem hierzu Befugten" not in body
 
 
-async def test_the_lane_is_the_rechtsquelle_lane_not_unknown(lookup, catalog):
+async def test_the_lane_is_the_legal_source_lane_not_unknown(lookup, catalog):
     """``doc_class`` is what ``lane_for_hit`` reads first — so the chip is law, not Web."""
     output = await lookup.run(question=_QUESTION, instrument="§ 63 BO Wien")
 
@@ -92,8 +92,8 @@ async def test_a_named_section_is_still_bounded(lookup, catalog):
     """Longer than a § bound, it is cut on an Absatz and says so."""
     from ris_adapter.lookup.grammar import SECTION_MAX_CHARS
 
-    long_absatz = "\n".join(f"({index}) " + "Text " * 200 for index in range(1, 12))
-    lookup.set_text(lookup.WIEN_URL, f"Bauansuchen\n§ 63. {long_absatz}")
+    long_subsection = "\n".join(f"({index}) " + "Text " * 200 for index in range(1, 12))
+    lookup.set_text(lookup.WIEN_URL, f"Bauansuchen\n§ 63. {long_subsection}")
 
     output = await lookup.run(question="Was verlangt § 63 BO Wien?", instrument="BO Wien")
 
@@ -103,7 +103,7 @@ async def test_a_named_section_is_still_bounded(lookup, catalog):
     assert "... [truncated]" in output
 
 
-async def test_a_named_absatz_comes_with_its_whole_section(lookup, catalog):
+async def test_a_named_subsection_comes_with_its_whole_section(lookup, catalog):
     """Asked for Abs 2 alone, the agent came back for Abs 4, 5 and 3 one lookup at a time."""
     output = await lookup.run(question=_QUESTION, instrument="§ 63 Abs 1 BO Wien")
 
@@ -111,7 +111,7 @@ async def test_a_named_absatz_comes_with_its_whole_section(lookup, catalog):
     assert "Die Baupläne müssen von einem hierzu Befugten" in lookup.body_of(output, 2)
 
 
-async def test_a_section_too_long_to_hand_over_stays_its_absatz(lookup, catalog):
+async def test_a_section_too_long_to_hand_over_stays_its_subsection(lookup, catalog):
     from ris_adapter.lookup.grammar import SECTION_MAX_CHARS
 
     absaetze = "\n".join(f"({index}) " + "Text " * 300 for index in range(1, 12))

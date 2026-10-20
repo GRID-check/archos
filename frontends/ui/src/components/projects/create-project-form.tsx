@@ -15,7 +15,7 @@
  * for (how it ended, Beginn, Abschluss), rather than created running and then
  * walked through the three-step close dialog. Those facts reuse the close
  * dialog's rules and wording: the outcome is chosen, never preselected, and the
- * Abschluss is bounded by `abschlussBounds`.
+ * Abschluss is bounded by `closingBounds`.
  */
 
 import type { JSX } from 'react'
@@ -46,11 +46,11 @@ import type { GeocodeResult } from '@/lib/geocoding/types'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import type { ProjectSetup } from '@/lib/projects/create-project-schema'
 import { currentMonth, isMonth, type Month } from '@/lib/projects/month'
-import { abschlussBounds, abschlussProblem, defaultAbschluss, type ProjectOutcome } from '@/lib/projects/project-status'
+import { closingBounds, closingProblem, defaultClosing, type ProjectOutcome } from '@/lib/projects/project-status'
 import { isRedirectSignal } from '@/lib/utils/redirect-signal'
 
 export type CreateProjectState = 'active' | 'closed'
-type AbschlussProblem = ReturnType<typeof abschlussProblem>
+type ClosingProblem = ReturnType<typeof closingProblem>
 
 export interface CreateProjectFormProps {
   /** Leaves without creating anything; the dialog closes itself. */
@@ -60,7 +60,7 @@ export interface CreateProjectFormProps {
 }
 
 /** What the server action may name as the reason a closed project was refused. */
-const SERVER_REASONS: Readonly<Record<string, Exclude<AbschlussProblem, null>>> = {
+const SERVER_REASONS: Readonly<Record<string, Exclude<ClosingProblem, null>>> = {
   'abschluss-in-future': 'future',
   'abschluss-before-beginn': 'beforeStart',
 }
@@ -87,7 +87,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   const tFiles = useTranslations('files')
   const [thisMonth] = useState(() => currentMonth())
   const [serverError, setServerError] = useState<string | null>(null)
-  const [serverAbschluss, setServerAbschluss] = useState<AbschlussProblem>(null)
+  const [serverClosing, setServerClosing] = useState<ClosingProblem>(null)
   const [dropped, setDropped] = useState<DroppedFolder | null>(null)
   // A drop is held for the setup page only while the dialog may still create the
   // project; closing it any other way discards the files.
@@ -117,11 +117,11 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
       state: 'active' as CreateProjectState,
       outcome: '' as ProjectOutcome | '',
       startedOn: '',
-      endedOn: defaultAbschluss(null, null, thisMonth) as string,
+      endedOn: defaultClosing(null, null, thisMonth) as string,
     },
     onSubmit: async ({ value }) => {
       setServerError(null)
-      setServerAbschluss(null)
+      setServerClosing(null)
       // Only a project Piloti sets up has a setup page to take a drop: one held
       // for a project the person fills in would wait for the NEXT project
       // Piloti reads, and be filed there.
@@ -145,7 +145,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
       created.current = false
       const reason = result.reason ? SERVER_REASONS[result.reason] : undefined
       if (reason) {
-        setServerAbschluss(reason)
+        setServerClosing(reason)
         return
       }
       console.error('[CreateProjectForm] create failed:', result.error)
@@ -171,10 +171,10 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
   const closed = values.state === 'closed'
   const piloti = values.setup === 'piloti'
-  const abschlussError =
-    serverAbschluss ?? abschlussProblem(values.endedOn, startedOnOf(values.startedOn), thisMonth)
+  const closingError =
+    serverClosing ?? closingProblem(values.endedOn, startedOnOf(values.startedOn), thisMonth)
   const nameValid = values.name.trim().length > 0 && values.name.trim().length <= 255
-  const ready = nameValid && (!closed || (values.outcome !== '' && abschlussError === null))
+  const ready = nameValid && (!closed || (values.outcome !== '' && closingError === null))
 
   // A project folder dropped on the dialog names the project (when it has no
   // name yet) and waits, with its files, for the project to exist. Dropping it
@@ -231,12 +231,12 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
               <form.Field name="location">
                 {(location) => (
                   <form.Field name="bundesland">
-                    {(bundesland) => (
+                    {(federalState) => (
                       <AddressField
                         value={location.state.value}
                         onChange={location.handleChange}
-                        bundesland={bundesland.state.value}
-                        onBundeslandChange={bundesland.handleChange}
+                        bundesland={federalState.state.value}
+                        onFederalStateChange={federalState.handleChange}
                         disabled={isSubmitting}
                         {...addressClients}
                       />
@@ -304,14 +304,14 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
                 startedOn={values.startedOn}
                 endedOn={values.endedOn}
                 thisMonth={thisMonth}
-                problem={abschlussError}
+                problem={closingError}
                 disabled={isSubmitting}
                 onStartedOn={(next) => {
-                  setServerAbschluss(null)
+                  setServerClosing(null)
                   form.setFieldValue('startedOn', next)
                 }}
                 onEndedOn={(next) => {
-                  setServerAbschluss(null)
+                  setServerClosing(null)
                   form.setFieldValue('endedOn', next)
                 }}
               />
@@ -496,7 +496,7 @@ interface PeriodFieldsProps {
   startedOn: string
   endedOn: string
   thisMonth: Month
-  problem: AbschlussProblem
+  problem: ClosingProblem
   disabled: boolean
   onStartedOn: (value: string) => void
   onEndedOn: (value: string) => void
@@ -514,8 +514,8 @@ function PeriodFields({
 }: PeriodFieldsProps): JSX.Element {
   const t = useTranslations('projects')
   const { locale } = useLocale()
-  const bounds = abschlussBounds(startedOnOf(startedOn), thisMonth)
-  const placeholder = { month: t('steckbrief.month'), year: t('steckbrief.year') }
+  const bounds = closingBounds(startedOnOf(startedOn), thisMonth)
+  const placeholder = { month: t('projectRecord.month'), year: t('projectRecord.year') }
   const problemCopy =
     problem === 'beforeStart' ? t('form.closed.endedOnBeforeStart') : problem ? t(`lifecycle.closeDialog.endedOn.${problem}`) : null
 
@@ -531,8 +531,8 @@ function PeriodFields({
           value={startedOn}
           onChange={onStartedOn}
           locale={locale}
-          monthLabel={`${t('form.closed.startedOn')}, ${t('steckbrief.month')}`}
-          yearLabel={`${t('form.closed.startedOn')}, ${t('steckbrief.year')}`}
+          monthLabel={`${t('form.closed.startedOn')}, ${t('projectRecord.month')}`}
+          yearLabel={`${t('form.closed.startedOn')}, ${t('projectRecord.year')}`}
           placeholder={placeholder}
           clearLabel={t('form.closed.clearStartedOn')}
           toYear={Number(thisMonth.slice(0, 4))}
@@ -546,8 +546,8 @@ function PeriodFields({
           value={endedOn}
           onChange={onEndedOn}
           locale={locale}
-          monthLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('steckbrief.month')}`}
-          yearLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('steckbrief.year')}`}
+          monthLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('projectRecord.month')}`}
+          yearLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('projectRecord.year')}`}
           placeholder={placeholder}
           fromYear={bounds.min ? Number(bounds.min.slice(0, 4)) : undefined}
           toYear={Number(bounds.max.slice(0, 4))}

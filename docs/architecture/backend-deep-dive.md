@@ -860,7 +860,7 @@ document summary:
    heuristic, so a drawing that is pure linework plus a stamped watermark does
    not read as "has text". Each line's font size and weight are kept
    (`line_styles`): a tenant PDF is chunked on its own headings
-   (`section_chunking`), an OIB Richtlinie on its Punkte (`punkt_chunking`);
+   (`section_chunking`), an OIB Richtlinie on its Punkte (`clause_chunking`);
    the table of chunk locators is in
    [`document-ingestion.md`](../technical-reference/document-ingestion.md#_run_ingestionjob_id-file_paths-collection_name-config).
 2. **Tables** — `_extract_tables_from_pdf` (pdfplumber), gated on
@@ -1480,7 +1480,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
    prompt now carries a **Jurisdiction & Country Handling** block that instructs
    the agent: for `at` → full OIB/RIS pipeline, binding precision; for non-AT →
    Austrian corpus only, comparative guidance, recommend local verification.
-- **Bundesland** — `resolve_bundesland`: the validated envelope token wins
+- **Bundesland** — `resolve_federal_state`: the validated envelope token wins
    (`ausserhalb_oesterreichs` → None is final), then the structured
    `bundesland=<token>` prompt fact, then free-text state-name probing.
    `focus_entries` drops other states' law and sorts the project's state first;

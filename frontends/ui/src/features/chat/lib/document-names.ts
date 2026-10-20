@@ -117,7 +117,7 @@ export function oibDisplayTitle(fileName: string): string | null {
     low = stripUnderscores(low.slice(0, revisionMatch.index) + low.slice(revisionMatch.index + revisionMatch[0].length))
   }
 
-  const isLeitfaden = low.includes('leitfaden')
+  const isGuide = low.includes('leitfaden')
   low = stripUnderscores(low.replace('leitfaden', ''))
 
   let subject: string
@@ -132,7 +132,7 @@ export function oibDisplayTitle(fileName: string): string | null {
     if (!numberMatch) return null
     subject = `OIB-Richtlinie ${numberMatch[1]}`
   }
-  if (isLeitfaden) subject += ' – Leitfaden'
+  if (isGuide) subject += ' – Leitfaden'
 
   const title = `${rolePrefix}${subject}`
   const tail = [edition, revision].filter(Boolean).join(', ')

@@ -15,7 +15,7 @@ import { projects } from './projects'
 import { chat } from './chat'
 import { collaboration } from './collaboration'
 import { files } from './files'
-import { archiv } from './archiv'
+import { officeShelf } from './office-shelf'
 import { bim } from './bim'
 import { knowledge } from './knowledge'
 import { research } from './research'
@@ -53,7 +53,7 @@ export const en = {
   chat,
   collaboration,
   files,
-  archiv,
+  officeShelf,
   bim,
   knowledge,
   research,

@@ -78,7 +78,7 @@ class DraftingCase:
     card: str = UNFILED
 
 
-_AKTENVERMERK = "/entwuerfe/aktenvermerk-ma37-fluchtweg.md"
+_FILE_NOTE = "/entwuerfe/aktenvermerk-ma37-fluchtweg.md"
 
 _SEEDED_DRAFT = (
     "# Aktenvermerk – Besprechung MA 37\n\n"
@@ -109,7 +109,7 @@ REVISE = DraftingCase(
     # rather than a shortened paragraph.
     required_tools=("edit_file",),
     forbidden_tools=("write_file", "file_draft", SUBMITTING),
-    seed={_AKTENVERMERK: _SEEDED_DRAFT},
+    seed={_FILE_NOTE: _SEEDED_DRAFT},
     card=UNFILED,
 )
 
@@ -120,7 +120,7 @@ FILE = DraftingCase(
     # Filing is not submitting. „Ablegen" asks nobody to review anything, and
     # a turn that submits has put an item in a colleague's inbox uninvited.
     forbidden_tools=(SUBMITTING,),
-    seed={_AKTENVERMERK: _SEEDED_DRAFT},
+    seed={_FILE_NOTE: _SEEDED_DRAFT},
     card=FILED,
 )
 
@@ -128,7 +128,7 @@ DRAFTING_CASES: tuple[DraftingCase, ...] = (COMMISSION, REVISE, FILE)
 
 #: The path the seeded cases hand the model, so a test that needs to name it
 #: (a scripted tool call) and the seed itself cannot disagree.
-SEEDED_DRAFT_PATH = _AKTENVERMERK
+SEEDED_DRAFT_PATH = _FILE_NOTE
 
 
 def draft_cards(cards: list[dict[str, Any]]) -> list[dict[str, Any]]:

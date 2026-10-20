@@ -17,7 +17,7 @@ import type {
 // Faithful implementation of `wizard_spec.json` / `wizard_konzept.md`: modules
 // A–H, the stable question IDs (A5, C4, D_garagenfl …) that are the reference
 // anchors of the later classification logic, the four scopes
-// (projekt → grundstück → bauwerk 1..n → nutzungszone 1..n per bauwerk), and the
+// (projekt → grundstück → building 1..n → nutzungszone 1..n per building), and the
 // three answer modes.
 //
 // Answer modes map onto the profile's existing three-state model rather than a
@@ -64,7 +64,7 @@ export interface ProjectIntakeOption {
 /**
  * A single display condition. Multiple conditions on one question are
  * AND-combined. `param` references another question's id; it is resolved within
- * the same scope instance (a bauwerk question's condition on `C1` reads *this*
+ * the same scope instance (a building question's condition on `C1` reads *this*
  * bauwerk's C1), falling back to the project-global answer for project-scope
  * params such as `A5`.
  */
@@ -103,7 +103,7 @@ export interface ProjectIntakeQuestion {
    * Modul C interleaves two descriptions of the same building — what stands
    * there today (CB*) and what will stand there after the work (C3–C11) — and
    * the Zielzustand principle is the concept's whole basis for deriving the
-   * Gebäudeklasse. Running them together as one list of twenty-two fields makes
+   * building class. Running them together as one list of twenty-two fields makes
    * "Bestand heute: oberirdische Geschoße" and "Anzahl oberirdischer Geschoße
    * (Zielzustand)" look like the same question asked twice.
    */
@@ -150,7 +150,7 @@ export interface ProjectIntakeQuestion {
   foundIn?: string[]
   /**
    * The derivation this value is an input of. Descriptive here; `lib/project-intake`
-   * reads it to know which gaps could change the Gebäudeklasse.
+   * reads it to know which gaps could change the building class.
    */
   feeds?: 'gebaeudeklasse'
 }
@@ -180,7 +180,7 @@ export interface ProjectIntakeDefinition {
 }
 
 /** The use-catalog (D0), reused for both the multi-select and the zone expansion. */
-const NUTZUNGEN: ProjectIntakeOption[] = [
+const USES: ProjectIntakeOption[] = [
   { value: 'wohnen', label: 'Wohnen' },
   { value: 'buero', label: 'Büro / Verwaltung' },
   { value: 'handel', label: 'Handel / Verkauf' },
@@ -201,20 +201,20 @@ const NUTZUNGEN: ProjectIntakeOption[] = [
  * same thing for the same document.
  */
 const FOUND_IN = {
-  plankopf: 'Einreichplan (Plankopf)',
-  lageplanPlan: 'Lageplan',
-  lageplan: 'Einreichplan (Lageplan)',
-  grundriss: 'Einreichplan (Grundriss)',
-  schnitt: 'Einreichplan (Schnitt)',
-  ansicht: 'Einreichplan (Ansicht)',
-  baubeschreibung: 'Baubeschreibung',
-  bescheid: 'Bescheid',
-  grundbuch: 'Grundbuchauszug',
-  widmung: 'Flächenwidmungsplan',
-  bebauungsplan: 'Bebauungsplan (Plandokument)',
-  energieausweis: 'Energieausweis',
-  brandschutz: 'Brandschutzkonzept',
-  statik: 'Statik',
+  titleBlock: 'Einreichplan (Plankopf)',
+  sitePlan: 'Lageplan',
+  submissionSitePlan: 'Einreichplan (Lageplan)',
+  floorPlan: 'Einreichplan (Grundriss)',
+  section: 'Einreichplan (Schnitt)',
+  elevation: 'Einreichplan (Ansicht)',
+  buildingDescription: 'Baubeschreibung',
+  permitDecision: 'Bescheid',
+  landRegister: 'Grundbuchauszug',
+  zoning: 'Flächenwidmungsplan',
+  developmentPlan: 'Bebauungsplan (Plandokument)',
+  energyCertificate: 'Energieausweis',
+  fireSafety: 'Brandschutzkonzept',
+  structural: 'Statik',
 } as const
 
 export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
@@ -235,7 +235,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           required: true,
           placeholder: 'z. B. WHA Quellenstraße',
           writesTo: '/facts/project_name/value',
-          foundIn: [FOUND_IN.plankopf, FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
           id: 'A2_adr',
@@ -246,12 +246,12 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'Straße, PLZ Ort',
           why: 'Aus der Gemeinde folgen örtliche Vorschriften wie Fernwärme-Anschlussgebiete oder Schutzzonen.',
           writesTo: '/facts/standort_adresse/value',
-          foundIn: [FOUND_IN.plankopf, FOUND_IN.lageplan, FOUND_IN.grundbuch, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.submissionSitePlan, FOUND_IN.landRegister, FOUND_IN.permitDecision],
         },
         // Spec id A2_staat with AT/DE only. Kept as the shipped superset: the
         // storage key `country` and its token set are load-bearing (mirrored by
         // the backend jurisdiction pipeline), and CH/other already exist in
-        // stored projects. The German Bundesland list rides with the German
+        // stored projects. The German federal state list rides with the German
         // question catalog (v2, per README Länder-Scope) — until then non-AT
         // locations describe themselves in `standort_details`.
         {
@@ -269,7 +269,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'other', label: 'Anderes Land' },
           ],
           writesTo: '/facts/country/value',
-          foundIn: [FOUND_IN.plankopf, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription],
         },
         {
           id: 'A2_land',
@@ -295,7 +295,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'ausserhalb_oesterreichs', label: 'Außerhalb Österreichs' },
           ],
           writesTo: '/facts/bundesland/value',
-          foundIn: [FOUND_IN.plankopf, FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
         },
         {
           id: 'standort_details',
@@ -323,7 +323,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'bestand_betrieb', label: 'Bestand & Betrieb' },
           ],
           writesTo: '/facts/projektphase/value',
-          foundIn: [FOUND_IN.plankopf, FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
           id: 'A5',
@@ -342,7 +342,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'aussenanlagen', label: 'Außenanlagen' },
           ],
           writesTo: '/facts/vorhabensart/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.bescheid, FOUND_IN.plankopf],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision, FOUND_IN.titleBlock],
         },
       ],
     },
@@ -372,7 +372,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'offen', label: 'noch offen' },
           ],
           writesTo: '/facts/flaechenwidmung/value',
-          foundIn: [FOUND_IN.widmung, FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.zoning, FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           // v1.0's B1_orig, now unconditionally visible: the original wording
@@ -385,10 +385,10 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. W II g 12m – oder frei beschreiben',
           writesTo: '/facts/flaechenwidmung_orig/value',
           foundIn: [
-            FOUND_IN.widmung,
-            FOUND_IN.bebauungsplan,
-            FOUND_IN.bescheid,
-            FOUND_IN.baubeschreibung,
+            FOUND_IN.zoning,
+            FOUND_IN.developmentPlan,
+            FOUND_IN.permitDecision,
+            FOUND_IN.buildingDescription,
           ],
         },
         {
@@ -397,7 +397,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Liegt ein Bebauungsplan vor?',
           type: 'yes_no_open',
           writesTo: '/facts/bebauungsplan/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
         },
         {
           // Spec: unconditional `upload` for B-Plan OR FWP. Ours binds the
@@ -422,7 +422,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Höhenvorgaben der Landes-Bauordnung; Grundlage der Zulässigkeitsprüfung des Entwurfs.',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/max_gebaeudehoehe/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           id: 'B3_weise',
@@ -437,7 +437,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'noch_offen', label: 'noch offen' },
           ],
           writesTo: '/facts/bebauungsweise/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           id: 'B3_dichte',
@@ -447,7 +447,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. 1.5',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/bebauungsdichte/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           id: 'B3_flucht',
@@ -456,7 +456,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/baufluchtlinien/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.lageplanPlan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.sitePlan, FOUND_IN.permitDecision],
         },
         {
           // Absorbs v1.0's A8 (Schutzzone / Altstadterhaltung) — part of the
@@ -469,7 +469,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. Schutzzone, Dachvorschriften, Begrünungspflicht',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/bebauungsplan_besonderes/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           id: 'B3_stellplatz',
@@ -480,7 +480,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. 1 Stellplatz je Wohnung',
           conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
           writesTo: '/facts/stellplatzregulativ/value',
-          foundIn: [FOUND_IN.bebauungsplan, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
         },
         {
           // v1.0's B4 + B5 (Altlast) + B9 (Baumbestand) + B10 (Schutzgebiet)
@@ -561,7 +561,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     // ------------------------------------------------------------------ C
     //
     // Spec C0 (Bauwerksliste) is realized by the wizard's building-management
-    // UI (duplizierbare Karten, min. 1 Bauwerk) rather than a question row —
+    // UI (duplizierbare Karten, min. 1 building) rather than a question row —
     // rendering it additionally as a question would describe controls sitting
     // directly above it.
     {
@@ -584,7 +584,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'sonstig', label: 'sonstiges Bauwerk (Flugdach, Stützmauer, Werbeanlage …)' },
           ],
           writesTo: '/facts/bauwerkstyp/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.ansicht, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.elevation, FOUND_IN.permitDecision],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -598,7 +598,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'bestand', label: 'Bestandsgebäude' },
           ],
           writesTo: '/facts/errichtungsstatus/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.bescheid, FOUND_IN.grundriss],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision, FOUND_IN.floorPlan],
         },
         // -------------------------------------------------- Bestandsblock
         // v1.0 asked these once per PROJECT (A6/A7/A9/A10); since v1.1 they
@@ -615,7 +615,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Das Alter hilft einzuordnen, welche Regeln damals galten und was heute Bestandsschutz genießt.',
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/baujahr_bestand/value',
-          foundIn: [FOUND_IN.energieausweis, FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
           id: 'CB2',
@@ -634,7 +634,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Denkmalschutz bringt ein eigenes Verfahren und teils Erleichterungen bei anderen Anforderungen mit sich.',
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/denkmalschutz/value',
-          foundIn: [FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
         },
         {
           id: 'CB4',
@@ -653,7 +653,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           ],
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/bestand_massnahmen/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
         },
         {
           id: 'CB5',
@@ -717,10 +717,10 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/geschosse_oberirdisch/value',
           foundIn: [
-            FOUND_IN.schnitt,
-            FOUND_IN.ansicht,
-            FOUND_IN.grundriss,
-            FOUND_IN.baubeschreibung,
+            FOUND_IN.section,
+            FOUND_IN.elevation,
+            FOUND_IN.floorPlan,
+            FOUND_IN.buildingDescription,
           ],
           feeds: 'gebaeudeklasse',
         },
@@ -730,7 +730,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/geschosse_unterirdisch/value',
-          foundIn: [FOUND_IN.schnitt, FOUND_IN.grundriss, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.section, FOUND_IN.floorPlan, FOUND_IN.buildingDescription],
         },
         {
           id: 'C5',
@@ -742,7 +742,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           hint: 'Höhendifferenz zwischen der Fußbodenoberkante des höchstgelegenen oberirdischen Geschoßes und der an das Gebäude angrenzenden Geländeoberfläche nach Fertigstellung im Mittel.',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/fluchtniveau_m/value',
-          foundIn: [FOUND_IN.schnitt, FOUND_IN.brandschutz, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.section, FOUND_IN.fireSafety, FOUND_IN.buildingDescription],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -752,7 +752,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           unit: 'm²',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/bgf_oberirdisch/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.energieausweis],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.energyCertificate],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -762,7 +762,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           conditions: [{ param: 'C1', op: 'equals', value: 'gebaeude' }],
           writesTo: '/facts/nutzungseinheiten/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -781,7 +781,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { param: 'C3', op: 'lte', value: 4 },
           ],
           writesTo: '/facts/einheiten_ueber_400/value',
-          foundIn: [FOUND_IN.grundriss, FOUND_IN.baubeschreibung, FOUND_IN.brandschutz],
+          foundIn: [FOUND_IN.floorPlan, FOUND_IN.buildingDescription, FOUND_IN.fireSafety],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -795,7 +795,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'reihenhaus', label: 'Reihenhaus' },
           ],
           writesTo: '/facts/gebaeudestellung/value',
-          foundIn: [FOUND_IN.lageplanPlan, FOUND_IN.lageplan, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.sitePlan, FOUND_IN.submissionSitePlan, FOUND_IN.buildingDescription],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -810,7 +810,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           ],
           writesTo: '/facts/zugang_drei_seiten/value',
           feeds: 'gebaeudeklasse',
-          foundIn: [FOUND_IN.lageplanPlan, FOUND_IN.lageplan],
+          foundIn: [FOUND_IN.sitePlan, FOUND_IN.submissionSitePlan],
         },
         {
           // Multi-select since v1.1 (a building can combine structures); the
@@ -829,7 +829,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'offen', label: 'noch offen' },
           ],
           writesTo: '/facts/bauweise/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.statik, FOUND_IN.brandschutz],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.structural, FOUND_IN.fireSafety],
         },
         {
           id: 'C10_text',
@@ -853,7 +853,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'unkonditioniert', label: 'unkonditioniert' },
           ],
           writesTo: '/facts/konditionierung/value',
-          foundIn: [FOUND_IN.energieausweis, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription],
         },
         {
           id: 'C_GK_CONFIRM',
@@ -881,9 +881,9 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'multi_select',
           why: 'Jede Nutzung bringt eigene Themen und Regelwerke mit — vom Brandschutz bis zu speziellen Genehmigungen.',
           hint: 'Mehrfachauswahl — je Nutzung folgen Kennzahlen.',
-          options: NUTZUNGEN,
+          options: USES,
           writesTo: '/facts/nutzungen/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.grundriss, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
           feeds: 'gebaeudeklasse',
         },
         {
@@ -893,7 +893,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Öffentlich zugängliche Bereiche bringen typischerweise Barrierefreiheitsanforderungen mit sich.',
           writesTo: '/facts/publikumsverkehr/value',
-          foundIn: [FOUND_IN.baubeschreibung, FOUND_IN.bescheid],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
         },
         {
           id: 'DX2',
@@ -1334,19 +1334,19 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
 // ---------------------------------------------------------------------------
 
 /** A repeatable building instance. */
-export interface BauwerkInstance {
+export interface BuildingInstance {
   id: string
   name: string
 }
 
-export function defaultBauwerke(): BauwerkInstance[] {
+export function defaultBuildings(): BuildingInstance[] {
   return [{ id: 'bw1', name: 'Bauwerk 1' }]
 }
 
 /** The wizard's answer-state key for a question in a given scope instance. */
-export function answerKeyFor(questionId: string, bauwerkId?: string, zoneKey?: string): string {
+export function answerKeyFor(questionId: string, buildingId?: string, zoneKey?: string): string {
   let key = questionId
-  if (bauwerkId) key += `@${bauwerkId}`
+  if (buildingId) key += `@${buildingId}`
   if (zoneKey) key += `@${zoneKey}`
   return key
 }
@@ -1359,9 +1359,9 @@ export function answerKeyFor(questionId: string, bauwerkId?: string, zoneKey?: s
  * `bauwerk` role has to name its building, and the wizard only knows which
  * building it is rendering through the key.
  */
-export function bauwerkIdFromAnswerKey(answerKey: string): string | null {
-  const [, bauwerkId] = answerKey.split('@')
-  return bauwerkId ?? null
+export function buildingIdFromAnswerKey(answerKey: string): string | null {
+  const [, buildingId] = answerKey.split('@')
+  return buildingId ?? null
 }
 
 /** The sibling key under which a number_tri question stores its answer mode. */
@@ -1389,16 +1389,16 @@ function scopeOfQuestion(questionId: string): ProjectIntakeScope | null {
  * The validated `bundesland` token vocabulary, read straight off the A2_land
  * question's own options so it can never drift from what the wizard offers.
  * (Backlog T3-9: mirrored, not shared, by the Python backend's
- * `project_context._BUNDESLAND_TOKENS`.)
+ * `project_context._FEDERAL_STATE_TOKENS`.)
  */
-export const BUNDESLAND_TOKENS: readonly string[] = (() => {
+export const FEDERAL_STATE_TOKENS: readonly string[] = (() => {
   const question = flattenIntakeQuestions(projectIntakeDefinitionV1).find((q) => q.id === 'A2_land')
   return question?.options?.map((option) => option.value) ?? []
 })()
 
 /** Whether `token` is a recognized `bundesland` (A2_land) intake answer. */
-export function isValidBundeslandToken(token: string): boolean {
-  return BUNDESLAND_TOKENS.includes(token)
+export function isValidFederalStateToken(token: string): boolean {
+  return FEDERAL_STATE_TOKENS.includes(token)
 }
 
 export const COUNTRY_TOKENS: readonly string[] = (() => {
@@ -1415,8 +1415,8 @@ export function isValidCountryToken(token: string): boolean {
 /**
  * Whether a question is currently relevant given the answers collected so far.
  * Conditions are AND-combined. `param` is resolved within `instanceId`'s scope
- * (a bauwerk question's condition on a bauwerk param reads that building's
- * answer), falling back to the project-global answer for non-bauwerk params.
+ * (a building question's condition on a building param reads that building's
+ * answer), falling back to the project-global answer for non-building params.
  */
 export function evaluateIntakeCondition(
   question: ProjectIntakeQuestion,
@@ -1461,7 +1461,7 @@ function evaluateSingleCondition(
   answers: Record<string, ProjectPrimitiveValue>,
   instanceId?: string
 ): boolean {
-  // Resolve which answer key this param lives under: a bauwerk-scope param is
+  // Resolve which answer key this param lives under: a building-scope param is
   // read from the current building instance; everything else is project-global.
   const paramScope = scopeOfQuestion(cond.param)
   const key = paramScope === 'bauwerk' && instanceId ? `${cond.param}@${instanceId}` : cond.param
@@ -1514,20 +1514,20 @@ export function findIntakeQuestion(
 }
 
 /**
- * The distinct scope instances (bauwerke) implied by the current answer state.
- * Reconstructed from `@bwN`-suffixed keys plus any stored bauwerk names, so an
+ * The distinct scope instances (buildings) implied by the current answer state.
+ * Reconstructed from `@bwN`-suffixed keys plus any stored building names, so an
  * edit session can rebuild the building list the same way the wizard held it.
  */
-export function bauwerkeFromAnswers(
+export function buildingsFromAnswers(
   answers: Record<string, ProjectPrimitiveValue>
-): BauwerkInstance[] {
+): BuildingInstance[] {
   const ids = new Set<string>()
   for (const key of Object.keys(answers)) {
     const match = key.match(/@(bw\d+)(?:@|$|__)/)
     if (match) ids.add(match[1])
   }
   const sorted = [...ids].sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)))
-  if (sorted.length === 0) return defaultBauwerke()
+  if (sorted.length === 0) return defaultBuildings()
   return sorted.map((id, i) => {
     const stored = answers[`__bwname@${id}`]
     return { id, name: typeof stored === 'string' && stored ? stored : `Bauwerk ${i + 1}` }
@@ -1544,7 +1544,7 @@ export function pruneStaleConditionalAnswers(
   definition: ProjectIntakeDefinition | null | undefined
 ): Record<string, ProjectPrimitiveValue> {
   if (!definition) return answers
-  const bauwerke = bauwerkeFromAnswers(answers)
+  const buildings = buildingsFromAnswers(answers)
   let current = answers
   let changedAny = false
 
@@ -1569,8 +1569,8 @@ export function pruneStaleConditionalAnswers(
 
     for (const stage of definition.stages) {
       if (stage.scope === 'bauwerk') {
-        for (const bw of bauwerke) {
-          for (const q of stage.questions) dropIfOrphaned(q, answerKeyFor(q.id, bw.id), bw.id)
+        for (const building of buildings) {
+          for (const q of stage.questions) dropIfOrphaned(q, answerKeyFor(q.id, building.id), building.id)
         }
       } else {
         for (const q of stage.questions) dropIfOrphaned(q, q.id)
@@ -1607,10 +1607,10 @@ function resolveWriteTarget(writesTo: string | undefined): WriteTarget | null {
   return null
 }
 
-/** Namespace a base storage key with the bauwerk/zone instance it belongs to. */
-function instanceStorageKey(baseKey: string, bauwerkId?: string, zoneKey?: string): string {
+/** Namespace a base storage key with the building/zone instance it belongs to. */
+function instanceStorageKey(baseKey: string, buildingId?: string, zoneKey?: string): string {
   let key = baseKey
-  if (bauwerkId) key += `@${bauwerkId}`
+  if (buildingId) key += `@${buildingId}`
   if (zoneKey) key += `@${zoneKey}`
   return key
 }
@@ -1711,15 +1711,18 @@ function encodeKey(key: string): string {
 
 /**
  * Build a {@link ProjectProfile} from collected intake answers, expanding the
- * bauwerk scope over every building and the zone scope over every selected use.
+ * building scope over every building and the zone scope over every selected use.
  */
 export function buildIntakeProfile(
   answers: Record<string, ProjectPrimitiveValue>,
   definition: ProjectIntakeDefinition,
-  options?: { projectName?: string; bauwerke?: BauwerkInstance[] }
+  options?: {
+    projectName?: string
+    buildings?: BuildingInstance[]
+  }
 ): ProjectProfile {
   const ctx: BuildContext = { now: new Date().toISOString(), patch: [], unknowns: [] }
-  const bauwerke = options?.bauwerke ?? bauwerkeFromAnswers(answers)
+  const buildings = options?.buildings ?? buildingsFromAnswers(answers)
 
   // The name may have been captured at project creation; seed it so A1 is never
   // asked twice, but let an explicit A1 answer (below) override it.
@@ -1738,19 +1741,19 @@ export function buildIntakeProfile(
   }
 
   // Record building names so an edit session can rebuild the list.
-  if (bauwerke.length > 1 || bauwerke[0]?.name !== 'Bauwerk 1') {
-    for (const bw of bauwerke) {
+  if (buildings.length > 1 || buildings[0]?.name !== 'Bauwerk 1') {
+    for (const building of buildings) {
       ctx.patch.push({
         op: 'add',
-        path: `/facts/${encodeKey(`bauwerk_name@${bw.id}`)}`,
-        value: { value: bw.name, confidence: 'confirmed', source: NOW_SOURCE, updatedAt: ctx.now },
+        path: `/facts/${encodeKey(`bauwerk_name@${building.id}`)}`,
+        value: { value: building.name, confidence: 'confirmed', source: NOW_SOURCE, updatedAt: ctx.now },
       })
     }
   }
 
   for (const stage of definition.stages) {
     if (stage.scope === 'bauwerk') {
-      for (const bw of bauwerke) emitStageForBauwerk(ctx, stage, bw, answers)
+      for (const building of buildings) emitStageForBuilding(ctx, stage, building, answers)
     } else {
       for (const question of stage.questions) {
         const target = resolveWriteTarget(question.writesTo)
@@ -1761,7 +1764,7 @@ export function buildIntakeProfile(
     }
   }
 
-  const bundeslandPath = '/facts/bundesland'
+  const federalStatePath = '/facts/bundesland'
 
   // A patch value is either a bare primitive or a fact envelope
   // (`{ value, confidence, source, updatedAt }`) depending on which producer
@@ -1773,13 +1776,13 @@ export function buildIntakeProfile(
 
   // Derive country from bundesland for legacy profiles.
   const hasCountry = ctx.patch.some((p) => p.path === '/facts/country')
-  const bundeslandPatch = ctx.patch.find((p) => p.path === bundeslandPath)
-  if (!hasCountry && bundeslandPatch) {
-    const bToken = unwrapFactValue(bundeslandPatch.value)
+  const federalStatePatch = ctx.patch.find((p) => p.path === federalStatePath)
+  if (!hasCountry && federalStatePatch) {
+    const bToken = unwrapFactValue(federalStatePatch.value)
     if (
       typeof bToken === 'string' &&
       bToken !== 'ausserhalb_oesterreichs' &&
-      (BUNDESLAND_TOKENS as readonly string[]).includes(bToken)
+      (FEDERAL_STATE_TOKENS as readonly string[]).includes(bToken)
     ) {
       ctx.patch.push({
         op: 'add',
@@ -1791,12 +1794,12 @@ export function buildIntakeProfile(
 
   // Derive bundesland for non-AT country.
   const countryFact = ctx.patch.find((p) => p.path === '/facts/country')
-  const hasBundesland = ctx.patch.some((p) => p.path === bundeslandPath)
+  const hasFederalState = ctx.patch.some((p) => p.path === federalStatePath)
   const countryValue = unwrapFactValue(countryFact?.value)
-  if (countryFact && typeof countryValue === 'string' && countryValue !== 'at' && !hasBundesland) {
+  if (countryFact && typeof countryValue === 'string' && countryValue !== 'at' && !hasFederalState) {
     ctx.patch.push({
       op: 'add',
-      path: bundeslandPath,
+      path: federalStatePath,
       value: {
         value: 'ausserhalb_oesterreichs',
         confidence: 'confirmed',
@@ -1813,23 +1816,23 @@ export function buildIntakeProfile(
   return applyProjectProfilePatch(emptyProjectProfile(), ctx.patch)
 }
 
-function emitStageForBauwerk(
+function emitStageForBuilding(
   ctx: BuildContext,
   stage: ProjectIntakeStage,
-  bw: BauwerkInstance,
+  building: BuildingInstance,
   answers: Record<string, ProjectPrimitiveValue>
 ): void {
   for (const question of stage.questions) {
     const target = resolveWriteTarget(question.writesTo)
     if (!target) continue
-    if (!evaluateIntakeCondition(question, answers, bw.id)) continue
-    const answerKey = answerKeyFor(question.id, bw.id)
-    emitAnswer(ctx, question, answerKey, instanceStorageKey(target.key, bw.id), target, answers)
+    if (!evaluateIntakeCondition(question, answers, building.id)) continue
+    const answerKey = answerKeyFor(question.id, building.id)
+    emitAnswer(ctx, question, answerKey, instanceStorageKey(target.key, building.id), target, answers)
   }
 
   // Zones: one per selected use in this building's D0.
   if (!stage.zoneDefinitions && !stage.zoneCommon) return
-  const selectedUses = answers[answerKeyFor('D0', bw.id)]
+  const selectedUses = answers[answerKeyFor('D0', building.id)]
   if (!Array.isArray(selectedUses)) return
 
   for (const use of selectedUses) {
@@ -1840,12 +1843,12 @@ function emitStageForBauwerk(
     for (const question of zoneQuestions) {
       const target = resolveWriteTarget(question.writesTo)
       if (!target) continue
-      const answerKey = answerKeyFor(question.id, bw.id, use)
+      const answerKey = answerKeyFor(question.id, building.id, use)
       emitAnswer(
         ctx,
         question,
         answerKey,
-        instanceStorageKey(target.key, bw.id, use),
+        instanceStorageKey(target.key, building.id, use),
         target,
         answers
       )
@@ -1964,22 +1967,25 @@ export function mergeIntakeProfile(
 export function answersFromProfile(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition
-): { answers: Record<string, ProjectPrimitiveValue>; bauwerke: BauwerkInstance[] } {
+): {
+  answers: Record<string, ProjectPrimitiveValue>
+  buildings: BuildingInstance[]
+} {
   const answers: Record<string, ProjectPrimitiveValue> = {}
 
   // Rebuild the building list from stored bauwerk_name facts / suffixed keys.
-  const bwIds = new Set<string>()
+  const foundIds = new Set<string>()
   const collectId = (key: string) => {
     const m = key.match(/@(bw\d+)(?:@|$)/)
-    if (m) bwIds.add(m[1])
+    if (m) foundIds.add(m[1])
   }
   Object.keys(profile.facts).forEach(collectId)
   Object.keys(profile.assumptions).forEach(collectId)
   profile.unknowns.forEach(collectId)
-  const bauwerke: BauwerkInstance[] =
-    bwIds.size === 0
-      ? defaultBauwerke()
-      : [...bwIds]
+  const buildings: BuildingInstance[] =
+    foundIds.size === 0
+      ? defaultBuildings()
+      : [...foundIds]
           .sort((a, b) => Number(a.slice(2)) - Number(b.slice(2)))
           .map((id, i) => {
             const stored = profile.facts[`bauwerk_name@${id}`]?.value
@@ -2033,12 +2039,12 @@ export function answersFromProfile(
 
   for (const stage of definition.stages) {
     if (stage.scope === 'bauwerk') {
-      for (const bw of bauwerke) {
+      for (const building of buildings) {
         for (const q of stage.questions) {
           const target = resolveWriteTarget(q.writesTo)
-          if (target) readInto(q, answerKeyFor(q.id, bw.id), instanceStorageKey(target.key, bw.id))
+          if (target) readInto(q, answerKeyFor(q.id, building.id), instanceStorageKey(target.key, building.id))
         }
-        const uses = answers[answerKeyFor('D0', bw.id)]
+        const uses = answers[answerKeyFor('D0', building.id)]
         if (Array.isArray(uses)) {
           for (const use of uses) {
             const zoneQs = [
@@ -2050,8 +2056,8 @@ export function answersFromProfile(
               if (target)
                 readInto(
                   q,
-                  answerKeyFor(q.id, bw.id, use),
-                  instanceStorageKey(target.key, bw.id, use)
+                  answerKeyFor(q.id, building.id, use),
+                  instanceStorageKey(target.key, building.id, use)
                 )
             }
           }
@@ -2065,9 +2071,9 @@ export function answersFromProfile(
     }
   }
 
-  applyLegacyAnswerBridges(profile, answers, bauwerke)
+  applyLegacyAnswerBridges(profile, answers, buildings)
 
-  return { answers, bauwerke }
+  return { answers, buildings }
 }
 
 // ---------------------------------------------------------------------------
@@ -2075,17 +2081,17 @@ export function answersFromProfile(
 //
 // Storage keys are id-independent, so the v1.1 renumbering costs nothing. What
 // remains are the places where a MEANING moved: merged questions, the
-// project→bauwerk scope move of the Bestand block, and the one inversion.
+// project→building scope move of the Bestand block, and the one inversion.
 // Bridges only PREFILL wizard answers — the stored profile is untouched until
 // the user saves, at which point the answers re-emit under the new shape and
 // `mergeIntakeProfile` retires the intake-owned legacy keys.
 // ---------------------------------------------------------------------------
 
 /** The four v1.0 booleans that v1.2's `E2` multi-select absorbed. */
-const LEGACY_TECHNIK_KEYS = ['pv', 'lueftung', 'kuehlung', 'versickerung'] as const
+const LEGACY_TECHNOLOGY_KEYS = ['pv', 'lueftung', 'kuehlung', 'versickerung'] as const
 
 /** v1.0 `vorhabensart` → the v1.2 `CB4` measure it corresponds to. */
-const LEGACY_VORHABEN_TO_MASSNAHME: Record<string, string> = {
+const LEGACY_PLANNED_WORK_TO_MEASURE: Record<string, string> = {
   sanierung: 'huelle_sanierung',
   umbau: 'umbau_innen',
   zubau: 'zubau',
@@ -2101,24 +2107,24 @@ function legacyBoolean(profile: ProjectProfile, key: string): boolean | undefine
 function applyLegacyAnswerBridges(
   profile: ProjectProfile,
   answers: Record<string, ProjectPrimitiveValue>,
-  bauwerke: BauwerkInstance[]
+  buildings: BuildingInstance[]
 ): void {
-  // --- Bestand block (v1.0 A6/A7/A9/A10 → CB1/CB3/CB5/CB6, project → bauwerk).
+  // --- Bestand block (v1.0 A6/A7/A9/A10 → CB1/CB3/CB5/CB6, project → building).
   // Only bridged into a single-building project: the legacy answer was one
   // project-global statement, and guessing WHICH of several buildings it
   // described would plant a wrong fact. Multi-building projects re-answer per
   // building; the completion checklist surfaces the gap.
-  if (bauwerke.length === 1) {
-    const bw = bauwerke[0].id
-    const legacyBestand: Array<{ question: string; key: string; numeric: boolean }> = [
+  if (buildings.length === 1) {
+    const buildingId = buildings[0].id
+    const legacyExisting: Array<{ question: string; key: string; numeric: boolean }> = [
       { question: 'CB1', key: 'baujahr_bestand', numeric: true },
       { question: 'CB3', key: 'denkmalschutz', numeric: false },
       { question: 'CB5', key: 'tragstruktur_eingriff', numeric: false },
       { question: 'CB6', key: 'groessere_renovierung', numeric: false },
     ]
     let bridgedAny = false
-    for (const { question, key, numeric } of legacyBestand) {
-      const answerKey = answerKeyFor(question, bw)
+    for (const { question, key, numeric } of legacyExisting) {
+      const answerKey = answerKeyFor(question, buildingId)
       if (answers[answerKey] !== undefined || answers[modeKeyFor(answerKey)] !== undefined) continue
       if (numeric) {
         const fact = profile.facts[key]?.value
@@ -2149,7 +2155,7 @@ function applyLegacyAnswerBridges(
     // A building whose Bestand was described IS a Bestandsgebäude — prefill the
     // gate so the bridged block is visible instead of orphaned behind an
     // unanswered C2.
-    const c2Key = answerKeyFor('C2', bw)
+    const c2Key = answerKeyFor('C2', buildingId)
     if (bridgedAny && answers[c2Key] === undefined) answers[c2Key] = 'bestand'
 
     // CB6 sits behind a CB4 measure as well, and legacy profiles have no CB4.
@@ -2158,14 +2164,14 @@ function applyLegacyAnswerBridges(
     // `vorhabensart` rather than invented: v1.0 only ever ASKED A10 when A5
     // included `sanierung`, so the mapping restates what the old catalog
     // already implied.
-    const cb4Key = answerKeyFor('CB4', bw)
-    const cb6Key = answerKeyFor('CB6', bw)
+    const cb4Key = answerKeyFor('CB4', buildingId)
+    const cb6Key = answerKeyFor('CB6', buildingId)
     if (answers[cb6Key] !== undefined && !isIntakeAnswerProvided(answers[cb4Key])) {
-      const vorhaben = profile.facts['vorhabensart']?.value
+      const plannedWork = profile.facts['vorhabensart']?.value
       const measures = new Set<string>()
-      if (Array.isArray(vorhaben)) {
-        for (const art of vorhaben) {
-          const mapped = LEGACY_VORHABEN_TO_MASSNAHME[String(art)]
+      if (Array.isArray(plannedWork)) {
+        for (const workType of plannedWork) {
+          const mapped = LEGACY_PLANNED_WORK_TO_MEASURE[String(workType)]
           if (mapped) measures.add(mapped)
         }
       }
@@ -2176,17 +2182,17 @@ function applyLegacyAnswerBridges(
     }
   }
 
-  for (const bw of bauwerke) {
+  for (const building of buildings) {
     // --- C8 inversion (v1.0 C7 `ne_unter_400`, ja = alle Einheiten bis 400 m²).
-    const c8Key = answerKeyFor('C8', bw.id)
+    const c8Key = answerKeyFor('C8', building.id)
     if (answers[c8Key] === undefined) {
-      const legacy = profile.facts[`ne_unter_400@${bw.id}`]?.value
+      const legacy = profile.facts[`ne_unter_400@${building.id}`]?.value
       if (typeof legacy === 'boolean') answers[c8Key] = legacy ? 'nein' : 'ja'
-      else if (profile.unknowns.includes(`ne_unter_400@${bw.id}`)) answers[c8Key] = 'offen'
+      else if (profile.unknowns.includes(`ne_unter_400@${building.id}`)) answers[c8Key] = 'offen'
     }
 
     // --- C10 single → multi (`bauweise`): map the legacy single token.
-    const c10Key = answerKeyFor('C10', bw.id)
+    const c10Key = answerKeyFor('C10', building.id)
     const c10 = answers[c10Key]
     if (typeof c10 === 'string') {
       const mapped: Record<string, string[]> = {
@@ -2206,7 +2212,7 @@ function applyLegacyAnswerBridges(
         // the stored fact too. It moves into the field built to hold exactly
         // this, and the user refines it when they next open the module.
         answers[c10Key] = ['offen']
-        const c10TextKey = answerKeyFor('C10_text', bw.id)
+        const c10TextKey = answerKeyFor('C10_text', building.id)
         if (!isIntakeAnswerProvided(answers[c10TextKey])) {
           answers[c10TextKey] =
             'Hybridbauweise (aus früherer Angabe — Kombination bitte präzisieren)'
@@ -2217,16 +2223,16 @@ function applyLegacyAnswerBridges(
     }
 
     // --- E2 fusion: four legacy booleans into `technik_weitere`.
-    const e2Key = answerKeyFor('E2', bw.id)
+    const e2Key = answerKeyFor('E2', building.id)
     if (answers[e2Key] === undefined) {
-      const technik: string[] = []
-      if (legacyBoolean(profile, `pv@${bw.id}`)) technik.push('pv')
-      if (legacyBoolean(profile, `lueftung@${bw.id}`)) technik.push('lueftung')
-      if (legacyBoolean(profile, `kuehlung@${bw.id}`)) technik.push('kuehlung')
-      if (legacyBoolean(profile, `versickerung@${bw.id}`)) technik.push('versickerung')
-      if (technik.length > 0) answers[e2Key] = technik
+      const technology: string[] = []
+      if (legacyBoolean(profile, `pv@${building.id}`)) technology.push('pv')
+      if (legacyBoolean(profile, `lueftung@${building.id}`)) technology.push('lueftung')
+      if (legacyBoolean(profile, `kuehlung@${building.id}`)) technology.push('kuehlung')
+      if (legacyBoolean(profile, `versickerung@${building.id}`)) technology.push('versickerung')
+      if (technology.length > 0) answers[e2Key] = technology
       else if (
-        LEGACY_TECHNIK_KEYS.every((key) => legacyBoolean(profile, `${key}@${bw.id}`) === false)
+        LEGACY_TECHNOLOGY_KEYS.every((key) => legacyBoolean(profile, `${key}@${building.id}`) === false)
       ) {
         // All four answered and all four "no" is the explicit `keine`, not an
         // unanswered question — otherwise the migration puts a module the user
@@ -2256,11 +2262,11 @@ function applyLegacyAnswerBridges(
   // Only when all three were answered; a partial picture stays unanswered
   // rather than guessed.
   if (answers['B6'] === undefined) {
-    const kanal = legacyBoolean(profile, 'kanal')
-    const wasser = legacyBoolean(profile, 'trinkwasser')
-    const zufahrt = legacyBoolean(profile, 'zufahrt_feuerwehr')
-    if (kanal !== undefined && wasser !== undefined && zufahrt !== undefined) {
-      const yes = [kanal, wasser, zufahrt].filter(Boolean).length
+    const sewer = legacyBoolean(profile, 'kanal')
+    const water = legacyBoolean(profile, 'trinkwasser')
+    const access = legacyBoolean(profile, 'zufahrt_feuerwehr')
+    if (sewer !== undefined && water !== undefined && access !== undefined) {
+      const yes = [sewer, water, access].filter(Boolean).length
       // Never 'ja' from these three. The new question also covers electricity,
       // which v1.0 never asked, so claiming full servicing would persist a fact
       // nobody stated. Anything short of all three is honestly 'teilweise';

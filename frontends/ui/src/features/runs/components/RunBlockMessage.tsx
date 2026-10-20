@@ -32,7 +32,7 @@ import type { RunStatus } from '@/lib/runs/run-ledger-types'
 import { runDisplayStatus } from '@/lib/runs/run-vocabulary'
 import { useRunLedger } from '../hooks/use-run-ledger'
 import { useProjectInventory } from '../hooks/use-project-inventory'
-import { UnterlagenDialog } from './UnterlagenDialog'
+import { DocumentsDialog } from './DocumentsDialog'
 import { openFilePeek } from '@/features/documents/lib/open-file-peek'
 import type { RunLedgerDoc } from '@/lib/runs/run-ledger-types'
 import { landingDelays } from '../lib/choreography'
@@ -128,13 +128,13 @@ export function RunBlockMessage({
             : null
         }
         addDocumentFailure={
-          addDocumentFailure ? (addDocumentFailure.message ?? t('unterlagen.addFailed')) : null
+          addDocumentFailure ? (addDocumentFailure.message ?? t('documents.addFailed')) : null
         }
         onOpenDocument={projectId ? openDocument : null}
         onContinue={onContinue ?? null}
       />
       {addDocument && (
-        <UnterlagenDialog
+        <DocumentsDialog
           mode="add"
           open={picking}
           onOpenChange={setPicking}

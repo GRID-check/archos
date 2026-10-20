@@ -122,7 +122,7 @@ describe('FilePreviewPane', () => {
   it("does not mark an Archiv file previewed inside a closed project", () => {
     render(
       <CurrentProjectProvider value={{ id: 'proj-1', name: 'Seestadt D12', status: 'closed', closedAt: null, readsBecauseClosed: false }}>
-        <FilePreviewPane file={mockFile} scope="archiv" />
+        <FilePreviewPane file={mockFile} scope="officeShelf" />
       </CurrentProjectProvider>
     )
     expect(screen.queryByText('Seestadt D12 · closed')).toBeNull()

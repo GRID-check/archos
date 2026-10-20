@@ -20,7 +20,7 @@ try:
     from oib_retrieval_eval import dense
     from oib_retrieval_eval import lexical
     from oib_retrieval_eval import structure
-    from oib_retrieval_eval.qrels import PunktIndex
+    from oib_retrieval_eval.qrels import ClauseIndex
 except ImportError:
     _SRC = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "oib_retrieval" / "src"
     sys.path.insert(0, str(_SRC))
@@ -28,7 +28,7 @@ except ImportError:
     from oib_retrieval_eval import dense
     from oib_retrieval_eval import lexical
     from oib_retrieval_eval import structure
-    from oib_retrieval_eval.qrels import PunktIndex
+    from oib_retrieval_eval.qrels import ClauseIndex
 
 pytest.importorskip("llama_index.core", reason="the chunking arms are llama-index Documents")
 
@@ -74,11 +74,11 @@ Medieninhaber und Herausgeber: OIB
 
 
 @pytest.fixture(scope="module")
-def synthetic_index() -> PunktIndex:
+def synthetic_index() -> ClauseIndex:
     def entry(page: int, heading: str) -> dict:
         return {"file_name": FILE_NAME, "pages": [page], "heading": heading}
 
-    return PunktIndex(
+    return ClauseIndex(
         {
             "9": {
                 "0": entry(1, "Vorbemerkungen"),
@@ -103,7 +103,7 @@ def synthetic_index() -> PunktIndex:
 # ---------------------------------------------------------------------------
 
 
-def test_every_indexed_punkt_is_located_in_the_extracted_line_stream(synthetic_index, synthetic_pages):
+def test_every_indexed_clause_is_located_in_the_extracted_line_stream(synthetic_index, synthetic_pages):
     _results, located, _parents, unlocated = structure.measure_document(
         synthetic_index, "9", synthetic_pages, FILE_NAME, 1024
     )
@@ -117,46 +117,46 @@ def test_structural_parents_are_counted_from_the_index_and_excluded_from_the_lea
     )
     # "2", "2.1", "2.2" and "3" have numbered children; the other seven Punkte are leaves.
     assert parents == 4
-    assert results[corpus.ARM_PAGE].leaf_punkte == 7
-    assert results[corpus.ARM_PUNKT].leaf_punkte == 7
+    assert results[corpus.ARM_PAGE].leaf_clauses == 7
+    assert results[corpus.ARM_CLAUSE].leaf_clauses == 7
 
 
-def test_page_chunking_blends_many_punkte_into_one_chunk_so_almost_none_is_citable(synthetic_index, synthetic_pages):
+def test_page_chunking_blends_many_clauses_into_one_chunk_so_almost_none_is_citable(synthetic_index, synthetic_pages):
     results, _located, _parents, _unlocated = structure.measure_document(
         synthetic_index, "9", synthetic_pages, FILE_NAME, 1024
     )
     page_arm = results[corpus.ARM_PAGE]
     # One chunk per page swallows the page whole: every Punkt on it is contiguous, and
     # essentially none of them is the chunk's own unit.
-    assert page_arm.contiguous == page_arm.leaf_punkte
+    assert page_arm.contiguous == page_arm.leaf_clauses
     assert page_arm.isolated <= 1
-    assert page_arm.punkte_per_chunk > 2.0
+    assert page_arm.clauses_per_chunk > 2.0
 
 
-def test_punkt_chunking_makes_almost_every_punkt_its_own_citable_chunk(synthetic_index, synthetic_pages):
+def test_clause_chunking_makes_almost_every_clause_its_own_citable_chunk(synthetic_index, synthetic_pages):
     results, _located, _parents, _unlocated = structure.measure_document(
         synthetic_index, "9", synthetic_pages, FILE_NAME, 1024
     )
-    punkt_arm = results[corpus.ARM_PUNKT]
-    assert punkt_arm.isolated == punkt_arm.leaf_punkte
-    assert punkt_arm.punkte_per_chunk == pytest.approx(1.0)
-    assert punkt_arm.isolated_pct == pytest.approx(100.0)
+    clause_arm = results[corpus.ARM_CLAUSE]
+    assert clause_arm.isolated == clause_arm.leaf_clauses
+    assert clause_arm.clauses_per_chunk == pytest.approx(1.0)
+    assert clause_arm.isolated_pct == pytest.approx(100.0)
 
 
-def test_the_punkt_arm_is_strictly_better_on_the_citable_unit_property(synthetic_index, synthetic_pages):
+def test_the_clause_arm_is_strictly_better_on_the_citable_unit_property(synthetic_index, synthetic_pages):
     results, _located, _parents, _unlocated = structure.measure_document(
         synthetic_index, "9", synthetic_pages, FILE_NAME, 1024
     )
-    assert results[corpus.ARM_PUNKT].isolated > results[corpus.ARM_PAGE].isolated
+    assert results[corpus.ARM_CLAUSE].isolated > results[corpus.ARM_PAGE].isolated
 
 
-def test_text_after_the_impressum_is_not_absorbed_into_the_last_punkt(synthetic_index, synthetic_pages):
+def test_text_after_the_imprint_is_not_absorbed_into_the_last_clause(synthetic_index, synthetic_pages):
     # Punkt 3.2 is the last one; the colophon that follows it must not be part of its span,
     # or it would fail containment on every arm for a reason unrelated to chunking.
     results, _located, _parents, _unlocated = structure.measure_document(
         synthetic_index, "9", synthetic_pages, FILE_NAME, 1024
     )
-    assert results[corpus.ARM_PUNKT].contiguous == results[corpus.ARM_PUNKT].leaf_punkte
+    assert results[corpus.ARM_CLAUSE].contiguous == results[corpus.ARM_CLAUSE].leaf_clauses
 
 
 # ---------------------------------------------------------------------------
@@ -164,16 +164,16 @@ def test_text_after_the_impressum_is_not_absorbed_into_the_last_punkt(synthetic_
 # ---------------------------------------------------------------------------
 
 
-def test_the_punkt_arm_emits_more_and_smaller_chunks_than_the_page_arm(synthetic_pages):
+def test_the_clause_arm_emits_more_and_smaller_chunks_than_the_page_arm(synthetic_pages):
     page_chunks = corpus._chunks_from_documents(
         corpus.page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_PAGE
     )
-    punkt_chunks = corpus._chunks_from_documents(
-        corpus.punkt_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_PUNKT
+    clause_chunks = corpus._chunks_from_documents(
+        corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE
     )
-    assert len(punkt_chunks) > len(page_chunks)
-    assert all(chunk.page > 0 for chunk in punkt_chunks)
-    assert {chunk.arm for chunk in punkt_chunks} == {corpus.ARM_PUNKT}
+    assert len(clause_chunks) > len(page_chunks)
+    assert all(chunk.page > 0 for chunk in clause_chunks)
+    assert {chunk.arm for chunk in clause_chunks} == {corpus.ARM_CLAUSE}
 
 
 def test_ranked_chunks_collapse_to_distinct_units_keeping_the_first_occurrence():
@@ -215,18 +215,18 @@ def test_the_production_exclusion_list_still_covers_every_change_log_pdf():
 @pytest.fixture(scope="module")
 def lexical_corpus(synthetic_pages) -> lexical.LexicalIndex:
     chunks = corpus._chunks_from_documents(
-        corpus.punkt_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_PUNKT
+        corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE
     )
     return lexical.build_index(chunks)
 
 
-def test_a_german_question_retrieves_the_punkt_that_answers_it(lexical_corpus):
+def test_a_german_question_retrieves_the_clause_that_answers_it(lexical_corpus):
     hits = lexical.search(lexical_corpus, "Wie lang darf die Gehweglänge zum Ausgang sein?", 5)
     assert hits, "the German lexical channel must fire on a German question"
     assert any("40 m Gehweglänge" in hit.text for hit in hits)
 
 
-def test_german_morphology_variants_of_one_need_reach_the_same_punkt(lexical_corpus):
+def test_german_morphology_variants_of_one_need_reach_the_same_clause(lexical_corpus):
     # 'Gehweglänge' vs 'Gehweglängen': the shipped stemmer folds the inflection, which is
     # the property the golden set's morphology variants exist to keep measured.
     first = lexical.search(lexical_corpus, "Gehweglänge", 3)
@@ -283,7 +283,7 @@ def test_the_hashed_embedder_is_deterministic_and_unit_normalised():
 
 def test_the_dense_index_returns_the_requested_depth_in_descending_similarity(synthetic_pages):
     chunks = corpus._chunks_from_documents(
-        corpus.punkt_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_PUNKT
+        corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE
     )
     embedder = dense.HashedEmbedder()
     index = dense.build_dense_index(embedder, chunks)
@@ -306,7 +306,7 @@ def test_the_hybrid_path_runs_through_the_production_fusion_and_merge(synthetic_
     from oib_retrieval_eval import runner
 
     chunks = corpus._chunks_from_documents(
-        corpus.punkt_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_PUNKT
+        corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE
     )
     embedder = dense.HashedEmbedder()
     dense_index = dense.build_dense_index(embedder, chunks)
@@ -327,7 +327,7 @@ def test_the_production_diversity_cap_limits_pages_taken_from_one_document(synth
     from oib_retrieval_eval import runner
 
     chunks = corpus._chunks_from_documents(
-        corpus.punkt_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_PUNKT
+        corpus.clause_or_page_documents(synthetic_pages, FILE_NAME, 1024), FILE_NAME, corpus.ARM_CLAUSE
     )
     embedder = dense.HashedEmbedder()
     dense_index = dense.build_dense_index(embedder, chunks)
@@ -352,7 +352,7 @@ def test_the_production_diversity_cap_limits_pages_taken_from_one_document(synth
 # ---------------------------------------------------------------------------
 
 
-def test_a_numbered_table_derails_punkt_chunking_and_the_metric_shows_it():
+def test_a_numbered_table_derails_clause_chunking_and_the_metric_shows_it():
     """A table whose ROWS are numbered is read as a Punkt sequence, and the metric catches it.
 
     This is the real defect the harness surfaced in OIB-Richtlinie 6: the U-value table's
@@ -378,7 +378,7 @@ Diese Richtlinie gilt für Gebäude.
 2.3 Die Luftdichtheit der Gebäudehülle ist nachzuweisen.
 """
     pages = [_page(1, body_one), _page(2, body_two)]
-    index = PunktIndex(
+    index = ClauseIndex(
         {
             "6": {
                 "1": {"file_name": FILE_NAME, "pages": [1], "heading": "Allgemeines"},
@@ -405,5 +405,5 @@ Diese Richtlinie gilt für Gebäude.
     assert unlocated == []
     # But the Punkt chunker loses the ones that follow the numbered table, so they are not
     # their own citable unit any more — and the metric says so instead of scoring ~100%.
-    punkt_arm = results[corpus.ARM_PUNKT]
-    assert punkt_arm.isolated < punkt_arm.leaf_punkte
+    clause_arm = results[corpus.ARM_CLAUSE]
+    assert clause_arm.isolated < clause_arm.leaf_clauses

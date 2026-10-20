@@ -465,7 +465,7 @@ async function screenValues(
 /**
  * `record`: what each value became (`./record.ts`), and the needs the batch
  * opened, both planned on the profile the write applies to. One profile write
- * for the batch, the derived Gebäudeklasse of every Bauwerk whose inputs moved
+ * for the batch, the derived building class of every building whose inputs moved
  * with it.
  */
 export async function recordIntakeValues(

@@ -53,7 +53,7 @@ const PROJECT_ROWS = [
   }),
 ]
 
-const ARCHIV_ROWS = [
+const OFFICE_SHELF_ROWS = [
   makeRow('a1', 'Referenzprojekt_Stadthaus-Wien.pdf', {
     fileSize: 6_900_000,
     summary: 'Vergleichbares Wohngebäude der GK 4 mit innenliegendem Sicherheitstreppenhaus.',
@@ -77,7 +77,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         return Response.json({ documents: PROJECT_ROWS })
       }
       if (url.startsWith('/api/archiv/documents')) {
-        return Response.json({ documents: ARCHIV_ROWS, collectionName: 'archiv_org', canManage: false })
+        return Response.json({ documents: OFFICE_SHELF_ROWS, collectionName: 'archiv_org', canManage: false })
       }
       if (/\/api\/documents\/.+\/thumbnail$/.test(url)) {
         return new Response(null, { status: 404 })

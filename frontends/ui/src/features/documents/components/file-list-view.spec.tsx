@@ -255,11 +255,11 @@ describe('FileListView — Fassungen', () => {
     const withHistory = rows.find((row) => within(row).queryByText('Gutachten_v3.pdf'))!
     const plain = rows.find((row) => within(row).queryByText('Lageplan.pdf'))!
     // Beside the name, not in the approval column: the row stays one line tall.
-    const count = within(withHistory).getByTestId('fassung-count')
+    const count = within(withHistory).getByTestId('revision-count')
     expect(count).toHaveTextContent('2 revisions')
     expect(count.parentElement).toHaveTextContent('Gutachten_v3.pdf')
     expect(within(withHistory).getByTestId('file-list-approval-empty')).toBeInTheDocument()
-    expect(within(plain).queryByTestId('fassung-count')).not.toBeInTheDocument()
+    expect(within(plain).queryByTestId('revision-count')).not.toBeInTheDocument()
   })
 
   it('marks an older Fassung with one badge naming what replaced it, never „Replaced" beside it', () => {
@@ -277,11 +277,11 @@ describe('FileListView — Fassungen', () => {
     ])
 
     const row = screen.getByTestId('file-list-row')
-    const badge = within(row).getByTestId('fassung-badge')
+    const badge = within(row).getByTestId('revision-badge')
     expect(badge).toHaveTextContent('Older revision')
     expect(badge).toHaveAttribute('title', 'Replaced by “Gutachten_v3.pdf”')
     expect(within(row).queryByTestId('document-version-badge')).not.toBeInTheDocument()
     expect(within(row).queryByText(/^Replaced$|^Superseded$/)).not.toBeInTheDocument()
-    expect(within(row).queryByTestId('fassung-count')).not.toBeInTheDocument()
+    expect(within(row).queryByTestId('revision-count')).not.toBeInTheDocument()
   })
 })

@@ -128,7 +128,7 @@ export const MAX_REFERENCE_ID_CHARS = 128
  * block can print the receipt — read with loci, or unread — against the steps.
  * Twenty is the plan card's own cap (`plan_documents.MAX_PLAN_DOCUMENTS`).
  */
-export const MAX_GRUNDLAGE_DOCS = 20
+export const MAX_BASIS_DOCS = 20
 /**
  * The run's title as the block's header shows it (`metadata.run_title`): a
  * task's title or the question a deep-research run was asked. The same 200 a
@@ -264,7 +264,7 @@ export const runLedgerSchema = z
      * The documents the reader named as Grundlage (`loci` empty: the receipt
      * is read off the steps). Absent when none was named.
      */
-    grundlage: z.array(runLedgerDocSchema).max(MAX_GRUNDLAGE_DOCS).optional(),
+    grundlage: z.array(runLedgerDocSchema).max(MAX_BASIS_DOCS).optional(),
     startedAt: instantSchema,
     updatedAt: instantSchema,
     finishedAt: instantSchema.optional(),
@@ -293,7 +293,7 @@ export const runLedgerAppendRequestSchema = z
     phases: z.array(runPhaseEntrySchema).max(RUN_PHASES.length).optional(),
     status: z.enum(RUN_STATUSES).optional(),
     /** The whole Grundlage list as it now stands; a live addition re-sends it. */
-    grundlage: z.array(runLedgerDocSchema).max(MAX_GRUNDLAGE_DOCS).optional(),
+    grundlage: z.array(runLedgerDocSchema).max(MAX_BASIS_DOCS).optional(),
   })
   .strict()
 

@@ -42,7 +42,7 @@ describe('IntakeSetup', () => {
         decision,
         applyFolderPlan: vi.fn(),
         onReleaseChange: vi.fn(),
-        onFassungChange: vi.fn(),
+        onRevisionChange: vi.fn(),
       },
       upload: {
         trackedFiles: [],

@@ -87,7 +87,7 @@ import { setCacheStore, type CacheStore } from '@/lib/cache'
 import {
   invalidateProjectProfileCaches,
   invalidateProjectPromptViewCache,
-  loadProjectBundesland,
+  loadProjectFederalState,
   loadProjectPromptView,
 } from './prompt-view'
 
@@ -114,10 +114,10 @@ class TestStore implements CacheStore {
   }
 }
 
-const rowFor = (bundesland: string, promptView: string) => [
+const rowFor = (federalState: string, promptView: string) => [
   {
     profile: {
-      facts: { bundesland: { value: bundesland } },
+      facts: { bundesland: { value: federalState } },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -158,7 +158,7 @@ describe('project profile cache invalidation (Fix 1)', () => {
   it('caches both the prompt view and the structured bundesland under their own keys', async () => {
     dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
 
-    expect(await loadProjectBundesland('proj-1', 'org-1')).toBe('wien')
+    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('wien')
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v1')
 
     // Two SEPARATE keys — the crux of the bug: invalidating one leaves the other.
@@ -168,7 +168,7 @@ describe('project profile cache invalidation (Fix 1)', () => {
 
   it('reproduces the bug: prompt-view-only invalidation leaves bundesland stale', async () => {
     dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
-    await loadProjectBundesland('proj-1', 'org-1')
+    await loadProjectFederalState('proj-1', 'org-1')
     await loadProjectPromptView('proj-1', 'org-1')
 
     // The user changes the location and saves; the DB now holds the new value.
@@ -179,12 +179,12 @@ describe('project profile cache invalidation (Fix 1)', () => {
 
     // …so the prompt view re-reads fresh, but bundesland is served STALE.
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v2')
-    expect(await loadProjectBundesland('proj-1', 'org-1')).toBe('wien') // stale — the bug
+    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('wien') // stale — the bug
   })
 
   it('the fix: invalidateProjectProfileCaches drops BOTH keys so neither goes stale', async () => {
     dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
-    await loadProjectBundesland('proj-1', 'org-1')
+    await loadProjectFederalState('proj-1', 'org-1')
     await loadProjectPromptView('proj-1', 'org-1')
 
     // Location changed + saved.
@@ -195,7 +195,7 @@ describe('project profile cache invalidation (Fix 1)', () => {
     // Both keys were cleared, so both loaders re-read the new stored profile.
     expect(store.map.has('bundesland:org-1:proj-1')).toBe(false)
     expect(store.map.has('promptview:org-1:proj-1')).toBe(false)
-    expect(await loadProjectBundesland('proj-1', 'org-1')).toBe('tirol')
+    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('tirol')
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v2')
   })
 })
@@ -242,8 +242,8 @@ describe('project profile cache is partitioned by tenant', () => {
     expect(await loadProjectPromptView('proj-1', 'org-a')).toBe('ORG A CONTEXT')
     expect(await loadProjectPromptView('proj-1', 'org-b')).toBe('ORG B CONTEXT')
 
-    expect(await loadProjectBundesland('proj-1', 'org-a')).toBe('wien')
-    expect(await loadProjectBundesland('proj-1', 'org-b')).toBe('tirol')
+    expect(await loadProjectFederalState('proj-1', 'org-a')).toBe('wien')
+    expect(await loadProjectFederalState('proj-1', 'org-b')).toBe('tirol')
   })
 
   it('does not serve an anonymous caller the context cached for a tenant', async () => {
@@ -294,7 +294,7 @@ describe('project profile cache is partitioned by tenant', () => {
     })
     await loadProjectPromptView('proj-1', 'org-a')
     await loadProjectPromptView('proj-1', null)
-    await loadProjectBundesland('proj-1', 'org-a')
+    await loadProjectFederalState('proj-1', 'org-a')
 
     await invalidateProjectProfileCaches('proj-1', 'org-a')
 

@@ -95,7 +95,7 @@ export interface InboxItemView {
   /**
    * For a new Fassung: how many open marks it leaves to check, and the Fassung
    * they sit on when it is one numbered Fassung of the same document
-   * (`lib/documents/fassung-notify.ts`). Absent, or null, otherwise.
+   * (`lib/documents/revision-notify.ts`). Absent, or null, otherwise.
    */
   openMarks?: number | null
   marksFassung?: number | null
@@ -228,7 +228,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'document.release_requested': { icon: 'shield-alert', i18nKey: 'documentReleaseRequested', tone: 'request' },
   'mail_import.completed': { icon: 'check-circle', i18nKey: 'mailImportCompleted', tone: 'info' },
   'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
-  'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewFassung', tone: 'info' },
+  'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewRevision', tone: 'info' },
   // Piloti's rows wear its face, as its marks and replies do on the page.
   'piloti.work_done': { icon: 'piloti', i18nKey: 'pilotiWorkDone', tone: 'info', anchor: 'mark' },
   'piloti.work_failed': { icon: 'piloti', i18nKey: 'pilotiWorkFailed', tone: 'warning', anchor: 'mark' },

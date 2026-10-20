@@ -100,7 +100,7 @@ export const projectIntake: typeof en.projectIntake = {
   derivations: {
     heading: 'Ableitungen',
     description: 'Aus den Werten oben folgt die Gebäudeklasse jedes Bauwerks.',
-    bauwerk: 'Bauwerk {number}',
+    building: 'Bauwerk {number}',
     rule: 'Gebäudeklasse',
     value: 'GK {value}',
     open: 'noch offen',
@@ -109,7 +109,7 @@ export const projectIntake: typeof en.projectIntake = {
     inputs: 'Grundlage',
     suggestedMark: 'vorgeschlagen',
     confirm: 'Gebäudeklasse übernehmen',
-    confirmAria: 'Gebäudeklasse {value} für {bauwerk} übernehmen',
+    confirmAria: 'Gebäudeklasse {value} für {building} übernehmen',
     confirmed: 'Bestätigt',
   },
   evidence: {

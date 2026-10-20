@@ -30,24 +30,24 @@ vi.mock('@/lib/documents/service', () => ({ resolveProjectDocumentsByName: vi.fn
 vi.mock('@/lib/documents/lifecycle', () => ({
   summarizeDocumentVersions: vi.fn().mockResolvedValue(new Map([['doc_1', { versionCount: 2, state: 'published' }]])),
 }))
-vi.mock('@/lib/archiv/service', () => ({ resolveArchivDocumentsByName: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
 
 import { ForbiddenError } from '@/lib/api/errors'
 import { resolveProjectDocumentsByName, type ListedDocument } from '@/lib/documents/service'
-import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
+import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import {
-  ARCHIV_BY_NAME_PATH,
+  OFFICE_SHELF_BY_NAME_PATH,
   PROJECT_BY_NAME_PATH,
   ByNameResolveError,
   createDocumentByNameClient,
 } from '@/lib/documents/by-name-client'
 import { FILENAME_LOOKUP_MAX_NAMES } from '@/lib/documents/filename-lookup'
 import { POST as resolveProject } from './route'
-import { POST as resolveArchiv } from '../../archiv/documents/by-name/route'
+import { POST as resolveOfficeShelf } from '../../archiv/documents/by-name/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
   [PROJECT_BY_NAME_PATH]: (request) => resolveProject(request, { params: Promise.resolve({}) }),
-  [ARCHIV_BY_NAME_PATH]: (request) => resolveArchiv(request, { params: Promise.resolve({}) }),
+  [OFFICE_SHELF_BY_NAME_PATH]: (request) => resolveOfficeShelf(request, { params: Promise.resolve({}) }),
 }
 
 const requests: Array<{ path: string; names: string[] }> = []
@@ -82,7 +82,7 @@ const LISTED = {
 beforeEach(() => {
   requests.length = 0
   vi.mocked(resolveProjectDocumentsByName).mockResolvedValue([LISTED])
-  vi.mocked(resolveArchivDocumentsByName).mockResolvedValue([])
+  vi.mocked(resolveOfficeShelfDocumentsByName).mockResolvedValue([])
 })
 
 describe('POST /api/documents/by-name', () => {
@@ -161,19 +161,19 @@ describe('POST /api/documents/by-name', () => {
 
 describe('POST /api/archiv/documents/by-name', () => {
   it('answers the Archiv', async () => {
-    vi.mocked(resolveArchivDocumentsByName).mockResolvedValueOnce([
+    vi.mocked(resolveOfficeShelfDocumentsByName).mockResolvedValueOnce([
       { ...LISTED, id: 'a1', versionCount: null } as never,
     ])
-    expect((await client.archiv(['EG.pdf'])).map((row) => row.id)).toEqual(['a1'])
-    expect(resolveArchivDocumentsByName).toHaveBeenCalledWith(
+    expect((await client.officeShelf(['EG.pdf'])).map((row) => row.id)).toEqual(['a1'])
+    expect(resolveOfficeShelfDocumentsByName).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
       ['EG.pdf'],
     )
   })
 
   it('refuses a malformed body', async () => {
-    const response = await resolveArchiv(
-      new Request(`https://grid.test${ARCHIV_BY_NAME_PATH}`, {
+    const response = await resolveOfficeShelf(
+      new Request(`https://grid.test${OFFICE_SHELF_BY_NAME_PATH}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ names: [] }),

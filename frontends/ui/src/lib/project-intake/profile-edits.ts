@@ -21,10 +21,10 @@ import type {
   ProjectProfilePatchOperation,
 } from '@/lib/project-profile/types'
 
-/** A profile key's parts: `geschosse_oberirdisch@bw1` → base `geschosse_oberirdisch`, Bauwerk `bw1`. */
-export function profileKeyParts(key: string): { baseKey: string; bauwerkId: string | null } {
-  const bauwerk = /@(bw\d+)(?:@|$)/.exec(key)
-  return { baseKey: key.split('@')[0], bauwerkId: bauwerk ? bauwerk[1] : null }
+/** A profile key's parts: `geschosse_oberirdisch@bw1` → base `geschosse_oberirdisch`, building `bw1`. */
+export function profileKeyParts(key: string): { baseKey: string; buildingId: string | null } {
+  const building = /@(bw\d+)(?:@|$)/.exec(key)
+  return { baseKey: key.split('@')[0], buildingId: building ? building[1] : null }
 }
 
 /** Two profile values are the same value: a multi-select compares as a set. */

@@ -18,7 +18,7 @@ import {
   finishRun,
   openPhase,
   sanitizeRunLedger,
-  setGrundlage,
+  setBasis,
   setRunStatus,
 } from './run-ledger'
 import {
@@ -395,9 +395,9 @@ describe('the Grundlage on the ledger', () => {
     const named = applyRunLedgerAppend(base, { grundlage: [{ name: 'a.pdf', loci: [] }] }, T1)
     expect(named.grundlage).toEqual([{ name: 'a.pdf', loci: [] }])
     expect(named.updatedAt).toBe(T1.toISOString())
-    expect(setGrundlage(named, [{ name: 'a.pdf', loci: [] }], T2)).toBe(named)
-    const grown = setGrundlage(named, [{ name: 'a.pdf', loci: [] }, { name: 'b.pdf', loci: [] }], T2)
+    expect(setBasis(named, [{ name: 'a.pdf', loci: [] }], T2)).toBe(named)
+    const grown = setBasis(named, [{ name: 'a.pdf', loci: [] }, { name: 'b.pdf', loci: [] }], T2)
     expect(grown.grundlage?.map((doc) => doc.name)).toEqual(['a.pdf', 'b.pdf'])
-    expect(setGrundlage(grown, [], T2).grundlage).toBeUndefined()
+    expect(setBasis(grown, [], T2).grundlage).toBeUndefined()
   })
 })

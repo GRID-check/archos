@@ -26,7 +26,7 @@ be done": being done is what makes a project the office's reference
 
 | # | Finding | Where | Severity |
 |---|---|---|---|
-| L1 | The Steckbrief offered „Abschluss" as a free month field on every running project. A project could be active with an Abschluss in the past, which is what "closing is a time frame" described. | `project-steckbrief.tsx` period form; `steckbrief-types.ts` `projectPeriodSchema` | High |
+| L1 | The Steckbrief offered „Abschluss" as a free month field on every running project. A project could be active with an Abschluss in the past, which is what "closing is a time frame" described. | `project-record.tsx` period form; `project-record-types.ts` `projectPeriodSchema` | High |
 | L2 | The period search treated such a project as ended: `projectPeriodOf` read `ended_on` whatever the status, so the agent's `project_lookup` with a period filter answered from a typed date. | `lib/cross-project/service.ts` | Medium |
 | L3 | Closing filled the Abschluss silently, and only when empty; the dialog mentioned it in the last sentence of a paragraph. A reopen left the month standing, still shown. | `repository.ts` `setProjectStatusInOrg`; `lifecycle.closeDialog.description` | Medium |
 | L4 | One state carried four jobs: the work is over, the record is frozen, the office may read it, it leaves the list. Tidying the list meant freezing the project and opening it to the whole office. | ADR-0090 model | High |
@@ -49,7 +49,7 @@ be done": being done is what makes a project the office's reference
   and the Abschluss month, bounded by this month and the Beginn. The database
   refuses a closed project without either. (L3, L5)
 * **The Steckbrief edits the Beginn only**; a running project shows „laufend".
-  `abschlussOf` is the one reader, so neither a surface nor a period search sees
+  `closingOf` is the one reader, so neither a surface nor a period search sees
   a running project's stored month. (L1, L2)
 * **The moves are where the reader is**: the status card draws the three
   states; the Overview's „…" menu, the card and the banner share one hook; the
@@ -93,7 +93,7 @@ requirements side, one technical. What they found, and where each item stands.
 | The paid clean-out proposal was asked for on opening the dialog | Asked once the person moves past step one |
 | „This month" was the UTC month | `currentMonth()`, in the office's time zone (Europe/Vienna), on both sides |
 | A 409 from someone else's move left the page stale; every surface mounted dialogs it never opened; the banner was a live `alert` on every page | Refresh with a message on 409; dialogs mounted only while open; the banner is `role="status"` |
-| Status coercion copied four times; the Abschluss bounds checked twice | `toProjectStatus`, `abschlussProblem` in `project-status.ts` |
+| Status coercion copied four times; the Abschluss bounds checked twice | `toProjectStatus`, `closingProblem` in `project-status.ts` |
 | An outage asking for the banner's control was swallowed silently | Logged; the control hides, the page stays |
 | Release note: tasks „wait" (they are skipped), nothing on the backfill or the hidden months | Corrected |
 | Tests: no route test for the strict bodies, none for the rail rule or the filter | `status/route.spec.ts`, `resume-selection.spec.ts`, `status-filter.spec.ts` |

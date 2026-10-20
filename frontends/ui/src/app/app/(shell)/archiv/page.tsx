@@ -11,13 +11,13 @@
 import type { JSX } from 'react'
 import { type Metadata } from 'next'
 import { getTranslations } from '@/i18n/server'
-import { ArchivSheet } from './archiv-sheet'
+import { OfficeShelfSheet } from './office-shelf-sheet'
 
 export async function generateMetadata(): Promise<Metadata> {
-  const t = await getTranslations('archiv')
+  const t = await getTranslations('officeShelf')
   return { title: t('title') }
 }
 
-export default function ArchivPage(): JSX.Element {
-  return <ArchivSheet standalone />
+export default function OfficeShelfPage(): JSX.Element {
+  return <OfficeShelfSheet standalone />
 }

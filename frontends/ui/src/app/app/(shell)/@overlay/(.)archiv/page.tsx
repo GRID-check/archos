@@ -5,8 +5,8 @@
  * which renders the same sheet standing alone.
  */
 import type { JSX } from 'react'
-import { ArchivSheet } from '../../archiv/archiv-sheet'
+import { OfficeShelfSheet } from '../../archiv/office-shelf-sheet'
 
-export default function ArchivOverlayPage(): JSX.Element {
-  return <ArchivSheet standalone={false} />
+export default function OfficeShelfOverlayPage(): JSX.Element {
+  return <OfficeShelfSheet standalone={false} />
 }

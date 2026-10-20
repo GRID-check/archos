@@ -51,7 +51,7 @@ describe('the role registry', () => {
 })
 
 describe('scope instances', () => {
-  it('requires an instance for a bauwerk role and nothing else, for now', () => {
+  it('requires an instance for a building role and nothing else, for now', () => {
     expect(roleRequiresScopeInstance('bestandsplan')).toBe(true)
     // A project has one plot in v1 and mints no id for it, so demanding one
     // here would make the Bebauungsplan unbindable. Flips when plots go plural.
@@ -64,7 +64,7 @@ describe('scope instances', () => {
     expect(isScopeInstanceValid('bebauungsplan', 'gs1')).toBe(false)
   })
 
-  it('refuses a bauwerk role with no building, which would match every building', () => {
+  it('refuses a building role with no building, which would match every building', () => {
     expect(isScopeInstanceValid('bestandsplan', 'bw2')).toBe(true)
     expect(isScopeInstanceValid('bestandsplan', null)).toBe(false)
     expect(isScopeInstanceValid('bestandsplan', '')).toBe(false)
@@ -83,7 +83,7 @@ describe('recommendedRoles', () => {
     expect(recommendedRoles({ B2: 'nein' })).not.toContain('bebauungsplan')
   })
 
-  it('reads a bauwerk condition from the building it was asked about', () => {
+  it('reads a building condition from the building it was asked about', () => {
     const answers = { 'C2@bw1': 'bestand', 'C2@bw2': 'neubau' }
     expect(recommendedRoles(answers, 'bw1')).toContain('bestandsplan')
     expect(recommendedRoles(answers, 'bw2')).not.toContain('bestandsplan')

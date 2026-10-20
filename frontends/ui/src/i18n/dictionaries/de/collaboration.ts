@@ -277,8 +277,8 @@ export const collaboration: typeof en.collaboration = {
     bodyUnavailable: 'Das ist für Sie nicht mehr verfügbar.',
     // Die nächste Handlung bei einer neuen Fassung unter anderem Namen: die
     // beiden nebeneinander sehen. Öffnet die Vorschau mit dem Vergleich.
-    compareFassungen: 'Fassungen vergleichen',
-    compareFassungenLabel: 'Neue und ältere Fassung von „{subject}“ vergleichen',
+    compareRevisions: 'Fassungen vergleichen',
+    compareRevisionsLabel: 'Neue und ältere Fassung von „{subject}“ vergleichen',
     empty: {
       needsMeTitle: 'Nichts zu tun',
       needsMeDescription:
@@ -432,16 +432,16 @@ export const collaboration: typeof en.collaboration = {
       // Dokument, dem Sie folgen (ohne Dateiendung). Was sich geändert hat,
       // steht als Auszug darunter; nur ohne Auszug sagt `bodyNoExcerpt`, wo
       // man es findet. `titleNoActor`, wenn niemand Bestimmtes es war.
-      documentNewFassung: {
+      documentNewRevision: {
         title: '{actor} hat eine neue Fassung von „{subject}“ hochgeladen',
         titleNoActor: 'Neue Fassung von „{subject}“',
         bodyNoExcerpt: 'Öffnen Sie die Fassung, um die Änderungen zu sehen.',
         // Offene Anmerkungen, die die neue Fassung zurücklässt: {marks} wie
-        // viele, {fassung} auf welcher Fassung desselben Dokuments; `…_earlier`,
+        // viele, {revision} auf welcher Fassung desselben Dokuments; `…_earlier`,
         // wenn es mehrere Fassungen sind oder ein anderes Dokument ersetzt wurde.
         variants: {
-          mark: { body: '1 offene Anmerkung aus Fassung {fassung} prüfen' },
-          marks: { body: '{marks} offene Anmerkungen aus Fassung {fassung} prüfen' },
+          mark: { body: '1 offene Anmerkung aus Fassung {revision} prüfen' },
+          marks: { body: '{marks} offene Anmerkungen aus Fassung {revision} prüfen' },
           mark_earlier: { body: '1 offene Anmerkung aus der vorigen Fassung prüfen' },
           marks_earlier: { body: '{marks} offene Anmerkungen aus der vorigen Fassung prüfen' },
         },
@@ -737,9 +737,9 @@ export const collaboration: typeof en.collaboration = {
       // Nummer ist Pflicht, ohne sie wird nicht freigegeben) und wer wann
       // handelt. Der Name der handelnden Person ist hier unbekannt, daher
       // immer die Form ohne Namen; wer gebeten hat, nennt bereits der Titel.
-      approveStand: '{subject} · Fassung {number} · Stand vom {date}',
+      approveSummary: '{subject} · Fassung {number} · Stand vom {date}',
       approveActing: 'Handelnd: {date}',
-      standFailed:
+      revisionUnreadable:
         'Die aktuelle Fassung konnte nicht gelesen werden – die Freigabe ist blockiert, bis sie vorliegt.',
       retry: 'Erneut versuchen',
       send: 'Senden',

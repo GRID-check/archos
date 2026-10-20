@@ -77,7 +77,7 @@ logger = logging.getLogger(__name__)
 #: How many chunks one locator fetch may return per collection.
 #:
 #: A Punkt is one chunk in 935 of the corpus's 946 cases and at most a handful
-#: in the rest (``llamaindex/punkt_chunking``), and a page of a Richtlinie holds
+#: in the rest (``llamaindex/clause_chunking``), and a page of a Richtlinie holds
 #: a few. The number is a guard against a pathological document rather than a
 #: relevance budget: the metadata filter has already decided WHICH chunks exist,
 #: so this only bounds how many of them travel.
@@ -264,13 +264,13 @@ async def _resolve_targets(entries: list[Any], document: str) -> list[PassageTar
                     collection=entry.collection,
                     file_name=str(getattr(candidate, "file_name", "")),
                     shelf=str(shelf) if shelf is not None else None,
-                    current=_current_fassung(candidate, docs),
+                    current=_current_revision(candidate, docs),
                 )
             )
     return targets
 
 
-def _current_fassung(document: Any, documents: Sequence[Any]) -> str | None:
+def _current_revision(document: Any, documents: Sequence[Any]) -> str | None:
     """The file that now stands for ``document`` once a person confirmed it replaced, else ``None``.
 
     Follows ``superseded_by`` to the end of the chain (B was replaced by C, C by D: D), inside the
@@ -288,7 +288,7 @@ def _current_fassung(document: Any, documents: Sequence[Any]) -> str | None:
     return current
 
 
-def _older_fassung_notice(targets: Sequence[PassageTarget]) -> str:
+def _older_revision_notice(targets: Sequence[PassageTarget]) -> str:
     """The one line that tells the model the document it opened is an older Fassung, and which one is current.
 
     Rides the grounding block's notice slot, like „Ältere Fassungen ausgeblendet“ in the search, so
@@ -301,10 +301,10 @@ def _older_fassung_notice(targets: Sequence[PassageTarget]) -> str:
     older = {(target.file_name, target.current) for target in targets if target.current and may_name(target.collection)}
     if not older:
         return ""
-    return "".join(older_fassung_line(name, current) for name, current in sorted(older))
+    return "".join(older_revision_line(name, current) for name, current in sorted(older))
 
 
-def older_fassung_line(name: str, current: str) -> str:
+def older_revision_line(name: str, current: str) -> str:
     """The notice line for one older Fassung a tool hands the model: which file replaced it, and what to say."""
     return (
         f"Ältere Fassung: {name} ist durch {current} ersetzt (bestätigt), aktuell ist {current}. "
@@ -337,7 +337,7 @@ def _coerce_page(page: Any) -> int | None:
     return None
 
 
-def _passage_filters(file_name: str, punkt: str | None, page: int | None) -> dict[str, Any]:
+def _passage_filters(file_name: str, clause: str | None, page: int | None) -> dict[str, Any]:
     """The metadata filter that admits exactly the requested chunks.
 
     ``page_label`` is stored as a STRING by every writer in the ingest path
@@ -348,9 +348,9 @@ def _passage_filters(file_name: str, punkt: str | None, page: int | None) -> dic
     started earlier may run onto it; :func:`_addresses` keeps the ones that do.
     """
     clauses: list[dict[str, Any]] = [{"file_name": {"$eq": file_name}}]
-    if punkt:
-        spellings = _punkt_spellings(punkt)
-        clauses.append({"punkt_id": {"$eq": punkt} if len(spellings) == 1 else {"$in": spellings}})
+    if clause:
+        spellings = _clause_spellings(clause)
+        clauses.append({"punkt_id": {"$eq": clause} if len(spellings) == 1 else {"$in": spellings}})
     if page is not None:
         clauses.append({"page_label": {"$in": _page_window(page)}})
     if len(clauses) == 1:
@@ -361,7 +361,7 @@ def _passage_filters(file_name: str, punkt: str | None, page: int | None) -> dic
 #: The two heading levels an outline lists. The Punkt chunker writes
 #: ``punkt_depth`` as an int and a backend that round-trips metadata through
 #: JSON hands it back as a string, so :func:`_outline_filters` asks for both
-#: spellings and :func:`_punkt_depth` normalises them.
+#: spellings and :func:`_clause_depth` normalises them.
 _OUTLINE_DEPTHS = (1, 2)
 
 
@@ -372,7 +372,7 @@ def _outline_filters(file_name: str) -> dict[str, Any]:
     is for) plus everything at depth 1 or 2 — the headings a reader would scan
     a contents page for. ``punkt_depth`` is stored as an int by the Punkt
     chunker, and a backend that round-trips metadata through JSON may hand it
-    back as a string, so the clause asks for BOTH spellings: :func:`_punkt_depth`
+    back as a string, so the clause asks for BOTH spellings: :func:`_clause_depth`
     accepts either, and a clause that admitted only the int would leave that
     tolerance backing a set the store could never deliver.
 
@@ -415,11 +415,11 @@ def _page_window(page: int) -> list[str]:
     return [str(number) for number in range(max(1, page - _PAGE_SPAN_WINDOW), page + 1)]
 
 
-def _punkt_spellings(punkt: str) -> list[str]:
+def _clause_spellings(clause: str) -> list[str]:
     """The requested locator and its one normal spelling (``§3`` -> ``§ 3``), which the chunkers write."""
     from knowledge_layer.llamaindex.section_chunking import normalise_locator
 
-    return sorted({punkt, normalise_locator(punkt)})
+    return sorted({clause, normalise_locator(clause)})
 
 
 def _covers_page(chunk: Any, page: int) -> bool:
@@ -437,7 +437,7 @@ def _covers_page(chunk: Any, page: int) -> bool:
     return int(label) <= page <= max(last, int(label))
 
 
-def _addresses(chunk: Any, punkt: str | None, page: int | None) -> bool:
+def _addresses(chunk: Any, clause: str | None, page: int | None) -> bool:
     """Whether this chunk really IS the passage that was addressed.
 
     The metadata filter above is the store's job and the store does it — but
@@ -449,12 +449,12 @@ def _addresses(chunk: Any, punkt: str | None, page: int | None) -> bool:
     right.
     """
     metadata = getattr(chunk, "metadata", None) or {}
-    if punkt and str(metadata.get("punkt_id") or "") not in _punkt_spellings(punkt):
+    if clause and str(metadata.get("punkt_id") or "") not in _clause_spellings(clause):
         return False
     return page is None or _covers_page(chunk, page)
 
 
-def _punkt_number(raw: str) -> tuple[int, ...]:
+def _clause_number(raw: str) -> tuple[int, ...]:
     """``"3.10"`` -> ``(3, 10)``; empty for anything that is not a Punkt number.
 
     The numeric form is what puts 3.10 after 3.9, which a string sort gets
@@ -466,12 +466,12 @@ def _punkt_number(raw: str) -> tuple[int, ...]:
         return ()
 
 
-def _punkt_of(chunk: Any) -> str:
+def _clause_of(chunk: Any) -> str:
     """The ``punkt_id`` this chunk carries, or ``""``."""
     return str((getattr(chunk, "metadata", None) or {}).get("punkt_id") or "")
 
 
-def _punkt_sort_key(chunk: Any) -> tuple:
+def _clause_sort_key(chunk: Any) -> tuple:
     """Page, then Punkt numerically, then a table's row-group order, then chunk id: stable across calls.
 
     Every row group of one captioned table shares its page and ``punkt_id``
@@ -479,11 +479,11 @@ def _punkt_sort_key(chunk: Any) -> tuple:
     uuid, so without ``table_part`` its "Teil 1 von 5" … "Teil 5 von 5" came
     back shuffled.
     """
-    raw = _punkt_of(chunk)
+    raw = _clause_of(chunk)
     page = getattr(chunk, "page_number", None) or 0
     return (
         page,
-        _punkt_number(raw),
+        _clause_number(raw),
         _document_order(chunk),
         raw,
         _table_part(chunk),
@@ -511,7 +511,7 @@ def _table_part(chunk: Any) -> int:
     return section_position(getattr(chunk, "metadata", None))[2]
 
 
-def _punkt_depth(chunk: Any) -> int | None:
+def _clause_depth(chunk: Any) -> int | None:
     """``punkt_depth`` as an int — ``None`` when absent or not a number.
 
     Accepts the int the chunker writes and the string a backend that
@@ -536,14 +536,14 @@ def _is_outline_chunk(chunk: Any) -> bool:
     silently listed every depth-3 sub-Punkt would be a contents page nobody
     can read.
     """
-    return _punkt_of(chunk) == "0" or _punkt_depth(chunk) in _OUTLINE_DEPTHS
+    return _clause_of(chunk) == "0" or _clause_depth(chunk) in _OUTLINE_DEPTHS
 
 
 @dataclass(frozen=True)
 class OutlineEntry:
     """One line of the Gliederung: a Punkt the reader can ask to have opened."""
 
-    punkt_id: str
+    clause_id: str
     title: str
     page: str
     depth: int
@@ -587,28 +587,28 @@ def _outline_entries(chunks: Sequence[Any]) -> list[OutlineEntry]:
     arrives as several chunks carrying the same id, and listing it twice would
     read as two Punkte.
 
-    Ordered by :func:`_punkt_number` alone, NOT by ``_punkt_sort_key`` — an
+    Ordered by :func:`_clause_number` alone, NOT by ``_clause_sort_key`` — an
     outline is an index of the document's own numbering, and 2.2 belongs under 2
     even if its stored ``page_label`` ran ahead of 3's. The passage path keeps
     the page-first key, because there the page is what the reader is being
     walked through.
     """
     entries: dict[str, OutlineEntry] = {}
-    for chunk in sorted(chunks, key=_punkt_sort_key):
+    for chunk in sorted(chunks, key=_clause_sort_key):
         metadata = getattr(chunk, "metadata", None) or {}
-        punkt_id = _punkt_of(chunk)
-        depth = _punkt_depth(chunk)
-        if depth not in _OUTLINE_DEPTHS or not punkt_id or punkt_id in entries:
+        clause_id = _clause_of(chunk)
+        depth = _clause_depth(chunk)
+        if depth not in _OUTLINE_DEPTHS or not clause_id or clause_id in entries:
             continue
-        entries[punkt_id] = OutlineEntry(
-            punkt_id=punkt_id,
+        entries[clause_id] = OutlineEntry(
+            clause_id=clause_id,
             title=str(metadata.get("punkt_title") or "").strip(),
             page=str(metadata.get("page_label") or getattr(chunk, "page_number", "") or ""),
             depth=depth,
             excerpt=_excerpt_of(chunk) if depth == 1 else "",
             order=_document_order(chunk),
         )
-    return sorted(entries.values(), key=lambda entry: (_punkt_number(entry.punkt_id), entry.order, entry.punkt_id))
+    return sorted(entries.values(), key=lambda entry: (_clause_number(entry.clause_id), entry.order, entry.clause_id))
 
 
 def _scope_chunks(chunks: Sequence[Any]) -> list[Any]:
@@ -620,15 +620,15 @@ def _scope_chunks(chunks: Sequence[Any]) -> list[Any]:
     outline whose only evidence was a heading list would be a source a citation
     cannot resolve to.
     """
-    ordered = sorted(chunks, key=_punkt_sort_key)
-    zero = [chunk for chunk in ordered if _punkt_of(chunk) == "0"]
+    ordered = sorted(chunks, key=_clause_sort_key)
+    zero = [chunk for chunk in ordered if _clause_of(chunk) == "0"]
     if zero:
         return zero
-    top = [chunk for chunk in ordered if _punkt_depth(chunk) == 1]
+    top = [chunk for chunk in ordered if _clause_depth(chunk) == 1]
     if not top:
         return ordered[:1]
-    first = min((_punkt_number(_punkt_of(chunk)), _document_order(chunk), _punkt_of(chunk)) for chunk in top)[2]
-    return [chunk for chunk in top if _punkt_of(chunk) == first]
+    first = min((_clause_number(_clause_of(chunk)), _document_order(chunk), _clause_of(chunk)) for chunk in top)[2]
+    return [chunk for chunk in top if _clause_of(chunk) == first]
 
 
 def _outline_lines(entries: Sequence[OutlineEntry], limit: int = _MAX_OUTLINE_LINES) -> list[str]:
@@ -643,10 +643,10 @@ def _outline_lines(entries: Sequence[OutlineEntry], limit: int = _MAX_OUTLINE_LI
     for entry in shown:
         indent = "  " if entry.depth == 2 else ""
         # An unnumbered section is addressed by its title; saying it twice is noise.
-        title = f": {entry.title}" if entry.title and entry.title != entry.punkt_id else ""
+        title = f": {entry.title}" if entry.title and entry.title != entry.clause_id else ""
         page = f" (S. {entry.page})" if entry.page else ""
         excerpt = f" — {entry.excerpt}" if entry.excerpt else ""
-        lines.append(f"{indent}- Punkt {entry.punkt_id}{title}{page}{excerpt}")
+        lines.append(f"{indent}- Punkt {entry.clause_id}{title}{page}{excerpt}")
     remaining = len(entries) - len(shown)
     if remaining > 0:
         lines.append(f"(+{remaining} weitere Punkte nicht gelistet)")
@@ -662,13 +662,13 @@ _OUTLINE_INSTRUCTION = (
 )
 
 #: The same sentence for a document that has no Punkte to list.
-_NO_PUNKTE_LINE = (
+_NO_CLAUSES_LINE = (
     "Dieses Dokument ist nicht nach Punkten gegliedert, es gibt also keine Gliederung — oben "
     "stehen seine ersten Passagen; weitere Seiten öffnest du mit `read_passage(document=…, page=…)`."
 )
 
 
-def _gliederung_block(entries: Sequence[OutlineEntry]) -> str:
+def _outline_block(entries: Sequence[OutlineEntry]) -> str:
     """The ``## Gliederung`` index appended under the outline's passage."""
     return "\n".join(["## Gliederung", *_outline_lines(entries), "", _OUTLINE_INSTRUCTION, ""])
 
@@ -879,11 +879,11 @@ async def family_overview(entries: Sequence[Any], family_key: str) -> FamilyOver
     )
 
 
-def _locus_label(document: str, punkt: str | None, page: int | None) -> str:
+def _locus_label(document: str, clause: str | None, page: int | None) -> str:
     """How this fetch names itself in a message the model reads."""
     parts = [document]
-    if punkt:
-        parts.append(f"Pkt. {punkt}")
+    if clause:
+        parts.append(f"Pkt. {clause}")
     if page is not None:
         parts.append(f"S. {page}")
     return ", ".join(parts)
@@ -985,13 +985,13 @@ _NOT_READABLE_IS_NOT_ABSENT = (
 )
 
 
-def _no_passage_message(document: str, punkt: str | None, page: int | None) -> str:
+def _no_passage_message(document: str, clause: str | None, page: int | None) -> str:
     """A resolved document that carries no such Punkt or page."""
-    asked = _locus_label(document, punkt, page)
+    asked = _locus_label(document, clause, page)
     hint = (
         "The Punkt must be the number alone as the hit's `Punkt:` line prints it ('3.5.2'), and "
         "a parent heading is not a chunk of its own — read the child Punkt instead. "
-        if punkt
+        if clause
         else ""
     )
     return (
@@ -1023,7 +1023,7 @@ def _store_silent_message(query: str) -> str:
     )
 
 
-def _fetch_query(document: str, punkt: str | None, page: int | None) -> str:
+def _fetch_query(document: str, clause: str | None, page: int | None) -> str:
     """The probe text handed to the store.
 
     The filter has already decided which chunks exist, so this only orders a set
@@ -1032,7 +1032,7 @@ def _fetch_query(document: str, punkt: str | None, page: int | None) -> str:
     some stores refuse it. A backend that reads by filter (``BaseRetriever.fetch``)
     never sees it; it is then only the label the result names itself by.
     """
-    return _locus_label(document, punkt, page)
+    return _locus_label(document, clause, page)
 
 
 async def _structural_fetch(retriever: Any, collection: str, filters: dict[str, Any], top_k: int) -> list[Any] | None:
@@ -1258,28 +1258,28 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
                 return await _outline(document)
             return await _open(document, punkt, page)
 
-    async def _open(document: str, punkt: str | None, page: int | None) -> str:
+    async def _open(document: str, clause: str | None, page: int | None) -> str:
         from .register import _format_results
 
         targets, refusal = await _resolve_or_refuse(document)
         if refusal:
             return refusal
 
-        query = _fetch_query(document, punkt, page)
+        query = _fetch_query(document, clause, page)
         # A page read fetches the window's chunks and keeps those covering the
         # page, so it may not stop at the passage bound before filtering.
         top_k = _MAX_PASSAGE_CHUNKS if page is None else _MAX_OUTLINE_CHUNKS
-        fetched = await _fetch_all(targets, lambda file_name: _passage_filters(file_name, punkt, page), query, top_k)
-        chunks = [chunk for chunk in fetched.chunks if _addresses(chunk, punkt, page)]
+        fetched = await _fetch_all(targets, lambda file_name: _passage_filters(file_name, clause, page), query, top_k)
+        chunks = [chunk for chunk in fetched.chunks if _addresses(chunk, clause, page)]
         if fetched.failures and not chunks:
             logger.warning("read_passage: every fetch failed for %r", query, exc_info=fetched.failures[0])
             return await _miss(document, targets, _store_silent_message(query))
         if not chunks:
-            return await _miss(document, targets, _no_passage_message(document, punkt, page))
+            return await _miss(document, targets, _no_passage_message(document, clause, page))
 
-        chunks.sort(key=_punkt_sort_key)
+        chunks.sort(key=_clause_sort_key)
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
-        formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_fassung_notice(targets))
+        formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_revision_notice(targets))
         logger.info("read_passage: %s returned %d chunk(s)", query, len(merged.chunks))
         return formatted
 
@@ -1306,8 +1306,8 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             _format_results,
             _passage_result(passages, query),
             query,
-            notice=_older_fassung_notice(targets),
-            trailer=_gliederung_block(entries),
+            notice=_older_revision_notice(targets),
+            trailer=_outline_block(entries),
         )
         logger.info("read_passage: %s outlined %d Punkt(e)", query, len(entries))
         return formatted
@@ -1335,11 +1335,11 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         if not fetched:
             return await _miss(document, targets, _empty_document_message(document))
 
-        merged = _passage_result(sorted(fetched, key=_punkt_sort_key)[:_MAX_PASSAGE_CHUNKS], query)
+        merged = _passage_result(sorted(fetched, key=_clause_sort_key)[:_MAX_PASSAGE_CHUNKS], query)
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
         formatted = await asyncio.to_thread(
-            _format_results, merged, query, notice=_older_fassung_notice(targets), trailer=_NO_PUNKTE_LINE
+            _format_results, merged, query, notice=_older_revision_notice(targets), trailer=_NO_CLAUSES_LINE
         )
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))
         return formatted

@@ -56,7 +56,7 @@ class TestRepeatQuery:
 
 
 class TestLocatorEligible:
-    def test_a_punkt_question_without_locator_is_eligible(self):
+    def test_a_clause_question_without_locator_is_eligible(self):
         payloads = loop_eval._status_payloads(
             _steps(("status:retrieval:0", {"tools": ["knowledge_search"], "values": {"query": "x"}}))
         )

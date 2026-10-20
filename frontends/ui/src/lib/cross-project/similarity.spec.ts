@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Project } from '@/lib/db/schema'
 import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
-import { SIMILARITY_WEIGHTS, bundeslandOf, rankBySimilarity, sharedTraits, similarity, similarityFacts } from './similarity'
+import { SIMILARITY_WEIGHTS, federalStateOf, rankBySimilarity, sharedTraits, similarity, similarityFacts } from './similarity'
 
 type Profile = Project['profile']
 
@@ -46,7 +46,7 @@ describe('similarityFacts', () => {
     })
   })
 
-  it('reads only a Gebäudeklasse that exists, 1 to 5, and the class a note names rather than its first digit', () => {
+  it('reads only a building class that exists, 1 to 5, and the class a note names rather than its first digit', () => {
     for (const value of [0, 6, 4.5, -1, '0', '6', 'GK 6', 'GK45']) {
       expect(similarityFacts(profile({ gebaeudeklasse: value })).gebaeudeklasse, String(value)).toEqual([])
     }
@@ -74,7 +74,7 @@ describe('similarityFacts', () => {
         },
         projectIntakeDefinitionV1,
         {
-          bauwerke: [
+          buildings: [
             { id: 'bw1', name: 'Haupthaus' },
             { id: 'bw2', name: 'Nebengebäude' },
           ],
@@ -91,7 +91,7 @@ describe('similarityFacts', () => {
   })
 
   it('reads a Land’s label and its token as one Land, and a site abroad as no Land', () => {
-    const at = (bundesland: string) => similarityFacts(profile({ bundesland })).bundesland
+    const at = (federalState: string) => similarityFacts(profile({ bundesland: federalState })).bundesland
     expect(at('Niederösterreich')).toBe('niederoesterreich')
     expect(at('niederoesterreich')).toBe('niederoesterreich')
     expect(at('ausserhalb_oesterreichs')).toBeNull()
@@ -101,9 +101,9 @@ describe('similarityFacts', () => {
 
   it('keeps a site abroad’s token for the wire, while the ranking still reads it as no Land', () => {
     const abroad = profile({ bundesland: 'ausserhalb_oesterreichs' })
-    expect(bundeslandOf(abroad)).toBe('ausserhalb_oesterreichs')
-    expect(bundeslandOf(profile({ bundesland: 'Niederösterreich' }))).toBe('niederoesterreich')
-    expect(bundeslandOf(null)).toBeNull()
+    expect(federalStateOf(abroad)).toBe('ausserhalb_oesterreichs')
+    expect(federalStateOf(profile({ bundesland: 'Niederösterreich' }))).toBe('niederoesterreich')
+    expect(federalStateOf(null)).toBeNull()
     const facts = similarityFacts(abroad)
     expect(facts.bundesland).toBeNull()
     expect(similarity(facts, similarityFacts(abroad))).toBe(0)
@@ -118,11 +118,11 @@ describe('similarityFacts', () => {
 describe('similarity', () => {
   it('matches a project of several buildings on its closest one', () => {
     const mixed = similarityFacts(profile({ 'gebaeudeklasse@bw1': 2, 'gebaeudeklasse@bw2': 4 }))
-    expect(similarity(mixed, similarityFacts(profile({ gebaeudeklasse: 4 })))).toBe(SIMILARITY_WEIGHTS.gebaeudeklasse)
-    expect(similarity(mixed, similarityFacts(profile({ gebaeudeklasse: 5 })))).toBe(SIMILARITY_WEIGHTS.gebaeudeklasseAdjacent)
+    expect(similarity(mixed, similarityFacts(profile({ gebaeudeklasse: 4 })))).toBe(SIMILARITY_WEIGHTS.buildingClass)
+    expect(similarity(mixed, similarityFacts(profile({ gebaeudeklasse: 5 })))).toBe(SIMILARITY_WEIGHTS.buildingClassAdjacent)
   })
 
-  it('weighs the same Bundesland above any single trait, and below class, construction and uses together', () => {
+  it('weighs the same federal state above any single trait, and below class, construction and uses together', () => {
     const at = (facts: Record<string, unknown>) => similarity(here, similarityFacts(profile(facts)))
     const sameLand = at({ bundesland: 'niederoesterreich' })
     expect(sameLand).toBeGreaterThan(at({ gebaeudeklasse: 4 }))
@@ -140,8 +140,8 @@ describe('similarity', () => {
 
   it('reads the kind of work as the multi-select the intake stores, and an older single token alike', () => {
     const work = (vorhabensart: unknown) => similarityFacts(profile({ vorhabensart }))
-    expect(similarity(work(['neubau', 'zubau']), work(['zubau']))).toBe(SIMILARITY_WEIGHTS.vorhabensart)
-    expect(similarity(work(['neubau']), work('neubau'))).toBe(SIMILARITY_WEIGHTS.vorhabensart)
+    expect(similarity(work(['neubau', 'zubau']), work(['zubau']))).toBe(SIMILARITY_WEIGHTS.workType)
+    expect(similarity(work(['neubau']), work('neubau'))).toBe(SIMILARITY_WEIGHTS.workType)
     expect(similarity(work(['umbau']), work(['neubau']))).toBe(0)
   })
 
@@ -159,11 +159,11 @@ describe('similarity', () => {
 })
 
 describe('suggestions from the documents', () => {
-  it('ranks a project by a suggested Gebäudeklasse when no fact says it', () => {
+  it('ranks a project by a suggested building class when no fact says it', () => {
     const suggested = profile({}, { gebaeudeklasse: assumption('4') })
 
     expect(similarityFacts(suggested).gebaeudeklasse).toEqual([4])
-    expect(similarity(here, similarityFacts(suggested))).toBe(SIMILARITY_WEIGHTS.gebaeudeklasse)
+    expect(similarity(here, similarityFacts(suggested))).toBe(SIMILARITY_WEIGHTS.buildingClass)
     const ranked = rankBySimilarity(profile({ gebaeudeklasse: 4 }), [
       { id: 'no-facts', profile: profile({}) },
       { id: 'suggested', profile: suggested },
@@ -200,8 +200,8 @@ describe('suggestions from the documents', () => {
   it('ranks by a suggested Land, but the wire still names only a confirmed one', () => {
     const suggestedLand = profile({}, { bundesland: assumption('niederoesterreich') })
 
-    expect(similarity(here, similarityFacts(suggestedLand))).toBe(SIMILARITY_WEIGHTS.bundesland)
-    expect(bundeslandOf(suggestedLand)).toBeNull()
+    expect(similarity(here, similarityFacts(suggestedLand))).toBe(SIMILARITY_WEIGHTS.federalState)
+    expect(federalStateOf(suggestedLand)).toBeNull()
   })
 })
 

@@ -49,7 +49,7 @@ describe('findProjectProfile', () => {
     const profile = await storedProfile({})
 
     expect(profile).toEqual({ facts: {}, goals: {}, unknowns: [], assumptions: {} })
-    expect(answersFromProfile(profile!, projectIntakeDefinitionV1).bauwerke).toEqual([
+    expect(answersFromProfile(profile!, projectIntakeDefinitionV1).buildings).toEqual([
       { id: 'bw1', name: 'Bauwerk 1' },
     ])
   })

@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 def capture_passages(passages: list[Passage]) -> None:
     """One ledger entry per RETURNED passage: the document, titled, with its §."""
-    _capture_lane_hits([(p.url, p.title or None, p.punkt_label or None) for p in passages])
+    _capture_lane_hits([(p.url, p.title or None, p.clause_label or None) for p in passages])
 
 
 def emit_lookup_span(question: str, address: Address, trace: LookupTrace, passages: list[Passage]) -> None:
@@ -86,7 +86,7 @@ def _span_picks(passages: list[Passage]) -> dict:
     keys = [p.citation for p in passages if p.citation]
     if keys:
         picks["citation_keys"] = keys
-    punkt_ids = [p.punkt_label for p in passages if p.punkt_label]
-    if punkt_ids:
-        picks["punkt_ids"] = punkt_ids
+    clause_ids = [p.clause_label for p in passages if p.clause_label]
+    if clause_ids:
+        picks["punkt_ids"] = clause_ids
     return picks

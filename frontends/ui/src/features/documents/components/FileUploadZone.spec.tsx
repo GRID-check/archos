@@ -35,7 +35,7 @@ vi.mock('@/shared/context', () => ({
 }))
 
 // Mock the constants
-vi.mock('../', () => ({
+vi.mock('..', () => ({
   ACCEPTED_FILE_TYPES: '.pdf,.docx,.txt',
   MAX_FILE_SIZE: 10 * 1e6, // 10 MB, decimal like the server
 }))

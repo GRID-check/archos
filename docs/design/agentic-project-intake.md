@@ -219,7 +219,7 @@ and `nutzungen` (a reines Wohngebäude opens GK 2 up to 800 m²). Fundstelle:
 OIB-Richtlinien, Begriffsbestimmungen (Ausgabe Mai 2023), „Gebäudeklassen".
 
 The repository holds GK 4 verbatim and GK 1–3 and 5 only as the office's own
-published paraphrase (`frontends/web/src/data/landing/glossar.ts`); the
+published paraphrase (`frontends/web/src/data/landing/glossary.ts`); the
 Richtlinie is the authority, and the rules in code say which they quote and
 which they paraphrase. Where the wizard's questions are coarser than the
 definition, the code errs towards the higher class and says so: GK 1's

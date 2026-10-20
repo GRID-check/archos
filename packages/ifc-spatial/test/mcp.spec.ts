@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 import { SpatialCache } from '../src/model.js'
 import { assertFetchable, createTools, type ToolDef } from '../src/mcp/tools.js'
 
-const FIXTURE = fileURLToPath(new URL('./fixtures/haus-mit-raeumen.ifc', import.meta.url))
+const FIXTURE = fileURLToPath(new URL('./fixtures/house-with-rooms.ifc', import.meta.url))
 
 describe('mcp tools', () => {
   let tools: Map<string, ToolDef>
@@ -116,7 +116,7 @@ describe('mcp tools', () => {
  * decoration.
  */
 describe('open models are bounded', () => {
-  const FIXTURES = ['haus-mit-raeumen.ifc', 'strasse-ifc4x3.ifc', 'einheiten-fuss.ifc'].map((name) =>
+  const FIXTURES = ['house-with-rooms.ifc', 'road-ifc4x3.ifc', 'units-feet.ifc'].map((name) =>
     fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url))
   )
 

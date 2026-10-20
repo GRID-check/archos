@@ -18,9 +18,9 @@ vi.mock('@/lib/auth/require-auth', () => ({
     featureFlags: null,
   }),
 }))
-vi.mock('@/lib/archiv/service', () => ({ uploadArchivDocument: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ uploadOfficeShelfDocument: vi.fn() }))
 
-import { uploadArchivDocument } from '@/lib/archiv/service'
+import { uploadOfficeShelfDocument } from '@/lib/office-shelf/service'
 import { POST } from './route'
 
 const post = (fields: Record<string, string>) => {
@@ -34,7 +34,7 @@ const post = (fields: Record<string, string>) => {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(uploadArchivDocument).mockResolvedValue({
+  vi.mocked(uploadOfficeShelfDocument).mockResolvedValue({
     documentId: 'd1',
     jobId: null,
     status: 'uploaded',
@@ -47,7 +47,7 @@ describe('POST /api/archiv/documents/upload', () => {
     const response = await post({ folderId: 'folder-1', originPath: 'Normen/plan.pdf' })
 
     expect(response.status).toBe(200)
-    expect(uploadArchivDocument).toHaveBeenCalledWith(expect.anything(), expect.any(File), expect.any(Request), {
+    expect(uploadOfficeShelfDocument).toHaveBeenCalledWith(expect.anything(), expect.any(File), expect.any(Request), {
       folderId: 'folder-1',
       originPath: 'Normen/plan.pdf',
       screeningRelease: false,
@@ -59,7 +59,7 @@ describe('POST /api/archiv/documents/upload', () => {
   it('uploads to the Archiv root when no folder is named', async () => {
     await post({ folderId: '' })
 
-    expect(uploadArchivDocument).toHaveBeenCalledWith(expect.anything(), expect.any(File), expect.any(Request), {
+    expect(uploadOfficeShelfDocument).toHaveBeenCalledWith(expect.anything(), expect.any(File), expect.any(Request), {
       folderId: null,
       originPath: null,
       screeningRelease: false,
@@ -72,7 +72,7 @@ describe('POST /api/archiv/documents/upload', () => {
     const older = '0b8f3c1e-0d3a-4d2e-9a53-6d1f9d6c2b11'
     await post({ fassungOf: older })
 
-    expect(uploadArchivDocument).toHaveBeenCalledWith(
+    expect(uploadOfficeShelfDocument).toHaveBeenCalledWith(
       expect.anything(),
       expect.any(File),
       expect.any(Request),
@@ -80,11 +80,11 @@ describe('POST /api/archiv/documents/upload', () => {
     )
   })
 
-  it('refuses a fassungOf that is not a document id', async () => {
+  it('refuses a revision-of value that is not a document id', async () => {
     const response = await post({ fassungOf: 'Grundriss_EG_Index_B.pdf' })
 
     expect(response.status).toBe(400)
-    expect(uploadArchivDocument).not.toHaveBeenCalled()
+    expect(uploadOfficeShelfDocument).not.toHaveBeenCalled()
   })
 
   it('refuses a request with no file', async () => {

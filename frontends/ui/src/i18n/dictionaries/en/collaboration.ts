@@ -395,8 +395,8 @@ export const collaboration = {
      * The next move on a new revision filed under another name: see the two side
      * by side. Opens the file preview with the comparison open.
      */
-    compareFassungen: 'Compare revisions',
-    compareFassungenLabel: 'Compare the new and the older revision of “{subject}”',
+    compareRevisions: 'Compare revisions',
+    compareRevisionsLabel: 'Compare the new and the older revision of “{subject}”',
     empty: {
       needsMeTitle: 'Nothing needs you',
       needsMeDescription:
@@ -589,16 +589,16 @@ export const collaboration = {
       // document you follow (without its extension). What changed is the
       // excerpt below; only without one does `bodyNoExcerpt` say where to look.
       // `titleNoActor` when nobody in particular did it.
-      documentNewFassung: {
+      documentNewRevision: {
         title: '{actor} uploaded a new revision of “{subject}”',
         titleNoActor: 'New revision of “{subject}”',
         bodyNoExcerpt: 'Open the revision to see what changed.',
         // Open annotations the new revision leaves behind: {marks} how many,
-        // {fassung} which revision of the same document; `…_earlier` when they
+        // {revision} which revision of the same document; `…_earlier` when they
         // sit on several, or another document was replaced.
         variants: {
-          mark: { body: 'Check 1 open annotation from revision {fassung}' },
-          marks: { body: 'Check {marks} open annotations from revision {fassung}' },
+          mark: { body: 'Check 1 open annotation from revision {revision}' },
+          marks: { body: 'Check {marks} open annotations from revision {revision}' },
           mark_earlier: { body: 'Check 1 open annotation from the previous revision' },
           marks_earlier: { body: 'Check {marks} open annotations from the previous revision' },
         },
@@ -890,9 +890,9 @@ export const collaboration = {
       // number is required, nothing is approved without it) and who acts when.
       // No viewer name is known here, so the acting line is always the
       // date-only form; who asked is already in the title.
-      approveStand: '{subject} · revision {number} · as of {date}',
+      approveSummary: '{subject} · revision {number} · as of {date}',
       approveActing: 'Acting: {date}',
-      standFailed: 'The current revision could not be read — approval is blocked until it is.',
+      revisionUnreadable: 'The current revision could not be read — approval is blocked until it is.',
       retry: 'Try again',
       send: 'Send',
       cancel: 'Cancel',

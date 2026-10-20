@@ -292,7 +292,7 @@ describe('every token this build accepts has words in BOTH locales', () => {
   })
 })
 
-describe('an unread Grundlage is named as such, not as a generic check', () => {
+describe('an unread basis is named as such, not as a generic check', () => {
   test('its line says a named document went unread, in both locales', () => {
     for (const dictionary of [de, en]) {
       const line = dictionary.chat.answerSources.degradedReason.grundlage_unread

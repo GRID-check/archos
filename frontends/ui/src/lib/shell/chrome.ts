@@ -44,7 +44,7 @@ const EMPTY_NAV_FLAGS: NavFlags = {
   canManageOrganization: false,
   canViewOrganization: false,
   canManagePlatform: false,
-  canAccessArchiv: false,
+  canAccessOfficeShelf: false,
   canCollaborate: false,
   canAccessInbox: false,
 }

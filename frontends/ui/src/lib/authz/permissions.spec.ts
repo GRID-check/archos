@@ -30,7 +30,7 @@ describe('permission registry', () => {
     // The two that used to work ONLY through the wildcard, because they were in
     // the code registry and the runbook but in no WorkOS environment.
     expect(hasPermission(admin, ORG_PERMISSIONS.auditView)).toBe(true)
-    expect(hasPermission(admin, ORG_PERMISSIONS.archivManage)).toBe(true)
+    expect(hasPermission(admin, ORG_PERMISSIONS.officeShelfManage)).toBe(true)
   })
 
   it('the admin implication is BOUNDED by the catalog, not a wildcard', () => {

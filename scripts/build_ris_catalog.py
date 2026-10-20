@@ -77,7 +77,7 @@ _nr = _load_norm_registry_module()
 NORMS_ROOT = REPO_ROOT / "configs" / "norms"
 
 # Canonical Bundesland name -> OGD-RIS Landesrecht search parameter.
-_BUNDESLAND_PARAMS: dict[str, str] = {
+_FEDERAL_STATE_PARAMS: dict[str, str] = {
     "Wien": "SucheInWien",
     "Niederösterreich": "SucheInNiederoesterreich",
     "Oberösterreich": "SucheInOberoesterreich",
@@ -132,7 +132,7 @@ async def verify_entry(client: RisClient, entry) -> dict:
         raise ValueError(f"entry '{entry.id}' has no verify seed")
     params: dict[str, str] = {"Titel": verify.title_query}
     if entry.bundesland:
-        params[f"Bundesland.{_BUNDESLAND_PARAMS[entry.bundesland]}"] = "true"
+        params[f"Bundesland.{_FEDERAL_STATE_PARAMS[entry.bundesland]}"] = "true"
     hits = []
     page = 1
     while True:

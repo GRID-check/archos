@@ -38,7 +38,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   let db: ReturnType<typeof import('@/lib/db').getDb>
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let repo: typeof import('./repository')
-  let archiv: typeof import('@/lib/archiv/repository')
+  let officeShelf: typeof import('@/lib/office-shelf/repository')
   let sessions: typeof import('@/lib/session-documents/repository')
   let bim: typeof import('@/lib/bim/repository')
   let projectId: string
@@ -84,7 +84,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     withTenant = context.withTenant
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')
-    archiv = await import('@/lib/archiv/repository')
+    officeShelf = await import('@/lib/office-shelf/repository')
     sessions = await import('@/lib/session-documents/repository')
     bim = await import('@/lib/bim/repository')
 
@@ -169,10 +169,10 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       'project-ready.pdf',
     ])
     const archived = ['archiv-ready.pdf', 'archiv-own.pdf', 'archiv-foreign.pdf', 'archiv-pending.pdf']
-    expect(names(await archiv.findArchivDocumentsByNames(ORG, archived, { reader: member }))).toEqual([
+    expect(names(await officeShelf.findOfficeShelfDocumentsByNames(ORG, archived, { reader: member }))).toEqual([
       'archiv-ready.pdf',
     ])
-    expect(await archiv.findArchivDocumentsByNames(ORG, archived, { reader: REVIEWER_READER })).toHaveLength(4)
+    expect(await officeShelf.findOfficeShelfDocumentsByNames(ORG, archived, { reader: REVIEWER_READER })).toHaveLength(4)
   })
 
   it('narrows the project overview the same way', async () => {
@@ -195,7 +195,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   })
 
   it('narrows the Büroablage listing the same way', async () => {
-    const page = await archiv.listArchivDocuments(ORG, { reader: member })
+    const page = await officeShelf.listOfficeShelfDocuments(ORG, { reader: member })
     expect(names(page.rows)).toEqual(['archiv-ready.pdf'])
   })
 
@@ -215,10 +215,10 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   })
 
   it('narrows the IFC model list the same way, and gives the agent none', async () => {
-    const shelves = (project: ShelfReader, archivShelf: ShelfReader): DocumentReader => ({
+    const shelves = (project: ShelfReader, officeShelf: ShelfReader): DocumentReader => ({
       kind: 'shelves',
       project,
-      archiv: archivShelf,
+      officeShelf: officeShelf,
     })
     const forMember = await bim.listBimModels(ORG, { projectId, reader: shelves(member, member) })
     expect(names(forMember)).toEqual(['project-ready.pdf'])
@@ -241,8 +241,8 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     // and of the Büroablage's only what is not held back.
     const forProjectAdmin = await bim.listBimModels(ORG, {
       projectId,
-      includeArchiv: true,
-      reader: { kind: 'shelves', project: REVIEWER_READER, archiv: memberReader(MEMBER) },
+      includeOfficeShelf: true,
+      reader: { kind: 'shelves', project: REVIEWER_READER, officeShelf: memberReader(MEMBER) },
     })
     expect(names(forProjectAdmin)).toEqual([
       'archiv-ready.pdf',
@@ -254,8 +254,8 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     // A curator who is a plain member of the project: the reverse.
     const forCurator = await bim.listBimModels(ORG, {
       projectId,
-      includeArchiv: true,
-      reader: { kind: 'shelves', project: memberReader(MEMBER), archiv: REVIEWER_READER },
+      includeOfficeShelf: true,
+      reader: { kind: 'shelves', project: memberReader(MEMBER), officeShelf: REVIEWER_READER },
     })
     expect(names(forCurator)).toEqual([
       'archiv-foreign.pdf',

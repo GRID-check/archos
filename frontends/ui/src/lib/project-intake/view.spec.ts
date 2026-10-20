@@ -91,12 +91,12 @@ describe('buildIntakeView', () => {
   it('groups every value by its module, labelled and displayed as the wizard does', () => {
     const { groups } = view()
     const projektbasis = groups.find((group) => group.title === 'Projektbasis')
-    const bauwerke = groups.find((group) => group.title === 'Bauwerke')
+    const buildings = groups.find((group) => group.title === 'Bauwerke')
 
     expect(projektbasis?.items).toEqual([
       expect.objectContaining({ key: 'bundesland', value: 'wien', display: 'Wien', state: 'contested', bauwerkId: null }),
     ])
-    expect(bauwerke?.items).toEqual(
+    expect(buildings?.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: 'bauwerkstyp@bw1',
@@ -160,7 +160,7 @@ describe('buildIntakeView', () => {
     expect(result).toMatchObject({ status: 'ready', summary: 'Gelesen.', readingFinishedAt: NOW, canDecide: true, canComplete: false })
   })
 
-  it('shows each Bauwerk’s class with what it read and what it lacks', () => {
+  it('shows each building’s class with what it read and what it lacks', () => {
     const [derivation] = view().derivations
     expect(derivation).toMatchObject({ bauwerkId: 'bw1', rule: 'gebaeudeklasse', value: null })
     expect(derivation.inputs).toEqual([{ key: 'bauwerkstyp@bw1', value: 'gebaeude', suggested: true }])

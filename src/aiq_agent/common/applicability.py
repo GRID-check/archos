@@ -61,7 +61,7 @@ _NOISE_SENSITIVE = frozenset({"wohnen", "beherbergung", "gesundheit", "buero", "
 _OIB6_EXEMPT = frozenset({"lager", "landwirtschaft"})
 # Every hauptnutzung token the verdicts compare: the union of the groups above.
 # The D0 catalogue shares only some of them (see the TS twin for the list).
-_HAUPTNUTZUNG_TOKENS = _BETRIEBSBAU_USES | _BETRIEBSBAU_CHECK | _PUBLIC_USES | _NOISE_SENSITIVE | _OIB6_EXEMPT
+_MAIN_USE_TOKENS = _BETRIEBSBAU_USES | _BETRIEBSBAU_CHECK | _PUBLIC_USES | _NOISE_SENSITIVE | _OIB6_EXEMPT
 _GK_TOKEN = re.compile(r"(?:GK)?([1-5])")
 
 _VERDICT_LABELS_DE: dict[str, str] = {
@@ -132,7 +132,7 @@ def _max_number(facts: Facts, base: str) -> float | None:
     return max(numbers) if numbers else None
 
 
-def fluchtniveau_band(facts: Facts) -> str | None:
+def escape_level_band(facts: Facts) -> str | None:
     """The Fluchtniveau band the rules read: the stated ``fluchtniveau``, else the highest ``fluchtniveau_m``.
 
     Each band takes its upper bound inclusively: exactly 7 m is ``<=7m``, 11 m is ``7-11m``, 22 m is ``11-22m``.
@@ -152,7 +152,7 @@ def fluchtniveau_band(facts: Facts) -> str | None:
     return ">22m"
 
 
-def _nutzungen_tokens(facts: Facts) -> set[str]:
+def _use_tokens(facts: Facts) -> set[str]:
     """Every D0 token the Bauwerke name. A list is taken as is; the prompt view's comma-joined text is split."""
     tokens: set[str] = set()
     for value in _scoped_values(facts, "nutzungen"):
@@ -167,20 +167,20 @@ def _nutzungen_tokens(facts: Facts) -> set[str]:
     return tokens
 
 
-def _hauptnutzung(facts: Facts) -> str | None:
+def _main_use(facts: Facts) -> str | None:
     """The stated ``hauptnutzung``, else the ``nutzungen`` when they name exactly one use and it is a verdict token."""
     stated = _fact_str(facts, "hauptnutzung")
     if stated is not None:
         return stated
     # Every use must name a verdict token: a use outside the vocabulary (``produktion``)
     # is unknown, and an unknown use may be the Betriebsbau.
-    uses = _nutzungen_tokens(facts)
-    if len(uses) == 1 and uses <= _HAUPTNUTZUNG_TOKENS:
+    uses = _use_tokens(facts)
+    if len(uses) == 1 and uses <= _MAIN_USE_TOKENS:
         return next(iter(uses))
     return None
 
 
-def _gebaeudeklasse_class(value: Any) -> int | None:
+def _building_class_of(value: Any) -> int | None:
     """``4`` or ``GK4`` (either case) as its class number, else None."""
     if isinstance(value, str):
         match = _GK_TOKEN.fullmatch(value.strip().upper())
@@ -191,9 +191,9 @@ def _gebaeudeklasse_class(value: Any) -> int | None:
     return int(number)
 
 
-def _gebaeudeklasse(facts: Facts) -> str | None:
+def _building_class(facts: Facts) -> str | None:
     """The Gebäudeklasse across the Bauwerke: the highest class named, as ``GK<n>``."""
-    classes = [c for c in map(_gebaeudeklasse_class, _scoped_values(facts, "gebaeudeklasse")) if c is not None]
+    classes = [c for c in map(_building_class_of, _scoped_values(facts, "gebaeudeklasse")) if c is not None]
     return f"GK{max(classes)}" if classes else None
 
 
@@ -253,10 +253,10 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     if not facts:
         return _generic_six()
 
-    hauptnutzung = _hauptnutzung(facts)
-    gebaeudeklasse = _gebaeudeklasse(facts)
-    fluchtniveau = fluchtniveau_band(facts)
-    geschosse_unterirdisch = _max_number(facts, "geschosse_unterirdisch")
+    main_use = _main_use(facts)
+    building_class = _building_class(facts)
+    escape_level = escape_level_band(facts)
+    storeys_below_ground = _max_number(facts, "geschosse_unterirdisch")
 
     verdicts: list[OibVerdict] = []
 
@@ -281,7 +281,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     )
 
     # OIB 2.1 — Betriebsbauten (industrial & commercial).
-    if hauptnutzung in _BETRIEBSBAU_USES:
+    if main_use in _BETRIEBSBAU_USES:
         verdicts.append(
             OibVerdict(
                 "OIB 2.1",
@@ -290,7 +290,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
                 "Manufacturing/storage use is a Betriebsbau.",
             )
         )
-    elif hauptnutzung in _BETRIEBSBAU_CHECK or hauptnutzung is None:
+    elif main_use in _BETRIEBSBAU_CHECK or main_use is None:
         verdicts.append(
             OibVerdict(
                 "OIB 2.1",
@@ -302,7 +302,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     # else: omit (clearly not a Betriebsbau).
 
     # OIB 2.2 — garages & covered parking.
-    if geschosse_unterirdisch is not None and geschosse_unterirdisch >= 1:
+    if storeys_below_ground is not None and storeys_below_ground >= 1:
         verdicts.append(
             OibVerdict(
                 "OIB 2.2",
@@ -314,7 +314,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     # else: omit.
 
     # OIB 2.3 — high-rise (Hochhaus).
-    if fluchtniveau == ">22m":
+    if escape_level == ">22m":
         verdicts.append(
             OibVerdict(
                 "OIB 2.3",
@@ -323,7 +323,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
                 "Top escape level over 22 m — the building is a Hochhaus.",
             )
         )
-    elif gebaeudeklasse == "GK5" and fluchtniveau is None:
+    elif building_class == "GK5" and escape_level is None:
         verdicts.append(
             OibVerdict(
                 "OIB 2.3",
@@ -345,7 +345,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     )
 
     # OIB 4 — always; stronger for publicly used buildings.
-    if hauptnutzung in _PUBLIC_USES:
+    if main_use in _PUBLIC_USES:
         verdicts.append(
             OibVerdict(
                 "OIB 4",
@@ -367,7 +367,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
         )
 
     # OIB 5 — sound protection; required for occupied/noise-sensitive uses, else likely.
-    if hauptnutzung in _NOISE_SENSITIVE:
+    if main_use in _NOISE_SENSITIVE:
         verdicts.append(
             OibVerdict(
                 "OIB 5",
@@ -382,7 +382,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
         )
 
     # OIB 6 — energy & thermal performance; storage/agricultural may be partly exempt.
-    if hauptnutzung in _OIB6_EXEMPT:
+    if main_use in _OIB6_EXEMPT:
         verdicts.append(
             OibVerdict(
                 "OIB 6",

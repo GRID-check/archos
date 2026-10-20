@@ -59,7 +59,7 @@ export const uploadBatches: typeof en.uploadBatches = {
       empty: 'Keine Datei dieses Uploads ist bei Piloti angekommen.',
       pages: '{count, plural, one {# Seite} other {# Seiten}}',
       openInFiles: 'In Dateien öffnen',
-      openInArchiv: 'In der Büroablage öffnen',
+      openInOfficeShelf: 'In der Büroablage öffnen',
       changedHint: 'Neue Fassung eines Dokuments, das schon hier lag. Die bisherige bleibt unter „Fassungen und Freigabe“ lesbar.',
       protectedHint: 'Liegt in einem Ordner mit eigenem Zugriff. Wer ihn öffnen und ändern darf, zeigt das Schloss am Ordner.',
       requestRelease: 'Prüfung anfragen',

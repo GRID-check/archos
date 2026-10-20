@@ -79,7 +79,7 @@ def test_only_the_ambiguous_name_is_qualified():
     assert "Citation: Konzept.pdf (Projektwissen)" not in text
 
 
-def test_a_private_session_file_is_not_cited_as_projektwissen():
+def test_a_private_session_file_is_not_cited_as_project_knowledge():
     # The headline defect ADR-0047 fixes: `('s_', 'projekt')` was the only guess
     # available, so a file the user attached privately to THIS chat was cited as
     # project knowledge — after the UI told them it went to a "Private Sitzung".
@@ -192,8 +192,8 @@ def test_a_legacy_entry_without_a_shelf_still_resolves_by_collection_name():
             collection="proj_alpha",
         )
     )
-    archiv_hit = registry.entry_for_citation_key("Plan.pdf (Büroablage), p.3")
-    assert archiv_hit is not None and archiv_hit.collection == "archiv_org1"
+    office_shelf_hit = registry.entry_for_citation_key("Plan.pdf (Büroablage), p.3")
+    assert office_shelf_hit is not None and office_shelf_hit.collection == "archiv_org1"
 
 
 def test_the_wire_payload_carries_the_shelf_and_omits_an_unknown_one():

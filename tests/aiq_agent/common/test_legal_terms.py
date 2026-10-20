@@ -30,7 +30,7 @@ class TestParagraphReferences:
         assert extract_exact_terms("§ Abs") == []
 
 
-class TestOibRichtlinieReferences:
+class TestOibGuidelineReferences:
     def test_basic(self):
         assert extract_exact_terms("Was fordert OIB-Richtlinie 2?") == ["OIB-Richtlinie 2"]
 

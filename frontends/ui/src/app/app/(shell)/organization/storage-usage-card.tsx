@@ -218,7 +218,7 @@ export const StorageUsageCard: FC<StorageUsageCardProps> = ({
 
       <div className="flex flex-col gap-2">
         <ScopeRow label={t('storage.projectDocuments')} usage={data.usage.project} />
-        <ScopeRow label={t('storage.archivDocuments')} usage={data.usage.archiv} />
+        <ScopeRow label={t('storage.officeShelfDocuments')} usage={data.usage.archiv} />
         {/* The per-file limit, beside the quota because both refuse uploads and
             both belong to the platform: a member whose file was just refused
             for its size finds the number here. */}

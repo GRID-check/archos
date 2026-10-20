@@ -25,8 +25,8 @@ describe('experienceVocabulary', () => {
   })
 
   it('labels the tokens as the intake wizard does', () => {
-    const bundesland = vocabulary.bundesland.options
-    expect(bundesland).toContainEqual({ token: 'niederoesterreich', label: 'Niederösterreich' })
+    const federalState = vocabulary.bundesland.options
+    expect(federalState).toContainEqual({ token: 'niederoesterreich', label: 'Niederösterreich' })
     const bauweise = vocabulary.bauweise.options
     expect(bauweise).toContainEqual({ token: 'holzbau', label: 'Holzbau' })
   })
@@ -37,7 +37,7 @@ describe('experienceVocabulary', () => {
     }
   })
 
-  it('gives the Gebäudeklasse as tokens 1 to 5, labelled GK n', () => {
+  it('gives the building class as tokens 1 to 5, labelled GK n', () => {
     expect(vocabulary.gebaeudeklasse).toEqual({
       multiple: false,
       options: ['1', '2', '3', '4', '5'].map((grade) => ({ token: grade, label: `GK ${grade}` })),

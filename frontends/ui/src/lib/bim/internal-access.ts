@@ -111,7 +111,7 @@ export async function resolveInternalModel(
   // org-wide Archiv, which is what a project-less conversation is entitled to.
   const candidates = await listBimModels(input.organizationId, {
     projectId: input.projectId ?? null,
-    includeArchiv: true,
+    includeOfficeShelf: true,
     // The ceiling, not the default 50. This list is what a MODEL NAME is
     // resolved against, and a project plus the org Archiv can hold more than
     // fifty files — past which "Kein Modell mit dem Namen … gefunden" is a

@@ -68,7 +68,7 @@ function Preview(): JSX.Element {
         canManageOrganization={false}
         canViewOrganization
         canManagePlatform={false}
-        canAccessArchiv
+        canAccessOfficeShelf
         canAccessInbox={false}
       />
       <main className="text-muted-foreground p-8 text-sm">Projekte …</main>

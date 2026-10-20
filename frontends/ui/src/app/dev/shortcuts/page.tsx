@@ -66,7 +66,7 @@ export default function ShortcutsPreviewPage() {
             canViewOrganization
             showKnowledge
             showSkills
-            canAccessArchiv
+            canAccessOfficeShelf
           />
         ) : (
         <ShortcutsCheatsheet
@@ -75,7 +75,7 @@ export default function ShortcutsPreviewPage() {
           canViewOrganization={everything}
           showKnowledge={everything}
           showSkills={everything}
-          canAccessArchiv={everything}
+          canAccessOfficeShelf={everything}
           canCollaborate={everything}
           // Its own flag since ADR-0042, so the preview has to pass it too — the
           // prop defaults to false, and without this the "everything" variant

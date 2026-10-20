@@ -40,7 +40,7 @@ export const ORG_PERMISSIONS = {
   /** Read the download log: who took which document out (ADR-0088). Reading it is audited. */
   downloadLogView: 'org:downloads:view',
   /** Manage the org-wide document Archiv (upload/delete/reingest/retag). */
-  archivManage: 'org:archiv:manage',
+  officeShelfManage: 'org:archiv:manage',
   /** Author/edit/delete skills in the org toolbox (Agent Skills). */
   skillsManage: 'org:skills:manage',
   /** Create new projects in the organization. */

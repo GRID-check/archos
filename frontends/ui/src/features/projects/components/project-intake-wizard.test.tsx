@@ -592,7 +592,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   })
   afterEach(() => localStorage.clear())
 
-  const vorhabenFact = (value: string[], updatedAt: string) => ({
+  const plannedWorkFact = (value: string[], updatedAt: string) => ({
     value,
     confidence: 'confirmed' as const,
     source: 'user_confirmed' as const,
@@ -611,7 +611,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
       })
     )
     const initialProfile = {
-      facts: { vorhabensart: vorhabenFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -640,7 +640,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
       })
     )
     const initialProfile = {
-      facts: { vorhabensart: vorhabenFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -670,7 +670,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
       })
     )
     const initialProfile = {
-      facts: { vorhabensart: vorhabenFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -696,7 +696,7 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
       JSON.stringify({ answers: { A5: ['sanierung'] }, currentStep: 0 })
     )
     const initialProfile = {
-      facts: { vorhabensart: vorhabenFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},

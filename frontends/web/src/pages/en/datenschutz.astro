@@ -1,6 +1,6 @@
 ---
 import BaseLayout from '../../layouts/BaseLayout.astro'
-import DatenschutzBody from '../../components/organisms/DatenschutzBody.astro'
+import PrivacyBody from '../../components/organisms/PrivacyBody.astro'
 import { ui } from '../../i18n/ui'
 import { SHARE_ART } from '../../lib/seo'
 
@@ -8,5 +8,5 @@ const t = ui.en.seo.pages.datenschutz
 ---
 
 <BaseLayout locale="en" title={t.title} description={t.description} ogArt={SHARE_ART.legal}>
-  <DatenschutzBody locale="en" />
+  <PrivacyBody locale="en" />
 </BaseLayout>

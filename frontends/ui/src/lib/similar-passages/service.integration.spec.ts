@@ -77,7 +77,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
   let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
   let service: typeof import('./service')
   let restrictedCollectionName: typeof import('@/lib/authz/folder-access').restrictedCollectionName
-  let archiv = ''
+  let officeShelf = ''
   const calls: BackendCall[] = []
   /** Every collection the backend answers from, with the file names it claims: a liar's answer included. */
   let answer: Array<{ collection: string; file_name: string; score: number }> = []
@@ -180,7 +180,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
     db = (await import('@/lib/db')).getDb()
     service = await import('./service')
     restrictedCollectionName = (await import('@/lib/authz/folder-access')).restrictedCollectionName
-    archiv = (await import('@/lib/archiv/collection')).archivCollectionName(ORG)
+    officeShelf = (await import('@/lib/office-shelf/collection')).officeShelfCollectionName(ORG)
 
     ids.current = await project(ORG, 'Wohnhaus Mödling', collections.current)
     ids.neighbour = await project(ORG, 'Schule Baden', collections.neighbour)
@@ -209,8 +209,8 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
     await document(ids.closed, 'Fluchtweg-Nachweis.pdf', collections.closed)
     await close(ids.closed)
     ids.unreadableDoc = await document(ids.unreadable, 'Fremd.pdf', collections.unreadable)
-    await document(null, 'Musterdetail-Treppe.pdf', archiv)
-    await document(null, 'Archiv-gesperrt.pdf', archiv, { held: 'quarantined' })
+    await document(null, 'Musterdetail-Treppe.pdf', officeShelf)
+    await document(null, 'Archiv-gesperrt.pdf', officeShelf, { held: 'quarantined' })
     const foreign = await project(OTHER_ORG, 'Anderes Büro', collections.current)
     await document(foreign, 'Baubeschreibung.pdf', collections.current, { organizationId: OTHER_ORG })
 
@@ -269,7 +269,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
     expect(calls).toHaveLength(1)
     const asked = calls[0].body.collections
     expect([...asked].sort()).toEqual(
-      [collections.current, collections.cleared, collections.neighbour, collections.closed, archiv].sort()
+      [collections.current, collections.cleared, collections.neighbour, collections.closed, officeShelf].sort()
     )
     expect(asked).not.toContain(collections.unreadable)
     expect(asked).not.toContain(collections.restricted)
@@ -285,7 +285,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
 
   it('shows screened documents of every place in reach, and never a held one, the reader’s own upload included', async () => {
     answer = [
-      { collection: archiv, file_name: 'Musterdetail-Treppe.pdf', score: 0.97 },
+      { collection: officeShelf, file_name: 'Musterdetail-Treppe.pdf', score: 0.97 },
       { collection: collections.current, file_name: 'Gesperrt.pdf', score: 0.96 },
       { collection: collections.current, file_name: 'Noch-in-Prüfung.pdf', score: 0.95 },
       { collection: collections.current, file_name: 'Brandschutzkonzept.pdf', score: 0.94 },
@@ -293,7 +293,7 @@ describe.skipIf(!url)('similar passages against live Postgres', () => {
       { collection: collections.current, file_name: 'Baubeschreibung.pdf', score: 0.92 },
       { collection: collections.cleared, file_name: 'Werkvertrag.pdf', score: 0.91 },
       { collection: collections.closed, file_name: 'Fluchtweg-Nachweis.pdf', score: 0.9 },
-      { collection: archiv, file_name: 'Archiv-gesperrt.pdf', score: 0.89 },
+      { collection: officeShelf, file_name: 'Archiv-gesperrt.pdf', score: 0.89 },
       // What a lying or confused backend might add: a project and a folder this reader may not read.
       { collection: collections.unreadable, file_name: 'Fremd.pdf', score: 0.99 },
       { collection: collections.restricted, file_name: 'Honorarnote.pdf', score: 0.98 },

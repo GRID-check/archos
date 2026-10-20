@@ -21,7 +21,7 @@ from unittest.mock import patch
 
 import pytest
 from knowledge_layer.llamaindex import adapter
-from knowledge_layer.llamaindex import fassungen
+from knowledge_layer.llamaindex import revisions
 from knowledge_layer.llamaindex import visual_analysis as va
 from knowledge_layer.llamaindex import visual_domains as vd
 
@@ -216,16 +216,16 @@ class TestTheDocumentsFacts:
         later = {**FULL_BLOCK, "revision": "D"}
         chunks = [_chunk(3, later, registry), _chunk(2, FULL_BLOCK, registry), _chunk(1, None, registry)]
 
-        assert fassungen.revision_facts_from_documents(chunks) == {**FULL_BLOCK, "page": 2}
+        assert revisions.revision_facts_from_documents(chunks) == {**FULL_BLOCK, "page": 2}
 
     def test_a_cover_with_only_a_title_does_not_beat_the_sheet_that_names_the_number(self, registry):
         cover = {"title": "Deckblatt"}
         chunks = [_chunk(1, cover, registry), _chunk(2, FULL_BLOCK, registry)]
 
-        assert fassungen.revision_facts_from_documents(chunks)["document_number"] == "A-101"
+        assert revisions.revision_facts_from_documents(chunks)["document_number"] == "A-101"
 
     def test_a_title_only_block_is_better_than_none(self, registry):
-        assert fassungen.revision_facts_from_documents([_chunk(1, {"title": "Deckblatt"}, registry)]) == {
+        assert revisions.revision_facts_from_documents([_chunk(1, {"title": "Deckblatt"}, registry)]) == {
             "title": "Deckblatt",
             "page": 1,
         }
@@ -235,15 +235,15 @@ class TestTheDocumentsFacts:
             _chunk(1, {"document_number": "A-101"}, registry),
             _chunk(2, {"revision": "C", "revision_date": "14.08.2026"}, registry),
         ]
-        assert fassungen.revision_facts_from_documents(chunks) == {"document_number": "A-101", "page": 1}
+        assert revisions.revision_facts_from_documents(chunks) == {"document_number": "A-101", "page": 1}
 
     def test_a_document_without_a_title_block_has_no_facts(self, registry):
         text_chunk = SimpleNamespace(metadata={"page_label": "1"})
         broken = SimpleNamespace(metadata={"page_label": "2", "drawing_data": "{not json"})
         no_page = SimpleNamespace(metadata={"drawing_data": _chunk(1, FULL_BLOCK, registry).metadata["drawing_data"]})
-        assert fassungen.revision_facts_from_documents([text_chunk, broken, no_page]) is None
-        assert fassungen.revision_facts_from_documents([_chunk(1, None, registry)]) is None
-        assert fassungen.revision_facts_from_documents([]) is None
+        assert revisions.revision_facts_from_documents([text_chunk, broken, no_page]) is None
+        assert revisions.revision_facts_from_documents([_chunk(1, None, registry)]) is None
+        assert revisions.revision_facts_from_documents([]) is None
 
 
 # ---------------------------------------------------------------------------
@@ -410,7 +410,7 @@ class TestSuggestionByNumber:
         ]
         llm = MagicMock()
 
-        suggestion = fassungen.suggest_revision(
+        suggestion = revisions.suggest_revision(
             "coll",
             "Entwurf neu.pdf",
             rows=rows,
@@ -430,7 +430,7 @@ class TestSuggestionByNumber:
     def test_the_index_on_the_sheet_beats_the_index_in_the_name(self, job_store, stored):
         rows = [_row("Grundriss_Index_C.pdf", {"document_number": "A-101", "revision": "B"})]
 
-        suggestion = fassungen.suggest_revision(
+        suggestion = revisions.suggest_revision(
             "coll",
             "Grundriss_Index_B.pdf",
             rows=rows,
@@ -448,7 +448,7 @@ class TestSuggestionByNumber:
         llm = MagicMock()
 
         assert (
-            fassungen.suggest_revision(
+            revisions.suggest_revision(
                 "coll",
                 "alt.pdf",
                 rows=rows,
@@ -471,7 +471,7 @@ class TestSuggestionByNumber:
         rows = [_row("gehalten.pdf", {"document_number": "A-101", "revision": "A"})]
 
         assert (
-            fassungen.suggest_revision(
+            revisions.suggest_revision(
                 "coll",
                 "neu.pdf",
                 rows=rows,
@@ -489,7 +489,7 @@ class TestSuggestionByNumber:
             _row("A.pdf", {"document_number": "A-101", "revision": "A"}, superseded_by="B.pdf"),
             _row("B.pdf", {"document_number": "A-101", "revision": "B"}),
         ]
-        suggestion = fassungen.suggest_revision(
+        suggestion = revisions.suggest_revision(
             "coll",
             "C.pdf",
             rows=rows,
@@ -502,7 +502,7 @@ class TestSuggestionByNumber:
         assert suggestion["of"] == "B.pdf"
 
     def test_candidates_carry_the_stored_facts_to_the_judge(self):
-        (candidate,) = fassungen.candidate_documents(
+        (candidate,) = revisions.candidate_documents(
             "neu.pdf", [_row("alt.pdf", {"document_number": "A-101"})], held=set()
         )
         assert candidate.revision_facts == {"document_number": "A-101"}
@@ -529,7 +529,7 @@ def _line(text: str, name: str) -> str:
 
 
 class TestListFiles:
-    def test_a_row_names_number_index_and_stand_from_the_title_block(self):
+    def test_a_row_names_number_index_and_state_from_the_title_block(self):
         rows = file_rows([_doc("Zeichnung 7.pdf", {**FULL_BLOCK, "page": 1}), _doc("Bericht.pdf")])
 
         text = render_listing(select_files(rows, shelf="project"))
@@ -541,7 +541,7 @@ class TestListFiles:
         text = render_listing(select_files(file_rows([_doc("a.pdf", FULL_BLOCK)]), shelf="project"))
         assert "1:100" not in _line(text, "a.pdf") and "Grundriss Erdgeschoss" not in _line(text, "a.pdf")
 
-    def test_a_title_only_block_adds_no_plankopf_bit(self):
+    def test_a_title_only_block_adds_no_title_block_bit(self):
         text = render_listing(select_files(file_rows([_doc("a.pdf", {"title": "Deckblatt"})]), shelf="project"))
         assert "Plankopf" not in _line(text, "a.pdf")
 
@@ -625,11 +625,11 @@ class TestListFiles:
 # Wired into the ingest: the facts are stored beside the summary and decide the suggestion
 # ---------------------------------------------------------------------------
 
-from tests.knowledge_layer_tests.test_fassung_ingestion import _documents  # noqa: E402
-from tests.knowledge_layer_tests.test_fassung_ingestion import _ingest  # noqa: E402
-from tests.knowledge_layer_tests.test_fassung_ingestion import live_ingestor  # noqa: E402, F401
-from tests.knowledge_layer_tests.test_fassung_ingestion import model  # noqa: E402, F401
-from tests.knowledge_layer_tests.test_fassung_ingestion import stores  # noqa: E402, F401
+from tests.knowledge_layer_tests.test_revision_ingestion import _documents  # noqa: E402
+from tests.knowledge_layer_tests.test_revision_ingestion import _ingest  # noqa: E402
+from tests.knowledge_layer_tests.test_revision_ingestion import live_ingestor  # noqa: E402, F401
+from tests.knowledge_layer_tests.test_revision_ingestion import model  # noqa: E402, F401
+from tests.knowledge_layer_tests.test_revision_ingestion import stores  # noqa: E402, F401
 
 
 @pytest.fixture
@@ -654,7 +654,7 @@ class TestIngestWiring:
             seen.append(len(documents))
             return facts
 
-        monkeypatch.setattr(fassungen, "revision_facts_from_documents", read)
+        monkeypatch.setattr(revisions, "revision_facts_from_documents", read)
         return seen
 
     def test_the_facts_read_from_the_pages_are_stored_on_the_documents_row(self, ingest, monkeypatch):

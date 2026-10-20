@@ -22,14 +22,14 @@ const stateAct = (
   id: string,
   short: string,
   title: string,
-  bundesland: string,
+  federalState: string,
   verifiedAt: string
 ) => ({
   id,
   title,
   short,
   rank: 'landesgesetz',
-  bundesland,
+  federalState: federalState,
   topics: ['Bewilligung'],
   relevance: 'hoch',
   application: `Lr${short.slice(0, 4)}`,
