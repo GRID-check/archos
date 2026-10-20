@@ -269,6 +269,12 @@ export const officeRenditionPayloadSchema = documentWorkPayloadSchema.extend({
     .nullable()
     .optional(),
   /** The older file this upload was filed as the new Fassung of (ADR-0099); absent for every other. */
+  revisionOf: z.string().nullable().optional(),
+  /**
+   * The key a job queued before the rename carries (migration 0165 era). The queue
+   * outlives a deploy, so a claimed job may still hold it; the consumer reads
+   * `revisionOf ?? fassungOf`, and nothing writes this key again. Remove after one release.
+   */
   fassungOf: z.string().nullable().optional(),
 })
 export type OfficeRenditionPayload = z.infer<typeof officeRenditionPayloadSchema>

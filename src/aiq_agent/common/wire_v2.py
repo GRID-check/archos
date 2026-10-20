@@ -126,7 +126,7 @@ class _OpenModel(BaseModel):
 # Payload value types
 # ---------------------------------------------------------------------------
 
-SourceKindKey = Literal["baurecht", "buero", "projekt", "web"]
+SourceKindKey = Literal["building_law", "office", "project", "web"]
 Channel = Literal["live", "technical"]
 Scope = Literal["chat", "deep"]
 
@@ -297,7 +297,7 @@ class QuoteStamp(_Model):
     title: str | None = None
     file_name: str | None = None
     page: int | None = None
-    punkt: str | None = None
+    clause: str | None = None
     url: str | None = None
 
 

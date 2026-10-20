@@ -125,7 +125,7 @@ def candidate_from_entry(entry) -> Candidate:
         citation_url=entry.citation_url or entry.source_url,
         document_number=entry.document_number,
         application=entry.application,
-        bundesland=entry.bundesland,
+        bundesland=entry.federal_state,
         origin="catalog",
         unavailable=unavailable,
     )

@@ -39,7 +39,7 @@ const ONORM = doc('ÖNORM B 1300', 'base', ['Pkt. 5.2'])
 
 const PLAN_STEP = (at: Date): RunStep => ({
   id: 'p1',
-  phase: 'planen',
+  phase: 'planning',
   intent: 'Fluchtweglängen, Gebäudeklasse und Wiener Abweichungen für Haus A klären',
   startedAt: at.toISOString(),
   docs: [],
@@ -49,14 +49,14 @@ const PLAN_STEP = (at: Date): RunStep => ({
 const ROUNDS = (at: (s: number) => Date): RunStep[] => [
   {
     id: 'r1',
-    phase: 'recherchieren',
+    phase: 'researching',
     intent: 'Klären, welche Fluchtweglängen OIB 2 für Gebäudeklasse 4 vorsieht',
     startedAt: at(20).toISOString(),
     docs: [OIB_2(['Pkt. 5.1.1', 'S. 12']), VIENNA_BUILDING_CODE, FIRE_SAFETY_CONCEPT(['S. 7'])],
   },
   {
     id: 'r2',
-    phase: 'recherchieren',
+    phase: 'researching',
     intent: 'Prüfen, ob das Atrium als Ersatz für den Treppenraum gilt',
     startedAt: at(45).toISOString(),
     docs: [OIB_2(['Pkt. 4.2', 'S. 18'], true), FLOOR_PLAN, OIB_2_3, EXPLANATORY_OIB_2],
@@ -64,7 +64,7 @@ const ROUNDS = (at: (s: number) => Date): RunStep[] => [
   },
   {
     id: 'r3',
-    phase: 'recherchieren',
+    phase: 'researching',
     intent: 'Wiener Abweichungen zur Fluchtweglänge und die Rauchabschnitte nachlesen',
     startedAt: at(80).toISOString(),
     docs: [WBTV, CHECKLIST, ONORM, FIRE_SAFETY_CONCEPT(['S. 9'], true)],
@@ -76,10 +76,10 @@ const ROUNDS = (at: (s: number) => Date): RunStep[] => [
 function researched(runId: string, start: Date, rounds: number): RunLedger {
   const at = (s: number): Date => new Date(start.getTime() + s * 1000)
   let ledger = emptyRunLedger(runId, start)
-  ledger = openPhase(ledger, 'planen', at(0))
+  ledger = openPhase(ledger, 'planning', at(0))
   ledger = appendStep(ledger, PLAN_STEP(at(1)), at(1))
-  ledger = closePhase(ledger, 'planen', at(12))
-  ledger = openPhase(ledger, 'recherchieren', at(12))
+  ledger = closePhase(ledger, 'planning', at(12))
+  ledger = openPhase(ledger, 'researching', at(12))
   for (const step of ROUNDS(at).slice(0, rounds)) {
     ledger = appendStep(ledger, step, new Date(step.startedAt))
   }
@@ -98,24 +98,24 @@ export function runSequence(runId: string, start: Date): RunLedger[] {
   const frames: RunLedger[] = []
   let ledger = emptyRunLedger(runId, start)
   frames.push(ledger)
-  ledger = openPhase(ledger, 'planen', at(1))
+  ledger = openPhase(ledger, 'planning', at(1))
   frames.push(ledger)
   ledger = appendStep(ledger, PLAN_STEP(at(2)), at(2))
-  ledger = closePhase(ledger, 'planen', at(12))
-  ledger = openPhase(ledger, 'recherchieren', at(12))
+  ledger = closePhase(ledger, 'planning', at(12))
+  ledger = openPhase(ledger, 'researching', at(12))
   frames.push(ledger)
   for (const step of ROUNDS(at)) {
     ledger = appendStep(ledger, step, new Date(step.startedAt))
     frames.push(ledger)
   }
-  ledger = closePhase(ledger, 'recherchieren', at(120))
-  ledger = openPhase(ledger, 'pruefen', at(120))
+  ledger = closePhase(ledger, 'researching', at(120))
+  ledger = openPhase(ledger, 'checking', at(120))
   frames.push(ledger)
-  ledger = closePhase(ledger, 'pruefen', at(145))
-  ledger = openPhase(ledger, 'schreiben', at(145))
+  ledger = closePhase(ledger, 'checking', at(145))
+  ledger = openPhase(ledger, 'writing', at(145))
   frames.push(ledger)
-  ledger = closePhase(ledger, 'schreiben', at(186))
-  ledger = openPhase(ledger, 'abgelegt', at(186))
+  ledger = closePhase(ledger, 'writing', at(186))
+  ledger = openPhase(ledger, 'filed', at(186))
   frames.push(ledger)
   ledger = finishRun(
     ledger,
@@ -138,18 +138,18 @@ export const RUN_RUNNING: RunLedger = researched('run-laeuft', secondsAgo(102), 
 
 export const RUN_WAITING: RunLedger = setRunStatus(
   researched('run-wartet', secondsAgo(140), 2),
-  'wartet',
+  'waiting',
   secondsAgo(80),
 )
 
 function finished(runId: string, fileId: string | undefined): RunLedger {
   let ledger = researched(runId, MORNING, 3)
-  ledger = closePhase(ledger, 'recherchieren', morning(102))
-  ledger = openPhase(ledger, 'pruefen', morning(102))
-  ledger = closePhase(ledger, 'pruefen', morning(127))
-  ledger = openPhase(ledger, 'schreiben', morning(127))
-  ledger = closePhase(ledger, 'schreiben', morning(168))
-  ledger = openPhase(ledger, 'abgelegt', morning(168))
+  ledger = closePhase(ledger, 'researching', morning(102))
+  ledger = openPhase(ledger, 'checking', morning(102))
+  ledger = closePhase(ledger, 'checking', morning(127))
+  ledger = openPhase(ledger, 'writing', morning(127))
+  ledger = closePhase(ledger, 'writing', morning(168))
+  ledger = openPhase(ledger, 'filed', morning(168))
   return finishRun(
     ledger,
     { ...(fileId ? { fileId } : {}), filedAt: morning(171).toISOString() },
@@ -162,22 +162,22 @@ export const RUN_DONE_INLINE: RunLedger = finished('run-fertig-inline', undefine
 
 export const RUN_FAILED: RunLedger = (() => {
   let ledger = researched('run-fehlgeschlagen', MORNING, 2)
-  ledger = closePhase(ledger, 'recherchieren', morning(70))
-  ledger = openPhase(ledger, 'pruefen', morning(70))
+  ledger = closePhase(ledger, 'researching', morning(70))
+  ledger = openPhase(ledger, 'checking', morning(70))
   return failRun(ledger, 'Das Budget war aufgebraucht, bevor die Prüfung fertig war.', morning(84))
 })()
 
 export const RUN_CANCELLED: RunLedger = (() => {
-  const ledger = setRunStatus(researched('run-abgebrochen', MORNING, 1), 'abgebrochen', morning(38))
+  const ledger = setRunStatus(researched('run-abgebrochen', MORNING, 1), 'cancelled', morning(38))
   return { ...ledger, finishedAt: morning(38).toISOString() }
 })()
 
 export const RUN_INTERRUPTED: RunLedger = (() => {
   let ledger = researched('run-unterbrochen', MORNING, 2)
-  ledger = closePhase(ledger, 'recherchieren', morning(61))
-  ledger = openPhase(ledger, 'schreiben', morning(61))
-  ledger = closePhase(ledger, 'schreiben', morning(95))
-  ledger = openPhase(ledger, 'abgelegt', morning(95))
+  ledger = closePhase(ledger, 'researching', morning(61))
+  ledger = openPhase(ledger, 'writing', morning(61))
+  ledger = closePhase(ledger, 'writing', morning(95))
+  ledger = openPhase(ledger, 'filed', morning(95))
   ledger = finishRun(ledger, { fileId: 'doc-brandschutz-teil', filedAt: morning(97).toISOString() }, morning(97))
-  return setRunStatus(ledger, 'unterbrochen', morning(97))
+  return setRunStatus(ledger, 'interrupted', morning(97))
 })()

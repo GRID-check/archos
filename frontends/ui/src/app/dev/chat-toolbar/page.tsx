@@ -238,7 +238,7 @@ export default function ChatToolbarPreviewPage(): JSX.Element {
                   timestamp: new Date('2024-01-15T10:00:00Z'),
                   runLedger: setRunStatus(
                     emptyRunLedger('run-1', new Date('2024-01-15T10:00:00Z')),
-                    'laeuft',
+                    'running',
                     new Date('2024-01-15T10:00:00Z')
                   ),
                 },

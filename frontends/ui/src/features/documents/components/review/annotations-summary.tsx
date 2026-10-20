@@ -99,14 +99,14 @@ export function AnnotationsSummary({
                   <MarkBody text={annotation.body} mentions={annotation.mentions} viewerId={review.me} clamped />
                 </span>
                 {/* Not drawn on this Fassung's pages, so the row says where it was set, as the review's list does. */}
-                {!annotation.onCurrentFassung && (
+                {!annotation.onCurrentRevision && (
                   <span
                     className="text-muted-foreground mt-0.5 block text-[11px] italic"
                     title={t('annotations.earlierRevisionHint')}
                     data-testid="annotations-summary-earlier"
                   >
-                    {annotation.fassungNumber
-                      ? t('annotations.earlierRevision', { number: annotation.fassungNumber })
+                    {annotation.revisionNumber
+                      ? t('annotations.earlierRevision', { number: annotation.revisionNumber })
                       : t('annotations.earlierRevisionUnnumbered')}
                   </span>
                 )}

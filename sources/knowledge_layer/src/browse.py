@@ -521,7 +521,7 @@ def select_files(
 
 #: What a row says of a file's change: a glance, so the model reads the files themselves for more.
 MAX_CHANGE_CHARS = 160
-#: The same line when the question IS the change (``fassungen_of``): what „was hat sich geändert“ is answered from.
+#: The same line when the question IS the change (``revisions_of``): what „was hat sich geändert“ is answered from.
 MAX_CHAIN_CHANGE_CHARS = 700
 
 
@@ -679,7 +679,7 @@ def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
 
 
 # ---------------------------------------------------------------------------
-# The Fassungen of one document (list_files fassungen_of=)
+# The Fassungen of one document (list_files revisions_of=)
 # ---------------------------------------------------------------------------
 
 #: Fassungen one answer lists before it counts the rest.
@@ -868,7 +868,7 @@ def _resolve_chain(
         rest = len(matches) - len(names)
         return [], (
             f"„{wanted.strip()}“ passt zu {len(chains)} verschiedenen Dokumenten: {', '.join(names)}"
-            f"{f' und {rest} weitere' if rest > 0 else ''}. Rufe `list_files(fassungen_of=…)` mit dem genauen "
+            f"{f' und {rest} weitere' if rest > 0 else ''}. Rufe `list_files(revisions_of=…)` mit dem genauen "
             "Dateinamen eines davon auf."
         )
     return _chain_order(_with_supersedes(next(iter(chains.values())))), ""
@@ -919,7 +919,7 @@ def render_revisions(
         "Die Änderungsangabe steht an der NEUEREN Fassung und vergleicht sie mit der darunter genannten Basis; "
         "zwischen zwei nicht benachbarten Fassungen lies die Zeilen dazwischen zusammen. Sie ist eine "
         "Zusammenfassung von Piloti, kein Beweis: was sich Seite für Seite geändert hat, zeigt "
-        "`list_files(fassungen_of=…, compare_to=…)`, und ein Maß prüfst du mit `read_passage(document=…)`. "
+        "`list_files(revisions_of=…, compare_to=…)`, und ein Maß prüfst du mit `read_passage(document=…)`. "
         "Eine ältere Fassung bleibt auf Wunsch lesbar; sonst stütze dich auf die aktuelle. "
         "Schreibe Dateinamen genau so, wie sie hier stehen."
     )
@@ -938,7 +938,7 @@ def resolve_compare(
     shelf: str | None = None,
     default_shelves: Sequence[str] = USER_SHELVES,
 ) -> tuple[FileRow | None, FileRow | None, str]:
-    """``(older, newer, "")`` for ``list_files(fassungen_of=…, compare_to=…)``, or ``(None, None, refusal)``.
+    """``(older, newer, "")`` for ``list_files(revisions_of=…, compare_to=…)``, or ``(None, None, refusal)``.
 
     ``wanted`` names the document and, when it names one Fassung exactly, that
     Fassung; otherwise the current one. ``compare_to`` names the other Fassung
@@ -955,7 +955,7 @@ def resolve_compare(
             (
                 f"Von „{wanted.strip()}“ gibt es auf diesem Regal nur diese eine Datei, also nichts zu vergleichen. "
                 "Frühere Hochladungen unter DEMSELBEN Dateinamen sind noch nicht im Index; was sich dort geändert hat, "
-                "steht als Änderungszeile in `list_files(fassungen_of=…)`."
+                "steht als Änderungszeile in `list_files(revisions_of=…)`."
             ),
         )
     exact = [row for row in members if fold(wanted.strip()) in (fold(row.file_name), fold(row.display_title or ""))]
@@ -1417,10 +1417,10 @@ _LIST_FILES_DESCRIPTION = (
     "- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n"
     "- `shelf=` project | archiv | session | base (base = the platform OIB corpus, listed only when asked).\n"
     "- `offset=` the next page, as the result says.\n"
-    "- `fassungen_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
+    "- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
     "upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; "
     "every other filter is ignored.\n"
-    '- `fassungen_of=` plus `compare_to=` another Fassung of that chain (its file name, or "vorige" for the one '
+    '- `revisions_of=` plus `compare_to=` another Fassung of that chain (its file name, or "previous" for the one '
     "before): what changed, page by page, in the printed text and in your reading of the drawings, with the "
     "Plankopf's Index and Stand. Call it for „was hat sich zwischen Index B und C geändert“.\n"
     "WHEN NOT TO CALL — to learn what a file SAYS: that is `read_passage` / `knowledge_search`. To "
@@ -1477,7 +1477,7 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         offset: int | str | None = None,
         limit: int | str | None = None,
         topic: str | None = None,
-        fassungen_of: str | None = None,
+        revisions_of: str | None = None,
         compare_to: str | None = None,
     ) -> str:
         """List the reader's files, like opening a folder in the Files pane.
@@ -1486,16 +1486,16 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             folder (str | None): Folder path as a previous listing or the inventory printed it
                 ("Brandschutz/Fluchtwege"); includes everything below it. Omit to list every file.
             name_contains (str | None): Words that must all appear in the file name or title.
-            doc_class (str | None): One Dokumentart key (e.g. "plan", "gutachten").
+            doc_class (str | None): One Dokumentart key (e.g. "oib_guideline", "law").
             added_since (str | None): Only files uploaded on or after this date, YYYY-MM-DD.
             shelf (str | None): project | archiv | session | base. Omit for the reader's own files.
             sort (str | None): folder (default) | name | newest.
             offset (int | None): Start of the page; the result names the next one.
             limit (int | None): Page size, default 40, at most 100.
             topic (str | None): A Thema Piloti recognised (e.g. "Attika", "Holzrahmenbau"); matches part of a topic.
-            fassungen_of (str | None): A file name; returns that document's chain of Fassungen instead of a listing.
-            compare_to (str | None): With `fassungen_of`: compare that Fassung with this one (a file name of the
-                same chain, or "vorige" for the one before) and return what changed, page by page.
+            revisions_of (str | None): A file name; returns that document's chain of Fassungen instead of a listing.
+            compare_to (str | None): With `revisions_of`: compare that Fassung with this one (a file name of the
+                same chain, or "previous" for the one before) and return what changed, page by page.
 
         Returns:
             str: A count, the subfolders with counts, and one line per file with its exact name.
@@ -1503,19 +1503,19 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         shelf, refusal = _check_shelf(shelf)
         if refusal:
             return refusal
-        if (fassungen_of or "").strip():
+        if (revisions_of or "").strip():
             # A chain is not a listing: no other filter applies, so none is validated either.
             turn = restrict_rows_to_turn(await _turn_rows(search_config))
             if shelf and turn.allowed is not None and shelf not in turn.allowed:
                 return shelf_restricted_message(shelf, turn.allowed)
             if compare_to is not None:
                 older, newer, refusal = resolve_compare(
-                    turn.rows, fassungen_of or "", compare_to, shelf=shelf, default_shelves=turn.own_shelves
+                    turn.rows, revisions_of or "", compare_to, shelf=shelf, default_shelves=turn.own_shelves
                 )
                 if refusal or older is None or newer is None:
                     return refusal
                 return await compare_revisions(older, newer)
-            return render_revisions(turn.rows, fassungen_of or "", shelf=shelf, default_shelves=turn.own_shelves)
+            return render_revisions(turn.rows, revisions_of or "", shelf=shelf, default_shelves=turn.own_shelves)
         sort = (sort or "folder").strip().lower()
         if sort not in ("folder", "name", "newest"):
             return "`sort` must be folder, name or newest."
@@ -1525,10 +1525,12 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         doc_class = (doc_class or "").strip() or None
         if doc_class is not None:
             from aiq_agent.knowledge.document_classification import DOCUMENT_CLASSES
-            from aiq_agent.knowledge.document_classification import is_valid_doc_class
+            from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-            if not is_valid_doc_class(doc_class):
+            current_doc_class = canonical_doc_class(doc_class)
+            if current_doc_class is None:
                 return f"Invalid doc_class {doc_class!r}. Valid values: {', '.join(DOCUMENT_CLASSES)}."
+            doc_class = current_doc_class
 
         turn = restrict_rows_to_turn(await _turn_rows(search_config))
         if shelf and turn.allowed is not None and shelf not in turn.allowed:

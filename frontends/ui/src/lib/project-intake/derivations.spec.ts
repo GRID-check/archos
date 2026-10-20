@@ -18,27 +18,27 @@ import {
 
 type Inputs = Record<string, ProjectPrimitiveValue | undefined>
 
-const building = (inputs: Inputs): Inputs => ({ bauwerkstyp: 'gebaeude', ...inputs })
+const building = (inputs: Inputs): Inputs => ({ building_type: 'building', ...inputs })
 
 const singleFamilyHouse: Inputs = building({
-  gebaeudestellung: 'freistehend',
-  zugang_drei_seiten: true,
-  geschosse_oberirdisch: 2,
-  fluchtniveau_m: 3.2,
-  bgf_oberirdisch: 180,
-  nutzungseinheiten: 1,
-  nutzungen: ['wohnen'],
+  building_position: 'freestanding',
+  access_three_sides: true,
+  storeys_above_ground: 2,
+  escape_level_m: 3.2,
+  gfa_above_ground: 180,
+  use_units: 1,
+  uses: ['residential'],
 })
 
 const multiFamilyHouse: Inputs = building({
-  gebaeudestellung: 'freistehend',
-  zugang_drei_seiten: true,
-  geschosse_oberirdisch: 3,
-  fluchtniveau_m: 6.5,
-  bgf_oberirdisch: 900,
-  nutzungseinheiten: 6,
-  einheiten_ueber_400: false,
-  nutzungen: ['wohnen'],
+  building_position: 'freestanding',
+  access_three_sides: true,
+  storeys_above_ground: 3,
+  escape_level_m: 6.5,
+  gfa_above_ground: 900,
+  use_units: 6,
+  units_over_400: false,
+  uses: ['residential'],
 })
 
 const known = (value: BuildingClassResult['value']) => ({
@@ -55,18 +55,18 @@ describe('deriveGebaeudeklasse', () => {
     // No longer GK 1 (no three-side access), but 180 m² ≤ 400 m² makes it GK 2 by the first branch.
     [
       'the same EFH without three-side access is GK 2',
-      { ...singleFamilyHouse, zugang_drei_seiten: 'nein' },
+      { ...singleFamilyHouse, access_three_sides: 'nein' },
       known(2),
     ],
     // Angebaut excludes GK 1; 300 m² ≤ 400 m² gives GK 2.
     [
       'a Doppelhaus half, angebaut, 2 oG, 300 m², is GK 2',
       building({
-        gebaeudestellung: 'angebaut',
-        geschosse_oberirdisch: 2,
-        fluchtniveau_m: 6,
-        bgf_oberirdisch: 300,
-        nutzungseinheiten: 1,
+        building_position: 'attached',
+        storeys_above_ground: 2,
+        escape_level_m: 6,
+        gfa_above_ground: 300,
+        use_units: 1,
       }),
       known(2),
     ],
@@ -74,12 +74,12 @@ describe('deriveGebaeudeklasse', () => {
     [
       'a Reihenhaus of three units of at most 400 m², 900 m² in all, is GK 2',
       building({
-        gebaeudestellung: 'reihenhaus',
-        geschosse_oberirdisch: 2,
-        fluchtniveau_m: 6,
-        bgf_oberirdisch: 900,
-        nutzungseinheiten: 3,
-        einheiten_ueber_400: false,
+        building_position: 'terraced',
+        storeys_above_ground: 2,
+        escape_level_m: 6,
+        gfa_above_ground: 900,
+        use_units: 3,
+        units_over_400: false,
       }),
       known(2),
     ],
@@ -90,10 +90,10 @@ describe('deriveGebaeudeklasse', () => {
       'four storeys, FN 10 m, 1600 m², twelve units none above 400 m², is GK 4',
       {
         ...multiFamilyHouse,
-        geschosse_oberirdisch: 4,
-        fluchtniveau_m: 10,
-        bgf_oberirdisch: 1600,
-        nutzungseinheiten: 12,
+        storeys_above_ground: 4,
+        escape_level_m: 10,
+        gfa_above_ground: 1600,
+        use_units: 12,
       },
       known(4),
     ],
@@ -102,66 +102,66 @@ describe('deriveGebaeudeklasse', () => {
       'four storeys, FN 10 m, one of three units above 400 m², is GK 5',
       {
         ...multiFamilyHouse,
-        geschosse_oberirdisch: 4,
-        fluchtniveau_m: 10,
-        bgf_oberirdisch: 1600,
-        nutzungseinheiten: 3,
-        einheiten_ueber_400: true,
+        storeys_above_ground: 4,
+        escape_level_m: 10,
+        gfa_above_ground: 1600,
+        use_units: 3,
+        units_over_400: true,
       },
       known(5),
     ],
     // 6 oG rules out GK 1–4 whatever else holds, and FN 18 ≤ 22: GK 5 with nothing else known.
     [
       'six storeys at FN 18 m is GK 5, and nothing else matters',
-      building({ geschosse_oberirdisch: 6, fluchtniveau_m: 18 }),
+      building({ storeys_above_ground: 6, escape_level_m: 18 }),
       known(5),
     ],
     // Above 22 m there is no class at all.
     [
       'FN 25 m is a Hochhaus',
-      building({ fluchtniveau_m: 25 }),
+      building({ escape_level_m: 25 }),
       { value: null, hochhaus: true, applicable: true, missing: [] },
     ],
     // One Betriebseinheit of 2000 m²: GK 4 b) has no area limit.
     [
       'an office of one unit, 4 oG, FN 10.5 m, 2000 m², is GK 4',
       building({
-        gebaeudestellung: 'freistehend',
-        zugang_drei_seiten: true,
-        geschosse_oberirdisch: 4,
-        fluchtniveau_m: 10.5,
-        bgf_oberirdisch: 2000,
-        nutzungseinheiten: 1,
-        nutzungen: ['buero'],
+        building_position: 'freestanding',
+        access_three_sides: true,
+        storeys_above_ground: 4,
+        escape_level_m: 10.5,
+        gfa_above_ground: 2000,
+        use_units: 1,
+        uses: ['office'],
       }),
       known(4),
     ],
     // FN ≤ 7 gives GK 2; FN in (7, 11] gives GK 4 or GK 5 depending on the units; above 22 m a Hochhaus.
     [
       'without the Fluchtniveau, an angebaut 2-storey 300 m² building is open, and the units matter too',
-      building({ gebaeudestellung: 'angebaut', geschosse_oberirdisch: 2, bgf_oberirdisch: 300 }),
+      building({ building_position: 'attached', storeys_above_ground: 2, gfa_above_ground: 300 }),
       {
         value: null,
         hochhaus: false,
         applicable: true,
-        missing: ['fluchtniveau_m', 'nutzungseinheiten', 'einheiten_ueber_400'],
+        missing: ['escape_level_m', 'use_units', 'units_over_400'],
       },
     ],
     // With the units known not to exceed 400 m², only the Fluchtniveau is left to decide.
     [
       'and with the units known, only the Fluchtniveau is missing',
       building({
-        gebaeudestellung: 'angebaut',
-        geschosse_oberirdisch: 2,
-        bgf_oberirdisch: 300,
-        nutzungseinheiten: 2,
-        einheiten_ueber_400: false,
+        building_position: 'attached',
+        storeys_above_ground: 2,
+        gfa_above_ground: 300,
+        use_units: 2,
+        units_over_400: false,
       }),
-      { value: null, hochhaus: false, applicable: true, missing: ['fluchtniveau_m'] },
+      { value: null, hochhaus: false, applicable: true, missing: ['escape_level_m'] },
     ],
     [
       'a Kleinstgebäude is not classified',
-      { bauwerkstyp: 'klein', fluchtniveau_m: 3 },
+      { building_type: 'small', escape_level_m: 3 },
       { value: null, hochhaus: false, applicable: false, missing: [] },
     ],
     [
@@ -177,33 +177,33 @@ describe('deriveGebaeudeklasse', () => {
     expect(
       deriveBuildingClass({
         ...singleFamilyHouse,
-        zugang_drei_seiten: 'ja',
-        geschosse_oberirdisch: '2',
-        fluchtniveau_m: '3.2',
+        access_three_sides: 'ja',
+        storeys_above_ground: '2',
+        escape_level_m: '3.2',
       }).value
     ).toBe(1)
     // `offen` is no answer: GK 1 or GK 2 is then open on the access alone.
-    expect(deriveBuildingClass({ ...singleFamilyHouse, zugang_drei_seiten: 'offen' })).toEqual({
+    expect(deriveBuildingClass({ ...singleFamilyHouse, access_three_sides: 'offen' })).toEqual({
       value: null,
       hochhaus: false,
       applicable: true,
-      missing: ['zugang_drei_seiten'],
+      missing: ['access_three_sides'],
     })
   })
 
   it('needs the Bauwerkstyp before it names a class', () => {
-    expect(deriveBuildingClass({ ...singleFamilyHouse, bauwerkstyp: undefined })).toEqual({
+    expect(deriveBuildingClass({ ...singleFamilyHouse, building_type: undefined })).toEqual({
       value: null,
       hochhaus: false,
       applicable: true,
-      missing: ['bauwerkstyp'],
+      missing: ['building_type'],
     })
   })
 })
 
 describe('boundaries', () => {
-  const low = (fluchtniveau_m: number, extra: Inputs = {}) =>
-    deriveBuildingClass({ ...multiFamilyHouse, bgf_oberirdisch: 300, fluchtniveau_m, ...extra }).value
+  const low = (escape_level_m: number, extra: Inputs = {}) =>
+    deriveBuildingClass({ ...multiFamilyHouse, gfa_above_ground: 300, escape_level_m, ...extra }).value
 
   it('holds „höchstens" at exactly 7, 11 and 22 m', () => {
     expect(low(7)).toBe(2) // 6 units: not GK 1; 300 m² ≤ 400 m²: GK 2
@@ -211,89 +211,89 @@ describe('boundaries', () => {
     expect(low(11)).toBe(4)
     expect(low(11.01)).toBe(5)
     expect(low(22)).toBe(5)
-    expect(deriveBuildingClass({ ...multiFamilyHouse, fluchtniveau_m: 22.01 })).toMatchObject({
+    expect(deriveBuildingClass({ ...multiFamilyHouse, escape_level_m: 22.01 })).toMatchObject({
       value: null,
       hochhaus: true,
     })
   })
 
   it('holds „höchstens" at exactly 400 and 800 m²', () => {
-    const area = (bgf_oberirdisch: number, extra: Inputs = {}) =>
-      deriveBuildingClass({ ...singleFamilyHouse, bgf_oberirdisch, ...extra }).value
+    const area = (gfa_above_ground: number, extra: Inputs = {}) =>
+      deriveBuildingClass({ ...singleFamilyHouse, gfa_above_ground, ...extra }).value
     expect(area(400)).toBe(1)
     expect(area(400.5)).toBe(2) // freistehend, three sides, rein Wohnen, ≤ 800 m²
     expect(area(800)).toBe(2)
     expect(area(800.5)).toBe(3)
     // A garage in the house is no reines Wohngebäude: the 800 m² branch closes.
-    expect(area(600, { nutzungen: ['wohnen', 'garage'] })).toBe(3)
+    expect(area(600, { uses: ['residential', 'garage'] })).toBe(3)
   })
 
   it('holds „höchstens" at exactly 3 and 4 oberirdische Geschoße', () => {
-    const storeys = (geschosse_oberirdisch: number) =>
-      deriveBuildingClass({ ...singleFamilyHouse, fluchtniveau_m: 6, geschosse_oberirdisch }).value
+    const storeys = (storeys_above_ground: number) =>
+      deriveBuildingClass({ ...singleFamilyHouse, escape_level_m: 6, storeys_above_ground }).value
     expect(storeys(3)).toBe(1)
     expect(storeys(4)).toBe(4) // one unit: GK 4 b)
     expect(storeys(5)).toBe(5)
   })
 
   it('counts the building with two units as GK 1 and with three as no longer', () => {
-    expect(deriveBuildingClass({ ...singleFamilyHouse, nutzungseinheiten: 2 }).value).toBe(1)
-    expect(deriveBuildingClass({ ...singleFamilyHouse, nutzungseinheiten: 3 }).value).toBe(2)
+    expect(deriveBuildingClass({ ...singleFamilyHouse, use_units: 2 }).value).toBe(1)
+    expect(deriveBuildingClass({ ...singleFamilyHouse, use_units: 3 }).value).toBe(2)
   })
 })
 
 describe('possibleGebaeudeklassen', () => {
   it('lists what the building can still turn out to be', () => {
     const open = building({
-      gebaeudestellung: 'angebaut',
-      geschosse_oberirdisch: 2,
-      bgf_oberirdisch: 300,
+      building_position: 'attached',
+      storeys_above_ground: 2,
+      gfa_above_ground: 300,
     })
     expect(possibleBuildingClasses(open)).toEqual(new Set([2, 4, 5, 'hochhaus']))
     expect(
-      possibleBuildingClasses({ ...open, nutzungseinheiten: 2, einheiten_ueber_400: false })
+      possibleBuildingClasses({ ...open, use_units: 2, units_over_400: false })
     ).toEqual(new Set([2, 4, 5, 'hochhaus']))
     expect(possibleBuildingClasses(singleFamilyHouse)).toEqual(new Set([1]))
-    expect(possibleBuildingClasses({ bauwerkstyp: 'sonstig' })).toEqual(new Set())
+    expect(possibleBuildingClasses({ building_type: 'other' })).toEqual(new Set())
   })
 })
 
 describe('decisiveInputs', () => {
   it('names an open input only when one of its bands can flip the outcome', () => {
-    expect(decisiveInputs(building({ geschosse_oberirdisch: 6, fluchtniveau_m: 18 }))).toEqual([])
-    expect(decisiveInputs(building({ fluchtniveau_m: 25 }))).toEqual([])
+    expect(decisiveInputs(building({ storeys_above_ground: 6, escape_level_m: 18 }))).toEqual([])
+    expect(decisiveInputs(building({ escape_level_m: 25 }))).toEqual([])
     // Angebaut: the three-side access and the uses only matter for a freistehend building.
     expect(
       decisiveInputs(
-        building({ gebaeudestellung: 'angebaut', geschosse_oberirdisch: 2, bgf_oberirdisch: 300 })
+        building({ building_position: 'attached', storeys_above_ground: 2, gfa_above_ground: 300 })
       )
-    ).toEqual(['fluchtniveau_m', 'nutzungseinheiten', 'einheiten_ueber_400'])
+    ).toEqual(['escape_level_m', 'use_units', 'units_over_400'])
   })
 
   it('names at least one input whenever more than one outcome is possible, and none otherwise', () => {
     const samples: Inputs[] = [
       {},
       building({}),
-      building({ fluchtniveau_m: 9 }),
-      building({ geschosse_oberirdisch: 2, fluchtniveau_m: 5 }),
-      { ...singleFamilyHouse, zugang_drei_seiten: undefined, nutzungseinheiten: undefined },
-      { ...multiFamilyHouse, gebaeudestellung: undefined },
+      building({ escape_level_m: 9 }),
+      building({ storeys_above_ground: 2, escape_level_m: 5 }),
+      { ...singleFamilyHouse, access_three_sides: undefined, use_units: undefined },
+      { ...multiFamilyHouse, building_position: undefined },
       singleFamilyHouse,
       multiFamilyHouse,
     ]
     for (const inputs of samples) {
       const outcomes =
-        possibleBuildingClasses(inputs).size + (inputs.bauwerkstyp === undefined ? 1 : 0)
+        possibleBuildingClasses(inputs).size + (inputs.building_type === undefined ? 1 : 0)
       expect(decisiveInputs(inputs).length > 0, JSON.stringify(inputs)).toBe(outcomes > 1)
     }
   })
 
   it('agrees with deriveBuildingClass’s missing', () => {
-    const inputs = { ...multiFamilyHouse, gebaeudestellung: undefined, nutzungen: undefined }
+    const inputs = { ...multiFamilyHouse, building_position: undefined, uses: undefined }
     // A Reihenhaus of units ≤ 400 m² would be GK 2; any other Stellung leaves GK 3. The uses only
     // matter for the 800 m² branch, which 900 m² misses.
-    expect(decisiveInputs(inputs)).toEqual(['gebaeudestellung'])
-    expect(deriveBuildingClass(inputs).missing).toEqual(['gebaeudestellung'])
+    expect(decisiveInputs(inputs)).toEqual(['building_position'])
+    expect(deriveBuildingClass(inputs).missing).toEqual(['building_position'])
   })
 })
 
@@ -312,7 +312,7 @@ describe('the definition', () => {
     )
     for (const input of BUILDING_CLASS_INPUTS) expect(written.has(input), input).toBe(true)
     const inputs: readonly string[] = BUILDING_CLASS_INPUTS
-    for (const question of questions.filter((item) => item.feeds === 'gebaeudeklasse')) {
+    for (const question of questions.filter((item) => item.feeds === 'building_class')) {
       expect(inputs, question.id).toContain(question.writesTo?.match(/^\/facts\/([^/]+)/)?.[1])
     }
   })

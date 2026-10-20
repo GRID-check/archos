@@ -63,7 +63,7 @@ export interface SectionStoreyData {
 export interface SectionMarkerData {
   label: string
   height_m: number
-  kind?: 'fluchtniveau' | 'threshold' | 'reference'
+  kind?: 'escape_level' | 'threshold' | 'reference'
 }
 
 /** A required distance from the building footprint to one parcel edge. */
@@ -106,7 +106,7 @@ export interface KeyTakeawayData {
  * `src/aiq_agent/cards/models.py`. The renderer prints the German word for each
  * beside its tone — the kind must never be carried by colour alone.
  */
-export type CalloutKind = 'hinweis' | 'achtung' | 'frist' | 'tipp'
+export type CalloutKind = 'note' | 'warning' | 'deadline' | 'tip'
 
 /**
  * One follow-up question. `question` is the exact text that lands in the

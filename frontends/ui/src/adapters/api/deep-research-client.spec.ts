@@ -237,8 +237,8 @@ describe('deep research SSE client', () => {
   describe('run.ledger handling', () => {
     const ledger = {
       runId: 'run-1',
-      status: 'laeuft',
-      phases: [{ phase: 'recherchieren', startedAt: '2026-09-16T08:00:00Z' }],
+      status: 'running',
+      phases: [{ phase: 'researching', startedAt: '2026-09-16T08:00:00Z' }],
       steps: [],
       startedAt: '2026-09-16T08:00:00Z',
       updatedAt: '2026-09-16T08:00:05Z',

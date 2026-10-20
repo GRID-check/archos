@@ -171,7 +171,7 @@ function useCarrying(review: DocumentReview) {
 function EarlierBar({ review, onCheckFixed }: { review: DocumentReview; onCheckFixed?: CheckFixed }): JSX.Element | null {
   const t = useTranslations('files')
   const { busy, failed, carry } = useCarrying(review)
-  const marks = review.annotations.filter((annotation) => !annotation.onCurrentFassung && annotation.carryTarget)
+  const marks = review.annotations.filter((annotation) => !annotation.onCurrentRevision && annotation.carryTarget)
   if (marks.length === 0) return null
   return (
     <div className="bg-muted/40 mx-0.5 mb-2 space-y-1 rounded-xl px-2.5 py-2" data-testid="review-earlier-bar">

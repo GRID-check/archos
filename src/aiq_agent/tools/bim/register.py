@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from pydantic import Field
 
 from aiq_agent.knowledge.bim_query import run_bim_query
+from aiq_agent.profile_names import normalize_profile_token
 from aiq_agent.project_context import get_organization_id_from_context
 from aiq_agent.project_context import get_project_id_from_context
 from aiq_agent.tools.bim.failures import NO_ORG_TEXT
@@ -99,8 +100,8 @@ _TOOL_DESCRIPTION = (
     "report that list, it is what the architect has to add in their CAD. Pass "
     "gebaeudeklasse and hauptnutzung from the project data when you know them; a rule that "
     "needs a fact it was not given stands down WITH its reason rather than guessing. "
-    "hauptnutzung must be one of wohnen, buero, beherbergung, versammlung, gesundheit, "
-    "landwirtschaft, produzierend, lager, sonstiges — anything else makes rules stand down as "
+    "hauptnutzung must be one of residential, office, lodging, assembly, healthcare, "
+    "agriculture, manufacturing, storage, other — anything else makes rules stand down as "
     "'not applicable', which reads as a verdict and is not one. gebaeudeklasse is 1-5.\n"
     "  'compliance-diff' — the same catalogue over two revisions, reporting only the "
     "requirements whose STATUS MOVED. Set 'compare_with' to a substring of the OLDER file's "
@@ -179,19 +180,19 @@ _TOOL_DESCRIPTION = (
 
 
 # The Hauptnutzung values the rule catalogue knows — mirroring
-# `BIM_HAUPTNUTZUNG` in `lib/bim/query.ts`, whose zod enum rejects anything
+# `BIM_MAIN_USE` in `lib/bim/query.ts`, whose zod enum rejects anything
 # else outright.
 _MAIN_USES = frozenset(
     {
-        "wohnen",
-        "buero",
-        "beherbergung",
-        "versammlung",
-        "gesundheit",
-        "landwirtschaft",
-        "produzierend",
-        "lager",
-        "sonstiges",
+        "residential",
+        "office",
+        "lodging",
+        "assembly",
+        "healthcare",
+        "agriculture",
+        "manufacturing",
+        "storage",
+        "other",
     }
 )
 
@@ -206,7 +207,8 @@ def _valid_main_use(value: str) -> str:
     presents as merely imprecise. Its sibling `_valid_gebaeudeklasse` is
     sanitised here for exactly this reason; this one was not.
     """
-    lowered = value.strip().lower()
+    # The German word (`wohnen`) is what a profile or a model that has not caught up still says.
+    lowered = normalize_profile_token("main_use", value.strip().lower())
     return lowered if lowered in _MAIN_USES else ""
 
 

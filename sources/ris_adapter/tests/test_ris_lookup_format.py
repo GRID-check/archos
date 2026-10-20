@@ -5,7 +5,7 @@
 ``extract_sources_from_tool_result`` fell through to the generic URL extractor
 and the answer cited a link. These tests assert the opposite for
 ``ris_lookup``: the SAME parser the knowledge layer registers reads the block,
-and what comes out carries a citation key, a Punkt and ``doc_class="gesetz"``.
+and what comes out carries a citation key, a Punkt and ``doc_class="law"``.
 
 That is the whole claim of the consolidation, as an assertion rather than a
 paragraph.
@@ -32,7 +32,7 @@ async def test_the_block_carries_every_field_the_grounding_grammar_needs(lookup,
     # The whole law's URL is not a citation, and printed it was copied as one.
     assert "Source URL:" not in output and lookup.WIEN_URL not in output
     assert "Shelf: base" in output
-    assert "Dokumentart: gesetz — Gesetz / Bauordnung" in output
+    assert "Dokumentart: law — Gesetz / Bauordnung" in output
     assert "Punkt: § 63 Abs 1" in output
     assert "Citation: Bauordnung für Wien, § 63 Abs 1" in output
     assert "Content Type: text" in output
@@ -51,8 +51,8 @@ async def test_the_knowledge_parser_reads_it_as_evidence(lookup, catalog):
     assert [e.citation_key for e in entries] == ["Bauordnung für Wien, § 63 Abs 1", "Bauordnung für Wien, § 63"]
     entry = entries[0]
     assert entry.citation_key == "Bauordnung für Wien, § 63 Abs 1"
-    assert entry.punkt == "§ 63 Abs 1"
-    assert entry.doc_class == "gesetz"
+    assert entry.clause == "§ 63 Abs 1"
+    assert entry.doc_class == "law"
     assert entry.source_type == "knowledge_layer"
     assert entry.shelf == "base"
     assert "Dem Ansuchen um Baubewilligung" in (entry.chunk_text or "")
@@ -73,8 +73,8 @@ async def test_the_lane_is_the_legal_source_lane_not_unknown(lookup, catalog):
 
     lanes = json.loads(output.split("## Trace-Lanes\n", 1)[1].strip())
 
-    assert [lane["key"] for lane in lanes["lanes"]] == ["baurecht_ris"]
-    assert lanes["lanes"][0]["kind"] == "baurecht"
+    assert [lane["key"] for lane in lanes["lanes"]] == ["building_law_ris"]
+    assert lanes["lanes"][0]["kind"] == "building_law"
 
 
 async def test_a_named_section_arrives_whole(lookup, catalog):

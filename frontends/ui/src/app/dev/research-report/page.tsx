@@ -38,10 +38,10 @@ const PLAN: PlanShape = {
     'Brandabschnitte',
     'Tragende Bauteile',
   ],
-  genre: 'pruefbericht',
-  depth: 'kurzpruefung',
-  grundlage: ['Brandschutzkonzept_v3.pdf', 'Einreichplan_EG.pdf'],
-  ausgeschlossen: ['Stellungnahme_MA37_alt.pdf'],
+  genre: 'inspection_report',
+  depth: 'quick_check',
+  basis: ['Brandschutzkonzept_v3.pdf', 'Einreichplan_EG.pdf'],
+  excluded: ['Stellungnahme_MA37_alt.pdf'],
   documents: DOCUMENTS,
 }
 
@@ -51,8 +51,8 @@ const JUDGED: Findings = {
     {
       requirement: 'Feuerwiderstand tragender Bauteile',
       value: 'REI 60',
-      status: 'erfuellt',
-      grounding: 'belegt',
+      status: 'met',
+      grounding: 'sourced',
       reference: { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b', page: 12 },
       citations: [1],
       comment: 'Gilt für GK 4; im Kellergeschoß REI 90.',
@@ -60,25 +60,25 @@ const JUDGED: Findings = {
     {
       requirement: 'Fluchtweglänge zum Treppenhaus',
       value: '38 m',
-      status: 'nicht_erfuellt',
-      grounding: 'belegt',
+      status: 'not_met',
+      grounding: 'sourced',
       reference: { document: 'OIB-Richtlinie 2', section: '5.1.1' },
       citations: [2],
       comment:
         'Zulässig sind 40 m ab der Wohnungseingangstür; gemessen wurde ab dem Aufenthaltsraum.',
     },
-    { requirement: 'Zweiter Fluchtweg', status: 'offen', grounding: 'offen', citations: [] },
+    { requirement: 'Zweiter Fluchtweg', status: 'open', grounding: 'open', citations: [] },
   ],
 }
 
 const COMPARED: Findings = {
   v: 1,
   items: [
-    { requirement: 'Variante A — Außentreppe', value: '12 m', grounding: 'belegt', citations: [1] },
+    { requirement: 'Variante A — Außentreppe', value: '12 m', grounding: 'sourced', citations: [1] },
     {
       requirement: 'Variante B — zweites Treppenhaus',
       value: '15 m',
-      grounding: 'belegt',
+      grounding: 'sourced',
       citations: [2],
     },
   ],
@@ -101,8 +101,8 @@ const REPORT_CITATIONS: CitationSource[] = [
   collection: 'oib_knowledge',
   title: 'OIB-Richtlinie 2, Ausgabe Mai 2023',
   origin: 'kb' as const,
-  kind: 'baurecht' as const,
-  lane: 'baurecht_oib',
+  kind: 'building_law' as const,
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   sourceType: 'knowledge_layer',
   page: Number(page),

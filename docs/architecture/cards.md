@@ -363,7 +363,7 @@ the heaviest user of this — six shapes inlined on every answering turn — unt
 migration `0071` retired it together with `piloti-voice`: the card craft moved
 into the `<cards>` section of Piloti's system prompt, and the rhetorical
 shapes it inlined became `answer_meta` trailer fields. Today the mechanism
-serves the genre skills (e.g. `oib/brandschutz` inlines its five), which pay
+serves the genre skills (e.g. `oib/fire-safety` inlines its five), which pay
 for their shapes only on the turns that activate them.
 
 Taking a retired type OUT of the list is not tidiness. `preferred_cards` filters

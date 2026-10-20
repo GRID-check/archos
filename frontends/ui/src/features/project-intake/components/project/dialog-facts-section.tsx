@@ -57,7 +57,7 @@ export function factDecisions(
     const place = after.address.place
     if (place && place.label === address) {
       decisions.push({ key: COUNTRY_KEY, action: 'answer', value: place.country })
-      if (place.bundesland) decisions.push({ key: FEDERAL_STATE_KEY, action: 'answer', value: place.bundesland })
+      if (place.federalState) decisions.push({ key: FEDERAL_STATE_KEY, action: 'answer', value: place.federalState })
     }
   }
   const description = after.description.trim()

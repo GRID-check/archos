@@ -166,9 +166,9 @@ export function periodOverlaps(period: { start: string; end: string | null }, fr
   return (!to || period.start <= to) && (!from || period.end === null || period.end >= from)
 }
 
-/** The project's address, from the brief's `standort_adresse` fact, when one was confirmed. */
+/** The project's address, from the brief's `site_address` fact, when one was confirmed. */
 export function projectAddressOf(project: Pick<Project, 'profile'>): string | null {
-  const value = project.profile?.facts?.standort_adresse?.value
+  const value = project.profile?.facts?.site_address?.value
   return typeof value === 'string' && value.trim() ? value.trim() : null
 }
 
@@ -178,7 +178,7 @@ function projectRefOf(project: Project): CrossProjectRef {
     id: project.id,
     name: project.name,
     status: projectStatusOf(project),
-    bundesland: federalStateOf(project.profile),
+    federal_state: federalStateOf(project.profile),
   }
 }
 
@@ -188,9 +188,9 @@ function projectRefOf(project: Project): CrossProjectRef {
  * is no evidence and is not read.
  */
 export function oibEditionOf(profile: Project['profile'] | null): CrossProjectListed['oibEdition'] {
-  const fact = profile?.facts?.oib_ausgabe?.value
+  const fact = profile?.facts?.oib_edition?.value
   if (typeof fact === 'string' && fact.trim()) return { value: fact.trim(), confirmed: true }
-  const suggestion = profile?.assumptions?.oib_ausgabe
+  const suggestion = profile?.assumptions?.oib_edition
   if (suggestion?.source === 'agent_suggested' && typeof suggestion.value === 'string' && suggestion.value.trim()) {
     return { value: suggestion.value.trim(), confirmed: false }
   }
@@ -222,11 +222,11 @@ export function holdsFacts(profile: Project['profile'] | null, filter: CrossProj
   const anyOf = <T>(wanted: readonly T[] | undefined, held: readonly T[]) =>
     !wanted?.length || wanted.some((value) => held.includes(value))
   return (
-    anyOf(filter.bundesland, facts.bundesland ? [facts.bundesland] : []) &&
-    anyOf(filter.gebaeudeklasse, facts.gebaeudeklasse) &&
-    anyOf(filter.bauweise, facts.bauweise) &&
-    anyOf(filter.nutzungen, facts.nutzungen) &&
-    anyOf(filter.vorhabensart, facts.vorhabensart)
+    anyOf(filter.federal_state, facts.federal_state ? [facts.federal_state] : []) &&
+    anyOf(filter.building_class, facts.building_class) &&
+    anyOf(filter.construction_method, facts.construction_method) &&
+    anyOf(filter.uses, facts.uses) &&
+    anyOf(filter.work_type, facts.work_type)
   )
 }
 

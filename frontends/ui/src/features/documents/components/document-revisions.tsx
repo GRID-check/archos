@@ -646,7 +646,7 @@ export function DocumentRevisions({
                 pending={pending}
                 onAct={(gesture, options) => void act(gesture, options)}
                 reviewers={reviewers}
-                fassungNumber={standing.number ?? undefined}
+                revisionNumber={standing.number ?? undefined}
                 publishBare
                 openMarks={openMarks}
                 // The signature line of the approve confirm: the viewer's own

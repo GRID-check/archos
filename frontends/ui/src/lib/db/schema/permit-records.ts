@@ -17,12 +17,39 @@ import { projects } from './projects'
  */
 
 /** What kind of notice the document is. */
-export const PERMIT_RECORD_KINDS = ['bewilligung', 'nachforderung', 'ablehnung', 'sonstiges'] as const
+export const PERMIT_RECORD_KINDS = ['approval', 'information_request', 'refusal', 'other'] as const
 export type PermitRecordKind = (typeof PERMIT_RECORD_KINDS)[number]
 
+/**
+ * The kinds as they were stored before migration 0166. An older pod or a
+ * Python worker that has not rolled yet can still send one; `canonicalPermitRecordKind`
+ * maps it so the German value is never written again. Remove after one release.
+ */
+export const LEGACY_PERMIT_RECORD_KINDS: Readonly<Record<string, PermitRecordKind>> = {
+  bewilligung: 'approval',
+  nachforderung: 'information_request',
+  ablehnung: 'refusal',
+  sonstiges: 'other',
+}
+
 /** What one item of a notice is: an Auflage of a granted permit, or what a Nachforderung demands. */
-export const PERMIT_REQUIREMENT_KINDS = ['auflage', 'nachforderung', 'hinweis'] as const
+export const PERMIT_REQUIREMENT_KINDS = ['condition', 'information_request', 'note'] as const
 export type PermitRequirementKind = (typeof PERMIT_REQUIREMENT_KINDS)[number]
+
+/** As {@link LEGACY_PERMIT_RECORD_KINDS}, for the items of a notice. */
+export const LEGACY_PERMIT_REQUIREMENT_KINDS: Readonly<Record<string, PermitRequirementKind>> = {
+  auflage: 'condition',
+  nachforderung: 'information_request',
+  hinweis: 'note',
+}
+
+/** The current record kind for a value that may be a legacy one; anything else passes through. */
+export const canonicalPermitRecordKind = (value: unknown): unknown =>
+  typeof value === 'string' ? (LEGACY_PERMIT_RECORD_KINDS[value] ?? value) : value
+
+/** The current requirement kind for a value that may be a legacy one; anything else passes through. */
+export const canonicalPermitRequirementKind = (value: unknown): unknown =>
+  typeof value === 'string' ? (LEGACY_PERMIT_REQUIREMENT_KINDS[value] ?? value) : value
 
 /** At most this many source folders restrict one row: the 0126 CHECK, as 0113 for memory (ADR-0088). */
 export const PERMIT_MAX_RESTRICTED_FOLDERS = 20
@@ -54,7 +81,7 @@ export const permitRecords = pgTable(
     /** The Gemeinde the procedure is in, as written. */
     municipality: text('municipality'),
     /** Intake token (`wien`, `niederoesterreich`, …) when the document makes it clear. */
-    bundesland: text('bundesland'),
+    federalState: text('federal_state'),
     /** The notice's date. */
     issuedOn: date('issued_on', { mode: 'string' }),
     /** Geschäftszahl / Aktenzahl. */
@@ -78,7 +105,7 @@ export const permitRecords = pgTable(
     }).onDelete('cascade'),
     projectIdx: index('permit_records_project_idx').on(table.projectId),
     organizationIdx: index('permit_records_organization_idx').on(table.organizationId),
-    kindCheck: check('permit_records_kind_check', sql`${table.kind} IN ('bewilligung', 'nachforderung', 'ablehnung', 'sonstiges')`),
+    kindCheck: check('permit_records_kind_check', sql`${table.kind} IN ('approval', 'information_request', 'refusal', 'other')`),
     restrictedFoldersCheck: check(
       'permit_records_restricted_folders_check',
       sql`${table.restrictedFolderIds} IS NULL OR cardinality(${table.restrictedFolderIds}) BETWEEN 1 AND 20`
@@ -120,7 +147,7 @@ export const permitRequirements = pgTable(
     projectIdx: index('permit_requirements_project_idx').on(table.projectId),
     recordIdx: index('permit_requirements_record_idx').on(table.recordId),
     organizationIdx: index('permit_requirements_organization_idx').on(table.organizationId),
-    kindCheck: check('permit_requirements_kind_check', sql`${table.kind} IN ('auflage', 'nachforderung', 'hinweis')`),
+    kindCheck: check('permit_requirements_kind_check', sql`${table.kind} IN ('condition', 'information_request', 'note')`),
     contentLength: check('permit_requirements_content_length', sql`char_length(${table.content}) <= 1000`),
     restrictedFoldersCheck: check(
       'permit_requirements_restricted_folders_check',

@@ -24,7 +24,7 @@ const filing = (id: string, folder: string, names: string[], patch: Partial<File
   kind: 'file_operation',
   payload: {
     operation: 'move',
-    operations: names.map((document) => ({ document, source: 'projekt' as const, target_folder: folder, reason: 'Passt.' })),
+    operations: names.map((document) => ({ document, source: 'project' as const, target_folder: folder, reason: 'Passt.' })),
     basis: 'name',
     ...patch,
   },

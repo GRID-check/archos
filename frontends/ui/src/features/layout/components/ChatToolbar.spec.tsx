@@ -97,7 +97,7 @@ vi.mock('@/features/chat', () => ({
                     content: '',
                     messageType: 'agent_response',
                     timestamp: new Date('2026-01-01T00:00:00Z'),
-                    runLedger: setRunStatus(emptyRunLedger('run-1'), 'laeuft'),
+                    runLedger: setRunStatus(emptyRunLedger('run-1'), 'running'),
                   },
                 ]
               : [],

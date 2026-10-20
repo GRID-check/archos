@@ -280,7 +280,7 @@ class TestTheRequest:
                     "operations": [
                         {
                             "document": "Brandschutzkonzept.pdf",
-                            "source": "projekt",
+                            "source": "project",
                             "current": "Nachweise",
                             "target_folder": "Einreichung",
                         }

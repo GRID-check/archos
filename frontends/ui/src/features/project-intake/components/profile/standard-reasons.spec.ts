@@ -26,12 +26,12 @@ const profile = (facts: Record<string, ProjectPrimitiveValue>): ProjectProfile =
 /** Profiles that between them reach every branch of the verdicts. */
 const PROFILES: Array<ProjectProfile | null> = [
   null,
-  profile({ projektphase: 'entwurf' }),
-  ...['produzierend', 'lager', 'landwirtschaft', 'sonstiges', 'wohnen', 'beherbergung', 'buero', 'gesundheit', 'versammlung'].map(
-    (hauptnutzung) => profile({ hauptnutzung })
+  profile({ project_phase: 'design' }),
+  ...['manufacturing', 'storage', 'agriculture', 'other', 'residential', 'lodging', 'office', 'healthcare', 'assembly'].map(
+    (main_use) => profile({ main_use })
   ),
-  profile({ hauptnutzung: 'wohnen', gebaeudeklasse: 'GK5' }),
-  profile({ hauptnutzung: 'wohnen', 'fluchtniveau_m@bw1': 24.6, 'geschosse_unterirdisch@bw1': 1 }),
+  profile({ main_use: 'residential', building_class: 'GK5' }),
+  profile({ main_use: 'residential', 'escape_level_m@bldg1': 24.6, 'storeys_below_ground@bldg1': 1 }),
 ]
 
 describe('standard reasons', () => {

@@ -36,7 +36,7 @@ describe('dialogFacts', () => {
   })
 
   test('an address a person changed hides the Gemeinde of the old hit; the profile names the Bundesland', () => {
-    const view = withItems(INTAKE_WAITING, [item('standort_adresse', 'Hauptplatz 1, 3100 St. Pölten'), item('bundesland', 'Niederösterreich', 'suggested')])
+    const view = withItems(INTAKE_WAITING, [item('site_address', 'Hauptplatz 1, 3100 St. Pölten'), item('federal_state', 'Niederösterreich', 'suggested')])
     expect(dialogFacts(view)).toMatchObject({
       address: 'Hauptplatz 1, 3100 St. Pölten',
       municipality: null,
@@ -46,7 +46,7 @@ describe('dialogFacts', () => {
   })
 
   test("the profile's description wins over the dialog's", () => {
-    expect(dialogFacts(withItems(INTAKE_WAITING, [item('kontext_beschreibung', 'Neubau eines Kindergartens')])).description).toBe('Neubau eines Kindergartens')
+    expect(dialogFacts(withItems(INTAKE_WAITING, [item('context_description', 'Neubau eines Kindergartens')])).description).toBe('Neubau eines Kindergartens')
   })
 
   test('nothing typed in the dialog reads as nothing', () => {
@@ -69,22 +69,22 @@ describe('factDecisions', () => {
 
   test('a typed address is the address alone; the Bundesland stays the reading’s to find', () => {
     expect(factDecisions(before, { address: { text: ' Hauptplatz 1, St. Pölten ', place: null }, description: FIXTURE_DESCRIPTION })).toEqual([
-      { key: 'standort_adresse', action: 'answer', value: 'Hauptplatz 1, St. Pölten' },
+      { key: 'site_address', action: 'answer', value: 'Hauptplatz 1, St. Pölten' },
     ])
   })
 
   test('a chosen hit brings its Land and Bundesland along', () => {
-    const place = { ...FIXTURE_LOCATION, label: 'Hauptplatz 1, 3100 St. Pölten', bundesland: 'niederoesterreich', state: 'Niederösterreich' }
+    const place = { ...FIXTURE_LOCATION, label: 'Hauptplatz 1, 3100 St. Pölten', federalState: 'lower_austria', state: 'Niederösterreich' }
     expect(factDecisions({ address: null, description: null }, { address: { text: place.label, place }, description: '' })).toEqual([
-      { key: 'standort_adresse', action: 'answer', value: place.label },
+      { key: 'site_address', action: 'answer', value: place.label },
       { key: 'country', action: 'answer', value: 'at' },
-      { key: 'bundesland', action: 'answer', value: 'niederoesterreich' },
+      { key: 'federal_state', action: 'answer', value: 'lower_austria' },
     ])
   })
 
   test('a description is written to the profile; emptying a field never erases a value', () => {
     expect(factDecisions(before, { address: { text: '', place: null }, description: 'Zubau' })).toEqual([
-      { key: 'kontext_beschreibung', action: 'answer', value: 'Zubau' },
+      { key: 'context_description', action: 'answer', value: 'Zubau' },
     ])
   })
 })

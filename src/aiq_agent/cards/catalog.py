@@ -435,7 +435,7 @@ CARD_EXAMPLES: dict[str, dict] = {
         # Ids exactly as ifc_query operation='compliance' reported them. The
         # card reports any that do not resolve rather than dropping them, so an
         # invented id is visible instead of silently narrowing the list.
-        "rule_ids": ["oib2-feuerwiderstand-tragend"],
+        "rule_ids": ["oib2-fire-resistance-load-bearing"],
         "note": "Orientierende Prüfung, kein Nachweis.",
     },
     # Shows BOTH selectors, because the choice between them is the thing that
@@ -502,7 +502,7 @@ CARD_EXAMPLES: dict[str, dict] = {
             {"label": "EG", "height_m": 3.5},
             {"label": "1.OG", "height_m": 3.2},
         ],
-        "markers": [{"label": "Fluchtniveau", "height_m": 9.8, "kind": "fluchtniveau"}],
+        "markers": [{"label": "Fluchtniveau", "height_m": 9.8, "kind": "escape_level"}],
         "reference": {
             "document": "OIB-Richtlinie 2",
             "section": "Pkt. 2 (Gebäudeklassen)",

@@ -226,7 +226,7 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
         if group:
             parts.append({"tags": {"$in": list(group)}})
     if filters.project_facts is not None:
-        facts = filters.project_facts.model_dump(mode="json")
+        facts = filters.project_facts.to_store()
         for key, value in facts.items():
             values = [value] if isinstance(value, str) else list(value or [])
             if values:
@@ -269,7 +269,11 @@ def add_document_search_routes(router: APIRouter):
                 groups=request.groups,
                 group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
                 filters=grouped_filters(request.filters),
-                boost=request.boost.model_dump(mode="json") if request.boost else None,
+                boost=(
+                    {"facts": request.boost.facts.to_store(), "weights": request.boost.weights.to_store()}
+                    if request.boost
+                    else None
+                ),
             )
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e

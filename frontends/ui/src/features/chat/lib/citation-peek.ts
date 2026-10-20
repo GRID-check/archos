@@ -21,17 +21,17 @@ import {
 /** A single stored file the chat may open from a turn's citations. */
 export interface PeekableCitedFile {
   fileName: string
-  source: 'projekt' | 'buero'
+  source: 'project' | 'office'
   title: string
 }
 
-const PEEKABLE_KINDS = new Set<CitedDocument['kind']>(['projekt', 'buero'])
+const PEEKABLE_KINDS = new Set<CitedDocument['kind']>(['project', 'office'])
 
 /**
  * The one project/Büro document a turn cited, or null when peeking would be
  * a guess (none, or more than one).
  *
- * Counts cited documents of kind `projekt`/`buero` only — baurecht and web
+ * Counts cited documents of kind `project`/`office` only — baurecht and web
  * never participate, even when they carry a filename. A cited document with
  * no filename still counts toward the "exactly one" rule so we do not open
  * a sibling that happened to have a name.
@@ -42,7 +42,7 @@ export const peekableCitedFile = (docs: CitedDocument[]): PeekableCitedFile | nu
   const doc = files[0]!
   const fileName = doc.fileName?.trim()
   if (!fileName) return null
-  if (doc.kind !== 'projekt' && doc.kind !== 'buero') return null
+  if (doc.kind !== 'project' && doc.kind !== 'office') return null
   return { fileName, source: doc.kind, title: doc.title }
 }
 

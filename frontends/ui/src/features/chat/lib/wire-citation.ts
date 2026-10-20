@@ -4,7 +4,7 @@
  */
 
 import type { CitationProject, CitationSource, WireCitationSource } from '../types'
-import { asShelf, asSourceKind } from './source-kinds'
+import { asShelf, asSourceKind, modernizeLane, modernizeSourceKind } from './source-kinds'
 import { parsePageRegions } from '@/features/knowledge/lib/page-region'
 import { toProjectStatus } from '@/lib/projects/project-status'
 
@@ -73,21 +73,22 @@ export const citationFromWire = (
     tool: wire.tool?.trim() || undefined,
     fileName: wire.file_name?.trim() || undefined,
     page: typeof wire.page === 'number' && Number.isFinite(wire.page) ? wire.page : undefined,
-    punkt: trimmed(wire.punkt),
+    // `punkt` is the pre-rename spelling an older pod and a stored row still carry.
+    clause: trimmed(wire.clause ?? wire.punkt),
     snippet: trimmed(wire.snippet),
     score: typeof wire.score === 'number' && Number.isFinite(wire.score) ? wire.score : undefined,
     number:
       typeof wire.number === 'number' && Number.isInteger(wire.number) && wire.number > 0
         ? wire.number
         : undefined,
-    kind: asSourceKind(wire.kind),
+    kind: asSourceKind(modernizeSourceKind(wire.kind)),
     // The shelf as the backend stated it (ADR-0047). An unrecognised or missing
     // value stays undefined — unknown, never a default shelf.
     shelf: asShelf(wire.shelf),
-    lane: trimmed(wire.lane),
+    lane: trimmed(modernizeLane(wire.lane)),
     laneLabel: trimmed(wire.lane_label),
     bindingNote: trimmed(wire.binding_note),
-    // `unbekannt` is the backend's explicit "no registry entry matched", which
+    // `unknown` is the backend's explicit "no registry entry matched", which
     // on screen must be silence, not a badge — dropping it here means an
     // unclassified source simply carries no binding chip rather than a
     // misleading one. See WireCitationSource.bindingStatus.
@@ -97,10 +98,22 @@ export const citationFromWire = (
   }
 }
 
-/** `unbekannt`/empty → undefined; any real classification kept verbatim. */
+/**
+ * The German binding statuses a stored citation or an older pod's wire still
+ * carries. Read-only: nothing writes these.
+ */
+export const LEGACY_BINDING_STATUS: Readonly<Record<string, string>> = {
+  bindend: 'binding',
+  verbindlich_erklaert: 'declared_binding',
+  auslegend: 'interpretive',
+  unbekannt: 'unknown',
+}
+
+/** `unknown`/empty → undefined; any real classification kept verbatim (English spelling). */
 const bindingStatusOrUndefined = (value: string | null | undefined): string | undefined => {
-  const status = value?.trim()
-  return status && status !== 'unbekannt' ? status : undefined
+  const raw = value?.trim()
+  const status = raw && Object.hasOwn(LEGACY_BINDING_STATUS, raw) ? LEGACY_BINDING_STATUS[raw] : raw
+  return status && status !== 'unknown' ? status : undefined
 }
 
 /**

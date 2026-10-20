@@ -30,18 +30,25 @@ class TestTheWire:
 
     async def test_it_posts_a_create_with_the_project_kind_and_goal(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
-        await task_tools.run_create_task("einreichcheck", "Mach den Einreichcheck bis Freitag")
+        await task_tools.run_create_task("submission_check", "Mach den Einreichcheck bis Freitag")
 
         payload, _ = calls[0]
         assert payload["op"] == "create"
         assert payload["projectId"] == PROJECT
-        assert payload["kind"] == "einreichcheck"
+        assert payload["kind"] == "submission_check"
         assert payload["goal"] == "Mach den Einreichcheck bis Freitag"
+
+    async def test_the_old_name_of_a_kind_is_sent_by_the_new_one(self, monkeypatch, calls) -> None:
+        """A conversation that already holds `create_task("einreichcheck", …)` invites the model to repeat it."""
+        responder(monkeypatch, ACCEPTED, calls)
+        await task_tools.run_create_task("einreichcheck", "Prüf das")
+
+        assert calls[0][0]["kind"] == "submission_check"
 
     async def test_it_echoes_the_envelope_unchanged(self, monkeypatch, calls) -> None:
         """Echo, never sign. The BFF reads the acting person out of THESE bytes."""
         responder(monkeypatch, ACCEPTED, calls)
-        await task_tools.run_create_task("einreichcheck", "Prüf das")
+        await task_tools.run_create_task("submission_check", "Prüf das")
 
         _, envelope = calls[0]
         assert envelope.header == ENVELOPE_HEADER
@@ -49,10 +56,10 @@ class TestTheWire:
 
     async def test_a_due_date_is_forwarded_and_an_empty_one_is_omitted(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
-        await task_tools.run_create_task("einreichcheck", "Prüf das", "2026-09-18")
+        await task_tools.run_create_task("submission_check", "Prüf das", "2026-09-18")
         assert calls[0][0]["due"] == "2026-09-18"
 
-        await task_tools.run_create_task("einreichcheck", "Prüf das", "   ")
+        await task_tools.run_create_task("submission_check", "Prüf das", "   ")
         # Absent, not empty: the BFF's schema is strict and `""` is not a date.
         assert "due" not in calls[1][0]
 
@@ -66,10 +73,10 @@ class TestTheWire:
 
     async def test_a_cadence_is_forwarded_and_an_empty_one_is_omitted(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
-        await task_tools.run_create_task("einreichcheck", "Prüf das", cadence="0 8 * * 1")
+        await task_tools.run_create_task("submission_check", "Prüf das", cadence="0 8 * * 1")
         assert calls[0][0]["cadence"] == "0 8 * * 1"
 
-        await task_tools.run_create_task("einreichcheck", "Prüf das", cadence="   ")
+        await task_tools.run_create_task("submission_check", "Prüf das", cadence="   ")
         # Absent, not empty: the BFF's schema is strict, and an empty string
         # would be a 400 for a field nobody asked about.
         assert "cadence" not in calls[1][0]
@@ -83,7 +90,7 @@ class TestRefusals:
         responder(monkeypatch, ACCEPTED, calls)
         bind_context(monkeypatch, headers={"x-grid-project-id": PROJECT}, conversation_id="conv-1")
 
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das")
+        answer = await task_tools.run_create_task("submission_check", "Prüf das")
         assert "Sitzungsnachweis" in answer
         assert calls == []
 
@@ -105,7 +112,7 @@ class TestRefusals:
             conversation_id="conv-1",
         )
 
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das")
+        answer = await task_tools.run_create_task("submission_check", "Prüf das")
         assert "kein Projekt" in answer
         assert calls == []
 
@@ -119,7 +126,7 @@ class TestRefusals:
 
     async def test_an_empty_goal_is_refused(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
-        answer = await task_tools.run_create_task("einreichcheck", "   ")
+        answer = await task_tools.run_create_task("submission_check", "   ")
         assert "Beschreibung" in answer
         assert calls == []
 
@@ -129,14 +136,14 @@ class TestRefusals:
         cadence = ",".join(["0 8 * * 1"] * 20)
         assert len(cadence) > task_tools.MAX_CADENCE_CHARS
 
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das", cadence=cadence)
+        answer = await task_tools.run_create_task("submission_check", "Prüf das", cadence=cadence)
 
         assert "zu lang" in answer
         assert calls == []
 
     async def test_a_refusal_from_the_route_says_nothing_was_created(self, monkeypatch) -> None:
         raiser(monkeypatch, DelegationError("the task API refused the call (403)", status=403))
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das")
+        answer = await task_tools.run_create_task("submission_check", "Prüf das")
         assert "nicht angenommen" in answer
 
 
@@ -147,7 +154,7 @@ class TestWhatTheReaderSees:
         self, monkeypatch, calls, registry
     ) -> None:
         responder(monkeypatch, ACCEPTED, calls)
-        await task_tools.run_create_task("einreichcheck", "Mach den Einreichcheck bis Freitag", "2026-09-18")
+        await task_tools.run_create_task("submission_check", "Mach den Einreichcheck bis Freitag", "2026-09-18")
 
         cards = task_cards(registry)
         assert len(cards) == 1
@@ -161,7 +168,7 @@ class TestWhatTheReaderSees:
 
     async def test_the_answer_says_the_work_is_running_and_not_done(self, monkeypatch, calls) -> None:
         responder(monkeypatch, ACCEPTED, calls)
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das")
+        answer = await task_tools.run_create_task("submission_check", "Prüf das")
         assert "angelegt" in answer
         assert "NICHT erledigt" in answer
 
@@ -172,7 +179,7 @@ class TestWhatTheReaderSees:
             {**ACCEPTED, "scheduled": True, "nextRunAt": "2026-09-21T08:00:00.000Z"},
             calls,
         )
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das jeden Montag", cadence="0 8 * * 1")
+        answer = await task_tools.run_create_task("submission_check", "Prüf das jeden Montag", cadence="0 8 * * 1")
         assert "Zeitplan angelegt" in answer
         assert "nicht jetzt" in answer
         assert "Der erste Lauf ist für 2026-09-21T08:00:00.000Z geplant." in answer
@@ -198,17 +205,17 @@ class TestWhatTheReaderSees:
     async def test_a_missing_card_registry_does_not_cost_the_delegation(self, monkeypatch, calls) -> None:
         """A CLI run has no card channel; the ROW is the product, the card is the announcement."""
         responder(monkeypatch, ACCEPTED, calls)
-        answer = await task_tools.run_create_task("einreichcheck", "Prüf das")
+        answer = await task_tools.run_create_task("submission_check", "Prüf das")
         assert "Auftrag angelegt" in answer
         assert len(calls) == 1
 
     async def test_an_answer_with_no_task_id_emits_no_card(self, monkeypatch, calls, registry) -> None:
         responder(monkeypatch, {**ACCEPTED, "taskId": ""}, calls)
-        await task_tools.run_create_task("einreichcheck", "Prüf das")
+        await task_tools.run_create_task("submission_check", "Prüf das")
         assert task_cards(registry) == []
 
 
-@pytest.mark.parametrize("kind", ["compliance_check", "einreichcheck", "document", "revision"])
+@pytest.mark.parametrize("kind", ["compliance_check", "submission_check", "document", "revision"])
 async def test_every_declared_kind_is_accepted(monkeypatch, calls, kind: str) -> None:
     """The four kinds are the four engines; a fifth would be a queue with nothing to run."""
     responder(monkeypatch, {**ACCEPTED, "kind": kind}, calls)

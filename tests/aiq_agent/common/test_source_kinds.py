@@ -2,7 +2,7 @@
 
 Locks the core invariant of the source-system redesign: every source resolves
 to exactly one of the four coarse kinds, and the OIB corpus and RIS share the
-same ``baurecht`` kind (they differ only in the fine lane sub-label).
+same ``building_law`` kind (they differ only in the fine lane sub-label).
 """
 
 from __future__ import annotations
@@ -32,19 +32,19 @@ class TestKindForLane:
     @pytest.mark.parametrize(
         "lane_key,expected",
         [
-            ("baurecht_oib", "baurecht"),
-            ("baurecht_oib_leitfaden", "baurecht"),
-            ("baurecht_ris", "baurecht"),
-            ("baurecht_bund", "baurecht"),
-            ("baurecht_land", "baurecht"),
-            ("baurecht_verordnung", "baurecht"),
-            ("behoerde", "baurecht"),
-            ("norm_extern", "baurecht"),
-            ("buero", "buero"),
+            ("building_law_oib", "building_law"),
+            ("building_law_oib_guide", "building_law"),
+            ("building_law_ris", "building_law"),
+            ("building_law_federal", "building_law"),
+            ("building_law_state", "building_law"),
+            ("building_law_ordinance", "building_law"),
+            ("authority", "building_law"),
+            ("external_standard", "building_law"),
+            ("office", "office"),
             # A published Piloti document is office knowledge — office colour,
             # its own sub-label inside the kind. Never a kind of its own.
-            ("buero_piloti", "buero"),
-            ("projekt", "projekt"),
+            ("office_piloti", "office"),
+            ("project", "project"),
             ("web", "web"),
         ],
     )
@@ -59,15 +59,15 @@ class TestKindForLane:
         assert kind_for_lane("") == DEFAULT_SOURCE_KIND
 
     def test_case_insensitive(self):
-        assert kind_for_lane("BAURECHT_OIB") == "baurecht"
+        assert kind_for_lane("BUILDING_LAW_OIB") == "building_law"
 
 
 class TestAgentAuthoredLane:
-    """The lane is a SUB-LABEL inside ``buero``, and the taxonomy owns both."""
+    """The lane is a SUB-LABEL inside ``office``, and the taxonomy owns both."""
 
     def test_it_is_a_lane_inside_the_office_kind(self):
-        assert AGENT_AUTHORED_LANE.startswith("buero_")
-        assert kind_for_lane(AGENT_AUTHORED_LANE) == "buero"
+        assert AGENT_AUTHORED_LANE.startswith("office_")
+        assert kind_for_lane(AGENT_AUTHORED_LANE) == "office"
 
     def test_the_lane_has_exactly_one_label_and_the_registry_carries_it(self):
         from aiq_agent.common.norm_registry import _LANE_LABELS
@@ -83,7 +83,7 @@ class TestAgentAuthoredLane:
 
 class TestSourceKindLookup:
     def test_known_kind(self):
-        assert source_kind("buero").label == "Büroablage"
+        assert source_kind("office").label == "Büroablage"
 
     def test_unknown_kind_fails_open(self):
         assert source_kind("nope").key == DEFAULT_SOURCE_KIND
@@ -100,25 +100,25 @@ class TestWireKind:
     def test_oib_corpus_is_baurecht(self):
         entry = SourceEntry(citation_key="oib-rl_2_ausgabe_mai_2023.pdf, p.12", source_type="knowledge_layer")
         wire = source_entry_to_wire(entry)
-        assert wire["kind"] == "baurecht"
-        assert wire["lane"] == "baurecht_oib"
+        assert wire["kind"] == "building_law"
+        assert wire["lane"] == "building_law_oib"
         assert wire["lane_label"] == "OIB-Richtlinie"
 
     def test_corpus_collection_is_baurecht(self):
         entry = SourceEntry(citation_key="anhang.pdf", collection="oib_knowledge", source_type="knowledge_layer")
-        assert source_entry_to_wire(entry)["kind"] == "baurecht"
+        assert source_entry_to_wire(entry)["kind"] == "building_law"
 
     def test_ris_url_is_baurecht(self):
         entry = SourceEntry(url="https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR99999999", source_type="generic")
-        assert source_entry_to_wire(entry)["kind"] == "baurecht"
+        assert source_entry_to_wire(entry)["kind"] == "building_law"
 
     def test_org_office_shelf_is_office(self):
         entry = SourceEntry(citation_key="detail.pdf", collection="archiv_org123", source_type="knowledge_layer")
-        assert source_entry_to_wire(entry)["kind"] == "buero"
+        assert source_entry_to_wire(entry)["kind"] == "office"
 
     def test_project_collection_is_project(self):
         entry = SourceEntry(citation_key="einreichplan.pdf", collection="proj_abc", source_type="knowledge_layer")
-        assert source_entry_to_wire(entry)["kind"] == "projekt"
+        assert source_entry_to_wire(entry)["kind"] == "project"
 
     def test_web_url_is_web(self):
         entry = SourceEntry(url="https://example.com/artikel", source_type="generic")
@@ -136,7 +136,7 @@ class TestBindingNote:
             source_type="generic",
         )
         wire = source_entry_to_wire(entry)
-        assert wire["kind"] == "baurecht"
+        assert wire["kind"] == "building_law"
         assert "verbindlich" in wire["binding_note"].lower()
 
     def test_non_ris_source_has_no_binding_note(self):

@@ -487,7 +487,7 @@ settled stays settled.
 A mark is set on one Fassung, because a position is true of the sheet somebody
 looked at. When the document gets a new Fassung, its open marks stay open and
 are listed and drawn only as ghosts (above), and the people working on them are told how many to
-check (`document.new_fassung`, [`revisions.md`](revisions.md#notifications)).
+check (`document.new_revision`, [`revisions.md`](revisions.md#notifications)).
 A mark that still holds goes on with the new Fassung: „Auf aktuelle Fassung
 übernehmen“ in its card's first line, for whoever may edit an open mark
 (`carryToCurrent`, `lib/annotations/service.ts`). It keeps its place on the

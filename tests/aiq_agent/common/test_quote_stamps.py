@@ -24,7 +24,7 @@ QUOTE = (
 
 
 def _entry(chunk: str | None = PASSAGE, key: str = "OIB-RL_2_2023.pdf, p. 14") -> SourceEntry:
-    return SourceEntry(citation_key=key, title="OIB-Richtlinie 2", chunk_text=chunk, punkt="3.1.1")
+    return SourceEntry(citation_key=key, title="OIB-Richtlinie 2", chunk_text=chunk, clause="3.1.1")
 
 
 class TestTheStamp:
@@ -34,7 +34,7 @@ class TestTheStamp:
         assert stamp["number"] == 2
         assert stamp["file_name"] == "OIB-RL_2_2023.pdf"
         assert stamp["page"] == 14
-        assert stamp["punkt"] == "3.1.1"
+        assert stamp["clause"] == "3.1.1"
         assert stamp["title"] == "OIB-Richtlinie 2"
 
     def test_a_passage_read_but_not_cited_still_proves_it_without_a_number(self):

@@ -250,7 +250,7 @@ describe('listFeedbackTurns', () => {
         conversation_title: 'T',
         // A tag the vocabulary does not know — written by an LLM, or a row
         // that predates the current keys. The UI has no label for it.
-        topics: ['brandschutz', 'not_a_real_tag'],
+        topics: ['fire_safety', 'not_a_real_tag'],
       },
     ])
     mockGetDb.mockReturnValue({ execute } as never)
@@ -258,7 +258,7 @@ describe('listFeedbackTurns', () => {
     const [row] = await listFeedbackTurns(ALL)
 
     expect(row.createdAt).toBeInstanceOf(Date)
-    expect(row.topics).toEqual(['brandschutz'])
+    expect(row.topics).toEqual(['fire_safety'])
     expect(row.expectedAnswer).toBeNull()
   })
 })
@@ -318,7 +318,7 @@ describe('getFeedbackWeeklySummary', () => {
 
     await getFeedbackWeeklySummary(
       narrowed(
-        { verdict: 'down', reasons: ['inaccurate'], topics: ['statik'], hasComment: true, query: 'GK' },
+        { verdict: 'down', reasons: ['inaccurate'], topics: ['structural'], hasComment: true, query: 'GK' },
         { from: '2026-10-07', to: '2026-10-09', organizationIds: ['org_9'], projectIds: ['0b6f2a1e-5c3d-4e8f-9a7b-1c2d3e4f5a61'] }
       )
     )
@@ -328,7 +328,7 @@ describe('getFeedbackWeeklySummary', () => {
     expect(sql).toContain('c.project_id in (')
     expect(sql).toContain('coalesce(f.project_id, c.project_id) in (')
     expect(sql.match(/c\.tags && array\[/g)).toHaveLength(2)
-    expect(params).toEqual(expect.arrayContaining(['org_9', 'statik', '2026-10-05T00:00:00.000Z', '2026-10-10T00:00:00.000Z']))
+    expect(params).toEqual(expect.arrayContaining(['org_9', 'structural', '2026-10-05T00:00:00.000Z', '2026-10-10T00:00:00.000Z']))
     expect(params).not.toContain('inaccurate')
     expect(params).not.toContain('%GK%')
     expect(sql).not.toContain('btrim')

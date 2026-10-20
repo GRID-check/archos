@@ -23,24 +23,24 @@ describe('useProjectRuleFacts', () => {
   afterEach(() => vi.unstubAllGlobals())
 
   it('reads the facts the catalogue needs', async () => {
-    stubProfile({ facts: { gebaeudeklasse: { value: 4 }, hauptnutzung: { value: 'wohnen' } } })
+    stubProfile({ facts: { building_class: { value: 4 }, main_use: { value: 'residential' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
-    expect(result.current.hauptnutzung).toBe('wohnen')
+    expect(result.current.hauptnutzung).toBe('residential')
     expect(result.current.missing).toEqual([])
   })
 
   it('accepts a Gebäudeklasse the profile stored as a string', async () => {
     // Profiles are written by several paths; the number arriving as text is a
     // storage detail, not a reason to stand a fire rule down.
-    stubProfile({ facts: { gebaeudeklasse: { value: '3' } } })
+    stubProfile({ facts: { building_class: { value: '3' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.gebaeudeklasse).toBe(3))
   })
 
   it('refuses a Gebäudeklasse outside 1–5 rather than clamping it', async () => {
     // Clamping 9 to 5 would invent a requirement the project never stated.
-    stubProfile({ facts: { gebaeudeklasse: { value: 9 } } })
+    stubProfile({ facts: { building_class: { value: 9 } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
     expect(result.current.gebaeudeklasse).toBeNull()
@@ -55,14 +55,14 @@ describe('useProjectRuleFacts', () => {
     // Gebäudeklasse" — every rule depending on it stood down as "nicht
     // einschlägig" here while the agent, which passes the number, returned
     // real verdicts. The card and the answer above it disagreed on screen.
-    stubProfile({ facts: { gebaeudeklasse: { value: 'GK4' } } })
+    stubProfile({ facts: { building_class: { value: 'GK4' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
     expect(result.current.missing).not.toContain('Gebäudeklasse')
   })
 
   it('accepts a bare number, which nothing forbids', async () => {
-    stubProfile({ facts: { gebaeudeklasse: { value: 4 } } })
+    stubProfile({ facts: { building_class: { value: 4 } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
   })
@@ -72,7 +72,7 @@ describe('useProjectRuleFacts', () => {
     // before the fetch resolves, so a `waitFor` on it passes at mount whatever
     // the answer turns out to be. This test used to do exactly that, and
     // therefore pinned nothing.
-    stubProfile({ facts: { gebaeudeklasse: { value: 'Klasse vier' } } })
+    stubProfile({ facts: { building_class: { value: 'Klasse vier' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
     expect(result.current.gebaeudeklasse).toBeNull()
@@ -85,7 +85,7 @@ describe('useProjectRuleFacts', () => {
     // On `ready`, for the reason spelled out two tests up — and asserting the
     // VALUE, which is the distinction: `missing` says the same thing at mount
     // whatever the answer turns out to be.
-    stubProfile({ facts: { hauptnutzung: { value: '  ' } } })
+    stubProfile({ facts: { main_use: { value: '  ' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
     expect(result.current.hauptnutzung).toBeNull()
@@ -101,7 +101,7 @@ describe('useProjectRuleFacts', () => {
       Hauptnutzung are missing from the brief — on a project where both are
       set, with a call to go and set them, and coming back changes nothing.
     */
-    stubProfile({ facts: { gebaeudeklasse: { value: 'GK4' }, hauptnutzung: { value: 'wohnen' } } })
+    stubProfile({ facts: { building_class: { value: 'GK4' }, main_use: { value: 'residential' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
 
     expect(result.current.ready).toBe(false)
@@ -141,7 +141,7 @@ describe('useProjectRuleFacts', () => {
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.failed).toBe(true))
 
-    stubProfile({ facts: { gebaeudeklasse: { value: 'GK4' } } })
+    stubProfile({ facts: { building_class: { value: 'GK4' } } })
     act(() => result.current.reload())
     await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
     expect(result.current.failed).toBe(false)

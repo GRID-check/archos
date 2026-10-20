@@ -67,9 +67,9 @@ const location: GeocodeResult = {
   lat: 48.2,
   lon: 16.37,
   country: 'at',
-  bundesland: 'wien',
+  federalState: 'vienna',
   state: 'Wien',
-  gemeinde: 'Wien',
+  municipality: 'Wien',
   postcode: '1010',
   kind: 'address',
 }

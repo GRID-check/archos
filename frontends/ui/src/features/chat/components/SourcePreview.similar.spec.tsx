@@ -82,7 +82,7 @@ const openCitation = () => {
     citationKey: `${FILE}, p.2`,
     fileName: FILE,
     collection: 'oib_knowledge',
-    kind: 'baurecht',
+    kind: 'building_law',
     page: 2,
     isCited: true,
     number: 1,

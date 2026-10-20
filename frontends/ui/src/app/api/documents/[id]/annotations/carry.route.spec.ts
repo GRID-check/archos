@@ -163,18 +163,18 @@ const MARK: AnnotationRecord = {
   delegatedBy: null,
   delegatedAt: null,
   carriedFromId: null,
-  fassungNumber: 1,
+  revisionNumber: 1,
   replies: [],
 }
 
-const ON_B: AnnotationRecord = { ...MARK, id: 'ann_b', documentId: 'doc_b', versionId: 'doc_b_ver_2', fassungNumber: 2 }
+const ON_B: AnnotationRecord = { ...MARK, id: 'ann_b', documentId: 'doc_b', versionId: 'doc_b_ver_2', revisionNumber: 2 }
 const ON_C: AnnotationRecord = {
   ...MARK,
   id: 'ann_c',
   documentId: 'doc_c',
   versionId: 'doc_c_ver_2',
   number: 1,
-  fassungNumber: 2,
+  revisionNumber: 2,
   carriedFromId: 'ann_b',
   carriedFrom: { annotationId: 'ann_b', documentId: 'doc_b', number: 4 },
 }
@@ -214,14 +214,14 @@ describe('carrying a mark to the current Fassung of its own document', () => {
     vi.mocked(updateDocumentAnnotation).mockResolvedValue({ ...MARK, versionId: 'doc_a_ver_2' } as DocumentAnnotationRow)
     vi.mocked(findDocumentAnnotation)
       .mockResolvedValueOnce(MARK)
-      .mockResolvedValueOnce({ ...MARK, versionId: 'doc_a_ver_2', fassungNumber: 2 })
+      .mockResolvedValueOnce({ ...MARK, versionId: 'doc_a_ver_2', revisionNumber: 2 })
 
     const annotation = await carry('doc_a', 'ann_1')
 
     expect(updateDocumentAnnotation).toHaveBeenCalledWith('org_1', 'doc_a', 'ann_1', 'open', {
       revision: { from: 'doc_a_ver_1', to: 'doc_a_ver_2' },
     })
-    expect(annotation).toMatchObject({ id: 'ann_1', number: 4, onCurrentFassung: true, x: 0.2, y: 0.3 })
+    expect(annotation).toMatchObject({ id: 'ann_1', number: 4, onCurrentRevision: true, x: 0.2, y: 0.3 })
     expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_a', expect.objectContaining({ annotationIds: ['ann_1'] }))
     expect(await rows()).toEqual([])
     expect(carryAnnotationToDocument).not.toHaveBeenCalled()
@@ -236,7 +236,7 @@ describe('carrying a mark to the current Fassung of its own document', () => {
   it('changes nothing for a mark already on the current Fassung', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, versionId: 'doc_a_ver_2' })
 
-    await expect(carry('doc_a', 'ann_1')).resolves.toMatchObject({ onCurrentFassung: true })
+    await expect(carry('doc_a', 'ann_1')).resolves.toMatchObject({ onCurrentRevision: true })
     expect(updateDocumentAnnotation).not.toHaveBeenCalled()
   })
 
@@ -293,7 +293,7 @@ describe('carrying a mark of a document another one replaced', () => {
     expect(annotation).toMatchObject({
       id: 'ann_c',
       documentId: 'doc_c',
-      onCurrentFassung: true,
+      onCurrentRevision: true,
       carriedFrom: { annotationId: 'ann_b', documentId: 'doc_b', number: 4, documentName: 'Grundriss EG Index B.pdf' },
     })
     const rooms = vi.mocked(publishToDocumentRoom).mock.calls.map(([documentId, event]) => [documentId, event.kind === 'annotations.changed' ? event.change : null])

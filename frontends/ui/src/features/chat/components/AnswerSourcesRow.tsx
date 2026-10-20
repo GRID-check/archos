@@ -88,7 +88,7 @@ const useClosedProjectNote = (): ((doc: CitedDocument) => string | null) => {
   const tProjects = useTranslations('projects')
   const current = useCurrentProject()
   return (doc) => {
-    if (doc.kind !== 'projekt') return null
+    if (doc.kind !== 'project') return null
     // The chip's label already names another project's file's project.
     if (doc.project) return doc.project.status === 'closed' ? tProjects('lifecycle.fileChipNoName') : null
     return current?.status === 'closed' ? tProjects('lifecycle.fileChip', { name: current.name }) : null

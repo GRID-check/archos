@@ -23,6 +23,8 @@ from dataclasses import field
 from typing import Any
 
 from aiq_agent.knowledge.base import reading_order
+from aiq_agent.knowledge.document_classification import canonical_doc_class
+from aiq_agent.knowledge.document_classification import qdrant_doc_class
 
 from .prefilter import FOLDER_FIELD
 from .prefilter import folder_ancestors
@@ -153,7 +155,7 @@ def document_facts(document: Any | None) -> dict[str, Any]:
         "superseded": bool(getattr(document, "superseded_by", None)),
     }
     if doc_class := getattr(document, "doc_class", None):
-        facts["doc_class"] = doc_class
+        facts["doc_class"] = qdrant_doc_class(doc_class)
     # The folder is stated even at the root (None, []), so a file moved to the
     # root stops matching the folder it left. ``doc_class`` is not: without a
     # stored class the chunk's own one stands, as it does for the post-filter.
@@ -212,6 +214,9 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
         coerced = coerce_field(key, value)
         if coerced is not None:
             typed[key] = coerced
+    # The vector store holds the German spelling of a Dokumentart until its rebuild (qdrant_doc_class).
+    if isinstance(typed.get("doc_class"), str):
+        typed["doc_class"] = qdrant_doc_class(typed["doc_class"])
     # Derived from whichever folder won, never taken from a writer.
     typed[FOLDER_FIELD] = folder_ancestors(typed.get("folder_path"))
     typed[SCOPE_FIELD] = scope
@@ -221,7 +226,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
     if record.ordinal is not None:
         typed[CHUNK_ORDINAL_FIELD] = int(record.ordinal)
     typed[PARAGRAPH_FIELD] = paragraph_refs(typed[TEXT_FIELD])
-    typed[CHUNK_DOC_CLASS_FIELD] = str((record.metadata or {}).get("doc_class") or "")
+    typed[CHUNK_DOC_CLASS_FIELD] = qdrant_doc_class(str((record.metadata or {}).get("doc_class") or ""))
     return typed
 
 
@@ -278,4 +283,7 @@ def chunk_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
         metadata.pop("doc_class", None)
         if payload[CHUNK_DOC_CLASS_FIELD]:
             metadata["doc_class"] = payload[CHUNK_DOC_CLASS_FIELD]
+    # A point holds the German spelling until the vector store is rebuilt; a hit speaks the current one.
+    if isinstance(metadata.get("doc_class"), str):
+        metadata["doc_class"] = canonical_doc_class(metadata["doc_class"]) or metadata["doc_class"]
     return metadata

@@ -63,11 +63,11 @@ describe('a task card', () => {
   })
 
   test('wears the run block’s own line — glyph, status word, tallies — under the title', () => {
-    const runSummary = { status: 'laeuft' as const, rounds: 3, docs: 9 }
+    const runSummary = { status: 'running' as const, rounds: 3, docs: 9 }
     const { rerender } = list({ tasks: [task({ status: 'running', runSummary })] })
     const line = screen.getByTestId('run-block-line')
-    expect(line).toHaveAttribute('data-status', 'laeuft')
-    expect(screen.getByTestId('run-glyph-laeuft')).toBeInTheDocument()
+    expect(line).toHaveAttribute('data-status', 'running')
+    expect(screen.getByTestId('run-glyph-running')).toBeInTheDocument()
     // The spinner speaks its label too, so the text is matched, not anchored.
     expect(line).toHaveTextContent('Running · 3 rounds · 9 documents')
     // No title (the heading is the title) and no link (the tray's is).
@@ -78,7 +78,7 @@ describe('a task card', () => {
     rerender(
       <TaskList
         projectId="p1"
-        tasks={[task({ status: 'queued', runSummary: { status: 'angelegt', rounds: 0, docs: 0 } })]}
+        tasks={[task({ status: 'queued', runSummary: { status: 'created', rounds: 0, docs: 0 } })]}
         filter={'all' as TaskFilter}
         onFilterChange={vi.fn()}
         onSelectTask={vi.fn()}
@@ -95,7 +95,7 @@ describe('a task card', () => {
           task({
             status: 'succeeded',
             finishedAt: '2026-09-16T05:00:00.000Z',
-            runSummary: { ...runSummary, status: 'fertig' },
+            runSummary: { ...runSummary, status: 'done' },
           }),
         ]}
         filter={'all' as TaskFilter}
@@ -104,9 +104,9 @@ describe('a task card', () => {
       />,
     )
     const done = screen.getByTestId('run-block-line')
-    expect(done).toHaveAttribute('data-status', 'fertig')
+    expect(done).toHaveAttribute('data-status', 'done')
     expect(done).toHaveTextContent(/^Done · 3 rounds · 9 documents · /)
-    expect(screen.getByTestId('run-glyph-fertig')).toBeInTheDocument()
+    expect(screen.getByTestId('run-glyph-done')).toBeInTheDocument()
     expect(done.querySelector('time')).toHaveAttribute('datetime', '2026-09-16T05:00:00.000Z')
   })
 

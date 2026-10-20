@@ -25,8 +25,8 @@ const proposal = (patch: Partial<FileProposal> = {}): FileProposal => ({
   payload: {
     operation: 'move',
     operations: [
-      { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Behörde/Bescheide', reason: 'Ein Bescheid der MA 37.' },
-      { document: 'Stellungnahme.pdf', source: 'projekt', target_folder: 'Behörde/Bescheide', reason: 'Eine Stellungnahme.' },
+      { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Behörde/Bescheide', reason: 'Ein Bescheid der MA 37.' },
+      { document: 'Stellungnahme.pdf', source: 'project', target_folder: 'Behörde/Bescheide', reason: 'Eine Stellungnahme.' },
     ],
     basis: 'name',
   },
@@ -37,7 +37,7 @@ const single = (patch: Partial<FileProposal['payload']> = {}): FileProposal =>
   proposal({
     payload: {
       operation: 'move',
-      operations: [{ document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
+      operations: [{ document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
       basis: 'name',
       ...patch,
     },
@@ -158,7 +158,7 @@ describe('the popover the chip opens', () => {
     current = proposal({
       payload: {
         ...proposal().payload,
-        operations: proposal().payload.operations.map((item) => ({ ...item, source: 'buero' as const })),
+        operations: proposal().payload.operations.map((item) => ({ ...item, source: 'office' as const })),
       },
     })
     renderSlot(current, { folderPathOf: () => '' })
@@ -364,7 +364,7 @@ describe('suggestionsByDocument', () => {
       basis: 'name',
       fileCount: 2,
       canDecide: true,
-      shelf: 'projekt',
+      shelf: 'project',
       documentIds: ['doc_1', 'doc_2'],
     })
   })
@@ -389,7 +389,7 @@ describe('suggestionsByFolder', () => {
       id: '00000000-0000-4000-8000-0000000000a2',
       payload: {
         operation: 'move',
-        operations: [{ document: 'Brief.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
+        operations: [{ document: 'Brief.pdf', source: 'project', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
         basis: 'content',
         new_folder: { path: 'Korrespondenz', description: 'Briefe' },
       },

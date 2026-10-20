@@ -1,5 +1,5 @@
 ---
-name: waermeschutz
+name: thermal-protection
 description: >
   U-Wert, HWB und Schall. Zuerst ob Neubau oder Bestand.
 metadata:
@@ -24,7 +24,7 @@ als würde sie einen verlangen.
 ## Bestand ist der Normalfall
 
 Ein großer Teil dieser Fragen betrifft Sanierung. Bestand, Zubau und größere
-Renovierung holen andere Anforderungen als Neubau. Steht `bestand_neubau` im
+Renovierung holen andere Anforderungen als Neubau. Steht `existing_or_new` im
 Projektkontext, darunter antworten. Fehlt es und macht es einen Unterschied,
 das ist die eine Frage, und sie kommt, bevor eine Neubau-Anforderung zitiert
 wird, die sich dann als die falsche erweist.

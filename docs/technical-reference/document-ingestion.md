@@ -79,7 +79,7 @@ Body: { projectId: string, file: File }
 4. **Insert DB row** — Drizzle `documents` table with `status: 'uploaded'`, storing `documentId`, `organizationId`, `projectId`, `createdBy`, `filename`, `storageKey`, `collectionName`, `fileSize`, `contentType`
 5. **Generate presigned GET URL** — `getSignedUrl(s3Client, GetObjectCommand, { expiresIn: INGEST_JOB_REF_TTL_SECONDS })`. 24 hours, not the 600 s `SEAWEED_PRESIGNED_URL_TTL_SECONDS` default the other signed reads use: the ingest job downloads the file when the bounded ingest pool reaches it, which can be well after dispatch (Step 3)
 6. **Trigger ingestion** — POST to `{BACKEND_URL}/v1/ingest` with `{ file_ref: presignedUrl, collection: collectionName, document_id: documentId, file_name: filename, folder_path }`. `file_name` is the row's own `documents.filename`, stated rather than derived from the presigned URL's last path segment, because it is the join key every chunk purge addresses
-   When the upload dialog filed the file as the new Fassung of another document (`fassungOf` form field, a document id), `uploadToShelf` checks it first (`resolveRevisionOf`: write access to the older document, same shelf and collection, active, past screening, person-uploaded; equal names are a version and ignore it) and the dispatch adds `fassung_of: <older file name>`. It travels through the office-rendition job payload too; an IFC model's digest is not the file the row names, so it carries none. In `_ingest_job`, `fassungen.record_revisions(..., confirmed_older=…)` calls `confirm_revision` after the summary row is written: loop and existence checks (`document_revisions.would_loop`, shared with the PUT route), `superseded_by` on the older row, then `summarize_change` onto the new file. It replaces the suggestion for that file; when it cannot link it runs the ordinary path.
+   When the upload dialog filed the file as the new Fassung of another document (`revisionOf` form field, a document id), `uploadToShelf` checks it first (`resolveRevisionOf`: write access to the older document, same shelf and collection, active, past screening, person-uploaded; equal names are a version and ignore it) and the dispatch adds `revision_of: <older file name>`. It travels through the office-rendition job payload too; an IFC model's digest is not the file the row names, so it carries none. In `_ingest_job`, `fassungen.record_revisions(..., confirmed_older=…)` calls `confirm_revision` after the summary row is written: loop and existence checks (`document_revisions.would_loop`, shared with the PUT route), `superseded_by` on the older row, then `summarize_change` onto the new file. It replaces the suggestion for that file; when it cannot link it runs the ordinary path.
 7. **Record the job** — on success the row is updated to `status: 'pending'` with `metadata: { ingestJobId }` so status reads can later reconcile the row against the backend job (see Step 5)
 8. **Return response** — `{ documentId, jobId, status: 'pending' | 'uploaded' | 'processing' }`
 
@@ -149,7 +149,7 @@ Body: {
   file_ref: str, collection: str, document_id: str,
   file_name: str | None, folder_path: str | None, thumbnail_upload_url: str | None,
   # the older file this upload replaces, when a person filed it as a new Fassung (ADR-0099)
-  fassung_of: str | None,
+  revision_of: str | None,
   # office renditions (ADR-0070, ADR-0071): presigned GETs of _render.pdf
   preview_ref: str | None, extraction_ref: str | None,
   # provenance, all four together or none (ADR-0054)

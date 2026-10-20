@@ -49,7 +49,7 @@ const source = (
   collection: project ? `proj_${project.id.slice(0, 8)}` : 'proj_this',
   title,
   origin: 'kb',
-  kind: 'projekt',
+  kind: 'project',
   shelf: 'project',
   sourceType: 'knowledge_layer',
   page,

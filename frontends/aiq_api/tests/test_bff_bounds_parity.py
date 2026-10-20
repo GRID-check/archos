@@ -63,8 +63,8 @@ def test_the_project_facts_the_bff_sends_fit_the_model():
     ProjectFacts(bundesland=longest, bauweise=[longest])
     with pytest.raises(ValidationError):
         ProjectFacts(bauweise=[longest + "x"])
-    for key in ("gebaeudeklasse", "bauweise", "nutzungen", "vorhabensart"):
-        value = 4 if key == "gebaeudeklasse" else "t"
+    for key in ("building_class", "construction_method", "uses", "work_type"):
+        value = 4 if key == "building_class" else "t"
         ProjectFacts(**{key: [value] * limits[key]})
         with pytest.raises(ValidationError):
             ProjectFacts(**{key: [value] * (limits[key] + 1)})

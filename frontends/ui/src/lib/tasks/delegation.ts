@@ -124,10 +124,10 @@ const TASK_ENGINES: Record<DelegatableTaskKind, TaskEngine> = {
    * in. If the run reads the name and judges the skill wrong for this project,
    * that judgment is the point; a frozen body would have removed it.
    */
-  einreichcheck: {
+  submission_check: {
     instruction: (goal) =>
       [
-        'Prüfe die Vollständigkeit der Einreichung für dieses Projekt — /einreichcheck.',
+        'Prüfe die Vollständigkeit der Einreichung für dieses Projekt — /submission-check.',
         '',
         'Der Auftrag, wörtlich:',
         goal,
@@ -524,7 +524,7 @@ export async function commissionResearchRun(
     await requirePlanDocumentsOpen(
       session.organizationId,
       input.projectId,
-      [...documents.grundlage, ...documents.ausgeschlossen],
+      [...documents.basis, ...documents.excluded],
       input.locale ?? AGENT_REFUSAL_LOCALE,
     )
   }

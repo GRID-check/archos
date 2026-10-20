@@ -75,9 +75,9 @@ describe('DocumentGridCard', () => {
             snippet: '[DRAWING from page 1] ZEICHNUNGSTYP: Fluchtwegplan',
             page: 2,
             score: 0.83,
-            source: 'projekt',
+            source: 'project',
           },
-          { file_name: 'Referenzprojekt.pdf', snippet: 'Ähnlicher Grundriss…', page: null, score: 0.6, source: 'buero' },
+          { file_name: 'Referenzprojekt.pdf', snippet: 'Ähnlicher Grundriss…', page: null, score: 0.6, source: 'office' },
         ]}
       />,
     )
@@ -111,7 +111,7 @@ describe('DocumentGridCard', () => {
     render(
       <DocumentGridCard
         title="Dokumente"
-        documents={[{ file_name: 'Verschwunden.pdf', snippet: 'war mal da', source: 'projekt' }]}
+        documents={[{ file_name: 'Verschwunden.pdf', snippet: 'war mal da', source: 'project' }]}
         projectId="proj-1"
       />
     )
@@ -143,7 +143,7 @@ describe('DocumentGridCard', () => {
     render(
       <DocumentGridCard
         title="Dokumente"
-        documents={[{ file_name: 'Fluchtwegplan.pdf', source: 'projekt' }]}
+        documents={[{ file_name: 'Fluchtwegplan.pdf', source: 'project' }]}
         projectId="proj-1"
       />
     )
@@ -177,7 +177,7 @@ describe('DocumentGridCard', () => {
     )
 
     render(
-      <DocumentGridCard title="CAD" documents={[{ file_name: 'Plan.dwg', source: 'projekt' }]} projectId="proj-1" />
+      <DocumentGridCard title="CAD" documents={[{ file_name: 'Plan.dwg', source: 'project' }]} projectId="proj-1" />
     )
 
     await waitFor(() => expect(screen.getByTestId('document-grid-card')).toHaveAttribute('data-layout', 'receipt'))
@@ -188,7 +188,7 @@ describe('DocumentGridCard', () => {
   })
 
   it('does NOT cross corpora when the backend tagged a source (avoids opening a same-named file)', async () => {
-    // Same filename in BOTH corpora; the surfaced hit is tagged 'buero' but the
+    // Same filename in BOTH corpora; the surfaced hit is tagged 'office' but the
     // Archiv list is empty — it must resolve to nothing, never the project file.
     server.use(
       http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Bericht.pdf')] })),
@@ -198,7 +198,7 @@ describe('DocumentGridCard', () => {
     render(
       <DocumentGridCard
         title="Test"
-        documents={[{ file_name: 'Bericht.pdf', source: 'buero' }]}
+        documents={[{ file_name: 'Bericht.pdf', source: 'office' }]}
         projectId="proj-1"
       />
     )

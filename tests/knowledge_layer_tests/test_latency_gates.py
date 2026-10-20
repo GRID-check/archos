@@ -146,7 +146,7 @@ class TestKnownEntityAnchoring:
 
     def test_caller_narrow_scope_rescues_bare_mention(self):
         chunks = [_scored(0.5), _scored(0.4), _scored(0.3)]
-        assert should_skip_judge("Welche Tabelle gilt?", chunks, doc_class="oib_richtlinie") == (
+        assert should_skip_judge("Welche Tabelle gilt?", chunks, doc_class="oib_guideline") == (
             True,
             "known_entity",
         )
@@ -553,7 +553,7 @@ class TestCardSuppression:
         from aiq_agent.cards.registry import set_card_registry
 
         registry = CardRegistry()
-        registry.add({"type": "document_draft", "title": "t", "path": "/entwuerfe/x.md", "bytes": 3, "version": 1})
+        registry.add({"type": "document_draft", "title": "t", "path": "/drafts/x.md", "bytes": 3, "version": 1})
         token = set_card_registry(registry)
         try:
             meta = {"v": 1, "kind": "direct"}

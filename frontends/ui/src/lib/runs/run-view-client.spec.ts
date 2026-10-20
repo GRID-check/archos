@@ -128,7 +128,7 @@ describe('addRunDocument', () => {
       shelf: 'project',
       // What the picker's inventory carries beside the plan document.
       file: { id: 'doc-1' },
-      source: 'projekt',
+      source: 'project',
     }
 
     await addRunDocument('p1', 'run-1', row, run)

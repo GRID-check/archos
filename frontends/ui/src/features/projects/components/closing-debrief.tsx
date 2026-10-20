@@ -60,7 +60,7 @@ type DebriefItem = Pick<
 const KEPT_KINDS = new Set(['decision', 'constraint'])
 
 /** The fact beside the fingerprint that the extraction may also suggest. */
-const OIB_KEY = 'oib_ausgabe'
+const OIB_KEY = 'oib_edition'
 
 /** The sentence for each reason the extraction answered without a result; `null` is a failed request. */
 const EXTRACTION_ERROR_KEY = {
@@ -221,7 +221,7 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
 
   const valueText = (key: string, value: ProjectPrimitiveValue): string => {
     if (key === OIB_KEY) return t('lifecycle.debrief.fingerprint.oibEdition', { edition: String(value) })
-    if (key === 'gebaeudeklasse') return `GK ${String(value)}`
+    if (key === 'building_class') return `GK ${String(value)}`
     const tokens = Array.isArray(value) ? value : [String(value)]
     return tokens.map((token) => factLabel(key, token)).join('/')
   }

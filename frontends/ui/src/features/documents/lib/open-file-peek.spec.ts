@@ -50,7 +50,7 @@ describe('openFilePeek', () => {
   })
 
   it('opens the peek and binds composerSubject to the filename', () => {
-    openFilePeek({ file: FILE, source: 'projekt', projectId: 'p1' })
+    openFilePeek({ file: FILE, source: 'project', projectId: 'p1' })
     const preview = useFilePreviewStore.getState()
     expect(preview.file?.id).toBe('doc-1')
     expect(preview.mode).toBe('peek')
@@ -65,14 +65,14 @@ describe('openFilePeek', () => {
   })
 
   it('keeps a bound subject when the peek is hidden so the composer bar stays', () => {
-    openFilePeek({ file: FILE, source: 'projekt', projectId: 'p1' })
+    openFilePeek({ file: FILE, source: 'project', projectId: 'p1' })
     useFilePreviewStore.getState().hide()
     expect(useFilePreviewStore.getState().hidden).toBe(true)
     expect(useChatStore.getState().composerSubject?.resourceId).toBe('doc-1')
   })
 
   it('clears a bound subject when the peek is closed', () => {
-    openFilePeek({ file: FILE, source: 'projekt', projectId: 'p1' })
+    openFilePeek({ file: FILE, source: 'project', projectId: 'p1' })
     useFilePreviewStore.getState().close()
     expect(useFilePreviewStore.getState().file).toBeNull()
     expect(useChatStore.getState().composerSubject).toBeNull()
@@ -99,7 +99,7 @@ describe('dropFileSubject — the one control here that ends things', () => {
   })
 
   it('closes the viewer and drops the subject', () => {
-    openFilePeek({ file: FILE, source: 'projekt', projectId: 'p1' })
+    openFilePeek({ file: FILE, source: 'project', projectId: 'p1' })
 
     dropFileSubject({ cleared: 'cleared', undo: 'undo' })
 
@@ -108,7 +108,7 @@ describe('dropFileSubject — the one control here that ends things', () => {
   })
 
   it('offers an undo that puts BOTH halves back', () => {
-    openFilePeek({ file: FILE, source: 'projekt', projectId: 'p1' })
+    openFilePeek({ file: FILE, source: 'project', projectId: 'p1' })
     const subjectBefore = useChatStore.getState().composerSubject
 
     dropFileSubject({ cleared: 'cleared', undo: 'undo' })

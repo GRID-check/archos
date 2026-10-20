@@ -17,7 +17,7 @@ export const SIMILAR_PROJECTS: SimilarProject[] = [
     id: '11111111-0000-4000-8000-000000000001',
     name: 'Wohnhaus Mödling',
     period: { start: '2019-03-01', end: '2021-11-30' },
-    bundesland: { value: 'Niederösterreich', confirmed: true },
+    federal_state: { value: 'Niederösterreich', confirmed: true },
     oibEdition: { value: '2019', confirmed: false },
     alike: true,
     sharedTraits: [
@@ -53,12 +53,12 @@ export const SIMILAR_PROJECTS: SimilarProject[] = [
       {
         id: 'p1',
         fileName: 'Baubewilligung.pdf',
-        kind: 'bewilligung',
+        kind: 'approval',
         authority: 'Stadtgemeinde Mödling',
         issuedOn: '2020-06-18',
         requirements: [
-          { kind: 'auflage', content: 'Brandschutzkonzept vor Baubeginn der Baubehörde vorlegen.' },
-          { kind: 'nachforderung', content: 'Nachweis der Stellplätze nach NÖ Bauordnung ergänzen.' },
+          { kind: 'condition', content: 'Brandschutzkonzept vor Baubeginn der Baubehörde vorlegen.' },
+          { kind: 'information_request', content: 'Nachweis der Stellplätze nach NÖ Bauordnung ergänzen.' },
         ],
       },
     ],
@@ -67,7 +67,7 @@ export const SIMILAR_PROJECTS: SimilarProject[] = [
     id: '22222222-0000-4000-8000-000000000002',
     name: 'Bürogebäude Tulln',
     period: { start: '2016-09-01', end: null },
-    bundesland: { value: 'Niederösterreich', confirmed: true },
+    federal_state: { value: 'Niederösterreich', confirmed: true },
     oibEdition: { value: '2015', confirmed: true },
     alike: true,
     sharedTraits: [{ value: 'Niederösterreich', confirmed: true }],
@@ -79,7 +79,7 @@ export const SIMILAR_PROJECTS: SimilarProject[] = [
     id: '33333333-0000-4000-8000-000000000003',
     name: 'Produktionshalle Wels',
     period: { start: '2016-02-01', end: '2017-08-31' },
-    bundesland: { value: 'Oberösterreich', confirmed: true },
+    federal_state: { value: 'Oberösterreich', confirmed: true },
     oibEdition: null,
     alike: false,
     sharedTraits: [],
@@ -93,7 +93,7 @@ const confirmed = (value: string | string[]) => ({ value, confidence: 'confirmed
 
 /** This project: Land and Bauweise confirmed, the class only read from its documents, uses and kind of work open. */
 const BASIS = fingerprintOf({
-  facts: { bundesland: confirmed('niederoesterreich'), bauweise: confirmed(['holzbau']) },
+  facts: { federal_state: confirmed('lower_austria'), construction_method: confirmed(['timber']) },
   goals: {},
   unknowns: [],
   assumptions: {

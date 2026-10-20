@@ -32,7 +32,7 @@ const ROUND_0 = {
 
 const ROUND_1 = {
   index: 1,
-  key: 'status.retrieval.punkt',
+  key: 'status.retrieval.clause',
   tools: ['read_passage'],
   corpora: ['knowledge'],
   reason: 'Die Grundregel steht.',
@@ -53,7 +53,7 @@ const ROUND_1 = {
 /** One file, three Punkte — the round the fan folds to a single card. */
 const ROUND_2 = {
   index: 2,
-  key: 'status.retrieval.punkt',
+  key: 'status.retrieval.clause',
   tools: ['read_passage'],
   corpora: ['knowledge'],
   reason: 'Die Fluchtweglänge hängt an drei Punkten.',

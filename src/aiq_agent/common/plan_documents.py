@@ -30,6 +30,7 @@ from typing import Any
 from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
+from pydantic import model_validator
 
 #: Enough for a Grundlage of a real submission (ten documents is a large one)
 #: and small enough that the plan card stays readable.
@@ -37,6 +38,13 @@ MAX_PLAN_DOCUMENTS = 20
 MAX_DOCUMENT_NAME_CHARS = 256
 MAX_DOCUMENT_TITLE_CHARS = 256
 MAX_SHELF_CHARS = 64
+
+
+#: The German keys the lists carried before the English names. A pod that has
+#: not rolled yet, a task row frozen before the migration and a plan checkpoint
+#: still hold them; read-only, nothing writes these.
+LEGACY_PLAN_DOCUMENT_KEYS = {"grundlage": "basis", "ausgeschlossen": "excluded"}
+_LEGACY_KEYS = {new: old for old, new in LEGACY_PLAN_DOCUMENT_KEYS.items()}
 
 
 class PlanDocument(BaseModel):
@@ -58,14 +66,26 @@ class PlanDocuments(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    grundlage: list[PlanDocument] = Field(default_factory=list, max_length=MAX_PLAN_DOCUMENTS)
-    ausgeschlossen: list[PlanDocument] = Field(default_factory=list, max_length=MAX_PLAN_DOCUMENTS)
+    basis: list[PlanDocument] = Field(default_factory=list, max_length=MAX_PLAN_DOCUMENTS)
+    excluded: list[PlanDocument] = Field(default_factory=list, max_length=MAX_PLAN_DOCUMENTS)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_keys(cls, data: Any) -> Any:
+        """A checkpointed run state or a pod that has not rolled yet still says ``grundlage``."""
+        if not isinstance(data, dict):
+            return data
+        out = dict(data)
+        for old, new in LEGACY_PLAN_DOCUMENT_KEYS.items():
+            if old in out:
+                out.setdefault(new, out.pop(old))
+        return out
 
     def is_empty(self) -> bool:
-        return not self.grundlage and not self.ausgeschlossen
+        return not self.basis and not self.excluded
 
     def excluded_names(self) -> set[str]:
-        return {_fold(doc.name) for doc in self.ausgeschlossen}
+        return {_fold(doc.name) for doc in self.excluded}
 
 
 def _fold(name: str) -> str:
@@ -90,11 +110,13 @@ def sanitize_plan_documents(raw: Any) -> PlanDocuments | None:
         return None
     out = PlanDocuments()
     seen: set[str] = set()
-    for key in ("ausgeschlossen", "grundlage"):
+    for key in ("excluded", "basis"):
         rows = raw.get(key)
+        if rows is None:
+            rows = raw.get(_LEGACY_KEYS[key])
         if not isinstance(rows, list):
             continue
-        target = out.ausgeschlossen if key == "ausgeschlossen" else out.grundlage
+        target = out.excluded if key == "excluded" else out.basis
         for row in rows:
             doc = _document_from(row)
             if doc is None or _fold(doc.name) in seen or len(target) >= MAX_PLAN_DOCUMENTS:
@@ -159,13 +181,13 @@ def resolve_documents(names: list[Any], inventory: list[dict[str, Any]] | None) 
 
 
 def documents_from_plan(
-    grundlage: list[str], ausgeschlossen: list[str], inventory: list[dict[str, Any]] | None
+    basis: list[str], excluded: list[str], inventory: list[dict[str, Any]] | None
 ) -> PlanDocuments | None:
     """Both lists resolved against the inventory; an excluded name beats a Grundlage one."""
-    excluded = resolve_documents(ausgeschlossen, inventory)
-    excluded_keys = {_fold(doc.name) for doc in excluded}
-    read = [doc for doc in resolve_documents(grundlage, inventory) if _fold(doc.name) not in excluded_keys]
-    docs = PlanDocuments(grundlage=read, ausgeschlossen=excluded)
+    resolved_excluded = resolve_documents(excluded, inventory)
+    excluded_keys = {_fold(doc.name) for doc in resolved_excluded}
+    read = [doc for doc in resolve_documents(basis, inventory) if _fold(doc.name) not in excluded_keys]
+    docs = PlanDocuments(basis=read, excluded=resolved_excluded)
     return None if docs.is_empty() else docs
 
 
@@ -177,10 +199,10 @@ def unread_basis(
     ``added`` is what the reader added while the run went: Grundlage too, and
     as easily left unread. Each document is named once.
     """
-    grundlage = [*(documents.grundlage if documents is not None else ()), *added]
+    basis = [*(documents.basis if documents is not None else ()), *added]
     seen = {_fold(name) for name in read_names}
     unread: list[PlanDocument] = []
-    for doc in grundlage:
+    for doc in basis:
         key = _fold(doc.name)
         if key in seen:
             continue

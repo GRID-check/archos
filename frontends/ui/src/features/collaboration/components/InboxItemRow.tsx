@@ -237,7 +237,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     Fassungen section compares the text.
   */
   const compareHref =
-    item.type === 'document.new_fassung' &&
+    item.type === 'document.new_revision' &&
     item.state !== 'inert' &&
     item.resourceType === 'document' &&
     item.related !== null &&

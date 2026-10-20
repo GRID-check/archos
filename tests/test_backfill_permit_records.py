@@ -28,10 +28,10 @@ backfill = _load_backfill()
 
 REPLY = {
     "record": {
-        "kind": "nachforderung",
+        "kind": "information_request",
         "authority": "MA 37",
         "municipality": None,
-        "bundesland": "wien",
+        "federal_state": "vienna",
         "issued_on": "2017-12-04",
         "reference": None,
         "requirements": [],

@@ -12,6 +12,7 @@ import {
 } from './intake-definition'
 import type { ProjectIntakeQuestion } from './intake-definition'
 import { formatBareValue } from './brief-view'
+import { normalizeProfilePatchOperation } from './legacy-names'
 import type { ProjectPrimitiveValue, ProjectProfile, ProjectProfilePatchOperation } from './types'
 
 export interface PatchPreviewRow {
@@ -34,7 +35,9 @@ export function buildPatchPreviewRows(
 ): PatchPreviewRow[] {
   const rows: PatchPreviewRow[] = []
 
-  for (const op of patch) {
+  for (const legacyOp of patch) {
+    // A card stored before the English names still names the old keys.
+    const op = normalizeProfilePatchOperation(legacyOp)
     const target = extractTarget(op.path)
     if (!target) continue
 

@@ -1,5 +1,5 @@
 ---
-name: gebaeudeklasse
+name: building-class
 description: >
   Die OIB-Gebäudeklasse (GK 1 bis 5), an der jede spätere OIB-Zahl hängt.
   Nicht die Bauklasse der Bauordnung.

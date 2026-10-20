@@ -69,7 +69,7 @@ _REFUSAL_TEXT = {
         "the question's unit; yes/no: true or false)"
     ),
     "unknown-key": (
-        "refused: no question of the intake writes this key, or not with this @bwN/@bwN@use suffix, or the "
+        "refused: no question of the intake writes this key, or not with this @bldgN/@bldgN@use suffix, or the "
         "Bauwerk is not on the profile"
     ),
     "dismissed": "refused: a person dismissed this value before; do not record it again",
@@ -225,8 +225,8 @@ class NeedsInput(BaseModel):
 class RecordedValue(BaseModel):
     key: str = Field(
         description=(
-            "The profile key exactly as intake_needs lists it, with its @bwN (Bauwerk) or @bwN@use (Nutzungszone) "
-            "suffix. A key not listed yet is taken when a wizard question writes it (wohneinheiten@bw1@wohnen "
+            "The profile key exactly as intake_needs lists it, with its @bldgN (Bauwerk) or @bldgN@use (Nutzungszone) "
+            "suffix. A key not listed yet is taken when a wizard question writes it (dwelling_units@bldg1@residential "
             "before the Nutzungen are recorded)."
         )
     )
@@ -278,7 +278,7 @@ RECORD_VALUES_DESCRIPTION = (
     f"file, at most {MAX_QUOTE_CHARS} characters, the sentence, table row or title-block line, never paraphrased "
     "or joined from two places. Checked before anything is sent: the quote stands in what you read of that file "
     "(when it does not, the answer shows the closest passage you did read), a select value is one of the option "
-    'tokens and its quote says it. Example: {"values": [{"key": "geschosse_oberirdisch@bw1", '
+    'tokens and its quote says it. Example: {"values": [{"key": "storeys_above_ground@bldg1", '
     '"value": 3, "citation": "Baubeschreibung.pdf, S. 3", "quote": "Das Gebäude hat drei '
     'oberirdische Geschoße"}]}. Outcomes, one per value: suggested (new on the profile, a person will check '
     "it); corroborated (the profile holds the same value; your evidence was added); contradiction (the profile "
@@ -468,7 +468,7 @@ def _outcome_line(key: str, result: dict[str, Any], session: IntakeSession) -> t
     outcome = str(result.get("outcome") or "")
     if outcome == "refused":
         reason = str(result.get("reason") or "")
-        if reason == "unknown-key" and key.split("@", maxsplit=1)[0] == "gebaeudeklasse":
+        if reason == "unknown-key" and key.split("@", maxsplit=1)[0] in {"building_class", "gebaeudeklasse"}:
             return "refused:unknown-key", _CLASS_REFUSAL
         text = _REFUSAL_TEXT.get(reason, f"refused ({reason or 'no reason given'})")
         close = session.closest_keys(key) if reason == "unknown-key" else []

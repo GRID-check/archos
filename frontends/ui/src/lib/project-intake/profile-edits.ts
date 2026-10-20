@@ -7,6 +7,7 @@
  * Pure and isomorphic; no I/O. The service decides, these only shape.
  */
 
+import { BUILDING_ID_IN_KEY } from '@/lib/project-profile/intake-definition'
 import {
   MAX_PROFILE_ALTERNATIVES,
   MAX_PROFILE_EVIDENCE,
@@ -21,9 +22,9 @@ import type {
   ProjectProfilePatchOperation,
 } from '@/lib/project-profile/types'
 
-/** A profile key's parts: `geschosse_oberirdisch@bw1` → base `geschosse_oberirdisch`, building `bw1`. */
+/** A profile key's parts: `storeys_above_ground@bldg1` → base `storeys_above_ground`, building `bldg1`. */
 export function profileKeyParts(key: string): { baseKey: string; buildingId: string | null } {
-  const building = /@(bw\d+)(?:@|$)/.exec(key)
+  const building = BUILDING_ID_IN_KEY.exec(key)
   return { baseKey: key.split('@')[0], buildingId: building ? building[1] : null }
 }
 

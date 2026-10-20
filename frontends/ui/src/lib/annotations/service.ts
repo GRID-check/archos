@@ -274,10 +274,10 @@ function toView(
     assigneeUserId: record.assigneeUserId,
     assigneeName: nameOf(names, record.assigneeUserId),
     dueOn: record.dueOn,
-    fassungNumber: record.fassungNumber,
+    revisionNumber: record.revisionNumber,
     // A document with no version row shows the bytes its row holds, which is
     // where an Anmerkung set without a version was set.
-    onCurrentFassung: (record.versionId ?? null) === (doc.publishedVersionId ?? null),
+    onCurrentRevision: (record.versionId ?? null) === (doc.publishedVersionId ?? null),
     createdBy: record.createdBy,
     createdByName: nameOf(names, record.createdBy),
     createdAt: record.createdAt.toISOString(),
@@ -1662,7 +1662,7 @@ export async function listAnnotationsForAgent(
       basis: annotation.basis,
       assigneeName: annotation.assigneeName,
       dueOn: annotation.dueOn,
-      onCurrentFassung: annotation.onCurrentFassung,
+      onCurrentRevision: annotation.onCurrentRevision,
       createdByName: annotation.createdByName,
       createdAt: annotation.createdAt,
       replies: annotation.replies.map((reply) => ({

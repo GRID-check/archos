@@ -36,7 +36,7 @@ const FILES = [
     ingestedAt: '2026-08-12T09:14:00Z',
     summary: null,
     docClassSuggestion: null,
-    docClass: 'oib_richtlinie',
+    docClass: 'oib_guideline',
     displayTitle: 'OIB-Richtlinie 2 — Brandschutz, Ausgabe 2023',
   },
   {
@@ -49,7 +49,7 @@ const FILES = [
     ingestedAt: '2026-08-12T09:15:00Z',
     summary: null,
     docClassSuggestion: null,
-    docClass: 'oib_richtlinie',
+    docClass: 'oib_guideline',
     displayTitle: 'OIB-Richtlinie 6 — Energieeinsparung, Ausgabe 2023',
   },
   {
@@ -62,7 +62,7 @@ const FILES = [
     ingestedAt: '2026-08-13T11:02:00Z',
     summary: null,
     docClassSuggestion: null,
-    docClass: 'norm_extern',
+    docClass: 'external_standard',
     displayTitle: 'ÖNORM B 1600 — Barrierefreies Bauen',
   },
 ]

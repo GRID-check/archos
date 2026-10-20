@@ -65,7 +65,7 @@ describe('ProjectIntakeWizard — Fix 2 pre-save gate fail-open', () => {
     const { calls } = stubFetch()
     const reviewStep = projectIntakeDefinitionV1.stages.length - 1
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
+      `intake-draft-v2-${PROJECT_ID}`,
       JSON.stringify({
         // Every required answer, because `handleSave` now refuses without them
         // — a fixture missing them exercises that gate rather than the fail-open

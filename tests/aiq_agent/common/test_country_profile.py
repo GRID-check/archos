@@ -30,8 +30,8 @@ def _norms_file(**overrides) -> nr.NormsFile:
             "id": "bo-wien",
             "title": "Bauordnung für Wien",
             "short": "BO Wien",
-            "rank": "landesgesetz",
-            "bundesland": "Wien",
+            "rank": "state_law",
+            "federal_state": "Wien",
             "application": "LrKons",
             "document_number": "LWI40000225",
         }

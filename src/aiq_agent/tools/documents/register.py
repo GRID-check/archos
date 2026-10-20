@@ -67,6 +67,7 @@ from .draft_store import DraftBackend
 from .draft_store import DraftUsage
 from .draft_store import filing_record
 from .draft_store import get_draft_backend
+from .draft_store import modernize_draft_path
 from .filing import FilingError
 from .filing import SignedEnvelope
 from .filing import post_document_version
@@ -464,6 +465,7 @@ async def _submit_unchanged(
 
 async def _file(path: str, title: str, *, submit: bool, reviewer: str) -> str:
     """The whole of ``file_draft``, with every refusal raised where it is found."""
+    path = modernize_draft_path(path)
     _project_or_refuse()
     envelope = _envelope()
     named = " ".join((reviewer or "").split())[:MAX_REVIEWER_CHARS]

@@ -26,7 +26,7 @@ export { questionRound, type QuestionRound } from '../../lib/question-round'
 function placeOf(view: IntakeView): string | null {
   const register = view.locationRegister
   if (!register?.federalState) return null
-  const federalState = displayValue('bundesland', register.federalState)
+  const federalState = displayValue('federal_state', register.federalState)
   const municipality = register.municipality
   return municipality && municipality.localeCompare(federalState, 'de', { sensitivity: 'base' }) !== 0 ? `${municipality}, ${federalState}` : federalState
 }

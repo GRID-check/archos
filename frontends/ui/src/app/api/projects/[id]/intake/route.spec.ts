@@ -78,9 +78,9 @@ const VIEW: IntakeView = {
   openQuestions: [],
   questions: [
     {
-      key: 'fluchtniveau_m@bw1',
-      baseKey: 'fluchtniveau_m',
-      bauwerkId: 'bw1',
+      key: 'escape_level_m@bldg1',
+      baseKey: 'escape_level_m',
+      bauwerkId: 'bldg1',
       label: 'Fluchtniveau (Zielzustand)',
       type: 'number_tri',
       unit: 'm',
@@ -95,11 +95,11 @@ const VIEW: IntakeView = {
       title: 'Bauwerk',
       items: [
         {
-          key: 'bauwerkstyp@bw1',
-          baseKey: 'bauwerkstyp',
-          bauwerkId: 'bw1',
+          key: 'building_type@bldg1',
+          baseKey: 'building_type',
+          bauwerkId: 'bldg1',
           label: 'Bauwerkstyp',
-          value: 'gebaeude',
+          value: 'building',
           display: 'Gebäude',
           state: 'suggested',
           evidence: [{ kind: 'document', fileName: 'Einreichplan.pdf', page: 2, quote: 'Wohngebäude' }],
@@ -123,7 +123,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(getIntakeView).mockResolvedValue(VIEW)
   vi.mocked(startIntakeRun).mockResolvedValue({ ...VIEW, status: 'reading' })
-  vi.mocked(applyIntakeDecisions).mockResolvedValue({ results: [{ key: 'bauwerkstyp@bw1', ok: true }], intake: VIEW })
+  vi.mocked(applyIntakeDecisions).mockResolvedValue({ results: [{ key: 'building_type@bldg1', ok: true }], intake: VIEW })
   vi.mocked(completeIntake).mockResolvedValue({ ...VIEW, status: 'completed', canComplete: false })
 })
 
@@ -172,14 +172,14 @@ describe('POST /api/projects/[id]/intake', () => {
 describe('POST /api/projects/[id]/intake/decisions', () => {
   it('applies the decisions and answers a result each and the review after them', async () => {
     const answer = await client.decide(PROJECT, [
-      { key: 'bauwerkstyp@bw1', action: 'confirm' },
-      { key: 'fluchtniveau_m@bw1', action: 'answer', value: 7.2 },
+      { key: 'building_type@bldg1', action: 'confirm' },
+      { key: 'escape_level_m@bldg1', action: 'answer', value: 7.2 },
     ])
 
-    expect(answer).toEqual({ results: [{ key: 'bauwerkstyp@bw1', ok: true }], intake: VIEW })
+    expect(answer).toEqual({ results: [{ key: 'building_type@bldg1', ok: true }], intake: VIEW })
     expect(applyIntakeDecisions).toHaveBeenCalledWith(SESSION, PROJECT, [
-      { key: 'bauwerkstyp@bw1', action: 'confirm' },
-      { key: 'fluchtniveau_m@bw1', action: 'answer', value: 7.2 },
+      { key: 'building_type@bldg1', action: 'confirm' },
+      { key: 'escape_level_m@bldg1', action: 'answer', value: 7.2 },
     ])
   })
 

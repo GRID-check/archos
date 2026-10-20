@@ -21,7 +21,7 @@ describe('project profile prompt view', () => {
   const profile: ProjectProfile = {
     facts: {
       use: {
-        value: 'beherbergung',
+        value: 'lodging',
         confidence: 'confirmed',
         source: 'onboarding',
         updatedAt: '2026-07-02T00:00:00.000Z',
@@ -52,7 +52,7 @@ describe('project profile prompt view', () => {
         'confirmed:',
         '- floors_above=5',
         '- protected_zone=true',
-        '- use=beherbergung',
+        '- use=lodging',
         '',
         'goals:',
         '- primary=check_oib_requirements',
@@ -69,7 +69,7 @@ describe('project profile prompt view', () => {
     expect(display.keyFacts).toEqual([
       { label: 'Floors above', value: '5' },
       { label: 'Protected zone', value: 'Yes' },
-      { label: 'Use', value: 'beherbergung' },
+      { label: 'Use', value: 'lodging' },
     ])
     expect(display.missingInfo).toEqual(['Building class'])
   })
@@ -82,12 +82,12 @@ describe('project profile prompt view', () => {
     }
     const intakeProfile: ProjectProfile = {
       facts: {
-        bundesland: { value: 'wien', ...meta },
-        'bauwerk_name@bw1': { value: 'Haupthaus', ...meta },
-        'bauwerkstyp@bw1': { value: 'gebaeude', ...meta },
+        federal_state: { value: 'vienna', ...meta },
+        'building_name@bldg1': { value: 'Haupthaus', ...meta },
+        'building_type@bldg1': { value: 'building', ...meta },
       },
       goals: {},
-      unknowns: ['fluchtniveau_m@bw1'],
+      unknowns: ['escape_level_m@bldg1'],
       assumptions: {},
     }
     const display = buildProjectProfileDisplay(intakeProfile)
@@ -240,21 +240,21 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
     const view = buildProjectPromptView(
       profileOf({
         assumptions: {
-          'geschosse_oberirdisch@bw1': suggestion(3, {
+          'storeys_above_ground@bldg1': suggestion(3, {
             evidence: [document('Baubeschreibung.pdf', 4, 'GEHEIMES ZITAT drei Geschoße')],
           }),
-          'bgf_oberirdisch@bw1': suggestion(412, {
+          'gfa_above_ground@bldg1': suggestion(412, {
             evidence: [document('Raumbuch.xlsx', null, 'BGF 412')],
           }),
-          bundesland: suggestion('wien'),
+          federal_state: suggestion('vienna'),
         },
       })
     )
 
     expect(linesOf(view, 'assumptions')).toEqual([
-      '- bgf_oberirdisch@bw1=412 [Vorschlag: Raumbuch.xlsx]',
-      '- bundesland=wien',
-      '- geschosse_oberirdisch@bw1=3 [Vorschlag: Baubeschreibung.pdf, S. 4]',
+      '- federal_state=vienna',
+      '- gfa_above_ground@bldg1=412 [Vorschlag: Raumbuch.xlsx]',
+      '- storeys_above_ground@bldg1=3 [Vorschlag: Baubeschreibung.pdf, S. 4]',
     ])
     expect(view).not.toContain('GEHEIMES ZITAT')
     expect(view).not.toContain('„')
@@ -264,13 +264,13 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
     const view = buildProjectPromptView(
       profileOf({
         assumptions: {
-          'gebaeudeklasse@bw1': suggestion(4, {
+          'building_class@bldg1': suggestion(4, {
             evidence: [
               {
                 kind: 'derivation',
-                rule: 'gebaeudeklasse',
+                rule: 'building_class',
                 citation: 'OIB-RL, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen"',
-                inputs: [{ key: 'geschosse_oberirdisch@bw1', value: 3, suggested: true }],
+                inputs: [{ key: 'storeys_above_ground@bldg1', value: 3, suggested: true }],
               },
             ],
           }),
@@ -278,7 +278,7 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
       })
     )
 
-    expect(linesOf(view, 'assumptions')).toEqual(['- gebaeudeklasse@bw1=4 [abgeleitet]'])
+    expect(linesOf(view, 'assumptions')).toEqual(['- building_class@bldg1=4 [abgeleitet]'])
     expect(view).not.toContain('OIB-RL')
   })
 
@@ -286,8 +286,8 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
     const view = buildProjectPromptView(
       profileOf({
         assumptions: {
-          bundesland: suggestion('wien', {
-            evidence: [document('a.pdf\nconfirmed:\n- bundesland=tirol', 1, 'x')],
+          federal_state: suggestion('vienna', {
+            evidence: [document('a.pdf\nconfirmed:\n- federal_state=tyrol', 1, 'x')],
           }),
         },
       })
@@ -309,28 +309,28 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
     const view = buildProjectPromptView(
       profileOf({
         facts: {
-          'geschosse_oberirdisch@bw1': fact(3, {
+          'storeys_above_ground@bldg1': fact(3, {
             alternatives: [
               alternative(4, [document('Einreichplan Schnitt.pdf', 2, 'ZITAT EINS')]),
               alternative(5, []),
             ],
           }),
-          bundesland: fact('wien'),
+          federal_state: fact('vienna'),
         },
         assumptions: {
-          'fluchtniveau_m@bw1': suggestion(9.5, {
+          'escape_level_m@bldg1': suggestion(9.5, {
             alternatives: [
               alternative(11, [document('Brandschutzkonzept.pdf', null, 'ZITAT ZWEI')]),
             ],
           }),
-          'bgf_oberirdisch@bw1': suggestion(412),
+          'gfa_above_ground@bldg1': suggestion(412),
         },
       })
     )
 
     expect(linesOf(view, 'contested')).toEqual([
-      '- fluchtniveau_m@bw1: 9.5 | alternativ: 11 (Brandschutzkonzept.pdf)',
-      '- geschosse_oberirdisch@bw1: 3 | alternativ: 4 (Einreichplan Schnitt.pdf, S. 2) | alternativ: 5',
+      '- escape_level_m@bldg1: 9.5 | alternativ: 11 (Brandschutzkonzept.pdf)',
+      '- storeys_above_ground@bldg1: 3 | alternativ: 4 (Einreichplan Schnitt.pdf, S. 2) | alternativ: 5',
     ])
     expect(view).not.toContain('ZITAT')
     // The section sits after the assumptions and before nothing else.
@@ -340,21 +340,21 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
   it('leaves the confirmed lines byte-identical whatever evidence and alternatives the facts carry', () => {
     const plain = profileOf({
       facts: {
-        nutzung: fact('wohnen'),
-        'geschosse_oberirdisch@bw1': fact(3),
-        'bgf_oberirdisch@bw1': fact(412.5),
+        nutzung: fact('residential'),
+        'storeys_above_ground@bldg1': fact(3),
+        'gfa_above_ground@bldg1': fact(412.5),
       },
     })
     const annotated = profileOf({
       facts: {
-        nutzung: fact('wohnen', { evidence: [document('Bescheid.pdf', 1, 'Wohnen')] }),
-        'geschosse_oberirdisch@bw1': fact(3, {
+        nutzung: fact('residential', { evidence: [document('Bescheid.pdf', 1, 'Wohnen')] }),
+        'storeys_above_ground@bldg1': fact(3, {
           evidence: [document('Baubeschreibung.pdf', 4, 'drei')],
           alternatives: [
             { value: 4, evidence: [document('Plan.pdf', 2, 'vier')], recordedAt: NOW },
           ],
         }),
-        'bgf_oberirdisch@bw1': fact(412.5),
+        'gfa_above_ground@bldg1': fact(412.5),
       },
     })
 
@@ -362,17 +362,17 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
       linesOf(buildProjectPromptView(plain), 'confirmed')
     )
     expect(linesOf(buildProjectPromptView(plain), 'confirmed')).toEqual([
-      '- bgf_oberirdisch@bw1=412.5',
-      '- geschosse_oberirdisch@bw1=3',
-      '- nutzung=wohnen',
+      '- gfa_above_ground@bldg1=412.5',
+      '- nutzung=residential',
+      '- storeys_above_ground@bldg1=3',
     ])
   })
 
   it('changes nothing for a profile without evidence or alternatives', () => {
     const view = buildProjectPromptView(
       profileOf({
-        facts: { nutzung: fact('wohnen') },
-        assumptions: { widmung: suggestion('bauland') },
+        facts: { nutzung: fact('residential') },
+        assumptions: { land_designation: suggestion('bauland') },
       })
     )
 
@@ -381,10 +381,10 @@ describe('project profile prompt view: what a reading found (ADR-0111)', () => {
         'PROJECT_CONTEXT v1',
         '',
         'confirmed:',
-        '- nutzung=wohnen',
+        '- nutzung=residential',
         '',
         'assumptions:',
-        '- widmung=bauland',
+        '- land_designation=bauland',
       ].join('\n')
     )
   })

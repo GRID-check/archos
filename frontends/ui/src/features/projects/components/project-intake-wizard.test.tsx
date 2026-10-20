@@ -81,14 +81,14 @@ const REQUIRED_ANSWERS: Record<string, ProjectPrimitiveValue> = {
   A1: 'Test',
   A2_adr: 'Wien 1',
   A2_country: 'at',
-  A2_land: 'tirol',
-  A5: ['neubau'],
+  A2_land: 'tyrol',
+  A5: ['new_build'],
 }
 
 /** Seed a draft so the wizard restores these answers and opens on the Review step (module H). */
 function seedReviewDraft(answers: Record<string, ProjectPrimitiveValue>, savedAt?: number): void {
   localStorage.setItem(
-    `intake-draft-${PROJECT_ID}`,
+    `intake-draft-v2-${PROJECT_ID}`,
     JSON.stringify({
       answers: { ...REQUIRED_ANSWERS, ...answers },
       currentStep: REVIEW_STEP,
@@ -113,7 +113,7 @@ const putProfileCalls = (stub: FetchStub) =>
   stub.calls.filter((c) => c.url.endsWith(`/projects/${PROJECT_ID}/profile`) && c.method === 'PUT')
 
 // Answers that trigger the fossil-fuel-on-a-new-build conflict.
-const FOSSIL_CONFLICT: Record<string, ProjectPrimitiveValue> = { A5: ['neubau'], 'E1@bw1': 'gas' }
+const FOSSIL_CONFLICT: Record<string, ProjectPrimitiveValue> = { A5: ['new_build'], 'E1@bldg1': 'gas' }
 
 describe('ProjectIntakeWizard — FB-13 conflict check', () => {
   beforeEach(() => {
@@ -188,7 +188,7 @@ describe('ProjectIntakeWizard — FB-13 conflict check', () => {
     const user = userEvent.setup()
     const stub = stubFetch()
     // Consistent structured answers, and a too-short context note (< 10 chars).
-    seedReviewDraft({ A2_land: 'wien', A5: ['umbau'], G1: 'ok' })
+    seedReviewDraft({ A2_land: 'vienna', A5: ['conversion'], G1: 'ok' })
     renderWizard(true)
 
     await user.click(await screen.findByRole('button', { name: /save & see/i }))
@@ -257,7 +257,7 @@ describe('ProjectIntakeWizard — summary generation is fully off the save path'
     const user = userEvent.setup()
     const stub = stubFetch()
 
-    seedReviewDraft({ A2_land: 'wien', A5: ['neubau'] })
+    seedReviewDraft({ A2_land: 'vienna', A5: ['new_build'] })
     renderWizard(false)
 
     await user.click(await screen.findByRole('button', { name: /save/i }))
@@ -280,9 +280,9 @@ describe('ProjectIntakeWizard — Fix 3 save-success feedback', () => {
   it('toasts a save confirmation with the captured-fact count after a successful save', async () => {
     const user = userEvent.setup()
     stubFetch()
-    // project_name + standort_adresse + country + bundesland + vorhabensart:
+    // project_name + site_address + country + federal_state + work_type:
     // the five facts the required-answer set produces.
-    seedReviewDraft({ A2_land: 'wien' })
+    seedReviewDraft({ A2_land: 'vienna' })
     renderWizard(false)
 
     await user.click(await screen.findByRole('button', { name: /save/i }))
@@ -307,7 +307,7 @@ describe('ProjectIntakeWizard — Fix 3 save-success feedback', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => ({}) })
     })
     vi.stubGlobal('fetch', fetch)
-    seedReviewDraft({ A2_land: 'wien', A5: ['neubau'] })
+    seedReviewDraft({ A2_land: 'vienna', A5: ['new_build'] })
     renderWizard(false)
 
     await user.click(await screen.findByRole('button', { name: /save/i }))
@@ -346,7 +346,7 @@ describe('ProjectIntakeWizard — optimistic concurrency (If-Match)', () => {
   it('sends the loaded profileVersion as If-Match so concurrent edits 409', async () => {
     const user = userEvent.setup()
     const headers = recordHeaders()
-    seedReviewDraft({ A2_land: 'wien' })
+    seedReviewDraft({ A2_land: 'vienna' })
     render(
       <ProjectIntakeWizard projectId={PROJECT_ID} projectName="Test" initialProfileVersion={7} />
     )
@@ -360,7 +360,7 @@ describe('ProjectIntakeWizard — optimistic concurrency (If-Match)', () => {
   it('omits If-Match when no version was provided (legacy behavior)', async () => {
     const user = userEvent.setup()
     const headers = recordHeaders()
-    seedReviewDraft({ A2_land: 'wien' })
+    seedReviewDraft({ A2_land: 'vienna' })
     renderWizard(false)
 
     await user.click(await screen.findByRole('button', { name: /save/i }))
@@ -385,7 +385,7 @@ describe('ProjectIntakeWizard — optimistic concurrency (If-Match)', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => ({}) })
     })
     vi.stubGlobal('fetch', fetch)
-    seedReviewDraft({ A2_land: 'wien' })
+    seedReviewDraft({ A2_land: 'vienna' })
     render(
       <ProjectIntakeWizard projectId={PROJECT_ID} projectName="Test" initialProfileVersion={7} />
     )
@@ -412,7 +412,7 @@ describe('ProjectIntakeWizard — optimistic concurrency (If-Match)', () => {
       return Promise.resolve({ ok: true, status: 200, json: async () => ({}) })
     })
     vi.stubGlobal('fetch', fetch)
-    seedReviewDraft({ A2_land: 'wien' })
+    seedReviewDraft({ A2_land: 'vienna' })
     render(
       <ProjectIntakeWizard projectId={PROJECT_ID} projectName="Test" initialProfileVersion={7} />
     )
@@ -437,7 +437,7 @@ describe('ProjectIntakeWizard — edit-mode save preserves agent-recorded knowle
   it('carries novel facts/goals/unknowns through the whole-profile PUT', async () => {
     const user = userEvent.setup()
     const stub = stubFetch()
-    seedReviewDraft({ A2_country: 'at', A2_land: 'wien' }, Date.parse('2026-01-02T00:00:00.000Z'))
+    seedReviewDraft({ A2_country: 'at', A2_land: 'vienna' }, Date.parse('2026-01-02T00:00:00.000Z'))
     const initialProfile = {
       facts: {
         brandabschnitt_flaeche: {
@@ -472,7 +472,7 @@ describe('ProjectIntakeWizard — edit-mode save preserves agent-recorded knowle
     expect(body.goals.zieltermin).toBe('2027-03-01')
     expect(body.unknowns).toContain('statik_gutachten')
     // The wizard's own answer still lands as usual.
-    expect(body.facts.bundesland?.value).toBe('wien')
+    expect(body.facts.federal_state?.value).toBe('vienna')
   })
 })
 
@@ -525,14 +525,14 @@ describe('ProjectIntakeWizard — assumptions-only edit preserves assumptions', 
   it('carries loaded assumptions into the PUT payload on an edit-mode save', async () => {
     const user = userEvent.setup()
     const stub = stubFetch()
-    seedReviewDraft({ A2_land: 'wien' }, Date.parse('2026-01-02T00:00:00.000Z'))
+    seedReviewDraft({ A2_land: 'vienna' }, Date.parse('2026-01-02T00:00:00.000Z'))
     const initialProfile = {
       facts: {},
       goals: {},
       unknowns: [],
       assumptions: {
-        widmung: {
-          value: 'wohnen',
+        land_designation: {
+          value: 'residential',
           status: 'unconfirmed' as const,
           reason: 'agent guess',
           source: 'agent_suggested' as const,
@@ -555,7 +555,7 @@ describe('ProjectIntakeWizard — assumptions-only edit preserves assumptions', 
     const body = putProfileCalls(stub)[0].body as {
       assumptions?: Record<string, { value?: unknown }>
     }
-    expect(body.assumptions?.widmung?.value).toBe('wohnen')
+    expect(body.assumptions?.land_designation?.value).toBe('residential')
   })
 })
 
@@ -572,7 +572,7 @@ describe('ProjectIntakeWizard — stale conditional answers pruned on load', () 
     const stub = stubFetch()
     // A6 (Baujahr) only applies to existing-building work. A restored draft with
     // pure Neubau + a stale Baujahr must be pruned on load like an interactive edit.
-    seedReviewDraft({ A5: ['neubau'], A6: 1990, A6__mode: 'wert' })
+    seedReviewDraft({ A5: ['new_build'], A6: 1990, A6__mode: 'wert' })
     renderWizard(false)
 
     await user.click(await screen.findByRole('button', { name: /save/i }))
@@ -580,7 +580,7 @@ describe('ProjectIntakeWizard — stale conditional answers pruned on load', () 
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith(projectTourUrl(PROJECT_ID)))
     const body = putProfileCalls(stub)[0].body as { facts: Record<string, unknown> }
     // The pruned Baujahr never reaches the persisted profile.
-    expect(body.facts.baujahr_bestand).toBeUndefined()
+    expect(body.facts.existing_year_built).toBeUndefined()
   })
 })
 
@@ -603,15 +603,15 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('discards a draft older than the persisted profile and prefills from the profile', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
+      `intake-draft-v2-${PROJECT_ID}`,
       JSON.stringify({
-        answers: { A5: ['sanierung'] },
+        answers: { A5: ['refurbishment'] },
         currentStep: 0,
         savedAt: Date.parse('2026-01-01T00:00:00.000Z'),
       })
     )
     const initialProfile = {
-      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { work_type: plannedWorkFact(['new_build'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -632,15 +632,15 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('restores a draft newer than the persisted profile (genuine local edits survive)', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
+      `intake-draft-v2-${PROJECT_ID}`,
       JSON.stringify({
-        answers: { A5: ['sanierung'] },
+        answers: { A5: ['refurbishment'] },
         currentStep: 0,
         savedAt: Date.parse('2026-07-20T00:00:00.000Z'),
       })
     )
     const initialProfile = {
-      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { work_type: plannedWorkFact(['new_build'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -661,16 +661,16 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('discards a draft whose base profileVersion is behind the loaded version', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
+      `intake-draft-v2-${PROJECT_ID}`,
       JSON.stringify({
-        answers: { A5: ['sanierung'] },
+        answers: { A5: ['refurbishment'] },
         currentStep: 0,
         savedAt: Date.now(),
         baseVersion: 3,
       })
     )
     const initialProfile = {
-      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { work_type: plannedWorkFact(['new_build'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -692,11 +692,11 @@ describe('ProjectIntakeWizard — Fix 1 stale draft does not clobber a newer pro
   it('migration window: a legacy draft with neither baseVersion nor savedAt does not win over the profile', async () => {
     stubFetch()
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
-      JSON.stringify({ answers: { A5: ['sanierung'] }, currentStep: 0 })
+      `intake-draft-v2-${PROJECT_ID}`,
+      JSON.stringify({ answers: { A5: ['refurbishment'] }, currentStep: 0 })
     )
     const initialProfile = {
-      facts: { vorhabensart: plannedWorkFact(['neubau'], '2026-07-01T00:00:00.000Z') },
+      facts: { work_type: plannedWorkFact(['new_build'], '2026-07-01T00:00:00.000Z') },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -764,8 +764,8 @@ describe('ProjectIntakeWizard — Fix 5 non-finite number rejected', () => {
     const stub = stubFetch()
     // Land on module C (index 2) with the building set to a Gebäude so C2 shows.
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
-      JSON.stringify({ answers: { 'C1@bw1': 'gebaeude' }, currentStep: 2 })
+      `intake-draft-v2-${PROJECT_ID}`,
+      JSON.stringify({ answers: { 'C1@bldg1': 'building' }, currentStep: 2 })
     )
     render(<ProjectIntakeWizard projectId={PROJECT_ID} projectName="Test" />)
 
@@ -843,7 +843,7 @@ describe('ProjectIntakeWizard — Schnellstart', () => {
   })
   afterEach(() => localStorage.clear())
 
-  /** Module B: B1/B1_text/B2 are core, the risk/noise/erschliessung block is not. */
+  /** Module B: B1/B1_text/B2 are core, the risk/noise/servicing block is not. */
   async function openModuleB(user: ReturnType<typeof userEvent.setup>) {
     const rail = await screen.findByRole('navigation', { name: /wizard modules/i })
     await user.click(within(rail).getByText('Grundstück & Widmung'))
@@ -973,7 +973,7 @@ describe('ProjectIntakeWizard — required answers gate the save', () => {
     const answers: Record<string, ProjectPrimitiveValue> = { ...REQUIRED_ANSWERS }
     delete answers[omit]
     localStorage.setItem(
-      `intake-draft-${PROJECT_ID}`,
+      `intake-draft-v2-${PROJECT_ID}`,
       JSON.stringify({ answers, currentStep: REVIEW_STEP })
     )
   }

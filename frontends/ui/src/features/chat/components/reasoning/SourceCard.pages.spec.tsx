@@ -19,7 +19,7 @@ const document = (loci: CitedDocument['loci']): CitedDocument => ({
   title: 'OIB-Richtlinie 2',
   fileName: 'OIB-Richtlinie-2.pdf',
   collection: 'base',
-  kind: 'baurecht',
+  kind: 'building_law',
   tint: 'law',
   loci,
 })

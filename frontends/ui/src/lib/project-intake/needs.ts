@@ -10,9 +10,9 @@
  * ({@link buildingClassInputsFor}, the derivation and the decisive needs).
  *
  * The wizard's walk, replayed: project and Grundstück questions once, building
- * questions per building (`key@bwN`), and the Nutzungszonen of each selected
- * D0 use (`key@bwN@use`). Conditions are evaluated on what is known, facts
- * first and suggestions under them, so a suggested `bauwerkstyp = gebaeude`
+ * questions per building (`key@bldgN`), and the Nutzungszonen of each selected
+ * D0 use (`key@bldgN@use`). Conditions are evaluated on what is known, facts
+ * first and suggestions under them, so a suggested `building_type = gebaeude`
  * already opens the building questions the reading should look for.
  */
 
@@ -20,6 +20,7 @@ import {
   answerKeyFor,
   answersFromProfile,
   evaluateIntakeCondition,
+  isBuildingId,
   modeKeyFor,
   type BuildingInstance,
   type ProjectIntakeDefinition,
@@ -57,7 +58,7 @@ type Answers = Record<string, ProjectPrimitiveValue>
 interface Candidate {
   question: ProjectIntakeQuestion
   type: IntakeNeedType
-  /** The profile key (`geschosse_oberirdisch@bw1`). */
+  /** The profile key (`storeys_above_ground@bldg1`). */
   key: string
   baseKey: string
   buildingId: string | null
@@ -150,10 +151,10 @@ function candidatesFor(
   })
 }
 
-/** „noch offen" is the wizard's way to defer an answer, never a value a document states. B3_weise's `offen` is a real Bebauungsweise. */
+/** „noch offen" is the wizard's way to defer an answer, never a value a document states. B3_weise's `open` is a real Bebauungsweise. */
 function isUndecidedOption(option: { value: string; label: string }): boolean {
   return (
-    (option.value === 'offen' || option.value === 'noch_offen') && option.label.startsWith('noch')
+    (option.value === 'open' || option.value === 'undecided') && option.label.startsWith('noch')
   )
 }
 
@@ -176,7 +177,7 @@ export function needOptionsFor(
     .map((option) => ({ token: option.value, label: option.label }))
 }
 
-/** The D0 uses a building can have: each opens its Nutzungszone (`key@bwN@use`). */
+/** The D0 uses a building can have: each opens its Nutzungszone (`key@bldgN@use`). */
 function zoneUses(definition: ProjectIntakeDefinition): Array<{ value: string; label: string }> {
   return (
     definition.stages.flatMap((stage) => stage.questions).find((question) => question.id === 'D0')
@@ -214,7 +215,7 @@ function buildingClassReaders(
 /**
  * One building's building class inputs from the wizard's answers, by base key;
  * undefined where nothing is known. Read through the answers, not the
- * profile, so the wizard's legacy bridges (C8's inverted `ne_unter_400`)
+ * profile, so the wizard's legacy bridges (C8's inverted `units_under_400`)
  * reach the derivation too.
  */
 function inputsFromAnswers(
@@ -300,7 +301,7 @@ export function computeNeeds(
 
 /**
  * The needs `after` lists that `before` did not, still open: what a write
- * opened (`bauwerkstyp = gebaeude` opens the building's questions), decisive
+ * opened (`building_type = gebaeude` opens the building's questions), decisive
  * first as {@link computeNeeds} orders them.
  */
 export function openedNeeds(before: readonly Need[], after: readonly Need[]): OpenedNeed[] {
@@ -354,8 +355,6 @@ export interface KeyQuestion {
   zone: string | null
 }
 
-const BUILDING_ID = /^bw[1-9]\d*$/
-
 /** The key's scope parts, when it has the shape the question's scope asks for. */
 function scopedParts(
   scope: 'project' | 'bauwerk' | 'zone',
@@ -363,7 +362,7 @@ function scopedParts(
 ): { buildingId: string | null; zone: string | null } | null {
   const [, buildingId, zone] = parts
   if (scope === 'project') return parts.length === 1 ? { buildingId: null, zone: null } : null
-  if (!BUILDING_ID.test(buildingId ?? '')) return null
+  if (!isBuildingId(buildingId ?? '')) return null
   if (scope === 'bauwerk') return parts.length === 2 ? { buildingId, zone: null } : null
   return parts.length === 3 && zone ? { buildingId, zone } : null
 }
@@ -390,7 +389,7 @@ function writers(definition: ProjectIntakeDefinition): Array<{
 
 /**
  * The question `key` answers: its base key is one a question writes, and its
- * `@bwN` / `@bwN@use` suffix is the scope that question is asked in (a
+ * `@bldgN` / `@bldgN@use` suffix is the scope that question is asked in (a
  * project key has none, a building key one, a Nutzungszone key a building and
  * one of D0's uses). Null for any other key. Whether the question is asked
  * yet, whether its conditions hold, is not consulted: a reading may find a
@@ -415,7 +414,7 @@ export function questionForKey(
 /**
  * The question `key` answers, when a reading may record it on this profile:
  * {@link questionForKey}, and its building is one the profile describes
- * (`buildingIdsOf` in `derivation-view.ts`: `bw1` when it names none). A
+ * (`buildingIdsOf` in `derivation-view.ts`: `bldg1` when it names none). A
  * reading does not add a building; a person does, in the wizard.
  */
 export function recordableKey(

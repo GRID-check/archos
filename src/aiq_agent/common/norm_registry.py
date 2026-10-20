@@ -36,12 +36,15 @@ from typing import Literal
 from urllib.parse import urlparse
 
 import yaml
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 from pydantic import ValidationError
+from pydantic import field_validator
 
 from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE
 from aiq_agent.common.source_kinds import AGENT_AUTHORED_LANE_LABEL
+from aiq_agent.profile_names import normalize_profile_token
 
 logger = logging.getLogger(__name__)
 
@@ -71,11 +74,22 @@ KNOWN_APPLICATIONS = frozenset(
 )
 
 # Legal rank: the lane an entry renders under. Law ranks carry RIS pointers;
-# `behoerdliche_info` (MA-37 Merkblätter etc. — practice guidance, never new law)
-# and `norm_extern` (ÖNORM/TRVB/EU-Normen — usually no accessible full text)
+# `authority_info` (MA-37 Merkblätter etc. — practice guidance, never new law)
+# and `external_standard` (ÖNORM/TRVB/EU-Normen — usually no accessible full text)
 # cover the diagram lanes that are NOT in RIS. The OIB corpus itself stays out
 # of the registry (knowledge base is its source of truth).
-NormRank = Literal["bundesgesetz", "landesgesetz", "verordnung", "behoerdliche_info", "norm_extern"]
+NormRank = Literal["federal_law", "state_law", "ordinance", "authority_info", "external_standard"]
+
+# The German ranks a stored registry (the admin-edited row in the knowledge
+# database, a seed file not yet re-saved) still carries. Read-only: nothing
+# writes these, and the next admin save stores the English ones.
+LEGACY_NORM_RANK: dict[str, str] = {
+    "bundesgesetz": "federal_law",
+    "landesgesetz": "state_law",
+    "verordnung": "ordinance",
+    "behoerdliche_info": "authority_info",
+    "norm_extern": "external_standard",
+}
 
 # Canonical Bundesland names, in free-text probe order.
 BUNDESLAENDER: tuple[str, ...] = (
@@ -90,24 +104,25 @@ BUNDESLAENDER: tuple[str, ...] = (
     "Burgenland",
 )
 
-# Structured `bundesland` fact tokens (intake wizard vocabulary, see
+# Structured `federal_state` fact tokens (intake wizard vocabulary, see
 # frontends/ui/src/lib/project-profile/intake-definition.ts) -> canonical names.
-# `ausserhalb_oesterreichs` maps to None on purpose: the project is explicitly
+# `outside_austria` maps to None on purpose: the project is explicitly
 # outside Austria, so no state's law should be prioritized.
 FEDERAL_STATE_TOKENS: dict[str, str | None] = {
-    "wien": "Wien",
-    "niederoesterreich": "Niederösterreich",
-    "oberoesterreich": "Oberösterreich",
-    "steiermark": "Steiermark",
-    "kaernten": "Kärnten",
+    "vienna": "Wien",
+    "lower_austria": "Niederösterreich",
+    "upper_austria": "Oberösterreich",
+    "styria": "Steiermark",
+    "carinthia": "Kärnten",
     "salzburg": "Salzburg",
-    "tirol": "Tirol",
+    "tyrol": "Tirol",
     "vorarlberg": "Vorarlberg",
     "burgenland": "Burgenland",
-    "ausserhalb_oesterreichs": None,
+    "outside_austria": None,
 }
 
-_STRUCTURED_FEDERAL_STATE_RE = re.compile(r"\bbundesland=([a-z_]+)")
+# `bundesland=` is the line a prompt view an older pod stored still carries (migration 0159).
+_STRUCTURED_FEDERAL_STATE_RE = re.compile(r"\b(?:federal_state|bundesland)=([a-z_]+)")
 
 # Terms shorter than this never match (guards against noise words).
 _MIN_TOPIC_LENGTH = 4
@@ -159,7 +174,7 @@ JURISDICTION_GROUNDING = """## Jurisdiction & Country Handling
 The project context (injected at the bottom of this prompt) carries a `country=<cc>` line: an ISO-2 country
 code (e.g. `at`, `de`, `ch`) or the sentinel `other` for any country without a dedicated pipeline. When the
 line is absent the country is UNCONFIRMED: default to the Austrian pipeline but treat it as provisional (see
-below), never as a confirmed `country=at`. For Austrian projects there is also a `bundesland=<token>` line
+below), never as a confirmed `country=at`. For Austrian projects there is also a `federal_state=<token>` line
 naming the state.
 
 - **country=at (confirmed)**: Full Austrian building-regulation pipeline applies. OIB-Richtlinien,
@@ -174,7 +189,7 @@ naming the state.
   OIB/RIS/Landesbauordnung findings as binding. State that the jurisdiction is unconfirmed, ask for (or
   explicitly flag the assumption of) `country=at`, and add the same local-verification disclaimer as for a
   non-AT project.
-- The `bundesland=ausserhalb_oesterreichs` token means the project is outside Austria (functionally the same
+- The `federal_state=outside_austria` token means the project is outside Austria (functionally the same
   as `country != at`), even when no explicit non-AT country line is present.
 
 ## Project Hard Limits & Grounding
@@ -185,15 +200,15 @@ The project context includes confirmed facts (hard constraints), unknowns (gaps)
 - **Confirmed facts** are binding — never contradict them. If research sources conflict with a confirmed
   fact, flag the conflict and explain.
 - **Unknowns** are known gaps — if a critical fact for the answer (especially building-class relevant:
-  fluchtniveau_m, geschosse, bgf, nutzungen, bundesland) is flagged unknown, the answer must either ask for
+  escape_level_m, storeys, gfa, uses, federal_state) is flagged unknown, the answer must either ask for
   it or state the gap clearly.
 - **Assumptions** are provisional estimates — treat as likely but note the uncertainty.
-- Wizard facts that constrain building-regulation outputs: **fluchtniveau_m** → Gebäudeklasse per OIB-RL 2;
-  **geschosse_oberirdisch / geschosse_unterirdisch**; **max_gebaeudehoehe**; **bgf_oberirdisch**;
-  **vorhabensart** (neubau/zubau/umbau/sanierung/...); **nutzungen** (wohnen/büro/handel/...); **bauweise**;
-  **aufzug**; **konditionierung**; **feuerstaetten**; **publikumsverkehr**; **gefahrenzonen**;
-  **brandschutz_anlagen**; **waermeversorgung**; **pv**; **lueftung**; **kuehlung**; **versickerung**.
-- Keys with `@bwN` suffix apply to a specific building; keys with `@zone` suffix to a use zone.
+- Wizard facts that constrain building-regulation outputs: **escape_level_m** → Gebäudeklasse per OIB-RL 2;
+  **storeys_above_ground / storeys_below_ground**; **max_building_height**; **gfa_above_ground**;
+  **work_type** (new_build/extension/conversion/refurbishment/...); **uses** (residential/office/retail/...);
+  **construction_method**; **elevator**; **conditioning**; **fireplaces**; **public_access**; **hazard_zones**;
+  **fire_safety_systems**; **heat_supply**; **further_technology** (pv/ventilation/cooling/infiltration).
+- Keys with `@bldgN` suffix apply to a specific building; keys with `@zone` suffix to a use zone.
 - When the plan or synthesis concerns a building-regulation question, cross-check the projected output
   against the project's hard limits. If the research produces a requirement that contradicts a confirmed
   fact, note the contradiction in the output rather than blindly repeating both."""
@@ -222,8 +237,17 @@ class NormEntry(BaseModel):
     id: str
     title: str
     short: str
-    rank: NormRank = "landesgesetz"
-    bundesland: str = ""  # canonical name ("Wien"); "" = federal/stateless
+    rank: NormRank = "state_law"
+
+    @field_validator("rank", mode="before")
+    @classmethod
+    def _legacy_rank(cls, value: object) -> object:
+        return LEGACY_NORM_RANK.get(value, value) if isinstance(value, str) else value
+
+    # canonical name ("Wien"); "" = federal/stateless. A registry stored before the English names
+    # (the admin-edited row, a seed file not yet re-saved) calls it `bundesland`; read-only, the
+    # next save stores `federal_state`.
+    federal_state: str = Field(default="", validation_alias=AliasChoices("federal_state", "bundesland"))
     topics: list[str] = Field(default_factory=list)
     relevance: str = ""
     application: str = ""  # OGD-RIS application; empty for non-RIS entries
@@ -260,6 +284,15 @@ class NormsFile(BaseModel):
     # aiq_agent.common.country_profile). Admin-editable through the norms store.
     language: str = ""
     states: dict[str, str | None] = Field(default_factory=dict)
+
+    @field_validator("states", mode="before")
+    @classmethod
+    def _legacy_state_tokens(cls, value: object) -> object:
+        """A stored registry keys ``states`` by the German token (``wien``); the English one replaces it."""
+        if not isinstance(value, dict):
+            return value
+        return {normalize_profile_token("federal_state", str(token)): name for token, name in value.items()}
+
     corpus_note: str = ""
     doctrine: str = ""
     parcel_tags: list[str] = Field(default_factory=list)
@@ -355,18 +388,18 @@ def _validated_entries(norms_file: NormsFile, origin: str) -> list[NormEntry]:
                 entry.application,
             )
             continue
-        if entry.rank in ("bundesgesetz", "landesgesetz", "verordnung") and not entry.is_ris:
+        if entry.rank in ("federal_law", "state_law", "ordinance") and not entry.is_ris:
             logger.warning(
                 "norm_registry: law entry '%s' (rank %s) has no RIS pointer — entry dropped",
                 entry.id,
                 entry.rank,
             )
             continue
-        if entry.bundesland and entry.bundesland not in BUNDESLAENDER:
+        if entry.federal_state and entry.federal_state not in BUNDESLAENDER:
             logger.warning(
                 "norm_registry: entry '%s' has unknown Bundesland '%s' — entry dropped",
                 entry.id,
-                entry.bundesland,
+                entry.federal_state,
             )
             continue
         seen.add(entry.id)
@@ -471,7 +504,7 @@ def match_entries(registry: NormRegistry, query: str) -> list[NormEntry]:
 def extract_federal_state(text: str | None) -> str | None:
     """The Bundesland the text points at, or None. Pure text matching.
 
-    The structured `bundesland=<token>` fact line (written by the intake wizard
+    The structured `federal_state=<token>` fact line (written by the intake wizard
     into the project-context prompt view) is authoritative when present — name
     probing must not override it, or a mention like "Wiener Neustadt" (a Lower
     Austrian town) would flip the jurisdiction to Wien. Free text without the
@@ -482,7 +515,7 @@ def extract_federal_state(text: str | None) -> str | None:
     normalized = _normalize(text)
     structured = _STRUCTURED_FEDERAL_STATE_RE.search(normalized)
     if structured:
-        return FEDERAL_STATE_TOKENS.get(structured.group(1))
+        return FEDERAL_STATE_TOKENS.get(normalize_profile_token("federal_state", structured.group(1)))
     for state in BUNDESLAENDER:
         if _normalize(state) in normalized:
             return state
@@ -495,15 +528,15 @@ def resolve_federal_state(text: str | None) -> str | None:
     Precedence (jurisdiction is a cross-cutting request fact and must travel
     STRUCTURED, not be re-parsed from prompt text):
 
-    1. ``GridRequestContext.from_context().bundesland`` — the validated token
+    1. ``GridRequestContext.from_context().federal_state`` — the validated token
        carried on the signed ``X-Grid-Request-Context`` envelope. ``None``
-       (``ausserhalb_oesterreichs``) is FINAL — no fall-through to probing.
-    2. ``extract_bundesland(text)`` — the structured prompt-text line, then
+       (``outside_austria``) is FINAL — no fall-through to probing.
+    2. ``extract_federal_state(text)`` — the structured prompt-text line, then
        free-text state-name probing (no live request context).
     """
     from aiq_agent.project_context import GridRequestContext
 
-    structured_token = GridRequestContext.from_context().bundesland
+    structured_token = GridRequestContext.from_context().federal_state
     if structured_token is not None:
         return FEDERAL_STATE_TOKENS.get(structured_token)
     return extract_federal_state(text)
@@ -570,8 +603,8 @@ def focus_entries(entries: list[NormEntry], bundesland: str | None) -> list[Norm
     """
     if not bundesland:
         return entries
-    kept = [entry for entry in entries if not entry.bundesland or entry.bundesland == bundesland]
-    return sorted(kept, key=lambda entry: 0 if entry.bundesland == bundesland else 1)
+    kept = [entry for entry in entries if not entry.federal_state or entry.federal_state == bundesland]
+    return sorted(kept, key=lambda entry: 0 if entry.federal_state == bundesland else 1)
 
 
 # ---------------------------------------------------------------------------
@@ -594,7 +627,7 @@ OIB_CORPUS_NOTE = (
 )
 
 
-_LAW_RANKS = ("bundesgesetz", "landesgesetz", "verordnung")
+_LAW_RANKS = ("federal_law", "state_law", "ordinance")
 
 
 def _render_entry_line(entry: NormEntry) -> str:
@@ -602,8 +635,8 @@ def _render_entry_line(entry: NormEntry) -> str:
         line = f"- {entry.short} — {entry.title} [{entry.application}/{entry.document_number}]"
     else:
         line = f"- {entry.short} — {entry.title}"
-    if entry.bundesland:
-        line += f" ({entry.bundesland})"
+    if entry.federal_state:
+        line += f" ({entry.federal_state})"
     # Render BOTH URLs when both are set (e.g. a consolidated law plus a curated
     # annex link) — an `elif` here silently dropped a populated ``source_url``
     # whenever ``full_law_url`` was also present.
@@ -625,24 +658,24 @@ def render_prompt_block(registry: NormRegistry, bundesland: str | None = None, c
     lines = [_BLOCK_HEADER, ""]
     focused = focus_entries(registry.entries, bundesland)
     law = [entry for entry in focused if entry.rank in _LAW_RANKS]
-    federal = [entry for entry in law if not entry.bundesland]
+    federal = [entry for entry in law if not entry.federal_state]
     if federal:
         lines.append("Bundesrecht:")
         lines.extend(_render_entry_line(entry) for entry in sorted(federal, key=lambda e: e.short.lower()))
     by_state: dict[str, list[NormEntry]] = {}
     for entry in law:
-        if entry.bundesland:
-            by_state.setdefault(entry.bundesland, []).append(entry)
+        if entry.federal_state:
+            by_state.setdefault(entry.federal_state, []).append(entry)
     for state in sorted(by_state, key=lambda s: (s != bundesland, s)):
         lines.append("")
         lines.append(f"Landesrecht — {state}:")
         lines.extend(_render_entry_line(entry) for entry in sorted(by_state[state], key=lambda e: e.short.lower()))
-    behoerdlich = [entry for entry in focused if entry.rank == "behoerdliche_info"]
+    behoerdlich = [entry for entry in focused if entry.rank == "authority_info"]
     if behoerdlich:
         lines.append("")
         lines.append("Behördliche Informationen (Praxis-Hinweise — nur Ergänzungen, niemals neue Normen):")
         lines.extend(_render_entry_line(entry) for entry in sorted(behoerdlich, key=lambda e: e.short.lower()))
-    extern = [entry for entry in focused if entry.rank == "norm_extern"]
+    extern = [entry for entry in focused if entry.rank == "external_standard"]
     if extern:
         lines.append("")
         lines.append("Externe Normen (Bezugsnormen — Volltext i. d. R. nicht verfügbar, ehrlich kennzeichnen):")
@@ -755,31 +788,31 @@ _OIB_CLASS_PREFIXES: tuple[tuple[str, str], ...] = (
 )
 
 _RANK_LANES: dict[str, tuple[str, str]] = {
-    "bundesgesetz": ("baurecht_bund", "Bundesrecht"),
-    "landesgesetz": ("baurecht_land", "Landesrecht"),
-    "verordnung": ("baurecht_verordnung", "Verordnung"),
-    "behoerdliche_info": ("behoerde", "Behördliche Information"),
-    "norm_extern": ("norm_extern", "Externe Norm"),
+    "federal_law": ("building_law_federal", "Bundesrecht"),
+    "state_law": ("building_law_state", "Landesrecht"),
+    "ordinance": ("building_law_ordinance", "Verordnung"),
+    "authority_info": ("authority", "Behördliche Information"),
+    "external_standard": ("external_standard", "Externe Norm"),
 }
 
 _OIB_CLASS_LANES: dict[str, tuple[str, str]] = {
-    "richtlinie": ("baurecht_oib", "OIB-Richtlinie"),
-    "leitfaden": ("baurecht_oib_leitfaden", "OIB-Leitfaden"),
-    "erlaeuterungen": ("baurecht_oib_erlaeuterung", "OIB-Erläuterung"),
-    "begriffsbestimmungen": ("baurecht_oib_begriffe", "OIB-Begriffsbestimmungen"),
-    "zitierte_normen": ("baurecht_oib_referenz", "OIB-Referenzdokument"),
-    "aenderungen": ("baurecht_oib_diff", "OIB-Änderungsdokument"),
+    "richtlinie": ("building_law_oib", "OIB-Richtlinie"),
+    "leitfaden": ("building_law_oib_guide", "OIB-Leitfaden"),
+    "erlaeuterungen": ("building_law_oib_explanatory_note", "OIB-Erläuterung"),
+    "begriffsbestimmungen": ("building_law_oib_definitions", "OIB-Begriffsbestimmungen"),
+    "zitierte_normen": ("building_law_oib_reference", "OIB-Referenzdokument"),
+    "aenderungen": ("building_law_oib_amendment", "OIB-Änderungsdokument"),
 }
 
 # Label for a lane key, aggregated from the OIB-class + rank tables plus the
-# lanes only reachable through an explicit doc_class: ``baurecht_ris`` (a
-# generic RIS legal source) and ``baurecht_basis`` (the NEW neutral base lane,
-# coarse kind ``baurecht`` via the prefix in ``source_kinds._LANE_KIND_PREFIXES``).
+# lanes only reachable through an explicit doc_class: ``building_law_ris`` (a
+# generic RIS legal source) and ``building_law_base`` (the NEW neutral base lane,
+# coarse kind ``building_law`` via the prefix in ``source_kinds._LANE_KIND_PREFIXES``).
 _LANE_LABELS: dict[str, str] = {
     **{key: label for key, label in _OIB_CLASS_LANES.values()},
     **{key: label for key, label in _RANK_LANES.values()},
-    "baurecht_ris": "Rechtsquelle (RIS)",
-    "baurecht_basis": "Basisdokument",
+    "building_law_ris": "Rechtsquelle (RIS)",
+    "building_law_base": "Basisdokument",
     # Reachable only through stated PROVENANCE (``authored_by: agent``), never
     # through a doc_class — see :data:`~aiq_agent.common.source_kinds.AGENT_AUTHORED_LANE`.
     AGENT_AUTHORED_LANE: AGENT_AUTHORED_LANE_LABEL,
@@ -829,12 +862,12 @@ def oib_doc_class(file_name: str) -> str | None:
 # Maps the coarse ``oib_doc_class`` filename guess to the explicit doc_class
 # vocabulary key (``document_classification.DOCUMENT_CLASSES``).
 _OIB_CLASS_TO_DOC_CLASS: dict[str, str] = {
-    "richtlinie": "oib_richtlinie",
-    "leitfaden": "oib_leitfaden",
-    "erlaeuterungen": "oib_erlaeuterung",
-    "begriffsbestimmungen": "oib_begriffe",
-    "zitierte_normen": "oib_referenz",
-    "aenderungen": "oib_aenderung",
+    "richtlinie": "oib_guideline",
+    "leitfaden": "oib_guide",
+    "erlaeuterungen": "oib_explanatory_note",
+    "begriffsbestimmungen": "oib_definitions",
+    "zitierte_normen": "oib_reference",
+    "aenderungen": "oib_amendment",
 }
 
 
@@ -1228,7 +1261,7 @@ def lane_for_hit(
     when valid it fully determines the lane, overriding every collection/filename/
     url heuristic below. This is the authoritative signal the filename guess only
     approximates. The one exception is the DEFAULT class on a user's own shelf:
-    ``sonstiges`` is what ingestion stamps on a file nobody classified, and on a
+    ``other`` is what ingestion stamps on a file nobody classified, and on a
     project, session or Büroablage document it says nothing a person decided —
     it must not turn the user's plan into a "Basisdokument" in law blue.
 
@@ -1256,17 +1289,19 @@ def lane_for_hit(
     if doc_class:
         from aiq_agent.knowledge.document_classification import DEFAULT_DOC_CLASS
         from aiq_agent.knowledge.document_classification import DOCUMENT_CLASS_LANES
-        from aiq_agent.knowledge.document_classification import is_valid_doc_class
+        from aiq_agent.knowledge.document_classification import canonical_doc_class
 
-        if is_valid_doc_class(doc_class) and not (doc_class == DEFAULT_DOC_CLASS and users_shelf):
+        # A hit from a point written before the English keys still carries the German one.
+        doc_class = canonical_doc_class(doc_class)
+        if doc_class and not (doc_class == DEFAULT_DOC_CLASS and users_shelf):
             lane_key = DOCUMENT_CLASS_LANES[doc_class]
             return (lane_key, _LANE_LABELS.get(lane_key, "Baurecht"))
     if known_shelf is Shelf.OFFICE_SHELF:
-        return ("buero", "Büroablage")
+        return ("office", "Büroablage")
     if known_shelf is Shelf.PROJECT:
-        return ("projekt", "Projektwissen")
+        return ("project", "Projektwissen")
     if known_shelf is Shelf.SESSION:
-        return ("projekt", "Private Sitzung")
+        return ("project", "Private Sitzung")
     if file_name:
         doc_class = oib_doc_class(Path(file_name).name)
         if doc_class:
@@ -1276,14 +1311,14 @@ def lane_for_hit(
             for entry in registry.entries:
                 if entry.document_number and entry.document_number in source_url:
                     return _RANK_LANES[entry.rank]
-        return ("baurecht_ris", "Rechtsquelle (RIS)")
+        return ("building_law_ris", "Rechtsquelle (RIS)")
     # wien.gv.at is the curated MA-37 (Baupolizei Wien) registry pointer —
     # official municipal building information, Baurecht family, never Web.
     # Mirrors the frontend laneForHitClient so both render paths agree.
     if _host_matches(source_url, "wien.gv.at"):
-        return ("behoerde", "Behördliche Information")
+        return ("authority", "Behördliche Information")
     if collection:  # a named KB collection that is not project/archiv: the base corpus
-        return ("baurecht_oib", "OIB-Richtlinie")
+        return ("building_law_oib", "OIB-Richtlinie")
     return ("web", "Web")
 
 
@@ -1320,4 +1355,4 @@ def lane_for_knowledge_hit(
         shelf=shelf,
         authored_by=authored_by,
     )
-    return ("projekt", "Projektwissen") if lane == ("web", "Web") else lane
+    return ("project", "Projektwissen") if lane == ("web", "Web") else lane

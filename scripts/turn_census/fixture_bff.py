@@ -196,19 +196,19 @@ class FixtureOffice:
             "id": project["id"],
             "name": project["name"],
             "status": project["status"],
-            "bundesland": (project.get("facts") or {}).get("bundesland"),
+            "federal_state": (project.get("facts") or {}).get("federal_state"),
         }
 
     def _listed(self, project: dict[str, Any]) -> dict[str, Any]:
         return {
             **self._ref(project),
             "collection": project["collection"],
-            "address": project.get("facts", {}).get("standort_adresse"),
+            "address": project.get("facts", {}).get("site_address"),
             "period": {"start": project.get("startedOn") or "2013-01-01", "end": project.get("endedOn")},
             # The BFF's oibEdition: a confirmed fact, else no edition (the fixture holds no agent suggestion).
             "oibEdition": (
-                {"value": str(project["facts"]["oib_ausgabe"]), "confirmed": True}
-                if (project.get("facts") or {}).get("oib_ausgabe")
+                {"value": str(project["facts"]["oib_edition"]), "confirmed": True}
+                if (project.get("facts") or {}).get("oib_edition")
                 else None
             ),
             "current": project["id"] == self.current["id"],
@@ -363,7 +363,7 @@ class FixtureOffice:
         needle = _fold(str(body.get("query") or ""))
 
         def found(project: dict[str, Any]) -> bool:
-            address = project.get("facts", {}).get("standort_adresse", "")
+            address = project.get("facts", {}).get("site_address", "")
             if body.get("status") and project["status"] != body["status"]:
                 return False
             return not needle or needle in _fold(f"{project['name']} {address}")

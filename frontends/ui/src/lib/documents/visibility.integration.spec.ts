@@ -507,8 +507,8 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
       await inTenant(() =>
         db.execute(sql`
           INSERT INTO document_roles (organization_id, project_id, document_id, role, created_by)
-          VALUES (${ORG}, ${projectId}::uuid, ${heldId}::uuid, 'bebauungsplan', ${OTHER}),
-                 (${ORG}, ${projectId}::uuid, ${passedId}::uuid, 'lageplan', ${OTHER})
+          VALUES (${ORG}, ${projectId}::uuid, ${heldId}::uuid, 'development_plan', ${OTHER}),
+                 (${ORG}, ${projectId}::uuid, ${passedId}::uuid, 'site_plan', ${OTHER})
         `)
       )
       await inTenant(() =>

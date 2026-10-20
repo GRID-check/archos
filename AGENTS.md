@@ -165,9 +165,10 @@ for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 
 ## Two rules that span services
 
-**One coarse `SourceKind` drives all rendering** (`baurecht | buero | projekt |
-web`), defined in `src/aiq_agent/common/source_kinds.py`, mirrored in
-`frontends/ui/src/features/chat/lib/source-kinds.ts`. The fine `norm_registry`
+**One coarse `SourceKind` drives all rendering** (`building_law | office |
+project | web`), defined in `src/aiq_agent/common/source_kinds.py`, mirrored in
+`frontends/ui/src/features/chat/lib/source-kinds.ts`. The German values stored
+before migration 0163 are read through `LEGACY_SOURCE_KIND` in the UI. The fine `norm_registry`
 lanes are a sub-label within a kind. `doc_class` is human-set and beats every
 filename guess. There is no shared schema between the two files: changing one
 and not the other renders the chip as unknown.

@@ -32,7 +32,7 @@ import type { DimensionCheckData, NormReferenceData } from './types'
 
 interface GuardrailCheckCardProps {
   title: string
-  context: 'balkon' | 'loggia' | 'stiege' | 'fenster' | 'dachterrasse'
+  context: 'balcony' | 'loggia' | 'staircase' | 'window' | 'roof_terrace'
   fall_height: DimensionCheckData
   rail_height: DimensionCheckData
   max_opening: DimensionCheckData
@@ -44,16 +44,16 @@ interface GuardrailCheckCardProps {
 
 const contextLabel = (context: GuardrailCheckCardProps['context'], t: Translator): string => {
   switch (context) {
-    case 'balkon':
-      return t('cards.schematics.guardrail.context.balkon')
+    case 'balcony':
+      return t('cards.schematics.guardrail.context.balcony')
     case 'loggia':
       return t('cards.schematics.guardrail.context.loggia')
-    case 'stiege':
-      return t('cards.schematics.guardrail.context.stiege')
-    case 'fenster':
-      return t('cards.schematics.guardrail.context.fenster')
-    case 'dachterrasse':
-      return t('cards.schematics.guardrail.context.dachterrasse')
+    case 'staircase':
+      return t('cards.schematics.guardrail.context.staircase')
+    case 'window':
+      return t('cards.schematics.guardrail.context.window')
+    case 'roof_terrace':
+      return t('cards.schematics.guardrail.context.roof_terrace')
   }
 }
 

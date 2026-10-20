@@ -32,13 +32,13 @@ import type {
 
 /** The Bundesländer, by the wizard's `A2_land` tokens. */
 export type FederalState =
-  | 'wien'
-  | 'niederoesterreich'
-  | 'oberoesterreich'
-  | 'steiermark'
-  | 'kaernten'
+  | 'vienna'
+  | 'lower_austria'
+  | 'upper_austria'
+  | 'styria'
+  | 'carinthia'
   | 'salzburg'
-  | 'tirol'
+  | 'tyrol'
   | 'vorarlberg'
   | 'burgenland'
 
@@ -47,11 +47,11 @@ export type FederalState =
  * known yet counts as applying, so the register asks rather than misses.
  */
 export interface AppliesWhen {
-  /** `vorhabensart` (A5). */
+  /** `work_type` (A5). */
   projectTypes?: readonly string[]
-  /** `nutzungen@bwN` (D0), of any Bauwerk. */
+  /** `uses@bldgN` (D0), of any Bauwerk. */
   uses?: readonly string[]
-  /** Only when a Bauwerk is a Bestand (`errichtungsstatus@bwN = bestand`); its keys are then per such Bauwerk. */
+  /** Only when a Bauwerk is a Bestand (`construction_status@bldgN = existing`); its keys are then per such Bauwerk. */
   existing?: true
 }
 
@@ -74,7 +74,7 @@ export interface MunicipalityAddition {
 export interface RegisterEntry {
   determinant: LocationDeterminant
   label: string
-  /** Profile keys, without scope; per Bestand-Bauwerk (`key@bwN`) when `appliesWhen.existing`. */
+  /** Profile keys, without scope; per Bestand-Bauwerk (`key@bldgN`) when `appliesWhen.existing`. */
   keys: readonly string[]
   appliesWhen: AppliesWhen
   document: string
@@ -93,7 +93,7 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
   {
     determinant: 'plot',
     label: 'Grundstück, Fläche und Einlagezahl',
-    keys: ['grundstueck_ez', 'grundstuecksflaeche'],
+    keys: ['plot_register_number', 'plot_area'],
     appliesWhen: {},
     document: FOUND_IN.landRegister,
     reason:
@@ -103,14 +103,14 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
   {
     determinant: 'zoning',
     label: 'Widmung und Bebauungsbestimmungen',
-    keys: ['flaechenwidmung', 'bebauungsplan'],
-    appliesWhen: { projectTypes: ['neubau', 'zubau', 'umbau', 'nutzungsaenderung'] },
+    keys: ['zoning', 'development_plan'],
+    appliesWhen: { projectTypes: ['new_build', 'extension', 'conversion', 'change_of_use'] },
     document: 'Auszug aus Flächenwidmungs- und Bebauungsplan',
     reason:
       'Die Gemeinde legt im Flächenwidmungsplan fest, wofür das Grundstück genutzt werden darf, und im Bebauungsplan, wie hoch, wie dicht und wo gebaut werden darf. Nicht für jedes Grundstück gibt es einen Bebauungsplan.',
     sources: [{ title: 'Raumordnungsgesetz des Bundeslandes', needsReview: true }],
     byFederalState: {
-      wien: {
+      vienna: {
         document: 'Plandokument (Flächenwidmungs- und Bebauungsplan)',
         reason:
           'In Wien legt ein Plandokument Widmung und Bebauungsbestimmungen gemeinsam fest: Widmung, Bauklasse, Bauweise, Fluchtlinien und Schutzzonen.',
@@ -122,18 +122,18 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
           },
         ],
       },
-      niederoesterreich: spatialPlanning('NÖ Raumordnungsgesetz 2014 (NÖ ROG 2014)'),
-      oberoesterreich: spatialPlanning('Oö. Raumordnungsgesetz 1994 (Oö. ROG 1994)'),
-      steiermark: spatialPlanning('Steiermärkisches Raumordnungsgesetz 2010 (StROG)'),
-      kaernten: spatialPlanning('Kärntner Raumordnungsgesetz 2021 (K-ROG 2021)'),
+      lower_austria: spatialPlanning('NÖ Raumordnungsgesetz 2014 (NÖ ROG 2014)'),
+      upper_austria: spatialPlanning('Oö. Raumordnungsgesetz 1994 (Oö. ROG 1994)'),
+      styria: spatialPlanning('Steiermärkisches Raumordnungsgesetz 2010 (StROG)'),
+      carinthia: spatialPlanning('Kärntner Raumordnungsgesetz 2021 (K-ROG 2021)'),
       salzburg: spatialPlanning('Salzburger Raumordnungsgesetz 2009 (ROG 2009)'),
-      tirol: spatialPlanning('Tiroler Raumordnungsgesetz 2022 (TROG 2022)'),
+      tyrol: spatialPlanning('Tiroler Raumordnungsgesetz 2022 (TROG 2022)'),
       vorarlberg: spatialPlanning('Vorarlberger Raumplanungsgesetz (RPG)'),
       burgenland: spatialPlanning('Burgenländisches Raumplanungsgesetz 2019 (Bgld. RPG 2019)'),
     },
     byMunicipality: [
       {
-        federalState: 'steiermark',
+        federalState: 'styria',
         municipality: 'Graz',
         addition: 'In der Grazer Altstadt kann zusätzlich eine Schutzzone nach dem Grazer Altstadterhaltungsgesetz gelten.',
         sources: [{ title: 'Grazer Altstadterhaltungsgesetz 2008 (GAEG 2008)', needsReview: true }],
@@ -149,7 +149,7 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
   {
     determinant: 'heritage',
     label: 'Denkmal- und Ortsbildschutz',
-    keys: ['denkmalschutz'],
+    keys: ['heritage_protection'],
     appliesWhen: { existing: true },
     document: 'Auszug aus der Denkmalliste oder Unterschutzstellungsbescheid',
     reason:
@@ -159,8 +159,8 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
   {
     determinant: 'hazards',
     label: 'Naturgefahren und Altlasten',
-    keys: ['gefahrenzonen'],
-    appliesWhen: { projectTypes: ['neubau', 'zubau', 'abbruch'] },
+    keys: ['hazard_zones'],
+    appliesWhen: { projectTypes: ['new_build', 'extension', 'demolition'] },
     document: 'Auszug aus dem Gefahrenzonenplan, Auskunft aus dem Verdachtsflächenkataster',
     reason:
       'Gefahrenzonen der Wildbach- und Lawinenverbauung und Hochwasserabflussbereiche können Bauverbote oder Auflagen bedeuten; meist sind sie im Flächenwidmungsplan ersichtlich gemacht. Eine Altlast oder Verdachtsfläche betrifft Aushub, Abbruch und Gründung.',
@@ -177,10 +177,10 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
   {
     determinant: 'noise',
     label: 'Lärm',
-    keys: ['laermsituation'],
+    keys: ['noise_situation'],
     appliesWhen: {
-      projectTypes: ['neubau', 'zubau', 'umbau', 'sanierung', 'nutzungsaenderung'],
-      uses: ['wohnen', 'beherbergung', 'bildung', 'gesundheit', 'buero'],
+      projectTypes: ['new_build', 'extension', 'conversion', 'refurbishment', 'change_of_use'],
+      uses: ['residential', 'lodging', 'education', 'healthcare', 'office'],
     },
     document: 'Lärmgutachten oder Auszug aus der Lärmkarte',
     reason:
@@ -198,15 +198,15 @@ export const LOCATION_REGISTER: readonly RegisterEntry[] = [
 
 /** The register's own inputs: asked on step 4 while open, because they decide what else is asked. */
 const REGISTER_INPUTS: Record<IntakeMode, readonly string[]> = {
-  active: ['bundesland', 'vorhabensart'],
+  active: ['federal_state', 'work_type'],
   // A past project: the Bundesland decides which law applied; nothing is requested.
-  closing: ['bundesland'],
+  closing: ['federal_state'],
 }
 
 export interface LocationRegisterInput {
   profile: ProjectProfile
   /** The geocoder's result at creation (`project_intakes.location`), or null for a typed address. */
-  location: { bundesland: string | null; gemeinde: string | null } | null
+  location: { federalState: string | null; municipality: string | null } | null
   mode: IntakeMode
   /** The project's needs (`computeNeeds`): a request carries the open ones among its keys. */
   needs: readonly Need[]
@@ -229,7 +229,7 @@ function valueOf(profile: ProjectProfile, key: string): ProjectPrimitiveValue | 
   return profile.facts[key]?.value ?? profile.assumptions[key]?.value
 }
 
-/** Every value under a base key, in any scope (`nutzungen@bw1`, `nutzungen@bw2`). */
+/** Every value under a base key, in any scope (`uses@bldg1`, `uses@bldg2`). */
 function scopedValues(profile: ProjectProfile, baseKey: string): Array<{ key: string; value: ProjectPrimitiveValue }> {
   const keys = new Set([...Object.keys(profile.facts), ...Object.keys(profile.assumptions)])
   return [...keys]
@@ -244,24 +244,24 @@ const asList = (value: ProjectPrimitiveValue | undefined): string[] | null => {
 }
 
 function isFederalState(value: unknown): value is FederalState {
-  return typeof value === 'string' && value !== 'ausserhalb_oesterreichs' && FEDERAL_STATE_TOKENS.includes(value)
+  return typeof value === 'string' && value !== 'outside_austria' && FEDERAL_STATE_TOKENS.includes(value)
 }
 
 function situationOf(input: LocationRegisterInput): Situation {
   const { profile, location } = input
-  const stated = valueOf(profile, 'bundesland')
+  const stated = valueOf(profile, 'federal_state')
   const country = valueOf(profile, 'country')
-  const located = location?.bundesland
+  const located = location?.federalState
   const federalState = isFederalState(stated) ? stated : isFederalState(located) ? located : null
-  const uses = scopedValues(profile, 'nutzungen').flatMap(({ value }) => asList(value) ?? [])
+  const uses = scopedValues(profile, 'uses').flatMap(({ value }) => asList(value) ?? [])
   return {
     federalState,
-    abroad: stated === 'ausserhalb_oesterreichs' || (typeof country === 'string' && country !== 'at'),
-    municipality: location?.gemeinde ?? (federalState === 'wien' ? 'Wien' : null),
-    projectTypes: asList(valueOf(profile, 'vorhabensart')),
+    abroad: stated === 'outside_austria' || (typeof country === 'string' && country !== 'at'),
+    municipality: location?.municipality ?? (federalState === 'vienna' ? 'Wien' : null),
+    projectTypes: asList(valueOf(profile, 'work_type')),
     uses: uses.length > 0 ? [...new Set(uses)] : null,
-    existing: scopedValues(profile, 'errichtungsstatus')
-      .filter(({ key, value }) => value === 'bestand' && key.includes('@'))
+    existing: scopedValues(profile, 'construction_status')
+      .filter(({ key, value }) => value === 'existing' && key.includes('@'))
       .map(({ key }) => key.split('@')[1]),
   }
 }

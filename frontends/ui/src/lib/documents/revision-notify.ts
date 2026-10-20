@@ -6,7 +6,7 @@
  * version is published under its own name (the `upload` and `publish`
  * transitions in `./lifecycle`, and — for a person's upload, which is held until
  * its bytes are screened — the moment screening lets it through,
- * `upload-batches/settle`). Both end here, in one `document.new_fassung` inbox
+ * `upload-batches/settle`). Both end here, in one `document.new_revision` inbox
  * item per recipient.
  *
  * ## Who hears
@@ -35,7 +35,7 @@
  *
  * ## Told once
  *
- * A Fassung is announced once (`document_fassung_announcements`, migration
+ * A Fassung is announced once (`document_revision_announcements`, migration
  * 0129). The settle hook sees the same document settle again on every re-read
  * („Erneut lesen", the folder brief's bulk re-read, a retry); without the
  * record, a person assigned since, or whose row had aged out, was told about the
@@ -158,11 +158,11 @@ export function revisionRecipients(input: {
  * named or „the previous one"); nothing when there are none. Pure.
  */
 export function openMarksFacts(
-  marks: ReadonlyArray<Pick<AnnotationRecord, 'fassungNumber'>>,
+  marks: ReadonlyArray<Pick<AnnotationRecord, 'revisionNumber'>>,
   { sameDocument }: { sameDocument: boolean }
 ): { variant: string; openMarks: number; marksFassung: number | null } | null {
   if (marks.length === 0) return null
-  const numbers = new Set(marks.map((mark) => mark.fassungNumber))
+  const numbers = new Set(marks.map((mark) => mark.revisionNumber))
   const [only] = [...numbers]
   // Another document's own Fassung numbers count its states, not this timeline's.
   const marksRevision = sameDocument && numbers.size === 1 && typeof only === 'number' ? only : null
@@ -190,7 +190,7 @@ async function marksLeftBehind(
  * Write the items. Returns how many people were told.
  *
  * Once per Fassung: the newer document and its anchor are claimed
- * (`document_fassung_announcements`) before anything is written, and a Fassung
+ * (`document_revision_announcements`) before anything is written, and a Fassung
  * claimed before is not announced again. The claim is taken only once both
  * documents are screened, so a held upload announces when it passes; a failed
  * announcement gives it back, so the next settle tries again.
@@ -247,7 +247,7 @@ async function writeRevisionItems(
     : await mayOpenDocument({ organizationId }, follow, [...mayOpenNewer])
   if (mayOpenBoth.size === 0) return 0
 
-  const groupKey = inboxGroupKey('document.new_fassung', 'document', newer.id, anchorId)
+  const groupKey = inboxGroupKey('document.new_revision', 'document', newer.id, anchorId)
   const already = await recipientsHoldingGroup(organizationId, groupKey, [...mayOpenBoth])
   const told = [...mayOpenBoth].filter((userId) => !already.has(userId))
   if (told.length === 0) return 0
@@ -258,7 +258,7 @@ async function writeRevisionItems(
     told.map((recipientUserId) => ({
       organizationId,
       recipientUserId,
-      type: 'document.new_fassung' as const,
+      type: 'document.new_revision' as const,
       resourceType: 'document' as const,
       resourceId: newer.id,
       anchorId,

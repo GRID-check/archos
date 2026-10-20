@@ -273,7 +273,7 @@ type SiteSource = NonNullable<ReadingProgress['site']['source']>
 
 /** Where a Bundesland came from: the address search at creation, a document, or a person. */
 function siteSource(entry: ProjectFact | ProjectAssumption, confirmed: boolean, row: ProjectIntakeRow): SiteSource {
-  if (confirmed && row.location?.bundesland === entry.value) return 'geocoder'
+  if (confirmed && row.location?.federalState === entry.value) return 'geocoder'
   const kinds = new Set((entry.evidence ?? []).map((evidence) => evidence.kind))
   if (kinds.has('document')) return 'document'
   if (kinds.has('geocoder')) return 'geocoder'
@@ -296,13 +296,13 @@ export function readingSite(
     const home = homes.get(key)
     return home ? displayOf(home, value) : String(value)
   }
-  const fact = profile.facts.bundesland
-  const entry = fact ?? profile.assumptions.bundesland
-  const address = profile.facts.standort_adresse ?? profile.assumptions.standort_adresse
+  const fact = profile.facts.federal_state
+  const entry = fact ?? profile.assumptions.federal_state
+  const address = profile.facts.site_address ?? profile.assumptions.site_address
   const addressText = address ? String(address.value) : (row.location?.label ?? null)
   return {
-    federalState: entry ? shown('bundesland', entry.value).slice(0, 200) : null,
-    municipality: row.location?.gemeinde?.slice(0, 200) ?? null,
+    federalState: entry ? shown('federal_state', entry.value).slice(0, 200) : null,
+    municipality: row.location?.municipality?.slice(0, 200) ?? null,
     address: addressText ? addressText.slice(0, 500) : null,
     source: entry ? siteSource(entry, Boolean(fact), row) : null,
     confirmed: Boolean(fact),

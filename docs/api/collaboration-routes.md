@@ -333,7 +333,7 @@ and the run view withhold it.
 row whose target went away reads `state: 'inert'` and is still restored, never
 archived again), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
 `related` (the second name a type shows, e.g. the newer document of a
-`document.new_fassung`), `excerpt`, `variant` (which wording of its type the
+`document.new_revision`), `excerpt`, `variant` (which wording of its type the
 row reads, a key segment: why Piloti could not work a mark, what a proposal
 changes), `dueOn` (the date of the mark a Zuständige is asked about, so the row
 says by when), `openMarks` and `marksFassung` (for a new Fassung, how many open

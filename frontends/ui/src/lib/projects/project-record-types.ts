@@ -73,7 +73,7 @@ export interface ProjectPersonView {
 }
 
 export interface ProjectRecordView {
-  /** The profile fact „Adresse / Gemeinde" (`standort_adresse`); edited in the intake wizard. */
+  /** The profile fact „Adresse / Gemeinde" (`site_address`); edited in the intake wizard. */
   address: string | null
   /** The Beginn: the one set, else the month the project was created in Piloti (`startedOnIsDefault`). */
   startedOn: Month | null

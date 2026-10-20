@@ -103,7 +103,7 @@ describe.skipIf(!url)('restricted folders in the overview and the role bindings'
     await insertDocument('Lageplan.pdf', null, 100)
     await insertDocument('Protokoll.pdf', folder.admin, 200)
     await insertDocument('Honorarvertrag.pdf', folder.contracts, 4000)
-    await bindRole('Lageplan.pdf', 'lageplan')
+    await bindRole('Lageplan.pdf', 'site_plan')
     await bindRole('Protokoll.pdf', 'protokoll')
     await bindRole('Honorarvertrag.pdf', 'vertrag')
   })

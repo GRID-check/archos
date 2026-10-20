@@ -39,9 +39,9 @@ interface FireAccessPlanCardProps {
   building_depth_m: number
   route_width: DimensionCheckData
   gate_clearance_height?: DimensionCheckData | null
-  aufstellflaeche: StagingAreaPlanData
+  staging_area: StagingAreaPlanData
   walk_distance_to_entrance: DimensionCheckData
-  gebaeudeklasse?: string | null
+  building_class?: string | null
   reference?: NormReferenceData | null
   note?: string | null
 }
@@ -60,9 +60,9 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
   building_depth_m: buildingD,
   route_width,
   gate_clearance_height,
-  aufstellflaeche: stagingArea,
+  staging_area: stagingArea,
   walk_distance_to_entrance,
-  gebaeudeklasse: buildingClass,
+  building_class: buildingClass,
   reference,
   note,
 }) => {

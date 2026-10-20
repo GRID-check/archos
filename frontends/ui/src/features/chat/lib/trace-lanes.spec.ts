@@ -12,9 +12,9 @@ const sources = (id: string, lanes: Record<string, unknown>[], round?: number) =
   })
 
 const oib = (hits: Record<string, unknown>[]) => ({
-  key: 'baurecht_oib',
+  key: 'building_law_oib',
   label: 'OIB-Richtlinie',
-  kind: 'baurecht',
+  kind: 'building_law',
   hit_count: hits.length,
   sources: hits,
 })
@@ -23,7 +23,7 @@ describe('deriveTraceLanes', () => {
   it('reads the lanes of a recorded turn from its sources step', () => {
     const lanes = deriveTraceLanes(fixtureSteps('turn-answered.jsonl'))
     expect(lanes.length).toBeGreaterThan(0)
-    expect(lanes[0]).toMatchObject({ key: 'baurecht_oib', signal: 'law' })
+    expect(lanes[0]).toMatchObject({ key: 'building_law_oib', signal: 'law' })
   })
 
   it('reads only sources steps', () => {
@@ -58,16 +58,16 @@ describe('deriveTraceLanes', () => {
     const lanes = deriveTraceLanes([
       sources('s', [
         {
-          key: 'buero',
+          key: 'office',
           label: 'Büroablage',
-          kind: 'buero',
+          kind: 'office',
           hit_count: 1,
           sources: [{ name: 'x.pdf' }],
         },
         {
-          key: 'projekt',
+          key: 'project',
           label: 'Projektwissen',
-          kind: 'projekt',
+          kind: 'project',
           hit_count: 1,
           sources: [{ name: 'y.pdf' }],
         },

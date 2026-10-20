@@ -25,7 +25,7 @@ vi.mock('@/lib/sharing/directory', () => ({
 }))
 vi.mock('./repository', () => ({
   findProjectProfile: vi.fn(async () => ({
-    facts: { standort_adresse: { value: 'Seestadtstraße 12, 1220 Wien' } },
+    facts: { site_address: { value: 'Seestadtstraße 12, 1220 Wien' } },
     goals: {},
     unknowns: [],
     assumptions: {},

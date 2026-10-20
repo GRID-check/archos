@@ -25,9 +25,9 @@ export const FIXTURE_LOCATION: GeocodeResult = {
   lat: 48.2306,
   lon: 16.3412,
   country: 'at',
-  bundesland: 'wien',
+  federalState: 'vienna',
   state: 'Wien',
-  gemeinde: 'Wien',
+  municipality: 'Wien',
   postcode: '1170',
   kind: 'address',
 }
@@ -68,7 +68,7 @@ const suggestion = (
 })
 
 export const SUGGESTION_ADDRESS = suggestion(
-  'standort_adresse',
+  'site_address',
   'Adresse / Gemeinde',
   FIXTURE_LOCATION.label,
   FIXTURE_LOCATION.label,
@@ -80,7 +80,7 @@ export const SUGGESTION_ADDRESS = suggestion(
 
 /** Two documents state different storey counts: the contradiction, and a decisive one. */
 export const SUGGESTION_STOREYS = suggestion(
-  'geschosse_oberirdisch@bw1',
+  'storeys_above_ground@bldg1',
   'Anzahl oberirdischer Geschoße (Zielzustand)',
   6,
   '6',
@@ -100,20 +100,20 @@ export const SUGGESTION_STOREYS = suggestion(
   }
 )
 
-export const SUGGESTION_ESCAPE_LEVEL = suggestion('fluchtniveau_m@bw1', 'Fluchtniveau (Zielzustand)', 18.4, '18,4 m', {
+export const SUGGESTION_ESCAPE_LEVEL = suggestion('escape_level_m@bldg1', 'Fluchtniveau (Zielzustand)', 18.4, '18,4 m', {
   decisive: true,
   evidence: [fromDocument(SECTION, 1, 'Fluchtniveau +18,40 m über Gelände')],
 })
 
-export const SUGGESTION_TYPE = suggestion('bauwerkstyp@bw1', 'Art des Bauwerks', 'gebaeude', 'Gebäude', {
+export const SUGGESTION_TYPE = suggestion('building_type@bldg1', 'Art des Bauwerks', 'building', 'Gebäude', {
   evidence: [fromDocument(BUILDING_DESCRIPTION, 1, 'Gegenstand des Verfahrens ist ein Wohngebäude in geschlossener Bauweise.')],
 })
 
-export const SUGGESTION_POSITION = suggestion('gebaeudestellung@bw1', 'Gebäudestellung', 'angebaut', 'angebaut', {
+export const SUGGESTION_POSITION = suggestion('building_position@bldg1', 'Gebäudestellung', 'attached', 'attached', {
   evidence: [fromDocument(BUILDING_DESCRIPTION, 2, 'Das Haus ist beidseitig an die Nachbargebäude angebaut.')],
 })
 
-export const SUGGESTION_UNITS = suggestion('nutzungseinheiten@bw1', 'Anzahl Nutzungseinheiten (Wohnungen + Betriebseinheiten, Zielzustand)', 14, '14', {
+export const SUGGESTION_UNITS = suggestion('use_units@bldg1', 'Anzahl Nutzungseinheiten (Wohnungen + Betriebseinheiten, Zielzustand)', 14, '14', {
   decisive: true,
   evidence: [
     fromDocument(BUILDING_DESCRIPTION, 4, 'Im Bestand befinden sich 8 Wohnungen, im Dachgeschoß entstehen 6 weitere.'),
@@ -121,26 +121,26 @@ export const SUGGESTION_UNITS = suggestion('nutzungseinheiten@bw1', 'Anzahl Nutz
   ],
 })
 
-export const SUGGESTION_CLASS = suggestion('gebaeudeklasse@bw1', 'Gebäudeklasse', 5, 'GK 5', {
+export const SUGGESTION_CLASS = suggestion('building_class@bldg1', 'Gebäudeklasse', 5, 'GK 5', {
   decisive: true,
   evidence: [
     {
       kind: 'derivation',
-      rule: 'gebaeudeklasse',
+      rule: 'building_class',
       citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
       inputs: [
-        { key: 'geschosse_oberirdisch@bw1', value: 6, suggested: true },
-        { key: 'fluchtniveau_m@bw1', value: 18.4, suggested: true },
+        { key: 'storeys_above_ground@bldg1', value: 6, suggested: true },
+        { key: 'escape_level_m@bldg1', value: 18.4, suggested: true },
       ],
     },
   ],
 })
 
-export const SUGGESTION_EDITION = suggestion('oib_ausgabe', 'OIB-Ausgabe', '2023', '2023', {
+export const SUGGESTION_EDITION = suggestion('oib_edition', 'OIB-Ausgabe', '2023', '2023', {
   evidence: [fromDocument('Bescheid.pdf', 1, 'nach den OIB-Richtlinien, Ausgabe 2023')],
 })
 
-export const SUGGESTION_PHASE = suggestion('projektphase', 'Aktuelle Projektphase', 'einreichplanung', 'Einreichplanung', {
+export const SUGGESTION_PHASE = suggestion('project_phase', 'Aktuelle Projektphase', 'submission_planning', 'Einreichplanung', {
   state: 'confirmed',
   evidence: [{ kind: 'person', userId: 'user_pl', at: AT }],
 })
@@ -158,9 +158,9 @@ const GROUP_BUILDINGS: SuggestionGroup = {
 }
 
 export const QUESTION_AREA: Need = {
-  key: 'bgf_oberirdisch@bw1',
-  baseKey: 'bgf_oberirdisch',
-  bauwerkId: 'bw1',
+  key: 'gfa_above_ground@bldg1',
+  baseKey: 'gfa_above_ground',
+  bauwerkId: 'bldg1',
   label: 'Brutto-Grundfläche der oberirdischen Geschoße gesamt (Zielzustand)',
   type: 'number_tri',
   unit: 'm²',
@@ -172,8 +172,8 @@ export const QUESTION_AREA: Need = {
 
 /** Needs that decide no class: asked one at a time after the decisive ones, in the wizard's order. */
 export const OPEN_PHASE: Need = {
-  key: 'projektphase',
-  baseKey: 'projektphase',
+  key: 'project_phase',
+  baseKey: 'project_phase',
   bauwerkId: null,
   label: 'Aktuelle Projektphase',
   type: 'single_select',
@@ -190,8 +190,8 @@ export const OPEN_PHASE: Need = {
 }
 
 export const OPEN_PROJECT_KIND: Need = {
-  key: 'vorhabensart',
-  baseKey: 'vorhabensart',
+  key: 'work_type',
+  baseKey: 'work_type',
   bauwerkId: null,
   label: 'Art des Vorhabens (Projekt gesamt)',
   type: 'multi_select',
@@ -208,8 +208,8 @@ export const OPEN_PROJECT_KIND: Need = {
 }
 
 export const OPEN_ZONING: Need = {
-  key: 'widmung',
-  baseKey: 'widmung',
+  key: 'land_designation',
+  baseKey: 'land_designation',
   bauwerkId: null,
   label: 'Flächenwidmung (Kategorie)',
   type: 'text',
@@ -219,9 +219,9 @@ export const OPEN_ZONING: Need = {
 }
 
 export const QUESTION_POSITION: Need = {
-  key: 'einheiten_ueber_400@bw1',
-  baseKey: 'einheiten_ueber_400',
-  bauwerkId: 'bw1',
+  key: 'units_over_400@bldg1',
+  baseKey: 'units_over_400',
+  bauwerkId: 'bldg1',
   label: 'Hat eine der Nutzungseinheiten mehr als 400 m² Brutto-Grundfläche?',
   type: 'yes_no_open',
   why: 'Eine große Einheit hebt ein Gebäude mit wenigen Einheiten in die höhere Gebäudeklasse.',
@@ -231,15 +231,15 @@ export const QUESTION_POSITION: Need = {
 }
 
 export const QUESTION_USE: Need = {
-  key: 'gebaeudestellung@bw1',
-  baseKey: 'gebaeudestellung',
-  bauwerkId: 'bw1',
+  key: 'building_position@bldg1',
+  baseKey: 'building_position',
+  bauwerkId: 'bldg1',
   label: 'Gebäudestellung',
   type: 'single_select',
   options: [
-    { token: 'freistehend', label: 'freistehend' },
-    { token: 'angebaut', label: 'angebaut' },
-    { token: 'reihenhaus', label: 'Reihenhaus' },
+    { token: 'freestanding', label: 'freestanding' },
+    { token: 'attached', label: 'attached' },
+    { token: 'terraced', label: 'Reihenhaus' },
   ],
   why: 'Die Stellung zu den Nachbargebäuden trennt die Gebäudeklassen 1 und 2.',
   foundIn: ['Einreichplan (Lageplan)'],
@@ -249,30 +249,30 @@ export const QUESTION_USE: Need = {
 
 /** The derived class is decided here, not among the review's modules. */
 export const DERIVATION_READY: DerivationReview = {
-  bauwerkId: 'bw1',
-  rule: 'gebaeudeklasse',
+  bauwerkId: 'bldg1',
+  rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: 5,
   highRise: false,
   inputs: [
-    { key: 'bauwerkstyp@bw1', value: 'gebaeude', suggested: true },
-    { key: 'geschosse_oberirdisch@bw1', value: 6, suggested: true },
-    { key: 'fluchtniveau_m@bw1', value: 18.4, suggested: true },
-    { key: 'nutzungseinheiten@bw1', value: 14, suggested: true },
-    { key: 'gebaeudestellung@bw1', value: 'angebaut', suggested: false },
+    { key: 'building_type@bldg1', value: 'building', suggested: true },
+    { key: 'storeys_above_ground@bldg1', value: 6, suggested: true },
+    { key: 'escape_level_m@bldg1', value: 18.4, suggested: true },
+    { key: 'use_units@bldg1', value: 14, suggested: true },
+    { key: 'building_position@bldg1', value: 'attached', suggested: false },
   ],
   missing: [],
   suggestion: SUGGESTION_CLASS,
 }
 
 export const DERIVATION_OPEN: DerivationReview = {
-  bauwerkId: 'bw2',
-  rule: 'gebaeudeklasse',
+  bauwerkId: 'bldg2',
+  rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: null,
   highRise: false,
-  inputs: [{ key: 'bauwerkstyp@bw2', value: 'gebaeude', suggested: false }],
-  missing: ['geschosse_oberirdisch', 'fluchtniveau_m', 'bgf_oberirdisch'],
+  inputs: [{ key: 'building_type@bldg2', value: 'building', suggested: false }],
+  missing: ['storeys_above_ground', 'escape_level_m', 'gfa_above_ground'],
   suggestion: null,
 }
 
@@ -419,13 +419,13 @@ export const INTAKE_FILING: ListedProposal[] = [
         operations: [
           {
             document: 'Bescheid_MA37_Aufstockung.pdf',
-            source: 'projekt',
+            source: 'project',
             target_folder: 'Behörde/Bescheide',
             reason: 'Ein Bescheid der MA 37; „Bescheide“ hält laut Beschreibung Bescheide und Stellungnahmen.',
           },
           {
             document: 'Stellungnahme_MA19_Ortsbild.pdf',
-            source: 'projekt',
+            source: 'project',
             target_folder: 'Behörde/Bescheide',
             reason: 'Eine Stellungnahme der MA 19 zum Ortsbild.',
           },
@@ -445,7 +445,7 @@ export const INTAKE_FILING: ListedProposal[] = [
         operations: [
           {
             document: 'Statik_Gutachten_Dachstuhl.pdf',
-            source: 'projekt',
+            source: 'project',
             target_folder: 'Gutachten',
             reason: 'Ein statisches Gutachten zum Dachstuhl; das Büro legt Gutachten in vier Projekten unter „Gutachten“ ab.',
           },

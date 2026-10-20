@@ -19,7 +19,7 @@ from tests.aiq_agent.agents.intake.conftest import validator
 REQUEST = "InternalIntakeRequest"
 
 VALUE = {
-    "key": "geschosse_oberirdisch@bw1",
+    "key": "storeys_above_ground@bldg1",
     "value": 3,
     "evidence": {"fileName": "Baubeschreibung.pdf", "page": 3, "quote": "drei oberirdische Geschoße"},
 }
@@ -45,9 +45,9 @@ class TestTheWireContract:
         [
             client.needs_request(JOB),
             client.record_request(JOB, [VALUE]),
-            client.record_request(JOB, [{**VALUE, "value": ["holzbau", "massivbau"]}]),
+            client.record_request(JOB, [{**VALUE, "value": ["timber", "massivbau"]}]),
             client.record_request(JOB, [{**VALUE, "evidence": {**VALUE["evidence"], "page": None}}]),
-            client.withdraw_request(JOB, ["projektphase", "waermeversorgung@bw1"]),
+            client.withdraw_request(JOB, ["project_phase", "heat_supply@bldg1"]),
             client.withdraw_request(JOB, [f"k{n}" for n in range(25)]),
             client.finish_request(JOB, "Drei Dokumente gelesen.", ["Baubeschreibung.pdf"], "a" * 32),
             client.finish_request(JOB, "", [], None),

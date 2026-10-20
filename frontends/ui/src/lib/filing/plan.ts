@@ -125,7 +125,7 @@ function proposalsFor(moves: ReadonlyArray<{ move: FilingMove; filename: string 
         operation: 'move',
         operations: chunk.map(({ move, filename }) => ({
           document: filename,
-          source: input.shelf === 'archiv' ? 'buero' : 'projekt',
+          source: input.shelf === 'archiv' ? 'office' : 'project',
           target_folder: folder,
           reason: move.reason,
         })),

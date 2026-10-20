@@ -74,7 +74,7 @@ export interface TurnContext {
   accessToken?: string | null
   /** The EFFECTIVE project every lookup was scoped to. */
   projectId?: string
-  bundesland?: string
+  federalState?: string
   memoryReflectionEnabled: boolean
   disabledSources?: string[]
   modelOverrides?: Record<string, string>
@@ -184,7 +184,7 @@ export async function resolveTurnContext(
     ? await bestEffort('load model overrides', () => getEffectiveModelOverrides(organizationId))
     : null
   const federalState = effectiveProjectId
-    ? await bestEffort('load bundesland fact', () => loadProjectFederalState(effectiveProjectId, organizationId))
+    ? await bestEffort('load federal-state fact', () => loadProjectFederalState(effectiveProjectId, organizationId))
     : null
 
   if (!organizationId || !session?.userId) {
@@ -222,7 +222,7 @@ export async function resolveTurnContext(
   // but the lookups above were project-scoped.
   if (effectiveProjectId) {
     context.projectId = effectiveProjectId
-    if (federalState) context.bundesland = federalState
+    if (federalState) context.federalState = federalState
   }
   return { ...context, memoryReflectionEnabled }
 }

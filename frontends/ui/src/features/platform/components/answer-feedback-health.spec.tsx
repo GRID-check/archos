@@ -41,7 +41,7 @@ const OPTIONS = {
   overCap: false,
   verdicts: { up: 8, down: 2 },
   reasons: [{ key: 'inaccurate', votes: 2 }],
-  topics: [{ key: 'brandschutz', votes: 42 }],
+  topics: [{ key: 'fire_safety', votes: 42 }],
   modes: [{ key: 'deep', votes: 3 }],
   confidences: [{ key: 'low', votes: 1 }],
   withComment: 4,
@@ -315,7 +315,7 @@ describe('AnswerFeedbackHealth — states', () => {
             totals: empty
               ? { up: 0, down: 0, voters: 0, downVoters: 0 }
               : { up: 18, down: 2, voters: 9, downVoters: 2 },
-            topics: [{ topic: 'brandschutz', up: 18, down: 2, voters: 9 }],
+            topics: [{ topic: 'fire_safety', up: 18, down: 2, voters: 9 }],
           })
         )
       )
@@ -370,7 +370,7 @@ describe('AnswerFeedbackHealth — the drill-in', () => {
             answer: 'Die Fluchtweglänge beträgt 40 m.',
             question: 'Gilt die 40-m-Grenze auch für das nördliche Treppenhaus?',
             conversationTitle: 'Atrium',
-            topics: ['brandschutz'],
+            topics: ['fire_safety'],
             comment: 'Falsches Treppenhaus.',
             expectedAnswer: 'OIB-RL 2, Punkt 5.1.3: 50 m.',
             langfuseTraceUrl: 'https://langfuse.example/trace/abc',
@@ -470,9 +470,9 @@ describe('AnswerFeedbackHealth — breakdowns', () => {
     stubFetch(
       health({
         topics: [
-          { topic: 'schallschutz', up: 6, down: 6, voters: 4 },
-          { topic: 'brandschutz', up: 18, down: 2, voters: 9 },
-          { topic: 'statik', up: 1, down: 1, voters: 1 },
+          { topic: 'sound_insulation', up: 6, down: 6, voters: 4 },
+          { topic: 'fire_safety', up: 18, down: 2, voters: 9 },
+          { topic: 'structural', up: 1, down: 1, voters: 1 },
         ],
       })
     )
@@ -487,7 +487,7 @@ describe('AnswerFeedbackHealth — breakdowns', () => {
   })
 
   it('says the topic list is not a second denominator', async () => {
-    stubFetch(health({ topics: [{ topic: 'brandschutz', up: 18, down: 2, voters: 9 }] }))
+    stubFetch(health({ topics: [{ topic: 'fire_safety', up: 18, down: 2, voters: 9 }] }))
     render(<Harness />)
 
     await waitFor(() =>
@@ -588,12 +588,12 @@ describe('AnswerFeedbackHealth — filtering and export', () => {
   })
 
   it('sends the topic filter to the server when a topic row is pressed', async () => {
-    stubFetch(health({ topics: [{ topic: 'brandschutz', up: 18, down: 2, voters: 9 }] }))
+    stubFetch(health({ topics: [{ topic: 'fire_safety', up: 18, down: 2, voters: 9 }] }))
     const user = userEvent.setup()
     render(<Harness />)
 
     await user.click(await screen.findByRole('button', { name: /^Fire safety,/ }))
-    await waitFor(() => expect(healthUrls().at(-1)).toContain('topic=brandschutz'))
+    await waitFor(() => expect(healthUrls().at(-1)).toContain('topic=fire_safety'))
   })
 
   it('sends the answer, note and search filters from the filter row', async () => {
@@ -630,7 +630,7 @@ describe('AnswerFeedbackHealth — filtering and export', () => {
   it('clears the rating filters, and only those', async () => {
     stubFetch(health())
     const user = userEvent.setup()
-    render(<Harness initialFilters={{ ...NO_RATINGS_FILTERS, topics: ['statik'], hasComment: true }} />)
+    render(<Harness initialFilters={{ ...NO_RATINGS_FILTERS, topics: ['structural'], hasComment: true }} />)
 
     await user.click(await screen.findByTestId('clear-filters'))
     await waitFor(() => expect(healthUrls().at(-1)).toBe('/api/platform/answer-feedback?from=2026-09-10&to=2026-10-09'))

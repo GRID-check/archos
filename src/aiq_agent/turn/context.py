@@ -339,7 +339,7 @@ async def _load_turn_context(
             user_id=request.user_id,
             # Reflect against the digest the agent actually saw this turn.
             memory_digest=blocks.project_memory,
-            bundesland=request.bundesland,
+            federal_state=request.federal_state,
             enabled_stages=turn_flags.enabled_stages,
         ),
     )

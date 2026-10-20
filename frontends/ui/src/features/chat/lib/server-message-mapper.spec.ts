@@ -284,7 +284,7 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
         tool: 'knowledge_search',
         round: 0,
         traceLanes: [
-          { key: 'oib', label: 'OIB 2.3', kind: 'baurecht', signal: 'law', hitCount: 1, sources: [{ name: 'oib-rl-2.pdf' }] },
+          { key: 'oib', label: 'OIB 2.3', kind: 'building_law', signal: 'law', hitCount: 1, sources: [{ name: 'oib-rl-2.pdf' }] },
         ],
       },
     ],
@@ -404,7 +404,7 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
   it('restores the ledger the BFF persisted for a dropped socket, and drops garbage', () => {
     const persisted = {
       index: 1,
-      key: 'status.retrieval.punkt',
+      key: 'status.retrieval.clause',
       tools: ['read_passage'],
       corpora: ['knowledge'],
       docs: [{ name: 'OIB-RL_2.pdf' }],
@@ -418,7 +418,7 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
     expect(mapped!.retrievalLedger).toEqual([
       {
         index: 1,
-        key: 'status.retrieval.punkt',
+        key: 'status.retrieval.clause',
         tools: ['read_passage'],
         corpora: ['knowledge'],
         docs: [{ name: 'OIB-RL_2.pdf' }],
@@ -463,12 +463,12 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
         metadata: {
           run_ledger: {
             runId: 'run-1',
-            status: 'laeuft',
-            phases: [{ phase: 'recherchieren', startedAt: '2026-09-16T08:00:00.000Z' }],
+            status: 'running',
+            phases: [{ phase: 'researching', startedAt: '2026-09-16T08:00:00.000Z' }],
             steps: [
               {
                 id: 'batch-1',
-                phase: 'recherchieren',
+                phase: 'researching',
                 intent: 'OIB-2 auf Fluchtwegbreiten prüfen',
                 startedAt: '2026-09-16T08:01:00.000Z',
                 docs: [{ name: 'OIB-RL_2.pdf', loci: ['S. 12'] }],
@@ -483,7 +483,7 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
     )
     expect(mapped!.runLedger?.steps[0]).toEqual({
       id: 'batch-1',
-      phase: 'recherchieren',
+      phase: 'researching',
       intent: 'OIB-2 auf Fluchtwegbreiten prüfen',
       startedAt: '2026-09-16T08:01:00.000Z',
       docs: [{ name: 'OIB-RL_2.pdf', loci: ['S. 12'] }],
@@ -564,8 +564,8 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
                 citation_key: 'oib-rl_2.pdf, p.12',
                 file_name: 'oib-rl_2.pdf',
                 page: 12,
-                kind: 'baurecht',
-                lane: 'baurecht_oib',
+                kind: 'building_law',
+                lane: 'building_law_oib',
               },
             ],
           },

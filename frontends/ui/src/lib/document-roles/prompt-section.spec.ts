@@ -11,7 +11,7 @@ import type { PromptRoleBinding } from './prompt-section'
 
 function bound(overrides: Partial<PromptRoleBinding> = {}): PromptRoleBinding {
   return {
-    role: 'bebauungsplan',
+    role: 'development_plan',
     scopeInstanceId: null,
     confidence: 'declared',
     filename: 'bplan.pdf',
@@ -44,7 +44,7 @@ describe('buildDocumentRolesSection', () => {
   it('names a missing role explicitly rather than leaving it to be inferred', () => {
     const section = buildDocumentRolesSection(
       [],
-      [{ role: 'bebauungsplan', scopeInstanceId: null }]
+      [{ role: 'development_plan', scopeInstanceId: null }]
     )
     expect(section).toContain('documents_missing:')
     expect(section).toContain('- Bebauungsplan')
@@ -53,7 +53,7 @@ describe('buildDocumentRolesSection', () => {
   it('stops reporting a role as missing once it is bound', () => {
     const section = buildDocumentRolesSection(
       [bound()],
-      [{ role: 'bebauungsplan', scopeInstanceId: null }]
+      [{ role: 'development_plan', scopeInstanceId: null }]
     )
     expect(section).not.toContain('documents_missing:')
   })
@@ -63,35 +63,35 @@ describe('buildDocumentRolesSection', () => {
     // demolition lacks a Schadstoffgutachten costs tokens on every turn.
     const section = buildDocumentRolesSection(
       [bound()],
-      [{ role: 'bebauungsplan', scopeInstanceId: null }]
+      [{ role: 'development_plan', scopeInstanceId: null }]
     )
     expect(section).not.toContain('Schadstoffgutachten')
   })
 
   it('says which building a scoped role belongs to, by name', () => {
     const section = buildDocumentRolesSection(
-      [bound({ role: 'bestandsplan', scopeInstanceId: 'bw2', filename: 'eg.pdf' })],
+      [bound({ role: 'existing_plans', scopeInstanceId: 'bldg2', filename: 'eg.pdf' })],
       [],
-      { bw2: 'Hoftrakt' }
+      { bldg2: 'Hoftrakt' }
     )
     expect(section).toContain('(Hoftrakt)')
   })
 
   it('falls back to the id when a building has no name', () => {
     const section = buildDocumentRolesSection(
-      [bound({ role: 'bestandsplan', scopeInstanceId: 'bw2' })],
+      [bound({ role: 'existing_plans', scopeInstanceId: 'bldg2' })],
       []
     )
-    expect(section).toContain('(bw2)')
+    expect(section).toContain('(bldg2)')
   })
 
   it('collapses a slot holding many documents to a count, not a list', () => {
     // The scaling property: a project with 1000 bound plan sheets must not emit
     // 1000 lines into every prompt template on every turn.
     const sheets = Array.from({ length: 47 }, (_, index) =>
-      bound({ role: 'bestandsplan', scopeInstanceId: 'bw1', filename: `blatt-${index}.pdf` })
+      bound({ role: 'existing_plans', scopeInstanceId: 'bldg1', filename: `blatt-${index}.pdf` })
     )
-    const section = buildDocumentRolesSection(sheets, [], { bw1: 'Hoftrakt' })
+    const section = buildDocumentRolesSection(sheets, [], { bldg1: 'Hoftrakt' })
     expect(section).toContain('- Bestandspläne (Hoftrakt): 47 Dokumente')
     expect(section).not.toContain('blatt-0.pdf')
     expect(section.split('\n')).toHaveLength(2)
@@ -100,27 +100,27 @@ describe('buildDocumentRolesSection', () => {
   it('stays the same size whether the project has three files or a thousand', () => {
     const small = buildDocumentRolesSection(
       [
-        bound({ role: 'bestandsplan', scopeInstanceId: 'bw1' }),
-        bound({ role: 'bestandsplan', scopeInstanceId: 'bw1' }),
+        bound({ role: 'existing_plans', scopeInstanceId: 'bldg1' }),
+        bound({ role: 'existing_plans', scopeInstanceId: 'bldg1' }),
       ],
       []
     )
     const huge = buildDocumentRolesSection(
-      Array.from({ length: 1000 }, () => bound({ role: 'bestandsplan', scopeInstanceId: 'bw1' })),
+      Array.from({ length: 1000 }, () => bound({ role: 'existing_plans', scopeInstanceId: 'bldg1' })),
       []
     )
     expect(huge.split('\n')).toHaveLength(small.split('\n').length)
   })
 
   it('names the document when a slot holds exactly one', () => {
-    const section = buildDocumentRolesSection([bound({ role: 'lageplan', filename: 'lage.pdf' })])
+    const section = buildDocumentRolesSection([bound({ role: 'site_plan', filename: 'lage.pdf' })])
     expect(section).toContain('- Lageplan: lage.pdf')
   })
 
   it('reports how many of a multi-document slot are unconfirmed', () => {
     const section = buildDocumentRolesSection([
-      bound({ role: 'bestandsplan', scopeInstanceId: 'bw1' }),
-      bound({ role: 'bestandsplan', scopeInstanceId: 'bw1', confidence: 'suggested' }),
+      bound({ role: 'existing_plans', scopeInstanceId: 'bldg1' }),
+      bound({ role: 'existing_plans', scopeInstanceId: 'bldg1', confidence: 'suggested' }),
     ])
     expect(section).toContain('2 Dokumente, 1 davon nicht bestätigt')
   })
@@ -128,11 +128,11 @@ describe('buildDocumentRolesSection', () => {
   it('keeps one building separate from another', () => {
     const section = buildDocumentRolesSection(
       [
-        bound({ role: 'bestandsplan', scopeInstanceId: 'bw1' }),
-        bound({ role: 'bestandsplan', scopeInstanceId: 'bw2' }),
+        bound({ role: 'existing_plans', scopeInstanceId: 'bldg1' }),
+        bound({ role: 'existing_plans', scopeInstanceId: 'bldg2' }),
       ],
       [],
-      { bw1: 'Hoftrakt', bw2: 'Straßentrakt' }
+      { bldg1: 'Hoftrakt', bldg2: 'Straßentrakt' }
     )
     expect(section).toContain('(Hoftrakt): ')
     expect(section).toContain('(Straßentrakt): ')
@@ -141,8 +141,8 @@ describe('buildDocumentRolesSection', () => {
   it('renders in registry order so the block is stable between turns', () => {
     // An unstable block churns the prompt cache for no benefit.
     const section = buildDocumentRolesSection([
-      bound({ role: 'lageplan', filename: 'lage.pdf' }),
-      bound({ role: 'bebauungsplan', filename: 'bplan.pdf' }),
+      bound({ role: 'site_plan', filename: 'lage.pdf' }),
+      bound({ role: 'development_plan', filename: 'bplan.pdf' }),
     ])
     expect(section.indexOf('bplan.pdf')).toBeLessThan(section.indexOf('lage.pdf'))
   })
@@ -150,7 +150,7 @@ describe('buildDocumentRolesSection', () => {
 
 describe('buildDocumentRolesSection — a recommendation is per scope instance', () => {
   const plan = (buildingId: string): PromptRoleBinding => ({
-    role: 'bestandsplan',
+    role: 'existing_plans',
     scopeInstanceId: buildingId,
     confidence: 'declared',
     filename: `bestand-${buildingId}.pdf`,
@@ -159,16 +159,16 @@ describe('buildDocumentRolesSection — a recommendation is per scope instance',
 
   it('still reports the second building when only the first is covered', () => {
     const section = buildDocumentRolesSection(
-      [plan('bw1')],
+      [plan('bldg1')],
       [
-        { role: 'bestandsplan', scopeInstanceId: 'bw1' },
-        { role: 'bestandsplan', scopeInstanceId: 'bw2' },
+        { role: 'existing_plans', scopeInstanceId: 'bldg1' },
+        { role: 'existing_plans', scopeInstanceId: 'bldg2' },
       ],
-      { bw1: 'Haupthaus', bw2: 'Hoftrakt' }
+      { bldg1: 'Haupthaus', bldg2: 'Hoftrakt' }
     )
 
-    // Keyed on the role alone, binding bw1's plan counted the role as covered
-    // and silently dropped bw2 — so the agent could not tell that the Hoftrakt
+    // Keyed on the role alone, binding bldg1's plan counted the role as covered
+    // and silently dropped bldg2 — so the agent could not tell that the Hoftrakt
     // has no plan, which is the one thing this section exists to say.
     expect(section).toContain('documents_missing:')
     expect(section).toContain('Hoftrakt')
@@ -177,12 +177,12 @@ describe('buildDocumentRolesSection — a recommendation is per scope instance',
 
   it('drops the entry once that building is covered too', () => {
     const section = buildDocumentRolesSection(
-      [plan('bw1'), plan('bw2')],
+      [plan('bldg1'), plan('bldg2')],
       [
-        { role: 'bestandsplan', scopeInstanceId: 'bw1' },
-        { role: 'bestandsplan', scopeInstanceId: 'bw2' },
+        { role: 'existing_plans', scopeInstanceId: 'bldg1' },
+        { role: 'existing_plans', scopeInstanceId: 'bldg2' },
       ],
-      { bw1: 'Haupthaus', bw2: 'Hoftrakt' }
+      { bldg1: 'Haupthaus', bldg2: 'Hoftrakt' }
     )
     expect(section).not.toContain('documents_missing:')
   })
@@ -191,7 +191,7 @@ describe('buildDocumentRolesSection — a recommendation is per scope instance',
 describe('buildDocumentRolesSection — the cap covers the missing list too', () => {
   /** Many buildings, nothing bound: the shape that grows fastest. */
   const manyRecommended = Array.from({ length: 90 }, (_, i) => ({
-    role: 'bestandsplan' as const,
+    role: 'existing_plans' as const,
     scopeInstanceId: `bw${i}`,
   }))
 
@@ -209,7 +209,7 @@ describe('buildDocumentRolesSection — the cap covers the missing list too', ()
   it('says nothing about withholding when everything fits', () => {
     const section = buildDocumentRolesSection(
       [],
-      [{ role: 'bebauungsplan', scopeInstanceId: null }]
+      [{ role: 'development_plan', scopeInstanceId: null }]
     )
     expect(section).not.toContain('nicht aufgeführt')
   })

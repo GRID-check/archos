@@ -129,7 +129,7 @@ reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a s
 _Code_: `revision`. The links between the Fassungen of one document are
 `RevisionLinks` (`lib/documents/revision-links.ts`); `RevisionFacts` is the
 Index and Rev read off a title block, a different thing. Stored names such as
-the `document_fassung_announcements` table and the `fassung` wire field keep the
+the `document_revision_announcements` table and the `fassung` wire field keep the
 German word until the migration PRs.
 
 **Freigabe** (approval):

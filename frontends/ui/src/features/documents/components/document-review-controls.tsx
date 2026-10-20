@@ -147,7 +147,7 @@ export interface DocumentReviewControlsProps {
    * The number the reader knows this Fassung by („Fassung 5" in the rail, which
    * counts linked older documents too). Defaults to the stored `versionNumber`.
    */
-  fassungNumber?: number
+  revisionNumber?: number
   /**
    * Leave out the publish section's heading and blurb, keeping its button: for
    * a surface whose header already says publishing is the next step and what it
@@ -186,7 +186,7 @@ export function DocumentReviewControls({
   onAct,
   reviewers = [],
   actingName = null,
-  fassungNumber: revisionNumber,
+  revisionNumber,
   publishBare = false,
   openMarks = null,
   className,

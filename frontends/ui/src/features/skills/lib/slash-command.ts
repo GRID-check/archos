@@ -49,6 +49,8 @@
  * Pure and dependency-free on purpose.
  */
 
+import { canonicalSkillName, legacyNamesOf } from '@/lib/skills/legacy-names'
+
 /** The `/…` fragment under the caret that the menu is filtering on. */
 export interface SlashCommandQuery {
   /** Everything after the `/`, up to the caret (never contains whitespace). */
@@ -63,6 +65,12 @@ export interface SlashCommandQuery {
 export interface SlashInvocation {
   /** The skill's `name` — the frontmatter/`use_skill` identifier. */
   skillName: string
+  /**
+   * The token as it was typed, without the `/`. It differs from `skillName` when
+   * the member typed a builtin's old name, which still names it
+   * (`LEGACY_SKILL_NAMES`); removing the token removes this many characters.
+   */
+  token: string
   /**
    * The text after the token, trimmed. Often empty: `/oib-check` on its own is
    * a complete instruction, since the skill's own body says what to do.
@@ -142,10 +150,12 @@ export function resolveSlashInvocation(
   const afterSlash = text.slice(start + 1)
   const boundary = afterSlash.search(/\s/)
   const token = boundary === -1 ? afterSlash : afterSlash.slice(0, boundary)
-  if (!token || !knownNames.includes(token)) return null
+  const skillName = canonicalSkillName(token)
+  if (!token || !(knownNames.includes(token) || knownNames.includes(skillName))) return null
 
   return {
-    skillName: token,
+    skillName: knownNames.includes(token) ? token : skillName,
+    token,
     argument: boundary === -1 ? '' : afterSlash.slice(boundary).trim(),
   }
 }
@@ -170,8 +180,9 @@ export function filterSlashCommands<T extends { name: string; description: strin
   const ranked: Array<{ skill: T; rank: number }> = []
   for (const skill of skills) {
     const name = skill.name.toLowerCase()
+    const typedTheOldName = legacyNamesOf(skill.name).some((legacy) => legacy.startsWith(needle))
     if (name.startsWith(needle)) ranked.push({ skill, rank: 0 })
-    else if (name.includes(needle)) ranked.push({ skill, rank: 1 })
+    else if (name.includes(needle) || typedTheOldName) ranked.push({ skill, rank: 1 })
     else if (skill.description.toLowerCase().includes(needle)) ranked.push({ skill, rank: 2 })
   }
   // Stable within a rank: the caller's order is already alphabetical, and a

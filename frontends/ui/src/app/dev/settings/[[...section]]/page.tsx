@@ -54,10 +54,10 @@ const fact = (value: string | number) => ({
 
 const PROFILE: ProjectProfile = {
   facts: {
-    hauptnutzung: fact('wohnen'),
+    hauptnutzung: fact('residential'),
     gebaeudeklasse: fact('GK4'),
-    fluchtniveau: fact('<=11m'),
-    geschosse_unterirdisch: fact(1),
+    escape_level: fact('<=11m'),
+    storeys_below_ground: fact(1),
   },
   goals: {},
   unknowns: ['Stellplatznachweis'],

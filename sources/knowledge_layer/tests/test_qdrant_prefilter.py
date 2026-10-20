@@ -39,7 +39,7 @@ PROJECT = "proj_prefilter"
 BASE = "oib_knowledge"
 TOP_K = 5
 #: Dokumentarten from the real vocabulary (``is_valid_doc_class`` refuses others).
-REPORT, PERMIT, DRAWING = "sonstiges", "gesetz", "norm_extern"
+REPORT, PERMIT, DRAWING = "other", "law", "external_standard"
 
 
 # ---------------------------------------------------------------- pure units
@@ -59,7 +59,7 @@ def test_only_filters_left_after_the_search_over_fetch():
 
 def test_narrow_only_ever_adds_conditions():
     base = {"chunking": {"$ne": "page"}}
-    pushdown = Pushdown(doc_class="gesetz", folder="brandschutz")
+    pushdown = Pushdown(doc_class="law", folder="brandschutz")
     assert pushdown.narrow(base, user_shelf=False) == {
         "$and": [base, {"doc_class": "gesetz"}, {"folder_ancestors": "brandschutz"}]
     }
@@ -71,7 +71,7 @@ def test_narrow_only_ever_adds_conditions():
 
 
 def test_trace_fields_name_fields_never_values():
-    assert Pushdown(doc_class="gesetz", folder="a").fields(user_shelves=True) == [
+    assert Pushdown(doc_class="law", folder="a").fields(user_shelves=True) == [
         "doc_class",
         "folder_ancestors",
         "superseded",

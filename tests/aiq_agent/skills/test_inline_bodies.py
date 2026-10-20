@@ -150,6 +150,6 @@ class TestThePremiseIsMeasured:
         runtime = SkillRuntime(skills=chat, inline_max_body_chars=MAX_BODY, inline_budget_chars=BUDGET)
         inlined = {s.name for s in runtime.inlined}
         assert "ifc-spatial-reasoning" not in inlined
-        assert {"gebaeudeklasse", "brandschutz", "einreichcheck", "bestand"} <= inlined
+        assert {"building-class", "fire-safety", "submission-check", "existing-building"} <= inlined
         assert len(inlined) == len(chat) - 1, sorted(set(s.name for s in chat) - inlined)
         assert sum(len(s.body) for s in runtime.inlined) <= BUDGET

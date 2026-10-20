@@ -139,8 +139,8 @@ const OFFICE_SHELF = '1c8d9f6e-2e2f-4d4a-8e3d-4a1f7d2b3c4d'
 const FILING_MOVE: FileOperationPayload = {
   operation: 'move',
   operations: [
-    { document: 'MA37_Bescheid.pdf', source: 'projekt', target_folder: 'Behörde/Bescheide', reason: 'Ein Bescheid.' },
-    { document: 'Stellungnahme.pdf', source: 'projekt', target_folder: 'Behörde/Bescheide', reason: 'Eine Stellungnahme.' },
+    { document: 'MA37_Bescheid.pdf', source: 'project', target_folder: 'Behörde/Bescheide', reason: 'Ein Bescheid.' },
+    { document: 'Stellungnahme.pdf', source: 'project', target_folder: 'Behörde/Bescheide', reason: 'Eine Stellungnahme.' },
   ],
   basis: 'name',
   new_folder: { path: 'Behörde/Bescheide', description: 'Bescheide und Stellungnahmen der Behörden' },
@@ -148,7 +148,7 @@ const FILING_MOVE: FileOperationPayload = {
 
 const OFFICE_SHELF_MOVE: FileOperationPayload = {
   operation: 'move',
-  operations: [{ document: 'ÖNORM B 1800.pdf', source: 'buero', target_folder: 'Normen', reason: 'Eine Norm.' }],
+  operations: [{ document: 'ÖNORM B 1800.pdf', source: 'office', target_folder: 'Normen', reason: 'Eine Norm.' }],
   basis: 'content',
 }
 
@@ -343,7 +343,7 @@ describe('the Büroablage', () => {
       createProposal(SESSION, {
         projectId: null,
         kind: 'file_operation',
-        payload: { operation: 'move', operations: [{ document: 'a.pdf', source: 'projekt', target_folder: 'X' }] },
+        payload: { operation: 'move', operations: [{ document: 'a.pdf', source: 'project', target_folder: 'X' }] },
         conversationId: null,
         answerMessageId: null,
       })

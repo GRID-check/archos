@@ -78,8 +78,8 @@ describe('the answer-feedback workbook', () => {
       expect(row.getCell(columnIndex('client_duration_s')).value).toBeCloseTo(41.23)
       expect(row.getCell(columnIndex('helpful')).value).toBe(0)
       expect(row.getCell(columnIndex('vote_changed')).value).toBe(1)
-      expect(row.getCell(columnIndex('topic_brandschutz')).value).toBe(1)
-      expect(row.getCell(columnIndex('topic_statik')).value).toBe(0)
+      expect(row.getCell(columnIndex('topic_fire_safety')).value).toBe(1)
+      expect(row.getCell(columnIndex('topic_structural')).value).toBe(0)
       expect(row.getCell(columnIndex('reason_label')).value).toBe('Ungenau')
       expect(row.getCell(columnIndex('models')).value).toBe('anthropic/claude-sonnet-4.5; openai/gpt-5-mini')
     })
@@ -172,7 +172,7 @@ describe('the answer-feedback workbook', () => {
             ratings: {
               verdict: 'down',
               reasons: ['inaccurate', 'wrong_source'],
-              topics: ['schallschutz'],
+              topics: ['sound_insulation'],
               modes: ['deep', 'report'],
               confidences: ['low'],
               hasComment: true,

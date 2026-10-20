@@ -33,7 +33,7 @@ const OPTIONS = {
   overCap: false,
   verdicts: { up: 250, down: 50 },
   reasons: [{ key: 'inaccurate', votes: 30 }],
-  topics: [{ key: 'brandschutz', votes: 42 }],
+  topics: [{ key: 'fire_safety', votes: 42 }],
   modes: [],
   confidences: [],
   withComment: 12,
@@ -66,14 +66,14 @@ describe('GET /api/platform/answer-feedback/options', () => {
 
   it('answers the count and the per-value counts for the page’s exact query, uncached', async () => {
     isOwner.value = true
-    const res = await GET(request('?from=2026-10-01&to=2026-10-07&org=org_2&topic=statik&has_expected=1'))
+    const res = await GET(request('?from=2026-10-01&to=2026-10-07&org=org_2&topic=structural&has_expected=1'))
 
     expect(res.status).toBe(200)
     expect(res.headers.get('Cache-Control')).toBe('no-store')
     expect(await res.json()).toEqual(OPTIONS)
     expect(getAnswerFeedbackFilterOptions).toHaveBeenCalledWith(expect.anything(), {
       scope: { from: '2026-10-01', to: '2026-10-07', organizationIds: ['org_2'], projectIds: [] },
-      ratings: expect.objectContaining({ topics: ['statik'], hasExpectedAnswer: true }),
+      ratings: expect.objectContaining({ topics: ['structural'], hasExpectedAnswer: true }),
     })
   })
 

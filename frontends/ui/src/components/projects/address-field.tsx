@@ -52,8 +52,8 @@ export function forgetGeocoderAnswer(): void {
 type SearchStatus = 'idle' | 'waiting' | 'searching' | 'done'
 
 /** „Gemeinde · Bundesland" of a hit, as far as the provider named them. */
-export function placeLine(place: Pick<GeocodeResult, 'gemeinde' | 'state'>): string {
-  return [place.gemeinde, place.state].filter(Boolean).join(' · ')
+export function placeLine(place: Pick<GeocodeResult, 'municipality' | 'state'>): string {
+  return [place.municipality, place.state].filter(Boolean).join(' · ')
 }
 
 /** What the field holds: the line as typed, and the hit it came from when one was chosen. */

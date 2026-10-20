@@ -310,7 +310,7 @@ const ITEMS: InboxItemView[] = [
   // „Fassungen vergleichen" opens the newer one with the comparison open.
   {
     id: 'i-fassung',
-    type: 'document.new_fassung',
+    type: 'document.new_revision',
     state: 'unread',
     archived: false,
     actionable: false,
@@ -336,7 +336,7 @@ const ITEMS: InboxItemView[] = [
   // A same-name Fassung: its open marks all sit on Fassung 2.
   {
     id: 'i-fassung-marks',
-    type: 'document.new_fassung',
+    type: 'document.new_revision',
     state: 'read',
     archived: false,
     actionable: false,
@@ -772,8 +772,8 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         const annotation: AnnotationView = {
           id: reply[1], documentId: 'd-eg-c', number: 11, page: 1, shape: 'point', x: 0.4, y: 0.4, w: null, h: null,
           kind: 'question', body: 'Fluchtwegbreite im Gang nachweisen.', mentions: [], basis: null, authorKind: 'person',
-          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, fassungNumber: 3,
-          onCurrentFassung: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
+          status: 'open', assigneeUserId: VIEWER_ID, assigneeName: 'Miriam Hofer', dueOn: null, revisionNumber: 3,
+          onCurrentRevision: true, createdBy: 'u-jakob', createdByName: 'Jakob Huber', createdAt: now, updatedAt: now,
           acceptedBy: null, acceptedByName: null, closedBy: null, closedByName: null, closedAt: null,
           delegatedBy: null, delegatedByName: null, delegatedAt: null, canEdit: true, canDelete: false,
           replies: [{

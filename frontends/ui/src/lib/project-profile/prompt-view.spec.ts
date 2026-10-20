@@ -4,12 +4,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * Regression coverage for the bundesland cache-invalidation bug (WP-C, Fix 1).
+ * Regression coverage for the federal_state cache-invalidation bug (WP-C, Fix 1).
  *
  * Deliberately does NOT mock `@/lib/cache`: it drives a REAL in-memory
  * CacheStore so the test exercises the actual get/set/delete key wiring. A test
  * that stubs the whole cache layer (as profile-service.spec.ts does) cannot see
- * that `bundesland:<id>` was left behind — the exact hole this covers.
+ * that `federal_state:<id>` was left behind — the exact hole this covers.
  *
  * Only `@/lib/db` is mocked, to control what the loaders read on a cache miss.
  */
@@ -117,7 +117,7 @@ class TestStore implements CacheStore {
 const rowFor = (federalState: string, promptView: string) => [
   {
     profile: {
-      facts: { bundesland: { value: federalState } },
+      facts: { federal_state: { value: federalState } },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -142,7 +142,7 @@ describe('project profile cache invalidation (Fix 1)', () => {
     // The stored view is built at profile-save; a document declared afterwards
     // would never reach a view built there, so the block is appended at read
     // time instead.
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
     rolesSection = 'documents:\n- Bebauungsplan: bplan.pdf'
 
     const view = await loadProjectPromptView('proj-1', 'org-1')
@@ -151,51 +151,51 @@ describe('project profile cache invalidation (Fix 1)', () => {
   })
 
   it('returns the stored view unchanged when a project has no document roles', async () => {
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v1')
   })
 
   it('caches both the prompt view and the structured bundesland under their own keys', async () => {
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
 
-    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('wien')
+    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('vienna')
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v1')
 
     // Two SEPARATE keys — the crux of the bug: invalidating one leaves the other.
-    expect(store.map.has('bundesland:org-1:proj-1')).toBe(true)
-    expect(store.map.has('promptview:org-1:proj-1')).toBe(true)
+    expect(store.map.has('federal-state:org-1:proj-1')).toBe(true)
+    expect(store.map.has('promptview-v2:org-1:proj-1')).toBe(true)
   })
 
   it('reproduces the bug: prompt-view-only invalidation leaves bundesland stale', async () => {
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
     await loadProjectFederalState('proj-1', 'org-1')
     await loadProjectPromptView('proj-1', 'org-1')
 
     // The user changes the location and saves; the DB now holds the new value.
-    dbRows = rowFor('tirol', 'PROJECT_CONTEXT v2')
+    dbRows = rowFor('tyrol', 'PROJECT_CONTEXT v2')
 
     // The OLD invalidation only dropped the prompt-view key…
     await invalidateProjectPromptViewCache('proj-1', 'org-1')
 
-    // …so the prompt view re-reads fresh, but bundesland is served STALE.
+    // …so the prompt view re-reads fresh, but federal_state is served STALE.
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v2')
-    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('wien') // stale — the bug
+    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('vienna') // stale — the bug
   })
 
   it('the fix: invalidateProjectProfileCaches drops BOTH keys so neither goes stale', async () => {
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
     await loadProjectFederalState('proj-1', 'org-1')
     await loadProjectPromptView('proj-1', 'org-1')
 
     // Location changed + saved.
-    dbRows = rowFor('tirol', 'PROJECT_CONTEXT v2')
+    dbRows = rowFor('tyrol', 'PROJECT_CONTEXT v2')
 
     await invalidateProjectProfileCaches('proj-1', 'org-1')
 
     // Both keys were cleared, so both loaders re-read the new stored profile.
-    expect(store.map.has('bundesland:org-1:proj-1')).toBe(false)
-    expect(store.map.has('promptview:org-1:proj-1')).toBe(false)
-    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('tirol')
+    expect(store.map.has('federal-state:org-1:proj-1')).toBe(false)
+    expect(store.map.has('promptview-v2:org-1:proj-1')).toBe(false)
+    expect(await loadProjectFederalState('proj-1', 'org-1')).toBe('tyrol')
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe('PROJECT_CONTEXT v2')
   })
 })
@@ -222,7 +222,7 @@ describe('project profile cache is partitioned by tenant', () => {
     // security in the path at all.
     rowsByOrg.set('org-a', {
       profile: {
-        facts: { bundesland: { value: 'wien' } },
+        facts: { federal_state: { value: 'vienna' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -231,7 +231,7 @@ describe('project profile cache is partitioned by tenant', () => {
     })
     rowsByOrg.set('org-b', {
       profile: {
-        facts: { bundesland: { value: 'tirol' } },
+        facts: { federal_state: { value: 'tyrol' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -242,14 +242,14 @@ describe('project profile cache is partitioned by tenant', () => {
     expect(await loadProjectPromptView('proj-1', 'org-a')).toBe('ORG A CONTEXT')
     expect(await loadProjectPromptView('proj-1', 'org-b')).toBe('ORG B CONTEXT')
 
-    expect(await loadProjectFederalState('proj-1', 'org-a')).toBe('wien')
-    expect(await loadProjectFederalState('proj-1', 'org-b')).toBe('tirol')
+    expect(await loadProjectFederalState('proj-1', 'org-a')).toBe('vienna')
+    expect(await loadProjectFederalState('proj-1', 'org-b')).toBe('tyrol')
   })
 
   it('does not serve an anonymous caller the context cached for a tenant', async () => {
     rowsByOrg.set('org-a', {
       profile: {
-        facts: { bundesland: { value: 'wien' } },
+        facts: { federal_state: { value: 'vienna' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -258,7 +258,7 @@ describe('project profile cache is partitioned by tenant', () => {
     })
     rowsByOrg.set('anon', {
       profile: {
-        facts: { bundesland: { value: 'tirol' } },
+        facts: { federal_state: { value: 'tyrol' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -276,7 +276,7 @@ describe('project profile cache is partitioned by tenant', () => {
     // write just replaced.
     rowsByOrg.set('org-a', {
       profile: {
-        facts: { bundesland: { value: 'wien' } },
+        facts: { federal_state: { value: 'vienna' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -285,7 +285,7 @@ describe('project profile cache is partitioned by tenant', () => {
     })
     rowsByOrg.set('anon', {
       profile: {
-        facts: { bundesland: { value: 'wien' } },
+        facts: { federal_state: { value: 'vienna' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -298,9 +298,9 @@ describe('project profile cache is partitioned by tenant', () => {
 
     await invalidateProjectProfileCaches('proj-1', 'org-a')
 
-    expect(store.map.has('promptview:org-a:proj-1')).toBe(false)
+    expect(store.map.has('promptview-v2:org-a:proj-1')).toBe(false)
     expect(store.map.has('promptview:anon:proj-1')).toBe(false)
-    expect(store.map.has('bundesland:org-a:proj-1')).toBe(false)
+    expect(store.map.has('federal-state:org-a:proj-1')).toBe(false)
   })
 })
 
@@ -319,7 +319,7 @@ describe('restricted folders and the shared prompt view (ADR-0087)', () => {
   })
 
   it('builds the cached view for nobody in particular', async () => {
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
     const view = await loadProjectPromptView('proj-1', 'org-1')
 
     expect(rolesReaders).toEqual([null])
@@ -327,7 +327,7 @@ describe('restricted folders and the shared prompt view (ADR-0087)', () => {
   })
 
   it('builds the same shared view for every chat: listing a restricted document is not using it', async () => {
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
 
     expect(await loadProjectPromptView('proj-1', 'org-1')).not.toContain('Honorarnote.pdf')
     expect(await loadProjectPromptView('proj-1', 'org-1')).not.toContain('Honorarnote.pdf')
@@ -346,7 +346,7 @@ describe('unreadable documents ride beside the cached view', () => {
     rolesSection = ''
     unreadableCalls.length = 0
     unreadableSection = ''
-    dbRows = rowFor('wien', 'PROJECT_CONTEXT v1')
+    dbRows = rowFor('vienna', 'PROJECT_CONTEXT v1')
   })
 
   afterEach(() => {
@@ -365,7 +365,7 @@ describe('unreadable documents ride beside the cached view', () => {
   })
 
   it('returns only the unreadable block when the stored view is empty', async () => {
-    dbRows = rowFor('wien', '')
+    dbRows = rowFor('vienna', '')
     unreadableSection = 'documents_unreadable:\n- Honorarnote.pdf'
 
     expect(await loadProjectPromptView('proj-1', 'org-1')).toBe(

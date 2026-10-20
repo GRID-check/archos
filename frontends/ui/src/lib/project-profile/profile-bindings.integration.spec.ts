@@ -38,7 +38,7 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
   function profileWith(ids: string[]) {
     const facts: Record<string, unknown> = {}
     for (const id of ids) {
-      facts[`bauwerk_name@${id}`] = {
+      facts[`building_name@${id}`] = {
         value: id,
         confidence: 'confirmed',
         source: 'onboarding',
@@ -81,12 +81,12 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
       db.execute<{ id: string }>(sql`
         INSERT INTO projects (organization_id, name, created_by, collection_name, profile)
         VALUES (${ORG}, 'Bindings', ${USER}, 'coll_profilebind',
-                ${JSON.stringify(profileWith(['bw1', 'bw2']))}::jsonb)
+                ${JSON.stringify(profileWith(['bldg1', 'bldg2']))}::jsonb)
         RETURNING id
       `)
     )
     projectId = String(Array.from(created)[0].id)
-    for (const [index, scope] of ['bw1', 'bw2'].entries()) {
+    for (const [index, scope] of ['bldg1', 'bldg2'].entries()) {
       await inTenant(async () => {
         const [doc] = Array.from(
           await db.execute<{ id: string }>(sql`
@@ -100,7 +100,7 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
         await db.execute(sql`
           INSERT INTO document_roles
             (organization_id, project_id, document_id, role, scope_instance_id, confidence, source, created_by)
-          VALUES (${ORG}, ${projectId}::uuid, ${doc.id}::uuid, 'bestandsplan', ${scope}, 'declared', 'user', ${USER})
+          VALUES (${ORG}, ${projectId}::uuid, ${doc.id}::uuid, 'existing_plans', ${scope}, 'declared', 'user', ${USER})
         `)
       })
     }
@@ -141,7 +141,7 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
         projectId,
         ORG,
         before,
-        { ...values, profile: profileWith(['bw1']) as never, profileVersion: before + 1 },
+        { ...values, profile: profileWith(['bldg1']) as never, profileVersion: before + 1 },
         async () => {
           throw new Error('cleanup failed')
         }
@@ -149,7 +149,7 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
     ).rejects.toThrow('cleanup failed')
 
     expect(await profileVersion()).toBe(before)
-    expect(await bindingScopes()).toEqual(['bw1', 'bw2'])
+    expect(await bindingScopes()).toEqual(['bldg1', 'bldg2'])
   })
 
   it('commits the profile and the removed building’s bindings together', async () => {
@@ -160,13 +160,13 @@ describe.skipIf(!url)('profile saves and building bindings against Postgres', ()
       projectId,
       ORG,
       before,
-      { ...values, profile: profileWith(['bw1']) as never, profileVersion: before + 1 },
+      { ...values, profile: profileWith(['bldg1']) as never, profileVersion: before + 1 },
       async (tx) => {
-        await roles.deleteBindingsOutsideBuildings(projectId, ['bw1'], tx)
+        await roles.deleteBindingsOutsideBuildings(projectId, ['bldg1'], tx)
       }
     )
 
     expect(saved?.profileVersion).toBe(before + 1)
-    expect(await bindingScopes()).toEqual(['bw1'])
+    expect(await bindingScopes()).toEqual(['bldg1'])
   })
 })

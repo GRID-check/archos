@@ -17,7 +17,12 @@
  */
 
 import type { AnswerFeedbackReason } from '@/lib/db/schema/answer-feedback'
-import { CONVERSATION_TAG_KEYS, isConversationTagKey, type ConversationTagKey } from '@/lib/conversations/tags'
+import {
+  canonicalConversationTagKey,
+  CONVERSATION_TAG_KEYS,
+  isConversationTagKey,
+  type ConversationTagKey,
+} from '@/lib/conversations/tags'
 import { writeQualityScope, type QualityScope } from '@/lib/quality/scope'
 
 /** Which way a vote went. */
@@ -129,7 +134,8 @@ export function normalizeRatingsFilters(filters: RatingsFilters): RatingsFilters
 export function readRatingsFilters(params: URLSearchParams): RatingsFilters {
   const p = RATINGS_FILTER_PARAMS
   const verdict = params.get(p.verdict)
-  const topics = params.getAll(p.topics).map((value) => value.trim().toLowerCase())
+  // A link saved before the English tag keys (migration 0168) still opens the view it meant.
+  const topics = params.getAll(p.topics).map((value) => canonicalConversationTagKey(value.trim().toLowerCase()))
   return normalizeRatingsFilters({
     verdict: verdict === 'up' || verdict === 'down' ? verdict : null,
     reasons: inVocabularyOrder(FEEDBACK_REASON_FILTERS, params.getAll(p.reasons)),

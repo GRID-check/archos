@@ -100,7 +100,7 @@ class TestRetrievalOutput:
                     file_name="oib-rl-2.pdf",
                     page_number=7,
                     score=0.9134567,
-                    metadata={"collection": "oib_knowledge", "shelf": "base", "doc_class": "oib_richtlinie"},
+                    metadata={"collection": "oib_knowledge", "shelf": "base", "doc_class": "oib_guideline"},
                 ),
                 # Chunk TEXT must never appear - only ids and scores. Fields
                 # the producer did not set stay absent rather than null.
@@ -117,7 +117,7 @@ class TestRetrievalOutput:
                     "score": 0.9135,
                     "collection": "oib_knowledge",
                     "shelf": "base",
-                    "doc_class": "oib_richtlinie",
+                    "doc_class": "oib_guideline",
                 },
                 {"chunk_id": "chk_10", "score": 0.5},
             ]

@@ -105,7 +105,7 @@ function useReason(derivation: DerivationReview): string {
   }
   return reasonInputs(derivation)
     .map(({ base, key, value }) => {
-      if (base === 'einheiten_ueber_400') {
+      if (base === 'units_over_400') {
         return value === true ? t('class.reason.unitOver400') : t('class.reason.unitOver400None')
       }
       return t(`class.reason.${REASON_INPUT_IDS[base]}`, { value: displayValue(key, value) })

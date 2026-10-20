@@ -168,8 +168,8 @@ describe('SourcePreviewChip', () => {
       <SourcePreviewChip
         citation={ref({
           title: 'WBTV',
-          kind: 'baurecht',
-          lane: 'baurecht_land',
+          kind: 'building_law',
+          lane: 'building_law_state',
           origin: 'ris',
           url: 'https://www.ris.bka.gv.at/x',
           laneLabel: 'Landesrecht',
@@ -206,7 +206,7 @@ describe('SourcePreviewChip', () => {
           citationKey: 'Brandschutzkonzept.pdf, p.3',
           fileName: 'Brandschutzkonzept.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 3,
         })}
       />
@@ -253,7 +253,7 @@ describe('SourcePreviewChip', () => {
             content: '[KB] Brandschutzkonzept.pdf, p.3',
             fileName: 'Brandschutzkonzept.pdf',
             collection: 'proj_1',
-            kind: 'projekt',
+            kind: 'project',
             page: 3,
           })}
         />
@@ -285,7 +285,7 @@ describe('SourcePreviewChip', () => {
           content: '[KB] Raumprogramm.docx',
           fileName: 'Raumprogramm.docx',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
         })}
       />
     )
@@ -309,7 +309,7 @@ describe('SourcePreviewChip', () => {
           content: '[KB] Brandschutzkonzept.pdf, p.3',
           fileName: 'Brandschutzkonzept.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 3,
         })}
       />
@@ -335,7 +335,7 @@ describe('SourcePreviewChip', () => {
             content: `[KB] ${fileName}`,
             fileName,
             collection: 'proj_1',
-            kind: 'projekt',
+            kind: 'project',
           })}
         />
       )
@@ -364,7 +364,7 @@ describe('SourcePreviewChip', () => {
           content: '[KB] Statik.pdf, p.1',
           fileName: 'Statik.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 1,
         })}
       />
@@ -392,8 +392,8 @@ describe('SourcePreviewChip', () => {
           citationKey: 'Bueroe_Detail_Attika.pdf, p.2',
           fileName: 'Bueroe_Detail_Attika.pdf',
           collection: 'archiv_1',
-          kind: 'buero',
-          lane: 'buero',
+          kind: 'office',
+          lane: 'office',
           page: 2,
         })}
       />
@@ -421,7 +421,7 @@ describe('SourcePreviewChip', () => {
           fileName: 'Brandschutzkonzept.pdf',
           collection: 's_conv-1',
           shelf: 'session',
-          kind: 'projekt',
+          kind: 'project',
           page: 3,
         })}
       />
@@ -447,7 +447,7 @@ describe('SourcePreviewChip', () => {
           content: '[KB] unbekannt.pdf\nZitierter Absatz.',
           citationKey: 'unbekannt.pdf',
           fileName: 'unbekannt.pdf',
-          kind: 'projekt',
+          kind: 'project',
         })}
       />
     )
@@ -471,7 +471,7 @@ describe('SourcePreviewChip', () => {
         // legal text used to read "Project knowledge" in the popover while the
         // chip beside it wore a RIS badge and a Baurecht lane.
         citation={ref({
-          kind: 'baurecht',
+          kind: 'building_law',
           content: '[KB] wr_bauordnung.pdf\n§ 119.',
           citationKey: 'wr_bauordnung.pdf',
           fileName: 'wr_bauordnung.pdf',
@@ -516,7 +516,7 @@ describe('a document read at several pages', () => {
           citationKey: 'Brandschutzkonzept.pdf, p.9',
           fileName: 'Brandschutzkonzept.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 9,
           number: 2,
           isCited: true,
@@ -527,7 +527,7 @@ describe('a document read at several pages', () => {
           citationKey: 'Brandschutzkonzept.pdf, p.3',
           fileName: 'Brandschutzkonzept.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 3,
           number: 1,
           isCited: true,
@@ -541,7 +541,7 @@ describe('a document read at several pages', () => {
           citationKey: 'Brandschutzkonzept.pdf, p.14',
           fileName: 'Brandschutzkonzept.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 14,
           isCited: false,
         }),
@@ -644,7 +644,7 @@ describe('a document read at several pages', () => {
           citationKey: 'Brandschutzkonzept.pdf, p.3',
           fileName: 'Brandschutzkonzept.pdf',
           collection: 'proj_1',
-          kind: 'projekt',
+          kind: 'project',
           page: 3,
           number: 1,
           isCited: true,
@@ -687,7 +687,7 @@ describe('a document read at several pages', () => {
 describe('a source from another project (ADR-0094)', () => {
   // The chat's own project is 'project-1' (the store mock above).
   const traufe = {
-    kind: 'projekt' as const,
+    kind: 'project' as const,
     content: '[KB] Detail Traufe.pdf (Wohnbau Graz), p.3\nDie Traufe ist hinterlüftet ausgeführt.',
     citationKey: 'Detail Traufe.pdf (Wohnbau Graz), p.3',
     fileName: 'Detail Traufe.pdf',

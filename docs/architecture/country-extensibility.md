@@ -57,13 +57,13 @@ Phase 3 — vocabulary and language surfaces (scoped per country):
    German prompt ("österreichisches Architekturbüro") need per-country
    vocabulary/prompt variants keyed off `language`.
 6. Intake facts: `intake-definition.ts` carries AT-specific vocabularies
-   (bundesland options, `gebaeudeklasse` GK1–5, `fluchtniveau` >22m bands,
-   `widmung` options, the four AT boolean triggers) — country #2 needs its own
+   (bundesland options, `building_class` GK1–5, `escape_level` >22m bands,
+   `land_designation` options, the four AT boolean triggers) — country #2 needs its own
    question set; the intake machinery itself is versioned and generic.
 7. Agent identity prompts: the j2 prompts hardcode "Austrian building
    regulations / RIS / OIB" framing — template off the profile
    (`country_name`, `legal_source_tools`) when country #2 ships.
-8. Request envelope: `GridRequestContext.bundesland` is AT-vocabulary; add a
+8. Request envelope: `GridRequestContext.federal_state` is AT-vocabulary; add a
    `country` envelope field alongside it (the structured `country=<cc>` prompt
    fact is already parsed by `resolve_country`).
 

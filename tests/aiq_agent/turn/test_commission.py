@@ -82,16 +82,16 @@ class TestWhatItAsksFor:
         from aiq_agent.common.plan_documents import PlanDocuments
 
         docs = PlanDocuments(
-            grundlage=[PlanDocument(name="Einreichplan.pdf", title="Einreichplan EG", shelf="project")],
-            ausgeschlossen=[PlanDocument(name="alt.pdf")],
+            basis=[PlanDocument(name="Einreichplan.pdf", title="Einreichplan EG", shelf="project")],
+            excluded=[PlanDocument(name="alt.pdf")],
         )
         await commission_research_run(QUESTION, data_sources=["knowledge_base"], documents=docs)
 
         payload = commissioning[0][0]
         assert payload["dataSources"] == ["knowledge_base"]
         assert payload["documents"] == {
-            "grundlage": [{"name": "Einreichplan.pdf", "title": "Einreichplan EG", "shelf": "project"}],
-            "ausgeschlossen": [{"name": "alt.pdf"}],
+            "basis": [{"name": "Einreichplan.pdf", "title": "Einreichplan EG", "shelf": "project"}],
+            "excluded": [{"name": "alt.pdf"}],
         }
 
     async def test_an_empty_documents_list_is_absent(self, commissioning):

@@ -26,15 +26,15 @@ import { authorityTag, kindForLane, KIND_TO_SIGNAL } from '@/features/chat/lib/s
 
 /** Ordered, immutable key list — mirrors backend `DOCUMENT_CLASSES`. */
 export const DOC_CLASSES = [
-  'oib_richtlinie',
-  'oib_leitfaden',
-  'oib_erlaeuterung',
-  'oib_begriffe',
-  'oib_referenz',
-  'oib_aenderung',
-  'norm_extern',
-  'gesetz',
-  'sonstiges',
+  'oib_guideline',
+  'oib_guide',
+  'oib_explanatory_note',
+  'oib_definitions',
+  'oib_reference',
+  'oib_amendment',
+  'external_standard',
+  'law',
+  'other',
 ] as const
 
 export type DocClass = (typeof DOC_CLASSES)[number]
@@ -48,39 +48,60 @@ export type DocClass = (typeof DOC_CLASSES)[number]
  * entries equal these, which `base-knowledge.spec.tsx` pins.
  */
 export const DOC_CLASS_LABELS: Record<DocClass, string> = {
-  oib_richtlinie: 'OIB-Richtlinie (verbindlich)',
-  oib_leitfaden: 'OIB-Leitfaden',
-  oib_erlaeuterung: 'OIB-Erläuterung',
-  oib_begriffe: 'OIB-Begriffsbestimmungen',
-  oib_referenz: 'OIB-Referenzdokument',
-  oib_aenderung: 'OIB-Änderungsdokument',
-  norm_extern: 'Norm (ÖNORM u.a.)',
-  gesetz: 'Gesetz / Bauordnung',
-  sonstiges: 'Sonstiges Basisdokument',
+  oib_guideline: 'OIB-Richtlinie (verbindlich)',
+  oib_guide: 'OIB-Leitfaden',
+  oib_explanatory_note: 'OIB-Erläuterung',
+  oib_definitions: 'OIB-Begriffsbestimmungen',
+  oib_reference: 'OIB-Referenzdokument',
+  oib_amendment: 'OIB-Änderungsdokument',
+  external_standard: 'Norm (ÖNORM u.a.)',
+  law: 'Gesetz / Bauordnung',
+  other: 'Sonstiges Basisdokument',
 }
 
 /** Neutral base class assigned when nothing else is known (mirrors backend). */
-export const DEFAULT_DOC_CLASS: DocClass = 'sonstiges'
+export const DEFAULT_DOC_CLASS: DocClass = 'other'
 
 /**
  * doc_class key → fine lane key (mirrors backend `DOCUMENT_CLASS_LANES`). Fed to
  * the source-kind helpers so the badge's tint + authority tag match the chips.
  */
 const DOC_CLASS_LANES: Record<DocClass, string> = {
-  oib_richtlinie: 'baurecht_oib',
-  oib_leitfaden: 'baurecht_oib_leitfaden',
-  oib_erlaeuterung: 'baurecht_oib_erlaeuterung',
-  oib_begriffe: 'baurecht_oib_begriffe',
-  oib_referenz: 'baurecht_oib_referenz',
-  oib_aenderung: 'baurecht_oib_diff',
-  norm_extern: 'norm_extern',
-  gesetz: 'baurecht_ris',
-  sonstiges: 'baurecht_basis',
+  oib_guideline: 'building_law_oib',
+  oib_guide: 'building_law_oib_guide',
+  oib_explanatory_note: 'building_law_oib_explanatory_note',
+  oib_definitions: 'building_law_oib_definitions',
+  oib_reference: 'building_law_oib_reference',
+  oib_amendment: 'building_law_oib_amendment',
+  external_standard: 'external_standard',
+  law: 'building_law_ris',
+  other: 'building_law_base',
 }
 
-/** Narrow an untrusted wire value to a known DocClass, else undefined. */
-export const asDocClass = (value: string | null | undefined): DocClass | undefined =>
-  value && (DOC_CLASSES as readonly string[]).includes(value) ? (value as DocClass) : undefined
+/**
+ * The keys as they were stored before the English names, old to current (mirrors
+ * `LEGACY_DOC_CLASSES` in `document_classification.py`; `doc-class.spec.ts` pins the
+ * two). A Python pod that has not rolled yet still answers with one. Remove after one
+ * release.
+ */
+export const LEGACY_DOC_CLASSES: Readonly<Record<string, DocClass>> = {
+  oib_richtlinie: 'oib_guideline',
+  oib_leitfaden: 'oib_guide',
+  oib_erlaeuterung: 'oib_explanatory_note',
+  oib_begriffe: 'oib_definitions',
+  oib_referenz: 'oib_reference',
+  oib_aenderung: 'oib_amendment',
+  norm_extern: 'external_standard',
+  gesetz: 'law',
+  sonstiges: 'other',
+}
+
+/** Narrow an untrusted wire value to a known DocClass (current or legacy), else undefined. */
+export const asDocClass = (value: string | null | undefined): DocClass | undefined => {
+  if (!value) return undefined
+  const current = LEGACY_DOC_CLASSES[value] ?? value
+  return (DOC_CLASSES as readonly string[]).includes(current) ? (current as DocClass) : undefined
+}
 
 /** Resolve a (possibly null/unknown) doc_class to a real class for display. */
 export const resolveDocClass = (value: string | null | undefined): DocClass =>

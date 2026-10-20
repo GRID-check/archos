@@ -94,7 +94,7 @@ const ALL: FeedbackQuery = {
 /** What the page might be showing: one organization, a project and a few filters. */
 const PAGE: FeedbackQuery = {
   scope: { from: '2026-10-03', to: '2026-10-09', organizationIds: ['org_1'], projectIds: [PROJECT] },
-  ratings: { ...NO_RATINGS_FILTERS, verdict: 'down', reasons: ['inaccurate'], topics: ['brandschutz'], query: 'GK' },
+  ratings: { ...NO_RATINGS_FILTERS, verdict: 'down', reasons: ['inaccurate'], topics: ['fire_safety'], query: 'GK' },
 }
 
 beforeEach(() => {
@@ -255,6 +255,6 @@ describe('getAnswerFeedbackWeeklyExport', () => {
   })
 
   it('ignores nothing when only the scope and the topic are set', () => {
-    expect(weeklyIgnoredFilters({ ...ALL, ratings: { ...NO_RATINGS_FILTERS, topics: ['statik'] } })).toEqual([])
+    expect(weeklyIgnoredFilters({ ...ALL, ratings: { ...NO_RATINGS_FILTERS, topics: ['structural'] } })).toEqual([])
   })
 })

@@ -59,6 +59,8 @@ const wireSourceSchema = z
     file_name: z.string().nullish(),
     page: z.number().int().positive().nullish(),
     /** The Punkt and the retrieval score, so a reload keeps WHERE and HOW NEARLY. */
+    clause: z.string().nullish(),
+    /** The pre-rename spelling of `clause`: stored rows still carry it; read by `citationFromWire`. */
     punkt: z.string().nullish(),
     score: z.number().nullish(),
     /**
@@ -144,7 +146,7 @@ export const encodeCitations = (
       number: citation.number,
       file_name: citation.fileName,
       page: citation.page,
-      punkt: citation.punkt,
+      clause: citation.clause,
       score: citation.score,
       kind: citation.kind,
       shelf: citation.shelf,

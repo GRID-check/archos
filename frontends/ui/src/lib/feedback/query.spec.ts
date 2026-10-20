@@ -21,7 +21,7 @@ describe('parseFeedbackQuery', () => {
   it('reads the scope and every ratings filter, repeatable ones as lists', () => {
     const query = ok(
       `from=2026-07-01&to=2026-09-30&org=org_a&org=org_b&project=${PROJECT}` +
-        '&verdict=down&reason=wrong_source&reason=inaccurate&topic=statik&topic=brandschutz' +
+        '&verdict=down&reason=wrong_source&reason=inaccurate&topic=structural&topic=fire_safety' +
         '&mode=report&mode=shallow&confidence=low&has_comment=1&has_expected=1&q=%20fluchtweg%20'
     )
     expect(query).toEqual({
@@ -30,7 +30,7 @@ describe('parseFeedbackQuery', () => {
         verdict: 'down',
         // Canonical order, whatever order the URL had: one set, one cache key.
         reasons: ['inaccurate', 'wrong_source'],
-        topics: ['brandschutz', 'statik'],
+        topics: ['fire_safety', 'structural'],
         modes: ['shallow', 'report'],
         confidences: ['low'],
         hasComment: true,
@@ -84,19 +84,19 @@ describe('parseFeedbackQuery', () => {
 
     /** The old drill-in export defaulted to the down-votes when no verdict was sent. */
     it('maps `scope=selection` to the filters, down-votes by default', () => {
-      const query = ok('scope=selection&days=7&org=org_2&topic=brandschutz&reason=inaccurate&q=GK')
+      const query = ok('scope=selection&days=7&org=org_2&topic=fire_safety&reason=inaccurate&q=GK')
       expect(query.scope.organizationIds).toEqual(['org_2'])
       expect(query.ratings).toMatchObject({
         verdict: 'down',
         reasons: ['inaccurate'],
-        topics: ['brandschutz'],
+        topics: ['fire_safety'],
         query: 'GK',
       })
       expect(ok('scope=selection&verdict=up').ratings.verdict).toBe('up')
     })
 
     it('reads `scope=all` as every vote in the scope, rating filters ignored', () => {
-      const query = ok('scope=all&org=org_2&verdict=down&reason=inaccurate&topic=statik')
+      const query = ok('scope=all&org=org_2&verdict=down&reason=inaccurate&topic=structural')
       expect(query.scope.organizationIds).toEqual(['org_2'])
       expect(query.ratings).toEqual(NO_RATINGS_FILTERS)
     })

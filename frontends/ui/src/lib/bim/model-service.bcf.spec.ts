@@ -50,7 +50,7 @@ vi.mock('./query', () => ({
   runBimQuery: vi.fn().mockResolvedValue({
     compliance: [
       {
-        ruleId: 'oib2-feuerwiderstand-tragend',
+        ruleId: 'oib2-fire-resistance-load-bearing',
         richtlinie: 'OIB 2',
         clause: '3.1',
         titleDe: 'Feuerwiderstand tragender Bauteile',
@@ -149,10 +149,10 @@ describe('exportAccessibleComplianceBcf', () => {
     // describes a different building or applies thresholds nobody chose.
     vi.mocked(listBimModels).mockResolvedValue([model({ id: 'm-3', filename: 'Haus-A_V3.ifc' })])
 
-    await run({ modelId: null, modelName: 'Haus-A_V3.ifc', gebaeudeklasse: 4, hauptnutzung: 'wohnen' })
+    await run({ modelId: null, modelName: 'Haus-A_V3.ifc', gebaeudeklasse: 4, hauptnutzung: 'residential' })
 
     expect(runBimQuery).toHaveBeenCalledWith(
-      { op: 'compliance', gebaeudeklasse: 4, hauptnutzung: 'wohnen' },
+      { op: 'compliance', gebaeudeklasse: 4, hauptnutzung: 'residential' },
       { modelId: 'm-3', organizationId: 'org-1' }
     )
   })
@@ -214,7 +214,7 @@ describe('exportAccessibleComplianceBcf', () => {
     vi.mocked(listBimModels).mockResolvedValue([model({ id: 'm-3', filename: 'Haus-A_V3.ifc' })])
     vi.mocked(listBimCheckConfirmations).mockResolvedValue([
       {
-        ruleId: 'oib2-feuerwiderstand-tragend',
+        ruleId: 'oib2-fire-resistance-load-bearing',
         modelId: 'm-3',
         confirmedBy: 'brandschutz@example.at',
         note: 'Gutachten liegt vor',
@@ -234,7 +234,7 @@ describe('exportAccessibleComplianceBcf', () => {
     vi.mocked(listBimModels).mockResolvedValue([model({ id: 'm-3', filename: 'Haus-A_V3.ifc' })])
     vi.mocked(listBimCheckConfirmations).mockResolvedValue([
       {
-        ruleId: 'oib2-feuerwiderstand-tragend',
+        ruleId: 'oib2-fire-resistance-load-bearing',
         modelId: 'm-3',
         confirmedBy: 'brandschutz@example.at',
         note: null,
@@ -278,7 +278,7 @@ describe('confirming and withdrawing against the right building', () => {
 
     await expect(
       confirmAccessibleCheck(SESSION, 'proj-1', {
-        ruleId: 'oib2-feuerwiderstand-tragend',
+        ruleId: 'oib2-fire-resistance-load-bearing',
         modelId: 'm-other',
         note: null,
       })
@@ -290,7 +290,7 @@ describe('confirming and withdrawing against the right building', () => {
     vi.mocked(findBimModelById).mockResolvedValue(OTHER)
 
     await expect(
-      withdrawAccessibleCheck(SESSION, 'proj-1', 'oib2-feuerwiderstand-tragend', 'm-other')
+      withdrawAccessibleCheck(SESSION, 'proj-1', 'oib2-fire-resistance-load-bearing', 'm-other')
     ).rejects.toThrow(/not found in this project/i)
     expect(deleteBimCheckConfirmation).not.toHaveBeenCalled()
   })
@@ -299,7 +299,7 @@ describe('confirming and withdrawing against the right building', () => {
     vi.mocked(findBimModelById).mockResolvedValue(model({ id: 'm-3', filename: 'Haus-A_V3.ifc' }))
 
     await confirmAccessibleCheck(SESSION, 'proj-1', {
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       modelId: 'm-3',
       note: 'Gutachten liegt vor',
     })
@@ -307,7 +307,7 @@ describe('confirming and withdrawing against the right building', () => {
     expect(upsertBimCheckConfirmation).toHaveBeenCalledWith({
       organizationId: 'org-1',
       projectId: 'proj-1',
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       modelId: 'm-3',
       // From the session, never from the body: a signature a caller could
       // address to somebody else is not a signature.
@@ -323,7 +323,7 @@ describe('confirming and withdrawing against the right building', () => {
 
     await expect(
       confirmAccessibleCheck(SESSION, 'proj-1', {
-        ruleId: 'oib2-feuerwiderstand-tragend',
+        ruleId: 'oib2-fire-resistance-load-bearing',
         modelId: 'm-archiv',
         note: null,
       })

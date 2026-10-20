@@ -733,10 +733,10 @@ describe('InboxItemRow — a row whose target is a document', () => {
   })
 })
 
-describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
+describe('InboxItemRow — a new Fassung (document.new_revision)', () => {
   const newRevision = (overrides: Partial<InboxItemView> = {}) =>
     item({
-      type: 'document.new_fassung',
+      type: 'document.new_revision',
       state: 'unread',
       archived: false,
       actionable: false,
@@ -1591,7 +1591,7 @@ describe('InboxItemRow — every way to its target counts as opening it', () => 
     const onOpen = vi.fn()
     render(
       <InboxItemRow
-        item={item({ type: 'document.new_fassung', actionable: false, resourceType: 'document', resourceId: 'doc-7', anchorId: 'ver-2', href: '/app/projects/p1/files?doc=doc-7', subject: 'Befund', related: null })}
+        item={item({ type: 'document.new_revision', actionable: false, resourceType: 'document', resourceId: 'doc-7', anchorId: 'ver-2', href: '/app/projects/p1/files?doc=doc-7', subject: 'Befund', related: null })}
         onOpen={onOpen}
       />,
     )

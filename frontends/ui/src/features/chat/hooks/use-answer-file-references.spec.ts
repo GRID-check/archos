@@ -59,7 +59,7 @@ describe('useAnswerFileReferences', () => {
 
     await waitFor(() => expect(result.current.fileNames).toEqual(['pd8280-2.pdf']))
     expect(result.current.resolve('pd8280-2.pdf')?.file.id).toBe('p1')
-    expect(result.current.resolve('pd8280-2.pdf')?.corpus).toBe('projekt')
+    expect(result.current.resolve('pd8280-2.pdf')?.corpus).toBe('project')
   })
 
   it('resolves a name the answer spelled in a different case', async () => {

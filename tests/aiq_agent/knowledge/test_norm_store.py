@@ -44,7 +44,7 @@ def _sample_norms_file() -> NormsFile:
                 id="test-fed",
                 title="Test Federal Law",
                 short="TFL",
-                rank="bundesgesetz",
+                rank="federal_law",
                 application="BrKons",
                 document_number="NOR12345678",
             )
@@ -117,7 +117,7 @@ def test_configure_registers_loader_and_falls_back_to_yaml(db_url):
                     id="only-in-store",
                     title="Store Only",
                     short="SO",
-                    rank="bundesgesetz",
+                    rank="federal_law",
                     application="BrKons",
                     document_number="NOR99999999",
                 )

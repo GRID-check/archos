@@ -22,9 +22,9 @@ import { citedPages, documentPages, isCited, readPages } from './model'
 import { documentTabLabel, totalHits } from './views'
 
 const lane = (overrides: Partial<TraceLaneCard>): TraceLaneCard => ({
-  key: 'baurecht_oib',
+  key: 'building_law_oib',
   label: 'OIB-Richtlinie',
-  kind: 'baurecht',
+  kind: 'building_law',
   signal: 'law',
   hitCount: 1,
   sources: [],
@@ -38,9 +38,9 @@ const kbSources = storedStep({
   tool: 'knowledge_search',
   lanes: [
     {
-      key: 'projekt',
+      key: 'project',
       label: 'Projektwissen',
-      kind: 'projekt',
+      kind: 'project',
       hit_count: 2,
       sources: [
         { name: 'Brandschutzkonzept.pdf', detail: 'p.4' },
@@ -120,15 +120,15 @@ describe('the fan-out is the model, grouped by document', () => {
     expect(badgeFor(lane({ sources: [{ name: 'x.pdf' }] }))).toBe('OIB')
     expect(
       badgeFor(
-        lane({ key: 'baurecht_ris', label: 'Rechtsquelle (RIS)', sources: [{ name: 'BO Wien' }] })
+        lane({ key: 'building_law_ris', label: 'Rechtsquelle (RIS)', sources: [{ name: 'BO Wien' }] })
       )
     ).toBe('RIS')
     expect(
       badgeFor(
         lane({
-          key: 'buero',
+          key: 'office',
           label: 'Büroablage',
-          kind: 'buero',
+          kind: 'office',
           signal: 'office',
           sources: [{ name: 'detail.pdf' }],
         })
@@ -174,8 +174,8 @@ describe('robustness at the edges', () => {
           id: 'ghost',
           content: '',
           timestamp: new Date(0),
-          kind: 'baurecht',
-          lane: 'baurecht_oib',
+          kind: 'building_law',
+          lane: 'building_law_oib',
           laneLabel: 'OIB-Richtlinie',
         },
       ],
@@ -190,7 +190,7 @@ describe('robustness at the edges', () => {
     const docs = buildCitationModel({
       traceLanes: [
         lane({
-          key: 'baurecht_ris',
+          key: 'building_law_ris',
           label: 'Bundesrecht',
           sources: [{ name: 'Bauordnung für Wien', detail: '§ 108 Fluchtwege' }],
         }),
@@ -202,8 +202,8 @@ describe('robustness at the edges', () => {
           url: 'https://www.ris.bka.gv.at/x',
           title: 'Bauordnung für Wien',
           timestamp: new Date(0),
-          kind: 'baurecht',
-          lane: 'baurecht_ris',
+          kind: 'building_law',
+          lane: 'building_law_ris',
           number: 2,
           isCited: true,
         },

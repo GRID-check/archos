@@ -302,11 +302,11 @@ export const bim: typeof en.bim = {
     empty: 'Aus diesem Modell lassen sich keine Projektangaben ableiten.',
     failed: 'Die Projektangaben konnten nicht abgeleitet werden.',
     key: {
-      geschosse_oberirdisch: 'Oberirdische Geschoße',
-      geschosse_unterirdisch: 'Unterirdische Geschoße',
-      fluchtniveau: 'Fluchtniveau',
-      hauptnutzung: 'Hauptnutzung',
-      anzahl_einheiten: 'Nutzungseinheiten',
+      storeys_above_ground: 'Oberirdische Geschoße',
+      storeys_below_ground: 'Unterirdische Geschoße',
+      escape_level: 'Fluchtniveau',
+      main_use: 'Hauptnutzung',
+      unit_count: 'Nutzungseinheiten',
     },
     confidence: {
       high: 'Hohe Verlässlichkeit',

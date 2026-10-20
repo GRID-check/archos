@@ -91,7 +91,13 @@ FOLLOW_UP_FLOOR = 0.80
 #: Which chat skill a family's question is the subject of — for REPORTING
 #: skill top-1, not for the gate: the loop-eval rows carry no expected skill,
 #: and OIB-RL 1 has no skill of its own.
-FAMILY_SKILL = {"2": "brandschutz", "3": "hygiene", "4": "nutzungssicherheit", "5": "waermeschutz", "6": "waermeschutz"}
+FAMILY_SKILL = {
+    "2": "fire-safety",
+    "3": "hygiene",
+    "4": "safety-in-use",
+    "5": "thermal-protection",
+    "6": "thermal-protection",
+}
 
 
 @dataclass

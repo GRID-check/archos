@@ -35,7 +35,7 @@ const open = (overrides: Partial<CitationSource>) => {
         timestamp: new Date('2026-09-29T10:00:00Z'),
         citationKey: `${FILE}, p.4`,
         fileName: FILE,
-        kind: 'projekt',
+        kind: 'project',
         page: 4,
         isCited: true,
         snippet: '[DRAWING from page 4] Grundriss 1. OG mit Sitztreppe zum Innenhof.',

@@ -45,15 +45,15 @@ function registerOf(
 /** The Aufstockung in Wien: a Bestand with Wohnungen, Zubau and Umbau; the reading found the Widmung. */
 const VIENNA_STOREY_ADDITION = {
   country: 'at',
-  bundesland: 'wien',
-  vorhabensart: ['zubau', 'umbau'],
-  'bauwerkstyp@bw1': 'gebaeude',
-  'errichtungsstatus@bw1': 'bestand',
-  'nutzungen@bw1': ['wohnen'],
+  federal_state: 'vienna',
+  work_type: ['extension', 'conversion'],
+  'building_type@bldg1': 'building',
+  'construction_status@bldg1': 'existing',
+  'uses@bldg1': ['residential'],
 }
 
 const REGISTER_READY = registerOf(
-  profileOf(VIENNA_STOREY_ADDITION, { flaechenwidmung: 'wohngebiet', bebauungsplan: 'ja' }),
+  profileOf(VIENNA_STOREY_ADDITION, { zoning: 'residential', development_plan: 'ja' }),
   FIXTURE_LOCATION
 )
 
@@ -66,7 +66,7 @@ export const QUESTIONS_TYPED_ADDRESS: IntakeView = {
   location: null,
   questions: [],
   openQuestions: [OPEN_PHASE],
-  locationRegister: registerOf(profileOf({ standort_adresse: 'Hauptstraße 4, 3420 Kritzendorf' }), null),
+  locationRegister: registerOf(profileOf({ site_address: 'Hauptstraße 4, 3420 Kritzendorf' }), null),
 }
 
 /** Piloti still reads: the round says so and takes what is already known. */
@@ -76,7 +76,7 @@ export const QUESTIONS_READING: IntakeView = { ...INTAKE_READING, locationRegist
 export const QUESTIONS_CLOSING: IntakeView = {
   ...INTAKE_CLOSING,
   location: null,
-  locationRegister: registerOf(profileOf({ vorhabensart: ['neubau'] }), null, 'closing'),
+  locationRegister: registerOf(profileOf({ work_type: ['new_build'] }), null, 'closing'),
 }
 
 /** Everything settled: every request has its values, every decisive question an answer. */
@@ -87,9 +87,9 @@ export const QUESTIONS_DONE: IntakeView = {
   openQuestions: [],
   locationRegister: registerOf(
     profileOf(
-      { ...VIENNA_STOREY_ADDITION, grundstueck_ez: 'EZ 1234, KG Hernals', 'denkmalschutz@bw1': 'nein' },
-      { flaechenwidmung: 'wohngebiet', bebauungsplan: 'ja', gefahrenzonen: ['keine'], laermsituation: 'strasse' },
-      ['grundstuecksflaeche']
+      { ...VIENNA_STOREY_ADDITION, plot_register_number: 'EZ 1234, KG Hernals', 'heritage_protection@bldg1': 'nein' },
+      { zoning: 'residential', development_plan: 'ja', hazard_zones: ['none'], noise_situation: 'road' },
+      ['plot_area']
     ),
     FIXTURE_LOCATION
   ),

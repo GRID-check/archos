@@ -27,7 +27,7 @@ const oibSources = (hits: Array<{ name: string; detail: string }>) =>
     tool: 'knowledge_search',
     round: 0,
     lanes: [
-      { key: 'baurecht_oib', label: 'OIB-Richtlinie', kind: 'baurecht', hit_count: hits.length, sources: hits },
+      { key: 'building_law_oib', label: 'OIB-Richtlinie', kind: 'building_law', hit_count: hits.length, sources: hits },
     ],
   })
 
@@ -753,16 +753,16 @@ describe('ChatThinking', () => {
           id: 'c1',
           content: '',
           timestamp: new Date(),
-          kind: 'baurecht' as const,
-          lane: 'baurecht_oib',
+          kind: 'building_law' as const,
+          lane: 'building_law_oib',
           laneLabel: 'OIB-Richtlinie',
         },
         {
           id: 'c2',
           content: '',
           timestamp: new Date(),
-          kind: 'baurecht' as const,
-          lane: 'baurecht_oib',
+          kind: 'building_law' as const,
+          lane: 'building_law_oib',
           laneLabel: 'OIB-Richtlinie',
         },
       ]

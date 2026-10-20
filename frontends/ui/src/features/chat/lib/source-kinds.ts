@@ -20,7 +20,7 @@ import type { SourceSignal, SourceTint } from '@/features/layout/lib/source-pres
 /**
  * The five coarse source kinds every source renders through.
  *
- * `messung` is the odd one out: the other four are RETRIEVED PASSAGES, a
+ * `measurement` is the odd one out: the other four are RETRIEVED PASSAGES, a
  * measurement is a value read off the project's BIM model. It carries no page,
  * no document and nothing to preview — and instead carries the GlobalIds it was
  * derived from, the operator expression, a tolerance and a provenance, which is
@@ -28,15 +28,64 @@ import type { SourceSignal, SourceTint } from '@/features/layout/lib/source-pres
  * that already renders off `kind` picks it up; it is deliberately NOT a
  * citation on the backend (`aiq_agent/tools/bim/measurement_sources.py`).
  */
-export type SourceKind = 'baurecht' | 'buero' | 'projekt' | 'web' | 'messung'
+export type SourceKind = 'building_law' | 'office' | 'project' | 'web' | 'measurement'
 
 const SOURCE_KINDS: ReadonlySet<SourceKind> = new Set([
-  'baurecht',
-  'buero',
-  'projekt',
+  'building_law',
+  'office',
+  'project',
   'web',
-  'messung',
+  'measurement',
 ])
+
+/**
+ * The German kinds a stored citation, a trace lane or an older pod's wire still
+ * carries. Read-only: nothing writes these, `modernizeSourceKind` maps them on
+ * the way in.
+ */
+export const LEGACY_SOURCE_KIND: Readonly<Record<string, SourceKind>> = {
+  baurecht: 'building_law',
+  buero: 'office',
+  projekt: 'project',
+  messung: 'measurement',
+}
+
+/** A kind (or lane-kind) value spelled the English way, whichever spelling it came in. */
+export const modernizeSourceKind = (value: string | null | undefined): string | null | undefined =>
+  value && Object.hasOwn(LEGACY_SOURCE_KIND, value) ? LEGACY_SOURCE_KIND[value] : value
+
+/**
+ * The German fine-lane keys, as exact keys. A lane is `<family>[_<tier>]`, so the
+ * mapping is on whole keys: the OIB tiers are named, the family prefix alone
+ * is the fallback for a tier this table has not met.
+ */
+export const LEGACY_LANE: Readonly<Record<string, string>> = {
+  baurecht: 'building_law',
+  baurecht_oib: 'building_law_oib',
+  baurecht_oib_leitfaden: 'building_law_oib_guide',
+  baurecht_oib_erlaeuterung: 'building_law_oib_explanatory_note',
+  baurecht_oib_begriffe: 'building_law_oib_definitions',
+  baurecht_oib_referenz: 'building_law_oib_reference',
+  baurecht_oib_diff: 'building_law_oib_amendment',
+  baurecht_ris: 'building_law_ris',
+  baurecht_basis: 'building_law_base',
+  baurecht_bund: 'building_law_federal',
+  baurecht_land: 'building_law_state',
+  baurecht_verordnung: 'building_law_ordinance',
+  behoerde: 'authority',
+  norm_extern: 'external_standard',
+  buero: 'office',
+  buero_piloti: 'office_piloti',
+  projekt: 'project',
+  messung: 'measurement',
+}
+
+/** A lane key spelled the English way, whichever spelling it came in. */
+export const modernizeLane = (value: string | null | undefined): string | null | undefined => {
+  if (!value) return value
+  const key = value.trim().toLowerCase()
+  return Object.hasOwn(LEGACY_LANE, key) ? LEGACY_LANE[key] : value
+}
 
 /** Narrow an untrusted wire value to a SourceKind, else undefined. */
 export const asSourceKind = (value: string | null | undefined): SourceKind | undefined =>
@@ -45,25 +94,25 @@ export const asSourceKind = (value: string | null | undefined): SourceKind | und
 /**
  * Coarse kind → the `--source-*` tint family (`SourceSignal`). This is the one
  * mapping that fixes the old `kb → project` mislabel: the OIB corpus is
- * `baurecht`, so it now renders in the law family, identically to RIS.
+ * `building_law`, so it now renders in the law family, identically to RIS.
  */
 export const KIND_TO_SIGNAL: Record<SourceKind, SourceSignal> = {
-  baurecht: 'law',
-  buero: 'office',
-  projekt: 'project',
+  building_law: 'law',
+  office: 'office',
+  project: 'project',
   web: 'auto',
   // Its own family, not `project`. A measurement is about the BUILDING, not
   // about a document filed under the project, and painting it in the project
   // green would put a reproducible number in the same colour as the PDF it
   // contradicts.
-  messung: 'model',
+  measurement: 'model',
 }
 
 /**
  * The fine lane of a PUBLISHED, human-approved, agent-authored document —
  * mirror of the backend `source_kinds.AGENT_AUTHORED_LANE`.
  *
- * Its coarse kind is `buero`: it IS office knowledge, painted in the office
+ * Its coarse kind is `office`: it IS office knowledge, painted in the office
  * colour, and the lane is the sub-label inside that kind. The distinction the
  * lane carries is "Piloti wrote this and the office released it" versus "a
  * person in the office wrote it" — and the backend decides it from the stated
@@ -75,26 +124,26 @@ export const KIND_TO_SIGNAL: Record<SourceKind, SourceSignal> = {
  * (`provenance` on the Trace-Lanes source), so a renderer appends the approver
  * in the reader's own locale rather than parsing him out of a German sentence.
  */
-export const AGENT_AUTHORED_LANE = 'buero_piloti'
+export const AGENT_AUTHORED_LANE = 'office_piloti'
 export const AGENT_AUTHORED_LANE_LABEL = 'Piloti-Dokument'
 
 // Fine lane family → coarse kind (mirror of backend `source_kinds.kind_for_lane`).
 // The Herleitung fan-out and the chips MUST share this so they never disagree
-// (e.g. external norms are `baurecht`, not `web`).
+// (e.g. external norms are `building_law`, not `web`).
 const LANE_KIND_PREFIXES: ReadonlyArray<readonly [string, SourceKind]> = [
-  ['baurecht', 'baurecht'],
-  ['behoerde', 'baurecht'],
-  ['norm_extern', 'baurecht'],
-  ['buero', 'buero'],
-  ['projekt', 'projekt'],
+  ['building_law', 'building_law'],
+  ['authority', 'building_law'],
+  ['external_standard', 'building_law'],
+  ['office', 'office'],
+  ['project', 'project'],
   ['web', 'web'],
   // Stamped by the measurement channel itself; no retrieval lane produces it.
-  ['messung', 'messung'],
+  ['measurement', 'measurement'],
 ]
 
 /** Map a fine lane stratum-key to its coarse SourceKind (fail-open to web). */
 export const kindForLane = (lane: string | null | undefined): SourceKind => {
-  const key = (lane ?? '').trim().toLowerCase()
+  const key = ((modernizeLane(lane) ?? '') as string).trim().toLowerCase()
   for (const [prefix, kind] of LANE_KIND_PREFIXES) {
     if (key === prefix || key.startsWith(`${prefix}_`)) return kind
   }
@@ -118,10 +167,10 @@ export const kindForLane = (lane: string | null | undefined): SourceKind => {
 //   Shelf      — whose document is this / which collection retrieval searched.
 //                `archiv | project | session | base`.
 //   SourceKind — the ADR-0026 DISPLAY taxonomy driving chip colour and badge:
-//                `baurecht | buero | projekt | web`.
+//                `building_law | office | project | web`.
 //
-// A `projekt`-kind document can sit on the `session` shelf (a file the user
-// dropped into the chat); a `baurecht`-kind document sits on `base`. Neither
+// A `project`-kind document can sit on the `session` shelf (a file the user
+// dropped into the chat); a `building_law`-kind document sits on `base`. Neither
 // enum is derivable from the other, so neither is defined in terms of the other.
 
 /** The four shelves a retrieved chunk can come from. */
@@ -222,17 +271,17 @@ export const scopeForQualifier = (qualifier: string | null | undefined): Shelf |
  * `laneLabel` for the popover.
  */
 export const authorityTag = (lane: string | null | undefined): string | null => {
-  const key = (lane ?? '').toLowerCase()
-  if (key.startsWith('baurecht_oib')) return 'OIB'
-  if (key === 'norm_extern') return 'ÖNORM'
-  if (key === 'behoerde') return 'Behörde'
-  // `baurecht_basis` is the lane of the DEFAULT doc_class ("sonstiges") — a
-  // document nobody has classified yet. It must not inherit the `baurecht`
+  const key = ((modernizeLane(lane) ?? '') as string).toLowerCase()
+  if (key.startsWith('building_law_oib')) return 'OIB'
+  if (key === 'external_standard') return 'ÖNORM'
+  if (key === 'authority') return 'Behörde'
+  // `building_law_base` is the lane of the DEFAULT doc_class ("sonstiges") — a
+  // document nobody has classified yet. It must not inherit the `building_law`
   // prefix's RIS badge: every unclassified upload would then claim to be an
   // Austrian legal source, which is the strongest provenance claim this UI can
   // make and the one an architect is most entitled to trust.
-  if (key === 'baurecht_basis') return null
-  if (key.startsWith('baurecht')) return 'RIS' // baurecht_ris / _bund / _land / _verordnung
+  if (key === 'building_law_base') return null
+  if (key.startsWith('building_law')) return 'RIS' // building_law_ris / _federal / _state / _ordinance
   return null
 }
 
@@ -249,4 +298,4 @@ export const authorityTag = (lane: string | null | undefined): string | null => 
  * cards and the "Belegt durch" chips can never drift apart.
  */
 export const accentForLane = (lane: string | null | undefined, signal: SourceTint): SourceTint =>
-  (lane ?? '').toLowerCase().startsWith('baurecht_oib') ? 'oib' : signal
+  ((modernizeLane(lane) ?? '') as string).toLowerCase().startsWith('building_law_oib') ? 'oib' : signal

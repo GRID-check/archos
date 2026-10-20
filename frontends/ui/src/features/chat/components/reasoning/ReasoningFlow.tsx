@@ -762,7 +762,7 @@ const DEGRADATION_KEYS: Record<AnswerDegradation, string> = {
   no_report_file: 'noReport',
   no_valid_citations: 'noCitations',
   cards_generation_failed: 'noCards',
-  grundlage_unread: 'grundlageUnread',
+  basis_unread: 'basisUnread',
 }
 
 function limitations(
@@ -887,7 +887,7 @@ function foldLocusOf(doc: CitedDocument): CitationLocus | undefined {
   const loci = citedLoci(doc)
   if (loci.length === 0) return undefined
   return (
-    loci.find((locus) => locus.punkt?.trim()) ??
+    loci.find((locus) => locus.clause?.trim()) ??
     loci.find((locus) => typeof locus.page === 'number') ??
     loci[0]
   )
@@ -896,7 +896,7 @@ function foldLocusOf(doc: CitedDocument): CitationLocus | undefined {
 function foldLocusLabel(doc: CitedDocument, t: Translator): string | undefined {
   const locus = foldLocusOf(doc)
   if (!locus) return undefined
-  const clause = locus.punkt?.trim()
+  const clause = locus.clause?.trim()
   const page = typeof locus.page === 'number' ? locus.page : undefined
   if (clause && page !== undefined) return t('thinking.node.roundFoldLocusClausePage', { clause, page })
   if (clause) return t('thinking.node.roundFoldLocusClause', { clause })

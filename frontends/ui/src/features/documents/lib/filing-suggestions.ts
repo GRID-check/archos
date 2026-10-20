@@ -22,7 +22,7 @@ export interface FilingSuggestionView {
   /** The server says this reader may move them (`canDecide`). */
   canDecide: boolean
   /** The shelf the files are on, which names the top level a file at the root sits on. */
-  shelf: 'projekt' | 'buero'
+  shelf: 'project' | 'office'
   /** Every document the one confirm moves that this reader may see, by id: what a highlight lights. */
   documentIds: readonly string[]
 }
@@ -50,7 +50,7 @@ function viewFor({ proposal, documents }: ListedProposal, documentName: string |
     basis: filing.basis,
     fileCount: payload.operations.length,
     canDecide: proposal.canDecide,
-    shelf: payload.operations[0]?.source === 'buero' ? 'buero' : 'projekt',
+    shelf: payload.operations[0]?.source === 'office' ? 'office' : 'project',
     documentIds: documents.map((document) => document.id),
   }
 }

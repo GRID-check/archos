@@ -59,19 +59,19 @@ def _ledger() -> RunLedger:
     """A run that searched, wrote and filed — every optional exercised once."""
     return RunLedger(
         runId="6f1a0f7e-2b1f-4a4e-9a4e-2f0f1a6d9c31",
-        status="fertig",
+        status="done",
         phases=[
             RunPhaseEntry(
-                phase="recherchieren",
+                phase="researching",
                 startedAt="2026-09-16T08:00:00.000Z",
                 endedAt="2026-09-16T08:05:00.000Z",
             ),
-            RunPhaseEntry(phase="abgelegt", startedAt="2026-09-16T08:05:00.000Z"),
+            RunPhaseEntry(phase="filed", startedAt="2026-09-16T08:05:00.000Z"),
         ],
         steps=[
             RunStep(
                 id="batch-1",
-                phase="recherchieren",
+                phase="researching",
                 intent="OIB-2 auf Fluchtwegbreiten prüfen",
                 startedAt="2026-09-16T08:01:00.000Z",
                 docs=[
@@ -107,7 +107,7 @@ class TestTheWire:
         """„angelegt, noch nichts passiert" is a state, not an empty payload."""
         fresh = RunLedger(
             runId="run-1",
-            status="angelegt",
+            status="created",
             startedAt="2026-09-16T08:00:00.000Z",
             updatedAt="2026-09-16T08:00:00.000Z",
         )
@@ -116,15 +116,15 @@ class TestTheWire:
     def test_a_failed_ledger_validates(self, schema: dict[str, Any]) -> None:
         failed = RunLedger(
             runId="run-1",
-            status="fehlgeschlagen",
+            status="failed",
             phases=[
                 RunPhaseEntry(
-                    phase="planen",
+                    phase="planning",
                     startedAt="2026-09-16T08:00:00.000Z",
                     endedAt="2026-09-16T08:01:00.000Z",
                 )
             ],
-            error=RunError(reason="Der Anbieter hat abgebrochen.", completedBefore=["planen"]),
+            error=RunError(reason="Der Anbieter hat abgebrochen.", completedBefore=["planning"]),
             startedAt="2026-09-16T08:00:00.000Z",
             updatedAt="2026-09-16T08:02:00.000Z",
             finishedAt="2026-09-16T08:02:00.000Z",
@@ -139,7 +139,7 @@ class TestTheWire:
         payload = to_wire(
             RunLedger(
                 runId="run-1",
-                status="laeuft",
+                status="running",
                 startedAt="2026-09-16T08:00:00.000Z",
                 updatedAt="2026-09-16T08:00:00.000Z",
             )
@@ -152,7 +152,7 @@ class TestTheWire:
             "op": "append",
             "steps": [to_wire(_ledger().steps[0])],
             "phases": [to_wire(_ledger().phases[0])],
-            "status": "laeuft",
+            "status": "running",
         }
         _validator(schema, "runLedgerRequest").validate(body)
 
@@ -164,7 +164,7 @@ class TestTheClosedShape:
         with pytest.raises(ValidationError):
             RunStep(
                 id="batch-1",
-                phase="recherchieren",
+                phase="researching",
                 intent="OIB-2 prüfen",
                 startedAt="2026-09-16T08:01:00.000Z",
                 tool="search_norms",

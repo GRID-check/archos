@@ -55,7 +55,7 @@ def _body() -> dict[str, Any]:
         "collection": "col-main",
         "fileNames": ["Baubeschreibung.pdf"],
         "vocabulary": {
-            "gebaeudeklasse": {"multiple": False, "options": [{"token": "4", "label": "GK 4"}]},
+            "building_class": {"multiple": False, "options": [{"token": "4", "label": "GK 4"}]},
         },
         "knownFacts": [],
         "knownDecisions": [],
@@ -126,7 +126,7 @@ async def test_the_reading_is_answered_in_the_contract_shape(app, monkeypatch) -
         {
             "values": [
                 {
-                    "key": "gebaeudeklasse",
+                    "key": "building_class",
                     "value": "4",
                     "evidence": [{"fileName": "Baubeschreibung.pdf", "page": "1", "quote": "Gebäudeklasse 4"}],
                 }
@@ -146,7 +146,7 @@ async def test_the_reading_is_answered_in_the_contract_shape(app, monkeypatch) -
     assert body["decisions"] == []
     assert body["fingerprint"] == [
         {
-            "key": "gebaeudeklasse",
+            "key": "building_class",
             "value": "4",
             "evidence": [{"fileName": "Baubeschreibung.pdf", "page": "1", "quote": "Gebäudeklasse 4"}],
         }

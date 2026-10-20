@@ -71,7 +71,7 @@ export function RunBlockLine({
 }: RunBlockLineProps): JSX.Element {
   const t = useTranslations('runs')
   const { locale } = useLocale()
-  const shown: RunStatus = status ?? (ledger ? runDisplayStatus(ledger) : 'angelegt')
+  const shown: RunStatus = status ?? (ledger ? runDisplayStatus(ledger) : 'created')
   const statusWord = t(`status.${shown}`)
   const tallies =
     givenTallies ?? (ledger ? runTallies(ledger) : { rounds: 0, docs: 0, findings: 0 })

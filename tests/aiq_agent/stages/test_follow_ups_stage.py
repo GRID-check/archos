@@ -288,7 +288,7 @@ class TestPromptInputs:
         assert len(prompt) < 7000
 
     def test_the_federal_state_rides_along(self):
-        assert "Tirol" in build_user_prompt(_facts(bundesland="Tirol"))
+        assert "Tirol" in build_user_prompt(_facts(federal_state="Tirol"))
 
     def test_the_project_memory_digest_does_not(self):
         """§5.2 named "project profile" as an input; it is deliberately not
@@ -338,7 +338,9 @@ class TestCostCeiling:
         """The input caps are what make the cost bounded by something other than
         how long the answer was."""
         encoding = self._encoding()
-        facts = _facts(query="Frage. " * 600, answer="Ein Satz über das Fluchtniveau. " * 400, bundesland="Vorarlberg")
+        facts = _facts(
+            query="Frage. " * 600, answer="Ein Satz über das Fluchtniveau. " * 400, federal_state="Vorarlberg"
+        )
         prompt = FOLLOW_UPS_SYSTEM_PROMPT + build_user_prompt(facts)
         tokens = len(encoding.encode(prompt))
         assert tokens <= self.MAX_WORST_CASE_TOKENS, (

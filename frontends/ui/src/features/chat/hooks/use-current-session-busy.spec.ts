@@ -91,7 +91,7 @@ describe('useIsCurrentSessionBusy', () => {
             content: '',
             timestamp: new Date('2026-01-01T00:00:00Z'),
             messageType: 'agent_response',
-            runLedger: setRunStatus(emptyRunLedger('run-1'), 'laeuft'),
+            runLedger: setRunStatus(emptyRunLedger('run-1'), 'running'),
           },
         ],
       }),

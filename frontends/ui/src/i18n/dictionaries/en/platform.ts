@@ -196,18 +196,18 @@ export const platform = {
       reviews: 'Open reviews ({count})',
     },
     ranks: {
-      bundesgesetz: 'Federal act',
-      landesgesetz: 'State act',
-      verordnung: 'Ordinance',
-      behoerdliche_info: 'Authority information (e.g. MA 37)',
-      norm_extern: 'External norm (ÖNORM/TRVB — no full text)',
+      federal_law: 'Federal act',
+      state_law: 'State act',
+      ordinance: 'Ordinance',
+      authority_info: 'Authority information (e.g. MA 37)',
+      external_standard: 'External norm (ÖNORM/TRVB — no full text)',
     },
     rankShort: {
-      bundesgesetz: 'Federal act',
-      landesgesetz: 'State act',
-      verordnung: 'Ordinance',
-      behoerdliche_info: 'Authority info',
-      norm_extern: 'External norm',
+      federal_law: 'Federal act',
+      state_law: 'State act',
+      ordinance: 'Ordinance',
+      authority_info: 'Authority info',
+      external_standard: 'External norm',
     },
     columns: {
       norm: 'Norm',
@@ -246,23 +246,23 @@ export const platform = {
       legend: 'What kind of source is this?',
       hint: 'The kind decides what the catalog needs from you and where the agent files the entry.',
       required: 'Pick the kind of source — everything else follows from it.',
-      bundesgesetz: {
+      federal_law: {
         label: 'Federal act',
         description: 'Applies across Austria. Found in RIS.',
       },
-      landesgesetz: {
+      state_law: {
         label: 'State building act',
         description: 'The building law of one federal state. Found in RIS.',
       },
-      verordnung: {
+      ordinance: {
         label: 'Ordinance or directive',
         description: 'Made binding by ordinance — e.g. an OIB directive. Found in RIS.',
       },
-      behoerdliche_info: {
+      authority_info: {
         label: 'Authority guidance',
         description: 'Practice guidance from an authority (e.g. an MA 37 leaflet). Not law, not in RIS.',
       },
-      norm_extern: {
+      external_standard: {
         label: 'External standard',
         description: 'ÖNORM, TRVB, EU standard — usually without accessible full text. Not in RIS.',
       },
@@ -761,14 +761,14 @@ export const platform = {
     topicsHeading: 'By topic',
     topicsCaveat: 'Only conversations that carry a topic tag appear here, so these do not add up to the totals above.',
     topics: {
-      brandschutz: 'Fire safety',
-      schallschutz: 'Sound insulation',
-      barrierefreiheit: 'Accessibility',
-      energie: 'Energy & thermal',
-      statik: 'Structural',
+      fire_safety: 'Fire safety',
+      sound_insulation: 'Sound insulation',
+      accessibility: 'Accessibility',
+      energy: 'Energy & thermal',
+      structural: 'Structural',
       hygiene: 'Hygiene & environment',
-      nutzungssicherheit: 'Safety in use',
-      allgemein: 'General',
+      safety_in_use: 'Safety in use',
+      general: 'General',
     },
     tooFewShort: 'n/a',
     tooFewVotes: 'Fewer than {min} votes — too few for a rate to mean anything.',
@@ -1183,15 +1183,15 @@ export const platform = {
     // Document types. The German dictionary mirrors the backend's
     // DOCUMENT_CLASS_LABELS (`lib/knowledge/doc-class.ts`).
     docClasses: {
-      oib_richtlinie: 'OIB directive (binding)',
-      oib_leitfaden: 'OIB guideline',
-      oib_erlaeuterung: 'OIB explanatory notes',
-      oib_begriffe: 'OIB definitions',
-      oib_referenz: 'OIB reference document',
-      oib_aenderung: 'OIB amendment document',
-      norm_extern: 'Standard (ÖNORM etc.)',
-      gesetz: 'Law / building code',
-      sonstiges: 'Other base document',
+      oib_guideline: 'OIB directive (binding)',
+      oib_guide: 'OIB guideline',
+      oib_explanatory_note: 'OIB explanatory notes',
+      oib_definitions: 'OIB definitions',
+      oib_reference: 'OIB reference document',
+      oib_amendment: 'OIB amendment document',
+      external_standard: 'Standard (ÖNORM etc.)',
+      law: 'Law / building code',
+      other: 'Other base document',
     },
     dropBusy: 'Wait for the current upload or sync to finish.',
     dropSkipped: '{count, plural, one {# file was} other {# files were}} left out: only PDF and ZIP files are added.',

@@ -301,7 +301,7 @@ def summary_check(
     allowed += [float(count) for count in counts]
     unsupported = [n for n in summary_numbers(summary) if not any(same_number(n, a) for a in allowed)]
     recorded_classes = [
-        record.get("value") for record in landed(records) if str(record.get("key", "")).startswith("gebaeudeklasse")
+        record.get("value") for record in landed(records) if str(record.get("key", "")).startswith("building_class")
     ]
     claimed = {int(match) for match in _CLASS_CLAIM.findall(summary or "")}
     unsupported_classes = sorted(c for c in claimed if not any(same_number(c, v) for v in recorded_classes))

@@ -101,10 +101,10 @@ const DOCKED_CARDS = '(max-width: 639px), (pointer: coarse) and (max-height: 500
  * them. Null for anything that is not one of them.
  */
 export function walkPosition(
-  annotations: readonly Pick<AnnotationView, 'id' | 'status' | 'onCurrentFassung'>[],
+  annotations: readonly Pick<AnnotationView, 'id' | 'status' | 'onCurrentRevision'>[],
   id: string | null
 ): { index: number; total: number } | null {
-  const walk = annotations.filter((annotation) => annotation.status === 'proposed' && annotation.onCurrentFassung)
+  const walk = annotations.filter((annotation) => annotation.status === 'proposed' && annotation.onCurrentRevision)
   const index = walk.findIndex((annotation) => annotation.id === id)
   return index === -1 ? null : { index: index + 1, total: walk.length }
 }
@@ -731,7 +731,7 @@ export function DocumentReviewMode({
       setDraft(null)
       select(annotation.id)
       // A ghost (an open mark of an earlier Fassung) is drawn where it stood: the view goes there too.
-      if (annotation.onCurrentFassung || isGhostMark(annotation, review.documentId)) {
+      if (annotation.onCurrentRevision || isGhostMark(annotation, review.documentId)) {
         setFocus({ page: annotation.page, y: annotation.y + (annotation.h ?? 0) / 2, key: `${annotation.id}:${Date.now()}` })
       }
     },
@@ -881,7 +881,7 @@ export function DocumentReviewMode({
   // A mark of an earlier Fassung is not drawn as a mark of this sheet (an open
   // one is a ghost, where it stood on its own): selected, its thread opens over
   // the sheet, never beside a place the current drawing may not have.
-  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentFassung) ?? null
+  const earlier = annotations.find((annotation) => annotation.id === selectedId && !annotation.onCurrentRevision) ?? null
   const selected = annotations.find((annotation) => annotation.id === selectedId) ?? null
   // The card a phone docks: Piloti's answer on a box, the draft, or the open thread.
   const dockedAsk = openAsk && openAsk.region && !openAsk.replyInThread ? openAsk : null
@@ -1054,7 +1054,7 @@ export function DocumentReviewMode({
   const exportMenu = annotations.length > 0 && (
     <ReviewExportMenu
       documentId={review.documentId}
-      hasRevisions={annotations.some((annotation) => !annotation.onCurrentFassung)}
+      hasRevisions={annotations.some((annotation) => !annotation.onCurrentRevision)}
       hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
       // Filing is an upload into the document's folder: offered to whoever may write there, which is
       // what `canAnnotate` says (the document's write, folder included, ADR-0088). The upload checks again.

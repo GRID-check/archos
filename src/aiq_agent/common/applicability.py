@@ -12,20 +12,21 @@ with a stronger reason for public/noise-sensitive uses, the fire sub-Richtlinien
 2.1/2.2/2.3 conditional, 6 conditional for unconditioned storage/agriculture).
 
 What it reads. The intake wizard stores a building's facts under a suffix per
-Bauwerk (``fluchtniveau_m@bw1``), so every read takes the flat key and each
-``<key>@<bwN>`` copy. A use zone's copy (``<key>@bw1@wohnen``) is that zone's
+Bauwerk (``escape_level_m@bldg1``), so every read takes the flat key and each
+``<key>@<bldgN>`` copy. A use zone's copy (``<key>@bldg1@residential``) is that zone's
 detail and is skipped.
 
-* ``hauptnutzung``: stated flat; else the one D0 use the Bauwerke share
-  (``nutzungen``) that is also a verdict token. Two or more, or none: unknown.
-* ``gebaeudeklasse``: ``4`` or ``GK4``; the highest class across the Bauwerke.
-* ``fluchtniveau``: the band stated flat; else the band of the highest
-  ``fluchtniveau_m`` (metres) across the Bauwerke.
-* ``geschosse_unterirdisch``: the highest count across the Bauwerke.
+* ``main_use``: stated flat; else the one D0 use the Bauwerke share
+  (``uses``) that is also a verdict token. Two or more, or none: unknown.
+* ``building_class``: ``4`` or ``GK4``; the highest class across the Bauwerke.
+* ``escape_level``: the band stated flat; else the band of the highest
+  ``escape_level_m`` (metres) across the Bauwerke.
+* ``storeys_below_ground``: the highest count across the Bauwerke.
 
 The prompt view writes these as ``- key=value`` lines.
 ``facts_from_project_context`` reads ``4`` as an int, and a comma-joined
-``nutzungen`` as one string; both are handled here.
+``uses`` as one string; both are handled here. A prompt view an older pod stored still
+names the German keys and tokens; they are read as the English ones (``profile_names``).
 
 The result is orientation, not legal advice.
 """
@@ -38,6 +39,8 @@ import re
 from dataclasses import dataclass
 from typing import Any
 from typing import Literal
+
+from aiq_agent.profile_names import normalize_prompt_view
 
 Facts = dict[str, Any]
 VerdictName = Literal["required", "likely", "check"]
@@ -54,12 +57,12 @@ class OibVerdict:
 
 
 # Use tokens (intake vocabulary, see intake-definition.ts) grouped by verdict rule.
-_BETRIEBSBAU_USES = frozenset({"produzierend", "lager"})
-_BETRIEBSBAU_CHECK = frozenset({"landwirtschaft", "sonstiges"})
-_PUBLIC_USES = frozenset({"beherbergung", "gesundheit", "versammlung", "buero"})
-_NOISE_SENSITIVE = frozenset({"wohnen", "beherbergung", "gesundheit", "buero", "versammlung"})
-_OIB6_EXEMPT = frozenset({"lager", "landwirtschaft"})
-# Every hauptnutzung token the verdicts compare: the union of the groups above.
+_BETRIEBSBAU_USES = frozenset({"manufacturing", "storage"})
+_BETRIEBSBAU_CHECK = frozenset({"agriculture", "other"})
+_PUBLIC_USES = frozenset({"lodging", "healthcare", "assembly", "office"})
+_NOISE_SENSITIVE = frozenset({"residential", "lodging", "healthcare", "office", "assembly"})
+_OIB6_EXEMPT = frozenset({"storage", "agriculture"})
+# Every main_use token the verdicts compare: the union of the groups above.
 # The D0 catalogue shares only some of them (see the TS twin for the list).
 _MAIN_USE_TOKENS = _BETRIEBSBAU_USES | _BETRIEBSBAU_CHECK | _PUBLIC_USES | _NOISE_SENSITIVE | _OIB6_EXEMPT
 _GK_TOKEN = re.compile(r"(?:GK)?([1-5])")
@@ -73,19 +76,19 @@ _VERDICT_LABELS_DE: dict[str, str] = {
 # The four boolean intake triggers -> German one-liner shown when the fact is true.
 _TRIGGER_HINTS: tuple[tuple[str, str], ...] = (
     (
-        "kleingartengebiet",
+        "allotment_garden_area",
         "Kleingartengebiet: Wiener Kleingartengesetz gilt als lex specialis — vor BauO/OIB prüfen.",
     ),
     (
-        "denkmalschutz",
+        "heritage_protection",
         "Denkmalschutz: DMSG-Bewilligung (Bundesdenkmalamt) zusätzlich zur Baubewilligung prüfen.",
     ),
     (
-        "betriebsanlage",
+        "commercial_facility",
         "Betriebsanlage: GewO §§ 74 ff Genehmigungsregime zusätzlich prüfen.",
     ),
     (
-        "stellplatz_relevant",
+        "parking_relevant",
         "Stellplatzverpflichtung: Wiener Garagengesetz (bzw. Landesrecht) prüfen.",
     ),
 )
@@ -114,9 +117,9 @@ def _fact_str(facts: Facts, key: str) -> str | None:
 
 
 def _scoped_values(facts: Facts, base: str) -> list[Any]:
-    """Every value stored under ``base``: the flat key and each ``<base>@<bwN>`` copy.
+    """Every value stored under ``base``: the flat key and each ``<base>@<bldgN>`` copy.
 
-    A use zone's copy (``<base>@bw1@wohnen``) is that zone's detail, not the building's, and is skipped.
+    A use zone's copy (``<base>@bldg1@residential``) is that zone's detail, not the building's, and is skipped.
     """
     values: list[Any] = []
     for key, value in facts.items():
@@ -133,14 +136,14 @@ def _max_number(facts: Facts, base: str) -> float | None:
 
 
 def escape_level_band(facts: Facts) -> str | None:
-    """The Fluchtniveau band the rules read: the stated ``fluchtniveau``, else the highest ``fluchtniveau_m``.
+    """The Fluchtniveau band the rules read: the stated ``escape_level``, else the highest ``escape_level_m``.
 
     Each band takes its upper bound inclusively: exactly 7 m is ``<=7m``, 11 m is ``7-11m``, 22 m is ``11-22m``.
     """
-    stated = _fact_str(facts, "fluchtniveau")
+    stated = _fact_str(facts, "escape_level")
     if stated is not None:
         return stated
-    metres = _max_number(facts, "fluchtniveau_m")
+    metres = _max_number(facts, "escape_level_m")
     if metres is None:
         return None
     if metres <= 7:
@@ -155,7 +158,7 @@ def escape_level_band(facts: Facts) -> str | None:
 def _use_tokens(facts: Facts) -> set[str]:
     """Every D0 token the Bauwerke name. A list is taken as is; the prompt view's comma-joined text is split."""
     tokens: set[str] = set()
-    for value in _scoped_values(facts, "nutzungen"):
+    for value in _scoped_values(facts, "uses"):
         if isinstance(value, list):
             items = value
         elif isinstance(value, str):
@@ -168,11 +171,11 @@ def _use_tokens(facts: Facts) -> set[str]:
 
 
 def _main_use(facts: Facts) -> str | None:
-    """The stated ``hauptnutzung``, else the ``nutzungen`` when they name exactly one use and it is a verdict token."""
-    stated = _fact_str(facts, "hauptnutzung")
+    """The stated ``main_use``, else the ``uses`` when they name exactly one use and it is a verdict token."""
+    stated = _fact_str(facts, "main_use")
     if stated is not None:
         return stated
-    # Every use must name a verdict token: a use outside the vocabulary (``produktion``)
+    # Every use must name a verdict token: a use outside the vocabulary (``production``)
     # is unknown, and an unknown use may be the Betriebsbau.
     uses = _use_tokens(facts)
     if len(uses) == 1 and uses <= _MAIN_USE_TOKENS:
@@ -193,7 +196,7 @@ def _building_class_of(value: Any) -> int | None:
 
 def _building_class(facts: Facts) -> str | None:
     """The Gebäudeklasse across the Bauwerke: the highest class named, as ``GK<n>``."""
-    classes = [c for c in map(_building_class_of, _scoped_values(facts, "gebaeudeklasse")) if c is not None]
+    classes = [c for c in map(_building_class_of, _scoped_values(facts, "building_class")) if c is not None]
     return f"GK{max(classes)}" if classes else None
 
 
@@ -256,7 +259,7 @@ def resolve_oib_applicability(facts: Facts) -> list[OibVerdict]:
     main_use = _main_use(facts)
     building_class = _building_class(facts)
     escape_level = escape_level_band(facts)
-    storeys_below_ground = _max_number(facts, "geschosse_unterirdisch")
+    storeys_below_ground = _max_number(facts, "storeys_below_ground")
 
     verdicts: list[OibVerdict] = []
 
@@ -417,7 +420,7 @@ def facts_from_project_context(text: str) -> Facts:
     """
     facts: Facts = {}
     in_confirmed = False
-    for raw_line in text.splitlines():
+    for raw_line in normalize_prompt_view(text).splitlines():
         line = raw_line.rstrip()
         if line.strip() == "confirmed:":
             in_confirmed = True

@@ -29,7 +29,7 @@ export const PROFILE_EVIDENCE_KINDS = ['document', 'geocoder', 'derivation', 'pe
 export type ProfileEvidenceKind = (typeof PROFILE_EVIDENCE_KINDS)[number]
 
 /** The derivations the intake computes. One today; each more is a row. */
-export const DERIVATION_RULES = ['gebaeudeklasse'] as const
+export const DERIVATION_RULES = ['building_class'] as const
 export type DerivationRule = (typeof DERIVATION_RULES)[number]
 
 const instant = z.string().datetime({ offset: true })

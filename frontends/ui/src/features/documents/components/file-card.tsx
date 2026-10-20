@@ -32,9 +32,9 @@ import { FileName } from './file-name'
 import { OpenMarksChip } from './open-marks-chip'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
-const SOURCE_TINT: Record<'projekt' | 'buero', CSSProperties> = {
-  projekt: sourceTint('project'),
-  buero: sourceTint('office'),
+const SOURCE_TINT: Record<'project' | 'office', CSSProperties> = {
+  project: sourceTint('project'),
+  office: sourceTint('office'),
 }
 
 /** Thumbnail request lifecycle for a single card. */
@@ -229,7 +229,7 @@ export interface FileCardProps {
   /** Present on a semantic/surfaced result: the snippet + page + score to show WHY it matched. */
   match?: { snippet: string; page: number | null; score: number }
   /** Coarse corpus for a provenance chip in the metadata row (project vs Büroablage). */
-  source?: 'projekt' | 'buero' | null
+  source?: 'project' | 'office' | null
   /** Localized label for the provenance chip. */
   sourceLabel?: string
   /** Accessible label for the click action (defaults to the filename content). */

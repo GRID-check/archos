@@ -4,7 +4,7 @@
  * Modul I (Projektgrundlagen) comes before the save, so during a first intake
  * every building added in the wizard exists only in the browser's draft. The
  * server accepts a binding only for a building the stored profile names
- * (`projectHasBuilding`), and refused "Bauwerk 'bw2' does not exist": the plan
+ * (`projectHasBuilding`), and refused "Bauwerk 'bldg2' does not exist": the plan
  * was uploaded and left unbound. Relaxing the server would bring back the
  * binding to nowhere it exists to refuse, so the wizard keeps such a binding
  * here instead, shows it, keeps it in the draft, drops it with its building,

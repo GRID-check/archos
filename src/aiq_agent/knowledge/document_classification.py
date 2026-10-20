@@ -106,29 +106,29 @@ MAX_TAGS = 5
 
 # doc_class key -> German label (the "Dokumentart" the user picks / the LLM sees).
 DOCUMENT_CLASS_LABELS: dict[str, str] = {
-    "oib_richtlinie": "OIB-Richtlinie (verbindlich)",
-    "oib_leitfaden": "OIB-Leitfaden",
-    "oib_erlaeuterung": "OIB-Erläuterung",
-    "oib_begriffe": "OIB-Begriffsbestimmungen",
-    "oib_referenz": "OIB-Referenzdokument",
-    "oib_aenderung": "OIB-Änderungsdokument",
-    "norm_extern": "Norm (ÖNORM u.a.)",
-    "gesetz": "Gesetz / Bauordnung",
-    "sonstiges": "Sonstiges Basisdokument",
+    "oib_guideline": "OIB-Richtlinie (verbindlich)",
+    "oib_guide": "OIB-Leitfaden",
+    "oib_explanatory_note": "OIB-Erläuterung",
+    "oib_definitions": "OIB-Begriffsbestimmungen",
+    "oib_reference": "OIB-Referenzdokument",
+    "oib_amendment": "OIB-Änderungsdokument",
+    "external_standard": "Norm (ÖNORM u.a.)",
+    "law": "Gesetz / Bauordnung",
+    "other": "Sonstiges Basisdokument",
 }
 
 # doc_class key -> fine lane key (``norm_registry`` stratum). The lane label is
 # looked up from the registry's lane tables so the two never drift.
 DOCUMENT_CLASS_LANES: dict[str, str] = {
-    "oib_richtlinie": "baurecht_oib",
-    "oib_leitfaden": "baurecht_oib_leitfaden",
-    "oib_erlaeuterung": "baurecht_oib_erlaeuterung",
-    "oib_begriffe": "baurecht_oib_begriffe",
-    "oib_referenz": "baurecht_oib_referenz",
-    "oib_aenderung": "baurecht_oib_diff",
-    "norm_extern": "norm_extern",
-    "gesetz": "baurecht_ris",
-    "sonstiges": "baurecht_basis",
+    "oib_guideline": "building_law_oib",
+    "oib_guide": "building_law_oib_guide",
+    "oib_explanatory_note": "building_law_oib_explanatory_note",
+    "oib_definitions": "building_law_oib_definitions",
+    "oib_reference": "building_law_oib_reference",
+    "oib_amendment": "building_law_oib_amendment",
+    "external_standard": "external_standard",
+    "law": "building_law_ris",
+    "other": "building_law_base",
 }
 
 # The ordered, immutable vocabulary (keys), the single source of truth.
@@ -136,7 +136,7 @@ DOCUMENT_CLASSES: tuple[str, ...] = tuple(DOCUMENT_CLASS_LABELS.keys())
 
 # Neutral base class assigned when no human class is set and the filename gives
 # no OIB hint — a real value beats a null, and it lands in the neutral base lane.
-DEFAULT_DOC_CLASS = "sonstiges"
+DEFAULT_DOC_CLASS = "other"
 
 
 def is_valid_doc_class(value: str | None) -> bool:
@@ -144,8 +144,45 @@ def is_valid_doc_class(value: str | None) -> bool:
     return value in DOCUMENT_CLASS_LABELS
 
 
+#: The keys as they were stored before the English names, old -> current. The metadata database
+#: rewrites them on open (``DocumentMetadataStore._run_schema``); a queued ingest job, an older
+#: pod's request and a point in the vector store written before still carry them, so every place
+#: that accepts a class from outside passes it through :func:`canonical_doc_class`. Nothing writes
+#: an old key into the metadata database again. Remove after one release.
+LEGACY_DOC_CLASSES: dict[str, str] = {
+    "oib_richtlinie": "oib_guideline",
+    "oib_leitfaden": "oib_guide",
+    "oib_erlaeuterung": "oib_explanatory_note",
+    "oib_begriffe": "oib_definitions",
+    "oib_referenz": "oib_reference",
+    "oib_aenderung": "oib_amendment",
+    "norm_extern": "external_standard",
+    "gesetz": "law",
+    "sonstiges": "other",
+}
+
+#: How the vector store still spells each class, current -> old. Qdrant payloads are renamed with the
+#: vector store's own rebuild, not here, so ``doc_class`` and ``chunk_doc_class`` are written in this
+#: form and a ``doc_class`` filter is pushed down in it (:func:`qdrant_doc_class`). The one place the
+#: two vocabularies meet; the rebuild deletes this table.
+QDRANT_DOC_CLASSES: dict[str, str] = {current: legacy for legacy, current in LEGACY_DOC_CLASSES.items()}
+
+
+def canonical_doc_class(value: object) -> str | None:
+    """The current key for ``value`` (current or legacy); ``None`` for anything else, blank included."""
+    if not isinstance(value, str):
+        return None
+    key = LEGACY_DOC_CLASSES.get(value.strip(), value.strip())
+    return key if key in DOCUMENT_CLASS_LABELS else None
+
+
+def qdrant_doc_class(value: str) -> str:
+    """The spelling the vector store holds for ``value``; a value outside the vocabulary as given."""
+    return QDRANT_DOC_CLASSES.get(value, value)
+
+
 # The Dokumentart as a SUGGESTION (ADR-0064, use 8). A base-corpus file whose
-# name carries no OIB hint lands in ``sonstiges`` (the neutral lane) until a
+# name carries no OIB hint lands in ``other`` (the neutral lane) until a
 # platform owner reclassifies it. The decision model reads the text and picks
 # one of the nine classes; the pick is stored beside the class, never as it,
 # and the base-knowledge page offers it. The lane changes only when a person
@@ -155,26 +192,26 @@ def is_valid_doc_class(value: str | None) -> bool:
 
 #: What each class is, in the decider's language.
 DOCUMENT_CLASS_CRITERIA: dict[str, str] = {
-    "oib_richtlinie": (
+    "oib_guideline": (
         "An OIB-Richtlinie itself: the binding technical guideline text (OIB-Richtlinie 1 to 6, 2.1, 2.2, "
         "2.3), with numbered Punkte and requirements."
     ),
-    "oib_leitfaden": "An OIB-Leitfaden: guidance published by the OIB on how to apply or deviate from a Richtlinie.",
-    "oib_erlaeuterung": (
+    "oib_guide": "An OIB-Leitfaden: guidance published by the OIB on how to apply or deviate from a Richtlinie.",
+    "oib_explanatory_note": (
         "Erläuternde Bemerkungen: the OIB's explanatory remarks on a Richtlinie, point by point, saying why a "
         "requirement is as it is."
     ),
-    "oib_begriffe": "The OIB-Richtlinien Begriffsbestimmungen: the list of defined terms used by all Richtlinien.",
-    "oib_referenz": (
+    "oib_definitions": "The OIB-Richtlinien Begriffsbestimmungen: the list of defined terms used by all Richtlinien.",
+    "oib_reference": (
         "An OIB reference or supporting document to a Richtlinie (a national plan, reference values, a "
         "calculation basis), not the Richtlinie itself."
     ),
-    "oib_aenderung": "An OIB change document: what changed in a Richtlinie between two editions.",
-    "norm_extern": "A technical standard not issued by the OIB: an ÖNORM, an EN or Eurocode, a DIN.",
-    "gesetz": (
+    "oib_amendment": "An OIB change document: what changed in a Richtlinie between two editions.",
+    "external_standard": "A technical standard not issued by the OIB: an ÖNORM, an EN or Eurocode, a DIN.",
+    "law": (
         "A law or ordinance: a Bauordnung, a Bautechnikgesetz, a Verordnung of a Land or the federal state, with §§."
     ),
-    "sonstiges": (
+    "other": (
         "Anything else: a leaflet, a presentation, a letter, a checklist, a publication that is none of the above."
     ),
 }
@@ -190,7 +227,7 @@ DOC_CLASS_QUESTION = (
 
 
 def suggest_doc_class(text: str, file_name: str, *, organization_id: str | None = None) -> str | None:
-    """A Dokumentart for a person to confirm, or ``None`` (unsure, ``sonstiges``, or no decision)."""
+    """A Dokumentart for a person to confirm, or ``None`` (unsure, ``other``, or no decision)."""
     if not text or not text.strip():
         return None
     try:

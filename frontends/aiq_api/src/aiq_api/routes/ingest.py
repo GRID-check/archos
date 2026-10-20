@@ -159,9 +159,9 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
         config["folder_path"] = folder_path
     # A person's choice at upload: this file replaces that one (CONTEXT.md,
     # "Fassung"). The job writes the confirmed link once the file has been read.
-    fassung_of = (request.fassung_of or "").strip()
-    if fassung_of:
-        config["fassung_of"] = fassung_of
+    revision_of = (request.revision_of or "").strip()
+    if revision_of:
+        config["revision_of"] = revision_of
     # The org id, so the detached ingest thread resolves the tenant's BYOK
     # VLM credential and runtime model override.
     if organization_id:
@@ -176,7 +176,7 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
     # The project's facts for the chunks' payload (`qdrant.writes.enrichment`), as
     # plain data so they ride the durable queue's JSON payload unchanged.
     if request.project_facts is not None:
-        config["project_facts"] = request.project_facts.facts.model_dump(mode="json")
+        config["project_facts"] = request.project_facts.facts.to_store()
         config["project_status"] = request.project_facts.status
     # The document's id, so the pipeline can ask the BFF for a PUT slot per
     # raster it extracts (`knowledge_layer.llamaindex.image_store`). Without

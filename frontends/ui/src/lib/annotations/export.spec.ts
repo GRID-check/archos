@@ -92,8 +92,8 @@ const mark = (overrides: Partial<AnnotationView> = {}): AnnotationView => ({
   assigneeUserId: null,
   assigneeName: null,
   dueOn: null,
-  fassungNumber: 3,
-  onCurrentFassung: true,
+  revisionNumber: 3,
+  onCurrentRevision: true,
   createdBy: 'user_anna',
   createdByName: 'Anna Berger',
   createdAt: '2026-10-07T08:00:00.000Z',
@@ -143,11 +143,11 @@ const ANNOTATIONS: AnnotationView[] = [
     closedByName: 'Bernd Huber',
     closedAt: '2026-10-09T12:00:00.000Z',
   }),
-  mark({ number: 3, onCurrentFassung: false, fassungNumber: 2, body: 'Auf der alten Fassung.' }),
+  mark({ number: 3, onCurrentRevision: false, revisionNumber: 2, body: 'Auf der alten Fassung.' }),
   mark({
     number: 8,
-    onCurrentFassung: false,
-    fassungNumber: 2,
+    onCurrentRevision: false,
+    revisionNumber: 2,
     status: 'resolved',
     body: 'Auf der alten Fassung erledigt.',
     closedBy: 'user_bernd',
@@ -260,7 +260,7 @@ describe('the Protokoll', () => {
   })
 
   it('names the Fassungen it covers as they are: the current one alone only while nothing earlier came along', () => {
-    const currentOnly = ANNOTATIONS.filter((annotation) => annotation.onCurrentFassung)
+    const currentOnly = ANNOTATIONS.filter((annotation) => annotation.onCurrentRevision)
     const cover = (annotations: AnnotationView[], options: Partial<AnnotationExportOptions>) => {
       const all = { ...OPTIONS, ...options }
       const scope = buildProtocol(HEADER, selectMarks(annotations, all), all, t, 'de').facts.find(

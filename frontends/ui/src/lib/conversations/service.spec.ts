@@ -413,7 +413,7 @@ describe('a chat the reader may no longer read (ADR-0088)', () => {
       projectId: PROJECT_ID,
       createdBy: 'user_me',
       title,
-      tags: ['brandschutz'],
+      tags: ['fire_safety'],
       visibility: 'private',
       engagement: null,
       jobId: null,
@@ -453,7 +453,7 @@ describe('a chat the reader may no longer read (ADR-0088)', () => {
       expect(listed.find((entry) => entry.id === 's_open')).toMatchObject({
         contentLocked: false,
         title: 'Brandschutz Stiegenhaus',
-        tags: ['brandschutz'],
+        tags: ['fire_safety'],
         subjectResourceId: 'doc_9',
       })
     })
@@ -1559,14 +1559,14 @@ describe('generating a conversation title — severity of a handled failure', ()
   })
 
   it('persists a generated title with only known tag keys', async () => {
-    backendReturns({ title: 'Brandschutz Stiegenhaus', tags: ['brandschutz', 'nicht-existent'] })
+    backendReturns({ title: 'Brandschutz Stiegenhaus', tags: ['fire_safety', 'nicht-existent'] })
 
     const result = await generateConversationTitle(session, CONVERSATION_ID, titleInput)
 
-    expect(result).toEqual({ title: 'Brandschutz Stiegenhaus', tags: ['brandschutz'] })
+    expect(result).toEqual({ title: 'Brandschutz Stiegenhaus', tags: ['fire_safety'] })
     expect(updateConversationMetaInOrg).toHaveBeenCalledWith(CONVERSATION_ID, 'org_1', {
       title: 'Brandschutz Stiegenhaus',
-      tags: ['brandschutz'],
+      tags: ['fire_safety'],
     })
   })
 })

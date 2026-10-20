@@ -101,8 +101,8 @@ const mark = (overrides: Partial<AnnotationView> = {}): AnnotationView => ({
   assigneeUserId: null,
   assigneeName: null,
   dueOn: null,
-  fassungNumber: 1,
-  onCurrentFassung: true,
+  revisionNumber: 1,
+  onCurrentRevision: true,
   createdBy: 'user_anna',
   createdByName: 'Anna Berger',
   createdAt: '2026-10-01T08:00:00.000Z',
@@ -448,7 +448,7 @@ describe('the rail section', () => {
   })
 
   it('says where a mark of an earlier Fassung was set', async () => {
-    serve([mark({ onCurrentFassung: false, fassungNumber: 2 })])
+    serve([mark({ onCurrentRevision: false, revisionNumber: 2 })])
     render(pane())
     expect(await screen.findByTestId('annotations-summary-earlier')).toHaveTextContent('set on revision 2')
   })

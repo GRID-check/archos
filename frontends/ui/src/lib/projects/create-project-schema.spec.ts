@@ -13,9 +13,9 @@ const location: GeocodeResult = {
   lat: 48.2,
   lon: 16.37,
   country: 'at',
-  bundesland: 'wien',
+  federalState: 'vienna',
   state: 'Wien',
-  gemeinde: 'Wien',
+  municipality: 'Wien',
   postcode: '1010',
   kind: 'address',
 }
@@ -31,9 +31,9 @@ describe('createProjectSchema', () => {
       setup: 'self',
       description: '  Aufstockung  ',
       location,
-      bundesland: 'tirol',
+      bundesland: 'tyrol',
     })
-    expect(body).toEqual({ name: 'Haus', setup: 'self', description: 'Aufstockung', location, bundesland: 'tirol' })
+    expect(body).toEqual({ name: 'Haus', setup: 'self', description: 'Aufstockung', location, bundesland: 'tyrol' })
   })
 
   it('treats a blank description as none', () => {

@@ -13,6 +13,7 @@
  *
  * Pure and isomorphic — no I/O, safe on the server or the client.
  */
+import { normalizeLegacyProfile } from './legacy-names'
 import {
   ProjectAssumptionSchema,
   ProjectFactSchema,
@@ -31,7 +32,7 @@ export interface SalvageResult {
   profile: ProjectProfile | null
   /**
    * Identifiers of the parts that failed validation and were discarded (e.g.
-   * `facts.hauptnutzung`, `goals.focus_areas`, `unknowns[2]`). Empty when the
+   * `facts.main_use`, `goals.focus_areas`, `unknowns[2]`). Empty when the
    * stored profile was fully valid (or genuinely absent). Non-empty → the wizard
    * shows the replacement-warning banner.
    */
@@ -54,7 +55,11 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
  *   returns `{ profile: null, dropped: [...] }` so the wizard opens in create mode
  *   while still warning the user.
  */
-export function salvageProjectProfile(raw: unknown): SalvageResult {
+export function salvageProjectProfile(stored: unknown): SalvageResult {
+  // Every stored profile is read through here, so this is where a row an older
+  // pod wrote with the German names is brought to the new ones.
+  const raw = normalizeLegacyProfile(stored)
+
   // Fast path: a fully valid profile passes straight through, nothing dropped.
   const full = ProjectProfileSchema.safeParse(raw)
   if (full.success) {

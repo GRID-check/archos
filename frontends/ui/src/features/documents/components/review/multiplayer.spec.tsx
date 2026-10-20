@@ -64,7 +64,7 @@ const MARK = {
   status: 'open',
   authorKind: 'person',
   createdBy: 'user_me',
-  onCurrentFassung: true,
+  onCurrentRevision: true,
   kind: 'defect',
 } as AnnotationView
 
@@ -263,10 +263,10 @@ describe('the list counts', () => {
 describe('walking the proposals', () => {
   it("says where a proposal stands among those on this Fassung, and nothing for anything else", () => {
     const marks = [
-      { id: 'a', status: 'open', onCurrentFassung: true },
-      { id: 'p1', status: 'proposed', onCurrentFassung: true },
-      { id: 'old', status: 'proposed', onCurrentFassung: false },
-      { id: 'p2', status: 'proposed', onCurrentFassung: true },
+      { id: 'a', status: 'open', onCurrentRevision: true },
+      { id: 'p1', status: 'proposed', onCurrentRevision: true },
+      { id: 'old', status: 'proposed', onCurrentRevision: false },
+      { id: 'p2', status: 'proposed', onCurrentRevision: true },
     ] as const
     expect(walkPosition(marks, 'p2')).toEqual({ index: 2, total: 2 })
     expect(walkPosition(marks, 'a')).toBeNull()

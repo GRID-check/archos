@@ -134,7 +134,7 @@ import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 
 const emptySkill = {} as SkillSnapshot
 const skillSnapshot: SkillSnapshot = {
-  name: 'einreichcheck',
+  name: 'submission-check',
   description: 'Was fehlt',
   body: '# Einreichcheck',
   metadata: {},
@@ -323,12 +323,12 @@ describe('createJob', () => {
     await createJob(session, PROJECT, {
       name: 'Wochencheck',
       prompt: 'Prüf das',
-      skillName: 'einreichcheck',
+      skillName: 'submission-check',
       dataSources: ['web'],
     })
 
     const insert = vi.mocked(repository.insertDefinition).mock.calls[0][0]
-    expect(resolveSkillSnapshot).toHaveBeenCalledWith('einreichcheck', 'org_1')
+    expect(resolveSkillSnapshot).toHaveBeenCalledWith('submission-check', 'org_1')
     expect(insert.plan.skill).toEqual(skillSnapshot)
     // The always-on sources are always included; the stored list is
     // "additional". RIS joined the knowledge layer there: the law a project's
@@ -478,7 +478,7 @@ describe('getJob', () => {
     expect(job).toMatchObject({
       name: 'Wochencheck',
       prompt: 'Prüf das',
-      skillName: 'einreichcheck',
+      skillName: 'submission-check',
       scheduleCron: '0 8 * * 1',
       createdBy: 'user_1',
     })
@@ -790,8 +790,8 @@ describe('submitAgentRun', () => {
 
   it('carries the approved plan and the Unterlagen to the worker', async () => {
     const documents = {
-      grundlage: [{ name: 'Einreichplan.pdf', shelf: 'project' as const }],
-      ausgeschlossen: [{ name: 'Altbestand.pdf' }],
+      basis: [{ name: 'Einreichplan.pdf', shelf: 'project' as const }],
+      excluded: [{ name: 'Altbestand.pdf' }],
     }
     await submitAgentRun({ ...spec, clarifierResult: 'Rechercheplan: …', documents })
 

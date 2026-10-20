@@ -636,7 +636,7 @@ def link_document_revision(collection: str, older: str, newer: str) -> "LinkOutc
     """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop in the same transaction.
 
     The writer of a NEW link, for the ``PUT /v1/collections/{collection}/fassung`` route and for a
-    link a person chose at upload (``fassung_of``). ``LOOP`` and ``MISSING`` write nothing. Also
+    link a person chose at upload (``revision_of``). ``LOOP`` and ``MISSING`` write nothing. Also
     clears a suggestion on ``newer`` that named ``older``, and the change line of the file ``older``
     was replaced by until now when it was told against ``older``.
     """

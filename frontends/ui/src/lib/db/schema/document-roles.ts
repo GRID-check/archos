@@ -16,7 +16,7 @@ import { documents } from './documents'
  *   3. The binding has its OWN provenance. Who declared it, when, and whether a
  *      person confirmed it or a classifier guessed it, are facts about the
  *      binding and not about the file.
- *   4. The binding is SCOPED. "Bestandsplan of Bauwerk bw2" is not a project
+ *   4. The binding is SCOPED. "Bestandsplan of Bauwerk bldg2" is not a project
  *      fact, and a project with a Neubau and a Bestand in it — the case the
  *      intake concept exists for — needs to say which building.
  *

@@ -523,12 +523,12 @@ class TestTheFilingReferenceMirrorsTheBrowser:
 
     def test_the_readable_form_is_unchanged(self) -> None:
         assert (
-            filing_tools.filing_reference("conv-1", "/entwuerfe/Aktenvermerk Fluchtweg.md")
+            filing_tools.filing_reference("conv-1", "/drafts/Aktenvermerk Fluchtweg.md")
             == "conv-1-aktenvermerk-fluchtweg"
         )
 
     def test_a_long_key_is_bounded_and_carries_the_hash_suffix(self) -> None:
-        ref = filing_tools.filing_reference("c" * 300, "/entwuerfe/a.md")
+        ref = filing_tools.filing_reference("c" * 300, "/drafts/a.md")
 
         assert len(ref) == filing_tools.MAX_REF_CHARS
         assert re.search(r"-[0-9a-f]{8}$", ref)
@@ -536,13 +536,13 @@ class TestTheFilingReferenceMirrorsTheBrowser:
     def test_two_long_keys_sharing_a_prefix_do_not_collide(self) -> None:
         long_id = "c" * 300
 
-        assert filing_tools.filing_reference(long_id, "/entwuerfe/a.md") != (
-            filing_tools.filing_reference(long_id, "/entwuerfe/b.md")
+        assert filing_tools.filing_reference(long_id, "/drafts/a.md") != (
+            filing_tools.filing_reference(long_id, "/drafts/b.md")
         )
 
     def test_path_fringe_is_the_same_key(self) -> None:
-        assert filing_tools.filing_reference("conv-1", " /entwuerfe/Aktenvermerk.md") == (
-            filing_tools.filing_reference("conv-1", "/entwuerfe/Aktenvermerk.md")
+        assert filing_tools.filing_reference("conv-1", " /drafts/Aktenvermerk.md") == (
+            filing_tools.filing_reference("conv-1", "/drafts/Aktenvermerk.md")
         )
 
 

@@ -465,7 +465,7 @@ describe('IfcDiffCard', () => {
 const COMPLIANCE = {
   compliance: [
     {
-      ruleId: 'oib2-feuerwiderstand-tragend',
+      ruleId: 'oib2-fire-resistance-load-bearing',
       richtlinie: 'OIB 2',
       clause: '3',
       titleDe: 'Tragende Bauteile — Feuerwiderstand',
@@ -480,7 +480,7 @@ const COMPLIANCE = {
       missing: [{ path: 'Pset_WallCommon.FireRating', elements: 34 }],
     },
     {
-      ruleId: 'oib3-raumhoehe',
+      ruleId: 'oib3-room-height',
       richtlinie: 'OIB 3',
       clause: '2',
       titleDe: 'Aufenthaltsräume — lichte Raumhöhe',
@@ -522,7 +522,7 @@ describe('IfcComplianceCard', () => {
       <IfcComplianceCard
         title="Brandschutz"
         modelFile="haus-a_v2.ifc"
-        ruleIds={['oib2-feuerwiderstand-tragend']}
+        ruleIds={['oib2-fire-resistance-load-bearing']}
         note={null}
         projectId="p1"
       />
@@ -539,7 +539,7 @@ describe('IfcComplianceCard', () => {
       <IfcComplianceCard
         title="Brandschutz"
         modelFile="haus-a_v2.ifc"
-        ruleIds={['oib2-feuerwiderstand-tragend', 'oib9-erfunden']}
+        ruleIds={['oib2-fire-resistance-load-bearing', 'oib9-erfunden']}
         note={null}
         projectId="p1"
       />
@@ -571,7 +571,7 @@ describe('IfcComplianceCard', () => {
     const fetchMock = stubFetch({
       models: MODELS,
       query: COMPLIANCE,
-      profile: { facts: { gebaeudeklasse: { value: 4 }, hauptnutzung: { value: 'wohnen' } } },
+      profile: { facts: { building_class: { value: 4 }, main_use: { value: 'residential' } } },
     })
     render(
       <IfcComplianceCard
@@ -588,7 +588,7 @@ describe('IfcComplianceCard', () => {
       expect(queriedBodies(fetchMock)).toContainEqual({
         op: 'compliance',
         gebaeudeklasse: 4,
-        hauptnutzung: 'wohnen',
+        hauptnutzung: 'residential',
       })
     )
   })
@@ -599,7 +599,7 @@ describe('IfcComplianceCard', () => {
     stubFetch({
       models: MODELS,
       query: COMPLIANCE,
-      profile: { facts: { gebaeudeklasse: { value: 4 } } },
+      profile: { facts: { building_class: { value: 4 } } },
     })
     render(
       <IfcComplianceCard
@@ -625,7 +625,7 @@ describe('IfcComplianceCard', () => {
       query: {
         compliance: [
           {
-            ruleId: 'oib3-raumhoehe',
+            ruleId: 'oib3-room-height',
             richtlinie: 'OIB 3',
             clause: '2',
             titleDe: 'Aufenthaltsräume — lichte Raumhöhe',

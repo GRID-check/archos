@@ -59,8 +59,8 @@ _BODY = {
     "down_voters": 4,
     "reasons": {"inaccurate": 7, "wrong_source": 3},
     "topics": [
-        {"topic": "brandschutz", "up": 20, "down": 6},
-        {"topic": "energie", "up": 18, "down": 1},
+        {"topic": "fire_safety", "up": 20, "down": 6},
+        {"topic": "energy", "up": 18, "down": 1},
     ],
     "organizations": [{"up": 5, "down": 9}, {"up": 35, "down": 1}],
     "trend_delta_points": 3.4,
@@ -68,10 +68,10 @@ _BODY = {
         {
             "verdict": "down",
             "reason": "inaccurate",
-            "topics": ["brandschutz"],
+            "topics": ["fire_safety"],
             "question": "Wie lang darf ein Fluchtweg sein?",
         },
-        {"verdict": "up", "reason": None, "topics": ["energie"], "question": "Welcher U-Wert gilt?"},
+        {"verdict": "up", "reason": None, "topics": ["energy"], "question": "Welcher U-Wert gilt?"},
     ],
     "locale": "de",
 }
@@ -138,7 +138,7 @@ async def test_brief_states_the_rate_rather_than_leaving_the_division_to_the_mod
     # 40 of 50 votes.
     assert "80% helpful of 50 votes" in user_content
     # Per-topic reading, so the digest can say what the product is good AT.
-    assert "brandschutz: 77% helpful of 26 votes" in user_content
+    assert "fire_safety: 77% helpful of 26 votes" in user_content
     # Direction, in the same units the chart labels itself with — and stated as a
     # WITHIN-window comparison, because a live run against the shorter phrasing
     # came back calling it a change "compared to the previous period".

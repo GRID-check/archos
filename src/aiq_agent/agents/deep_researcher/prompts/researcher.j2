@@ -96,15 +96,15 @@ When the query references "me", "myself", or "my work", search for this person.
 {% if document_inventory %}
 {{ document_inventory }}
 {% endif %}
-{% if grundlage is defined and grundlage %}
+{% if basis is defined and basis %}
 ## Grundlage
 The reader named these documents as the Grundlage of this research. When your query names one of them, read THAT document through the knowledge tools — the file name is the search term, and every passage of it that bears on the query is a finding with `source_type` `internal_document` — before you look anywhere else.
-{% for doc in grundlage %}- {% if doc.title and doc.title != doc.name %}{{ doc.title }} — {% endif %}{{ doc.name }}{% if doc.shelf %} [{{ doc.shelf }}]{% endif %}
+{% for doc in basis %}- {% if doc.title and doc.title != doc.name %}{{ doc.title }} — {% endif %}{{ doc.name }}{% if doc.shelf %} [{{ doc.shelf }}]{% endif %}
 {% endfor %}{% endif %}
-{% if ausgeschlossen is defined and ausgeschlossen %}
+{% if excluded is defined and excluded %}
 ## Ausgeschlossen
 The reader excluded these documents. Never search for them, and never carry a passage from one of them into your findings, even when a search returns it.
-{% for doc in ausgeschlossen %}- {{ doc.name }}
+{% for doc in excluded %}- {{ doc.name }}
 {% endfor %}{% endif %}
 
 
@@ -127,5 +127,5 @@ The reader excluded these documents. Never search for them, and never carry a pa
 {{ project_context }}
 </project_context>
 
-Use confirmed project context when interpreting the user's request. Treat confirmed facts as binding constraints — never contradict them. Treat unknowns as missing information, not assumptions. Do not invent missing project facts. The country=<cc> and bundesland=<token> lines determine jurisdiction — see the Jurisdiction section above.
+Use confirmed project context when interpreting the user's request. Treat confirmed facts as binding constraints — never contradict them. Treat unknowns as missing information, not assumptions. Do not invent missing project facts. The country=<cc> and federal_state=<token> lines determine jurisdiction — see the Jurisdiction section above.
 {% endif %}

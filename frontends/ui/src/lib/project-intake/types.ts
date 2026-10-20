@@ -211,8 +211,8 @@ export type NeedOption = z.infer<typeof needOptionSchema>
 /**
  * A key the project still needs (`computeNeeds` in `needs.ts`): a question
  * whose conditions hold and that writes a profile key, scoped per building as
- * the wizard scopes it. `key` is the profile key (`geschosse_oberirdisch@bw1`),
- * `baseKey` the part before `@`, `bauwerkId` the `bwN` or null for a project
+ * the wizard scopes it. `key` is the profile key (`storeys_above_ground@bldg1`),
+ * `baseKey` the part before `@`, `bauwerkId` the `bldgN` or null for a project
  * key. `decisive`: filling it could change the building class (never for a
  * `confirmed` one).
  */
@@ -268,7 +268,7 @@ export type DerivationView = z.infer<typeof derivationViewSchema>
 
 /**
  * A derivation as the review shows it, with the class's own suggestion
- * (`gebaeudeklasse@bwN`): the one place a person confirms the class, because
+ * (`building_class@bldgN`): the one place a person confirms the class, because
  * the review's modules leave the derived class out.
  */
 export const derivationReviewSchema = derivationViewSchema.extend({ suggestion: suggestionSchema.nullable() })
@@ -592,7 +592,7 @@ export type OpenedNeed = z.infer<typeof openedNeedSchema>
 
 /**
  * `record`: one result per value, in request order, and the needs the values
- * opened (`bauwerkstyp = gebaeude` opens the building's questions), decisive
+ * opened (`building_type = gebaeude` opens the building's questions), decisive
  * ones first, so the reading learns what its own record asked for next.
  */
 export const internalIntakeRecordResponseSchema = z.object({

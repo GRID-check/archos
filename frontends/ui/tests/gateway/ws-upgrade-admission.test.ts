@@ -242,7 +242,7 @@ describe('gateway compact turn-context transport', () => {
       projectMemory: 'memory'.repeat(4000),
       orgInstructions: 'instructions'.repeat(4000),
       projectId: 'proj_1', conversationId: 's_text-conversation',
-      bundesland: 'wien', memoryReflectionEnabled: true,
+      federalState: 'vienna', memoryReflectionEnabled: true,
     }
     const port = await startGateway()
     expect(await upgrade(port, 'session=large-profile')).toBe(101)
@@ -253,7 +253,7 @@ describe('gateway compact turn-context transport', () => {
     const payload = JSON.parse(Buffer.from(header, 'base64url').toString('utf8'))
     expect(payload).toMatchObject({
       organizationId: 'org_1', userId: 'user_1', projectId: 'proj_1',
-      conversationId: 's_text-conversation', contextTransport: 'bff', bundesland: 'wien',
+      conversationId: 's_text-conversation', contextTransport: 'bff', federalState: 'vienna',
       memoryReflectionEnabled: true,
     })
     for (const field of ['projectContext', 'projectMemory', 'orgInstructions']) {

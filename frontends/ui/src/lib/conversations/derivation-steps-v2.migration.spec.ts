@@ -28,6 +28,7 @@ import path from 'node:path'
 import postgres from 'postgres'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
+import { modernizeLane, modernizeSourceKind } from '@/features/chat/lib/source-kinds'
 import { sanitizeProvenance } from './message-provenance'
 
 const url = process.env.GRID_TEST_MIGRATION_DATABASE_URL
@@ -233,8 +234,25 @@ describe.skipIf(!url)('migration 0097: Herleitung steps v2, against live Postgre
   })
 
   it('writes exactly the shape sanitizeProvenance accepts, so nothing is lost on the next read', async () => {
-    const provenance = (await metadataOf(ID.turn)).provenance
-    expect(sanitizeProvenance(provenance)).toEqual(provenance)
+    const provenance = (await metadataOf(ID.turn)).provenance as { thinkingSteps: Array<Record<string, unknown>> }
+    // The only change on read is 0163's: a stored German source kind and lane
+    // are read as their English names.
+    const asReadToday = {
+      ...provenance,
+      thinkingSteps: provenance.thinkingSteps.map((step) =>
+        Array.isArray(step.traceLanes)
+          ? {
+              ...step,
+              traceLanes: (step.traceLanes as Array<{ key: string; kind: string }>).map((lane) => ({
+                ...lane,
+                key: modernizeLane(lane.key),
+                kind: modernizeSourceKind(lane.kind),
+              })),
+            }
+          : step,
+      ),
+    }
+    expect(sanitizeProvenance(provenance)).toEqual(asReadToday)
   })
 
   it('stores no empty list: a provenance with only dropped steps loses the key, an empty one goes', async () => {

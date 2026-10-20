@@ -98,7 +98,7 @@ const openMark = (fields: Partial<AnnotationRecord>): AnnotationRecord =>
     id: 'ann-1',
     documentId: 'doc-a',
     versionId: 'v1',
-    fassungNumber: 1,
+    revisionNumber: 1,
     status: 'open',
     authorKind: 'person',
     createdBy: 'author',
@@ -221,7 +221,7 @@ describe('notifyNewRevision — a confirmed link', () => {
     for (const item of items) {
       expect(item).toMatchObject({
         organizationId: 'org-1',
-        type: 'document.new_fassung',
+        type: 'document.new_revision',
         resourceType: 'document',
         resourceId: 'doc-b',
         anchorId: 'doc-a',
@@ -367,20 +367,20 @@ describe('notifyNewRevision — a confirmed link', () => {
 
 describe('openMarksFacts', () => {
   it('counts the open marks, and names their Fassung when they all sit on one of the same document', () => {
-    expect(openMarksFacts([{ fassungNumber: 2 }, { fassungNumber: 2 }], { sameDocument: true })).toEqual({
+    expect(openMarksFacts([{ revisionNumber: 2 }, { revisionNumber: 2 }], { sameDocument: true })).toEqual({
       variant: 'marks',
       openMarks: 2,
       marksFassung: 2,
     })
-    expect(openMarksFacts([{ fassungNumber: 2 }], { sameDocument: true })).toMatchObject({ variant: 'mark', marksFassung: 2 })
+    expect(openMarksFacts([{ revisionNumber: 2 }], { sameDocument: true })).toMatchObject({ variant: 'mark', marksFassung: 2 })
   })
 
   it('says „the previous Fassung" for marks on several, or on another document', () => {
-    expect(openMarksFacts([{ fassungNumber: 1 }, { fassungNumber: 2 }], { sameDocument: true })).toMatchObject({
+    expect(openMarksFacts([{ revisionNumber: 1 }, { revisionNumber: 2 }], { sameDocument: true })).toMatchObject({
       variant: 'marks_earlier',
       marksFassung: null,
     })
-    expect(openMarksFacts([{ fassungNumber: 3 }], { sameDocument: false })).toMatchObject({
+    expect(openMarksFacts([{ revisionNumber: 3 }], { sameDocument: false })).toMatchObject({
       variant: 'mark_earlier',
       marksFassung: null,
     })
@@ -399,15 +399,15 @@ describe('notifyNewRevision — the people working on its marks', () => {
 
   it('tells everyone working on an open mark the new Fassung leaves behind, and how many to check', async () => {
     vi.mocked(listDocumentAnnotations).mockResolvedValue([
-      openMark({ id: 'm1', assigneeUserId: 'zustaendig', fassungNumber: 2, versionId: 'v2' }),
+      openMark({ id: 'm1', assigneeUserId: 'zustaendig', revisionNumber: 2, versionId: 'v2' }),
       openMark({
         id: 'm2',
         replies: [{ authorKind: 'person', createdBy: 'replier' }] as AnnotationRecord['replies'],
-        fassungNumber: 2,
+        revisionNumber: 2,
         versionId: 'v2',
       }),
       // Set on the new Fassung already, or closed: nothing to check.
-      openMark({ id: 'm3', createdBy: 'fresh', versionId: 'v3', fassungNumber: 3 }),
+      openMark({ id: 'm3', createdBy: 'fresh', versionId: 'v3', revisionNumber: 3 }),
       openMark({ id: 'm4', createdBy: 'closer', status: 'resolved', versionId: 'v2' }),
     ])
 
@@ -429,7 +429,7 @@ describe('notifyNewRevision — the people working on its marks', () => {
   })
 
   it('counts every open mark of a document another one replaced, as from the previous Fassung', async () => {
-    vi.mocked(listDocumentAnnotations).mockResolvedValue([openMark({ createdBy: 'author', fassungNumber: 4 })])
+    vi.mocked(listDocumentAnnotations).mockResolvedValue([openMark({ createdBy: 'author', revisionNumber: 4 })])
 
     await notifyNewRevision(link)
 
@@ -465,7 +465,7 @@ describe('notifyNewRevision — a same-name version', () => {
     const items = emitted()
     expect(items.map((item) => item.recipientUserId).sort()).toEqual(['anna', 'first-uploader', 'uploader'])
     expect(items[0]).toMatchObject({
-      type: 'document.new_fassung',
+      type: 'document.new_revision',
       resourceType: 'document',
       resourceId: 'doc-a',
       anchorId: 'v2',
@@ -560,7 +560,7 @@ describe('announceSettledVersions — a link written at ingestion', () => {
     expect(findRevisionCounterparts).toHaveBeenCalledWith('org-1', 'proj_abc', ['Grundriss_A.pdf'], SCREENED_ONLY)
     expect(emitted().map((item) => item.recipientUserId).sort()).toEqual(['anna', 'uploader'])
     expect(emitted()[0]).toMatchObject({
-      type: 'document.new_fassung',
+      type: 'document.new_revision',
       resourceId: 'doc-b',
       anchorId: 'doc-a',
       actorUserId: 'editor',

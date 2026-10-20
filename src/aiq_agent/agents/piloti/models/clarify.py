@@ -26,6 +26,7 @@ from pydantic import Field
 from pydantic import model_validator
 
 from aiq_agent.common.plan_documents import PlanDocuments
+from aiq_agent.common.plan_vocabulary import modernize_plan
 
 PlanDecision = Literal["approved", "shallow", "cancelled", "feedback"]
 """What one reply to the plan preview asks for. ``feedback`` means "revise it"."""
@@ -33,10 +34,10 @@ PlanDecision = Literal["approved", "shallow", "cancelled", "feedback"]
 PlanOutcome = Literal["approved", "shallow", "cancelled"]
 """Where the plan preview ended. ``PlanDecision`` minus the one that loops."""
 
-PlanGenre = Literal["pruefbericht", "aktenvermerk", "vergleich", "checkliste", "bericht"]
+PlanGenre = Literal["inspection_report", "file_note", "comparison", "checklist", "report"]
 """The document genre a run writes. Office genres, not whitepaper shapes."""
 
-PlanDepth = Literal["kurzpruefung", "gutachten"]
+PlanDepth = Literal["quick_check", "expert_report"]
 """How deep the report goes: the smallest complete form, or the full derivation."""
 
 
@@ -126,23 +127,29 @@ class PlanResponse(_StrictContract):
 
     model_config: ClassVar[ConfigDict] = {"extra": "forbid", "json_schema_extra": _require_every_property}
 
+    @model_validator(mode="before")
+    @classmethod
+    def _legacy_spellings(cls, data: Any) -> Any:
+        """A checkpointed plan or an old tab's edits still say ``grundlage``/``pruefbericht``."""
+        return modernize_plan(data)
+
     title: str = Field(description="Clear, descriptive title for the research report.")
     sections: list[str] = Field(description="3-8 section headings outlining what the report covers.")
     genre: PlanGenre = Field(
-        default="bericht",
-        description="The document genre: pruefbericht, aktenvermerk, vergleich, checkliste or bericht.",
+        default="report",
+        description="The document genre: inspection_report, file_note, comparison, checklist or report.",
     )
     depth: PlanDepth = Field(
-        default="gutachten", description="kurzpruefung for the smallest complete form, gutachten for full depth."
+        default="expert_report", description="quick_check for the smallest complete form, expert_report for full depth."
     )
-    grundlage: list[str] = Field(
+    basis: list[str] = Field(
         default_factory=list,
         description=(
             "File names from the document inventory the run must read in full, because the request is about "
             "them or cannot be answered without them. Empty when no listed document is that."
         ),
     )
-    ausgeschlossen: list[str] = Field(
+    excluded: list[str] = Field(
         default_factory=list,
         description="File names the reader excluded on the plan card. Always empty from the planner.",
     )

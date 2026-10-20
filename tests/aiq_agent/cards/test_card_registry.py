@@ -324,7 +324,7 @@ class TestEmitCardPlacementMarker:
         """
         reg = get_or_create_card_registry("conv-envelope-1")
         reg.clear()
-        refusal = await self._emit_real(reg, {"type": "callout", "kind": "achtung", "text": "Frist läuft."})
+        refusal = await self._emit_real(reg, {"type": "callout", "kind": "warning", "text": "Frist läuft."})
         assert "answer_json" in refusal
         assert "no longer exists" in refusal
         assert reg.snapshot() == []

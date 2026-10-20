@@ -22,7 +22,7 @@ from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from pydantic import Field
 
-from aiq_agent.knowledge.document_classification import is_valid_doc_class
+from aiq_agent.knowledge.document_classification import canonical_doc_class
 from aiq_agent.oib_status import OibKnowledgeStatus
 
 from ..models.requests import OibDocumentDeleteResponse
@@ -392,11 +392,15 @@ def add_oib_routes(router: APIRouter) -> None:
 
         # Single-PDF upload.
         name = _sanitize_pdf_name(file.filename)
-        if doc_class is not None and not is_valid_doc_class(doc_class):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Unknown doc_class '{doc_class}'",
-            )
+        if doc_class is not None:
+            # An admin tab that has not reloaded since the rename still sends the German key.
+            canonical = canonical_doc_class(doc_class)
+            if canonical is None:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Unknown doc_class '{doc_class}'",
+                )
+            doc_class = canonical
         resolved_class = doc_class if doc_class is not None else guess_doc_class(name)
 
         try:
@@ -551,14 +555,15 @@ def add_oib_routes(router: APIRouter) -> None:
         from aiq_agent.knowledge.factory import set_document_doc_class_suggestion
 
         name = Path(file_name).name
-        if request.doc_class is None or not is_valid_doc_class(request.doc_class):
+        doc_class = canonical_doc_class(request.doc_class)
+        if doc_class is None:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail=f"Unknown doc_class '{request.doc_class}'",
             )
 
         try:
-            updated = await asyncio.to_thread(set_document_doc_class, oib_sync.COLLECTION_NAME, name, request.doc_class)
+            updated = await asyncio.to_thread(set_document_doc_class, oib_sync.COLLECTION_NAME, name, doc_class)
         except Exception as e:
             logger.exception("OIB doc_class update failed for %s", name)
             raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
@@ -573,7 +578,7 @@ def add_oib_routes(router: APIRouter) -> None:
             await asyncio.to_thread(set_document_doc_class_suggestion, oib_sync.COLLECTION_NAME, name, None)
         except Exception:  # noqa: BLE001 — the class is set; a stale offer is cosmetic
             logger.warning("Could not clear the Dokumentart suggestion for %s", name)
-        return {"file_name": name, "doc_class": request.doc_class}
+        return {"file_name": name, "doc_class": doc_class}
 
     class UpdateDisplayTitleRequest(BaseModel):
         display_title: str | None = Field(

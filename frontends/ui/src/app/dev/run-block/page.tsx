@@ -13,7 +13,7 @@
  * block is small enough to sit above the report it produced.
  *
  * `?variant=transition` captures the handover alone: the person's message,
- * the task-created card that acknowledges it, and the block in `angelegt`
+ * the task-created card that acknowledges it, and the block in `created`
  * directly beneath — the three things a reader sees in the first seconds after
  * „@Piloti prüf das gegen OIB 2".
  *

@@ -68,13 +68,13 @@ const PERMIT_DECISIONS = proposal('00000000-0000-4000-8000-0000000000f1', {
     operations: [
       {
         document: 'MA37_Baubewilligung_2026-09.pdf',
-        source: 'projekt',
+        source: 'project',
         target_folder: 'Behörde/Bescheide',
         reason: 'Ein Bescheid der MA 37; „Bescheide“ hält laut Beschreibung Bescheide und Stellungnahmen.',
       },
       {
         document: 'Stellungnahme_MA22.pdf',
-        source: 'projekt',
+        source: 'project',
         target_folder: 'Behörde/Bescheide',
         reason: 'Eine Stellungnahme der MA 22 zum Bauverfahren.',
       },
@@ -89,7 +89,7 @@ const CORRESPONDENCE = proposal('00000000-0000-4000-8000-0000000000f2', {
     operations: [
       {
         document: 'Schreiben_Fristerstreckung.pdf',
-        source: 'projekt',
+        source: 'project',
         target_folder: 'Korrespondenz',
         reason: 'Ein Brief an die Behörde. Das Büro legt Briefe in vier Projekten unter „Korrespondenz“ ab.',
       },

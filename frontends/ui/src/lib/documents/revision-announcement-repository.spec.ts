@@ -41,7 +41,7 @@ describe('claimRevisionAnnouncement', () => {
     await expect(claimRevisionAnnouncement(key)).resolves.toBe(true)
 
     expect(captured).toHaveLength(1)
-    expect(captured[0].sql).toMatch(/^insert into "document_fassung_announcements"/i)
+    expect(captured[0].sql).toMatch(/^insert into "document_revision_announcements"/i)
     expect(captured[0].sql).toMatch(/on conflict \("document_id","anchor_id"\) do nothing returning/i)
     expect(captured[0].params).toEqual(expect.arrayContaining(['org-1', 'doc-b', 'doc-a']))
   })
@@ -57,7 +57,7 @@ describe('releaseRevisionAnnouncement', () => {
   it('deletes exactly that Fassung of that organization', async () => {
     await releaseRevisionAnnouncement(key)
 
-    expect(captured[0].sql).toMatch(/^delete from "document_fassung_announcements" where/i)
+    expect(captured[0].sql).toMatch(/^delete from "document_revision_announcements" where/i)
     expect(captured[0].params).toEqual(['org-1', 'doc-b', 'doc-a'])
   })
 })

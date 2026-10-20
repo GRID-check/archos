@@ -801,8 +801,8 @@ const LocusRail: FC<{
                   )}
                   <span className="flex-1" />
                   <span className="shrink-0 text-xs font-medium tabular-nums">
-                    {locus.punkt
-                      ? t('answerSources.clausePage', { clause: locus.punkt, page: locus.page! })
+                    {locus.clause
+                      ? t('answerSources.clausePage', { clause: locus.clause, page: locus.page! })
                       : t('answerSources.page', { page: locus.page! })}
                   </span>
                 </span>

@@ -374,7 +374,7 @@ def render_system_prompt(
         # store: the committed file unless a Langfuse version is being served.
         static_block=render_static_block(resolve_static_block().text),
         tools=list(tools_info),
-        # The <entwuerfe> block is rendered only for a turn that HAS the working
+        # The <drafts> block is rendered only for a turn that HAS the working
         # directory bound (`tools/documents`). A turn without a conversation to
         # namespace by gets no file verbs, and a prompt telling that model to
         # write a document would be describing a tool it cannot call. What the

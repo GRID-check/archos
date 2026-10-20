@@ -129,19 +129,19 @@ class CardModel(BaseModel):
 # Canonical project-profile fact keys (mirrors the intake definition in
 # frontends/ui/src/lib/project-profile/intake-definition.ts). Included in the
 # emit_card guidance so the model patches known keys with valid values instead
-# of inventing near-duplicates ("building_class" vs "gebaeudeklasse").
+# of inventing near-duplicates ("gebaeudeklasse" vs "building_class").
 PROFILE_FACT_VOCABULARY = (
-    "hauptnutzung: wohnen|buero|beherbergung|versammlung|gesundheit|landwirtschaft|produzierend|lager|sonstiges; "
-    "gebaeudeklasse: GK1|GK2|GK3|GK4|GK5; "
-    "fluchtniveau: <=7m|7-11m|11-22m|>22m; "
-    "bestand_neubau: bestand|neubau|zu_und_umbau; "
-    "widmung: bauland|verkehrsflaeche|freiland|kerngebiet|gemischt; "
-    "bauweise: offen|gekuppelt|geschlossen; "
-    "sicherheitskategorie: low|medium|high; "
-    "bestandsalter: <10|10-30|30-50|>50; "
-    "geschosse_oberirdisch / geschosse_unterirdisch / anzahl_betten / anzahl_einheiten: number; "
-    "grundgrenze / fluchtlinie / schutzzone / abweichender_bebauungsplan: boolean; "
-    "hohe_gebaeude_details: free text"
+    "main_use: residential|office|lodging|assembly|healthcare|agriculture|manufacturing|storage|other; "
+    "building_class: GK1|GK2|GK3|GK4|GK5; "
+    "escape_level: <=7m|7-11m|11-22m|>22m; "
+    "existing_or_new: existing|new_build|extension_and_conversion; "
+    "land_designation: building_land|traffic_area|open_land|core|mixed; "
+    "development_pattern: open|semi_detached|closed; "
+    "safety_category: low|medium|high; "
+    "existing_age: <10|10-30|30-50|>50; "
+    "storeys_above_ground / storeys_below_ground / bed_count / unit_count: number; "
+    "plot_boundary / building_line / protection_zone / deviating_development_plan: boolean; "
+    "high_rise_details: free text"
 )
 
 
@@ -365,7 +365,7 @@ class SectionMarker(CardModel):
 
     label: str = Field(min_length=1, description="What the line marks, e.g. 'Fluchtniveau', 'GK4-Grenze'")
     height_m: float = Field(description="Height above ground datum in metres")
-    kind: Literal["fluchtniveau", "threshold", "reference"] = Field(default="reference", description="Styling role")
+    kind: Literal["escape_level", "threshold", "reference"] = Field(default="reference", description="Styling role")
 
 
 class SetbackSide(CardModel):
@@ -584,7 +584,7 @@ class GuardrailCheckCard(CardModel):
 
     type: Literal["guardrail_check"]
     title: str = Field(min_length=1, description="Title, e.g. 'Absturzsicherung Dachterrasse'")
-    context: Literal["balkon", "loggia", "stiege", "fenster", "dachterrasse"] = Field(description="Railing location")
+    context: Literal["balcony", "loggia", "staircase", "window", "roof_terrace"] = Field(description="Railing location")
     fall_height: DimensionCheck = Field(description="Absturzhöhe (m) — decides which height limit applies")
     rail_height: DimensionCheck = Field(description="Geländerhöhe (cm) vs the required minimum")
     max_opening: DimensionCheck = Field(description="Largest opening (cm) vs the <=12 cm cube rule")
@@ -594,7 +594,7 @@ class GuardrailCheckCard(CardModel):
     note: str | None = Field(default=None, description="Optional clarification")
 
 
-class AufstellflaechePlan(CardModel):
+class StagingAreaPlan(CardModel):
     """The fire-brigade Aufstellfläche geometry."""
 
     width: DimensionCheck = Field(description="Aufstellfläche width (m)")
@@ -619,9 +619,9 @@ class FireAccessPlanCard(CardModel):
     building_depth_m: float = Field(gt=0, description="Building footprint depth in metres")
     route_width: DimensionCheck = Field(description="Zufahrt clear width (m) vs the minimum")
     gate_clearance_height: DimensionCheck | None = Field(default=None, description="Durchfahrt clear height (m)")
-    aufstellflaeche: AufstellflaechePlan = Field(description="The fire-brigade standing-area geometry")
+    staging_area: StagingAreaPlan = Field(description="The fire-brigade standing-area geometry")
     walk_distance_to_entrance: DimensionCheck = Field(description="Reach to farthest entrance (m), e.g. <=80")
-    gebaeudeklasse: str | None = Field(default=None, description="The building's Gebäudeklasse (drives the limit)")
+    building_class: str | None = Field(default=None, description="The building's Gebäudeklasse (drives the limit)")
     reference: NormReference = Field(description="Source of the access requirements (OIB 2 / TRVB)")
     note: str | None = Field(default=None, description="Optional clarification")
 
@@ -898,8 +898,8 @@ class SurfacedDocument(CardModel):
     snippet: str | None = Field(default=None, description="Best-matching passage — WHY this file surfaced")
     page: int | None = Field(default=None, description="1-based page the snippet came from, if known")
     score: float | None = Field(default=None, description="0..1 relevance score of the best chunk")
-    source: Literal["projekt", "buero"] | None = Field(
-        default=None, description="Which corpus it came from: 'projekt' (project) or 'buero' (Büroablage)"
+    source: Literal["project", "office"] | None = Field(
+        default=None, description="Which corpus it came from: 'project' or 'office' (Büroablage)"
     )
 
 
@@ -966,7 +966,7 @@ class DocumentDraftCard(CardModel):
 
     type: Literal["document_draft"] = "document_draft"
     title: str = Field(min_length=1, description="The document's first heading, or its file name when it has none")
-    path: str = Field(min_length=1, description="Path in the working directory, e.g. '/entwuerfe/aktenvermerk.md'")
+    path: str = Field(min_length=1, description="Path in the working directory, e.g. '/drafts/aktenvermerk.md'")
     bytes: int = Field(ge=0, description="Size of the draft as stored, in UTF-8 bytes")
     version: int = Field(ge=1, description="How often this path has been written or edited in this conversation")
     document_id: str | None = Field(
@@ -1001,7 +1001,7 @@ class DocumentDraftCard(CardModel):
 #: same parse-independently rule `DocumentVersionState` follows one screen up,
 #: for the same reason: the contract crosses a language boundary, and a shared
 #: schema between the two would be a build step neither tier wants.
-TaskKind = Literal["compliance_check", "einreichcheck", "document", "revision"]
+TaskKind = Literal["compliance_check", "submission_check", "document", "revision"]
 
 
 class TaskCreatedCard(CardModel):
@@ -1090,7 +1090,7 @@ class FileOperationItem(CardModel):
         default=None,
         description="File name exactly as the inventory lists it (move, rename, assign)",
     )
-    source: Literal["projekt", "buero"] | None = Field(
+    source: Literal["project", "office"] | None = Field(
         default=None,
         description="Which shelf the document sits on, so the name resolves in the right corpus",
     )
@@ -1502,7 +1502,7 @@ class IfcComplianceCard(CardModel):
         default_factory=list,
         max_length=20,
         description=(
-            "Rule ids from ifc_query operation='compliance' (e.g. 'oib2-feuerwiderstand-tragend') "
+            "Rule ids from ifc_query operation='compliance' (e.g. 'oib2-fire-resistance-load-bearing') "
             "to narrow the card to the requirements this answer is about. Empty shows all. "
             "Use ONLY ids the tool reported; the card says so when one does not resolve."
         ),

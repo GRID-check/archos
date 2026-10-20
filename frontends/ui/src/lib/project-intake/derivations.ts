@@ -30,20 +30,20 @@ export interface DerivationDefinition {
 
 /** The base keys the derivation reads, per Building, in the order `missing` lists them. */
 export const BUILDING_CLASS_INPUTS = [
-  'bauwerkstyp',
-  'gebaeudestellung',
-  'zugang_drei_seiten',
-  'geschosse_oberirdisch',
-  'fluchtniveau_m',
-  'bgf_oberirdisch',
-  'nutzungseinheiten',
-  'einheiten_ueber_400',
-  'nutzungen',
+  'building_type',
+  'building_position',
+  'access_three_sides',
+  'storeys_above_ground',
+  'escape_level_m',
+  'gfa_above_ground',
+  'use_units',
+  'units_over_400',
+  'uses',
 ] as const
 export type BuildingClassInput = (typeof BUILDING_CLASS_INPUTS)[number]
 
 export const BUILDING_CLASS_DERIVATION: DerivationDefinition = {
-  rule: 'gebaeudeklasse',
+  rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe Mai 2023), Gebäudeklassen',
   inputs: BUILDING_CLASS_INPUTS,
 }
@@ -54,14 +54,14 @@ export type BuildingClass = 1 | 2 | 3 | 4 | 5
 export type BuildingClassOutcome = BuildingClass | 'hochhaus'
 
 /** Internally also: the Building is no building, so it has no class at all. */
-type Outcome = BuildingClassOutcome | 'kein_gebaeude'
+type Outcome = BuildingClassOutcome | 'no_building'
 
 export interface BuildingClassResult {
   /** The class, or null while an input that matters is missing, for a Hochhaus, or for a Building that is no building. */
   value: BuildingClass | null
   /** Fluchtniveau above 22 m: no building class. */
   hochhaus: boolean
-  /** False when the Building is known to be no building (C1 `klein` or `sonstig`): nothing is classified. */
+  /** False when the Building is known to be no building (C1 `small` or `other`): nothing is classified. */
   applicable: boolean
   /** The base keys whose value could still change the outcome ({@link decisiveInputs}). Empty once the outcome is known. */
   missing: BuildingClassInput[]
@@ -79,9 +79,9 @@ interface InputDomain {
 }
 
 /** The D0 tokens that are residential. „Reines Wohngebäude" means every use of the Building is one of these. */
-const RESIDENTIAL_USES: readonly string[] = ['wohnen']
+const RESIDENTIAL_USES: readonly string[] = ['residential']
 
-const BUILDING_POSITIONS: readonly string[] = ['freistehend', 'angebaut', 'reihenhaus']
+const BUILDING_POSITIONS: readonly string[] = ['freestanding', 'attached', 'terraced']
 
 function readNumber(raw: ProjectPrimitiveValue | undefined): number | undefined {
   if (typeof raw === 'number') return Number.isFinite(raw) ? raw : undefined
@@ -116,26 +116,26 @@ function readPurelyResidential(raw: ProjectPrimitiveValue | undefined): boolean 
  */
 const INPUT_DOMAINS: Record<BuildingClassInput, InputDomain> = {
   // Only a Gebäude has a class; any other C1 token stands for „no Gebäude".
-  bauwerkstyp: { read: readToken, bands: ['gebaeude', 'sonstig'] },
-  gebaeudestellung: {
+  building_type: { read: readToken, bands: ['building', 'other'] },
+  building_position: {
     read: (raw) => {
       const token = readToken(raw)
       return token && BUILDING_POSITIONS.includes(token) ? token : undefined
     },
     bands: BUILDING_POSITIONS,
   },
-  zugang_drei_seiten: { read: readBoolean, bands: [true, false] },
+  access_three_sides: { read: readBoolean, bands: [true, false] },
   // ≤ 3, 4, ≥ 5
-  geschosse_oberirdisch: { read: readNumber, bands: [3, 4, 5] },
+  storeys_above_ground: { read: readNumber, bands: [3, 4, 5] },
   // ≤ 7, (7, 11], (11, 22], > 22
-  fluchtniveau_m: { read: readNumber, bands: [7, 11, 22, 23] },
+  escape_level_m: { read: readNumber, bands: [7, 11, 22, 23] },
   // ≤ 400, (400, 800], > 800
-  bgf_oberirdisch: { read: readNumber, bands: [400, 800, 801] },
+  gfa_above_ground: { read: readNumber, bands: [400, 800, 801] },
   // 1, 2, ≥ 3
-  nutzungseinheiten: { read: readNumber, bands: [1, 2, 3] },
-  einheiten_ueber_400: { read: readBoolean, bands: [false, true] },
+  use_units: { read: readNumber, bands: [1, 2, 3] },
+  units_over_400: { read: readBoolean, bands: [false, true] },
   // rein Wohnen, or not
-  nutzungen: { read: readPurelyResidential, bands: [true, false] },
+  uses: { read: readPurelyResidential, bands: [true, false] },
 }
 
 /** One combination of bands, as the rules read it. */
@@ -157,15 +157,15 @@ function valueOf(values: readonly Band[], input: BuildingClassInput): Band {
 
 function buildingFrom(values: readonly Band[]): Building {
   return {
-    isBuilding: valueOf(values, 'bauwerkstyp') === 'gebaeude',
-    position: String(valueOf(values, 'gebaeudestellung')),
-    threeSidedAccess: valueOf(values, 'zugang_drei_seiten') === true,
-    storeys: Number(valueOf(values, 'geschosse_oberirdisch')),
-    escapeLevel: Number(valueOf(values, 'fluchtniveau_m')),
-    grossFloorArea: Number(valueOf(values, 'bgf_oberirdisch')),
-    units: Number(valueOf(values, 'nutzungseinheiten')),
-    unitOver400: valueOf(values, 'einheiten_ueber_400') === true,
-    purelyResidential: valueOf(values, 'nutzungen') === true,
+    isBuilding: valueOf(values, 'building_type') === 'building',
+    position: String(valueOf(values, 'building_position')),
+    threeSidedAccess: valueOf(values, 'access_three_sides') === true,
+    storeys: Number(valueOf(values, 'storeys_above_ground')),
+    escapeLevel: Number(valueOf(values, 'escape_level_m')),
+    grossFloorArea: Number(valueOf(values, 'gfa_above_ground')),
+    units: Number(valueOf(values, 'use_units')),
+    unitOver400: valueOf(values, 'units_over_400') === true,
+    purelyResidential: valueOf(values, 'uses') === true,
   }
 }
 
@@ -179,7 +179,7 @@ function isLow(b: Building): boolean {
 
 /** „Freistehend, an mindestens drei Seiten … für die Feuerwehr zugänglich" (GK 1, GK 2), sinngemäß. */
 function isDetachedAccessible(b: Building): boolean {
-  return b.position === 'freistehend' && b.threeSidedAccess
+  return b.position === 'freestanding' && b.threeSidedAccess
 }
 
 /**
@@ -208,12 +208,12 @@ function isBuildingClass1(b: Building): boolean {
  * Reihenhaus: the per-unit limit is read from C8 (any unit above 400 m² BGF).
  * The Reihenhaus definition has each unit's own Fluchtniveau count; the wizard
  * holds one Fluchtniveau per Building, which is used instead. „Reines
- * Wohngebäude": every D0 use is `wohnen`; a garage in the house disqualifies
+ * Wohngebäude": every D0 use is `residential`; a garage in the house disqualifies
  * the 800 m² branch, which errs towards the higher class.
  */
 function isBuildingClass2(b: Building): boolean {
   if (!isLow(b)) return false
-  const terracedHouse = b.position === 'reihenhaus' && !b.unitOver400
+  const terracedHouse = b.position === 'terraced' && !b.unitOver400
   const detachedHouse = isDetachedAccessible(b) && b.purelyResidential && b.grossFloorArea <= 800
   return b.grossFloorArea <= 400 || terracedHouse || detachedHouse
 }
@@ -245,7 +245,7 @@ function isBuildingClass4(b: Building): boolean {
  */
 function classify(values: readonly Band[]): Outcome {
   const b = buildingFrom(values)
-  if (!b.isBuilding) return 'kein_gebaeude'
+  if (!b.isBuilding) return 'no_building'
   if (b.escapeLevel > 22) return 'hochhaus'
   if (isBuildingClass1(b)) return 1
   if (isBuildingClass2(b)) return 2
@@ -301,7 +301,7 @@ function isDecisive(space: OutcomeSpace, input: BuildingClassInput): boolean {
 export function possibleBuildingClasses(inputs: BuildingClassInputs): Set<BuildingClassOutcome> {
   const outcomes = new Set<BuildingClassOutcome>()
   for (const { outcome } of outcomeSpace(inputs).scenarios) {
-    if (outcome !== 'kein_gebaeude') outcomes.add(outcome)
+    if (outcome !== 'no_building') outcomes.add(outcome)
   }
   return outcomes
 }
@@ -309,7 +309,7 @@ export function possibleBuildingClasses(inputs: BuildingClassInputs): Set<Buildi
 /**
  * The missing inputs whose value could still change the outcome, in
  * {@link BUILDING_CLASS_INPUTS} order. „Outcome" includes being no Gebäude, so
- * an open `bauwerkstyp` is decisive until the class is fixed either way.
+ * an open `building_type` is decisive until the class is fixed either way.
  */
 export function decisiveInputs(inputs: BuildingClassInputs): BuildingClassInput[] {
   const space = outcomeSpace(inputs)
@@ -319,7 +319,7 @@ export function decisiveInputs(inputs: BuildingClassInputs): BuildingClassInput[
 /**
  * The building class of one Building from its inputs, keyed by base key.
  * Numbers may be numbers or numeric strings; yes/no inputs `true`/`false` or
- * `ja`/`nein` (`offen` is missing); `nutzungen` the D0 tokens.
+ * `ja`/`nein` (`offen` is missing); `uses` the D0 tokens.
  */
 export function deriveBuildingClass(inputs: BuildingClassInputs): BuildingClassResult {
   const space = outcomeSpace(inputs)
@@ -330,7 +330,7 @@ export function deriveBuildingClass(inputs: BuildingClassInputs): BuildingClassR
   return {
     value: typeof outcome === 'number' ? outcome : null,
     hochhaus: outcome === 'hochhaus',
-    applicable: outcome !== 'kein_gebaeude',
+    applicable: outcome !== 'no_building',
     missing,
   }
 }

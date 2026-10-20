@@ -527,7 +527,7 @@ class FinalizedReport:
     confidence_capped_reason: str | None
     #: The Grundlage the run did not reach, by file name. Empty when every
     #: named document has a passage in the registry, or none was named.
-    grundlage_unread: list[str] = field(default_factory=list)
+    basis_unread: list[str] = field(default_factory=list)
 
 
 def _append_unread_basis(report: str, unread: Sequence[str]) -> str:
@@ -563,7 +563,7 @@ def finalize_report(
     self_confidence_reason: str | None,
     degraded_reasons: list[str],
     cutoff_reason: str | None,
-    grundlage_unread: Sequence[str] = (),
+    basis_unread: Sequence[str] = (),
 ) -> FinalizedReport:
     """Sanitise, renumber, banner and grade the verified report.
 
@@ -574,7 +574,7 @@ def finalize_report(
     ceiling cap it.
     """
     degraded = [*degraded_reasons, *verification.degraded_reasons]
-    if grundlage_unread:
+    if basis_unread:
         degraded.append(DEGRADED_BASIS_UNREAD)
     sanitization = sanitize_report(verification.report)
     wire_sources = _apply_renumbering(
@@ -583,7 +583,7 @@ def finalize_report(
         getattr(sanitization, "removed_citation_numbers", None),
     )
     report = _prepend_honesty_banner(
-        _append_unread_basis(sanitization.sanitized_report, grundlage_unread),
+        _append_unread_basis(sanitization.sanitized_report, basis_unread),
         cutoff_reason=cutoff_reason,
         degraded_reasons=degraded,
     )
@@ -603,7 +603,7 @@ def finalize_report(
         confidence=confidence,
         confidence_reason=self_confidence_reason if confidence is not None else None,
         confidence_capped_reason=capped_reason if confidence is not None else None,
-        grundlage_unread=list(grundlage_unread),
+        basis_unread=list(basis_unread),
     )
 
 
@@ -642,8 +642,8 @@ def annotate_state(result: Any, finalized: FinalizedReport, skill_runtime: Skill
     if finalized.degraded_reasons:
         set_state_field(result, "degraded_reasons", list(finalized.degraded_reasons))
         emit_answer_degraded(agent="deep", reasons=finalized.degraded_reasons)
-    if finalized.grundlage_unread:
-        set_state_field(result, "grundlage_unread", list(finalized.grundlage_unread))
+    if finalized.basis_unread:
+        set_state_field(result, "basis_unread", list(finalized.basis_unread))
     if finalized.confidence is None:
         return
     set_state_field(result, "answer_confidence", finalized.confidence)

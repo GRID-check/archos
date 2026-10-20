@@ -159,10 +159,10 @@ describe('extractProjectExperience', () => {
     answerWith(
       backendAnswer({
         fingerprint: [
-          { key: 'bundesland', value: 'niederoesterreich', evidence: [evidence('Niederösterreich')] },
-          { key: 'gebaeudeklasse', value: '4', evidence: [evidence('Gebäudeklasse 4', '3')] },
-          { key: 'bauweise', value: ['holzbau', 'stahlbeton'], evidence: [evidence('Holz-Stahlbeton')] },
-          { key: 'oib_ausgabe', value: '2019', evidence: [evidence('OIB-RL 2019')] },
+          { key: 'federal_state', value: 'lower_austria', evidence: [evidence('Niederösterreich')] },
+          { key: 'building_class', value: '4', evidence: [evidence('Gebäudeklasse 4', '3')] },
+          { key: 'construction_method', value: ['timber', 'reinforced_concrete'], evidence: [evidence('Holz-Stahlbeton')] },
+          { key: 'oib_edition', value: '2019', evidence: [evidence('OIB-RL 2019')] },
         ],
       })
     )
@@ -171,15 +171,15 @@ describe('extractProjectExperience', () => {
 
     expect(result).toEqual({ suggested: 4, drafted: 0, documentsRead: ['Baubeschreibung.pdf'], error: null })
     expect(writtenAssumptions()).toEqual({
-      bundesland: {
-        value: 'niederoesterreich',
+      federal_state: {
+        value: 'lower_austria',
         status: 'unconfirmed',
         reason: 'Baubeschreibung.pdf, S. 2: „Niederösterreich"',
         source: 'agent_suggested',
         updatedAt: expect.any(String),
         evidence: [expect.objectContaining({ kind: 'document' })],
       },
-      gebaeudeklasse: {
+      building_class: {
         value: 4,
         status: 'unconfirmed',
         reason: 'Baubeschreibung.pdf, S. 3: „Gebäudeklasse 4"',
@@ -187,15 +187,15 @@ describe('extractProjectExperience', () => {
         updatedAt: expect.any(String),
         evidence: [expect.objectContaining({ kind: 'document' })],
       },
-      bauweise: {
-        value: ['holzbau', 'stahlbeton'],
+      construction_method: {
+        value: ['timber', 'reinforced_concrete'],
         status: 'unconfirmed',
         reason: 'Baubeschreibung.pdf, S. 2: „Holz-Stahlbeton"',
         source: 'agent_suggested',
         updatedAt: expect.any(String),
         evidence: [expect.objectContaining({ kind: 'document' })],
       },
-      oib_ausgabe: {
+      oib_edition: {
         value: '2019',
         status: 'unconfirmed',
         reason: 'Baubeschreibung.pdf, S. 2: „OIB-RL 2019"',
@@ -211,7 +211,7 @@ describe('extractProjectExperience', () => {
       backendAnswer({
         fingerprint: [
           {
-            key: 'gebaeudeklasse',
+            key: 'building_class',
             value: '4',
             evidence: [evidence('Gebäudeklasse 4', '3'), { fileName: 'Bescheid.pdf', page: '', quote: 'GK 4' }],
           },
@@ -221,7 +221,7 @@ describe('extractProjectExperience', () => {
 
     await extractProjectExperience(session, PROJECT_ID)
 
-    expect(writtenAssumptions().gebaeudeklasse).toMatchObject({
+    expect(writtenAssumptions().building_class).toMatchObject({
       reason: 'Baubeschreibung.pdf, S. 3: „Gebäudeklasse 4"',
       evidence: [
         { kind: 'document', fileName: 'Baubeschreibung.pdf', page: 3, quote: 'Gebäudeklasse 4' },
@@ -233,13 +233,13 @@ describe('extractProjectExperience', () => {
   it('masks the quote in the evidence too, not only in the reason', async () => {
     answerWith(
       backendAnswer({
-        fingerprint: [{ key: 'gebaeudeklasse', value: '4', evidence: [evidence('Bauwerberin Maria Huber, GK 4')] }],
+        fingerprint: [{ key: 'building_class', value: '4', evidence: [evidence('Bauwerberin Maria Huber, GK 4')] }],
       })
     )
 
     await extractProjectExperience(session, PROJECT_ID)
 
-    expect(writtenAssumptions().gebaeudeklasse).toMatchObject({
+    expect(writtenAssumptions().building_class).toMatchObject({
       evidence: [{ quote: 'Bauwerberin [Name], GK 4' }],
     })
   })
@@ -247,53 +247,53 @@ describe('extractProjectExperience', () => {
   it('masks the quote it stores as a reason, as a memory note is masked (ADR-0086)', async () => {
     answerWith(
       backendAnswer({
-        fingerprint: [{ key: 'gebaeudeklasse', value: '4', evidence: [evidence('Bauwerberin Maria Huber, GK 4')] }],
+        fingerprint: [{ key: 'building_class', value: '4', evidence: [evidence('Bauwerberin Maria Huber, GK 4')] }],
       })
     )
 
     await extractProjectExperience(session, PROJECT_ID)
 
     expect(writtenAssumptions()).toMatchObject({
-      gebaeudeklasse: { reason: 'Baubeschreibung.pdf, S. 2: „Bauwerberin [Name], GK 4"' },
+      building_class: { reason: 'Baubeschreibung.pdf, S. 2: „Bauwerberin [Name], GK 4"' },
     })
   })
 
   it('asks for a key whose fact holds no value, and suggests it', async () => {
-    givenProfile({ ...emptyProfile, facts: { bauweise: { value: null, confidence: 'confirmed', source: 'onboarding', updatedAt: '' } } })
-    answerWith(backendAnswer({ fingerprint: [{ key: 'bauweise', value: ['holzbau'], evidence: [evidence('Holzbau')] }] }))
+    givenProfile({ ...emptyProfile, facts: { construction_method: { value: null, confidence: 'confirmed', source: 'onboarding', updatedAt: '' } } })
+    answerWith(backendAnswer({ fingerprint: [{ key: 'construction_method', value: ['timber'], evidence: [evidence('Holzbau')] }] }))
 
     const result = await extractProjectExperience(session, PROJECT_ID)
 
-    expect(sentRequest().knownFacts).not.toContain('bauweise')
+    expect(sentRequest().knownFacts).not.toContain('construction_method')
     expect(result.suggested).toBe(1)
   })
 
-  it('skips a key with a confirmed fact, flat or per building (bauweise@bw1)', async () => {
-    givenProfile(confirmed('bundesland', 'bauweise@bw1'))
+  it('skips a key with a confirmed fact, flat or per building (construction_method@bldg1)', async () => {
+    givenProfile(confirmed('federal_state', 'construction_method@bldg1'))
     answerWith(
       backendAnswer({
         fingerprint: [
-          { key: 'bundesland', value: 'wien', evidence: [evidence('Wien')] },
-          { key: 'bauweise', value: ['holzbau'], evidence: [evidence('Holzbau')] },
-          { key: 'gebaeudeklasse', value: '2', evidence: [evidence('GK 2')] },
+          { key: 'federal_state', value: 'vienna', evidence: [evidence('Wien')] },
+          { key: 'construction_method', value: ['timber'], evidence: [evidence('Holzbau')] },
+          { key: 'building_class', value: '2', evidence: [evidence('GK 2')] },
         ],
       })
     )
 
     const result = await extractProjectExperience(session, PROJECT_ID)
 
-    expect(sentRequest().knownFacts.sort()).toEqual(['bauweise', 'bundesland'])
+    expect(sentRequest().knownFacts.sort()).toEqual(['construction_method', 'federal_state'])
     expect(result.suggested).toBe(1)
-    expect(Object.keys(writtenAssumptions())).toEqual(['gebaeudeklasse'])
+    expect(Object.keys(writtenAssumptions())).toEqual(['building_class'])
   })
 
   it('drops a value outside the vocabulary or without evidence, and keeps the rest of the patch', async () => {
     answerWith(
       backendAnswer({
         fingerprint: [
-          { key: 'bundesland', value: 'mars', evidence: [evidence('Mars')] },
-          { key: 'gebaeudeklasse', value: '4', evidence: [] },
-          { key: 'vorhabensart', value: ['neubau'], evidence: [evidence('Neubau')] },
+          { key: 'federal_state', value: 'mars', evidence: [evidence('Mars')] },
+          { key: 'building_class', value: '4', evidence: [] },
+          { key: 'work_type', value: ['new_build'], evidence: [evidence('Neubau')] },
         ],
       })
     )
@@ -301,7 +301,7 @@ describe('extractProjectExperience', () => {
     const result = await extractProjectExperience(session, PROJECT_ID)
 
     expect(result.suggested).toBe(1)
-    expect(Object.keys(writtenAssumptions())).toEqual(['vorhabensart'])
+    expect(Object.keys(writtenAssumptions())).toEqual(['work_type'])
   })
 
   it('writes decisions as distillation, source-grounded, with their evidence', async () => {
@@ -317,7 +317,7 @@ describe('extractProjectExperience', () => {
           {
             kind: 'constraint',
             content: 'Brandsperre je Geschoß aus 1 mm Stahlblech.',
-            outcome: 'auflage',
+            outcome: 'condition',
             evidence: [{ fileName: 'Bescheid.pdf', page: '', quote: 'Brandsperre' }],
           },
           {
@@ -419,8 +419,8 @@ describe('extractProjectExperience', () => {
         backendAnswer({
           documentsRead: ['Baubeschreibung.pdf', 'Honorare_vertraulich.pdf'],
           fingerprint: [
-            { key: 'gebaeudeklasse', value: '5', evidence: [restricted] },
-            { key: 'bundesland', value: 'wien', evidence: [restricted, evidence('Wien')] },
+            { key: 'building_class', value: '5', evidence: [restricted] },
+            { key: 'federal_state', value: 'vienna', evidence: [restricted, evidence('Wien')] },
           ],
           decisions: [
             {
@@ -432,7 +432,7 @@ describe('extractProjectExperience', () => {
             {
               kind: 'constraint',
               content: 'Brandsperre je Geschoß aus 1 mm Stahlblech.',
-              outcome: 'auflage',
+              outcome: 'condition',
               evidence: [{ ...restricted, quote: 'Brandsperre' }, { fileName: 'Bescheid.pdf', page: '3', quote: 'Brandsperre' }],
             },
           ],
@@ -443,7 +443,7 @@ describe('extractProjectExperience', () => {
 
       expect(result).toEqual({ suggested: 1, drafted: 1, documentsRead: ['Baubeschreibung.pdf'], error: null })
       expect(writtenAssumptions()).toEqual({
-        bundesland: expect.objectContaining({ value: 'wien', reason: 'Baubeschreibung.pdf, S. 2: „Wien"' }),
+        federal_state: expect.objectContaining({ value: 'vienna', reason: 'Baubeschreibung.pdf, S. 2: „Wien"' }),
       })
       expect(createProjectMemoryItemForProject).toHaveBeenCalledTimes(1)
       expect(createProjectMemoryItemForProject).toHaveBeenCalledWith(PROJECT_ID, expect.objectContaining({

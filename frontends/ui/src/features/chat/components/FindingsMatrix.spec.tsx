@@ -12,13 +12,13 @@ const findings: Findings = {
     {
       requirement: 'Feuerwiderstand tragender Bauteile',
       value: 'REI 60',
-      status: 'erfuellt',
-      grounding: 'belegt',
+      status: 'met',
+      grounding: 'sourced',
       reference: { document: 'OIB-Richtlinie 2', section: 'Tabelle 1b', page: 12 },
       citations: [1],
       comment: 'Gilt für GK 4; im Kellergeschoß REI 90.',
     },
-    { requirement: 'Zweiter Fluchtweg', status: 'offen', grounding: 'offen', citations: [] },
+    { requirement: 'Zweiter Fluchtweg', status: 'open', grounding: 'open', citations: [] },
   ],
 }
 
@@ -26,10 +26,10 @@ describe('FindingsMatrix', () => {
   test('one row per finding, the status in words and the count line in numbers', () => {
     render(<FindingsMatrix findings={findings} anchorPrefix="src-" />)
     expect(screen.getAllByTestId('finding-row')).toHaveLength(2)
-    expect(screen.getByText(en.chat.findings.status.erfuellt)).toBeInTheDocument()
-    expect(screen.getByText(en.chat.findings.status.offen)).toBeInTheDocument()
+    expect(screen.getByText(en.chat.findings.status.met)).toBeInTheDocument()
+    expect(screen.getByText(en.chat.findings.status.open)).toBeInTheDocument()
     expect(
-      screen.getByText(`1 ${en.chat.findings.status.erfuellt} · 1 ${en.chat.findings.status.offen}`)
+      screen.getByText(`1 ${en.chat.findings.status.met} · 1 ${en.chat.findings.status.open}`)
     ).toBeInTheDocument()
     expect(screen.getByText('REI 60')).toBeInTheDocument()
   })
@@ -38,8 +38,8 @@ describe('FindingsMatrix', () => {
     const results: Findings = {
       v: 1,
       items: [
-        { requirement: 'Variante A', value: '12 m', grounding: 'belegt', citations: [1] },
-        { requirement: 'Variante B', value: '15 m', grounding: 'belegt', citations: [2] },
+        { requirement: 'Variante A', value: '12 m', grounding: 'sourced', citations: [1] },
+        { requirement: 'Variante B', value: '15 m', grounding: 'sourced', citations: [2] },
       ],
     }
     render(<FindingsMatrix findings={results} anchorPrefix="src-" />)
@@ -47,7 +47,7 @@ describe('FindingsMatrix', () => {
     expect(screen.getByText(en.chat.findings.labelResults)).toBeInTheDocument()
     expect(screen.queryByText(en.chat.findings.columns.status)).not.toBeInTheDocument()
     expect(screen.getByText(en.chat.findings.columns.note)).toBeInTheDocument()
-    expect(screen.queryByText(en.chat.findings.status.offen)).not.toBeInTheDocument()
+    expect(screen.queryByText(en.chat.findings.status.open)).not.toBeInTheDocument()
   })
 
   test('the [N] jumps to the answer’s own sources row', () => {
@@ -71,11 +71,11 @@ describe('FindingsMatrix', () => {
         {
           requirement: 'Feuerwiderstand tragender Bauteile',
           value: 'REI 90',
-          status: 'erfuellt',
-          grounding: 'belegt',
+          status: 'met',
+          grounding: 'sourced',
           citations: [],
         },
-        { requirement: 'Barrierefreiheit', status: 'erfuellt', grounding: 'belegt', citations: [] },
+        { requirement: 'Barrierefreiheit', status: 'met', grounding: 'sourced', citations: [] },
       ],
     }
     render(<FindingsMatrix findings={findings} previous={previous} />)
@@ -108,7 +108,7 @@ describe('FindingsMatrix', () => {
 
   test('an unsourced finding says so beside its status', () => {
     render(<FindingsMatrix findings={findings} />)
-    expect(screen.getByText(en.chat.findings.grounding.offen)).toBeInTheDocument()
+    expect(screen.getByText(en.chat.findings.grounding.open)).toBeInTheDocument()
   })
 
   test('a row with a comment is opened by a real control, reachable by keyboard', async () => {

@@ -237,7 +237,7 @@ export function ModelAdvancedSheet({
    * "Apply what the model says to the project brief."
    *
    * Deliberately a question in the chat rather than a write from this panel:
-   * the facts are inferences from an export, `geschosse_oberirdisch` decides a
+   * the facts are inferences from an export, `storeys_above_ground` decides a
    * Gebäudeklasse, and the confirm-the-patch card is where a change to the
    * brief belongs (ADR-0030).
    */

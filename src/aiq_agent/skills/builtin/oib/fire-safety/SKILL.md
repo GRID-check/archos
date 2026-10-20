@@ -1,5 +1,5 @@
 ---
-name: brandschutz
+name: fire-safety
 description: >
   Brandabschnitt, Fluchtweg und Feuerwiderstand, sobald die GK steht.
 metadata:
@@ -12,7 +12,7 @@ metadata:
 ## Gebäudeklasse zuerst
 
 Nahezu jede Anforderung in OIB Richtlinie 2 hängt an der Gebäudeklasse. Fehlt
-sie und ändert sie die Antwort, `gebaeudeklasse` laden, bevor eine Zahl fällt.
+sie und ändert sie die Antwort, `building-class` laden, bevor eine Zahl fällt.
 Eine Feuerwiderstandsklasse ohne die Klasse, aus der sie folgt, ist eine Zahl
 ohne Anspruch.
 

@@ -1,0 +1,8 @@
+---
+upgrade:
+  - >
+    The built-in skills have English names: /submission-check, /fire-safety,
+    /existing-building, /safety-in-use, /building-class, /thermal-protection,
+    /plot-development and /inspection-report-writer. The old names, such as
+    /einreichcheck, still work when typed and in scheduled tasks, and typing
+    one still finds the skill in the menu.

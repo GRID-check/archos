@@ -144,7 +144,7 @@ function setupFromForm(
     description: formData.get('description') ?? undefined,
     location: typeof location === 'string' && location !== '' ? safeJson(location) : undefined,
     address: formData.get('address') ?? undefined,
-    bundesland: formData.get('bundesland') || undefined,
+    bundesland: formData.get('federal_state') || undefined,
   })
   if (!parsed.success) return { error: 'The setup details are not valid.', reason: 'invalid-setup' }
   const { setup, description, location: place, address, bundesland: federalState } = parsed.data

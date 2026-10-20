@@ -141,7 +141,7 @@ async function afterClose(run: TaskRun, closed: TaskRun, outcome: TaskOutcome): 
  * the next kind is a compile error here rather than a silent decision that its
  * result is not worth filing.
  *
- * `compliance_check` and `einreichcheck` answer INTO the conversation the run
+ * `compliance_check` and `submission_check` answer INTO the conversation the run
  * wrote — that is what an `output: 'chat'` run is — and filing their prose as a
  * second document would put a copy of the thread in Berichte. `chat` is the
  * same thing arriving from a definition.
@@ -150,7 +150,7 @@ const FILES_ITS_RESULT: Record<TaskKind, boolean> = {
   'deep-research': true,
   chat: false,
   compliance_check: false,
-  einreichcheck: false,
+  submission_check: false,
   document: true,
   revision: true,
 }
@@ -400,7 +400,7 @@ function announceRunFinished(run: TaskRun, outcome: TaskOutcome, closed: TaskRun
  * The inbox type is the existing `job.completed` / `job.failed` pair: the
  * payload already carries the ids, and a second type would be a second
  * presentation for a row that says the same thing. (`job.waiting`, the third
- * of the family, is emitted where the ledger turns to `wartet` —
+ * of the family, is emitted where the ledger turns to `waiting` —
  * `lib/runs/service.ts` — because that is the only tier that sees it.)
  * `actorUserId: null` because the work was Piloti's, and because
  * `emitInboxItems` drops a row whose actor is its recipient.

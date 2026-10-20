@@ -27,7 +27,7 @@ const FILE_PROPOSAL = {
   type: 'file_operation_proposal',
   title: 'Pläne einsortieren',
   operation: 'move',
-  operations: [{ document: 'Grundriss EG.pdf', source: 'projekt', current: '', target_folder: 'Einreichung' }],
+  operations: [{ document: 'Grundriss EG.pdf', source: 'project', current: '', target_folder: 'Einreichung' }],
 }
 
 /** Raw bodies folded the way the hook folds them, from the turn's start. */

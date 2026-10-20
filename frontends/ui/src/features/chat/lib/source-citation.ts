@@ -124,12 +124,12 @@ const displayTitle = (ref: CitationRef): string => ref.document.title.trim()
 const isOib = (ref: CitationRef): boolean =>
   ref.document.authority === 'OIB' ||
   ref.document.tint === 'oib' ||
-  (ref.document.lane ?? '').toLowerCase().startsWith('baurecht_oib')
+  (ref.document.lane ?? '').toLowerCase().startsWith('building_law_oib')
 
 const isNorm = (ref: CitationRef): boolean => ref.document.authority === 'ÖNORM'
 
 const isLaw = (ref: CitationRef): boolean =>
-  (ref.document.lane ?? '').toLowerCase().startsWith('baurecht') ||
+  (ref.document.lane ?? '').toLowerCase().startsWith('building_law') ||
   ref.document.origin === 'ris'
 
 /** Characters a CSL `id` may carry — citation-js writes it as the BibTeX key. */
@@ -194,7 +194,7 @@ export const toCslItem = (ref: CitationRef, now: Date): CslItem => {
   // The Punkt of THIS reference. Document-level references have none: a Punkt
   // is a place inside a document, and claiming one the citation does not name
   // would be the same overstatement `refPage` refuses for pages.
-  const section = ref.locus?.punkt?.trim() || undefined
+  const section = ref.locus?.clause?.trim() || undefined
   const url = ref.document.url
   const id = cslId(ref)
 

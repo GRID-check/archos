@@ -12,7 +12,7 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { exportAccessibleComplianceBcf } from '@/lib/bim/model-service'
-import { BIM_MAIN_USE } from '@/lib/bim/query'
+import { BIM_MAIN_USE, canonicalBimMainUse } from '@/lib/bim/query'
 import { BIM_EXPORT_LIMIT } from '@/lib/limits'
 
 type Params = { id: string }
@@ -36,7 +36,7 @@ const paramsSchema = z
     // `.catch(null)` degrades an unrecognised use to "not stated", which the
     // catalogue reports WITH its reason — rather than to a value that makes
     // rules stand down as "not applicable", which reads as a verdict.
-    hauptnutzung: z.enum(BIM_MAIN_USE).nullish().catch(null),
+    hauptnutzung: z.preprocess(canonicalBimMainUse, z.enum(BIM_MAIN_USE).nullish()).catch(null),
   })
   .refine((value) => Boolean(value.modelId ?? value.model), {
     message: 'modelId or model is required',

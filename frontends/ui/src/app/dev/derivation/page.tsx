@@ -48,7 +48,7 @@ const step: StoredThinkingStep = {
   timestamp: '2024-01-15T14:30:00Z',
   traceLanes: [
     {
-      key: 'baurecht_oib',
+      key: 'building_law_oib',
       label: 'OIB-Richtlinie',
       hitCount: 3,
       signal: 'law',
@@ -58,21 +58,21 @@ const step: StoredThinkingStep = {
       ],
     },
     {
-      key: 'baurecht_ris',
+      key: 'building_law_ris',
       label: 'Bundesrecht',
       hitCount: 2,
       signal: 'law',
       sources: [{ name: 'Bauordnung für Wien', detail: '§ 108 Fluchtwege' }],
     },
     {
-      key: 'projekt',
+      key: 'project',
       label: 'Projektwissen',
       hitCount: 1,
       signal: 'project',
       sources: [{ name: 'Grundriss_EG.pdf', detail: 'Seite 2' }],
     },
     {
-      key: 'buero',
+      key: 'office',
       label: 'Büroablage',
       hitCount: 1,
       signal: 'office',
@@ -99,8 +99,8 @@ const citations: CitationSource[] = [
     title: 'OIB-Richtlinie 2 – Brandschutz',
     origin: 'kb',
     timestamp: new Date('2024-01-15T14:30:00'),
-    kind: 'baurecht',
-    lane: 'baurecht_oib',
+    kind: 'building_law',
+    lane: 'building_law_oib',
     laneLabel: 'OIB-Richtlinie',
     page: 18,
     number: 1,
@@ -113,8 +113,8 @@ const citations: CitationSource[] = [
     title: 'Bauordnung für Wien',
     origin: 'ris',
     timestamp: new Date('2024-01-15T14:30:00'),
-    kind: 'baurecht',
-    lane: 'baurecht_ris',
+    kind: 'building_law',
+    lane: 'building_law_ris',
     laneLabel: 'Bundesrecht',
     number: 2,
     isCited: true,
@@ -142,7 +142,7 @@ const denseStep: StoredThinkingStep = {
   id: 'kb-dense',
   traceLanes: [
     {
-      key: 'baurecht_oib',
+      key: 'building_law_oib',
       label: 'OIB-Richtlinie',
       hitCount: 5,
       signal: 'law',
@@ -153,14 +153,14 @@ const denseStep: StoredThinkingStep = {
       ],
     },
     {
-      key: 'baurecht_oib_erlaeuterung',
+      key: 'building_law_oib_explanatory_note',
       label: 'OIB-Erläuterung',
       hitCount: 2,
       signal: 'law',
       sources: [{ name: 'erlaeuterungen_oib-rl_2_ausgabe_mai_2023.pdf', detail: 'p.7' }],
     },
     {
-      key: 'baurecht_ris',
+      key: 'building_law_ris',
       label: 'Bundesrecht',
       hitCount: 3,
       signal: 'law',
@@ -170,7 +170,7 @@ const denseStep: StoredThinkingStep = {
       ],
     },
     {
-      key: 'projekt',
+      key: 'project',
       label: 'Projektwissen',
       hitCount: 2,
       signal: 'project',
@@ -180,7 +180,7 @@ const denseStep: StoredThinkingStep = {
       ],
     },
     {
-      key: 'buero',
+      key: 'office',
       label: 'Büroablage',
       hitCount: 1,
       signal: 'office',
@@ -239,7 +239,7 @@ const mergedHits = (
       if (laneHits.length === 0) return []
       return [
         {
-          key: signal === 'law' ? 'baurecht_oib' : signal === 'project' ? 'projekt' : 'buero',
+          key: signal === 'law' ? 'building_law_oib' : signal === 'project' ? 'project' : 'office',
           label:
             signal === 'law'
               ? 'OIB-Richtlinie'

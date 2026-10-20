@@ -27,7 +27,7 @@ const sources = (id: string, round: number | undefined, hits: Array<{ name: stri
     kind: 'sources',
     tool: 'knowledge_search',
     ...(round !== undefined ? { round } : {}),
-    lanes: [{ key: 'baurecht_oib', label: 'OIB-Richtlinie', kind: 'baurecht', hit_count: hits.length, sources: hits }],
+    lanes: [{ key: 'building_law_oib', label: 'OIB-Richtlinie', kind: 'building_law', hit_count: hits.length, sources: hits }],
   })
 
 describe('retrievalRounds', () => {
@@ -107,7 +107,7 @@ describe('documentsForRound', () => {
     id,
     title: id,
     fileName,
-    kind: 'baurecht',
+    kind: 'building_law',
     tint: 'law',
     loci: [{ key: 'whole', isCited: true }],
   })
@@ -147,7 +147,7 @@ describe('roundFan', () => {
     id,
     title: id,
     fileName,
-    kind: 'baurecht',
+    kind: 'building_law',
     tint: 'law',
     loci: [{ key: 'whole', isCited: true }],
   })

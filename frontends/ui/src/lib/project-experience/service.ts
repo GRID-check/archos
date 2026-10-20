@@ -70,7 +70,7 @@ function readFrom<Item extends { evidence: ExperienceEvidence[] }>(items: Item[]
   })
 }
 
-/** Keys a person answered, flat or per building: `bauweise@bw1` confirms `bauweise`. */
+/** Keys a person answered, flat or per building: `construction_method@bldg1` confirms `construction_method`. */
 function confirmedFactKeys(profile: ProjectProfile): Set<string> {
   return new Set(
     Object.entries(profile.facts)
@@ -88,7 +88,7 @@ function storedValue(key: string, entry: ExperienceVocabularyEntry, value: strin
   const token = tokens.length === 1 ? tokens[0] : undefined
   if (token === undefined) return null
   // The Gebäudeklasse is a number in the profile, as the intake derives it.
-  return key === 'gebaeudeklasse' ? Number(token) : token
+  return key === 'building_class' ? Number(token) : token
 }
 
 function entryOf(vocabulary: ExperienceVocabulary, key: string): ExperienceVocabularyEntry | undefined {

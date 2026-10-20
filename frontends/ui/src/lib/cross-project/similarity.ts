@@ -6,7 +6,7 @@
  * Read off the confirmed profile facts in the shape the intake wizard stores
  * them (where a key has no fact, off the suggestion read from the project's
  * documents, `docs/design/closed-project-experience.md`): a building's
- * answers carry its instance (`bauweise@bw1`), and a project
+ * answers carry its instance (`construction_method@bldg1`), and a project
  * of several buildings is read as all of them, so a GK 4 timber house with a
  * masonry annex resembles both a timber and a masonry project. Weighted by what decides whether a past
  * solution carries over: the Bundesland outweighs any single trait (it decides
@@ -17,17 +17,18 @@
  */
 
 import type { Project } from '@/lib/db/schema'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 
 /** The facts the ranking reads, by profile key. */
 export interface SimilarityFacts {
-  bundesland: string | null
+  federal_state: string | null
   /** Every building's class, ascending; one per building that has one. */
-  gebaeudeklasse: readonly number[]
+  building_class: readonly number[]
   /** A multi-select in the intake (a hybrid is „holzbau" and „stahlbeton"). */
-  bauweise: readonly string[]
-  nutzungen: readonly string[]
+  construction_method: readonly string[]
+  uses: readonly string[]
   /** A multi-select too (Neubau and Zubau); an older profile may hold one token. */
-  vorhabensart: readonly string[]
+  work_type: readonly string[]
 }
 
 type Profile = Pick<Project, 'profile'>['profile']
@@ -40,8 +41,8 @@ function valuesOf(value: unknown): unknown[] {
 
 /**
  * Every stored value of a fact: the project-wide key and each building's copy
- * (`bauweise@bw1`), multi-selects flattened, in key order. A use zone's copy
- * (`x@bw1@wohnen`) is that zone's detail, not the building's, and is not read.
+ * (`construction_method@bldg1`), multi-selects flattened, in key order. A use zone's copy
+ * (`x@bldg1@residential`) is that zone's detail, not the building's, and is not read.
  */
 function factValues(profile: Profile | null, key: string): unknown[] {
   const facts = profile?.facts ?? {}
@@ -85,20 +86,20 @@ function token(value: unknown): string | null {
 }
 
 /** The intake's answer for a site abroad: no Land, so two such projects share no jurisdiction. */
-const ABROAD = 'ausserhalb_oesterreichs'
+const ABROAD = 'outside_austria'
 
-/** The project's Bundesland as the intake stores it, folded to its token; `ausserhalb_oesterreichs` is kept as the answer it is. */
+/** The project's Bundesland as the intake stores it, folded to its token; `outside_austria` is kept as the answer it is. */
 export function federalStateOf(profile: Profile | null): string | null {
-  return tokens(factValues(profile, 'bundesland'))[0] ?? null
+  return tokens(factValues(profile, 'federal_state'), 'federal_state')[0] ?? null
 }
 
 /** The Land the ranking compares: a site abroad has none, so two such projects share no jurisdiction. */
 function comparedState(profile: Profile | null): string | null {
-  const found = tokens(readKey(profile, 'bundesland'))[0] ?? null
+  const found = tokens(readKey(profile, 'federal_state'), 'federal_state')[0] ?? null
   return found === ABROAD ? null : found
 }
 
-/** The classes the OIB-RL defines, and all `ProjectFacts.gebaeudeklasse` in `models/requests.py` accepts. */
+/** The classes the OIB-RL defines, and all `ProjectFacts.building_class` in `models/requests.py` accepts. */
 const LOWEST_CLASS = 1
 const HIGHEST_CLASS = 5
 
@@ -123,11 +124,19 @@ function buildingClassOf(value: unknown): number | null {
 }
 
 /** The intake's „noch offen": an answer that says nothing about the building. */
-export const UNDECIDED = 'offen'
+export const UNDECIDED = 'open'
 
-/** Values as distinct tokens, „offen" left out. */
-function tokens(values: readonly unknown[]): string[] {
-  const found = values.map(token).filter((entry): entry is string => entry !== null && entry !== UNDECIDED)
+/**
+ * Values of `key` as distinct tokens, „offen" left out. A label folds to the
+ * German token it spelled out (`Niederösterreich` → `niederoesterreich`), which
+ * the key's legacy table then names in English: one value however it was written.
+ */
+function tokens(values: readonly unknown[], key: string): string[] {
+  const found = values
+    .map(token)
+    .filter((entry): entry is string => entry !== null)
+    .map((entry) => normalizeProfileToken(key, entry))
+    .filter((entry) => entry !== UNDECIDED)
   return [...new Set(found)]
 }
 
@@ -141,17 +150,17 @@ function overlap(a: readonly string[], b: readonly string[]): string[] {
  */
 export function similarityFacts(profile: Profile | null): SimilarityFacts {
   return {
-    bundesland: comparedState(profile),
-    gebaeudeklasse: [
+    federal_state: comparedState(profile),
+    building_class: [
       ...new Set(
-        readKey(profile, 'gebaeudeklasse')
+        readKey(profile, 'building_class')
           .map(buildingClassOf)
           .filter((value): value is number => value !== null)
       ),
     ].sort((a, b) => a - b),
-    bauweise: tokens(readKey(profile, 'bauweise')),
-    nutzungen: tokens(readKey(profile, 'nutzungen')),
-    vorhabensart: tokens(readKey(profile, 'vorhabensart')),
+    construction_method: tokens(readKey(profile, 'construction_method'), 'construction_method'),
+    uses: tokens(readKey(profile, 'uses'), 'uses'),
+    work_type: tokens(readKey(profile, 'work_type'), 'work_type'),
   }
 }
 
@@ -181,14 +190,14 @@ function closestClass(a: readonly number[], b: readonly number[]): number | null
 export function similarity(current: SimilarityFacts, candidate: SimilarityFacts): number {
   const w = SIMILARITY_WEIGHTS
   let score = 0
-  if (current.bundesland && current.bundesland === candidate.bundesland) score += w.federalState
-  const distance = closestClass(current.gebaeudeklasse, candidate.gebaeudeklasse)
+  if (current.federal_state && current.federal_state === candidate.federal_state) score += w.federalState
+  const distance = closestClass(current.building_class, candidate.building_class)
   if (distance === 0) score += w.buildingClass
   else if (distance === 1) score += w.buildingClassAdjacent
-  if (overlap(current.bauweise, candidate.bauweise).length > 0) score += w.constructionMethod
-  const shared = overlap(current.nutzungen, candidate.nutzungen).length
+  if (overlap(current.construction_method, candidate.construction_method).length > 0) score += w.constructionMethod
+  const shared = overlap(current.uses, candidate.uses).length
   score += Math.min(shared * w.use, w.useMax)
-  if (overlap(current.vorhabensart, candidate.vorhabensart).length > 0) score += w.workType
+  if (overlap(current.work_type, candidate.work_type).length > 0) score += w.workType
   return score
 }
 
@@ -206,22 +215,22 @@ export interface SharedTrait {
  */
 export function sharedTraits(current: SimilarityFacts, candidate: SimilarityFacts): SharedTrait[] {
   const traits: SharedTrait[] = []
-  if (current.bundesland && current.bundesland === candidate.bundesland) {
-    traits.push({ key: 'bundesland', value: candidate.bundesland })
+  if (current.federal_state && current.federal_state === candidate.federal_state) {
+    traits.push({ key: 'federal_state', value: candidate.federal_state })
   }
-  for (const value of current.gebaeudeklasse.filter((gk) => candidate.gebaeudeklasse.includes(gk))) {
-    traits.push({ key: 'gebaeudeklasse', value: String(value) })
+  for (const value of current.building_class.filter((gk) => candidate.building_class.includes(gk))) {
+    traits.push({ key: 'building_class', value: String(value) })
   }
-  for (const value of overlap(current.bauweise, candidate.bauweise)) traits.push({ key: 'bauweise', value })
-  for (const value of overlap(current.nutzungen, candidate.nutzungen)) traits.push({ key: 'nutzungen', value })
-  for (const value of overlap(current.vorhabensart, candidate.vorhabensart)) traits.push({ key: 'vorhabensart', value })
+  for (const value of overlap(current.construction_method, candidate.construction_method)) traits.push({ key: 'construction_method', value })
+  for (const value of overlap(current.uses, candidate.uses)) traits.push({ key: 'uses', value })
+  for (const value of overlap(current.work_type, candidate.work_type)) traits.push({ key: 'work_type', value })
   return traits
 }
 
 /** Whether `facts` hold this trait's value, so a caller can ask it of the confirmed facts alone. */
 export function holdsTrait(trait: SharedTrait, facts: SimilarityFacts): boolean {
-  if (trait.key === 'bundesland') return facts.bundesland === trait.value
-  if (trait.key === 'gebaeudeklasse') return facts.gebaeudeklasse.includes(Number(trait.value))
+  if (trait.key === 'federal_state') return facts.federal_state === trait.value
+  if (trait.key === 'building_class') return facts.building_class.includes(Number(trait.value))
   return facts[trait.key].includes(trait.value)
 }
 

@@ -122,7 +122,7 @@ def task_cards(registry: CardRegistry) -> list[dict[str, Any]]:
 
 ACCEPTED = {
     "taskId": "task-1",
-    "kind": "einreichcheck",
+    "kind": "submission_check",
     "title": "Einreichcheck: Bauansuchen Haus A",
     "status": "running",
     "conversationId": "s_conv_2",

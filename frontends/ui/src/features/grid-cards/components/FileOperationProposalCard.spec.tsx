@@ -49,13 +49,13 @@ const moveCard = {
   operations: [
     {
       document: 'Grundriss EG.pdf',
-      source: 'projekt' as const,
+      source: 'project' as const,
       current: 'Nachweise',
       target_folder: 'Einreichung/Pläne',
     },
     {
       document: 'Grundriss OG.pdf',
-      source: 'projekt' as const,
+      source: 'project' as const,
       current: '',
       target_folder: 'Einreichung/Pläne',
     },
@@ -85,9 +85,9 @@ describe('FileOperationProposalCard without a proposal_id — what it shows', ()
   })
 
   it.each([
-    ['rename', { document: 'a.pdf', source: 'projekt' as const, new_display_name: 'Grundriss Erdgeschoss' }, 'Grundriss Erdgeschoss'],
+    ['rename', { document: 'a.pdf', source: 'project' as const, new_display_name: 'Grundriss Erdgeschoss' }, 'Grundriss Erdgeschoss'],
     ['create_folder', { folder_name: 'Fotos', parent_folder: 'Einreichung' }, 'Fotos'],
-    ['assign', { document: 'a.pdf', source: 'projekt' as const, member: 'Anna Berger' }, 'Anna Berger'],
+    ['assign', { document: 'a.pdf', source: 'project' as const, member: 'Anna Berger' }, 'Anna Berger'],
   ])('renders the %s operation in its own words', (operation, item, expected) => {
     render(
       <FileOperationProposalCard

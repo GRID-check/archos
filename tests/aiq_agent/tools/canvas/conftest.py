@@ -57,7 +57,7 @@ def listed(**extra: Any) -> dict[str, Any]:
         "basis": "OIB-RL 2, Pkt. 5.1.1",
         "assigneeName": "Anna Berger",
         "dueOn": "2026-10-20",
-        "onCurrentFassung": True,
+        "onCurrentRevision": True,
         "createdByName": "Martin Huber",
         "createdAt": "2026-10-01T08:00:00.000Z",
         "replies": [{"authorKind": "person", "body": "Prüfe ich.", "createdByName": "Anna Berger"}],

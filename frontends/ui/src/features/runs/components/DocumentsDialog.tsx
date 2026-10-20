@@ -31,7 +31,7 @@ import { useTranslations } from '@/i18n'
 import { planDocumentLabel, type PlanDocument } from '@/lib/runs/plan-documents'
 import { cn } from '@/lib/utils'
 
-export type DocumentsRole = 'grundlage' | 'ausgeschlossen' | null
+export type DocumentsRole = 'basis' | 'excluded' | null
 
 /** A row the picker lists: a plan document, and whether it may be handed to a run at all. */
 export interface PickerDocument extends PlanDocument {
@@ -54,9 +54,9 @@ export type DocumentsDialogProps = CommonProps &
   (
     | {
         mode: 'pick'
-        grundlage: readonly string[]
-        ausgeschlossen: readonly string[]
-        onChange: (next: { grundlage: string[]; ausgeschlossen: string[] }) => void
+        basis: readonly string[]
+        excluded: readonly string[]
+        onChange: (next: { basis: string[]; excluded: string[] }) => void
       }
     | {
         mode: 'add'
@@ -86,19 +86,19 @@ export const DocumentsDialog: FC<DocumentsDialogProps> = (props) => {
   const roleOf = (doc: PlanDocument): DocumentsRole => {
     if (props.mode !== 'pick') return null
     const key = fold(doc.name)
-    if (props.grundlage.some((name) => fold(name) === key)) return 'grundlage'
-    if (props.ausgeschlossen.some((name) => fold(name) === key)) return 'ausgeschlossen'
+    if (props.basis.some((name) => fold(name) === key)) return 'basis'
+    if (props.excluded.some((name) => fold(name) === key)) return 'excluded'
     return null
   }
 
   const setRole = (doc: PlanDocument, role: DocumentsRole): void => {
     if (props.mode !== 'pick') return
     const key = fold(doc.name)
-    const basis = props.grundlage.filter((name) => fold(name) !== key)
-    const excluded = props.ausgeschlossen.filter((name) => fold(name) !== key)
-    if (role === 'grundlage') basis.push(doc.name)
-    if (role === 'ausgeschlossen') excluded.push(doc.name)
-    props.onChange({ grundlage: basis, ausgeschlossen: excluded })
+    const basis = props.basis.filter((name) => fold(name) !== key)
+    const excluded = props.excluded.filter((name) => fold(name) !== key)
+    if (role === 'basis') basis.push(doc.name)
+    if (role === 'excluded') excluded.push(doc.name)
+    props.onChange({ basis: basis, excluded: excluded })
   }
 
   const alreadyNamed = (doc: PlanDocument): boolean =>
@@ -168,28 +168,28 @@ export const DocumentsDialog: FC<DocumentsDialogProps> = (props) => {
                   <span className="flex shrink-0 gap-1" role="group" aria-label={planDocumentLabel(doc)}>
                     <button
                       type="button"
-                      aria-pressed={role === 'grundlage'}
+                      aria-pressed={role === 'basis'}
                       aria-label={t('documents.markRead', { name: planDocumentLabel(doc) })}
-                      onClick={() => setRole(doc, role === 'grundlage' ? null : 'grundlage')}
+                      onClick={() => setRole(doc, role === 'basis' ? null : 'basis')}
                       className={cn(
                         'focus-visible:ring-ring/60 rounded-md focus-visible:outline-none focus-visible:ring-2'
                       )}
                     >
-                      <Chip size="sm" variant={role === 'grundlage' ? 'default' : 'outline'}>
+                      <Chip size="sm" variant={role === 'basis' ? 'default' : 'outline'}>
                         <BookOpen className="size-3" aria-hidden />
                         {t('documents.read')}
                       </Chip>
                     </button>
                     <button
                       type="button"
-                      aria-pressed={role === 'ausgeschlossen'}
+                      aria-pressed={role === 'excluded'}
                       aria-label={t('documents.markExcluded', { name: planDocumentLabel(doc) })}
                       onClick={() =>
-                        setRole(doc, role === 'ausgeschlossen' ? null : 'ausgeschlossen')
+                        setRole(doc, role === 'excluded' ? null : 'excluded')
                       }
                       className="focus-visible:ring-ring/60 rounded-md focus-visible:outline-none focus-visible:ring-2"
                     >
-                      <Chip size="sm" variant={role === 'ausgeschlossen' ? 'destructive' : 'outline'}>
+                      <Chip size="sm" variant={role === 'excluded' ? 'destructive' : 'outline'}>
                         <Ban className="size-3" aria-hidden />
                         {t('documents.exclude')}
                       </Chip>

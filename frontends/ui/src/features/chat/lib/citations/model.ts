@@ -59,7 +59,7 @@ export interface CitationLocus {
   /** 1-based page, when retrieval carried one. */
   page?: number
   /** The Punkt within the document ("3.5.2"), when the chunker established one. */
-  punkt?: string
+  clause?: string
   /** How nearly this passage matched the query: the retrieval score, when carried. */
   score?: number
   /**
@@ -166,7 +166,7 @@ export interface CitedDocument {
   url?: string
   /** Coarse kind (ADR-0026) — the provenance/trust family. */
   kind: SourceKind
-  /** Fine lane stratum-key (`baurecht_oib`, `baurecht_ris`, …). */
+  /** Fine lane stratum-key (`building_law_oib`, `building_law_ris`, …). */
   lane?: string
   /** Human lane label ("OIB-Richtlinie") for the popover. */
   laneLabel?: string
@@ -177,9 +177,9 @@ export interface CitedDocument {
   /** Bindingness note from the norm registry, for the popover. */
   bindingNote?: string
   /**
-   * Coarse binding classification (`bindend` / `verbindlich_erklaert` /
-   * `auslegend`). Orthogonal to `authority`: that names the tier, this names
-   * whether it binds. Never `unbekannt` here — the unknown case is dropped to
+   * Coarse binding classification (`binding` / `declared_binding` /
+   * `interpretive`). Orthogonal to `authority`: that names the tier, this names
+   * whether it binds. Never `unknown` here — the unknown case is dropped to
    * undefined upstream so it renders as no badge.
    */
   bindingStatus?: string
@@ -524,11 +524,11 @@ export const resolveKind = (source: {
   const canonical = asSourceKind(source.kind)
   if (canonical) return canonical
   if (source.lane?.trim()) return kindForLane(source.lane)
-  if (source.origin === 'ris') return 'baurecht'
-  if (source.origin === 'kb') return 'baurecht'
-  if (source.url && /ris\.bka\.gv\.at/i.test(source.url)) return 'baurecht'
+  if (source.origin === 'ris') return 'building_law'
+  if (source.origin === 'kb') return 'building_law'
+  if (source.url && /ris\.bka\.gv\.at/i.test(source.url)) return 'building_law'
   if (isHttpUrl(source.url)) return 'web'
-  return 'baurecht'
+  return 'building_law'
 }
 
 /**
@@ -694,10 +694,10 @@ export const refKey = (ref: CitationRef): string =>
  * always precede unnumbered ones within their family.
  */
 const KIND_ORDER: Record<SourceKind, number> = {
-  baurecht: 0,
-  buero: 1,
-  projekt: 2,
-  messung: 3,
+  building_law: 0,
+  office: 1,
+  project: 2,
+  measurement: 3,
   web: 4,
 }
 
@@ -797,7 +797,7 @@ export class CitationAccumulator {
     // `oib:` is now only the label-only document. The name is what the inference
     // always actually meant.
     const laneFromIdentity = oibKeyFrom(observation.fileName || observation.identity.label)
-      ? 'baurecht_oib'
+      ? 'building_law_oib'
       : undefined
     const kind = resolveKind({
       kind: observation.kind,
@@ -891,7 +891,7 @@ export class CitationAccumulator {
       // `||` for the same reason as the document fields above.
       existing.snippet = existing.snippet || locus.snippet?.trim() || undefined
       existing.citationKey = existing.citationKey || locus.citationKey?.trim() || undefined
-      existing.punkt = existing.punkt || locus.punkt?.trim() || undefined
+      existing.clause = existing.clause || locus.clause?.trim() || undefined
       // A page's boxes fold together, as the backend registry folds them.
       existing.regions = mergePageRegions(existing.regions, locus.regions)
       // Several chunks of one page fold onto one locus; the page keeps the
@@ -907,7 +907,7 @@ export class CitationAccumulator {
     doc.loci.push({
       key,
       page,
-      punkt: locus.punkt?.trim() || undefined,
+      clause: locus.clause?.trim() || undefined,
       score,
       number: locus.number,
       isCited: !!locus.isCited,
@@ -1087,7 +1087,7 @@ const looksLikeFilename = (value: string): boolean => FILENAME_LIKE_RE.test(valu
 export const locusOf = (citation: CitationSource): CitationLocus => ({
   key: locusKey(citation.page, citation.citationKey),
   page: typeof citation.page === 'number' ? citation.page : undefined,
-  punkt: citation.punkt?.trim() || undefined,
+  clause: citation.clause?.trim() || undefined,
   score: typeof citation.score === 'number' ? citation.score : undefined,
   number: citation.number,
   isCited: !!citation.isCited,

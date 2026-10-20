@@ -84,8 +84,11 @@ type StoredIndex = {
  * read again when it is opened. There is no reader for an older shape.
  *
  * 2: the Herleitung is the wire v2 `StoredThinkingStep` (chat-wire-v2.md §e.4).
+ * 3: the closed vocabularies in a message are English (`met`, `building_law`,
+ *    `running`, `staging_area`, `clause` …; migrations 0163 and 0164), so a
+ *    cached conversation written before is read again from the server.
  */
-export const CHAT_MESSAGES_SHAPE = 2
+export const CHAT_MESSAGES_SHAPE = 3
 
 /** The key of the small record that names every conversation. */
 export const chatIndexKey = (name: string): string => `${name}:index`

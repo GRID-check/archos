@@ -141,13 +141,13 @@ describe('insertRemoteMessages', () => {
   test('takes the server’s run ledger when it is newer — the copy the spinner and „Recherche läuft" read', () => {
     const live = {
       runId: 'run-1',
-      status: 'laeuft' as const,
-      phases: [{ phase: 'recherchieren' as const, startedAt: at(1).toISOString() }],
+      status: 'running' as const,
+      phases: [{ phase: 'researching' as const, startedAt: at(1).toISOString() }],
       steps: [],
       startedAt: at(1).toISOString(),
       updatedAt: at(1).toISOString(),
     }
-    const ended = { ...live, status: 'fehlgeschlagen' as const, updatedAt: at(5).toISOString() }
+    const ended = { ...live, status: 'failed' as const, updatedAt: at(5).toISOString() }
     seed([message('run', { role: 'assistant', runLedger: live })])
 
     // An older server copy (a poll that raced a live flush) changes nothing.

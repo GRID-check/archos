@@ -38,7 +38,7 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   'status.retrieval.plain': 'thinking.turnStatus.',
   // The locator rounds: a passage the agent already identified is being READ,
   // not searched for. No `{corpus}` slot — the document names itself.
-  'status.retrieval.punkt': 'thinking.turnStatus.',
+  'status.retrieval.clause': 'thinking.turnStatus.',
   'status.retrieval.page': 'thinking.turnStatus.',
   'status.retrieval.requery': 'thinking.turnStatus.',
   'status.action.remember': 'thinking.turnStatus.',

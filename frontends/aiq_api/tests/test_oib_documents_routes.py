@@ -199,7 +199,7 @@ async def test_upload_explicit_doc_class_persists(app, ingestor, bucket, cache_d
         res = await client.post(
             "/v1/admin/oib/documents",
             files={"file": ("plan.pdf", _pdf_bytes(), "application/pdf")},
-            data={"doc_class": "oib_leitfaden"},
+            data={"doc_class": "oib_guide"},
         )
 
     assert res.status_code == 200
@@ -207,14 +207,14 @@ async def test_upload_explicit_doc_class_persists(app, ingestor, bucket, cache_d
     assert body["status"] == "pending"
     assert body["kind"] == "file"
     assert body["file_name"] == "plan.pdf"
-    assert body["doc_class"] == "oib_leitfaden"
+    assert body["doc_class"] == "oib_guide"
     # Stored in the shared corpus before the response: the object, the row, this replica's cache.
     assert bucket.objects == {"base-corpus/plan.pdf": _pdf_bytes()}
     assert corpus_store.get_file("plan.pdf") is not None
     assert (cache_dir / "plan.pdf").is_file()
     # One job on the ingest queue, carrying the admin's Dokumentart; nothing ingested here.
     assert ingestor.names == ["plan.pdf"]
-    assert ingestor.prepared[0].config["doc_class"] == "oib_leitfaden"
+    assert ingestor.prepared[0].config["doc_class"] == "oib_guide"
     assert ingest_queue.counts()["queued"] == 1
 
 
@@ -416,22 +416,22 @@ async def test_patch_doc_class_updates(app, store):
     async with _client(app) as client:
         res = await client.patch(
             "/v1/admin/oib/documents/plan.pdf/doc-class",
-            json={"doc_class": "gesetz"},
+            json={"doc_class": "law"},
         )
 
     assert res.status_code == 200
-    assert res.json() == {"file_name": "plan.pdf", "doc_class": "gesetz"}
-    assert store.get_doc_class(_COLLECTION, "plan.pdf") == "gesetz"
+    assert res.json() == {"file_name": "plan.pdf", "doc_class": "law"}
+    assert store.get_doc_class(_COLLECTION, "plan.pdf") == "law"
 
 
 @pytest.mark.asyncio
 async def test_a_person_setting_the_doc_class_clears_the_suggestion(app, store):
     """ADR-0064 use 8: once someone has decided, the page has nothing left to offer."""
     register_summary(_COLLECTION, "plan.pdf", "A plan.")
-    store.set_doc_class_suggestion(_COLLECTION, "plan.pdf", "gesetz")
+    store.set_doc_class_suggestion(_COLLECTION, "plan.pdf", "law")
 
     async with _client(app) as client:
-        res = await client.patch("/v1/admin/oib/documents/plan.pdf/doc-class", json={"doc_class": "sonstiges"})
+        res = await client.patch("/v1/admin/oib/documents/plan.pdf/doc-class", json={"doc_class": "other"})
 
     assert res.status_code == 200
     assert store.get_doc_class_suggestions_batch(_COLLECTION, ["plan.pdf"]) == {}
@@ -456,7 +456,7 @@ async def test_patch_missing_row_404(app):
     async with _client(app) as client:
         res = await client.patch(
             "/v1/admin/oib/documents/ghost.pdf/doc-class",
-            json={"doc_class": "gesetz"},
+            json={"doc_class": "law"},
         )
 
     assert res.status_code == 404

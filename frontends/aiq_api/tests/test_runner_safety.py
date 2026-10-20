@@ -1011,14 +1011,13 @@ class TestTheFindingsRideIntoMemory:
             "Bericht.",
             {
                 "items": [
-                    {"requirement": "Feuerwiderstand", "value": "REI 60", "status": "erfuellt", "comment": "x"},
-                    {"requirement": "Fluchtweg", "status": "offen", "comment": "Fluchtniveau unbekannt."},
+                    {"requirement": "Feuerwiderstand", "value": "REI 60", "status": "met", "comment": "x"},
+                    {"requirement": "Fluchtweg", "status": "open", "comment": "Fluchtniveau unbekannt."},
                 ]
             },
         )
         assert text == (
-            "Bericht.\n\n## Befunde\n- Feuerwiderstand — REI 60 — erfuellt\n"
-            "- Fluchtweg — offen (Fluchtniveau unbekannt.)"
+            "Bericht.\n\n## Befunde\n- Feuerwiderstand — REI 60 — met\n- Fluchtweg — open (Fluchtniveau unbekannt.)"
         )
 
     def test_a_row_without_a_status_states_none(self) -> None:

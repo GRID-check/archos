@@ -21,19 +21,19 @@ describe('buildProjectBriefView', () => {
   const profile: ProjectProfile = {
     facts: {
       project_name: fact('Wohnhaus Lerchenfelder'),
-      bundesland: fact('wien'),
-      vorhabensart: fact(['neubau']),
+      federal_state: fact('vienna'),
+      work_type: fact(['new_build']),
       // Scoped building facts + the structural building-name fact used to label them.
-      'bauwerk_name@bw1': fact('Haupthaus'),
-      'bauwerkstyp@bw1': fact('gebaeude'),
-      'geschosse_oberirdisch@bw1': fact(5),
+      'building_name@bldg1': fact('Haupthaus'),
+      'building_type@bldg1': fact('building'),
+      'storeys_above_ground@bldg1': fact(5),
       custom_agent_fact: fact('brandschutzkonzept liegt vor'),
     },
     goals: {},
-    unknowns: ['fluchtniveau_m@bw1', 'fluchtniveau_m@bw1', 'bundesland'],
+    unknowns: ['escape_level_m@bldg1', 'escape_level_m@bldg1', 'federal_state'],
     assumptions: {
-      flaechenwidmung: {
-        value: 'wohngebiet',
+      zoning: {
+        value: 'residential',
         status: 'unconfirmed',
         reason: 'Typical for the district per the uploaded plan.',
         source: 'agent_suggested',
@@ -47,9 +47,9 @@ describe('buildProjectBriefView', () => {
     expect(view.groups.map((g) => g.id)).toEqual(['A', 'C', 'other'])
     const a = view.groups.find((g) => g.id === 'A')!
     expect(a.facts).toEqual([
-      expect.objectContaining({ key: 'bundesland', label: 'Bundesland', value: 'Wien' }),
+      expect.objectContaining({ key: 'federal_state', label: 'Bundesland', value: 'Wien' }),
       expect.objectContaining({
-        key: 'vorhabensart',
+        key: 'work_type',
         label: 'Art des Vorhabens (Projekt gesamt)',
         value: 'Neubau',
       }),
@@ -57,9 +57,9 @@ describe('buildProjectBriefView', () => {
     const c = view.groups.find((g) => g.id === 'C')!
     // Scoped keys resolve to their base question label, suffixed with the building name.
     expect(c.facts).toEqual([
-      expect.objectContaining({ key: 'bauwerkstyp@bw1', label: 'Bauwerkstyp · Haupthaus' }),
+      expect.objectContaining({ key: 'building_type@bldg1', label: 'Bauwerkstyp · Haupthaus' }),
       expect.objectContaining({
-        key: 'geschosse_oberirdisch@bw1',
+        key: 'storeys_above_ground@bldg1',
         label: 'Anzahl oberirdischer Geschoße (Zielzustand) · Haupthaus',
         value: '5',
       }),
@@ -70,7 +70,7 @@ describe('buildProjectBriefView', () => {
     const view = buildProjectBriefView(profile)
     const allKeys = view.groups.flatMap((g) => g.facts.map((f) => f.key))
     expect(allKeys).not.toContain('project_name')
-    expect(allKeys).not.toContain('bauwerk_name@bw1')
+    expect(allKeys).not.toContain('building_name@bldg1')
     const other = view.groups.find((g) => g.id === 'other')!
     expect(other.facts).toEqual([
       expect.objectContaining({
@@ -82,9 +82,9 @@ describe('buildProjectBriefView', () => {
 
   it('dedupes unknowns, drops answered ones, resolves scoped labels', () => {
     const view = buildProjectBriefView(profile)
-    // `bundesland` is answered by a fact → dropped; the scoped escape-level unknown remains.
+    // `federal_state` is answered by a fact → dropped; the scoped escape-level unknown remains.
     expect(view.missing).toEqual([
-      { key: 'fluchtniveau_m@bw1', label: 'Fluchtniveau (Zielzustand)' },
+      { key: 'escape_level_m@bldg1', label: 'Fluchtniveau (Zielzustand)' },
     ])
   })
 
@@ -92,10 +92,10 @@ describe('buildProjectBriefView', () => {
     const view = buildProjectBriefView(profile)
     expect(view.assumptions).toEqual([
       expect.objectContaining({
-        key: 'flaechenwidmung',
+        key: 'zoning',
         label: 'Flächenwidmung (Kategorie)',
         value: 'Wohngebiet',
-        rawValue: 'wohngebiet',
+        rawValue: 'residential',
         reason: 'Typical for the district per the uploaded plan.',
       }),
     ])
@@ -103,7 +103,7 @@ describe('buildProjectBriefView', () => {
 
   it('counts completeness as answered vs answered+missing', () => {
     const view = buildProjectBriefView(profile)
-    // project_name + bauwerk_name@bw1 hidden → 5 visible facts.
+    // project_name + building_name@bldg1 hidden → 5 visible facts.
     expect(view.answeredCount).toBe(5)
     expect(view.totalCount).toBe(6) // + the one remaining scoped unknown
   })
@@ -118,7 +118,7 @@ describe('buildProjectBriefView', () => {
 describe('normalizeProfilePatchOperations', () => {
   it('wraps a bare fact value with user_confirmed provenance', () => {
     const [op] = normalizeProfilePatchOperations(
-      [{ op: 'add', path: '/facts/gebaeudeklasse', value: 'GK5' }],
+      [{ op: 'add', path: '/facts/building_class', value: 'GK5' }],
       NOW
     )
     expect(op.value).toEqual({
@@ -131,7 +131,7 @@ describe('normalizeProfilePatchOperations', () => {
 
   it('wraps a bare assumption value as unconfirmed agent_suggested', () => {
     const [op] = normalizeProfilePatchOperations(
-      [{ op: 'add', path: '/assumptions/widmung', value: 'bauland' }],
+      [{ op: 'add', path: '/assumptions/land_designation', value: 'bauland' }],
       NOW
     )
     expect(op.value).toEqual({
@@ -146,36 +146,36 @@ describe('normalizeProfilePatchOperations', () => {
   it('leaves complete objects, removes, deep paths and other sections untouched', () => {
     const ops = normalizeProfilePatchOperations(
       [
-        { op: 'add', path: '/facts/widmung', value: fact('bauland') },
-        { op: 'remove', path: '/assumptions/widmung' },
-        { op: 'replace', path: '/facts/widmung/value', value: 'freiland' },
-        { op: 'add', path: '/unknowns/-', value: 'fluchtniveau' },
+        { op: 'add', path: '/facts/land_designation', value: fact('bauland') },
+        { op: 'remove', path: '/assumptions/land_designation' },
+        { op: 'replace', path: '/facts/land_designation/value', value: 'freiland' },
+        { op: 'add', path: '/unknowns/-', value: 'escape_level' },
       ],
       NOW
     )
     expect(ops[0].value).toEqual(fact('bauland'))
-    expect(ops[1]).toEqual({ op: 'remove', path: '/assumptions/widmung' })
+    expect(ops[1]).toEqual({ op: 'remove', path: '/assumptions/land_designation' })
     expect(ops[2].value).toBe('freiland')
-    expect(ops[3].value).toBe('fluchtniveau')
+    expect(ops[3].value).toBe('escape_level')
   })
 })
 
 describe('pruneResolvedUnknowns', () => {
   it('drops unknowns answered by a fact and dedupes, preserving open ones', () => {
     const profile: ProjectProfile = {
-      facts: { gebaeudeklasse: fact('GK4') },
+      facts: { building_class: fact('GK4') },
       goals: {},
-      unknowns: ['gebaeudeklasse', 'fluchtniveau', 'fluchtniveau'],
+      unknowns: ['building_class', 'escape_level', 'escape_level'],
       assumptions: {},
     }
-    expect(pruneResolvedUnknowns(profile).unknowns).toEqual(['fluchtniveau'])
+    expect(pruneResolvedUnknowns(profile).unknowns).toEqual(['escape_level'])
   })
 
   it('returns the same object when nothing changes', () => {
     const profile: ProjectProfile = {
       facts: {},
       goals: {},
-      unknowns: ['fluchtniveau'],
+      unknowns: ['escape_level'],
       assumptions: {},
     }
     expect(pruneResolvedUnknowns(profile)).toBe(profile)
@@ -192,26 +192,26 @@ describe('pruneResolvedAssumptions', () => {
   })
 
   it('drops an assumption once a confirmed fact exists under the same key', () => {
-    // The migration-backfilled bundesland=wien default must vanish when the
+    // The migration-backfilled federal_state=vienna default must vanish when the
     // user answers the location question — never two jurisdictions at once.
     const profile: ProjectProfile = {
-      facts: { bundesland: fact('tirol') },
+      facts: { federal_state: fact('tyrol') },
       goals: {},
       unknowns: [],
-      assumptions: { bundesland: assumption('wien'), widmung: assumption('bauland') },
+      assumptions: { federal_state: assumption('vienna'), land_designation: assumption('bauland') },
     }
 
     const pruned = pruneResolvedAssumptions(profile)
 
-    expect(pruned.assumptions).toEqual({ widmung: assumption('bauland') })
+    expect(pruned.assumptions).toEqual({ land_designation: assumption('bauland') })
   })
 
   it('returns the same object when no assumption is superseded', () => {
     const profile: ProjectProfile = {
-      facts: { hauptnutzung: fact('wohnen') },
+      facts: { main_use: fact('residential') },
       goals: {},
       unknowns: [],
-      assumptions: { bundesland: assumption('wien') },
+      assumptions: { federal_state: assumption('vienna') },
     }
 
     expect(pruneResolvedAssumptions(profile)).toBe(profile)

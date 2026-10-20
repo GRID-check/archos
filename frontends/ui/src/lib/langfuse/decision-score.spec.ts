@@ -140,14 +140,14 @@ describe('recordDecisionScore — finding the turn', () => {
   })
 
   it('puts an intake suggestion’s decision on the reading’s own trace, without looking for a turn', async () => {
-    await decision({ subject: 'intake_suggestion', subjectId: 'intake-job-1-fluchtniveau_m@bw1', traceId: 'trace-reading' })
+    await decision({ subject: 'intake_suggestion', subjectId: 'intake-job-1-escape_level_m@bldg1', traceId: 'trace-reading' })
 
     expect(getAnswerTraceId).not.toHaveBeenCalled()
     expect(rows.select).not.toHaveBeenCalled()
     expect(api.create.mock.calls[0][0]).toMatchObject({
-      id: 'piloti-decision-intake_suggestion-intake-job-1-fluchtniveau_m@bw1',
+      id: 'piloti-decision-intake_suggestion-intake-job-1-escape_level_m@bldg1',
       traceId: 'trace-reading',
-      metadata: { subject: 'intake_suggestion', subject_id: 'intake-job-1-fluchtniveau_m@bw1' },
+      metadata: { subject: 'intake_suggestion', subject_id: 'intake-job-1-escape_level_m@bldg1' },
     })
   })
 

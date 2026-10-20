@@ -17,7 +17,7 @@
  *     consulted: a reading may find the Wohnungen before the Nutzungen that
  *     open their question, and the values of one batch do not depend on their
  *     order. A key with a confirmed fact is never refused here: the reading
- *     may corroborate or contradict it. The derived `gebaeudeklasse@bwN` is
+ *     may corroborate or contradict it. The derived `building_class@bldgN` is
  *     always refused, a confirmed one included: it is derived from its inputs
  *     and proposed, and a class taken from a document would skip the inputs a
  *     person checks (and is what an injected line asks for). Checked against

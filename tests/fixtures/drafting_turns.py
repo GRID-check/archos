@@ -78,7 +78,7 @@ class DraftingCase:
     card: str = UNFILED
 
 
-_FILE_NOTE = "/entwuerfe/aktenvermerk-ma37-fluchtweg.md"
+_FILE_NOTE = "/drafts/aktenvermerk-ma37-fluchtweg.md"
 
 _SEEDED_DRAFT = (
     "# Aktenvermerk – Besprechung MA 37\n\n"

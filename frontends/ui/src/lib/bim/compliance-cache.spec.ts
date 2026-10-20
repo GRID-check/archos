@@ -36,23 +36,23 @@ describe('the compliance cache', () => {
   beforeEach(() => clearComplianceCache())
 
   it('returns what was stored for the same model and facts', () => {
-    writeComplianceCache('m-1', 4, 'wohnen', value('a'))
+    writeComplianceCache('m-1', 4, 'residential', value('a'))
 
-    expect(readComplianceCache('m-1', 4, 'wohnen')?.complianceShoppingList[0].path).toBe('a')
+    expect(readComplianceCache('m-1', 4, 'residential')?.complianceShoppingList[0].path).toBe('a')
   })
 
   it('misses on a different Gebäudeklasse', () => {
     // GK4 wants R 60 where GK5 wants R 90. Serving one for the other would
     // report a wall as compliant against a threshold nobody applied.
-    writeComplianceCache('m-1', 4, 'wohnen', value('gk4'))
+    writeComplianceCache('m-1', 4, 'residential', value('gk4'))
 
-    expect(readComplianceCache('m-1', 5, 'wohnen')).toBeNull()
+    expect(readComplianceCache('m-1', 5, 'residential')).toBeNull()
   })
 
   it('misses on a different Hauptnutzung', () => {
-    writeComplianceCache('m-1', 4, 'wohnen', value('a'))
+    writeComplianceCache('m-1', 4, 'residential', value('a'))
 
-    expect(readComplianceCache('m-1', 4, 'buero')).toBeNull()
+    expect(readComplianceCache('m-1', 4, 'office')).toBeNull()
   })
 
   it('misses on a different revision', () => {

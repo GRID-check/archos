@@ -88,7 +88,7 @@ describe('ProjectStep', () => {
     await user.clear(description)
     await user.type(description, 'Zubau eines Stiegenhauses')
     await user.click(within(sheet).getByRole('button', { name: 'Save' }))
-    expect(onDecide).toHaveBeenCalledWith([{ key: 'kontext_beschreibung', action: 'answer', value: 'Zubau eines Stiegenhauses' }])
+    expect(onDecide).toHaveBeenCalledWith([{ key: 'context_description', action: 'answer', value: 'Zubau eines Stiegenhauses' }])
     await waitFor(() => expect(screen.queryByTestId('project-step-facts-form')).not.toBeInTheDocument())
   })
 

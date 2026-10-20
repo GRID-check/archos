@@ -27,17 +27,17 @@ describe('DocumentsDialog', () => {
           open
           onOpenChange={() => undefined}
           documents={documents}
-          grundlage={['einreichplan_v3.pdf']}
-          ausgeschlossen={['brandschutzkonzept.pdf']}
+          basis={['einreichplan_v3.pdf']}
+          excluded={['brandschutzkonzept.pdf']}
           onChange={() => undefined}
         />
       )
       expect(screen.getByTestId('documents-dialog')).toBeInTheDocument()
       expect(rows()).toHaveLength(3)
-      expect(rows()[0]).toHaveAttribute('data-role', 'grundlage')
+      expect(rows()[0]).toHaveAttribute('data-role', 'basis')
       expect(rows()[0]).toHaveTextContent('Einreichplan')
       // The role match folds case: the plan's edit and the inventory may spell the name apart.
-      expect(rows()[1]).toHaveAttribute('data-role', 'ausgeschlossen')
+      expect(rows()[1]).toHaveAttribute('data-role', 'excluded')
       expect(rows()[2]).not.toHaveAttribute('data-role')
     })
 
@@ -49,19 +49,19 @@ describe('DocumentsDialog', () => {
           open
           onOpenChange={() => undefined}
           documents={documents}
-          grundlage={['einreichplan_v3.pdf']}
-          ausgeschlossen={[]}
+          basis={['einreichplan_v3.pdf']}
+          excluded={[]}
           onChange={onChange}
         />
       )
       const first = rows()[0]
       fireEvent.click(within(first).getByRole('button', { name: /Exclude: Einreichplan/ }))
       expect(onChange).toHaveBeenLastCalledWith({
-        grundlage: [],
-        ausgeschlossen: ['einreichplan_v3.pdf'],
+        basis: [],
+        excluded: ['einreichplan_v3.pdf'],
       })
       fireEvent.click(within(first).getByRole('button', { name: /Read in full: Einreichplan/ }))
-      expect(onChange).toHaveBeenLastCalledWith({ grundlage: [], ausgeschlossen: [] })
+      expect(onChange).toHaveBeenLastCalledWith({ basis: [], excluded: [] })
     })
 
     it('filters by title and by file name', () => {
@@ -71,8 +71,8 @@ describe('DocumentsDialog', () => {
           open
           onOpenChange={() => undefined}
           documents={documents}
-          grundlage={[]}
-          ausgeschlossen={[]}
+          basis={[]}
+          excluded={[]}
           onChange={() => undefined}
         />
       )

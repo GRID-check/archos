@@ -15,16 +15,16 @@ import {
 import { geocodeResultSchema } from './types'
 
 describe('parsePhotonResponse', () => {
-  it('reads a Vienna POI and street: no state, the city is the Gemeinde, bundesland wien', () => {
+  it('reads a Vienna POI and street: no state, the city is the Gemeinde, federal state vienna', () => {
     const [poi, street] = parsePhotonResponse(PHOTON_MARIAHILFER)
     expect(poi).toEqual({
       label: 'Museumsquartier, 1070 Wien',
       lat: 48.2027122,
       lon: 16.3612175,
       country: 'at',
-      bundesland: 'wien',
+      federalState: 'vienna',
       state: 'Wien',
-      gemeinde: 'Wien',
+      municipality: 'Wien',
       postcode: '1070',
       kind: 'place',
     })
@@ -32,7 +32,7 @@ describe('parsePhotonResponse', () => {
       label: 'Mariahilfer Straße, 1060 Wien',
       lat: 48.1961665,
       lon: 16.3412897,
-      bundesland: 'wien',
+      federalState: 'vienna',
       kind: 'street',
     })
   })
@@ -44,9 +44,9 @@ describe('parsePhotonResponse', () => {
         lat: 48.0855922,
         lon: 16.2833526,
         country: 'at',
-        bundesland: 'niederoesterreich',
+        federalState: 'lower_austria',
         state: 'Niederösterreich',
-        gemeinde: 'Mödling',
+        municipality: 'Mödling',
         postcode: '2340',
         kind: 'place',
       },
@@ -57,9 +57,9 @@ describe('parsePhotonResponse', () => {
     const [first, second] = parsePhotonResponse(PHOTON_HAUPTSTRASSE)
     expect(first).toMatchObject({
       label: 'Hauptstraße 1, 6401 Inzing',
-      bundesland: 'tirol',
+      federalState: 'tyrol',
       state: 'Tirol',
-      gemeinde: 'Inzing',
+      municipality: 'Inzing',
       kind: 'address',
     })
     expect(second?.label).toBe('Hauptstraße 1d, 6074 Rinn')
@@ -83,9 +83,9 @@ describe('parsePhotonResponse', () => {
 
   it('matches every Land label to its token, case and diacritics aside', () => {
     const labels = [
-      ['Wien', 'wien'], ['niederösterreich', 'niederoesterreich'], ['OBERÖSTERREICH', 'oberoesterreich'],
-      ['Steiermark', 'steiermark'], ['Kärnten', 'kaernten'], ['Karnten', 'kaernten'], ['Salzburg', 'salzburg'],
-      ['Tirol', 'tirol'], ['Vorarlberg', 'vorarlberg'], ['Burgenland', 'burgenland'],
+      ['Wien', 'vienna'], ['niederösterreich', 'lower_austria'], ['OBERÖSTERREICH', 'upper_austria'],
+      ['Steiermark', 'styria'], ['Kärnten', 'carinthia'], ['Karnten', 'carinthia'], ['Salzburg', 'salzburg'],
+      ['Tirol', 'tyrol'], ['Vorarlberg', 'vorarlberg'], ['Burgenland', 'burgenland'],
     ] as const
     for (const [state, token] of labels) {
       const [result] = parsePhotonResponse({
@@ -96,14 +96,14 @@ describe('parsePhotonResponse', () => {
           },
         ],
       })
-      expect(result?.bundesland, state).toBe(token)
+      expect(result?.federalState, state).toBe(token)
     }
     expect(new Set(labels.map(([, token]) => token))).toEqual(
-      new Set(FEDERAL_STATE_TOKENS.filter((token) => token !== 'ausserhalb_oesterreichs')),
+      new Set(FEDERAL_STATE_TOKENS.filter((token) => token !== 'outside_austria')),
     )
   })
 
-  it('leaves bundesland null for a state it does not know, and keeps the raw label', () => {
+  it('leaves federalState null for a state it does not know, and keeps the raw label', () => {
     const [result] = parsePhotonResponse({
       features: [
         {
@@ -112,7 +112,7 @@ describe('parsePhotonResponse', () => {
         },
       ],
     })
-    expect(result).toMatchObject({ bundesland: null, state: 'Südtirol' })
+    expect(result).toMatchObject({ federalState: null, state: 'Südtirol' })
   })
 
   it('returns schema-valid results', () => {

@@ -150,9 +150,9 @@ function LiveRootBrief(): JSX.Element {
 
 /** What the intake answers would expect of this project — `loadMissingDocuments`' shape. */
 const MISSING: readonly MissingDocument[] = [
-  { role: 'grundbuchauszug', label: 'Grundbuchauszug', buildingName: null },
-  { role: 'gutachten_baugrund', label: 'Baugrundgutachten', buildingName: null },
-  { role: 'bestandsplan', label: 'Bestandspläne', buildingName: 'Hoftrakt' },
+  { role: 'land_register_extract', label: 'Grundbuchauszug', buildingName: null },
+  { role: 'expert_report_ground', label: 'Baugrundgutachten', buildingName: null },
+  { role: 'existing_plans', label: 'Bestandspläne', buildingName: 'Hoftrakt' },
 ]
 
 function Section({ id, title, children }: { id: SectionId; title: string; children: ReactNode }): JSX.Element {

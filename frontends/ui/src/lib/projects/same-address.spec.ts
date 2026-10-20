@@ -27,9 +27,9 @@ const hit = (lat: number, lon: number): GeocodeResult => ({
   lat,
   lon,
   country: 'at',
-  bundesland: 'wien',
+  federalState: 'vienna',
   state: 'Wien',
-  gemeinde: 'Wien',
+  municipality: 'Wien',
   postcode: null,
   kind: 'address',
 })

@@ -24,7 +24,7 @@ import { IfcCompliancePanel } from '@/features/bim/components/ifc-compliance-pan
 import type { BimRuleResultWithConfirmation } from '@/lib/bim/rules'
 
 const RULE: BimRuleResultWithConfirmation = {
-  ruleId: 'oib2-feuerwiderstand-tragend',
+  ruleId: 'oib2-fire-resistance-load-bearing',
   confirmation: null,
   confirmationStale: false,
   richtlinie: 'OIB 2',

@@ -51,8 +51,8 @@ const locus = (page: number, number: number, snippet: string): CitationSource =>
   collection: 'oib_knowledge',
   title: 'OIB-Richtlinie 2, Ausgabe Mai 2023',
   origin: 'kb',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   laneLabel: 'OIB-Richtlinie',
   sourceType: 'knowledge_layer',
   page,
@@ -84,15 +84,15 @@ const updated = '2026-09-20T08:00:00Z'
 /** The project every answer on this page binds: confirmed, assumed and missing facts. */
 const PROFILE: ProjectProfile = {
   facts: {
-    bundesland: { value: 'wien', confidence: 'confirmed', source: 'onboarding', updatedAt: updated },
+    federal_state: { value: 'vienna', confidence: 'confirmed', source: 'onboarding', updatedAt: updated },
     gebaeudeklasse: { value: 'GK4', confidence: 'confirmed', source: 'user_confirmed', updatedAt: updated },
-    fluchtniveau_m: { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: updated },
+    escape_level_m: { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: updated },
   },
   goals: {},
-  unknowns: ['bgf_oberirdisch'],
+  unknowns: ['gfa_above_ground'],
   assumptions: {
-    nutzungen: { value: ['wohnen'], status: 'unconfirmed', reason: 'aus dem Projektnamen', source: 'agent_suggested', updatedAt: updated },
-    geschosse_oberirdisch: {
+    uses: { value: ['residential'], status: 'unconfirmed', reason: 'aus dem Projektnamen', source: 'agent_suggested', updatedAt: updated },
+    storeys_above_ground: {
       value: 5,
       status: 'unconfirmed',
       reason: 'aus den Schnitten geschätzt',
@@ -140,7 +140,7 @@ const STAMPS: QuoteStamp[] = [
     title: 'OIB-Richtlinie 2, Ausgabe Mai 2023',
     fileName: OIB,
     page: 4,
-    punkt: '3.1.1',
+    clause: '3.1.1',
   },
   { text: 'Brandabschnitte sind stets durch Brandwände zu trennen.', status: 'not_found', number: 2 },
 ]

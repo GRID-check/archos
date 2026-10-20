@@ -874,7 +874,7 @@ describe('InputArea', () => {
     mockConversationMessages = [
       {
         messageType: 'agent_response',
-        runLedger: setRunStatus(emptyRunLedger('run-1'), 'laeuft'),
+        runLedger: setRunStatus(emptyRunLedger('run-1'), 'running'),
       },
     ]
 
@@ -889,7 +889,7 @@ describe('InputArea', () => {
     mockConversationMessages = [
       {
         messageType: 'agent_response',
-        runLedger: setRunStatus(emptyRunLedger('run-1'), 'fertig'),
+        runLedger: setRunStatus(emptyRunLedger('run-1'), 'done'),
       },
     ]
 
@@ -906,7 +906,7 @@ describe('InputArea', () => {
     mockConversationMessages = [
       {
         messageType: 'agent_response',
-        runLedger: setRunStatus(emptyRunLedger('run-1'), 'laeuft'),
+        runLedger: setRunStatus(emptyRunLedger('run-1'), 'running'),
       },
     ]
     vi.mocked(useWebSocketChat).mockReturnValue({

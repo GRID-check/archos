@@ -71,14 +71,14 @@ const REVIEW_GROUPS = withItems(INTAKE_READY.groups, (item) =>
 export const PROFILE_REVIEW: IntakeView = {
   ...INTAKE_READY,
   groups: REVIEW_GROUPS,
-  applicableStandards: standardsFor({ standort_adresse: 'Lacknergasse 12, 1170 Wien', projektphase: 'einreichplanung' }),
+  applicableStandards: standardsFor({ site_address: 'Lacknergasse 12, 1170 Wien', project_phase: 'submission_planning' }),
 }
 
 const DECIDED = new Set([SUGGESTION_STOREYS.key, SUGGESTION_ESCAPE_LEVEL.key, SUGGESTION_UNITS.key])
 
 const CLASS_CONFIRMED: DerivationReview = {
   ...DERIVATION_READY,
-  inputs: DERIVATION_READY.inputs.map((input) => ({ ...input, suggested: input.key.startsWith('bauwerkstyp') })),
+  inputs: DERIVATION_READY.inputs.map((input) => ({ ...input, suggested: input.key.startsWith('building_type') })),
   suggestion: confirm(SUGGESTION_CLASS),
 }
 
@@ -91,10 +91,10 @@ export const PROFILE_CONFIRMED: IntakeView = {
   groups: withItems(REVIEW_GROUPS, (item) => (DECIDED.has(item.key) ? confirm(item) : item)),
   derivations: [CLASS_CONFIRMED],
   applicableStandards: standardsFor({
-    'geschosse_oberirdisch@bw1': 6,
-    'fluchtniveau_m@bw1': 18.4,
-    'nutzungseinheiten@bw1': 14,
-    'gebaeudeklasse@bw1': 5,
+    'storeys_above_ground@bldg1': 6,
+    'escape_level_m@bldg1': 18.4,
+    'use_units@bldg1': 14,
+    'building_class@bldg1': 5,
   }),
 }
 
@@ -123,7 +123,7 @@ export const PROFILE_HIGH_RISE: IntakeView = {
     },
     DERIVATION_OPEN,
   ],
-  applicableStandards: standardsFor({ 'fluchtniveau_m@bw1': 24.6 }),
+  applicableStandards: standardsFor({ 'escape_level_m@bldg1': 24.6 }),
 }
 
 /** Someone who may look at the Steckbrief but not decide on it. */

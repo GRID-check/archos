@@ -325,11 +325,11 @@ export const bim = {
     empty: 'No project data can be derived from this model.',
     failed: 'The project data could not be derived.',
     key: {
-      geschosse_oberirdisch: 'Storeys above ground',
-      geschosse_unterirdisch: 'Storeys below ground',
-      fluchtniveau: 'Escape level',
-      hauptnutzung: 'Main use',
-      anzahl_einheiten: 'Units',
+      storeys_above_ground: 'Storeys above ground',
+      storeys_below_ground: 'Storeys below ground',
+      escape_level: 'Escape level',
+      main_use: 'Main use',
+      unit_count: 'Units',
     },
     confidence: {
       high: 'High confidence',

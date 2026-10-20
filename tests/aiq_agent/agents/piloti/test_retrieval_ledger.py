@@ -329,7 +329,7 @@ def test_charge_threads_two_rounds_with_their_facts():
     )
     assert retrieval_round == 2
     assert second is not None
-    assert second["key"] == "status.retrieval.punkt"
+    assert second["key"] == "status.retrieval.clause"
     assert second["reason"] == "Die Richtlinie gilt grundsätzlich."
 
 
@@ -382,14 +382,14 @@ def test_builder_output_matches_the_wire_fixture():
             ["read_passage"],
             ["knowledge"],
             reason="Die Grundregel steht.",
-            key="status.retrieval.punkt",
+            key="status.retrieval.clause",
         ),
         _announcement(
             2,
             ["read_passage"],
             ["knowledge"],
             reason="Die Fluchtweglänge hängt an drei Punkten.",
-            key="status.retrieval.punkt",
+            key="status.retrieval.clause",
         ),
     ]
     hits = [

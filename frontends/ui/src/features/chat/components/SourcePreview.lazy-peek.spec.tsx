@@ -89,7 +89,7 @@ const projectDocument = {
   citationKey: 'Brandschutzkonzept.pdf, p.3',
   fileName: 'Brandschutzkonzept.pdf',
   collection: 'proj_1',
-  kind: 'projekt',
+  kind: 'project',
   page: 3,
   number: 1,
   isCited: true,

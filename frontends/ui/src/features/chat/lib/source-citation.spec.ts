@@ -26,8 +26,8 @@ const oib = refFor({
   fileName: 'oib-rl_2_ausgabe_mai_2023.pdf',
   citationKey: 'oib-rl_2_ausgabe_mai_2023.pdf, p.18',
   collection: 'oib_knowledge',
-  kind: 'baurecht',
-  lane: 'baurecht_oib',
+  kind: 'building_law',
+  lane: 'building_law_oib',
   origin: 'kb',
   page: 18,
   number: 1,
@@ -39,8 +39,8 @@ const law = refFor({
   content: '',
   timestamp: NOW,
   title: 'Bauordnung für Wien § 108',
-  kind: 'baurecht',
-  lane: 'baurecht_ris',
+  kind: 'building_law',
+  lane: 'building_law_ris',
   laneLabel: 'Rechtsquelle (RIS)',
   origin: 'ris',
   url: 'https://www.ris.bka.gv.at/x',
@@ -56,8 +56,8 @@ const projectDoc = refFor({
   fileName: 'Grundriss_EG.pdf',
   citationKey: 'Grundriss_EG.pdf, p.2',
   collection: 'proj_abc',
-  kind: 'projekt',
-  lane: 'projekt',
+  kind: 'project',
+  lane: 'project',
   origin: 'kb',
   page: 2,
   number: 3,
@@ -103,8 +103,8 @@ describe('toCslItem', () => {
         content: '',
         timestamp: NOW,
         title: 'OIB-Richtlinie 2 – Brandschutz',
-        kind: 'baurecht',
-        lane: 'baurecht_oib',
+        kind: 'building_law',
+        lane: 'building_law_oib',
         origin: 'kb',
         isCited: true,
       }),
@@ -146,8 +146,8 @@ describe('toQuoteList', () => {
       fileName: 'oib-rl_2_ausgabe_mai_2023.pdf',
       citationKey: 'oib-rl_2_ausgabe_mai_2023.pdf, p.18',
       collection: 'oib_knowledge',
-      kind: 'baurecht',
-      lane: 'baurecht_oib',
+      kind: 'building_law',
+      lane: 'building_law_oib',
       origin: 'kb',
       page: 18,
       number: 1,
@@ -237,7 +237,7 @@ describe('CSL ids are unique per reference', () => {
       fileName: 'Plan.pdf',
       collection: 'proj_1',
       timestamp: NOW,
-      kind: 'projekt',
+      kind: 'project',
       page: n,
       isCited: true,
     })
@@ -263,7 +263,7 @@ describe('CSL ids are unique per reference', () => {
       fileName: 'Plan.pdf',
       collection: 'archiv_1',
       timestamp: NOW,
-      kind: 'buero',
+      kind: 'office',
       isCited: true,
     })
     const [document] = buildCitationModel({
@@ -288,7 +288,7 @@ describe('CSL ids are unique per reference', () => {
           fileName: 'Plan.pdf',
           collection: 'archiv_1',
           timestamp: NOW,
-          kind: 'buero',
+          kind: 'office',
           isCited: true,
         },
       ],
@@ -316,11 +316,11 @@ describe('a clause is carried through to the citation', () => {
     fileName: 'oib-rl_2_ausgabe_mai_2023.pdf',
     citationKey: 'oib-rl_2_ausgabe_mai_2023.pdf, p.12',
     collection: 'oib_knowledge',
-    kind: 'baurecht',
-    lane: 'baurecht_oib',
+    kind: 'building_law',
+    lane: 'building_law_oib',
     origin: 'kb',
     page: 12,
-    punkt: '3.5.2',
+    clause: '3.5.2',
     number: 1,
     isCited: true,
   })
@@ -343,7 +343,7 @@ describe('a clause is carried through to the citation', () => {
     // A project document's section is addressed by what it is called („§ 4",
     // „Zeilen 2-41"); prefixing those with „Pkt." names nothing.
     for (const clause of ['§ 4', 'Zeilen 2-41', 'Geschoße', 'Tabelle 3']) {
-      const text = toTechnicalText({ ...withClause, locus: { ...withClause.locus!, punkt: clause } }, NOW)
+      const text = toTechnicalText({ ...withClause, locus: { ...withClause.locus!, clause } }, NOW)
       expect(text).toContain(`, ${clause}, `)
       expect(text).not.toContain('Pkt.')
     }

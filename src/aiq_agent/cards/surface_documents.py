@@ -33,7 +33,7 @@ MAX_SURFACED_FILES = 3
 #: A surfaced document's source kind → the shelf token a lane hit carries
 #: (``common.source_kinds.Shelf``), so the Herleitung files it beside the
 #: passages the knowledge layer records from the same shelves.
-_SHELF_OF_SOURCE: dict[str, str] = {"projekt": "project", "buero": "archiv"}
+_SHELF_OF_SOURCE: dict[str, str] = {"project": "project", "office": "archiv"}
 
 # ---------------------------------------------------------------------------
 # The three constants below were calibrated against `Chunk.score` when it was
@@ -83,27 +83,27 @@ _QUERY_KIND_HINTS: tuple[tuple[str, tuple[str, ...]], ...] = (
 SurfaceMode = Literal["one", "many"]
 
 
-def _source_for_collection(collection: str) -> Literal["projekt", "buero"] | None:
+def _source_for_collection(collection: str) -> Literal["project", "office"] | None:
     """LEGACY: guess a card label from a collection-id prefix.
 
     Live retrieval must not call this when a signed shelf map is present
     (ADR-0047). Kept for names-only / pre-shelf callers.
     """
     if collection.startswith("proj_"):
-        return "projekt"
+        return "project"
     if collection.startswith("archiv_"):
-        return "buero"
+        return "office"
     return None
 
 
 def _source_for_target(
     collection: str,
     source_by_collection: dict[str, str],
-) -> Literal["projekt", "buero"] | None:
+) -> Literal["project", "office"] | None:
     """Label a retrieve target. A signed map is exclusive — no prefix guess."""
     if source_by_collection:
         raw = source_by_collection.get(collection)
-        return raw if raw in ("projekt", "buero") else None
+        return raw if raw in ("project", "office") else None
     return _source_for_collection(collection)
 
 
@@ -153,9 +153,9 @@ def _target_collections(
         source = _source_for_collection(collection)
         if source is None or is_restricted_collection(collection):
             continue
-        if wanted is Shelf.OFFICE_SHELF and source != "buero":
+        if wanted is Shelf.OFFICE_SHELF and source != "office":
             continue
-        if wanted is Shelf.PROJECT and source != "projekt":
+        if wanted is Shelf.PROJECT and source != "project":
             continue
         if collection not in seen:
             seen.add(collection)
@@ -480,7 +480,7 @@ async def _surface_named(
 ) -> list[dict]:
     """Open one known file. Search only to fetch a matching passage."""
     info = meta.get(file_name) or {}
-    source = "projekt"
+    source = "project"
     hits = await _retrieve_all(targets, retrieve_query, chunk_top_k)
     for chunk, src in hits:
         if getattr(chunk, "file_name", None) == file_name:
@@ -539,9 +539,9 @@ async def _retrieve_all(
 
         for entry in get_scoped_collections_from_context() or []:
             if entry.shelf is Shelf.OFFICE_SHELF:
-                source_by_collection[entry.collection] = "buero"
+                source_by_collection[entry.collection] = "office"
             elif entry.shelf is Shelf.PROJECT:
-                source_by_collection[entry.collection] = "projekt"
+                source_by_collection[entry.collection] = "project"
     except Exception:
         logger.debug("surface_documents: no scoped shelves for retrieve", exc_info=True)
 
@@ -588,7 +588,7 @@ async def _fetch_document_metadata(collections: list[str]) -> dict[str, dict]:
     return out
 
 
-_SOURCE_LABEL = {"projekt": "Projekt", "buero": "Büroablage"}
+_SOURCE_LABEL = {"project": "Projekt", "office": "Büroablage"}
 _BRIEF_SNIPPET_MAX = 120
 _BRIEF_SUMMARY_MAX = 160
 

@@ -295,23 +295,23 @@ describe('every token this build accepts has words in BOTH locales', () => {
 describe('an unread basis is named as such, not as a generic check', () => {
   test('its line says a named document went unread, in both locales', () => {
     for (const dictionary of [de, en]) {
-      const line = dictionary.chat.answerSources.degradedReason.grundlage_unread
-      const limit = dictionary.chat.thinking.node.limits.degraded.grundlageUnread
+      const line = dictionary.chat.answerSources.degradedReason.basis_unread
+      const limit = dictionary.chat.thinking.node.limits.degraded.basisUnread
       for (const text of [line, limit]) {
         expect(text).not.toBe(dictionary.chat.answerSources.degradedReason.no_valid_citations)
       }
     }
-    expect(de.chat.answerSources.degradedReason.grundlage_unread).toMatch(/Grundlage/)
-    expect(de.chat.thinking.node.limits.degraded.grundlageUnread).toMatch(/Grundlage/)
-    expect(en.chat.answerSources.degradedReason.grundlage_unread).toMatch(/basis/)
+    expect(de.chat.answerSources.degradedReason.basis_unread).toMatch(/Grundlage/)
+    expect(de.chat.thinking.node.limits.degraded.basisUnread).toMatch(/Grundlage/)
+    expect(en.chat.answerSources.degradedReason.basis_unread).toMatch(/basis/)
   })
 
   test('it reaches the reader as its own line under the answer', async () => {
-    render(<AgentResponse content={CITED} degradedReasons={['grundlage_unread']} />)
+    render(<AgentResponse content={CITED} degradedReasons={['basis_unread']} />)
     await openAnswerDetails()
 
     expect(
-      screen.getByText(en.chat.answerSources.degradedReason.grundlage_unread)
+      screen.getByText(en.chat.answerSources.degradedReason.basis_unread)
     ).toHaveAttribute('role', 'note')
   })
 })

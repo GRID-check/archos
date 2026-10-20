@@ -71,7 +71,7 @@ export const INBOX_ITEM_TYPES = [
   'job.failed',
   /**
    * Actionable: a run the reader asked for has stopped to ask them something
-   * (the ledger's `wartet`, ADR-0062). Resolved by the run moving on — the
+   * (the ledger's `waiting`, ADR-0062). Resolved by the run moving on — the
    * answer lands in the thread, and the ledger's next status settles the row.
    */
   'job.waiting',
@@ -133,7 +133,7 @@ export const INBOX_ITEM_TYPES = [
    * change, and only to those who may see the newer document. The row points at
    * the NEWER document, so the read-time access check is the one that matters.
    */
-  'document.new_fassung',
+  'document.new_revision',
   /**
    * Informational, operational tier: a turn Piloti ran on an Anmerkung ended
    * for the person whose act woke it (ADR-0106): the mark they delegated is

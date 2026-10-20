@@ -25,8 +25,8 @@ from aiq_agent.knowledge.permit_extraction import is_permit_decision
 from aiq_agent.knowledge.permit_extraction import pages_with_markers
 
 # docs/design/permitting-memory.md, "Contract": the kinds the tables' CHECK constraints allow.
-CONTRACT_RECORD_KINDS = ["bewilligung", "nachforderung", "ablehnung", "sonstiges"]
-CONTRACT_REQUIREMENT_KINDS = ["auflage", "nachforderung", "hinweis"]
+CONTRACT_RECORD_KINDS = ["approval", "information_request", "refusal", "other"]
+CONTRACT_REQUIREMENT_KINDS = ["condition", "information_request", "note"]
 
 FIXTURE = Path(__file__).resolve().parents[3] / "frontends/ui/tests/fixtures/precedent/office.json"
 
@@ -64,15 +64,15 @@ class FakeLLM:
 
 def _record(**overrides: Any) -> dict[str, Any]:
     record = {
-        "kind": "nachforderung",
+        "kind": "information_request",
         "authority": "Stadtgemeinde Mödling",
         "municipality": "Mödling",
-        "bundesland": "niederoesterreich",
+        "federal_state": "lower_austria",
         "issued_on": "2019-06-18",
         "reference": None,
         "requirements": [
             {
-                "kind": "nachforderung",
+                "kind": "information_request",
                 "content": "Nachweis der lichten Breite der Fluchtwege von mindestens 1,20 m.",
                 "evidence": "Bemaßte Grundrisse aller Geschoße",
                 "legal_basis": "§ 13 Abs. 3 AVG",
@@ -89,10 +89,10 @@ def test_a_structured_reply_becomes_a_validated_record():
     record = extract_permit_record(_fixture_text("doc-moedling-nachforderung"), llm, file_name="m.pdf")
 
     assert record is not None
-    assert (record.kind, record.authority, record.bundesland, record.issued_on) == (
-        "nachforderung",
+    assert (record.kind, record.authority, record.federal_state, record.issued_on) == (
+        "information_request",
         "Stadtgemeinde Mödling",
-        "niederoesterreich",
+        "lower_austria",
         "2019-06-18",
     )
     assert record.requirements[0].legal_basis == "§ 13 Abs. 3 AVG"
@@ -132,7 +132,7 @@ def test_every_field_is_required_for_strict_mode():
         "this is not json",
         "[1, 2]",
         {"record": {"kind": "genehmigung", "authority": "MA 37", "requirements": []}},
-        {"record": {**_record()["record"], "bundesland": "bayern"}},
+        {"record": {**_record()["record"], "federal_state": "bayern"}},
         {"record": {**_record()["record"], "unexpected": 1}},
         {"unrelated": True},
     ],
@@ -183,7 +183,7 @@ def test_a_notice_without_its_issuer_is_still_a_record():
     assert record is not None
     assert record.authority is None
     assert record.to_wire()["authority"] is None
-    assert record.requirements[0].kind == "nachforderung"
+    assert record.requirements[0].kind == "information_request"
 
 
 def test_the_prompt_carries_the_page_markers_and_the_file_name():
@@ -213,7 +213,7 @@ def test_the_system_prompt_names_the_fields_and_the_way_out():
     extract_permit_record("Text", llm, file_name="m.pdf")
 
     system = llm.messages[0].content
-    for field in ("kind", "authority", "municipality", "bundesland", "issued_on", "reference", "requirements"):
+    for field in ("kind", "authority", "municipality", "federal_state", "issued_on", "reference", "requirements"):
         assert field in system
     assert "null record" in system
 
@@ -269,7 +269,7 @@ def test_extract_and_store_hands_the_record_to_the_client(monkeypatch):
     assert landed is True
     org, doc, collection, file_name, model, record = stored[0]
     assert (org, doc, collection, file_name, model) == ("org_1", "d1", "proj_1", "m.pdf", "fake/model")
-    assert record.kind == "nachforderung"
+    assert record.kind == "information_request"
 
 
 def test_nothing_extracted_leaves_the_stored_record_alone(monkeypatch):
@@ -289,3 +289,22 @@ def test_nothing_extracted_leaves_the_stored_record_alone(monkeypatch):
 
     assert landed is False
     assert stored == []
+
+
+def test_a_legacy_kind_maps_to_the_current_one_and_a_current_one_stays():
+    from aiq_agent.knowledge.permit_extraction import canonical_record_kind
+    from aiq_agent.knowledge.permit_extraction import canonical_requirement_kind
+
+    assert [canonical_record_kind(kind) for kind in ("bewilligung", "nachforderung", "ablehnung", "other")] == [
+        "approval",
+        "information_request",
+        "refusal",
+        "other",
+    ]
+    assert [canonical_requirement_kind(kind) for kind in ("auflage", "nachforderung", "hinweis")] == [
+        "condition",
+        "information_request",
+        "note",
+    ]
+    assert canonical_record_kind("approval") == "approval"
+    assert canonical_requirement_kind("note") == "note"

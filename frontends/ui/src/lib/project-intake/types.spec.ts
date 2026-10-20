@@ -18,12 +18,12 @@ describe('project intake contract', () => {
 
   it('holds each decision to the fields its action uses', () => {
     const parse = (decisions: unknown[]) => intakeDecisionsRequestSchema.safeParse({ decisions }).success
-    expect(parse([{ key: 'bundesland', action: 'confirm' }])).toBe(true)
-    expect(parse([{ key: 'bundesland', action: 'confirm', alternativeIndex: 1 }])).toBe(true)
-    expect(parse([{ key: 'bundesland', action: 'answer', value: 'wien' }])).toBe(true)
-    expect(parse([{ key: 'bundesland', action: 'answer' }])).toBe(false)
-    expect(parse([{ key: 'bundesland', action: 'unknown', value: 'wien' }])).toBe(false)
-    expect(parse([{ key: 'bundesland', action: 'confirm', alternativeIndex: 5 }])).toBe(false)
+    expect(parse([{ key: 'federal_state', action: 'confirm' }])).toBe(true)
+    expect(parse([{ key: 'federal_state', action: 'confirm', alternativeIndex: 1 }])).toBe(true)
+    expect(parse([{ key: 'federal_state', action: 'answer', value: 'vienna' }])).toBe(true)
+    expect(parse([{ key: 'federal_state', action: 'answer' }])).toBe(false)
+    expect(parse([{ key: 'federal_state', action: 'unknown', value: 'vienna' }])).toBe(false)
+    expect(parse([{ key: 'federal_state', action: 'confirm', alternativeIndex: 5 }])).toBe(false)
     expect(parse([])).toBe(false)
     expect(parse(Array.from({ length: MAX_INTAKE_DECISIONS + 1 }, () => ({ key: 'k', action: 'unknown' })))).toBe(false)
   })

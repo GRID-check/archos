@@ -863,7 +863,7 @@ export function useDocumentReview(
       const walk = [
         ...shown.filter((annotation) => annotation.status === 'proposed'),
         ...shown.filter((annotation) => annotation.status !== 'proposed'),
-      ].filter((annotation) => annotation.onCurrentFassung || isGhostMark(annotation, documentId))
+      ].filter((annotation) => annotation.onCurrentRevision || isGhostMark(annotation, documentId))
       if (walk.length === 0) return null
       const index = walk.findIndex((annotation) => annotation.id === selectedId)
       const next =

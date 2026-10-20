@@ -9,7 +9,14 @@
 
 import { z } from 'zod'
 import { isoDay } from '@/lib/cross-project/types'
-import { PERMIT_RECORD_KINDS, PERMIT_REQUIREMENT_KINDS, PERMIT_REQUIREMENT_MAX_CHARS } from '@/lib/db/schema/permit-records'
+import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
+import {
+  canonicalPermitRecordKind,
+  canonicalPermitRequirementKind,
+  PERMIT_RECORD_KINDS,
+  PERMIT_REQUIREMENT_KINDS,
+  PERMIT_REQUIREMENT_MAX_CHARS,
+} from '@/lib/db/schema/permit-records'
 
 /** How many requirements one document's record holds at most. */
 export const PERMIT_MAX_REQUIREMENTS = 60
@@ -17,23 +24,37 @@ export const PERMIT_MAX_REQUIREMENTS = 60
 const text = (max: number) => z.string().trim().min(1).max(max)
 
 export const permitRequirementSchema = z.object({
-  kind: z.enum(PERMIT_REQUIREMENT_KINDS),
+  // A worker that has not rolled yet still sends the German kinds (migration 0166).
+  kind: z.preprocess(canonicalPermitRequirementKind, z.enum(PERMIT_REQUIREMENT_KINDS)),
   content: text(PERMIT_REQUIREMENT_MAX_CHARS),
   evidence: text(PERMIT_REQUIREMENT_MAX_CHARS).nullable(),
   legalBasis: text(300).nullable(),
   page: z.number().int().min(1).max(100_000).nullable(),
 })
 
-export const permitRecordSchema = z.object({
-  kind: z.enum(PERMIT_RECORD_KINDS),
+/**
+ * A worker that has not rolled yet names the Land `bundesland` and sends its
+ * German token (migration 0161). Read-only: nothing writes either again.
+ */
+function renameLegacyPermitFields(value: unknown): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value) || !('bundesland' in value)) return value
+  const { bundesland, ...rest } = value as Record<string, unknown>
+  return {
+    ...rest,
+    federalState: typeof bundesland === 'string' ? normalizeProfileToken('federal_state', bundesland) : bundesland,
+  }
+}
+
+export const permitRecordSchema = z.preprocess(renameLegacyPermitFields, z.object({
+  kind: z.preprocess(canonicalPermitRecordKind, z.enum(PERMIT_RECORD_KINDS)),
   /** Null when the document does not name the issuing authority (a scan without its letterhead). */
   authority: text(300).nullable(),
   municipality: text(200).nullable(),
-  bundesland: text(50).nullable(),
+  federalState: text(50).nullable(),
   issuedOn: isoDay.nullable(),
   reference: text(200).nullable(),
   requirements: z.array(permitRequirementSchema).max(PERMIT_MAX_REQUIREMENTS),
-})
+}))
 
 export const storePermitRecordRequestSchema = z.object({
   organizationId: z.string().min(1).max(200),

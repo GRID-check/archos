@@ -26,7 +26,7 @@ export interface QuoteStamp {
   title?: string
   fileName?: string
   page?: number
-  punkt?: string
+  clause?: string
   url?: string
 }
 
@@ -64,8 +64,8 @@ function sanitizeStamp(input: unknown): QuoteStamp | undefined {
   if (fileName) stamp.fileName = fileName
   const page = positive(input.page)
   if (page !== undefined) stamp.page = page
-  const clause = cap(input.punkt, MAX_CLAUSE_CHARS)
-  if (clause) stamp.punkt = clause
+  const clause = cap(input.clause ?? input.punkt, MAX_CLAUSE_CHARS)
+  if (clause) stamp.clause = clause
   const url = cap(input.url, MAX_URL_CHARS)
   if (url && /^https?:\/\//i.test(url)) stamp.url = url
   return stamp

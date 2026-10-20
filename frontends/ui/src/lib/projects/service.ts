@@ -231,7 +231,7 @@ export interface CreateProjectInput {
   description?: string
   /** The address search's hit. Seeds the profile (address, country, Bundesland). */
   location?: GeocodeResult
-  /** The address as the person typed it, when no search hit was chosen. Seeds `standort_adresse` only. */
+  /** The address as the person typed it, when no search hit was chosen. Seeds `site_address` only. */
   address?: string
   /** A Bundesland token chosen by hand (API callers; the dialog no longer asks). */
   federalState?: string

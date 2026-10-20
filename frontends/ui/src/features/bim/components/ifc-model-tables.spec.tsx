@@ -263,13 +263,13 @@ describe('IfcQuantityTakeoff', () => {
 describe('IfcProfileSuggestions', () => {
   const SUGGESTIONS = [
     {
-      key: 'geschosse_oberirdisch',
+      key: 'storeys_above_ground',
       value: 3,
       confidence: 'high' as const,
       evidence: '3 Geschosse mit Höhenlage ≥ 0 im Modell: EG, OG1, OG2',
     },
     {
-      key: 'fluchtniveau',
+      key: 'escape_level',
       value: '<=7m',
       confidence: 'medium' as const,
       evidence: 'Oberstes belegtes Geschoss liegt bei 6 m (OG2)',

@@ -32,7 +32,7 @@ const documents = buildCitationModel({
       title: 'OIB-Richtlinie 2 – Brandschutz, Ausgabe Mai 2023',
       fileName: 'oib-rl_2_ausgabe_mai_2023.pdf',
       collection: 'oib_knowledge',
-      kind: 'baurecht',
+      kind: 'building_law',
       origin: 'kb',
       page: 18,
       number: 1,

@@ -23,7 +23,7 @@ Adding a country therefore means:
 4. registering a ``CountryProfile`` instance below with its two code hooks.
 
 Consumers (kept current — update when re-pointing):
-- ``states``/``state_probe_order`` → ``norm_registry.extract_bundesland``/``resolve_bundesland``
+- ``states``/``state_probe_order`` → ``norm_registry.extract_federal_state``/``resolve_federal_state``
 - ``doctrine`` → ``{{ norm_doctrine }}`` in researcher/planner/writer prompts
 - ``corpus_collection`` → retrieval base-collection routing + admin store passthrough
 - ``corpus_note`` → ``norm_registry.render_prompt_block`` corpus section

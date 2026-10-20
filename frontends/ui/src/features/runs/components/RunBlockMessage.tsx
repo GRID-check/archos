@@ -13,7 +13,7 @@
  *   - whether the message's content is shown yet. The content IS the report,
  *     and it renders as today's answer card BELOW the block, so the reader gets
  *     the same sources and Herleitung a chat answer has. It appears once the
- *     run has produced it: `fertig`, and `unterbrochen` too, because that
+ *     run has produced it: `done`, and `interrupted` too, because that
  *     sentence says the report was written from what was there — hiding it
  *     would contradict the block's own words.
  *
@@ -39,7 +39,7 @@ import { landingDelays } from '../lib/choreography'
 import { RunBlock } from './RunBlock'
 
 /** The states in which the message's content is a report the reader may have. */
-const REPORT_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['fertig', 'unterbrochen'])
+const REPORT_STATUSES: ReadonlySet<RunStatus> = new Set<RunStatus>(['done', 'interrupted'])
 
 export interface RunBlockMessageProps {
   message: ChatMessage
@@ -140,7 +140,7 @@ export function RunBlockMessage({
           onOpenChange={setPicking}
           documents={inventory.documents ?? []}
           loading={inventory.loading}
-          named={(ledger.grundlage ?? []).map((doc) => doc.name)}
+          named={(ledger.basis ?? []).map((doc) => doc.name)}
           onAdd={(doc) => addDocument(doc)}
         />
       )}

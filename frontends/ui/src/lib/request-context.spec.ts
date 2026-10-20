@@ -190,35 +190,35 @@ describe('X-Grid-Org-Instructions', () => {
   })
 })
 
-describe('bundesland (backlog T3-9 follow-up, 2026-07-16, user-mandated) — envelope-only', () => {
+describe('federalState (backlog T3-9 follow-up, 2026-07-16, user-mandated) — envelope-only', () => {
   it('buildGridRequestContextHeaders never emits a header for it (no individual X-Grid-Bundesland header)', () => {
-    const headers = buildGridRequestContextHeaders({ bundesland: 'wien' })
+    const headers = buildGridRequestContextHeaders({ federalState: 'vienna' })
     expect(headers).toEqual({})
-    expect(Object.keys(headers).some((name) => name.toLowerCase().includes('bundesland'))).toBe(false)
+    expect(Object.keys(headers).some((name) => name.toLowerCase().includes('federalstate'))).toBe(false)
   })
 
   it('buildGridRequestContextEnvelopePayload includes it when present', () => {
-    expect(buildGridRequestContextEnvelopePayload({ bundesland: 'tirol' })).toEqual({ bundesland: 'tirol' })
+    expect(buildGridRequestContextEnvelopePayload({ federalState: 'tyrol' })).toEqual({ federalState: 'tyrol' })
   })
 
   it('buildGridRequestContextEnvelopePayload omits it for falsy values', () => {
-    expect(buildGridRequestContextEnvelopePayload({ bundesland: null })).toEqual({})
-    expect(buildGridRequestContextEnvelopePayload({ bundesland: undefined })).toEqual({})
-    expect(buildGridRequestContextEnvelopePayload({ bundesland: '' })).toEqual({})
+    expect(buildGridRequestContextEnvelopePayload({ federalState: null })).toEqual({})
+    expect(buildGridRequestContextEnvelopePayload({ federalState: undefined })).toEqual({})
+    expect(buildGridRequestContextEnvelopePayload({ federalState: '' })).toEqual({})
   })
 
   it('is appended as the LAST payload key so pre-existing signed cases stay byte-identical', () => {
     const json = JSON.stringify(
-      buildGridRequestContextEnvelopePayload({ organizationId: 'org_1', memoryReflectionEnabled: true, bundesland: 'wien' }),
+      buildGridRequestContextEnvelopePayload({ organizationId: 'org_1', memoryReflectionEnabled: true, federalState: 'vienna' }),
     )
-    expect(json).toBe('{"organizationId":"org_1","memoryReflectionEnabled":true,"bundesland":"wien"}')
+    expect(json).toBe('{"organizationId":"org_1","memoryReflectionEnabled":true,"federalState":"vienna"}')
   })
 
   it('buildGridRequestContextWireHeaders carries it only on the envelope, not the individual headers', () => {
-    const wire = buildGridRequestContextWireHeaders({ organizationId: 'org_1', bundesland: 'wien' }, 'secret')
+    const wire = buildGridRequestContextWireHeaders({ organizationId: 'org_1', federalState: 'vienna' }, 'secret')
     const decoded = JSON.parse(Buffer.from(wire[GRID_HEADER_NAMES.REQUEST_CONTEXT], 'base64url').toString('utf8'))
-    expect(decoded.bundesland).toBe('wien')
-    expect(Object.keys(wire).some((name) => name.toLowerCase().includes('bundesland'))).toBe(false)
+    expect(decoded.federalState).toBe('vienna')
+    expect(Object.keys(wire).some((name) => name.toLowerCase().includes('federalstate'))).toBe(false)
   })
 })
 
@@ -489,7 +489,7 @@ describe('server.js mints the same envelope payload this module does', () => {
         budget: { remainingOrgUsd: 1, remainingUserUsd: 1, remainingProjectUsd: 1 },
         disabledSources: ['web_search'],
         memoryReflectionEnabled: true,
-        bundesland: 'wien',
+        federalState: 'vienna',
         conversationId: 's_conv_1',
         issuedAt: 1789430400000,
         orgInstructions: 'Zuerst das Ergebnis.',

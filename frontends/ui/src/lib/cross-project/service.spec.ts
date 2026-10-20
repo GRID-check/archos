@@ -456,17 +456,17 @@ describe('searchAcrossProjects', () => {
   it('walks the projects most like the current one first by default', async () => {
     const facts = (federalState: string, gk: number) => ({
       facts: {
-        bundesland: { value: federalState, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
-        gebaeudeklasse: { value: gk, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
+        federal_state: { value: federalState, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
+        building_class: { value: gk, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
       },
       goals: {},
       unknowns: [],
       assumptions: {},
     })
     state.reachable = [
-      project(1, { profile: facts('wien', 2) }),
-      project(2, { profile: facts('niederoesterreich', 4) }),
-      project(3, { profile: facts('niederoesterreich', 4) }),
+      project(1, { profile: facts('vienna', 2) }),
+      project(2, { profile: facts('lower_austria', 4) }),
+      project(3, { profile: facts('lower_austria', 4) }),
     ]
 
     await searchAcrossProjects(caller(state.reachable[2].id), search({}))
@@ -478,7 +478,7 @@ describe('searchAcrossProjects', () => {
     state.reachable = [
       project(1, {
         profile: {
-          facts: { bundesland: { value: 'steiermark', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } },
+          facts: { federal_state: { value: 'styria', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } },
           goals: {},
           unknowns: [],
           assumptions: {},
@@ -489,7 +489,7 @@ describe('searchAcrossProjects', () => {
 
     const result = await searchAcrossProjects(caller(), search({}))
 
-    expect(result.hits[0].project.bundesland).toBe('steiermark')
+    expect(result.hits[0].project.federal_state).toBe('styria')
   })
 
   it('says a project abroad as ausserhalb_oesterreichs, so the agent can label it outside Austria', async () => {
@@ -497,7 +497,7 @@ describe('searchAcrossProjects', () => {
       project(1, {
         profile: {
           facts: {
-            bundesland: { value: 'ausserhalb_oesterreichs', confidence: 'confirmed', source: 'onboarding', updatedAt: '' },
+            federal_state: { value: 'outside_austria', confidence: 'confirmed', source: 'onboarding', updatedAt: '' },
           },
           goals: {},
           unknowns: [],
@@ -509,7 +509,7 @@ describe('searchAcrossProjects', () => {
 
     const result = await searchAcrossProjects(caller(), search({}))
 
-    expect(result.hits[0].project.bundesland).toBe('ausserhalb_oesterreichs')
+    expect(result.hits[0].project.federal_state).toBe('outside_austria')
   })
 
   it('makes a project out of chat reach invisible, even when named', async () => {
@@ -563,15 +563,15 @@ describe('searchAcrossProjects', () => {
     // the eight newest closed projects and missed the catalog's closest ones.
     const closed = { status: 'closed' as const, closedAt: new Date(), closedBy: OWNER }
     const profile = (federalState: string) => ({
-      facts: { bundesland: { value: federalState, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' } },
+      facts: { federal_state: { value: federalState, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' } },
       goals: {},
       unknowns: [],
       assumptions: {},
     })
     state.reachable = [
-      project(1, { ...closed, profile: profile('wien') }),
-      project(2, { ...closed, profile: profile('tirol') }),
-      project(3, { profile: profile('tirol') }),
+      project(1, { ...closed, profile: profile('vienna') }),
+      project(2, { ...closed, profile: profile('tyrol') }),
+      project(3, { profile: profile('tyrol') }),
     ]
 
     await searchAcrossProjects(caller(state.reachable[2].id), search({ scope: 'closed' }))
@@ -791,7 +791,7 @@ describe('searchAcrossProjects in one grouped query (ADR-0116)', () => {
   it('lifts projects like the current one by its fingerprint and the one set of similarity weights', async () => {
     const current = project(7, {
       profile: {
-        facts: { bundesland: { value: 'wien', source: 'user_confirmed' }, bauweise: { value: ['holzbau'], source: 'user_confirmed' } },
+        facts: { federal_state: { value: 'vienna', source: 'user_confirmed' }, construction_method: { value: ['timber'], source: 'user_confirmed' } },
         goals: {},
         unknowns: [],
         assumptions: {},
@@ -803,15 +803,15 @@ describe('searchAcrossProjects in one grouped query (ADR-0116)', () => {
     await searchAcrossProjects(caller(current.id), search({ scope: 'all' }))
 
     expect(state.groupedCalls[0].options.boost).toEqual({
-      facts: { bundesland: 'wien', gebaeudeklasse: [], bauweise: ['holzbau'], nutzungen: [], vorhabensart: [] },
+      facts: { federal_state: 'vienna', building_class: [], construction_method: ['timber'], uses: [], work_type: [] },
       weights: {
-        bundesland: SIMILARITY_WEIGHTS.federalState,
-        gebaeudeklasse: SIMILARITY_WEIGHTS.buildingClass,
+        federal_state: SIMILARITY_WEIGHTS.federalState,
+        building_class: SIMILARITY_WEIGHTS.buildingClass,
         gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.buildingClassAdjacent,
-        bauweise: SIMILARITY_WEIGHTS.constructionMethod,
+        construction_method: SIMILARITY_WEIGHTS.constructionMethod,
         nutzung: SIMILARITY_WEIGHTS.use,
         nutzung_max: SIMILARITY_WEIGHTS.useMax,
-        vorhabensart: SIMILARITY_WEIGHTS.workType,
+        work_type: SIMILARITY_WEIGHTS.workType,
       },
     })
     // `all` walks newest first by definition: nothing to be like.
@@ -840,7 +840,7 @@ describe('the decisions other projects recorded', () => {
 
     expect(result.decisions).toEqual([
       {
-        project: { id: one.id, name: 'Projekt 1', status: 'active', bundesland: null },
+        project: { id: one.id, name: 'Projekt 1', status: 'active', federal_state: null },
         collection: 'proj_1',
         kind: 'decision',
         content: 'Stiegenhaus in Stahlbeton, weil das Gutachten nur so die Abweichung zuließ.',
@@ -901,14 +901,14 @@ describe('the permit records other projects went through', () => {
     projectId,
     collectionName: 'proj_1',
     fileName: 'Baubescheid_Baden_2020.pdf',
-    kind: 'nachforderung',
+    kind: 'information_request',
     authority: 'Stadtgemeinde Baden',
     municipality: 'Baden',
-    bundesland: 'niederoesterreich',
+    federal_state: 'lower_austria',
     issuedOn: '2020-03-12',
     reference: 'BA-123/2020',
     requirements: [
-      { kind: 'nachforderung', content: 'Ein Brandschutzgutachten ist vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
+      { kind: 'information_request', content: 'Ein Brandschutzgutachten ist vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
     ],
     restrictedFolderIds: null,
     ...extra,
@@ -922,16 +922,16 @@ describe('the permit records other projects went through', () => {
 
     expect(result.permits).toEqual([
       {
-        project: { id: one.id, name: 'Projekt 1', status: 'active', bundesland: null },
+        project: { id: one.id, name: 'Projekt 1', status: 'active', federal_state: null },
         collection: 'proj_1',
         fileName: 'Baubescheid_Baden_2020.pdf',
-        kind: 'nachforderung',
+        kind: 'information_request',
         authority: 'Stadtgemeinde Baden',
         municipality: 'Baden',
         issuedOn: '2020-03-12',
         reference: 'BA-123/2020',
         requirements: [
-          { kind: 'nachforderung', content: 'Ein Brandschutzgutachten ist vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
+          { kind: 'information_request', content: 'Ein Brandschutzgutachten ist vorzulegen.', evidence: 'Gutachten', legalBasis: '§ 13 Abs. 3 AVG', page: 2 },
         ],
         restricted: false,
       },
@@ -987,7 +987,7 @@ describe('the permit records other projects went through', () => {
 describe('listLookupProjects', () => {
   it('lists the reachable projects with their address and period, finds by name or address, and records them', async () => {
     state.reachable = [
-      project(1, { profile: { facts: { standort_adresse: { value: 'Hauptstraße 3, Graz', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } }, goals: {}, unknowns: [], assumptions: {} } }),
+      project(1, { profile: { facts: { site_address: { value: 'Hauptstraße 3, Graz', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } }, goals: {}, unknowns: [], assumptions: {} } }),
       project(2),
     ]
     const [one, two] = state.reachable
@@ -1023,7 +1023,7 @@ describe('readProjectBrief', () => {
   it('reads the confirmed facts and the summary of a project in reach, and records it', async () => {
     state.reachable = [
       project(1, {
-        profile: { facts: { bauweise: { value: 'holzbau', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } }, goals: {}, unknowns: [], assumptions: {} },
+        profile: { facts: { construction_method: { value: 'timber', confidence: 'confirmed', source: 'onboarding', updatedAt: '' } }, goals: {}, unknowns: [], assumptions: {} },
         profileDisplay: { title: 'P1', summary: 'Ein Holzbau in Graz.', keyFacts: [], missingInfo: [] },
       }),
     ]
@@ -1031,7 +1031,7 @@ describe('readProjectBrief', () => {
     const brief = await readProjectBrief(caller(), { projectId: state.reachable[0].id })
 
     expect(brief.summary).toBe('Ein Holzbau in Graz.')
-    expect(brief.facts).toContain('bauweise=holzbau')
+    expect(brief.facts).toContain('construction_method=timber')
     expect(brief.project.collection).toBe('proj_1')
     expect(state.recorded).toEqual([{ projectIds: [state.reachable[0].id], folderIds: [] }])
   })
@@ -1053,7 +1053,7 @@ describe('the OIB edition a listed project carries', () => {
   const withFact = (value: string) => ({ value, confidence: 'confirmed' as const, source: 'user_confirmed' as const, updatedAt: '' })
 
   it('is confirmed when a person set it, on find and on the brief', async () => {
-    state.reachable = [project(1, { profile: { facts: { oib_ausgabe: withFact('2019') }, goals: {}, unknowns: [], assumptions: {} } })]
+    state.reachable = [project(1, { profile: { facts: { oib_edition: withFact('2019') }, goals: {}, unknowns: [], assumptions: {} } })]
 
     const found = await listLookupProjects(caller(), crossProjectListRequestSchema.parse({}))
     const brief = await readProjectBrief(caller(), { projectId: state.reachable[0].id })
@@ -1064,13 +1064,13 @@ describe('the OIB edition a listed project carries', () => {
 
   it('is unconfirmed when only the documents suggest it, and a fact still wins over a suggestion', async () => {
     state.reachable = [
-      project(1, { profile: { facts: {}, goals: {}, unknowns: [], assumptions: { oib_ausgabe: at('2015') } } }),
+      project(1, { profile: { facts: {}, goals: {}, unknowns: [], assumptions: { oib_edition: at('2015') } } }),
       project(2, {
         profile: {
-          facts: { oib_ausgabe: withFact('2019') },
+          facts: { oib_edition: withFact('2019') },
           goals: {},
           unknowns: [],
-          assumptions: { oib_ausgabe: at('2015') },
+          assumptions: { oib_edition: at('2015') },
         },
       }),
     ]
@@ -1085,7 +1085,7 @@ describe('the OIB edition a listed project carries', () => {
 
   it('is null when neither a person nor the documents say it, and a wizard default is no evidence', async () => {
     state.reachable = [
-      project(1, { profile: { facts: {}, goals: {}, unknowns: [], assumptions: { oib_ausgabe: at('2015', 'onboarding_default') } } }),
+      project(1, { profile: { facts: {}, goals: {}, unknowns: [], assumptions: { oib_edition: at('2015', 'onboarding_default') } } }),
     ]
 
     const found = await listLookupProjects(caller(), crossProjectListRequestSchema.parse({}))
@@ -1131,17 +1131,17 @@ describe('the project facts a lookup narrows by', () => {
       ])
     ),
   })
-  const TIROL_GK4_WOHNEN = { projectFacts: { bundesland: ['tirol'], gebaeudeklasse: [4], nutzungen: ['wohnen'] } }
+  const TIROL_GK4_WOHNEN = { projectFacts: { federal_state: ['tyrol'], building_class: [4], uses: ['residential'] } }
 
   /** Five projects: two match Tirol + GK 4 + Wohnen (one through a suggestion), three miss one fact each. */
   function office(): Project[] {
     return [
-      project(1, { ...closed, profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, nutzungen: ['wohnen', 'buero'] }) }),
-      project(2, { profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 3, nutzungen: ['wohnen'] }) }),
-      project(3, { ...closed, profile: profileOf({ bundesland: 'tirol', nutzungen: ['wohnen'] }, { gebaeudeklasse: 'GK 4' }) }),
-      project(4, { profile: profileOf({ bundesland: 'wien', gebaeudeklasse: 4, nutzungen: ['wohnen'] }) }),
+      project(1, { ...closed, profile: profileOf({ federal_state: 'tyrol', building_class: 4, uses: ['residential', 'office'] }) }),
+      project(2, { profile: profileOf({ federal_state: 'tyrol', building_class: 3, uses: ['residential'] }) }),
+      project(3, { ...closed, profile: profileOf({ federal_state: 'tyrol', uses: ['residential'] }, { building_class: 'GK 4' }) }),
+      project(4, { profile: profileOf({ federal_state: 'vienna', building_class: 4, uses: ['residential'] }) }),
       // No Gebäudeklasse recorded at all: it cannot match a filter on it.
-      project(5, { profile: profileOf({ bundesland: 'tirol', nutzungen: ['wohnen'] }) }),
+      project(5, { profile: profileOf({ federal_state: 'tyrol', uses: ['residential'] }) }),
     ]
   }
 
@@ -1149,7 +1149,7 @@ describe('the project facts a lookup narrows by', () => {
     state.reachable = office()
     const [one, , three, wien] = state.reachable
     state.hits.set(one.id, [hit('a', 0.9)])
-    state.hits.set(wien.id, [hit('wien', 0.95, { collectionName: 'proj_4' })])
+    state.hits.set(wien.id, [hit('vienna', 0.95, { collectionName: 'proj_4' })])
 
     const result = await searchAcrossProjects(caller(), search({ scope: 'all', ...TIROL_GK4_WOHNEN }))
 
@@ -1168,9 +1168,9 @@ describe('the project facts a lookup narrows by', () => {
     state.reachable = office()
     const wanted = TIROL_GK4_WOHNEN.projectFacts
     const mirrorMatches = (copy: ReturnType<typeof projectFactsOf>) =>
-      wanted.bundesland.includes(copy.bundesland ?? '') &&
-      wanted.gebaeudeklasse.some((gk) => copy.gebaeudeklasse.includes(gk)) &&
-      wanted.nutzungen.some((use) => copy.nutzungen.includes(use))
+      wanted.federal_state.includes(copy.federal_state ?? '') &&
+      wanted.building_class.some((gk) => copy.building_class.includes(gk)) &&
+      wanted.uses.some((use) => copy.uses.includes(use))
 
     await searchAcrossProjects(caller(), search({ scope: 'all', ...TIROL_GK4_WOHNEN }))
 
@@ -1188,26 +1188,26 @@ describe('the project facts a lookup narrows by', () => {
   })
 
   it('narrows the likeness scopes and keeps their order and the search’s likeness lift', async () => {
-    const current = project(7, { profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, bauweise: ['holzbau'] }) })
+    const current = project(7, { profile: profileOf({ federal_state: 'tyrol', building_class: 4, construction_method: ['timber'] }) })
     state.outOfReach = [current]
     state.reachable = [
-      project(1, { ...closed, profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 2, nutzungen: ['wohnen'] }) }),
+      project(1, { ...closed, profile: profileOf({ federal_state: 'tyrol', building_class: 2, uses: ['residential'] }) }),
       project(2, {
         ...closed,
-        profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, bauweise: ['holzbau'], nutzungen: ['wohnen'] }),
+        profile: profileOf({ federal_state: 'tyrol', building_class: 4, construction_method: ['timber'], uses: ['residential'] }),
       }),
       project(3, {
         ...closed,
-        profile: profileOf({ bundesland: 'wien', gebaeudeklasse: 4, bauweise: ['holzbau'], nutzungen: ['wohnen'] }),
+        profile: profileOf({ federal_state: 'vienna', building_class: 4, construction_method: ['timber'], uses: ['residential'] }),
       }),
     ]
     const [low, high] = state.reachable
 
-    await searchAcrossProjects(caller(current.id), search({ scope: 'similar', projectFacts: { bundesland: ['tirol'] } }))
+    await searchAcrossProjects(caller(current.id), search({ scope: 'similar', projectFacts: { federal_state: ['tyrol'] } }))
 
     // The most alike first among the projects the facts left; the Viennese one is out, however alike.
     expect(state.planned).toEqual([high.id, low.id])
-    expect(state.groupedCalls[0].options.boost).toMatchObject({ facts: { bundesland: 'tirol', gebaeudeklasse: [4] } })
+    expect(state.groupedCalls[0].options.boost).toMatchObject({ facts: { federal_state: 'tyrol', building_class: [4] } })
   })
 
   it('narrows a named scope too: a named project without the facts is not searched', async () => {
@@ -1224,7 +1224,7 @@ describe('the project facts a lookup narrows by', () => {
   })
 
   it('never widens the audience: a matching project out of reach stays invisible, a shared chat searches no restricted folder', async () => {
-    const stranger = project(9, { ...closed, profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, nutzungen: ['wohnen'] }) })
+    const stranger = project(9, { ...closed, profile: profileOf({ federal_state: 'tyrol', building_class: 4, uses: ['residential'] }) })
     state.outOfReach = [stranger]
     state.reachable = office()
     state.restrictedFolders = false
@@ -1269,18 +1269,18 @@ describe('holdsFacts', () => {
   })
 
   it('is any of within a fact, all of across facts, and holds for every project without a filter', () => {
-    const hybrid = profileWith({ bundesland: 'Niederösterreich', bauweise: ['holzbau', 'stahlbeton'], vorhabensart: ['neubau'] })
+    const hybrid = profileWith({ federal_state: 'Niederösterreich', construction_method: ['timber', 'reinforced_concrete'], work_type: ['new_build'] })
 
     expect(holdsFacts(hybrid, undefined)).toBe(true)
     expect(holdsFacts(hybrid, {})).toBe(true)
-    expect(holdsFacts(hybrid, { bauweise: ['stahlbau', 'holzbau'] })).toBe(true)
-    expect(holdsFacts(hybrid, { bundesland: ['niederoesterreich'], vorhabensart: ['neubau'] })).toBe(true)
-    expect(holdsFacts(hybrid, { bundesland: ['niederoesterreich'], vorhabensart: ['umbau'] })).toBe(false)
-    expect(holdsFacts(null, { bauweise: ['holzbau'] })).toBe(false)
+    expect(holdsFacts(hybrid, { construction_method: ['steel', 'timber'] })).toBe(true)
+    expect(holdsFacts(hybrid, { federal_state: ['lower_austria'], work_type: ['new_build'] })).toBe(true)
+    expect(holdsFacts(hybrid, { federal_state: ['lower_austria'], work_type: ['conversion'] })).toBe(false)
+    expect(holdsFacts(null, { construction_method: ['timber'] })).toBe(false)
   })
 
   it('reads a site abroad and „noch offen" as no value, so neither matches', () => {
-    expect(holdsFacts(profileWith({ bundesland: 'ausserhalb_oesterreichs' }), { bundesland: ['wien'] })).toBe(false)
-    expect(holdsFacts(profileWith({ bauweise: ['offen'] }), { bauweise: ['holzbau'] })).toBe(false)
+    expect(holdsFacts(profileWith({ federal_state: 'outside_austria' }), { federal_state: ['vienna'] })).toBe(false)
+    expect(holdsFacts(profileWith({ construction_method: ['open'] }), { construction_method: ['timber'] })).toBe(false)
   })
 })

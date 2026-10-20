@@ -43,9 +43,9 @@ beforeEach(() => {
   vi.mocked(getAccessibleDocument).mockReset().mockResolvedValue(older())
 })
 
-const linked = (revisionOf: string) => ({ fassungOf: revisionOf, ignored: null })
-const nothing = { fassungOf: null, ignored: null }
-const ignored = (reason: string) => ({ fassungOf: null, ignored: reason })
+const linked = (revisionOf: string) => ({ revisionOf, ignored: null })
+const nothing = { revisionOf: null, ignored: null }
+const ignored = (reason: string) => ({ revisionOf: null, ignored: reason })
 
 describe('resolveRevisionOf', () => {
   it('answers the older file’s name, after asking for WRITE access to the older document', async () => {

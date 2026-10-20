@@ -66,7 +66,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
     vi.mocked(findProjectProfileInOrg).mockResolvedValue(currentState)
 
     const response = await POST(
-      ...postRequest({ patch: [{ op: 'add', path: '/facts/bauwerkstyp', value: 'nope' }] })
+      ...postRequest({ patch: [{ op: 'add', path: '/facts/building_type', value: 'nope' }] })
     )
 
     expect(response.status).toBe(400)
@@ -84,7 +84,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
     })
 
     const response = await POST(
-      ...postRequest({ patch: [{ op: 'add', path: '/facts/gebaeudeklasse', value: 'GK4' }] })
+      ...postRequest({ patch: [{ op: 'add', path: '/facts/building_class', value: 'GK4' }] })
     )
 
     expect(response.status).toBe(200)
@@ -102,7 +102,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
   it('reports an idempotent success when the winner already applied this patch', async () => {
     const applied = ProjectProfileSchema.parse({
       facts: {
-        gebaeudeklasse: {
+        building_class: {
           value: 'GK4',
           confidence: 'confirmed',
           source: 'user_confirmed',
@@ -116,7 +116,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
     vi.mocked(updateProjectProfileIfVersion).mockResolvedValue(null)
 
     const response = await POST(
-      ...postRequest({ patch: [{ op: 'add', path: '/facts/gebaeudeklasse', value: 'GK4' }] })
+      ...postRequest({ patch: [{ op: 'add', path: '/facts/building_class', value: 'GK4' }] })
     )
 
     expect(response.status).toBe(200)
@@ -129,7 +129,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
     // this as applied would lose the change behind a card that cannot be retried.
     const other = ProjectProfileSchema.parse({
       facts: {
-        bauwerkstyp: {
+        building_type: {
           value: 'wohngebaeude',
           confidence: 'confirmed',
           source: 'user_confirmed',
@@ -143,7 +143,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
     vi.mocked(updateProjectProfileIfVersion).mockResolvedValue(null)
 
     const response = await POST(
-      ...postRequest({ patch: [{ op: 'add', path: '/facts/gebaeudeklasse', value: 'GK4' }] })
+      ...postRequest({ patch: [{ op: 'add', path: '/facts/building_class', value: 'GK4' }] })
     )
 
     expect(response.status).toBe(409)
@@ -151,7 +151,7 @@ describe('POST /api/projects/[id]/profile/patches', () => {
 })
 
 describe('a patch proposed in a conversation that drew on a restricted folder (ADR-0087)', () => {
-  const GK4 = [{ op: 'add', path: '/facts/gebaeudeklasse', value: 'GK4' }]
+  const GK4 = [{ op: 'add', path: '/facts/building_class', value: 'GK4' }]
 
   it('is refused with a typed 403 and writes nothing: the profile is read by the whole project', async () => {
     vi.mocked(updateProjectProfileIfVersion).mockClear()

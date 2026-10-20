@@ -37,7 +37,7 @@ export function citationOfEvidence(evidence: DocumentEvidence): CitationRef {
       title: evidence.fileName,
       fileName: evidence.fileName,
       shelf: 'project',
-      kind: 'projekt',
+      kind: 'project',
       tint: 'project',
       loci: [locus],
     },

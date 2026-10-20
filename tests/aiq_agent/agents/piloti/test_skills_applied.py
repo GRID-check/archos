@@ -36,12 +36,12 @@ def _sources() -> SourceRegistry:
 
 async def test_the_pipeline_lifts_the_names_cleaned_and_deduped():
     final = await finalize_answer(
-        [_envelope(skills_applied=["`brandschutz`", " gebaeudeklasse", "brandschutz"])],
+        [_envelope(skills_applied=["`fire-safety`", " building-class", "fire-safety"])],
         registry=_sources(),
         tools=[],
         repair=None,
     )
-    assert final.skills_applied == ("brandschutz", "gebaeudeklasse")
+    assert final.skills_applied == ("fire-safety", "building-class")
 
 
 async def test_no_field_is_no_names():

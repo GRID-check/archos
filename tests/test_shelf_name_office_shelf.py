@@ -7,13 +7,13 @@ Q-0): the org-wide shelf `scope = 'archiv'` is „Büroablage" in German copy an
 in the upload code — and a fourth meaning was arriving with the Bibliothek.
 
 The code keeps its identifiers (`archiv`, `archiv_<org>`, `/app/archiv`, the
-`buero` kind). This file is the ratchet on the COPY: it scans what a reader or
+`office` kind). This file is the ratchet on the COPY: it scans what a reader or
 the model reads and fails on the old names, so a string copied from an old
 branch or an old doc cannot bring them back. The document action „Archivieren"
 / „archiviert" is a different concept and is not matched.
 
 The second half pins the label in both runtimes, which share no schema: the
-Python `buero` kind and shelf qualifier, and the German dictionary the
+Python `office` kind and shelf qualifier, and the German dictionary the
 frontend renders the same kind and shelf with.
 """
 
@@ -129,7 +129,7 @@ class TestTheOldNamesStayOut:
 
 class TestOneNameInBothRuntimes:
     def test_the_backend_names_the_kind_and_the_shelf_office_shelf(self):
-        assert SOURCE_KINDS["buero"].label == NAME_DE
+        assert SOURCE_KINDS["office"].label == NAME_DE
         assert SHELF_QUALIFIERS[Shelf.OFFICE_SHELF] == NAME_DE
 
     def test_the_retired_name_is_read_but_never_written(self):
@@ -140,11 +140,11 @@ class TestOneNameInBothRuntimes:
         "path",
         [
             # The coarse kind in the source popover (ADR-0026).
-            r"kinds:\s*\{[^}]*?buero:\s*'([^']+)'",
+            r"kinds:\s*\{[^}]*?office:\s*'([^']+)'",
             # The shelf tab of a source card (ADR-0047).
             r"shelves:\s*\{\s*archiv:\s*'([^']+)'",
             # The shelf in the reasoning view's file chips.
-            r"shelf:\s*\{[^}]*?buero:\s*'([^']+)'",
+            r"shelf:\s*\{[^}]*?office:\s*'([^']+)'",
         ],
     )
     def test_the_german_dictionary_renders_the_same_name(self, path: str):
@@ -153,7 +153,7 @@ class TestOneNameInBothRuntimes:
             pytest.skip("frontend not present in this checkout")
         match = re.search(path, chat.read_text(encoding="utf-8"), re.DOTALL)
         assert match, f"{path!r} not found in {chat}"
-        assert match.group(1) == SOURCE_KINDS["buero"].label
+        assert match.group(1) == SOURCE_KINDS["office"].label
 
     def test_the_navigation_names_the_page_in_both_languages(self):
         nav = {lang: (DICTIONARIES / lang / "nav.ts") for lang in ("de", "en")}

@@ -219,7 +219,7 @@ export const documentShelfLabel = (doc: CitedDocument, t: SourceTabLabels): stri
  *
  * The shelf outranks the coarse stratum because the two answer different
  * questions and only one of them is a fact about this document's filing: a file
- * the user attached privately to the chat is `projekt`-KIND (it is project-ish
+ * the user attached privately to the chat is `project`-KIND (it is project-ish
  * material, and paints in that family) but sits on the `session` SHELF — and
  * labelling it "Projektwissen" told the reader it was project knowledge the
  * office had filed, which was never true.

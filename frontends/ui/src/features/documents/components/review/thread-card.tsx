@@ -629,7 +629,7 @@ function RevisionLines({
   const t = useTranslations('files')
   const replacedBy = review.revision?.replacedBy ?? null
   const target = annotation.carryTarget ?? null
-  const earlier = !annotation.onCurrentFassung
+  const earlier = !annotation.onCurrentRevision
   const where = typeof window === 'undefined' ? null : window.location
   const linkTo = (link: { documentId: string; annotationId: string }) =>
     where ? otherReviewHref(where, review.documentId, link) : null
@@ -640,10 +640,10 @@ function RevisionLines({
         <p className="flex items-start gap-1.5">
           <History className="mt-px size-3 shrink-0" aria-hidden />
           {earlier
-            ? annotation.fassungNumber
+            ? annotation.revisionNumber
               ? // An open one is drawn as a ghost where it stood; a closed one is not drawn.
                 t(isGhostMark(annotation, review.documentId) ? 'review.earlierRevisionGhost' : 'review.earlierRevision', {
-                  number: annotation.fassungNumber,
+                  number: annotation.revisionNumber,
                 })
               : t('annotations.earlierRevisionUnnumbered')
             : t('review.replacedNotice', { name: replacedBy?.filename ?? '' })}
@@ -980,7 +980,7 @@ export function ThreadCard({
       icon: KIND_ICONS[kind],
       onSelect: () => void act(() => review.update(annotation.id, { kind })),
     })),
-    ...(piloti.available && annotation.onCurrentFassung
+    ...(piloti.available && annotation.onCurrentRevision
       ? [
           {
             type: 'item' as const,

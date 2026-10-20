@@ -40,20 +40,20 @@ def test_stored_doc_class_wins_over_chunk_metadata():
 
         register_summary("oib_knowledge", "doc.pdf", "A document.")
         # Store says richtlinie; the chunk metadata still carries the old guess.
-        assert set_document_doc_class("oib_knowledge", "doc.pdf", "oib_richtlinie")
+        assert set_document_doc_class("oib_knowledge", "doc.pdf", "oib_guideline")
 
         result = SimpleNamespace(
             success=True,
-            chunks=[_chunk(file_name="doc.pdf", collection="oib_knowledge", doc_class="oib_leitfaden")],
+            chunks=[_chunk(file_name="doc.pdf", collection="oib_knowledge", doc_class="oib_guide")],
             error_message=None,
         )
         text = _format_results(result, "q")
 
         # The STORED class is what the LLM sees, not the chunk-metadata one.
-        assert "Dokumentart: oib_richtlinie" in text
-        assert "oib_leitfaden" not in text
+        assert "Dokumentart: oib_guideline" in text
+        assert "Dokumentart: oib_guide —" not in text
         # And the Trace-Lanes lane derives from the stored class (richtlinie).
-        assert "baurecht_oib" in text
+        assert "building_law_oib" in text
         DocumentMetadataStore.dispose_engine(db_url)
 
 
@@ -66,12 +66,12 @@ def test_falls_back_to_chunk_metadata_when_store_empty():
         # No summary row / no stored doc_class for this document.
         result = SimpleNamespace(
             success=True,
-            chunks=[_chunk(file_name="orphan.pdf", collection="oib_knowledge", doc_class="oib_leitfaden")],
+            chunks=[_chunk(file_name="orphan.pdf", collection="oib_knowledge", doc_class="oib_guide")],
             error_message=None,
         )
         text = _format_results(result, "q")
 
-        assert "Dokumentart: oib_leitfaden" in text
+        assert "Dokumentart: oib_guide" in text
         DocumentMetadataStore.dispose_engine(db_url)
 
 

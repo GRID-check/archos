@@ -66,7 +66,7 @@ export default function TaskCreatedCardPreview(): JSX.Element {
         >
           <TaskCreatedCard
             taskId="00000000-0000-4000-8000-0000000000f1"
-            kind="einreichcheck"
+            kind="submission_check"
             title="Einreichcheck: Bauansuchen Haus A"
             goal="Mach den Einreichcheck für das Bauansuchen bis Freitag"
             dueAt="2026-09-18T23:59:59.999Z"

@@ -103,14 +103,14 @@ function requireNewFolderTarget(payload: FileOperationPayload): void {
 
 /**
  * A Büroablage proposal moves Büroablage documents and nothing else (0146's
- * `proposed_changes_archiv_move`, refused here first so the answer is a 422
+ * `proposed_changes_office_shelf_move`, refused here first so the answer is a 422
  * and not a constraint error).
  */
 function requireOfficeShelfMove(typed: KindPayload): void {
   const fits =
     typed.kind === 'file_operation' &&
     typed.payload.operation === 'move' &&
-    typed.payload.operations.every((item) => item.source === 'buero')
+    typed.payload.operations.every((item) => item.source === 'office')
   if (!fits) {
     throw new UnprocessableError('A proposal on the Büroablage can only move its documents', {
       reason: 'proposal-archiv-move-only',

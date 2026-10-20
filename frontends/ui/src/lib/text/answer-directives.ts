@@ -73,12 +73,12 @@ export const PROJECT_DIRECTIVE = 'project'
  * `parcel_area_m2`: the profile records no Grundstücksfläche.
  */
 export const PROJECT_KEYS = {
-  building_class: 'gebaeudeklasse',
-  escape_level_m: 'fluchtniveau_m',
-  use: 'nutzungen',
-  state: 'bundesland',
-  storeys: 'geschosse_oberirdisch',
-  gross_floor_area_m2: 'bgf_oberirdisch',
+  building_class: 'building_class',
+  escape_level_m: 'escape_level_m',
+  use: 'uses',
+  state: 'federal_state',
+  storeys: 'storeys_above_ground',
+  gross_floor_area_m2: 'gfa_above_ground',
 } as const
 export type ProjectKey = keyof typeof PROJECT_KEYS
 

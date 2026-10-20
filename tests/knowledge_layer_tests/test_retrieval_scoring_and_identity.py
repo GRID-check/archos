@@ -112,7 +112,7 @@ def test_noise_metadata_is_excluded_from_the_embedded_text() -> None:
             "file_size": 1975942,
             "page_label": "13",
             "content_type": "text",
-            "doc_class": "oib_richtlinie",
+            "doc_class": "oib_guideline",
         },
     )
     _apply_metadata_exclusions(doc)
@@ -120,7 +120,7 @@ def test_noise_metadata_is_excluded_from_the_embedded_text() -> None:
     embedded = doc.get_content(metadata_mode=MetadataMode.EMBED)
     assert "1975942" not in embedded, "a byte count carries no retrieval signal"
     assert "oib-rl_2.pdf" in embedded, "the filename is what users actually query by"
-    assert "oib_richtlinie" in embedded
+    assert "oib_guideline" in embedded
     # The metadata still exists for filtering and citation — only its embedding changed.
     assert doc.metadata["file_size"] == 1975942
 

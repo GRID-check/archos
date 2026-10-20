@@ -524,7 +524,7 @@ export interface CitationSource {
   /** 1-based page from structured wire. */
   page?: number
   /** The Punkt within the document ("3.5.2"), the citation form building law uses. */
-  punkt?: string
+  clause?: string
   /** Retrieval score (cosine similarity) for this passage, when the wire carried one. */
   score?: number
   /**
@@ -539,7 +539,7 @@ export interface CitationSource {
    */
   snippet?: string
   /**
-   * Coarse source kind (baurecht | buero | projekt | web) — the canonical
+   * Coarse source kind (building_law | office | project | web) — the canonical
    * taxonomy that drives the chip color family (ADR-0026). Absent on older
    * persisted messages, which fall back to origin/URL heuristics.
    */
@@ -559,7 +559,7 @@ export interface CitationSource {
    * equivalent key from filename/collection instead.
    */
   documentId?: string
-  /** Fine lane stratum-key (baurecht_oib, baurecht_ris, …) — drives the authority badge. */
+  /** Fine lane stratum-key (building_law_oib, building_law_ris, …) — drives the authority badge. */
   lane?: string
   /** Human lane label ("OIB-Richtlinie", "Rechtsquelle (RIS)") for the popover. */
   laneLabel?: string
@@ -571,9 +571,9 @@ export interface CitationSource {
   bindingNote?: string
   /**
    * Coarse binding classification the backend derived from the norm registry
-   * (`bindend` / `verbindlich_erklaert` / `auslegend` / `unbekannt`). Distinct
+   * (`binding` / `declared_binding` / `interpretive` / `unknown`). Distinct
    * from `authority`, which names the TIER (OIB / RIS); this names whether the
-   * source BINDS. `unbekannt` is dropped to undefined at the wire boundary so a
+   * source BINDS. `unknown` is dropped to undefined at the wire boundary so a
    * missing classification reads as "not known", never as "not binding" — the
    * one direction a legal signal must not fail in.
    */
@@ -610,6 +610,8 @@ export interface WireCitationSource {
   file_name?: string | null
   page?: number | null
   /** The Punkt this passage belongs to ("3.5.2"), when the chunker established one. */
+  clause?: string | null
+  /** @deprecated The pre-rename spelling of `clause`; read by `citationFromWire`, never written. */
   punkt?: string | null
   /** Retrieval score (cosine similarity) the knowledge layer printed for this passage. */
   score?: number | null
@@ -623,9 +625,9 @@ export interface WireCitationSource {
   binding_note?: string | null
   /**
    * Coarse binding status the backend classified this source as:
-   * `bindend` (statute/ordinance) | `verbindlich_erklaert` (OIB-Richtlinie /
-   * the lane a Land declares binding) | `auslegend` (Leitfaden/ÖNORM,
-   * interpretive) | `unbekannt` (matched no catalogued norm — the honest
+   * `binding` (statute/ordinance) | `declared_binding` (OIB-Richtlinie /
+   * the lane a Land declares binding) | `interpretive` (Leitfaden/ÖNORM,
+   * interpretive) | `unknown` (matched no catalogued norm — the honest
    * default, never a guess). Rides the `sources` schema's `.passthrough()`;
    * declared here so the renderer can badge it. Structured companion to the
    * prose `binding_note`.

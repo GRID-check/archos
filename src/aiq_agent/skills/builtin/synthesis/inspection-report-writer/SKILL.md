@@ -1,5 +1,5 @@
 ---
-name: pruefbericht-writer
+name: inspection-report-writer
 description: >
   Use this skill when the final answer strategy calls for a Prüfbericht: requirements read against one project, one finding per requirement with the value, the Fundstelle and the status. Triggers: "pruefbericht", "Prüfbericht", "Prüfung", "Kurzprüfung", "Nachweis", "Anforderungen prüfen", "Konformität", "compliance check", "requirements review". Outputs: A cited Markdown Prüfbericht whose core is a Befund per Prüfpunkt, in the plan's order, with open points named rather than dropped.
 metadata:
@@ -15,7 +15,7 @@ Write the report a planning office files: requirements read against this project
 
 ## When To Use
 
-Use this skill when `answer_strategy.answer_type` is `pruefbericht`, or the approved plan's genre is `pruefbericht`, or the request asks which requirements apply to a project and whether they are met. For a whitepaper-style explanation use `long-form-report-writer`; for a forecast use `prediction-report-writer`.
+Use this skill when `answer_strategy.answer_type` is `inspection_report`, or the approved plan's genre is `inspection_report`, or the request asks which requirements apply to a project and whether they are met. For a whitepaper-style explanation use `long-form-report-writer`; for a forecast use `prediction-report-writer`.
 
 ## Structure
 
@@ -36,8 +36,8 @@ Close with **Offene Punkte**: every `offen` and `nicht erfüllt` finding as one 
 
 ## Depth
 
-`kurzpruefung`: the lead, the Befund lines with one or two sentences of derivation each, the open points, the sources. No narrative sections.
-`gutachten`: the same skeleton with the full derivation per point — the rule, what it requires, how this project meets or misses it — and the caveats written out.
+`quick_check`: the lead, the Befund lines with one or two sentences of derivation each, the open points, the sources. No narrative sections.
+`expert_report`: the same skeleton with the full derivation per point — the rule, what it requires, how this project meets or misses it — and the caveats written out.
 
 ## Craft
 

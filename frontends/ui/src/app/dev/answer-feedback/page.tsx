@@ -123,12 +123,12 @@ const FIXTURE = {
     { organizationId: 'org_stadtplan', up: 7, down: 1, voters: 3 },
   ],
   topics: [
-    { topic: 'brandschutz', up: 41, down: 9, voters: 14 },
-    { topic: 'energie', up: 33, down: 2, voters: 11 },
-    { topic: 'schallschutz', up: 12, down: 6, voters: 7 },
-    { topic: 'barrierefreiheit', up: 9, down: 1, voters: 5 },
+    { topic: 'fire_safety', up: 41, down: 9, voters: 14 },
+    { topic: 'energy', up: 33, down: 2, voters: 11 },
+    { topic: 'sound_insulation', up: 12, down: 6, voters: 7 },
+    { topic: 'accessibility', up: 9, down: 1, voters: 5 },
     // Below the floor: counts, no rate.
-    { topic: 'statik', up: 2, down: 1, voters: 2 },
+    { topic: 'structural', up: 2, down: 1, voters: 2 },
   ],
   turns: [
     {
@@ -145,7 +145,7 @@ const FIXTURE = {
       answer:
         'Die maximale Fluchtweglänge beträgt 40 m. Für das nördliche Treppenhaus gilt dieselbe Grenze, da es als notwendiger Treppenraum ausgeführt ist.',
       conversationTitle: 'Atrium, Rauchabschnitte GK 4',
-      topics: ['brandschutz'],
+      topics: ['fire_safety'],
       comment:
         'Das nördliche Treppenhaus ist ein Sicherheitstreppenhaus, da gilt eine andere Regel.',
       expectedAnswer:
@@ -165,7 +165,7 @@ const FIXTURE = {
       question: 'Welche OIB-Richtlinie regelt die Brandabschnittsgrößen für Gebäudeklasse 4?',
       answer: 'Das ist in OIB-Richtlinie 2 geregelt, Punkt 3.1.',
       conversationTitle: 'Brandabschnitte',
-      topics: ['brandschutz', 'allgemein'],
+      topics: ['fire_safety', 'general'],
       comment: null,
       expectedAnswer: 'OIB-RL 2, Tabelle 1b, nicht Punkt 3.1.',
       langfuseTraceUrl: TRACE('b31d9e6c20'),
@@ -211,7 +211,7 @@ const LANDED = [
     answer:
       'Für Außenwände gegen Außenluft fordert OIB-Richtlinie 6 einen U-Wert von höchstens 0,35 W/(m²·K); im Bestand gilt dieser Wert bei einer größeren Renovierung.',
     conversationTitle: 'Sanierung Gründerzeit, Wärmeschutz',
-    topics: ['energie'],
+    topics: ['energy'],
     comment: null,
     expectedAnswer: null,
     langfuseTraceUrl: TRACE('e90a11c7d2'),
@@ -229,7 +229,7 @@ const LANDED = [
     answer:
       'OIB-Richtlinie 4 verlangt einen Aufzug, sobald mehr als eine Geschoßebene barrierefrei erschlossen werden muss.',
     conversationTitle: 'Wohnbau Nord, Erschließung',
-    topics: ['barrierefreiheit'],
+    topics: ['accessibility'],
   },
 ]
 
@@ -326,11 +326,11 @@ const OPTIONS = {
     { key: 'other', votes: 3 },
   ],
   topics: [
-    { key: 'brandschutz', votes: 50 },
-    { key: 'energie', votes: 35 },
-    { key: 'schallschutz', votes: 18 },
-    { key: 'barrierefreiheit', votes: 10 },
-    { key: 'statik', votes: 3 },
+    { key: 'fire_safety', votes: 50 },
+    { key: 'energy', votes: 35 },
+    { key: 'sound_insulation', votes: 18 },
+    { key: 'accessibility', votes: 10 },
+    { key: 'structural', votes: 3 },
   ],
   modes: [
     { key: 'meta', votes: 4 },
@@ -361,7 +361,7 @@ function seededState(variant: string | null): { scope: QualityScope; filters: Ra
       ...NO_RATINGS_FILTERS,
       verdict: 'down',
       reasons: ['inaccurate', 'wrong_source'],
-      topics: ['brandschutz'],
+      topics: ['fire_safety'],
       modes: ['shallow'],
       hasComment: true,
     },

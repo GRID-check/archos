@@ -1932,7 +1932,7 @@ class TestCitedSourceEmission:
         document = next(item for item in cited if item.get("citation_key"))
         assert document["file_name"] == "oib-rl_2_ausgabe_mai_2023.pdf"
         assert document["page"] == 12
-        assert document["kind"] == "baurecht"
+        assert document["kind"] == "building_law"
 
     def test_a_document_the_report_never_names_is_not_flagged(self):
         cited = self._cited_artifacts("Ein Bericht ohne Quellenangaben.")

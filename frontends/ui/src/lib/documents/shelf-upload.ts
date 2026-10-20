@@ -83,7 +83,7 @@ export interface ShelfUploadInput {
    * link once the file has been read. Ignored when the older document has this
    * file's own name: that is a new version (ADR-0054).
    */
-  fassungOf?: string | null
+  revisionOf?: string | null
   /**
    * The ingest queue's priority for these bytes. A person's upload is
    * `interactive` (the default); a machine filing thousands of files on their
@@ -115,7 +115,7 @@ export interface UploadDocumentResult {
    * not be honoured (`resolveRevisionOf`): the file is stored as a document of
    * its own, and this says why it is not linked. Present only then.
    */
-  fassungOfIgnored?: RevisionOfIgnoredReason
+  revisionOfIgnored?: RevisionOfIgnoredReason
 }
 
 /** 1 and 4 of the four differences between the shelves: the object key's owner prefix. */
@@ -149,9 +149,9 @@ async function uploadAuditEvent(
     folderId: string | null
     replaced: boolean
     /** The older document the reader filed it as the next Fassung of, when they did. */
-    fassungOf: string | null
+    revisionOf: string | null
     /** Why that choice was dropped, when it was: the file went in as a document of its own. */
-    fassungOfIgnored: RevisionOfIgnoredReason | null
+    revisionOfIgnored: RevisionOfIgnoredReason | null
   },
 ): Promise<void> {
   const located =
@@ -172,8 +172,9 @@ async function uploadAuditEvent(
       filename: event.filename.slice(0, 200),
       fileSize: event.fileSize,
       ...(event.replaced ? { replaced: true } : {}),
-      ...(event.fassungOf ? { fassungOf: event.fassungOf.slice(0, 200) } : {}),
-      ...(event.fassungOfIgnored ? { fassungOfIgnored: event.fassungOfIgnored } : {}),
+      // The trail's key names are history: they stay as they were written (audit names move with R3).
+      ...(event.revisionOf ? { fassungOf: event.revisionOf.slice(0, 200) } : {}),
+      ...(event.revisionOfIgnored ? { fassungOfIgnored: event.revisionOfIgnored } : {}),
     },
     request,
   })
@@ -192,9 +193,9 @@ interface PlaceUploadInput {
   storageBucket: string
   uploadBatchId: string | null
   /** The file name of the older document this is filed as the next Fassung of, checked; null for none. */
-  fassungOf: string | null
+  revisionOf: string | null
   /** Why the reader's Fassung choice was dropped, when it was. */
-  fassungOfIgnored: RevisionOfIgnoredReason | null
+  revisionOfIgnored: RevisionOfIgnoredReason | null
   /** Whether the session may write into a folder of this shelf (a superseded document's). */
   mayWriteFolder: (folderId: string | null) => boolean
   /** The screening matches the uploader released (ADR-0086), audited once stored. */
@@ -409,7 +410,7 @@ async function prepareUpload(
   }
   // A Fassung the reader chose, before a byte is stored. One that may not be
   // honoured is dropped and reported, never a reason to lose the file.
-  const revision = await resolveRevisionOf(session, input.fassungOf, { shelf, collectionName, filename })
+  const revision = await resolveRevisionOf(session, input.revisionOf, { shelf, collectionName, filename })
 
   // Create the organization's bucket if this is its first upload (ADR-0043). A
   // no-op when per-org buckets are off. Done before the PUT so a provisioning
@@ -440,8 +441,8 @@ async function prepareUpload(
     contentHash: contentDigest(bytes),
     storageBucket,
     uploadBatchId,
-    fassungOf: revision.fassungOf,
-    fassungOfIgnored: revision.ignored,
+    revisionOf: revision.revisionOf,
+    revisionOfIgnored: revision.ignored,
     mayWriteFolder: gate.mayWriteFolder,
     screeningOverridden: nameGate.overridden,
   }
@@ -517,7 +518,7 @@ export async function uploadToShelf(
   const upload = await prepareUpload(session, shelf, input)
   const { file, filename, collectionName, folderPath, storageBucket, contentHash } = upload
 
-  const ignored = upload.fassungOfIgnored ? { fassungOfIgnored: upload.fassungOfIgnored } : {}
+  const ignored = upload.revisionOfIgnored ? { revisionOfIgnored: upload.revisionOfIgnored } : {}
   const placed = await placeUpload(session, upload)
   if (placed.unchanged) {
     return { documentId: placed.documentId, jobId: null, status: 'uploaded', filename, unchanged: true, ...ignored }
@@ -549,7 +550,7 @@ export async function uploadToShelf(
     // `knowledge_search folder=` see the folder from the first ingest onward.
     folderPath,
     priority: input.priority,
-    fassungOf: upload.fassungOf,
+    revisionOf: upload.revisionOf,
   })
 
   await uploadAuditEvent(session, shelf, request, {
@@ -559,8 +560,8 @@ export async function uploadToShelf(
     collectionName,
     folderId: upload.folderId,
     replaced: placed.replaced,
-    fassungOf: input.fassungOf && upload.fassungOf ? input.fassungOf : null,
-    fassungOfIgnored: upload.fassungOfIgnored,
+    revisionOf: input.revisionOf && upload.revisionOf ? input.revisionOf : null,
+    revisionOfIgnored: upload.revisionOfIgnored,
   })
   await auditScreeningOverride(
     session,

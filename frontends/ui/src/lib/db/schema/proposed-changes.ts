@@ -43,7 +43,7 @@ export const proposedChanges = pgTable(
     /**
      * The shelf (0146), `project_folders.scope`'s vocabulary. A Büroablage
      * proposal moves Büroablage documents and nothing else
-     * (`proposed_changes_archiv_move`).
+     * (`proposed_changes_office_shelf_move`).
      */
     scope: text('scope').$type<ProposalScope>().notNull().default('project'),
     kind: text('kind').$type<ProposedChangeKind>().notNull(),
@@ -89,8 +89,8 @@ export const proposedChanges = pgTable(
     scopeKnown: check('proposed_changes_scope_known', sql`${table.scope} IN (${list(PROPOSAL_SCOPES)})`),
     scopeOwner: check('proposed_changes_scope_owner', sql`(${table.scope} = 'project') = (${table.projectId} IS NOT NULL)`),
     officeShelfMove: check(
-      'proposed_changes_archiv_move',
-      sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "buero"))'), false)`
+      'proposed_changes_office_shelf_move',
+      sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "office"))'), false)`
     ),
     originCardUidx: uniqueIndex('uniq_proposed_changes_origin_card')
       .on(table.organizationId, table.originMessageId, table.originCardIndex)
