@@ -136,7 +136,7 @@ export const SUGGESTION_CLASS = suggestion('building_class@bldg1', 'Gebäudeklas
   ],
 })
 
-export const SUGGESTION_EDITION = suggestion('oib_ausgabe', 'OIB-Ausgabe', '2023', '2023', {
+export const SUGGESTION_EDITION = suggestion('oib_edition', 'OIB-Ausgabe', '2023', '2023', {
   evidence: [fromDocument('Bescheid.pdf', 1, 'nach den OIB-Richtlinien, Ausgabe 2023')],
 })
 

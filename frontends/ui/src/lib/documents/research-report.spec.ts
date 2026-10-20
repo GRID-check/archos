@@ -93,7 +93,7 @@ const PROFILE = {
       updatedAt: '2026-08-01T00:00:00.000Z',
     },
     federal_state: {
-      value: 'wien',
+      value: 'vienna',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-08-01T00:00:00.000Z',
@@ -105,7 +105,7 @@ const PROFILE = {
       updatedAt: '2026-08-01T00:00:00.000Z',
     },
     project_phase: {
-      value: 'einreichplanung',
+      value: 'submission_planning',
       confidence: 'confirmed',
       source: 'onboarding',
       updatedAt: '2026-08-01T00:00:00.000Z',
@@ -377,7 +377,7 @@ describe('fileResearchReport', () => {
   })
 
   /**
-   * „wien" is the stored token; „Wien" is what the Project Brief panel shows.
+   * „vienna" is the stored token; „Wien" is what the Project Brief panel shows.
    * The cover resolves it through `buildProjectBriefView`, the same builder the
    * Overview uses, so the two surfaces cannot end up naming one Bundesland two
    * different ways — and a Bauakt never carries the machine vocabulary.
@@ -387,7 +387,7 @@ describe('fileResearchReport', () => {
     const pdf = await readPdf((await runRenderer()).bytes)
 
     expect(pdf.text).toContain('Wien')
-    expect(pdf.text).not.toContain('wien ')
+    expect(pdf.text).not.toContain('vienna')
   })
 
   /**

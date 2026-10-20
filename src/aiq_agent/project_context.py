@@ -180,7 +180,7 @@ DISABLED_SOURCES_HEADER = "x-grid-disabled-sources"
 # side of this decision), so `from_context`/`from_headers`'s legacy
 # individual-header fallback path simply has no source for it and leaves it
 # `None` — a pre-envelope caller falls through to
-# `aiq_agent.common.ris_catalog.extract_bundesland`'s existing prompt-text
+# `aiq_agent.common.norm_registry.extract_federal_state`'s existing prompt-text
 # parsing exactly as before this field existed.
 #
 # Vocabulary mirrored (not imported) from `ris_catalog.py`'s

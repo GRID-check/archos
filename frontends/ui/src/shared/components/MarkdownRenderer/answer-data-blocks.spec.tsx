@@ -20,7 +20,7 @@ const at = '2026-09-20T08:00:00Z'
 const PROFILE: ProjectProfile = {
   facts: {
     federal_state: { value: 'vienna', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
-    gebaeudeklasse: { value: 'GK4', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
+    building_class: { value: 'GK4', confidence: 'confirmed', source: 'onboarding', updatedAt: at },
     escape_level_m: { value: 10.8, confidence: 'confirmed', source: 'onboarding', updatedAt: at },
   },
   goals: {},

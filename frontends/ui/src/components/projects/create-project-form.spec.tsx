@@ -354,7 +354,7 @@ describe('CreateProjectForm', () => {
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Haus am See', state: 'active', setup: 'piloti', bundesland: 'kaernten' })
+      expect(sent()).toEqual({ name: 'Haus am See', state: 'active', setup: 'piloti', federal_state: 'carinthia' })
     })
 
     test('remembers that there is no geocoder, so the next dialog opens as the select', async () => {

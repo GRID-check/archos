@@ -84,7 +84,7 @@ describe('inferDocumentKind', () => {
       expect(inferDocumentKind({ filename: 'Lageplan_1-500.pdf' })).toBe('siteplan')
       expect(inferDocumentKind({ filename: 'site-plan.pdf' })).toBe('siteplan')
       expect(inferDocumentKind({ filename: 'Bebauungsplan_7769.pdf' })).toBe('siteplan')
-      expect(inferDocumentKind({ filename: 'zoning.pdf' })).toBe('siteplan')
+      expect(inferDocumentKind({ filename: 'flaechenwidmung.pdf' })).toBe('siteplan')
     })
 
     it('detects official notices', () => {

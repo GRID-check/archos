@@ -48,7 +48,7 @@ vi.mock('@/features/chat/store', () => {
 // reflects the real profile and the "After" column reflects the real patch.
 const storedProfile: ProjectProfile = {
   facts: {
-    waermeversorgung: {
+    heat_supply: {
       value: 'gas',
       confidence: 'confirmed',
       source: 'onboarding',
@@ -62,7 +62,7 @@ const storedProfile: ProjectProfile = {
 
 // What the patch will actually write — differs from the stored value.
 const patch: ProjectProfilePatchOperation[] = [
-  { op: 'add', path: '/facts/heat_supply', value: 'waermepumpe' },
+  { op: 'add', path: '/facts/heat_supply', value: 'heat_pump' },
 ]
 
 interface StubbedFetch {

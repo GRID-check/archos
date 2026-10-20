@@ -540,7 +540,7 @@ class TestFederalStateField:
     def test_outside_austria_token_round_trips_literally(self):
         # project_context.py only validates against the vocabulary; mapping
         # "outside_austria" to "no state prioritized" (None) is
-        # ris_catalog.resolve_bundesland's job, not the parser's.
+        # ris_catalog.resolve_federal_state's job, not the parser's.
         header, sig = self._envelope({"federalState": "outside_austria"})
         ctx = pc.GridRequestContext.from_envelope(header, sig, self.SECRET)
         assert ctx is not None

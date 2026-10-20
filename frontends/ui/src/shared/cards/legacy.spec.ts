@@ -75,4 +75,14 @@ describe('cards stored before the English field names', () => {
     ])
     expect(card).toMatchObject({ type: 'document_draft', path: '/drafts/Notiz.md' })
   })
+
+  it('maps a stored task card’s old kind, and leaves a current one', () => {
+    expect(modernizeGridCard({ type: 'task_created', kind: 'einreichcheck', taskId: 't1' })).toEqual({
+      type: 'task_created',
+      kind: 'submission_check',
+      taskId: 't1',
+    })
+    const current = { type: 'task_created', kind: 'submission_check', taskId: 't2' }
+    expect(modernizeGridCard(current)).toBe(current)
+  })
 })

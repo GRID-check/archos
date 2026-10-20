@@ -7,6 +7,8 @@
 // The migration rewrote the table once; this keeps the cards in flight (an older
 // pod, a tab's localStorage) readable. Read-only: nothing writes these.
 
+import { LEGACY_TASK_KINDS } from '@/lib/tasks/task-vocabulary'
+
 /** Where a draft lived before the working directory had an English root. */
 export const LEGACY_DRAFT_ROOT = '/entwuerfe/'
 export const DRAFT_ROOT = '/drafts/'
@@ -90,6 +92,10 @@ export function modernizeGridCard(card: unknown): unknown {
       return Array.isArray(card.operations) ? { ...card, operations: card.operations.map(modernizeSource) } : card
     case 'document_draft':
       return typeof card.path === 'string' ? { ...card, path: modernizeDraftPath(card.path) } : card
+    case 'task_created':
+      return typeof card.kind === 'string' && Object.hasOwn(LEGACY_TASK_KINDS, card.kind)
+        ? { ...card, kind: LEGACY_TASK_KINDS[card.kind] }
+        : card
     default:
       return card
   }

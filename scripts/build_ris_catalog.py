@@ -55,7 +55,7 @@ def _standalone_module(module_name: str, module_path: Path):
 def _load_norm_registry_module():
     """Import norm_registry.py standalone (the package __init__ pulls langgraph/nat).
 
-    The flat module only needs pydantic + yaml at import time (``resolve_bundesland``
+    The flat module only needs pydantic + yaml at import time (``resolve_federal_state``
     imports project_context lazily), so stubbing the aiq_agent package chain is enough.
     """
     import types
@@ -69,6 +69,8 @@ def _load_norm_registry_module():
     # norm_registry imports source_kinds, which is stdlib-only; loaded the same
     # way, or the builder dies on import before it verifies anything.
     _standalone_module("aiq_agent.common.source_kinds", common_dir / "source_kinds.py")
+    # So does profile_names (stdlib only), for the federal-state tokens.
+    _standalone_module("aiq_agent.profile_names", common_dir.parent / "profile_names.py")
     return _standalone_module("aiq_agent.common.norm_registry", common_dir / "norm_registry.py")
 
 

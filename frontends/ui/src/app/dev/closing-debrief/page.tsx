@@ -108,7 +108,7 @@ const PROFILE: ProjectProfile = {
   }),
   assumptions: {
     work_type: suggested(['new_build'], 'Baubeschreibung.pdf, S. 2: „Neubau eines viergeschoßigen Wohnhauses“'),
-    oib_ausgabe: suggested('2019', 'Einreichplan.pdf, S. 1: „Nachweis nach OIB-Richtlinien 2019“'),
+    oib_edition: suggested('2019', 'Einreichplan.pdf, S. 1: „Nachweis nach OIB-Richtlinien 2019“'),
   },
 }
 

@@ -68,7 +68,7 @@ const MODELS = {
 }
 
 const PROFILE = {
-  facts: { gebaeudeklasse: { value: 4 }, hauptnutzung: { value: 'wohnen' } },
+  facts: { building_class: { value: 4 }, main_use: { value: 'residential' } },
 }
 
 const SCHEDULE = {

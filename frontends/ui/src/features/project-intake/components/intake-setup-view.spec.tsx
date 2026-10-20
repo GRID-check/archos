@@ -150,7 +150,7 @@ describe('IntakeSetupView', () => {
       expect(
         within(screen.getByTestId('intake-suggestion-storeys_above_ground@bldg1')).getByText('Contradiction').className
       ).toMatch(/warning/)
-      expect(screen.getByTestId('intake-suggestion-standort_adresse')).toHaveTextContent('Confirmed')
+      expect(screen.getByTestId('intake-suggestion-site_address')).toHaveTextContent('Confirmed')
       expect(screen.getByTestId('intake-suggestion-storeys_above_ground@bldg1')).toHaveTextContent('Contradiction')
     })
 

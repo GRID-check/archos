@@ -387,7 +387,7 @@ describe('/api/jobs/async/[...path] proxy — signed X-Grid-Request-Context enve
   })
 
   it('carries the resolved federal-state fact structurally on the envelope (backlog T3-9 follow-up, 2026-07-16)', async () => {
-    vi.mocked(loadProjectFederalState).mockResolvedValue('tirol')
+    vi.mocked(loadProjectFederalState).mockResolvedValue('tyrol')
 
     const res = await POST(
       postRequest('https://grid.example/api/jobs/async/submit', { agent_type: 'deep_research' }),

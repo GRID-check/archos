@@ -445,7 +445,7 @@ function toFormData(value: {
   if (value.setup === 'piloti') {
     if (value.description.trim() !== '') formData.set('description', value.description.trim())
     if (value.location) formData.set('location', JSON.stringify(value.location))
-    else if (value.bundesland !== '') formData.set('bundesland', value.bundesland)
+    else if (value.bundesland !== '') formData.set('federal_state', value.bundesland)
   }
   if (value.state !== 'closed') return formData
   formData.set('outcome', value.outcome)

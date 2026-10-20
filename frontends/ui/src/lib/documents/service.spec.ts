@@ -1875,8 +1875,8 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
         status: 'closed',
         profile: {
           facts: {
-            bundesland: { value: 'Wien', source: 'user_confirmed' },
-            bauweise: { value: ['holzbau'], source: 'user_confirmed' },
+            federal_state: { value: 'vienna', source: 'user_confirmed' },
+            construction_method: { value: ['timber'], source: 'user_confirmed' },
           },
           goals: {},
           unknowns: [],
@@ -1888,7 +1888,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     await uploadDocument(session, makeInput(), new Request('http://x'))
 
     expect(ingestBody().project_facts).toEqual({
-      facts: { bundesland: 'wien', gebaeudeklasse: [], bauweise: ['holzbau'], nutzungen: [], vorhabensart: [] },
+      facts: { federal_state: 'vienna', building_class: [], construction_method: ['timber'], uses: [], work_type: [] },
       status: 'closed',
     })
   })

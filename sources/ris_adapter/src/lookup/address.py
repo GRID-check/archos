@@ -7,7 +7,7 @@ planner AND the § extractor — whenever the caller already said "§ 63 BO Wien
 
 Pure: every function here takes strings and returns values. The one exception
 is the project brief, which is a request fact and is read through
-``norm_registry.resolve_bundesland``; it is isolated in its own function so the
+``norm_registry.resolve_federal_state``; it is isolated in its own function so the
 rest stays testable without a request context.
 """
 
@@ -311,7 +311,7 @@ def land_sentence(address: Address) -> str:
 def _land_from_brief() -> tuple[str, str]:
     """The project brief's structured jurisdiction, or ``("", "")``.
 
-    ``resolve_bundesland(None)`` reads the validated token off the signed
+    ``resolve_federal_state(None)`` reads the validated token off the signed
     request envelope and probes no text — with no live request (tests, the
     adapter standalone) there simply is no project, which is not an error.
     """

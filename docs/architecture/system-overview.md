@@ -210,8 +210,8 @@ different questions and reach the agent differently:
 Both systems follow the same **scope hierarchy** — each level nests inside the
 one above it, a question searches every level it sits in, and tenancy makes a
 level invisible outside its owner. This containment is the structural fact of
-the knowledge architecture; the source-kind chips (`baurecht | buero | projekt
-| web`) are a labelling dimension *within* it, not a second hierarchy:
+the knowledge architecture; the source-kind chips (`building_law | office |
+project | web`) are a labelling dimension *within* it, not a second hierarchy:
 
 | Level | Documents (Qdrant) | Learned state (`grid_app`) | Visible to |
 |---|---|---|---|

@@ -571,7 +571,7 @@ describe('IfcComplianceCard', () => {
     const fetchMock = stubFetch({
       models: MODELS,
       query: COMPLIANCE,
-      profile: { facts: { gebaeudeklasse: { value: 4 }, hauptnutzung: { value: 'residential' } } },
+      profile: { facts: { building_class: { value: 4 }, main_use: { value: 'residential' } } },
     })
     render(
       <IfcComplianceCard
@@ -599,7 +599,7 @@ describe('IfcComplianceCard', () => {
     stubFetch({
       models: MODELS,
       query: COMPLIANCE,
-      profile: { facts: { gebaeudeklasse: { value: 4 } } },
+      profile: { facts: { building_class: { value: 4 } } },
     })
     render(
       <IfcComplianceCard

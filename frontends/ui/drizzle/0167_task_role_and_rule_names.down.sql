@@ -79,3 +79,9 @@ WITH "names"("old_id", "new_id") AS (VALUES
 UPDATE "bim_check_confirmations" SET "rule_id" = "names"."old_id"
   FROM "names"
   WHERE "bim_check_confirmations"."rule_id" = "names"."new_id";
+
+-- The task_created cards stored on messages carry the same kind. No other object in a
+-- message's metadata has a task kind, so the exact JSON pair is the whole match.
+UPDATE messages
+SET metadata = replace(metadata::text, '"kind": "submission_check"', '"kind": "einreichcheck"')::jsonb
+WHERE metadata::text LIKE '%"kind": "submission_check"%';
