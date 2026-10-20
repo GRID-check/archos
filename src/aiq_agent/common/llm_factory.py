@@ -225,7 +225,7 @@ def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
         model=getattr(llm, "model_name", None) or getattr(llm, "model", None),
     )
     fields = attribution_fields()
-    if extra_body is None and fields:
+    if extra_body is None and (fields or kwargs.get("extra_body")):
         extra_body = merged_base
     if extra_body is not None:
         kwargs["extra_body"] = with_attribution(extra_body, fields)

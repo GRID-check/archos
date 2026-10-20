@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    Every model request sent to OpenRouter now names the office and the person
+    it was made for, so OpenRouter's activity can be filtered by the user
+    field, written as organization id, a slash, then user id. Only internal
+    ids are sent, never names or email addresses.

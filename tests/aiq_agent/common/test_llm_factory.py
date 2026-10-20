@@ -238,6 +238,17 @@ def test_attribution_keeps_the_instance_extra_body_without_a_cache_key():
     assert payload["extra_body"]["plugins"] == [{"id": "response-healing"}]
 
 
+def test_a_bound_extra_body_does_not_displace_the_instances_without_a_cache_key():
+    # A per-call extra_body REPLACES the instance's in langchain's payload, so
+    # with no cache key and no tracker the healing plugin (and, on a pinned
+    # model, the ZDR routing) used to be dropped.
+    from langchain_core.messages import HumanMessage
+
+    payload = _sent_payload(_openrouter_chat_model(), [HumanMessage(content="Hallo")], extra_body={"x": 1})
+    assert payload["extra_body"]["x"] == 1
+    assert payload["extra_body"]["plugins"] == [{"id": "response-healing"}]
+
+
 def test_a_turns_iterations_share_one_key():
     from langchain_core.messages import AIMessage
     from langchain_core.messages import ToolMessage

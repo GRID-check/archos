@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import contextvars
 import json
+import uuid
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from unittest.mock import patch
@@ -209,6 +210,32 @@ class TestAttribution:
                 "https://openrouter.ai/api/v1/chat/completions", b"not json", NO_RETENTION_LIMITS
             )
         assert sent.content == b"not json"
+
+
+class TestAttributionNeverFailsACall:
+    def test_ids_that_are_not_strings_are_written_as_strings(self):
+        with _booked_to(organization_id=uuid.UUID(int=1), user_id=7):
+            assert openrouter.attribution_fields()["user"] == f"{uuid.UUID(int=1)}/7"
+
+    def test_an_unread_body_passes_through_when_nothing_must_be_pinned(self):
+        request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions", files={"f": ("a", b"x")})
+        with _booked_to(organization_id="org_1"):
+            assert openrouter._shaped_request(request, NO_RETENTION_LIMITS) is request
+
+    def test_an_endpoint_whose_schema_has_no_user_gets_nothing(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            sent = TestAttribution()._send("https://openrouter.ai/api/alpha/decisions", {"model": "m"})
+        assert json.loads(sent.content) == {"model": "m"}
+
+    def test_metadata_stops_at_sixteen_pairs_and_the_callers_keys_come_first(self):
+        theirs = {f"k{i}": "v" for i in range(14)}
+        with _booked_to(organization_id="org_1", user_id="user_2", project_id="p_3"):
+            body = json.loads(
+                TestAttribution()._send("https://openrouter.ai/api/v1/chat/completions", {"metadata": theirs}).content
+            )
+        assert len(body["metadata"]) == 16
+        assert theirs.items() <= body["metadata"].items()
+        assert body["metadata"]["organization_id"] == "org_1" and "project_id" not in body["metadata"]
 
 
 class TestTheIngestScope:

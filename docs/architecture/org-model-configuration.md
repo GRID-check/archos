@@ -221,8 +221,11 @@ is `<organization_id>/<user_id>`, and on chat completions and the Responses
 API `metadata` carries `organization_id`, `user_id`, `project_id`,
 `conversation_id`, `job_id`, `message_id` and `activity`. Both come from the
 ambient cost tracker, so they name exactly what the usage ledger books the
-call to. A call outside any tracker carries neither, and a host other than
-OpenRouter never receives them. WorkOS ids only, never names or emails.
+call to. A call outside any tracker carries neither; neither does an
+OpenRouter endpoint whose schema does not declare `user` (the alpha decisions
+route, audio), and a host other than OpenRouter never receives them. The
+helper routes in `aiq_api` (titles, summaries, document comparison, dictation)
+run outside any tracker today, so they are neither tagged nor on the ledger. WorkOS ids only, never names or emails.
 Filter OpenRouter's activity by `user` to see one organization or person.
 `user` is also the identity OpenRouter isolates abuse blocks by. One key per
 organization, which isolates tenants at the gateway as well, is ADR-0118.

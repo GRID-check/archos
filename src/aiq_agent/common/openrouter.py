@@ -252,11 +252,14 @@ ATTRIBUTION_METADATA_KEYS = (
     "message_id",
     "activity",
 )
+_METADATA_PAIRS_MAX = 16
 _METADATA_VALUE_MAX = 512
 _USER_MAX = 256
 
-#: The endpoints whose request schema declares ``metadata``. Embeddings, rerank
-#: and image generation declare ``user`` but not ``metadata``.
+#: The endpoints whose request schema declares ``user``; any other OpenRouter
+#: endpoint (the alpha decisions route, audio) gets no attribution at all.
+_USER_PATHS = ("/chat/completions", "/responses", "/embeddings", "/rerank", "/images", "/images/generations")
+#: The endpoints whose request schema also declares ``metadata``.
 _METADATA_PATHS = ("/chat/completions", "/responses")
 
 
@@ -280,7 +283,7 @@ def attribution_fields(*, metadata: bool = True) -> dict[str, Any]:
         return {}
     fields: dict[str, Any] = {}
     user = "/".join(
-        part for part in (getattr(tracker, "organization_id", None), getattr(tracker, "user_id", None)) if part
+        str(part) for part in (getattr(tracker, "organization_id", None), getattr(tracker, "user_id", None)) if part
     )
     if user:
         fields["user"] = user[:_USER_MAX]
@@ -298,7 +301,8 @@ def with_attribution(body: dict[str, Any], fields: Mapping[str, Any]) -> dict[st
     """``body`` carrying ``fields``; ``body`` itself when there is nothing to add.
 
     What the caller already set wins: its own ``user``, and each ``metadata``
-    key it named. A NEW dict whenever anything is added.
+    key it named; ours fill the rest up to OpenRouter's 16 pairs. A NEW dict
+    whenever anything is added.
     """
     added: dict[str, Any] = {}
     if fields.get("user") and not body.get("user"):
@@ -306,29 +310,44 @@ def with_attribution(body: dict[str, Any], fields: Mapping[str, Any]) -> dict[st
     existing = body.get("metadata")
     extra = fields.get("metadata") or {}
     if extra and (existing is None or isinstance(existing, Mapping)):
-        merged = {**extra, **(existing or {})}
+        merged = dict(existing or {})
+        for key, value in extra.items():
+            if len(merged) >= _METADATA_PAIRS_MAX:
+                break
+            merged.setdefault(key, value)
         if merged != existing:
             added["metadata"] = merged
     return {**body, **added} if added else body
 
 
-def _carries_metadata(path: str) -> bool:
-    return path.rstrip("/").endswith(_METADATA_PATHS)
+def _attribution_for(path: str) -> dict[str, Any]:
+    """The attribution an OpenRouter endpoint's schema can carry: none, ``user``, or both fields."""
+    path = path.rstrip("/")
+    if not path.endswith(_USER_PATHS):
+        return {}
+    return attribution_fields(metadata=path.endswith(_METADATA_PATHS))
 
 
 def _shaped_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
     """``request`` with ``policy`` and the call's attribution merged into its JSON body.
 
-    A body that cannot be parsed is refused only when the policy must be applied
-    to it; attribution is never a reason to fail a call.
+    A body that cannot be read or parsed (streamed, multipart) is refused only
+    when the policy must be applied to it; attribution is never a reason to
+    fail a call.
     """
     if request.method != "POST" or not targets_openrouter(str(request.url)):
         return request
-    fields = attribution_fields(metadata=_carries_metadata(request.url.path))
+    fields = _attribution_for(request.url.path)
     if not policy.zdr and not fields:
         return request
     try:
-        body = json.loads(request.content or b"null")
+        raw = request.content
+    except httpx.RequestNotRead:
+        if policy.zdr:
+            raise
+        return request
+    try:
+        body = json.loads(raw or b"null")
     except ValueError:
         body = None
     if not isinstance(body, dict):
