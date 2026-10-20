@@ -34,8 +34,16 @@ export function isOpenKind(kind: DownloadLogKind): boolean {
 }
 
 /** The shelves a logged document can be on; the same names as `documents.scope`. */
-export const DOWNLOAD_LOG_SCOPES = ['project', 'archiv', 'session'] as const
+export const DOWNLOAD_LOG_SCOPES = ['project', 'office_shelf', 'session'] as const
 export type DownloadLogScope = (typeof DOWNLOAD_LOG_SCOPES)[number]
+
+/**
+ * What the log may hold: the scopes above and the old name of the office shelf,
+ * which entries written before migration 0170 keep (the rows are immutable, so
+ * the migration widens the CHECK instead of rewriting them). Readers modernize
+ * it (`modernizeDocumentScope`). Remove after one release.
+ */
+export const DOWNLOAD_LOG_STORED_SCOPES = [...DOWNLOAD_LOG_SCOPES, 'archiv'] as const
 
 /** How long entries are kept unless the organization says otherwise: twelve months. */
 export const DOWNLOAD_LOG_DEFAULT_RETENTION_DAYS = 365

@@ -4,7 +4,7 @@
  * The Fassung count on a document, and the mark of an older one.
  *
  * A document with Fassungen under other file names is ONE entry in the listing
- * (`fassung-chain.ts`), so the entry says how many states it has. Two shapes,
+ * (`revision-chain.ts`), so the entry says how many states it has. Two shapes,
  * for two different facts:
  *
  * - {@link RevisionCount}: „3 Fassungen", quiet text: beside the name in the
@@ -32,7 +32,7 @@ import { revisionCount } from '../lib/revision-chain'
 
 /** Whether a person confirmed a newer Fassung of this file: it is an older one, and says only that. */
 export function isOlderRevisionEntry(file: FileItem): boolean {
-  return file.fassung?.supersededBy != null
+  return file.revision?.supersededBy != null
 }
 
 /** „3 Fassungen" beside the name, or nothing for a document with one state or for an older Fassung. */
@@ -72,7 +72,7 @@ export function OlderRevisionBadge({
   className?: string
 }): JSX.Element | null {
   const t = useTranslations('files')
-  const newer = file.fassung?.supersededBy
+  const newer = file.revision?.supersededBy
   if (!newer) return null
   const replacedBy = t('revisionBadge.olderTitle', { name: newer.filename })
   return (

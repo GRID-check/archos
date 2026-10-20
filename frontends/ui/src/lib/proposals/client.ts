@@ -77,7 +77,7 @@ async function requestAs<T>(
 export function proposalListPath(query: ProposalListQuery): string {
   const params = new URLSearchParams()
   if (query.projectId) params.set('projectId', query.projectId)
-  else params.set('shelf', 'archiv')
+  else params.set('shelf', 'office_shelf')
   if (query.kind) params.set('kind', query.kind)
   return `/api/proposals?${params.toString()}`
 }
@@ -85,7 +85,7 @@ export function proposalListPath(query: ProposalListQuery): string {
 /**
  * The open proposals of a shelf this reader may read, each with the documents
  * it names resolved to ids (a project's with `projectId`, the Büroablage's with
- * `shelf: 'archiv'`).
+ * `shelf: 'office_shelf'`).
  */
 export function listOpenProposals(
   query: ProposalListQuery,

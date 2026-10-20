@@ -37,7 +37,7 @@ export interface IntakeSeedInput {
   /** The address as the person typed it, when no search hit was chosen. */
   address?: string | undefined
   /** An A2_land token chosen by hand, when no address was searched. */
-  bundesland?: string | undefined
+  federalState?: string | undefined
   closing?: ClosingIntent | undefined
 }
 
@@ -56,13 +56,13 @@ function fact(value: string, now: Date, evidence?: ProjectFact['evidence']): Pro
  * Empty when neither was given. Pure.
  */
 export function intakeSeedFacts(
-  input: Pick<IntakeSeedInput, 'location' | 'address' | 'bundesland'>,
+  input: Pick<IntakeSeedInput, 'location' | 'address' | 'federalState'>,
   now: Date,
   userId: string
 ): Record<string, ProjectFact> {
   const { location } = input
   const typed = input.address?.trim()
-  const federalState = location?.federalState ?? input.bundesland ?? null
+  const federalState = location?.federalState ?? input.federalState ?? null
   const facts: Record<string, ProjectFact> = {}
   if (location) {
     facts.site_address = fact(location.label, now, [

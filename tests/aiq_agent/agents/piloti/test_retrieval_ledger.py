@@ -109,7 +109,7 @@ def test_one_document_opened_at_five_clauses_is_one_new_document():
         _announcement(1, ["read_passage"], ["knowledge"]),
     ]
     punkte = [f"Pkt. 3.{n}" for n in range(1, 6)]
-    hits = [_hit(0, "oib-rl_2.pdf"), *(_hit(1, "oib-rl_2.pdf", punkt) for punkt in punkte)]
+    hits = [_hit(0, "oib-rl_2.pdf"), *(_hit(1, "oib-rl_2.pdf", clause) for clause in punkte)]
     ledger = build_retrieval_ledger(announcements, hits)
     assert ledger is not None
     assert [doc["detail"] for doc in ledger[1]["docs"]] == punkte
@@ -309,7 +309,7 @@ def _state(**overrides):
 def test_charge_threads_two_rounds_with_their_facts():
     """Two charge calls accumulate rounds with their facts, in slot order."""
     search = [{"name": "knowledge_search", "args": {"query": "OIB 2"}}]
-    opens = [{"name": "read_passage", "args": {"document": "oib-rl_2.pdf", "punkt": "3.5.2"}}]
+    opens = [{"name": "read_passage", "args": {"document": "oib-rl_2.pdf", "clause": "3.5.2"}}]
     state = _state()
     rounds, retrieval_round, first = _charge_tool_calls(_response(search), state, 9)
     assert (rounds, retrieval_round) == (1, 1)
@@ -372,7 +372,7 @@ def test_builder_output_matches_the_wire_fixture():
     fixture = json.loads(
         Path(__file__)
         .parents[4]
-        .joinpath("tests/fixtures/herleitung/retrieval_ledger_wire.json")
+        .joinpath("tests/fixtures/derivation/retrieval_ledger_wire.json")
         .read_text(encoding="utf-8")
     )
     announcements = [
@@ -407,9 +407,9 @@ def test_builder_output_matches_the_wire_fixture():
                 "round": 2,
                 "name": "OIB-RL_2.pdf",
                 "title": "OIB-Richtlinie 2, Ausgabe Mai 2023",
-                "detail": punkt,
+                "detail": clause,
             }
-            for punkt in ("Pkt. 3.1", "Pkt. 3.2", "Pkt. 3.3")
+            for clause in ("Pkt. 3.1", "Pkt. 3.2", "Pkt. 3.3")
         ),
     ]
     assert build_retrieval_ledger(announcements, hits) == fixture

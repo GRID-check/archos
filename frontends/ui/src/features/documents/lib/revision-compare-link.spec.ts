@@ -9,14 +9,14 @@ describe('compareRevisionHref', () => {
   })
 
   it('works for the Büroablage link too, and keeps a hash', () => {
-    expect(compareRevisionHref('/app/archiv?doc=doc-b#top', 'doc-a')).toBe(
-      '/app/archiv?doc=doc-b&compare=doc-a#top'
+    expect(compareRevisionHref('/app/office-shelf?doc=doc-b#top', 'doc-a')).toBe(
+      '/app/office-shelf?doc=doc-b&compare=doc-a#top'
     )
   })
 
   it('replaces an earlier comparison rather than adding a second', () => {
-    expect(compareRevisionHref('/app/archiv?doc=b&compare=old', 'a')).toBe(
-      '/app/archiv?doc=b&compare=a'
+    expect(compareRevisionHref('/app/office-shelf?doc=b&compare=old', 'a')).toBe(
+      '/app/office-shelf?doc=b&compare=a'
     )
   })
 

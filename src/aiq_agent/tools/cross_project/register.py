@@ -332,7 +332,7 @@ async def _call(path: str, payload: dict[str, Any]) -> dict[str, Any]:
         raise _Refused(_UNREACHABLE, "unreachable") from exc
 
 
-def _land_note(project: dict[str, Any]) -> str | None:
+def _federal_state_note(project: dict[str, Any]) -> str | None:
     """The project's Land, and a warning when it is not this chat's project's.
 
     Said by the tool, not left to the model: a precedent from another Land
@@ -356,7 +356,7 @@ def _source_project(project: dict[str, Any], name: str) -> SourceProject:
         id=str(project.get("id")),
         name=name,
         status=str(project.get("status") or "active"),
-        land_note=_land_note(project),
+        federal_state_note=_federal_state_note(project),
     )
 
 
@@ -802,8 +802,8 @@ def _project_line(project: dict[str, Any]) -> str:
     parts = [f"{_text(project.get('name'))} — {_status_label(project.get('status'))}"]
     if period := _period(project.get("period")):
         parts.append(period)
-    if land := _land_note(project):
-        parts.append(land)
+    if federal_state := _federal_state_note(project):
+        parts.append(federal_state)
     if edition := _edition_note(project):
         parts.append(edition)
     if address := _text(project.get("address")):

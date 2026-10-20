@@ -154,7 +154,7 @@ export const DOCUMENT_VERSION_EFFECTS = [
    * published (`./revision-notify`). A no-op for a first version. Detached and
    * logged: it never fails the transition.
    */
-  'announceNewFassung',
+  'announceNewRevision',
 ] as const
 export type DocumentVersionEffect = (typeof DOCUMENT_VERSION_EFFECTS)[number]
 
@@ -282,7 +282,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['audit', 'eventHint', 'announceNewFassung'],
+    effects: ['audit', 'eventHint', 'announceNewRevision'],
   },
   {
     from: null,
@@ -361,7 +361,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: { notSubmitter: true, ifMatch: true },
     auditAction: 'document.version.approved',
     promotes: true,
-    effects: ['resolveReviewInbox', 'ingestPublished', 'audit', 'eventHint', 'announceNewFassung'],
+    effects: ['resolveReviewInbox', 'ingestPublished', 'audit', 'eventHint', 'announceNewRevision'],
   },
   {
     from: 'in_review',
@@ -394,7 +394,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['ingestPublished', 'audit', 'eventHint', 'announceNewFassung'],
+    effects: ['ingestPublished', 'audit', 'eventHint', 'announceNewRevision'],
   },
 ] as const satisfies readonly DocumentVersionTransition[]
 

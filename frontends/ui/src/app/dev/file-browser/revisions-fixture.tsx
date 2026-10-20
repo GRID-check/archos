@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * `/dev/file-browser?variant=fassungen` — documents with Fassungen, as the
- * listing draws them (ADR-0099, `fassung-chain.ts`).
+ * `/dev/file-browser?variant=revisions` — documents with Fassungen, as the
+ * listing draws them (ADR-0099, `revision-chain.ts`).
  *
  * Three panes over one corpus, each filtered the way the workspace filters:
  *
@@ -73,20 +73,20 @@ export const REVISION_FILES: FileItem[] = [
     versionState: 'published',
     versionCount: 3,
     createdAt: '2026-09-20T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersedes: [B], history: history(B, A) },
+    revision: { ...EMPTY_REVISION_LINKS, supersedes: [B], history: history(B, A) },
   }),
   row(SECTION_B.id, SECTION_B.filename, {
     summary: 'Schnitt A-A Index B mit angepasster Attikahöhe.',
     versionState: 'draft',
     versionCount: 2,
     createdAt: '2026-09-18T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersedes: [SECTION_A], history: history(SECTION_A) },
+    revision: { ...EMPTY_REVISION_LINKS, supersedes: [SECTION_A], history: history(SECTION_A) },
   }),
   // A long German name: the count must not push it off the card.
   row(SITE_PLAN_D.id, SITE_PLAN_D.filename, {
     summary: 'Lageplan mit Grundstücksgrenzen, Höhenkoten und dem Leitungsbestand der Stadtwerke.',
     createdAt: '2026-09-14T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersedes: [SITE_PLAN_C], history: history(SITE_PLAN_C) },
+    revision: { ...EMPTY_REVISION_LINKS, supersedes: [SITE_PLAN_C], history: history(SITE_PLAN_C) },
   }),
   row('baubeschreibung', 'Baubeschreibung.pdf', {
     summary: 'Baubeschreibung mit Konstruktion, Haustechnik und Ausstattung.',
@@ -99,24 +99,24 @@ export const REVISION_FILES: FileItem[] = [
     versionState: 'superseded',
     versionCount: 2,
     createdAt: '2026-08-02T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersededBy: C, supersedes: [A] },
+    revision: { ...EMPTY_REVISION_LINKS, supersededBy: C, supersedes: [A] },
   }),
   row(A.id, A.filename, {
     summary: 'Grundriss Erdgeschoß Index A, Vorentwurf.',
     createdAt: '2026-07-02T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersededBy: B },
+    revision: { ...EMPTY_REVISION_LINKS, supersededBy: B },
   }),
   row(SECTION_A.id, SECTION_A.filename, {
     status: 'failed',
     errorMessage: 'Die Datei ist beschädigt.',
     summary: null,
     createdAt: '2026-07-20T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersededBy: SECTION_B },
+    revision: { ...EMPTY_REVISION_LINKS, supersededBy: SECTION_B },
   }),
   row(SITE_PLAN_C.id, SITE_PLAN_C.filename, {
     summary: 'Lageplan Index C.',
     createdAt: '2026-06-30T10:00:00Z',
-    fassung: { ...EMPTY_REVISION_LINKS, supersededBy: SITE_PLAN_D },
+    revision: { ...EMPTY_REVISION_LINKS, supersededBy: SITE_PLAN_D },
   }),
 ]
 

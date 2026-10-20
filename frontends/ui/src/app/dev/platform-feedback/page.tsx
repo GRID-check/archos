@@ -111,7 +111,7 @@ const SEED: ProductFeedbackReportView[] = [
     posthogPersonUrl: person('u4'),
     message:
       'Kann ich eigene Normen (z. B. ÖNORM B 1600) hochladen, damit Piloti sie berücksichtigt?',
-    pagePath: '/app/archiv',
+    pagePath: '/app/office-shelf',
     context: CONTEXT,
     allowContact: true,
     organizationId: 'org_west',

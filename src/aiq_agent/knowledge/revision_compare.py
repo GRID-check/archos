@@ -170,7 +170,7 @@ def cache_key(model: str, collection: str, page: int, older_jpeg: bytes, newer_j
     organization's results out of another's reach.
     """
     older, newer = (hashlib.sha256(jpeg).hexdigest() for jpeg in (older_jpeg, newer_jpeg))
-    return f"fassung-compare:v{PROMPT_VERSION}:{model}:{collection}:p{page}:{older}:{newer}"
+    return f"revision-compare:v{PROMPT_VERSION}:{model}:{collection}:p{page}:{older}:{newer}"
 
 
 def _number(value: Any) -> float | None:

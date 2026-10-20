@@ -110,8 +110,8 @@ function laneOrder(entry: NormEntry): number {
 function compareEntries(a: NormEntry, b: NormEntry): number {
   const lane = laneOrder(a) - laneOrder(b)
   if (lane !== 0) return lane
-  const land = a.federal_state.trim().localeCompare(b.federal_state.trim(), 'de')
-  if (land !== 0) return land
+  const federalState = a.federal_state.trim().localeCompare(b.federal_state.trim(), 'de')
+  if (federalState !== 0) return federalState
   return a.short.localeCompare(b.short, 'de')
 }
 
@@ -274,12 +274,12 @@ export function NormRegistry(): JSX.Element {
   const openReviewCount = useMemo(() => entries.filter(hasReview).length, [entries])
 
   const scopes = useMemo(() => {
-    const lands = new Set<string>()
+    const federalStates = new Set<string>()
     for (const entry of entries) {
-      const land = entry.federal_state.trim()
-      if (land) lands.add(land)
+      const federalState = entry.federal_state.trim()
+      if (federalState) federalStates.add(federalState)
     }
-    return [...lands].sort((a, b) => a.localeCompare(b, 'de'))
+    return [...federalStates].sort((a, b) => a.localeCompare(b, 'de'))
   }, [entries])
 
   const filtered = useMemo(() => {
@@ -418,9 +418,9 @@ export function NormRegistry(): JSX.Element {
                   <SelectContent>
                     <SelectItem value={ALL}>{t('norms.filters.allScopes')}</SelectItem>
                     <SelectItem value={FEDERAL}>{t('norms.federal')}</SelectItem>
-                    {scopes.map((land) => (
-                      <SelectItem key={land} value={land}>
-                        {land}
+                    {scopes.map((federalState) => (
+                      <SelectItem key={federalState} value={federalState}>
+                        {federalState}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -34,7 +34,7 @@ import {
  * label), so a destination has one name on every surface.
  */
 
-export type PhoneTabKey = 'chat' | 'files' | 'settings' | 'inbox' | 'projects' | 'archiv' | 'more'
+export type PhoneTabKey = 'chat' | 'files' | 'settings' | 'inbox' | 'projects' | 'officeShelf' | 'more'
 
 export interface PhoneTabLabel {
   namespace: 'nav' | 'collaboration'
@@ -58,7 +58,7 @@ export interface PhoneTabFlags {
 }
 
 const INBOX_HREF = '/app/inbox'
-const OFFICE_SHELF_HREF = '/app/archiv'
+const OFFICE_SHELF_HREF = '/app/office-shelf'
 const PROJECTS_HREF = '/app/projects'
 
 function isUnder(pathname: string, href: string): boolean {
@@ -143,10 +143,10 @@ export function orgPhoneTabs(pathname: string, flags: PhoneTabFlags): PhoneTab[]
   ]
   if (flags.canAccessOfficeShelf) {
     tabs.push({
-      key: 'archiv',
+      key: 'officeShelf',
       href: OFFICE_SHELF_HREF,
       icon: Archive,
-      label: { namespace: 'nav', key: 'sections.archiv' },
+      label: { namespace: 'nav', key: 'sections.officeShelf' },
       active: isUnder(pathname, OFFICE_SHELF_HREF),
       tourAnchor: TOUR_ANCHORS.officeShelf,
     })

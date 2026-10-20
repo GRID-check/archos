@@ -165,7 +165,7 @@ describe('locationRegisterFor', () => {
     const view = register(
       profileWith(
         { ...AT_NEW_BUILD, federal_state: 'vienna', zoning: 'residential', plot_register_number: 'EZ 1234, KG Hernals' },
-        { development_plan: 'ja', hazard_zones: ['none'] },
+        { development_plan: 'yes', hazard_zones: ['none'] },
         ['plot_area']
       )
     )

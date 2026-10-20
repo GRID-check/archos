@@ -59,7 +59,7 @@ PROJECT = [
     _doc("Schnitt_A-A.pdf", "Plaene/Schnitte", doc_class="plan", added_at="2026-08-02"),
     _doc("Brandschutzkonzept.pdf", "Brandschutz", display_title="Brandschutzkonzept Müllerstraße"),
     _doc("Protokoll_Baubesprechung_03.docx", None, added_at="2026-09-28"),
-    _doc("Leitfaden_Buero.pdf", None, shelf="archiv"),
+    _doc("Leitfaden_Buero.pdf", None, shelf="office_shelf"),
     _doc("oib-rl_2.pdf", None, shelf="base"),
 ]
 
@@ -390,7 +390,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
         _seed(
             base,
             [
-                ("oib-rl_2_2023.pdf", "Brandabschnitt EI 90 gilt", 3, {"chunking": "punkt"}),
+                ("oib-rl_2_2023.pdf", "Brandabschnitt EI 90 gilt", 3, {"chunking": "clause"}),
                 ("oib-rl_2_2019.pdf", "Brandabschnitt EI 90 alt", 4, {}),
                 ("oib-rl_2_2023.pdf", "Deckblatt EI 90", 1, {"chunking": "page"}),
             ],
@@ -498,7 +498,7 @@ class TestNarrowingLikeTheMeaningMode:
         assert store.calls[0]["filters"] == {"file_name": {"$in": ["Brandschutzkonzept.pdf"]}}
 
     async def test_a_narrowing_onto_a_shelf_the_turn_dropped_says_so(self, search_with, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
+        turn_shelves({"office_shelf", "session", "base"})
         search_with(_TextStore([]))
         text = await _exact(query="BA-03", file_name="Grundriss_EG.pdf")
         assert "No file in scope matches that narrowing" in text
@@ -510,7 +510,7 @@ class TestListFilesHonoursTheTurn:
             return await info.single_fn(info.input_schema(**kwargs))
 
     async def test_a_turn_restricted_to_the_office_lists_the_office(self, scope, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
+        turn_shelves({"office_shelf", "session", "base"})
         text = await self._call()
         assert "Leitfaden_Buero.pdf" in text
         assert "Grundriss_EG.pdf" not in text
@@ -637,7 +637,7 @@ class TestAShelfTheTurnRemoved:
             return await info.single_fn(info.input_schema(**kwargs))
 
     async def test_an_explicit_shelf_outside_the_selection_says_so_instead_of_no_files(self, scope, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
+        turn_shelves({"office_shelf", "session", "base"})
         text = await self._call(shelf="project")
         assert "Keine Datei" not in text
         assert "auf Büroablage, Private Sitzung und Basiswissen beschränkt" in text
@@ -645,8 +645,8 @@ class TestAShelfTheTurnRemoved:
         assert "Grundriss_EG.pdf" not in text
 
     async def test_an_explicit_shelf_inside_the_selection_still_lists(self, scope, turn_shelves):
-        turn_shelves({"archiv", "session", "base"})
-        assert "Leitfaden_Buero.pdf" in await self._call(shelf="archiv")
+        turn_shelves({"office_shelf", "session", "base"})
+        assert "Leitfaden_Buero.pdf" in await self._call(shelf="office_shelf")
 
 
 # ---------------------------------------------------------------------------
@@ -869,7 +869,7 @@ def _revisions():
             _doc("EG_Grundriss_Index_B_2026-07-02.pdf", "Zeichnungen", added_at="2026-07-02"),
             _doc("Baubeschreibung.pdf", "Zeichnungen", added_at="2026-07-03"),
             # The same name on another shelf is another document, never a Fassung of this one.
-            _doc("EG_Grundriss_Index_C_2026-08-14.pdf", shelf="archiv", added_at="2026-08-14"),
+            _doc("EG_Grundriss_Index_C_2026-08-14.pdf", shelf="office_shelf", added_at="2026-08-14"),
         ]
     )
 
@@ -893,7 +893,7 @@ def test_a_folder_filter_keeps_the_mark_of_a_current_revision_kept_elsewhere():
 
 
 def test_revisions_never_span_two_shelves():
-    text = render_listing(select_files(_revisions(), shelf="archiv"))
+    text = render_listing(select_files(_revisions(), shelf="office_shelf"))
     assert "Fassung" not in text
 
 

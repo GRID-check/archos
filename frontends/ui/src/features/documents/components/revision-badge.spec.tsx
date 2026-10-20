@@ -24,7 +24,7 @@ const doc = (revision: RevisionLinks | null): FileItem =>
     tags: null,
     topics: null,
     capture: null,
-    fassung: revision,
+    revision,
   }) as FileItem
 
 /** A current Fassung that replaces `count - 1` older ones, as the BFF's history walk reports them. */

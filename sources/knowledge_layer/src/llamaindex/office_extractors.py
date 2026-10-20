@@ -101,7 +101,7 @@ def _sheet_units(
         rows_label = f"Zeilen {numbers[first]}-{numbers[last]}" if last != first else f"Zeile {numbers[first]}"
         suffix = f" (Teil {part} von {len(groups)})" if len(groups) > 1 else ""
         text = f"Tabellenblatt „{title}“, {rows_label}{suffix}\n\n{markdown}"
-        extra: dict[str, Any] = {"punkt_id": f"{title}: {rows_label}", "table_part": part, "chunking": "table"}
+        extra: dict[str, Any] = {"clause_id": f"{title}: {rows_label}", "table_part": part, "chunking": "table"}
         if part == len(groups) and over_cap:
             text += f"\n\n[Tabelle gekürzt: {over_cap} weitere Zeilen nach den ersten {MAX_TABLE_ROWS} nicht indexiert]"
             extra["rows_over_cap"] = over_cap

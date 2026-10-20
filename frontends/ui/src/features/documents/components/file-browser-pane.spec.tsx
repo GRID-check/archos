@@ -662,7 +662,7 @@ describe('FileBrowserPane — folder aggregates', () => {
       id: 'older',
       folderId: 'root-a',
       status: 'failed',
-      fassung: { supersededBy: { id: 'in-root', filename: 'x.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+      revision: { supersededBy: { id: 'in-root', filename: 'x.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
     }
     const nav = {
       folders: tree,
@@ -779,13 +779,13 @@ describe('FileBrowserPane — older Fassungen in search', () => {
     ...files[0],
     id: 'old',
     filename: 'plan_v1.pdf',
-    fassung: { supersededBy: { id: 'current', filename: 'current.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+    revision: { supersededBy: { id: 'current', filename: 'current.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
   }
   const current: FileItem = {
     ...files[1],
     id: 'current',
     filename: 'current.pdf',
-    fassung: {
+    revision: {
       supersededBy: null,
       supersedes: [{ id: 'old', filename: 'plan_v1.pdf' }],
       suggestion: null,

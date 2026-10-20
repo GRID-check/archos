@@ -39,7 +39,8 @@ const QuarantineQueueItemSchema = z.object({
   // Absent from a BFF older than the field: every row it listed was a quarantine.
   held: z.enum(['quarantined', 'unscreened']).default('quarantined'),
   filename: z.string(),
-  scope: z.enum(['project', 'archiv', 'session']),
+  // `archiv` is what a server not yet rolled still sends. Remove after one release.
+  scope: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(['project', 'office_shelf', 'session'])),
   projectId: z.string().nullable(),
   conversationId: z.string().nullable(),
   uploadedBy: z.string(),
@@ -134,7 +135,7 @@ export async function requestQuarantineRelease(documentId: string): Promise<{ no
 /** Where each shelf deletes one of its documents. */
 const DELETE_ROUTE: Record<QuarantineScope, (id: string) => string> = {
   project: (id) => `/api/documents/${encodeURIComponent(id)}`,
-  archiv: (id) => `/api/archiv/documents/${encodeURIComponent(id)}`,
+  office_shelf: (id) => `/api/office-shelf/documents/${encodeURIComponent(id)}`,
   session: (id) => `/api/session/documents/${encodeURIComponent(id)}`,
 }
 

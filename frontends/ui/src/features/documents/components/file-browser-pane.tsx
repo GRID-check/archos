@@ -298,7 +298,7 @@ const FileTile = memo(function FileTile({
 
 /** The names a document's older Fassungen are stored under: what a search for them should find the document by. */
 function olderRevisionNames(file: FileItem): string[] {
-  const facts = file.fassung
+  const facts = file.revision
   if (!facts) return []
   return (facts.history ?? facts.supersedes).map((ref) => ref.filename)
 }

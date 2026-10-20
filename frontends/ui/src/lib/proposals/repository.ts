@@ -200,7 +200,7 @@ export async function dismissProposedChange(
 }
 
 /** A shelf's proposals: a project's, or the Büroablage's (no project). */
-export type ProposalShelf = { scope: 'project'; projectId: string } | { scope: 'archiv' }
+export type ProposalShelf = { scope: 'project'; projectId: string } | { scope: 'office_shelf' }
 
 const onShelf = (organizationId: string, shelf: ProposalShelf) =>
   and(

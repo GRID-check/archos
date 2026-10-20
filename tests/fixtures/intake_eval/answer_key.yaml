@@ -110,8 +110,8 @@ traps:
       - {key: gfa_above_ground@bldg1, value: 1890}
       - {key: building_class@bldg1, value: 5}
       - {key: fire_safety_systems@bldg1, includes: bma}
-  - id: fassung
-    kind: older_fassung
+  - id: revision
+    kind: older_revision
     why: "EP-01 Index A (14.11.2025) has 11 Wohnungen; Index B (03.02.2026), the Fassung the Bescheid approved, has 10."
     exposed_by: "Wohnungen gesamt: 11"
     values:
@@ -139,7 +139,7 @@ traps:
       - {key: escape_level_m@bldg1, any: true}
 
 # The Fassung check: which value the current Fassung states, and the older one's.
-fassung:
+revision:
   keys: [use_units@bldg1, dwelling_units@bldg1@residential]
   current: 10
   older: 11

@@ -71,7 +71,8 @@ from . import fire as fi
 from . import operators as op
 from . import relations as extra
 from . import stairs as st
-from .briefing import GERMAN_KIND
+from .briefing import KIND_LABEL
+from .briefing import LEGACY_ROOM_USE_KINDS
 from .briefing import briefing as build_briefing
 from .briefing import content_hash
 from .briefing import inventory
@@ -421,7 +422,7 @@ def _compact(value: Any) -> Any:
 
 #: The `what` values `fire` accepts.
 FIRE_ASPECTS: dict[str, str] = {
-    "fluchtniveau": (
+    "escape_level": (
         "Höhe des obersten Aufenthaltsgeschoßes über dem tiefsten anschließenden Gelände — die Zahl, "
         "an der die Gebäudeklasse hängt. Welche Geschoße gezählt wurden, steht in der Antwort"
     ),
@@ -437,7 +438,7 @@ FIRE_ASPECTS: dict[str, str] = {
     "doorGraph": (
         "Der begehbare Graph des GANZEN Gebäudes: Räume als Knoten, DRAUSSEN als eigener Knoten, "
         "Türen als Kanten — und ausdrücklich die Türen, die zu keiner Kante wurden (unbestimmt, "
-        "ausgeschlossen). Ein Raum ohne Kante hat keinen Ausgang, und eine unbestimmte Tür ist ein "
+        "excluded). Ein Raum ohne Kante hat keinen Ausgang, und eine unbestimmte Tür ist ein "
         "Loch in JEDEM Weg dieses Gebäudes. measure/egressPath nennt EINE Route; das hier sagt, wie "
         "vollständig die Grundlage aller Routen ist. Teilt sich den Aufbau mit egressPath und "
         "reachableFrom, kostet also nur beim ersten der drei Aufrufe Sekunden"
@@ -457,8 +458,8 @@ ENVELOPE_ASPECTS: dict[str, str] = {
         "Welche Bauteile die Grenze zwischen beheiztem Innen und Außen bilden, nach Art gruppiert, "
         "je mit Fläche und DEKLARIERTEM U-Wert. Jeder Eintrag nennt, WORAUS die Zuordnung folgt — "
         "IsExternal deklariert oder aus den Raumberührungen abgeleitet ist nicht dieselbe Aussage. "
-        "Dazu die zwei Listen, die die Summe überprüfbar machen: innenliegend (entschieden und "
-        "weggelassen) und unbestimmt (nicht entschieden, also weder gezählt noch verworfen)"
+        "Dazu die zwei Listen, die die Summe überprüfbar machen: interior (entschieden und "
+        "weggelassen) und undetermined (nicht entschieden, also weder gezählt noch verworfen)"
     ),
     "areaByOrientation": (
         "Hüllfläche je Himmelsrichtung, opak und transparent getrennt, mit dem Fensterflächenanteil "
@@ -722,7 +723,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
             "predefinedType": getattr(subject, "PredefinedType", None),
             "container": _jsonable(container.value),
             "available": available,
-            "hinweis": (
+            "note": (
                 "bounds, enclosedBy, opensTo und adjacentSpaces stehen nicht in dieser Liste: sie sind in "
                 "einem Export ohne IfcRelSpaceBoundary nur aus der Geometrie ableitbar und kosten einmalig "
                 "einige Sekunden. Über relations sind sie normal abrufbar."
@@ -1093,10 +1094,12 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         # Matched case-insensitively against the real keys rather than
         # lowercased into them: `_lower` turned "compartmentArea" into
         # "compartmentarea", which matched nothing and refused a correct call.
-        wanted = str(args.get("what") or "fluchtniveau").strip().lower()
+        wanted = str(args.get("what") or "escape_level").strip().lower()
+        # The German aspect token, accepted for one release. Remove after.
+        wanted = "escape_level" if wanted == "fluchtniveau" else wanted
         what = next((k for k in FIRE_ASPECTS if k.lower() == wanted), wanted)
         ids = [part.strip() for part in str(args.get("globalId") or "").split(",") if part.strip()]
-        if what == "fluchtniveau":
+        if what == "escape_level":
             return run(lambda: fi.escape_level(model))
         if what == "compartmentArea":
             if not ids:
@@ -1115,7 +1118,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         if what == "siteBoundary":
             return run(lambda: fi.distance_to_site_boundary(model, ids[0] if ids else None))
         if what == "doorGraph":
-            # No `globalId`, like `fluchtniveau`: the graph IS the building. It
+            # No `globalId`, like `escape_level`: the graph IS the building. It
             # was reachable from nothing while `egressPath` and `reachableFrom`
             # — both of which are views ONTO it — were on the surface, so an
             # agent could get a route and never the two lists that say how many
@@ -1254,7 +1257,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         """``kind`` is validated here, exactly like ``relation`` and ``measure``.
 
         It used to go straight through as ``str(args.get("kind") or "")``, and
-        ``briefing.inventory`` indexed ``GERMAN_KIND`` with it — so an omitted or
+        ``briefing.inventory`` indexed ``KIND_LABEL`` with it — so an omitted or
         misspelt kind came back as ``KeyError: ''`` from ``briefing.py:799``. A
         Python traceback is not a refusal: the caller cannot read it, cannot act
         on it, and an MCP client sees a crash where every other enum in this file
@@ -1265,11 +1268,12 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         """
         model = resolve(args.get("model"))
         kind = str(args.get("kind") or "").strip()
-        if kind not in GERMAN_KIND:
+        kind = LEGACY_ROOM_USE_KINDS.get(kind, kind)
+        if kind not in KIND_LABEL:
             raise ToolError(
-                f'kind "{kind}" gibt es nicht. Erlaubt: {", ".join(GERMAN_KIND)}'
+                f'kind "{kind}" gibt es nicht. Erlaubt: {", ".join(KIND_LABEL)}'
                 if kind
-                else f"kind fehlt. Erlaubt: {', '.join(GERMAN_KIND)}"
+                else f"kind fehlt. Erlaubt: {', '.join(KIND_LABEL)}"
             )
         return inventory(model, kind)  # type: ignore[arg-type]
 
@@ -1643,7 +1647,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
             description=(
                 "Die geometrischen Größen, auf die OIB 2 hinausläuft:\n"
                 + "\n".join(f"  {k} — {v}" for k, v in FIRE_ASPECTS.items())
-                + "\n\nKEINE Gebäudeklasse. fluchtniveau liefert eine HÖHE; welche Klasse daraus folgt, "
+                + "\n\nKEINE Gebäudeklasse. escape_level liefert eine HÖHE; welche Klasse daraus folgt, "
                 "ist eine rechtliche Einstufung nach OIB 2 samt Landesrecht. Ein Werkzeug, das GK5 "
                 "zurückgibt, hat eine Regel angewandt, die es nie gelesen hat."
             ),
@@ -1911,7 +1915,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
                     "model": {"type": "string"},
                     "kind": {
                         "type": "string",
-                        "enum": ["aufenthaltsraum", "nebenraum", "erschliessung"],
+                        "enum": ["habitable_room", "ancillary_room", "circulation"],
                     },
                 },
                 "required": ["model", "kind"],

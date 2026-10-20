@@ -64,9 +64,9 @@ def knowledge_search(query: str) -> str:
 
 
 @tool
-def read_passage(document: str, punkt: str | None = None) -> str:
+def read_passage(document: str, clause: str | None = None) -> str:
     """Open a named passage of a known document."""
-    RAN.append(f"read_passage:{document}|{punkt or ''}")
+    RAN.append(f"read_passage:{document}|{clause or ''}")
     return f"Passage aus {document}"
 
 

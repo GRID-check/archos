@@ -124,7 +124,7 @@ export interface CreateProposalInput {
  * first proposal as it stands, and tells nobody again.
  */
 export async function createProposal(session: AuthorizedSession, input: CreateProposalInput): Promise<ProposedChangeRow> {
-  const scope = input.projectId ? ('project' as const) : ('archiv' as const)
+  const scope = input.projectId ? ('project' as const) : ('office_shelf' as const)
   // Any member reads the Büroablage; a project is read with `project:view`.
   if (input.projectId) await requireProjectAccess(session, input.projectId, 'project:view')
   const typed = parseKindPayload(input.kind, input.payload)
@@ -411,7 +411,7 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
  * per kind, because it is a property of the shelf and the kind, not the row.
  */
 export async function listOpenProposals(session: AuthorizedSession, query: ProposalListQuery): Promise<ListedProposal[]> {
-  const shelf: ProposalShelf = query.projectId ? { scope: 'project', projectId: query.projectId } : { scope: 'archiv' }
+  const shelf: ProposalShelf = query.projectId ? { scope: 'project', projectId: query.projectId } : { scope: 'office_shelf' }
   if (shelf.scope === 'project') await requireProjectAccess(session, shelf.projectId, 'project:view')
   const rows = await listShelfProposals(session.organizationId, shelf, {
     statuses: ['proposed'],

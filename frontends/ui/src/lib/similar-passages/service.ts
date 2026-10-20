@@ -239,7 +239,7 @@ export function foldDocuments(
 ): RankedDocument[] {
   const byId = new Map<string, RankedDocument>()
   for (const row of found) {
-    if (row.id === excludedDocumentId || row.fassung?.supersededBy) continue
+    if (row.id === excludedDocumentId || row.revision?.supersededBy) continue
     const entry =
       byId.get(row.id) ??
       ({
@@ -345,7 +345,7 @@ export async function findSimilarPassages(
   if (officeShelfDocuments.length > 0) {
     ranked.push({
       rank: bestRank(officeShelfDocuments),
-      group: { kind: 'archiv', project: null, documents: officeShelfDocuments.map((document) => document.document) },
+      group: { kind: 'office_shelf', project: null, documents: officeShelfDocuments.map((document) => document.document) },
     })
   }
   ranked.sort((a, b) => a.rank - b.rank)

@@ -413,8 +413,8 @@ def test_loose_furniture_is_reported_beside_the_headline_and_never_inside_it(hou
     """
     answer = ac.turning_circle(house, BEDROOM)
     value = answer.value
-    loose = [o for o in value["obstacles"] if o["zaehlt"] == "möbliert"]
-    fixed = [o for o in value["obstacles"] if o["zaehlt"] == "fest"]
+    loose = [o for o in value["obstacles"] if o["counts"] == "furnished"]
+    fixed = [o for o in value["obstacles"] if o["counts"] == "fixed"]
 
     assert BEDROOM_BED in {o["globalId"] for o in loose}
     assert BEDROOM_BED not in {o["globalId"] for o in fixed}
@@ -440,7 +440,7 @@ def test_the_reported_centre_really_is_a_centre_the_circle_fits_at(house: Spatia
     assert centre_z == pytest.approx(float(house.geometry(LIVING_ROOM).box[0][2]), abs=1e-6)
 
     for obstacle in answer.value["obstacles"]:
-        if obstacle["zaehlt"] != "fest":
+        if obstacle["counts"] != "fixed":
             continue
         shadow = ac._plan_silhouette(house.geometry(obstacle["globalId"]).triangles)
         assert circle.intersection(shadow).area <= ac.MIN_OBSTACLE_AREA
@@ -469,7 +469,7 @@ def test_the_column_is_subtracted_and_named(stepped: SpatialModel) -> None:
     assert answer.value["footprintArea"] == pytest.approx(4.40, abs=0.002)
     assert answer.value["freeArea"] == pytest.approx(4.32, abs=0.002)
     assert [o["globalId"] for o in answer.value["obstacles"]] == [COLUMN]
-    assert answer.value["obstacles"][0]["zaehlt"] == "fest"
+    assert answer.value["obstacles"][0]["counts"] == "fixed"
 
 
 @pytest.mark.parametrize("bad", [0, -1.5, "1.50", None if False else float("inf"), True])
@@ -605,7 +605,7 @@ def test_a_window_over_a_drop_is_found_with_its_fall_and_its_parapet(stepped_wit
     """2.545 m of fall over a 0.300 m parapet — both on paper before the run."""
     answer = ac.balustrade_check(stepped_with_railing, ZIMMER, 1.0)
     assert answer.decidable
-    edges = answer.value["kanten"]
+    edges = answer.value["edges"]
     assert [e["globalId"] for e in edges] == [SYNTH_WINDOW]
     assert edges[0]["fall"] == pytest.approx(2.545, abs=0.002)
     assert edges[0]["parapet"] == pytest.approx(0.300, abs=0.002)
@@ -621,7 +621,7 @@ def test_a_railing_at_that_edge_is_reported_with_its_height_over_the_floor(
     the project zero.
     """
     answer = ac.balustrade_check(stepped_with_railing, ZIMMER, 1.0)
-    railings = answer.value["kanten"][0]["railings"]
+    railings = answer.value["edges"][0]["railings"]
     assert [r["globalId"] for r in railings] == [RAILING]
     assert railings[0]["height"] == pytest.approx(0.900, abs=0.002)
     assert railings[0]["top"] == pytest.approx(0.945, abs=0.002)
@@ -656,7 +656,7 @@ def test_without_a_fall_height_nothing_is_an_edge_and_nothing_is_refused(stepped
     """
     answer = ac.balustrade_check(stepped, ZIMMER)
     assert answer.decidable
-    assert answer.value["kanten"] == []
+    assert answer.value["edges"] == []
     assert answer.value["fallHeight"] is None
     falls = {o["globalId"]: o["fall"] for o in answer.value["openings"]}
     assert falls[SYNTH_WINDOW] == pytest.approx(2.545, abs=0.002)
@@ -665,13 +665,13 @@ def test_without_a_fall_height_nothing_is_an_edge_and_nothing_is_refused(stepped
 def test_openings_at_grade_report_a_measured_zero_rather_than_refusing(house: SpatialModel) -> None:
     """Every opening in this ground-floor fixture stands on the ground it faces.
 
-    A decidable empty ``kanten`` is a result — there is nothing to fall off — and
+    A decidable empty ``edges`` is a result — there is nothing to fall off — and
     must not be rendered as "nicht ermittelbar", even though this file has no
     railings and would refuse the moment a real edge appeared.
     """
     answer = ac.balustrade_check(house, BEDROOM, 0.50)
     assert answer.decidable
-    assert answer.value["kanten"] == []
+    assert answer.value["edges"] == []
     assert answer.value["railingsInModel"] == 0
     assert {o["ifcType"] for o in answer.value["openings"]} == {"IfcDoor", "IfcWindow"}
     for opening in answer.value["openings"]:
@@ -748,7 +748,7 @@ def test_furniture_shortens_the_approach_and_is_named(house: SpatialModel) -> No
     furnished = bedroom["withFurnishing"]
     assert furnished["depth"] < bedroom["depth"] - 1.0
     assert BEDROOM_BED in {o["globalId"] for o in furnished["limitedBy"]}
-    assert all(o["zaehlt"] == "möbliert" or o["zaehlt"] == "fest" for o in furnished["limitedBy"])
+    assert all(o["counts"] == "furnished" or o["counts"] == "fixed" for o in furnished["limitedBy"])
 
 
 def test_a_column_in_front_of_a_door_ends_the_approach_where_it_stands(stepped: SpatialModel) -> None:

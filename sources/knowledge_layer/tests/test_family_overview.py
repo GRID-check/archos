@@ -55,10 +55,10 @@ def _clause_chunk(file_name: str, clause: str, depth: int, title: str, page: int
         display_citation=f"{file_name}, p.{page}",
         content_type=ContentType.TEXT,
         metadata={
-            "chunking": "punkt",
-            "punkt_id": clause,
-            "punkt_depth": depth,
-            "punkt_title": title,
+            "chunking": "clause",
+            "clause_id": clause,
+            "clause_depth": depth,
+            "clause_title": title,
             "page_label": str(page),
         },
     )

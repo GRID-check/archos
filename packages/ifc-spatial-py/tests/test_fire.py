@@ -414,7 +414,7 @@ def bodyless() -> SpatialModel:
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# fluchtniveau
+# escape_level
 # ════════════════════════════════════════════════════════════════════════════
 
 
@@ -428,7 +428,7 @@ def test_escape_level_is_the_top_occupied_floor_above_the_lowest_ground(office: 
     answer = fire.escape_level(office)
     assert answer.decidable
     assert answer.unit == "m"
-    assert answer.value["fluchtniveau"] == pytest.approx(3.5, abs=1e-9)
+    assert answer.value["escape_level"] == pytest.approx(3.5, abs=1e-9)
     assert answer.value["topOccupiedFloor"]["globalId"] == OG
     assert answer.value["groundReference"]["z"] == pytest.approx(0.0, abs=1e-9)
 
@@ -456,13 +456,13 @@ def test_every_storey_is_reported_with_its_reason_counted_or_not(office: Spatial
     answer = fire.escape_level(office)
     storeys = {entry["globalId"]: entry for entry in answer.value["storeys"]}
     assert set(storeys) == {EG, OG, TG}
-    assert storeys[EG]["gezaehlt"] is True
-    assert storeys[OG]["gezaehlt"] is True
-    assert storeys[TG]["gezaehlt"] is False
-    assert "technik" in storeys[TG]["warum"].lower()
+    assert storeys[EG]["counted"] is True
+    assert storeys[OG]["counted"] is True
+    assert storeys[TG]["counted"] is False
+    assert "technik" in storeys[TG]["why"].lower()
     # And the rooms behind each judgement, so the reason can be checked too.
-    assert [room["name"] for room in storeys[EG]["raeume"]] == ["Buero 01", "Buero 02"]
-    assert storeys[EG]["raeume"][0]["nutzung"] == "aufenthaltsraum"
+    assert [room["name"] for room in storeys[EG]["rooms"]] == ["Buero 01", "Buero 02"]
+    assert storeys[EG]["rooms"][0]["use"] == "habitable_room"
 
 
 def test_the_sample_houses_roof_storey_is_not_an_occupied_level(house: SpatialModel) -> None:
@@ -473,11 +473,11 @@ def test_the_sample_houses_roof_storey_is_not_an_occupied_level(house: SpatialMo
     """
     answer = fire.escape_level(house)
     assert answer.decidable
-    assert answer.value["fluchtniveau"] == pytest.approx(0.0, abs=1e-9)
+    assert answer.value["escape_level"] == pytest.approx(0.0, abs=1e-9)
     assert answer.value["topOccupiedFloor"]["globalId"] == GROUND_FLOOR
-    dropped = [entry for entry in answer.value["storeys"] if not entry["gezaehlt"]]
+    dropped = [entry for entry in answer.value["storeys"] if not entry["counted"]]
     assert [entry["globalId"] for entry in dropped] == [ROOF_STOREY]
-    assert "roof" in dropped[0]["warum"].lower()
+    assert "roof" in dropped[0]["why"].lower()
 
 
 def test_a_storey_with_no_rooms_is_counted_because_silence_is_not_evidence(bodyless: SpatialModel) -> None:
@@ -489,12 +489,12 @@ def test_a_storey_with_no_rooms_is_counted_because_silence_is_not_evidence(bodyl
     requirement behind it. So it is counted, and the reason says exactly that.
     """
     answer = fire.escape_level(bodyless)
-    assert answer.value["fluchtniveau"] == pytest.approx(3.0, abs=1e-9)
+    assert answer.value["escape_level"] == pytest.approx(3.0, abs=1e-9)
     upper = [entry for entry in answer.value["storeys"] if entry["name"] == "Obergeschoss"][0]
-    assert upper["gezaehlt"] is True
-    assert upper["raeume"] == []
-    assert "Im Zweifel MITGEZÄHLT" in upper["warum"]
-    assert "gefährliche Richtung" in upper["warum"]
+    assert upper["counted"] is True
+    assert upper["rooms"] == []
+    assert "Im Zweifel MITGEZÄHLT" in upper["why"]
+    assert "gefährliche Richtung" in upper["why"]
     # And the uncertainty is priced into the confidence rather than hidden.
     assert any("ohne positives Nutzungssignal" in reason for reason in answer.because)
 
@@ -592,7 +592,7 @@ def test_modelled_terrain_beats_the_lowest_floor_and_changes_the_number(tmp_path
     ground = answer.value["groundReference"]
     assert ground["z"] == pytest.approx(-2.0, abs=1e-6)
     assert ground["via"].startswith("IfcSite-Körpergeometrie")
-    assert answer.value["fluchtniveau"] == pytest.approx(5.0, abs=1e-6)
+    assert answer.value["escape_level"] == pytest.approx(5.0, abs=1e-6)
     # The floor-level fallback is still offered, so a reviewer can see the 2.00 m
     # the choice was worth and substitute their own survey level.
     assert 0.0 in [entry["z"] for entry in ground["candidates"]]
@@ -625,7 +625,7 @@ def test_a_room_name_containing_roof_does_not_veto_the_lexicon(tmp_path: Path) -
     `habitable`, the storey then read as all-Nebenflächen, and the Fluchtniveau
     came back **0.000 m** for a house whose upper floor sits at 3.500 m. The
     module's own rule is that a storey goes only on POSITIVE evidence and that
-    too LOW is the dangerous direction; the lexicon's `aufenthaltsraum` is that
+    too LOW is the dangerous direction; the lexicon's `habitable_room` is that
     evidence and a substring on a room name is not.
     """
     w = _Writer("Dachzimmer")
@@ -641,17 +641,17 @@ def test_a_room_name_containing_roof_does_not_veto_the_lexicon(tmp_path: Path) -
     model = w.write(tmp_path / "dachzimmer.ifc")
 
     # The lexicon places it, which is the premise the veto contradicted.
-    assert {room.name: room.kind for room in classify_rooms(model)}["Dachzimmer"] == "aufenthaltsraum"
+    assert {room.name: room.kind for room in classify_rooms(model)}["Dachzimmer"] == "habitable_room"
 
     answer = fire.escape_level(model)
-    assert answer.value["fluchtniveau"] == pytest.approx(3.5, abs=1e-9)
+    assert answer.value["escape_level"] == pytest.approx(3.5, abs=1e-9)
     top = {entry["globalId"]: entry for entry in answer.value["storeys"]}[og.GlobalId]
-    assert top["gezaehlt"] is True
+    assert top["counted"] is True
     # And the reason is the true one. „Alle Räume … Neben- oder
     # Erschließungsflächen" was published over a room the lexicon had just
     # called an Aufenthaltsraum.
-    assert "Aufenthaltsräume" in top["warum"]
-    assert "Dachzimmer" in top["warum"]
+    assert "Aufenthaltsräume" in top["why"]
+    assert "Dachzimmer" in top["why"]
 
 
 def test_the_storeys_own_name_still_removes_it_when_its_rooms_agree(tmp_path: Path) -> None:
@@ -686,19 +686,19 @@ def test_the_storeys_own_name_still_removes_it_when_its_rooms_agree(tmp_path: Pa
     assert {room.name: room.kind for room in classify_rooms(model)}.get("Dachraum") is None
 
     answer = fire.escape_level(model)
-    assert answer.value["fluchtniveau"] == pytest.approx(0.0, abs=1e-9)
+    assert answer.value["escape_level"] == pytest.approx(0.0, abs=1e-9)
     dropped = {entry["globalId"]: entry for entry in answer.value["storeys"]}[og.GlobalId]
-    assert dropped["gezaehlt"] is False
-    assert "Geschoßname" in dropped["warum"]
+    assert dropped["counted"] is False
+    assert "Geschoßname" in dropped["why"]
     # And it says the rooms corroborate, because that is now part of the reason.
-    assert "Dachraum" in dropped["warum"]
+    assert "Dachraum" in dropped["why"]
 
 
 def test_a_habitable_room_outranks_the_storeys_name(tmp_path: Path) -> None:
     """Same „Dachgeschoss", one Dachzimmer in it — an ausgebautes Dachgeschoss.
 
     The storey name is a substring; ``classify_rooms`` placing the room as an
-    ``aufenthaltsraum`` is the positive evidence the rule demands, and it wins.
+    ``habitable_room`` is the positive evidence the rule demands, and it wins.
     Dropping the level here reports 0.000 m for a house whose top floor is at
     3.500 m — the direction the module docstring calls the dangerous one.
     """
@@ -714,14 +714,14 @@ def test_a_habitable_room_outranks_the_storeys_name(tmp_path: Path) -> None:
     w.rel("IfcRelAggregates", "Aggr4", RelatingObject=og, RelatedObjects=[oben])
     model = w.write(tmp_path / "ausgebautes-dachgeschoss.ifc")
 
-    assert {room.name: room.kind for room in classify_rooms(model)}["Dachzimmer"] == "aufenthaltsraum"
+    assert {room.name: room.kind for room in classify_rooms(model)}["Dachzimmer"] == "habitable_room"
 
     answer = fire.escape_level(model)
-    assert answer.value["fluchtniveau"] == pytest.approx(3.5, abs=1e-9)
+    assert answer.value["escape_level"] == pytest.approx(3.5, abs=1e-9)
     top = {entry["globalId"]: entry for entry in answer.value["storeys"]}[og.GlobalId]
-    assert top["gezaehlt"] is True
-    assert "Aufenthaltsräume" in top["warum"]
-    assert "Dachzimmer" in top["warum"]
+    assert top["counted"] is True
+    assert "Aufenthaltsräume" in top["why"]
+    assert "Dachzimmer" in top["why"]
 
 
 class TestTheStoreyNameIsATieBreakerAndNotAVeto:
@@ -765,7 +765,7 @@ class TestTheStoreyNameIsATieBreakerAndNotAVeto:
 
     def test_the_gallery_storey_is_counted_and_the_answer_is_three_seven(self, model: SpatialModel) -> None:
         answer = fire.escape_level(model)
-        assert answer.value["fluchtniveau"] == pytest.approx(3.7, abs=1e-9), "1.000 m was the reported defect"
+        assert answer.value["escape_level"] == pytest.approx(3.7, abs=1e-9), "1.000 m was the reported defect"
         assert answer.value["topOccupiedFloor"]["globalId"] == FZK_ATTIC
         assert answer.value["groundReference"]["z"] == pytest.approx(-1.0, abs=1e-9)
 
@@ -778,11 +778,11 @@ class TestTheStoreyNameIsATieBreakerAndNotAVeto:
         """
         judged = {entry["globalId"]: entry for entry in fire.escape_level(model).value["storeys"]}
         dachgeschoss = judged[FZK_ATTIC]
-        assert dachgeschoss["gezaehlt"] is True
-        assert "Im Zweifel MITGEZÄHLT" in dachgeschoss["warum"]
-        assert "von den Raumnamen nicht bestätigt" in dachgeschoss["warum"]
-        assert [room["name"] for room in dachgeschoss["raeume"]] == ["Galerie"]
-        assert judged[FZK_GROUND_FLOOR]["gezaehlt"] is True
+        assert dachgeschoss["counted"] is True
+        assert "Im Zweifel MITGEZÄHLT" in dachgeschoss["why"]
+        assert "von den Raumnamen nicht bestätigt" in dachgeschoss["why"]
+        assert [room["name"] for room in dachgeschoss["rooms"]] == ["Galerie"]
+        assert judged[FZK_GROUND_FLOOR]["counted"] is True
 
     def test_counting_it_in_doubt_is_priced_into_the_confidence(self, model: SpatialModel) -> None:
         """0.85 → 0.70. The storey is counted on no positive signal, and a
@@ -820,7 +820,7 @@ def test_a_declared_grouping_is_reported_as_the_architects_own_statement(office:
     answer = fire.compartment_area(office, FIRE_COMPARTMENT)
     grouping = answer.value["grouping"][0]
     assert grouping["ifcType"] == "IfcZone"
-    assert grouping["deklariert"] is True
+    assert grouping["declared"] is True
     assert "IfcRelAssignsToGroup" in grouping["via"]
     assert "DEKLARIERTEN Gruppe" in answer.caveat
 
@@ -850,7 +850,7 @@ def test_a_room_reached_twice_is_counted_once_and_the_drop_is_reported(office: S
     answer = fire.compartment_area(office, [EG, OFFICE_01])
     assert answer.value["area"] == pytest.approx(90.24, abs=1e-6)
     assert answer.value["spaceCount"] == 2
-    assert [entry["globalId"] for entry in answer.value["doppelt"]] == [OFFICE_01]
+    assert [entry["globalId"] for entry in answer.value["duplicates"]] == [OFFICE_01]
     assert "nur EINMAL gezählt" in answer.caveat
 
 
@@ -864,7 +864,7 @@ def test_rooms_stacked_on_two_storeys_are_summed_and_not_unioned(office: Spatial
     """
     answer = fire.compartment_area(office, [OFFICE_01, OFFICE_03])
     assert answer.value["area"] == pytest.approx(147.84, abs=1e-6)
-    assert answer.value["ueberschneidungen"] == []
+    assert answer.value["overlaps"] == []
 
 
 def test_two_rooms_modelled_on_top_of_each_other_are_reported_not_subtracted(tmp_path: Path) -> None:
@@ -884,8 +884,8 @@ def test_two_rooms_modelled_on_top_of_each_other_are_reported_not_subtracted(tmp
 
     answer = fire.compartment_area(model, [_gid("Space01"), _gid("Space02")])
     assert answer.value["area"] == pytest.approx(20.0 + 15.0, abs=1e-6)
-    assert len(answer.value["ueberschneidungen"]) == 1
-    assert answer.value["ueberschneidungen"][0]["area"] == pytest.approx(10.0, abs=1e-6)
+    assert len(answer.value["overlaps"]) == 1
+    assert answer.value["overlaps"][0]["area"] == pytest.approx(10.0, abs=1e-6)
     assert "NICHT bereinigt" in answer.caveat
 
 
@@ -943,12 +943,12 @@ def test_the_fire_wall_between_two_compartments_is_found_with_its_fire_rating(of
     answer = fire.separating_elements(office, OFFICE_01, OFFICE_02)
     assert answer.decidable
     assert answer.provenance == "declared"  # both spaces carry declared boundaries
-    trennend = answer.value["trennend"]
-    assert [entry["globalId"] for entry in trennend] == [FIRE_WALL]
-    assert trennend[0]["fireRating"] == "REI 90"
-    assert trennend[0]["fireRatingDeklariert"] is True
-    assert trennend[0]["compartmentation"] is True
-    assert "Achsentest" in trennend[0]["warum"]
+    separating = answer.value["separating"]
+    assert [entry["globalId"] for entry in separating] == [FIRE_WALL]
+    assert separating[0]["fireRating"] == "REI 90"
+    assert separating[0]["fireRatingDeklariert"] is True
+    assert separating[0]["compartmentation"] is True
+    assert "Achsentest" in separating[0]["why"]
 
 
 def test_the_door_in_the_fire_wall_is_reported_separately_with_its_own_rating(office: SpatialModel) -> None:
@@ -958,13 +958,13 @@ def test_the_door_in_the_fire_wall_is_reported_separately_with_its_own_rating(of
     boundary, so the opening travels with its own FireRating and its host.
     """
     answer = fire.separating_elements(office, OFFICE_01, OFFICE_02)
-    openings = answer.value["oeffnungen"]
+    openings = answer.value["openings"]
     assert [entry["globalId"] for entry in openings] == [FIRE_DOOR]
     assert openings[0]["fireRating"] == "EI2 30-C"
     assert openings[0]["inBauteil"] == FIRE_WALL
     # The door must NOT also appear as a separating element: one door is one
     # barrier, and listing it twice would read as two.
-    assert FIRE_DOOR not in [entry["globalId"] for entry in answer.value["trennend"]]
+    assert FIRE_DOOR not in [entry["globalId"] for entry in answer.value["separating"]]
 
 
 def test_a_facade_running_past_both_rooms_bounds_them_without_separating_them(office: SpatialModel) -> None:
@@ -972,12 +972,12 @@ def test_a_facade_running_past_both_rooms_bounds_them_without_separating_them(of
 
     ``Aussenwand Sued`` runs from x = 0 to x = 10 and bounds both offices. It
     separates neither, and calling it a Trennbauteil would put a REI requirement
-    on a facade. It is still reported — under ``gemeinsam``, with the reason.
+    on a facade. It is still reported — under ``shared``, with the reason.
     """
     answer = fire.separating_elements(office, OFFICE_01, OFFICE_02)
-    alongside = {entry["globalId"]: entry for entry in answer.value["gemeinsam"]}
+    alongside = {entry["globalId"]: entry for entry in answer.value["shared"]}
     assert SOUTH_WALL in alongside
-    assert "läuft an beiden Räumen entlang" in alongside[SOUTH_WALL]["warum"]
+    assert "läuft an beiden Räumen entlang" in alongside[SOUTH_WALL]["why"]
 
     # Nothing is dropped: every element that bounds BOTH rooms lands in exactly
     # one of the three lists. The west and east walls bound one room each and
@@ -985,8 +985,8 @@ def test_a_facade_running_past_both_rooms_bounds_them_without_separating_them(of
     shared = {ref.global_id for ref in _bounds_of(office, OFFICE_01)} & {
         ref.global_id for ref in _bounds_of(office, OFFICE_02)
     }
-    listed = {entry["globalId"] for entry in answer.value["trennend"]} | set(alongside)
-    listed |= {entry["globalId"] for entry in answer.value["oeffnungen"]}
+    listed = {entry["globalId"] for entry in answer.value["separating"]} | set(alongside)
+    listed |= {entry["globalId"] for entry in answer.value["openings"]}
     assert listed == shared
     assert not {WEST_WALL, EAST_WALL} & shared
 
@@ -994,10 +994,10 @@ def test_a_facade_running_past_both_rooms_bounds_them_without_separating_them(of
 def test_a_floor_slab_separates_the_room_above_from_the_room_below(office: SpatialModel) -> None:
     """The vertical case, which is a Brandabschnitt boundary as much as a wall."""
     answer = fire.separating_elements(office, OFFICE_01, OFFICE_03)
-    trennend = {entry["globalId"]: entry for entry in answer.value["trennend"]}
-    assert SLAB_GROUND_FLOOR in trennend
-    assert trennend[SLAB_GROUND_FLOOR]["fireRating"] == "REI 90"
-    assert "in z getrennt" in trennend[SLAB_GROUND_FLOOR]["warum"]
+    separating = {entry["globalId"]: entry for entry in answer.value["separating"]}
+    assert SLAB_GROUND_FLOOR in separating
+    assert separating[SLAB_GROUND_FLOOR]["fireRating"] == "REI 90"
+    assert "in z getrennt" in separating[SLAB_GROUND_FLOOR]["why"]
 
 
 def test_the_sample_houses_partition_is_found_and_its_door_stands_proud_of_it(house: SpatialModel) -> None:
@@ -1009,8 +1009,8 @@ def test_the_sample_houses_partition_is_found_and_its_door_stands_proud_of_it(ho
     not go missing.
     """
     answer = fire.separating_elements(house, LIVING, BEDROOM)
-    assert [entry["globalId"] for entry in answer.value["trennend"]] == [PARTITION]
-    assert DOOR_LIVING_BEDROOM in [entry["globalId"] for entry in answer.value["oeffnungen"]]
+    assert [entry["globalId"] for entry in answer.value["separating"]] == [PARTITION]
+    assert DOOR_LIVING_BEDROOM in [entry["globalId"] for entry in answer.value["openings"]]
     assert fire.SEPARATION_SLACK > 0.063
 
 
@@ -1022,7 +1022,7 @@ def test_no_fire_rating_anywhere_is_stated_as_a_finding_about_the_export(house: 
     whether the architect re-exports or redesigns.
     """
     answer = fire.separating_elements(house, LIVING, BEDROOM)
-    assert answer.value["trennend"][0]["fireRating"] is None
+    assert answer.value["separating"][0]["fireRating"] is None
     assert answer.value["ohneFeuerwiderstand"]
     assert "NIRGENDS ein Feuerwiderstand deklariert" in answer.caveat
     assert "Befund über den EXPORT" in answer.caveat
@@ -1038,8 +1038,8 @@ def test_a_gap_in_a_file_that_declares_elsewhere_reads_differently(bodyless: Spa
     """
     assert bodyless.declared_property(bodyless.file.by_guid(EXTERIOR_WALL_SOUTH), ("FireRating",)) == "REI 90"
     answer = fire.separating_elements(bodyless, WOHNZIMMER, KITCHEN)
-    assert [entry["globalId"] for entry in answer.value["trennend"]] == [PARTITION_WALL]
-    assert answer.value["trennend"][0]["fireRating"] is None
+    assert [entry["globalId"] for entry in answer.value["separating"]] == [PARTITION_WALL]
+    assert answer.value["separating"][0]["fireRating"] is None
     assert "obwohl die Datei ihn andernorts deklariert" in answer.caveat
     assert "NIRGENDS" not in answer.caveat
 
@@ -1130,11 +1130,11 @@ class TestAnEmptyFireRatingIsNotADeclaration:
 
     def test_no_element_claims_a_declared_class_that_is_blank(self, model: SpatialModel) -> None:
         answer = fire.separating_elements(model, _gid("SpaceE01"), _gid("SpaceE02"))
-        wall = answer.value["trennend"][0]
+        wall = answer.value["separating"][0]
         assert wall["globalId"] == _gid("WallE01")
         assert wall["fireRating"] is None, "'' was published as the declared class"
         assert wall["fireRatingDeklariert"] is False
-        opening = answer.value["oeffnungen"][0]
+        opening = answer.value["openings"][0]
         assert opening["globalId"] == _gid("DoorE01")
         assert opening["fireRating"] is None
         assert opening["fireRatingDeklariert"] is False
@@ -1168,8 +1168,8 @@ def test_without_bodies_the_betweenness_test_is_skipped_and_says_so(bodyless: Sp
     direction, so the untested list goes out with the admission attached.
     """
     answer = fire.separating_elements(bodyless, WOHNZIMMER, KITCHEN)
-    assert answer.value["gemeinsam"] == []
-    assert "nicht geprüft" in answer.value["trennend"][0]["warum"]
+    assert answer.value["shared"] == []
+    assert "nicht geprüft" in answer.value["separating"][0]["why"]
     assert "NICHT geprüft" in answer.caveat
 
 
@@ -1193,9 +1193,9 @@ def test_a_shared_slab_is_never_reported_as_proof_the_rooms_are_neighbours() -> 
     wohnen, bad = "4Decke00000Space00001", "4Decke00000Space00003"
     answer = fire.separating_elements(model, wohnen, bad)
 
-    slab = answer.value["trennend"]
+    slab = answer.value["separating"]
     assert [entry["ifcType"] for entry in slab] == ["IfcSlab"]
-    assert "nicht geprüft" in slab[0]["warum"]
+    assert "nicht geprüft" in slab[0]["why"]
     assert "ohne sie zu trennen" in answer.caveat
     # No claim of adjacency anywhere: that is a different question, and the
     # operator that answers it excludes this pair.
@@ -1205,7 +1205,7 @@ def test_a_shared_slab_is_never_reported_as_proof_the_rooms_are_neighbours() -> 
 
 def test_the_opening_chain_is_walked_even_without_second_level_boundaries(bodyless: SpatialModel) -> None:
     """The Zimmertür reaches the answer through ``voids`` + ``fills`` alone."""
-    openings = fire.separating_elements(bodyless, WOHNZIMMER, KITCHEN).value["oeffnungen"]
+    openings = fire.separating_elements(bodyless, WOHNZIMMER, KITCHEN).value["openings"]
     assert [entry["globalId"] for entry in openings] == [ROOM_DOOR]
     assert openings[0]["inBauteil"] == PARTITION_WALL
     assert "IfcRelVoidsElement" in openings[0]["via"]
@@ -1221,8 +1221,8 @@ def test_two_rooms_that_share_nothing_are_a_decidable_empty_answer(office: Spati
     """
     answer = fire.separating_elements(office, OFFICE_02, PLANT_ROOM)
     assert answer.decidable
-    assert answer.value["trennend"] == []
-    assert answer.value["oeffnungen"] == []
+    assert answer.value["separating"] == []
+    assert answer.value["openings"] == []
     assert "KEIN gemeinsames Bauteil" in answer.caveat
     assert "adjacentSpaces()" in answer.caveat
 
@@ -1289,9 +1289,9 @@ def test_the_building_stands_three_metres_from_the_western_boundary(office: Spat
     assert answer.unit == "m"
     assert answer.value["distance"] == pytest.approx(3.0, abs=1e-9)
     assert answer.value["nearest"]["globalId"] == WEST_WALL
-    assert answer.value["boundary"]["geschlossen"] is True
+    assert answer.value["boundary"]["closed"] is True
     assert "FootPrint" in answer.value["boundary"]["via"]
-    assert answer.value["ausserhalb"] is False
+    assert answer.value["outside"] is False
 
 
 def test_both_ends_of_the_measurement_travel_with_it(office: SpatialModel) -> None:
@@ -1309,7 +1309,7 @@ def test_air_is_not_measured(office: SpatialModel) -> None:
     would report a distance the building does not have. Only physical elements
     are candidates.
     """
-    measured = {entry["globalId"] for entry in fire.distance_to_site_boundary(office).value["elemente"]}
+    measured = {entry["globalId"] for entry in fire.distance_to_site_boundary(office).value["elements"]}
     assert not measured & {OFFICE_01, OFFICE_02, OFFICE_03, PLANT_ROOM}
     assert WEST_WALL in measured
 
@@ -1355,16 +1355,16 @@ def test_an_annotation_is_the_second_route_to_a_boundary(tmp_path: Path) -> None
     # Wall top edge at y = 0.30, boundary at y = 8.00.
     assert answer.value["distance"] == pytest.approx(7.7, abs=1e-6)
     assert "IfcAnnotation" in answer.value["boundary"]["via"]
-    assert answer.value["boundary"]["geschlossen"] is False
+    assert answer.value["boundary"]["closed"] is False
     assert "NICHT geschlossen" in answer.caveat
     assert "zu GROSS" in answer.caveat
     # Not `False`: inside/outside cannot be decided against an open line, and a
     # confident `False` would be an answer about a shape nobody drew.
-    assert answer.value["ausserhalb"] is None
+    assert answer.value["outside"] is None
 
 
 def test_a_truncated_element_list_is_never_called_complete(tmp_path: Path) -> None:
-    """`elemente` holds the ten nearest; the caveat claimed the whole list.
+    """`elements` holds the ten nearest; the caveat claimed the whole list.
 
     Twelve retaining walls, ten in the payload, and the sentence „Die
     vollständige, nach Abstand sortierte Liste steht unter „elemente““ over it.
@@ -1394,7 +1394,7 @@ def test_a_truncated_element_list_is_never_called_complete(tmp_path: Path) -> No
     model = w.write(tmp_path / "zwoelf-bauteile.ifc")
 
     answer = fire.distance_to_site_boundary(model)
-    assert len(answer.value["elemente"]) == 10
+    assert len(answer.value["elements"]) == 10
     assert "Geprüft wurden 12 Bauteile" in answer.caveat
     assert "die 10 nächstgelegenen der 12 geprüften Bauteile" in answer.caveat
     assert "die 2 entfernteren sind NICHT enthalten" in answer.caveat
@@ -1406,7 +1406,7 @@ def test_a_list_that_is_complete_says_that_too(office: SpatialModel) -> None:
     blanket hedge that makes a complete list unreadable as one.
     """
     answer = fire.distance_to_site_boundary(office)
-    listed = answer.value["elemente"]
+    listed = answer.value["elements"]
     assert len(listed) < 10
     assert f"die {len(listed)} nächstgelegenen der {len(listed)} geprüften Bauteile" in answer.caveat
     assert "das sind alle." in answer.caveat

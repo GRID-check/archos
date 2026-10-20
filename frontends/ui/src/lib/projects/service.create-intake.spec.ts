@@ -97,7 +97,7 @@ describe('createProject, set up by Piloti', () => {
     expect(startProjectIntake).toHaveBeenCalledWith(
       session,
       expect.objectContaining({ id: 'p1' }),
-      { description: 'Aufstockung um zwei Geschoße', location, bundesland: undefined, closing: undefined },
+      { description: 'Aufstockung um zwei Geschoße', location, federalState: undefined, closing: undefined },
       NOW
     )
     expect(assignRole.mock.invocationCallOrder[0]).toBeLessThan(startProjectIntake.mock.invocationCallOrder[0])

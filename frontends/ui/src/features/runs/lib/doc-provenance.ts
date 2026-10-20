@@ -40,7 +40,7 @@ function laneForShelf(shelf: string | undefined): string | undefined {
   switch (asShelf(shelf)) {
     case 'base':
       return 'building_law'
-    case 'archiv':
+    case 'office_shelf':
       return 'office'
     case 'project':
     case 'session':

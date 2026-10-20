@@ -53,7 +53,7 @@ const VIENNA_STOREY_ADDITION = {
 }
 
 const REGISTER_READY = registerOf(
-  profileOf(VIENNA_STOREY_ADDITION, { zoning: 'residential', development_plan: 'ja' }),
+  profileOf(VIENNA_STOREY_ADDITION, { zoning: 'residential', development_plan: 'yes' }),
   FIXTURE_LOCATION
 )
 
@@ -87,8 +87,8 @@ export const QUESTIONS_DONE: IntakeView = {
   openQuestions: [],
   locationRegister: registerOf(
     profileOf(
-      { ...VIENNA_STOREY_ADDITION, plot_register_number: 'EZ 1234, KG Hernals', 'heritage_protection@bldg1': 'nein' },
-      { zoning: 'residential', development_plan: 'ja', hazard_zones: ['none'], noise_situation: 'road' },
+      { ...VIENNA_STOREY_ADDITION, plot_register_number: 'EZ 1234, KG Hernals', 'heritage_protection@bldg1': 'no' },
+      { zoning: 'residential', development_plan: 'yes', hazard_zones: ['none'], noise_situation: 'road' },
       ['plot_area']
     ),
     FIXTURE_LOCATION

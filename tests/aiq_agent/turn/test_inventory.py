@@ -188,7 +188,7 @@ class TestAggregateDocumentsAcrossCollections:
                 max_documents=5,
             )
         )
-        assert any(d.file_name == "Buero-Standard.pdf" and d.shelf == "archiv" for d in result)
+        assert any(d.file_name == "Buero-Standard.pdf" and d.shelf == "office_shelf" for d in result)
 
     def test_caps_to_max_documents_keeping_lowest_sorted(self):
         async def fetch_one(coll):
@@ -280,7 +280,7 @@ class TestScope:
 
     def test_shelves_in_scope_skips_unknown_shelves(self):
         scope = [ScopedCollection("archiv_org", Shelf.OFFICE_SHELF), ScopedCollection("legacy")]
-        assert shelves_in_scope(scope) == ["archiv"]
+        assert shelves_in_scope(scope) == ["office_shelf"]
 
     def test_in_flight_names_dedupes_across_collections(self):
         assert in_flight_names({"a": ["x.pdf", "y.pdf"], "b": ["x.pdf"]}) == ["x.pdf", "y.pdf"]

@@ -160,14 +160,14 @@ export function revisionRecipients(input: {
 export function openMarksFacts(
   marks: ReadonlyArray<Pick<AnnotationRecord, 'revisionNumber'>>,
   { sameDocument }: { sameDocument: boolean }
-): { variant: string; openMarks: number; marksFassung: number | null } | null {
+): { variant: string; openMarks: number; marksRevision: number | null } | null {
   if (marks.length === 0) return null
   const numbers = new Set(marks.map((mark) => mark.revisionNumber))
   const [only] = [...numbers]
   // Another document's own Fassung numbers count its states, not this timeline's.
   const marksRevision = sameDocument && numbers.size === 1 && typeof only === 'number' ? only : null
   const variant = `${marks.length === 1 ? 'mark' : 'marks'}${marksRevision === null ? '_earlier' : ''}`
-  return { variant, openMarks: marks.length, marksFassung: marksRevision }
+  return { variant, openMarks: marks.length, marksRevision }
 }
 
 /**
@@ -181,7 +181,7 @@ async function marksLeftBehind(
   follow: Document,
   versionId: string | null | undefined
 ): Promise<AnnotationRecord[]> {
-  if (follow.scope !== 'project' && follow.scope !== 'archiv') return []
+  if (follow.scope !== 'project' && follow.scope !== 'office_shelf') return []
   const marks = await listDocumentAnnotations(organizationId, follow.id)
   return marks.filter((mark) => mark.status === 'open' && (!versionId || (mark.versionId ?? null) !== versionId))
 }
@@ -286,7 +286,7 @@ export function announceNewRevision(announcement: NewRevisionAnnouncement): Prom
   return notifyNewRevision(announcement).then(
     () => undefined,
     (error: unknown) => {
-      console.warn(`[fassung-notify] could not announce the new Fassung of ${announcement.olderId}:`, error)
+      console.warn(`[revision-notify] could not announce the new Fassung of ${announcement.olderId}:`, error)
     },
   )
 }

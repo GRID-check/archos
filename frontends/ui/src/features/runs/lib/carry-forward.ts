@@ -59,7 +59,7 @@ export function reportDocuments(message: ChatMessage): PlanDocument[] {
   const out: PlanDocument[] = []
   const seen = new Set<string>()
   for (const source of message.citations ?? []) {
-    if (source.shelf !== 'project' && source.shelf !== 'archiv') continue
+    if (source.shelf !== 'project' && source.shelf !== 'office_shelf') continue
     const name = source.fileName?.trim()
     if (!name) continue
     const key = name.toLocaleLowerCase()

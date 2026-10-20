@@ -127,7 +127,7 @@ export function QuestionControl({
             domId={domId}
             question={question}
             value={value}
-            mode={(answers[modeKeyFor(answerKey)] as IntakeAnswerMode) ?? 'wert'}
+            mode={(answers[modeKeyFor(answerKey)] as IntakeAnswerMode) ?? 'value'}
             onValue={(v) => onSetAnswer(answerKey, v)}
             onMode={(m) => onSetMode(answerKey, m)}
           />
@@ -142,9 +142,9 @@ export function QuestionControl({
             ariaLabel={question.label}
             value={typeof value === 'string' ? value : ''}
             options={[
-              { value: 'ja', label: t('intake.yes') },
-              { value: 'nein', label: t('intake.no') },
-              { value: 'offen', label: t('intake.open'), tone: 'muted' },
+              { value: 'yes', label: t('intake.yes') },
+              { value: 'no', label: t('intake.no') },
+              { value: 'open', label: t('intake.open'), tone: 'muted' },
             ]}
             onChange={(v) => onSetAnswer(answerKey, v)}
           />
@@ -157,12 +157,12 @@ export function QuestionControl({
           {header}
           <Segmented
             ariaLabel={question.label}
-            value={value === true ? 'ja' : value === false ? 'nein' : ''}
+            value={value === true ? 'yes' : value === false ? 'no' : ''}
             options={[
-              { value: 'ja', label: t('intake.yes') },
-              { value: 'nein', label: t('intake.no') },
+              { value: 'yes', label: t('intake.yes') },
+              { value: 'no', label: t('intake.no') },
             ]}
-            onChange={(v) => onSetAnswer(answerKey, v === 'ja')}
+            onChange={(v) => onSetAnswer(answerKey, v === 'yes')}
           />
           {errorText}
         </div>
@@ -301,7 +301,7 @@ export function NumberTriControl({
   onMode: (m: IntakeAnswerMode) => void
 }) {
   const t = useTranslations('projects')
-  const disabled = mode === 'offen'
+  const disabled = mode === 'open'
   return (
     <div className="flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -328,9 +328,9 @@ export function NumberTriControl({
           size="sm"
           value={mode}
           options={[
-            { value: 'wert', label: t('intake.mode.wert') },
-            { value: 'geschaetzt', label: t('intake.mode.geschaetzt'), tone: 'warning' },
-            { value: 'offen', label: t('intake.mode.offen'), tone: 'muted' },
+            { value: 'value', label: t('intake.mode.wert') },
+            { value: 'estimated', label: t('intake.mode.geschaetzt'), tone: 'warning' },
+            { value: 'open', label: t('intake.mode.offen'), tone: 'muted' },
           ]}
           onChange={(v) => onMode(v as IntakeAnswerMode)}
         />

@@ -529,8 +529,10 @@ def add_document_routes(router: APIRouter):
             description="True: a person confirms newer replaces older. False: a person lifts or refuses that.",
         )
 
+    # The pre-rename path, kept for one release: the BFF and this API deploy separately. Remove after one release.
+    @router.put("/v1/collections/{collection_name}/fassung", include_in_schema=False)
     @router.put(
-        "/v1/collections/{collection_name}/fassung",
+        "/v1/collections/{collection_name}/revision",
         tags=["documents"],
         summary="Confirm or refuse that one file replaces another (a Fassung across different names)",
     )

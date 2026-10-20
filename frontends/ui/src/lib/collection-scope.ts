@@ -13,7 +13,7 @@ import type { GridSession } from './auth/types'
  * so the low-level request-context contract can name the type without taking a
  * dependency on the service-heavy builder that produces it.
  */
-export type CollectionShelf = 'archiv' | 'project' | 'session' | 'base'
+export type CollectionShelf = 'office_shelf' | 'project' | 'session' | 'base'
 
 /**
  * One entry of the `X-Grid-Collection-Scope` payload and of the signed

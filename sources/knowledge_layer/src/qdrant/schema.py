@@ -4,7 +4,7 @@ Two collections by data shape, not one per scope (ADR-0116):
 
 * ``corpus`` holds the shared legal corpus (``oib_knowledge`` and any other
   collection without a tenant prefix). Every office reads it.
-* ``office`` holds everything an office owns: Büroablage (``archiv_``),
+* ``office`` holds everything an office owns: Büroablage (``archiv_``, ``office_shelf_`` once re-tagged),
   projects and their restricted folders (``proj_``), conversation uploads
   (``s_``).
 
@@ -29,6 +29,7 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client import models
 
+from aiq_agent.common.source_kinds import OFFICE_SHELF_COLLECTION_PREFIXES
 from aiq_agent.knowledge.base import READING_ORDER
 
 from .config import replication_factor
@@ -84,7 +85,39 @@ PROJECT_FACTS_FIELD = "project_facts"
 #: Payload field holding the owning project's lifecycle state (ADR-0098).
 PROJECT_STATUS_FIELD = "project_status"
 #: The fingerprint, in the order the BFF's similarity weighs it.
-FACT_KEYS: tuple[str, ...] = ("bundesland", "gebaeudeklasse", "bauweise", "nutzungen", "vorhabensart")
+FACT_KEYS: tuple[str, ...] = ("federal_state", "building_class", "construction_method", "uses", "work_type")
+
+#: Payload fields written under a German name before the rename, keyed by the English name that
+#: replaced them. Points written before it keep the old key (and German tokens in the facts) until
+#: the operator rewrite (``scripts/qdrant_rename_payload_keys.py``,
+#: ``docs/deployment/qdrant-payload-rename-runbook.md``). New points carry only the English one; a
+#: filter matches either (``scope._field``) and a hit's metadata is read back under the English one
+#: (``payload.chunk_metadata``). Remove, with ``LEGACY_CHUNKING`` and the fallbacks that read them,
+#: once the rewrite is verified on every collection.
+LEGACY_FIELDS: dict[str, str] = {
+    f"{PROJECT_FACTS_FIELD}.federal_state": f"{PROJECT_FACTS_FIELD}.bundesland",
+    f"{PROJECT_FACTS_FIELD}.building_class": f"{PROJECT_FACTS_FIELD}.gebaeudeklasse",
+    f"{PROJECT_FACTS_FIELD}.construction_method": f"{PROJECT_FACTS_FIELD}.bauweise",
+    f"{PROJECT_FACTS_FIELD}.uses": f"{PROJECT_FACTS_FIELD}.nutzungen",
+    f"{PROJECT_FACTS_FIELD}.work_type": f"{PROJECT_FACTS_FIELD}.vorhabensart",
+    "clause_id": "punkt_id",
+    "clause_depth": "punkt_depth",
+    "clause_title": "punkt_title",
+    "clause_path": "punkt_path",
+    "clause_parent_id": "punkt_parent_id",
+    "guideline": "richtlinie",
+}
+#: The ``chunking`` value of a chunk cut per numbered clause: ``new -> old``. The key is unchanged,
+#: so a filter on ``chunking`` accepts both values until the rewrite.
+LEGACY_CHUNKING: dict[str, str] = {"clause": "punkt"}
+
+
+#: The legacy names above that are indexed as keywords (``gebaeudeklasse`` is an integer, below).
+#: They stay indexed, on a fresh collection too, so a filter on either spelling is never refused by
+#: strict mode.
+LEGACY_KEYWORD_FIELDS: tuple[str, ...] = tuple(
+    old for old in LEGACY_FIELDS.values() if old not in {f"{PROJECT_FACTS_FIELD}.gebaeudeklasse", "punkt_depth"}
+)
 
 
 def fact_field(key: str) -> str:
@@ -100,12 +133,12 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     SCOPE_FIELD,
     CHUNK_ID_FIELD,
     "file_name",
-    "punkt_id",
+    "clause_id",
     "page_label",
     "chunking",
     "content_type",
     "doc_class",
-    "richtlinie",
+    "guideline",
     "office_id",
     "project_id",
     "grid_document_id",
@@ -116,16 +149,17 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "tags",
     "topics",
     PROJECT_STATUS_FIELD,
-    *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "gebaeudeklasse"),
+    *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "building_class"),
+    *LEGACY_KEYWORD_FIELDS,
     PARAGRAPH_FIELD,
     # Locators and labels the chunkers write (``clause_chunking``,
     # ``section_chunking``, the adapter's visual documents) and a model may
     # name in ``knowledge_search``'s raw ``filters``. ``page_end`` is written
     # as a string, like ``page_label``. Large or unbounded fields
     # (``drawing_data``, ``description``) stay unindexed and unfilterable.
-    "punkt_path",
-    "punkt_parent_id",
-    "punkt_title",
+    "clause_path",
+    "clause_parent_id",
+    "clause_title",
     "page_end",
     "drawing_type",
     "drawing_scale",
@@ -149,14 +183,16 @@ INDEXED_AT_FIELD = "indexed_at"
 #: is Chroma's insertion order); a point written before it existed has none.
 CHUNK_ORDINAL_FIELD = "chunk_ordinal"
 
-#: Fields stored and filtered as integers. The Punkt chunker writes
-#: ``punkt_depth`` as an int and some readers ask with "1"; both become 1.
+#: Fields stored and filtered as integers. The clause chunker writes
+#: ``clause_depth`` as an int and some readers ask with "1"; both become 1.
 INTEGER_FIELDS: tuple[str, ...] = (
+    "clause_depth",
     "punkt_depth",
     "section_order",
     READING_ORDER_FIELD,
     CHUNK_ORDINAL_FIELD,
     INDEXED_AT_FIELD,
+    f"{PROJECT_FACTS_FIELD}.building_class",
     f"{PROJECT_FACTS_FIELD}.gebaeudeklasse",
     "section_part",
     "table_index",
@@ -171,7 +207,7 @@ BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + BOOL_FIELDS + (TEXT_FIELD,))
 
 #: Prefixes of collections an office owns. Anything else is shared corpus.
-TENANT_PREFIXES = ("archiv_", "proj_", "s_")
+TENANT_PREFIXES = (*OFFICE_SHELF_COLLECTION_PREFIXES, "proj_", "s_")
 
 #: Collection metadata keys naming the embedder every dense vector came from.
 EMBED_IDENTITY_KEYS = ("aiq:embed_fingerprint", "aiq:embed_model")

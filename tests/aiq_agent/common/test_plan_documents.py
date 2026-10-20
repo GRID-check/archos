@@ -40,14 +40,14 @@ class TestSanitize:
 class TestResolve:
     INVENTORY = [
         {"file_name": "Einreichplan.pdf", "display_title": "Einreichplan EG", "shelf": "project"},
-        {"file_name": "alt.pdf", "shelf": "archiv"},
+        {"file_name": "alt.pdf", "shelf": "office_shelf"},
     ]
 
     def test_a_name_or_a_title_resolves_to_the_file_case_folded(self):
         docs = resolve_documents(["einreichplan eg", "ALT.PDF", "erfunden.pdf", "alt.pdf"], self.INVENTORY)
         assert [(d.name, d.title, d.shelf) for d in docs] == [
             ("Einreichplan.pdf", "Einreichplan EG", "project"),
-            ("alt.pdf", None, "archiv"),
+            ("alt.pdf", None, "office_shelf"),
         ]
 
     def test_without_an_inventory_nothing_resolves(self):

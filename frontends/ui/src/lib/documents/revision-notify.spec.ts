@@ -331,7 +331,7 @@ describe('notifyNewRevision — a confirmed link', () => {
 
   it('reads the Büroablage as organization membership', async () => {
     vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
-      doc({ ...(id === 'doc-b' ? NEWER : OLDER), scope: 'archiv', projectId: null }),
+      doc({ ...(id === 'doc-b' ? NEWER : OLDER), scope: 'office_shelf', projectId: null }),
     )
     assignedTo('anna', 'gone')
     const member = (userId: string): [string, DirectoryPerson] => [
@@ -370,19 +370,19 @@ describe('openMarksFacts', () => {
     expect(openMarksFacts([{ revisionNumber: 2 }, { revisionNumber: 2 }], { sameDocument: true })).toEqual({
       variant: 'marks',
       openMarks: 2,
-      marksFassung: 2,
+      marksRevision: 2,
     })
-    expect(openMarksFacts([{ revisionNumber: 2 }], { sameDocument: true })).toMatchObject({ variant: 'mark', marksFassung: 2 })
+    expect(openMarksFacts([{ revisionNumber: 2 }], { sameDocument: true })).toMatchObject({ variant: 'mark', marksRevision: 2 })
   })
 
   it('says „the previous Fassung" for marks on several, or on another document', () => {
     expect(openMarksFacts([{ revisionNumber: 1 }, { revisionNumber: 2 }], { sameDocument: true })).toMatchObject({
       variant: 'marks_earlier',
-      marksFassung: null,
+      marksRevision: null,
     })
     expect(openMarksFacts([{ revisionNumber: 3 }], { sameDocument: false })).toMatchObject({
       variant: 'mark_earlier',
-      marksFassung: null,
+      marksRevision: null,
     })
     expect(openMarksFacts([], { sameDocument: true })).toBeNull()
   })
@@ -415,7 +415,7 @@ describe('notifyNewRevision — the people working on its marks', () => {
 
     const items = emitted()
     expect(items.map((item) => item.recipientUserId).sort()).toEqual(['author', 'replier', 'uploader', 'zustaendig'])
-    expect(items[0].payload).toMatchObject({ variant: 'marks', openMarks: 2, marksFassung: 2 })
+    expect(items[0].payload).toMatchObject({ variant: 'marks', openMarks: 2, marksRevision: 2 })
     expect(listDocumentAnnotations).toHaveBeenCalledWith('org-1', 'doc-a')
   })
 
@@ -436,7 +436,7 @@ describe('notifyNewRevision — the people working on its marks', () => {
     expect(emitted().find((item) => item.recipientUserId === 'author')?.payload).toMatchObject({
       variant: 'mark_earlier',
       openMarks: 1,
-      marksFassung: null,
+      marksRevision: null,
     })
   })
 

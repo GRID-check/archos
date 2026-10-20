@@ -27,6 +27,7 @@ from urllib.parse import parse_qs
 from urllib.parse import urlparse
 
 from langchain_core.exceptions import OutputParserException
+from pydantic import AliasChoices
 from pydantic import BaseModel
 from pydantic import Field
 from pydantic import ValidationError
@@ -129,7 +130,7 @@ def _build_search_params(
     application: str,
     query: str,
     title: str,
-    bundesland: str,
+    federal_state: str,
     date_from: str,
     date_to: str,
 ) -> dict[str, str]:
@@ -140,8 +141,8 @@ def _build_search_params(
     if title:
         params["Titel"] = title
 
-    if bundesland and application in ("LrKons", "Lgbl", "LgblAuth", "Vbl"):
-        key = _normalize_federal_state(bundesland)
+    if federal_state and application in ("LrKons", "Lgbl", "LgblAuth", "Vbl"):
+        key = _normalize_federal_state(federal_state)
         if key:
             params[key] = "true"
 
@@ -169,6 +170,23 @@ def _build_search_params(
 # ---------------------------------------------------------------------------
 # Search planning via strict structured outputs
 # ---------------------------------------------------------------------------
+
+
+class RisSearchInput(BaseModel):
+    """The arguments of one ``ris_search`` call, as the model sees them.
+
+    ``federal_state`` was ``bundesland``; the old name is read for one release
+    (remove the alias after) so a cached tool schema or a replayed call from
+    before the rename still validates.
+    """
+
+    query: str
+    application: str = "BrKons"
+    title: str = ""
+    federal_state: str = Field(default="", validation_alias=AliasChoices("federal_state", "bundesland"))
+    date_from: str = ""
+    date_to: str = ""
+    page: int = 1
 
 
 class RisSearchPlan(BaseModel):
@@ -199,7 +217,7 @@ class RisSearchPlan(BaseModel):
     ] = Field(description="RIS application to search")
     suchworte: str = Field(description="German full-text search terms (precise legal terminology)")
     titel: str = Field(default="", description="Optional filter on the norm/decision title, empty if unused")
-    bundesland: Literal[
+    federal_state: Literal[
         "",
         "Burgenland",
         "Kärnten",
@@ -222,7 +240,7 @@ for the Austrian RIS (Rechtsinformationssystem des Bundes).
 Application selection rules:
 - BrKons: consolidated FEDERAL law (Bundesgesetze, Verordnungen des Bundes).
 - LrKons: consolidated STATE law — Bauordnungen, Bautechnikgesetze, Garagengesetze and all other \
-Landesgesetze live here; ALWAYS set `bundesland` for building-law questions.
+Landesgesetze live here; ALWAYS set `federal_state` for building-law questions.
 - BgblAuth / LgblAuth: authentic gazettes — only when the user needs the legally binding promulgation.
 - Begut / RegV: draft bills and government bills (legislation in progress).
 - Vfgh / Vwgh / Justiz / Bvwg / Lvwg / Dsk: case law (constitutional, administrative, civil/criminal, \
@@ -272,13 +290,13 @@ def _make_planner(llm):
     parse/validation failure before letting the error surface to the caller's fail-open.
     """
 
-    async def _plan(query: str, application: str, title: str, bundesland: str, date_from: str, date_to: str):
+    async def _plan(query: str, application: str, title: str, federal_state: str, date_from: str, date_to: str):
         # Resolve overrides/credentials per call: they are request-scoped (headers).
         structured = _apply_org_llm_policy(llm).with_structured_output(RisSearchPlan, method="json_schema", strict=True)
         request = (
             f"Research request: {query}\n"
             f"Caller suggestion — application: {application or '(none)'}, title: {title or '(none)'}, "
-            f"bundesland: {bundesland or '(none)'}, date_from: {date_from or '(none)'}, "
+            f"federal_state: {federal_state or '(none)'}, date_from: {date_from or '(none)'}, "
             f"date_to: {date_to or '(none)'}\n"
             "Respect the caller suggestion unless it is clearly wrong for this request."
         )
@@ -425,7 +443,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
         query: str,
         application: str = "BrKons",
         title: str = "",
-        bundesland: str = "",
+        federal_state: str = "",
         date_from: str = "",
         date_to: str = "",
         page: int = 1,
@@ -439,7 +457,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
         - You need the precise legal anchor behind a requirement (law name, paragraph, Bundesland,
           version). OIB-Richtlinien become binding via the state building laws found here.
         - Building law: Bauordnungen, Bautechnikgesetze, and Garagengesetze are STATE law — search
-          application "LrKons" and always set the bundesland.
+          application "LrKons" and always set the federal_state.
         - Case law: how courts interpreted a provision (Vfgh, Vwgh, Justiz, Bvwg, Lvwg).
 
         WHEN NOT TO USE:
@@ -458,7 +476,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
                 draft bills, "RegV" government bills, "Vfgh"/"Vwgh"/"Justiz"/"Bvwg"/"Lvwg" case
                 law, "Dsk" data protection decisions, "Erlaesse" ministry decrees.
             title (str): Optional title filter when a specific law is named, e.g. "Bauordnung für Wien".
-            bundesland (str): State filter for state-law searches ("Wien", "Tirol", ...). Required
+            federal_state (str): State filter for state-law searches ("Wien", "Tirol", ...). Required
                 practice for Bauordnung questions.
             date_from (str): Optional YYYY-MM-DD. Case law: earliest decision date. "BrKons": the
                 version in force at this date.
@@ -491,12 +509,12 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
                 # indistinguishable from "not specified" and filters nothing).
                 if application != "BrKons":
                     matches = [m for m in matches if m.application == application]
-                # Jurisdiction: the explicit bundesland argument wins, else the
+                # Jurisdiction: the explicit federal_state argument wins, else the
                 # state named in the query. Other states' law is dropped and the
                 # project's own state sorts first — never hand a Tyrolean
                 # project the Viennese Bauordnung.
-                detected_land = extract_federal_state(bundesland) or extract_federal_state(query)
-                matches = focus_entries(matches, detected_land)
+                detected_federal_state = extract_federal_state(federal_state) or extract_federal_state(query)
+                matches = focus_entries(matches, detected_federal_state)
                 if matches:
                     shown = matches[:max_results]
                     _capture_lane_hits(
@@ -528,7 +546,9 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
         # still feeds the per-round ledger: the model receives the same
         # documents either way, and a round whose evidence silently vanished
         # from the account would make the ledger lie exactly on repeats.
-        search_key = search_cache_key("|".join([application, query, title, bundesland, date_from, date_to, str(page)]))
+        search_key = search_cache_key(
+            "|".join([application, query, title, federal_state, date_from, date_to, str(page)])
+        )
         cached_search = await cache_get_json(search_key)
         if isinstance(cached_search, dict) and isinstance(cached_search.get("text"), str) and cached_search["text"]:
             _capture_lane_hits(_cache_hits(cached_search.get("hits")))
@@ -543,27 +563,27 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
             "application": application,
             "query": query,
             "title": title,
-            "bundesland": bundesland,
+            "federal_state": federal_state,
             "date_from": date_from,
             "date_to": date_to,
         }
         if planner is not None:
             try:
-                plan = await _plan_with(planner, query, application, title, bundesland, date_from, date_to)
+                plan = await _plan_with(planner, query, application, title, federal_state, date_from, date_to)
                 if plan is not None and plan.suchworte.strip():
                     effective = {
                         "application": plan.application,
                         "query": plan.suchworte,
                         "title": plan.titel,
-                        "bundesland": plan.bundesland,
+                        "federal_state": plan.federal_state,
                         "date_from": plan.date_from,
                         "date_to": plan.date_to,
                     }
                     logger.info(
-                        "ris_search planner: application=%s suchworte='%s' bundesland='%s' (%s)",
+                        "ris_search planner: application=%s suchworte='%s' federal_state='%s' (%s)",
                         plan.application,
                         plan.suchworte,
-                        plan.bundesland,
+                        plan.federal_state,
                         plan.reasoning,
                     )
             except Exception:
@@ -574,7 +594,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
                 effective["application"],
                 effective["query"],
                 effective["title"],
-                effective["bundesland"],
+                effective["federal_state"],
                 effective["date_from"],
                 effective["date_to"],
             )
@@ -594,7 +614,7 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
             return (
                 f"No RIS documents found for query '{effective['query']}' in application "
                 f"'{effective['application']}'. Try different German search terms, another "
-                "application (e.g. LrKons for state building law with a bundesland), or drop filters."
+                "application (e.g. LrKons for state building law with a federal_state), or drop filters."
             )
 
         shown = result.hits[:max_results]
@@ -632,14 +652,15 @@ async def ris_search(tool_config: RisSearchToolConfig, builder: Builder):
         yield FunctionInfo.from_fn(
             _ris_search,
             description=_ris_search.__doc__,
+            input_schema=RisSearchInput,
         )
     finally:
         await client.aclose()
 
 
-async def _plan_with(planner, query, application, title, bundesland, date_from, date_to) -> RisSearchPlan | None:
+async def _plan_with(planner, query, application, title, federal_state, date_from, date_to) -> RisSearchPlan | None:
     """Run the planner; isolated for testability."""
-    return await planner(query, application, title, bundesland, date_from, date_to)
+    return await planner(query, application, title, federal_state, date_from, date_to)
 
 
 def _format_catalog_entry(index: int, entry: NormEntry) -> str:

@@ -172,7 +172,7 @@ describe('roundFan', () => {
       readFileSync(
         fileURLToPath(
           new URL(
-            '../../../../../../tests/fixtures/herleitung/retrieval_ledger_wire.json',
+            '../../../../../../tests/fixtures/derivation/retrieval_ledger_wire.json',
             import.meta.url
           )
         ),

@@ -144,7 +144,7 @@ function isQuestionSatisfied(
 ): boolean {
   const answer = answers[answerKey]
   if (question.type === 'number' || question.type === 'number_tri') {
-    if (answers[modeKeyFor(answerKey)] === 'offen') return true
+    if (answers[modeKeyFor(answerKey)] === 'open') return true
     if (!isIntakeAnswerProvided(answer)) return !question.required
     const numeric = typeof answer === 'number' ? answer : Number(answer)
     return Number.isFinite(numeric)
@@ -208,17 +208,18 @@ export function ProjectIntakeWizard({
   const [checking, setChecking] = useState(false)
   const [loadAttempt, setLoadAttempt] = useState(0)
   // Schnellstart (spec `core_flag`): show only Kernfragen. Everything skipped is
-  // persisted with mode 'offen', which is already what an unanswered question
+  // persisted with mode 'open', which is already what an unanswered question
   // becomes — so the mode is a VIEW, not a second answer state to reconcile.
   const [quickStart, setQuickStart] = useState(false)
   // Modules where the user chose "alle anzeigen" despite Schnellstart.
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
 
-  // `-v2`: the answers a draft holds are keyed by building id and use-token names
-  // that changed (migration 0159), so a draft from before is not restorable. It
-  // is dropped, not read: a draft is one tab's unsent work.
-  const STORAGE_KEY = `intake-draft-v2-${projectId}`
-  const LEGACY_STORAGE_KEY = `intake-draft-${projectId}`
+  // `-v3`: the answers a draft holds are keyed by building id and use-token names
+  // that changed (migration 0159), and since then the yes/no/open and value/estimated/open
+  // tokens were German (`ja`, `geschaetzt`), so a draft from before is not restorable.
+  // It is dropped, not read: a draft is one tab's unsent work.
+  const STORAGE_KEY = `intake-draft-v3-${projectId}`
+  const LEGACY_STORAGE_KEYS = [`intake-draft-${projectId}`, `intake-draft-v2-${projectId}`]
   const isEdit = mode === 'edit'
   const buildingCounter = useRef(1)
   // The active module-stepper button, scrolled into view whenever the step changes
@@ -241,7 +242,7 @@ export function ProjectIntakeWizard({
 
         let restored = false
         try {
-          localStorage.removeItem(LEGACY_STORAGE_KEY)
+          for (const legacyKey of LEGACY_STORAGE_KEYS) localStorage.removeItem(legacyKey)
         } catch {
           /* storage may be blocked */
         }
@@ -364,7 +365,7 @@ export function ProjectIntakeWizard({
     (answerKey: string, nextMode: IntakeAnswerMode) => {
       setAnswers((prev) => {
         const next = { ...prev, [modeKeyFor(answerKey)]: nextMode }
-        if (nextMode === 'offen') delete next[answerKey]
+        if (nextMode === 'open') delete next[answerKey]
         return pruneStaleConditionalAnswers(next, definition)
       })
       setFindings(null)
@@ -374,7 +375,7 @@ export function ProjectIntakeWizard({
 
   /** Visible questions on a projekt/grundstueck stage (building stages iterate instances). */
   const stageVisibleQuestions = useMemo(() => {
-    if (!stage || stage.scope === 'bauwerk') return []
+    if (!stage || stage.scope === 'building') return []
     return stage.questions.filter((q) => evaluateIntakeCondition(q, answers))
   }, [stage, answers])
 
@@ -409,7 +410,7 @@ export function ProjectIntakeWizard({
 
   const stageValid = useMemo(() => {
     if (!stage) return true
-    if (stage.scope === 'bauwerk') {
+    if (stage.scope === 'building') {
       return buildings.every((bw) =>
         stage.questions
           .filter((q) => evaluateIntakeCondition(q, answers, bw.id))
@@ -437,10 +438,10 @@ export function ProjectIntakeWizard({
         if (q.type === 'info_placeholder' || q.type === 'document_role' || q.type === 'upload')
           return
         total += 1
-        if (isIntakeAnswerProvided(answers[key]) || answers[modeKeyFor(key)] === 'offen')
+        if (isIntakeAnswerProvided(answers[key]) || answers[modeKeyFor(key)] === 'open')
           answered += 1
       }
-      if (s.scope === 'bauwerk') {
+      if (s.scope === 'building') {
         for (const bw of buildings) {
           for (const q of s.questions) {
             if (evaluateIntakeCondition(q, answers, bw.id)) tally(q, answerKeyFor(q.id, bw.id))
@@ -463,7 +464,7 @@ export function ProjectIntakeWizard({
    * Record every unanswered question in this module as explicitly open.
    *
    * The spec's per-module "Rest überspringen – als offen übernehmen". Writing
-   * mode 'offen' rather than leaving the answer absent is the whole point: both
+   * mode 'open' rather than leaving the answer absent is the whole point: both
    * produce an `unknown` in the profile, but only the explicit one can be told
    * apart from "not reached yet" in Modul H's completion checklist.
    */
@@ -479,13 +480,13 @@ export function ProjectIntakeWizard({
         if (q.type === 'yes_no_open') {
           // Its own third state, not a mode sibling — so the control renders as
           // "noch offen" rather than merely unselected.
-          next[key] = 'offen'
+          next[key] = 'open'
           return
         }
-        next[modeKeyFor(key)] = 'offen'
+        next[modeKeyFor(key)] = 'open'
         delete next[key]
       }
-      if (stage.scope === 'bauwerk') {
+      if (stage.scope === 'building') {
         for (const bw of buildings) {
           for (const q of stage.questions) {
             if (evaluateIntakeCondition(q, next, bw.id)) markOpen(q, answerKeyFor(q.id, bw.id))
@@ -526,7 +527,7 @@ export function ProjectIntakeWizard({
     if (!stage) return
     setTouched((prev) => {
       const next = new Set(prev)
-      if (stage.scope === 'bauwerk') {
+      if (stage.scope === 'building') {
         for (const bw of buildings) {
           for (const q of stage.questions) {
             const key = answerKeyFor(q.id, bw.id)
@@ -682,7 +683,7 @@ export function ProjectIntakeWizard({
   const firstMissingRequired = useCallback((): { stageIndex: number; key: string } | null => {
     if (!definition) return null
     for (const [stageIndex, s] of definition.stages.entries()) {
-      if (s.scope === 'bauwerk') {
+      if (s.scope === 'building') {
         for (const bw of buildings) {
           for (const q of s.questions) {
             if (!q.required) continue
@@ -1013,7 +1014,7 @@ export function ProjectIntakeWizard({
                       />
                     )}
                   </div>
-                ) : stage.scope === 'bauwerk' ? (
+                ) : stage.scope === 'building' ? (
                   <BuildingStage
                     // Schnellstart is a view over the QUESTIONS, so it has to be
                     // applied here as well: passing the raw stage left modules
@@ -1637,7 +1638,7 @@ function ZoneBlocks({
 interface ReviewItem {
   label: string
   value: string
-  mode?: 'geschaetzt' | 'offen'
+  mode?: 'estimated' | 'open'
 }
 
 function reviewItemsFor(
@@ -1655,29 +1656,29 @@ function reviewItemsFor(
     const raw = answers[key]
     if (q.type === 'number_tri') {
       const mode = answers[modeKeyFor(key)] as IntakeAnswerMode | undefined
-      if (mode === 'offen') {
-        items.push({ label: q.label, value: '—', mode: 'offen' })
+      if (mode === 'open') {
+        items.push({ label: q.label, value: '—', mode: 'open' })
       } else if (isIntakeAnswerProvided(raw)) {
         items.push({
           label: q.label,
           value: formatIntakeAnswer(q, raw),
-          mode: mode === 'geschaetzt' ? 'geschaetzt' : undefined,
+          mode: mode === 'estimated' ? 'estimated' : undefined,
         })
       }
       continue
     }
     if (q.type === 'yes_no_open') {
-      if (raw === 'offen') items.push({ label: q.label, value: '—', mode: 'offen' })
-      else if (raw === 'ja' || raw === 'nein')
-        items.push({ label: q.label, value: raw === 'ja' ? 'Ja' : 'Nein' })
+      if (raw === 'open') items.push({ label: q.label, value: '—', mode: 'open' })
+      else if (raw === 'yes' || raw === 'no')
+        items.push({ label: q.label, value: raw === 'yes' ? 'Ja' : 'Nein' })
       continue
     }
     // A plain question can be explicitly open too: "Rest überspringen" records
-    // an unanswered one as mode 'offen'. Reading the sibling only for
+    // an unanswered one as mode 'open'. Reading the sibling only for
     // `number_tri` made every skipped text/select question vanish from this
     // checklist — the one place the feature promises they reappear.
-    if (answers[modeKeyFor(key)] === 'offen') {
-      items.push({ label: q.label, value: '—', mode: 'offen' })
+    if (answers[modeKeyFor(key)] === 'open') {
+      items.push({ label: q.label, value: '—', mode: 'open' })
       continue
     }
     if (isIntakeAnswerProvided(raw))
@@ -1720,16 +1721,16 @@ function ReviewSection({
             <dd
               className={cn(
                 'mt-0.5 text-sm',
-                item.mode === 'offen' ? 'text-muted-foreground' : 'font-medium'
+                item.mode === 'open' ? 'text-muted-foreground' : 'font-medium'
               )}
             >
               {item.value}
-              {item.mode === 'geschaetzt' && (
+              {item.mode === 'estimated' && (
                 <Badge variant="warning" className="ml-2 align-middle">
                   geschätzt
                 </Badge>
               )}
-              {item.mode === 'offen' && (
+              {item.mode === 'open' && (
                 <Badge variant="outline" className="ml-2 align-middle">
                   noch offen
                 </Badge>
@@ -1760,10 +1761,10 @@ function ReviewStep({
     // `H` is the summary itself. `I` holds document slots rather than answers,
     // so it would render as an empty section here — the bindings live in
     // `document_roles`, not in the answer map this summarises.
-    .filter(({ stage }) => stage.scope !== 'bauwerk' && stage.id !== 'H' && stage.id !== 'I')
+    .filter(({ stage }) => stage.scope !== 'building' && stage.id !== 'H' && stage.id !== 'I')
   const buildingStages = definition.stages
     .map((stage, index) => ({ stage, index }))
-    .filter(({ stage }) => stage.scope === 'bauwerk')
+    .filter(({ stage }) => stage.scope === 'building')
 
   return (
     <div className="space-y-4">

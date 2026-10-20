@@ -46,7 +46,7 @@ import { toast } from 'sonner'
 
 /**
  * The upload endpoints' response: `/api/documents/upload`,
- * `/api/archiv/documents/upload` and `/api/session/documents/upload`.
+ * `/api/office-shelf/documents/upload` and `/api/session/documents/upload`.
  */
 interface UploadDocumentResponse {
   documentId?: string
@@ -57,13 +57,13 @@ interface UploadDocumentResponse {
 }
 
 /** Where each shelf deletes one of its documents. */
-const DELETE_ROUTE: Record<'project' | 'archiv', (id: string) => string> = {
+const DELETE_ROUTE: Record<'project' | 'office_shelf', (id: string) => string> = {
   project: (id) => `/api/documents/${encodeURIComponent(id)}`,
-  archiv: (id) => `/api/archiv/documents/${encodeURIComponent(id)}`,
+  office_shelf: (id) => `/api/office-shelf/documents/${encodeURIComponent(id)}`,
 }
 
 /** Delete one document through its shelf's first-party route. Already gone is success. */
-async function deleteShelfDocument(shelf: 'project' | 'archiv' | 'session', documentId: string): Promise<void> {
+async function deleteShelfDocument(shelf: 'project' | 'office_shelf' | 'session', documentId: string): Promise<void> {
   if (shelf === 'session') return deleteSessionDocument(documentId)
   const response = await fetch(DELETE_ROUTE[shelf](documentId), { method: 'DELETE' })
   if (response.ok || response.status === 404) return
@@ -81,13 +81,13 @@ interface UseFileUploadOptions {
   folderId?: string
   /**
    * Upload into the org-wide Archiv instead of a project corpus. Mutually
-   * exclusive with `projectId`: files POST to `/api/archiv/documents/upload`
+   * exclusive with `projectId`: files POST to `/api/office-shelf/documents/upload`
    * (the org is resolved server-side from the session) and land in the shared
    * `archiv_<orgId>` collection passed as `collectionName`.
    */
   officeShelf?: boolean
   /**
-   * For a chat upload (no `projectId`, not `archiv`): the project the chat
+   * For a chat upload (no `projectId`, not `office_shelf`): the project the chat
    * belongs to. The server uses it only if it has to create the conversation
    * row, so a chat attached to before its first message still lands in its
    * project.
@@ -181,7 +181,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
    * Which shelf this upload surface files into. The caller says so through its
    * options; nothing reads it off the collection name (ADR-0047).
    */
-  const shelf: 'project' | 'archiv' | 'session' = officeShelf ? 'archiv' : projectId ? 'project' : 'session'
+  const shelf: 'project' | 'office_shelf' | 'session' = officeShelf ? 'office_shelf' : projectId ? 'project' : 'session'
 
   const { idToken } = useAuth()
   const t = useTranslations('files')
@@ -492,8 +492,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         // API, so a serial loop left the connection idle for most of every
         // file and made the batch take the SUM of all of them.
         const uploadUrl =
-          shelf === 'archiv'
-            ? '/api/archiv/documents/upload'
+          shelf === 'office_shelf'
+            ? '/api/office-shelf/documents/upload'
             : shelf === 'session'
               ? '/api/session/documents/upload'
               : '/api/documents/upload'

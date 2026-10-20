@@ -30,7 +30,7 @@ export const FOLDER_DESCRIPTIONS_MAX_CHARS = 1800
 const LINE_MAX_CHARS = 200
 
 /** The shelf word in a line's tag: the agent's own vocabulary for the two shelves. */
-const SHELF_TAG = { project: 'Projekt', archiv: 'Büroablage' } as const
+const SHELF_TAG = { project: 'Projekt', office_shelf: 'Büroablage' } as const
 
 /** The block, or null when no folder the channel may name has a description. */
 export async function buildFolderDescriptionsBlock(
@@ -41,7 +41,7 @@ export async function buildFolderDescriptionsBlock(
     listDescribedFolders(organizationId, projectId),
     projectId ? listProjectFolderTree(organizationId, projectId).then(folderTree) : Promise.resolve(new Map()),
   ])
-  const open = rows.filter((row) => row.scope === 'archiv' || !isUnderOwnList(tree, row.id))
+  const open = rows.filter((row) => row.scope === 'office_shelf' || !isUnderOwnList(tree, row.id))
   if (open.length === 0) return null
   const items = await Promise.all(
     open.map(async (row) => {

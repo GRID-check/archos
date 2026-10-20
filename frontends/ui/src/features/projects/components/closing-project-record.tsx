@@ -28,7 +28,7 @@ export function ClosingProjectRecord({ projectId }: { projectId: string }): JSX.
 
   const reload = useCallback(async (): Promise<void> => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/steckbrief`)
+      const res = await fetch(`/api/projects/${projectId}/project-record`)
       if (!res.ok) throw new Error(String(res.status))
       const body = (await res.json()) as Partial<ProjectRecordView>
       if (!Array.isArray(body.people)) throw new Error('not a Steckbrief')

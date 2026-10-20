@@ -13,7 +13,7 @@ import { DocumentsDialog } from './DocumentsDialog'
 const documents: PlanDocument[] = [
   { name: 'einreichplan_v3.pdf', title: 'Einreichplan', shelf: 'project' },
   { name: 'Brandschutzkonzept.pdf', shelf: 'project' },
-  { name: 'OIB-RL 2 Leitfaden.pdf', title: 'Leitfaden OIB 2', shelf: 'archiv' },
+  { name: 'OIB-RL 2 Leitfaden.pdf', title: 'Leitfaden OIB 2', shelf: 'office_shelf' },
 ]
 
 const rows = () => screen.getAllByTestId('documents-row')

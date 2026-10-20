@@ -184,7 +184,7 @@ describe('ProjectRecord', () => {
     await user.click(within(dialog).getAllByRole('combobox', { name: 'Month' })[0])
     await user.click(await screen.findByRole('option', { name: 'January' }))
     expect(fetchMock).toHaveBeenCalledWith(
-      '/api/projects/p1/steckbrief',
+      '/api/projects/p1/project-record',
       expect.objectContaining({ method: 'PUT', body: JSON.stringify({ startedOn: '2023-01' }) })
     )
   })

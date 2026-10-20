@@ -79,7 +79,7 @@ export function openFilePeek(options: OpenFilePeekOptions): void {
 
   boundSubjectId = options.file.id
   const shelf =
-    options.source === 'office' ? 'archiv' : options.source === 'session' ? 'session' : options.source === 'project' ? 'project' : undefined
+    options.source === 'office' ? 'office_shelf' : options.source === 'session' ? 'session' : options.source === 'project' ? 'project' : undefined
   useChatStore.getState().setComposerSubject({
     resourceType: 'document',
     resourceId: options.file.id,

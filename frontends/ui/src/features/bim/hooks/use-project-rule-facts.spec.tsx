@@ -4,7 +4,7 @@
  * This hook decides what counts as a usable fact, and the answer has to be
  * conservative in one specific direction: a fact it cannot vouch for must
  * arrive as `null`, so the rules that need it stand down with their reason. A
- * `gebaeudeklasse` guessed from a malformed profile would silently pick the
+ * `buildingClass` guessed from a malformed profile would silently pick the
  * fire-resistance thresholds for the wrong building.
  */
 
@@ -25,8 +25,8 @@ describe('useProjectRuleFacts', () => {
   it('reads the facts the catalogue needs', async () => {
     stubProfile({ facts: { building_class: { value: 4 }, main_use: { value: 'residential' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
-    await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
-    expect(result.current.hauptnutzung).toBe('residential')
+    await waitFor(() => expect(result.current.buildingClass).toBe(4))
+    expect(result.current.mainUse).toBe('residential')
     expect(result.current.missing).toEqual([])
   })
 
@@ -35,7 +35,7 @@ describe('useProjectRuleFacts', () => {
     // storage detail, not a reason to stand a fire rule down.
     stubProfile({ facts: { building_class: { value: '3' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
-    await waitFor(() => expect(result.current.gebaeudeklasse).toBe(3))
+    await waitFor(() => expect(result.current.buildingClass).toBe(3))
   })
 
   it('refuses a Gebäudeklasse outside 1–5 rather than clamping it', async () => {
@@ -43,10 +43,10 @@ describe('useProjectRuleFacts', () => {
     stubProfile({ facts: { building_class: { value: 9 } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
-    expect(result.current.gebaeudeklasse).toBeNull()
+    expect(result.current.buildingClass).toBeNull()
     // KEYS, not names: interpolated raw they put German into the English
     // sentence, on a screen that translates the sibling fact as "Main use".
-    expect(result.current.missing).toContain('gebaeudeklasse')
+    expect(result.current.missing).toContain('buildingClass')
   })
 
   it('reads the canonical GK form the brief actually stores', async () => {
@@ -57,14 +57,14 @@ describe('useProjectRuleFacts', () => {
     // real verdicts. The card and the answer above it disagreed on screen.
     stubProfile({ facts: { building_class: { value: 'GK4' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
-    await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
+    await waitFor(() => expect(result.current.buildingClass).toBe(4))
     expect(result.current.missing).not.toContain('Gebäudeklasse')
   })
 
   it('accepts a bare number, which nothing forbids', async () => {
     stubProfile({ facts: { building_class: { value: 4 } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
-    await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
+    await waitFor(() => expect(result.current.buildingClass).toBe(4))
   })
 
   it('refuses a Gebäudeklasse it cannot read', async () => {
@@ -75,10 +75,10 @@ describe('useProjectRuleFacts', () => {
     stubProfile({ facts: { building_class: { value: 'Klasse vier' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
-    expect(result.current.gebaeudeklasse).toBeNull()
+    expect(result.current.buildingClass).toBeNull()
     // KEYS, not names: interpolated raw they put German into the English
     // sentence, on a screen that translates the sibling fact as "Main use".
-    expect(result.current.missing).toContain('gebaeudeklasse')
+    expect(result.current.missing).toContain('buildingClass')
   })
 
   it('treats an empty Hauptnutzung as absent', async () => {
@@ -88,8 +88,8 @@ describe('useProjectRuleFacts', () => {
     stubProfile({ facts: { main_use: { value: '  ' } } })
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
-    expect(result.current.hauptnutzung).toBeNull()
-    expect(result.current.missing).toContain('hauptnutzung')
+    expect(result.current.mainUse).toBeNull()
+    expect(result.current.missing).toContain('mainUse')
   })
 
   it('names no gap at all until the brief has actually been read', async () => {
@@ -116,7 +116,7 @@ describe('useProjectRuleFacts', () => {
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
     await waitFor(() => expect(result.current.ready).toBe(true))
     expect(result.current.failed).toBe(false)
-    expect(result.current.missing).toEqual(['gebaeudeklasse', 'hauptnutzung'])
+    expect(result.current.missing).toEqual(['buildingClass', 'mainUse'])
   })
 
   it('reports a profile it could not READ as that, not as a brief with gaps', async () => {
@@ -133,7 +133,7 @@ describe('useProjectRuleFacts', () => {
     await waitFor(() => expect(result.current.ready).toBe(true))
     expect(result.current.failed).toBe(true)
     expect(result.current.missing).toEqual([])
-    expect(result.current.gebaeudeklasse).toBeNull()
+    expect(result.current.buildingClass).toBeNull()
   })
 
   it('clears the failure when the retry succeeds', async () => {
@@ -143,7 +143,7 @@ describe('useProjectRuleFacts', () => {
 
     stubProfile({ facts: { building_class: { value: 'GK4' } } })
     act(() => result.current.reload())
-    await waitFor(() => expect(result.current.gebaeudeklasse).toBe(4))
+    await waitFor(() => expect(result.current.buildingClass).toBe(4))
     expect(result.current.failed).toBe(false)
   })
 
@@ -173,7 +173,7 @@ describe('useProjectRuleFacts', () => {
     const { result } = renderHook(() => useProjectRuleFacts('p1'))
 
     await waitFor(() => expect(result.current.ready).toBe(true))
-    expect(result.current.gebaeudeklasse).toBeNull()
+    expect(result.current.buildingClass).toBeNull()
   })
 
   it('is settled immediately when there is no project', () => {

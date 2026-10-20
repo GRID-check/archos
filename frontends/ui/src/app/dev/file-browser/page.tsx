@@ -52,9 +52,9 @@
  * („4 offene Anmerkungen, 2 für Sie"), on `Einreichplan_Grundriss_EG_Index-C.pdf`
  * at the root and `Statik_Positionsplan.pdf` in Statik.
  *
- * `?variant=fassungen` renders documents with Fassungen (ADR-0099): the count
+ * `?variant=revisions` renders documents with Fassungen (ADR-0099): the count
  * beside the name, the one badge on an older Fassung, in cards and in the list,
- * with older Fassungen hidden and shown. See `fassungen-fixture.tsx`.
+ * with older Fassungen hidden and shown. See `revisions-fixture.tsx`.
  */
 
 import type { JSX } from 'react'
@@ -276,7 +276,7 @@ export default function FileBrowserDevPage(): JSX.Element {
   if (variant === 'folders-list') return <FoldersInListViewFixture />
   if (variant === 'folder-drop') return <FolderDropTargetFixture />
   if (variant === 'file-context') return <FileContextMenuFixture />
-  if (variant === 'fassungen') return <RevisionsFixture />
+  if (variant === 'revisions') return <RevisionsFixture />
   if (variant === 'phone-fab') return <PhoneUploadFabFixture />
   if (variant === 'select') return <SelectionFixture view="cards" />
   if (variant === 'select-list') return <SelectionFixture view="list" />

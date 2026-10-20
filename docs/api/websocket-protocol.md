@@ -406,7 +406,7 @@ expanded collection list:
 | Field | Type | Meaning |
 |-------|------|---------|
 | `focus_file_name` | `string` | Filename of the file this send is about (the composer "Asking about …" subject). Retrieval prefers it, AND it is named in the prompts. |
-| `focus_shelf` | `"session"` \| `"project"` \| `"archiv"` | Shelf that file sits on. Wins over `source_preset`. |
+| `focus_shelf` | `"session"` \| `"project"` \| `"office_shelf"` | Shelf that file sits on. Wins over `source_preset`. |
 | `source_preset` | `"law"` \| `"project"` \| `"office"` | Composer shortcut chip. Used only when no subject shelf is set. |
 
 ```json

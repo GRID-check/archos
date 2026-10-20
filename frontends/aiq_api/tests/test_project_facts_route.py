@@ -71,13 +71,13 @@ async def test_writes_the_facts_of_a_collection_in_the_signed_scope(client, writ
     assert res.status_code == 200 and res.json() == {"collection": "proj_a_r0123456789ab", "applied": True}
     [(scope, facts, status)] = written
     assert scope == "proj_a_r0123456789ab" and status == "closed"
-    # The vector store keeps the German names and tokens until its own rename; the route translates.
+    # The vector store holds the English names and tokens: the route writes the facts as sent.
     assert facts == {
-        "bundesland": "wien",
-        "gebaeudeklasse": [4],
-        "bauweise": ["holzbau"],
-        "nutzungen": [],
-        "vorhabensart": [],
+        "federal_state": "vienna",
+        "building_class": [4],
+        "construction_method": ["timber"],
+        "uses": [],
+        "work_type": [],
     }
 
 
@@ -90,7 +90,7 @@ async def test_the_german_names_an_older_bff_sends_are_read_as_the_english_ones(
         )
     assert res.status_code == 200
     [(_, facts, _)] = written
-    assert facts["bundesland"] == "wien" and facts["bauweise"] == ["holzbau"]
+    assert facts["federal_state"] == "vienna" and facts["construction_method"] == ["timber"]
 
 
 async def test_a_collection_outside_the_signed_scope_is_not_found(client, written, signed):

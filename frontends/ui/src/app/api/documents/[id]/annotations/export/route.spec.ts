@@ -63,7 +63,7 @@ describe('GET /api/documents/[id]/annotations/export', () => {
     expect(exportAnnotationProtocol).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1', userId: 'user_anna' }),
       'doc_1',
-      { format: 'pdf', scope: 'open', fassung: 'current', includeProposals: false },
+      { format: 'pdf', scope: 'open', revision: 'current', includeProposals: false },
       expect.any(Request)
     )
   })
@@ -74,15 +74,25 @@ describe('GET /api/documents/[id]/annotations/export', () => {
       bytes: new Uint8Array([0x50, 0x4b]),
       mediaType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     })
-    const response = await call('?format=docx&scope=all&fassung=all&includeProposals=1')
+    const response = await call('?format=docx&scope=all&revision=all&includeProposals=1')
     expect(exportAnnotationProtocol).toHaveBeenCalledWith(
       expect.anything(),
       'doc_1',
-      { format: 'docx', scope: 'all', fassung: 'all', includeProposals: true },
+      { format: 'docx', scope: 'all', revision: 'all', includeProposals: true },
       expect.any(Request)
     )
     expect(response.headers.get('Content-Type')).toBe(
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    )
+  })
+
+  it('still reads the pre-rename `fassung` parameter of a saved link', async () => {
+    await call('?fassung=all')
+    expect(exportAnnotationProtocol).toHaveBeenCalledWith(
+      expect.anything(),
+      'doc_1',
+      { format: 'pdf', scope: 'open', revision: 'all', includeProposals: false },
+      expect.any(Request)
     )
   })
 

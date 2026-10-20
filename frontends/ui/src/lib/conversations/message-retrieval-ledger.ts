@@ -23,7 +23,7 @@
  * are snake_case; everything downstream of this file is camelCase.
  *
  * Pinned against the Python half by the shared fixture
- * `tests/fixtures/herleitung/retrieval_ledger_wire.json` — a crossing test on
+ * `tests/fixtures/derivation/retrieval_ledger_wire.json` — a crossing test on
  * each side, so a renamed key cannot ship green.
  */
 

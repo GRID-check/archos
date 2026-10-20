@@ -68,13 +68,13 @@ The chain is computed per file, so one unnumbered document cannot poison another
 
 WHAT COMES OUT
 --------------
-``{richtlinie: {punkt: {"file_name": str, "pages": [int, ...], "heading": str}}}``
+``{guideline: {clause: {"file_name": str, "pages": [int, ...], "heading": str}}}``
 
 ``pages`` is the inclusive page span from the Punkt's heading page to the page
 before the next Punkt's heading — that is, every page a chunk of this Punkt can
 land on. The last Punkt in a file runs to the last page carrying text.
 
-``richtlinie`` is derived from the file name (``oib-rl_2.1_ausgabe_mai_2023.pdf``
+``guideline`` is derived from the file name (``oib-rl_2.1_ausgabe_mai_2023.pdf``
 -> ``"2.1"``; ``oib-rl_2_leitfaden_…`` -> ``"2-leitfaden"``), so the golden set
 never has to spell a file name out and a corpus re-sync under a new edition
 suffix is a one-line change here.
@@ -172,7 +172,7 @@ class Candidate:
     """A line that looks like a numbered heading, before the guards run."""
 
     key: tuple[int, ...]
-    punkt: str
+    clause: str
     page: int
     heading: str
 
@@ -189,9 +189,9 @@ class FileExtraction:
     last_page: int = 0
 
 
-def parse_clause_key(punkt: str) -> tuple[int, ...]:
+def parse_clause_key(clause: str) -> tuple[int, ...]:
     """``"3.1.10"`` -> ``(3, 1, 10)``. Numeric, so ``3.1.10`` sorts after ``3.1.9``."""
-    return tuple(int(part) for part in punkt.split("."))
+    return tuple(int(part) for part in clause.split("."))
 
 
 def is_valid_successor(last: tuple[int, ...], candidate: tuple[int, ...]) -> bool:
@@ -283,15 +283,15 @@ def find_candidates(pages: list[dict[str, Any]], toc_titles: dict[str, str]) -> 
             match = HEADING_RE.match(line)
             if match is None or DOT_LEADER_RE.search(line):
                 continue
-            punkt = match.group(1)
+            clause = match.group(1)
             heading = match.group(2).strip()
-            expected = toc_titles.get(punkt)
+            expected = toc_titles.get(clause)
             if expected is not None and not titles_agree(expected, heading):
                 continue
             candidates.append(
                 Candidate(
-                    key=parse_clause_key(punkt),
-                    punkt=punkt,
+                    key=parse_clause_key(clause),
+                    clause=clause,
                     page=page_number,
                     heading=heading,
                 )
@@ -301,7 +301,7 @@ def find_candidates(pages: list[dict[str, Any]], toc_titles: dict[str, str]) -> 
 
 def candidate_weight(candidate: Candidate, toc_titles: dict[str, str]) -> int:
     """:data:`ANCHOR_WEIGHT` for a ToC-confirmed heading, 1 for anything else."""
-    expected = toc_titles.get(candidate.punkt)
+    expected = toc_titles.get(candidate.clause)
     if expected is not None and titles_agree(expected, candidate.heading):
         return ANCHOR_WEIGHT
     return 1
@@ -364,13 +364,13 @@ def extract_file(pages: list[dict[str, Any]], file_name: str) -> FileExtraction:
                 end_page = candidate.page
         else:
             end_page = max(candidate.page, result.last_page)
-        result.entries[candidate.punkt] = {
+        result.entries[candidate.clause] = {
             "file_name": file_name,
             "pages": list(range(candidate.page, end_page + 1)),
             "heading": candidate.heading,
         }
         if index and not is_immediate_successor(chain[index - 1].key, candidate.key):
-            result.gaps.append((chain[index - 1].punkt, candidate.punkt))
+            result.gaps.append((chain[index - 1].clause, candidate.clause))
 
     return result
 
@@ -415,7 +415,7 @@ def make_page_reader() -> PageReader | None:
 class BuildStats:
     files_read: int = 0
     files_failed: int = 0
-    punkte: int = 0
+    clauses: int = 0
 
 
 def build_index(
@@ -459,7 +459,7 @@ def build_index(
 
         # `guideline_key` is not injective — two Ausgaben of the same Richtlinie reduce
         # to the same key — and assigning over the top silently discarded the first
-        # file's Punkte while `stats.punkte` still counted both, so the printed totals
+        # file's Punkte while `stats.clauses` still counted both, so the printed totals
         # disagreed with the written index and nothing said why.
         if key in index:
             collisions.append(f"{key}: {source_by_key[key]} and {file_name} share a Richtlinie key")
@@ -472,11 +472,11 @@ def build_index(
             continue
         index[key] = extraction.entries
         source_by_key[key] = file_name
-        stats.punkte += len(extraction.entries)
+        stats.clauses += len(extraction.entries)
         for previous, following in extraction.gaps:
             gap_reports.append(f"{key}: {previous} -> {following}")
         logger.info(
-            "%-52s %-14s punkte=%4d rejected=%4d gaps=%d",
+            "%-52s %-14s clauses=%4d rejected=%4d gaps=%d",
             file_name,
             key,
             len(extraction.entries),
@@ -544,7 +544,7 @@ def main(argv: list[str] | None = None) -> int:
 
     print("")
     print(f"Richtlinien indexed : {len(index)}")
-    print(f"Punkte indexed      : {stats.punkte}")
+    print(f"Clauses indexed     : {stats.clauses}")
     print(f"Files read          : {stats.files_read} (failed: {stats.files_failed})")
     print("")
     print("UNRESOLVED — no usable Punkt numbering:")

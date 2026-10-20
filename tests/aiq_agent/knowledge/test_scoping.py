@@ -159,7 +159,7 @@ class TestTheShelfTravelsInTheHeader:
         ctx = self._ctx(
             [
                 {"collection": "oib_knowledge", "shelf": "base"},
-                {"collection": "archiv_org1", "shelf": "archiv"},
+                {"collection": "archiv_org1", "shelf": "office_shelf"},
                 {"collection": "proj_alpha", "shelf": "project"},
                 {"collection": "s_9f2a4c", "shelf": "session"},
             ]
@@ -257,7 +257,7 @@ class TestABlankNameMeansTheSameOnBothSidesOfTheSeam:
         ctx = self._ctx(
             [
                 {"collection": "proj_alpha", "shelf": "project"},
-                {"collection": "", "shelf": "archiv"},
+                {"collection": "", "shelf": "office_shelf"},
                 {"collection": "s_conv1", "shelf": "session"},
             ]
         )

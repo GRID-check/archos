@@ -24,7 +24,7 @@ const scope: AuthorizedJobScope = {
   projectId: 'p-1',
   scopedCollections: [
     { collection: 'oib_knowledge', shelf: 'base' },
-    { collection: 'archiv_org_1', shelf: 'archiv' },
+    { collection: 'archiv_org_1', shelf: 'office_shelf' },
     { collection: 'proj_p1', shelf: 'project' },
     { collection: 's_conv-1', shelf: 'session' },
   ],

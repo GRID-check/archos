@@ -209,9 +209,9 @@ For each file:
 
 0. **Download and thumbnail** — a deferred original is downloaded first (`knowledge_layer.deferred_files.resolve_original`): one GET without redirects, into a temp file whose suffix comes from the response's `Content-Type` (the object path as fallback, scrubbed), owned and deleted by the job whether or not `cleanup_files` is set. A failed download fails the file with the stable error `original_download_failed: …` and nothing else is fetched for it, the rendition included; the log names the error class and HTTP status, never the URL. Then the rendition, when there is one. The 400px card thumbnail is drawn later, once the file's upload screen has passed (ADR-0086): from the rendition or a PDF original after its text screen, from an image once it passes on its name, from a spreadsheet's `preview_paths` rendition after its extracted text is screened. A quarantined file has none
 1. **Text extraction** — a PDF is read per page with pdfplumber, recording each line's font size and weight (`line_styles`). `.xlsx`/`.xlsm` go through `office_extractors`; `.md`, `.txt`, `.csv` and `.tsv` through `text_formats`, which decodes without dropping a byte (BOM, else strict UTF-8, else cp1252, else Latin-1; the encoding is stored as `source_encoding`). Any other extension falls to `SimpleDirectoryReader`. When the job carries an extraction path for the file, the PDF rendition is read instead and every later step treats it as a PDF: pages, tables, images and visual pages. For a `.pptx` or `.pptm` a companion reads the speaker notes from the original, one unit per slide labelled with its rendition page, because a PDF export drops them. On a job whose config carries `screening`, the [upload screen](#upload-screening-before-the-first-model-call) runs on this extracted text before anything below
-   **Chunking.** Every text chunk carries a locator a citation and `read_passage(punkt=…)` can use:
+   **Chunking.** Every text chunk carries a locator a citation and `read_passage(clause=…)` can use:
 
-   | Source | Unit | Locator (`punkt_id`) | `page_label` |
+   | Source | Unit | Locator (`clause_id`) | `page_label` |
    |---|---|---|---|
    | OIB Richtlinie (`oib_doc_class` set) | a Punkt (`clause_chunking`) | `3.5.2`, `Tabelle 3` | first page |
    | Any other PDF with a heading structure | chunks of ~640 tokens inside a section that may span pages, 96 tokens of overlap inside the section, heading breadcrumb as the first line (`section_chunking`) | the heading's number (`3.2`, `§ 4`, `Artikel 2`), else its title path (`Brandschutz › Allgemeines`) | page the chunk's own text starts on; `page_end` where it ends |
@@ -254,7 +254,7 @@ Each file of a screened job gets `file_details[].screening` on its job status: `
 
 ### Fassungen across file names (ADR-0099)
 
-Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/revisions.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/fassung` writes `superseded_by`.
+Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/revisions.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `REVISION_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/revision` writes `superseded_by`.
 
 | The file's name is | Step | Stored on the file's own row |
 |---|---|---|

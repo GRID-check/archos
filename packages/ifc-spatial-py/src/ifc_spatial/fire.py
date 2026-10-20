@@ -185,7 +185,7 @@ _GROUND_CAVEAT = (
 
 
 # ════════════════════════════════════════════════════════════════════════════
-# fluchtniveau — the highest-value scalar in OIB 2, and the one most easily
+# escape_level — the highest-value scalar in OIB 2, and the one most easily
 # turned into a classification it must not become
 # ════════════════════════════════════════════════════════════════════════════
 
@@ -205,7 +205,7 @@ class StoreyJudgement:
     elevation: float | None
     counted: bool
     #: German, and specific: which signal decided it.
-    warum: str
+    why: str
     #: The spaces found on this storey, with the lexicon's own classification.
     spaces: list[dict[str, Any]] = field(default_factory=list)
 
@@ -214,9 +214,9 @@ class StoreyJudgement:
             "globalId": self.global_id,
             "name": self.name,
             "elevation": self.elevation,
-            "gezaehlt": self.counted,
-            "warum": self.warum,
-            "raeume": list(self.spaces),
+            "counted": self.counted,
+            "why": self.why,
+            "rooms": list(self.spaces),
         }
 
 
@@ -284,7 +284,7 @@ def escape_level(model: SpatialModel) -> Answer[dict[str, Any]]:
     hold, and a library that emits „GK5“ has quietly applied a rule it never
     read.
     """
-    method = "fluchtniveau(model)"
+    method = "escape_level(model)"
     storeys = model.storeys
     if not storeys:
         return undecidable(
@@ -368,7 +368,7 @@ def escape_level(model: SpatialModel) -> Answer[dict[str, Any]]:
     )
     dropped = [j for j in judgements if not j.counted]
     if dropped:
-        caveat.append("NICHT gezählt: " + ", ".join(f"„{j.name or j.global_id}“ ({j.warum})" for j in dropped) + ".")
+        caveat.append("NICHT gezählt: " + ", ".join(f"„{j.name or j.global_id}“ ({j.why})" for j in dropped) + ".")
     caveat.append(
         "Gemessen wird auf die deklarierte Geschoßebene (Rohbau-Oberkante), nicht auf den fertigen Fußboden; "
         "ein Fußbodenaufbau darüber hebt das wirkliche Fußbodenniveau um seine Dicke an."
@@ -376,7 +376,7 @@ def escape_level(model: SpatialModel) -> Answer[dict[str, Any]]:
 
     return inferred(
         {
-            "fluchtniveau": value,
+            "escape_level": value,
             "topOccupiedFloor": {
                 "globalId": top.global_id,
                 "name": top.name,
@@ -416,12 +416,12 @@ def _judge_storeys(model: SpatialModel, storeys: Sequence[Any]) -> list[StoreyJu
             {
                 "globalId": space.GlobalId,
                 "name": model.label(space),
-                "nutzung": rooms[space.GlobalId].kind if space.GlobalId in rooms else None,
+                "use": rooms[space.GlobalId].kind if space.GlobalId in rooms else None,
             }
             for space in spaces
         ]
 
-        counted, warum = _judge_one_storey(storey, described)
+        counted, why = _judge_one_storey(storey, described)
 
         out.append(
             StoreyJudgement(
@@ -429,11 +429,10 @@ def _judge_storeys(model: SpatialModel, storeys: Sequence[Any]) -> list[StoreyJu
                 name=storey.name,
                 elevation=storey.elevation,
                 counted=counted and storey.elevation is not None,
-                warum=(
-                    warum
+                why=(
+                    why
                     if storey.elevation is not None
-                    else warum + ", aber dieses Geschoß deklariert keine Höhenlage und kann deshalb nicht "
-                    "maßgeblich sein"
+                    else why + ", aber dieses Geschoß deklariert keine Höhenlage und kann deshalb nicht maßgeblich sein"
                 ),
                 spaces=described,
             )
@@ -486,7 +485,7 @@ def _judge_one_storey(storey: Any, described: Sequence[dict[str, Any]]) -> tuple
     # The lexicon's classification is the whole of the positive room signal. The
     # veto that used to sit here ran `NOT_OCCUPIED_TERMS` — a STOREY vocabulary,
     # matched on substrings — over ROOM names, so a „Dachzimmer" or
-    # „Attikazimmer" that `classify_rooms` had placed as `aufenthaltsraum` was
+    # „Attikazimmer" that `classify_rooms` had placed as `habitable_room` was
     # struck out. With no habitable room left, the branch below then read „Alle
     # Räume … sind Neben- oder Erschließungsflächen" and dropped the storey: on
     # a two-storey house whose upper storey is cleanly named „1. Obergeschoss"
@@ -494,9 +493,9 @@ def _judge_one_storey(storey: Any, described: Sequence[dict[str, Any]]) -> tuple
     # 3.500 m. That is the direction the module docstring names as the dangerous
     # one, the reason given was untrue, and a substring on a room name is not
     # the positive evidence the rule demands.
-    habitable = [entry for entry in described if entry["nutzung"] == "aufenthaltsraum"]
-    placed = [entry for entry in described if entry["nutzung"] is not None]
-    unplaced = [entry for entry in described if entry["nutzung"] is None]
+    habitable = [entry for entry in described if entry["use"] == "habitable_room"]
+    placed = [entry for entry in described if entry["use"] is not None]
+    unplaced = [entry for entry in described if entry["use"] is None]
 
     if habitable:
         return (
@@ -629,7 +628,7 @@ def _escape_level_reasons(
 ) -> tuple[list[str], float]:
     """The `because` list and a confidence that moves for stated reasons only."""
     because = [
-        f"Oberstes mitgezähltes Geschoß: „{top.name or top.global_id}“ auf {_metres(top.elevation)} ({top.warum}).",
+        f"Oberstes mitgezähltes Geschoß: „{top.name or top.global_id}“ auf {_metres(top.elevation)} ({top.why}).",
         f"Unterer Bezug: {ground['via']}, {_metres(ground['z'])}.",
         f"{sum(1 for j in judgements if j.counted)} von {len(judgements)} Geschoß(en) als zum Aufenthalt "
         "bestimmt gewertet; die Begründung je Geschoß steht in „storeys“.",
@@ -641,7 +640,7 @@ def _escape_level_reasons(
             "Kein Geländemodell in dieser Datei — der untere Bezug ist eine Bauwerkskante, nicht das "
             "anschließende Gelände."
         )
-    uncertain = [j for j in judgements if j.counted and "Im Zweifel" in j.warum]
+    uncertain = [j for j in judgements if j.counted and "Im Zweifel" in j.why]
     if uncertain:
         confidence -= 0.15
         because.append(
@@ -735,13 +734,13 @@ def compartment_area(model: SpatialModel, storey_or_space_ids: str | Sequence[st
                 "name": model.label(subject),
                 "ifcType": subject.is_a(),
                 "via": via,
-                "deklariert": is_declared,
-                "raumzahl": len(resolved),
+                "declared": is_declared,
+                "room_count": len(resolved),
             }
         )
         for space in resolved:
             if space.GlobalId in seen:
-                duplicates.append({"globalId": space.GlobalId, "name": model.label(space), "ueber": global_id})
+                duplicates.append({"globalId": space.GlobalId, "name": model.label(space), "group": global_id})
                 continue
             seen.add(space.GlobalId)
             spaces.append(space)
@@ -773,8 +772,8 @@ def compartment_area(model: SpatialModel, storey_or_space_ids: str | Sequence[st
                 {
                     "globalId": space.GlobalId,
                     "name": model.label(space),
-                    "warum": answer.missing.what if answer.missing else "floorArea() war nicht entscheidbar",
-                    "abhilfe": answer.missing.remedy if answer.missing else None,
+                    "why": answer.missing.what if answer.missing else "floorArea() war nicht entscheidbar",
+                    "remedy": answer.missing.remedy if answer.missing else None,
                 }
             )
             continue
@@ -819,8 +818,8 @@ def compartment_area(model: SpatialModel, storey_or_space_ids: str | Sequence[st
         "spaces": measured,
         "grouping": grouping,
         "ohneFlaeche": without,
-        "doppelt": duplicates,
-        "ueberschneidungen": overlaps,
+        "duplicates": duplicates,
+        "overlaps": overlaps,
         "deklarierteZonen": _declared_zones(model),
     }
     # `computed`, always, even when the GROUPING is the architect's own IfcZone:
@@ -974,7 +973,7 @@ def _compartment_caveat(
             "ein Geschoß kann mehrere Brandabschnitte enthalten und ein Brandabschnitt mehrere Geschoße "
             "umfassen. Die Zahl ist die Geschoßfläche, solange nichts anderes deklariert ist."
         )
-    if any(entry["deklariert"] and entry["ifcType"] in ("IfcZone", "IfcGroup") for entry in grouping):
+    if any(entry["declared"] and entry["ifcType"] in ("IfcZone", "IfcGroup") for entry in grouping):
         parts.append(
             "Die Zusammenstellung stammt aus einer im Export DEKLARIERTEN Gruppe (IfcZone/IfcGroup) — das ist "
             "die Aussage des Verfassers darüber, was zusammengehört, und wurde deshalb einer eigenen "
@@ -1031,11 +1030,11 @@ class SeparatingElement:
     global_id: str
     name: str | None
     ifc_type: str
-    #: ``trennend`` — it lies between the two rooms; ``gemeinsam`` — it bounds
+    #: ``separating`` — it lies between the two rooms; ``shared`` — it bounds
     #: both but does not separate them (a facade running past both).
-    rolle: str
-    #: German, naming the test that decided ``rolle``.
-    warum: str
+    role: str
+    #: German, naming the test that decided ``role``.
+    why: str
     #: Exactly as declared, or ``None``. ``None`` is a finding about the export,
     #: and a property carrying an empty string is one of those — see
     #: :func:`_fire_rating`.
@@ -1049,8 +1048,8 @@ class SeparatingElement:
             "globalId": self.global_id,
             "name": self.name,
             "ifcType": self.ifc_type,
-            "rolle": self.rolle,
-            "warum": self.warum,
+            "role": self.role,
+            "why": self.why,
             "fireRating": self.fire_rating,
             "fireRatingDeklariert": self.fire_rating is not None,
             "compartmentation": self.compartmentation,
@@ -1068,7 +1067,7 @@ def separating_elements(model: SpatialModel, space_a: str, space_b: str) -> Answ
     A continuous south facade bounds every room along it and separates none of
     them. So each shared element is classified rather than reported flat, by two
     independent geometric tests, and an element passing **either** is
-    ``trennend``:
+    ``separating``:
 
     1. **Achsentest** — the two room bodies are disjoint along one axis, and the
        element lies inside that gap (within :data:`SEPARATION_SLACK`) while
@@ -1082,18 +1081,18 @@ def separating_elements(model: SpatialModel, space_a: str, space_b: str) -> Answ
     Either test alone loses a real fire wall on ordinary geometry, and losing
     one is the dangerous direction, so the union is taken and every element says
     which test found it. Elements that pass neither are still reported, under
-    ``gemeinsam`` with their reason — nothing is dropped silently.
+    ``shared`` with their reason — nothing is dropped silently.
 
     When the spaces carry no body at all (a topology-only export), no test can
-    run: the shared bounding elements are reported as ``trennend`` with
-    ``warum`` saying betweenness was **not** checked. Excluding an element on no
+    run: the shared bounding elements are reported as ``separating`` with
+    ``why`` saying betweenness was **not** checked. Excluding an element on no
     evidence would be worse.
 
     ## The openings, because the door is the weak point
 
     For every separating element the opening chain is walked
     (:func:`~ifc_spatial.operators.hosts` → ``filler_of``) and each filler comes
-    back under ``oeffnungen`` with its OWN declared ``FireRating``. A REI 90
+    back under ``openings`` with its OWN declared ``FireRating``. A REI 90
     wall with an undeclared door in it is a finding, and it is invisible if only
     the wall is reported.
 
@@ -1172,25 +1171,25 @@ def separating_elements(model: SpatialModel, space_a: str, space_b: str) -> Answ
         element = model.file.by_guid(ref.global_id)
         rating = _fire_rating(model, element)
         compartmentation = model.declared_property(element, ("Compartmentation",))
-        rolle, warum = _classify(model, element, geo_a, geo_b, axis, testable)
+        role, why = _classify(model, element, geo_a, geo_b, axis, testable)
         entry = SeparatingElement(
             global_id=ref.global_id,
             name=ref.name,
             ifc_type=ref.ifc_type,
-            rolle=rolle,
-            warum=warum,
+            role=role,
+            why=why,
             fire_rating=rating,
             compartmentation=compartmentation if isinstance(compartmentation, bool) else None,
         )
-        if element.is_a() in op.FENESTRATION and rolle == "trennend":
+        if element.is_a() in op.FENESTRATION and role == "separating":
             # A door found through the boundaries is an OPENING in this answer,
             # never a separating element in its own right: listing it in both
             # places would let a reader count one door as two barriers. A
-            # fenestration element that is only `gemeinsam` still goes to
+            # fenestration element that is only `shared` still goes to
             # `alongside` below — nothing leaves this loop unreported.
             from_boundaries.append(element)
             continue
-        (walls if rolle == "trennend" else alongside).append(entry)
+        (walls if role == "separating" else alongside).append(entry)
 
     for entry in walls:
         for opening in _openings_in(model, entry.global_id):
@@ -1212,9 +1211,9 @@ def separating_elements(model: SpatialModel, space_a: str, space_b: str) -> Answ
     value = {
         "spaceA": model.ref(first).to_dict(),
         "spaceB": model.ref(second).to_dict(),
-        "trennend": [entry.to_dict() for entry in walls],
-        "gemeinsam": [entry.to_dict() for entry in alongside],
-        "oeffnungen": openings,
+        "separating": [entry.to_dict() for entry in walls],
+        "shared": [entry.to_dict() for entry in alongside],
+        "openings": openings,
         "ohneFeuerwiderstand": missing_rating,
     }
     from_ = [space_a, space_b, *[entry.global_id for entry in walls], *[o["globalId"] for o in openings]]
@@ -1251,17 +1250,17 @@ def _classify(
     axis: tuple[int, float, float] | None,
     testable: bool,
 ) -> tuple[str, str]:
-    """``trennend`` or ``gemeinsam``, and the German reason."""
+    """``separating`` or ``shared``, and the German reason."""
     if not testable:
         return (
-            "trennend",
+            "separating",
             "gemeinsames begrenzendes Bauteil beider Räume. Ob es ZWISCHEN ihnen liegt, ist hier nicht "
             "geprüft: mindestens einer der beiden Räume trägt in dieser Datei keinen Körper",
         )
     geo = model.geometry(element.GlobalId)
     if geo is None:
         return (
-            "trennend",
+            "separating",
             "gemeinsames begrenzendes Bauteil beider Räume; dieses Bauteil trägt keinen auswertbaren Körper, "
             "die Lage zwischen den Räumen ist deshalb nicht geprüft",
         )
@@ -1269,25 +1268,25 @@ def _classify(
     if axis is not None and _in_gap(geo, geo_a, geo_b, axis):
         names = ("x", "y", "z")
         return (
-            "trennend",
+            "separating",
             f"Achsentest: die beiden Raumkörper sind in {names[axis[0]]} getrennt, und dieses Bauteil liegt in "
             f"der Lücke zwischen ihnen ({axis[1]:.3f} m bis {axis[2]:.3f} m, Toleranz "
             f"{SEPARATION_SLACK:.2f} m)",
         )
     if _segment_hits_box(geo_a.centroid, geo_b.centroid, geo.box):
         return (
-            "trennend",
+            "separating",
             "Sichtlinie: die gerade Verbindung zwischen den beiden Raumschwerpunkten führt durch dieses Bauteil",
         )
     if axis is None:
         return (
-            "gemeinsam",
+            "shared",
             "begrenzt beide Räume. Die beiden Raumkörper sind auf keiner einzelnen Achse voneinander "
             "getrennt (sie durchdringen einander oder liegen über Eck), und die Sichtlinie führt nicht durch "
             "dieses Bauteil",
         )
     return (
-        "gemeinsam",
+        "shared",
         "begrenzt beide Räume, liegt aber nicht zwischen ihnen — das Bauteil läuft an beiden Räumen entlang "
         "(eine durchlaufende Fassade begrenzt jeden Raum an ihr und trennt keinen davon)",
     )
@@ -1695,7 +1694,7 @@ def distance_to_site_boundary(model: SpatialModel, global_id: str | None = None)
             "und erst danach eine Aussage über das Bauwerk. Der gemeldete Abstand ist in diesem Fall der "
             "Abstand nach außen."
         )
-    # `elemente` carries the ten nearest, never all of them, and the caveat has
+    # `elements` carries the ten nearest, never all of them, and the caveat has
     # to say which of the two it is. On a model with 12 candidate elements the
     # sentence „Die vollständige … Liste steht unter „elemente““ stood over a
     # payload of 10: a truncation that reads as „das ist alles" is exactly what
@@ -1722,11 +1721,11 @@ def distance_to_site_boundary(model: SpatialModel, global_id: str | None = None)
             "boundary": {
                 "via": boundary["via"],
                 "globalId": boundary["globalId"],
-                "punkte": len(boundary["points"]),
-                "geschlossen": boundary["closed"],
+                "points": len(boundary["points"]),
+                "closed": boundary["closed"],
             },
-            "ausserhalb": outside,
-            "elemente": listed,
+            "outside": outside,
+            "elements": listed,
         },
         unit="m",
         tolerance=op.DIMENSION_TOLERANCE,

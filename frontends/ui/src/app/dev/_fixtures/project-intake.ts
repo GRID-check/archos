@@ -56,7 +56,7 @@ const suggestion = (
 ): Suggestion => ({
   key,
   baseKey: key.split('@')[0],
-  bauwerkId: key.includes('@') ? key.split('@')[1] : null,
+  buildingId: key.includes('@') ? key.split('@')[1] : null,
   label,
   value,
   display,
@@ -160,7 +160,7 @@ const GROUP_BUILDINGS: SuggestionGroup = {
 export const QUESTION_AREA: Need = {
   key: 'gfa_above_ground@bldg1',
   baseKey: 'gfa_above_ground',
-  bauwerkId: 'bldg1',
+  buildingId: 'bldg1',
   label: 'Brutto-Grundfläche der oberirdischen Geschoße gesamt (Zielzustand)',
   type: 'number_tri',
   unit: 'm²',
@@ -174,7 +174,7 @@ export const QUESTION_AREA: Need = {
 export const OPEN_PHASE: Need = {
   key: 'project_phase',
   baseKey: 'project_phase',
-  bauwerkId: null,
+  buildingId: null,
   label: 'Aktuelle Projektphase',
   type: 'single_select',
   options: [
@@ -192,7 +192,7 @@ export const OPEN_PHASE: Need = {
 export const OPEN_PROJECT_KIND: Need = {
   key: 'work_type',
   baseKey: 'work_type',
-  bauwerkId: null,
+  buildingId: null,
   label: 'Art des Vorhabens (Projekt gesamt)',
   type: 'multi_select',
   options: [
@@ -210,7 +210,7 @@ export const OPEN_PROJECT_KIND: Need = {
 export const OPEN_ZONING: Need = {
   key: 'land_designation',
   baseKey: 'land_designation',
-  bauwerkId: null,
+  buildingId: null,
   label: 'Flächenwidmung (Kategorie)',
   type: 'text',
   foundIn: ['Flächenwidmungs- und Bebauungsplan'],
@@ -221,7 +221,7 @@ export const OPEN_ZONING: Need = {
 export const QUESTION_POSITION: Need = {
   key: 'units_over_400@bldg1',
   baseKey: 'units_over_400',
-  bauwerkId: 'bldg1',
+  buildingId: 'bldg1',
   label: 'Hat eine der Nutzungseinheiten mehr als 400 m² Brutto-Grundfläche?',
   type: 'yes_no_open',
   why: 'Eine große Einheit hebt ein Gebäude mit wenigen Einheiten in die höhere Gebäudeklasse.',
@@ -233,7 +233,7 @@ export const QUESTION_POSITION: Need = {
 export const QUESTION_USE: Need = {
   key: 'building_position@bldg1',
   baseKey: 'building_position',
-  bauwerkId: 'bldg1',
+  buildingId: 'bldg1',
   label: 'Gebäudestellung',
   type: 'single_select',
   options: [
@@ -249,7 +249,7 @@ export const QUESTION_USE: Need = {
 
 /** The derived class is decided here, not among the review's modules. */
 export const DERIVATION_READY: DerivationReview = {
-  bauwerkId: 'bldg1',
+  buildingId: 'bldg1',
   rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: 5,
@@ -266,7 +266,7 @@ export const DERIVATION_READY: DerivationReview = {
 }
 
 export const DERIVATION_OPEN: DerivationReview = {
-  bauwerkId: 'bldg2',
+  buildingId: 'bldg2',
   rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: null,

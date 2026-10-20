@@ -68,7 +68,7 @@ const profile: ProjectProfile = {
 const need = (key: string, decisive: boolean, state: Need['state'] = 'open'): Need => ({
   key,
   baseKey: key.split('@')[0],
-  bauwerkId: 'bldg1',
+  buildingId: 'bldg1',
   label: key,
   type: 'number_tri',
   foundIn: [],
@@ -95,14 +95,14 @@ describe('buildIntakeView', () => {
     const buildings = groups.find((group) => group.title === 'Bauwerke')
 
     expect(projectBasis?.items).toEqual([
-      expect.objectContaining({ key: 'federal_state', value: 'vienna', display: 'Wien', state: 'contested', bauwerkId: null }),
+      expect.objectContaining({ key: 'federal_state', value: 'vienna', display: 'Wien', state: 'contested', buildingId: null }),
     ])
     expect(buildings?.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: 'building_type@bldg1',
           baseKey: 'building_type',
-          bauwerkId: 'bldg1',
+          buildingId: 'bldg1',
           label: 'Bauwerkstyp',
           display: 'Gebäude',
           state: 'suggested',
@@ -117,7 +117,7 @@ describe('buildIntakeView', () => {
   it('shows the derived class only in the derivations, never again in its module', () => {
     const result = view()
     expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('building_class@bldg1')
-    expect(result.derivations.map((derivation) => derivation.bauwerkId)).toEqual(['bldg1'])
+    expect(result.derivations.map((derivation) => derivation.buildingId)).toEqual(['bldg1'])
     // …and carried there, so the review has a row to confirm it through.
     expect(result.derivations[0]?.suggestion).toMatchObject({ key: 'building_class@bldg1', state: 'suggested' })
   })
@@ -164,7 +164,7 @@ describe('buildIntakeView', () => {
   it('carries the location register for step 4: the Bundesland it read and the documents it asks for', () => {
     const result = buildIntakeView({
       ...input(),
-      needs: [{ ...need('plot_register_number', false), bauwerkId: null }],
+      needs: [{ ...need('plot_register_number', false), buildingId: null }],
     })
     expect(result.locationRegister).toMatchObject({ federalState: 'vienna', municipality: 'Wien', questions: [] })
     expect(result.locationRegister?.documentRequests[0]).toMatchObject({
@@ -177,7 +177,7 @@ describe('buildIntakeView', () => {
 
   it('shows each Bauwerk’s class with what it read and what it lacks', () => {
     const [derivation] = view().derivations
-    expect(derivation).toMatchObject({ bauwerkId: 'bldg1', rule: 'building_class', value: null })
+    expect(derivation).toMatchObject({ buildingId: 'bldg1', rule: 'building_class', value: null })
     expect(derivation.inputs).toEqual([{ key: 'building_type@bldg1', value: 'building', suggested: true }])
     expect(derivation.missing.length).toBeGreaterThan(0)
   })

@@ -44,7 +44,7 @@ to beat.
 The other number that matters: trace A **ran out of research budget on
 "what do you know about OIB 2"** — the single most ordinary question the
 product answers, and row `was-weisst-du-ueber-oib-2` of the loop eval
-(`tests/fixtures/herleitung/loop_eval_questions.yaml`). Not an exotic six-hop
+(`tests/fixtures/derivation/loop_eval_questions.yaml`). Not an exotic six-hop
 chain. A family overview.
 
 Static prompt weight, measured (`piloti.j2`, 57 007 chars ≈ 14 250 tokens):
@@ -457,7 +457,7 @@ unnecessary once the sequence is inside the tool.
   `_QUERY_KEYS` tuple already contains `"question"`, so the status line quotes
   the right string with no change.
 * `emit_retrieval_span` with `tool_name="ris_lookup"` plus `citation_keys` and
-  `punkt_ids` in `picks`, mirroring `knowledge_search` — that is what makes
+  `clause_ids` in `picks`, mirroring `knowledge_search` — that is what makes
   `loop_eval`'s `cross_turn`, `repeat_query` and `punkt_match` columns see RIS
   at all. They currently cannot.
 

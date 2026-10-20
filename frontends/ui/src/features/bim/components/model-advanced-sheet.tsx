@@ -226,12 +226,12 @@ export function ModelAdvancedSheet({
   const bcfHref = useMemo(() => {
     if (!modelId || !projectId) return null
     const query = new URLSearchParams({ modelId })
-    if (ruleFacts.gebaeudeklasse !== null) {
-      query.set('gebaeudeklasse', String(ruleFacts.gebaeudeklasse))
+    if (ruleFacts.buildingClass !== null) {
+      query.set('buildingClass', String(ruleFacts.buildingClass))
     }
-    if (ruleFacts.hauptnutzung !== null) query.set('hauptnutzung', ruleFacts.hauptnutzung)
+    if (ruleFacts.mainUse !== null) query.set('mainUse', ruleFacts.mainUse)
     return `/api/projects/${projectId}/bim/checks/export?${query.toString()}`
-  }, [modelId, projectId, ruleFacts.gebaeudeklasse, ruleFacts.hauptnutzung])
+  }, [modelId, projectId, ruleFacts.buildingClass, ruleFacts.mainUse])
 
   /**
    * "Apply what the model says to the project brief."

@@ -23,7 +23,7 @@ import { announceNewRevision } from './revision-notify'
 import { setRevisionLink } from './revision-service'
 
 const session = { userId: 'user-1', organizationId: 'org-1', email: 'a@b.test' } as AuthorizedSession
-const request = new Request('https://grid.test/api/documents/x/fassung', { method: 'PUT' })
+const request = new Request('https://grid.test/api/documents/x/revision', { method: 'PUT' })
 
 const doc = (overrides: Partial<Document>): Document =>
   ({
@@ -96,7 +96,7 @@ describe('setRevisionLink', () => {
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-b', 'write')
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-a', 'write')
     expect(mockFetch).toHaveBeenCalledWith(
-      'http://backend.test/v1/collections/proj_abc/fassung',
+      'http://backend.test/v1/collections/proj_abc/revision',
       expect.objectContaining({
         method: 'PUT',
         body: JSON.stringify({ newer: 'Grundriss_B.pdf', older: 'Grundriss_A.pdf', linked: true }),
@@ -104,14 +104,14 @@ describe('setRevisionLink', () => {
     )
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: 'document.fassung_changed',
+        action: 'document.revision_changed',
         targetType: 'document',
         targetId: 'doc-b',
         metadata: { olderDocumentId: 'doc-a', linked: true, collectionName: 'proj_abc' },
       }),
     )
     expect(loadRevisionLinks).toHaveBeenCalledWith(session, [NEWER, OLDER], { kind: 'member', userId: 'user-1' }, { fresh: true })
-    expect(result).toEqual({ id: 'doc-b', fassung: newerFacts, older: { id: 'doc-a', fassung: olderFacts } })
+    expect(result).toEqual({ id: 'doc-b', revision: newerFacts, older: { id: 'doc-a', revision: olderFacts } })
   })
 
   it('announces a confirmed link to the people who follow the older document, with the first line of what changed', async () => {
@@ -193,7 +193,7 @@ describe('setRevisionLink', () => {
   it('answers null facts when the link left nothing to say', async () => {
     const result = await setRevisionLink(session, 'doc-b', 'doc-a', false, request)
 
-    expect(result).toEqual({ id: 'doc-b', fassung: null, older: { id: 'doc-a', fassung: null } })
+    expect(result).toEqual({ id: 'doc-b', revision: null, older: { id: 'doc-a', revision: null } })
   })
 
   it('lets the access check refuse: no write access is a 403 and nothing reaches the backend', async () => {

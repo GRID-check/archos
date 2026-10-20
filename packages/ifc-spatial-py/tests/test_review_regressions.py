@@ -591,7 +591,7 @@ class TestAHandedOutTriangulationOutlivesTheNextGeometryCall:
 
 class TestAnInvalidRoomKindIsARefusalAndNotATraceback:
     """`tools.room_inventory` passed `kind` straight through and
-    `briefing.inventory` indexed `GERMAN_KIND` with it — `KeyError: ''` out of
+    `briefing.inventory` indexed `KIND_LABEL` with it — `KeyError: ''` out of
     `briefing.py`. Every other enum in `tools.py` answers with a German sentence
     naming the allowed values; `mcp_server` hands arguments here unfiltered, so
     the JSON Schema's `required` is not a guard.
@@ -600,9 +600,9 @@ class TestAnInvalidRoomKindIsARefusalAndNotATraceback:
     def test_a_missing_kind_names_the_three_that_exist(self, tools: list, handle: str) -> None:
         with pytest.raises(ToolError) as raised:
             call(tools, "room_inventory", {"model": handle})
-        assert "aufenthaltsraum" in str(raised.value)
-        assert "nebenraum" in str(raised.value)
-        assert "erschliessung" in str(raised.value)
+        assert "habitable_room" in str(raised.value)
+        assert "ancillary_room" in str(raised.value)
+        assert "circulation" in str(raised.value)
 
     def test_an_unknown_kind_is_named_back_to_the_caller(self, tools: list, handle: str) -> None:
         with pytest.raises(ToolError) as raised:
@@ -610,7 +610,7 @@ class TestAnInvalidRoomKindIsARefusalAndNotATraceback:
         assert '"wohnraum"' in str(raised.value)
 
     def test_a_valid_kind_still_answers(self, tools: list, handle: str) -> None:
-        out = call(tools, "room_inventory", {"model": handle, "kind": "aufenthaltsraum"})
+        out = call(tools, "room_inventory", {"model": handle, "kind": "habitable_room"})
         assert out["provenance"] == "inferred"
         assert out["value"]
 
@@ -713,19 +713,19 @@ class TestBoundsReturnsEachElementOnce:
         `shared` was built by walking `bounds(b)` against a dict of `bounds(a)`,
         so the duplicates on whichever side was passed second survived: the
         entrance hall against the bedroom answered „6 Bauteile" with one wall
-        twice under `trennend` and twice under `ohneFeuerwiderstand`, and the
+        twice under `separating` and twice under `ohneFeuerwiderstand`, and the
         bedroom against the entrance hall answered „4 Bauteile".
         """
         model = _second_level_export(tmp_path / "zweite-ebene.ifc")
         forward = fire.separating_elements(model, HALL, BEDROOM).value
         backward = fire.separating_elements(model, BEDROOM, HALL).value
         for value in (forward, backward):
-            for key in ("trennend", "gemeinsam"):
+            for key in ("separating", "shared"):
                 ids = [entry["globalId"] for entry in value[key]]
                 assert len(ids) == len(set(ids)), f"{key} listed one element twice"
             assert len(value["ohneFeuerwiderstand"]) == len(set(value["ohneFeuerwiderstand"]))
-        assert [e["globalId"] for e in forward["trennend"]] == [e["globalId"] for e in backward["trennend"]]
-        assert [e["globalId"] for e in forward["gemeinsam"]] == [e["globalId"] for e in backward["gemeinsam"]]
+        assert [e["globalId"] for e in forward["separating"]] == [e["globalId"] for e in backward["separating"]]
+        assert [e["globalId"] for e in forward["shared"]] == [e["globalId"] for e in backward["shared"]]
 
 
 class TestOnlyFacadesWithAnOpeningAreCountedAsSuch:
@@ -1291,13 +1291,13 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
         answer = ac.balustrade_check(model, self.GALERIE, 1.0)
         assert answer.decidable
         entry = next(o for o in answer.value["openings"] if o["globalId"] == self.VOID)
-        assert entry["lage"] == "waagrecht"
+        assert entry["position"] == "horizontal"
         assert entry["fall"] == pytest.approx(2.700, abs=0.002)
         assert entry["parapet"] is None
         assert entry["inside"]["level"] == pytest.approx(2.700, abs=0.002)
         assert entry["inside"]["space"] == self.GALERIE
         assert entry["outside"]["level"] == pytest.approx(0.000, abs=0.002)
-        assert [e["globalId"] for e in answer.value["kanten"]] == [self.VOID]
+        assert [e["globalId"] for e in answer.value["edges"]] == [self.VOID]
 
     def test_both_railings_at_the_void_are_credited_over_the_gallery_floor(self, model: SpatialModel) -> None:
         """0.030 m and 0.000 m from the void's rim in plan, rising from 2.700 m
@@ -1319,8 +1319,8 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
         assert answer.decidable
         entry = next(o for o in answer.value["openings"] if o["globalId"] == self.VOID)
         assert entry["fall"] is None
-        assert entry["lage"] == "waagrecht"
-        assert answer.value["kanten"] == []
+        assert entry["position"] == "horizontal"
+        assert answer.value["edges"] == []
         assert "DECKE" in entry["outside"]["via"]
         assert "darüberliegenden Raum" in entry["outside"]["via"]
         assert "fall = null" in answer.caveat
@@ -1338,15 +1338,15 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
         assert answer.decidable
         entry = next(o for o in answer.value["openings"] if o["globalId"] == self.VOID)
         assert entry["fall"] is None
-        assert answer.value["kanten"] == []
+        assert answer.value["edges"] == []
         assert "4.144 m" in entry["outside"]["via"]
 
     def test_a_hole_in_a_wall_is_still_measured_sideways(self, house: SpatialModel) -> None:
         """The fix must not turn every opening into a floor void. The sample
-        house's bedroom window keeps its 0.900 m parapet and its `senkrecht`."""
+        house's bedroom window keeps its 0.900 m parapet and its `vertical`."""
         answer = ac.balustrade_check(house, BEDROOM)
         window = next(o for o in answer.value["openings"] if o["globalId"] == BEDROOM_WINDOW)
-        assert window["lage"] == "senkrecht"
+        assert window["position"] == "vertical"
         assert window["parapet"] == pytest.approx(0.900, abs=0.01)
         assert window["fall"] == pytest.approx(0.0, abs=0.01)
 

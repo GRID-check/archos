@@ -53,7 +53,7 @@ const t = (key: string): string =>
 describe('the shelf arrives explicitly', () => {
   test('the wire field survives the mapping onto a citation', () => {
     expect(citationFromWire(wire({ shelf: 'session' }), { timestamp: NOW }).shelf).toBe('session')
-    expect(citationFromWire(wire({ shelf: 'archiv' }), { timestamp: NOW }).shelf).toBe('archiv')
+    expect(citationFromWire(wire({ shelf: 'office_shelf' }), { timestamp: NOW }).shelf).toBe('office_shelf')
   })
 
   test('the model takes the shelf the payload states', () => {
@@ -153,7 +153,7 @@ describe('legacy citation keys still parse', () => {
     const [projekt] = buildCitationModel({ citations: [legacy('Plan.pdf (Projektwissen), p.3')] })
     const [basis] = buildCitationModel({ citations: [legacy('Plan.pdf (Basiswissen), p.3')] })
 
-    expect(officeShelf?.shelf).toBe('archiv')
+    expect(officeShelf?.shelf).toBe('office_shelf')
     expect(projekt?.shelf).toBe('project')
     expect(basis?.shelf).toBe('base')
   })
@@ -236,7 +236,7 @@ describe('legacy citation keys still parse', () => {
 
     test('a second explicit shelf does not unseat the first', () => {
       const [doc] = buildCitationModel({
-        citations: [stated, { ...guessed, id: 'c-later', shelf: 'archiv' }],
+        citations: [stated, { ...guessed, id: 'c-later', shelf: 'office_shelf' }],
       })
 
       expect(doc?.shelf).toBe('session')
@@ -263,7 +263,7 @@ describe('legacy citation keys still parse', () => {
         entries: [{ number: 1, markdown: 'Plan.pdf (Projektwissen), p.4' }],
       })
 
-      expect(doc?.shelf).toBe('archiv')
+      expect(doc?.shelf).toBe('office_shelf')
     })
   })
 
@@ -296,13 +296,13 @@ describe('legacy citation keys still parse', () => {
  */
 describe('citation-key qualifiers the backend can write', () => {
   const cases: ReadonlyArray<readonly [qualifier: string, shelf: string]> = [
-    ['Büroablage', 'archiv'],
+    ['Büroablage', 'office_shelf'],
     ['Projektwissen', 'project'],
     ['Basiswissen', 'base'],
     ['Private Sitzung', 'session'],
     // The archiv shelf's name until 6 Oct 2026: no writer emits it any more,
     // and keys persisted before the rename still carry it.
-    ['Büroarchiv', 'archiv'],
+    ['Büroarchiv', 'office_shelf'],
   ]
 
   test.each(cases)('strips %s and resolves it to the %s shelf', (qualifier, shelf) => {

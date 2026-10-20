@@ -23,7 +23,7 @@ describe('projectIdFromPathname', () => {
 
   test('is org scope for every surface above a project', () => {
     for (const path of [
-      '/app/archiv',
+      '/app/office-shelf',
       '/app/inbox',
       '/app/profile',
       '/app/organization/models',

@@ -158,7 +158,7 @@ export default function FilePreviewModelDevPage(): JSX.Element {
   // server and client — the same rule the other /dev previews follow.
   const [officeShelf, setOfficeShelf] = useState(false)
   useEffect(() => {
-    setOfficeShelf(new URLSearchParams(window.location.search).get('shelf') === 'archiv')
+    setOfficeShelf(new URLSearchParams(window.location.search).get('shelf') === 'office_shelf')
   }, [])
 
   return officeShelf ? (

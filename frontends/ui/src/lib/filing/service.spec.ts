@@ -218,11 +218,11 @@ describe('reviewUploadFiling', () => {
   })
 
   it('files a Büroablage upload on the office shelf, with no project and no conventions', async () => {
-    vi.mocked(findUploadBatch).mockResolvedValue(batch({ scope: 'archiv', projectId: null }))
+    vi.mocked(findUploadBatch).mockResolvedValue(batch({ scope: 'office_shelf', projectId: null }))
     vi.mocked(listOfficeShelfFolders).mockResolvedValue([{ ...FOLDERS[0], projectId: null }])
     await reviewUploadFiling(SESSION, 'batch-1', 'name')
     expect(judgedInput().conventions).toEqual([])
-    expect(judgedInput().trace.shelf).toBe('archiv')
+    expect(judgedInput().trace.shelf).toBe('office_shelf')
     expect(createProposal).toHaveBeenCalledWith(
       SESSION,
       expect.objectContaining({

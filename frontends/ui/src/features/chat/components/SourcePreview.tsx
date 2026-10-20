@@ -26,7 +26,7 @@
  *
  * Resolution data is fetched lazily and cached for the lifetime of the page:
  * the cited document's project and Archiv rows BY NAME
- * (`POST /api/documents/by-name`, `POST /api/archiv/documents/by-name`, batched
+ * (`POST /api/documents/by-name`, `POST /api/office-shelf/documents/by-name`, batched
  * across the chips of one render — the listings are paged, and a citation of a
  * plan older than their first page used to resolve to nothing), plus this
  * conversation's attachments (`/api/session/documents?conversationId=…`) and
@@ -137,7 +137,7 @@ interface ListedRow {
   id: string
   filename: string
   contentType?: string | null
-  fassung?: { supersededBy?: RevisionRef | null } | null
+  revision?: { supersededBy?: RevisionRef | null } | null
 }
 
 const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
@@ -154,7 +154,7 @@ const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
           shelf,
           // Only what the server resolved for THIS reader: a newer Fassung they
           // may not open is not in the row, name and all.
-          supersededBy: doc.fassung?.supersededBy ?? null,
+          supersededBy: doc.revision?.supersededBy ?? null,
         }))
     : []
 
@@ -182,7 +182,7 @@ const loadSourcePreviewIndex = async (
     storedDocuments: [
       ...toRefs(answers.flatMap((answer) => answer.project), 'project'),
       ...lists.sessionDocuments,
-      ...toRefs(answers.flatMap((answer) => answer.officeShelf), 'archiv'),
+      ...toRefs(answers.flatMap((answer) => answer.officeShelf), 'office_shelf'),
     ],
     baseCorpusFiles: lists.baseCorpusFiles,
   }

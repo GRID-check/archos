@@ -75,7 +75,7 @@ async function mayOpenOnItsShelf(
   people: readonly string[]
 ): Promise<Set<string>> {
   if (people.length === 0) return new Set()
-  if (doc.scope === 'archiv') {
+  if (doc.scope === 'office_shelf') {
     // One cached read of the organization's directory, not a lookup per
     // person: a picker passes the whole directory in.
     const directory = await loadOrganizationDirectory(organizationId)
@@ -101,7 +101,7 @@ async function mayOpenOnItsShelf(
  * Zuständige: a person who could only read the document would be on the hook
  * for a mark they cannot answer.
  *
- * On the Büroablage, whoever holds `org:archiv:manage` (`canManageOfficeShelf`). In
+ * On the Büroablage, whoever holds `org:office_shelf:manage` (`canManageOfficeShelf`). In
  * a project, whoever holds `project:documents:write` or the older umbrella
  * `project:edit` on it (`DOCUMENT_WRITE_PERMISSIONS`, the ceiling) AND may
  * write in the folder it is filed in (ADR-0088). A held upload is written, as
@@ -119,7 +119,7 @@ export async function mayWriteDocument(
   const people = hasPassedScreening(doc) ? asked : await heldFor(tenant.organizationId, doc, asked)
   if (people.length === 0) return new Set()
   const { organizationId } = tenant
-  if (doc.scope === 'archiv') {
+  if (doc.scope === 'office_shelf') {
     const curators = await inPool(people, PERMISSION_CHECKS_AT_ONCE, async (userId) => {
       const membership = await resolveSubjectMembership(organizationId, userId)
       if (!membership) return null

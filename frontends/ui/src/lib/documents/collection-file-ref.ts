@@ -53,7 +53,7 @@
  *   delete and the session-document purge — and neither was on the list above
  *   until somebody grepped for the template rather than for the helper. They
  *   were safe only because `fileGeneratedDocument` sets no `scope`, so its rows
- *   default to `project` and never appear in an `archiv` or `session` query.
+ *   default to `project` and never appear in an `office_shelf` or `session` query.
  *   Safety that rests on a column default is worth writing down, not relying
  *   on; both go through the constructor now.
  * - It used to gate on `authoredBy !== 'user'` alone, which encoded the

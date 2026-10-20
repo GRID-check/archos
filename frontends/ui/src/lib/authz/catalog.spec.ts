@@ -155,7 +155,9 @@ describe('authorization catalog', () => {
       ...SKILL_PERMISSION_SPECS,
       ...FOLDER_PERMISSION_SPECS,
     ]
-      .filter((permission) => !registry.has(permission.slug))
+      // A deprecated slug stays in the catalog only so existing grants keep working
+      // (`acceptedPermissionSlugs`); the app checks the slug that replaced it.
+      .filter((permission) => !registry.has(permission.slug) && !permission.deprecated)
       .map((permission) => permission.slug)
     expect(unexposed).toEqual([])
   })

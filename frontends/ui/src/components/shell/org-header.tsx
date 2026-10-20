@@ -88,11 +88,11 @@ export function OrgHeader({
               search and the account. */}
           {canAccessOfficeShelf && (
             <OrgHeaderIconLink
-              href="/app/archiv"
-              label={t('sections.archiv')}
+              href="/app/office-shelf"
+              label={t('sections.officeShelf')}
               icon={Archive}
               tourAnchor={TOUR_ANCHORS.officeShelf}
-              active={pathname === '/app/archiv' || pathname.startsWith('/app/archiv/')}
+              active={pathname === '/app/office-shelf' || pathname.startsWith('/app/office-shelf/')}
             />
           )}
           {canAccessInbox && (

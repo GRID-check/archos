@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { isNewProjectDropKey } from '@/features/documents/lib/dropped-file-handover'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { BadRequestError } from '@/lib/api/errors'
-import { createProjectSchema } from '@/lib/projects/create-project-schema'
+import { createProjectFieldsSchema } from '@/lib/projects/create-project-schema'
 import { isMonth } from '@/lib/projects/month'
 import { PROJECT_OUTCOMES, type ProjectOutcome } from '@/lib/projects/project-status'
 import {
@@ -139,15 +139,15 @@ function setupFromForm(
   formData: FormData
 ): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'address' | 'federalState'>) | FormRefusal {
   const location = formData.get('location')
-  const parsed = createProjectSchema.pick({ setup: true, description: true, location: true, address: true, bundesland: true }).safeParse({
+  const parsed = createProjectFieldsSchema.pick({ setup: true, description: true, location: true, address: true, federalState: true }).safeParse({
     setup: formData.get('setup') ?? 'self',
     description: formData.get('description') ?? undefined,
     location: typeof location === 'string' && location !== '' ? safeJson(location) : undefined,
     address: formData.get('address') ?? undefined,
-    bundesland: formData.get('federal_state') || undefined,
+    federalState: formData.get('federal_state') || undefined,
   })
   if (!parsed.success) return { error: 'The setup details are not valid.', reason: 'invalid-setup' }
-  const { setup, description, location: place, address, bundesland: federalState } = parsed.data
+  const { setup, description, location: place, address, federalState } = parsed.data
   return {
     setup,
     ...(description ? { description } : {}),

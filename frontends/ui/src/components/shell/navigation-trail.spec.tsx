@@ -27,18 +27,18 @@ describe('NavigationTrail', () => {
       expect(readTrail()).toEqual(visits('/app/projects', '/app/projects/p1/files'))
     )
 
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     rerender(<NavigationTrail />)
     await waitFor(() =>
-      expect(readTrail()).toEqual(visits('/app/projects', '/app/projects/p1/files', '/app/archiv'))
+      expect(readTrail()).toEqual(visits('/app/projects', '/app/projects/p1/files', '/app/office-shelf'))
     )
   })
 
   test('unwinds the trail when the reader returns to a location already on it', async () => {
     const { rerender } = render(<NavigationTrail />)
-    pathname = '/app/archiv'
+    pathname = '/app/office-shelf'
     rerender(<NavigationTrail />)
-    await waitFor(() => expect(readTrail()).toEqual(visits('/app/projects', '/app/archiv')))
+    await waitFor(() => expect(readTrail()).toEqual(visits('/app/projects', '/app/office-shelf')))
 
     pathname = '/app/projects'
     rerender(<NavigationTrail />)

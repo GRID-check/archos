@@ -32,7 +32,7 @@ picks the facts a document stores from its analysed pages.
 A third path needs no model to decide: a person who dropped the file onto the upload dialog
 and ticked „Als neue Fassung von X ablegen" has already said it (``revision_of`` on the ingest
 job, ADR-0099). Once the new file has been read, :func:`confirm_revision` writes the link a
-person's ``PUT /v1/collections/{c}/fassung`` writes (``superseded_by`` on X, the change summary
+person's ``PUT /v1/collections/{c}/revision`` writes (``superseded_by`` on X, the change summary
 on the new file with X as its basis). X missing from the collection, or a link that would close
 a loop, falls back to the ordinary paths above. The link does not wait for the summary model:
 ``adapter.py`` calls :func:`confirm_revision` without one when the model is off or no summary
@@ -407,7 +407,7 @@ def confirm_revision(
 ) -> bool:
     """Write the link a person chose at upload: ``file_name`` replaces ``older``. ``False`` when it cannot be made.
 
-    The same writes as ``PUT /v1/collections/{c}/fassung`` with ``linked=true``, through the same
+    The same writes as ``PUT /v1/collections/{c}/revision`` with ``linked=true``, through the same
     store step (:func:`~aiq_agent.knowledge.link_document_revision`): ``superseded_by`` on ``older``
     and a suggestion on the new file that pointed at ``older`` cleared, with the loop check in the
     same transaction; then what changed, told by the summary model onto the new file with ``older``

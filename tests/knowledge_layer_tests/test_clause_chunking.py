@@ -44,7 +44,7 @@ MORE = (
 
 
 def _clauses(docs: list) -> dict[str, object]:
-    return {doc.metadata["punkt_id"]: doc for doc in docs if doc.metadata.get("chunking") == "punkt"}
+    return {doc.metadata["clause_id"]: doc for doc in docs if doc.metadata.get("chunking") == "clause"}
 
 
 def test_each_numbered_requirement_becomes_its_own_document() -> None:
@@ -116,9 +116,9 @@ def test_each_document_carries_its_place_in_the_outline() -> None:
     docs = clause_documents(_pages(COVER, BODY, MORE), "oib-rl_2_ausgabe_mai_2023.pdf", 1234)
     assert docs is not None
     child = _clauses(docs)["2.1"]
-    assert child.metadata["punkt_parent_id"] == "2"
-    assert child.metadata["punkt_depth"] == 2
-    assert child.metadata["richtlinie"] == "2"
+    assert child.metadata["clause_parent_id"] == "2"
+    assert child.metadata["clause_depth"] == 2
+    assert child.metadata["guideline"] == "2"
     # The breadcrumb is what gives an isolated requirement its subject back.
     assert "Brandverhalten" in child.get_content()
 
@@ -146,12 +146,12 @@ def test_a_document_whose_numbering_covers_too_little_falls_back() -> None:
 
 
 def test_bookkeeping_metadata_is_not_embedded() -> None:
-    """`page_end`, `punkt_depth` and `chunking` exist for filtering, not for the vector."""
+    """`page_end`, `clause_depth` and `chunking` exist for filtering, not for the vector."""
     docs = clause_documents(_pages(COVER, BODY, MORE), "oib-rl_2.pdf", 1)
     assert docs is not None
     excluded = set(docs[-1].excluded_embed_metadata_keys or [])
-    assert {"page_end", "punkt_depth", "chunking", "file_size"} <= excluded
-    assert "punkt_id" not in excluded, "the Punkt number is exactly what a user cites"
+    assert {"page_end", "clause_depth", "chunking", "file_size"} <= excluded
+    assert "clause_id" not in excluded, "the Punkt number is exactly what a user cites"
 
 
 def test_an_empty_document_does_not_raise() -> None:
@@ -292,7 +292,7 @@ def test_a_heading_the_corpus_opens_in_lowercase_is_still_a_heading() -> None:
 
 
 def test_every_chunk_opens_with_the_clause_it_claims_to_be() -> None:
-    """`punkt_id` is emitted into the grounding block, so it is a citation.
+    """`clause_id` is emitted into the grounding block, so it is a citation.
 
     A runtime assertion of this was written and then deleted: the id is parsed out of
     the very line it would be compared against, so the check cannot fail by
@@ -322,8 +322,8 @@ def test_ingestion_cuts_a_numbered_document_on_its_outline() -> None:
     from knowledge_layer.llamaindex.adapter import text_documents_for_pages
 
     docs = text_documents_for_pages(_pages(COVER, BODY, MORE), "oib-rl_2_ausgabe_mai_2023.pdf", 1234)
-    assert {doc.metadata.get("chunking") for doc in docs} == {"punkt", "page"}
-    assert any(doc.metadata.get("punkt_id") == "2.1" for doc in docs)
+    assert {doc.metadata.get("chunking") for doc in docs} == {"clause", "page"}
+    assert any(doc.metadata.get("clause_id") == "2.1" for doc in docs)
 
 
 def test_ingestion_falls_back_to_one_document_per_page_for_everything_else() -> None:
@@ -339,7 +339,7 @@ def test_ingestion_falls_back_to_one_document_per_page_for_everything_else() -> 
     assert len(docs) == 2
     assert [doc.metadata["page_label"] for doc in docs] == ["1", "2"]
     assert all(doc.metadata["content_type"] == "text" for doc in docs)
-    assert all("punkt_id" not in doc.metadata for doc in docs)
+    assert all("clause_id" not in doc.metadata for doc in docs)
 
 
 def test_the_chunker_works_under_the_deployed_import_path() -> None:

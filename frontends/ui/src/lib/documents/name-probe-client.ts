@@ -28,9 +28,9 @@ export class NameProbeError extends Error {
 }
 
 export const PROJECT_NAME_PROBE_PATH = '/api/documents/name-matches'
-export const OFFICE_SHELF_NAME_PROBE_PATH = '/api/archiv/documents/name-matches'
-export const PROJECT_REVISION_CANDIDATES_PATH = '/api/documents/fassung-candidates'
-export const OFFICE_SHELF_REVISION_CANDIDATES_PATH = '/api/archiv/documents/fassung-candidates'
+export const OFFICE_SHELF_NAME_PROBE_PATH = '/api/office-shelf/documents/name-matches'
+export const PROJECT_REVISION_CANDIDATES_PATH = '/api/documents/revision-candidates'
+export const OFFICE_SHELF_REVISION_CANDIDATES_PATH = '/api/office-shelf/documents/revision-candidates'
 
 export interface DocumentNameProbeClient {
   /** Matches on a project's shelf. */

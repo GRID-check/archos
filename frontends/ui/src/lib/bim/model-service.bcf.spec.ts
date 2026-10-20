@@ -122,7 +122,7 @@ function model(overrides: Partial<BimModelHeader> & Pick<BimModelHeader, 'id' | 
 const run = (input: Parameters<typeof exportAccessibleComplianceBcf>[2]) =>
   exportAccessibleComplianceBcf(SESSION, 'proj-1', input)
 
-const byName = (modelName: string) => run({ modelId: null, modelName, gebaeudeklasse: 4, hauptnutzung: null })
+const byName = (modelName: string) => run({ modelId: null, modelName, buildingClass: 4, mainUse: null })
 
 describe('exportAccessibleComplianceBcf', () => {
   beforeEach(() => vi.clearAllMocks())
@@ -149,10 +149,10 @@ describe('exportAccessibleComplianceBcf', () => {
     // describes a different building or applies thresholds nobody chose.
     vi.mocked(listBimModels).mockResolvedValue([model({ id: 'm-3', filename: 'Haus-A_V3.ifc' })])
 
-    await run({ modelId: null, modelName: 'Haus-A_V3.ifc', gebaeudeklasse: 4, hauptnutzung: 'residential' })
+    await run({ modelId: null, modelName: 'Haus-A_V3.ifc', buildingClass: 4, mainUse: 'residential' })
 
     expect(runBimQuery).toHaveBeenCalledWith(
-      { op: 'compliance', gebaeudeklasse: 4, hauptnutzung: 'residential' },
+      { op: 'compliance', buildingClass: 4, mainUse: 'residential' },
       { modelId: 'm-3', organizationId: 'org-1' }
     )
   })
@@ -206,7 +206,7 @@ describe('exportAccessibleComplianceBcf', () => {
     )
 
     await expect(
-      run({ modelId: 'm-other', gebaeudeklasse: 4, hauptnutzung: null })
+      run({ modelId: 'm-other', buildingClass: 4, mainUse: null })
     ).rejects.toThrow(/not found in this project/i)
   })
 

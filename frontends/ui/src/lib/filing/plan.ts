@@ -51,7 +51,7 @@ export interface PlannedDocument {
 
 export interface FilingPlanInput {
   basis: FilingBasis
-  shelf: 'project' | 'archiv'
+  shelf: 'project' | 'office_shelf'
   /** The documents that were judged. */
   documents: readonly PlannedDocument[]
   /** Every document of the batch the uploader may see, judged or not (held, failed, still being read). */
@@ -125,7 +125,7 @@ function proposalsFor(moves: ReadonlyArray<{ move: FilingMove; filename: string 
         operation: 'move',
         operations: chunk.map(({ move, filename }) => ({
           document: filename,
-          source: input.shelf === 'archiv' ? 'office' : 'project',
+          source: input.shelf === 'office_shelf' ? 'office' : 'project',
           target_folder: folder,
           reason: move.reason,
         })),

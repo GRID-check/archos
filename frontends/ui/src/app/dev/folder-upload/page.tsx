@@ -33,13 +33,13 @@
  * re-filed in Piloti, so it is moved rather than left where it is under a
  * dialog that promises to reproduce the tree.
  *
- * `?variant=fassungen` is an ArchiCAD publisher export of the same project: the
+ * `?variant=revisions` is an ArchiCAD publisher export of the same project: the
  * files continue documents already on the shelf (ADR-0099). The clear matches
  * are ONE list under a sticky master box, ticked and grouped by folder; the ones
  * that need the reader (two current documents, or not newer than the one there)
  * sit apart and unticked with the documents to choose from. The boxes work, so
  * the shot can show the master half-filled and the confirm label moving.
- * `?variant=fassungen-40` is the same at the size it arrives in: forty rows in
+ * `?variant=revisions-40` is the same at the size it arrives in: forty rows in
  * four folders, two same-name updates in the same block (one concept, ADR-0099),
  * long names whose index and date must survive the cut.
  *
@@ -406,9 +406,9 @@ export default function FolderUploadPreviewPage(): JSX.Element {
       <h1 className="mx-auto mb-6 max-w-lg font-mono text-xs text-muted-foreground">
         /dev/folder-upload — {variant}
       </h1>
-      {variant === 'fassungen' ? (
+      {variant === 'revisions' ? (
         <OfferedPreview drop={exportDrop} kind="folder" />
-      ) : variant === 'fassungen-40' ? (
+      ) : variant === 'revisions-40' ? (
         <OfferedPreview drop={fortyDrop} kind="folder" />
       ) : variant === 'single-revision' || variant === 'single-unclear' || variant === 'single-older' ? (
         <OfferedPreview key={variant} drop={() => soleDrop(variant)} kind="files" />

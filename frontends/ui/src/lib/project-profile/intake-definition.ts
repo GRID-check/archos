@@ -24,11 +24,11 @@ import type {
 // Answer modes map onto the profile's existing three-state model rather than a
 // new schema field, so the mode already reaches the AI agent through the
 // prompt-view (confirmed: / assumptions: / unknown: sections):
-//   • number_tri mode 'wert'       → confirmed fact
-//   • number_tri mode 'geschaetzt' → unconfirmed assumption (estimated)
-//   • number_tri mode 'offen'      → unknown
-//   • yes_no_open 'ja' / 'nein'    → boolean fact
-//   • yes_no_open 'offen'          → unknown
+//   • number_tri mode 'value'       → confirmed fact
+//   • number_tri mode 'estimated' → unconfirmed assumption (estimated)
+//   • number_tri mode 'open'      → unknown
+//   • yes_no_open 'yes' / 'no'    → boolean fact
+//   • yes_no_open 'open'          → unknown
 //
 // The stable question `id` is the classification anchor; `writesTo` bridges it to
 // a descriptive storage key so the jurisdiction pipeline (facts.federal_state) and
@@ -50,12 +50,12 @@ export type ProjectIntakeQuestionType =
   | 'info_placeholder'
 
 /** The three answer-modes a number_tri question persists. */
-export type IntakeAnswerMode = 'wert' | 'geschaetzt' | 'offen'
+export type IntakeAnswerMode = 'value' | 'estimated' | 'open'
 
 /** The three-valued yes_no_open answer. */
-export type YesNoOpen = 'ja' | 'nein' | 'offen'
+export type YesNoOpen = 'yes' | 'no' | 'open'
 
-export type ProjectIntakeScope = 'projekt' | 'grundstueck' | 'bauwerk'
+export type ProjectIntakeScope = 'project' | 'plot' | 'building'
 
 export interface ProjectIntakeOption {
   value: string
@@ -72,7 +72,7 @@ export interface ProjectIntakeOption {
 export interface ProjectIntakeCondition {
   param: string
   /**
-   * `lte` is numeric and only satisfied when a value exists AND its answer mode is not 'offen'.
+   * `lte` is numeric and only satisfied when a value exists AND its answer mode is not 'open'.
    * `excludes_any` holds when the answer holds none of the values, so an unanswered param holds it.
    */
   op: 'equals' | 'includes_any' | 'excludes_any' | 'not_empty' | 'lte'
@@ -111,7 +111,7 @@ export interface ProjectIntakeQuestion {
   group?: string
   /**
    * Kernfrage: shown in Schnellstart mode; every non-core question the
-   * Schnellstart skips is persisted with mode 'offen' so the completion
+   * Schnellstart skips is persisted with mode 'open' so the completion
    * checklist in Modul H can list it.
    */
   core?: boolean
@@ -166,7 +166,7 @@ export interface ProjectIntakeStage {
   title: string
   description?: string
   scope: ProjectIntakeScope
-  /** `bauwerk` modules render once per building. */
+  /** `building` modules render once per building. */
   repeatable?: boolean
   questions: ProjectIntakeQuestion[]
   /** Module D: questions asked for every selected use-zone. */
@@ -230,7 +230,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'A',
       title: 'Projektbasis',
-      scope: 'projekt',
+      scope: 'project',
       description: 'Stammdaten, Standort und Art des Vorhabens.',
       questions: [
         {
@@ -356,7 +356,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'B',
       title: 'Grundstück & Widmung',
-      scope: 'grundstueck',
+      scope: 'plot',
       description:
         'Widmung, Bebauungsplan-Kernset, Standortrisiken und Erschließung. Jede Kennzahl einzeln offen lassbar.',
       questions: [
@@ -439,7 +439,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Bebauungsplan ablegen',
           type: 'document_role',
           role: 'development_plan',
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           why: 'Der Plan ist die Quelle für Bauklasse, Bebauungsweise, Dichte und Fluchtlinien — Piloti kann sich dann darauf beziehen.',
         },
         {
@@ -449,7 +449,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           unit: 'm',
           kernset: true,
           why: 'Höhenvorgaben der Landes-Bauordnung; Grundlage der Zulässigkeitsprüfung des Entwurfs.',
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/max_building_height/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
@@ -458,7 +458,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Bebauungsweise',
           type: 'single_select',
           kernset: true,
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           options: [
             { value: 'open', label: 'offen' },
             { value: 'semi_detached', label: 'gekuppelt' },
@@ -474,7 +474,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           kernset: true,
           placeholder: 'z. B. 1.5',
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/development_density/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
@@ -483,7 +483,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Baufluchtlinien oder Baugrenzen einschränkend?',
           type: 'yes_no_open',
           kernset: true,
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/building_lines/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.siteLayout, FOUND_IN.permit],
         },
@@ -496,7 +496,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           optional: true,
           placeholder: 'z. B. Schutzzone, Dachvorschriften, Begrünungspflicht',
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/development_plan_notes/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
@@ -507,7 +507,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           optional: true,
           placeholder: 'z. B. 1 Stellplatz je Wohnung',
-          conditions: [{ param: 'B2', op: 'equals', value: 'ja' }],
+          conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/parking_regulation/value',
           foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
@@ -598,7 +598,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'C',
       title: 'Bauwerke',
-      scope: 'bauwerk',
+      scope: 'building',
       repeatable: true,
       description:
         'Je Bauwerk: Neubau oder Bestand, ggf. Bestandsblock, dann Zielgeometrie. Die Zielgeometrie beschreibt immer den Zustand nach Umsetzung aller Maßnahmen; daraus wird die Gebäudeklasse abgeleitet.',
@@ -900,7 +900,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'D',
       title: 'Nutzungen',
-      scope: 'bauwerk',
+      scope: 'building',
       repeatable: true,
       description:
         'Nutzungsmix je Bauwerk. Jede gewählte Nutzung erzeugt eine Zone mit generischen und nutzungsspezifischen Kennzahlen.',
@@ -1150,7 +1150,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'E',
       title: 'Technik & Energie',
-      scope: 'bauwerk',
+      scope: 'building',
       repeatable: true,
       description: 'Wärmeversorgung, PV, Lüftung und anlagentechnischer Brandschutz je Bauwerk.',
       questions: [
@@ -1225,7 +1225,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'F',
       title: 'Verfahren & Sonderrecht',
-      scope: 'projekt',
+      scope: 'project',
       description:
         'Behördenverfahren, Förderungen und Sonderthemen — im Zielsystem großteils vorbelegt, hier bestätigen.',
       questions: [
@@ -1285,7 +1285,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'G',
       title: 'Projektkontext',
-      scope: 'projekt',
+      scope: 'project',
       description:
         'Geführter Freitext: alles, was der Assistent über die Zahlen hinaus wissen sollte. Alle Felder optional — je mehr Kontext, desto besser.',
       questions: [
@@ -1343,7 +1343,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'I',
       title: 'Projektgrundlagen',
-      scope: 'projekt',
+      scope: 'project',
       description:
         'Alles, was schon existiert. Piloti nutzt diese Unterlagen als Grundlage für jede Antwort zu diesem Projekt — und sagt Ihnen, was noch fehlt.',
       questions: [],
@@ -1352,7 +1352,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
     {
       id: 'H',
       title: 'Zusammenfassung',
-      scope: 'projekt',
+      scope: 'project',
       description:
         'Ihre Angaben im Überblick. Prüfen Sie alles, bevor das Projektprofil an Piloti übergeben wird.',
       questions: [],
@@ -1411,7 +1411,7 @@ export function answerKeyFor(questionId: string, buildingId?: string, zoneKey?: 
  *
  * The inverse of {@link answerKeyFor}, kept beside it so the two cannot drift
  * about what the separator means. A document-role question needs this: a
- * `bauwerk` role has to name its building, and the wizard only knows which
+ * `building` role has to name its building, and the wizard only knows which
  * building it is rendering through the key.
  */
 export function buildingIdFromAnswerKey(answerKey: string): string | null {
@@ -1427,13 +1427,13 @@ export function modeKeyFor(answerKey: string): string {
   return `${answerKey}__mode`
 }
 
-/** Map a question id to its module scope (projekt/grundstueck/bauwerk). */
+/** Map a question id to its module scope (project/plot/building). */
 function scopeOfQuestion(questionId: string): ProjectIntakeScope | null {
   for (const stage of projectIntakeDefinitionV1.stages) {
     if (stage.questions.some((q) => q.id === questionId)) return stage.scope
-    if (stage.zoneCommon?.some((q) => q.id === questionId)) return 'bauwerk'
+    if (stage.zoneCommon?.some((q) => q.id === questionId)) return 'building'
     for (const def of Object.values(stage.zoneDefinitions ?? {})) {
-      if (def.questions.some((q) => q.id === questionId)) return 'bauwerk'
+      if (def.questions.some((q) => q.id === questionId)) return 'building'
     }
   }
   return null
@@ -1522,7 +1522,7 @@ function evaluateSingleCondition(
   // Resolve which answer key this param lives under: a building-scope param is
   // read from the current building instance; everything else is project-global.
   const paramScope = scopeOfQuestion(cond.param)
-  const key = paramScope === 'bauwerk' && instanceId ? `${cond.param}@${instanceId}` : cond.param
+  const key = paramScope === 'building' && instanceId ? `${cond.param}@${instanceId}` : cond.param
   const answer = answers[key]
 
   switch (cond.op) {
@@ -1533,11 +1533,11 @@ function evaluateSingleCondition(
     case 'excludes_any':
       return !answerIncludesAny(answer, cond.value)
     case 'lte': {
-      // Only a PRESENT, non-'offen' value can satisfy a numeric bound: a
+      // Only a PRESENT, non-'open' value can satisfy a numeric bound: a
       // question gated on "höchstens 4 Geschoße" must not appear while the
       // storey count is unknown or explicitly left open (spec conventions).
       if (!isIntakeAnswerProvided(answer)) return false
-      if (answers[modeKeyFor(key)] === 'offen') return false
+      if (answers[modeKeyFor(key)] === 'open') return false
       const numeric = typeof answer === 'number' ? answer : Number(answer)
       return typeof cond.value === 'number' && Number.isFinite(numeric) && numeric <= cond.value
     }
@@ -1626,7 +1626,7 @@ export function pruneStaleConditionalAnswers(
     }
 
     for (const stage of definition.stages) {
-      if (stage.scope === 'bauwerk') {
+      if (stage.scope === 'building') {
         for (const building of buildings) {
           for (const q of stage.questions) dropIfOrphaned(q, answerKeyFor(q.id, building.id), building.id)
         }
@@ -1699,8 +1699,8 @@ function emitAnswer(
   const raw = answers[answerKey]
 
   if (question.type === 'yes_no_open') {
-    if (raw === 'ja' || raw === 'nein') {
-      addFact(ctx, target, storageKey, raw === 'ja')
+    if (raw === 'yes' || raw === 'no') {
+      addFact(ctx, target, storageKey, raw === 'yes')
     } else {
       ctx.unknowns.push(storageKey)
     }
@@ -1708,8 +1708,8 @@ function emitAnswer(
   }
 
   if (question.type === 'number_tri') {
-    const mode = (answers[modeKeyFor(answerKey)] as IntakeAnswerMode) ?? 'wert'
-    if (mode === 'offen' || !isIntakeAnswerProvided(raw)) {
+    const mode = (answers[modeKeyFor(answerKey)] as IntakeAnswerMode) ?? 'value'
+    if (mode === 'open' || !isIntakeAnswerProvided(raw)) {
       ctx.unknowns.push(storageKey)
       return
     }
@@ -1718,7 +1718,7 @@ function emitAnswer(
       ctx.unknowns.push(storageKey)
       return
     }
-    if (mode === 'geschaetzt') {
+    if (mode === 'estimated') {
       ctx.patch.push({
         op: 'add',
         path: `/assumptions/${encodeKey(storageKey)}`,
@@ -1810,7 +1810,7 @@ export function buildIntakeProfile(
   }
 
   for (const stage of definition.stages) {
-    if (stage.scope === 'bauwerk') {
+    if (stage.scope === 'building') {
       for (const building of buildings) emitStageForBuilding(ctx, stage, building, answers)
     } else {
       for (const question of stage.questions) {
@@ -2060,12 +2060,12 @@ export function answersFromProfile(
       const assumption = profile.assumptions[storageKey]
       if (fact !== undefined && typeof fact.value === 'number') {
         answers[answerKey] = fact.value
-        answers[modeKeyFor(answerKey)] = 'wert'
+        answers[modeKeyFor(answerKey)] = 'value'
       } else if (assumption !== undefined && typeof assumption.value === 'number') {
         answers[answerKey] = assumption.value
-        answers[modeKeyFor(answerKey)] = 'geschaetzt'
+        answers[modeKeyFor(answerKey)] = 'estimated'
       } else if (profile.unknowns.includes(storageKey)) {
-        answers[modeKeyFor(answerKey)] = 'offen'
+        answers[modeKeyFor(answerKey)] = 'open'
       }
       return
     }
@@ -2074,9 +2074,9 @@ export function answersFromProfile(
     if (question.type === 'yes_no_open') {
       const fact = profile.facts[storageKey]
       if (fact !== undefined && typeof fact.value === 'boolean') {
-        answers[answerKey] = fact.value ? 'ja' : 'nein'
+        answers[answerKey] = fact.value ? 'yes' : 'no'
       } else if (profile.unknowns.includes(storageKey)) {
-        answers[answerKey] = 'offen'
+        answers[answerKey] = 'open'
       }
       return
     }
@@ -2096,7 +2096,7 @@ export function answersFromProfile(
   }
 
   for (const stage of definition.stages) {
-    if (stage.scope === 'bauwerk') {
+    if (stage.scope === 'building') {
       for (const building of buildings) {
         for (const q of stage.questions) {
           const target = resolveWriteTarget(q.writesTo)
@@ -2189,24 +2189,24 @@ function applyLegacyAnswerBridges(
         const assumption = profile.assumptions[key]?.value
         if (typeof fact === 'number') {
           answers[answerKey] = fact
-          answers[modeKeyFor(answerKey)] = 'wert'
+          answers[modeKeyFor(answerKey)] = 'value'
           bridgedAny = true
         } else if (typeof assumption === 'number') {
           answers[answerKey] = assumption
-          answers[modeKeyFor(answerKey)] = 'geschaetzt'
+          answers[modeKeyFor(answerKey)] = 'estimated'
           bridgedAny = true
         }
         continue
       }
       const bool = legacyBoolean(profile, key)
       if (bool !== undefined) {
-        answers[answerKey] = bool ? 'ja' : 'nein'
+        answers[answerKey] = bool ? 'yes' : 'no'
         bridgedAny = true
       } else if (profile.unknowns.includes(key)) {
         // An explicitly-open legacy answer is an answer. Dropping it left
         // `bridgedAny` false, so the C2 gate never opened and the whole
         // Bestand block stayed hidden for a project that had described one.
-        answers[answerKey] = 'offen'
+        answers[answerKey] = 'open'
         bridgedAny = true
       }
     }
@@ -2245,8 +2245,8 @@ function applyLegacyAnswerBridges(
     const c8Key = answerKeyFor('C8', building.id)
     if (answers[c8Key] === undefined) {
       const legacy = profile.facts[`units_under_400@${building.id}`]?.value
-      if (typeof legacy === 'boolean') answers[c8Key] = legacy ? 'nein' : 'ja'
-      else if (profile.unknowns.includes(`units_under_400@${building.id}`)) answers[c8Key] = 'offen'
+      if (typeof legacy === 'boolean') answers[c8Key] = legacy ? 'no' : 'yes'
+      else if (profile.unknowns.includes(`units_under_400@${building.id}`)) answers[c8Key] = 'open'
     }
 
     // --- C10 single → multi (`construction_method`): map the legacy single token.

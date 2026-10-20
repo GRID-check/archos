@@ -64,12 +64,27 @@ export function isLawRank(rank: NormRank): rank is LawRank {
  * optional disambiguators. `application`/`federal_state` are NOT stored here — the
  * verify call derives them from the entry itself.
  */
-export const normVerifySeedSchema = z.object({
-  title_query: z.string().default(''),
-  expect: z.string().optional(),
-  exclude: z.array(z.string()).default([]),
-  gesetzesnummer: z.string().optional(),
-})
+/**
+ * A stored registry, or a verify request an older admin tab sends, names the
+ * statute number `gesetzesnummer`. Read for one release (remove after); the next
+ * save stores `statute_number`. Mirrored by `VerifySeed` in
+ * `src/aiq_agent/common/norm_registry.py`.
+ */
+const renameLegacyStatuteNumber = (value: unknown): unknown => {
+  if (typeof value !== 'object' || value === null || !('gesetzesnummer' in value)) return value
+  const { gesetzesnummer, ...rest } = value as Record<string, unknown>
+  return 'statute_number' in rest ? rest : { ...rest, statute_number: gesetzesnummer }
+}
+
+export const normVerifySeedSchema = z.preprocess(
+  renameLegacyStatuteNumber,
+  z.object({
+    title_query: z.string().default(''),
+    expect: z.string().optional(),
+    exclude: z.array(z.string()).default([]),
+    statute_number: z.string().optional(),
+  })
+)
 export type NormVerifySeed = z.infer<typeof normVerifySeedSchema>
 
 /**
@@ -157,14 +172,17 @@ export const putNormRegistryBodySchema = normRegistryEnvelopeSchema
 export type PutNormRegistryBody = z.infer<typeof putNormRegistryBodySchema>
 
 /** Verify request — application is required; the rest disambiguate the query. */
-export const verifyNormRequestSchema = z.object({
-  title_query: z.string().min(1),
-  application: z.string().min(1),
-  federal_state: z.string().optional(),
-  expect: z.string().optional(),
-  exclude: z.array(z.string()).optional(),
-  gesetzesnummer: z.string().optional(),
-})
+export const verifyNormRequestSchema = z.preprocess(
+  renameLegacyStatuteNumber,
+  z.object({
+    title_query: z.string().min(1),
+    application: z.string().min(1),
+    federal_state: z.string().optional(),
+    expect: z.string().optional(),
+    exclude: z.array(z.string()).optional(),
+    statute_number: z.string().optional(),
+  })
+)
 export type VerifyNormRequest = z.infer<typeof verifyNormRequestSchema>
 
 export const verifyCandidateSchema = z.object({

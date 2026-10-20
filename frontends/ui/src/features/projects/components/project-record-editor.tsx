@@ -84,7 +84,7 @@ export function ProjectRecordPeriod({
 
   const save = async (value: string): Promise<void> => {
     setPending(true)
-    const ok = await send(`/api/projects/${projectId}/steckbrief`, 'PUT', { startedOn: monthOrNull(value) })
+    const ok = await send(`/api/projects/${projectId}/project-record`, 'PUT', { startedOn: monthOrNull(value) })
     setPending(false)
     if (!ok) return void toast.error(t('projectRecord.error'))
     toast.success(t('projectRecord.periodSaved'))

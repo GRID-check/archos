@@ -82,7 +82,7 @@ def format_digest_line(
 ) -> str:
     """One digest line: ``"<file> | <collection> | Seiten <p> | Punkte <n> | Turn <k>"``."""
     ordered_pages = sorted({int(page) for page in pages})
-    ordered_clauses = sorted({str(punkt) for punkt in clauses if str(punkt).strip()}, key=_clause_sort_key)
+    ordered_clauses = sorted({str(clause) for clause in clauses if str(clause).strip()}, key=_clause_sort_key)
     pages_bit = ", ".join(str(page) for page in ordered_pages) if ordered_pages else "-"
     clauses_bit = ", ".join(ordered_clauses) if ordered_clauses else "-"
     return f"{file_name} | {collection} | Seiten {pages_bit} | Punkte {clauses_bit} | Turn {max(1, int(turn))}"
@@ -159,8 +159,8 @@ def _capture_page(entry: Any) -> int | None:
 
 
 def _capture_clause(entry: Any) -> str | None:
-    punkt = str(getattr(entry, "clause", None) or "").strip()
-    return punkt or None
+    clause = str(getattr(entry, "clause", None) or "").strip()
+    return clause or None
 
 
 def merge_digest(previous: Sequence[str] | None, captures: Sequence[Any], turn: int) -> list[str] | None:
@@ -194,21 +194,21 @@ def merge_digest(previous: Sequence[str] | None, captures: Sequence[Any], turn: 
             continue
         key, file_name, collection, _citation_key = identity
         page = _capture_page(entry)
-        punkt = _capture_clause(entry)
+        clause = _capture_clause(entry)
         known = merged.get(key)
         if known is None:
             merged[key] = DigestEntry(
                 file_name=file_name,
                 collection=collection,
                 pages={page} if page is not None else set(),
-                clauses={punkt} if punkt else set(),
+                clauses={clause} if clause else set(),
                 turn=current,
             )
         else:
             if page is not None:
                 known.pages.add(page)
-            if punkt:
-                known.clauses.add(punkt)
+            if clause:
+                known.clauses.add(clause)
             known.turn = current
             merged.move_to_end(key)
     lines = [

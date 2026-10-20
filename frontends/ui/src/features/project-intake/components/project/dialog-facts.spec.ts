@@ -12,7 +12,7 @@ import { factDecisions } from './dialog-facts-section'
 const item = (key: string, display: string, state: Suggestion['state'] = 'confirmed'): Suggestion => ({
   key,
   baseKey: key,
-  bauwerkId: null,
+  buildingId: null,
   label: key,
   value: display,
   display,

@@ -142,7 +142,7 @@ export async function findBimModelByDocument(
  * `includeOfficeShelf` is set — the same scope rule document retrieval uses, so a
  * chat that can cite an Archiv document can also query its model.
  *
- * ## The Archiv is `scope = 'archiv'`, never "no project"
+ * ## The Archiv is `scope = 'office_shelf'`, never "no project"
  *
  * This used to read `project_id IS NULL` for both of those cases, which was an
  * exact description of the Archiv right up until there was a second
@@ -181,7 +181,7 @@ export async function listBimModels(
 ): Promise<BimModelHeader[]> {
   const db = getDb()
   const limit = Math.min(Math.max(1, Math.trunc(options.limit ?? 50)), 200)
-  const officeShelfScope = eq(documents.scope, 'archiv')
+  const officeShelfScope = eq(documents.scope, 'office_shelf')
   const scope =
     options.projectId === undefined
       ? undefined

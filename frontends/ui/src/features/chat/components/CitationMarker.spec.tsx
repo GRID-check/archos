@@ -383,7 +383,7 @@ describe('an inline citation marker', () => {
    */
   describe('the link to the document\'s home shelf', () => {
     const projectFile = 'brandschutzkonzept_ausgabe_2026.pdf'
-    const shelved = (shelf: 'project' | 'archiv'): CitationSource => ({
+    const shelved = (shelf: 'project' | 'office_shelf'): CitationSource => ({
       id: 'c9',
       content: `[KB] ${projectFile}, p.3`,
       citationKey: `${projectFile}, p.3`,
@@ -427,14 +427,14 @@ describe('an inline citation marker', () => {
 
     test('an archive document links to the office archive', async () => {
       const user = userEvent.setup()
-      answerWith(shelved('archiv'))
+      answerWith(shelved('office_shelf'))
 
       await user.click(screen.getByRole('button', { name: /Source 1: Brandschutzkonzept/i }))
       const peek = await screen.findByRole('dialog')
 
       expect(within(peek).getByRole('link', { name: 'Open in Office filing' })).toHaveAttribute(
         'href',
-        '/app/archiv'
+        '/app/office-shelf'
       )
     })
 
@@ -450,7 +450,7 @@ describe('an inline citation marker', () => {
                     filename: projectFile,
                     contentType: 'application/pdf',
                     createdAt: '2026-08-01T00:00:00.000Z',
-                    fassung: {
+                    revision: {
                       supersededBy: { id: 'doc-new', filename: 'brandschutzkonzept_ausgabe_2026_b.pdf' },
                       supersedes: [],
                       suggestion: null,

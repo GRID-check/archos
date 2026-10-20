@@ -113,7 +113,7 @@ function requireOfficeShelfMove(typed: KindPayload): void {
     typed.payload.operations.every((item) => item.source === 'office')
   if (!fits) {
     throw new UnprocessableError('A proposal on the Büroablage can only move its documents', {
-      reason: 'proposal-archiv-move-only',
+      reason: 'proposal-office-shelf-move-only',
     })
   }
 }
@@ -131,7 +131,7 @@ function requireProfileVocabulary(payload: ProjectProfilePayload): void {
 
 /** Refuse, when it is proposed, what could only fail when it is applied. */
 export function requireProposable(typed: KindPayload, scope: ProposalScope = 'project'): void {
-  if (scope === 'archiv') requireOfficeShelfMove(typed)
+  if (scope === 'office_shelf') requireOfficeShelfMove(typed)
   if (typed.kind === 'file_operation') {
     requireItemFields(typed.payload)
     requireNewFolderTarget(typed.payload)

@@ -65,7 +65,7 @@ describe('DownloadLogView', () => {
       page([
         entry(1),
         entry(2, { kind: 'pdf', access: 'open', ownList: true, folderPath: 'Personal', documentName: 'Vertrag.pdf' }),
-        entry(3, { userId: 'user_gone', person: null, scope: 'archiv', projectId: null, projectName: null, folderId: null, folderPath: null }),
+        entry(3, { userId: 'user_gone', person: null, scope: 'office_shelf', projectId: null, projectName: null, folderId: null, folderPath: null }),
         entry(4, { kind: 'version', access: 'open', ownList: true, versionId: '8f3a1c52-0000-4000-8000-000000000001' }),
       ])
     )

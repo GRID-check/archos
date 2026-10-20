@@ -105,10 +105,12 @@ the *Büroablage* (the organization's shelf, formerly „Archiv"; code name
 sees. The Büroablage can hold norms an office uploaded itself (ÖNORMEN,
 Weisungen) that the OIB base does not carry.
 _Code_: `officeShelf` in identifiers, file names and modules (`lib/office-shelf`,
-`OfficeShelfWorkspace`, `canManageOfficeShelf`). The stored and public forms
-still read `archiv` until the migration PRs: the shelf value in the database and
-on the wire, the `/archiv` and `/api/archiv` URLs, and the permission slug
-`org:archiv:manage`.
+`OfficeShelfWorkspace`, `canManageOfficeShelf`). Stored and public forms are
+`office_shelf` (scope value, wire value), `/app/office-shelf` and
+`/api/office-shelf`, and the permission `org:office_shelf:manage`. Still `archiv`,
+read beside the new name until an operator moves them
+([runbook](docs/deployment/office-shelf-rename-runbook.md)): the collection
+prefix `archiv_<org>`, the old permission slug, and the history of audit rows.
 _Avoid_: folder; folders organise documents within a shelf, a shelf decides who sees them.
 
 **Dokumentart** (document type):
@@ -128,9 +130,9 @@ Dokument, Datei, Fassung or Stand. Also avoid „Version“ and “version” wh
 reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a state.
 _Code_: `revision`. The links between the Fassungen of one document are
 `RevisionLinks` (`lib/documents/revision-links.ts`); `RevisionFacts` is the
-Index and Rev read off a title block, a different thing. Stored names such as
-the `document_revision_announcements` table and the `fassung` wire field keep the
-German word until the migration PRs.
+Index and Rev read off a title block, a different thing. The routes are
+`/api/documents/{id}/revision`, `…/revision-compare` and `…/revision-candidates`
+(the `fassung` paths redirect for one release), and the listing property is `revision`.
 
 **Freigabe** (approval):
 The office approving one Fassung, and only that. Its status (*Freigabestatus*)

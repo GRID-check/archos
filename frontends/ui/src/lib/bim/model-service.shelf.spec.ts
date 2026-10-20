@@ -99,7 +99,7 @@ beforeEach(() => {
   documentsByShelf.clear()
   documentsByShelf.set(
     'doc-archiv',
-    makeDocument({ id: 'doc-archiv', scope: 'archiv', projectId: null, collectionName: 'archiv_org-1' })
+    makeDocument({ id: 'doc-archiv', scope: 'office_shelf', projectId: null, collectionName: 'archiv_org-1' })
   )
   documentsByShelf.set(
     'doc-project',
@@ -173,7 +173,7 @@ describe('getAccessibleModel', () => {
     // own rule — this is the id the query, source and compliance routes take.
     await expect(getAccessibleModel(SESSION, 'model-1')).rejects.toThrow()
 
-    documentsByShelf.set('doc-1', makeDocument({ id: 'doc-1', scope: 'archiv', projectId: null }))
+    documentsByShelf.set('doc-1', makeDocument({ id: 'doc-1', scope: 'office_shelf', projectId: null }))
     await expect(getAccessibleModel(SESSION, 'model-1')).resolves.toMatchObject({ id: 'model-1' })
   })
 

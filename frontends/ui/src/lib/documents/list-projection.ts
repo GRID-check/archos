@@ -80,7 +80,7 @@ export function toDocumentWireRow(
     topics: row.topics ?? null,
     capture: row.capture ?? null,
     revisionFacts: row.revisionFacts ?? null,
-    fassung: row.fassung ?? null,
+    revision: row.revision ?? null,
     queueAhead: row.queueAhead ?? null,
     // Whether „Alle erneut lesen“ sends it and „Erneut lesen“ is offered
     // (`./retry-policy`); a row that was not judged keeps today's answer.
@@ -106,7 +106,7 @@ export function toDocumentWireRow(
  * which does not stringify a `Date` — see the module header.
  *
  * ONE projection for both shelves (ADR-0078): a project's `GET /api/documents`
- * and the Archiv's `GET /api/archiv/documents` serve the same row, so the
+ * and the Archiv's `GET /api/office-shelf/documents` serve the same row, so the
  * browser maps it with one function.
  */
 export async function toDocumentWireRows(

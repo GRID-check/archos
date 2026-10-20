@@ -99,11 +99,11 @@ export interface FileItem {
   /**
    * Which documents this one replaces or is replaced by, Piloti's suggestion
    * and what changed (CONTEXT.md, „Fassung"). Every reference is a document the
-   * reader may open; one they may not is not in it (`fassung-facts.ts`).
+   * reader may open; one they may not is not in it (`revision-facts.ts`).
    * Optional so a listing that did not read it says nothing; `null` is "read,
    * and there is nothing".
    */
-  fassung?: RevisionLinks | null
+  revision?: RevisionLinks | null
   /**
    * How many of this office's uploads wait ahead of this one in the ingest
    * queue, or null when it is not waiting there (`DocumentMetadata.queueAhead`).

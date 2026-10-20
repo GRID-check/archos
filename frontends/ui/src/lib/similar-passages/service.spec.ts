@@ -153,7 +153,7 @@ describe('foldDocuments', () => {
       displayName: null,
       contentType: 'application/pdf',
       revisionFacts: null,
-      fassung: null,
+      revision: null,
       page: 2,
       snippet: `Auszug aus ${id}`,
       score: 0.8,
@@ -163,7 +163,7 @@ describe('foldDocuments', () => {
 
   it('leaves out a Fassung a person confirmed a newer one replaces, as knowledge_search does: the vector copy can lag', () => {
     const folded = foldDocuments(
-      [row('aktuell'), row('alt', { fassung: { supersededBy: { id: 'aktuell', filename: 'aktuell.pdf' } } })],
+      [row('aktuell'), row('alt', { revision: { supersededBy: { id: 'aktuell', filename: 'aktuell.pdf' } } })],
       null
     )
 

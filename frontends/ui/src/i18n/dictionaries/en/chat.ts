@@ -169,7 +169,7 @@ export const chat = {
     auto: 'Web',
     model: 'Model measurement',
     shelves: {
-      archiv: 'Office filing',
+      office_shelf: 'Office filing',
       project: 'Project knowledge',
       session: 'Private session',
       base: 'Base knowledge',
@@ -986,7 +986,7 @@ export const chat = {
         // once, because the collective noun for them is OURS, not theirs, so
         // `several` states plainly WHAT is being read.
         documents: {
-          archiv: 'Reviewing documents from Office filing …',
+          officeShelf: 'Reviewing documents from Office filing …',
           project: 'Reviewing documents from the project …',
           session: 'Reviewing documents from this conversation …',
           several: 'Reviewing your documents …',

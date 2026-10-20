@@ -918,7 +918,7 @@ class TestThePlanCard:
         assert edited.excluded == ["alt.pdf"]
         inventory = [
             {"file_name": "Einreichplan.pdf", "display_title": "Einreichplan EG", "shelf": "project"},
-            {"file_name": "alt.pdf", "shelf": "archiv"},
+            {"file_name": "alt.pdf", "shelf": "office_shelf"},
         ]
         docs = plan_documents(edited, inventory)
         assert docs is not None

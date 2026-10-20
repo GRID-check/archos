@@ -31,7 +31,7 @@ import {
 import { SimilarPassagesPanel } from './similar-passages-panel'
 
 /** The provenance signal of a similar passage: the Büroablage's, or a project's. */
-const signalOf = (opened: OpenedPassage): 'office' | 'project' => (opened.groupKind === 'archiv' ? 'office' : 'project')
+const signalOf = (opened: OpenedPassage): 'office' | 'project' => (opened.groupKind === 'office_shelf' ? 'office' : 'project')
 
 /** The viewer's props while `opened` is on the stage: its document at the passage, marked. */
 export function openedPassageView(

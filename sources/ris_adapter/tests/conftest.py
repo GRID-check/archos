@@ -182,7 +182,7 @@ def norm_entry(**overrides):
         "document_number": "NOR40200001",
         "citation_url": "https://www.ris.bka.gv.at/eli/lgbl/WI/1930/11",
         "full_law_url": LookupHarness.WIEN_URL,
-        "bundesland": "Wien",
+        "federal_state": "Wien",
         "topics": ["bauordnung", "bauansuchen", "einreichung"],
         "relevance": "State building code for Vienna",
         "verified_at": "2026-07-16",
@@ -224,12 +224,14 @@ class FakePicker:
 class FakePlanner:
     """The search planner, scripted, with the same signature ris_search uses."""
 
-    def __init__(self, application="LrKons", suchworte="Bauordnung", titel="", bundesland=""):
+    def __init__(self, application="LrKons", suchworte="Bauordnung", titel="", federal_state=""):
         from ris_adapter.register import RisSearchPlan
 
-        self.plan = RisSearchPlan(application=application, suchworte=suchworte, titel=titel, bundesland=bundesland)
+        self.plan = RisSearchPlan(
+            application=application, suchworte=suchworte, titel=titel, federal_state=federal_state
+        )
         self.calls: list[tuple] = []
 
-    async def __call__(self, query, application, title, bundesland, date_from, date_to):
-        self.calls.append((query, application, title, bundesland, date_from, date_to))
+    async def __call__(self, query, application, title, federal_state, date_from, date_to):
+        self.calls.append((query, application, title, federal_state, date_from, date_to))
         return self.plan

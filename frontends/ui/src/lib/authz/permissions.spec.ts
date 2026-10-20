@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { canManageBudgets, canManageCompliance, canManageModels, isOrgAdmin } from './organizations'
 import {
+  acceptedPermissionSlugs,
   hasPermission,
   ORG_PERMISSIONS,
   PLATFORM_PERMISSIONS,
@@ -108,5 +109,15 @@ describe('permission registry', () => {
     expect(isOrgAdmin(session('member', ['org:settings:manage']))).toBe(true)
     expect(isOrgAdmin(session('member', ['widgets:users-table:manage']))).toBe(true)
     expect(isOrgAdmin(session('member'))).toBe(false)
+  })
+})
+
+describe('the renamed office-shelf permission', () => {
+  it('counts a grant under the old slug as a grant of the new one', () => {
+    expect(acceptedPermissionSlugs('org:office_shelf:manage')).toEqual(['org:office_shelf:manage', 'org:archiv:manage'])
+    expect(acceptedPermissionSlugs('org:models:manage')).toEqual(['org:models:manage'])
+    expect(hasPermission({ role: 'member', permissions: ['org:archiv:manage'] }, ORG_PERMISSIONS.officeShelfManage)).toBe(true)
+    expect(hasPermission({ role: 'member', permissions: ['org:office_shelf:manage'] }, ORG_PERMISSIONS.officeShelfManage)).toBe(true)
+    expect(hasPermission({ role: 'member', permissions: [] }, ORG_PERMISSIONS.officeShelfManage)).toBe(false)
   })
 })

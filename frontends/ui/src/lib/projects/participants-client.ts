@@ -3,7 +3,7 @@
  * first step (ticket 26) reads and writes, each written once here.
  *
  *   - `GET /api/projects/[id]`: the name and the status;
- *   - `GET /api/projects/[id]/steckbrief`: the people (ADR-0091, ADR-0101):
+ *   - `GET /api/projects/[id]/project-record`: the people (ADR-0091, ADR-0101):
  *     members listed from the roster, everyone else stored by hand;
  *   - `GET|POST /api/projects/[id]/members`: the organization's roster with each
  *     member's project role, and a role given or taken. Only who may manage
@@ -11,7 +11,7 @@
  *   - `POST|PATCH|DELETE /api/projects/[id]/people[/personId]`: a person added,
  *     described or erased.
  *
- * Who may do what is the services' (`members-service`, `steckbrief-service`);
+ * Who may do what is the services' (`members-service`, `project-record-service`);
  * this client only says what the answer was. Responses are parsed with zod,
  * not cast. No `server-only`: the browser imports this.
  */
@@ -124,7 +124,7 @@ export function createParticipantsClient(fetchImpl: ParticipantsFetch = defaultF
       return projectBasicsSchema.parse(await request(fetchImpl, projectPath(projectId), 'GET'))
     },
     async peopleRecord(projectId) {
-      return peopleRecordSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/steckbrief`, 'GET'))
+      return peopleRecordSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/project-record`, 'GET'))
     },
     async roster(projectId) {
       try {

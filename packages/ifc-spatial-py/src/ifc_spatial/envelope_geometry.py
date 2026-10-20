@@ -289,7 +289,7 @@ def _element_area(model: SpatialModel, element: Any) -> dict[str, Any]:
 #: ``IsExternal``, and for one decided by counting the spaces it bounds.
 ROUTE_DECLARED = "IsExternal (deklariert)"
 ROUTE_BOUNDED_SPACES = "Raumbegrenzung"
-ROUTE_UNDECIDED = "unbestimmt"
+ROUTE_UNDECIDED = "undetermined"
 
 
 def _external_route(model: SpatialModel, element: Any) -> tuple[bool | None, str, str]:
@@ -491,7 +491,7 @@ def thermal_envelope(model: SpatialModel) -> Answer[dict[str, Any]]:
 
     Returned grouped by kind, with each element's own area, its declared U-value
     where the file states one, and the two lists that make the total checkable:
-    ``innenliegend`` (decided, and left out) and ``unbestimmt`` (not decided,
+    ``interior`` (decided, and left out) and ``undetermined`` (not decided,
     and therefore neither counted nor discarded).
 
     On the sample house the declared route decides all 23 candidates outright —
@@ -576,8 +576,8 @@ def thermal_envelope(model: SpatialModel) -> Answer[dict[str, Any]]:
             "totalArea": total,
             "elementCount": len(outside),
             "routes": routes,
-            "innenliegend": inside,
-            "unbestimmt": unknown,
+            "interior": inside,
+            "undetermined": unknown,
         },
         unit="m²",
         tolerance=abs(total) * AREA_RELATIVE_TOLERANCE if total else None,

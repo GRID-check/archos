@@ -10,10 +10,10 @@ from __future__ import annotations
 import time
 
 import pytest
-from ris_adapter.lookup.address import LAND_FROM_ARGUMENT
-from ris_adapter.lookup.address import LAND_FROM_INSTRUMENT
-from ris_adapter.lookup.address import LAND_FROM_QUESTION
-from ris_adapter.lookup.address import land_sentence
+from ris_adapter.lookup.address import FEDERAL_STATE_FROM_ARGUMENT
+from ris_adapter.lookup.address import FEDERAL_STATE_FROM_INSTRUMENT
+from ris_adapter.lookup.address import FEDERAL_STATE_FROM_QUESTION
+from ris_adapter.lookup.address import federal_state_sentence
 from ris_adapter.lookup.address import parse_address
 
 
@@ -21,7 +21,7 @@ class TestTheSection:
     def test_a_paragraph_in_the_instrument(self):
         address = parse_address("Was ist zu tun?", "§ 63 Abs 1 BO Wien", "")
 
-        assert (address.kind, address.number, address.absatz) == ("§", "63", "1")
+        assert (address.kind, address.number, address.subsection) == ("§", "63", "1")
         assert address.has_section
 
     def test_a_paragraph_in_the_question_alone(self):
@@ -95,29 +95,29 @@ class TestTheJurisdiction:
     def test_the_argument_wins_over_everything(self):
         address = parse_address("Bauordnung in Wien?", "BO Wien", "Tirol")
 
-        assert address.bundesland == "Tirol"
-        assert address.bundesland_source == LAND_FROM_ARGUMENT
+        assert address.federal_state == "Tirol"
+        assert address.federal_state_source == FEDERAL_STATE_FROM_ARGUMENT
 
     def test_the_instrument_wins_over_the_question(self):
         address = parse_address("Wie ist das in Wien?", "Tiroler Bauordnung", "")
 
-        assert (address.bundesland, address.bundesland_source) == ("Tirol", LAND_FROM_INSTRUMENT)
+        assert (address.federal_state, address.federal_state_source) == ("Tirol", FEDERAL_STATE_FROM_INSTRUMENT)
 
     def test_the_question_is_read_when_nothing_else_names_one(self):
         address = parse_address("Was verlangt die Bauordnung in Salzburg?", "", "")
 
-        assert (address.bundesland, address.bundesland_source) == ("Salzburg", LAND_FROM_QUESTION)
+        assert (address.federal_state, address.federal_state_source) == ("Salzburg", FEDERAL_STATE_FROM_QUESTION)
 
     def test_an_unresolved_land_says_so_rather_than_guessing(self):
         address = parse_address("Was verlangt die Bauordnung?", "", "")
 
-        assert address.bundesland == ""
-        assert "No Bundesland was resolved" in land_sentence(address)
+        assert address.federal_state == ""
+        assert "No Bundesland was resolved" in federal_state_sentence(address)
 
     def test_a_resolved_land_names_where_it_came_from(self):
-        sentence = land_sentence(parse_address("?", "", "Wien"))
+        sentence = federal_state_sentence(parse_address("?", "", "Wien"))
 
-        assert sentence == f"Assumed Bundesland: Wien (from {LAND_FROM_ARGUMENT})."
+        assert sentence == f"Assumed Bundesland: Wien (from {FEDERAL_STATE_FROM_ARGUMENT})."
 
 
 class TestAListOfParagraphs:
@@ -163,8 +163,8 @@ class TestAListOfParagraphs:
         single = parse_address("x", "§ 2 Abs. 5 Baupolizeigesetz", "")
         listed = parse_address("x", "§§ 2 und 3 Abs. 4 Baupolizeigesetz", "")
 
-        assert (single.sections, single.absatz) == (("2",), "5")
-        assert (listed.sections, listed.absatz) == (("2", "3"), "")
+        assert (single.sections, single.subsection) == (("2",), "5")
+        assert (listed.sections, listed.subsection) == (("2", "3"), "")
 
 
 def test_a_list_shares_one_budget_and_one_named_paragraph_keeps_its_own():
@@ -222,7 +222,7 @@ class TestTheListReaderAgainstPracticeInputs:
 
     def test_a_subsection_between_two_paragraphs_does_not_end_the_list(self):
         address = parse_address("x", "§ 5 Abs 2 und § 7 BO Wien", "")
-        assert (address.sections, address.absatz, address.law) == (("5", "7"), "", "BO Wien")
+        assert (address.sections, address.subsection, address.law) == (("5", "7"), "", "BO Wien")
 
     def test_every_qualifier_of_a_paragraph_is_read_before_the_next_one(self):
         # One qualifier per item ended the list at "Z 2" and dropped § 7 into the law's name.

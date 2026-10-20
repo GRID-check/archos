@@ -142,17 +142,17 @@ describe('recordDocumentAccess: what is recorded', () => {
     await recordDocumentAccess(session(), document({ folderId: null }), 'preview')
     loadCustomFolderTree.mockResolvedValue(null)
     await recordDocumentAccess(session(), document({ folderId: OPEN_FOLDER }), 'preview')
-    await recordDocumentAccess(session(), document({ scope: 'archiv', projectId: null, folderId: null }), 'pdf')
+    await recordDocumentAccess(session(), document({ scope: 'office_shelf', projectId: null, folderId: null }), 'pdf')
     await recordDocumentAccess(session(), document({ scope: 'session', projectId: null, folderId: null }), 'pdf')
 
     expect(insertAccessLogEntry).not.toHaveBeenCalled()
   })
 
   it('names no project or folder for a shelf that has none, even when the row carries a stale one', async () => {
-    await recordDocumentAccess(session(), document({ scope: 'archiv', projectId: PROJECT, folderId: FOLDER }), 'download')
+    await recordDocumentAccess(session(), document({ scope: 'office_shelf', projectId: PROJECT, folderId: FOLDER }), 'download')
 
     expect(insertAccessLogEntry).toHaveBeenCalledWith(
-      expect.objectContaining({ scope: 'archiv', projectId: null, folderId: null, ownList: false })
+      expect.objectContaining({ scope: 'office_shelf', projectId: null, folderId: null, ownList: false })
     )
   })
 

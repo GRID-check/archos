@@ -79,7 +79,7 @@ export const INBOX_ITEM_TYPES = [
    * Actionable: a version of a document is waiting for your Freigabe
    * (ADR-0054). The FIRST actionable type outside mentions, and the reason the
    * frame stayed generic — the row points at the document and anchors on the
-   * version, so a deep link lands on the fassung being judged rather than on the
+   * version, so a deep link lands on the revision being judged rather than on the
    * file's current bytes.
    *
    * Resolved by the decision itself (approve, request changes, reject), for

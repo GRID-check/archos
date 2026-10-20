@@ -92,7 +92,7 @@ function suggestionOf(
   return {
     key,
     baseKey,
-    bauwerkId: buildingId,
+    buildingId: buildingId,
     label,
     value: entry.value,
     display: displayOf(home, entry.value),
@@ -155,7 +155,7 @@ function derivationReviews(
   )
   return deriveAll(profile, definition).map((derivation) => ({
     ...derivation,
-    suggestion: classes.get(`${BUILDING_CLASS_DERIVATION.rule}@${derivation.bauwerkId}`) ?? null,
+    suggestion: classes.get(`${BUILDING_CLASS_DERIVATION.rule}@${derivation.buildingId}`) ?? null,
   }))
 }
 

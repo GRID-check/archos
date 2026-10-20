@@ -122,7 +122,7 @@ describe('the agent-authored lane', () => {
 
 describe('Shelf (ADR-0047)', () => {
   test('is exactly the four wire shelves', () => {
-    expect([...SHELVES]).toEqual(['archiv', 'project', 'session', 'base'])
+    expect([...SHELVES]).toEqual(['office_shelf', 'project', 'session', 'base'])
   })
 
   test('accepts a shelf the wire states, case- and whitespace-tolerantly', () => {
@@ -185,25 +185,25 @@ describe('scopeForQualifier (citation keys — the versioned fallback)', () => {
     // that qualifier in the filename and lose the citation entirely. The last
     // row is the archiv shelf's retired name, read and never written.
     expect(CITATION_KEY_QUALIFIERS.map(([, shelf]) => shelf)).toEqual([
-      'archiv',
+      'office_shelf',
       'project',
       'base',
       'session',
-      'archiv',
+      'office_shelf',
     ])
   })
 
   test('the archiv shelf is written „Büroablage" and still read under its old name', () => {
-    expect(CITATION_KEY_QUALIFIERS[0]).toEqual(['Büroablage', 'archiv'])
-    expect(scopeForQualifier('Büroablage')).toBe('archiv')
-    expect(scopeForQualifier('Büroarchiv')).toBe('archiv')
+    expect(CITATION_KEY_QUALIFIERS[0]).toEqual(['Büroablage', 'office_shelf'])
+    expect(scopeForQualifier('Büroablage')).toBe('office_shelf')
+    expect(scopeForQualifier('Büroarchiv')).toBe('office_shelf')
   })
 
   test('the shelf label the reader sees is the qualifier the backend writes', () => {
     // `chat.sourceTabs.shelves` renders the shelf; the qualifier is pinned to
     // the backend's `SHELF_QUALIFIERS`. One name for one shelf on both sides.
-    expect(de.chat.sourceTabs.shelves.archiv).toBe(CITATION_KEY_QUALIFIERS[0][0])
-    expect(en.chat.sourceTabs.shelves.archiv).toBe('Office filing')
+    expect(de.chat.sourceTabs.shelves.office_shelf).toBe(CITATION_KEY_QUALIFIERS[0][0])
+    expect(en.chat.sourceTabs.shelves.office_shelf).toBe('Office filing')
   })
 
   test('every shelf is reachable from a key, so no key can go unread', () => {
@@ -214,7 +214,7 @@ describe('scopeForQualifier (citation keys — the versioned fallback)', () => {
   test('qualifiers are matched case-insensitively', () => {
     // The qualifier survives a round trip through an LLM, which may recase it.
     expect(scopeForQualifier('projektwissen')).toBe('project')
-    expect(scopeForQualifier('  BÜROARCHIV  ')).toBe('archiv')
+    expect(scopeForQualifier('  BÜROARCHIV  ')).toBe('office_shelf')
     expect(scopeForQualifier('private sitzung')).toBe('session')
     expect(scopeForQualifier('Internal')).toBeUndefined()
     expect(scopeForQualifier('')).toBeUndefined()

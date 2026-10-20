@@ -366,7 +366,7 @@ export function FileWorkspace({
   // tab's own moves are on the wire: their echoes would put rows back that
   // are about to leave.
   const liveShelf = useMemo<LiveShelf>(
-    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'archiv' }),
+    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'office_shelf' }),
     [shelf.projectId]
   )
   const { load: loadFolders } = tree
@@ -448,7 +448,7 @@ export function FileWorkspace({
         if (file) openRef.current(file)
       },
       // A link was confirmed or taken back: the section reports BOTH documents of it.
-      onRevisionChanged: (id, revision) => patchFile(id, { fassung: revision }),
+      onRevisionChanged: (id, revision) => patchFile(id, { revision }),
       // After a successful re-ingestion the document is back to 'pending'; the
       // dead-end failure UI clears and the badge flips to "Processing".
       onReingested: (id, status) => patchFile(id, { status, errorMessage: null }),
@@ -539,7 +539,7 @@ export function FileWorkspace({
   // rows. Asked again every few seconds while an upload is on screen: the
   // judgement from the names runs as soon as the batch is sealed.
   const filingQuery = useMemo<ProposalListQuery>(
-    () => (shelf.projectId ? { projectId: shelf.projectId } : { shelf: 'archiv' }),
+    () => (shelf.projectId ? { projectId: shelf.projectId } : { shelf: 'office_shelf' }),
     [shelf.projectId]
   )
   const filing = useFilingSuggestions({ query: filingQuery, refreshKey: files.length, watching: activeUploads.length > 0 })

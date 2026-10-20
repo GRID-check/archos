@@ -23,7 +23,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 
 vi.mock('@/lib/bim/model-service', () => ({
   exportAccessibleComplianceBcf: vi.fn().mockResolvedValue({
-    filename: 'pruefbuch-wohnhaus-2026-05-04.bcfzip',
+    filename: 'compliance-checks-wohnhaus-2026-05-04.bcfzip',
     bytes: new Uint8Array([0x50, 0x4b, 0x05, 0x06]),
     topics: 3,
   }),
@@ -59,7 +59,7 @@ describe('GET /api/projects/[id]/bim/checks/export', () => {
 
     expect(response.status).toBe(200)
     expect(response.headers.get('Content-Disposition')).toBe(
-      'attachment; filename="pruefbuch-wohnhaus-2026-05-04.bcfzip"'
+      'attachment; filename="compliance-checks-wohnhaus-2026-05-04.bcfzip"'
     )
     expect(response.headers.get('Content-Type')).toBe('application/octet-stream')
     expect(response.headers.get('X-Grid-Bcf-Topics')).toBe('3')
@@ -70,12 +70,12 @@ describe('GET /api/projects/[id]/bim/checks/export', () => {
   })
 
   it('passes the project facts through to the catalogue run', async () => {
-    await call(`?modelId=${MODEL_ID}&gebaeudeklasse=4&hauptnutzung=wohnen`)
+    await call(`?modelId=${MODEL_ID}&buildingClass=4&mainUse=wohnen`)
 
     expect(exportAccessibleComplianceBcf).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org-1' }),
       'proj-1',
-      { modelId: MODEL_ID, modelName: null, gebaeudeklasse: 4, hauptnutzung: 'residential' }
+      { modelId: MODEL_ID, modelName: null, buildingClass: 4, mainUse: 'residential' }
     )
   })
 
@@ -83,13 +83,13 @@ describe('GET /api/projects/[id]/bim/checks/export', () => {
     // The rules that need a Gebäudeklasse then stand down with their reason,
     // which is the whole design. Substituting a default would put thresholds
     // in the file that nobody chose.
-    await call(`?modelId=${MODEL_ID}&gebaeudeklasse=7`)
+    await call(`?modelId=${MODEL_ID}&buildingClass=7`)
 
     expect(exportAccessibleComplianceBcf).toHaveBeenCalledWith(expect.anything(), 'proj-1', {
       modelId: MODEL_ID,
       modelName: null,
-      gebaeudeklasse: null,
-      hauptnutzung: null,
+      buildingClass: null,
+      mainUse: null,
     })
   })
 
@@ -97,13 +97,13 @@ describe('GET /api/projects/[id]/bim/checks/export', () => {
     // A UUID carried through a conversation is a reliable source of
     // hallucinated identifiers; the file name is how the rest of the app
     // addresses a model.
-    await call('?model=Haus-A_V3.ifc&gebaeudeklasse=4')
+    await call('?model=Haus-A_V3.ifc&buildingClass=4')
 
     expect(exportAccessibleComplianceBcf).toHaveBeenCalledWith(expect.anything(), 'proj-1', {
       modelId: null,
       modelName: 'Haus-A_V3.ifc',
-      gebaeudeklasse: 4,
-      hauptnutzung: null,
+      buildingClass: 4,
+      mainUse: null,
     })
   })
 

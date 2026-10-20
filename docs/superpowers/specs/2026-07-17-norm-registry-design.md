@@ -190,7 +190,7 @@ page text:
 Every chunk is stamped:
 
 ```
-doc_id, edition, edition_status, rank, role, country, punkt, punkt_title,
+doc_id, edition, edition_status, rank, role, country, punkt, clause_title,
 file_name, page_label, chunk_index
 ```
 

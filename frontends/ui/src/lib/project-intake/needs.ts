@@ -143,7 +143,7 @@ function candidatesFor(
   buildings: BuildingInstance[]
 ): Candidate[] {
   return definition.stages.flatMap((stage) => {
-    if (stage.scope === 'bauwerk')
+    if (stage.scope === 'building')
       return buildings.flatMap((building) => buildingCandidates(stage, building, answers))
     return stage.questions
       .map((question) => candidateFor(question, answers, {}))
@@ -195,9 +195,9 @@ function labelFor(candidate: Candidate, definition: ProjectIntakeDefinition): st
 
 /** A known answer as the derivation reads it: `offen` and a number_tri left open are missing. */
 function knownAnswer(answers: Answers, answerKey: string): ProjectPrimitiveValue | undefined {
-  if (answers[modeKeyFor(answerKey)] === 'offen') return undefined
+  if (answers[modeKeyFor(answerKey)] === 'open') return undefined
   const value = answers[answerKey]
-  return value === 'offen' ? undefined : value
+  return value === 'open' ? undefined : value
 }
 
 /** Which building question writes each building class input, in the wizard's order. */
@@ -206,7 +206,7 @@ function buildingClassReaders(
 ): Array<{ questionId: string; input: string }> {
   const inputs: readonly string[] = BUILDING_CLASS_DERIVATION.inputs
   return definition.stages
-    .filter((stage) => stage.scope === 'bauwerk')
+    .filter((stage) => stage.scope === 'building')
     .flatMap((stage) => stage.questions)
     .map((question) => ({ questionId: question.id, input: baseKeyOf(question) ?? '' }))
     .filter(({ input }) => inputs.includes(input))
@@ -324,7 +324,7 @@ function toNeed(
   return {
     key: candidate.key,
     baseKey: candidate.baseKey,
-    bauwerkId: candidate.buildingId,
+    buildingId: candidate.buildingId,
     label: labelFor(candidate, definition),
     type: candidate.type,
     ...(needOptions ? { options: needOptions } : {}),
@@ -357,27 +357,27 @@ export interface KeyQuestion {
 
 /** The key's scope parts, when it has the shape the question's scope asks for. */
 function scopedParts(
-  scope: 'project' | 'bauwerk' | 'zone',
+  scope: 'project' | 'building' | 'zone',
   parts: string[]
 ): { buildingId: string | null; zone: string | null } | null {
   const [, buildingId, zone] = parts
   if (scope === 'project') return parts.length === 1 ? { buildingId: null, zone: null } : null
   if (!isBuildingId(buildingId ?? '')) return null
-  if (scope === 'bauwerk') return parts.length === 2 ? { buildingId, zone: null } : null
+  if (scope === 'building') return parts.length === 2 ? { buildingId, zone: null } : null
   return parts.length === 3 && zone ? { buildingId, zone } : null
 }
 
 /** Every question that writes a profile key, with the scope its keys take and the zone uses it is asked for. */
 function writers(definition: ProjectIntakeDefinition): Array<{
   question: ProjectIntakeQuestion
-  scope: 'project' | 'bauwerk' | 'zone'
+  scope: 'project' | 'building' | 'zone'
   uses: readonly string[] | null
 }> {
   const allUses = zoneUses(definition).map((option) => option.value)
   return definition.stages.flatMap((stage) => [
     ...stage.questions.map((question) => ({
       question,
-      scope: stage.scope === 'bauwerk' ? ('bauwerk' as const) : ('project' as const),
+      scope: stage.scope === 'building' ? ('building' as const) : ('project' as const),
       uses: null,
     })),
     ...(stage.zoneCommon ?? []).map((question) => ({ question, scope: 'zone' as const, uses: allUses })),

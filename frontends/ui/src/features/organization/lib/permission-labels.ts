@@ -19,7 +19,9 @@ export const PERMISSION_LABEL_KEYS: Readonly<Record<string, string>> = {
   'org:compliance:manage': 'compliance_manage',
   'org:audit:view': 'audit_view',
   'org:downloads:view': 'downloads_view',
-  'org:archiv:manage': 'archiv_manage',
+  'org:office_shelf:manage': 'office_shelf_manage',
+  // The retired slug of the same permission: a role that still holds it reads the same.
+  'org:archiv:manage': 'office_shelf_manage',
   'org:skills:manage': 'skills_manage',
   'org:projects:create': 'projects_create',
   'org:projects:administer': 'projects_administer',

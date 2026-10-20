@@ -32,20 +32,24 @@ export type AnnotationExportRevision = (typeof ANNOTATION_EXPORT_REVISIONS)[numb
  * `includeProposals=1` adds Piloti's proposals nobody took over, under a
  * heading of their own; they never mix with the office's marks.
  */
-export const annotationExportQuerySchema = z.object({
-  format: z.enum(ANNOTATION_EXPORT_FORMATS).default('pdf'),
-  scope: z.enum(ANNOTATION_EXPORT_SCOPES).default('open'),
-  fassung: z.enum(ANNOTATION_EXPORT_REVISIONS).default('current'),
-  includeProposals: z
-    .enum(['0', '1'])
-    .default('0')
-    .transform((value) => value === '1'),
-})
+export const annotationExportQuerySchema = z
+  .object({
+    format: z.enum(ANNOTATION_EXPORT_FORMATS).default('pdf'),
+    scope: z.enum(ANNOTATION_EXPORT_SCOPES).default('open'),
+    revision: z.enum(ANNOTATION_EXPORT_REVISIONS).optional(),
+    /** The name before the rename: a link a person saved still works. Remove after one release. */
+    fassung: z.enum(ANNOTATION_EXPORT_REVISIONS).optional(),
+    includeProposals: z
+      .enum(['0', '1'])
+      .default('0')
+      .transform((value) => value === '1'),
+  })
+  .transform(({ fassung, revision, ...rest }) => ({ ...rest, revision: revision ?? fassung ?? 'current' }))
 
 export interface AnnotationExportOptions {
   format: AnnotationExportFormat
   scope: AnnotationExportScope
-  fassung: AnnotationExportRevision
+  revision: AnnotationExportRevision
   includeProposals: boolean
 }
 
@@ -54,7 +58,7 @@ export function annotationExportHref(documentId: string, options: AnnotationExpo
   const query = new URLSearchParams({
     format: options.format,
     scope: options.scope,
-    fassung: options.fassung,
+    revision: options.revision,
   })
   if (options.includeProposals) query.set('includeProposals', '1')
   return `/api/documents/${encodeURIComponent(documentId)}/annotations/export?${query.toString()}`

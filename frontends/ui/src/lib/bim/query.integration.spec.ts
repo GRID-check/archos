@@ -961,7 +961,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     // The rules read published values, so this is the only place that proves
     // they read the values as STORED — a Pset merged occurrence-over-type and
     // round-tripped through jsonb, not a hand-made record.
-    const result = await run(bimQuerySchema.parse({ op: 'compliance', gebaeudeklasse: 3 }))
+    const result = await run(bimQuerySchema.parse({ op: 'compliance', buildingClass: 3 }))
     const rules = result.compliance ?? []
     expect(rules.length).toBeGreaterThan(0)
     // Every rule reports SOME state; none may silently vanish.
@@ -1032,7 +1032,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     // only place that proves the op reads BOTH revisions from real SQL rather
     // than comparing a model against itself.
     const result = await runBimQuery(
-      bimQuerySchema.parse({ op: 'compliance-diff', baseModelId: modelId, gebaeudeklasse: 5 }),
+      bimQuerySchema.parse({ op: 'compliance-diff', baseModelId: modelId, buildingClass: 5 }),
       { modelId: revisionModelId, organizationId: ORG }
     )
     const fire = (result.complianceChanges ?? []).find(
@@ -1046,7 +1046,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
 
   it('reports nothing moved when a revision is compared with itself', async () => {
     const result = await runBimQuery(
-      bimQuerySchema.parse({ op: 'compliance-diff', baseModelId: modelId, gebaeudeklasse: 5 }),
+      bimQuerySchema.parse({ op: 'compliance-diff', baseModelId: modelId, buildingClass: 5 }),
       { modelId, organizationId: ORG }
     )
     expect(result.complianceChanges).toEqual([])
@@ -1083,7 +1083,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       ...entry,
       confirmedAt: entry.confirmedAt.toISOString(),
     }))
-    const rules = await run(bimQuerySchema.parse({ op: 'compliance', gebaeudeklasse: 5 }))
+    const rules = await run(bimQuerySchema.parse({ op: 'compliance', buildingClass: 5 }))
 
     // Against the revision it was made on: covering.
     const current = attachConfirmations(rules.compliance ?? [], confirmations, modelId)
@@ -1133,7 +1133,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
       confirmedAt: entry.confirmedAt.toISOString(),
     }))
     const { attachConfirmations } = await import('./rules')
-    const rules = await run(bimQuerySchema.parse({ op: 'compliance', gebaeudeklasse: 5 }))
+    const rules = await run(bimQuerySchema.parse({ op: 'compliance', buildingClass: 5 }))
 
     // Haus-A's Prüfbuch, given only Haus-A's revisions. The Nebengebäude row
     // exists and must not appear here — least of all labelled "Älterer Stand",
@@ -1195,7 +1195,7 @@ describe.skipIf(!url)('BIM queries against live Postgres', () => {
     const { buildComplianceBcf } = await import('./bcf')
     const { attachConfirmations } = await import('./rules')
 
-    const rules = await run(bimQuerySchema.parse({ op: 'compliance', gebaeudeklasse: 5 }))
+    const rules = await run(bimQuerySchema.parse({ op: 'compliance', buildingClass: 5 }))
     const bcf = buildComplianceBcf({
       projectId: FIXTURE_PROJECT,
       projectName: 'Integrationsfixture',

@@ -1,5 +1,5 @@
 /**
- * The wire contract of `POST /api/documents/{newer}/fassung-compare`: what Piloti
+ * The wire contract of `POST /api/documents/{newer}/revision-compare`: what Piloti
  * marks on a page between two Fassungen, and says in words (CONTEXT.md, „Fassung").
  *
  * No `server-only` and no drizzle: the route, the service and the browser hook all
@@ -23,7 +23,7 @@ export const revisionCompareBodySchema = z.object({
 /**
  * One change, boxed on the NEWER page. `x`, `y` are the top-left corner and `w`, `h`
  * the size, all page-relative `0..1` with the origin at the top left. The compare
- * view draws exactly this shape (`features/documents/components/fassung-compare`).
+ * view draws exactly this shape (`features/documents/components/revision-compare`).
  */
 export interface CompareRegion {
   /** 1-based page of the newer Fassung the box sits on. */

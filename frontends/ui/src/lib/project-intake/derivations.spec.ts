@@ -55,7 +55,7 @@ describe('deriveGebaeudeklasse', () => {
     // No longer GK 1 (no three-side access), but 180 m² ≤ 400 m² makes it GK 2 by the first branch.
     [
       'the same EFH without three-side access is GK 2',
-      { ...singleFamilyHouse, access_three_sides: 'nein' },
+      { ...singleFamilyHouse, access_three_sides: 'no' },
       known(2),
     ],
     // Angebaut excludes GK 1; 300 m² ≤ 400 m² gives GK 2.
@@ -177,13 +177,13 @@ describe('deriveGebaeudeklasse', () => {
     expect(
       deriveBuildingClass({
         ...singleFamilyHouse,
-        access_three_sides: 'ja',
+        access_three_sides: 'yes',
         storeys_above_ground: '2',
         escape_level_m: '3.2',
       }).value
     ).toBe(1)
     // `offen` is no answer: GK 1 or GK 2 is then open on the access alone.
-    expect(deriveBuildingClass({ ...singleFamilyHouse, access_three_sides: 'offen' })).toEqual({
+    expect(deriveBuildingClass({ ...singleFamilyHouse, access_three_sides: 'open' })).toEqual({
       value: null,
       hochhaus: false,
       applicable: true,

@@ -66,8 +66,8 @@ describe('profileReview', () => {
   })
 
   it('opens the class card on the Bauwerk with a class to take', () => {
-    expect(leadDerivation([DERIVATION_OPEN, DERIVATION_READY])?.bauwerkId).toBe('bldg1')
-    expect(leadDerivation([DERIVATION_OPEN])?.bauwerkId).toBe('bldg2')
+    expect(leadDerivation([DERIVATION_OPEN, DERIVATION_READY])?.buildingId).toBe('bldg1')
+    expect(leadDerivation([DERIVATION_OPEN])?.buildingId).toBe('bldg2')
     expect(leadDerivation([])).toBeNull()
   })
 

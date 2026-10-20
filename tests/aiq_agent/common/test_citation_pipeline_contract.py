@@ -122,7 +122,7 @@ class Hit:
             ("collection", self.collection),
             ("doc_class", self.doc_class),
             ("shelf", self.shelf),
-            ("punkt_id", self.clause),
+            ("clause_id", self.clause),
         ):
             if value:
                 metadata[key] = value
@@ -629,7 +629,7 @@ class TestTheTwoReadersAgree:
         from aiq_agent.common.grounding_block import begin_grounding_capture
         from aiq_agent.common.grounding_block import end_grounding_capture
 
-        address = Address(kind="§", number="63", absatz="1", bundesland="W", bundesland_source="the question")
+        address = Address(kind="§", number="63", subsection="1", federal_state="W", federal_state_source="the question")
         token = begin_grounding_capture()
         try:
             tool_output = format_passages(self.RIS_PASSAGES, None, address)

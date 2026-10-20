@@ -83,7 +83,7 @@ KNOWLEDGE_SEARCH = "knowledge_search"
 NEEDS_EVIDENCE_THRESHOLD = 0.5
 #: A family is prefetched at or above this; the top ``MAX_FAMILY_PREFETCH``.
 #: Measured, not guessed: on the 27 loop-eval questions (2026-09-22,
-#: ``tests/fixtures/herleitung/decision_eval_2026-09-22.csv``) the expected
+#: ``tests/fixtures/derivation/decision_eval_2026-09-22.csv``) the expected
 #: family's probability ran 0.54-0.97 and no Bauordnung row's top family
 #: passed 0.49, so 0.5 is recall 1.0 at precision 1.0 where 0.6 lost two
 #: rows. Re-run ``task be:eval:decisions`` before moving it.

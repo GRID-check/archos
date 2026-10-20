@@ -728,7 +728,7 @@ describe('InboxItemRow — a row whose target is a document', () => {
   })
 
   test('offers nothing for an Archiv document, which has no project chat', () => {
-    render(<InboxItemRow item={reviewRequest({ href: '/app/archiv?doc=doc-7' })} />)
+    render(<InboxItemRow item={reviewRequest({ href: '/app/office-shelf?doc=doc-7' })} />)
     expect(screen.queryByTestId('discuss-document')).not.toBeInTheDocument()
   })
 })
@@ -797,12 +797,12 @@ describe('InboxItemRow — a new Fassung (document.new_revision)', () => {
           <InboxItemRow item={row} />
         </I18nProvider>,
       )
-    const many = de(newRevision({ ...same, variant: 'marks', openMarks: 4, marksFassung: 2 }))
+    const many = de(newRevision({ ...same, variant: 'marks', openMarks: 4, marksRevision: 2 }))
     expect(screen.getByText('4 offene Anmerkungen aus Fassung 2 prüfen')).toBeInTheDocument()
     many.unmount()
 
     // Beside what changed, and from another document: „the previous Fassung".
-    de(newRevision({ variant: 'mark_earlier', openMarks: 1, marksFassung: null }))
+    de(newRevision({ variant: 'mark_earlier', openMarks: 1, marksRevision: null }))
     expect(screen.getByText('1 offene Anmerkung aus der vorigen Fassung prüfen')).toBeInTheDocument()
     expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Wand im EG verschoben.')
   })

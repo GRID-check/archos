@@ -29,7 +29,7 @@ _BLOCK = (
     "## Gliederung\n"
     "- Punkt 0: Vorbemerkungen (S. 3)\n"
     "\n"
-    "Einen gelisteten Punkt öffnest du mit `read_passage(document=…, punkt=…)`.\n"
+    "Einen gelisteten Punkt öffnest du mit `read_passage(document=…, clause=…)`.\n"
 )
 
 

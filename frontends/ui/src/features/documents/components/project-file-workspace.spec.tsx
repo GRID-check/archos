@@ -2441,7 +2441,7 @@ describe('ProjectFileWorkspace — Fassungen', () => {
     resetPreviewStore()
   })
 
-  const row = (id: string, filename: string, revision: DocumentWireRow['fassung']): DocumentWireRow =>
+  const row = (id: string, filename: string, revision: DocumentWireRow['revision']): DocumentWireRow =>
     ({
       id,
       filename,
@@ -2459,7 +2459,7 @@ describe('ProjectFileWorkspace — Fassungen', () => {
       tags: null,
       assignees: [],
       authoredBy: 'user',
-      fassung: revision,
+      revision,
     }) as DocumentWireRow
 
   it('lists one entry for a document and opens its older Fassung by id from the preview', async () => {
@@ -2529,7 +2529,7 @@ describe('ProjectFileWorkspace — Fassungen', () => {
 
     // The older document folds into the newer one's entry; the open one carries the link.
     await waitFor(() => expect(screen.queryByText('Tragwerk_Altstand.pdf')).not.toBeInTheDocument())
-    expect(useFilePreviewStore.getState().file?.fassung?.supersedes).toEqual([
+    expect(useFilePreviewStore.getState().file?.revision?.supersedes).toEqual([
       { id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' },
     ])
   })

@@ -189,7 +189,7 @@ role name:
 | Who | May |
 |---|---|
 | whoever may open the document (`project:view` and read in its folder; on the Büroablage every member) | read the marks and their threads, export the Protokoll, be @mentioned and be told |
-| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:archiv:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
+| whoever may write it (`project:documents:write` or `project:edit`, and write in its folder; on the Büroablage `org:office_shelf:manage`) | set a mark, answer in a thread, take over, dismiss, resolve or reopen, assign, set or clear a date, delegate to Piloti, carry an open mark to the current Fassung (to a replacing document only with the right to write that one too); **be made Zuständige** (`isAssignable`), because the Zuständige answers and closes the mark |
 | the author (`createdBy`, a person's own mark) | reword it („Bearbeiten“ in the card's menu; the server lets any writer change a `body`, the card offers it to the author) and delete it (`mayDeleteMark`), while nothing but its author and Piloti stands on it (below) |
 | the author of a reply (a person's own, `created_by`), who may still write the document | reword it and delete it, while the mark is live and Piloti has not taken the reply up (below); never a colleague's reply, never Piloti's (a note Piloti posted for them goes by the chat card's undo) |
 
@@ -496,7 +496,7 @@ longer fits is resolved and set again instead.
 
 - **Under the same name** the mark moves in place: `version_id` becomes the
   published version's, compared and swapped against the Fassung the mark was
-  read on and its status (`fassung` in `updateDocumentAnnotation`), so two
+  read on and its status (`revision` in `updateDocumentAnnotation`), so two
   people carrying it at once move it once. Its number, its thread, and every
   inbox row, wake and change record anchored on it stay whole, and it is drawn
   again. Nobody is told: the new Fassung already told them, and the room
@@ -544,7 +544,7 @@ whose chain cannot be read offers no carry rather than failing.
 The review shows both sides. C's review lists B's open marks read-only under
 „Aus Fassung „B““ (the hook reads B's list through the same typed client,
 `useDocumentReview`'s `carried`, the direct predecessors from the file's
-`fassung` facts, at most three), each with „Auf aktuelle Fassung übernehmen“
+`revision` facts, at most three), each with „Auf aktuelle Fassung übernehmen“
 where it has a `carryTarget` (labelled for a screen reader with its number,
 „Anmerkung 4 auf aktuelle Fassung übernehmen“), „Alle übernehmen“ for several
 (the same PATCHes, four at a time, and this list and B's read ONCE after the
@@ -1353,7 +1353,7 @@ A review ends outside the app: as the Protokoll of a Jour fixe, or sent to the
 client or a consultant. „Protokoll exportieren" in the Prüfansicht's header
 (`features/documents/components/review/review-export-menu.tsx`) downloads one.
 
-`GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&fassung=current|all&includeProposals=1`
+`GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&revision=current|all&includeProposals=1`
 (`frontends/ui/src/lib/annotations/export.ts`; the query and the link in
 `export-request.ts`, shared by the route and the menu). The defaults are a PDF
 of the open marks.
@@ -1362,8 +1362,8 @@ of the open marks.
 still open is in every Protokoll whichever Fassung it was set on, and its entry
 names that Fassung: Index C arriving the day before the Jour fixe does not
 answer the marks on Index B, and a default that dropped them would drop exactly
-the points the meeting is for. `fassung=current` leaves out what was CLOSED on
-earlier Fassungen; `fassung=all` takes that in too. So the menu offers the
+the points the meeting is for. `revision=current` leaves out what was CLOSED on
+earlier Fassungen; `revision=all` takes that in too. So the menu offers the
 Fassung only under „Auch erledigte“: with „Nur offene“ it would change
 nothing. This was chosen over defaulting the menu to „Alle Fassungen“ whenever
 an earlier Fassung has a live mark because it holds on every path (the bare

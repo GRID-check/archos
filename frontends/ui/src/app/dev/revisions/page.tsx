@@ -213,7 +213,7 @@ const BLOCKS: readonly Block[] = [
     note: 'Ältere Dokumente unter anderen Namen, als Fassung 2 und 1 nummeriert; der Index ist der Zusatz.',
     render: () => (
       <DocumentRevisions
-        file={file('doc_cross', INDEX_C, { fassung: CROSS_FACTS })}
+        file={file('doc_cross', INDEX_C, { revision: CROSS_FACTS })}
         canManage
         viewer={WRITER}
         client={fixtureClient('doc_cross', [upload('doc_cross', 1, '2026-09-02T07:30:00Z', ANNA)])}
@@ -227,7 +227,7 @@ const BLOCKS: readonly Block[] = [
     note: 'Eine Zeitleiste, nach Datum gemischt, durchnummeriert.',
     render: () => (
       <DocumentRevisions
-        file={file('doc_mixed', INDEX_C, { versionCount: 3, fassung: CROSS_FACTS })}
+        file={file('doc_mixed', INDEX_C, { versionCount: 3, revision: CROSS_FACTS })}
         canManage
         viewer={WRITER}
         client={fixtureClient('doc_mixed', [
@@ -309,7 +309,7 @@ const BLOCKS: readonly Block[] = [
       <DocumentRevisions
         file={file('doc_old', INDEX_B, {
           createdAt: '2026-07-02T09:10:00Z',
-          fassung: { ...EMPTY_REVISION_LINKS, supersededBy: { id: 'doc_cross', filename: INDEX_C } },
+          revision: { ...EMPTY_REVISION_LINKS, supersededBy: { id: 'doc_cross', filename: INDEX_C } },
         })}
         canManage
         viewer={WRITER}
@@ -326,7 +326,7 @@ const BLOCKS: readonly Block[] = [
       <DocumentRevisions
         file={file('doc_suggest', 'Erdgeschoss_Einreichung_final.pdf', {
           createdAt: '2026-09-30T10:00:00Z',
-          fassung: {
+          revision: {
             ...EMPTY_REVISION_LINKS,
             suggestion: {
               of: { id: 'doc_cross', filename: INDEX_C },
@@ -352,7 +352,7 @@ const BLOCKS: readonly Block[] = [
       return (
         <DocumentRevisions
           file={file('doc_long', 'Wohnanlage-Schlosspark_Bauteil-B_Grundriss_1OG_Einreichung_Index-D_2026-08-14.pdf', {
-            fassung: {
+            revision: {
               ...EMPTY_REVISION_LINKS,
               supersedes: [{ id: 'doc_long_c', filename: older }],
               history: [
@@ -398,7 +398,7 @@ function OpenShut({ enabled }: { enabled: boolean }): null {
   useEffect(() => {
     if (!enabled) return
     const timer = setInterval(() => {
-      const toggles = document.querySelectorAll<HTMLButtonElement>('[data-testid="document-fassungen-toggle"]')
+      const toggles = document.querySelectorAll<HTMLButtonElement>('[data-testid="document-revisions-toggle"]')
       if (toggles.length === 0) return
       toggles.forEach((toggle) => {
         if (toggle.getAttribute('aria-expanded') === 'false') toggle.click()

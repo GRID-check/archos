@@ -30,7 +30,7 @@ interface UseOfficeShelfDocumentsReturn {
  * (`useFileUpload`) — progress tracking, orchestrated ingestion polling, error
  * surface — but targets the Archiv upload endpoint (filing into `folderId`, per file when a folder upload says so) and collection instead of a
  * project's. The collection name is resolved by the caller (from
- * `GET /api/archiv/documents`) and passed in.
+ * `GET /api/office-shelf/documents`) and passed in.
  */
 export function useOfficeShelfDocuments(options: UseOfficeShelfDocumentsOptions = {}): UseOfficeShelfDocumentsReturn {
   const { collectionName, folderId, onComplete, onError } = options

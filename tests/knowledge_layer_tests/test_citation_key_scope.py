@@ -58,7 +58,7 @@ def test_a_name_held_on_two_shelves_is_qualified_on_both():
     text = _format(
         [
             _chunk(file_name="Plan.pdf", collection="proj_alpha", shelf="project"),
-            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="archiv"),
+            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="office_shelf"),
         ]
     )
     assert "Citation: Plan.pdf (Projektwissen), p.3" in text
@@ -71,7 +71,7 @@ def test_only_the_ambiguous_name_is_qualified():
     text = _format(
         [
             _chunk(file_name="Plan.pdf", collection="proj_alpha", shelf="project"),
-            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="archiv"),
+            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="office_shelf"),
             _chunk(file_name="Konzept.pdf", collection="proj_alpha", shelf="project", page=7),
         ]
     )
@@ -126,7 +126,7 @@ def test_the_display_title_is_unaffected():
     text = _format(
         [
             _chunk(file_name="Plan.pdf", collection="proj_alpha", shelf="project"),
-            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="archiv"),
+            _chunk(file_name="Plan.pdf", collection="archiv_org1", shelf="office_shelf"),
         ]
     )
     assert "Source: Plan.pdf\n" in text

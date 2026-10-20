@@ -83,7 +83,7 @@ const uploader = personOf('uploader-1')
 const quarantinedOfficeShelfIfc = (): Document =>
   makeDocument({
     id: 'doc-q',
-    scope: 'archiv',
+    scope: 'office_shelf',
     projectId: null,
     filename: 'Haus-A.ifc',
     createdBy: 'uploader-1',

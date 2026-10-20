@@ -1,6 +1,6 @@
 /**
  * The wire shape of a shelf's summary (`GET /api/documents/summary`,
- * `GET /api/archiv/documents/summary`, ADR-0102): what Postgres alone can say
+ * `GET /api/office-shelf/documents/summary`, ADR-0102): what Postgres alone can say
  * about every document on the shelf, counted rather than listed.
  *
  * The Files workspace reads a folder LEVEL page by page, so it no longer holds

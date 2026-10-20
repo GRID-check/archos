@@ -80,7 +80,7 @@ const VIEW: IntakeView = {
     {
       key: 'escape_level_m@bldg1',
       baseKey: 'escape_level_m',
-      bauwerkId: 'bldg1',
+      buildingId: 'bldg1',
       label: 'Fluchtniveau (Zielzustand)',
       type: 'number_tri',
       unit: 'm',
@@ -97,7 +97,7 @@ const VIEW: IntakeView = {
         {
           key: 'building_type@bldg1',
           baseKey: 'building_type',
-          bauwerkId: 'bldg1',
+          buildingId: 'bldg1',
           label: 'Bauwerkstyp',
           value: 'building',
           display: 'Gebäude',

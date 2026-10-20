@@ -41,9 +41,9 @@ def knowledge_search(query: str) -> str:
 
 
 @tool
-def read_passage(document: str, punkt: str | None = None) -> str:
+def read_passage(document: str, clause: str | None = None) -> str:
     """Open a named passage of a known document."""
-    RAN.append(f"read_passage:{document}|{punkt or ''}")
+    RAN.append(f"read_passage:{document}|{clause or ''}")
     return f"Passage aus {document}"
 
 
@@ -154,7 +154,7 @@ class TestRoundZero:
         assert result.tool_iterations == 1
 
     async def test_a_second_fetch_of_the_model_is_round_one(self, steps):
-        opens = AIMessage(content="", tool_calls=[_call("read_passage", "c1", document="OIB-RL 2", punkt="3.1")])
+        opens = AIMessage(content="", tool_calls=[_call("read_passage", "c1", document="OIB-RL 2", clause="3.1")])
         result = await _run(_agent(opens, ANSWER, llm_calls=[]))
         assert [r.get("index") for r in result.retrieval_rounds] == [0, 1]
         assert any(s.id == "status:retrieval:1" for s in steps.steps)
@@ -166,7 +166,7 @@ class TestAFollowUpRoundZero:
         calls: list = []
         result = await _run(
             _agent(ANSWER, llm_calls=calls),
-            prefetch=({"name": "read_passage", "args": {"document": "OIB-RL 2", "punkt": "2.2"}},),
+            prefetch=({"name": "read_passage", "args": {"document": "OIB-RL 2", "clause": "2.2"}},),
             question="und in GK 4?",
         )
         assert RAN == ["read_passage:OIB-RL 2|2.2"]

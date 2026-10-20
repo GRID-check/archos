@@ -69,7 +69,8 @@ class NormsVerifyRequest(BaseModel):
     federal_state: str = Field("", validation_alias=AliasChoices("federal_state", "bundesland"))
     expect: str = ""
     exclude: list[str] = Field(default_factory=list)
-    gesetzesnummer: str = ""
+    # An admin tab that has not reloaded still sends `gesetzesnummer`; read-only.
+    statute_number: str = Field("", validation_alias=AliasChoices("statute_number", "gesetzesnummer"))
 
 
 def _rejection_reasons(norms_file: NormsFile) -> list[str]:
@@ -205,7 +206,7 @@ def add_norm_routes(router: APIRouter) -> None:
                 continue
             if not hit.full_law_url:
                 continue
-            if body.gesetzesnummer and f"Gesetzesnummer={body.gesetzesnummer}" not in hit.full_law_url:
+            if body.statute_number and f"Gesetzesnummer={body.statute_number}" not in hit.full_law_url:
                 continue
             candidates.append(
                 {

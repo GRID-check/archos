@@ -296,7 +296,7 @@ corpus `baurecht` on ≥ 90 % of the regulation rows, and `needs_evidence`
 never below 0.5 on a ruling row. Below them, `turn_decisions: false`.
 
 **Measured 2026-09-22** from the branch that introduced this, committed as
-`tests/fixtures/herleitung/decision_eval_2026-09-22.csv`: 27 of 27
+`tests/fixtures/derivation/decision_eval_2026-09-22.csv`: 27 of 27
 decided; family top-1 **1.00** (the expected family's probability ran
 0.54–0.97; no Bauordnung row's top family passed 0.49); corpus `baurecht`
 on **1.00** of the regulation rows and `projekt` (0.91) on the one
@@ -386,7 +386,7 @@ numbers above are one run on German questions the product actually gets.
   `frontends/aiq_api/tests/conftest.py`): the suites never reach the live
   endpoint unless a test turns decisions on and stubs it.
 - `tests/test_decision_eval.py`: the adoption gate's arithmetic;
-  `tests/fixtures/herleitung/decision_eval_2026-09-22.csv`: its last result.
+  `tests/fixtures/derivation/decision_eval_2026-09-22.csv`: its last result.
 
 ## Pros and Cons of the Options
 

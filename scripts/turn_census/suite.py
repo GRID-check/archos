@@ -1,7 +1,7 @@
 """Answer suite: the reference questions through the real agent, timed and checked.
 
 `census.py` measures one question. This runs the loop eval's question set
-(`tests/fixtures/herleitung/loop_eval_questions.yaml`) through `nat run`, N
+(`tests/fixtures/derivation/loop_eval_questions.yaml`) through `nat run`, N
 times each and several at once, and writes one report that answers both
 questions a change to the prompt, the retrieval or the answer pipeline has to
 answer: did the answers get slower or more variable, and are they still right.
@@ -67,7 +67,7 @@ from typing import Any
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
-QUESTIONS = ROOT / "tests" / "fixtures" / "herleitung" / "loop_eval_questions.yaml"
+QUESTIONS = ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 PRECEDENT_QUESTIONS = ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
 sys.path.insert(0, str(HERE))
 

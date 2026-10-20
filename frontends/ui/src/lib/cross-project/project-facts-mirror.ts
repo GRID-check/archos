@@ -57,10 +57,10 @@ export interface ProjectFactsUpdateWire {
 const WEIGHT_WIRE_NAMES: { readonly [K in keyof typeof SIMILARITY_WEIGHTS]: string } = {
   federalState: 'federal_state',
   buildingClass: 'building_class',
-  buildingClassAdjacent: 'gebaeudeklasse_adjacent',
+  buildingClassAdjacent: 'building_class_adjacent',
   constructionMethod: 'construction_method',
-  use: 'nutzung',
-  useMax: 'nutzung_max',
+  use: 'use',
+  useMax: 'use_max',
   workType: 'work_type',
 }
 

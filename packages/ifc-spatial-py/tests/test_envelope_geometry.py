@@ -178,8 +178,8 @@ def _all_entries(value: dict) -> dict[str, dict]:
     found: dict[str, dict] = {}
     for group in value["byKind"].values():
         found.update(_by_id(group))
-    found.update(_by_id(value["innenliegend"]))
-    found.update(_by_id(value["unbestimmt"]))
+    found.update(_by_id(value["interior"]))
+    found.update(_by_id(value["undetermined"]))
     return found
 
 
@@ -196,7 +196,7 @@ def test_every_candidate_in_the_sample_house_is_decided_by_declaration(envelope:
     value = envelope.value
     assert value["routes"] == {eg.ROUTE_DECLARED: 17}
     assert len(_all_entries(value)) == 23
-    assert value["unbestimmt"] == []
+    assert value["undetermined"] == []
     for entry in _all_entries(value).values():
         assert entry["route"] == eg.ROUTE_DECLARED
         assert entry["because"].startswith("Pset_")
@@ -212,7 +212,7 @@ def test_the_envelope_is_the_declared_outside_and_nothing_else(envelope: Answer)
         "Dach": 1,
     }
     assert value["elementCount"] == 17
-    inside = _by_id(value["innenliegend"])
+    inside = _by_id(value["interior"])
     # Two partitions, two internal doors, two slabs.
     assert set(inside) == {
         PARTITION,
@@ -254,10 +254,10 @@ def test_the_ground_slab_declared_internal_is_named_not_absorbed(envelope: Answe
     """146.199 m² that OIB 6 would count and this file says are not external.
 
     The declaration is not overruled and the slab is not silently dropped
-    either: it sits in ``innenliegend`` with its area, and the caveat says in
+    either: it sits in ``interior`` with its area, and the caveat says in
     German why an architect should look at it.
     """
-    slab = _by_id(envelope.value["innenliegend"])[GROUND_SLAB]
+    slab = _by_id(envelope.value["interior"])[GROUND_SLAB]
     assert slab["external"] is False
     assert slab["route"] == eg.ROUTE_DECLARED
     assert slab["area"] == pytest.approx(146.19905625, rel=1e-4)
@@ -346,7 +346,7 @@ def test_a_flat_slab_reports_one_area_matching_its_declared_quantity(house: Spat
     house measures in MILLIMETRES and declares areas in square metres, and
     scaling by ``unit_scale ** 2`` would have made this 146 mm².
     """
-    slab = _by_id(envelope.value["innenliegend"])[GROUND_SLAB]
+    slab = _by_id(envelope.value["interior"])[GROUND_SLAB]
     assert slab["area"] == pytest.approx(slab["projectedArea"], abs=1e-6)
     assert slab["via"] == "Grundrissprojektion"
     found = house.declared_quantity(house.file.by_guid(GROUND_SLAB), ("GrossArea",))
@@ -519,7 +519,7 @@ def test_the_geometry_route_decides_when_nothing_is_declared(two_rooms: SpatialM
     for wall in walls.values():
         assert wall["because"].startswith("begrenzt genau einen Raum")
 
-    partition = _by_id(value["innenliegend"])[TWO_ROOMS_PARTITION]
+    partition = _by_id(value["interior"])[TWO_ROOMS_PARTITION]
     assert partition["external"] is False
     assert partition["because"].startswith("begrenzt 2 Räume")
     assert value["totalArea"] == pytest.approx(17.5, abs=1e-6)

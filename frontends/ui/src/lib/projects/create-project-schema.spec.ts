@@ -31,9 +31,20 @@ describe('createProjectSchema', () => {
       setup: 'self',
       description: '  Aufstockung  ',
       location,
-      bundesland: 'tyrol',
+      federalState: 'tyrol',
     })
-    expect(body).toEqual({ name: 'Haus', setup: 'self', description: 'Aufstockung', location, bundesland: 'tyrol' })
+    expect(body).toEqual({ name: 'Haus', setup: 'self', description: 'Aufstockung', location, federalState: 'tyrol' })
+  })
+
+  it('still reads `bundesland` from a tab that has not reloaded (remove after one release)', () => {
+    expect(createProjectSchema.parse({ name: 'Haus', bundesland: 'tirol' })).toEqual({
+      name: 'Haus',
+      setup: 'piloti',
+      federalState: 'tyrol',
+    })
+    expect(createProjectSchema.parse({ name: 'Haus', bundesland: 'tirol', federalState: 'vienna' })).toMatchObject({
+      federalState: 'vienna',
+    })
   })
 
   it('treats a blank description as none', () => {
@@ -48,7 +59,7 @@ describe('createProjectSchema', () => {
   it('refuses an unknown setup, a location outside Austria, an unknown Bundesland and stray fields', () => {
     expect(createProjectSchema.safeParse({ name: 'Haus', setup: 'wizard' }).success).toBe(false)
     expect(createProjectSchema.safeParse({ name: 'Haus', location: { ...location, country: 'de' } }).success).toBe(false)
-    expect(createProjectSchema.safeParse({ name: 'Haus', bundesland: 'bayern' }).success).toBe(false)
+    expect(createProjectSchema.safeParse({ name: 'Haus', federalState: 'bayern' }).success).toBe(false)
     expect(createProjectSchema.safeParse({ name: 'Haus', extra: 1 }).success).toBe(false)
   })
 

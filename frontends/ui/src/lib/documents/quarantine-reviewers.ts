@@ -23,7 +23,7 @@ export async function isQuarantineReviewer(
   const membership = await resolveSubjectMembership(organizationId, userId)
   if (!membership) return false
   if (await orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.projectsAdminister, organizationId)) return true
-  if (document.scope === 'archiv') {
+  if (document.scope === 'office_shelf') {
     return orgRoleHoldsPermission(membership.role, ORG_PERMISSIONS.officeShelfManage, organizationId)
   }
   if (document.scope !== 'project' || !document.projectId) return false

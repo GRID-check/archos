@@ -76,7 +76,7 @@ one package, and we will gate tuning on measurement.
    a placeholder rather than dropping the hit — a scoring error must not silently
    shorten a result set.
 4. **Documents with a usable outline are cut on that outline.** `punkt_documents`
-   yields one requirement per chunk with a `punkt_id` to cite; anything it cannot
+   yields one requirement per chunk with a `clause_id` to cite; anything it cannot
    parse keeps the previous per-page behaviour byte-for-byte. That fallback is
    what makes enabling it by default safe.
 

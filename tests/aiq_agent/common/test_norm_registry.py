@@ -284,7 +284,7 @@ def _render_registry() -> nr.NormRegistry:
 
 class TestRenderPromptBlock:
     def test_federal_lane_and_all_states_without_federal_state(self):
-        block = nr.render_prompt_block(_render_registry(), bundesland=None)
+        block = nr.render_prompt_block(_render_registry(), federal_state=None)
 
         assert "Bundesrecht:" in block
         assert "ASchG" in block
@@ -293,14 +293,14 @@ class TestRenderPromptBlock:
         assert "OIB-Korpus" in block  # static corpus pointer always present
 
     def test_focused_state_drops_other_states(self):
-        block = nr.render_prompt_block(_render_registry(), bundesland="Wien")
+        block = nr.render_prompt_block(_render_registry(), federal_state="Wien")
 
         assert "Bundesrecht:" in block
         assert "Landesrecht — Wien:" in block
         assert "Tirol" not in block  # other state's law entirely absent
 
     def test_binding_note_rendered(self):
-        block = nr.render_prompt_block(_render_registry(), bundesland="Wien")
+        block = nr.render_prompt_block(_render_registry(), federal_state="Wien")
 
         assert "Rechtliche Hinweise (kuratiert):" in block
         assert "Macht die OIB-Richtlinien in Wien verbindlich." in block
@@ -318,13 +318,13 @@ class TestOibDocClass:
     @pytest.mark.parametrize(
         "filename,expected",
         [
-            ("oib-rl_2_ausgabe_mai_2023.pdf", "richtlinie"),
-            ("oib-rl_2_leitfaden_ausgabe_mai_2023.pdf", "leitfaden"),
-            ("oib-rl_6-leitfaden_ausgabe_mai_2023.pdf", "leitfaden"),
-            ("erlaeuterungen_oib-rl_2_ausgabe_mai_2023.pdf", "erlaeuterungen"),
-            ("oib-rl_begriffsbestimmungen_ausgabe_mai_2023.pdf", "begriffsbestimmungen"),
-            ("oib-rl_zitierte_normen_und_sonstige_technische_regelwerke_ausgabe_mai_2023.pdf", "zitierte_normen"),
-            ("aenderungen_oib-rl_2_ausgabe_mai_2023.pdf", "aenderungen"),
+            ("oib-rl_2_ausgabe_mai_2023.pdf", "guideline"),
+            ("oib-rl_2_leitfaden_ausgabe_mai_2023.pdf", "guide"),
+            ("oib-rl_6-leitfaden_ausgabe_mai_2023.pdf", "guide"),
+            ("erlaeuterungen_oib-rl_2_ausgabe_mai_2023.pdf", "explanatory_note"),
+            ("oib-rl_begriffsbestimmungen_ausgabe_mai_2023.pdf", "definitions"),
+            ("oib-rl_zitierte_normen_und_sonstige_technische_regelwerke_ausgabe_mai_2023.pdf", "referenced_standards"),
+            ("aenderungen_oib-rl_2_ausgabe_mai_2023.pdf", "amendment"),
         ],
     )
     def test_real_filenames(self, filename, expected):
@@ -414,7 +414,7 @@ class TestLaneForHit:
         assert nr.lane_for_hit(collection="s_session42") == ("project", "Private Sitzung")
 
     def test_a_shelf_the_caller_knows_beats_the_collection_guess(self):
-        assert nr.lane_for_hit(collection="whatever", shelf="archiv") == ("office", "Büroablage")
+        assert nr.lane_for_hit(collection="whatever", shelf="office_shelf") == ("office", "Büroablage")
 
     def test_the_default_class_never_relabels_a_users_document(self):
         # Ingestion used to stamp "other" on every upload; on a user's own
@@ -485,7 +485,7 @@ class TestLaneForAgentAuthoredHit:
     def test_it_beats_an_explicit_doc_class(self):
         """doc_class is the first-priority signal for everything else, and its
         label fallback is "Baurecht" — law blue for a document we wrote."""
-        assert nr.lane_for_hit(doc_class="law", shelf="archiv", authored_by="agent") == (
+        assert nr.lane_for_hit(doc_class="law", shelf="office_shelf", authored_by="agent") == (
             "office_piloti",
             "Piloti-Dokument",
         )
@@ -504,7 +504,7 @@ class TestLaneForAgentAuthoredHit:
 
     def test_an_unmarked_hit_is_untouched(self):
         for authored_by in (None, "", "human", "Marianne"):
-            assert nr.lane_for_hit(shelf="archiv", authored_by=authored_by) == ("office", "Büroablage")
+            assert nr.lane_for_hit(shelf="office_shelf", authored_by=authored_by) == ("office", "Büroablage")
 
 
 class TestLaneForKnowledgeHit:
@@ -603,7 +603,7 @@ class TestNonRisEntries:
     def test_web_source_entry_loads_and_renders_with_source(self, tmp_path):
         registry = nr.load_registry(self._write(tmp_path, [self._base()]))
         assert registry is not None and registry.entries[0].id == "ma37"
-        block = nr.render_prompt_block(registry, bundesland="Wien")
+        block = nr.render_prompt_block(registry, federal_state="Wien")
         assert "Behördliche Informationen" in block
         assert "Quelle: https://www.wien.gv.at/x" in block
 
@@ -613,7 +613,7 @@ class TestNonRisEntries:
         # ``source_url`` whenever ``full_law_url`` was also set.
         entry = self._base(full_law_url="https://www.ris.bka.gv.at/GeltendeFassung/x")
         registry = nr.load_registry(self._write(tmp_path, [entry]))
-        block = nr.render_prompt_block(registry, bundesland="Wien")
+        block = nr.render_prompt_block(registry, federal_state="Wien")
         assert "Gesamt: https://www.ris.bka.gv.at/GeltendeFassung/x" in block
         assert "Quelle: https://www.wien.gv.at/x" in block
 
@@ -967,106 +967,106 @@ class TestFamilyQueryNumber:
 
 #: (published filename, oib_doc_class, oib_family_member, guess_display_title)
 PUBLISHED_OIB_2023 = [
-    ("oib-rl_2_ausgabe_mai_2023.pdf", "richtlinie", "2", "OIB-Richtlinie 2, Ausgabe Mai 2023"),
-    ("oib-rl_2.1_ausgabe_mai_2023.pdf", "richtlinie", "2.1", "OIB-Richtlinie 2.1, Ausgabe Mai 2023"),
-    ("oib-richtlinie_2.2_ausgabe_mai_2023.pdf", "richtlinie", "2.2", "OIB-Richtlinie 2.2, Ausgabe Mai 2023"),
-    ("oib-rl_2.3_ausgabe_mai_2023.pdf", "richtlinie", "2.3", "OIB-Richtlinie 2.3, Ausgabe Mai 2023"),
-    ("oib-rl_3_ausgabe_mai_2023.pdf", "richtlinie", "3", "OIB-Richtlinie 3, Ausgabe Mai 2023"),
-    ("oib-rl_4_ausgabe_mai_2023.pdf", "richtlinie", "4", "OIB-Richtlinie 4, Ausgabe Mai 2023"),
-    ("oib-rl_6_ausgabe_mai_2023.pdf", "richtlinie", "6", "OIB-Richtlinie 6, Ausgabe Mai 2023"),
+    ("oib-rl_2_ausgabe_mai_2023.pdf", "guideline", "2", "OIB-Richtlinie 2, Ausgabe Mai 2023"),
+    ("oib-rl_2.1_ausgabe_mai_2023.pdf", "guideline", "2.1", "OIB-Richtlinie 2.1, Ausgabe Mai 2023"),
+    ("oib-richtlinie_2.2_ausgabe_mai_2023.pdf", "guideline", "2.2", "OIB-Richtlinie 2.2, Ausgabe Mai 2023"),
+    ("oib-rl_2.3_ausgabe_mai_2023.pdf", "guideline", "2.3", "OIB-Richtlinie 2.3, Ausgabe Mai 2023"),
+    ("oib-rl_3_ausgabe_mai_2023.pdf", "guideline", "3", "OIB-Richtlinie 3, Ausgabe Mai 2023"),
+    ("oib-rl_4_ausgabe_mai_2023.pdf", "guideline", "4", "OIB-Richtlinie 4, Ausgabe Mai 2023"),
+    ("oib-rl_6_ausgabe_mai_2023.pdf", "guideline", "6", "OIB-Richtlinie 6, Ausgabe Mai 2023"),
     (
         "oib-rl_2_leitfaden_ausgabe_mai_2023.pdf",
-        "leitfaden",
+        "guide",
         None,
         "OIB-Richtlinie 2 – Leitfaden, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen_oib-rl_2_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 2, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen_oib-rl_2.1_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 2.1, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen-zu-oib-richtlinie_2.2_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 2.2, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen_oib-rl_2.3_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 2.3, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen_oib-rl_3_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 3, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen_oib-rl_4_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 4, Ausgabe Mai 2023",
     ),
     (
         "erlaeuterungen_oib-rl_6_ausgabe_mai_2023.pdf",
-        "erlaeuterungen",
+        "explanatory_note",
         None,
         "Erläuterungen zu OIB-Richtlinie 6, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_2_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 2, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_2_leitfaden_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 2 – Leitfaden, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_2.1_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 2.1, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-richtlinie_2.2_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 2.2, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_2.3_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 2.3, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_3_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 3, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_4_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 4, Ausgabe Mai 2023",
     ),
     (
         "aenderungen_oib-rl_6_ausgabe_mai_2023.pdf",
-        "aenderungen",
+        "amendment",
         None,
         "Änderungen zu OIB-Richtlinie 6, Ausgabe Mai 2023",
     ),

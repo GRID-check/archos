@@ -58,7 +58,8 @@ export const documentQuarantineDecisions = pgTable(
     ),
     scopeCheck: check(
       'document_quarantine_decisions_scope_check',
-      sql`${table.scope} IN ('project', 'archiv', 'session')`
+      // `archiv` stays valid: a decision is never rewritten (migration 0170), so those from before keep the old name.
+      sql`${table.scope} IN ('project', 'office_shelf', 'archiv', 'session')`
     ),
     scopeProject: check(
       'document_quarantine_decisions_scope_project',

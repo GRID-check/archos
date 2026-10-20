@@ -19,7 +19,7 @@
  *   collection's files: the proxy's file delete removes chunks by filename and
  *   nothing else, so the row, the object and the audit entry stayed. Each shelf
  *   deletes through its own route (`/api/documents/[id]`,
- *   `/api/archiv/documents/[id]`, `/api/session/documents/[id]`);
+ *   `/api/office-shelf/documents/[id]`, `/api/session/documents/[id]`);
  * - a proxied upload into any shelf is refused: each shelf has a first-party
  *   route that writes the document row and runs the file-type and
  *   storage-quota admission, and the raw ingest path runs neither;
@@ -36,7 +36,8 @@ import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projec
 /** Writes into a project's corpus, accepting the pre-split umbrella too. */
 const PROJECT_UPLOAD: readonly ProjectPermission[] = ['project:documents:write', 'project:edit']
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
-import { officeShelfCollectionName } from '@/lib/office-shelf/collection'
+import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
+import { isOfficeShelfCollectionName } from '@/lib/office-shelf/collection-prefix'
 import { sessionCollectionName } from '@/lib/collection-scope'
 import { getProjectFolderAccess, restrictedCollectionBase } from '@/lib/authz/folder-access'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
@@ -140,9 +141,9 @@ export interface ValidateCollectionOptions {
 }
 
 /** Where a shelf's uploads go instead of the raw ingest path. */
-const FIRST_PARTY_UPLOAD: Record<'proj_' | 'archiv_' | 's_', string> = {
+const FIRST_PARTY_UPLOAD: Record<'proj_' | 'office_shelf' | 's_', string> = {
   proj_: '/api/documents/upload',
-  archiv_: '/api/archiv/documents/upload',
+  office_shelf: '/api/office-shelf/documents/upload',
   s_: '/api/session/documents/upload',
 }
 
@@ -154,7 +155,7 @@ function refuseChunkOnlyDelete(route: string): Response {
   return errorEnvelope(403, 'FORBIDDEN', `Delete through ${route}`)
 }
 
-function refuseRawUpload(prefix: 'proj_' | 'archiv_' | 's_'): Response {
+function refuseRawUpload(prefix: 'proj_' | 'office_shelf' | 's_'): Response {
   return errorEnvelope(403, 'FORBIDDEN', `Upload through ${FIRST_PARTY_UPLOAD[prefix]}`)
 }
 
@@ -249,19 +250,19 @@ async function authorizeCollection(
     return null
   }
 
-  if (collectionName.startsWith('archiv_')) {
+  if (isOfficeShelfCollectionName(collectionName)) {
     // The org-wide Archiv collection (ADR-0024). It must be THIS org's Archiv,
     // and — because proxy collection routes cover writes (upload/delete) — the
     // caller needs the manage permission. Reads of the Archiv corpus go through
-    // the dedicated `/api/archiv/documents` endpoint, not this proxy.
+    // the dedicated `/api/office-shelf/documents` endpoint, not this proxy.
     if (wholeCollectionDelete) return refuseWholeCollectionDelete()
-    if (upload) return refuseRawUpload('archiv_')
-    if (fileDelete) return refuseChunkOnlyDelete('/api/archiv/documents/[id]')
+    if (upload) return refuseRawUpload('office_shelf')
+    if (fileDelete) return refuseChunkOnlyDelete('/api/office-shelf/documents/[id]')
     if (!session?.organizationId) {
       return handleAuthzError(new Error('Forbidden'))
     }
     if (
-      collectionName !== officeShelfCollectionName(session.organizationId) ||
+      !officeShelfCollectionNames(session.organizationId).includes(collectionName) ||
       !canManageOfficeShelf(session)
     ) {
       return handleAuthzError(new Error('Forbidden'))

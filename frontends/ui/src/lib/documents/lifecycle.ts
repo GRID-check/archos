@@ -540,7 +540,7 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
    * Detached because it asks the directory about each person, and the
    * publisher's answer should not wait for that.
    */
-  announceNewFassung: async ({ session, document, version, previous }) => {
+  announceNewRevision: async ({ session, document, version, previous }) => {
     if (!previous) return
     void announceNewRevision({
       organizationId: session.organizationId,

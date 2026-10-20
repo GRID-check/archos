@@ -10,7 +10,7 @@ vi.mock('./repository', () => ({
 vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValue(1) }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
-// What it announces is `fassung-notify.spec.ts`'s; here, settling hands over the documents that came to rest.
+// What it announces is `revision-notify.spec.ts`'s; here, settling hands over the documents that came to rest.
 vi.mock('@/lib/documents/revision-notify', () => ({ announceSettledVersions: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({ PERMISSION_CHECKS_AT_ONCE: 8,
@@ -87,7 +87,7 @@ describe('settleUploadBatches', () => {
 
   it('names no place for the Büroablage or a chat: the payload is rendered in every language as it is', async () => {
     vi.mocked(completeSettledBatches).mockResolvedValue([
-      batch({ id: 'batch-a', scope: 'archiv', projectId: null }),
+      batch({ id: 'batch-a', scope: 'office_shelf', projectId: null }),
       batch({ id: 'batch-s', scope: 'session', projectId: null, conversationId: 'conv-1' }),
     ])
 

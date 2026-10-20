@@ -149,7 +149,7 @@ export function projectSearchScope(projectId: string): Pick<ShelfEndpoints, 'sea
 
 /** The semantic search scope of the office Archiv. */
 export const OFFICE_SHELF_SEARCH_SCOPE: Pick<ShelfEndpoints, 'search' | 'searchBody'> = {
-  search: '/api/archiv/documents/search',
+  search: '/api/office-shelf/documents/search',
 }
 
 export function projectEndpoints(projectId: string): ShelfEndpoints {
@@ -162,7 +162,7 @@ export function projectEndpoints(projectId: string): ShelfEndpoints {
 }
 
 export const OFFICE_SHELF_ENDPOINTS: ShelfEndpoints = {
-  list: '/api/archiv/documents',
-  folders: '/api/archiv/folders',
+  list: '/api/office-shelf/documents',
+  folders: '/api/office-shelf/folders',
   ...OFFICE_SHELF_SEARCH_SCOPE,
 }

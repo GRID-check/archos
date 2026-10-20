@@ -209,7 +209,7 @@ export function deleteRefusalOf(
 }
 
 /** Whether the document sits on a shelf that carries Anmerkungen. */
-const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'archiv'
+const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'office_shelf'
 
 /** Display names by user id; empty when the directory cannot be read, which costs names and nothing else. */
 type Names = ReadonlyMap<string, { name: string }>

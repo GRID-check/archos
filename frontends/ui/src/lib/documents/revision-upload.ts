@@ -59,7 +59,7 @@ export interface RevisionUploadTarget {
 
 function sameShelf(a: DocumentShelf, b: DocumentShelf | null): boolean {
   if (!b || a.kind !== b.kind) return false
-  return a.kind === 'archiv' || (b.kind === 'project' && a.projectId === b.projectId)
+  return a.kind === 'office_shelf' || (b.kind === 'project' && a.projectId === b.projectId)
 }
 
 /** Why a Fassung choice was dropped. `unavailable` covers not found, held, not this reader's to change, and machine-authored. */

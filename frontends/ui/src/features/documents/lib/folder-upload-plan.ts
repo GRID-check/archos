@@ -127,7 +127,7 @@ export interface PlannedRevision {
    * Whether the match needs no second look: one current document, the file is
    * newer than it, and nothing else in this drop competes for it. Only then is
    * the offer ticked at the start, and only then does it belong to the proposals
-   * that are decided together (`fassung-proposals.ts`).
+   * that are decided together (`revision-proposals.ts`).
    */
   unambiguous: boolean
   /** The answer as it stands: the reader's tick, else {@link unambiguous}. */
@@ -308,7 +308,7 @@ export interface FolderUploadPlanInput {
   screening?: PlanScreening
   /**
    * What each dropped name continues on the shelf, by the name as dropped
-   * (`fassung-candidates.ts`). Absent means nothing is offered.
+   * (`revision-candidates.ts`). Absent means nothing is offered.
    */
   revisionOffers?: ReadonlyMap<string, RevisionCandidateMatch>
   /** The reader's answers to those offers, by file. A file without one takes the offer's default. */

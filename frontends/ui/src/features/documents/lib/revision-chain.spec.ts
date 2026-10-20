@@ -22,7 +22,7 @@ const file = (id: string, revision: RevisionLinks | null = null): FileItem =>
     tags: null,
     topics: null,
     capture: null,
-    fassung: revision,
+    revision,
   }) as FileItem
 
 const ref = (id: string): RevisionRef => ({ id, filename: `${id}.pdf` })

@@ -59,7 +59,7 @@ export function ProjectRecord({ projectId, projectRecord, span = 'wide' }: Proje
 
   return (
     <>
-      <BentoTile label={t('projectRecord.heading')} icon={IdCard} span={span} action={action} footer={footer} data-testid="overview-steckbrief">
+      <BentoTile label={t('projectRecord.heading')} icon={IdCard} span={span} action={action} footer={footer} data-testid="overview-project-record">
         <BentoFigure
           value={<span data-testid="project-record-period">{period}</span>}
           caption={<span data-testid="project-record-address">{projectRecord.address ?? t('projectRecord.addressMissing')}</span>}

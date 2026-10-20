@@ -104,6 +104,7 @@ from uuid import UUID
 from langchain_core.callbacks import AsyncCallbackHandler
 from langgraph.config import get_stream_writer
 
+from aiq_agent.common.source_kinds import canonical_shelf_value
 from aiq_agent.common.wire_v2 import Channel
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.common.wire_v2 import RetrievalStep
@@ -427,7 +428,7 @@ KEY_SYNTHESIS = "status.synthesis"
 #: file and asserts each id has a German AND an English string. Drift in either
 #: direction is a failing build rather than a reader seeing a blank line.
 ALL_STATUS_KEYS: tuple[str, ...] = (
-    "status.documents.archiv",
+    "status.documents.officeShelf",
     "status.documents.project",
     "status.documents.session",
     "status.documents.several",
@@ -803,10 +804,19 @@ def _search_signature(args: dict[str, Any]) -> str:
     return _SIGNATURE_SEPARATOR.join(parts)
 
 
+def _clause_argument(args: dict[str, Any]) -> str:
+    """The clause a ``read_passage`` call names: ``clause``, or ``punkt`` from a call made before the rename.
+
+    A replayed turn and a model that learned the old name still send ``punkt``. Remove the
+    fallback with the alias on ``ReadPassageInput``.
+    """
+    return _argument_text(args, "clause") or _argument_text(args, "punkt")
+
+
 def _passage_signature(args: dict[str, Any]) -> str:
     """What a ``read_passage`` call OPENS: the document and the locus in it.
 
-    ``punkt`` loses its surrounding dots because "3.5.2." and "3.5.2" are the
+    ``clause`` (or ``punkt``, its former name) loses its surrounding dots because "3.5.2." and "3.5.2" are the
     same point printed two ways — the Richtlinien themselves print both — and
     the page stays part of the identity, so the same document at a different
     page is a different passage.
@@ -815,7 +825,7 @@ def _passage_signature(args: dict[str, Any]) -> str:
         [
             "read_passage",
             _argument_text(args, "document", fold_case=True),
-            _argument_text(args, "punkt").strip("."),
+            _clause_argument(args).strip("."),
             _page_text(args.get("page")),
         ]
     )
@@ -844,7 +854,7 @@ def fetch_signature(call: Any) -> str | None:
     The atom under the duplicate-fetch guard, and it lives here for the same
     reason :func:`is_search_call` does: this module already owns what the
     retrieval tools' arguments MEAN (:func:`_locator_line` reads
-    ``document``/``punkt``/``page``, :data:`_QUERY_KEYS` reads the query), and
+    ``document``/``clause``/``page``, :data:`_QUERY_KEYS` reads the query), and
     a second reading of those argument names somewhere else would drift from
     this one without anything failing.
 
@@ -883,9 +893,9 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     if not document:
         return None
     values = {"document": clip(document, MAX_DOCUMENT_CHARS)}
-    punkt = str(args.get("punkt") or "").strip()
-    if punkt:
-        return KEY_RETRIEVAL_CLAUSE, {**values, "clause": punkt}
+    clause = _clause_argument(args).strip()
+    if clause:
+        return KEY_RETRIEVAL_CLAUSE, {**values, "clause": clause}
     page = args.get("page")
     if page is not None and str(page).strip():
         return KEY_RETRIEVAL_PAGE, {**values, "page": str(page).strip()}
@@ -957,7 +967,7 @@ def _resolve_conclusion(calls: list[dict[str, Any]], prose: str | None) -> tuple
 #: purpose: the OIB corpus is read on every research turn, so announcing it
 #: would be announcing a constant — and it is not "your documents" in any case.
 _SHELF_IDS = {
-    "archiv": "archiv",
+    "office_shelf": "officeShelf",
     "project": "project",
     "session": "session",
 }
@@ -984,7 +994,7 @@ def documents_loading_step(shelves: list[str] | None = None) -> StatusStep | Non
     """
     named: list[str] = []
     for shelf in shelves or ():
-        shelf_id = _SHELF_IDS.get(str(shelf))
+        shelf_id = _SHELF_IDS.get(canonical_shelf_value(str(shelf)))
         if shelf_id and shelf_id not in named:
             named.append(shelf_id)
     if not named:

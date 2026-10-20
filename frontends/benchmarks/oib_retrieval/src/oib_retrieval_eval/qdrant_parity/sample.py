@@ -53,9 +53,9 @@ def chunks() -> list[IndexedChunk]:
                     "file_name": file_name,
                     "page_label": str(page),
                     "content_type": "text",
-                    "chunking": "punkt",
-                    "punkt_id": punkt,
-                    "richtlinie": "2" if file_name == RL2 else "4",
+                    "chunking": "clause",
+                    "clause_id": punkt,
+                    "guideline": "2" if file_name == RL2 else "4",
                 },
             )
         )

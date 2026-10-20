@@ -45,7 +45,7 @@ const RESPONSE: SimilarPassagesResponse = {
       ],
     },
     {
-      kind: 'archiv',
+      kind: 'office_shelf',
       project: null,
       documents: [
         {
@@ -137,7 +137,7 @@ describe('SimilarPassagesPanel', () => {
   })
 
   it('says when only the Büroablage holds it', async () => {
-    renderPanel(answering({ ...RESPONSE, groups: RESPONSE.groups.filter((group) => group.kind === 'archiv') }))
+    renderPanel(answering({ ...RESPONSE, groups: RESPONSE.groups.filter((group) => group.kind === 'office_shelf') }))
     expect(await screen.findByTestId('similar-headline')).toHaveTextContent('Found in the Büroablage')
   })
 

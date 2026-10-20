@@ -378,10 +378,10 @@ export function buildComplianceBcf(input: BcfExportInput): BcfExport {
     }
   }
 
-  const stem = slug(input.projectName ?? '', 'projekt')
+  const stem = slug(input.projectName ?? '', 'project')
   const revision = isoDate(input.model.updatedAt).slice(0, 10)
   return {
-    filename: `pruefbuch-${stem}-${revision}.bcfzip`,
+    filename: `compliance-checks-${stem}-${revision}.bcfzip`,
     bytes: createZip(entries),
     topics: topics.length,
   }

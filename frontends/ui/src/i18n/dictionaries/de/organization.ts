@@ -265,7 +265,7 @@ export const organization: typeof en.organization = {
         name: 'Download-Protokoll ansehen',
         hint: 'Wer welches Dokument heruntergeladen hat. Das Lesen wird selbst protokolliert.',
       },
-      archiv_manage: {
+      office_shelf_manage: {
         name: 'Büroablage verwalten',
         hint: 'Dokumente in der Büroablage hochladen, löschen und neu einlesen. Lesen dürfen alle.',
       },

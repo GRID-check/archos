@@ -15,7 +15,8 @@ import { uploadBatchExclusionsSchema } from './exclusions-schema'
 const bodySchema = z
   .object({
     id: z.string().uuid(),
-    scope: z.enum(UPLOAD_BATCH_SCOPES),
+    // `archiv` is what an open tab still sends. Remove after one release.
+    scope: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(UPLOAD_BATCH_SCOPES)),
     projectId: z.string().uuid().nullable().default(null),
     conversationId: z.string().min(1).max(200).nullable().default(null),
     expectedCount: z.number().int().min(0).max(UPLOAD_BATCH_MAX_FILES),

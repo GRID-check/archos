@@ -12,7 +12,7 @@
  * States, by query string:
  *   (none)            a manager's Archiv, three folders deep, tagged documents
  *   ?folder=<id>      inside a folder (`f-plan`, `f-plan-eg`, `f-recht`)
- *   ?state=readonly   a member without `org:archiv:manage`: folders, search,
+ *   ?state=readonly   a member without `org:office_shelf:manage`: folders, search,
  *                     filters and preview, and nothing that mutates
  *   ?state=loading    the skeleton, held there
  *   ?state=empty      a first-run Archiv
@@ -96,16 +96,16 @@ const json = (body: unknown, status = 200): Response =>
 function answer(url: string, method: string, state: { files: FileItem[]; folders: FolderItem[] }): Response | null {
   const path = new URL(url, window.location.origin).pathname
   if (/\/api\/documents\/.+\/thumbnail$/.test(path)) return new Response(null, { status: 404 })
-  if (path === '/api/archiv/documents' && method === 'GET') {
+  if (path === '/api/office-shelf/documents' && method === 'GET') {
     return json({ documents: state.files, collectionName: 'archiv_dev', canManage: true })
   }
-  if (path === '/api/archiv/folders' && method === 'GET') return json({ folders: state.folders })
-  if (path === '/api/archiv/folders' && method === 'POST') {
+  if (path === '/api/office-shelf/folders' && method === 'GET') return json({ folders: state.folders })
+  if (path === '/api/office-shelf/folders' && method === 'POST') {
     const created = folder(`f-${state.folders.length + 1}`, 'Neuer Ordner', 'Neuer Ordner', null)
     state.folders = [...state.folders, created]
     return json({ folder: created }, 201)
   }
-  if (path.startsWith('/api/archiv/folders/') || path.endsWith('/folder')) return json({ ok: true, documentsMoved: 0, foldersMoved: 0 })
+  if (path.startsWith('/api/office-shelf/folders/') || path.endsWith('/folder')) return json({ ok: true, documentsMoved: 0, foldersMoved: 0 })
   return null
 }
 
@@ -129,7 +129,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
       // `?state=loading` holds the listing in flight for good: the skeleton is the evidence.
-      if (params.get('state') === 'loading' && url.includes('/api/archiv/')) return new Promise<Response>(() => {})
+      if (params.get('state') === 'loading' && url.includes('/api/office-shelf/')) return new Promise<Response>(() => {})
       return answer(url, init?.method ?? 'GET', memory) ?? real(input, init)
     }
   }

@@ -174,8 +174,8 @@ export const bim: typeof en.bim = {
       'Einige Regeln hängen an Angaben, die das Projekt-Briefing nicht führt: {facts}. Diese Regeln wurden nicht angewendet, statt zu raten.',
     setFacts: 'Über den Assistenten ergänzen',
     factName: {
-      gebaeudeklasse: 'Gebäudeklasse',
-      hauptnutzung: 'Hauptnutzung',
+      buildingClass: 'Gebäudeklasse',
+      mainUse: 'Hauptnutzung',
     },
     factsFailed:
       'Das Projekt-Briefing konnte nicht gelesen werden — die davon abhängigen Regeln wurden daher nicht angewendet. Über das Briefing selbst sagt das nichts aus.',

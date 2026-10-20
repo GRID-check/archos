@@ -51,7 +51,7 @@ const ITEMS = [
   {
     id: 'doc-2',
     filename: 'Lieferantenstammdaten 2026.xlsx',
-    scope: 'archiv',
+    scope: 'office_shelf',
     projectId: null,
     conversationId: null,
     uploadedBy: 'user_02',

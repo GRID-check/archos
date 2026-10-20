@@ -169,7 +169,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/citations/repository.integration.spec.ts \
     src/lib/profiler/repository.integration.spec.ts \
     src/lib/projects/project-status.integration.spec.ts \
-    src/lib/projects/steckbrief.integration.spec.ts \
+    src/lib/projects/project-record.integration.spec.ts \
     src/lib/projects/cleanup.integration.spec.ts \
     src/lib/feedback/repository.integration.spec.ts
 
@@ -2598,6 +2598,32 @@ check_in grid_skill_names "SELECT skill_name FROM jobs WHERE name = 'Wöchentlic
 echo "==> 0169 skill names and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0172: the inbox payload's `marksFassung` becomes `marksRevision`, and
+# the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0172. Only the key moves,
+# the count stays; a payload with both keys keeps the new one's value; a row
+# without the old key is not touched (its `updated_at` stays).
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0172 inbox revision marks and their down migration on grid_revmarks"
+migrate_before grid_revmarks 0172_inbox_revision_marks
+sql_in grid_revmarks <<'SQL'
+INSERT INTO inbox_items (id, organization_id, recipient_user_id, type, resource_type, resource_id, group_key, actionable, payload, updated_at) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000173', 'org_0173', 'user_1', 'document.new_revision', 'document', 'd1', 'g1', false, '{"openMarks": 3, "marksFassung": 2}', '2026-01-01 10:00:00+00'),
+  ('a2a2a2a2-0000-4000-8000-000000000173', 'org_0173', 'user_1', 'document.new_revision', 'document', 'd2', 'g2', false, '{"openMarks": 1, "marksFassung": 1, "marksRevision": 4}', '2026-01-02 10:00:00+00'),
+  ('a3a3a3a3-0000-4000-8000-000000000173', 'org_0173', 'user_1', 'document.new_revision', 'document', 'd3', 'g3', false, '{"openMarks": 2}', '2026-01-03 10:00:00+00');
+SQL
+apply_in grid_revmarks 0172_inbox_revision_marks.sql
+check_in grid_revmarks "SELECT string_agg(payload::text, ' ' ORDER BY group_key) FROM inbox_items" '{"openMarks": 3, "marksRevision": 2} {"openMarks": 1, "marksRevision": 4} {"openMarks": 2}' "0172 renames the key, keeps the new key's value when both exist, and leaves other payloads alone"
+check_in grid_revmarks "SELECT count(*) FROM inbox_items WHERE updated_at <> ('2026-01-0' || right(group_key, 1) || ' 10:00:00+00')::timestamptz" "0" "0172 does not bump updated_at"
+apply_in grid_revmarks 0172_inbox_revision_marks.down.sql
+check_in grid_revmarks "SELECT string_agg(payload::text, ' ' ORDER BY group_key) FROM inbox_items" '{"openMarks": 3, "marksFassung": 2} {"openMarks": 1, "marksFassung": 4} {"openMarks": 2}' "down restores the old key, with the value up kept (the newer one)"
+apply_in grid_revmarks 0172_inbox_revision_marks.sql
+apply_in grid_revmarks 0172_inbox_revision_marks.sql
+check_in grid_revmarks "SELECT payload->>'marksRevision' FROM inbox_items WHERE group_key = 'g1'" "2" "0172 re-applies, twice"
+echo "==> 0172 inbox revision marks and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose
@@ -2711,3 +2737,76 @@ apply_in grid_profile_names 0159_english_profile_names.down.sql
 check_in grid_profile_names "$PROFILE_0159" "${before_0159%% v*} v7" "0159 down restores the profile exactly (its version moves forward, never back)"
 check_in grid_profile_names "SELECT profile_prompt_view FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000159'" "$before_view_0159" "0159 down restores the prompt view exactly"
 echo "==> 0159-0162 English profile names and down migrations verified"
+
+# ---------------------------------------------------------------------------
+# Migrations 0170 and 0171: the office shelf's scope value is `office_shelf`,
+# and the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0170. An office-shelf
+# folder with a child, a document filed in the child, a project document, an
+# upload batch and a proposal on the shelf, an access-log entry and a quarantine
+# decision under the old value. 0170 rewrites the four mutable tables (and the
+# composite keys between documents and folders survive the rewrite), refuses the
+# old value in their new CHECKs, and leaves the two immutable tables alone; 0171
+# makes those accept both spellings. The down puts the old value back; the up
+# re-applies twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0170/0171 office shelf scope and its down migrations on grid_shelfscope"
+migrate_before grid_shelfscope 0170_office_shelf_scope
+sql_in grid_shelfscope <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000170', 'org_0170', 'Scope 0170', 'user_1', 'proj_0170');
+INSERT INTO project_folders (id, organization_id, scope, name, path) VALUES
+  ('f1f1f1f1-0000-4000-8000-000000000170', 'org_0170', 'archiv', 'Normen', 'Normen');
+INSERT INTO project_folders (id, organization_id, scope, parent_id, name, path) VALUES
+  ('f2f2f2f2-0000-4000-8000-000000000170', 'org_0170', 'archiv', 'f1f1f1f1-0000-4000-8000-000000000170', 'OIB', 'Normen/OIB');
+INSERT INTO project_folders (id, organization_id, project_id, name, path) VALUES
+  ('f3f3f3f3-0000-4000-8000-000000000170', 'org_0170', 'aaaaaaaa-0000-4000-8000-000000000170', 'Plaene', 'Plaene');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, folder_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000170', 'org_0170', 'user_1', 'norm.pdf', 'k/0170/norm', 'archiv_org_0170', 'completed', 'archiv', 'f2f2f2f2-0000-4000-8000-000000000170');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id, folder_id) VALUES
+  ('d2d2d2d2-0000-4000-8000-000000000170', 'org_0170', 'user_1', 'plan.pdf', 'k/0170/plan', 'proj_0170', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000170', 'f3f3f3f3-0000-4000-8000-000000000170');
+INSERT INTO upload_batches (id, organization_id, created_by, scope, expected_count) VALUES
+  ('b1b1b1b1-0000-4000-8000-000000000170', 'org_0170', 'user_1', 'archiv', 1);
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of)
+VALUES ('c1c1c1c1-0000-4000-8000-000000000170', 'org_0170', NULL, 'archiv', 'file_operation',
+        '{"operation":"move","operations":[{"document":"norm.pdf","source":"office","target_folder":"Normen"}]}', 'piloti', 'user_1');
+INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name)
+VALUES ('org_0170', 'u', 'download', 'archiv', 'd1d1d1d1-0000-4000-8000-000000000170', 'norm.pdf');
+INSERT INTO document_quarantine_decisions (id, organization_id, document_id, job_id, scope, filename, uploaded_by)
+VALUES ('e1e1e1e1-0000-4000-8000-000000000170', 'org_0170', 'd1d1d1d1-0000-4000-8000-000000000170', 'job-0170', 'archiv', 'norm.pdf', 'u');
+SQL
+SCOPES_0170="SELECT (SELECT string_agg(scope, ',' ORDER BY id) FROM project_folders) || '|' || (SELECT string_agg(scope, ',' ORDER BY id) FROM documents) || '|' || (SELECT scope FROM upload_batches) || '|' || (SELECT scope FROM proposed_changes)"
+apply_in grid_shelfscope 0170_office_shelf_scope.sql
+check_in grid_shelfscope "$SCOPES_0170" "office_shelf,office_shelf,project|office_shelf,project|office_shelf|office_shelf" "0170 renames the scope on folders, documents, the upload batch and the proposal"
+check_in grid_shelfscope "SELECT folder_id FROM documents WHERE id = 'd1d1d1d1-0000-4000-8000-000000000170'" "f2f2f2f2-0000-4000-8000-000000000170" "0170 keeps a document in its folder"
+check_in grid_shelfscope "SELECT count(*) FROM pg_constraint WHERE conname IN ('documents_folder_id_organization_id_scope_fkey','project_folders_parent_id_organization_id_scope_fkey','documents_folder_requires_project','project_folders_scope_check','upload_batches_scope','proposed_changes_scope_known') AND convalidated" "6" "0170 brings back the six constraints it dropped, validated"
+check_in grid_shelfscope "SELECT scope FROM document_access_log" "archiv" "0170 does not rewrite the immutable access log"
+check_in grid_shelfscope "SELECT scope FROM document_quarantine_decisions" "archiv" "0170 does not rewrite the immutable quarantine decisions"
+refused_in grid_shelfscope "INSERT INTO project_folders (organization_id, scope, name, path) VALUES ('org_0170', 'archiv', 'Alt', 'Alt');" "project_folders_scope_check" "the old shelf value on a folder"
+refused_in grid_shelfscope "INSERT INTO upload_batches (id, organization_id, created_by, scope, expected_count) VALUES (gen_random_uuid(), 'org_0170', 'u', 'archiv', 1);" "upload_batches_scope" "the old shelf value on an upload batch"
+refused_in grid_shelfscope "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0170', NULL, 'archiv', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"x.pdf\",\"source\":\"office\"}]}', 'piloti', 'user_1');" "proposed_changes_scope_known" "the old shelf value on a proposal"
+refused_in grid_shelfscope "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0170', NULL, 'office_shelf', 'memory', '{}', 'piloti', 'user_1');" "proposed_changes_office_shelf_move" "a shelf proposal that is not a move still refused"
+refused_in grid_shelfscope "UPDATE documents SET folder_id = 'f3f3f3f3-0000-4000-8000-000000000170' WHERE id = 'd1d1d1d1-0000-4000-8000-000000000170';" "documents_folder_id_organization_id_scope_fkey" "a shelf document in a project folder"
+refused_in grid_shelfscope "INSERT INTO project_folders (organization_id, scope, parent_id, name, path) VALUES ('org_0170', 'office_shelf', 'f3f3f3f3-0000-4000-8000-000000000170', 'x', 'x');" "project_folders_parent_id_organization_id_scope_fkey" "a project folder as the parent of a shelf folder"
+refused_in grid_shelfscope "INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name) VALUES ('org_0170', 'u', 'download', 'office_shelf', gen_random_uuid(), 'x');" "document_access_log_scope_check" "the new shelf value in the log before 0171"
+apply_in grid_shelfscope 0171_office_shelf_scope_logs.sql
+sql_in grid_shelfscope <<<"INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name) VALUES ('org_0170', 'u', 'download', 'office_shelf', gen_random_uuid(), 'neu.pdf');"
+check_in grid_shelfscope "SELECT string_agg(scope, ',' ORDER BY document_name) FROM document_access_log" "office_shelf,archiv" "0171: the log holds the old entry and takes a new one"
+refused_in grid_shelfscope "INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name) VALUES ('org_0170', 'u', 'download', 'regal', gen_random_uuid(), 'x');" "document_access_log_scope_check" "an unknown shelf value in the log"
+sql_in grid_shelfscope <<<"INSERT INTO document_quarantine_decisions (organization_id, document_id, job_id, scope, filename, uploaded_by) VALUES ('org_0170', gen_random_uuid(), 'job-2', 'office_shelf', 'neu.pdf', 'u');"
+apply_in grid_shelfscope 0171_office_shelf_scope_logs.sql
+apply_in grid_shelfscope 0170_office_shelf_scope.sql
+apply_in grid_shelfscope 0170_office_shelf_scope.sql
+check_in grid_shelfscope "$SCOPES_0170" "office_shelf,office_shelf,project|office_shelf,project|office_shelf|office_shelf" "0170 re-applies, twice"
+# The down of 0171 needs a log with no new-spelling row; the log is immutable, so it runs on a fresh database.
+migrate_before grid_shelfscope_down 0171_office_shelf_scope_logs
+apply_in grid_shelfscope_down 0171_office_shelf_scope_logs.sql
+apply_in grid_shelfscope_down 0171_office_shelf_scope_logs.down.sql
+refused_in grid_shelfscope_down "INSERT INTO document_access_log (organization_id, user_id, kind, scope, document_id, document_name) VALUES ('org_0170', 'u', 'download', 'office_shelf', gen_random_uuid(), 'x');" "document_access_log_scope_check" "0171 down takes the new value out of the log CHECK"
+apply_in grid_shelfscope 0170_office_shelf_scope.down.sql
+check_in grid_shelfscope "$(echo "$SCOPES_0170")" "archiv,archiv,project|archiv,project|archiv|archiv" "0170 down puts the old scope back on every mutable table"
+refused_in grid_shelfscope "INSERT INTO upload_batches (id, organization_id, created_by, scope, expected_count) VALUES (gen_random_uuid(), 'org_0170', 'u', 'office_shelf', 1);" "upload_batches_scope" "down: the new shelf value on an upload batch"
+apply_in grid_shelfscope 0170_office_shelf_scope.sql
+check_in grid_shelfscope "$SCOPES_0170" "office_shelf,office_shelf,project|office_shelf,project|office_shelf|office_shelf" "0170 re-applies after its down"
+echo "==> 0170/0171 office shelf scope and down migrations verified"

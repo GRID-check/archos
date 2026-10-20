@@ -114,7 +114,7 @@ def _envelope(
     """The headers the BFF's job proxy sends: the signed envelope over the scope it authorized."""
     scope: list[dict[str, str]] = [{"collection": "oib_knowledge", "shelf": "base"}]
     if organization_id:
-        scope.append({"collection": f"archiv_{organization_id}", "shelf": "archiv"})
+        scope.append({"collection": f"archiv_{organization_id}", "shelf": "office_shelf"})
     if project_collection:
         scope.append({"collection": project_collection, "shelf": "project"})
     if conversation_id:

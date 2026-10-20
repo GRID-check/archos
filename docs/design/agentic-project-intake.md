@@ -324,9 +324,9 @@ All zod lives in `frontends/ui/src/lib/project-intake/types.ts` (no
   contradictions: Suggestion[],
   questions: Need[],                         // decisive, open
   groups: [{ stage: 'A'..'G', title, items: Suggestion[] }],
-  derivations: [{ bauwerkId, rule: 'building_class', value: 1..5 | null, hochhaus: boolean, inputs, missing: string[] }],
+  derivations: [{ buildingId, rule: 'building_class', value: 1..5 | null, hochhaus: boolean, inputs, missing: string[] }],
 }
-Suggestion = { key, baseKey, bauwerkId, label, value, display, state: 'suggested' | 'confirmed' | 'contested',
+Suggestion = { key, baseKey, buildingId, label, value, display, state: 'suggested' | 'confirmed' | 'contested',
                evidence: ProfileEvidence[], alternatives: ProfileAlternative[], decisive }
 ```
 

@@ -140,7 +140,7 @@ const SUGGESTIONS: BimProfileSuggestion[] = [
     evidence: 'Oberstes belegtes Geschoss liegt bei 6 m (Dachgeschoss)',
   },
   {
-    key: 'hauptnutzung',
+    key: 'main_use',
     value: 'residential',
     confidence: 'medium',
     evidence: '7 Räume im Modell tragen Namen dieser Nutzung',

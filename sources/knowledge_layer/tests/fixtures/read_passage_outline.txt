@@ -35,4 +35,4 @@ Relevance Score: 0.71
   - Punkt 2.9: Löschwasser (S. 5)
   - Punkt 2.10: Blitzschutz (S. 5)
 
-Einen gelisteten Punkt öffnest du mit `read_passage(document=…, punkt=…)`; die Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation.
+Einen gelisteten Punkt öffnest du mit `read_passage(document=…, clause=…)`; die Gliederung ist ein Index, keine Evidenz — nur die Passage(n) oben tragen eine Citation.

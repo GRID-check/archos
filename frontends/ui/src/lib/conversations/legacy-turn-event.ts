@@ -10,6 +10,7 @@
 
 export const LEGACY_TURN_EVENT_KEYS: Readonly<Record<string, string>> = {
   'status.retrieval.punkt': 'status.retrieval.clause',
+  'status.documents.archiv': 'status.documents.officeShelf',
 }
 
 /** The value names that were renamed with their key. */

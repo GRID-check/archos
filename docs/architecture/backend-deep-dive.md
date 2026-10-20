@@ -584,7 +584,7 @@ subfolder" `+` on each folder row and makes root creation explicit.
 (rename and/or move) and `deleteProjectFolder`, which is the Papierkorb's
 `moveFolderToBin` in `folder-bin.ts` (ADR-0088). They sit behind
 `POST`/`PATCH`/`DELETE` on `/api/projects/{id}/folders[/{folderId}]`; the
-Archiv's folders (`/api/archiv/folders`, ADR-0078) share the shelf core in
+Archiv's folders (`/api/office-shelf/folders`, ADR-0078) share the shelf core in
 `lib/documents/shelf-folders.ts`, delete included. Two invariants are
 load-bearing:
 
@@ -1138,15 +1138,15 @@ a round the run does not get back.
 
 `read_passage` (`sources/knowledge_layer/src/read_passage.py`) is that lookup:
 `document` (exact indexed name, stored display title, or the derived OIB title)
-plus `punkt` (the `punkt_id` the Punkt chunker verified against the corpus's own
-contents pages) or `page`. `document` with neither is the **outline**: the
+plus `clause` (the `clause_id` the Punkt chunker verified against the corpus's own
+contents pages) or `page` (`punkt` is accepted as the former name of `clause` for one release). `document` with neither is the **outline**: the
 document's scope passage (Punkt 0, else the first top-level Punkt) followed by a
 `## Gliederung` of its depth-1 and depth-2 Punkte with their pages. That is the
 overview question ("worum geht es in der OIB 2?"), which names no Punkt and no
 page; refusing it sent the model to a search that returns cover pages and then to
 a Punkt number it had guessed. The Gliederung is an index, not evidence — only
 the passages carry a Citation, and a listed Punkt is read by calling again with
-`punkt=`. A document with no Punkte at all — most project uploads — returns its
+`clause=`. A document with no Punkte at all — most project uploads — returns its
 opening passages instead: the first chunks in document order, because `page_label` is not always a page number.
 
 The same lookup one granularity up is a whole Richtlinie, and it is reached

@@ -28,7 +28,7 @@ let currentSearch = ''
 const routerPush = vi.fn()
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: routerPush, replace: vi.fn(), refresh: vi.fn() }),
-  usePathname: () => '/app/archiv',
+  usePathname: () => '/app/office-shelf',
   useSearchParams: () => new URLSearchParams(currentSearch),
 }))
 
@@ -90,8 +90,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   currentSearch = ''
   server.use(
-    http.get('/api/archiv/folders', () => HttpResponse.json({ folders: [] })),
-    http.get('/api/archiv/documents', () =>
+    http.get('/api/office-shelf/folders', () => HttpResponse.json({ folders: [] })),
+    http.get('/api/office-shelf/documents', () =>
       HttpResponse.json({
         documents: officeShelfDocuments,
         collectionName: 'archiv_org-1',
@@ -120,7 +120,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   it('states how much the Archiv holds beside its title', async () => {
     const folderTally = { readable: 2390, reading: 0, failed: 10, held: 0, unindexed: 0, latest: null }
     server.use(
-      http.get('/api/archiv/documents/summary', () =>
+      http.get('/api/office-shelf/documents/summary', () =>
         HttpResponse.json({
           folders: [{ folderId: null, total: 2400, ...folderTally }],
           failed: [],
@@ -135,7 +135,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   it('reads the root of the Archiv as a level, page by page, and never drains it', async () => {
     const requests: URLSearchParams[] = []
     server.use(
-      http.get('/api/archiv/documents', ({ request }) => {
+      http.get('/api/office-shelf/documents', ({ request }) => {
         requests.push(new URL(request.url).searchParams)
         return HttpResponse.json({ documents: officeShelfDocuments, nextCursor: null, collectionName: 'archiv_org-1', canManage: true })
       })
@@ -163,7 +163,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   })
 
   it('shows the load-error state with a retry affordance when the list request fails', async () => {
-    server.use(http.get('/api/archiv/documents', () => HttpResponse.json({}, { status: 500 })))
+    server.use(http.get('/api/office-shelf/documents', () => HttpResponse.json({}, { status: 500 })))
     render(<OfficeShelfWorkspace canManage />)
 
     expect(await screen.findByText(/documents couldn't be loaded/i)).toBeInTheDocument()
@@ -174,7 +174,7 @@ describe('OfficeShelfWorkspace — library listing', () => {
   it('reads the next page of the level when the reader asks for it', async () => {
     const cursors: Array<string | null> = []
     server.use(
-      http.get('/api/archiv/documents', ({ request }) => {
+      http.get('/api/office-shelf/documents', ({ request }) => {
         const cursor = new URL(request.url).searchParams.get('cursor')
         cursors.push(cursor)
         return HttpResponse.json({
@@ -265,7 +265,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
 
   it('re-asks the settling row by id — not the whole Archiv — and stops once it is terminal', async () => {
     server.use(
-      http.get('/api/archiv/documents', () => {
+      http.get('/api/office-shelf/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -297,7 +297,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
 
   it('confirms the moment the document becomes citable', async () => {
     server.use(
-      http.get('/api/archiv/documents', () => {
+      http.get('/api/office-shelf/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -325,7 +325,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
     let peak = 0
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/archiv/documents', () => {
+      http.get('/api/office-shelf/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -354,7 +354,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
   it('polls quietly — the grid the user is reading is never replaced by a skeleton', async () => {
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/archiv/documents', () => {
+      http.get('/api/office-shelf/documents', () => {
         documentCalls += 1
         return corpus('processing')
       }),
@@ -381,7 +381,7 @@ describe('OfficeShelfWorkspace — a settling document settles on screen', () =>
     // lands here too. A skeleton over the Archiv for it is a flash for nothing.
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/archiv/documents', async () => {
+      http.get('/api/office-shelf/documents', async () => {
         documentCalls += 1
         if (documentCalls > 1) await new Promise<void>((resolve) => (gate.release = resolve))
         return corpus('ready')
@@ -453,7 +453,7 @@ describe('OfficeShelfWorkspace — only the newest answer may win', () => {
     let statusCalls = 0
     const gate: { release: (() => void) | null } = { release: null }
     server.use(
-      http.get('/api/archiv/documents', () => {
+      http.get('/api/office-shelf/documents', () => {
         documentCalls += 1
         return corpus(documentCalls === 1 ? 'processing' : 'ready')
       }),
@@ -524,7 +524,7 @@ describe('OfficeShelfWorkspace — file operations', () => {
   it('asks before deleting, names the document, and cancels without deleting', async () => {
     let deleted = false
     server.use(
-      http.delete('/api/archiv/documents/:id', () => {
+      http.delete('/api/office-shelf/documents/:id', () => {
         deleted = true
         return new HttpResponse(null, { status: 204 })
       })
@@ -548,7 +548,7 @@ describe('OfficeShelfWorkspace — file operations', () => {
 
   it('deletes on confirm and removes the card from the grid', async () => {
     server.use(
-      http.delete('/api/archiv/documents/:id', () => new HttpResponse(null, { status: 204 }))
+      http.delete('/api/office-shelf/documents/:id', () => new HttpResponse(null, { status: 204 }))
     )
     const user = userEvent.setup()
     render(<OfficeShelfWorkspace canManage />)
@@ -596,7 +596,7 @@ describe('OfficeShelfWorkspace — file operations', () => {
 /**
  * The Archiv answers a same-name file the way a project's Dateien does (U1):
  * it asks for a new version, from the shelf itself — asked of the server by
- * name (`POST /api/archiv/documents/name-matches`), since the listing on screen
+ * name (`POST /api/office-shelf/documents/name-matches`), since the listing on screen
  * is paged — and never refuses or replaces on one browser's memory.
  */
 describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
@@ -608,7 +608,7 @@ describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
     probed = []
     shelf = officeShelfDocuments.map((doc) => ({ id: doc.id, filename: doc.filename }))
     server.use(
-      http.post('/api/archiv/documents/name-matches', async ({ request }) => {
+      http.post('/api/office-shelf/documents/name-matches', async ({ request }) => {
         const { names } = (await request.json()) as { names: string[] }
         probed.push(names)
         return HttpResponse.json({
@@ -640,7 +640,7 @@ describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
     const user = userEvent.setup()
     let ensured: { parentId: string | null; paths: string[] } | null = null
     server.use(
-      http.post('/api/archiv/folders/ensure', async ({ request }) => {
+      http.post('/api/office-shelf/folders/ensure', async ({ request }) => {
         ensured = (await request.json()) as { parentId: string | null; paths: string[] }
         return HttpResponse.json({ folders: [], folderIdByPath: { Statik: 'f-new' } })
       })
@@ -713,7 +713,7 @@ describe('OfficeShelfWorkspace — a file the Archiv already holds', () => {
     const OLDER = 'doc-older-b'
     beforeEach(() => {
       server.use(
-        http.post('/api/archiv/documents/fassung-candidates', async ({ request }) => {
+        http.post('/api/office-shelf/documents/revision-candidates', async ({ request }) => {
           const { names } = (await request.json()) as { names: string[] }
           return HttpResponse.json({
             candidates: names.map((name) => ({
@@ -806,8 +806,8 @@ describe('OfficeShelfWorkspace — folders', () => {
 
   beforeEach(() => {
     server.use(
-      http.get('/api/archiv/folders', () => HttpResponse.json({ folders: FOLDERS })),
-      http.get('/api/archiv/documents', () =>
+      http.get('/api/office-shelf/folders', () => HttpResponse.json({ folders: FOLDERS })),
+      http.get('/api/office-shelf/documents', () =>
         HttpResponse.json({ documents: [filed, root], collectionName: 'archiv_org-1', canManage: true })
       )
     )
@@ -842,7 +842,7 @@ describe('OfficeShelfWorkspace — folders', () => {
     const user = userEvent.setup()
     const posted: unknown[] = []
     server.use(
-      http.post('/api/archiv/folders', async ({ request }) => {
+      http.post('/api/office-shelf/folders', async ({ request }) => {
         posted.push(await request.json())
         return HttpResponse.json(
           { folder: { id: 'f-3', projectId: null, name: 'Recht', parentId: null, path: 'Recht' } },

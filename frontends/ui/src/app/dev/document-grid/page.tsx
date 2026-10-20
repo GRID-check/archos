@@ -76,7 +76,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (url.startsWith('/api/documents?')) {
         return Response.json({ documents: PROJECT_ROWS })
       }
-      if (url.startsWith('/api/archiv/documents')) {
+      if (url.startsWith('/api/office-shelf/documents')) {
         return Response.json({ documents: OFFICE_SHELF_ROWS, collectionName: 'archiv_org', canManage: false })
       }
       if (/\/api\/documents\/.+\/thumbnail$/.test(url)) {

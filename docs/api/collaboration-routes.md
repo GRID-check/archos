@@ -336,7 +336,7 @@ archived again), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
 `document.new_revision`), `excerpt`, `variant` (which wording of its type the
 row reads, a key segment: why Piloti could not work a mark, what a proposal
 changes), `dueOn` (the date of the mark a Zuständige is asked about, so the row
-says by when), `openMarks` and `marksFassung` (for a new Fassung, how many open
+says by when), `openMarks` and `marksRevision` (for a new Fassung, how many open
 marks it leaves to check and the Fassung they sit on), `answerIn` (where an open request on a mark may be answered: `row`,
 `review` for Piloti's Rückfrage while events do not wake Piloti, or null when
 the reader may not write the document; see

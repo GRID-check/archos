@@ -93,7 +93,7 @@ class TestStampDocument:
         original = _doc("Plan.pdf")
         stamped = stamp_document(original, collection="archiv_org", shelf=Shelf.OFFICE_SHELF)
         assert stamped.collection == "archiv_org"
-        assert stamped.shelf == "archiv"
+        assert stamped.shelf == "office_shelf"
         assert original.collection is None
         assert original.shelf is None
 
@@ -106,7 +106,7 @@ class TestStampDocument:
 class TestDocumentIdentity:
     def test_same_filename_on_two_shelves_is_two_documents(self):
         project = _doc("Plan.pdf", collection="proj_1", shelf="project")
-        office_shelf = _doc("Plan.pdf", collection="archiv_org", shelf="archiv")
+        office_shelf = _doc("Plan.pdf", collection="archiv_org", shelf="office_shelf")
         assert document_identity(project) != document_identity(office_shelf)
 
     def test_identity_is_collection_and_name(self):
@@ -117,7 +117,7 @@ class TestAllocateInventory:
     def test_same_filename_on_two_collections_is_kept_twice(self):
         docs = [
             _doc("Plan.pdf", collection="proj_1", shelf="project"),
-            _doc("Plan.pdf", collection="archiv_org", shelf="archiv"),
+            _doc("Plan.pdf", collection="archiv_org", shelf="office_shelf"),
         ]
         out = allocate_inventory(docs, max_documents=50)
         assert len(out) == 2
@@ -127,7 +127,7 @@ class TestAllocateInventory:
         """A 50-cap used to sort-then-slice. ~40 OIB filenames ate the list
         and the Büroablage disappeared — so the agent answered from OIB."""
         base = [_doc(f"oib-rl_{i}.pdf", collection="oib_knowledge", shelf="base") for i in range(40)]
-        office_shelf = [_doc("Buero-Standard.pdf", collection="archiv_org", shelf="archiv")]
+        office_shelf = [_doc("Buero-Standard.pdf", collection="archiv_org", shelf="office_shelf")]
         project = [_doc("Lacknergasse.pdf", collection="proj_1", shelf="project")]
         out = allocate_inventory(base + office_shelf + project, max_documents=20)
         names = {d.file_name for d in out}
@@ -150,9 +150,9 @@ class TestAllocateInventory:
 
     def test_fair_share_when_user_shelves_overflow_the_cap(self):
         project = [_doc(f"p{i:02d}.pdf", collection="proj_1", shelf="project") for i in range(30)]
-        office_shelf = [_doc(f"a{i:02d}.pdf", collection="archiv_org", shelf="archiv") for i in range(5)]
+        office_shelf = [_doc(f"a{i:02d}.pdf", collection="archiv_org", shelf="office_shelf") for i in range(5)]
         out = allocate_inventory(project + office_shelf, max_documents=10)
-        assert any(d.shelf == "archiv" for d in out)
+        assert any(d.shelf == "office_shelf" for d in out)
         assert any(d.shelf == "project" for d in out)
         assert len(out) == 10
 
@@ -168,7 +168,7 @@ class TestRenderInventoryBlock:
         docs = [
             _doc("oib-rl_2.pdf", collection="oib_knowledge", shelf="base", summary="Brandschutz."),
             _doc("Lacknergasse.pdf", collection="proj_1", shelf="project", summary="Ansichten."),
-            _doc("Buero-Standard.pdf", collection="archiv_org", shelf="archiv", summary="Detail."),
+            _doc("Buero-Standard.pdf", collection="archiv_org", shelf="office_shelf", summary="Detail."),
         ]
         text = render_inventory_block(docs)
 
@@ -238,7 +238,7 @@ class TestRenderInventoryBlock:
         docs = [
             _doc("oib-rl_2.pdf", collection="oib_knowledge", shelf="base"),
             _doc("Lacknergasse.pdf", collection="proj_1", shelf="project"),
-            _doc("Buero-Standard.pdf", collection="archiv_org", shelf="archiv"),
+            _doc("Buero-Standard.pdf", collection="archiv_org", shelf="office_shelf"),
         ]
         text = render_inventory_block(docs, focus_shelf=Shelf.OFFICE_SHELF)
         assert "Buero-Standard.pdf" in text
@@ -306,7 +306,7 @@ class TestTruncationIsAnnouncedToTheModel:
         set_inventory_drops(None)
 
     def test_reports_what_the_cap_dropped_per_shelf(self):
-        docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="archiv") for i in range(10)]
+        docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="office_shelf") for i in range(10)]
         docs += [_doc(f"proj-{i:02d}.pdf", collection="proj_1", shelf="project") for i in range(4)]
         kept, dropped = allocate_inventory_detailed(docs, max_documents=6)
 
@@ -328,7 +328,7 @@ class TestTruncationIsAnnouncedToTheModel:
         assert dropped == {}
 
     def test_the_block_tells_the_model_the_shelf_is_incomplete(self):
-        docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="archiv") for i in range(10)]
+        docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="office_shelf") for i in range(10)]
         kept, dropped = allocate_inventory_detailed(docs, max_documents=4)
         set_inventory_drops(dropped)
 
@@ -345,7 +345,7 @@ class TestTruncationIsAnnouncedToTheModel:
         assert "weitere Datei" not in rendered
 
     def test_the_notice_lands_in_the_truncated_shelf_section(self):
-        docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="archiv") for i in range(10)]
+        docs = [_doc(f"archiv-{i:02d}.pdf", collection="archiv_org", shelf="office_shelf") for i in range(10)]
         docs += [_doc("proj.pdf", collection="proj_1", shelf="project")]
         kept, dropped = allocate_inventory_detailed(docs, max_documents=5)
         set_inventory_drops(dropped)
@@ -406,7 +406,7 @@ class TestBaseShelfIsFolded:
         docs = [
             _doc("oib-rl_2.pdf", collection="oib_knowledge", shelf="base"),
             _doc("Lacknergasse.pdf", collection="proj_1", shelf="project"),
-            _doc("Buero-Standard.pdf", collection="archiv_org", shelf="archiv"),
+            _doc("Buero-Standard.pdf", collection="archiv_org", shelf="office_shelf"),
         ]
         text = render_inventory_block(docs)
 

@@ -723,12 +723,12 @@ describe('a mark’s link', () => {
 
   it('is this page’s, at the mark, where the review has no shelf of its own to open on', async () => {
     const before = window.location.href
-    window.history.replaceState(null, '', '/app/archiv?doc=doc_1&review=1&tool=region&back=%2Fapp%2Finbox&folder=f1')
+    window.history.replaceState(null, '', '/app/office-shelf?doc=doc_1&review=1&tool=region&back=%2Fapp%2Finbox&folder=f1')
     try {
       serve([view({ id: 'ann_1' })])
       render(<Host />)
       const url = await copied()
-      expect(`${url.pathname}${url.search}`).toBe('/app/archiv?doc=doc_1&folder=f1&review=1&mark=ann_1')
+      expect(`${url.pathname}${url.search}`).toBe('/app/office-shelf?doc=doc_1&folder=f1&review=1&mark=ann_1')
     } finally {
       window.history.replaceState(null, '', before)
     }
