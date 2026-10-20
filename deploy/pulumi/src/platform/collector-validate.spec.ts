@@ -57,6 +57,16 @@ async function renderedConfigs(values: Record<string, string>): Promise<Record<s
   return configs;
 }
 
+/**
+ * The config as it reads outside a pod. `validate` builds every receiver, and
+ * kubeletstats reads the pod's service account certificate while it does; a
+ * CI runner has none. That identity is the one thing swapped, and only it:
+ * every other key still reaches the build.
+ */
+function outsideThePod(yaml: string): string {
+  return yaml.split("auth_type: serviceAccount").join("auth_type: none");
+}
+
 const STACKS: Record<string, Record<string, string>> = {
   "the defaults (PostHog on, Qdrant on)": {},
   "Langfuse and PostHog both on": langfuseStackConfig(),
@@ -81,7 +91,7 @@ describe.skipIf(!OTELCOL_BIN)("every rendered collector config passes `otelcol-c
     const failures: string[] = [];
     for (const [index, [stack, name, yaml]] of rendered.entries()) {
       const file = join(dir, `${index}-${name}.yaml`);
-      writeFileSync(file, yaml);
+      writeFileSync(file, outsideThePod(yaml));
       try {
         // `${env:…}` references must resolve for validate to load the file;
         // the values are placeholders, the shape is what is under test.

@@ -1,5 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import { PLATFORM_RESOURCES } from "../constants";
+import { scrapeAnnotations } from "./scrape";
 
 /** Namespace KEDA runs in; the network policies that let it read the queues name it. */
 export const KEDA_NAMESPACE = "keda";
@@ -16,6 +17,8 @@ export const KEDA_CHART_VERSION = "2.21.0";
 
 /** The label KEDA's operator pods carry (chart value `operator.name`), which a NetworkPolicy selects them by. */
 export const KEDA_OPERATOR_LABEL = { "app.kubernetes.io/name": "keda-operator" } as const;
+/** The operator's Prometheus listener (chart value `prometheus.operator.port`, its default). */
+const KEDA_OPERATOR_METRICS_PORT = 8080;
 
 /**
  * KEDA — the event-driven autoscaler the queue-driven tiers scale with: the
@@ -52,6 +55,14 @@ export function installKeda(provider: k8s.Provider): k8s.helm.v3.Release {
           metricServer: PLATFORM_RESOURCES.kedaMetricServer,
           webhooks: PLATFORM_RESOURCES.kedaWebhooks,
         },
+        // The operator runs every scaler, so its metrics are the ones that say
+        // whether a trigger can read its queue (`keda_scaler_errors_total`,
+        // `keda_scaler_metrics_value`): a trigger that cannot leaves its tier
+        // at its count while the queue grows, and nothing else reports it. The
+        // node agents scrape them (ADR-0119); nothing outside `keda` is
+        // granted anything for it, since `keda` has no ingress policy.
+        prometheus: { operator: { enabled: true, port: KEDA_OPERATOR_METRICS_PORT } },
+        podAnnotations: { keda: scrapeAnnotations(KEDA_OPERATOR_METRICS_PORT) },
       },
     },
     { provider, dependsOn: [ns] },

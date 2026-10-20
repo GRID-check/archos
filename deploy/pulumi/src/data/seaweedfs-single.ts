@@ -10,6 +10,7 @@ import {
   secretChecksumAnnotations,
 } from "../platform/rollout";
 import { DATA_RESOURCES, PORT, SEAWEED } from "../constants";
+import { scrapeAnnotations } from "../platform/scrape";
 import type { SeaweedTopology } from "./seaweedfs-types";
 
 /**
@@ -82,7 +83,10 @@ export function installSingleNodeSeaweedFS(
         ...orderedRollout(ROLLOUT.dataPlane),
         selector: { matchLabels: labels },
         template: {
-          metadata: { labels, annotations: secretChecksumAnnotations(configChecksum) },
+          metadata: {
+            labels,
+            annotations: { ...secretChecksumAnnotations(configChecksum), ...scrapeAnnotations(PORT.seaweedMetrics) },
+          },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             securityContext: { fsGroup: 1000 },
@@ -133,7 +137,7 @@ export function installSingleNodeSeaweedFS(
                   // split-topology knob until someone wants it enough to write
                   // the migration note.
                   `exec weed server -dir=/data -volume.max=${cfg.seaweedfs.volumeMaxCount} -s3 ` +
-                    "-s3.config=/etc/seaweedfs/s3.json -s3.port=8333" +
+                    `-s3.config=/etc/seaweedfs/s3.json -s3.port=8333 -metricsPort=${PORT.seaweedMetrics}` +
                     // Chunk encryption is a FILER concern — the volume server
                     // has no concept of it and stores the ciphertext as opaque
                     // bytes. Keys are per chunk and live in the FILER METADATA,
@@ -142,7 +146,10 @@ export function installSingleNodeSeaweedFS(
                     // existing objects stay plaintext and keep working.
                     (cfg.seaweedfs.encryptVolumeData ? " -filer.encryptVolumeData" : ""),
                 ],
-                ports: seaweedPorts.map((p) => ({ containerPort: p.port, name: p.name })),
+                ports: [
+                  ...seaweedPorts.map((p) => ({ containerPort: p.port, name: p.name })),
+                  { containerPort: PORT.seaweedMetrics, name: "metrics" },
+                ],
                 volumeMounts: [
                   { name: "data", mountPath: "/data" },
                   { name: "s3config", mountPath: "/etc/seaweedfs", readOnly: true },

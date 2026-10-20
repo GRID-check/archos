@@ -150,7 +150,7 @@ describe("ClickHouse system-log TTLs", () => {
       name: string;
       configMap: { name: string };
     }>;
-    expect(volumes.find((v) => v.name === "syslog-ttl")?.configMap.name).toBe("clickhouse-config");
+    expect(volumes.find((v) => v.name === "config-d")?.configMap.name).toBe("clickhouse-config");
   });
 
   it("rolls the pod when the TTL file changes", async () => {

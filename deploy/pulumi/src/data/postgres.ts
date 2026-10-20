@@ -4,6 +4,7 @@ import { GridConfig, assertPgConnectionBudget } from "../config";
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedJobSecurityContext } from "../platform/security";
+import { scrapeAnnotations } from "../platform/scrape";
 import {
   BOOTSTRAP_JOB_RESOURCES,
   DATA_RESOURCES,
@@ -424,6 +425,10 @@ export function installPostgres(
       metadata: { name: CLUSTER_NAME, namespace, labels: commonLabels("postgres") },
       spec: {
         instances: cfg.postgres.instances,
+        // Every instance's exporter (connections, replication lag, WAL,
+        // database sizes) for the node agents to scrape (ADR-0119). The
+        // operator copies these onto every pod it builds.
+        inheritedMetadata: { annotations: scrapeAnnotations(PORT.postgresMetrics) },
         // Major-pinned, patch-floating: gets every 17.x minor/security patch
         // automatically (safe in-place for Postgres), but never auto-crosses a
         // major — CloudNativePG treats a major bump as a declarative migration,
@@ -623,7 +628,8 @@ export function installPostgres(
           },
         },
         template: {
-          metadata: { labels: poolerLabels },
+          // PgBouncer's pools, clients and waits, for the node agents (ADR-0119).
+          metadata: { labels: poolerLabels, annotations: scrapeAnnotations(PORT.poolerMetrics) },
           spec: {
             // Two poolers on one node are one pooler when that node drains.
             // Required on a data group (fixed in size), soft without one.

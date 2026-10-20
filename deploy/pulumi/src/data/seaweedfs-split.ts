@@ -10,7 +10,11 @@ import {
 } from "../platform/rollout";
 import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { DATA_RESOURCES, PORT, SEAWEED } from "../constants";
+import { scrapeAnnotations } from "../platform/scrape";
 import type { SeaweedTopology } from "./seaweedfs-types";
+
+/** Every weed process's `-metricsPort`, scraped by the node agents (ADR-0119). */
+const METRICS_PORT = { containerPort: PORT.seaweedMetrics, name: "metrics" };
 
 /**
  * The split SeaweedFS topology (ADR-0043): master, volume and filer as three
@@ -264,7 +268,8 @@ export function installSplitSeaweedFS(
  -port=${PORT.seaweedMaster} \
  -peers=${masterPeers} \
  -volumeSizeLimitMB=${cfg.seaweedfs.volumeSizeLimitMB} \
- -defaultReplication=${cfg.seaweedfs.defaultReplication}`;
+ -defaultReplication=${cfg.seaweedfs.defaultReplication} \
+ -metricsPort=${PORT.seaweedMetrics}`;
 
   const master = new k8s.apps.v1.StatefulSet(
     "seaweedfs-master",
@@ -277,7 +282,7 @@ export function installSplitSeaweedFS(
         ...orderedRollout(ROLLOUT.dataPlane),
         selector: { matchLabels: masterLabels },
         template: {
-          metadata: { labels: masterLabels },
+          metadata: { labels: masterLabels, annotations: scrapeAnnotations(PORT.seaweedMetrics) },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             securityContext: { fsGroup: 1000 },
@@ -292,7 +297,7 @@ export function installSplitSeaweedFS(
                 command: ["/bin/sh", "-c"],
                 args: [masterArgs],
                 env: IDENTITY_ENV,
-                ports: masterPorts.map((p) => ({ containerPort: p.port, name: p.name })),
+                ports: [...masterPorts.map((p) => ({ containerPort: p.port, name: p.name })), METRICS_PORT],
                 volumeMounts: [{ name: "data", mountPath: "/data" }],
                 // `/cluster/healthz` answers 423 Locked while this master holds
                 // a topology child lock, and 503 while no leader is elected.
@@ -380,7 +385,8 @@ export function installSplitSeaweedFS(
  -ip.bind=0.0.0.0 \
  -port=${PORT.seaweedVolume} \
  -rack=$(NODE_NAME) \
- -minFreeSpace=${cfg.seaweedfs.volumeMinFreeSpace}`;
+ -minFreeSpace=${cfg.seaweedfs.volumeMinFreeSpace} \
+ -metricsPort=${PORT.seaweedMetrics}`;
 
   const volume = new k8s.apps.v1.StatefulSet(
     "seaweedfs-volume",
@@ -396,7 +402,7 @@ export function installSplitSeaweedFS(
         ...orderedRollout(ROLLOUT.dataPlane),
         selector: { matchLabels: volumeLabels },
         template: {
-          metadata: { labels: volumeLabels },
+          metadata: { labels: volumeLabels, annotations: scrapeAnnotations(PORT.seaweedMetrics) },
           spec: {
             enableServiceLinks: false,
             securityContext: { fsGroup: 1000 },
@@ -413,7 +419,7 @@ export function installSplitSeaweedFS(
                 command: ["/bin/sh", "-c"],
                 args: [volumeArgs],
                 env: IDENTITY_ENV,
-                ports: volumePorts.map((p) => ({ containerPort: p.port, name: p.name })),
+                ports: [...volumePorts.map((p) => ({ containerPort: p.port, name: p.name })), METRICS_PORT],
                 volumeMounts: [{ name: "data", mountPath: "/data" }],
                 readinessProbe: {
                   httpGet: { path: "/healthz", port: PORT.seaweedVolume },
@@ -486,7 +492,8 @@ export function installSplitSeaweedFS(
  -defaultStoreDir=/data \
  -s3 \
  -s3.config=${CONFIG_DIR}/s3.json \
- -s3.port=${PORT.seaweedS3}${cfg.seaweedfs.encryptVolumeData ? " -encryptVolumeData" : ""}`;
+ -s3.port=${PORT.seaweedS3} \
+ -metricsPort=${PORT.seaweedMetrics}${cfg.seaweedfs.encryptVolumeData ? " -encryptVolumeData" : ""}`;
 
   const filer = new k8s.apps.v1.StatefulSet(
     "seaweedfs-filer",
@@ -499,7 +506,10 @@ export function installSplitSeaweedFS(
         ...orderedRollout(ROLLOUT.dataPlane),
         selector: { matchLabels: filerLabels },
         template: {
-          metadata: { labels: filerLabels, annotations: secretChecksumAnnotations(configChecksum) },
+          metadata: {
+            labels: filerLabels,
+            annotations: { ...secretChecksumAnnotations(configChecksum), ...scrapeAnnotations(PORT.seaweedMetrics) },
+          },
           spec: {
             enableServiceLinks: false,
             securityContext: { fsGroup: 1000 },
@@ -521,7 +531,7 @@ export function installSplitSeaweedFS(
                 command: ["/bin/sh", "-c"],
                 args: [filerArgs],
                 env: IDENTITY_ENV,
-                ports: filerPorts.map((p) => ({ containerPort: p.port, name: p.name })),
+                ports: [...filerPorts.map((p) => ({ containerPort: p.port, name: p.name })), METRICS_PORT],
                 volumeMounts: [
                   { name: "config", mountPath: CONFIG_DIR, readOnly: true },
                   { name: "filer-data", mountPath: "/data" },
