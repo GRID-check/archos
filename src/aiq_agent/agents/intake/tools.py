@@ -109,6 +109,9 @@ class IntakeSession:
     finish_held: bool = False
     outcomes: Counter = field(default_factory=Counter)
     refusals: Counter = field(default_factory=Counter)
+    #: How many opened files the BFF has been told about (``progress``), and how often it was told.
+    files_reported: int = 0
+    progress_reports: int = 0
 
     def remember_needs(self, body: dict[str, Any]) -> None:
         needs = [need for need in body.get("needs") or [] if isinstance(need, dict) and need.get("key")]
@@ -631,6 +634,29 @@ async def finish_intake(session: IntakeSession, summary: str) -> str:
         return f"Finished, but the intake API did not take it: {reply.refusal}"
     session.finish_status = str(reply.body.get("status") or "") or None
     return f"Intake finished ({session.finish_status or 'status unknown'}); {len(documents)} document(s) read."
+
+
+async def report_progress(session: IntakeSession) -> None:
+    """POST ``progress`` once the run has opened a file it has not reported yet. Never raises.
+
+    The person who started the reading may watch the setup page count the
+    documents („23 Dokumente gelesen"); ``finish`` alone would leave that count
+    at the last reading's until the end. Not a tool: the middleware calls it
+    after every tool call, and it sends only when the read log grew. A failed
+    report is tried again after the next call; a stale one stops the reports.
+    """
+    if session.stale or session.finished or not session.job_id:
+        return
+    log = current_read_log()
+    opened = log.documents_read if log is not None else []
+    if len(opened) <= session.files_reported:
+        return
+    reply = await client.call_intake("progress", client.progress_request(session.job_id, opened))
+    if not reply.ok:
+        session.stale = session.stale or reply.stale
+        return
+    session.files_reported = len(opened)
+    session.progress_reports += 1
 
 
 def _named(items: list[str]) -> str:

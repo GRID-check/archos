@@ -294,6 +294,13 @@ const BASE: IntakeView = {
   derivations: [],
   canDecide: true,
   canComplete: true,
+  // Step 3's milestones: the address search set the site at creation. The
+  // step's own states are in `project-setup-reading.ts`.
+  readingProgress: {
+    documentsOpened: 0,
+    documentsTotal: 0,
+    site: { bundesland: 'Wien', gemeinde: 'Wien', address: FIXTURE_LOCATION.label, source: 'geocoder', confirmed: true },
+  },
 }
 
 /** Created a moment ago: the address is on the profile, no documents yet. */

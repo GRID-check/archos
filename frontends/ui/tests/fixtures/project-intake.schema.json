@@ -147,6 +147,34 @@
           "type": "object",
           "properties": {
             "op": {
+              "const": "progress"
+            },
+            "jobId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "filesOpened": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "maxItems": 500
+            }
+          },
+          "required": [
+            "op",
+            "jobId",
+            "filesOpened"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
               "const": "finish"
             },
             "jobId": {
@@ -550,6 +578,18 @@
       },
       "required": [
         "results"
+      ],
+      "additionalProperties": true
+    },
+    "InternalIntakeProgressResponse": {
+      "type": "object",
+      "properties": {
+        "filesOpened": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "filesOpened"
       ],
       "additionalProperties": true
     },
@@ -2800,6 +2840,87 @@
         },
         "canComplete": {
           "type": "boolean"
+        },
+        "readingProgress": {
+          "type": "object",
+          "properties": {
+            "documentsOpened": {
+              "type": "integer"
+            },
+            "documentsTotal": {
+              "type": "integer"
+            },
+            "site": {
+              "type": "object",
+              "properties": {
+                "bundesland": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "gemeinde": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "address": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "geocoder",
+                        "document",
+                        "person"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "confirmed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "bundesland",
+                "gemeinde",
+                "address",
+                "source",
+                "confirmed"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "documentsOpened",
+            "documentsTotal",
+            "site"
+          ],
+          "additionalProperties": true
         }
       },
       "required": [
@@ -2819,7 +2940,8 @@
         "groups",
         "derivations",
         "canDecide",
-        "canComplete"
+        "canComplete",
+        "readingProgress"
       ],
       "additionalProperties": true
     }

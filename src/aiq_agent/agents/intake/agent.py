@@ -64,6 +64,7 @@ from .tools import IntakeSession
 from .tools import finish_intake
 from .tools import make_intake_tools
 from .tools import render_needs
+from .tools import report_progress
 
 logger = logging.getLogger(__name__)
 
@@ -198,7 +199,10 @@ class ProjectIntakeAgent:
         from langchain.agents import create_agent
 
         middleware = IntakeToolMiddleware(
-            max_steps=self.max_tool_steps, finish_tool=FINISH_INTAKE_TOOL, finished=lambda: session.finished
+            max_steps=self.max_tool_steps,
+            finish_tool=FINISH_INTAKE_TOOL,
+            finished=lambda: session.finished,
+            after_call=lambda: report_progress(session),
         )
         own = [*make_intake_tools(session, budget_spent=lambda: middleware.budget_spent), make_read_document_tool()]
         names = {tool.name for tool in own}
@@ -296,6 +300,7 @@ def _outcome(ended: str, session: IntakeSession, documents_read: list[str]) -> d
         "finish_held": session.finish_held,
         "refusals": dict(session.refusals),
         "decisive_open": session.decisive_open,
+        "progress_reports": session.progress_reports,
     }
 
 
@@ -315,4 +320,5 @@ def _record_trace(outcome: dict[str, Any]) -> None:
         intake_finish_held=outcome["finish_held"],
         intake_refusals=refusals or None,
         intake_decisive_open=outcome["decisive_open"],
+        intake_progress_reports=outcome["progress_reports"],
     )

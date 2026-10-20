@@ -9,6 +9,7 @@ import { jsonSchemaDocument, type JsonSchemaNode } from '@/lib/api/zod-json-sche
 import {
   internalIntakeFinishResponseSchema,
   internalIntakeNeedsResponseSchema,
+  internalIntakeProgressResponseSchema,
   internalIntakeRecordResponseSchema,
   internalIntakeRequestSchema,
   internalIntakeWithdrawResponseSchema,
@@ -23,6 +24,7 @@ export const INTAKE_WIRE_SCHEMAS = {
   InternalIntakeNeedsResponse: internalIntakeNeedsResponseSchema,
   InternalIntakeRecordResponse: internalIntakeRecordResponseSchema,
   InternalIntakeWithdrawResponse: internalIntakeWithdrawResponseSchema,
+  InternalIntakeProgressResponse: internalIntakeProgressResponseSchema,
   InternalIntakeFinishResponse: internalIntakeFinishResponseSchema,
   Need: needSchema,
   ProfileEvidence: profileEvidenceSchema,

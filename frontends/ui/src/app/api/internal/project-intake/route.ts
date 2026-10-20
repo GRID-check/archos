@@ -1,7 +1,8 @@
 /**
  * INTERNAL — the project intake's reading talks to the BFF (ADR-0111): what
  * the project still needs (`needs`), the values it found (`record`), a
- * suggestion of its own it takes back (`withdraw`), and that it has finished
+ * suggestion of its own it takes back (`withdraw`), the files it has opened so
+ * far (`progress`, the setup page's live count), and that it has finished
  * (`finish`). The Erfassungs-Agent's tools are the callers.
  *
  * The acting person is the one the run's signed envelope names, as a pinned
@@ -24,6 +25,7 @@ import {
   finishIntakeReading,
   intakeNeeds,
   recordIntakeValues,
+  reportIntakeProgress,
   withdrawIntakeValues,
 } from '@/lib/project-intake/service'
 import { internalIntakeRequestSchema, type InternalIntakeResponse } from '@/lib/project-intake/types'
@@ -46,6 +48,8 @@ export const POST = internalApiRoute(
           return recordIntakeValues(session, projectId, body.jobId, body.values)
         case 'withdraw':
           return withdrawIntakeValues(session, projectId, body.jobId, body.keys)
+        case 'progress':
+          return reportIntakeProgress(session, projectId, body.jobId, body.filesOpened)
         case 'finish':
           return finishIntakeReading(session, projectId, body.jobId, {
             summary: body.summary,
