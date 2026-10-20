@@ -48,6 +48,13 @@ export const projectIntakes = pgTable(
     rerunRequested: boolean('rerun_requested').notNull().default(false),
     documentsRead: jsonb('documents_read').$type<DocumentRead[]>().notNull().default(sql`'[]'::jsonb`),
     dismissed: jsonb('dismissed').$type<DismissedValue[]>().notNull().default(sql`'[]'::jsonb`),
+    /**
+     * The file names the current or last reading opened, as the run reported
+     * them while reading (migration 0157): the setup page's live „x von y
+     * gelesen". Emptied at a claim; never what decides the next reading's
+     * unread files, which is `documentsRead`, written at the finish.
+     */
+    readingFiles: jsonb('reading_files').$type<string[]>().notNull().default(sql`'[]'::jsonb`),
     counts: jsonb('counts').$type<IntakeCounts>(),
     /** The agent's closing sentence. */
     summary: text('summary'),
@@ -104,6 +111,7 @@ export const projectIntakes = pgTable(
       sql`jsonb_typeof(${table.documentsRead}) = 'array'`
     ),
     dismissedArray: check('project_intakes_dismissed_array', sql`jsonb_typeof(${table.dismissed}) = 'array'`),
+    readingFilesArray: check('project_intakes_reading_files_array', sql`jsonb_typeof(${table.readingFiles}) = 'array'`),
   })
 )
 

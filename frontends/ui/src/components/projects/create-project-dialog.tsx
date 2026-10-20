@@ -27,6 +27,8 @@ interface CreateProjectDialogProps {
   tourAnchor?: string
   /** The address lookups of the form; the `/dev` preview brings fixtures. */
   addressClients?: CreateProjectFormProps['addressClients']
+  /** What the form starts with; the `/dev` preview shows it filled in. */
+  initial?: CreateProjectFormProps['initial']
 }
 
 export function CreateProjectDialog({
@@ -36,6 +38,7 @@ export function CreateProjectDialog({
   size = 'default',
   tourAnchor,
   addressClients,
+  initial,
 }: CreateProjectDialogProps): JSX.Element {
   const t = useTranslations('projects')
   const router = useRouter()
@@ -64,7 +67,9 @@ export function CreateProjectDialog({
       </DialogTrigger>
       <DialogContent
         fullScreenOnMobile
-        className="sm:max-w-2xl"
+        // The mockup's 560px card: roomier padding and radius than the kit's
+        // default dialog, the same on every screen that is not a phone.
+        className="sm:top-[84px] sm:max-h-[calc(100dvh-84px-1.5rem)] sm:max-w-[560px] sm:translate-y-0 sm:rounded-2xl sm:p-7"
         // Radix puts focus on the first field when a dialog opens, which on a
         // touch device opens the keyboard over the form before anyone has read
         // it. The dialog itself takes the focus there instead (so a screen
@@ -75,11 +80,11 @@ export function CreateProjectDialog({
           if (event.currentTarget instanceof HTMLElement) event.currentTarget.focus()
         }}
       >
-        <DialogHeader>
-          <DialogTitle>{t('dialog.title')}</DialogTitle>
-          <DialogDescription>{t('dialog.description')}</DialogDescription>
+        <DialogHeader className="mb-1 gap-1.5 pr-8">
+          <DialogTitle className="text-xl tracking-tight">{t('dialog.title')}</DialogTitle>
+          <DialogDescription className="text-sm">{t('dialog.description')}</DialogDescription>
         </DialogHeader>
-        <CreateProjectForm onCancel={() => handleOpenChange(false)} addressClients={addressClients} />
+        <CreateProjectForm onCancel={() => handleOpenChange(false)} addressClients={addressClients} initial={initial} />
       </DialogContent>
     </Dialog>
   )

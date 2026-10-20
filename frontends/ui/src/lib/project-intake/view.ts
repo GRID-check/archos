@@ -22,7 +22,9 @@ import {
 } from '@/lib/project-profile/intake-definition'
 import type { ProjectAssumption, ProjectFact, ProjectProfile } from '@/lib/project-profile/types'
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
+import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { deriveAll } from './derivation-view'
+import { locationRegisterFor } from './location-register'
 import { GEBAEUDEKLASSE_DERIVATION } from './derivations'
 import { profileKeyParts } from './profile-edits'
 import {
@@ -31,6 +33,7 @@ import {
   type IntakeCounts,
   type IntakeView,
   type Need,
+  type ReadingProgress,
   type Suggestion,
   type SuggestionGroup,
   type SuggestionState,
@@ -192,6 +195,8 @@ export interface IntakeViewInput {
   unreadDocuments: number
   canDecide: boolean
   canComplete: boolean
+  /** Step 3: the readable documents and the unread ones among them, for the live „x von y". Absent: none. */
+  readingDocuments?: { readable: readonly ReadingDocument[]; unread: readonly ReadingDocument[] }
 }
 
 const iso = (value: Date | string | null | undefined): string | null =>
@@ -203,6 +208,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
   const groups = suggestionGroups(profile, definition, needs)
   const contradictions = contestedItems(profile, definition, needs)
   const questions = needs.filter((need) => need.decisive && need.state === 'open').slice(0, MAX_INTAKE_NEEDS)
+  const openQuestions = needs.filter((need) => !need.decisive && need.state === 'open').slice(0, MAX_INTAKE_NEEDS)
   const counts = intakeCounts(profile, definition, needs, row.documentsRead.length)
   return {
     projectId: row.projectId,
@@ -217,9 +223,97 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
     summary: row.summary ?? null,
     contradictions,
     questions,
+    openQuestions,
     groups,
     derivations: derivationReviews(profile, definition, needs),
     canDecide: input.canDecide,
     canComplete: input.canComplete,
+    // Step 5, Steckbrief: the Ampel from the confirmed values (facts) only.
+    applicableStandards: getApplicableStandards(profile),
+    // Step 4, Rückfragen: what the location decides, and the documents for it.
+    locationRegister: locationRegisterFor({ profile, location: row.location ?? null, mode: row.mode, needs }),
+    readingProgress: readingProgressOf(input),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Step 3, Erfassung (`reading`): the reading's live milestones
+// ---------------------------------------------------------------------------
+
+/** A readable document, as far as the reading's progress needs one. */
+export interface ReadingDocument {
+  documentId: string
+  fileName: string
+}
+
+/**
+ * How far the current or last reading got through what it had before it.
+ * Opened: the readable documents whose name the run reported opening (the
+ * finish merges by name too, `mergeDocumentsRead`). Before it: the documents
+ * no finished reading has read, and the ones it opened (a reading may open a
+ * document read before, and then it counts on both sides). Pure.
+ */
+export function readingDocumentProgress(
+  readingFiles: readonly string[],
+  readable: readonly ReadingDocument[],
+  unread: readonly ReadingDocument[]
+): Pick<ReadingProgress, 'documentsOpened' | 'documentsTotal'> {
+  const named = new Set(readingFiles)
+  const before = new Set(unread.map((document) => document.documentId))
+  let documentsOpened = 0
+  for (const document of readable) {
+    if (!named.has(document.fileName)) continue
+    documentsOpened += 1
+    before.add(document.documentId)
+  }
+  return { documentsOpened, documentsTotal: before.size }
+}
+
+type SiteSource = NonNullable<ReadingProgress['site']['source']>
+
+/** Where a Bundesland came from: the address search at creation, a document, or a person. */
+function siteSource(entry: ProjectFact | ProjectAssumption, confirmed: boolean, row: ProjectIntakeRow): SiteSource {
+  if (confirmed && row.location?.bundesland === entry.value) return 'geocoder'
+  const kinds = new Set((entry.evidence ?? []).map((evidence) => evidence.kind))
+  if (kinds.has('document')) return 'document'
+  if (kinds.has('geocoder')) return 'geocoder'
+  return 'person'
+}
+
+/**
+ * „Standort ermittelt": the Bundesland as a person reads it, the Gemeinde the
+ * address search named, and the address, from the profile first (what a
+ * reading found or a person said) and the intake's geocoder result second.
+ * Pure.
+ */
+export function readingSite(
+  row: ProjectIntakeRow,
+  profile: ProjectProfile,
+  definition: ProjectIntakeDefinition
+): ReadingProgress['site'] {
+  const homes = keyHomes(definition)
+  const shown = (key: string, value: ProjectFact['value']) => {
+    const home = homes.get(key)
+    return home ? displayOf(home, value) : String(value)
+  }
+  const fact = profile.facts.bundesland
+  const entry = fact ?? profile.assumptions.bundesland
+  const address = profile.facts.standort_adresse ?? profile.assumptions.standort_adresse
+  const addressText = address ? String(address.value) : (row.location?.label ?? null)
+  return {
+    federalState: entry ? shown('bundesland', entry.value).slice(0, 200) : null,
+    municipality: row.location?.gemeinde?.slice(0, 200) ?? null,
+    address: addressText ? addressText.slice(0, 500) : null,
+    source: entry ? siteSource(entry, Boolean(fact), row) : null,
+    confirmed: Boolean(fact),
+  }
+}
+
+/** Step 3's block of the view. */
+function readingProgressOf(input: IntakeViewInput): ReadingProgress {
+  const documents = input.readingDocuments ?? { readable: [], unread: [] }
+  return {
+    ...readingDocumentProgress(input.row.readingFiles ?? [], documents.readable, documents.unread),
+    site: readingSite(input.row, input.profile, input.definition),
   }
 }

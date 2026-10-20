@@ -309,9 +309,7 @@ describe('useFileUpload', () => {
         ])
       })
 
-      expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(
-        'Collection name required for upload'
-      )
+      expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(en.files.errors.uploadFailed)
       expect(onError).toHaveBeenCalled()
     })
 
@@ -939,7 +937,7 @@ describe('useFileUpload — durable document uploads', () => {
     })
 
     await act(async () => {
-      xhr.requests[0].respond(413, JSON.stringify({ error: 'File too large' }))
+      xhr.requests[0].respond(413, JSON.stringify({ error: 'File too large', code: 'FILE_TOO_LARGE' }))
       xhr.requests[1].respond(200, uploadOk('doc-1'))
       xhr.requests[2].respond(200, uploadOk('doc-2'))
       await pending
@@ -949,7 +947,11 @@ describe('useFileUpload — durable document uploads', () => {
     expect(xhr.requests).toHaveLength(3)
     expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
       'mock-uuid',
-      expect.objectContaining({ status: 'failed', errorMessage: 'File too large' })
+      // In the dictionary's words: the server's English is for the log.
+      expect.objectContaining({
+        status: 'failed',
+        errorMessage: expect.stringContaining('is larger than your office may upload'),
+      })
     )
     // …and the accepted files are still handed to the poller.
     expect(mockOrchestratorFns.enqueueJobs).toHaveBeenCalled()
@@ -1429,14 +1431,14 @@ describe('useFileUpload — chat attachments', () => {
     const { result } = renderHook(() => useFileUpload({ collectionName: CHAT, onError }))
 
     await upload(result, () =>
-      xhr.last().respond(413, JSON.stringify({ error: 'Storage quota exceeded' }))
+      xhr.last().respond(507, JSON.stringify({ error: 'Storage quota exceeded', code: 'STORAGE_QUOTA_EXCEEDED' }))
     )
 
     expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
       'mock-uuid',
-      expect.objectContaining({ status: 'failed', errorMessage: 'Storage quota exceeded' })
+      expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.uploadStorageFull })
     )
-    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith('Storage quota exceeded')
+    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(en.files.errors.uploadStorageFull)
     expect(onError).toHaveBeenCalled()
     expect(mockOrchestratorFns.pollSessionDocuments).not.toHaveBeenCalled()
   })

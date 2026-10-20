@@ -159,10 +159,14 @@ export function ProjectsGrid({
             className="col-span-2 row-start-2 sm:col-span-1 sm:col-start-2 sm:row-start-1 sm:w-64"
           />
         )}
-        {/* Primary near-black action — Button default variant consumes --primary. */}
-        <div className="col-start-2 row-start-1 sm:col-start-3">
-          <CreateProjectDialog defaultOpen={autoOpenCreate} tourAnchor={TOUR_ANCHORS.createProject} />
-        </div>
+        {/* Primary near-black action — Button default variant consumes --primary.
+            With no project yet the empty state below carries the one action:
+            two buttons for the same thing read as two different things. */}
+        {hasProjects && (
+          <div className="col-start-2 row-start-1 sm:col-start-3">
+            <CreateProjectDialog defaultOpen={autoOpenCreate} tourAnchor={TOUR_ANCHORS.createProject} />
+          </div>
+        )}
       </header>
 
       {showStatusFilter && (
@@ -193,7 +197,13 @@ export function ProjectsGrid({
             art={<RisoPrint id="vignetten/abstecken/empty" />}
             title={t('list.empty.title')}
             description={t('list.empty.description')}
-            action={<CreateProjectDialog label={t('list.empty.action')} />}
+            action={
+              <CreateProjectDialog
+                label={t('list.empty.action')}
+                defaultOpen={autoOpenCreate}
+                tourAnchor={TOUR_ANCHORS.createProject}
+              />
+            }
             className="min-h-96 justify-center"
           />
         ) : emptyInStatus ? (

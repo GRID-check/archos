@@ -77,6 +77,26 @@ describe('createProject (server action)', () => {
     )
   })
 
+  it('names the dialog\'s held drop in the redirect, so only this project\'s setup page takes it', async () => {
+    const dropKey = 'new-project:11111111-1111-4111-8111-111111111111'
+    await expect(createProject({}, form({ name: 'Seestadt', setup: 'piloti', dropKey }))).rejects.toThrow(
+      `NEXT_REDIRECT /app/projects/p1/setup?drop=${encodeURIComponent(dropKey)}`
+    )
+  })
+
+  it('ignores a drop key it did not make', async () => {
+    await expect(createProject({}, form({ name: 'Seestadt', setup: 'piloti', dropKey: '../../x' }))).rejects.toThrow(
+      /NEXT_REDIRECT \/app\/projects\/p1\/setup$/
+    )
+  })
+
+  it('keeps a typed address when no hit was chosen', async () => {
+    await expect(createProject({}, form({ name: 'Seestadt', setup: 'piloti', address: 'Am Bahnhof 4' }))).rejects.toThrow(
+      'NEXT_REDIRECT'
+    )
+    expect(createProjectInOrg).toHaveBeenCalledWith(session, expect.objectContaining({ address: 'Am Bahnhof 4' }))
+  })
+
   it('reads an empty Beginn as none', async () => {
     await expect(
       createProject({}, form({ name: 'Wettbewerb', state: 'closed', outcome: 'cancelled', startedOn: '', endedOn: '2026-09' }))

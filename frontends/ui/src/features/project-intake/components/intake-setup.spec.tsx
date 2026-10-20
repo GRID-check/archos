@@ -1,10 +1,11 @@
 /**
- * The connected setup page: a project set up by hand says so, and one Piloti
- * sets up files its documents through the project's own upload.
+ * The connected setup page: a project set up by hand says so, one Piloti sets
+ * up is drawn in the five-step frame, and its documents are filed through the
+ * project's own upload.
  */
 import { render, screen, waitFor } from '@/test-utils'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { INTAKE_READY, INTAKE_WAITING } from '@/app/dev/_fixtures/project-intake'
+import { INTAKE_WAITING } from '@/app/dev/_fixtures/project-intake'
 import { IntakeSetup } from './intake-setup'
 
 vi.mock('@/shared/context', () => ({
@@ -19,7 +20,10 @@ vi.mock('@/shared/context', () => ({
     },
   }),
 }))
-vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(window.location.search),
+}))
 
 const send = vi.fn()
 const uploadHook = vi.hoisted(() => vi.fn())
@@ -62,17 +66,43 @@ describe('IntakeSetup', () => {
     expect(screen.getByRole('link', { name: 'Open the briefing' })).toHaveAttribute('href', '/app/projects/p1/intake')
   })
 
-  it('files uploads into the project\'s collection, and takes the create dialog\'s drop while it waits for documents', () => {
-    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} />)
+  it('files uploads into the project\'s collection, and takes only the drop the redirect named', () => {
+    const key = 'new-project:11111111-1111-4111-8111-111111111111'
+    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} dropKey={key} />)
 
-    expect(uploadHook).toHaveBeenCalledWith(
-      expect.objectContaining({ projectId: 'p1', collectionName: 'proj_1', takeNewProjectDrop: true })
-    )
+    expect(uploadHook).toHaveBeenCalledWith(expect.objectContaining({ projectId: 'p1', collectionName: 'proj_1', dropKey: key }))
   })
 
-  it('takes that drop only while the intake waits for its first documents', () => {
-    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_READY} projectClosed={false} />)
-    expect(uploadHook).toHaveBeenCalledWith(expect.objectContaining({ takeNewProjectDrop: false }))
+  it('takes no drop when the redirect named none', () => {
+    render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} />)
+    expect(uploadHook).toHaveBeenCalledWith(expect.objectContaining({ dropKey: null }))
+  })
+
+  it('draws the five-step frame with the project named, on the step the review points to', () => {
+    render(
+      <IntakeSetup
+        projectId="p1"
+        projectName="Wohnanlage Gartenstraße 12"
+        collectionName="proj_1"
+        initial={INTAKE_WAITING}
+        projectClosed={false}
+      />
+    )
+
+    expect(screen.getByTestId('intake-setup-head')).toHaveTextContent('Wohnanlage Gartenstraße 12')
+    // No documents yet: the Ablage, where they go in.
+    expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'filing')
+    expect(screen.getByRole('navigation', { name: 'Steps of the setup' })).toBeInTheDocument()
+  })
+
+  it('opens the step the address names', () => {
+    window.history.replaceState(null, '', '/app/projects/p1/setup?step=profile')
+    try {
+      render(<IntakeSetup projectId="p1" collectionName="proj_1" initial={INTAKE_WAITING} projectClosed={false} />)
+      expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'profile')
+    } finally {
+      window.history.replaceState(null, '', '/')
+    }
   })
 
   it('offers no upload on a closed project', async () => {

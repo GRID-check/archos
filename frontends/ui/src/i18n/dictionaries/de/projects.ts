@@ -321,7 +321,7 @@ export const projects: typeof en.projects = {
   dialog: {
     newProject: 'Neues Projekt',
     title: 'Neues Projekt',
-    description: 'Ein Projekt hält seine Dokumente, sein Team und die Gespräche darüber an einem Ort zusammen.',
+    description: 'Danach legen Sie die Unterlagen ab. Den Rest erledigt Piloti.',
   },
   form: {
     nameRequired: 'Der Projektname ist erforderlich.',
@@ -331,34 +331,25 @@ export const projects: typeof en.projects = {
     nameLabel: 'Projektname',
     namePlaceholder: 'z. B. Wohnhaus Hauptstraße 12',
     state: {
-      label: 'Projektstatus',
+      label: 'Projekt ist',
       active: 'Laufend',
-      activeHint: 'Wir arbeiten gerade daran.',
-      closed: 'Abgeschlossen',
-      closedHint: 'Ein früheres Projekt als Referenz fürs Büro.',
+      closed: 'Abgeschlossen, als Referenz',
     },
     closed: {
       startedOn: 'Beginn',
       optional: 'optional',
       clearStartedOn: 'Beginn leeren',
       endedOnBeforeStart: 'Der Abschluss liegt vor dem Beginn.',
-      readOnly:
-        'Ein abgeschlossenes Projekt ist schreibgeschützt. Dokumente und Briefing ergänzen Sie, indem Sie es wieder öffnen.',
       readOnlyPiloti:
         'Das Projekt bleibt offen, solange Piloti die Dokumente liest. Es wird abgeschlossen, wenn Sie die Erfassung beenden.',
     },
     addressLabel: 'Adresse',
     addressPlaceholder: 'Straße und Hausnummer oder Ort',
-    addressHelp: 'Gemeinde und Bundesland übernimmt Piloti daraus.',
     address: {
       searching: 'Suche läuft…',
-      none: 'Keine Übereinstimmung. Die Adresse lässt sich später ergänzen.',
       suggestions: 'Adressvorschläge',
-      change: 'Andere Adresse wählen',
+      keepTyped: 'Oder einfach so lassen: Piloti übernimmt die Adresse, wie Sie sie tippen.',
     },
-    bundeslandLabel: 'Bundesland',
-    bundeslandPlaceholder: 'Bundesland wählen',
-    bundeslandHelp: 'Die Adresssuche ist hier nicht eingerichtet. Wählen Sie das Bundesland.',
     sameAddress: {
       heading: 'An dieser Adresse gibt es schon ein Projekt',
       hint: 'Seine Dokumente sind oft die beste Quelle für das neue.',
@@ -366,19 +357,16 @@ export const projects: typeof en.projects = {
       opensInNewTab: 'Öffnet in einem neuen Tab',
     },
     description: {
+      open: 'Kurz beschreiben, worum es geht',
       label: 'Worum geht es?',
       placeholder: 'z. B. Aufstockung eines Gründerzeithauses um zwei Geschoße, Dachgeschoßausbau mit 6 Wohnungen',
       help: 'Ein, zwei Sätze helfen Piloti beim Lesen der Unterlagen.',
     },
-    setup: {
-      label: 'Einrichtung',
-      piloti: 'Piloti richtet ein',
-      pilotiHint: 'Sie legen den Projektordner ab. Piloti liest ihn und schlägt jeden Wert mit der Seite vor, auf der er steht.',
-      self: 'Selbst ausfüllen',
-      selfHint: 'Sie beantworten die Fragen der Reihe nach.',
-    },
     drop: {
-      hint: 'Den Projektordner können Sie auch auf dieses Fenster ziehen.',
+      title: 'Projektordner hierher ziehen',
+      titleTouch: 'Projektunterlagen hinzufügen',
+      help: 'Optional. Sie wählen im nächsten Schritt, welche Ordner Piloti liest.',
+      choose: 'Auswählen',
       overlay: 'Projektordner hier ablegen',
       held: 'Ordner „{name}“: {count, plural, one {# Datei wird} other {# Dateien werden}} abgelegt, sobald das Projekt besteht.',
       heldNoName: '{count, plural, one {# Datei wird} other {# Dateien werden}} abgelegt, sobald das Projekt besteht.',
@@ -386,7 +374,6 @@ export const projects: typeof en.projects = {
     },
     cancel: 'Abbrechen',
     submit: 'Projekt anlegen',
-    submitClosed: 'Abgeschlossen anlegen',
   },
   applicableStandards: {
     heading: 'Anwendbare Standards',

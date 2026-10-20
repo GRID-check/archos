@@ -59,6 +59,7 @@ installation has the audit log switched on.
 | Event | When | Recorded as acting |
 |---|---|---|
 | `org.upload_screening.updated` | Someone changes the sensitive-data list. Counts only, never the terms | The person |
+| `project.upload_screening.updated` | Someone changes the sensitive-data list for one project (name terms added or set aside there). Counts only, never the terms | The person |
 | `document.screening_overridden` | An uploader releases a file a name term held back. The terms that matched | The person |
 | `document.quarantined` | The content screening quarantines a file. Which file, its project, whose upload it was, the kinds and terms that matched (`term:Lohnzettel,iban`; the reasons the verdict lists, ending in `,…` when the list was too long to record whole), how many further reasons the screening found and did not list (`reasonsOmitted`, so a partial list never reads as the whole one), whether the whole text could be checked, and the screening run that decided. A file in a folder not every project member may open is recorded without its name, as for every event that names a file. Once per decision, at the time of the decision: if the audit log cannot be reached, Piloti keeps the decision and sends it again within minutes, even if the file was deleted meanwhile. Piloti's own copy is deleted once the audit log has it, and after seven days at the latest | `system:upload_screening` |
 | `document.quarantine_released` | A reviewer releases a quarantined file. The kinds and terms it was held for | The person |

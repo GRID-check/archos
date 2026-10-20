@@ -14,8 +14,13 @@
  * a folder upload that plans against the policy and then screens again does
  * not ask twice at once. A kept copy would let a term an admin saved a moment
  * ago, in this tab or any other, miss the next upload.
+ *
+ * An upload into a project reads the PROJECT's policy: the office's, with the
+ * name terms the project added or set aside (ADR-0086, 2026-10-20). The server
+ * screens uploads into the project with the same one.
  */
 
+import { getProjectUploadScreening } from './project-upload-screening-client'
 import { getUploadScreening } from './upload-screening-client'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 
@@ -27,27 +32,31 @@ export class UploadScreeningPolicyUnavailableError extends Error {
   }
 }
 
-let inFlight: Promise<UploadScreeningPolicy> | null = null
+/** Reads under way, by what they read: the office's (`''`) or one project's. */
+const inFlight = new Map<string, Promise<UploadScreeningPolicy>>()
 
 /**
- * The policy in force for the signed-in member's organization. Rejects with
+ * The policy in force for the signed-in member's organization, or for uploads
+ * into `projectId` when one is named. Rejects with
  * {@link UploadScreeningPolicyUnavailableError} when it cannot be read.
  */
-export function loadUploadScreeningPolicy(): Promise<UploadScreeningPolicy> {
-  if (!inFlight) {
-    const request = getUploadScreening().then(
-      (state) => state.policy,
-      (cause: unknown) => {
-        throw new UploadScreeningPolicyUnavailableError({ cause })
-      }
-    )
-    inFlight = request
-    const settle = (): void => {
-      if (inFlight === request) inFlight = null
+export function loadUploadScreeningPolicy(projectId?: string | null): Promise<UploadScreeningPolicy> {
+  const key = projectId ?? ''
+  const pending = inFlight.get(key)
+  if (pending) return pending
+  const read = projectId ? getProjectUploadScreening(projectId) : getUploadScreening()
+  const request = read.then(
+    (state) => state.policy,
+    (cause: unknown) => {
+      throw new UploadScreeningPolicyUnavailableError({ cause })
     }
-    request.then(settle, settle)
+  )
+  inFlight.set(key, request)
+  const settle = (): void => {
+    if (inFlight.get(key) === request) inFlight.delete(key)
   }
-  return inFlight
+  request.then(settle, settle)
+  return request
 }
 
 /**
@@ -56,5 +65,5 @@ export function loadUploadScreeningPolicy(): Promise<UploadScreeningPolicy> {
  * between reads, so there is no copy to clear.
  */
 export function forgetPendingUploadScreeningPolicyRead(): void {
-  inFlight = null
+  inFlight.clear()
 }
