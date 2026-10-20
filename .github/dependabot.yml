@@ -88,6 +88,12 @@ updates:
       # as frontends/ui above.
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
+      # `pulumi preview`/`up` load TypeScript through ts-node, which calls the
+      # compiler's JS API (@pulumi/pulumi cmd/run/run.js `require(typescriptRequire)`).
+      # TypeScript 7 ships no JS API, so `tsc --noEmit` stays green while every
+      # deploy breaks. Same rule as frontends/web.
+      - dependency-name: "typescript"
+        versions: [">=7"]
 
   # Keep the Actions current. They are pinned by commit SHA with a version
   # comment (tests/test_ci_workflows.py), and Dependabot bumps both. "/" reads
