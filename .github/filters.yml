@@ -34,21 +34,21 @@ backend:
   # The one-time Chroma exporter's own tests (`be:test:migration`).
   - 'deploy/migration/**'
   - 'tests/**'
-  - 'ci/**'
   - 'configs/**'
-  # `scripts/release_notes.py` is covered by tests/test_release_notes.py;
-  # without this a change to it merges without those tests running.
   - 'scripts/**'
-  - 'releasenotes/**'
   - 'pyproject.toml'
   - 'uv.lock'
   - 'Taskfile.yml'
-  # tests/test_ci_workflows.py reads every workflow (ci.yml, deploy.yml,
-  # security.yml) to pin how they fit together, so any of them is a backend
-  # change.
-  - '.github/workflows/**'
-  - '.github/filters.yml'
+  # ci.yml defines how this job runs, and the setup actions build its
+  # environment.
+  - '.github/workflows/ci.yml'
   - '.github/actions/**'
+# NOT here, though tests read them: `ci/**`, `releasenotes/**`, the other
+# workflows and this file. Their tests (`task be:test:harness`: the workflow,
+# plan-script and release-note suites, ~10s) run in the Repo checks job, which
+# runs on every pull request. These lines used to send every change that
+# carried a release note, which is most of them, through the whole 14-minute
+# backend lane for those ten seconds.
 # There was a `retrieval:` family here, feeding the `retrieval-eval` job. Both
 # are gone: the gate measured the real OIB Richtlinien, and those became
 # operator-provided and gitignored (data/oib/README.md), so no CI checkout can

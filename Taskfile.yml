@@ -450,6 +450,18 @@ tasks:
     cmds:
       - '{{.PY}} -X faulthandler -m pytest tests/ -q {{.XDIST}}'
 
+  be:test:harness:
+    desc: The tests of the repository's own machinery (CI workflows and plan scripts, release notes, PR hygiene)
+    cmds:
+      # CI's Repo checks job runs these on every pull request, so the backend
+      # filter need not fire for `ci/`, `releasenotes/` or a workflow alone
+      # (.github/filters.yml). They stay in the core suite too.
+      - >-
+        {{.PY}} -X faulthandler -m pytest -q -p no:cacheprovider
+        tests/test_ci_workflows.py tests/test_reuse_green_run.py tests/test_last_green.py
+        tests/test_image_inputs.py tests/test_pinned_images.py tests/test_plan_summary.py
+        tests/test_release_notes.py tests/test_pr_closing_keywords.py tests/test_bun_version_pin.py
+
   be:test:sources:
     desc: The sources/ package suites
     cmds:
