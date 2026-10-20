@@ -59,4 +59,21 @@ describe('captureUpstreamError', () => {
 
     expect(captureException).toHaveBeenCalledTimes(UPSTREAM_ERROR_BURST)
   })
+
+  test('the budget comes back once the window has passed', () => {
+    vi.useFakeTimers()
+    try {
+      vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://eu.i.posthog.com')
+      vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test')
+      vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      for (let i = 0; i <= UPSTREAM_ERROR_BURST; i += 1) captureUpstreamError(storeDown(), `req_${i}`)
+      vi.advanceTimersByTime(5 * 60_000)
+
+      expect(captureUpstreamError(storeDown(), 'req_after')).toBe(true)
+      expect(captureException).toHaveBeenCalledTimes(UPSTREAM_ERROR_BURST + 1)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 })
