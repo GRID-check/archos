@@ -127,8 +127,11 @@ export function DocumentRoleField({
           body: JSON.stringify({ documentId, role, scopeInstanceId }),
         })
         if (!response.ok) {
-          const body = (await response.json().catch(() => null)) as { error?: string } | null
-          toast.error(body?.error ?? tRole('bindFailed'))
+          // The envelope's `error` is English and for the log; the toast says
+          // it in the reader's language (`i18n/raw-error-copy.spec.ts`).
+          const body: unknown = await response.json().catch(() => null)
+          console.warn('[document-role] binding refused:', response.status, body)
+          toast.error(tRole('bindFailed'))
           // The upload may have succeeded even though the binding did not.
           // Returning without refreshing left the new file out of `documents`,
           // so this mounted field could not offer it for a retry.

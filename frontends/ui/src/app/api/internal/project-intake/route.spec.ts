@@ -24,6 +24,7 @@ vi.mock('@/lib/project-intake/service', () => ({
   intakeNeeds: vi.fn(),
   recordIntakeValues: vi.fn(),
   withdrawIntakeValues: vi.fn(),
+  reportIntakeProgress: vi.fn(),
   finishIntakeReading: vi.fn(),
 }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
@@ -40,6 +41,7 @@ import {
   intakeNeeds,
   recordIntakeValues,
   withdrawIntakeValues,
+  reportIntakeProgress,
 } from '@/lib/project-intake/service'
 import { INTERNAL_INTAKE_RESPONSE_SCHEMAS, type InternalIntakeRequest } from '@/lib/project-intake/types'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
@@ -85,6 +87,7 @@ beforeEach(() => {
   })
   vi.mocked(withdrawIntakeValues).mockResolvedValue({ results: [{ key: 'project_phase', outcome: 'withdrawn' }] })
   vi.mocked(finishIntakeReading).mockResolvedValue({ status: 'ready' })
+  vi.mocked(reportIntakeProgress).mockResolvedValue({ filesOpened: 2 })
 })
 
 afterEach(() => {
@@ -126,6 +129,13 @@ describe('POST /api/internal/project-intake', () => {
     INTERNAL_INTAKE_RESPONSE_SCHEMAS.withdraw.parse(await withdrawn.json())
     expect(withdrawIntakeValues).toHaveBeenCalledWith(SESSION, PROJECT, JOB, ['project_phase'])
     expect((await post({ op: 'withdraw', jobId: JOB, keys: [] })).status).toBe(400)
+  })
+
+  it('takes the files a running reading has opened, for the live progress', async () => {
+    const progress = await post({ op: 'progress', jobId: JOB, filesOpened: ['Einreichplan.pdf', 'Schnitt.pdf'] })
+    INTERNAL_INTAKE_RESPONSE_SCHEMAS.progress.parse(await progress.json())
+    expect(reportIntakeProgress).toHaveBeenCalledWith(SESSION, PROJECT, JOB, ['Einreichplan.pdf', 'Schnitt.pdf'])
+    expect((await post({ op: 'progress', jobId: JOB, filesOpened: [''] })).status).toBe(400)
   })
 
   it('refuses a body that names a project, an unknown op, and a record without values', async () => {

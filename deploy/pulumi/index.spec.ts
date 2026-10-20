@@ -240,6 +240,18 @@ describe("the program constructs in the split topology", () => {
     );
   });
 
+  it("leaves the geocoder off by default, and the frontend without its URL (ADR-0120)", () => {
+    // Prepared, not switched on: a stack opts in with `geocoderEnabled`. A
+    // default flip would start a 1 GB download on every stack at the next `up`.
+    expect(named("kubernetes:apps/v1:StatefulSet")).not.toContain("geocoder");
+    expect(named("kubernetes:networking.k8s.io/v1:NetworkPolicy")).not.toContain("geocoder-frontend-only");
+    const frontend = RESOURCES.find((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend");
+    const env = frontend?.inputs.spec?.template?.spec.containers[0].env ?? [];
+    expect(env.length).toBeGreaterThan(0);
+    expect(env.map((e) => e.name)).not.toContain("GRID_GEOCODER_URL");
+    expect(STACK.geocoderUrl).toBeDefined();
+  });
+
   /** A workload's pod template, read with the fields the sizing cases need. */
   type SizedPod = {
     metadata: { labels: Record<string, string> };

@@ -400,6 +400,8 @@ async function prepareUpload(
     session.organizationId,
     { filename: file.name, originPath: normalizeOriginPath(input.originPath), folderPath },
     input.screeningRelease === true,
+    // A project's own name terms apply to uploads into it (migration 0154).
+    shelf.kind === 'project' ? shelf.projectId : null,
   )
   const uploadBatchId = await acceptedUploadBatchId(session, input.uploadBatchId, shelfOwner(shelf, session.organizationId))
   const filename = documentNameKey(file.name)

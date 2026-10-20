@@ -22,7 +22,7 @@ this design says so and builds the version that fits.
 | A new Determinanten-Register with rule, threshold, Ampel effect, where found, question | The intake definition **is** the register: its questions already carry conditions, rationale (`why`) and the profile key. This adds where a value is usually found (`foundIn`) and which derivation it feeds. The one derivation built is the Gebäudeklasse, as data with its Fundstelle | `compliance-derivation-graph.md` §2 counts five encodings of one rulebook already. A sixth table beside the wizard's would drift from it the first time someone edits a question |
 | „Nur fragen, was die Einstufung ändert" (C8 logic) | Computed, not listed: a gap is asked only when filling it with each band it could fall in gives different Gebäudeklassen | A hand-kept list of decisive questions is the C8 condition again, written once more. The computation is the rule itself |
 | Regelwerks-Ampel | Not built. The confirmed values feed the existing applicability panel (`applicable-standards.ts`), which says per Richtlinie required / likely / check; it now reads the keys the wizard and the intake write | No Ampel exists anywhere in the code. Inventing one is a product decision of its own; the panel is the shipped answer to "which rules apply" |
-| Geocoder for AT and DE, address autocomplete | Built for Austria only, behind one BFF route, with Photon (OSM) as the adapter; off unless `GRID_GEOCODER_URL` is set, then the Bundesland is chosen by hand as today | Piloti supports Austria only. Buy, don't build. An address is client data, so the provider is the deployment's choice (a self-hosted Photon in production). A second country is a filter and a state mapping in the adapter |
+| Geocoder for AT and DE, address autocomplete | Built for Austria only, behind one BFF route, with Photon (OSM) as the adapter; off unless `GRID_GEOCODER_URL` is set. The address is one text field either way: a chosen hit adds Gemeinde, Bundesland and position, a typed line is kept as the person's `standort_adresse` and the Bundesland is the reading's to find or the review's to ask. (Until 2026-10 the field turned into a Bundesland select when no geocoder answered, which threw away what was typed in every deployment without one.) | Piloti supports Austria only. Buy, don't build. An address is client data, so the provider is the deployment's choice (a self-hosted Photon in production). A second country is a filter and a state mapping in the adapter |
 | A point on a map when there is no address (competitions) | The place or Gemeinde name through the same search | A map needs a map library and tiles; what the address decides (Land, Gemeinde) a place name decides too |
 | Projektbeteiligte with roles at creation | Not at creation. The Steckbrief already holds people (ADR-0091, ADR-0101) | People are kept apart from the profile and the prompt on purpose, and a step at creation breaks the one-minute target |
 | Ablage-Onboarding: folder tree, blacklist, role permissions | Upload, folder access per role and the content check stay as they are. Each folder says what belongs in it, and on every upload Piloti proposes the folder a file belongs in, learned from the office's other projects, confirmed folder by folder (see „Ablage" below) | Upload and access are built (ADR-0078, ADR-0087, ADR-0088, ADR-0086). What was missing is the sorting, and a folder that says what it holds |
@@ -209,6 +209,27 @@ a pure function. The agent's `intake_needs` returns its result.
    `why`, `foundIn`, and `decisive`.
 4. In `mode: 'closing'` nothing is decisive: what matters is what the documents say.
 
+## The location register
+
+`lib/project-intake/location-register.ts`, `locationRegisterFor(...)`, pure,
+carried on the view as `locationRegister` for step 4, Rückfragen. The ticket's
+„Der Standort bestimmt den Informationsbedarf" and its table „Standortinformationen
+aus den Unterlagen", as data (`LOCATION_REGISTER`): per determinant (Grundstück,
+Widmung und Bebauungsbestimmungen, Denkmal- und Ortsbildschutz, Naturgefahren
+und Altlasten, Lärm) the wizard keys it settles, when it applies (Vorhaben,
+Nutzungen, a Bestand; an unknown input counts as applying), the document to
+ask for, the reason, and per Bundesland or Gemeinde only what differs (Wien's
+Plandokument, each Land's Raumordnungsgesetz, the Graz and Salzburg Altstadt
+laws). Every entry cites its law by title; a section number not yet checked
+against the text is `needsReview`. A request is settled when each key holds a
+value, a suggestion or „nicht bekannt". The Bundesland comes from the profile,
+else the geocoder; while it is open it is asked first (a typed address has
+none), with the Vorhaben. A `closing` project is asked its Bundesland and no
+document. The agent learns the same documents through `foundIn` on the needs
+(`grundstueck_ez` and `grundstuecksflaeche`, questions `B0_ez` and
+`B0_flaeche`, were added for the Grundbuchauszug). Not modelled: the Stichtag
+and Standortdienste, as below.
+
 ## The Gebäudeklasse derivation
 
 `lib/project-intake/derivations.ts`. Nine inputs per Bauwerk: `building_type`
@@ -253,6 +274,7 @@ itself.
 | `job_id`, `requested_by`, `trace_id` | the current or last reading; `job_id` partial unique |
 | `rerun_requested` | a trigger arrived during a reading |
 | `documents_read` jsonb | `[{ documentId, contentHash }]` |
+| `reading_files` jsonb | file names the current or last reading opened, reported while it runs (`progress`, migration 0157); emptied at a claim |
 | `dismissed` jsonb | `[{ key, value }]` a person dismissed, so they are not suggested again |
 | `counts` jsonb | `{ documentsRead, suggested, contradictions, decisiveOpen }` at the last finish |
 | `summary` | the agent's closing sentence |
@@ -319,6 +341,7 @@ envelope, `withTenant`. Discriminated on `op`, each branch strict, each with
 | `needs` | `{ jobId }` | `{ needs: Need[], unreadFiles: string[] (≤ 200), description, location, mode, previousSummary }` (`previousSummary`: the last finished reading's stored, masked summary, or null) |
 | `record` | `{ jobId, values: [{ key, value, evidence: { fileName, page, quote } }] }` (1..20) | `{ results: [{ key, outcome: 'suggested' \| 'corroborated' \| 'contradiction' \| 'refused', reason?: 'vocabulary' \| 'unknown-key' \| 'dismissed' \| 'unreadable-file' }], opened: [{ key, decisive }] }` |
 | `withdraw` | `{ jobId, keys: string[] }` (1..20) | `{ results: [{ key, outcome: 'withdrawn' \| 'refused', reason?: 'nothing-suggested' \| 'confirmed' \| 'not-this-reading' }] }` |
+| `progress` | `{ jobId, filesOpened: string[] }` (≤ 500), every file the run opened so far, sent after a tool call that opened a new one | `{ filesOpened }`. Stored in `reading_files` (migration 0157) for the setup page's live „x von y gelesen" (step 3); never what decides the next reading's unread files |
 | `finish` | `{ jobId, summary (≤ 2000), documentsRead: string[] (≤ 500), traceId: string \| null }` | `{ status }` |
 
 A stale `jobId` answers 409 `stale-reading`. The BFF decides what a value

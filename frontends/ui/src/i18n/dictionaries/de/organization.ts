@@ -304,6 +304,7 @@ export const organization: typeof en.organization = {
     displayNamePlaceholder: 'z. B. Acme Architektur GmbH',
     defaultLocale: 'Standardsprache für neue Mitglieder',
     defaultLocaleHint: 'Neue Mitglieder starten in dieser Sprache, bis sie ihre eigene wählen.',
+    defaultLocaleUnset: 'Nicht festgelegt (Sprache des Browsers)',
     chatEffort: 'Standard-Aufwand für neue Chats',
     chatEffortHint:
       'Wie lange Piloti in einem neuen Chat nachdenkt. Jedes Mitglied kann den Aufwand im Chat selbst verstellen; das hier ist nur der Startwert.',

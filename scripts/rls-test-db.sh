@@ -2159,6 +2159,32 @@ check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document
 echo "==> 0152 reply edits and down migration verified"
 
 # ---------------------------------------------------------------------------
+# On a database of its own, migrated to 0156. An intake written before 0157
+# has opened nothing; a reading's files are an array and nothing else; the
+# down drops the column and leaves the intake; the up re-applies, twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0157 reading files and their down migration on grid_rfiles"
+migrate_until grid_rfiles 0156_organization_default_locale_unset
+sql_in grid_rfiles <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000156', 'org_0156', 'Erfassung 0156', 'user_1', 'proj_0156');
+INSERT INTO project_intakes (organization_id, project_id, created_by, status, job_id, requested_by)
+VALUES ('org_0156', 'aaaaaaaa-0000-4000-8000-000000000156', 'user_1', 'reading', 'job_0156', 'user_1');
+SQL
+apply_in grid_rfiles 0157_intake_reading_files.sql
+check_in grid_rfiles "SELECT reading_files::text FROM project_intakes" "[]" "an intake written before 0156 has opened nothing"
+sql_in grid_rfiles <<<"UPDATE project_intakes SET reading_files = '[\"Einreichplan.pdf\"]'::jsonb"
+check_in grid_rfiles "SELECT reading_files->>0 FROM project_intakes" "Einreichplan.pdf" "a reading's opened files are stored"
+refused_in grid_rfiles "UPDATE project_intakes SET reading_files = '{\"a\":1}'::jsonb" "project_intakes_reading_files_array" "reading files that are not an array were accepted"
+apply_in grid_rfiles 0157_intake_reading_files.down.sql
+check_in grid_rfiles "SELECT count(*) FROM information_schema.columns WHERE column_name = 'reading_files' AND table_name = 'project_intakes'" "0" "down dropped the column"
+check_in grid_rfiles "SELECT status FROM project_intakes" "reading" "down left the intake"
+apply_in grid_rfiles 0157_intake_reading_files.sql
+apply_in grid_rfiles 0157_intake_reading_files.sql
+check_in grid_rfiles "SELECT reading_files::text FROM project_intakes" "[]" "0156 re-applies, twice"
+echo "==> 0157 reading files and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migration 0163: the names stored in a message's metadata become English, and
 # the DOWN.
 #

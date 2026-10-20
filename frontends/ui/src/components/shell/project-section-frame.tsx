@@ -52,6 +52,9 @@ const SUBTITLE_SECTIONS: ReadonlySet<ProjectChromeSection> = new Set([
   'setup',
 ])
 
+/** Sections that draw their own chrome edge to edge. */
+const BARE_SECTIONS: ReadonlySet<string> = new Set(['setup'])
+
 const RETURN_TARGET_SECTIONS: ReadonlySet<ProjectChromeSection> = new Set(['members', 'model'])
 
 const ActionsContext = createContext<(node: ReactNode) => void>(() => {})
@@ -108,6 +111,10 @@ export function ProjectSectionFrame({
   }
 
   const segment = projectSectionSegment(pathname)
+  // The setup draws its own bar and footer: one focused flow, no section head.
+  if (BARE_SECTIONS.has(segment)) {
+    return <div className="h-full min-h-0">{children}</div>
+  }
   const known = isProjectChromeSection(segment)
   const sectionLabel = !known
     ? projectName

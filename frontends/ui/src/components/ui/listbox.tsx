@@ -4,13 +4,12 @@ import { cn } from '@/lib/utils'
 
 /**
  * Listbox — the suggestions under a typing field (an ARIA combobox's popup),
- * drawn in the flow of the form instead of in a floating layer.
+ * drawn in the field's own subtree instead of in a portalled layer.
  *
- * Inline on purpose. The one caller lives in a dialog, and a portalled popover
- * there fights the dialog over focus, outside presses and Escape. A list that
- * simply opens under the field has none of that, and it pushes the rest of the
- * form down for as long as it is open, which is the honest cost of a small
- * dialog. Focus never leaves the field: the field owns the keyboard and names
+ * Not portalled, on purpose. The one caller lives in a dialog, and a portalled
+ * popover there fights the dialog over focus, outside presses and Escape. A
+ * list in the field's own subtree has none of that; the caller may position it
+ * absolutely so it floats over the form instead of pushing it down. Focus never leaves the field: the field owns the keyboard and names
  * the active option with `aria-activedescendant`, this only paints.
  */
 export function Listbox({ className, ...props }: React.ComponentProps<'ul'>): React.JSX.Element {

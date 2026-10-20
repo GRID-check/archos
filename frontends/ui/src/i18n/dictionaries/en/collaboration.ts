@@ -684,6 +684,14 @@ export const collaboration = {
         title: 'Piloti has read the documents of “{subject}”',
         titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
         body: 'Review the suggestions and confirm what is right.',
+        // The reading did not finish (stopped, never started, no answer for
+        // too long). Whoever left the page learns it here.
+        variants: {
+          failed: {
+            title: 'Piloti could not finish reading the documents of “{subject}”',
+            body: 'What Piloti found until then stays. Open the setup and start the reading again.',
+          },
+        },
       },
       // A colleague made you responsible for an annotation, or Piloti did on
       // their behalf (`variants.piloti`, where {actor} is the person Piloti

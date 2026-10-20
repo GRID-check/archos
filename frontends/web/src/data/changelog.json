@@ -39,8 +39,32 @@
           "key": "features",
           "notes": [
             {
+              "en": "Creating a project asks for its name, its address, whether it is running or finished, and optionally its folder. The setup that follows has five short steps (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), each on one screen with one button to go on, and you can leave at any point with „Später fortsetzen“.",
+              "de": "Beim Anlegen eines Projekts geben Sie den Namen und die Adresse an, wählen aus, ob es laufend oder abgeschlossen ist, und können optional einen Ordner zuordnen. Die anschließende Einrichtung umfasst fünf kurze Schritte (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), jeweils auf einem Bildschirm mit nur einer Schaltfläche zum Fortfahren. Sie können die Einrichtung jederzeit mit „Später fortsetzen“ verlassen."
+            },
+            {
+              "en": "The Rückfragen ask one question at a time, together with the documents the location calls for and any values the documents contradict each other on.",
+              "de": "Die Rückfragen stellen jeweils eine Frage nach der anderen und nennen dazu die am Standort erforderlichen Dokumente sowie Werte, bei denen sich die Dokumente widersprechen."
+            },
+            {
+              "en": "The Steckbrief shows the Gebäudeklasse with how it was worked out, which OIB-Richtlinien apply, and the values Piloti found in one table. Pointing at a source shows the passage on its page.",
+              "de": "Der Steckbrief zeigt in einer Tabelle die Gebäudeklasse samt Herleitung, die geltenden OIB-Richtlinien und die von Piloti ermittelten Werte. Wenn Sie mit der Maus auf eine Quelle zeigen, wird die Passage auf der entsprechenden Seite angezeigt."
+            },
+            {
               "en": "A file Piloti is still reading can now be stopped, from the upload list or from the file's own menu. Nothing it had not read yet is added to what Piloti can answer from, the file stays in the project, and you can read it again at any time.",
               "de": "Eine Datei, die Piloti gerade einliest, können Sie jetzt in der Upload-Liste oder im Menü der Datei stoppen. Was Piloti bis dahin noch nicht gelesen hat, wird nicht zu seiner Antwortgrundlage hinzugefügt. Die Datei bleibt im Projekt und Sie können sie jederzeit erneut einlesen lassen."
+            },
+            {
+              "en": "When you set up a project, you see the project folder as a tree before anything is uploaded and switch whole folders on or off, with backups and old states proposed off. Beside it you see what the office's sensitive-data list holds back, can change that list for this project, and restrict a folder before its files arrive.",
+              "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
+            },
+            {
+              "en": "While Piloti reads a new project's documents, the setup shows how far it has got: the site, how many documents are read, and the values, contradictions and gaps found so far. You can leave and ask the project chat meanwhile; your Postfach tells you when Piloti is done.",
+              "de": "Während Piloti die Dokumente eines neuen Projekts liest, zeigt das Setup den aktuellen Stand: das Grundstück, die Anzahl der bereits gelesenen Dokumente sowie die bisher gefundenen Werte, Widersprüche und Lücken. Sie können die Ansicht verlassen und in der Zwischenzeit den Projekt-Chat befragen; Ihr Postfach informiert Sie, wenn Piloti fertig ist."
+            },
+            {
+              "en": "When you set up a project, the questions step now also names the documents its location calls for, such as the Grundbuchauszug or the Flächenwidmungs- und Bebauungsplan, with the reason for your Bundesland. Hand each document in right at its entry, answer directly, or mark it as not known, and the step counts what is done.",
+              "de": "Beim Anlegen eines Projekts nennt der Schritt „Fragen“ jetzt auch die für den Standort erforderlichen Unterlagen, etwa den Grundbuchauszug oder den Flächenwidmungs- und Bebauungsplan, und erklärt, warum sie in Ihrem Bundesland benötigt werden. Laden Sie jedes Dokument direkt beim entsprechenden Eintrag hoch, beantworten Sie die Frage direkt oder markieren Sie sie als nicht bekannt. Der Schritt zeigt an, was bereits erledigt ist."
             }
           ]
         },
@@ -57,12 +81,36 @@
           "key": "fixes",
           "notes": [
             {
+              "en": "With no project yet, the projects page shows one button to create the first project instead of two.",
+              "de": "Wenn noch kein Projekt vorhanden ist, wird auf der Projektseite statt zwei Schaltflächen nur eine zum Erstellen des ersten Projekts angezeigt."
+            },
+            {
+              "en": "The address in the new-project dialog keeps what you type. Before, it turned into a Bundesland list after three letters and dropped the text.",
+              "de": "Die Adresse im Dialog für ein neues Projekt behält Ihre Eingabe bei. Bisher wurde nach drei Buchstaben eine Liste der Bundesländer angezeigt und der Text gelöscht."
+            },
+            {
+              "en": "A folder dropped on the new-project dialog now lands only in the project it was dropped for. Before, if its setup page did not take it, the next new project could.",
+              "de": "Ein in den Dialog für ein neues Projekt gezogener Ordner wird jetzt nur dem Projekt zugeordnet, für das er abgelegt wurde. Bisher konnte er beim nächsten neuen Projekt landen, wenn die Setup-Seite ihn nicht übernommen hat."
+            },
+            {
               "en": "Dateien opens again in a closed project. You can read its files as before; only changing them stays locked until the project is reopened.",
               "de": "Dateien sind in einem geschlossenen Projekt wieder verfügbar. Sie können die Dateien wie bisher lesen; Änderungen bleiben gesperrt, bis Sie das Projekt erneut öffnen."
             },
             {
               "en": "Suggested follow-up questions now appear under every answer when your office has chosen a model that always thinks before it answers. Before, those suggestions quietly went missing on such models.",
               "de": "Wenn Ihr Büro ein Modell ausgewählt hat, das vor jeder Antwort immer nachdenkt, erscheinen jetzt unter jeder Antwort Folgefragen. Bisher wurden diese Vorschläge bei solchen Modellen nicht angezeigt."
+            },
+            {
+              "en": "When reading a project's documents stops before it finishes, the person who started it now gets a Postfach entry saying so, instead of nothing.",
+              "de": "Wenn das Einlesen der Projektdokumente vorzeitig abbricht, erhält die Person, die es gestartet hat, jetzt einen entsprechenden Eintrag im Postfach statt gar keiner Nachricht."
+            },
+            {
+              "en": "Piloti no longer switches to English on its own: pages open in the language you or your office chose, also after a redirect and on Safari.",
+              "de": "Piloti wechselt nicht mehr eigenständig zu Englisch: Seiten öffnen sich in der Sprache, die Sie oder Ihr Büro gewählt haben – auch nach einer Weiterleitung und in Safari."
+            },
+            {
+              "en": "Upload problems, such as a file that is too large or a full storage, are now named in your language.",
+              "de": "Upload-Probleme wie eine zu große Datei oder fehlender Speicherplatz werden jetzt in Ihrer Sprache angezeigt."
             },
             {
               "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
@@ -75,6 +123,15 @@
             {
               "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
               "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+            }
+          ]
+        },
+        {
+          "key": "upgrade",
+          "notes": [
+            {
+              "en": "An office's default language under Organisation → Einstellungen is now \"Nicht festgelegt\" until an administrator picks one, and each person then starts in their browser's language. Offices that had the English preset stored have it reset; set it again there if your office wants English.",
+              "de": "Die Standardsprache eines Büros unter Organisation → Einstellungen ist jetzt „Nicht festgelegt“, bis ein Administrator eine Sprache auswählt. Anschließend startet jede Person in der Sprache ihres Browsers. Bei Büros, bei denen Englisch als Voreinstellung gespeichert war, wird diese zurückgesetzt. Wählen Sie Englisch dort erneut aus, wenn Ihr Büro Englisch verwenden möchte."
             }
           ]
         }

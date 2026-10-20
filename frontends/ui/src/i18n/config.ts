@@ -15,8 +15,15 @@ export type Locale = (typeof locales)[number]
 
 export const defaultLocale: Locale = 'en'
 
-/** Cookie that mirrors the active locale for SSR. */
+/**
+ * Cookie that mirrors the active locale for SSR. A signed-in request reads the
+ * saved preference first; the cookie stands in when it cannot
+ * (`request-locale.ts`).
+ */
 export const LOCALE_COOKIE = 'grid-locale'
+
+/** How long the mirror cookie lives: a year, from the server and from the page alike. */
+export const LOCALE_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365
 
 /** Human-readable, self-referential language names for pickers. */
 export const localeNames: Record<Locale, string> = {

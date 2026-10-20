@@ -35,6 +35,12 @@ const FILE_NAMESPACES = [
   'onboarding',
   'projects',
   'projectIntake',
+  'intakeShell',
+  'intakeProjectStep',
+  'intakeFilingStep',
+  'intakeReadingStep',
+  'intakeQuestionsStep',
+  'intakeProfileStep',
   'bim',
   'common',
   'nav',
@@ -97,7 +103,7 @@ describe('a Fassung has one name and its status one word', () => {
     it(`${locale}: no „Version“, „Upload N“ or „erbeten“ where a Fassung is named`, () => {
       const offenders = REVISION_SUBTREES.flatMap((path) => {
         const node = subtree(dictionary, path)
-        expect(node, `${path} moved; update FASSUNG_SUBTREES`).toBeTypeOf('object')
+        expect(node, `${path} moved; update REVISION_SUBTREES`).toBeTypeOf('object')
         return leaves(node, path)
       })
         // A placeholder name is code, not copy: `v{version}` says nothing to a reader.

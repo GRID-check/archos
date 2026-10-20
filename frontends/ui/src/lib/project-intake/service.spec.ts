@@ -34,6 +34,7 @@ vi.mock('./repository', () => ({
   findProjectIntake: vi.fn(),
   findProjectIntakeByJobId: vi.fn(),
   requestIntakeRerun: vi.fn(),
+  setIntakeReadingFiles: vi.fn(),
 }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn(), findProjectProfileInOrg: vi.fn() }))
 vi.mock('@/lib/projects/service', () => ({ setProjectStatus: vi.fn() }))
@@ -84,6 +85,7 @@ import {
   findProjectIntake,
   findProjectIntakeByJobId,
   requestIntakeRerun,
+  setIntakeReadingFiles,
 } from './repository'
 import { submitIntakeRun } from './run'
 import {
@@ -94,6 +96,7 @@ import {
   intakeNeeds,
   MAX_WRITE_ATTEMPTS,
   recordIntakeValues,
+  reportIntakeProgress,
   runIntakeReadSlice,
   settleIntakeOutcome,
   startIntakeRun,
@@ -135,6 +138,7 @@ const intake = (overrides: Partial<ProjectIntakeRow> = {}): ProjectIntakeRow => 
   rerunRequested: false,
   documentsRead: [],
   dismissed: [],
+  readingFiles: [],
   counts: null,
   summary: null,
   startedAt: new Date(NOW),
@@ -590,6 +594,31 @@ describe('intakeNeeds', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('reportIntakeProgress — the files a running reading has opened', () => {
+  it('stores the names once each, trimmed, for the current reading only', async () => {
+    vi.mocked(setIntakeReadingFiles).mockImplementation(async (_org, _project, _job, names) =>
+      intake({ readingFiles: [...names] })
+    )
+
+    const answer = await reportIntakeProgress(SESSION, PROJECT, JOB, ['Einreichplan.pdf', ' Einreichplan.pdf ', 'Schnitt.pdf'])
+
+    expect(setIntakeReadingFiles).toHaveBeenCalledWith(ORG, PROJECT, JOB, ['Einreichplan.pdf', 'Schnitt.pdf'])
+    expect(answer).toEqual({ filesOpened: 2 })
+  })
+
+  it('is stale for a reading that is not the intake’s current one, and when it ended meanwhile', async () => {
+    await expect(reportIntakeProgress(SESSION, PROJECT, 'other-job', ['a.pdf'])).rejects.toMatchObject({
+      details: { reason: 'stale-reading' },
+    })
+    expect(setIntakeReadingFiles).not.toHaveBeenCalled()
+
+    vi.mocked(setIntakeReadingFiles).mockResolvedValue(null)
+    await expect(reportIntakeProgress(SESSION, PROJECT, JOB, ['a.pdf'])).rejects.toMatchObject({
+      details: { reason: 'stale-reading' },
+    })
+  })
+})
+
 describe('finishIntakeReading', () => {
   it('ends the reading ready with what it read by content, its counts, its masked summary and its trace, and tells the requester', async () => {
     vi.mocked(endIntakeReading).mockImplementation(async (_org, _project, _job, end) =>
@@ -692,6 +721,18 @@ describe('startIntakeRun', () => {
       details: { reason: 'submit-failed' },
     })
     expect(endIntakeReading).toHaveBeenCalledWith(ORG, PROJECT, 'intake-job-2', expect.objectContaining({ status: 'failed' }))
+  })
+
+  it('tells the requester when a reading an upload started could not be submitted: nobody was watching', async () => {
+    vi.mocked(findProjectIntake).mockResolvedValue(intake({ status: 'ready' }))
+    vi.mocked(claimIntakeReading).mockResolvedValue(intake({ jobId: 'intake-job-2', requestedBy: 'user_1' }))
+    vi.mocked(endIntakeReading).mockResolvedValue(intake({ status: 'failed', jobId: 'intake-job-2', requestedBy: 'user_1' }))
+    vi.mocked(submitIntakeRun).mockRejectedValue(new Error('backend down'))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    await runIntakeReadSlice(SESSION, { projectId: PROJECT }).catch(() => undefined)
+
+    expect(onIntakeReady).toHaveBeenCalledWith(expect.objectContaining({ recipientUserId: 'user_1', outcome: 'failed' }))
   })
 
   it('refuses a finished review', async () => {
@@ -875,6 +916,17 @@ describe('getIntakeView', () => {
     expect(fetchBackendJobOutcome).toHaveBeenCalledWith(JOB, ORG)
     expect(endIntakeReading).toHaveBeenCalledWith(ORG, PROJECT, JOB, expect.objectContaining({ status: 'failed' }))
     expect(view.status).toBe('failed')
+    expect(onIntakeReady).toHaveBeenCalledWith(expect.objectContaining({ recipientUserId: 'user_2', outcome: 'failed' }))
+  })
+
+  it('counts the documents the running reading has opened, live, against what it has before it', async () => {
+    vi.mocked(findProjectIntake).mockResolvedValue(
+      intake({ readingFiles: ['Einreichplan.pdf', 'Nicht lesbar.pdf'], documentsRead: [], startedAt: new Date() })
+    )
+
+    const view = await getIntakeView(SESSION, PROJECT)
+
+    expect(view.readingProgress).toMatchObject({ documentsOpened: 1, documentsTotal: 2 })
   })
 
   it('leaves a young reading alone, and a running one', async () => {
@@ -918,6 +970,38 @@ describe('settleIntakeOutcome', () => {
     expect(endIntakeReading).toHaveBeenCalledWith(ORG, PROJECT, JOB, expect.objectContaining({ status: 'failed' }))
     expect(enqueueIntakeRead).toHaveBeenCalledWith(ORG, PROJECT, 'user_2')
     expect(settled?.status).toBe('failed')
+  })
+
+  it('tells the requester a failed reading failed: they were told they could leave', async () => {
+    vi.mocked(findProjectIntakeByJobId).mockResolvedValue(intake())
+    vi.mocked(endIntakeReading).mockResolvedValue(intake({ status: 'failed' }))
+
+    await settleIntakeOutcome(ORG, JOB, 'failure')
+
+    expect(onIntakeReady).toHaveBeenCalledWith(
+      expect.objectContaining({ recipientUserId: 'user_2', outcome: 'failed', projectName: 'Wohnbau Seestraße', decisiveOpen: 0 })
+    )
+  })
+
+  it('tells the requester a reading that succeeded without its finish is ready, with its decisive questions', async () => {
+    vi.mocked(findProjectIntakeByJobId).mockResolvedValue(intake())
+    vi.mocked(endIntakeReading).mockResolvedValue(intake({ status: 'ready' }))
+
+    await settleIntakeOutcome(ORG, JOB, 'success')
+
+    expect(onIntakeReady).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'ready', decisiveOpen: 1, summary: null }))
+  })
+
+  it('tells nobody when the reading had no requester, and never fails the ending over the notice', async () => {
+    vi.mocked(findProjectIntakeByJobId).mockResolvedValue(intake())
+    vi.mocked(endIntakeReading).mockResolvedValue(intake({ status: 'failed', requestedBy: null }))
+    await settleIntakeOutcome(ORG, JOB, 'failure')
+    expect(onIntakeReady).not.toHaveBeenCalled()
+
+    vi.mocked(endIntakeReading).mockResolvedValue(intake({ status: 'failed' }))
+    vi.mocked(findProjectInOrg).mockRejectedValueOnce(new Error('db down'))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    expect((await settleIntakeOutcome(ORG, JOB, 'failure'))?.status).toBe('failed')
   })
 
   it('leaves a reading that already finished, and knows no other job', async () => {

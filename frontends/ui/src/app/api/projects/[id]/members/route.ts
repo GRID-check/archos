@@ -26,6 +26,9 @@ const addMemberSchema = z.object({
 export const GET = apiRoute<Params>(
   async ({ session, params }) => ({
     members: await listProjectMembers(session, params.id),
+    // Which row is the reader's own, so a client can keep them from changing
+    // their own access by accident (the setup's Beteiligte, ticket 26).
+    viewerUserId: session.userId,
   }),
   { authz: { enforcedBy: 'listProjectMembers (requireProjectAccess project:members:manage)' } }
 )

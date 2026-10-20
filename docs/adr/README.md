@@ -180,6 +180,7 @@ Consequences, where a reader looks for them.
 | [0116](0116-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md) | Retrieval scope is a payload filter compiled in one place, not a collection | Accepted |
 | [0117](0117-a-document-is-parsed-on-one-worker-in-a-bounded-page-pipeline.md) | A document is parsed on one worker, in a bounded page pipeline | Proposed |
 | [0118](0118-posthog-support-is-the-record-for-product-feedback.md) | PostHog Support is the record of triage for product feedback | Accepted |
+| [0120](0120-addresses-are-geocoded-by-a-self-hosted-photon.md) | Addresses are geocoded by a Photon in the cluster, over the Austrian OSM extract | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
