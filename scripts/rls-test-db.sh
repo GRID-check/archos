@@ -212,6 +212,10 @@ while read -r tag; do JOURNAL+=("$tag"); done < <(node -e '
   const j = require("./drizzle/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ')
+if [ "${#JOURNAL[@]}" -eq 0 ]; then
+  echo "error: could not read the migration journal (drizzle/meta/_journal.json)" >&2
+  exit 1
+fi
 CHAIN_AT=-1  # index in JOURNAL of the last migration grid_chain holds; -1 = no grid_chain
 
 journal_index() {
@@ -458,10 +462,10 @@ echo "==> 0097 step rewrite and down migration verified"
 # ---------------------------------------------------------------------------
 # Migrations 0111 to 0115 and 0118 to 0124: each on a database of its own.
 #
-# `migrate_until` (above) gives each its own clone of the chain, so every section
-# below starts from exactly the chain it follows and a later migration never
-# changes what an earlier section sees. `check_in` and `refused_in` assert against that database as its owner, which
-# is what runs a migration.
+# `migrate_until` (above) gives each its own clone of the chain, so every
+# section below starts from exactly the chain it follows and a later migration
+# never changes what an earlier section sees. `check_in` and `refused_in`
+# assert against that database as its owner, which is what runs a migration.
 # ---------------------------------------------------------------------------
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
