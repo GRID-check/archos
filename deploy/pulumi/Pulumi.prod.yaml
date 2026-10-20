@@ -34,7 +34,7 @@
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:openrouterApiKey      "sk-or-..." --secret
 
 #   # OpenRouter MANAGEMENT key (Settings → Management keys): creates each
-#   # organization's own OpenRouter key (ADR-0118). Required, no fallback.
+#   # organization's own OpenRouter key (ADR-0121). Required, no fallback.
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:openrouterManagementKey "sk-or-..." --secret
 
@@ -43,6 +43,10 @@
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:workosApiKey          "sk_live_..." --secret
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:workosCookiePassword  "$(openssl rand -hex 32)" --secret
+
+#   # PostHog Support for product feedback (ADR-0118). Optional: unset, no tickets open.
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:posthogPersonalApiKey "phx_..." --secret
 
 #   # Encrypts DB-claimed job payloads at rest (they carry the user auth token).
 

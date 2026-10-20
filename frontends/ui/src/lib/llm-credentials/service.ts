@@ -245,7 +245,7 @@ export async function createCredential(
 /** Providers whose base URL is fixed — stored as NULL, resolved from the preset. */
 const PRESET_URL_PROVIDERS = new Set<LlmCredentialProvider>(['openrouter', 'openai'])
 
-/** Revoke the active credential; traffic moves to the organization's platform key (ADR-0118). */
+/** Revoke the active credential; traffic moves to the organization's platform key (ADR-0121). */
 export async function revokeOrgCredential(
   session: AuthorizedSession,
   credentialId: string,
@@ -330,7 +330,7 @@ export async function isOrgOnOwnKey(organizationId: string): Promise<boolean> {
  * touching `last_used_at`. For callers that only need to know where requests
  * go (whether OpenRouter's zero data retention can apply), not to send one.
  *
- * A secret that fails to reveal makes the backend refuse the call (ADR-0118),
+ * A secret that fails to reveal makes the backend refuse the call (ADR-0121),
  * so reporting the BYOK provider for it is the right answer here too.
  */
 export async function getActiveCredentialProvider(organizationId: string): Promise<string | null> {
@@ -356,9 +356,9 @@ export interface ResolvedCredential {
  * feature flag, decrypts, and throttles the
  * `last_used_at` bookkeeping write. Returns null when the org has no BYOK
  * credential in use — the backend then runs on the organization's platform key
- * (ADR-0118). A stored key that cannot be revealed THROWS: billing a BYOK
+ * (ADR-0121). A stored key that cannot be revealed THROWS: billing a BYOK
  * organization's traffic to the platform because Vault hiccupped is the
- * fallback ADR-0118 removed.
+ * fallback ADR-0121 removed.
  */
 export async function resolveActiveCredentialForBackend(
   organizationId: string,
@@ -379,7 +379,7 @@ export async function resolveActiveCredentialForBackend(
   try {
     apiKey = await revealSecret(row)
   } catch (error) {
-    // Fail closed (ADR-0118) — never log key material, only the ref.
+    // Fail closed (ADR-0121) — never log key material, only the ref.
     console.error(
       `[LLM Credentials] secret reveal failed for org ${organizationId} credential ${row.id}:`,
       error,

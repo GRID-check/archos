@@ -400,7 +400,7 @@ async def test_an_org_with_no_key_of_its_own_still_reranks(monkeypatch, tracker)
 
 
 def test_an_organization_whose_keys_cannot_be_resolved_is_never_reranked_on_the_env_key(monkeypatch):
-    # ADR-0118: the resolver's refusal propagates instead of falling back to the env.
+    # ADR-0121: the resolver's refusal propagates instead of falling back to the env.
     from unittest.mock import patch
 
     from aiq_agent.common.llm_credentials import OrgCredentialUnavailable

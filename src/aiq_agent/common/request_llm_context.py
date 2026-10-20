@@ -86,7 +86,7 @@ async def _read_org_credential() -> OrgLLMCredential | None:
     """The organization's BYOK credential. NOT best-effort like the other dials.
 
     A failed lookup raises ``OrgCredentialUnavailable`` and the turn fails: the
-    shared key is not a fallback for an organization's call (ADR-0118).
+    shared key is not a fallback for an organization's call (ADR-0121).
     """
     return await asyncio.to_thread(get_org_llm_credential_from_context)
 

@@ -282,7 +282,7 @@ def _resolve_credential(base_url: str, model: str, organization_id: str | None) 
         logger.debug("credential_resolution unavailable; falling back to a direct env read")
     except Exception as e:
         if type(e).__name__ == "OrgCredentialUnavailable":
-            # ADR-0118: an organization's call never falls back to the shared key.
+            # ADR-0121: an organization's call never falls back to the shared key.
             # Matched by name: this module loads without the aiq_agent package.
             raise
         # Type only, never the message. This is the credential-resolution path, so the

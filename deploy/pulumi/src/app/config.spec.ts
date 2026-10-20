@@ -185,7 +185,7 @@ function builderSource(name: string): string {
   return configSource.slice(start, end === -1 ? undefined : end);
 }
 
-describe("one OpenRouter key per organization (ADR-0118)", () => {
+describe("one OpenRouter key per organization (ADR-0121)", () => {
   const orgKeysSource = readFileSync(
     join(repoRoot, "frontends", "ui", "src", "lib", "llm-credentials", "org-keys.ts"),
     "utf8",

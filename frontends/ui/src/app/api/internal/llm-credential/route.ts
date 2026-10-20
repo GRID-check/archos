@@ -1,5 +1,5 @@
 /**
- * Internal LLM key resolution (ADR-0022, ADR-0118) — the single decryption
+ * Internal LLM key resolution (ADR-0022, ADR-0121) — the single decryption
  * point for tenant LLM keys.
  *
  * Called just-in-time by the Python backend (chat rebuilds, research workers,
@@ -13,7 +13,7 @@
  *   - `perOrgKeys`: whether this deployment has per-organization keys at all.
  *
  * Any failure to read or create a key is a 503, never a null: the backend
- * refuses the call rather than send it on the shared key (ADR-0118).
+ * refuses the call rather than send it on the shared key (ADR-0121).
  *
  * The response contains the PLAINTEXT key: it must never be cached in the
  * shared cache, logged, or proxied beyond the internal network. The backend

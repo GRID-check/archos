@@ -223,7 +223,7 @@ def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any], *, org_key:
     ``metadata``, :func:`aiq_agent.common.openrouter.attribution_fields`), and
     puts the organization's own OpenRouter key on the call as a per-call
     ``Authorization`` header (:func:`aiq_agent.common.openrouter.openrouter_key_for_call`,
-    ADR-0118). Each is a no-op where it does not apply — a non-OpenRouter model
+    ADR-0121). Each is a no-op where it does not apply — a non-OpenRouter model
     keeps its body untouched, a call with no leading system message gets no
     key, and a call for no organization names nobody and keeps its key.
 

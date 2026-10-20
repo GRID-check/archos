@@ -47,8 +47,8 @@ the triggers in policy 5.
 | Credential | Where | Consumer | Keyless? | Scope today | Interval | How to rotate |
 |---|---|---|---|---|---|---|
 | `openrouterApiKey` (`OPENROUTER_API_KEY`) | ESC | Backend pods, for work with no organization (shared corpus, CLI) | Possible with OpenRouter's workload identity (Business plan) once the cluster's issuer is public | All inference | 90 days | Create a key in OpenRouter, `esc env set`, deploy, delete the old key |
-| `openrouterManagementKey` | ESC | BFF only: creates each organization's key (ADR-0118) | Possible the same way | Full key management | 90 days, issued with that expiry | Create a management key with an expiry, `esc env set`, deploy, delete the old one. Organization keys keep working across it |
-| Per-organization OpenRouter keys | Secret store behind the BFF (`org_openrouter_keys`) | Every model call made for that organization | n/a, minted by us | Inference only; monthly backstop `openrouterOrgKeyMonthlyLimitUsd` | Event (scheduled rotation is an ADR-0118 follow-up) | Disable the key at OpenRouter and delete its row; the next call creates a new one |
+| `openrouterManagementKey` | ESC | BFF only: creates each organization's key (ADR-0121) | Possible the same way | Full key management | 90 days, issued with that expiry | Create a management key with an expiry, `esc env set`, deploy, delete the old one. Organization keys keep working across it |
+| Per-organization OpenRouter keys | Secret store behind the BFF (`org_openrouter_keys`) | Every model call made for that organization | n/a, minted by us | Inference only; monthly backstop `openrouterOrgKeyMonthlyLimitUsd` | Event (scheduled rotation is an ADR-0121 follow-up) | Disable the key at OpenRouter and delete its row; the next call creates a new one |
 | `OPENROUTER_API_KEY` (GitHub) | Repository secret | Release-note translation, live turn-shape eval | Release notes: yes, once `OPENROUTER_FEDERATION_POLICY_ID` is set. Turn shapes: no, the job outlives the 15-minute token | All inference | 90 days | Dedicated key with a monthly limit; replace the secret |
 | `workosApiKey` | ESC | BFF (AuthKit, organizations, Vault, flags, audit logs, authorization) | No: WorkOS takes only `sk_` keys | Full environment, WorkOS has no scoped server keys | 90 days | Create a key in the WorkOS dashboard, `esc env set`, deploy, delete the old key |
 | `WORKOS_API_KEY_STAGING` | Repository secret | WorkOS drift check | No | Full staging environment | 90 days | Its own staging key, never the BFF's |
@@ -73,13 +73,13 @@ change on two sides and need the order in the note.
 
 | Credentials | What they protect | Interval | Note |
 |---|---|---|---|
-| `pgAppPassword`, `pgRuntimePassword`, `pgScalerPassword`, `seaweedfsFilerDbPassword`, `langfuseDbPassword`, `langfuseClickhousePassword` | Database roles | 12 months | *Paired*: the role's password and every pod that connects. Schedule a short window until dual-role rotation exists (ADR-0119) |
+| `pgAppPassword`, `pgRuntimePassword`, `pgScalerPassword`, `seaweedfsFilerDbPassword`, `langfuseDbPassword`, `langfuseClickhousePassword` | Database roles | 12 months | *Paired*: the role's password and every pod that connects. Schedule a short window until dual-role rotation exists (ADR-0122) |
 | `dragonflyPassword`, `rateLimitStorePassword`, `langfuseQueuePassword` | Cache, rate-limit store, Langfuse queue | 12 months | *Paired*, as above |
 | `seaweedfsSecretKey`, `seaweedfsTenantAdminSecretKey`, `seaweedfsBackendReadSecretKey`, `seaweedfsBackupAccessKey`, `seaweedfsBackupSecretKey`, `pgBackupSecretKey`, `qdrantS3SecretKey`, `langfuseS3SecretKey` | Object storage identities | 12 months | *Paired*, as above |
 | `qdrantApiKey`, `qdrantReadOnlyApiKey`, `qdrantAltApiKey` | Vector store | 12 months | Qdrant takes an alternate key, so rotate through `qdrantAltApiKey` without downtime |
 | `gridInternalApiToken`, `gridAdminToken`, `gridCorpusExportToken` | Service-to-service HMAC and admin endpoints | 12 months | *Paired* between BFF and backend; a rolling deploy rejects internal calls for its duration |
 | `workosCookiePassword`, `langfuseNextAuthSecret`, `langfuseSalt` | Session cookies, Langfuse sessions | 12 months | Signs everyone out |
-| `jobPayloadKek`, `byokLocalKek`, `langfuseEncryptionKey` | Keys that encrypt stored data | Event only | Rotating needs re-encryption of what they protect. Procedure: ADR-0119 |
+| `jobPayloadKek`, `byokLocalKek`, `langfuseEncryptionKey` | Keys that encrypt stored data | Event only | Rotating needs re-encryption of what they protect. Procedure: ADR-0122 |
 | `webPushVapidPrivateKey` | Web Push sender identity | Event only | A new key invalidates every browser's subscription |
 | `langfuseInitUserPassword`, `langfusePublicKey`, `langfuseSecretKey` | Langfuse bootstrap user and API pair | 12 months | |
 
@@ -105,7 +105,7 @@ audit logs (Pro), or record the compensating control you rely on instead.
 | ISO/IEC 27001:2022 A.5.17 Authentication information | Policy 1–6, the inventory |
 | A.5.18 Access rights | Access review |
 | A.8.5 Secure authentication | Keyless CI, short-lived tokens |
-| A.8.24 Use of cryptography (key management) | Inventory intervals, the KEK procedure (ADR-0119) |
+| A.8.24 Use of cryptography (key management) | Inventory intervals, the KEK procedure (ADR-0122) |
 | A.8.15 Logging | The record; Pulumi and vendor audit logs where the edition has them |
 | SOC 2 CC6.1 Logical access | Policy 2–4 |
 | SOC 2 CC6.2, CC6.3 Granting and removing access | Access review, policy 5 |

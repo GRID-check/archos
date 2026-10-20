@@ -170,8 +170,8 @@ const BOUNDARY_MIGRATIONS = [
   // tenant reads, only the platform role (the exporter) writes.
   '0154_analytics_export_cursors.sql',
   // Adds org_openrouter_keys — the OpenRouter key the platform provisions for
-  // each organization (ADR-0118). Keyed directly by its organization.
-  '0155_org_openrouter_keys.sql',
+  // each organization (ADR-0121). Keyed directly by its organization.
+  '0159_org_openrouter_keys.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

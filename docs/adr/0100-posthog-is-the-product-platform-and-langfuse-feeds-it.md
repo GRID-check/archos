@@ -164,3 +164,5 @@ What goes where:
 * ADR-0007 (no local identity sync) is untouched. PostHog's WorkOS warehouse
   source is a read-only copy in PostHog for analysis, not a mirror our code reads.
   Whether to connect it is in the migration plan.
+* Amended by ADR-0118: the BFF, not the browser, opens a Support ticket for
+  every product-feedback report, and PostHog Support is where it is triaged.

@@ -71,6 +71,7 @@ logs/
 # Testing
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
 .tox/
 
@@ -165,3 +166,4 @@ coverage-aiqapi.xml
 
 # A local copy of the OIB corpus for the evals and tests; see data/oib/README.md
 data/oib/*.pdf
+.testmondata*

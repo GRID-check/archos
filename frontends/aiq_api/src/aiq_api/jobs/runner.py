@@ -1245,7 +1245,7 @@ async def run_agent_job(
             # BYOK (ADR-0022): resolve the org's own LLM credential just in
             # time from the BFF (never carried in job_args — plaintext keys
             # must not enter the persisted job store); resolution fails closed
-            # (ADR-0118): a job whose organization's keys cannot be read fails.
+            # (ADR-0121): a job whose organization's keys cannot be read fails.
             _job_org_id = ((usage_context or {}).get("identity") or {}).get("organization_id")
             # Captured for the post-job reflection pass, which builds its own LLM
             # outside the provider and must re-apply the same tenant credential.

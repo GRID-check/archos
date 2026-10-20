@@ -17,7 +17,7 @@
  */
 
 import 'server-only'
-import { and, count, desc, eq, lt, or, type SQL } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNull, lt, or, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import {
   organizations,
@@ -25,7 +25,6 @@ import {
   type NewProductFeedback,
   type ProductFeedback,
   type ProductFeedbackKind,
-  type ProductFeedbackStatus,
 } from '@/lib/db/schema'
 
 /** Hard cap for one page of the platform triage list. */
@@ -38,6 +37,19 @@ export async function insertProductFeedback(values: NewProductFeedback): Promise
   return row
 }
 
+/**
+ * Record the Support ticket the server opened for a report, in the reporter's
+ * tenant context right after the insert. Written once: a row that already
+ * names a ticket keeps it.
+ */
+export async function setProductFeedbackTicket(id: string, ticketId: string): Promise<void> {
+  const db = getDb()
+  await db
+    .update(productFeedback)
+    .set({ posthogTicketId: ticketId, updatedAt: new Date() })
+    .where(and(eq(productFeedback.id, id), isNull(productFeedback.posthogTicketId)))
+}
+
 // ---------------------------------------------------------------------------
 // Platform side — cross-tenant, guarded by the service
 // ---------------------------------------------------------------------------
@@ -48,8 +60,11 @@ export interface ProductFeedbackRow extends ProductFeedback {
 }
 
 export interface ListProductFeedbackOptions {
-  status?: ProductFeedbackStatus
   kind?: ProductFeedbackKind
+  /** Only reports that opened no Support ticket. */
+  unticketed?: boolean
+  /** Only reports at or after this moment. */
+  since?: Date
   /** Keyset cursor: rows strictly older than this report. */
   before?: { createdAt: Date; id: string }
   limit?: number
@@ -57,8 +72,9 @@ export interface ListProductFeedbackOptions {
 
 function listFilters(options: ListProductFeedbackOptions): SQL | undefined {
   const clauses: SQL[] = []
-  if (options.status) clauses.push(eq(productFeedback.status, options.status))
   if (options.kind) clauses.push(eq(productFeedback.kind, options.kind))
+  if (options.unticketed) clauses.push(isNull(productFeedback.posthogTicketId))
+  if (options.since) clauses.push(gte(productFeedback.createdAt, options.since))
   if (options.before) {
     const { createdAt, id } = options.before
     const older = or(
@@ -98,46 +114,26 @@ export async function getProductFeedback(id: string): Promise<ProductFeedbackRow
   return row ? { ...row.report, organizationName: row.organizationName ?? null } : null
 }
 
-/** Report counts per status, for the filter chips. One grouped query. */
-export async function countProductFeedbackByStatus(): Promise<Record<ProductFeedbackStatus, number>> {
+/**
+ * The reports behind one page of PostHog tickets, keyed by ticket id. Bounded
+ * by the page: never more ids than one list call returns.
+ */
+export async function getProductFeedbackByTicketIds(
+  ticketIds: readonly string[]
+): Promise<Map<string, ProductFeedbackRow>> {
+  const ids = [...new Set(ticketIds)].slice(0, PRODUCT_FEEDBACK_LIST_LIMIT)
+  if (ids.length === 0) return new Map()
   const db = getDb()
   const rows = await db
-    .select({ status: productFeedback.status, value: count() })
+    .select({ report: productFeedback, organizationName: organizations.displayName })
     .from(productFeedback)
-    .groupBy(productFeedback.status)
-  const counts: Record<ProductFeedbackStatus, number> = {
-    new: 0,
-    in_progress: 0,
-    resolved: 0,
-    dismissed: 0,
-  }
-  for (const row of rows) {
-    if (row.status in counts) counts[row.status] = Number(row.value)
-  }
-  return counts
-}
-
-/**
- * Move a report to a triage status, attributed to whoever moved it.
- *
- * Moving it back to `new` clears the attribution, because `new` means "nobody
- * on the platform side has looked at it" and the CHECK allows no half state.
- */
-export async function updateProductFeedbackStatus(
-  id: string,
-  status: ProductFeedbackStatus,
-  triagedBy: string
-): Promise<ProductFeedback | null> {
-  const db = getDb()
-  const now = new Date()
-  const [row] = await db
-    .update(productFeedback)
-    .set(
-      status === 'new'
-        ? { status, triagedBy: null, triagedAt: null, updatedAt: now }
-        : { status, triagedBy, triagedAt: now, updatedAt: now }
-    )
-    .where(eq(productFeedback.id, id))
-    .returning()
-  return row ?? null
+    .leftJoin(organizations, eq(organizations.workosOrganizationId, productFeedback.organizationId))
+    .where(inArray(productFeedback.posthogTicketId, ids))
+    .limit(ids.length)
+  return new Map(
+    rows.map((row) => [
+      row.report.posthogTicketId as string,
+      { ...row.report, organizationName: row.organizationName ?? null },
+    ])
+  )
 }

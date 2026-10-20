@@ -1,4 +1,4 @@
-"""Tests for per-org LLM keys: BYOK (ADR-0022) and the platform's per-org key (ADR-0118)."""
+"""Tests for per-org LLM keys: BYOK (ADR-0022) and the platform's per-org key (ADR-0121)."""
 
 from unittest.mock import patch
 
@@ -67,7 +67,7 @@ class TestApplyOrgCredential:
             assert apply_org_credential(llm) is llm
 
     def test_non_pydantic_fails_closed(self):
-        # Returning the model unchanged would send the call on the shared key (ADR-0118).
+        # Returning the model unchanged would send the call on the shared key (ADR-0121).
         with pytest.raises(OrgCredentialUnavailable):
             apply_org_credential(object(), CREDENTIAL)
 

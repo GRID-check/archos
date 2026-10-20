@@ -76,7 +76,8 @@ Run what your change touches before pushing (what you must be able to show
 for each kind of change is in the
 [definition of done](docs/contributing/definition-of-done.md)):
 
-All commands live in the root [`Taskfile.yml`](Taskfile.yml) and are run with
+All commands live in the root [`Taskfile.yml`](Taskfile.yml) and the per-tier
+files it includes in [`taskfiles/`](taskfiles/), and are run with
 [go-task](https://taskfile.dev) (`npm i -g @go-task/cli`). CI calls the same
 tasks, so there is no second copy to drift:
 

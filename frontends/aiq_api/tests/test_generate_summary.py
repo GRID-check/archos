@@ -342,7 +342,7 @@ def test_placeholder_openrouter_key_does_not_select_the_openrouter_endpoint(monk
 
 @pytest.mark.asyncio
 async def test_generate_summary_for_an_organization_goes_out_on_its_own_key(app, monkeypatch):
-    """ADR-0118: with per-org keys on, the route never sends the env key for an
+    """ADR-0121: with per-org keys on, the route never sends the env key for an
     organization. The route names the organization as an argument, so nothing
     ambient carries it to the transport; the resolver has to choose."""
     monkeypatch.setenv("SUMMARY_LLM_API_KEY", "env-key")

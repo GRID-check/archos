@@ -1,5 +1,5 @@
--- 0155: org_openrouter_keys — the OpenRouter key the platform provisions for
--- each organization (ADR-0118).
+-- 0159: org_openrouter_keys — the OpenRouter key the platform provisions for
+-- each organization (ADR-0121).
 --
 -- ## What was missing
 --
@@ -53,7 +53,7 @@ CREATE TABLE IF NOT EXISTS "org_openrouter_keys" (
 );
 --> statement-breakpoint
 COMMENT ON TABLE "org_openrouter_keys" IS
-  'The OpenRouter key the platform provisioned for an organization (ADR-0118). Metadata only; the key is in the secret store. At most one active row per organization.';
+  'The OpenRouter key the platform provisioned for an organization (ADR-0121). Metadata only; the key is in the secret store. At most one active row per organization.';
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS "uniq_org_openrouter_keys_active"
   ON "org_openrouter_keys" ("organization_id") WHERE "status" = 'active';

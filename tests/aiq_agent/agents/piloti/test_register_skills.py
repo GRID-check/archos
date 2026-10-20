@@ -471,7 +471,7 @@ async def test_one_bad_tenant_reader_does_not_poison_the_others():
 
 @pytest.mark.asyncio
 async def test_an_organization_whose_keys_cannot_be_read_does_not_get_an_answer():
-    """ADR-0118: the key lookup is not best-effort. Running on the shared key
+    """ADR-0121: the key lookup is not best-effort. Running on the shared key
     instead would be the fallback the decision removed."""
     from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
 

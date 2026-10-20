@@ -123,7 +123,7 @@ def resolve_group_llm(base: Any, agent_group: AgentGroup, *, label: str) -> Any:
     failed model override falls back to ``base`` PINNED to zero-data-retention
     endpoints, and a failed pin to ``None`` (do not run) — never to the bare
     model. An organization whose keys cannot be resolved does not run either:
-    its stage must not go out on another key (ADR-0118). Shared by
+    its stage must not go out on another key (ADR-0121). Shared by
     the stage runner and by in-turn callers of a stage's model (the memory
     restriction judge in the ``remember`` tool).
     """

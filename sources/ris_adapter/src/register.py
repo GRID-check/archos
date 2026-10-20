@@ -260,7 +260,7 @@ def _apply_org_llm_policy(llm):
     try:
         return apply_model_override(apply_org_credential(llm), AgentGroup.DEEP_RESEARCH_ROUTER)
     except OrgCredentialUnavailable:
-        # ADR-0118: the planner never falls back to the shared key.
+        # ADR-0121: the planner never falls back to the shared key.
         raise
     except Exception:
         logger.warning("ris_search: could not apply org LLM policy to the planner", exc_info=True)

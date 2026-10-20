@@ -370,7 +370,7 @@ class TestLangfuseSeesEveryDecision:
 
 
 def test_an_organization_whose_keys_cannot_be_resolved_gets_no_decision(monkeypatch):
-    # ADR-0118: never the environment's key instead.
+    # ADR-0121: never the environment's key instead.
     from unittest.mock import patch
 
     from aiq_agent.common import decisions

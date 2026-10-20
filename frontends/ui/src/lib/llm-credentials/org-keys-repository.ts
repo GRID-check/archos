@@ -1,5 +1,5 @@
 /**
- * Drizzle access for `org_openrouter_keys` (ADR-0118). The only module that may
+ * Drizzle access for `org_openrouter_keys` (ADR-0121). The only module that may
  * query the table; tenancy is enforced in every WHERE clause.
  */
 

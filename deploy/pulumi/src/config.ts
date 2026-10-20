@@ -73,6 +73,8 @@ const SEAWEED_FILER_DB = "seaweedfs_filer";
  */
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 export const POSTHOG_DEFAULT_PROJECT_TOKEN = "phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X"; // pragma: allowlist secret
+/** The same project's numeric id, for the private API (PostHog Support). */
+export const POSTHOG_DEFAULT_PROJECT_ID = "269895";
 
 export interface GridConfig {
   namespace: string;
@@ -1099,7 +1101,7 @@ export interface GridConfig {
     openrouterApiKey: pulumi.Output<string>;
     /**
      * OpenRouter management key: the BFF creates each organization's own
-     * OpenRouter key with it (ADR-0118). Required, so a stack cannot run
+     * OpenRouter key with it (ADR-0121). Required, so a stack cannot run
      * every tenant on the shared key by forgetting it.
      */
     openrouterManagementKey: pulumi.Output<string>;
@@ -1173,6 +1175,21 @@ export interface GridConfig {
      * exception to the release by id. Empty = no release link.
      */
     releaseId: string;
+    /**
+     * Personal API key for PostHog Support (`grid-oib:posthogPersonalApiKey`,
+     * a secret in the stack's ESC environment; scopes `ticket:read`, `ticket:write`,
+     * `project:read`). The BFF opens a Support ticket per feedback report and
+     * lists and updates them on Platform -> Feedback
+     * (`frontends/ui/src/lib/posthog-support/`). `undefined` when the stack
+     * does not set it: then neither it nor `projectId` reaches a pod, and the
+     * page shows the local feedback log only.
+     */
+    personalApiKey: pulumi.Output<string> | undefined;
+    /**
+     * Numeric project id for that API (`grid-oib:posthogProjectId`, default
+     * `POSTHOG_DEFAULT_PROJECT_ID`). Only emitted alongside the key.
+     */
+    projectId: string;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -2995,6 +3012,8 @@ export function loadConfig(): GridConfig {
       sessionReplay: bool(cfg, "posthogSessionReplay", true),
       replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
       releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),
+      personalApiKey: cfg.getSecret("posthogPersonalApiKey"),
+      projectId: (cfg.get("posthogProjectId") ?? POSTHOG_DEFAULT_PROJECT_ID).trim(),
     },
 
     internal: {

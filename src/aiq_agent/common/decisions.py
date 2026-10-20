@@ -125,7 +125,7 @@ SKIPPED_BYOK_HOST = "byok_host"
 SKIPPED_BREAKER = "breaker"
 SKIPPED_TIMEOUT = "timeout"
 SKIPPED_ERROR = "error"
-#: The organization's keys could not be resolved (ADR-0118): no fallback key.
+#: The organization's keys could not be resolved (ADR-0121): no fallback key.
 SKIPPED_ORG_KEYS = "org_keys_unavailable"
 #: The caller did not ask: a first message of fewer than three words (Piloti).
 SKIPPED_TOO_SHORT = "too_short"

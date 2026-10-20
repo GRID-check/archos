@@ -156,6 +156,9 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     GRID_JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
     GRID_WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
+    // PostHog Support (feedback tickets). Absent unless the stack sets it, so
+    // `frontendEnv` can leave the variable off the pod rather than empty.
+    ...(cfg.posthog.personalApiKey ? { POSTHOG_PERSONAL_API_KEY: cfg.posthog.personalApiKey } : {}),
     WORKOS_API_KEY: cfg.auth.workosApiKey,
     WORKOS_COOKIE_PASSWORD: cfg.auth.workosCookiePassword,
     GRID_BYOK_LOCAL_KEK: cfg.auth.byokLocalKek,
@@ -560,6 +563,14 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
     { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
     { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
+    // PostHog Support (frontends/ui/src/lib/posthog-support/config.ts): the BFF
+    // opens a ticket per feedback report and triages them on Platform ->
+    // Feedback. Server-side only, despite living beside the NEXT_PUBLIC_ ones.
+    // Both or neither: the project id is meaningless without the key, and the
+    // key is in the Secret only when the stack set it.
+    ...(cfg.posthog.personalApiKey
+      ? [sref("POSTHOG_PERSONAL_API_KEY"), { name: "POSTHOG_PROJECT_ID", value: cfg.posthog.projectId }]
+      : []),
     // Web Push for the inbox (ADR-0112). Empty = off. The bff-jobs pool inherits
     // these (`bffJobsEnv`) and is the one that sends; the frontend serves the
     // public key to the browser.
@@ -589,7 +600,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Model catalog. Pricing (margin, credit price) is a platform setting in
     // the database (ADR-0053), not an environment variable.
     sref("OPENROUTER_API_KEY"),
-    // One OpenRouter key per organization (ADR-0118): the management key that
+    // One OpenRouter key per organization (ADR-0121): the management key that
     // creates them stays on the BFF, and the backend never sees it.
     sref("OPENROUTER_MANAGEMENT_KEY"),
     { name: "OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD", value: cfg.llm.openrouterOrgKeyMonthlyLimitUsd },

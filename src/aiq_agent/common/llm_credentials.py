@@ -1,4 +1,4 @@
-"""Per-organization LLM keys: BYOK (ADR-0022) and the platform's per-org OpenRouter key (ADR-0118).
+"""Per-organization LLM keys: BYOK (ADR-0022) and the platform's per-org OpenRouter key (ADR-0121).
 
 Enterprise organizations can bring their own LLM provider key, and every
 organization has an OpenRouter key the platform provisioned for it. Both live
@@ -14,7 +14,7 @@ any shared cache. The org id — which already flows on every request
 (``x-grid-organization-id``) and inside worker ``usage_context`` — is all the
 backend needs.
 
-Resolution is cached in-process for 60 s and FAILS CLOSED (ADR-0118): when the
+Resolution is cached in-process for 60 s and FAILS CLOSED (ADR-0121): when the
 keys of an organization cannot be read, :class:`OrgCredentialUnavailable` is
 raised, and the call is refused rather than sent on the deployment's shared
 key. A failure is remembered for :data:`FAILURE_TTL_SECONDS`, so a BFF outage
@@ -23,7 +23,7 @@ costs one round-trip per organization per window rather than one per call.
 A deployment with per-organization keys switched off (no OpenRouter management
 key on the BFF, or no ``GRID_INTERNAL_API_TOKEN`` channel to ask through: local
 development, CI, evals) resolves to :attr:`OrgKeys.per_org_keys` ``False``, and
-calls run on the shared key as before ADR-0118.
+calls run on the shared key as before ADR-0121.
 
 Key material is never logged; log lines carry only the fingerprint the BFF
 computed.
@@ -64,7 +64,7 @@ class OrgLLMCredential:
 
 
 class OrgCredentialUnavailable(RuntimeError):
-    """An organization's keys could not be resolved, so its model call is refused (ADR-0118)."""
+    """An organization's keys could not be resolved, so its model call is refused (ADR-0121)."""
 
 
 @dataclass(frozen=True)
@@ -176,7 +176,7 @@ def resolve_org_keys(organization_id: str) -> OrgKeys:
     """Every key the organization's calls may carry. Blocking on a cold cache; FAILS CLOSED.
 
     Raises :class:`OrgCredentialUnavailable` when the keys cannot be resolved:
-    the caller's model call must not go out (ADR-0118).
+    the caller's model call must not go out (ADR-0121).
     """
     cached = cached_org_keys(organization_id)
     if cached is not None:
@@ -213,7 +213,7 @@ def resolve_org_llm_credential(organization_id: str | None) -> OrgLLMCredential 
     """The org's BYOK credential in use, or None when it runs on its platform key.
 
     Raises :class:`OrgCredentialUnavailable` when the organization's keys cannot
-    be resolved: there is no fallback to the shared key (ADR-0118).
+    be resolved: there is no fallback to the shared key (ADR-0121).
     """
     if not organization_id:
         return None
@@ -237,7 +237,7 @@ def apply_org_credential(llm: object, credential: OrgLLMCredential | None = None
     (client fields dropped, credential fields replaced), which re-runs the
     validators that build the clients. A credential that cannot be applied
     raises :class:`OrgCredentialUnavailable`: returning the original ``llm``
-    would send the organization's call on the shared key (ADR-0118).
+    would send the organization's call on the shared key (ADR-0121).
     """
     if credential is None:
         credential = get_org_llm_credential_from_context()

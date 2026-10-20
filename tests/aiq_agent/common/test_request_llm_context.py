@@ -96,7 +96,7 @@ class TestTheReader:
         assert (context.model_overrides, context.reasoning_efforts, context.credential) == ({}, {}, None)
 
     async def test_a_broken_key_lookup_fails_the_turn(self, monkeypatch):
-        # ADR-0118: the shared key is not a fallback for an organization's call.
+        # ADR-0121: the shared key is not a fallback for an organization's call.
         from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
 
         def boom():

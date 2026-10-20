@@ -506,7 +506,7 @@ class TestStageSpendNamesTheAnswer:
 
 
 def test_a_stage_whose_organizations_keys_cannot_be_resolved_does_not_run(monkeypatch):
-    # ADR-0118: a stage must not fall back to the configured model on the shared key.
+    # ADR-0121: a stage must not fall back to the configured model on the shared key.
     from aiq_agent import common
     from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
     from aiq_agent.common.model_overrides import AgentGroup

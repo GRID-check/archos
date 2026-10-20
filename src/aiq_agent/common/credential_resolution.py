@@ -14,7 +14,7 @@ Resolution order (see :func:`resolve_llm_credential`):
      org's bring-your-own credential from the BFF's internal endpoint wins.
      Mirroring ADR-0022/0014, a BYOK swap replaces ``api_key`` + ``base_url``
      ONLY — never the model. Without one, an OpenRouter call gets the key the
-     platform provisioned for the organization (ADR-0118); the steps below are
+     platform provisioned for the organization (ADR-0121); the steps below are
      never reached for it, and a failed lookup raises rather than fall through.
   2. **primary_env** — the call site's explicit override env var.
   3. **fallback_envs** — additional env vars, in order.
@@ -113,7 +113,7 @@ class ResolvedCredential:
 
     ``source`` labels WHERE ``api_key`` came from: ``'byok'`` (org credential),
     ``'org-key'`` (the OpenRouter key the platform provisioned for the org,
-    ADR-0118), ``'env'`` (primary or fallback env var), ``'provider-default'`` (inferred
+    ADR-0121), ``'env'`` (primary or fallback env var), ``'provider-default'`` (inferred
     from the base-URL host), or ``'none'`` (nothing resolved — ``api_key`` is
     ``""``). ``base_url``/``model`` are always populated (from env/defaults; a
     BYOK hit overrides ``base_url`` but never ``model``). ``api_key`` must never
@@ -220,7 +220,7 @@ def _resolve(
     if NIM_API_HOST in (urlsplit(base_url).hostname or ""):
         raise ValueError(f"{NIM_UNSUPPORTED_MESSAGE} (base_url {base_url} points at the removed endpoint)")
 
-    # 1. The organization's own keys, when we know the org (ADR-0022, ADR-0118):
+    # 1. The organization's own keys, when we know the org (ADR-0022, ADR-0121):
     #    its BYOK credential wins; otherwise an OpenRouter call carries the key
     #    the platform provisioned for it, never the env chain's shared key.
     #    resolve_org_keys fails closed: a hiccup raises OrgCredentialUnavailable.

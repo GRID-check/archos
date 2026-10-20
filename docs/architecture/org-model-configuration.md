@@ -230,7 +230,7 @@ Filter OpenRouter's activity by `user` to see one organization or person.
 `user` is also the identity OpenRouter isolates abuse blocks by.
 
 The same two seams put the organization's own OpenRouter key on every call made
-for it (ADR-0118, `openrouter_key_for_call`). The BFF creates that key through
+for it (ADR-0121, `openrouter_key_for_call`). The BFF creates that key through
 OpenRouter's management API the first time the organization needs one
 (`lib/llm-credentials/org-keys.ts`, table `org_openrouter_keys`) and serves it
 with the BYOK credential from `/api/internal/llm-credential`. A call already on

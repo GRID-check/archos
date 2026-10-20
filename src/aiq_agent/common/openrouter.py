@@ -38,7 +38,7 @@ A call site picks the adapter for its shape and never writes its own merge:
 
 The same two seams (this module's transports and
 ``llm_factory.prepare_request``) put the organization's own OpenRouter key on
-every call made for it (:func:`openrouter_key_for_call`, ADR-0118): never the
+every call made for it (:func:`openrouter_key_for_call`, ADR-0121): never the
 shared key, and no call at all when its keys cannot be resolved. They also
 stamp every call with whose work it is:
 ``user`` and ``metadata`` from the ambient cost tracker
@@ -125,7 +125,7 @@ def targets_openrouter(url: object) -> bool:
 
     The host must BE ``openrouter.ai`` or one of its subdomains
     (``eu.openrouter.ai``): an organization's key rides on every request this
-    accepts (ADR-0118), so ``openrouter.ai.example.com`` must not pass.
+    accepts (ADR-0121), so ``openrouter.ai.example.com`` must not pass.
     """
     if not url:
         return False
@@ -365,7 +365,7 @@ def org_key_for(current_key: str | None, keys: Any) -> str | None:
     ``keys`` is the organization's ``llm_credentials.OrgKeys``. A call already on
     the organization's own BYOK key, or on its platform key, keeps it. Every
     other key (the deployment's shared key, a call-site env key) is replaced by
-    the organization's platform key (ADR-0118). Nothing changes on a deployment
+    the organization's platform key (ADR-0121). Nothing changes on a deployment
     without per-organization keys.
     """
     if not keys.per_org_keys:
@@ -382,7 +382,7 @@ def openrouter_key_for_call(current_key: str | None) -> str | None:
 
     Blocks on a cold cache (one BFF round-trip per organization per minute).
     Raises ``llm_credentials.OrgCredentialUnavailable`` when the organization's
-    keys cannot be resolved: the call must not go out (ADR-0118).
+    keys cannot be resolved: the call must not go out (ADR-0121).
     """
     organization_id = _call_organization_id()
     if not organization_id:
@@ -419,7 +419,7 @@ ORG_KEYS_REFUSAL_MARKER = "organization_keys_unavailable"
 
 
 def _refusal(request: httpx.Request, error: Exception) -> httpx.Response:
-    """The answer to a call whose organization's keys could not be resolved (ADR-0118).
+    """The answer to a call whose organization's keys could not be resolved (ADR-0121).
 
     A 403 rather than a raised exception: the OpenAI SDK retries anything a
     transport raises as a connection error, three times, and loses the reason;

@@ -271,7 +271,7 @@ def test_byok_hit_swaps_key_and_base_url_not_model(monkeypatch):
 
 
 def test_an_organization_without_byok_gets_its_own_openrouter_key(monkeypatch):
-    # ADR-0118: a route that names the organization (titles, summaries, ...)
+    # ADR-0121: a route that names the organization (titles, summaries, ...)
     # has nothing ambient for the transport to read it from, so the key is
     # chosen here, and the shared env key is never handed out for it.
     monkeypatch.setenv("PRIMARY_KEY", "env-key")

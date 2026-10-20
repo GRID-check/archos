@@ -1,5 +1,5 @@
 /**
- * One OpenRouter key per organization (ADR-0118).
+ * One OpenRouter key per organization (ADR-0121).
  *
  * Every model call made for an organization goes out on that organization's own
  * OpenRouter key, so a leaked key, a runaway job or a provider's abuse block
@@ -15,7 +15,7 @@
  *
  * A deployment without `OPENROUTER_MANAGEMENT_KEY` (local development, CI) has
  * no per-organization keys at all and says so ({@link orgKeysEnabled}); every
- * call then runs on the shared key, as before ADR-0118. Production stacks are
+ * call then runs on the shared key, as before ADR-0121. Production stacks are
  * required to set it (`deploy/pulumi`).
  *
  * Revoking an organization's key is done at OpenRouter (disable it there): its

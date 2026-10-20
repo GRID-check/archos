@@ -270,7 +270,7 @@ def _org_keys(**kwargs):
 
 
 class TestEveryCallForAnOrganizationCarriesItsKey:
-    """ADR-0118: the shared key never serves an organization's call."""
+    """ADR-0121: the shared key never serves an organization's call."""
 
     def _sent(self, url="https://openrouter.ai/api/v1/embeddings", key="sk-shared"):
         seen: list[httpx.Request] = []

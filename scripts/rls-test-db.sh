@@ -190,6 +190,80 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     workers/jobs/runner.integration.spec.mjs \
     scheduler/db.integration.spec.mjs
 
+# Everything below re-proves one migration of the chain at a time: a database
+# migrated to just before it, seeded with the old shapes, checked row by row,
+# then taken down. Those claims read nothing but frontends/ui/drizzle/ and this
+# script, and they are ~60% of this script's time. CI's Plan sets
+# GRID_RLS_MIGRATION_CHECKS=0 when neither changed (the `migrations` tier in
+# .github/filters.yml); unset, as locally, they run.
+if [ "${GRID_RLS_MIGRATION_CHECKS:-1}" = "0" ]; then
+  echo "==> per-migration backfill and down checks skipped: no migration and not this script changed"
+  exit 0
+fi
+
+# ---------------------------------------------------------------------------
+# The migration sections below each check one migration on a database of its
+# own, migrated to exactly the point that migration follows.
+#
+# Replaying the journal into every one of them cost each section the whole
+# chain again: about 90 of the run's 150 seconds, and growing with every
+# migration twice over, once for the longer chain and once for its own section.
+# Instead the chain is applied ONCE, into `grid_chain`, a template that only
+# moves forward, and each section clones it (`CREATE DATABASE ... TEMPLATE`),
+# which copies the files rather than re-running the SQL. A clone is the same
+# database the replay produced: the migrations set nothing at database level,
+# the one thing a template does not carry. A section that asks for an earlier
+# point than the template holds gets a template rebuilt from scratch.
+#
+# `migrate_until <db> <tag>` gives <db> the journal up to and including <tag>,
+# `migrate_before <db> <tag>` up to the migration before it.
+# ---------------------------------------------------------------------------
+JOURNAL=()
+while read -r tag; do JOURNAL+=("$tag"); done < <(node -e '
+  const j = require("./drizzle/meta/_journal.json");
+  console.log(j.entries.map((e) => e.tag).join("\n"));
+')
+CHAIN_AT=-1  # index in JOURNAL of the last migration grid_chain holds; -1 = no grid_chain
+
+journal_index() {
+  local i
+  for i in "${!JOURNAL[@]}"; do
+    if [ "${JOURNAL[$i]}" = "$1" ]; then echo "$i"; return; fi
+  done
+  echo "$1 is not in the journal" >&2
+  exit 1
+}
+# Clone grid_chain, advanced to JOURNAL[<index>], as <db>.
+clone_chain_at() {
+  local db="$1" target="$2" i
+  if [ "$target" -lt "$CHAIN_AT" ]; then
+    $PSQL -q -v ON_ERROR_STOP=1 -c "DROP DATABASE grid_chain;"
+    CHAIN_AT=-1
+  fi
+  if [ "$CHAIN_AT" -lt 0 ]; then
+    $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE grid_chain OWNER grid_app_owner;"
+  fi
+  for ((i = CHAIN_AT + 1; i <= target; i++)); do
+    $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_chain -v ON_ERROR_STOP=1 -q \
+      -f "drizzle/${JOURNAL[$i]}.sql" >/dev/null || {
+      echo "SETUP OF $db FAILED at ${JOURNAL[$i]} — re-run without -q to see the error" >&2
+      exit 1
+    }
+    CHAIN_AT=$i
+  done
+  $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE $db TEMPLATE grid_chain OWNER grid_app_owner;"
+}
+migrate_until() {
+  local at
+  at=$(journal_index "$2")
+  clone_chain_at "$1" "$at"
+}
+migrate_before() {
+  local at
+  at=$(journal_index "$2")
+  clone_chain_at "$1" "$((at - 1))"
+}
+
 # ---------------------------------------------------------------------------
 # Migration 0086: the backfill, asserted per row shape, and its DOWN migration.
 #
@@ -199,20 +273,8 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 # the whole chain, when the old shapes cannot be created any more.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0086 backfill and its down migration on grid_backfill"
-$PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE grid_backfill OWNER grid_app_owner;"
+migrate_before grid_backfill 0086_task_definitions
 MIGRATE_B="$PGBIN/psql -h $WORKDIR -p $PORT -U grid_app_owner -d grid_backfill"
-
-# Every migration BEFORE 0086, in journal order.
-node -e '
-  const j = require("./drizzle/meta/_journal.json");
-  console.log(j.entries.map((e) => e.tag).join("\n"));
-' | while read -r tag; do
-  [ "$tag" = "0086_task_definitions" ] && break
-  $MIGRATE_B -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
-    echo "BACKFILL SETUP FAILED at $tag — re-run without -q to see the error" >&2
-    exit 1
-  }
-done
 
 # Four old shapes: a scheduled run with its task (and a rejection), a skipped
 # fire with no task, an errored fire with no task, and a delegated task. Plus a
@@ -315,19 +377,8 @@ echo "==> 0086 backfill and down migration verified"
 # Without the renumbering the ADD CONSTRAINT fails the deploy on the first pair.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0092 renumbering and its down migration on grid_versions"
-$PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE grid_versions OWNER grid_app_owner;"
+migrate_before grid_versions 0092_document_version_number_unique
 MIGRATE_V="$PGBIN/psql -h $WORKDIR -p $PORT -U grid_app_owner -d grid_versions"
-
-node -e '
-  const j = require("./drizzle/meta/_journal.json");
-  console.log(j.entries.map((e) => e.tag).join("\n"));
-' | while read -r tag; do
-  [ "$tag" = "0092_document_version_number_unique" ] && break
-  $MIGRATE_V -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
-    echo "0092 SETUP FAILED at $tag — re-run without -q to see the error" >&2
-    exit 1
-  }
-done
 
 $MIGRATE_V -v ON_ERROR_STOP=1 -q <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
@@ -407,19 +458,8 @@ echo "==> 0092 renumbering and down migration verified"
 # again. It connects as the owner, which is what runs a migration.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0097 Herleitung step rewrite and its down migration on grid_steps"
-$PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE grid_steps OWNER grid_app_owner;"
+migrate_before grid_steps 0097_herleitung_steps_v2
 MIGRATE_S="$PGBIN/psql -h $WORKDIR -p $PORT -U grid_app_owner -d grid_steps"
-
-node -e '
-  const j = require("./drizzle/meta/_journal.json");
-  console.log(j.entries.map((e) => e.tag).join("\n"));
-' | while read -r tag; do
-  [ "$tag" = "0097_herleitung_steps_v2" ] && break
-  $MIGRATE_S -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
-    echo "0097 SETUP FAILED at $tag — re-run without -q to see the error" >&2
-    exit 1
-  }
-done
 
 GRID_TEST_MIGRATION_DATABASE_URL="postgres://grid_app_owner@127.0.0.1:$PORT/grid_steps" \
   npx vitest run src/lib/conversations/herleitung-steps-v2.migration.spec.ts
@@ -429,30 +469,11 @@ echo "==> 0097 step rewrite and down migration verified"
 # ---------------------------------------------------------------------------
 # Migrations 0111 to 0115 and 0118 to 0124: each on a database of its own.
 #
-# `migrate_until <db> <tag>` creates <db> and applies the journal up to and
-# including <tag>, so every section below starts from exactly the chain it
-# follows and a later migration never changes what an earlier section sees.
-# `check_in` and `refused_in` assert against that database as its owner, which
+# `migrate_until` (above) gives each its own clone of the chain, so every section
+# below starts from exactly the chain it follows and a later migration never
+# changes what an earlier section sees. `check_in` and `refused_in` assert against that database as its owner, which
 # is what runs a migration.
 # ---------------------------------------------------------------------------
-migrate_until() {
-  local db="$1" last="$2"
-  grep -q "\"tag\": \"$last\"" drizzle/meta/_journal.json || {
-    echo "migrate_until: $last is not in the journal" >&2
-    exit 1
-  }
-  $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE $db OWNER grid_app_owner;"
-  node -e '
-    const j = require("./drizzle/meta/_journal.json");
-    console.log(j.entries.map((e) => e.tag).join("\n"));
-  ' | while read -r tag; do
-    $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$db" -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
-      echo "SETUP OF $db FAILED at $tag — re-run without -q to see the error" >&2
-      exit 1
-    }
-    if [ "$tag" = "$last" ]; then break; fi
-  done
-}
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
   $PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d "$1" -v ON_ERROR_STOP=1 -q -f "drizzle/$2" >/dev/null || {
@@ -1094,19 +1115,8 @@ echo "==> 0128 folder-role carry-over and down migration verified"
 # Connects as the owner, which is what runs a migration.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0102 folder backfill, its constraints and its down migration on grid_folders"
-$PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE grid_folders OWNER grid_app_owner;"
+migrate_before grid_folders 0102_archiv_folders
 MIGRATE_F="$PGBIN/psql -h $WORKDIR -p $PORT -U grid_app_owner -d grid_folders"
-
-node -e '
-  const j = require("./drizzle/meta/_journal.json");
-  console.log(j.entries.map((e) => e.tag).join("\n"));
-' | while read -r tag; do
-  [ "$tag" = "0102_archiv_folders" ] && break
-  $MIGRATE_F -v ON_ERROR_STOP=1 -q -f "drizzle/$tag.sql" >/dev/null || {
-    echo "0102 SETUP FAILED at $tag — re-run without -q to see the error" >&2
-    exit 1
-  }
-done
 
 # Two tenants, a nested project folder in each, a document filed in the nested
 # one, a root document and an Archiv document (which cannot be filed yet).
