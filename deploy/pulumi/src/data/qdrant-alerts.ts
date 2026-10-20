@@ -10,7 +10,7 @@ import { QDRANT } from "../constants";
  * metrics backend (`docs/deployment/kubernetes.md` §9). They are written in
  * the one rule format every candidate reads (Prometheus, Grafana Mimir and
  * Alloy, VictoriaMetrics' vmalert), against the series the collector
- * re-exposes on `otel-collector:8889/metrics` (`metricsPipeline` in
+ * re-exposes on `otel-collector:8889/metrics` (`qdrantScrape` in
  * `platform/otel-collector.ts`). Those names are the collector's, not raw
  * Qdrant's: a counter gains `_total` on the way through (`cluster_commit` is
  * exported as `cluster_commit_total`), so a rule written from Qdrant's own

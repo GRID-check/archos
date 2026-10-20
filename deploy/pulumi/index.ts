@@ -446,10 +446,12 @@ if (cfg.observability.enabled) {
     [
       ...(langfuse ? [langfuse.webService] : []),
     ],
-    langfuse ? langfuse.secret.metadata.name : undefined,
-    // Every Qdrant peer's metrics port (ADR-0115): the collector's one
-    // metrics pipeline, re-exposed on :8889 for whatever reads metrics.
-    qdrant.metricsTargets,
+    {
+      langfuseSecretName: langfuse ? langfuse.secret.metadata.name : undefined,
+      // Every Qdrant peer's metrics port (ADR-0115), scraped and re-exposed on
+      // :8889 for the alert rules.
+      qdrantMetricsTargets: qdrant.metricsTargets,
+    },
   );
 }
 

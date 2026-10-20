@@ -3,6 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
 import { loadConfig, POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } from "../config";
 import { posthogEnv } from "../app/config";
+import { parseCollectorConfig, pipeline } from "../test-support/collector";
 
 /**
  * One PostHog configuration for every runtime, and the logs path to it.
@@ -87,24 +88,28 @@ describe("PostHog logs in the collector, enabled", () => {
     // `logs_endpoint` is the whole URL; a trailing slash on the stack's host
     // must not become `//i/v1/logs`.
     expect(collector).toContain("logs_endpoint: https://eu.i.posthog.com/i/v1/logs");
-    expect(collector).toContain('Authorization: "Bearer phc_test_token"');
+    expect(parseCollectorConfig(collector).exporters["otlp_http/posthog"]).toMatchObject({
+      headers: { Authorization: "Bearer phc_test_token" },
+    });
     expect(collector).toMatch(/^\s+otlp_http\/posthog:/m);
     expect(collector).not.toMatch(/^\s+otlphttp\//m);
   });
 
   it("puts it on its own logs pipeline behind a WARN filter, with no unfiltered logs pipeline beside it", () => {
-    expect(collector).toMatch(
-      /logs\/posthog:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, filter\/warn_and_above, batch\]\s*\n\s*exporters: \[otlp_http\/posthog\]/,
+    const { processors, service } = parseCollectorConfig(collector);
+    expect(service.pipelines["logs/posthog"]).toEqual(
+      pipeline(["otlp_http/posthog"], { processors: ["filter/warn_and_above"] }),
     );
-    expect(collector).toContain("'log.severity_number < SEVERITY_NUMBER_WARN'");
-    expect(collector).not.toMatch(/\n    logs:/);
+    expect(processors["filter/warn_and_above"]).toMatchObject({
+      log_conditions: ["log.severity_number < SEVERITY_NUMBER_WARN"],
+    });
+    expect(service.pipelines).not.toHaveProperty("logs");
   });
 
   it("sends no traces or metrics to PostHog", () => {
     // LLM traces reach PostHog through Langfuse's integration; APM is out of scope.
     expect(collector).not.toContain("traces_endpoint: https://eu.i.posthog.com");
     expect(collector).not.toContain("metrics_endpoint");
-    expect(collector).not.toMatch(/\n    metrics:/);
   });
 
   it("needs no env var on the pod: the token is public config, not a secret", () => {
