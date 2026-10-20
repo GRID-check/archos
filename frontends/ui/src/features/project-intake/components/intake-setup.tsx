@@ -18,6 +18,8 @@ import { IntakeSetupView } from './intake-setup-view'
 
 export interface IntakeSetupProps {
   projectId: string
+  /** The project's name, for the page head. */
+  projectName?: string
   /** The project's RAG collection, which uploads go to. */
   collectionName: string
   /** The review as the server read it; null when the project has no intake (set up by hand). */
@@ -61,6 +63,7 @@ function NoIntake({ projectId }: { projectId: string }): JSX.Element {
 
 function ConnectedSetup({
   projectId,
+  projectName,
   collectionName,
   initial,
   projectClosed,
@@ -97,6 +100,7 @@ function ConnectedSetup({
     <IntakeSetupView
       view={view}
       projectId={projectId}
+      projectName={projectName}
       busy={intake.busy}
       stale={intake.stale}
       canUpload={!projectClosed}

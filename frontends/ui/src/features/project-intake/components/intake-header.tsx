@@ -60,10 +60,13 @@ export function IntakeStatusLine({ view }: { view: IntakeView }): JSX.Element {
 }
 
 /**
- * Header of the setup page. The frame above it already says „Projekterfassung";
- * this says where the reading stands and offers what a person may do now: read
- * what is new, add documents, or leave for the wizard, which stays the way to
- * fill the same profile by hand.
+ * The reading's line above the steps. The reading runs in the background while
+ * the person works through the steps, so where it stands is on every step,
+ * kept to one status line and three controls: add documents, read again, and a
+ * quiet way to the Briefing-Editor (the wizard), which stays the way to fill
+ * the same profile by hand. What Piloti says about what it read (the summary)
+ * and the reading's milestones belong to the Erfassung step, which draws them
+ * itself; on that step the frame leaves the status line out (`showStatus`).
  */
 export function IntakeHeader({
   view,
@@ -71,6 +74,7 @@ export function IntakeHeader({
   busy,
   uploading,
   canUpload,
+  showStatus = true,
   onReread,
   onFiles,
 }: {
@@ -80,6 +84,8 @@ export function IntakeHeader({
   uploading: boolean
   /** Whether the header offers the upload: not while the page's own drop zone does, and not on a finished or closed one. */
   canUpload: boolean
+  /** Draw the status line; off on the Erfassung step, which shows the reading in full. */
+  showStatus?: boolean
   onReread: () => void | Promise<void>
   onFiles: (files: File[]) => void
 }): JSX.Element {
@@ -94,12 +100,7 @@ export function IntakeHeader({
       className="flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4"
       data-testid="intake-header"
     >
-      <div className="min-w-0 space-y-2">
-        <IntakeStatusLine view={view} />
-        {view.summary && view.status !== 'reading' && (
-          <p className="text-muted-foreground max-w-prose text-sm leading-relaxed">{view.summary}</p>
-        )}
-      </div>
+      <div className="min-w-0">{showStatus && <IntakeStatusLine view={view} />}</div>
       <div className="flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
         {canUpload && !finished && (
           <ProjectUppyUpload
@@ -128,7 +129,7 @@ export function IntakeHeader({
           </BusyButton>
         )}
         {!finished && (
-          <Button asChild size="sm" variant="ghost">
+          <Button asChild size="sm" variant="ghost" className="text-muted-foreground">
             <Link href={`/app/projects/${projectId}/intake`} aria-label={t('header.editSelfAria')}>
               <PencilLine aria-hidden />
               {t('header.editSelf')}

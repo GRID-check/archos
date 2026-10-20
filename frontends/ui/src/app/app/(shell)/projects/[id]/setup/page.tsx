@@ -26,8 +26,10 @@ export async function generateMetadata(): Promise<Metadata> {
  * person reviews what it found. The server reads the review for the first paint;
  * the page keeps it current by asking the API again while a reading runs.
  *
- * A project set up by hand has no intake: the page says so and points to the
- * wizard.
+ * The page is the five-step setup (`docs/design/project-setup-five-steps.md`).
+ * The step shown rides `?step=` and is read on the client, so changing it never
+ * asks the server for the page again. A project set up by hand has no intake:
+ * the page says so and points to the wizard.
  */
 export default async function SetupPage({ params, searchParams }: SetupPageProps): Promise<JSX.Element> {
   return withPageSession(async (session) => {
@@ -46,6 +48,7 @@ export default async function SetupPage({ params, searchParams }: SetupPageProps
     return (
       <IntakeSetup
         projectId={id}
+        projectName={project.name}
         collectionName={project.collectionName}
         initial={initial}
         projectClosed={isProjectClosed(project)}

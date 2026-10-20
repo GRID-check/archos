@@ -1,11 +1,15 @@
 'use client'
 
 /**
- * The setup page (Projekterfassung) drawn from fixtures, so every state can be
- * looked at and screenshotted without a database, a worker or a reading:
- * `?state=waiting | reading | failed | ready | closing | completed` (default `ready`),
- * and `?busy=1` for a call in flight. The document chips open a PDF built from the
- * fixtures' own quotes, in the viewer the chat's citations use.
+ * The setup page (five steps, ticket 26) drawn from fixtures, so every step in
+ * every state can be looked at and screenshotted without a database, a worker
+ * or a reading: `?step=project | filing | reading | questions | profile`
+ * (default: the step the page itself would open on) and
+ * `?state=waiting | reading | failed | ready | closing | completed` (default
+ * `ready`), plus `?busy=1` for a call in flight. The step rides the address as
+ * it does on the real page, so the stepper, back and forward work here too.
+ * The document chips open a PDF built from the fixtures' own quotes, in the
+ * viewer the chat's citations use.
  *
  * Decisions call back into the page, which shows the last payload it was given
  * instead of changing the fixture: what a button sends is the thing to review.
@@ -31,6 +35,9 @@ import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-sugg
 import type { IntakeDecision } from '@/lib/project-intake/types'
 
 installFixtureDocuments(INTAKE_FIXTURES.ready)
+
+/** The project the fixtures describe, named as the create dialog would have. */
+const FIXTURE_PROJECT_NAME = 'Wohnanlage Gartenstraße 12'
 
 function stateOf(value: string | string[] | undefined): IntakeFixtureName {
   const name = Array.isArray(value) ? value[0] : value
@@ -59,8 +66,11 @@ export default function ProjectSetupPreviewPage({
     <main className="bg-background min-h-dvh" data-testid="project-setup-preview">
       <ProjectSectionHeader state={name} />
       <IntakeSetupView
+        // A new state is a new page: the step it opens on is chosen again.
+        key={name}
         view={view}
         projectId={view.projectId}
+        projectName={FIXTURE_PROJECT_NAME}
         busy={busy}
         stale={false}
         canUpload
