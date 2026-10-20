@@ -11,7 +11,7 @@ a package under `sources/` is covered the day it lands — the glob picks it up
 with no list to update.
 
 ```bash
-task be:test:sources                          # what CI runs: every package, one run
+task be:test:sources                          # what CI runs: every package, one run, xdist by file
 .venv/bin/pytest sources/<package>/tests -q   # one package
 ```
 
@@ -22,8 +22,15 @@ Keep it that way: a helper a test needs from another file is imported by its pat
 (`from sources.ris_adapter.tests.conftest import LookupHarness`), never as
 `tests.conftest`.
 
-This suite went uncovered for a long time. CI now runs it in the Backend tests job
-(`task be:test:sources`). A package here once carried
+The run is parallel (`-n logical --dist loadfile`), so a test may not write
+into the repository or share any other state with a test in another file:
+`test_qdrant_import_boundary.py` plants its offenders under `tmp_path` for that
+reason. Most of the suite's time is Qdrant collection setup (about 130 tests
+each create their own), which a real Qdrant at `AIQ_QDRANT_TEST_URL` pays and
+a run without one skips.
+
+This suite went uncovered for a long time. CI now runs it in the Backend suites
+job (`task be:test:sources`). A package here once carried
 three tests asserting a function signature the implementation had already
 changed, and they stayed green through every gate because nothing ran them.
 

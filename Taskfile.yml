@@ -468,7 +468,9 @@ tasks:
       # One run over every package. No package carries a `tests/__init__.py`, so
       # no two conftests claim the module name `tests.conftest`, and a new
       # package is collected the day it lands.
-      - '"{{.PY}}" -X faulthandler -m pytest sources -q'
+      # Whole files per worker (loadfile): a file's Qdrant collections and
+      # module fixtures then stay on one worker.
+      - '"{{.PY}}" -X faulthandler -m pytest sources -q {{.XDIST}} --dist loadfile'
 
   be:test:migration:
     desc: The Chroma exporter and the whole move (exporter, importer, Qdrant), in a throwaway chromadb environment
