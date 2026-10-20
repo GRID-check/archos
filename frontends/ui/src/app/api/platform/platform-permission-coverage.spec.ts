@@ -71,6 +71,7 @@ const EXPECTED: Record<string, string> = {
   'organizations/[organizationId]/upload-limit/route.ts PUT': 'organizationsManage',
   'organizations/[organizationId]/budgets/route.ts GET': 'organizationsView',
   'organizations/[organizationId]/budgets/route.ts PUT': 'organizationsManage',
+  'organizations/[organizationId]/usage/route.ts GET': 'usageView',
   'overview/route.ts GET': 'organizationsView',
   // The price list (ADR-0053): platform-owned configuration.
   'pricing/route.ts GET': 'settingsView',
