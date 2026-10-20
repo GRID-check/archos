@@ -137,9 +137,12 @@ describe('listOrganizationRoles', () => {
 describe('assignableRolePermissions', () => {
   it('offers the organization tier, grantable only where the editor holds the permission', () => {
     const offered = assignableRolePermissions(userAdmin())
-    expect(offered?.map((entry) => entry.slug)).toEqual([...ASSIGNABLE_ROLE_PERMISSIONS])
+    // The deprecated `org:archiv:manage` is not offered anew; its replacement is.
+    expect(offered?.map((entry) => entry.slug)).toEqual(
+      ASSIGNABLE_ROLE_PERMISSIONS.filter((slug) => slug !== 'org:archiv:manage')
+    )
     const grantable = offered?.filter((entry) => entry.grantable).map((entry) => entry.slug)
-    expect(grantable?.sort()).toEqual(['org:archiv:manage', 'org:members:manage', 'org:projects:create'])
+    expect(grantable?.sort()).toEqual(['org:members:manage', 'org:office_shelf:manage', 'org:projects:create'])
   })
 
   it('is null for a reader who may not manage roles', () => {

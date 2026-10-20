@@ -168,9 +168,9 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       'project-own.pdf',
       'project-ready.pdf',
     ])
-    const archived = ['archiv-ready.pdf', 'archiv-own.pdf', 'archiv-foreign.pdf', 'archiv-pending.pdf']
+    const archived = ['office_shelf-ready.pdf', 'office_shelf-own.pdf', 'office_shelf-foreign.pdf', 'office_shelf-pending.pdf']
     expect(names(await officeShelf.findOfficeShelfDocumentsByNames(ORG, archived, { reader: member }))).toEqual([
-      'archiv-ready.pdf',
+      'office_shelf-ready.pdf',
     ])
     expect(await officeShelf.findOfficeShelfDocumentsByNames(ORG, archived, { reader: REVIEWER_READER })).toHaveLength(4)
   })
@@ -196,7 +196,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
 
   it('narrows the Büroablage listing the same way', async () => {
     const page = await officeShelf.listOfficeShelfDocuments(ORG, { reader: member })
-    expect(names(page.rows)).toEqual(['archiv-ready.pdf'])
+    expect(names(page.rows)).toEqual(['office_shelf-ready.pdf'])
   })
 
   it("narrows a chat's attachments the same way", async () => {
@@ -245,7 +245,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       reader: { kind: 'shelves', project: REVIEWER_READER, officeShelf: memberReader(MEMBER) },
     })
     expect(names(forProjectAdmin)).toEqual([
-      'archiv-ready.pdf',
+      'office_shelf-ready.pdf',
       'project-foreign.pdf',
       'project-own.pdf',
       'project-pending.pdf',
@@ -258,10 +258,10 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
       reader: { kind: 'shelves', project: memberReader(MEMBER), officeShelf: REVIEWER_READER },
     })
     expect(names(forCurator)).toEqual([
-      'archiv-foreign.pdf',
-      'archiv-own.pdf',
-      'archiv-pending.pdf',
-      'archiv-ready.pdf',
+      'office_shelf-foreign.pdf',
+      'office_shelf-own.pdf',
+      'office_shelf-pending.pdf',
+      'office_shelf-ready.pdf',
       'project-ready.pdf',
     ])
   })

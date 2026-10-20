@@ -44,7 +44,7 @@ afterEach(() => {
 describe('useShelfLive', () => {
   it('names the shelf’s channel', () => {
     expect(shelfChannelKey(SHELF)).toBe('shelf:project-proj-1')
-    expect(shelfChannelKey({ kind: 'office_shelf' })).toBe('shelf:archiv')
+    expect(shelfChannelKey({ kind: 'office_shelf' })).toBe('shelf:office_shelf')
   })
 
   it('reads everything once when the channel comes up, to close the gap since the last read', () => {

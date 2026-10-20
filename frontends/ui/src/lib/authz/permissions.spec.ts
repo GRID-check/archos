@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 
 import { canManageBudgets, canManageCompliance, canManageModels, isOrgAdmin } from './organizations'
 import {
+  acceptedPermissionSlugs,
   hasPermission,
   ORG_PERMISSIONS,
   PLATFORM_PERMISSIONS,

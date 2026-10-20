@@ -905,4 +905,16 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
  *
  * @type {readonly AuditAction[]}
  */
+/**
+ * Actions kept only so history reads: their schemas stay registered and their
+ * labels resolve, but nothing writes them. `schemas.spec.ts` holds both halves:
+ * no call site emits one, and none counts as an orphan. Remove an entry once no
+ * event under the old name is left in the retention window.
+ */
+export const RETIRED_AUDIT_ACTIONS = /** @type {const} */ ([
+  'archiv.document.uploaded',
+  'archiv.document.deleted',
+  'archiv.document.renamed',
+])
+
 export const AUDIT_ACTIONS = /** @type {AuditAction[]} */ (Object.keys(AUDIT_SCHEMAS))

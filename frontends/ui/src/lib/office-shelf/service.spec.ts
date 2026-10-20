@@ -435,12 +435,12 @@ describe('uploadOfficeShelfDocument', () => {
         projectId: null,
         filename: 'plan.pdf',
         collectionName: 'archiv_org-1',
-        storageKey: expect.stringMatching(/^org\/org-1\/archiv\/doc\/[^/]+\/plan\.pdf$/),
+        storageKey: expect.stringMatching(/^org\/org-1\/office_shelf\/doc\/[^/]+\/plan\.pdf$/),
         storageBucket: 'test-bucket',
       }),
     )
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'archiv.document.uploaded', organizationId: 'org-1' }),
+      expect.objectContaining({ action: 'office_shelf.document.uploaded', organizationId: 'org-1' }),
     )
     expect(result).toMatchObject({ jobId: 'job-1', status: 'pending', filename: 'plan.pdf' })
   })
@@ -462,7 +462,7 @@ describe('uploadOfficeShelfDocument', () => {
       expect(admitOrDiscard).toHaveBeenCalledWith(
         expect.any(String),
         // The key carries the folder AT UPLOAD, as a project's does.
-        expect.stringMatching(/^org\/org-1\/archiv\/Normen\/Brandschutz\/doc\/[^/]+\/plan\.pdf$/),
+        expect.stringMatching(/^org\/org-1\/office_shelf\/Normen\/Brandschutz\/doc\/[^/]+\/plan\.pdf$/),
         expect.objectContaining({
           scope: 'office_shelf',
           projectId: null,
@@ -577,7 +577,7 @@ describe('deleteOfficeShelfDocument', () => {
     }
     expect(deleteOfficeShelfDocumentRow).toHaveBeenCalledWith('d1', 'org-1')
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'archiv.document.deleted' }),
+      expect.objectContaining({ action: 'office_shelf.document.deleted' }),
     )
   })
 
@@ -617,7 +617,7 @@ describe('deleteOfficeShelfDocument', () => {
     expect(order).toEqual(['purge', 'objects', 'row', 'purge'])
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({
-        action: 'archiv.document.deleted',
+        action: 'office_shelf.document.deleted',
         metadata: expect.objectContaining({ chunksPurged: true }),
       }),
     )
@@ -650,7 +650,7 @@ describe('deleteOfficeShelfDocument', () => {
     expect(eraseDocumentObjectsOrKeepRow).not.toHaveBeenCalled()
     expect(deleteOfficeShelfDocumentRow).not.toHaveBeenCalled()
     expect(recordAuditEvent).not.toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'archiv.document.deleted' }),
+      expect.objectContaining({ action: 'office_shelf.document.deleted' }),
     )
   })
 

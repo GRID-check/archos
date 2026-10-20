@@ -66,7 +66,7 @@ export const TOUR_ANCHORS = {
   account: 'account-menu',
   sectionChat: 'section-chat',
   sectionFiles: 'section-files',
-  sectionOfficeShelf: 'section-office-shelf',
+  sectionOfficeShelf: 'section-officeShelf',
   sectionSettings: 'section-settings',
   /** The phone tab bar's "Mehr", which opens the drawer the rail becomes. */
   more: 'tab-more',

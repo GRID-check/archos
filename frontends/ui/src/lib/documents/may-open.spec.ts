@@ -142,14 +142,14 @@ describe('mayWriteDocument', () => {
     expect(allowed).toEqual(new Set(['user_legacy']))
   })
 
-  it('on the Büroablage keeps whoever holds org:archiv:manage, asked of their membership’s role, never its name', async () => {
+  it('on the Büroablage keeps whoever holds org:office_shelf:manage, asked of their membership’s role, never its name', async () => {
     vi.mocked(resolveSubjectMembership).mockImplementation(async (_org, userId) =>
       userId === 'user_gone'
         ? null
         : { organizationMembershipId: `om_${userId}`, role: userId === 'user_curator' ? 'org-kuratorin' : 'member' }
     )
     vi.mocked(orgRoleHoldsPermission).mockImplementation(
-      async (role, permission) => role === 'org-kuratorin' && permission === 'org:archiv:manage'
+      async (role, permission) => role === 'org-kuratorin' && permission === 'org:office_shelf:manage'
     )
 
     const allowed = await mayWriteDocument(session, doc({ scope: 'office_shelf', projectId: null }), [
@@ -159,7 +159,7 @@ describe('mayWriteDocument', () => {
     ])
 
     expect(allowed).toEqual(new Set(['user_curator']))
-    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-kuratorin', 'org:archiv:manage', 'org_1')
+    expect(orgRoleHoldsPermission).toHaveBeenCalledWith('org-kuratorin', 'org:office_shelf:manage', 'org_1')
     expect(userHoldsProjectPermission).not.toHaveBeenCalled()
   })
 

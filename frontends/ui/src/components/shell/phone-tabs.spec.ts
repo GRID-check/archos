@@ -106,7 +106,7 @@ describe('inside a project', () => {
 
 describe('above a project', () => {
   it('carries Projekte, the Büroablage and the Postfach, and no "Mehr"', () => {
-    expect(keys(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects', 'office_shelf', 'inbox'])
+    expect(keys(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects', 'officeShelf', 'inbox'])
   })
 
   it('carries only what the organization has', () => {
@@ -115,7 +115,7 @@ describe('above a project', () => {
 
   it('lights Projekte on the projects home, a doorway while its sheet stands, and nothing on an account page', () => {
     expect(lit(orgPhoneTabs('/app/projects', ALL))).toEqual(['projects'])
-    expect(lit(orgPhoneTabs('/app/office-shelf', ALL))).toEqual(['office_shelf'])
+    expect(lit(orgPhoneTabs('/app/office-shelf', ALL))).toEqual(['officeShelf'])
     expect(lit(orgPhoneTabs('/app/profile', ALL))).toEqual([])
     expect(lit(orgPhoneTabs('/app/organization/access', ALL))).toEqual([])
   })

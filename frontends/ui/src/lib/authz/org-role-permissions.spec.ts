@@ -150,6 +150,14 @@ describe('orgRoleHoldsPermission — an organization\'s own custom roles', () =>
     expect(listOrganizationRoles).toHaveBeenCalledWith('org_tenant')
   })
 
+  it('counts a custom role granted the old org:archiv:manage as holding org:office_shelf:manage', async () => {
+    // Roles built before the rename hold the old slug until the re-grant runbook has run.
+    listOrganizationRoles.mockResolvedValue({
+      data: [{ slug: 'org-kuratorin', permissions: ['org:archiv:manage'] }],
+    })
+    await expect(orgRoleHoldsPermission('org-kuratorin', 'org:office_shelf:manage', 'org_tenant')).resolves.toBe(true)
+  })
+
   it('denies it without the organization, as before', async () => {
     listOrganizationRoles.mockResolvedValue({
       data: [{ slug: 'org-geschaeftsfuehrung', permissions: ['org:projects:administer'] }],

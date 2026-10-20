@@ -2319,7 +2319,7 @@ describe('renameDocument', () => {
       renameDocument({ ...session, role: 'admin' }, 'doc-1', 'Musterordner.pdf', request())
     ).resolves.toMatchObject({ displayName: 'Musterordner.pdf' })
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'archiv.document.renamed', filedIn: null })
+      expect.objectContaining({ action: 'office_shelf.document.renamed', filedIn: null })
     )
   })
 })

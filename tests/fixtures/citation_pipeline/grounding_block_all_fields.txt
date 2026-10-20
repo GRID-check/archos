@@ -38,7 +38,7 @@ Fluchtwege im Obergeschoss.
 --- Result 4 ---
 Source: einreichplan_og.pdf
 Collection: archiv_org1
-Shelf: archiv
+Shelf: office_shelf
 Page: 9
 Punkt: § 63 Abs 1
 Citation: einreichplan_og.pdf (Büroablage), p.9
