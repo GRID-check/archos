@@ -1,0 +1,15 @@
+---
+features:
+  - >
+    Creating a project asks only for its name, address, a line about it and
+    whether it is running or finished, and Piloti sets it up from the
+    documents. Filling the briefing in yourself is one link below the fields
+    instead of a second choice to make.
+  - >
+    The Projekterfassung no longer asks you to confirm every value one by
+    one. Values that decide the Gebäudeklasse are confirmed individually;
+    everything else is taken in one go, after you discard anything wrong.
+fixes:
+  - >
+    With no project yet, the projects page shows one button to create the
+    first project instead of two.

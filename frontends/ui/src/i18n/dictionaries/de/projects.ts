@@ -371,11 +371,10 @@ export const projects: typeof en.projects = {
       help: 'Ein, zwei Sätze helfen Piloti beim Lesen der Unterlagen.',
     },
     setup: {
-      label: 'Einrichtung',
-      piloti: 'Piloti richtet ein',
-      pilotiHint: 'Sie legen den Projektordner ab. Piloti liest ihn und schlägt jeden Wert mit der Seite vor, auf der er steht.',
-      self: 'Selbst ausfüllen',
-      selfHint: 'Sie beantworten die Fragen der Reihe nach.',
+      pilotiLine: 'Piloti liest im nächsten Schritt die Projektunterlagen und schlägt die Werte vor, Sie prüfen.',
+      selfLine: 'Sie beantworten die Fragen des Projekt-Briefings selbst, der Reihe nach.',
+      switchToSelf: 'Lieber selbst ausfüllen',
+      switchToPiloti: 'Doch Piloti einrichten lassen',
     },
     drop: {
       hint: 'Den Projektordner können Sie auch auf dieses Fenster ziehen.',

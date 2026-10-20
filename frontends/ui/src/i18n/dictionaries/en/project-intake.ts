@@ -76,13 +76,13 @@ export const projectIntake = {
   },
   review: {
     heading: 'Review',
-    description: 'Everything Piloti found in the documents, by the modules of the setup.',
+    description:
+      'Everything Piloti found in the documents. Values that decide the Gebäudeklasse you confirm one by one; the rest you take in one go, after discarding anything wrong.',
     confirm: 'Use',
     confirmAria: 'Use {value} for {label}',
     dismiss: 'Discard',
     dismissAria: 'Discard {value} for {label}',
-    confirmAll: 'Use all',
-    confirmAllAria: 'Use all {count} suggestions in {group}',
+    confirmRest: 'Use {count, plural, one {# remaining value} other {# remaining values}}',
     confirmed: 'Confirmed',
     contested: 'Contradiction',
     decisive: 'Decisive',

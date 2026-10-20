@@ -459,7 +459,7 @@ describe('CreateProjectForm', () => {
       dropFiles(screen.getByTestId('create-project-drop'), [withPath(new File(['a'], 'a.pdf'), 'Ordner/a.pdf')])
       await screen.findByTestId('create-project-dropped')
 
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
+      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
       expect(screen.queryByTestId('create-project-dropped')).toBeNull()
       expect(takeDroppedFiles('new-project')).toEqual([])
 
@@ -497,12 +497,31 @@ describe('CreateProjectForm', () => {
   })
 
   describe('Selbst ausfüllen', () => {
+    test('is a switch under the fields, not a question the dialog asks, and switches back', async () => {
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+
+      // The only choice cards left are the project's state.
+      expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual(['active', 'closed'])
+      expect(screen.getByTestId('create-project-setup')).toHaveTextContent('Piloti reads the project documents')
+
+      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
+      expect(screen.getByTestId('create-project-setup')).toHaveTextContent('You answer the project briefing questions')
+      expect(screen.queryByTestId('create-project-drop-hint')).toBeNull()
+
+      await user.click(screen.getByRole('button', { name: 'Let Piloti set it up after all' }))
+      await user.type(screen.getByLabelText('Project name'), 'Villa K')
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent()).toEqual({ name: 'Villa K', state: 'active', setup: 'piloti' })
+    })
+
     test('is today: no address, no description, no setup fields, the old closed label', async () => {
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Villa K')
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
+      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
@@ -516,7 +535,7 @@ describe('CreateProjectForm', () => {
 
       await user.type(screen.getByLabelText('Project name'), 'Villa K')
       await user.type(screen.getByRole('textbox', { name: 'What is it about?' }), 'ignored')
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
+      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
@@ -528,7 +547,7 @@ describe('CreateProjectForm', () => {
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Schule Nord')
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
+      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
       await user.click(screen.getByRole('radio', { name: /^Closed/ }))
       await user.click(await screen.findByRole('radio', { name: /Completed/ }))
       expect(screen.getByTestId('create-project-closed-note')).toHaveTextContent('A closed project is read-only.')

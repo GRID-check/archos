@@ -4,11 +4,11 @@
  * Creating a project: a name, an address, a line about it, whether it is
  * running or already over, and who sets it up.
  *
- * „Piloti richtet ein" (the default) reads the project's documents and suggests
- * the values (ADR-0111): the address seeds the profile, „Worum geht es?" tells
- * the reading what the project is, and a project folder dropped on the dialog
- * names the project and is filed once it exists. „Selbst ausfüllen" is the
- * wizard, exactly as before, and asks for none of that here.
+ * Piloti sets the project up (ADR-0111): the address seeds the profile, „Worum
+ * geht es?" tells the reading what the project is, and a project folder dropped
+ * on the dialog names the project and is filed once it exists. That is not a
+ * choice the dialog asks for; one link under the fields switches to „Selbst
+ * ausfüllen", the wizard exactly as before, which asks for none of that here.
  *
  * A closed project is how an office brings a past project in as a reference
  * (ADR-0098): it is created closed, with the facts a close would have asked
@@ -311,52 +311,32 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           </CollapsibleContent>
         </Collapsible>
 
-        <form.Field name="setup">
-          {(field) => (
-            <Field>
-              <FieldLabel id="create-project-setup-label">{t('form.setup.label')}</FieldLabel>
-              <ChoiceCardGroup
-                value={field.state.value}
-                onValueChange={(next) => {
-                  // Filling it in oneself asks for no reading, so a held folder
-                  // is let go of here, where the reader sees its note go.
-                  if (next === 'self') forgetDrop()
-                  field.handleChange(next === 'self' ? 'self' : 'piloti')
-                }}
-                aria-labelledby="create-project-setup-label"
-                disabled={isSubmitting}
-                className="sm:grid-cols-2"
-              >
-                <ChoiceCard
-                  value="piloti"
-                  icon={Sparkles}
-                  label={t('form.setup.piloti')}
-                  hint={t('form.setup.pilotiHint')}
-                />
-                <ChoiceCard
-                  value="self"
-                  icon={PencilLine}
-                  label={t('form.setup.self')}
-                  hint={t('form.setup.selfHint')}
-                />
-              </ChoiceCardGroup>
-            </Field>
-          )}
-        </form.Field>
-
         {dropped && (
           <DroppedFolderNote
             dropped={dropped}
             onRemove={forgetDrop}
           />
         )}
-        {!dropped && piloti && (
-          // Dragging a folder onto the window is a desktop gesture; on a touch
-          // device the line describes something the reader cannot do.
-          <p className="text-muted-foreground text-xs pointer-coarse:hidden" data-testid="create-project-drop-hint">
-            {t('form.drop.hint')}
-          </p>
-        )}
+
+        {/* Who sets the project up is not a question for the person creating
+            it: Piloti does, and the next page is where the documents go. The
+            wizard stays one quiet switch away, for an office that would rather
+            answer the questions itself (pilot onboardings, 2026-10). */}
+        <form.Field name="setup">
+          {(field) => (
+            <SetupLine
+              setup={field.state.value}
+              showDropHint={!dropped}
+              disabled={isSubmitting}
+              onChange={(next) => {
+                // Filling it in oneself asks for no reading, so a held folder
+                // is let go of here, where the reader sees its note go.
+                if (next === 'self') forgetDrop()
+                field.handleChange(next)
+              }}
+            />
+          )}
+        </form.Field>
 
         {serverError && (
           <Alert variant="destructive">
@@ -381,6 +361,52 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           </form.AppForm>
         </DialogFooter>
       </form>
+    </div>
+  )
+}
+
+/**
+ * How the project gets set up, as one line rather than a choice to make: Piloti
+ * reads the documents (with the hint that a folder may be dropped here), or the
+ * person answers the wizard's questions. Each says how to switch to the other.
+ */
+function SetupLine({
+  setup,
+  showDropHint,
+  disabled,
+  onChange,
+}: {
+  setup: ProjectSetup
+  showDropHint: boolean
+  disabled: boolean
+  onChange: (next: ProjectSetup) => void
+}): JSX.Element {
+  const t = useTranslations('projects')
+  const piloti = setup === 'piloti'
+  const Icon = piloti ? Sparkles : PencilLine
+  return (
+    <div className="text-muted-foreground flex items-start gap-2.5 text-xs" data-testid="create-project-setup">
+      <Icon className="mt-px size-3.5 shrink-0" aria-hidden />
+      <p className="min-w-0 leading-relaxed">
+        {piloti ? t('form.setup.pilotiLine') : t('form.setup.selfLine')}
+        {piloti && showDropHint && (
+          // Dragging a folder onto the window is a desktop gesture; on a touch
+          // device the sentence describes something the reader cannot do.
+          <span className="pointer-coarse:hidden" data-testid="create-project-drop-hint">
+            {' '}
+            {t('form.drop.hint')}
+          </span>
+        )}{' '}
+        <Button
+          type="button"
+          variant="link"
+          className="text-foreground h-auto p-0 text-xs font-medium"
+          disabled={disabled}
+          onClick={() => onChange(piloti ? 'self' : 'piloti')}
+        >
+          {piloti ? t('form.setup.switchToSelf') : t('form.setup.switchToPiloti')}
+        </Button>
+      </p>
     </div>
   )
 }

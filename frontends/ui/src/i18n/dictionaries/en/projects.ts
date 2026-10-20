@@ -370,11 +370,10 @@ export const projects = {
       help: 'One or two sentences help Piloti read the documents.',
     },
     setup: {
-      label: 'Setup',
-      piloti: 'Piloti sets it up',
-      pilotiHint: 'Drop the project folder. Piloti reads it and suggests each value with the page it found it on.',
-      self: 'Fill it in myself',
-      selfHint: 'Answer the questions one by one.',
+      pilotiLine: 'Next, Piloti reads the project documents and suggests the values; you check them.',
+      selfLine: 'You answer the project briefing questions yourself, one by one.',
+      switchToSelf: 'Fill it in myself instead',
+      switchToPiloti: 'Let Piloti set it up after all',
     },
     drop: {
       hint: 'You can also drop the project folder on this window.',

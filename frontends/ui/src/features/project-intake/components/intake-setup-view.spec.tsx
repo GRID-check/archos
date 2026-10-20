@@ -213,7 +213,7 @@ describe('IntakeSetupView', () => {
       expect(screen.getByTestId('intake-completed')).toHaveTextContent('The setup is finished.')
       expect(screen.getByRole('link', { name: 'To the overview' })).toHaveAttribute('href', `/app/projects/${INTAKE_COMPLETED.projectId}/settings`)
       expect(screen.queryByRole('button', { name: /Use/ })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Use all' })).toBeNull()
+      expect(screen.queryByRole('button', { name: /remaining value/ })).toBeNull()
       expect(screen.queryByRole('button', { name: 'Add documents' })).toBeNull()
       expect(screen.queryByRole('link', { name: /Open the briefing wizard/ })).toBeNull()
     })
@@ -223,7 +223,7 @@ describe('IntakeSetupView', () => {
 
       expect(screen.getByText('You can look at the setup, not change it.')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: /^Use$/ })).toBeNull()
-      expect(screen.queryByRole('button', { name: 'Use all' })).toBeNull()
+      expect(screen.queryByRole('button', { name: /remaining value/ })).toBeNull()
       for (const control of screen.getAllByRole('button', { name: /^Use .* for / })) expect(control).toBeDisabled()
       expect(screen.queryByTestId('intake-complete')).toBeNull()
       expect(screen.queryByRole('button', { name: /Read the documents/ })).toBeNull()
@@ -370,26 +370,31 @@ describe('IntakeSetupView', () => {
       return vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
     })
 
-    it('confirms and dismisses one suggestion', async () => {
+    it('confirms a decisive suggestion on its own, and dismisses any one', async () => {
       setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use 2023 for OIB-Ausgabe/ }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'confirm' }])
+      await userEvent.click(screen.getByRole('button', { name: /Use 18.4 m for Fluchtniveau/ }))
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'fluchtniveau_m@bw1', action: 'confirm' }])
 
       await userEvent.click(screen.getByRole('button', { name: /Discard 2023 for OIB-Ausgabe/ }))
       expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
     })
 
-    it('„Alle übernehmen“ confirms the group\'s suggestions in one call, not the confirmed or contested ones', async () => {
+    it('offers no one-by-one confirm for a value that decides nothing: the rest is taken together', () => {
+      setup(INTAKE_READY)
+      expect(screen.queryByRole('button', { name: /Use 2023 for OIB-Ausgabe/ })).toBeNull()
+      expect(screen.getByRole('button', { name: /Discard 2023 for OIB-Ausgabe/ })).toBeInTheDocument()
+    })
+
+    it('takes every remaining suggestion in one call, across the groups, but no decisive, confirmed or contested one', async () => {
       setup(INTAKE_READY)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Use all 4 suggestions in Bauwerke' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Use 3 remaining values' }))
 
       expect(onDecide).toHaveBeenCalledTimes(1)
       expect(onDecide).toHaveBeenCalledWith([
+        { key: 'oib_ausgabe', action: 'confirm' },
         { key: 'bauwerkstyp@bw1', action: 'confirm' },
-        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
         { key: 'gebaeudestellung@bw1', action: 'confirm' },
-        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
       ])
     })
 
@@ -401,7 +406,7 @@ describe('IntakeSetupView', () => {
 
     it('holds every control while a call is in flight, without ever disabling one', async () => {
       setup(INTAKE_READY, { busy: true })
-      for (const name of [/Use 6 for Anzahl/, /Use all 4/, 'Finish setup']) {
+      for (const name of [/Use 6 for Anzahl/, /Use 3 remaining/, 'Finish setup']) {
         const control = screen.getByRole('button', { name })
         expect(control).toHaveAttribute('aria-disabled', 'true')
         expect(control).not.toBeDisabled()

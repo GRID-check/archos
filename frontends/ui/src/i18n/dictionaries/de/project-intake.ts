@@ -78,13 +78,13 @@ export const projectIntake: typeof en.projectIntake = {
   },
   review: {
     heading: 'Prüfen',
-    description: 'Alles, was Piloti in den Dokumenten gefunden hat, nach den Modulen der Erfassung.',
+    description:
+      'Alles, was Piloti in den Dokumenten gefunden hat. Werte, die die Gebäudeklasse entscheiden, bestätigen Sie einzeln; den Rest übernehmen Sie gesammelt, nachdem Sie Falsches verworfen haben.',
     confirm: 'Übernehmen',
     confirmAria: '{value} für {label} übernehmen',
     dismiss: 'Verwerfen',
     dismissAria: '{value} für {label} verwerfen',
-    confirmAll: 'Alle übernehmen',
-    confirmAllAria: 'Alle {count} Vorschläge in {group} übernehmen',
+    confirmRest: '{count, plural, one {# übrigen Wert} other {# übrige Werte}} übernehmen',
     confirmed: 'Bestätigt',
     contested: 'Widerspruch',
     decisive: 'Entscheidend',
