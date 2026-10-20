@@ -72,6 +72,10 @@
           "key": "improvements",
           "notes": [
             {
+              "en": "The English website now has English addresses, for example /en/use-cases/ and /en/why-piloti/ instead of German words after /en/. Links you saved or shared before still work and lead to the new address.",
+              "de": "Die englische Website verwendet jetzt englische URLs, zum Beispiel /en/use-cases/ und /en/why-piloti/ statt deutscher Begriffe nach /en/. Links, die Sie zuvor gespeichert oder geteilt haben, funktionieren weiterhin und führen zur neuen Adresse."
+            },
+            {
               "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
               "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
             }
