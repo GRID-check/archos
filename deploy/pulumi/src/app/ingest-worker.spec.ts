@@ -92,7 +92,7 @@ describe("the ingest-worker tier", () => {
 
     expect(knob("nodeGroupBatch")).toBe("batch");
     expect(knob("ingestWorkerMaxReplicas")).toBe("8");
-    expect(knob("ingestWorkerConcurrency")).toBe("2");
+    expect(knob("ingestWorkerConcurrency")).toBe("1");
     expect(knob("ingestWorkerRequestsMemory")).toBe(knob("ingestWorkerLimitsMemory"));
     expect(Number(knob("ingestWorkerMaxReplicas")) * gib(knob("ingestWorkerLimitsMemory"))).toBeLessThanOrEqual(56);
   });

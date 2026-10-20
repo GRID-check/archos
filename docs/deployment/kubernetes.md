@@ -864,8 +864,8 @@ schema.
   opening at most `pgPoolerPoolSize` (default 12) server connections per
   (database, role) pair. The plan refuses a stack whose pooler worst case plus
   the direct reserve passes `max_connections` (200): `assertPgConnectionBudget`
-  prints every part. Prod is 74 pooled + 83 direct = 157; a fresh stack with
-  everything on is 196. Clients past the pool wait in PgBouncer instead of
+  prints every part. Prod is 74 pooled + 75 direct = 149; a fresh stack with
+  everything on is 186. Clients past the pool wait in PgBouncer instead of
   failing, so saturation shows as waiting clients rather than errors:
   PgBouncer's `SHOW POOLS` reports them as `cl_waiting`, and a value above 0 for
   long means raise `pgPoolerPoolSize` (and the budget with it). The image is
@@ -1214,16 +1214,17 @@ files at once, were then OOMKilled at the 6Gi limit, and prod ran three pods
 of three files at 8Gi / 12Gi. That sizing paid for a text pass that held the
 whole document (2026-10-19, #1095); the pass now holds one page. Prod therefore
 runs the tier wide and small on the `batch` worker group (§2b, 64 GB nodes):
-up to 8 pods of 2 files, 1 CPU / 6Gi requested and 2 CPU / 6Gi limits. Memory
+up to 8 pods of 1 file, 1 CPU / 6Gi requested and 2 CPU / 6Gi limits. Memory
 request equals limit, so the scheduler never places more than a node holds,
-and all eight fit one batch node. Two files a pod because pdfplumber parses on
-one core (the GIL): another pod adds parse speed where a third thread does
-not, and an OOM kill costs two jobs an attempt rather than three. Raise the
-memory before the ceiling if `[ingest-mem]` shows a pod near 6Gi. The ceiling
-is also bounded from the other side:
+and all eight fit one batch node. One file a pod, so a file's whole vision
+batch (8) runs inside it and two heavy documents never share a container's
+memory. Raise the memory before the ceiling if `[ingest-mem]` shows a pod near
+6Gi. The ceiling is also bounded from the other side:
 `ingestWorkerMaxReplicas` × `ingestWorkerConcurrency` × `vlmBatchWorkers` is the
 tier's peak of vision calls, and the program fails the deploy when that is more
-than twice `vlmFleetConcurrency` (§6.3d). Prod's 8 × 2 × 4 is 64, exactly 2 × 32: more pods only wait for a vision slot, so the next lever for drawing-heavy files is the provider pool, not the ceiling.
+than twice `vlmFleetConcurrency` (§6.3d). Prod's 8 × 1 × 8 is 64, exactly
+2 × 32: more pods only wait for a vision slot, so the next lever for
+drawing-heavy files is the provider pool, not the ceiling.
 
 ### 6.3c BFF background jobs — a pool of frontend-image pods on `bff_job_queue` (ADR-0079)
 

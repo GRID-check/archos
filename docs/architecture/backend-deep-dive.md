@@ -905,7 +905,7 @@ document summary:
 
 All image bytes (from track 3) and rendered page bitmaps (from track 4) are
 passed to `processing.enrich_vlm_batch`, which runs every VLM caption call in a
-single `ThreadPoolExecutor` (`AIQ_VLM_BATCH_WORKERS`, default 4) per file, with
+single `ThreadPoolExecutor` (`AIQ_VLM_BATCH_WORKERS`, default 8) per file, with
 **content-hash caching** via the shared Dragonfly/Redis store (ADR-0020). The
 cache key is `vlm:caption:{model}:{prompt_type}:{sha256(image_bytes)}` with a
 30-day TTL — the model is part of the identity, so a model switch (deployment-

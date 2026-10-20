@@ -3016,11 +3016,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     # @environment_variable AIQ_INGEST_MAX_WORKERS
     # @category Knowledge Layer
     # @type int
-    # @default 2
+    # @default 1
     # @required false
-    # Maximum concurrent ingestion jobs per process. Excess uploads queue
-    # (job status stays PENDING) instead of each spawning a thread.
-    INGEST_MAX_WORKERS = max(1, _env_int("AIQ_INGEST_MAX_WORKERS", 2))
+    # Maximum concurrent ingestion jobs per process: one document per worker
+    # container. Excess uploads queue (job status stays PENDING) instead of
+    # each spawning a thread.
+    INGEST_MAX_WORKERS = max(1, _env_int("AIQ_INGEST_MAX_WORKERS", 1))
 
     # Most ingestion jobs one organisation may run at once in this process's
     # own pool; 0 for no cap. `GRID_INGEST_MAX_PER_ORG`, the one name of the
