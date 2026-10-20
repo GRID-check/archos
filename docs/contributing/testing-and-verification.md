@@ -30,6 +30,7 @@ Reach for the narrow task rather than the whole gate:
 | UI lint (oxlint; why not ESLint or Biome: [lint-evaluation.md](lint-evaluation.md)) | `task fe:lint` |
 | Backend lint | `task be:lint` |
 | Backend tests | `task be:test`, or `task be:test:api` for the plugin suite |
+| A suite that needs Qdrant (the store, ranking, grouped search) | `bash scripts/qdrant-test-server.sh --exec task be:test:sources`: production's Qdrant from its binary, no Docker; without a server those tests skip locally and fail on CI |
 | The Chroma exporter and the move off Chroma (`deploy/migration/`, `qdrant/import_vectors.py`) | `task be:test:migration`, in its own `chromadb` environment; nothing else imports `chromadb` ([`deploy/migration/README.md`](../../deploy/migration/README.md#tests)) |
 | Pulumi and the policy pack | `task infra:types` |
 | Astro landing site | `task web:verify` |
@@ -62,6 +63,9 @@ A new database-backed spec has to be added to that list, or it only ever runs
 on a developer's machine. Each of those files also carries a
 `GRID_RLS_SUITE_REQUIRED` guard so the CI job fails if the database goes
 missing instead of skipping green.
+It takes the newest server binaries under `/usr/lib/postgresql`; production
+runs 17, and Ubuntu ships 16, so install 17 from the PGDG repository (or set
+`PGBIN`) for a run that means what production means.
 
 **Backend tests run against this checkout's `src/`.** Without a guard, pytest
 resolves `aiq_agent` from whatever the venv has installed, possibly another

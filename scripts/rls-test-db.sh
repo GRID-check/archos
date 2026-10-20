@@ -70,7 +70,12 @@ fi
 run_pg() { if [ -n "$RUNAS" ]; then su "$RUNAS" -c "$1"; else sh -c "$1"; fi; }
 
 echo "==> initialising a throwaway cluster on port $PORT"
-run_pg "'$PGBIN/initdb' -D '$PGDATA' -U postgres --auth=trust" >/dev/null
+# Production's encoding and locale (CloudNativePG's defaults, which
+# deploy/pulumi does not override: UTF8, C), not the machine's. initdb otherwise
+# takes them from LANG, and a runner without one built a SQL_ASCII cluster, on
+# which psycopg returns text as bytes and every Postgres-backed queue test
+# errored in setup.
+run_pg "'$PGBIN/initdb' -D '$PGDATA' -U postgres --auth=trust --encoding=UTF8 --locale=C" >/dev/null
 run_pg "'$PGBIN/pg_ctl' -D '$PGDATA' -o '-p $PORT -k $WORKDIR' -l '$PGDATA/server.log' -w start" >/dev/null
 
 # NOTICEs from the idempotent DROP ... IF EXISTS guards are expected noise.
@@ -212,6 +217,10 @@ while read -r tag; do JOURNAL+=("$tag"); done < <(node -e '
   const j = require("./drizzle/meta/_journal.json");
   console.log(j.entries.map((e) => e.tag).join("\n"));
 ')
+if [ "${#JOURNAL[@]}" -eq 0 ]; then
+  echo "error: could not read the migration journal (drizzle/meta/_journal.json)" >&2
+  exit 1
+fi
 CHAIN_AT=-1  # index in JOURNAL of the last migration grid_chain holds; -1 = no grid_chain
 
 journal_index() {
@@ -458,10 +467,10 @@ echo "==> 0097 step rewrite and down migration verified"
 # ---------------------------------------------------------------------------
 # Migrations 0111 to 0115 and 0118 to 0124: each on a database of its own.
 #
-# `migrate_until` (above) gives each its own clone of the chain, so every section
-# below starts from exactly the chain it follows and a later migration never
-# changes what an earlier section sees. `check_in` and `refused_in` assert against that database as its owner, which
-# is what runs a migration.
+# `migrate_until` (above) gives each its own clone of the chain, so every
+# section below starts from exactly the chain it follows and a later migration
+# never changes what an earlier section sees. `check_in` and `refused_in`
+# assert against that database as its owner, which is what runs a migration.
 # ---------------------------------------------------------------------------
 # Run a migration file (or its down) against <db>, failing loudly.
 apply_in() {
