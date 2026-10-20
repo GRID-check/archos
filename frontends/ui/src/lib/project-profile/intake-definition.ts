@@ -200,7 +200,7 @@ const NUTZUNGEN: ProjectIntakeOption[] = [
  * planning office. One name per kind, so the agent and a Rückfrage say the
  * same thing for the same document.
  */
-const FOUND_IN = {
+export const FOUND_IN = {
   plankopf: 'Einreichplan (Plankopf)',
   lageplanPlan: 'Lageplan',
   lageplan: 'Einreichplan (Lageplan)',
@@ -215,6 +215,11 @@ const FOUND_IN = {
   energieausweis: 'Energieausweis',
   brandschutz: 'Brandschutzkonzept',
   statik: 'Statik',
+  // The location register's documents (`lib/project-intake/location-register.ts`).
+  gefahrenzonenplan: 'Gefahrenzonenplan',
+  altlasten: 'Altlasten-Auskunft (Verdachtsflächenkataster)',
+  laerm: 'Lärmgutachten',
+  denkmalliste: 'Denkmalliste (Bundesdenkmalamt)',
 } as const
 
 export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
@@ -354,6 +359,29 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
       description:
         'Widmung, Bebauungsplan-Kernset, Standortrisiken und Erschließung. Jede Kennzahl einzeln offen lassbar.',
       questions: [
+        // The Grundbuch's name for the plot and its area: what the location
+        // register asks the Grundbuchauszug for (ticket 26, „Standort-
+        // informationen aus den Unterlagen", `lib/project-intake/location-register.ts`).
+        {
+          id: 'B0_ez',
+          label: 'Einlagezahl und Katastralgemeinde',
+          type: 'text',
+          optional: true,
+          placeholder: 'z. B. EZ 1234, KG 01503 Hernals',
+          why: 'Bezeichnet das Grundstück eindeutig. Damit lassen sich Grundbuch, Widmung und Gefahrenzonen für genau dieses Grundstück nachschlagen.',
+          writesTo: '/facts/grundstueck_ez/value',
+          foundIn: [FOUND_IN.grundbuch, FOUND_IN.lageplanPlan, FOUND_IN.bescheid],
+        },
+        {
+          id: 'B0_flaeche',
+          label: 'Grundstücksfläche',
+          type: 'number_tri',
+          unit: 'm²',
+          optional: true,
+          why: 'Bezugsgröße für Bebauungsdichte und bebaubare Fläche.',
+          writesTo: '/facts/grundstuecksflaeche/value',
+          foundIn: [FOUND_IN.grundbuch, FOUND_IN.lageplanPlan, FOUND_IN.baubeschreibung],
+        },
         {
           id: 'B1',
           core: true,
@@ -505,6 +533,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'offen', label: 'noch offen' },
           ],
           writesTo: '/facts/gefahrenzonen/value',
+          foundIn: [FOUND_IN.gefahrenzonenplan, FOUND_IN.widmung, FOUND_IN.altlasten, FOUND_IN.bescheid],
         },
         {
           id: 'B5',
@@ -522,6 +551,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'offen', label: 'noch offen' },
           ],
           writesTo: '/facts/laermsituation/value',
+          foundIn: [FOUND_IN.laerm, FOUND_IN.baubeschreibung],
         },
         {
           id: 'B6',
@@ -634,7 +664,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Denkmalschutz bringt ein eigenes Verfahren und teils Erleichterungen bei anderen Anforderungen mit sich.',
           conditions: [{ param: 'C2', op: 'equals', value: 'bestand' }],
           writesTo: '/facts/denkmalschutz/value',
-          foundIn: [FOUND_IN.bescheid, FOUND_IN.baubeschreibung],
+          foundIn: [FOUND_IN.bescheid, FOUND_IN.denkmalliste, FOUND_IN.baubeschreibung],
         },
         {
           id: 'CB4',

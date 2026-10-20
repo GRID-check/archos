@@ -283,6 +283,64 @@ export const suggestionGroupSchema = z.object({
 export type SuggestionGroup = z.infer<typeof suggestionGroupSchema>
 
 // ---------------------------------------------------------------------------
+// Step 4, Rückfragen: the location register (`location-register.ts`)
+// ---------------------------------------------------------------------------
+
+/**
+ * What the location decides about a project, by the ticket's table
+ * „Standortinformationen aus den Unterlagen": the plot (Grundbuch), Widmung
+ * and Bebauungsbestimmungen, Denkmalschutz, Naturgefahren and Altlasten (one
+ * profile key holds both, `gefahrenzonen`), and Lärm.
+ */
+export const LOCATION_DETERMINANTS = ['grundstueck', 'widmung', 'denkmalschutz', 'standortrisiken', 'laerm'] as const
+export type LocationDeterminant = (typeof LOCATION_DETERMINANTS)[number]
+
+/**
+ * Where a register entry comes from. `needsReview`: the entry names the law
+ * but nobody has checked the cited section against its current text yet; the
+ * entry is kept conservative (it asks rather than concludes).
+ */
+export const registerSourceSchema = z.object({
+  title: z.string().min(1).max(300),
+  reference: z.string().min(1).max(300).optional(),
+  needsReview: z.boolean(),
+})
+export type RegisterSource = z.infer<typeof registerSourceSchema>
+
+/**
+ * A document the location register asks for: which determinant it settles,
+ * the document by the name an Austrian office uses, why (for this Bundesland
+ * and Gemeinde where they differ), the profile keys it answers, the open
+ * needs among them (so the step can take an answer as well as a document),
+ * and whether every key already holds a value, a suggestion or „nicht
+ * bekannt" (`satisfied`).
+ */
+export const documentRequestSchema = z.object({
+  determinant: z.enum(LOCATION_DETERMINANTS),
+  label: z.string().min(1).max(200),
+  document: z.string().min(1).max(200),
+  reason: z.string().min(1).max(1000),
+  keys: z.array(key).min(1).max(20),
+  needs: z.array(needSchema).max(20),
+  satisfied: z.boolean(),
+  sources: z.array(registerSourceSchema).max(6),
+})
+export type DocumentRequest = z.infer<typeof documentRequestSchema>
+
+/**
+ * The register as the review shows it: the Bundesland and Gemeinde it read
+ * (null where unknown), the register's own inputs still open (the
+ * Bundesland, the Vorhaben), and the documents it asks for.
+ */
+export const locationRegisterViewSchema = z.object({
+  bundesland: z.string().min(1).max(64).nullable(),
+  gemeinde: z.string().min(1).max(200).nullable(),
+  questions: z.array(needSchema).max(10),
+  documentRequests: z.array(documentRequestSchema).max(LOCATION_DETERMINANTS.length),
+})
+export type LocationRegisterView = z.infer<typeof locationRegisterViewSchema>
+
+// ---------------------------------------------------------------------------
 // Person routes (`lib/project-intake/client.ts`, ADR-0055)
 // ---------------------------------------------------------------------------
 
@@ -347,6 +405,13 @@ export const intakeViewSchema = z.object({
     .max(40)
     .optional(),
   // --- end Step 5 ----------------------------------------------------------
+  // -- Step 4, Rückfragen ----------------------------------------------------
+  /**
+   * The location register: what the Bundesland, the Gemeinde and the Vorhaben
+   * decide, and the documents to hand in for it. Optional on the wire: a view
+   * from a BFF without the register (a rolling deploy) shows no requests.
+   */
+  locationRegister: locationRegisterViewSchema.optional(),
 })
 export type IntakeView = z.infer<typeof intakeViewSchema>
 

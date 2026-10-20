@@ -209,6 +209,27 @@ a pure function. The agent's `intake_needs` returns its result.
    `why`, `foundIn`, and `decisive`.
 4. In `mode: 'closing'` nothing is decisive: what matters is what the documents say.
 
+## The location register
+
+`lib/project-intake/location-register.ts`, `locationRegisterFor(...)`, pure,
+carried on the view as `locationRegister` for step 4, Rückfragen. The ticket's
+„Der Standort bestimmt den Informationsbedarf" and its table „Standortinformationen
+aus den Unterlagen", as data (`LOCATION_REGISTER`): per determinant (Grundstück,
+Widmung und Bebauungsbestimmungen, Denkmal- und Ortsbildschutz, Naturgefahren
+und Altlasten, Lärm) the wizard keys it settles, when it applies (Vorhaben,
+Nutzungen, a Bestand; an unknown input counts as applying), the document to
+ask for, the reason, and per Bundesland or Gemeinde only what differs (Wien's
+Plandokument, each Land's Raumordnungsgesetz, the Graz and Salzburg Altstadt
+laws). Every entry cites its law by title; a section number not yet checked
+against the text is `needsReview`. A request is settled when each key holds a
+value, a suggestion or „nicht bekannt". The Bundesland comes from the profile,
+else the geocoder; while it is open it is asked first (a typed address has
+none), with the Vorhaben. A `closing` project is asked its Bundesland and no
+document. The agent learns the same documents through `foundIn` on the needs
+(`grundstueck_ez` and `grundstuecksflaeche`, questions `B0_ez` and
+`B0_flaeche`, were added for the Grundbuchauszug). Not modelled: the Stichtag
+and Standortdienste, as below.
+
 ## The Gebäudeklasse derivation
 
 `lib/project-intake/derivations.ts`. Nine inputs per Bauwerk: `bauwerkstyp`

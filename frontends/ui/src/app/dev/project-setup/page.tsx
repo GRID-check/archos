@@ -33,6 +33,7 @@ import { installFixtureDocuments } from './fixture-documents'
 import { IntakeSetupView } from '@/features/project-intake/components/intake-setup-view'
 import { createFixtureParticipantsClient, isProjectStepState } from '@/app/dev/_fixtures/project-setup-project'
 import { PROFILE_STEP_FIXTURES, type ProfileStepFixtureName } from '@/app/dev/_fixtures/project-setup-profile'
+import { QUESTIONS_FIXTURES } from '@/app/dev/_fixtures/project-setup-questions'
 import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import type { IntakeDecision } from '@/lib/project-intake/types'
 
@@ -60,7 +61,17 @@ export default function ProjectSetupPreviewPage({
     typeof params.profile === 'string' && params.profile in PROFILE_STEP_FIXTURES
       ? (params.profile as ProfileStepFixtureName)
       : null
-  const view = profileName ? PROFILE_STEP_FIXTURES[profileName] : INTAKE_FIXTURES[name]
+  // `?questions=ready | typed-address | reading | closing | done` draws step 4's
+  // own fixtures, with the location register filled in.
+  const questionsName =
+    typeof params.questions === 'string' && params.questions in QUESTIONS_FIXTURES
+      ? (params.questions as keyof typeof QUESTIONS_FIXTURES)
+      : null
+  const view = profileName
+    ? PROFILE_STEP_FIXTURES[profileName]
+    : questionsName
+      ? QUESTIONS_FIXTURES[questionsName]
+      : INTAKE_FIXTURES[name]
   const [sent, setSent] = useState<string | null>(null)
   // Step 1 reads the Beteiligte from its own API; here from an in-memory one
   // (`?project=fresh | team | viewer | closing`), made once per state.
@@ -79,7 +90,7 @@ export default function ProjectSetupPreviewPage({
       <ProjectSectionHeader state={name} />
       <IntakeSetupView
         // A new state is a new page: the step it opens on is chosen again.
-        key={`${name}-${projectState}-${profileName ?? ''}`}
+        key={`${name}-${projectState}-${profileName ?? ''}-${questionsName ?? ''}`}
         participantsClient={participantsClient}
         view={view}
         projectId={view.projectId}

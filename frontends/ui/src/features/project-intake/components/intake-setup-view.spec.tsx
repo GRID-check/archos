@@ -18,6 +18,7 @@ import {
 } from '@/app/dev/_fixtures/project-intake'
 import type { IntakeView } from '@/lib/project-intake/types'
 import { defaultSetupStep, IntakeSetupView, type IntakeSetupViewProps } from './intake-setup-view'
+import { QUESTIONS_READY } from '@/app/dev/_fixtures/project-setup-questions'
 import type { SetupStepId, SetupStepProps } from './steps/types'
 
 vi.mock('@/shared/context', () => ({
@@ -180,6 +181,13 @@ describe('IntakeSetupView', () => {
       expect(defaultSetupStep({ ...INTAKE_WAITING, counts: { ...INTAKE_WAITING.counts, unreadDocuments: 4 }, groups: [] })).toBe(
         'reading'
       )
+    })
+
+    it('opens on the Rückfragen when only a location document is missing, and counts it in the stepper', () => {
+      // Nothing decisive is open, but the register still asks for the Grundbuchauszug.
+      const view = { ...QUESTIONS_READY, contradictions: [], questions: [] }
+      expect(defaultSetupStep(view)).toBe('questions')
+      expect(defaultSetupStep({ ...view, locationRegister: undefined })).toBe('profile')
     })
 
     it('stays on its step while the reading changes the view underneath', () => {

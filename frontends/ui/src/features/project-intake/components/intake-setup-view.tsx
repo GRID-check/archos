@@ -27,6 +27,7 @@ import { ProfileStep } from './steps/profile-step'
 import { ProjectStep } from './steps/project-step'
 import type { ParticipantsClient } from '@/lib/projects/participants-client'
 import { QuestionsStep } from './steps/questions-step'
+import { questionRound } from '../lib/question-round'
 import { ReadingStep } from './steps/reading-step'
 import {
   SETUP_STEP_IDS,
@@ -87,7 +88,7 @@ export function defaultSetupStep(view: IntakeView): SetupStepId {
   if (view.status === 'completed') return 'profile'
   if (hasNoDocuments(view)) return 'filing'
   if (view.status !== 'ready' && hasFoundNothing(view)) return 'reading'
-  if (view.questions.length > 0) return 'questions'
+  if (questionRound(view).openIds.length > 0) return 'questions'
   return 'profile'
 }
 
@@ -101,6 +102,7 @@ export function setupStepSummaries(view: IntakeView, tShell: Translator): SetupS
     if (view.status === 'failed') return tShell('notes.failed')
     return counts.documentsRead > 0 ? tShell('notes.read', { count: counts.documentsRead }) : undefined
   }
+  const openQuestions = finished ? 0 : questionRound(view).openIds.length
   const profileNote = (): string | undefined => {
     if (finished) return tShell('notes.done')
     if (counts.contradictions > 0) return tShell('notes.contradictions', { count: counts.contradictions })
@@ -116,8 +118,10 @@ export function setupStepSummaries(view: IntakeView, tShell: Translator): SetupS
     { id: 'reading', note: readingNote(), open: false },
     {
       id: 'questions',
-      note: view.questions.length > 0 ? tShell('notes.open', { count: view.questions.length }) : undefined,
-      open: view.questions.length > 0,
+      // Everything step 4 asks: the register's and the decisive questions and
+      // the location documents still to hand in.
+      note: openQuestions > 0 ? tShell('notes.open', { count: openQuestions }) : undefined,
+      open: openQuestions > 0,
     },
     {
       id: 'profile',

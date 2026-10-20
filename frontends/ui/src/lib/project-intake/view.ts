@@ -24,6 +24,7 @@ import type { ProjectAssumption, ProjectFact, ProjectProfile } from '@/lib/proje
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { deriveAll } from './derivation-view'
+import { locationRegisterFor } from './location-register'
 import { GEBAEUDEKLASSE_DERIVATION } from './derivations'
 import { profileKeyParts } from './profile-edits'
 import {
@@ -226,5 +227,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
     canComplete: input.canComplete,
     // Step 5, Steckbrief: the Ampel from the confirmed values (facts) only.
     applicableStandards: getApplicableStandards(profile),
+    // Step 4, Rückfragen: what the location decides, and the documents for it.
+    locationRegister: locationRegisterFor({ profile, location: row.location ?? null, mode: row.mode, needs }),
   }
 }

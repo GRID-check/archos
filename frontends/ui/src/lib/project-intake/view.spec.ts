@@ -160,6 +160,20 @@ describe('buildIntakeView', () => {
     expect(result).toMatchObject({ status: 'ready', summary: 'Gelesen.', readingFinishedAt: NOW, canDecide: true, canComplete: false })
   })
 
+  it('carries the location register for step 4: the Bundesland it read and the documents it asks for', () => {
+    const result = buildIntakeView({
+      ...input(),
+      needs: [{ ...need('grundstueck_ez', false), bauwerkId: null }],
+    })
+    expect(result.locationRegister).toMatchObject({ bundesland: 'wien', gemeinde: 'Wien', questions: [] })
+    expect(result.locationRegister?.documentRequests[0]).toMatchObject({
+      determinant: 'grundstueck',
+      document: 'Grundbuchauszug',
+      satisfied: false,
+      needs: [expect.objectContaining({ key: 'grundstueck_ez' })],
+    })
+  })
+
   it('shows each Bauwerk’s class with what it read and what it lacks', () => {
     const [derivation] = view().derivations
     expect(derivation).toMatchObject({ bauwerkId: 'bw1', rule: 'gebaeudeklasse', value: null })
