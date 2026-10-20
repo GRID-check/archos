@@ -143,7 +143,7 @@
     "@types/node": "^22.20.1",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^11.0.0",
     "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.2",
     "@vitejs/plugin-react": "^6.1.2",
