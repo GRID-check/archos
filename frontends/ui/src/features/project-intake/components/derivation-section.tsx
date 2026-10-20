@@ -15,7 +15,9 @@ import { IntakeSection } from './intake-atoms'
 /**
  * Ableitungen: the Gebäudeklasse of each Bauwerk, with the inputs it was read
  * from (the ones only suggested are marked), its Fundstelle, and what it still
- * lacks. Confirming it is deciding on the suggestion `gebaeudeklasse@bwN`,
+ * lacks, and how many of its inputs nobody has confirmed yet, so taking the
+ * class says what it rests on („Vorschlagen, nicht setzen“). Confirming it is
+ * deciding on the suggestion `gebaeudeklasse@bwN`,
  * which the derivation carries: the review's modules leave the derived class
  * out, so this is the one way to write it.
  */
@@ -75,7 +77,9 @@ function DerivationCard({
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
 }): JSX.Element {
   const t = useTranslations('projectIntake')
+  const tStep = useTranslations('intakeProfileStep')
   const [confirming, confirm] = usePressed()
+  const unconfirmedInputs = derivation.inputs.filter((input) => input.suggested).length
   const bauwerk = t('derivations.bauwerk', { number: bauwerkNumber(derivation.bauwerkId) })
   const value = derivation.value === null ? null : t('derivations.value', { value: derivation.value })
 
@@ -111,6 +115,11 @@ function DerivationCard({
         </div>
 
         {derivation.hochhaus && <p className="text-sm">{t('derivations.hochhaus')}</p>}
+        {suggestion?.state === 'suggested' && unconfirmedInputs > 0 && (
+          <p className="text-muted-foreground text-sm" data-testid="derivation-unconfirmed-inputs">
+            {tStep('derivations.basedOnSuggested', { count: unconfirmedInputs })}
+          </p>
+        )}
         {derivation.value === null && !derivation.hochhaus && derivation.missing.length > 0 && (
           <p className="text-sm">
             {t('derivations.missing', { inputs: derivation.missing.map((key) => keyLabel(key)).join(', ') })}

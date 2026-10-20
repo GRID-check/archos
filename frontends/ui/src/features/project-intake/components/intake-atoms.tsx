@@ -1,7 +1,9 @@
 import type { JSX, ReactNode } from 'react'
-import { Building2, TriangleAlert } from 'lucide-react'
+import { Building2, CircleCheck, CircleHelp, FileText, Layers, TriangleAlert, UserRound } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CountPill } from '@/components/ui/count-pill'
+import { cn } from '@/lib/utils'
+import type { ConfidenceLevel } from './profile/confidence'
 
 /**
  * The setup page's own atoms: the section frame every part of the review sits
@@ -62,5 +64,56 @@ export function ContestedBadge({ label }: { label: string }): JSX.Element {
       <TriangleAlert aria-hidden />
       {label}
     </Badge>
+  )
+}
+
+const CONFIDENCE_ICONS = {
+  confirmed: CircleCheck,
+  contested: TriangleAlert,
+  corroborated: Layers,
+  single: FileText,
+  unsupported: CircleHelp,
+} as const
+
+/**
+ * How sure a value is, in words beside a glyph (`profile/confidence.ts`):
+ * never a colour alone and never a number. A confirmed value wears the
+ * success badge the page always used for it; the person's own answer says so
+ * with their glyph; a suggestion is quiet text, and only a contradiction is
+ * in the warning tone.
+ */
+export function ConfidenceNote({
+  level,
+  label,
+  ownAnswer = false,
+  className,
+}: {
+  level: ConfidenceLevel
+  label: string
+  ownAnswer?: boolean
+  className?: string
+}): JSX.Element {
+  if (level === 'confirmed') {
+    const Icon = ownAnswer ? UserRound : CircleCheck
+    return (
+      <Badge variant="success" className={className} data-confidence={level}>
+        <Icon aria-hidden />
+        {label}
+      </Badge>
+    )
+  }
+  const Icon = CONFIDENCE_ICONS[level]
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center gap-1 text-xs [&_svg]:size-3.5 [&_svg]:shrink-0',
+        level === 'contested' ? 'text-warning' : 'text-muted-foreground',
+        className
+      )}
+      data-confidence={level}
+    >
+      <Icon aria-hidden />
+      {label}
+    </span>
   )
 }

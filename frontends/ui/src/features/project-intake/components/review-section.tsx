@@ -2,7 +2,6 @@
 
 import type { JSX } from 'react'
 import { Check, CheckCheck, X } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { BusyButton } from '@/components/ui/busy-button'
 import { InspectorSection } from '@/components/ui/inspector-group'
 import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
@@ -10,7 +9,7 @@ import { useTranslations } from '@/i18n'
 import type { IntakeDecision, Suggestion, SuggestionGroup } from '@/lib/project-intake/types'
 import { usePressed } from '../hooks/use-pressed'
 import { ContestedBadge, DecisiveBadge, IntakeSection } from './intake-atoms'
-import { EvidenceChips } from './evidence-chips'
+import { ValueEvidence } from './profile/value-evidence'
 
 /**
  * The decisions the review confirms in one call: every suggestion that does not
@@ -25,6 +24,22 @@ export function confirmRestDecisions(groups: readonly SuggestionGroup[]): Intake
 }
 
 /**
+ * A value the Steckbrief shows elsewhere: a contradiction is resolved at the
+ * top, and a decisive suggestion is decided on its own card
+ * (`profile/decisive-section.tsx`).
+ */
+export function isShownApart(item: Suggestion): boolean {
+  return item.state === 'contested' || (item.state === 'suggested' && item.decisive)
+}
+
+/** The groups without the values shown apart; a group left empty is left out. */
+export function restGroups(groups: readonly SuggestionGroup[]): SuggestionGroup[] {
+  return groups
+    .map((group) => ({ ...group, items: group.items.filter((item) => !isShownApart(item)) }))
+    .filter((group) => group.items.length > 0)
+}
+
+/**
  * Prüfen: what Piloti found, grouped by the modules of the wizard. A value that
  * decides the Gebäudeklasse is confirmed or dismissed on its own; the rest is
  * taken in one call from the section's heading, after a wrong one is dismissed.
@@ -33,23 +48,36 @@ export function confirmRestDecisions(groups: readonly SuggestionGroup[]): Intake
  * einzeln, dann der Rest per Sammelbestätigung").
  */
 export function ReviewSection({
-  groups,
+  groups: allGroups,
   canDecide,
   busy,
   onDecide,
+  apart = false,
+  label,
+  description,
 }: {
   groups: readonly SuggestionGroup[]
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
-}): JSX.Element {
+  /**
+   * The Steckbrief's order (ticket 26): contradictions and decisive
+   * suggestions are shown before this section, so it holds only the rest.
+   */
+  apart?: boolean
+  label?: string
+  description?: string
+}): JSX.Element | null {
   const t = useTranslations('projectIntake')
   const [pressed, press] = usePressed()
+  const groups = apart ? restGroups(allGroups) : allGroups
   const rest = confirmRestDecisions(groups)
+  // Everything is shown above (contradictions, decisive values): no empty "nothing found" here.
+  if (apart && groups.length === 0 && allGroups.length > 0) return null
   return (
     <IntakeSection
-      label={t('review.heading')}
-      description={t('review.description')}
+      label={label ?? t('review.heading')}
+      description={description ?? t('review.description')}
       testId="intake-review"
       action={
         canDecide && rest.length > 0 ? (
@@ -124,11 +152,10 @@ function SuggestionRow({
           {item.decisive && (
             <DecisiveBadge label={t('review.decisive')} title={t('review.decisiveHint')} />
           )}
-          {item.state === 'confirmed' && <Badge variant="success">{t('review.confirmed')}</Badge>}
           {item.state === 'contested' && <ContestedBadge label={t('review.contested')} />}
         </div>
         <p className="hyphens-auto break-words text-sm font-medium">{item.display}</p>
-        <EvidenceChips evidence={item.evidence} />
+        <ValueEvidence item={item} />
       </ItemContent>
       {canDecide && item.state === 'suggested' && (
         <ItemActions className="ml-0 sm:ml-auto">

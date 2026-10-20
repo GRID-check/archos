@@ -11,6 +11,8 @@ import { EmptyStateDisc } from '@/components/ui/empty-state'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { ClosingIntent, IntakeView } from '@/lib/project-intake/types'
+import { bauwerkNumber } from '../lib/display'
+import { confirmedCount } from './profile/rules-section'
 
 /** `2019-03` as the office writes a month: `03/2019`. */
 export const formatMonth = (month: string): string => `${month.slice(5, 7)}/${month.slice(0, 4)}`
@@ -198,43 +200,101 @@ function ClosingHint({ closing, confirm = false }: { closing: ClosingIntent; con
   )
 }
 
+/** One line of the finish summary: what, how much, and where it goes when it is open. */
+interface SummaryRow {
+  key: string
+  label: string
+  value: string
+  /** Where an open item is answered, said under it. */
+  where?: string
+  tone?: 'open'
+}
+
+/** „GK 5, bestätigt“ per Bauwerk; the Bauwerk is named only when there are several. */
+function useClassValue(view: IntakeView): string {
+  const t = useTranslations('projectIntake')
+  const several = view.derivations.length > 1
+  const parts = view.derivations.map((derivation) => {
+    const value = derivation.hochhaus
+      ? t('finish.hochhaus')
+      : derivation.value === null
+        ? t('finish.classOpen')
+        : derivation.suggestion?.state === 'confirmed'
+          ? t('finish.classConfirmed', { value: derivation.value })
+          : t('finish.classSuggested', { value: derivation.value })
+    if (!several) return value
+    return t('finish.classOf', { bauwerk: t('derivations.bauwerk', { number: bauwerkNumber(derivation.bauwerkId) }), value })
+  })
+  return parts.length > 0 ? parts.join(' · ') : t('finish.classOpen')
+}
+
+const RULE_STATUSES = ['required', 'likely', 'check'] as const
+
+/** „6 erforderlich · 1 zu prüfen“: the Ampel's verdicts, counted; null without the panel. */
+function useRulesValue(view: IntakeView): string | null {
+  const t = useTranslations('projectIntake')
+  const standards = view.applicableStandards
+  if (!standards || standards.length === 0) return null
+  const count = (status: (typeof RULE_STATUSES)[number]) =>
+    standards.filter((standard) => standard.status === status).length
+  return RULE_STATUSES.filter((status) => count(status) > 0)
+    .map((status) => t(`finish.rules.${status}`, { count: count(status) }))
+    .join(' · ')
+}
+
+/** The rows: what is confirmed, the class, the rule sets, then what stays open and where it goes. */
+function useSummaryRows(view: IntakeView): { rows: SummaryRow[]; open: number; unconfirmed: number } {
+  const t = useTranslations('projectIntake')
+  const classValue = useClassValue(view)
+  const rulesValue = useRulesValue(view)
+  const unconfirmed = view.groups.flatMap((group) => group.items).filter((item) => item.state === 'suggested').length
+  const contradictions = view.contradictions.length
+  const questions = view.questions.length
+  const rows: SummaryRow[] = [
+    { key: 'confirmed', label: t('finish.confirmed'), value: t('counts.values', { count: confirmedCount(view) }) },
+    { key: 'class', label: t('finish.classLabel'), value: classValue },
+  ]
+  if (rulesValue) rows.push({ key: 'rules', label: t('finish.rulesLabel'), value: rulesValue })
+  if (contradictions > 0) {
+    const value = t('counts.contradictions', { count: contradictions })
+    rows.push({ key: 'contradictions', label: t('finish.open'), value, where: t('finish.contradictionsWhere'), tone: 'open' })
+  }
+  if (questions > 0) {
+    const value = t('counts.questions', { count: questions })
+    rows.push({ key: 'questions', label: t('finish.open'), value, where: t('finish.questionsWhere'), tone: 'open' })
+  }
+  if (unconfirmed > 0) {
+    const value = t('counts.values', { count: unconfirmed })
+    rows.push({ key: 'unconfirmed', label: t('finish.unconfirmed'), value, where: t('finish.unconfirmedWhere') })
+  }
+  return { rows, open: contradictions + questions, unconfirmed }
+}
+
 /**
  * What finishing leaves behind, said before it happens: the values confirmed,
- * the class, and what stays open. „Sie können trotzdem abschließen" alone did
- * not say what „trotzdem" costs; this says where each open item goes, and
- * offers to answer them now instead.
+ * the class of each Bauwerk and whether a person took it, which Richtlinien
+ * apply, and what stays open with where each kind goes: a contradiction is
+ * decided at the top of the Steckbrief, a Rückfrage in its own step, and an
+ * unconfirmed suggestion stays a suggestion in the project briefing. „Sie
+ * können trotzdem abschließen“ alone did not say what „trotzdem“ costs; this
+ * does, and offers to answer the open items now instead.
  */
 export function FinishSummary({ view, onResolve }: { view: IntakeView; onResolve?: () => void }): JSX.Element {
   const t = useTranslations('projectIntake')
-  const items = view.groups.flatMap((group) => group.items)
-  const confirmed = items.filter((item) => item.state === 'confirmed').length
-  const unconfirmed = items.filter((item) => item.state === 'suggested').length
-  const classes = view.derivations
-    .filter((derivation) => derivation.value !== null || derivation.hochhaus)
-    .map((derivation) => (derivation.hochhaus ? t('finish.hochhaus') : t('finish.class', { value: derivation.value ?? 0 })))
-  const open = view.contradictions.length + view.questions.length
-  const rows: Array<{ key: string; label: string; value: string; tone?: 'open' }> = [
-    { key: 'confirmed', label: t('finish.confirmed'), value: t('counts.values', { count: confirmed }) },
-    {
-      key: 'class',
-      label: t('finish.classLabel'),
-      value: classes.length > 0 ? classes.join(', ') : t('finish.classOpen'),
-    },
-  ]
-  if (unconfirmed > 0) {
-    rows.push({ key: 'unconfirmed', label: t('finish.unconfirmed'), value: t('counts.values', { count: unconfirmed }) })
-  }
-  if (open > 0) {
-    rows.push({ key: 'open', label: t('finish.open'), value: t('finish.openValue', { count: open }), tone: 'open' })
-  }
+  const { rows, open, unconfirmed } = useSummaryRows(view)
   return (
     <div className="space-y-3" data-testid="intake-finish-summary">
       <dl className="border-border divide-border divide-y rounded-lg border text-sm">
         {rows.map((row) => (
-          <div key={row.key} className="flex items-baseline justify-between gap-4 px-3.5 py-2">
-            <dt className="text-muted-foreground">{row.label}</dt>
-            <dd className={cn('text-right font-medium tabular-nums', row.tone === 'open' && 'text-warning')}>
-              {row.value}
+          <div
+            key={row.key}
+            className="flex items-baseline justify-between gap-4 px-3.5 py-2"
+            data-testid={`intake-finish-${row.key}`}
+          >
+            <dt className="text-muted-foreground shrink-0">{row.label}</dt>
+            <dd className="min-w-0 text-right">
+              <span className={cn('font-medium tabular-nums', row.tone === 'open' && 'text-warning')}>{row.value}</span>
+              {row.where && <span className="text-muted-foreground block text-xs">{row.where}</span>}
             </dd>
           </div>
         ))}
