@@ -29,7 +29,7 @@ Every part reads fixtures that exist for their own sake: the precedent eval's
 fixture office (``frontends/ui/tests/fixtures/precedent/office.json``), its
 catalog as the production renderer writes it (``rendered.json``) and its
 labelled questions (``tests/fixtures/precedent/precedent_questions.yaml``);
-the loop-eval questions (``tests/fixtures/herleitung/loop_eval_questions.yaml``)
+the loop-eval questions (``tests/fixtures/derivation/loop_eval_questions.yaml``)
 are rule questions that must NOT look; ``verify`` reads
 ``tests/fixtures/decisions/fingerprint_quotes.yaml``. The questions asked are
 the production ones, imported, so a change to a question's wording is
@@ -76,7 +76,7 @@ sys.path.insert(0, str(REPO_ROOT / "sources"))
 
 FIXTURES = REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
 QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
-NORM_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "herleitung" / "loop_eval_questions.yaml"
+NORM_QUESTIONS = REPO_ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.yaml"
 FINGERPRINT_QUOTES = REPO_ROOT / "tests" / "fixtures" / "decisions" / "fingerprint_quotes.yaml"
 
 PARTS = ("precedent", "fit", "hits", "verify")

@@ -172,7 +172,7 @@ class TestRetrieval:
         the whole sentence around it belong to the frontend.
         """
         turn_status.emit_retrieval(
-            [{"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2"}}],
+            [{"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}],
             round_index=1,
         )
         payload = _live(steps)[0]
@@ -191,10 +191,10 @@ class TestRetrieval:
 
     def test_the_locator_is_a_retrieval_round_of_the_spine(self, steps) -> None:
         """It reads evidence, so it is a layer — and it stamps the round."""
-        assert turn_status.is_retrieval_round([{"name": "read_passage", "args": {"document": "x", "punkt": "1"}}])
+        assert turn_status.is_retrieval_round([{"name": "read_passage", "args": {"document": "x", "clause": "1"}}])
         assert (
             turn_status.emit_retrieval(
-                [{"name": "read_passage", "args": {"document": "x", "punkt": "1"}}], round_index=3
+                [{"name": "read_passage", "args": {"document": "x", "clause": "1"}}], round_index=3
             )
             is True
         )
@@ -202,7 +202,7 @@ class TestRetrieval:
 
     def test_a_document_name_never_outgrows_its_slot(self, steps) -> None:
         turn_status.emit_retrieval(
-            [{"name": "read_passage", "args": {"document": "Sehr langer Dokumentname " * 6, "punkt": "1"}}],
+            [{"name": "read_passage", "args": {"document": "Sehr langer Dokumentname " * 6, "clause": "1"}}],
             round_index=0,
         )
         assert len(_live(steps)[0].values["document"]) <= turn_status.MAX_DOCUMENT_CHARS
@@ -215,7 +215,7 @@ class TestRetrieval:
         """
         turn_status.emit_retrieval(
             [
-                {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2"}},
+                {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}},
                 {"name": "knowledge_search", "args": {"query": "Fluchtweglänge GK4"}},
             ],
             round_index=0,
@@ -663,7 +663,7 @@ def _every_live_payload(steps) -> list:
     )
     turn_status.emit_retrieval([{"name": "web_search_tool", "args": {}}], round_index=1)
     turn_status.emit_retrieval(
-        [{"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2"}}],
+        [{"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}],
         round_index=4,
     )
     turn_status.emit_retrieval(
@@ -786,7 +786,7 @@ def _search_calls():
 
 def _open_calls():
     """A read_passage batch opening one named Punkt."""
-    return [{"name": "read_passage", "args": {"document": "oib-rl_2.pdf", "punkt": "3.5.2"}}]
+    return [{"name": "read_passage", "args": {"document": "oib-rl_2.pdf", "clause": "3.5.2"}}]
 
 
 class TestRoundAnnouncementMirrorsTheLiveFrame:
@@ -810,7 +810,7 @@ class TestRoundAnnouncementMirrorsTheLiveFrame:
         }
 
     def test_a_locator_round_records_its_key(self) -> None:
-        """A locator round keeps its punkt key, not the search template."""
+        """A locator round keeps its clause key, not the search template."""
         record = turn_status.record_round_announcement(round_index=1, calls=_open_calls(), conclusion=None)
         assert record is not None
         assert record["key"] == turn_status.KEY_RETRIEVAL_CLAUSE
@@ -917,7 +917,7 @@ class TestFetchSignature:
 
     The atom under the duplicate-fetch guard. It lives here because this module
     already owns what the retrieval tools' arguments mean, and two readings of
-    ``document``/``punkt``/``page`` would drift apart without anything failing.
+    ``document``/``clause``/``page`` would drift apart without anything failing.
 
     The rule it encodes: two calls share a signature when they would return the
     same bytes. Everything that changes WHICH passage comes back — a page, a
@@ -973,10 +973,10 @@ class TestFetchSignature:
     def test_a_clause_is_the_same_point_with_or_without_its_trailing_dot(self) -> None:
         """The Richtlinien print both, and so does the model."""
         dotted = turn_status.fetch_signature(
-            {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2."}}
+            {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2."}}
         )
         plain = turn_status.fetch_signature(
-            {"name": "read_passage", "args": {"document": " oib-richtlinie 2 ", "punkt": "3.5.2"}}
+            {"name": "read_passage", "args": {"document": " oib-richtlinie 2 ", "clause": "3.5.2"}}
         )
         assert dotted is not None
         assert dotted == plain
@@ -1027,3 +1027,11 @@ class TestTheRepeatFetchRecord:
         turn_status.emit_repeat_fetch(round_index=0, withheld=1)
         turn_status.emit_repeat_fetch(round_index=1, withheld=1)
         assert _started(steps, "status:repeat") == ["status:repeat:0", "status:repeat:1"]
+
+
+def test_a_call_that_still_names_punkt_reads_as_the_same_clause():
+    """``punkt`` is the former name of ``read_passage``'s ``clause`` argument; a replayed turn still sends it."""
+    old = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2."}}
+    new = {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "clause": "3.5.2"}}
+
+    assert turn_status.fetch_signature(old) == turn_status.fetch_signature(new)

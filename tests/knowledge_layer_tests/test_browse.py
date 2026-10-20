@@ -390,7 +390,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
         _seed(
             base,
             [
-                ("oib-rl_2_2023.pdf", "Brandabschnitt EI 90 gilt", 3, {"chunking": "punkt"}),
+                ("oib-rl_2_2023.pdf", "Brandabschnitt EI 90 gilt", 3, {"chunking": "clause"}),
                 ("oib-rl_2_2019.pdf", "Brandabschnitt EI 90 alt", 4, {}),
                 ("oib-rl_2_2023.pdf", "Deckblatt EI 90", 1, {"chunking": "page"}),
             ],

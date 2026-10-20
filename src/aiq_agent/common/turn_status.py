@@ -804,10 +804,19 @@ def _search_signature(args: dict[str, Any]) -> str:
     return _SIGNATURE_SEPARATOR.join(parts)
 
 
+def _clause_argument(args: dict[str, Any]) -> str:
+    """The clause a ``read_passage`` call names: ``clause``, or ``punkt`` from a call made before the rename.
+
+    A replayed turn and a model that learned the old name still send ``punkt``. Remove the
+    fallback with the alias on ``ReadPassageInput``.
+    """
+    return _argument_text(args, "clause") or _argument_text(args, "punkt")
+
+
 def _passage_signature(args: dict[str, Any]) -> str:
     """What a ``read_passage`` call OPENS: the document and the locus in it.
 
-    ``punkt`` loses its surrounding dots because "3.5.2." and "3.5.2" are the
+    ``clause`` (or ``punkt``, its former name) loses its surrounding dots because "3.5.2." and "3.5.2" are the
     same point printed two ways — the Richtlinien themselves print both — and
     the page stays part of the identity, so the same document at a different
     page is a different passage.
@@ -816,7 +825,7 @@ def _passage_signature(args: dict[str, Any]) -> str:
         [
             "read_passage",
             _argument_text(args, "document", fold_case=True),
-            _argument_text(args, "punkt").strip("."),
+            _clause_argument(args).strip("."),
             _page_text(args.get("page")),
         ]
     )
@@ -845,7 +854,7 @@ def fetch_signature(call: Any) -> str | None:
     The atom under the duplicate-fetch guard, and it lives here for the same
     reason :func:`is_search_call` does: this module already owns what the
     retrieval tools' arguments MEAN (:func:`_locator_line` reads
-    ``document``/``punkt``/``page``, :data:`_QUERY_KEYS` reads the query), and
+    ``document``/``clause``/``page``, :data:`_QUERY_KEYS` reads the query), and
     a second reading of those argument names somewhere else would drift from
     this one without anything failing.
 
@@ -884,9 +893,9 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     if not document:
         return None
     values = {"document": clip(document, MAX_DOCUMENT_CHARS)}
-    punkt = str(args.get("punkt") or "").strip()
-    if punkt:
-        return KEY_RETRIEVAL_CLAUSE, {**values, "clause": punkt}
+    clause = _clause_argument(args).strip()
+    if clause:
+        return KEY_RETRIEVAL_CLAUSE, {**values, "clause": clause}
     page = args.get("page")
     if page is not None and str(page).strip():
         return KEY_RETRIEVAL_PAGE, {**values, "page": str(page).strip()}

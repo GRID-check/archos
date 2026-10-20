@@ -23,7 +23,7 @@
 >    rest are answered with the reason and not charged. §9's warning that
 >    checkpoints must not steal the traced floors' calls, applied to the greedy
 >    parallel batch §3 identified as the real spender.
-> 4. **A before-and-after set.** `tests/fixtures/herleitung/loop_eval_questions.yaml`
+> 4. **A before-and-after set.** `tests/fixtures/derivation/loop_eval_questions.yaml`
 >    plus `scripts/loop_eval.py` (`task be:eval:loop`) measure rounds, locator
 >    use, checkpoint source, cited-Punkt match, truncation and family coverage.
 >    §8's "what done would look like" as a number rather than a description.

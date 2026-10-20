@@ -76,9 +76,9 @@ def test_a_guideline_indexes_its_table_as_an_addressable_passage():
     ]
     documents = clause_documents(pages, "oib-rl_9_ausgabe_mai_2023.pdf", 1)
     [table] = [d for d in documents if d.metadata.get("chunking") == "table"]
-    assert table.metadata["punkt_id"] == "Tabelle 3"
+    assert table.metadata["clause_id"] == "Tabelle 3"
     assert table.metadata["content_type"] == "table"
-    assert "punkt_depth" not in table.metadata
+    assert "clause_depth" not in table.metadata
     assert "Tabelle 3: Anforderungen an Treppenhäuser" in table.text
 
 
@@ -108,7 +108,7 @@ def test_a_caption_without_a_title_is_the_table_number_alone():
     [table] = [
         d for d in clause_documents(pages, "oib-rl_9_ausgabe_mai_2023.pdf", 1) if d.metadata["chunking"] == "table"
     ]
-    assert table.metadata["punkt_path"] == "Tabelle 3"
+    assert table.metadata["clause_path"] == "Tabelle 3"
     assert "\nTabelle 3\n" in table.text
     assert page_text_with_tables("", [untitled]).startswith("Tabelle 3\n")
 
@@ -292,7 +292,7 @@ def test_a_captioned_table_is_cited_by_its_page_not_as_table_1():
 
     node = TextNode(
         text="| a | b |",
-        metadata={"file_name": "oib-rl_2.pdf", "page_label": "30", "content_type": "table", "punkt_id": "Tabelle 3"},
+        metadata={"file_name": "oib-rl_2.pdf", "page_label": "30", "content_type": "table", "clause_id": "Tabelle 3"},
     )
     retriever = LlamaIndexRetriever(config={"persist_dir": "/tmp/unused"})
 

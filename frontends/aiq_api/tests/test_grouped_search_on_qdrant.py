@@ -133,7 +133,10 @@ async def test_facts_put_then_filter_and_lift_through_the_routes(stack):
     _put(store, "proj_b", ("b.pdf", 0.70))
 
     async with _client(app) as client:
-        for scope, facts in (("proj_a", {"bauweise": ["stahlbeton"]}), ("proj_b", {"bauweise": ["holzbau"]})):
+        for scope, facts in (
+            ("proj_a", {"construction_method": ["stahlbeton"]}),
+            ("proj_b", {"construction_method": ["holzbau"]}),
+        ):
             put = await client.put(f"/v1/collections/{scope}/project-facts", json={"facts": facts, "status": "closed"})
             assert put.status_code == 200 and put.json() == {"collection": scope, "applied": True}
         filtered = await client.post(
@@ -141,7 +144,7 @@ async def test_facts_put_then_filter_and_lift_through_the_routes(stack):
             json={
                 "query": "q",
                 "collections": ["proj_a", "proj_b"],
-                "filters": {"project_facts": {"bauweise": ["holzbau"]}},
+                "filters": {"project_facts": {"construction_method": ["holzbau"]}},
             },
         )
         missing = await client.put("/v1/collections/proj_new/project-facts", json={"facts": {}, "status": "active"})

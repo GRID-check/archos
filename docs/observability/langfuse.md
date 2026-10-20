@@ -216,7 +216,7 @@ task langfuse:provision -- --apply   # create what is missing (ask first on a sh
   Enabling it sends answers to the project's evaluation model: check that the
   LLM connection uses a zero-data-retention endpoint (ADR-0074) before you do.
 * **Dataset `golden-questions`**: the answer suite's questions
-  (`tests/fixtures/herleitung/loop_eval_questions.yaml`) with their expected
+  (`tests/fixtures/derivation/loop_eval_questions.yaml`) with their expected
   family, Punkt and kind, for experiments that compare prompt or model versions.
 
 The script never changes or deletes what exists; a config that differs is

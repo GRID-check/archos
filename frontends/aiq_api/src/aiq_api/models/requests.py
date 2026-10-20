@@ -16,7 +16,6 @@ from pydantic import ValidatorFunctionWrapHandler
 from pydantic import field_validator
 from pydantic import model_validator
 
-from aiq_agent.profile_names import legacy_profile_token
 from aiq_agent.profile_names import normalize_profile_token
 
 logger = logging.getLogger(__name__)
@@ -97,17 +96,6 @@ ProjectStatus = Literal["active", "paused", "closed"]
 #: A token as the intake stores it (``lower_austria``, ``timber``).
 _FactToken = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=80)]
 
-#: The five facts: the wire name (``federal_state``) and the name the vector store's ``project_facts`` payload
-#: still has (``bundesland``). Qdrant keeps the German names and tokens until its own rename (an index
-#: rebuild), so :meth:`ProjectFacts.to_store` translates at the one place that writes or filters them.
-_FACT_FIELDS: dict[str, str] = {
-    "federal_state": "bundesland",
-    "building_class": "gebaeudeklasse",
-    "construction_method": "bauweise",
-    "uses": "nutzungen",
-    "work_type": "vorhabensart",
-}
-
 
 class ProjectFacts(BaseModel):
     """A project's fingerprint as the BFF's similarity reads it (``similarityFacts`` in ``similarity.ts``).
@@ -151,21 +139,8 @@ class ProjectFacts(BaseModel):
         return self
 
     def to_store(self) -> dict[str, Any]:
-        """The facts as the vector store's payload spells them: German keys, German tokens.
-
-        The store is renamed on its own (an index rebuild); until then this is the one place that
-        translates, for the payload a point carries and the filter and boost that read it.
-        """
-        dumped = self.model_dump(mode="json")
-        out: dict[str, Any] = {}
-        for name, store_key in _FACT_FIELDS.items():
-            value = dumped[name]
-            if name == "federal_state" and isinstance(value, str):
-                value = legacy_profile_token(name, value)
-            elif isinstance(value, list) and name != "building_class":
-                value = [legacy_profile_token(name, token) for token in value]
-            out[store_key] = value
-        return out
+        """The facts as the vector store's payload spells them: the wire names and English tokens."""
+        return self.model_dump(mode="json")
 
 
 class ProjectFactsUpdate(BaseModel):
@@ -364,16 +339,8 @@ class SimilarityWeights(BaseModel):
     work_type: float = Field(0, ge=0, le=100, validation_alias=AliasChoices("work_type", "vorhabensart"))
 
     def to_store(self) -> dict[str, float]:
-        """The weights as ``knowledge_layer.qdrant.boost`` names them (still German; renamed with the store)."""
-        return {
-            "bundesland": self.federal_state,
-            "gebaeudeklasse": self.building_class,
-            "gebaeudeklasse_adjacent": self.building_class_adjacent,
-            "bauweise": self.construction_method,
-            "nutzung": self.use,
-            "nutzung_max": self.use_max,
-            "vorhabensart": self.work_type,
-        }
+        """The weights as ``knowledge_layer.qdrant.boost`` names them: the wire names."""
+        return self.model_dump()
 
 
 class SearchBoost(BaseModel):

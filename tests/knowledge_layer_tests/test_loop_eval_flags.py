@@ -32,7 +32,7 @@ def _steps(*payloads: tuple[str, dict]) -> list[dict]:
 
 
 def _question(text="?", family="OIB-RL 2"):
-    return loop_eval.Question(id="q", question=text, family=family, punkt=None, kind="walkthrough")
+    return loop_eval.Question(id="q", question=text, family=family, clause=None, kind="walkthrough")
 
 
 class TestRepeatQuery:
@@ -161,13 +161,13 @@ class TestObserveAndCsv:
             base = {
                 "id": "a",
                 "expected_family": "OIB-RL 2",
-                "expected_punkt": "",
+                "expected_clause": "",
                 "expected_kind": "walkthrough",
                 "kind": "walkthrough",
                 "verdict": "no",
                 "rounds": "2",
                 "read_passage": "no",
-                "punkt_match": "",
+                "clause_match": "",
                 "truncated": "no",
                 "checkpoint_sources": "",
                 "family_coverage": "",

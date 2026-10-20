@@ -35,6 +35,8 @@ from .schema import FACT_KEYS
 from .schema import INDEXED_AT_FIELD
 from .schema import INTEGER_FIELDS
 from .schema import KEYWORD_FIELDS
+from .schema import LEGACY_CHUNKING
+from .schema import LEGACY_FIELDS
 from .schema import PARAGRAPH_FIELD
 from .schema import PROJECT_FACTS_FIELD
 from .schema import PROJECT_STATUS_FIELD
@@ -171,7 +173,7 @@ PROJECT_STATUSES = ("active", "paused", "closed")
 
 def _fact_values(key: str, value: Any) -> list[Any]:
     items = value if isinstance(value, (list, tuple, set)) else [value]
-    if key == "gebaeudeklasse":
+    if key == "building_class":
         return sorted({number for number in (_as_int(item) for item in items) if number is not None})
     return list(dict.fromkeys(str(item) for item in items if item is not None and str(item).strip()))
 
@@ -180,7 +182,7 @@ def project_payload(facts: Mapping[str, Any] | None, status: str) -> dict[str, A
     """The project's facts and status as the payload every one of its points carries.
 
     ``facts`` is the BFF's similarity reading of ``projects.profile`` (the
-    authority): ``bundesland`` one token or absent, every other key a list.
+    authority): ``federal_state`` one token or absent, every other key a list.
     The whole ``project_facts`` object is written at once, so a fact a person
     removed disappears from the points instead of lingering. Unknown keys are
     dropped; an unknown status raises, since it would filter as nothing.
@@ -190,7 +192,7 @@ def project_payload(facts: Mapping[str, Any] | None, status: str) -> dict[str, A
     shaped: dict[str, Any] = {}
     for key in FACT_KEYS:
         values = _fact_values(key, (facts or {}).get(key))
-        if key == "bundesland":
+        if key == "federal_state":
             if values:
                 shaped[key] = values[0]
         else:
@@ -286,4 +288,20 @@ def chunk_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
     # A point holds the German spelling until the vector store is rebuilt; a hit speaks the current one.
     if isinstance(metadata.get("doc_class"), str):
         metadata["doc_class"] = canonical_doc_class(metadata["doc_class"]) or metadata["doc_class"]
+    return _english_clause_keys(metadata)
+
+
+def _english_clause_keys(metadata: dict[str, Any]) -> dict[str, Any]:
+    """``metadata`` with the clause keys a point written before the rename holds read under their English names.
+
+    ``punkt_id`` is read as ``clause_id`` and ``chunking: "punkt"`` as ``"clause"``; the English
+    key wins when both are present. Remove with ``schema.LEGACY_FIELDS``.
+    """
+    for new, old in LEGACY_FIELDS.items():
+        if old in metadata and not old.startswith(PROJECT_FACTS_FIELD):
+            legacy = metadata.pop(old)
+            metadata.setdefault(new, legacy)
+    chunking = metadata.get("chunking")
+    if isinstance(chunking, str):
+        metadata["chunking"] = {old: new for new, old in LEGACY_CHUNKING.items()}.get(chunking, chunking)
     return metadata

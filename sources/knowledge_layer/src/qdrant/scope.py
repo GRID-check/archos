@@ -30,8 +30,13 @@ from typing import Any
 
 from qdrant_client import models
 
+from aiq_agent.profile_names import legacy_profile_token
+
 from .payload import coerce_field
 from .schema import INDEXED_FIELDS
+from .schema import LEGACY_CHUNKING
+from .schema import LEGACY_FIELDS
+from .schema import PROJECT_FACTS_FIELD
 from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
 
@@ -61,8 +66,48 @@ def _match_any(field: str, values: Any) -> models.FieldCondition:
     return models.FieldCondition(key=field, match=models.MatchAny(any=unique))
 
 
+def _legacy_value(field: str, value: Any) -> Any:
+    """``value`` as a point written before the rename spells it (``clause`` -> ``punkt``, ``vienna`` -> ``wien``)."""
+    if isinstance(value, (list, tuple, set)):
+        return [_legacy_value(field, item) for item in value]
+    if field == "chunking":
+        return LEGACY_CHUNKING.get(value, value)
+    if field.startswith(f"{PROJECT_FACTS_FIELD}.") and isinstance(value, str):
+        return legacy_profile_token(field.removeprefix(f"{PROJECT_FACTS_FIELD}."), value)
+    return value
+
+
+def _legacy_condition(field: str, condition: Any) -> tuple[str, Any] | None:
+    """``field: condition`` as a point not yet rewritten spells it, or None when it has no other spelling."""
+    old_field = LEGACY_FIELDS.get(field, field)
+    if isinstance(condition, dict) and len(condition) == 1:
+        op, value = next(iter(condition.items()))
+        old: Any = {op: _legacy_value(field, value)}
+    else:
+        old = _legacy_value(field, condition)
+    if old_field == field and old == condition:
+        return None
+    return old_field, old
+
+
 def _field(field: str, condition: Any) -> models.Filter:
-    """One ``field: condition`` pair as a filter."""
+    """One ``field: condition`` pair as a filter, matching a point under either spelling.
+
+    A point written before the English rename (``schema.LEGACY_FIELDS``) keeps its German key
+    and tokens until the operator rewrite, so a positive condition is "new spelling OR old
+    spelling" and a negative one "neither". Remove with the legacy tables.
+    """
+    primary = _field_exact(field, condition)
+    legacy = _legacy_condition(field, condition)
+    if legacy is None:
+        return primary
+    old = _field_exact(*legacy)
+    negative = isinstance(condition, dict) and next(iter(condition), None) in {"$ne", "$nin"}
+    return models.Filter(must=[primary, old]) if negative else models.Filter(should=[primary, old])
+
+
+def _field_exact(field: str, condition: Any) -> models.Filter:
+    """One ``field: condition`` pair as a filter, in exactly the spelling given."""
     if field not in INDEXED_FIELDS or field == TEXT_FIELD:
         raise ValueError(f"Filter on {field!r}: not an indexed payload field")
     if not isinstance(condition, dict):

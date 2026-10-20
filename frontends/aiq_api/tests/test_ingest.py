@@ -320,8 +320,8 @@ async def test_ingest_carries_the_projects_facts_for_the_chunks(app, mock_ingest
     assert sent.status_code == 202
     config = mock_ingestor.submit_job.call_args[1]["config"]
     assert config["project_status"] == "closed"
-    # The vector store keeps the German names until its own rename: the job config carries them.
-    assert config["project_facts"]["bundesland"] == "wien" and config["project_facts"]["gebaeudeklasse"] == [4]
+    # The vector store holds the wire names and English tokens: the job config carries them as sent.
+    assert config["project_facts"]["federal_state"] == "vienna" and config["project_facts"]["building_class"] == [4]
 
     without = await _post(app, "http://seaweedfs.test/bucket/plan.pdf", collection="oib")
     assert without.status_code == 202

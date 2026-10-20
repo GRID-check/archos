@@ -734,7 +734,7 @@ def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
 
     ``SentenceSplitter`` prepends the rendered metadata to every chunk and raises when it
     alone exceeds the chunk size, which fails the whole file, not the one chunk. Keys
-    such as ``punkt_title``/``punkt_path`` carry text read out of the document, so their
+    such as ``clause_title``/``clause_path`` carry text read out of the document, so their
     length is the document's to choose. The value stays stored for display and
     filtering; it only leaves the embedded header, and the chunk body already starts
     with the same breadcrumb. Returns the keys dropped, for the caller to log.
@@ -6450,7 +6450,7 @@ class LlamaIndexRetriever(BaseRetriever):
             # Create display citation based on content type
             if content_type == ContentType.TABLE and "table_index" not in metadata:
                 # A captioned table (``captioned_tables``) is addressed by its
-                # ``punkt_id`` („Tabelle 3"), not by an index on the page, and
+                # ``clause_id`` („Tabelle 3"), not by an index on the page, and
                 # is cited by the page key every other hit renders under.
                 display_citation = f"{file_name}, p.{page_number}" if page_number else file_name
             elif content_type == ContentType.TABLE:

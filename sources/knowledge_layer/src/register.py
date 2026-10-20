@@ -559,7 +559,7 @@ def _resolve_target_collections(
 #: The ``chunking`` value the base corpus uses for text that is not evidence.
 #:
 #: ``clause_documents`` (``llamaindex/clause_chunking.py``) cuts a Punkt-structured
-#: Richtlinie into one chunk per numbered Punkt, tagged ``chunking: "punkt"``, and
+#: Richtlinie into one chunk per numbered Punkt, tagged ``chunking: "clause"``, and
 #: emits everything outside that run -- the cover page and the Impressum -- as
 #: per-page Documents tagged ``chunking: "page"``. Neither is citable: pdfplumber
 #: returns the cover's display type as garble, and the Impressum is furniture. A
@@ -569,7 +569,7 @@ def _resolve_target_collections(
 #:
 #: The exclusion is a STORE filter rather than a post-retrieval drop because a
 #: dropped hit still costs its candidate slot. It is ``$ne`` rather than a
-#: whitelist of ``punkt`` on purpose: only Punkt-structured documents carry the
+#: whitelist of ``clause`` on purpose: only Punkt-structured documents carry the
 #: key at all -- Begriffsbestimmungen, Zitierte Normen, project uploads and office
 #: files carry no ``chunking`` key -- and a whitelist would delete them from
 #: search. ``$ne`` KEEPS records that lack the key (``qdrant.scope.translate``
@@ -1520,7 +1520,7 @@ def _grounding_hit(chunk, *, resolved, resolved_titles, resolved_folders, ambigu
         doc_class=_hit_doc_class(chunk, resolved),
         display_title=_hit_display_title(chunk, resolved_titles) or chunk.file_name,
         folder_path=_hit_folder_path(chunk, resolved_folders),
-        clause=_metadata_text(metadata.get("punkt_id")),
+        clause=_metadata_text(metadata.get("clause_id")),
         score=chunk.score,
         content_type=chunk.content_type.value,
         provenance=_hit_provenance(chunk),
@@ -2603,10 +2603,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     keys = [key for key in keys if key]
                     if keys:
                         picks["citation_keys"] = keys
-                    clause_ids = [(getattr(chunk, "metadata", None) or {}).get("punkt_id") for chunk in merged.chunks]
+                    clause_ids = [(getattr(chunk, "metadata", None) or {}).get("clause_id") for chunk in merged.chunks]
                     clause_ids = [str(value) for value in clause_ids if value]
                     if clause_ids:
-                        picks["punkt_ids"] = clause_ids
+                        picks["clause_ids"] = clause_ids
                 except Exception:
                     logger.debug("Retrieval picks enrichment skipped", exc_info=True)
                 emit_retrieval_span(

@@ -1,7 +1,7 @@
 """A turn fetches each passage once: the second identical call is not made.
 
 Within one turn the model re-asks for what it already holds — the same
-``read_passage(document, punkt)`` a round later, the same ``knowledge_search``
+``read_passage(document, clause)`` a round later, the same ``knowledge_search``
 query with the same narrowing. Until now only prompt prose forbade it ("a
 second identical search is wasted"), and prose does not hold: the call is
 charged when the model emits it and never refunded, so a re-fetch costs the
@@ -90,9 +90,9 @@ def knowledge_search(
 
 
 @tool
-def read_passage(document: str, punkt: str | None = None, page: int | None = None) -> str:
+def read_passage(document: str, clause: str | None = None, page: int | None = None) -> str:
     """Open a named passage of a known document."""
-    RAN.append(f"read_passage:{document}|{punkt or ''}|{page or ''}")
+    RAN.append(f"read_passage:{document}|{clause or ''}|{page or ''}")
     STAMPS.append(("read_passage", current_retrieval_round()))
     return f"Passage aus {document}"
 
@@ -236,8 +236,8 @@ class TestTheSecondIdenticalFetch:
 
     async def test_the_withheld_round_is_reported_as_its_own_technical_event(self, scripted_agent, steps):
         agent = scripted_agent(
-            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2")),
-            _batch(_call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2")),
+            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2")),
+            _batch(_call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2")),
             AIMessage(content="Die Antwort [1]."),
         )
 
@@ -252,8 +252,8 @@ class TestTheSecondIdenticalFetch:
         """The first occurrence runs; the rest are the same guess said twice."""
         agent = scripted_agent(
             _batch(
-                _call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2"),
-                _call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2"),
+                _call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2"),
+                _call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2"),
             ),
             AIMessage(content="Die Antwort [1]."),
         )
@@ -268,8 +268,8 @@ class TestTheSecondIdenticalFetch:
     async def test_case_whitespace_and_a_trailing_dot_are_the_same_passage(self, scripted_agent):
         """How the model typed the address is not part of the address."""
         agent = scripted_agent(
-            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2.pdf", punkt="3.5.2.")),
-            _batch(_call("read_passage", "b", document="  oib-richtlinie 2.PDF ", punkt="3.5.2")),
+            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2.pdf", clause="3.5.2.")),
+            _batch(_call("read_passage", "b", document="  oib-richtlinie 2.PDF ", clause="3.5.2")),
             AIMessage(content="Die Antwort [1]."),
         )
 
@@ -483,9 +483,9 @@ class TestWhatTheSurvivingCallIsFiledUnder:
 
     async def test_a_surviving_action_call_is_not_filed_under_the_last_search(self, scripted_agent):
         agent = scripted_agent(
-            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2", punkt="3.5.2")),
+            _batch(_call("read_passage", "a", document="OIB-Richtlinie 2", clause="3.5.2")),
             _batch(
-                _call("read_passage", "b", document="OIB-Richtlinie 2", punkt="3.5.2"),
+                _call("read_passage", "b", document="OIB-Richtlinie 2", clause="3.5.2"),
                 _call("emit_card", "c", kind="legal_basis"),
             ),
             AIMessage(content="Die Antwort [1]."),

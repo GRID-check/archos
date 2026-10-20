@@ -37,7 +37,7 @@ def test_a_raster_embedded_in_a_pdf_carries_none():
 
 
 def test_a_chunk_that_is_not_visual_carries_none():
-    assert reg._hit_regions(SimpleNamespace(file_name="bescheid.pdf", metadata={"punkt_id": "3.5"})) == ()
+    assert reg._hit_regions(SimpleNamespace(file_name="bescheid.pdf", metadata={"clause_id": "3.5"})) == ()
 
 
 def test_a_box_covering_the_sheet_marks_nothing():
