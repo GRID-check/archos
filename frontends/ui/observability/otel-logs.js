@@ -16,30 +16,16 @@
  * without the observability tier) => clean no-op, zero overhead. There is no
  * separate opt-in flag.
  *
- * Environment:
- *   OTEL_EXPORTER_OTLP_ENDPOINT - collector BASE URL (http://otel-collector:4318);
- *     the /v1/logs signal path is derived (any /v1/traces suffix is replaced,
- *     so the backend-style full path works too).
- *   OTEL_SERVICE_NAME           - resource service.name (default "grid-ui").
- *   GRID_GIT_SHA                - resource service.version: the commit the image
- *     was built from (stamped by the Dockerfile). Without it a regression
- *     could not be told apart from a pod still running the image from before
- *     the fix.
+ * Environment: OTEL_EXPORTER_OTLP_ENDPOINT, and what names the resource; both
+ * are `otlp.js`.
  */
 
 const util = require('node:util')
 // The same code set `lib/db/errors.ts` and the workers classify an outage by.
 const { UNAVAILABLE_CODE_PATTERN } = require('../workers/database-unavailable')
+const { collectorEndpoint, resourceAttributes, signalUrl } = require('./otlp')
 
 let initialized = false
-
-/** Derive the OTLP/HTTP logs URL from the configured endpoint (base or traces path). */
-function logsUrl(endpoint) {
-  const trimmed = String(endpoint).trim().replace(/\/+$/, '')
-  if (trimmed.endsWith('/v1/logs')) return trimmed
-  if (trimmed.endsWith('/v1/traces')) return `${trimmed.slice(0, -'/v1/traces'.length)}/v1/logs`
-  return `${trimmed}/v1/logs`
-}
 
 // severityNumber/severityText per the OTel logs data model.
 const SEVERITY = {
@@ -142,22 +128,14 @@ function classifyConsoleRecord(method, body) {
   return { ...SEVERITY.warn, attributes: { 'grid.severity.reclassified': known.reason } }
 }
 
-/** Resource attributes for every exported record: which tier, which build. */
-function resourceAttributes(env) {
-  const attributes = { 'service.name': env.OTEL_SERVICE_NAME || 'grid-ui' }
-  const sha = String(env.GRID_GIT_SHA ?? '').trim()
-  if (sha) attributes['service.version'] = sha
-  return attributes
-}
-
 /**
  * Initialize OTLP log export and patch console.* to also emit OTel log
  * records. Idempotent. Returns true when export was enabled.
  */
 function initOtelLogs() {
   if (initialized) return false
-  const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT
-  if (!endpoint || !endpoint.trim()) return false
+  const endpoint = collectorEndpoint(process.env)
+  if (!endpoint) return false
   initialized = true
 
   const { logs } = require('@opentelemetry/api-logs')
@@ -171,7 +149,7 @@ function initOtelLogs() {
     // SDK 2.x: the exporter goes in an options object — positional
     // construction leaves _exporter undefined and every flush throws inside
     // the processor (swallowed by diag), silently dropping all records.
-    processors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: logsUrl(endpoint) }) })],
+    processors: [new BatchLogRecordProcessor({ exporter: new OTLPLogExporter({ url: signalUrl(endpoint, 'logs') }) })],
   })
   logs.setGlobalLoggerProvider(provider)
 
@@ -191,4 +169,4 @@ function initOtelLogs() {
   return true
 }
 
-module.exports = { classifyConsoleRecord, initOtelLogs, logsUrl, resourceAttributes }
+module.exports = { classifyConsoleRecord, initOtelLogs }

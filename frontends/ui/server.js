@@ -112,6 +112,13 @@ const pickBackendWsTarget = createBackendTargetPicker({
 // would silently diverge per pod. Defaults to 1 (single-node / dev).
 const FRONTEND_REPLICAS = Math.max(1, parseInt(process.env.FRONTEND_REPLICAS || '1', 10) || 1)
 
+// ── Metrics (OTLP to the collector, which forwards to PostHog Metrics) ──
+// Installed before the server listens, so the first request is measured. No-op
+// without OTEL_EXPORTER_OTLP_ENDPOINT. Flushed by `exitAfterHooks`.
+const { initOtelMetrics, shutdownOtelMetrics } = require('./observability/otel-metrics')
+const { measureRequest } = require('./observability/http-metrics')
+initOtelMetrics()
+
 // ── Graceful shutdown / rolling-update drain ──
 // How long this process keeps serving after SIGTERM before forcing exit. Chat
 // WebSockets are long-lived (a streaming answer can run for minutes), so the
@@ -517,6 +524,7 @@ const startServer = async () => {
       res.end('Bad Request')
       return
     }
+    measureRequest(req, res, parsedUrl.pathname)
 
     // Draining: fail readiness immediately so the kubelet marks this pod
     // NotReady and the gateway stops sending it new traffic, while requests and
@@ -764,7 +772,8 @@ const startServer = async () => {
   const exitAfterHooks = () => {
     if (exiting) return
     exiting = true
-    const hooks = Array.isArray(globalThis[SHUTDOWN_HOOKS_KEY]) ? globalThis[SHUTDOWN_HOOKS_KEY] : []
+    const appHooks = Array.isArray(globalThis[SHUTDOWN_HOOKS_KEY]) ? globalThis[SHUTDOWN_HOOKS_KEY] : []
+    const hooks = [...appHooks, shutdownOtelMetrics]
     const ceiling = setTimeout(() => process.exit(0), SHUTDOWN_HOOKS_MS)
     Promise.allSettled(hooks.map((hook) => hook())).finally(() => {
       clearTimeout(ceiling)

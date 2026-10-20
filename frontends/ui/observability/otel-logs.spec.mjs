@@ -13,39 +13,6 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe('logsUrl', () => {
-  it('appends /v1/logs to the collector base URL', async () => {
-    const { logsUrl } = await freshModule()
-    expect(logsUrl('http://otel-collector:4318')).toBe('http://otel-collector:4318/v1/logs')
-    expect(logsUrl('http://otel-collector:4318/')).toBe('http://otel-collector:4318/v1/logs')
-  })
-
-  it('rewrites a backend-style /v1/traces path', async () => {
-    const { logsUrl } = await freshModule()
-    expect(logsUrl('http://otel-collector:4318/v1/traces')).toBe('http://otel-collector:4318/v1/logs')
-  })
-
-  it('leaves an explicit /v1/logs path alone', async () => {
-    const { logsUrl } = await freshModule()
-    expect(logsUrl('http://otel-collector:4318/v1/logs')).toBe('http://otel-collector:4318/v1/logs')
-  })
-})
-
-describe('resourceAttributes', () => {
-  it('names the build a record came from', async () => {
-    const { resourceAttributes } = await freshModule()
-    expect(resourceAttributes({ OTEL_SERVICE_NAME: 'grid-scheduler', GRID_GIT_SHA: ' abc123 ' })).toEqual({
-      'service.name': 'grid-scheduler',
-      'service.version': 'abc123',
-    })
-  })
-
-  it('omits the version when the image carries none', async () => {
-    const { resourceAttributes } = await freshModule()
-    expect(resourceAttributes({ GRID_GIT_SHA: '' })).toEqual({ 'service.name': 'grid-ui' })
-  })
-})
-
 describe('classifyConsoleRecord', () => {
   // ERROR is the level the collector forwards to err2issue, which files a
   // GitHub issue per unique fingerprint. These cases pin which records are
