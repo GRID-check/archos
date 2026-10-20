@@ -11,7 +11,8 @@ task verify:fast   # the same, minus the slow production build
 task setup         # first-time toolchain install
 ```
 
-`Taskfile.yml` is the source of truth for what each check actually runs, and
+`Taskfile.yml` and the per-tier files in `taskfiles/` (included flat, so task names
+are unchanged) are the source of truth for what each check actually runs, and
 `task --list` prints the full set with descriptions. This page holds only what
 the Taskfile cannot say about itself.
 
