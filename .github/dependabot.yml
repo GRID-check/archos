@@ -14,9 +14,21 @@ updates:
     directory: "/"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      python-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      python-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   # Frontend (Next.js UI). bun.lock is its only lockfile; the Docker build and
   # CI install from it.
@@ -24,15 +36,27 @@ updates:
     directory: "/frontends/ui"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
-    # Families that must move together. Bumped one at a time they drift apart
-    # and the build breaks: @aws-sdk/client-s3 alone pulls newer @smithy types
-    # than @aws-sdk/s3-request-presigner was built against, and typecheck fails;
-    # @opentelemetry/sdk-logs alone (0.x, so every minor is breaking) leaves
-    # api-logs and exporter-logs-otlp-http on an incompatible line.
     groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      ui-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      ui-security:
+        applies-to: security-updates
+        patterns: ["*"]
+      # Families that must move together, so a major of one moves the rest.
+      # Bumped one at a time they drift apart and the build breaks:
+      # @aws-sdk/client-s3 alone pulls newer @smithy types than
+      # @aws-sdk/s3-request-presigner was built against, and typecheck fails;
+      # @opentelemetry/sdk-logs alone (0.x, so every minor is breaking) leaves
+      # api-logs and exporter-logs-otlp-http on an incompatible line.
       aws-sdk:
         patterns:
           - "@aws-sdk/*"
@@ -57,9 +81,21 @@ updates:
     directory: "/frontends/web"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
+    groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      web-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      web-security:
+        applies-to: security-updates
+        patterns: ["*"]
     ignore:
       # Same reasons as frontends/ui: `astro check` runs on the TypeScript JS
       # API that TypeScript 7 drops, and the runtime is Node 22.
@@ -77,10 +113,21 @@ updates:
       - "/deploy/pulumi/policy"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
     open-pull-requests-limit: 5
     groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      pulumi-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      pulumi-security:
+        applies-to: security-updates
+        patterns: ["*"]
       pulumi:
         patterns: ["@pulumi/*"]
     ignore:
@@ -105,5 +152,17 @@ updates:
       - "/.github/actions/*"
     schedule:
       interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: Europe/Vienna
     cooldown:
       default-days: 7
+    groups:
+      # Every minor and patch bump in one weekly PR; a major stays its own
+      # PR, the one kind that needs reading. First matching group wins.
+      actions-minor-patch:
+        applies-to: version-updates
+        update-types: ["minor", "patch"]
+      actions-security:
+        applies-to: security-updates
+        patterns: ["*"]
