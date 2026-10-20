@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { createHmac } from "node:crypto";
 import { hostsOutsideZone, managedHosts } from "./platform/dns";
 import {
+  GEOCODER,
   KEDA_SCALER_CONNECTION_LIMIT,
   LANGFUSE,
   QDRANT,
@@ -561,6 +562,34 @@ export interface GridConfig {
      * conversions the pool may have in flight.
      */
     replicas: number;
+  };
+
+  /**
+   * The self-hosted address search (ADR-0118, `data/geocoder.ts`): Photon over
+   * the Austrian OSM extract. The frontend gets `GRID_GEOCODER_URL` exactly
+   * when this is on; off, the project dialog's address stays a plain text field.
+   */
+  geocoder: {
+    /**
+     * OFF by default: prepared, switched on per stack (`geocoderEnabled`).
+     * The first start downloads about 1 GB from download1.graphhopper.com and
+     * the jar from GitHub, so the cluster needs egress to both.
+     */
+    enabled: boolean;
+    /** The Java runtime Photon runs on (Java 21+, Photon 1.x). Digest-pinned. */
+    image: string;
+    /** The init container that fetches and verifies the jar and the index (busybox wget, tar, bunzip2). Digest-pinned. */
+    fetchImage: string;
+    /** The Photon 1.x index tarball; its checksum is read from `<url>.md5`. */
+    indexUrl: string;
+    /** The index volume. The index takes about 2 GB; a refresh holds the old and the new one side by side, plus the tarball. */
+    storageSize: string;
+    /**
+     * At pod start, an index older than this is fetched again (old one kept
+     * when the fetch fails). Nothing restarts the pod on a clock: a refresh
+     * happens at the next restart past this age.
+     */
+    indexMaxAgeDays: number;
   };
 
   /**
@@ -2728,6 +2757,21 @@ export function loadConfig(): GridConfig {
           ),
         ),
       ),
+    },
+
+    geocoder: {
+      enabled: bool(cfg, "geocoderEnabled", false),
+      // Both official images, pinned by digest: there is no upstream Photon
+      // image, and this pod sees every address a person types (ADR-0118).
+      image:
+        cfg.get("geocoderImage") ??
+        "eclipse-temurin:21.0.12_8-jre-noble@sha256:7739f0ffce786528961eea6bf46d9610ee968ac6127c9b2e93494757bdecce9f",
+      fetchImage:
+        cfg.get("geocoderFetchImage") ??
+        "alpine:3.22.6@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
+      indexUrl: cfg.get("geocoderIndexUrl") ?? GEOCODER.defaultIndexUrl,
+      storageSize: cfg.get("geocoderStorageSize") ?? "10Gi",
+      indexMaxAgeDays: positiveInt(cfg, "geocoderIndexMaxAgeDays", 30),
     },
 
     chromaMigration: chromaMigrationConfig(cfg),
