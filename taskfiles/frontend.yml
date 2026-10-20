@@ -91,8 +91,9 @@ tasks:
       # FILES (a spec named in FILES is kept as itself); `--shard` then splits
       # what is left. No coverage: a selection's coverage is a fraction of the
       # app, and a comment built from it would mislead. The full run on the
-      # push to develop carries it.
-      - TZ=UTC bunx vitest related --run {{.FILES}} --shard={{.SHARD}} --passWithNoTests --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}}
+      # push to develop carries it. Each path is quoted: a Next route group
+      # (`src/app/app/(shell)/…`) is a syntax error to the shell unquoted.
+      - TZ=UTC bunx vitest related --run {{range splitList " " .FILES}}{{shellQuote .}} {{end}}--shard={{.SHARD}} --passWithNoTests --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}}
 
   fe:test:merge:
     desc: Merge sharded blob reports into one result + the coverage CI comments on
