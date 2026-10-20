@@ -18,6 +18,7 @@ values:
     accept: [[extension, conversion], [extension]]
     source: "Baubeschreibung S. 1 „ein Zubau in Form einer Aufstockung … sowie der Umbau der Erschließung“"
   zoning: {value: residential, source: "Bebauungsbestimmungen „Widmung: Wohngebiet“"}
+  plot_register_number: {contains: ["1234", "ottakring"], source: "Baubeschreibung S. 1 „Liegenschaft: … EZ 1234, KG Ottakring, Gst.Nr. 567/3“"}
   zoning_original: {contains: ["wohngebiet"], source: "Bebauungsbestimmungen"}
   development_plan: {value: true, source: "Bebauungsbestimmungen „Flächenwidmungs- und Bebauungsplan Plandokument 8125“"}
   development_pattern: {value: closed, source: "Bebauungsbestimmungen „Bauweise: geschlossene Bauweise“"}
@@ -60,6 +61,7 @@ open:
   noise_situation: "Not stated."
   heritage_protection@bldg1: "Not stated."
   water_rights: "Not stated."
+  plot_area: "Not stated: the Baubeschreibung names the Gst.Nr., not its area; the BGF figures are floor areas."
   building_class@bldg1: "Derived by the system, never recorded; no document states this project's class."
 
 either:

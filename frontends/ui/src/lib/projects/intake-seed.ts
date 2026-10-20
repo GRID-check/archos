@@ -6,8 +6,11 @@
  * The address search's hit is evidence, not a guess: a person chose it from the
  * geocoder's list, so `site_address`, `country` and `federal_state` go onto the
  * profile as confirmed facts, the first one carrying the geocoder as its source.
- * A Bundesland chosen by hand (no geocoder configured) is a fact without
- * evidence.
+ * An address typed and not chosen from a list (no geocoder configured, or no
+ * hit taken) is the person's own line: `site_address` as a confirmed fact
+ * with the person as its source, and nothing derived from it. The Bundesland
+ * is then the reading's to find or the review's to ask. A Bundesland chosen by
+ * hand (older API callers) is a fact without evidence.
  *
  * The profile and the intake row are one write (`seedProjectProfile`'s
  * `inTransaction`), so a project never has facts without its intake or the
@@ -31,6 +34,8 @@ import { inProjectTransaction } from './repository'
 export interface IntakeSeedInput {
   description?: string | undefined
   location?: GeocodeResult | undefined
+  /** The address as the person typed it, when no search hit was chosen. */
+  address?: string | undefined
   /** An A2_land token chosen by hand, when no address was searched. */
   federalState?: string | undefined
   closing?: ClosingIntent | undefined
@@ -51,16 +56,20 @@ function fact(value: string, now: Date, evidence?: ProjectFact['evidence']): Pro
  * Empty when neither was given. Pure.
  */
 export function intakeSeedFacts(
-  input: Pick<IntakeSeedInput, 'location' | 'federalState'>,
-  now: Date
+  input: Pick<IntakeSeedInput, 'location' | 'address' | 'federalState'>,
+  now: Date,
+  userId: string
 ): Record<string, ProjectFact> {
   const { location } = input
+  const typed = input.address?.trim()
   const federalState = location?.federalState ?? input.federalState ?? null
   const facts: Record<string, ProjectFact> = {}
   if (location) {
     facts.site_address = fact(location.label, now, [
       { kind: 'geocoder', provider: 'photon', label: location.label, resolvedAt: now.toISOString() },
     ])
+  } else if (typed) {
+    facts.site_address = fact(typed, now, [{ kind: 'person', userId, at: now.toISOString() }])
   }
   if (location || federalState) facts.country = fact('at', now)
   if (federalState) facts.federal_state = fact(federalState, now)
@@ -93,7 +102,7 @@ export async function startProjectIntake(
   now: Date
 ): Promise<void> {
   const row = intakeRowFor(session, project.id, input)
-  const seeded = intakeSeedFacts(input, now)
+  const seeded = intakeSeedFacts(input, now, session.userId)
   const insertRow = async (tx: Parameters<typeof insertProjectIntake>[0]): Promise<void> => {
     await insertProjectIntake(tx, row)
   }

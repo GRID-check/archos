@@ -100,7 +100,7 @@ export const SUGGESTION_STOREYS = suggestion(
   }
 )
 
-export const SUGGESTION_ESCAPE_LEVEL = suggestion('escape_level_m@bldg1', 'Fluchtniveau (Zielzustand)', 18.4, '18.4 m', {
+export const SUGGESTION_ESCAPE_LEVEL = suggestion('escape_level_m@bldg1', 'Fluchtniveau (Zielzustand)', 18.4, '18,4 m', {
   decisive: true,
   evidence: [fromDocument(SECTION, 1, 'Fluchtniveau +18,40 m über Gelände')],
 })
@@ -170,6 +170,54 @@ export const QUESTION_AREA: Need = {
   state: 'open',
 }
 
+/** Needs that decide no class: asked one at a time after the decisive ones, in the wizard's order. */
+export const OPEN_PHASE: Need = {
+  key: 'project_phase',
+  baseKey: 'project_phase',
+  buildingId: null,
+  label: 'Aktuelle Projektphase',
+  type: 'single_select',
+  options: [
+    { token: 'vorentwurf', label: 'Vorentwurf' },
+    { token: 'entwurf', label: 'Entwurf' },
+    { token: 'einreichplanung', label: 'Einreichplanung' },
+    { token: 'ausfuehrungsplanung', label: 'Ausführungsplanung' },
+  ],
+  why: 'Steuert die Erwartung an die Antwortgüte: in frühen Phasen bietet Piloti Schätzwerte an.',
+  foundIn: ['Plankopf', 'Baubeschreibung'],
+  decisive: false,
+  state: 'open',
+}
+
+export const OPEN_PROJECT_KIND: Need = {
+  key: 'work_type',
+  baseKey: 'work_type',
+  buildingId: null,
+  label: 'Art des Vorhabens (Projekt gesamt)',
+  type: 'multi_select',
+  options: [
+    { token: 'neubau', label: 'Neubau' },
+    { token: 'zubau', label: 'Zubau' },
+    { token: 'umbau', label: 'Umbau' },
+    { token: 'sanierung', label: 'Sanierung' },
+  ],
+  why: 'Steuert, welche Fragen und Themen für dieses Projekt überhaupt relevant sind.',
+  foundIn: ['Baubeschreibung', 'Bescheid'],
+  decisive: false,
+  state: 'open',
+}
+
+export const OPEN_ZONING: Need = {
+  key: 'land_designation',
+  baseKey: 'land_designation',
+  buildingId: null,
+  label: 'Flächenwidmung (Kategorie)',
+  type: 'text',
+  foundIn: ['Flächenwidmungs- und Bebauungsplan'],
+  decisive: false,
+  state: 'open',
+}
+
 export const QUESTION_POSITION: Need = {
   key: 'units_over_400@bldg1',
   baseKey: 'units_over_400',
@@ -205,7 +253,7 @@ export const DERIVATION_READY: DerivationReview = {
   rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: 5,
-  hochhaus: false,
+  highRise: false,
   inputs: [
     { key: 'building_type@bldg1', value: 'building', suggested: true },
     { key: 'storeys_above_ground@bldg1', value: 6, suggested: true },
@@ -222,7 +270,7 @@ export const DERIVATION_OPEN: DerivationReview = {
   rule: 'building_class',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: null,
-  hochhaus: false,
+  highRise: false,
   inputs: [{ key: 'building_type@bldg2', value: 'building', suggested: false }],
   missing: ['storeys_above_ground', 'escape_level_m', 'gfa_above_ground'],
   suggestion: null,
@@ -241,10 +289,18 @@ const BASE: IntakeView = {
   summary: null,
   contradictions: [],
   questions: [],
+  openQuestions: [OPEN_PHASE, OPEN_PROJECT_KIND, OPEN_ZONING],
   groups: [],
   derivations: [],
   canDecide: true,
   canComplete: true,
+  // Step 3's milestones: the address search set the site at creation. The
+  // step's own states are in `project-setup-reading.ts`.
+  readingProgress: {
+    documentsOpened: 0,
+    documentsTotal: 0,
+    site: { federalState: 'Wien', municipality: 'Wien', address: FIXTURE_LOCATION.label, source: 'geocoder', confirmed: true },
+  },
 }
 
 /** Created a moment ago: the address is on the profile, no documents yet. */
@@ -256,6 +312,7 @@ export const INTAKE_READING: IntakeView = {
   status: 'reading',
   counts: { documentsRead: 9, unreadDocuments: 14, suggested: 6, contradictions: 0, decisiveOpen: 0 },
   readingStartedAt: '2026-10-14T08:31:00.000Z',
+  readingProgress: { ...BASE.readingProgress, documentsOpened: 9, documentsTotal: 23 },
   groups: [
     { ...GROUP_BASE, items: [SUGGESTION_ADDRESS, SUGGESTION_EDITION] },
     { ...GROUP_BUILDINGS, items: [SUGGESTION_TYPE, SUGGESTION_POSITION] },
@@ -280,6 +337,7 @@ export const INTAKE_READY: IntakeView = {
     '23 Dokumente gelesen. Die Geschoßanzahl ist widersprüchlich (Baubeschreibung: 6, Schnitt: 7); Fläche und Einheiten über 400 m² stehen in keinem Dokument.',
   contradictions: [SUGGESTION_STOREYS],
   questions: [QUESTION_AREA, QUESTION_POSITION, QUESTION_USE],
+  openQuestions: [OPEN_PROJECT_KIND, OPEN_ZONING],
   groups: [GROUP_BASE, GROUP_BUILDINGS],
   derivations: [DERIVATION_READY, DERIVATION_OPEN],
 }
@@ -304,6 +362,7 @@ export const INTAKE_COMPLETED: IntakeView = {
   counts: { documentsRead: 23, unreadDocuments: 0, suggested: 0, contradictions: 0, decisiveOpen: 0 },
   contradictions: [],
   questions: [],
+  openQuestions: [],
   summary: null,
   groups: [GROUP_BASE, GROUP_BUILDINGS].map((group) => ({
     ...group,

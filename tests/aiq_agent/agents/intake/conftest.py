@@ -101,7 +101,7 @@ class FakeIntakeRoute:
     """``_opener.open`` answering by op: a dict is a 200 body, an int an HTTP error, an exception raised."""
 
     def __init__(self, **answers: Any) -> None:
-        self.answers = {"needs": NEEDS_BODY, "finish": {"status": "ready"}, **answers}
+        self.answers = {"needs": NEEDS_BODY, "progress": {"filesOpened": 1}, "finish": {"status": "ready"}, **answers}
         self.requests: list[urllib.request.Request] = []
 
     def bodies(self, op: str | None = None) -> list[dict[str, Any]]:

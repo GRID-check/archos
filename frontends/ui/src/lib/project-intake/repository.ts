@@ -54,6 +54,7 @@ const lenientArray = <T extends z.ZodTypeAny>(item: T) =>
 
 const documentsReadColumn = lenientArray(documentReadSchema)
 const dismissedColumn = lenientArray(dismissedValueSchema)
+const readingFilesColumn = lenientArray(z.string().min(1).max(512))
 
 /**
  * The row with its jsonb columns parsed. An entry that does not parse is
@@ -68,6 +69,7 @@ function toRow(row: ProjectIntakeRow): ProjectIntakeRow {
     counts: intakeCountsSchema.nullable().catch(null).parse(row.counts ?? null),
     documentsRead: documentsReadColumn.parse(row.documentsRead),
     dismissed: dismissedColumn.parse(row.dismissed),
+    readingFiles: readingFilesColumn.parse(row.readingFiles),
   }
 }
 
@@ -161,6 +163,7 @@ export async function claimIntakeReading(
         startedAt: claim.now,
         finishedAt: null,
         updatedAt: claim.now,
+        readingFiles: [],
         ...(claim.forgetRead ? { documentsRead: [] } : {}),
       })
       .where(and(ofProject(organizationId, projectId), notInArray(projectIntakes.status, ['reading', 'completed'])))
@@ -176,6 +179,30 @@ export async function requestIntakeRerun(organizationId: string, projectId: stri
       .update(projectIntakes)
       .set({ rerunRequested: true, updatedAt: new Date() })
       .where(and(ofProject(organizationId, projectId), eq(projectIntakes.status, 'reading')))
+      .returning()
+  )
+  return first(rows)
+}
+
+/**
+ * The files the reading `jobId` has opened so far (step 3's live progress),
+ * replacing what it reported before: the run sends its whole list each time.
+ * The same compare-and-swap as {@link endIntakeReading}: null when the intake
+ * has moved on, so a stale run cannot write another reading's progress.
+ */
+export async function setIntakeReadingFiles(
+  organizationId: string,
+  projectId: string,
+  jobId: string,
+  fileNames: readonly string[]
+): Promise<ProjectIntakeRow | null> {
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .update(projectIntakes)
+      .set({ readingFiles: [...fileNames], updatedAt: new Date() })
+      .where(
+        and(ofProject(organizationId, projectId), eq(projectIntakes.jobId, jobId), eq(projectIntakes.status, 'reading'))
+      )
       .returning()
   )
   return first(rows)

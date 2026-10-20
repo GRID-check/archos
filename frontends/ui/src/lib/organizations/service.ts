@@ -19,7 +19,7 @@ import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
-import { defaultLocale, isLocale, type Locale } from '@/i18n/config'
+import { isLocale, type Locale } from '@/i18n/config'
 
 export interface OrganizationOverview {
   id: string
@@ -35,7 +35,8 @@ export interface OrganizationOverview {
 /** Grid-side settings for an org, with defaults applied. */
 export interface OrgSettings {
   displayName: string | null
-  defaultLocale: Locale
+  /** The language members who never picked one start in; null until an admin chooses (their browser's then). */
+  defaultLocale: Locale | null
   settings: Record<string, unknown>
 }
 
@@ -169,7 +170,7 @@ export async function listOrganizationMembersWithRoles(
 function toSettings(row: Organization | undefined): OrgSettings {
   return {
     displayName: row?.displayName ?? null,
-    defaultLocale: isLocale(row?.defaultLocale) ? row.defaultLocale : defaultLocale,
+    defaultLocale: isLocale(row?.defaultLocale) ? row.defaultLocale : null,
     settings: (row?.settings as Record<string, unknown> | undefined) ?? {},
   }
 }
@@ -218,7 +219,8 @@ export async function getOrganizationDisplayName(
 
 export interface OrgSettingsPatch {
   displayName?: string | null
-  defaultLocale?: Locale
+  /** `null` takes the choice back: members then start in their browser's language. */
+  defaultLocale?: Locale | null
   settings?: Record<string, unknown>
 }
 
@@ -312,7 +314,7 @@ async function writeOrgSettings(
   const current = await getOrgSettings(organizationId)
   const next: OrgSettings = {
     displayName: patch.displayName !== undefined ? patch.displayName : current.displayName,
-    defaultLocale: patch.defaultLocale ?? current.defaultLocale,
+    defaultLocale: patch.defaultLocale !== undefined ? patch.defaultLocale : current.defaultLocale,
     settings: patch.settings ? { ...current.settings, ...patch.settings } : current.settings,
   }
 

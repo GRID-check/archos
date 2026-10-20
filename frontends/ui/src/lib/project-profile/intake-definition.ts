@@ -201,21 +201,26 @@ const USES: ProjectIntakeOption[] = [
  * planning office. One name per kind, so the agent and a Rückfrage say the
  * same thing for the same document.
  */
-const FOUND_IN = {
+export const FOUND_IN = {
   titleBlock: 'Einreichplan (Plankopf)',
-  sitePlan: 'Lageplan',
-  submissionSitePlan: 'Einreichplan (Lageplan)',
-  floorPlan: 'Einreichplan (Grundriss)',
+  siteLayout: 'Lageplan',
+  submissionSiteLayout: 'Einreichplan (Lageplan)',
+  floorLayout: 'Einreichplan (Grundriss)',
   section: 'Einreichplan (Schnitt)',
   elevation: 'Einreichplan (Ansicht)',
   buildingDescription: 'Baubeschreibung',
-  permitDecision: 'Bescheid',
+  permit: 'Bescheid',
   landRegister: 'Grundbuchauszug',
   zoning: 'Flächenwidmungsplan',
   developmentPlan: 'Bebauungsplan (Plandokument)',
   energyCertificate: 'Energieausweis',
   fireSafety: 'Brandschutzkonzept',
   structural: 'Statik',
+  // The location register's documents (`lib/project-intake/location-register.ts`).
+  hazardZonePlan: 'Gefahrenzonenplan',
+  contaminatedSites: 'Altlasten-Auskunft (Verdachtsflächenkataster)',
+  noise: 'Lärmgutachten',
+  heritageList: 'Denkmalliste (Bundesdenkmalamt)',
 } as const
 
 export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
@@ -236,7 +241,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           required: true,
           placeholder: 'z. B. WHA Quellenstraße',
           writesTo: '/facts/project_name/value',
-          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permit],
         },
         {
           id: 'A2_adr',
@@ -247,7 +252,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'Straße, PLZ Ort',
           why: 'Aus der Gemeinde folgen örtliche Vorschriften wie Fernwärme-Anschlussgebiete oder Schutzzonen.',
           writesTo: '/facts/site_address/value',
-          foundIn: [FOUND_IN.titleBlock, FOUND_IN.submissionSitePlan, FOUND_IN.landRegister, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.submissionSiteLayout, FOUND_IN.landRegister, FOUND_IN.permit],
         },
         // Spec id A2_staat with AT/DE only. Kept as the shipped superset: the
         // storage key `country` and its token set are load-bearing (mirrored by
@@ -296,7 +301,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'outside_austria', label: 'Außerhalb Österreichs' },
           ],
           writesTo: '/facts/federal_state/value',
-          foundIn: [FOUND_IN.titleBlock, FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.permit, FOUND_IN.buildingDescription],
         },
         {
           id: 'site_details',
@@ -324,7 +329,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'existing_operation', label: 'Bestand & Betrieb' },
           ],
           writesTo: '/facts/project_phase/value',
-          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.titleBlock, FOUND_IN.buildingDescription, FOUND_IN.permit],
         },
         {
           id: 'A5',
@@ -343,7 +348,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'external_works', label: 'Außenanlagen' },
           ],
           writesTo: '/facts/work_type/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision, FOUND_IN.titleBlock],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permit, FOUND_IN.titleBlock],
         },
       ],
     },
@@ -355,6 +360,29 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
       description:
         'Widmung, Bebauungsplan-Kernset, Standortrisiken und Erschließung. Jede Kennzahl einzeln offen lassbar.',
       questions: [
+        // The Grundbuch's name for the plot and its area: what the location
+        // register asks the Grundbuchauszug for (ticket 26, „Standort-
+        // informationen aus den Unterlagen", `lib/project-intake/location-register.ts`).
+        {
+          id: 'B0_ez',
+          label: 'Einlagezahl und Katastralgemeinde',
+          type: 'text',
+          optional: true,
+          placeholder: 'z. B. EZ 1234, KG 01503 Hernals',
+          why: 'Bezeichnet das Grundstück eindeutig. Damit lassen sich Grundbuch, Widmung und Gefahrenzonen für genau dieses Grundstück nachschlagen.',
+          writesTo: '/facts/plot_register_number/value',
+          foundIn: [FOUND_IN.landRegister, FOUND_IN.siteLayout, FOUND_IN.permit],
+        },
+        {
+          id: 'B0_flaeche',
+          label: 'Grundstücksfläche',
+          type: 'number_tri',
+          unit: 'm²',
+          optional: true,
+          why: 'Bezugsgröße für Bebauungsdichte und bebaubare Fläche.',
+          writesTo: '/facts/plot_area/value',
+          foundIn: [FOUND_IN.landRegister, FOUND_IN.siteLayout, FOUND_IN.buildingDescription],
+        },
         {
           id: 'B1',
           core: true,
@@ -373,7 +401,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'open', label: 'noch offen' },
           ],
           writesTo: '/facts/zoning/value',
-          foundIn: [FOUND_IN.zoning, FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.zoning, FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
         {
           // v1.0's B1_orig, now unconditionally visible: the original wording
@@ -388,7 +416,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           foundIn: [
             FOUND_IN.zoning,
             FOUND_IN.developmentPlan,
-            FOUND_IN.permitDecision,
+            FOUND_IN.permit,
             FOUND_IN.buildingDescription,
           ],
         },
@@ -398,7 +426,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Liegt ein Bebauungsplan vor?',
           type: 'yes_no_open',
           writesTo: '/facts/development_plan/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit, FOUND_IN.buildingDescription],
         },
         {
           // Spec: unconditional `upload` for B-Plan OR FWP. Ours binds the
@@ -423,7 +451,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Höhenvorgaben der Landes-Bauordnung; Grundlage der Zulässigkeitsprüfung des Entwurfs.',
           conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/max_building_height/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
         {
           id: 'B3_weise',
@@ -438,7 +466,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'undecided', label: 'noch offen' },
           ],
           writesTo: '/facts/development_pattern/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
         {
           id: 'B3_dichte',
@@ -448,7 +476,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. 1.5',
           conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/development_density/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
         {
           id: 'B3_flucht',
@@ -457,7 +485,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           kernset: true,
           conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/building_lines/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.sitePlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.siteLayout, FOUND_IN.permit],
         },
         {
           // Absorbs v1.0's A8 (Schutzzone / Altstadterhaltung) — part of the
@@ -470,7 +498,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. Schutzzone, Dachvorschriften, Begrünungspflicht',
           conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/development_plan_notes/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
         {
           id: 'B3_stellplatz',
@@ -481,7 +509,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           placeholder: 'z. B. 1 Stellplatz je Wohnung',
           conditions: [{ param: 'B2', op: 'equals', value: 'yes' }],
           writesTo: '/facts/parking_regulation/value',
-          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.developmentPlan, FOUND_IN.permit],
         },
         {
           // v1.0's B4 + B5 (Altlast) + B9 (Baumbestand) + B10 (Schutzgebiet)
@@ -506,6 +534,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'open', label: 'noch offen' },
           ],
           writesTo: '/facts/hazard_zones/value',
+          foundIn: [FOUND_IN.hazardZonePlan, FOUND_IN.zoning, FOUND_IN.contaminatedSites, FOUND_IN.permit],
         },
         {
           id: 'B5',
@@ -523,6 +552,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'open', label: 'noch offen' },
           ],
           writesTo: '/facts/noise_situation/value',
+          foundIn: [FOUND_IN.noise, FOUND_IN.buildingDescription],
         },
         {
           id: 'B6',
@@ -585,7 +615,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'other', label: 'sonstiges Bauwerk (Flugdach, Stützmauer, Werbeanlage …)' },
           ],
           writesTo: '/facts/building_type/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.elevation, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.elevation, FOUND_IN.permit],
           feeds: 'building_class',
         },
         {
@@ -599,7 +629,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'existing', label: 'Bestandsgebäude' },
           ],
           writesTo: '/facts/construction_status/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision, FOUND_IN.floorPlan],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permit, FOUND_IN.floorLayout],
         },
         // -------------------------------------------------- Bestandsblock
         // v1.0 asked these once per PROJECT (A6/A7/A9/A10); since v1.1 they
@@ -616,7 +646,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Das Alter hilft einzuordnen, welche Regeln damals galten und was heute Bestandsschutz genießt.',
           conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
           writesTo: '/facts/existing_year_built/value',
-          foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.energyCertificate, FOUND_IN.buildingDescription, FOUND_IN.permit],
         },
         {
           id: 'CB2',
@@ -635,7 +665,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           why: 'Denkmalschutz bringt ein eigenes Verfahren und teils Erleichterungen bei anderen Anforderungen mit sich.',
           conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
           writesTo: '/facts/heritage_protection/value',
-          foundIn: [FOUND_IN.permitDecision, FOUND_IN.buildingDescription],
+          foundIn: [FOUND_IN.permit, FOUND_IN.heritageList, FOUND_IN.buildingDescription],
         },
         {
           id: 'CB4',
@@ -654,7 +684,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           ],
           conditions: [{ param: 'C2', op: 'equals', value: 'existing' }],
           writesTo: '/facts/existing_measures/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.permit],
         },
         {
           id: 'CB5',
@@ -720,7 +750,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           foundIn: [
             FOUND_IN.section,
             FOUND_IN.elevation,
-            FOUND_IN.floorPlan,
+            FOUND_IN.floorLayout,
             FOUND_IN.buildingDescription,
           ],
           feeds: 'building_class',
@@ -731,7 +761,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
           writesTo: '/facts/storeys_below_ground/value',
-          foundIn: [FOUND_IN.section, FOUND_IN.floorPlan, FOUND_IN.buildingDescription],
+          foundIn: [FOUND_IN.section, FOUND_IN.floorLayout, FOUND_IN.buildingDescription],
         },
         {
           id: 'C5',
@@ -753,7 +783,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           unit: 'm²',
           conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
           writesTo: '/facts/gfa_above_ground/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.energyCertificate],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.energyCertificate],
           feeds: 'building_class',
         },
         {
@@ -763,7 +793,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'number_tri',
           conditions: [{ param: 'C1', op: 'equals', value: 'building' }],
           writesTo: '/facts/use_units/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.permit],
           feeds: 'building_class',
         },
         {
@@ -782,7 +812,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { param: 'C3', op: 'lte', value: 4 },
           ],
           writesTo: '/facts/units_over_400/value',
-          foundIn: [FOUND_IN.floorPlan, FOUND_IN.buildingDescription, FOUND_IN.fireSafety],
+          foundIn: [FOUND_IN.floorLayout, FOUND_IN.buildingDescription, FOUND_IN.fireSafety],
           feeds: 'building_class',
         },
         {
@@ -796,7 +826,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
             { value: 'terraced', label: 'Reihenhaus' },
           ],
           writesTo: '/facts/building_position/value',
-          foundIn: [FOUND_IN.sitePlan, FOUND_IN.submissionSitePlan, FOUND_IN.buildingDescription],
+          foundIn: [FOUND_IN.siteLayout, FOUND_IN.submissionSiteLayout, FOUND_IN.buildingDescription],
           feeds: 'building_class',
         },
         {
@@ -811,7 +841,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           ],
           writesTo: '/facts/access_three_sides/value',
           feeds: 'building_class',
-          foundIn: [FOUND_IN.sitePlan, FOUND_IN.submissionSitePlan],
+          foundIn: [FOUND_IN.siteLayout, FOUND_IN.submissionSiteLayout],
         },
         {
           // Multi-select since v1.1 (a building can combine structures); the
@@ -884,7 +914,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           hint: 'Mehrfachauswahl — je Nutzung folgen Kennzahlen.',
           options: USES,
           writesTo: '/facts/uses/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorPlan, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.floorLayout, FOUND_IN.permit],
           feeds: 'building_class',
         },
         {
@@ -894,7 +924,7 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           type: 'yes_no_open',
           why: 'Öffentlich zugängliche Bereiche bringen typischerweise Barrierefreiheitsanforderungen mit sich.',
           writesTo: '/facts/public_access/value',
-          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permitDecision],
+          foundIn: [FOUND_IN.buildingDescription, FOUND_IN.permit],
         },
         {
           id: 'DX2',
@@ -2508,8 +2538,12 @@ export function formatIntakeAnswer(
   ) {
     return optionLabel(answer)
   }
-  if (question.type === 'number_tri' && typeof answer === 'number') {
-    return question.unit ? `${answer} ${question.unit}` : String(answer)
+  if (typeof answer === 'number') {
+    // German like the rest of this answer: „18,4 m“, „1.250 m²“.
+    const number = GERMAN_NUMBER.format(answer)
+    return question.unit ? `${number} ${question.unit}` : number
   }
   return String(answer)
 }
+
+const GERMAN_NUMBER = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 2 })

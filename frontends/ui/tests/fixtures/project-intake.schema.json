@@ -147,6 +147,34 @@
           "type": "object",
           "properties": {
             "op": {
+              "const": "progress"
+            },
+            "jobId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "filesOpened": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 512
+              },
+              "maxItems": 500
+            }
+          },
+          "required": [
+            "op",
+            "jobId",
+            "filesOpened"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
               "const": "finish"
             },
             "jobId": {
@@ -550,6 +578,18 @@
       },
       "required": [
         "results"
+      ],
+      "additionalProperties": true
+    },
+    "InternalIntakeProgressResponse": {
+      "type": "object",
+      "properties": {
+        "filesOpened": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "filesOpened"
       ],
       "additionalProperties": true
     },
@@ -1633,6 +1673,118 @@
           },
           "maxItems": 500
         },
+        "openQuestions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "baseKey": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "buildingId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "single_select",
+                  "multi_select",
+                  "boolean",
+                  "number",
+                  "text",
+                  "textarea",
+                  "number_tri",
+                  "yes_no_open"
+                ]
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "label"
+                  ],
+                  "additionalProperties": true
+                },
+                "maxItems": 100
+              },
+              "unit": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "why": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "foundIn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "maxItems": 20
+              },
+              "decisive": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "suggested",
+                  "confirmed"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "baseKey",
+              "buildingId",
+              "label",
+              "type",
+              "foundIn",
+              "decisive",
+              "state"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 500
+        },
         "groups": {
           "type": "array",
           "items": {
@@ -2148,7 +2300,7 @@
                   }
                 ]
               },
-              "hochhaus": {
+              "highRise": {
                 "type": "boolean"
               },
               "inputs": {
@@ -2675,7 +2827,7 @@
               "rule",
               "citation",
               "value",
-              "hochhaus",
+              "highRise",
               "inputs",
               "missing",
               "suggestion"
@@ -2688,6 +2840,483 @@
         },
         "canComplete": {
           "type": "boolean"
+        },
+        "applicableStandards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "titleEn": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "titleDe": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "scope": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "oibUrl": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "likely",
+                  "check"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "code",
+              "titleEn",
+              "titleDe",
+              "scope",
+              "oibUrl",
+              "status",
+              "reason"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 40
+        },
+        "locationRegister": {
+          "type": "object",
+          "properties": {
+            "federalState": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 64
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "municipality": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "questions": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "key": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "baseKey": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "buildingId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 32
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "single_select",
+                      "multi_select",
+                      "boolean",
+                      "number",
+                      "text",
+                      "textarea",
+                      "number_tri",
+                      "yes_no_open"
+                    ]
+                  },
+                  "options": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "token": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        }
+                      },
+                      "required": [
+                        "token",
+                        "label"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "maxItems": 100
+                  },
+                  "unit": {
+                    "type": "string",
+                    "maxLength": 20
+                  },
+                  "why": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "foundIn": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "maxItems": 20
+                  },
+                  "decisive": {
+                    "type": "boolean"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "open",
+                      "suggested",
+                      "confirmed"
+                    ]
+                  }
+                },
+                "required": [
+                  "key",
+                  "baseKey",
+                  "buildingId",
+                  "label",
+                  "type",
+                  "foundIn",
+                  "decisive",
+                  "state"
+                ],
+                "additionalProperties": true
+              },
+              "maxItems": 10
+            },
+            "documentRequests": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "determinant": {
+                    "type": "string",
+                    "enum": [
+                      "plot",
+                      "zoning",
+                      "heritage",
+                      "hazards",
+                      "noise"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "document": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 1000
+                  },
+                  "keys": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "maxItems": 20
+                  },
+                  "needs": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "key": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "baseKey": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "buildingId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 32
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "label": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        },
+                        "type": {
+                          "type": "string",
+                          "enum": [
+                            "single_select",
+                            "multi_select",
+                            "boolean",
+                            "number",
+                            "text",
+                            "textarea",
+                            "number_tri",
+                            "yes_no_open"
+                          ]
+                        },
+                        "options": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "token": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              "label": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 300
+                              }
+                            },
+                            "required": [
+                              "token",
+                              "label"
+                            ],
+                            "additionalProperties": true
+                          },
+                          "maxItems": 100
+                        },
+                        "unit": {
+                          "type": "string",
+                          "maxLength": 20
+                        },
+                        "why": {
+                          "type": "string",
+                          "maxLength": 1000
+                        },
+                        "foundIn": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "maxItems": 20
+                        },
+                        "decisive": {
+                          "type": "boolean"
+                        },
+                        "state": {
+                          "type": "string",
+                          "enum": [
+                            "open",
+                            "suggested",
+                            "confirmed"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "key",
+                        "baseKey",
+                        "buildingId",
+                        "label",
+                        "type",
+                        "foundIn",
+                        "decisive",
+                        "state"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "maxItems": 20
+                  },
+                  "satisfied": {
+                    "type": "boolean"
+                  },
+                  "sources": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        },
+                        "reference": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 300
+                        },
+                        "needsReview": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "title",
+                        "needsReview"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "maxItems": 6
+                  }
+                },
+                "required": [
+                  "determinant",
+                  "label",
+                  "document",
+                  "reason",
+                  "keys",
+                  "needs",
+                  "satisfied",
+                  "sources"
+                ],
+                "additionalProperties": true
+              },
+              "maxItems": 5
+            }
+          },
+          "required": [
+            "federalState",
+            "municipality",
+            "questions",
+            "documentRequests"
+          ],
+          "additionalProperties": true
+        },
+        "readingProgress": {
+          "type": "object",
+          "properties": {
+            "documentsOpened": {
+              "type": "integer"
+            },
+            "documentsTotal": {
+              "type": "integer"
+            },
+            "site": {
+              "type": "object",
+              "properties": {
+                "federalState": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "municipality": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 200
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "address": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "source": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "geocoder",
+                        "document",
+                        "person"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "confirmed": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "federalState",
+                "municipality",
+                "address",
+                "source",
+                "confirmed"
+              ],
+              "additionalProperties": true
+            }
+          },
+          "required": [
+            "documentsOpened",
+            "documentsTotal",
+            "site"
+          ],
+          "additionalProperties": true
         }
       },
       "required": [
@@ -2703,10 +3332,12 @@
         "summary",
         "contradictions",
         "questions",
+        "openQuestions",
         "groups",
         "derivations",
         "canDecide",
-        "canComplete"
+        "canComplete",
+        "readingProgress"
       ],
       "additionalProperties": true
     }

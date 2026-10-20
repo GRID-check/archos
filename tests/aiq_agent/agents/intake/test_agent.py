@@ -166,7 +166,9 @@ class TestTheLoop:
         assert "storeys_above_ground@bldg1" in opening and "Occasion: Neue Dokumente hochgeladen" in opening
         assert "What the last reading found" not in opening, "no note before a first reading finished"
         # The finish reads the needs first: nothing decisive is open, so it finishes.
-        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "needs", "finish"]
+        assert [body["op"] for body in fake.bodies()] == ["needs", "progress", "record", "needs", "finish"]
+        # The page counts the document the moment it is opened, not at the finish.
+        assert [body["filesOpened"] for body in fake.bodies("progress")] == [["Baubeschreibung.pdf"]]
         for body in fake.bodies():
             assert not list(validator(intake_schema, "InternalIntakeRequest").iter_errors(body))
         (finish,) = fake.bodies("finish")
@@ -230,7 +232,8 @@ class TestTheFinishHold:
 
         result = await _agent(model).run(_state())
 
-        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "needs", "finish"]
+        ops = [body["op"] for body in fake.bodies() if body["op"] != "progress"]
+        assert ops == ["needs", "record", "needs", "finish"]
         held = model.seen[3][-1].content
         assert held.startswith("Not finished yet.") and "storeys_above_ground@bldg1" in held
         # The file this run read is not named; the one nobody opened is.
@@ -244,7 +247,7 @@ class TestTheFinishHold:
 
         result = await _agent(model, max_tool_steps=2).run(_state())
 
-        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "finish"]
+        assert [body["op"] for body in fake.bodies() if body["op"] != "progress"] == ["needs", "record", "finish"]
         assert result.outcome["ended"] == "model" and result.outcome["finish_held"] is False
 
     async def test_a_model_that_never_finishes_after_a_hold_is_still_finished_in_code(self, signed_run, route, project):

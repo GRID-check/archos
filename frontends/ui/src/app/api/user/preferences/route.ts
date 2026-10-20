@@ -5,7 +5,9 @@
  */
 
 import { z } from 'zod'
+import { cookies } from 'next/headers'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE_SECONDS, isLocale } from '@/i18n/config'
 import { getUserPreferences, mergeUserPreferences } from '@/lib/user-preferences/service'
 
 const updatePreferencesSchema = z.object({
@@ -19,7 +21,18 @@ export const GET = apiRoute(async ({ session }) => ({ prefs: await getUserPrefer
 export const POST = apiRoute(
   async ({ session, request }) => {
     const { prefs } = await parseJsonBody(request, updatePreferencesSchema)
-    return { prefs: await mergeUserPreferences(session, prefs) }
+    const merged = await mergeUserPreferences(session, prefs)
+    // The language is mirrored by the server, not only by the page's script:
+    // Safari keeps a cookie written by `document.cookie` for seven days at
+    // most, one sent in a response for its max-age (`i18n/request-locale.ts`).
+    if (isLocale(prefs.locale)) {
+      ;(await cookies()).set(LOCALE_COOKIE, prefs.locale, {
+        path: '/',
+        maxAge: LOCALE_COOKIE_MAX_AGE_SECONDS,
+        sameSite: 'lax',
+      })
+    }
+    return { prefs: merged }
   },
   { authz: { sessionOnly: true, why: 'the caller’s own preferences, keyed to session.userId' } }
 )

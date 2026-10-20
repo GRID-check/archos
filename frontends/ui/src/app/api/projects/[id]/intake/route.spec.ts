@@ -75,6 +75,7 @@ const VIEW: IntakeView = {
   readingFinishedAt: '2026-10-14T09:04:00.000Z',
   summary: 'Zwei Pläne gelesen.',
   contradictions: [],
+  openQuestions: [],
   questions: [
     {
       key: 'escape_level_m@bldg1',
@@ -98,7 +99,7 @@ const VIEW: IntakeView = {
           baseKey: 'building_type',
           buildingId: 'bldg1',
           label: 'Bauwerkstyp',
-          value: 'gebaeude',
+          value: 'building',
           display: 'Gebäude',
           state: 'suggested',
           evidence: [{ kind: 'document', fileName: 'Einreichplan.pdf', page: 2, quote: 'Wohngebäude' }],
@@ -111,6 +112,11 @@ const VIEW: IntakeView = {
   derivations: [],
   canDecide: true,
   canComplete: true,
+  readingProgress: {
+    documentsOpened: 0,
+    documentsTotal: 0,
+    site: { federalState: null, municipality: null, address: null, source: null, confirmed: false },
+  },
 }
 
 beforeEach(() => {

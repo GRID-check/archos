@@ -26,6 +26,7 @@ import { useDocumentsStore } from './store'
 import { useLayoutStore } from '@/features/layout/store'
 import type { TrackedFile } from './types'
 import { trackedStatusOfJobFile } from './utils'
+import { classifyIngestFailure, ingestFailureSentence } from './lib/ingest-failure'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import {
   isJoblessIngesting,
@@ -603,7 +604,10 @@ class UploadOrchestratorImpl {
         if (status.status === 'completed') {
           this.emit('onComplete')
         } else if (status.status !== 'cancelled' && status.error_message) {
-          store.setError(status.error_message)
+          // The job's text is the knowledge layer's English, for logs; the
+          // composer's error line says its category in the reader's language.
+          const failure = classifyIngestFailure(status.error_message)
+          store.setError(failure ? ingestFailureSentence(failure, getStoreTranslator('files')) : status.error_message)
           this.emit('onError', new Error(status.error_message))
         }
 

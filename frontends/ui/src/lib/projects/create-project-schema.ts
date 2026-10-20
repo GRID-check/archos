@@ -12,6 +12,9 @@ import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import { isMonth, type Month } from './month'
 import { PROJECT_OUTCOMES } from './project-status'
 
+/** Longest address line a person may type. */
+export const MAX_ADDRESS_LENGTH = 200
+
 const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMonth(value), 'A month, YYYY-MM.')
 
 /** How a new project is set up. `piloti` reads the documents; `self` is the wizard. */
@@ -40,6 +43,13 @@ export const createProjectFieldsSchema = z
       .optional(),
     /** The address search's hit. */
     location: geocodeResultSchema.optional(),
+    /** The address as typed, when no hit was chosen. Blank counts as not given. */
+    address: z
+      .string()
+      .trim()
+      .max(MAX_ADDRESS_LENGTH)
+      .transform((value) => value || undefined)
+      .optional(),
     /** A federal-state token chosen by hand when no geocoder is configured. A tab that has not reloaded still sends the German token. */
     federalState: z
       .string()

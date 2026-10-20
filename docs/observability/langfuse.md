@@ -141,6 +141,7 @@ writes its facts once, when it ends, in `_record_trace`
 | `intake_finish_held` | whether `finish_intake` held the model's first call once, because decisive needs were open and files unread |
 | `intake_refusals` | the refusals the run hit, as comma-joined `reason=count` pairs (`local:<code>`, `local:not-stated`, `refused:<reason>`, `withdraw:<reason>`); absent when there were none |
 | `intake_decisive_open` | how many decisive needs were still open when the run ended |
+| `intake_progress_reports` | how often the run told the BFF which files it had opened so far (`op: progress`, the setup page's live „x von y gelesen"); each report is also a `project_intake.progress` step span. Zero while documents were opened means the page showed no live count |
 
 A suggestion a person accepts or dismisses is scored `piloti-decision` on this
 same trace, with `subject` `intake_suggestion` (see [Scores](#scores)).

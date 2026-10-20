@@ -97,20 +97,25 @@ export function QuestionControl({
       return (
         <div className="flex flex-col gap-2">
           {header}
-          <Input
-            id={domId}
-            type="number"
-            inputMode="decimal"
-            value={typeof value === 'number' ? value : typeof value === 'string' ? value : ''}
-            aria-invalid={error ? true : undefined}
-            onChange={(e) => {
-              const raw = e.target.value
-              if (raw === '') return onSetAnswer(answerKey, '')
-              const parsed = Number(raw)
-              onSetAnswer(answerKey, Number.isFinite(parsed) ? parsed : raw)
-            }}
-            className="max-w-40"
-          />
+          <div className="flex items-center gap-2">
+            <Input
+              id={domId}
+              type="number"
+              inputMode="decimal"
+              placeholder={question.placeholder}
+              value={typeof value === 'number' ? value : typeof value === 'string' ? value : ''}
+              aria-invalid={error ? true : undefined}
+              onChange={(e) => {
+                const raw = e.target.value
+                if (raw === '') return onSetAnswer(answerKey, '')
+                const parsed = Number(raw)
+                onSetAnswer(answerKey, Number.isFinite(parsed) ? parsed : raw)
+              }}
+              className="max-w-40"
+            />
+            {/* The unit beside the field: „1250“ alone does not say m² or m. */}
+            {question.unit && <span className="text-muted-foreground text-sm">{question.unit}</span>}
+          </div>
           {errorText}
         </div>
       )

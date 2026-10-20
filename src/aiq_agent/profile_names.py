@@ -82,6 +82,8 @@ LEGACY_PROFILE_KEYS: dict[str, str] = {
     "gesundheit_typ": "healthcare_type",
     "groessere_renovierung": "major_renovation",
     "grundgrenze": "plot_boundary",
+    "grundstueck_ez": "plot_register_number",
+    "grundstuecksflaeche": "plot_area",
     "hauptnutzung": "main_use",
     "hohe_gebaeude_details": "high_rise_details",
     "kanal": "sewer",

@@ -13,7 +13,8 @@ import { v4 as uuidv4 } from 'uuid'
 import { useLocale, useTranslations } from '@/i18n'
 import { createDocumentsClient } from '@/adapters/api'
 import { deleteSessionDocument } from '@/adapters/api/session-documents-client'
-import { xhrUpload, XhrNetworkError, XhrUploadError } from '@/lib/http/xhr-upload'
+import { xhrUpload, XhrUploadError } from '@/lib/http/xhr-upload'
+import { formatBytes } from '@/lib/format'
 import { useDocumentsStore } from '../store'
 import { useAuth } from '@/adapters/auth'
 import { useAppConfig } from '@/shared/context'
@@ -39,7 +40,8 @@ import { fileExtensionLabel } from '../document-kind'
 import { failedWhileReading } from '../lib/ingest-failure'
 import { requestReingest } from '../lib/reingest-request'
 import { requestCancelIngest } from '../lib/cancel-request'
-import { mayRetryRefusal, uploadRefusalOf, type UploadRefusal } from '../lib/upload-refusal'
+import { mayRetryRefusal, uploadRefusalOf } from '../lib/upload-refusal'
+import { uploadFailureSentence, UploadFailureSentence, type UploadFailureCopy } from '../lib/upload-failure'
 import { toast } from 'sonner'
 
 /**
@@ -72,58 +74,6 @@ async function deleteShelfDocument(shelf: 'project' | 'office_shelf' | 'session'
 
 /** A user-initiated cancel, not a failure — it must not colour a row red. */
 const isAbort = (error: unknown): boolean => error instanceof Error && error.name === 'AbortError'
-
-/** The sentences an upload failure is said in, in the reader's language. */
-interface UploadFailureCopy {
-  projectClosed: string
-  failed: string
-  network: string
-  stalled: string
-  timeout: string
-  folderReadOnly: string
-  changedMeanwhile: string
-  screeningUnavailable: string
-  nameTaken: (name: string) => string
-  heldReplace: (name: string) => string
-}
-
-/** A refusal the server gave a reason for, said from the dictionary (`../lib/upload-refusal`). */
-const refusalMessage = (refusal: UploadRefusal, copy: UploadFailureCopy, fileName: string): string => {
-  switch (refusal.kind) {
-    case 'held-replace':
-      return copy.heldReplace(fileName)
-    case 'name-taken':
-      return copy.nameTaken(fileName)
-    case 'project-closed':
-      return copy.projectClosed
-    case 'folder-read-only':
-      return copy.folderReadOnly
-    case 'changed-meanwhile':
-      return copy.changedMeanwhile
-    case 'screening-unavailable':
-      return copy.screeningUnavailable
-    case 'name-stop':
-      return copy.failed
-    case 'other':
-      return refusal.message ?? copy.failed
-  }
-}
-
-/**
- * The clearest sentence available about why an upload did not happen.
- *
- * The transport's own messages are English and for logs (`XhrNetworkError`,
- * `XhrUploadError`); a stalled or dropped link is the failure a reader on site
- * actually meets, so it is said in the dictionary and never passed through.
- * A refusal with a reason is said from the dictionary too; only one the server
- * gave no reason for is shown in its own words.
- */
-const failureMessage = (error: unknown, copy: UploadFailureCopy, fileName = ''): string => {
-  if (error instanceof XhrNetworkError) return copy[error.reason]
-  const refusal = uploadRefusalOf(error)
-  if (refusal) return refusalMessage(refusal, copy, fileName)
-  return error instanceof Error && error.message ? error.message : copy.failed
-}
 
 interface UseFileUploadOptions {
   collectionName?: string
@@ -249,10 +199,16 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       folderReadOnly: t('folders.access.readOnlyRefused'),
       changedMeanwhile: t('errors.uploadChangedMeanwhile'),
       screeningUnavailable: t('errors.screeningPolicyUnavailable'),
+      storageFull: t('errors.uploadStorageFull'),
       nameTaken: (name) => t('errors.nameTaken', { name }),
       heldReplace: (name) => t('errors.quarantinedReplace', { name }),
+      tooLarge: (name, limitBytes) =>
+        limitBytes === null
+          ? t('errors.uploadTooLarge', { name })
+          : t('errors.uploadTooLargeLimit', { name, limit: formatBytes(limitBytes, locale) }),
+      invalidType: (name, accepted) => t('errors.validation.invalidType', { name, accepted: accepted.join(', ') }),
     }),
-    [t]
+    [t, locale]
   )
   const { fileUpload: fileUploadConfig } = useAppConfig()
   const clientRef = useRef(createDocumentsClient({ authToken: idToken }))
@@ -367,7 +323,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       const targetCollection = options?.collectionOverride ?? collectionName
       if (!targetCollection) {
         const uploadError = new Error('Collection name required for upload')
-        setError(uploadError.message)
+        console.error('[upload]', uploadError.message)
+        setError(failureCopy.failed)
         onError?.(uploadError)
         return 0
       }
@@ -414,7 +371,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
        */
       let policy: UploadScreeningPolicy
       try {
-        policy = options?.screeningPolicy ?? (await loadUploadScreeningPolicy())
+        policy = options?.screeningPolicy ?? (await loadUploadScreeningPolicy(shelf === 'project' ? projectId : null))
       } catch {
         setError(t('errors.screeningPolicyUnavailable'))
         return 0
@@ -641,14 +598,15 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
               serverStopped.push({ file, matches: refusal.matches })
               return
             }
-            const message = failureMessage(err, failureCopy, file.name)
+            const message = uploadFailureSentence(err, failureCopy, file.name)
             updateTrackedFile(tracked.id, {
               status: 'failed',
               errorMessage: message,
               ...(mayRetryRefusal(refusal) ? {} : { retryable: false as const }),
             })
-            // A refusal is thrown as the sentence the row says, so the batch's line says it too.
-            throw err instanceof Error && !refusal ? err : Object.assign(new Error(message), { cause: err })
+            // The original goes to the log; the batch's line says the row's sentence.
+            console.warn('[upload] %s was not uploaded:', file.name, err)
+            throw new UploadFailureSentence(message, { cause: err })
           } finally {
             abortControllersRef.current.delete(tracked.id)
           }
@@ -691,7 +649,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         const firstFailure = results.find((result) => result.status === 'rejected')
         if (firstFailure && firstFailure.status === 'rejected') {
           const failedCount = results.filter((result) => result.status === 'rejected').length
-          const message = failureMessage(firstFailure.reason, failureCopy)
+          const message = uploadFailureSentence(firstFailure.reason, failureCopy)
           setError(
             failedCount > 1
               ? t('errors.someUploadsFailed', { failed: failedCount, total: entries.length, reason: message })
@@ -712,7 +670,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           }
           return taken
         }
-        const message = failureMessage(err, failureCopy)
+        const message = uploadFailureSentence(err, failureCopy)
         setError(message)
         onError?.(err instanceof Error ? err : new Error(message))
 

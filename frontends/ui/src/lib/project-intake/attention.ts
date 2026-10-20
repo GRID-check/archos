@@ -20,7 +20,17 @@ const TYPE = 'piloti.intake_ready'
 /** Longest summary quoted in a row. */
 const SUMMARY_LENGTH = 200
 
-/** A reading finished: its requester may review it. */
+/**
+ * A reading ended: its requester may review it (`ready`), or is told it did
+ * not finish and may start another (`failed`, the row's `variants.failed`
+ * wording). One row per intake either way: the next reading folds into it.
+ *
+ * The fold MERGES payloads (`upsertInboxItems`, jsonb `||`), so every field a
+ * wording reads is written on every emission, empty when it has nothing to
+ * say (`coerceText` reads an empty string as absent). Without that a reading
+ * with no Rückfragen kept the count of the reading before it, and a reading
+ * that finished after a failed one still said it failed.
+ */
 export async function onIntakeReady(input: {
   organizationId: string
   projectId: string
@@ -28,6 +38,8 @@ export async function onIntakeReady(input: {
   recipientUserId: string
   /** The project's name: the row's subject. */
   projectName: string | null
+  /** How the reading ended. */
+  outcome: 'ready' | 'failed'
   /** Questions that decide a building class; named in the title when there are any. */
   decisiveOpen: number
   /** The reading's own summary, already masked. */
@@ -47,10 +59,9 @@ export async function onIntakeReady(input: {
         groupKey: inboxGroupKey(TYPE, 'project', input.projectId, input.intakeId),
         payload: {
           ...(input.projectName ? { subject: input.projectName } : {}),
-          ...(input.decisiveOpen > 0 ? { related: String(input.decisiveOpen) } : {}),
-          ...(summary
-            ? { excerpt: summary.length > SUMMARY_LENGTH ? `${summary.slice(0, SUMMARY_LENGTH - 1)}…` : summary }
-            : {}),
+          variant: input.outcome,
+          related: input.outcome === 'ready' && input.decisiveOpen > 0 ? String(input.decisiveOpen) : '',
+          excerpt: summary.length > SUMMARY_LENGTH ? `${summary.slice(0, SUMMARY_LENGTH - 1)}…` : summary,
         },
       },
     ])

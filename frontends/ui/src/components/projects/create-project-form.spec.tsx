@@ -1,9 +1,10 @@
 /**
  * Creating a project, running or already closed: what reaches the server
- * action, and what keeps the submit shut. And the setup: the address (a
- * combobox over the address search, or the Bundesland when there is none),
- * „Worum geht es?", Piloti or the person setting it up, and a project folder
- * dropped on the dialog.
+ * action, and what keeps the submit shut. And the setup: the address (a text
+ * field that keeps what is typed, with the address search's hits where one is
+ * configured),
+ * „Worum geht es?" folded behind a line, and a project folder dropped on the
+ * dialog or chosen in its zone.
  */
 import { fireEvent, render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
@@ -16,6 +17,12 @@ import type { GeocodeResponse, GeocodeResult } from '@/lib/geocoding/types'
 import { forgetGeocoderAnswer } from './address-field'
 import { CreateProjectForm, folderNameOf } from './create-project-form'
 
+/** The key this dialog holds a drop under: one per dialog, fixed here so a spec can look. */
+const DROP_KEY = 'new-project:00000000-0000-4000-8000-000000000000'
+vi.mock('@/features/documents/lib/dropped-file-handover', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/features/documents/lib/dropped-file-handover')>()),
+  newProjectDropKey: () => DROP_KEY,
+}))
 vi.mock('@/app/app/(shell)/projects/actions', () => ({ createProject: vi.fn() }))
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 vi.mock('@/shared/context', () => ({
@@ -87,7 +94,7 @@ describe('CreateProjectForm', () => {
     findSameAddress.mockReset()
     findSameAddress.mockResolvedValue({ projects: [] })
     forgetGeocoderAnswer()
-    takeDroppedFiles('new-project')
+    takeDroppedFiles(DROP_KEY)
   })
 
   afterEach(() => {
@@ -228,9 +235,18 @@ describe('CreateProjectForm', () => {
       expect(screen.getByLabelText('Project name')).toHaveFocus()
     })
 
-    test('the drag-a-folder hint, which a touch screen cannot act on, is hidden there', () => {
+    test('the folder zone offers documents, not a drag or a folder picker a touch screen does not have', () => {
+      pointer('coarse')
       render(<CreateProjectForm />)
-      expect(screen.getByTestId('create-project-drop-hint')).toHaveClass('pointer-coarse:hidden')
+      expect(screen.getByTestId('create-project-folder-zone')).toHaveTextContent('Add the project documents')
+      expect(screen.getByTestId('create-project-folder-input')).not.toHaveAttribute('webkitdirectory')
+    })
+
+    test('a mouse is offered the drag and the folder picker', () => {
+      pointer('fine')
+      render(<CreateProjectForm />)
+      expect(screen.getByTestId('create-project-folder-zone')).toHaveTextContent('Drag the project folder here')
+      expect(screen.getByTestId('create-project-folder-input')).toHaveAttribute('webkitdirectory')
     })
   })
 
@@ -241,12 +257,15 @@ describe('CreateProjectForm', () => {
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Aufstockung')
+      // Folded until asked for.
+      expect(screen.queryByRole('textbox', { name: 'What is it about?' })).toBeNull()
+      await user.click(screen.getByRole('button', { name: 'Briefly describe what it is about' }))
       await user.type(screen.getByRole('textbox', { name: 'What is it about?' }), 'Zwei Geschoße mehr')
       await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Hauptstraße')
       await user.click(await screen.findByRole('option', { name: /Hauptstraße 12, 1010 Wien/ }))
 
       // The chosen hit names its Gemeinde and Bundesland.
-      expect(screen.getByTestId('create-project-address-chosen')).toHaveTextContent('Wien · Wien')
+      expect(screen.getByTestId('create-project-address-place')).toHaveTextContent('Wien · Wien')
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
@@ -319,54 +338,73 @@ describe('CreateProjectForm', () => {
       await user.keyboard('{ArrowDown}')
       await user.keyboard('{Enter}')
       // Enter chose; it did not submit the form.
-      expect(screen.getByTestId('create-project-address-chosen')).toHaveTextContent('Hauptstraße 3, 2340 Mödling')
-      expect(screen.getByTestId('create-project-address-chosen')).toHaveTextContent('Mödling · Niederösterreich')
+      expect(combobox).toHaveValue('Hauptstraße 3, 2340 Mödling')
+      expect(screen.getByTestId('create-project-address-place')).toHaveTextContent('Mödling · Niederösterreich')
       expect(action).not.toHaveBeenCalled()
     })
 
-    test('says so when the address has no match, and still creates the project without one', async () => {
+    test('an address with no match is kept as typed and sent', async () => {
       search.mockResolvedValue({ enabled: true, results: [] } satisfies GeocodeResponse)
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Wettbewerb')
-      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Nirgendwo')
-      expect(await screen.findByText(/No match/)).toBeInTheDocument()
+      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Am Bahnhof 4, Gänserndorf')
+      await waitFor(() => expect(search).toHaveBeenCalled())
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Wettbewerb', state: 'active', setup: 'piloti' })
+      expect(sent()).toEqual({ name: 'Wettbewerb', state: 'active', setup: 'piloti', address: 'Am Bahnhof 4, Gänserndorf' })
     })
 
-    test('with no geocoder configured, the Bundesland is a select and is sent', async () => {
+    test('editing a chosen address lets go of the hit: the line is sent as typed', async () => {
+      search.mockResolvedValue({ enabled: true, results: [hauptstrasse] } satisfies GeocodeResponse)
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+
+      await user.type(screen.getByLabelText('Project name'), 'Aufstockung')
+      const field = screen.getByRole('combobox', { name: 'Address' })
+      await user.type(field, 'Hauptstraße')
+      await user.click(await screen.findByRole('option', { name: /Hauptstraße 12/ }))
+      search.mockResolvedValue({ enabled: true, results: [] } satisfies GeocodeResponse)
+      await user.type(field, '/3')
+      expect(screen.queryByTestId('create-project-address-place')).toBeNull()
+      await user.click(submit())
+
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent()).toMatchObject({ address: 'Hauptstraße 12, 1010 Wien/3' })
+      expect(sent()).not.toHaveProperty('location')
+    })
+
+    test('with no address search configured, the field stays a text field and keeps what was typed', async () => {
       search.mockResolvedValue({ enabled: false, results: [] } satisfies GeocodeResponse)
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Haus am See')
-      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Seestraße')
+      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Seestraße 5, 9220 Velden')
 
-      const select = await screen.findByRole('combobox', { name: 'Bundesland' })
-      expect(screen.queryByRole('combobox', { name: 'Address' })).toBeNull()
-      await user.click(select)
-      expect(screen.queryByRole('option', { name: 'Außerhalb Österreichs' })).toBeNull()
-      await user.click(await screen.findByRole('option', { name: 'Kärnten' }))
+      // The pilot onboarding typed three letters and lost them to a Bundesland select.
+      const field = await screen.findByRole('textbox', { name: 'Address' })
+      expect(field).toHaveValue('Seestraße 5, 9220 Velden')
+      expect(screen.queryByRole('combobox', { name: 'Bundesland' })).toBeNull()
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Haus am See', state: 'active', setup: 'piloti', federal_state: 'carinthia' })
+      expect(sent()).toEqual({ name: 'Haus am See', state: 'active', setup: 'piloti', address: 'Seestraße 5, 9220 Velden' })
+      expect(search).toHaveBeenCalledTimes(1)
     })
 
-    test('remembers that there is no geocoder, so the next dialog opens as the select', async () => {
+    test('remembers that there is no address search, so the next dialog asks no more', async () => {
       search.mockResolvedValue({ enabled: false, results: [] } satisfies GeocodeResponse)
       const user = userEvent.setup()
       const first = render(<CreateProjectForm />)
       await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Seestraße')
-      await screen.findByRole('combobox', { name: 'Bundesland' })
+      await screen.findByRole('textbox', { name: 'Address' })
       first.unmount()
 
       render(<CreateProjectForm />)
-      expect(screen.getByRole('combobox', { name: 'Bundesland' })).toBeInTheDocument()
+      await user.type(screen.getByRole('textbox', { name: 'Address' }), 'Hauptplatz 1')
       expect(search).toHaveBeenCalledTimes(1)
     })
 
@@ -428,10 +466,24 @@ describe('CreateProjectForm', () => {
 
       expect(await screen.findByTestId('create-project-dropped')).toHaveTextContent('Folder “Wohnbau Nord”: 2 files')
       expect(screen.getByLabelText('Project name')).toHaveValue('Wohnbau Nord')
-      expect(takeDroppedFiles('new-project')).toEqual(files)
+      expect(takeDroppedFiles(DROP_KEY)).toEqual(files)
       // Taken once: put it back for the rest of the test.
       await user.click(screen.getByRole('button', { name: 'Remove the folder' }))
       expect(screen.queryByTestId('create-project-dropped')).toBeNull()
+    })
+
+    test('a folder chosen in the picker is held the same way as a dropped one', async () => {
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+      const files = [withPath(new File(['a'], 'a.pdf'), 'Schule Nord/a.pdf')]
+
+      await user.upload(screen.getByTestId('create-project-folder-input'), files)
+
+      expect(await screen.findByTestId('create-project-dropped')).toHaveTextContent('Folder “Schule Nord”: 1 file')
+      expect(screen.getByLabelText('Project name')).toHaveValue('Schule Nord')
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent().dropKey).toBe(DROP_KEY)
     })
 
     test('a dropped folder does not rename a project that already has a name', async () => {
@@ -452,24 +504,7 @@ describe('CreateProjectForm', () => {
 
       first.unmount()
 
-      expect(takeDroppedFiles('new-project')).toEqual([])
-    })
-
-    test('choosing to fill it in oneself lets go of the held folder: it would be filed in the next project', async () => {
-      const user = userEvent.setup()
-      const first = render(<CreateProjectForm />)
-      dropFiles(screen.getByTestId('create-project-drop'), [withPath(new File(['a'], 'a.pdf'), 'Ordner/a.pdf')])
-      await screen.findByTestId('create-project-dropped')
-
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
-      expect(screen.queryByTestId('create-project-dropped')).toBeNull()
-      expect(takeDroppedFiles('new-project')).toEqual([])
-
-      // And nothing is held for the setup page after the project is created.
-      await user.click(submit())
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      first.unmount()
-      expect(takeDroppedFiles('new-project')).toEqual([])
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
     })
 
     test('a file dragged over the dialog that it cannot take says so', () => {
@@ -494,50 +529,59 @@ describe('CreateProjectForm', () => {
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
       first.unmount()
 
-      expect(takeDroppedFiles('new-project')).toEqual([file])
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([file])
+      // The key goes with the creation, so the redirect sends only THIS project's setup page for them.
+      expect(sent().dropKey).toBe(DROP_KEY)
+    })
+
+    test('sends no key when nothing was dropped', async () => {
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+      await user.type(screen.getByLabelText('Project name'), 'Leer')
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent()).not.toHaveProperty('dropKey')
+    })
+
+    test('a create that throws lets go of the held files when the dialog goes', async () => {
+      action.mockRejectedValue(new Error('network'))
+      const user = userEvent.setup()
+      const first = render(<CreateProjectForm />)
+      dropFiles(screen.getByTestId('create-project-drop'), [withPath(new File(['a'], 'a.pdf'), 'Ordner/a.pdf')])
+      await screen.findByTestId('create-project-dropped')
+
+      await user.click(submit())
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      first.unmount()
+
+      // Held on, they would have been filed in the next project waiting for documents.
+      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
+    })
+
+    test('a create that throws says so calmly and lets the person try again', async () => {
+      action.mockRejectedValueOnce(new Error('network'))
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+      await user.type(screen.getByLabelText('Project name'), 'Seestadt')
+      await user.click(submit())
+      expect(await screen.findByText(/couldn't create this project/)).toBeInTheDocument()
+      expect(submit()).toBeEnabled()
     })
   })
 
-  describe('Selbst ausfüllen', () => {
-    test('is today: no address, no description, no setup fields, the old closed label', async () => {
+  describe('no setup question', () => {
+    test('the dialog asks nothing about who sets the project up: the setup page does both', async () => {
       const user = userEvent.setup()
       render(<CreateProjectForm />)
+
+      // The only choice is the project's state.
+      expect(screen.getAllByRole('radio').map((radio) => radio.textContent)).toEqual(['Ongoing', 'Closed, as a reference'])
+      expect(screen.queryByRole('button', { name: /myself/i })).toBeNull()
 
       await user.type(screen.getByLabelText('Project name'), 'Villa K')
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
       await user.click(submit())
-
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Villa K', state: 'active', setup: 'self' })
-      expect(capturePosthog).toHaveBeenCalledWith('project_created', { state: 'active', setup: 'self' })
-    })
-
-    test('a typed description is left out of what is sent', async () => {
-      const user = userEvent.setup()
-      render(<CreateProjectForm />)
-
-      await user.type(screen.getByLabelText('Project name'), 'Villa K')
-      await user.type(screen.getByRole('textbox', { name: 'What is it about?' }), 'ignored')
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
-      await user.click(submit())
-
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).not.toHaveProperty('description')
-    })
-
-    test('a closed project is created closed at once, with the old label', async () => {
-      const user = userEvent.setup()
-      render(<CreateProjectForm />)
-
-      await user.type(screen.getByLabelText('Project name'), 'Schule Nord')
-      await user.click(screen.getByRole('radio', { name: /Fill it in myself/ }))
-      await user.click(screen.getByRole('radio', { name: /^Closed/ }))
-      await user.click(await screen.findByRole('radio', { name: /Completed/ }))
-      expect(screen.getByTestId('create-project-closed-note')).toHaveTextContent('A closed project is read-only.')
-      await user.click(submit(/^Create closed project$/))
-
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toMatchObject({ setup: 'self', state: 'closed', outcome: 'completed' })
+      expect(sent()).toEqual({ name: 'Villa K', state: 'active', setup: 'piloti' })
     })
   })
 })

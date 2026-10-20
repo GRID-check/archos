@@ -352,6 +352,10 @@
     "de": "Ein vor diesem Release gelöschter Ordner bleibt endgültig gelöscht. Ein Projektordner lässt sich nicht mehr löschen, solange er einen Unterordner enthält, den Sie nicht bearbeiten dürfen; Ordner im Archiv werden wie bisher gelöscht."
   },
   {
+    "en": "A folder dropped on the new-project dialog now lands only in the project it was dropped for. Before, if its setup page did not take it, the next new project could.",
+    "de": "Ein in den Dialog für ein neues Projekt gezogener Ordner wird jetzt nur dem Projekt zugeordnet, für das er abgelegt wurde. Bisher konnte er beim nächsten neuen Projekt landen, wenn die Setup-Seite ihn nicht übernommen hat."
+  },
+  {
     "en": "A folder that holds subfolders you cannot read can only be moved by an organization admin, and a demoted admin loses access to the folders shortly after the change. Review requests go only to people who may read the folder, and the projects overview counts only the documents you may read.",
     "de": "Ein Ordner mit Unterordnern, die Sie nicht lesen dürfen, kann nur ein Administrator der Organisation verschieben, und wer herabgestuft wird, verliert den Zugriff auf die Ordner kurz nach der Änderung. Prüfanfragen gehen nur an Personen, die den Ordner lesen dürfen, und die Projektübersicht zählt nur die Dokumente, die Sie lesen dürfen."
   },
@@ -832,6 +836,10 @@
     "de": "Ein Eintrag wird unabhängig davon, wie Sie ihn aufrufen, als gelesen markiert: über eine Benachrichtigung auf Ihrem Gerät oder durch Öffnen der zugehörigen Anmerkung in der Prüfansicht."
   },
   {
+    "en": "An office's default language under Organisation → Einstellungen is now \"Nicht festgelegt\" until an administrator picks one, and each person then starts in their browser's language. Offices that had the English preset stored have it reset; set it again there if your office wants English.",
+    "de": "Die Standardsprache eines Büros unter Organisation → Einstellungen ist jetzt „Nicht festgelegt“, bis ein Administrator eine Sprache auswählt. Anschließend startet jede Person in der Sprache ihres Browsers. Bei Büros, bei denen Englisch als Voreinstellung gespeichert war, wird diese zurückgesetzt. Wählen Sie Englisch dort erneut aus, wenn Ihr Büro Englisch verwenden möchte."
+  },
+  {
     "en": "An open annotation from an earlier revision can now be carried over to the current one from its card, or all of them at once from the list, keeping its number, its place and its thread.",
     "de": "Eine offene Anmerkung aus einer früheren Revision lässt sich jetzt über ihre Karte in die aktuelle Revision übernehmen – oder alle auf einmal über die Liste. Nummer, Position und Kommentarverlauf bleiben dabei erhalten."
   },
@@ -1178,6 +1186,10 @@
   {
     "en": "Creating a folder with a name that is already taken in that place now tells you the name is taken, instead of showing an error.",
     "de": "Wenn Sie einen Ordner mit einem Namen anlegen, der dort schon vergeben ist, sagt Piloti jetzt, dass der Name vergeben ist, statt einen Fehler anzuzeigen."
+  },
+  {
+    "en": "Creating a project asks for its name, its address, whether it is running or finished, and optionally its folder. The setup that follows has five short steps (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), each on one screen with one button to go on, and you can leave at any point with „Später fortsetzen“.",
+    "de": "Beim Anlegen eines Projekts geben Sie den Namen und die Adresse an, wählen aus, ob es laufend oder abgeschlossen ist, und können optional einen Ordner zuordnen. Die anschließende Einrichtung umfasst fünf kurze Schritte (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), jeweils auf einem Bildschirm mit nur einer Schaltfläche zum Fortfahren. Sie können die Einrichtung jederzeit mit „Später fortsetzen“ verlassen."
   },
   {
     "en": "Ctrl+F (Cmd+F on a Mac) inside a PDF searches the document. It counts the matches and steps through them.",
@@ -2172,6 +2184,10 @@
     "de": "Piloti speichert aus einer abgebrochenen Antwort keine Notizen mehr im Projektgedächtnis. Bisher konnte eine Frage, deren Recherchebudget aufgebraucht war, bevor sie vollständig beantwortet war, Notizen hinterlassen, die wie feststehende Tatsachen klangen."
   },
   {
+    "en": "Piloti no longer switches to English on its own: pages open in the language you or your office chose, also after a redirect and on Safari.",
+    "de": "Piloti wechselt nicht mehr eigenständig zu Englisch: Seiten öffnen sich in der Sprache, die Sie oder Ihr Büro gewählt haben – auch nach einer Weiterleitung und in Safari."
+  },
+  {
     "en": "Piloti now answers as a colleague in the planning office rather than as a compliance checker, so summarising a document or sorting drawings no longer ends in a verdict. It helps you apply a rule and does not replace the Entwurfsverfasser or the Behörde.",
     "de": "Piloti antwortet jetzt als Kollege im Planungsbüro statt als Konformitätsprüfer, sodass das Zusammenfassen eines Dokuments oder das Sortieren von Zeichnungen nicht mehr mit einem Urteil endet. Piloti hilft Ihnen, eine Regel anzuwenden, und ersetzt weder den Entwurfsverfasser noch die Behörde."
   },
@@ -2660,12 +2676,24 @@
     "de": "Die Prüfansicht funktioniert ohne Maus: Wählen Sie den Kommentar, den Bereich oder das Piloti-Tool mit der jeweiligen Taste aus. Ein Fadenkreuz erscheint, das Sie mit den Pfeiltasten bewegen und mit Enter setzen. Markierungen lassen sich allein über die Tastatur setzen und abfragen."
   },
   {
+    "en": "The Rückfragen ask one question at a time, together with the documents the location calls for and any values the documents contradict each other on.",
+    "de": "Die Rückfragen stellen jeweils eine Frage nach der anderen und nennen dazu die am Standort erforderlichen Dokumente sowie Werte, bei denen sich die Dokumente widersprechen."
+  },
+  {
     "en": "The Schnitt filter in the Archiv now reads Schnitt / Ansicht, as in Dateien, because it also finds elevations.",
     "de": "Der Filter „Schnitt“ im Archiv heißt jetzt „Schnitt / Ansicht“, wie in Dateien, weil er auch Ansichten findet."
   },
   {
+    "en": "The Steckbrief shows the Gebäudeklasse with how it was worked out, which OIB-Richtlinien apply, and the values Piloti found in one table. Pointing at a source shows the passage on its page.",
+    "de": "Der Steckbrief zeigt in einer Tabelle die Gebäudeklasse samt Herleitung, die geltenden OIB-Richtlinien und die von Piloti ermittelten Werte. Wenn Sie mit der Maus auf eine Quelle zeigen, wird die Passage auf der entsprechenden Seite angezeigt."
+  },
+  {
     "en": "The address field in the new project dialog suggests Austrian addresses as you type and fills in the Bundesland.",
     "de": "Das Adressfeld im Dialog für ein neues Projekt schlägt während der Eingabe österreichische Adressen vor und füllt das Bundesland automatisch aus."
+  },
+  {
+    "en": "The address in the new-project dialog keeps what you type. Before, it turned into a Bundesland list after three letters and dropped the text.",
+    "de": "Die Adresse im Dialog für ein neues Projekt behält Ihre Eingabe bei. Bisher wurde nach drei Buchstaben eine Liste der Bundesländer angezeigt und der Text gelöscht."
   },
   {
     "en": "The answer details now open by themselves when an answer carries something that must not be missed: research that was cut short, removed evidence or low confidence.",
@@ -3148,6 +3176,10 @@
     "de": "Fehler beim Hochladen stehen jetzt in Ihrer Sprache und in einem Satz: zu groß, falscher Dateityp, bereits vorhanden oder kein Platz mehr. Bisher stand mitten in der deutschen Meldung ein englischer Nebensatz."
   },
   {
+    "en": "Upload problems, such as a file that is too large or a full storage, are now named in your language.",
+    "de": "Upload-Probleme wie eine zu große Datei oder fehlender Speicherplatz werden jetzt in Ihrer Sprache angezeigt."
+  },
+  {
     "en": "Uploaded files get their tags for document type and discipline faster and more accurately. A discipline such as Brandschutz is only assigned when the document is actually about it.",
     "de": "Hochgeladene Dateien bekommen ihre Schlagwörter für Dokumenttyp und Fachbereich schneller und treffsicherer. Ein Fachbereich wie Brandschutz wird nur vergeben, wenn das Dokument tatsächlich davon handelt."
   },
@@ -3376,6 +3408,10 @@
     "de": "Sobald alles gelesen ist, was ein Upload gebracht hat, meldet es Ihr Postfach – mit einer Zusammenfassung, was angekommen ist, wo es abgelegt wurde, was jede Datei ist und was zurückgehalten wurde oder fehlgeschlagen ist. Die Projekteinstellungen listen jeden Upload mit seinem Ergebnis und der Person, die ihn hochgeladen hat."
   },
   {
+    "en": "When reading a project's documents stops before it finishes, the person who started it now gets a Postfach entry saying so, instead of nothing.",
+    "de": "Wenn das Einlesen der Projektdokumente vorzeitig abbricht, erhält die Person, die es gestartet hat, jetzt einen entsprechenden Eintrag im Postfach statt gar keiner Nachricht."
+  },
+  {
     "en": "When something fails, the error message now carries a short reference for support that you can copy with one click.",
     "de": "Schlägt etwas fehl, nennt die Fehlermeldung jetzt eine kurze Referenz für den Support, die sich mit einem Klick kopieren lässt."
   },
@@ -3456,6 +3492,14 @@
     "de": "Wenn Sie eine neue Frage senden, während Piloti noch die vorherige beantwortet, wird die frühere Antwort vollständig beendet, bevor die neue beginnt. So können sich die beiden nicht mehr in einer Unterhaltung vermischen. Falls die frühere Antwort ausnahmsweise nicht innerhalb weniger Sekunden stoppt, teilt Piloti Ihnen mit, dass sie noch abgeschlossen wird, und bittet Sie, die Frage erneut zu senden."
   },
   {
+    "en": "When you set up a project, the questions step now also names the documents its location calls for, such as the Grundbuchauszug or the Flächenwidmungs- und Bebauungsplan, with the reason for your Bundesland. Hand each document in right at its entry, answer directly, or mark it as not known, and the step counts what is done.",
+    "de": "Beim Anlegen eines Projekts nennt der Schritt „Fragen“ jetzt auch die für den Standort erforderlichen Unterlagen, etwa den Grundbuchauszug oder den Flächenwidmungs- und Bebauungsplan, und erklärt, warum sie in Ihrem Bundesland benötigt werden. Laden Sie jedes Dokument direkt beim entsprechenden Eintrag hoch, beantworten Sie die Frage direkt oder markieren Sie sie als nicht bekannt. Der Schritt zeigt an, was bereits erledigt ist."
+  },
+  {
+    "en": "When you set up a project, you see the project folder as a tree before anything is uploaded and switch whole folders on or off, with backups and old states proposed off. Beside it you see what the office's sensitive-data list holds back, can change that list for this project, and restrict a folder before its files arrive.",
+    "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
+  },
+  {
     "en": "When you share a chat that drew on a restricted folder, Piloti offers only colleagues who may read all of those folders, and shows the others greyed out with \"Has no access to a folder this chat draws on\". It never names the folder.",
     "de": "Wenn Sie einen Chat teilen, der aus einem eingeschränkten Ordner geschöpft hat, bietet Piloti nur Kolleginnen und Kollegen an, die alle diese Ordner lesen dürfen, und zeigt die anderen ausgegraut mit „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat stammt“. Den Ordner nennt es nie."
   },
@@ -3494,6 +3538,10 @@
   {
     "en": "Where an office has upload screening switched on, Piloti checks the text of each upload on its servers before any AI model reads it. A file the check holds back waits in Quarantine, where no model reads it, until an office or project admin releases or deletes it under Organization → Quarantine.",
     "de": "Wo eine Organisation die Prüfung von Uploads eingeschaltet hat, prüft Piloti den Text jedes Uploads auf Pilotis Servern, bevor ein KI-Modell ihn liest. Eine Datei, die die Prüfung zurückhält, wartet unter Organisation → Quarantäne, wo kein Modell sie liest, bis ein Büro- oder Projekt-Admin sie freigibt oder löscht."
+  },
+  {
+    "en": "While Piloti reads a new project's documents, the setup shows how far it has got: the site, how many documents are read, and the values, contradictions and gaps found so far. You can leave and ask the project chat meanwhile; your Postfach tells you when Piloti is done.",
+    "de": "Während Piloti die Dokumente eines neuen Projekts liest, zeigt das Setup den aktuellen Stand: das Grundstück, die Anzahl der bereits gelesenen Dokumente sowie die bisher gefundenen Werte, Widersprüche und Lücken. Sie können die Ansicht verlassen und in der Zwischenzeit den Projekt-Chat befragen; Ihr Postfach informiert Sie, wenn Piloti fertig ist."
   },
   {
     "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
@@ -3538,6 +3586,10 @@
   {
     "en": "Whole folders can now be uploaded, with Ordner hochladen or by dragging the folder onto the file list, with every level beneath it. Files Piloti cannot read are rejected one by one, not the whole folder.",
     "de": "Ganze Ordner lassen sich jetzt hochladen, über „Ordner hochladen“ oder per Drag & Drop, mit allen Ebenen darunter. Was Piloti nicht lesen kann, wird einzeln abgelehnt statt des ganzen Ordners."
+  },
+  {
+    "en": "With no project yet, the projects page shows one button to create the first project instead of two.",
+    "de": "Wenn noch kein Projekt vorhanden ist, wird auf der Projektseite statt zwei Schaltflächen nur eine zum Erstellen des ersten Projekts angezeigt."
   },
   {
     "en": "Word, Excel and PowerPoint files now open in the document viewer as a PDF preview, and a reference to one opens that preview instead of only offering a download. Download still gives you the original file, unchanged.",
