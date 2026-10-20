@@ -16,7 +16,7 @@ import type { FilingFolderSuggestion } from '@/features/documents/lib/filing-sug
 import { useTranslations, type Translator } from '@/i18n'
 import type { IntakeDecision, IntakeView } from '@/lib/project-intake/types'
 import { usePressed } from '../hooks/use-pressed'
-import { CompletedNote } from './complete-footer'
+import { CompletedNote } from './completed-note'
 import { EvidenceProjectContext } from './evidence-chips'
 import { SetupBar, SetupFooter, StepFooterProvider, useStepFooterChannel } from './setup-frame'
 import { FilingStep } from './steps/filing-step'

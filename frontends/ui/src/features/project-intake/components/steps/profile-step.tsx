@@ -1,15 +1,18 @@
 'use client'
 
 import type { JSX } from 'react'
-import { useRef } from 'react'
+import { useState } from 'react'
+import { BusyButton } from '@/components/ui/busy-button'
+import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
-import { CompleteFooter } from '../complete-footer'
-import { ContradictionSection } from '../contradiction-section'
-import { DerivationSection } from '../derivation-section'
-import { DecisiveSection } from '../profile/decisive-section'
-import { RulesSection } from '../profile/rules-section'
-import { ReadingSkeleton } from '../reading-skeleton'
-import { ReviewSection } from '../review-section'
+import type { ClosingIntent, IntakeView } from '@/lib/project-intake/types'
+import { usePressed } from '../../hooks/use-pressed'
+import { formatMonth } from '../completed-note'
+import { ClassCard } from '../profile/class-card'
+import { FindingsCard } from '../profile/findings-card'
+import { RulesCard } from '../profile/rules-card'
+import { PRIMARY_ACTION_CLASS, StepFooter } from '../setup-frame'
 import type { SetupStepProps } from './types'
 
 export interface ProfileStepProps extends SetupStepProps {
@@ -17,44 +20,124 @@ export interface ProfileStepProps extends SetupStepProps {
 }
 
 /**
- * Step 5, Steckbrief (ticket 26, `docs/design/project-setup-five-steps.md`), in
- * the ticket's order: Widersprüche first; then the values that decide a
- * Gebäudeklasse, one by one; then the rest by topic, taken in one go after
- * discarding what is wrong; then the derivations (the class per Bauwerk, the
- * Hochhaus) to confirm; then which Richtlinien apply, computed from what is
- * confirmed; and the finish, which says what stays open and where it goes.
- * Every value carries its source, its confidence in words and the excerpt of
- * the page it was read from.
+ * Step 5, Steckbrief (ticket 26, `docs/design/project-setup-five-steps.md`):
+ * the result first, then the evidence. On top the Gebäudeklasse, big, with why
+ * in one line and a confirm, and beside it which OIB-Richtlinien apply; under
+ * them one table of what Piloti found, each value with the place it stands and
+ * its page on a peek. The few values that decide the most are shown, the rest
+ * fold away by topic, and every open one can be taken at once.
  *
- * Nothing here is set for the person: each value is a suggestion until they
- * take it, the class included („Vorschlagen, nicht setzen“).
+ * Contradictions are decided in the Rückfragen; one quiet line points there
+ * while any is open. Nothing here is set for the person: what nobody confirms
+ * stays a suggestion („Vorschlagen, nicht setzen“), which is what the footer
+ * says beside the one way on, „Einrichtung abschließen".
  */
-export function ProfileStep({ view, canDecide, busy, onDecide, onComplete, onGoTo }: ProfileStepProps): JSX.Element {
+export function ProfileStep({ view, projectId, canDecide, busy, onDecide, onComplete, onGoTo }: ProfileStepProps): JSX.Element {
   const t = useTranslations('intakeProfileStep')
-  const top = useRef<HTMLDivElement | null>(null)
   const decide = { canDecide, busy, onDecide }
-  // A Rückfrage is answered in its own step; a contradiction here, at the top.
-  const resolve = () => {
-    if (view.questions.length > 0) onGoTo('questions')
-    else top.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' })
-  }
+  const finished = view.status === 'completed'
   return (
-    <div className="space-y-8" data-testid="setup-step-profile">
-      <div ref={top} className="scroll-mt-24">
-        <ContradictionSection items={view.contradictions} {...decide} />
+    <div className="mx-auto w-full max-w-[1040px]" data-testid="setup-step-profile">
+      <h1 className="sr-only">{t('heading')}</h1>
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] md:gap-5">
+        <ClassCard derivations={view.derivations} onAnswer={() => onGoTo('questions')} {...decide} />
+        <RulesCard view={view} />
       </div>
-      <DecisiveSection groups={view.groups} {...decide} />
-      <ReviewSection
-        groups={view.groups}
-        apart
-        label={t('rest.heading')}
-        description={t('rest.description')}
-        {...decide}
-      />
-      {view.status === 'reading' && <ReadingSkeleton />}
-      <DerivationSection derivations={view.derivations} {...decide} />
-      <RulesSection view={view} />
-      <CompleteFooter view={view} busy={busy} onComplete={onComplete} onResolve={resolve} />
+      {view.contradictions.length > 0 && (
+        <p className="text-muted-foreground mt-4 flex flex-wrap items-center gap-x-2 text-[13px] md:mt-5" data-testid="profile-contradictions">
+          <span>{t('contradictions.open', { count: view.contradictions.length })}</span>
+          <Button type="button" variant="inline" className="min-h-11 text-[13px] md:min-h-0" onClick={() => onGoTo('questions')}>
+            {t('contradictions.resolve')}
+          </Button>
+        </p>
+      )}
+      <div className="mt-4 md:mt-5">
+        <FindingsCard
+          projectId={projectId}
+          groups={view.groups}
+          derivations={view.derivations}
+          reading={view.status === 'reading'}
+          editable={!finished}
+          {...decide}
+        />
+      </div>
+      <FinishFooter view={view} busy={busy} onComplete={onComplete} />
     </div>
   )
+}
+
+/** Nothing for a person to look at yet: no value, no contradiction, no question. */
+function nothingToReview(view: IntakeView): boolean {
+  return view.counts.suggested === 0 && view.contradictions.length === 0 && view.questions.length === 0
+}
+
+/** Whether the setup can be finished from here: not yet finished, allowed, and something read or the reading done. */
+export function canFinish(view: IntakeView): boolean {
+  if (view.status === 'completed' || !view.canComplete) return false
+  return view.status === 'ready' || !nothingToReview(view)
+}
+
+/**
+ * The footer: the note that nothing unconfirmed is lost, and „Einrichtung
+ * abschließen". Finishing an ongoing project only ends the setup, so it goes
+ * at once; finishing a past one closes the project with its outcome and
+ * period, so that asks first.
+ */
+function FinishFooter({
+  view,
+  busy,
+  onComplete,
+}: {
+  view: IntakeView
+  busy: boolean
+  onComplete: () => Promise<boolean>
+}): JSX.Element {
+  const t = useTranslations('intakeProfileStep')
+  const tIntake = useTranslations('projectIntake')
+  const [finishing, finish] = usePressed()
+  const [asking, setAsking] = useState(false)
+  const closing = view.closing
+  const primary = canFinish(view) ? (
+    <BusyButton
+      type="button"
+      className={PRIMARY_ACTION_CLASS}
+      busy={finishing}
+      blocked={busy}
+      busyLabel={tIntake('busy.complete')}
+      onClick={() => (closing ? setAsking(true) : finish(onComplete))}
+      data-testid="profile-finish"
+    >
+      {t('finish.button')}
+    </BusyButton>
+  ) : undefined
+  return (
+    <>
+      <StepFooter primary={primary} note={primary ? t('finish.note') : undefined} />
+      {closing && (
+        <ConfirmDialog
+          open={asking}
+          onOpenChange={setAsking}
+          title={t('finish.closingTitle')}
+          description={<ClosingDescription closing={closing} />}
+          confirmLabel={t('finish.confirm')}
+          cancelLabel={t('finish.cancel')}
+          tone="warning"
+          pending={busy}
+          onConfirm={async () => {
+            if (await onComplete()) setAsking(false)
+          }}
+        />
+      )}
+    </>
+  )
+}
+
+function ClosingDescription({ closing }: { closing: ClosingIntent }): JSX.Element {
+  const t = useTranslations('intakeProfileStep')
+  const tIntake = useTranslations('projectIntake')
+  const tProjects = useTranslations('projects')
+  const period = closing.startedOn
+    ? tIntake('complete.period', { from: formatMonth(closing.startedOn), to: formatMonth(closing.endedOn) })
+    : tIntake('complete.periodEnd', { to: formatMonth(closing.endedOn) })
+  return <>{t('finish.closingDescription', { outcome: tProjects(`lifecycle.outcome.${closing.outcome}`), period })}</>
 }

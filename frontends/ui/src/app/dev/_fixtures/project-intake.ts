@@ -100,7 +100,7 @@ export const SUGGESTION_STOREYS = suggestion(
   }
 )
 
-export const SUGGESTION_ESCAPE_LEVEL = suggestion('fluchtniveau_m@bw1', 'Fluchtniveau (Zielzustand)', 18.4, '18.4 m', {
+export const SUGGESTION_ESCAPE_LEVEL = suggestion('fluchtniveau_m@bw1', 'Fluchtniveau (Zielzustand)', 18.4, '18,4 m', {
   decisive: true,
   evidence: [fromDocument(SCHNITT, 1, 'Fluchtniveau +18,40 m über Gelände')],
 })

@@ -1,0 +1,228 @@
+'use client'
+
+import type { JSX, ReactNode } from 'react'
+import { useState } from 'react'
+import { Check } from 'lucide-react'
+import { BusyButton } from '@/components/ui/busy-button'
+import { Button } from '@/components/ui/button'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { useTranslations } from '@/i18n'
+import type { DerivationReview, IntakeDecision } from '@/lib/project-intake/types'
+import { cn } from '@/lib/utils'
+import { usePressed } from '../../hooks/use-pressed'
+import { bauwerkNumber, displayValue, keyLabel } from '../../lib/display'
+import { leadDerivation, reasonInputs, shortLabel } from './steckbrief'
+
+interface ClassCardProps {
+  derivations: readonly DerivationReview[]
+  canDecide: boolean
+  busy: boolean
+  onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
+  /** Go to the Rückfragen, where a missing input is asked. */
+  onAnswer: () => void
+}
+
+/**
+ * The Gebäudeklasse as a result: the class big, why in one line, and the one
+ * thing to do with it, confirm it („Vorschlagen, nicht setzen“). How it was
+ * worked out (every input, which ones only suggested, the Fundstelle) folds
+ * open under „Wie gerechnet?". With several Bauwerke a switch picks which
+ * one's class is shown; a Hochhaus has none, and a class still open says
+ * what it lacks and where that is asked.
+ */
+export function ClassCard({ derivations, canDecide, busy, onDecide, onAnswer }: ClassCardProps): JSX.Element {
+  const t = useTranslations('intakeProfileStep')
+  const tIntake = useTranslations('projectIntake')
+  const lead = leadDerivation(derivations)
+  const [chosen, setChosen] = useState<string | null>(null)
+  const derivation = derivations.find((candidate) => candidate.bauwerkId === chosen) ?? lead
+  return (
+    <section
+      aria-label={t('class.label')}
+      className="bg-card border-border flex min-w-0 flex-col justify-center gap-3 rounded-[14px] border px-4 py-4 md:px-[22px] md:py-5"
+      data-testid="profile-class"
+    >
+      {derivation ? (
+        <ClassResult
+          derivation={derivation}
+          canDecide={canDecide}
+          busy={busy}
+          onDecide={onDecide}
+          onAnswer={onAnswer}
+          switcher={
+            derivations.length > 1 ? (
+              <ToggleGroup
+                type="single"
+                size="sm"
+                segmented
+                value={derivation.bauwerkId}
+                onValueChange={(value) => value && setChosen(value)}
+                aria-label={t('class.bauwerke')}
+                className="shrink-0"
+              >
+                {derivations.map((candidate) => (
+                  <ToggleGroupItem key={candidate.bauwerkId} value={candidate.bauwerkId} className="h-7 px-2 text-xs">
+                    {tIntake('derivations.bauwerk', { number: bauwerkNumber(candidate.bauwerkId) })}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+            ) : null
+          }
+        />
+      ) : (
+        <div className="flex items-center gap-4 md:gap-5">
+          <ClassTile value={null} />
+          <div className="min-w-0">
+            <p className="text-base font-semibold">{t('class.open')}</p>
+            <p className="text-muted-foreground mt-1 text-[13px] leading-snug">{t('class.none')}</p>
+          </div>
+        </div>
+      )}
+    </section>
+  )
+}
+
+/** The big tile: ink for a class, quiet while it is open. */
+function ClassTile({ value, hochhaus = false }: { value: number | null; hochhaus?: boolean }): JSX.Element {
+  const t = useTranslations('intakeProfileStep')
+  const known = value !== null || hochhaus
+  return (
+    <div
+      aria-hidden
+      className={cn(
+        'flex size-[72px] shrink-0 flex-col items-center justify-center rounded-2xl md:size-[84px]',
+        known ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground border-border border border-dashed',
+      )}
+    >
+      {!hochhaus && <span className="text-[11px] tracking-[0.06em] opacity-70">{t('class.eyebrow')}</span>}
+      <span className="text-[30px] font-semibold leading-none md:text-4xl">
+        {hochhaus ? t('class.hochhausTile') : (value ?? '–')}
+      </span>
+    </div>
+  )
+}
+
+function useReason(derivation: DerivationReview): string {
+  const t = useTranslations('intakeProfileStep')
+  if (derivation.hochhaus) return t('class.hochhausReason')
+  if (derivation.value === null) {
+    if (derivation.missing.length === 0) return t('class.none')
+    return t('class.missing', { inputs: derivation.missing.map((key) => shortLabel(keyLabel(key))).join(', ') })
+  }
+  return reasonInputs(derivation)
+    .map(({ base, key, value }) => {
+      if (base === 'einheiten_ueber_400') {
+        return value === true ? t('class.reason.einheiten_ueber_400') : t('class.reason.einheiten_ueber_400_none')
+      }
+      return t(`class.reason.${base}`, { value: displayValue(key, value) })
+    })
+    .join(' · ')
+}
+
+function ClassResult({
+  derivation,
+  canDecide,
+  busy,
+  onDecide,
+  onAnswer,
+  switcher,
+}: Omit<ClassCardProps, 'derivations'> & { derivation: DerivationReview; switcher: ReactNode }): JSX.Element {
+  const t = useTranslations('intakeProfileStep')
+  const tIntake = useTranslations('projectIntake')
+  const [confirming, confirm] = usePressed()
+  const [open, setOpen] = useState(false)
+  const reason = useReason(derivation)
+  const suggestion = derivation.suggestion
+  const bauwerk = tIntake('derivations.bauwerk', { number: bauwerkNumber(derivation.bauwerkId) })
+  const title = derivation.hochhaus
+    ? t('class.hochhaus')
+    : derivation.value === null
+      ? t('class.open')
+      : t('class.title', { value: derivation.value })
+  const unconfirmed = derivation.inputs.filter((input) => input.suggested).length
+  const missingAsked = derivation.value === null && !derivation.hochhaus && derivation.missing.length > 0
+
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} data-testid={`profile-class-${derivation.bauwerkId}`}>
+      <div className="flex items-center gap-4 md:gap-5">
+        <ClassTile value={derivation.value} hochhaus={derivation.hochhaus} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+            <p className="text-base font-semibold" data-testid="profile-class-title">
+              {title}
+            </p>
+            {switcher}
+          </div>
+          <p className="text-muted-foreground mt-1 text-[13px] leading-snug" data-testid="profile-class-reason">
+            {reason}
+          </p>
+          {derivation.value !== null && (
+            <p className="text-muted-foreground mt-0.5 truncate text-[13px] leading-snug" title={derivation.citation}>
+              {derivation.citation}
+            </p>
+          )}
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+            {canDecide && suggestion?.state === 'suggested' && (
+              <BusyButton
+                type="button"
+                size="sm"
+                variant="outline"
+                className="bg-card h-[30px] px-2.5 text-[13px]"
+                busy={confirming}
+                blocked={busy}
+                busyLabel={tIntake('busy.confirm')}
+                aria-label={t('class.confirmAria', { value: derivation.value ?? '', bauwerk })}
+                onClick={() => confirm(() => onDecide([{ key: suggestion.key, action: 'confirm' }]))}
+              >
+                {t('class.confirm')}
+              </BusyButton>
+            )}
+            {suggestion?.state === 'confirmed' && (
+              <span className="text-success flex items-center gap-1.5 text-xs" data-testid="profile-class-confirmed">
+                <Check className="size-3" strokeWidth={3} aria-hidden />
+                {t('class.confirmed')}
+              </span>
+            )}
+            {missingAsked && (
+              <Button type="button" variant="inline" className="min-h-11 text-[13px] md:min-h-0" onClick={onAnswer}>
+                {t('class.answer')}
+              </Button>
+            )}
+            {derivation.inputs.length > 0 && (
+              <CollapsibleTrigger asChild>
+                <Button type="button" variant="inline" className="text-muted-foreground min-h-11 text-[13px] font-normal md:min-h-0">
+                  {open ? t('class.howHide') : t('class.how')}
+                </Button>
+              </CollapsibleTrigger>
+            )}
+          </div>
+        </div>
+      </div>
+      <CollapsibleContent data-testid="profile-class-working">
+        <div className="border-border mt-4 space-y-2 border-t pt-3 text-[13px]">
+          <p className="text-muted-foreground text-[11px] uppercase tracking-[0.06em]">{t('class.inputs')}</p>
+          <ul className="space-y-1">
+            {derivation.inputs.map((input) => (
+              <li key={input.key} className="flex items-baseline justify-between gap-3">
+                <span className="text-muted-foreground min-w-0 truncate">{shortLabel(keyLabel(input.key))}</span>
+                <span className="shrink-0 font-medium">
+                  {displayValue(input.key, input.value)}
+                  {input.suggested && (
+                    <span className="text-muted-foreground font-normal"> · {t('class.suggestedMark')}</span>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+          {suggestion?.state === 'suggested' && unconfirmed > 0 && (
+            <p className="text-muted-foreground" data-testid="derivation-unconfirmed-inputs">
+              {t('derivations.basedOnSuggested', { count: unconfirmed })}
+            </p>
+          )}
+          <p className="text-muted-foreground text-xs">{derivation.citation}</p>
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  )
+}

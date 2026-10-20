@@ -1,9 +1,12 @@
 /**
- * Step 5, Steckbrief, from its fixtures: the ticket's order (contradictions,
- * the decisive values one by one, the rest at once, the derivations, the rule
- * set's Ampel, the finish), each value's confidence in words, and the exact
- * decisions each control sends.
+ * Step 5, Steckbrief, from its fixtures, inside the setup's footer as the page
+ * draws it: the Gebäudeklasse as a result with its working folded, the Ampel
+ * as chips with their reasons in words, one table of what Piloti found (the
+ * decisive rows up front, the rest by topic, each source peeking its page),
+ * the line to the Rückfragen while a contradiction is open, and the one way
+ * on, „Einrichtung abschließen", with the exact decisions each control sends.
  */
+import type { JSX } from 'react'
 import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -13,9 +16,10 @@ import {
   PROFILE_READONLY,
   PROFILE_REVIEW,
 } from '@/app/dev/_fixtures/project-setup-profile'
-import { INTAKE_CLOSING, INTAKE_READING, INTAKE_READY } from '@/app/dev/_fixtures/project-intake'
+import { INTAKE_CLOSING, INTAKE_READING } from '@/app/dev/_fixtures/project-intake'
 import type { IntakeView } from '@/lib/project-intake/types'
-import { ProfileStep } from './profile-step'
+import { SetupFooter, StepFooterProvider, useStepFooterChannel } from '../setup-frame'
+import { ProfileStep, type ProfileStepProps } from './profile-step'
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
@@ -23,13 +27,23 @@ const onDecide = vi.fn()
 const onComplete = vi.fn()
 const onGoTo = vi.fn()
 
+function Framed(props: ProfileStepProps): JSX.Element {
+  const footer = useStepFooterChannel()
+  return (
+    <StepFooterProvider value={footer.channel}>
+      <ProfileStep {...props} />
+      <SetupFooter step="profile" progress={footer.progress} ownsPrimary={footer.ownsPrimary} slotRef={footer.slotRef} />
+    </StepFooterProvider>
+  )
+}
+
 function setup(view: IntakeView, { busy = false }: { busy?: boolean } = {}) {
   return render(
-    <ProfileStep
+    <Framed
       view={view}
       projectId={view.projectId}
       busy={busy}
-      canDecide={view.canDecide}
+      canDecide={view.canDecide && view.status !== 'completed'}
       canUpload
       uploading={false}
       onDecide={onDecide}
@@ -41,12 +55,10 @@ function setup(view: IntakeView, { busy = false }: { busy?: boolean } = {}) {
   )
 }
 
-const follows = (ids: string[]) => {
-  const nodes = ids.map((id) => screen.getByTestId(id))
-  nodes.slice(1).forEach((node, index) => {
-    expect(nodes[index].compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING, `${ids[index]} before ${ids[index + 1]}`).toBeTruthy()
-  })
-}
+const rows = (testId = 'profile-findings-top'): string[] =>
+  [...screen.getByTestId(testId).querySelectorAll('[data-testid^="profile-finding-"]')].map(
+    (row) => row.getAttribute('data-testid')?.replace('profile-finding-', '') ?? ''
+  )
 
 describe('ProfileStep', () => {
   beforeEach(() => {
@@ -55,319 +67,221 @@ describe('ProfileStep', () => {
     onComplete.mockResolvedValue(true)
   })
 
-  it('shows the Steckbrief in the ticket’s order', () => {
-    setup(PROFILE_REVIEW)
-    follows([
-      'intake-contradictions',
-      'profile-decisive',
-      'intake-review',
-      'intake-derivations',
-      'profile-rules',
-      'intake-complete',
-    ])
+  describe('the Gebäudeklasse', () => {
+    it('shows the class as a result with why in one line, and takes it on its own', async () => {
+      setup(PROFILE_REVIEW)
+      const card = screen.getByTestId('profile-class')
+      expect(within(card).getByTestId('profile-class-title')).toHaveTextContent('Gebäudeklasse 5')
+      expect(within(card).getByTestId('profile-class-reason')).toHaveTextContent(
+        'Escape level 18,4 m · 6 storeys above ground · 14 units'
+      )
+      await userEvent.click(within(card).getByRole('button', { name: 'Confirm Gebäudeklasse 5 for Building 1' }))
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
+    })
+
+    it('folds the working: every input, which are only suggested, and what it rests on', async () => {
+      setup(PROFILE_REVIEW)
+      expect(screen.queryByTestId('derivation-unconfirmed-inputs')).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: 'How was it worked out?' }))
+      const working = screen.getByTestId('profile-class-working')
+      expect(working).toHaveTextContent('Fluchtniveau')
+      expect(working).toHaveTextContent('18,4 m · suggestion')
+      expect(within(working).getByTestId('derivation-unconfirmed-inputs')).toHaveTextContent(
+        'Rests on 4 values nobody has confirmed yet.'
+      )
+    })
+
+    it('switches between Bauwerke, and sends an open class to the questions', async () => {
+      setup(PROFILE_REVIEW)
+      await userEvent.click(screen.getByRole('radio', { name: 'Building 2' }))
+      const card = screen.getByTestId('profile-class-bw2')
+      expect(within(card).getByTestId('profile-class-title')).toHaveTextContent('Gebäudeklasse still open')
+      expect(within(card).getByTestId('profile-class-reason')).toHaveTextContent('Still missing:')
+      await userEvent.click(within(card).getByRole('button', { name: 'Answer the questions' }))
+      expect(onGoTo).toHaveBeenCalledWith('questions')
+    })
+
+    it('says a confirmed class is confirmed, and offers no confirm again', () => {
+      setup(PROFILE_CONFIRMED)
+      expect(screen.getByTestId('profile-class-confirmed')).toHaveTextContent('Confirmed')
+      expect(screen.queryByRole('button', { name: /^Confirm Gebäudeklasse/ })).toBeNull()
+    })
+
+    it('says a high-rise has no class, and requires OIB-RL 2.3', () => {
+      setup(PROFILE_HOCHHAUS)
+      expect(screen.getByTestId('profile-class-title')).toHaveTextContent('High-rise')
+      expect(screen.getByTestId('profile-class-reason')).toHaveTextContent('OIB-RL 2.3 applies')
+      expect(screen.getByTestId('profile-rule-OIB 2.3')).toHaveAttribute('data-status', 'required')
+    })
   })
 
-  it('puts each decisive suggestion on a card of its own, and not again among the rest', () => {
-    setup(PROFILE_REVIEW)
-    const decisive = screen.getByTestId('profile-decisive')
-    const cards = [...decisive.querySelectorAll('[data-testid^="profile-decisive-"]')]
-    expect(cards.map((card) => card.getAttribute('data-testid'))).toEqual([
-      'profile-decisive-fluchtniveau_m@bw1',
-      'profile-decisive-nutzungseinheiten@bw1',
-    ])
-    const rest = screen.getByTestId('intake-review')
-    expect(within(rest).queryByTestId('intake-suggestion-fluchtniveau_m@bw1')).toBeNull()
-    expect(within(rest).queryByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).toBeNull()
-    expect(within(rest).getByTestId('intake-suggestion-oib_ausgabe')).toBeInTheDocument()
+  describe('what applies', () => {
+    it('shows each Richtlinie as a chip, its verdict in the dot, and what it was worked out from', () => {
+      setup(PROFILE_REVIEW)
+      expect(screen.getByRole('button', { name: 'OIB 2 Fire safety, applies' })).toHaveAttribute('data-status', 'required')
+      expect(screen.getByRole('button', { name: 'OIB 5 Sound, probably' })).toHaveAttribute('data-status', 'likely')
+      expect(screen.getByTestId('profile-rules-basis')).toHaveTextContent('Worked out from 2 confirmed values.')
+      expect(screen.getByTestId('profile-rules-basis')).toHaveTextContent('Not legal advice.')
+    })
+
+    it('peeks why a Richtlinie applies in the reader’s words, with the Richtlinie and a question to Piloti', async () => {
+      setup(PROFILE_REVIEW)
+      screen.getByRole('button', { name: 'OIB 5 Sound, probably' }).focus()
+      expect(await screen.findByText('Sound protection usually applies.')).toBeInTheDocument()
+      expect(screen.queryByText('Sound protection typically applies.')).toBeNull()
+      expect(screen.getByRole('link', { name: /Ask Piloti/ })).toHaveAttribute(
+        'href',
+        expect.stringContaining(`/app/projects/${PROFILE_REVIEW.projectId}/chat?ask=`)
+      )
+    })
   })
 
-  it('takes a decisive value on its own, and the rest in one call without it', async () => {
-    setup(PROFILE_REVIEW)
-    await userEvent.click(screen.getByRole('button', { name: 'Use 18.4 m for Fluchtniveau (Zielzustand)' }))
-    expect(onDecide).toHaveBeenLastCalledWith([{ key: 'fluchtniveau_m@bw1', action: 'confirm' }])
+  describe('what Piloti found', () => {
+    it('shows the most decisive few, the class’s inputs first, and never a contested value', () => {
+      setup(PROFILE_REVIEW)
+      expect(rows()).toEqual([
+        'fluchtniveau_m@bw1',
+        'nutzungseinheiten@bw1',
+        'bauwerkstyp@bw1',
+        'gebaeudestellung@bw1',
+        'oib_ausgabe',
+      ])
+      expect(screen.queryByTestId('profile-finding-geschosse_oberirdisch@bw1')).toBeNull()
+      expect(screen.getByTestId('profile-findings-counts')).toHaveTextContent('7 values · 2 confirmed')
+    })
 
-    await userEvent.click(screen.getByRole('button', { name: /Discard 14 for Anzahl Nutzungseinheiten/ }))
-    expect(onDecide).toHaveBeenLastCalledWith([{ key: 'nutzungseinheiten@bw1', action: 'dismiss' }])
+    it('folds the rest by topic behind one link', async () => {
+      setup(PROFILE_REVIEW)
+      expect(screen.queryByTestId('profile-topic-A')).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: 'See all 7 values by topic' }))
+      const topic = screen.getByTestId('profile-topic-A')
+      expect(topic).toHaveTextContent('Projektbasis')
+      expect(within(topic).getByTestId('profile-finding-standort_adresse')).toHaveTextContent('By you')
+      expect(within(topic).getByTestId('profile-finding-projektphase')).toHaveTextContent('Your answer')
+    })
 
-    await userEvent.click(screen.getByRole('button', { name: 'Use 3 remaining values' }))
-    expect(onDecide).toHaveBeenLastCalledWith([
-      { key: 'oib_ausgabe', action: 'confirm' },
-      { key: 'bauwerkstyp@bw1', action: 'confirm' },
-      { key: 'gebaeudestellung@bw1', action: 'confirm' },
-    ])
+    it('takes or discards one value, and takes every open one at once', async () => {
+      setup(PROFILE_REVIEW)
+      await userEvent.click(screen.getByRole('button', { name: 'Use 18,4 m for Fluchtniveau' }))
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'fluchtniveau_m@bw1', action: 'confirm' }])
+      await userEvent.click(screen.getByRole('button', { name: 'Discard 2023 for OIB-Ausgabe' }))
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
+      await userEvent.click(screen.getByRole('button', { name: 'Use all 5 open' }))
+      expect(onDecide).toHaveBeenLastCalledWith([
+        { key: 'oib_ausgabe', action: 'confirm' },
+        { key: 'bauwerkstyp@bw1', action: 'confirm' },
+        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
+        { key: 'gebaeudestellung@bw1', action: 'confirm' },
+        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
+      ])
+    })
+
+    it('names the source without its file type, and shows its quote when it is focused', async () => {
+      setup(PROFILE_REVIEW)
+      const row = screen.getByTestId('profile-finding-fluchtniveau_m@bw1')
+      const source = within(row).getByRole('button', { name: 'Source of Fluchtniveau: E-02 Schnitt A-A · p. 1' })
+      expect(source).toHaveTextContent('+1')
+      source.focus()
+      const panel = await screen.findByTestId('source-peek-panel')
+      expect(panel).toHaveTextContent('Fluchtniveau +18,40 m über Gelände')
+      expect(within(panel).getByTestId('page-excerpt')).toBeInTheDocument()
+      expect(within(panel).queryByTestId('evidence-chips')).toBeNull()
+    })
+
+    it('offers the document itself once the source is pinned', async () => {
+      setup(PROFILE_REVIEW)
+      const row = screen.getByTestId('profile-finding-nutzungseinheiten@bw1')
+      await userEvent.click(within(row).getByTestId('source-peek'))
+      const panel = await screen.findByTestId('source-peek-panel')
+      const chips = within(panel).getByTestId('evidence-chips')
+      expect(chips).toHaveTextContent('Baubeschreibung.pdf, p. 4')
+      expect(chips).toHaveTextContent('Wohnungsliste.xlsx')
+    })
+
+    it('names the address search and the person’s answer, with nothing to peek at', async () => {
+      setup(PROFILE_REVIEW)
+      await userEvent.click(screen.getByRole('button', { name: 'See all 7 values by topic' }))
+      expect(screen.getByTestId('profile-finding-standort_adresse')).toHaveTextContent('Address search')
+      expect(within(screen.getByTestId('profile-finding-standort_adresse')).queryByTestId('source-peek')).toBeNull()
+    })
+
+    it('keeps the briefing editor as a quiet way to change everything', () => {
+      setup(PROFILE_REVIEW)
+      expect(screen.getByRole('link', { name: 'Open the briefing editor for this project' })).toHaveAttribute(
+        'href',
+        `/app/projects/${PROFILE_REVIEW.projectId}/intake`
+      )
+    })
   })
 
-  it('says how sure each value is in words, from who confirmed it and how many sources agree', () => {
+  it('points to the Rückfragen while a contradiction is open, instead of a section of its own', async () => {
     setup(PROFILE_REVIEW)
-    expect(screen.getByTestId('profile-decisive-fluchtniveau_m@bw1')).toHaveTextContent('Suggestion, 2 sources agree')
-    expect(screen.getByTestId('intake-suggestion-oib_ausgabe')).toHaveTextContent('Suggestion from one source')
-    expect(screen.getByTestId('intake-suggestion-standort_adresse')).toHaveTextContent('Confirmed')
-    expect(screen.getByTestId('intake-suggestion-projektphase')).toHaveTextContent('Your answer')
-    const contradiction = screen.getByTestId('intake-contradictions')
-    expect(within(contradiction).getAllByText('Suggestion from one source')).toHaveLength(2)
-    expect(screen.queryByText(/%/)).toBeNull()
+    expect(screen.getByTestId('profile-contradictions')).toHaveTextContent('1 contradiction is still open.')
+    await userEvent.click(screen.getByRole('button', { name: 'Resolve it in the questions' }))
+    expect(onGoTo).toHaveBeenCalledWith('questions')
+    expect(screen.queryByRole('button', { name: /Use 7 for/ })).toBeNull()
   })
 
-  it('offers the excerpt of a cited PDF page, and none for a file without pages', () => {
-    setup(PROFILE_REVIEW)
-    const units = screen.getByTestId('profile-decisive-nutzungseinheiten@bw1')
-    expect(within(units).getAllByTestId('page-excerpt-toggle')).toHaveLength(1)
-    expect(within(units).getByRole('button', { name: 'Hide the excerpt of Baubeschreibung.pdf, page 4' })).toBeInTheDocument()
-    const edition = screen.getByTestId('intake-suggestion-oib_ausgabe')
-    expect(within(edition).getByRole('button', { name: 'Show the excerpt of Bescheid.pdf, page 1' })).toHaveAttribute('aria-expanded', 'false')
-    expect(within(edition).queryByTestId('page-excerpt')).toBeNull()
-  })
-
-  it('says what a suggested class rests on before it is taken', async () => {
-    setup(PROFILE_REVIEW)
-    const card = screen.getByTestId('intake-derivation-bw1')
-    expect(within(card).getByTestId('derivation-unconfirmed-inputs')).toHaveTextContent('Rests on 4 values nobody has confirmed yet.')
-    await userEvent.click(within(card).getByRole('button', { name: /Use Gebäudeklasse GK 5 for Building 1/ }))
-    expect(onDecide).toHaveBeenLastCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
-  })
-
-  it('shows the Ampel from the confirmed values, and says what it was computed from', () => {
-    setup(PROFILE_REVIEW)
-    const rules = screen.getByTestId('profile-rules')
-    expect(within(rules).getByTestId('profile-rules-basis')).toHaveTextContent('Worked out from 2 confirmed values.')
-    expect(within(rules).getByTestId('profile-rules-basis')).toHaveTextContent('The Gebäudeklasse is not confirmed yet.')
-    expect(within(rules).getByText('OIB 2')).toBeInTheDocument()
-  })
-
-  it('requires OIB-RL 2.3 for a high-rise, which has no class', () => {
-    setup(PROFILE_HOCHHAUS)
-    expect(screen.getByTestId('intake-derivation-bw1')).toHaveTextContent('High-rise')
-    const rules = screen.getByTestId('profile-rules')
-    expect(within(rules).getByText('OIB 2.3')).toBeInTheDocument()
+  it('has no contradiction line when none is open', () => {
+    setup(PROFILE_CONFIRMED)
+    expect(screen.queryByTestId('profile-contradictions')).toBeNull()
   })
 
   it('lets a reader look without deciding', () => {
     setup(PROFILE_READONLY)
-    for (const id of ['profile-decisive', 'intake-review']) {
-      expect(within(screen.getByTestId(id)).queryByRole('button', { name: /^(Use|Discard) / })).toBeNull()
+    expect(screen.queryByRole('button', { name: /^(Use|Discard|Confirm) / })).toBeNull()
+    expect(screen.getByTestId('profile-finding-fluchtniveau_m@bw1')).toHaveTextContent('Suggestion')
+    expect(screen.queryByTestId('profile-finish')).toBeNull()
+  })
+
+  it('holds every control while a call is in flight, without ever disabling one', async () => {
+    setup(PROFILE_REVIEW, { busy: true })
+    for (const name of ['Use 18,4 m for Fluchtniveau', 'Use all 5 open', 'Confirm Gebäudeklasse 5 for Building 1', 'Finish setup']) {
+      const control = screen.getByRole('button', { name })
+      expect(control).toHaveAttribute('aria-disabled', 'true')
+      expect(control).not.toBeDisabled()
     }
-    const shown = [screen.getByTestId('intake-contradictions'), screen.getByTestId('intake-derivations')]
-    const buttons = shown.flatMap((section) => within(section).queryAllByRole('button', { name: /^(Use|Discard) / }))
-    expect(buttons.length).toBeGreaterThan(0)
-    for (const button of buttons) expect(button).toBeDisabled()
-    expect(screen.queryByTestId('intake-complete')).toBeNull()
+    await userEvent.click(screen.getByRole('button', { name: 'Use 18,4 m for Fluchtniveau' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Discard 2023 for OIB-Ausgabe' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
+    expect(onDecide).not.toHaveBeenCalled()
+    expect(onComplete).not.toHaveBeenCalled()
   })
 
   describe('finishing', () => {
-    it('says what is confirmed, the class, the rule sets and where each open item goes', async () => {
+    const footer = (): HTMLElement => screen.getByTestId('intake-setup-footer')
+
+    it('is the footer’s one primary, beside the note that nothing unconfirmed is lost, and finishes at once', async () => {
       setup(PROFILE_REVIEW)
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      const summary = await screen.findByTestId('intake-finish-summary')
-      expect(within(summary).getByTestId('intake-finish-confirmed')).toHaveTextContent('2 values')
-      expect(within(summary).getByTestId('intake-finish-class')).toHaveTextContent('Building 1: GK 5, suggested')
-      expect(within(summary).getByTestId('intake-finish-class')).toHaveTextContent('Building 2: still open')
-      expect(within(summary).getByTestId('intake-finish-rules')).toHaveTextContent('required')
-      expect(within(summary).getByTestId('intake-finish-contradictions')).toHaveTextContent('1 contradiction')
-      expect(within(summary).getByTestId('intake-finish-contradictions')).toHaveTextContent('decided at the top of the profile')
-      expect(within(summary).getByTestId('intake-finish-questions')).toHaveTextContent('3 questions')
-      expect(within(summary).getByTestId('intake-finish-questions')).toHaveTextContent('answered in the Rückfragen step')
-      expect(within(summary).getByTestId('intake-finish-unconfirmed')).toHaveTextContent('stay suggestions in the project briefing')
-    })
-
-    it('goes to the Rückfragen to resolve the open items now', async () => {
-      setup(PROFILE_REVIEW)
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      await userEvent.click(await screen.findByTestId('intake-finish-resolve'))
-      expect(onGoTo).toHaveBeenCalledWith('questions')
-      expect(onComplete).not.toHaveBeenCalled()
-    })
-
-    it('stays on the Steckbrief when only a contradiction is open', async () => {
-      setup({ ...PROFILE_REVIEW, questions: [] })
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      await userEvent.click(await screen.findByTestId('intake-finish-resolve'))
-      expect(onGoTo).not.toHaveBeenCalled()
-      expect(screen.getByTestId('intake-contradictions')).toBeInTheDocument()
-    })
-
-    it('makes finishing the next thing once nothing is open, and finishes on confirm', async () => {
-      setup(PROFILE_CONFIRMED)
-      expect(screen.queryByTestId('intake-contradictions')).toBeNull()
-      expect(screen.queryByTestId('profile-decisive')).toBeNull()
-      expect(screen.getByTestId('intake-complete')).toHaveAttribute('data-primary', 'true')
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      const summary = await screen.findByTestId('intake-finish-summary')
-      expect(within(summary).getByTestId('intake-finish-class')).toHaveTextContent('GK 5, confirmed')
-      expect(within(summary).queryByTestId('intake-finish-resolve')).toBeNull()
-      await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: 'Finish setup' }))
+      expect(footer()).toHaveTextContent('Anything not confirmed stays a suggestion and can be changed at any time.')
+      await userEvent.click(within(footer()).getByRole('button', { name: 'Finish setup' }))
       expect(onComplete).toHaveBeenCalledTimes(1)
-    })
-  })
-
-  // Carried from the single-page setup's spec (7a1b2eb2e), where these sections were tested in the frame.
-  describe('marks', () => {
-    it('marks a decisive value as a neutral property with a glyph, and a contradiction in the warning tone', () => {
-      setup(INTAKE_READY)
-      const decisive = within(screen.getByTestId('profile-decisive-fluchtniveau_m@bw1')).getByText('Decisive')
-      expect(decisive.className).not.toMatch(/warning/)
-      expect(decisive.querySelector('svg')).not.toBeNull()
-      const contested = within(screen.getByTestId('intake-contradictions')).getByText('2 different values found')
-      expect(contested.className).toMatch(/warning/)
-      expect(contested.querySelector('svg')).not.toBeNull()
-      expect(screen.getByTestId('intake-suggestion-standort_adresse')).toHaveTextContent('Confirmed')
-    })
-  })
-
-  describe('derivations', () => {
-    it('shows the Gebäudeklasse of a Bauwerk with its inputs, and „still open“ with what is missing', () => {
-      setup(INTAKE_READY)
-      const done = screen.getByTestId('intake-derivation-bw1')
-      expect(done).toHaveTextContent('GK 5')
-      expect(done).toHaveTextContent('Anzahl oberirdischer Geschoße (Zielzustand): 6 · suggested')
-      expect(done).toHaveTextContent('Gebäudestellung: angebaut')
-      expect(done).not.toHaveTextContent('Gebäudestellung: angebaut · suggested')
-      const suggested = within(done).getByText(/Anzahl oberirdischer Geschoße \(Zielzustand\): 6 · suggested/)
-      expect(suggested.closest('[data-slot="chip"]')?.className).not.toMatch(/warning/)
-      expect(done).toHaveTextContent('OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023)')
-
-      const open = screen.getByTestId('intake-derivation-bw2')
-      expect(open).toHaveTextContent('still open')
-      expect(open).toHaveTextContent('Still missing:')
-      expect(within(open).queryByRole('button')).toBeNull()
-    })
-
-    it('says a Hochhaus has no Gebäudeklasse', () => {
-      setup({
-        ...INTAKE_READY,
-        derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bw3', hochhaus: true, missing: [] }],
-      })
-      expect(screen.getByTestId('intake-derivation-bw3')).toHaveTextContent('High-rise')
-    })
-  })
-
-  describe('evidence', () => {
-    it('names the file and the page, and shows the quote on hover', async () => {
-      setup(INTAKE_READY)
-      const contradictions = screen.getByTestId('intake-contradictions')
-      const chip = await within(contradictions).findByRole('button', { name: /Baubeschreibung\.pdf, p\. 3/ })
-      expect(chip).toHaveTextContent('Baubeschreibung.pdf, p. 3')
-      await userEvent.hover(chip)
-      expect(await screen.findByText(/insgesamt sechs oberirdische Geschoße/)).toBeInTheDocument()
-    })
-
-    it('says a spreadsheet\'s source without a page, and offers it no excerpt', () => {
-      setup(INTAKE_READY)
-      const units = screen.getByTestId('profile-decisive-nutzungseinheiten@bw1')
-      expect(units).toHaveTextContent('Wohnungsliste.xlsx')
-      expect(units).not.toHaveTextContent('Wohnungsliste.xlsx, p.')
-      expect(within(units).queryByRole('button', { name: /excerpt of Wohnungsliste/ })).toBeNull()
-    })
-  })
-
-  describe('decisions', () => {
-    it('confirms the profile\'s own value of a contradiction', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'confirm' }])
-    })
-
-    it('confirms an alternative with its index', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Use 7 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'confirm', alternativeIndex: 0 }])
-    })
-
-    it('discards an alternative, and offers no discard for the profile\'s own value', async () => {
-      setup(INTAKE_READY)
-      expect(screen.getAllByRole('button', { name: /Discard .* for Anzahl oberirdischer Geschoße/ })).toHaveLength(1)
-      await userEvent.click(screen.getByRole('button', { name: /Discard 7 for Anzahl oberirdischer Geschoße/ }))
-      expect(onDecide).toHaveBeenCalledWith([{ key: 'geschosse_oberirdisch@bw1', action: 'dismiss', alternativeIndex: 0 }])
-    })
-
-    it('offers no one-by-one confirm for a value that decides nothing: the rest is taken together', async () => {
-      setup(INTAKE_READY)
-      expect(screen.queryByRole('button', { name: /Use 2023 for OIB-Ausgabe/ })).toBeNull()
-      await userEvent.click(screen.getByRole('button', { name: /Discard 2023 for OIB-Ausgabe/ }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
-    })
-
-    it('holds every control while a call is in flight, without ever disabling one', async () => {
-      setup(INTAKE_READY, { busy: true })
-      for (const name of [/Use 6 for Anzahl/, /Use 18.4 m for Fluchtniveau/, /Use 3 remaining/, /Use Gebäudeklasse GK 5/, 'Finish setup']) {
-        const control = screen.getByRole('button', { name })
-        expect(control).toHaveAttribute('aria-disabled', 'true')
-        expect(control).not.toBeDisabled()
-      }
-      await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl/ }))
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      expect(onDecide).not.toHaveBeenCalled()
       expect(screen.queryByRole('dialog')).toBeNull()
     })
 
-    it('shows the busy label on the control that was pressed, once the wait is noticeable, and keeps its focus', async () => {
-      let settle: (ok: boolean) => void = () => undefined
-      onDecide.mockReturnValue(new Promise<boolean>((resolve) => (settle = resolve)))
-      setup(INTAKE_READY)
-      const confirm = screen.getByRole('button', { name: /Use 6 for Anzahl/ })
-      confirm.focus()
-      await userEvent.click(confirm)
-      expect(confirm).toHaveAttribute('aria-busy', 'true')
-      expect(confirm).toHaveFocus()
-      await userEvent.click(confirm)
-      expect(onDecide).toHaveBeenCalledTimes(1)
-      await vi.waitFor(() => expect(confirm).toHaveTextContent('Using …'))
-      settle(true)
-      await vi.waitFor(() => expect(confirm).not.toHaveAttribute('aria-busy'))
-    })
-  })
-
-  describe('the finish button', () => {
-    it('keeps the finish button while reading with something to review, as a secondary', () => {
-      setup(INTAKE_READING)
-      expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
-      expect(screen.getByTestId('intake-reading-skeleton')).toBeInTheDocument()
-    })
-
-    it('hides the finish button while reading with nothing found yet', () => {
-      setup({ ...INTAKE_READING, counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] })
-      expect(screen.queryByTestId('intake-complete')).toBeNull()
-    })
-
-    it('is the ink primary only when nothing is open, and stays on screen on a phone', () => {
-      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
-      expect(screen.getByTestId('intake-complete')).toHaveAttribute('data-primary')
-      expect(screen.getByTestId('intake-complete')).toHaveClass('max-sm:sticky', 'max-sm:bottom-0')
-      expect(screen.queryByTestId('intake-open')).toBeNull()
-    })
-
-    it('is a secondary button that does not float and says what is still open', () => {
-      setup(INTAKE_READY)
-      expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
-      expect(screen.getByTestId('intake-complete')).not.toHaveClass('max-sm:sticky')
-      expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 1 contradiction, 3 questions – you can finish anyway.')
-      expect(screen.getByRole('button', { name: 'Finish setup' }).className).toMatch(/bg-secondary/)
-    })
-
-    it('names only what is open', () => {
-      setup({ ...INTAKE_READY, contradictions: [] })
-      expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 3 questions')
-    })
-
-    it('asks before it finishes, then completes', async () => {
-      setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
+    it('asks first when finishing closes a past project, with its outcome and period', async () => {
+      setup(INTAKE_CLOSING)
+      await userEvent.click(within(footer()).getByRole('button', { name: 'Finish setup' }))
       expect(onComplete).not.toHaveBeenCalled()
       const dialog = await screen.findByRole('dialog')
-      expect(dialog).toHaveTextContent('The review ends and the confirmed values stay on the project.')
-      await userEvent.click(within(dialog).getByRole('button', { name: 'Finish setup' }))
+      expect(dialog).toHaveTextContent('The project is closed with it: outcome “Completed”, period 03/2019 to 08/2022.')
+      await userEvent.click(within(dialog).getByRole('button', { name: 'Finish and close' }))
       expect(onComplete).toHaveBeenCalledTimes(1)
     })
 
-    it('says a closing intent closes the project with outcome and period', async () => {
-      setup(INTAKE_CLOSING)
-      expect(screen.getByTestId('intake-complete')).toHaveTextContent('This closes the project: outcome “Completed”, period 03/2019 to 08/2022.')
-      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
-      expect(await screen.findByRole('dialog')).toHaveTextContent('the project is closed: outcome “Completed”, period 03/2019 to 08/2022.')
+    it('offers no finish while reading with nothing found, nor to a reader who may not', () => {
+      const { unmount } = setup({ ...INTAKE_READING, counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] })
+      expect(screen.queryByTestId('profile-finish')).toBeNull()
+      expect(footer()).not.toHaveTextContent('stays a suggestion')
+      unmount()
+      setup({ ...PROFILE_REVIEW, canComplete: false })
+      expect(screen.queryByTestId('profile-finish')).toBeNull()
     })
 
-    it('offers no finish to a reader who may not', () => {
-      setup({ ...INTAKE_READY, canComplete: false })
-      expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
+    it('keeps the finish while reading with something found, and says more is coming', () => {
+      setup(INTAKE_READING)
+      expect(screen.getByTestId('profile-finish')).toBeInTheDocument()
+      expect(screen.getByTestId('profile-findings')).toHaveTextContent('Piloti is still reading. More values will be added.')
     })
   })
 })

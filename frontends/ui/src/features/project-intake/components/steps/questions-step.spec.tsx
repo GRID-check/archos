@@ -134,7 +134,7 @@ describe('QuestionsStep', () => {
     expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'answer', value: 1250 }])
     expect(await screen.findByTestId('intake-question-einheiten_ueber_400@bw1')).toHaveTextContent('Question 2 of 9')
     const done = within(screen.getByTestId('questions-group-missing')).getAllByRole('listitem')[0]
-    expect(done).toHaveTextContent('1250')
+    expect(done).toHaveTextContent('1 250') // German grouping
     expect(done).toHaveTextContent('done')
   })
 

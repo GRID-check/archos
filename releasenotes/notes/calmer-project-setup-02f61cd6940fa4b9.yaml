@@ -1,14 +1,19 @@
 ---
 features:
   - >
-    Creating a project asks only for its name, address, a line about it and
-    whether it is running or finished. The setup that follows takes the
-    documents, the questions they leave open and the profile in three steps,
-    and works without any documents too.
+    Creating a project asks for its name, its address, whether it is running
+    or finished, and optionally its folder. The setup that follows has five
+    short steps (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), each on
+    one screen with one button to go on, and you can leave at any point with
+    „Später fortsetzen“.
   - >
-    The Projekterfassung no longer asks you to confirm every value one by
-    one. Values that decide the Gebäudeklasse are confirmed individually;
-    everything else is taken in one go, after you discard anything wrong.
+    The Rückfragen ask one question at a time, together with the documents
+    the location calls for and any values the documents contradict each
+    other on.
+  - >
+    The Steckbrief shows the Gebäudeklasse with how it was worked out, which
+    OIB-Richtlinien apply, and the values Piloti found in one table. Pointing
+    at a source shows the passage on its page.
 fixes:
   - >
     With no project yet, the projects page shows one button to create the

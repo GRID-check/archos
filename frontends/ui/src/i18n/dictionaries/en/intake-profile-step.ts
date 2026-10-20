@@ -1,8 +1,9 @@
 /**
- * intakeProfileStep namespace: step 5, Steckbrief: contradictions, values, derivations, finishing (`/app/projects/[id]/setup`, ticket 26,
- * `docs/design/project-setup-five-steps.md`).
+ * intakeProfileStep namespace: step 5, Steckbrief: the Gebäudeklasse, what applies, what Piloti found, finishing
+ * (`/app/projects/[id]/setup`, ticket 26, `docs/design/project-setup-five-steps.md`).
  */
 export const intakeProfileStep = {
+  heading: 'Project profile',
   /** How sure a value is, in words: who confirmed it and how many sources agree. Never a number. */
   confidence: {
     confirmed: 'Confirmed',
@@ -12,7 +13,7 @@ export const intakeProfileStep = {
     single: 'Suggestion from one source',
     unsupported: 'Suggestion without a source',
   },
-  /** The excerpt of the cited page beside a value. */
+  /** The excerpt of the cited page, in a source's peek. */
   excerpt: {
     show: 'Excerpt',
     showAria: 'Show the excerpt of {name}, page {page}',
@@ -20,33 +21,143 @@ export const intakeProfileStep = {
     figure: 'Excerpt of {name}, page {page}',
     loading: 'Loading the page …',
     wholePage: 'The passage cannot be marked on this page. You are seeing the whole page.',
-    unavailable: 'There is no excerpt for this page. The source chip opens the document.',
-  },
-  decisive: {
-    heading: 'Decisive values',
-    description: 'These values decide the Gebäudeklasse. Check each one where it was found and use it on its own.',
-    position: '{index} of {total}',
-    confirm: 'Use',
-    confirmAria: 'Use {value} for {label}',
-    dismiss: 'Discard',
-    dismissAria: 'Discard {value} for {label}',
-  },
-  rest: {
-    heading: 'Other values',
-    description: 'Grouped by topic. Discard anything wrong, then use the rest in one go.',
+    unavailable: 'There is no excerpt for this page. The source opens the document.',
   },
   derivations: {
     basedOnSuggested:
       '{count, plural, one {Rests on # value nobody has confirmed yet.} other {Rests on # values nobody has confirmed yet.}}',
   },
-  /** The rule set's Ampel: the applicability panel, from the confirmed values. */
+  /** The result card: the Gebäudeklasse of a Bauwerk, its one-line reason, and how it was worked out. */
+  class: {
+    label: 'Gebäudeklasse',
+    eyebrow: 'GK',
+    title: 'Gebäudeklasse {value}',
+    hochhaus: 'High-rise',
+    hochhausTile: 'HH',
+    open: 'Gebäudeklasse still open',
+    hochhausReason: 'Escape level above 22 m: no Gebäudeklasse, OIB-RL 2.3 applies.',
+    missing: 'Still missing: {inputs}.',
+    none: 'Piloti works it out once the storeys, the escape level and the units are known.',
+    answer: 'Answer the questions',
+    confirm: 'Confirm',
+    confirmAria: 'Confirm Gebäudeklasse {value} for {bauwerk}',
+    confirmed: 'Confirmed',
+    how: 'How was it worked out?',
+    howHide: 'Hide the working',
+    inputs: 'Worked out from',
+    suggestedMark: 'suggestion',
+    bauwerke: 'Show the class of',
+    reason: {
+      fluchtniveau_m: 'Escape level {value}',
+      geschosse_oberirdisch: '{value} storeys above ground',
+      nutzungseinheiten: '{value} units',
+      einheiten_ueber_400: 'one above 400 m²',
+      einheiten_ueber_400_none: 'none above 400 m²',
+      bgf_oberirdisch: 'Gross floor area {value}',
+    },
+  },
+  /** The rule set's Ampel as chips: filled applies, a ring probably, dashed to check. */
   rules: {
-    heading: 'Rule sets',
-    description: 'Which OIB-Richtlinien apply to the project, worked out from the confirmed values.',
-    basisNone: 'No value is confirmed yet, so the general list applies. A suggestion counts once you use it.',
-    basis:
-      '{count, plural, one {Worked out from # confirmed value.} other {Worked out from # confirmed values.}} A suggestion counts once you use it.',
-    classPending:
-      'The Gebäudeklasse is not confirmed yet. Once you use it under derivations, the classification gets more precise.',
+    heading: 'What applies to this project',
+    status: {
+      required: 'applies',
+      likely: 'probably',
+      check: 'to check',
+    },
+    chipAria: '{code} {name}, {status}',
+    legend: {
+      required: 'Filled = applies',
+      likely: 'Ring = probably',
+      check: 'Dashed = to check',
+    },
+    basisNone: 'Nothing confirmed yet, so this is the general list.',
+    basis: '{count, plural, one {Worked out from # confirmed value.} other {Worked out from # confirmed values.}}',
+    disclaimer: 'Not legal advice.',
+    source: 'Open the Richtlinie',
+    ask: 'Ask Piloti',
+    short: {
+      oib1: 'Structure',
+      oib2: 'Fire safety',
+      oib21: 'Industrial buildings',
+      oib22: 'Garages',
+      oib23: 'High-rise',
+      oib3: 'Hygiene',
+      oib4: 'Accessibility',
+      oib5: 'Sound',
+      oib6: 'Energy',
+    },
+    reasons: {
+      structure: 'Structural safety applies to every building.',
+      fire: 'General fire safety applies to every building.',
+      hygiene: 'Hygiene, daylight, ventilation and environmental protection apply to every building.',
+      access: 'Safety in use and barrier-free access apply.',
+      accessPublic: 'Safety in use and barrier-free access; the accessibility duties are extensive for a publicly used building.',
+      soundOccupied: 'Sound protection usually applies to an occupied building.',
+      soundRequired: 'Sound protection is required for an occupied or noise-sensitive use.',
+      soundLikely: 'Sound protection usually applies.',
+      energy: 'Energy saving and thermal protection apply.',
+      energyExempt: 'An unheated storage or agricultural building may be partly exempt from OIB 6.',
+      betriebsbau: 'A manufacturing or storage use is a Betriebsbau.',
+      betriebsbauCheck: 'Applies if the building counts as a Betriebsbau.',
+      garage: 'Applies if the project includes a garage or covered parking.',
+      hochhaus: 'The top escape level is above 22 m: the building is a Hochhaus.',
+      hochhausCheck: 'Gebäudeklasse 5: check whether the top escape level is above 22 m.',
+    },
+    reasonFallback: {
+      required: 'Applies, from what is confirmed.',
+      likely: 'Probably applies, from what is confirmed.',
+      check: 'Check whether it applies.',
+    },
+  },
+  /** One table of what Piloti found: the decisive rows up front, the rest by topic. */
+  findings: {
+    heading: 'What Piloti found',
+    description: 'Every value with the place it stands. Point at the source to see it.',
+    counts: '{total, plural, one {# value} other {# values}} · {confirmed} confirmed',
+    columns: {
+      label: 'Item',
+      value: 'Value',
+      source: 'Source',
+    },
+    take: 'Use',
+    takeAria: 'Use {value} for {label}',
+    dismiss: 'Discard',
+    dismissAria: 'Discard {value} for {label}',
+    byYou: 'By you',
+    suggestion: 'Suggestion',
+    showAll: 'See all {count} values by topic',
+    showLess: 'Show fewer',
+    takeAll: 'Use all {count} open',
+    editor: 'Edit in the briefing editor',
+    editorAria: 'Open the briefing editor for this project',
+    empty: 'Piloti has not found any values yet. They appear here once the reading has read documents.',
+    reading: 'Piloti is still reading. More values will be added.',
+    bauwerk: 'Building {number}',
+  },
+  /** A value's source on its row, and the peek with the page excerpt. */
+  source: {
+    document: '{name} · p. {page}',
+    documentNoPage: '{name}',
+    geocoder: 'Address search',
+    derivation: 'Derived',
+    person: 'Your answer',
+    none: 'No source',
+    more: '+{count}',
+    chipAria: 'Source of {label}: {source}',
+    open: 'Open in the document',
+    pinHint: 'Click the source to open the document.',
+  },
+  /** Contradictions are decided in the Rückfragen; one quiet line points there. */
+  contradictions: {
+    open: '{count, plural, one {# contradiction is still open.} other {# contradictions are still open.}}',
+    resolve: 'Resolve it in the questions',
+  },
+  finish: {
+    button: 'Finish setup',
+    note: 'Anything not confirmed stays a suggestion and can be changed at any time.',
+    closingTitle: 'Finish setup and close the project?',
+    closingDescription: 'The project is closed with it: outcome “{outcome}”, period {period}.',
+    confirm: 'Finish and close',
+    cancel: 'Cancel',
   },
 }

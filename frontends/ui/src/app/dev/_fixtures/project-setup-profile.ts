@@ -6,11 +6,12 @@
  * (`getApplicableStandards` over the confirmed values), a value two documents
  * agree on, a high-rise, and a Steckbrief with nothing left open.
  *
- *   - `review`: a contradiction, two decisive values to take one by one, the
- *     rest to take at once, the class suggested, the general list of Richtlinien
- *     (nothing decisive confirmed yet).
- *   - `confirmed`: every decisive value and the class taken, the rest still
- *     suggestions: the Ampel is the project's, and finishing is the next thing.
+ *   - `review`: a contradiction (one quiet line to the Rückfragen), two
+ *     decisive values heading the findings table, the rest folded by topic,
+ *     the class suggested for Bauwerk 1 and open for Bauwerk 2, and the
+ *     general list of Richtlinien (nothing decisive confirmed yet).
+ *   - `confirmed`: every decisive value and the class taken („Von Ihnen“),
+ *     the rest still suggestions: the Ampel is the project's.
  *   - `hochhaus`: Bauwerk 1's Fluchtniveau is confirmed above 22 m, so it has
  *     no class and OIB-RL 2.3 is required.
  *   - `readonly`: the review for someone who may look but not decide.

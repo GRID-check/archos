@@ -2501,8 +2501,12 @@ export function formatIntakeAnswer(
   ) {
     return optionLabel(answer)
   }
-  if (question.type === 'number_tri' && typeof answer === 'number') {
-    return question.unit ? `${answer} ${question.unit}` : String(answer)
+  if (typeof answer === 'number') {
+    // German like the rest of this answer: „18,4 m“, „1.250 m²“.
+    const number = GERMAN_NUMBER.format(answer)
+    return question.unit ? `${number} ${question.unit}` : number
   }
   return String(answer)
 }
+
+const GERMAN_NUMBER = new Intl.NumberFormat('de-AT', { maximumFractionDigits: 2 })
