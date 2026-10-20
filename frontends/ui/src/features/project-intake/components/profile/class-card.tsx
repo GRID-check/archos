@@ -185,13 +185,13 @@ function ClassResult({
               </span>
             )}
             {missingAsked && (
-              <Button type="button" variant="inline" className="min-h-11 text-[13px] md:min-h-0" onClick={onAnswer}>
+              <Button type="button" variant="inline" className="touch-target text-[13px]" onClick={onAnswer}>
                 {t('class.answer')}
               </Button>
             )}
             {derivation.inputs.length > 0 && (
               <CollapsibleTrigger asChild>
-                <Button type="button" variant="inline" className="text-muted-foreground min-h-11 text-[13px] font-normal md:min-h-0">
+                <Button type="button" variant="inline" className="text-muted-foreground touch-target text-[13px] font-normal">
                   {open ? t('class.howHide') : t('class.how')}
                 </Button>
               </CollapsibleTrigger>

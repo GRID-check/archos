@@ -84,7 +84,7 @@ export function FolderDropArea({
           type="button"
           onClick={onPickFiles}
           disabled={disabled}
-          className="text-muted-foreground hover:text-foreground min-h-11 text-[13px] underline underline-offset-[3px] md:min-h-0"
+          className="text-muted-foreground hover:text-foreground touch-target text-[13px] underline underline-offset-[3px]"
         >
           {t('choose.pickFiles')}
         </button>

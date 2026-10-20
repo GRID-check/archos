@@ -116,7 +116,7 @@ export function FindingsCard({
           <footer className="border-border flex flex-col gap-2 border-t px-4 py-3 md:flex-row md:items-center md:justify-between md:px-[18px]">
             {restCount > 0 ? (
               <CollapsibleTrigger asChild>
-                <Button type="button" variant="inline" className="min-h-11 self-start text-[13px] md:min-h-0">
+                <Button type="button" variant="inline" className="touch-target self-start text-[13px]">
                   {open ? t('findings.showLess') : t('findings.showAll', { count: all.length })}
                 </Button>
               </CollapsibleTrigger>
@@ -128,7 +128,7 @@ export function FindingsCard({
                 <Link
                   href={`/app/projects/${encodeURIComponent(projectId)}/intake`}
                   aria-label={t('findings.editorAria')}
-                  className="text-muted-foreground hover:text-foreground flex min-h-11 items-center text-[13px] underline-offset-4 hover:underline md:min-h-0"
+                  className="text-muted-foreground hover:text-foreground flex touch-target items-center text-[13px] underline-offset-4 hover:underline"
                 >
                   {t('findings.editor')}
                 </Link>

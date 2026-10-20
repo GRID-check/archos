@@ -46,7 +46,7 @@ export function ProfileStep({ view, projectId, canDecide, busy, onDecide, onComp
       {view.contradictions.length > 0 && (
         <p className="text-muted-foreground mt-4 flex flex-wrap items-center gap-x-2 text-[13px] md:mt-5" data-testid="profile-contradictions">
           <span>{t('contradictions.open', { count: view.contradictions.length })}</span>
-          <Button type="button" variant="inline" className="min-h-11 text-[13px] md:min-h-0" onClick={() => onGoTo('questions')}>
+          <Button type="button" variant="inline" className="touch-target text-[13px]" onClick={() => onGoTo('questions')}>
             {t('contradictions.resolve')}
           </Button>
         </p>

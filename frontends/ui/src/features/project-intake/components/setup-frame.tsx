@@ -168,7 +168,7 @@ export function SetupBar({ projectId, projectName, step, summaries, progress, on
           </Link>
           <DropdownMenu>
             <DropdownMenuTrigger
-              className="flex min-h-11 flex-col items-center justify-center rounded-md px-2"
+              className="flex touch-target flex-col items-center justify-center rounded-md px-2"
               aria-label={tShell('head.stepMenu', {
                 current: index + 1,
                 total,
@@ -189,7 +189,7 @@ export function SetupBar({ projectId, projectName, step, summaries, progress, on
                   key={summary.id}
                   onSelect={() => onGoTo(summary.id)}
                   aria-current={summary.id === step ? 'step' : undefined}
-                  className="min-h-11"
+                  className="touch-target"
                 >
                   <span className="text-muted-foreground w-4 tabular-nums">{i + 1}</span>
                   <span className={cn('flex-1', summary.id === step && 'font-semibold')}>
@@ -334,4 +334,4 @@ export const PRIMARY_ACTION_CLASS =
 
 /** The footer's quiet second way on: a text link. */
 export const ASIDE_ACTION_CLASS =
-  'text-muted-foreground hover:text-foreground min-h-11 text-[15px] underline-offset-4 hover:underline md:min-h-0 md:text-[13px] md:underline'
+  'text-muted-foreground hover:text-foreground touch-target text-[15px] underline-offset-4 hover:underline md:text-[13px] md:underline'

@@ -87,7 +87,7 @@ export function QuestionsStep({ view, canDecide, busy, canUpload, onDecide, onFi
       <Button
         type="button"
         variant="link"
-        className="text-muted-foreground hover:text-foreground h-auto min-h-11 gap-2 p-0 text-[15px] font-normal md:min-h-0 md:text-[13px]"
+        className="text-muted-foreground hover:text-foreground h-auto touch-target gap-2 p-0 text-[15px] font-normal md:text-[13px]"
         onClick={() => setMoreOpen(true)}
       >
         {t('more')}
