@@ -370,15 +370,11 @@ config:
 
   # Deployed only when grid-oib:observabilityEnabled (default true) AND every
 
-  # dependency below is set (otelPrimaryApiKey plus the dashboard's Connect
+  # dependency below is set (the dashboard's Connect application;
 
-  # application; otel.<baseDomain> is the host); otherwise `pulumi preview`
+  # otel.<baseDomain> is the host); otherwise `pulumi preview`
 
   # warns and skips the tier.
-
-  # REQUIRED secret:
-
-  #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:otelPrimaryApiKey "$(openssl rand -hex 32)" --secret
 
   # dashboardImage/collectorImage default to digest-pinned versions in src/config.ts —
 
@@ -408,41 +404,6 @@ config:
 
   #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:otelOidcClientSecret <secret> --secret
 
-  # ── err2issue: ERROR telemetry -> GitHub issues (ADR-0031) ──
-
-  # OFF in prod for now — deliberately, not by oversight. Two things must be
-
-  # true before flipping it:
-
-  #   1. `err2issueImage` is digest-pinned. Done: the default in src/config.ts
-
-  #      is v0.5.1 by digest, and the trivy job in .github/workflows/security.yml
-
-  #      scans it.
-
-  #   2. Steady-state error volume is known from dev, so
-
-  #      err2issueMaxNewFingerprintsPerDay is a considered number rather than
-
-  #      the conservative 20 that ships by default.
-
-  # Then:
-
-  #   pulumi config set        grid-oib:err2issueEnabled     true
-
-  #   pulumi config set        grid-oib:err2issueGithubRepo  GRID-check/grid-oib-agent
-
-  #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:err2issueGithubToken ghp_... --secret
-
-  grid-oib:err2issueEnabled: "false"
-
-  # ── Feedback → GitHub issues ──
-
-  # Bug reports from the feedback form are filed with the SAME token and repo,
-
-  # and do not need err2issueEnabled. Off here only because neither is set:
-
-  # the two lines above (repo, token) turn it on without deploying err2issue.
   grid-oib:protectDataResources: "true"
   grid-oib:seaweedfsPerOrgBuckets: "true"
   grid-oib:dnsZoneName: piloti.at
