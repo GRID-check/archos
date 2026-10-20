@@ -10,7 +10,7 @@
   "dependencies": {
     "@pulumi/kubernetes": "^4.34.2",
     "@pulumi/policy": "^1.13.0",
-    "@pulumi/pulumi": "^3.267.0"
+    "@pulumi/pulumi": "^3.268.0"
   },
   "devDependencies": {
     "@types/node": "^22.20.5",
