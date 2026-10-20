@@ -69,6 +69,9 @@ under a minute. Every step stays reachable, and nothing in one blocks the next.
 ## Not in scope
 
 - A self-hosted geocoder is a deployment decision: the address is client data.
-  It is prepared, not switched on (see „Geocoder" in the PR).
+  [ADR-0118](../adr/0118-addresses-are-geocoded-by-a-self-hosted-photon.md)
+  proposes Photon in the cluster on the Austria index; the Pulumi program has
+  it, off by default (`geocoderEnabled`). Until a stack switches it on, the
+  address is the typed line and the Bundesland is the reading's to find.
 - Editions of the law per Stichtag, a German catalogue, Standortdienste (BEV,
   Landes-GIS): unchanged from the ticket's deferrals.
