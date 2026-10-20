@@ -51,6 +51,7 @@ import { installJobsQueueAuth } from "./src/app/jobs-queue-auth";
 import { installBffJobs } from "./src/app/bff-jobs";
 import { installQueueScalerGrants } from "./src/app/queue-scaler-grants";
 import { installKeda } from "./src/platform/keda";
+import { installCiRunners } from "./src/platform/ci-runners";
 import { installHttpRoutes } from "./src/app/httproutes";
 import { installOtelCollector } from "./src/platform/otel-collector";
 import { installDns, managedRecordNames } from "./src/platform/dns";
@@ -76,6 +77,13 @@ const gatewayController = installGatewayController(cfg, provider);
 const certManager = installCertManager(cfg, provider, namespace, [gatewayController]);
 if (cfg.ingress.installMetricsServer) {
   installMetricsServer(provider);
+}
+
+// GitHub Actions runners for pull requests (ADR-0118), on the dev cluster only:
+// their own namespaces, no Kubernetes credentials, and a NetworkPolicy that keeps
+// a pull request's code off everything here but DNS.
+if (cfg.ciRunners.enabled) {
+  installCiRunners(cfg, provider);
 }
 
 // ── Data tier ─────────────────────────────────────────────────────────────

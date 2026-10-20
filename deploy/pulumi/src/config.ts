@@ -1076,6 +1076,32 @@ export interface GridConfig {
   keda: { install: boolean };
 
   /**
+   * GitHub Actions runners in this cluster (ADR-0118): the actions-runner-
+   * controller and one runner scale set that pull request jobs pick with
+   * `runs-on`. Off unless `ciRunnersEnabled`; meant for the dev cluster only,
+   * never production's. Every runner runs code from a pull request, so the
+   * runners get namespaces of their own, no service-account token, and a
+   * NetworkPolicy that keeps them off every in-cluster address but DNS; the
+   * program refuses to plan them without `networkPolicies`.
+   */
+  ciRunners: {
+    enabled: boolean;
+    /** The repository (or organisation) the scale set registers with. */
+    githubConfigUrl: string;
+    /** The GitHub App the controller authenticates as: Actions read/write, Administration read/write for a repository scale set. */
+    githubApp: { appId: string; installationId: string; privateKey: pulumi.Output<string> };
+    /** The runner image, built from deploy/ci-runner; pinned by digest, because a tag lets CI change under a PR that did not. */
+    image: string;
+    /** The name `runs-on` targets, and the repository variable CI_RUNNER holds. */
+    scaleSetName: string;
+    minRunners: number;
+    maxRunners: number;
+    resources: { requests: { cpu: string; memory: string }; limits: { cpu: string; memory: string } };
+    /** The worker group the runner pods run on (`NODE_GROUP_LABEL`); unset, wherever the scheduler puts them. */
+    nodeGroup?: string;
+  };
+
+  /**
    * What the shared OpenRouter key is asked to carry (ADR-0076, ADR-0081), as
    * the backend image's environment. The four numbers are one budget:
    * {@link vlmPeakCalls} is held to `vlmFleetConcurrency` where the ingest tier
@@ -1514,6 +1540,68 @@ function nodeGroup(cfg: pulumi.Config, key: string): string | undefined {
     throw new Error(`grid-oib:${key} must be a Kubernetes label value, the worker group's name (got "${value}").`);
   }
   return value;
+}
+
+/**
+ * The CI runner knobs (ADR-0118). Disabled, nothing is required and nothing is
+ * read but the defaults. Enabled, the GitHub App and a digest-pinned image are
+ * required, and so are NetworkPolicies: they are what keeps a pull request's
+ * code off the rest of the cluster.
+ */
+function loadCiRunners(cfg: pulumi.Config): GridConfig["ciRunners"] {
+  const enabled = bool(cfg, "ciRunnersEnabled", false);
+  const image = cfg.get("ciRunnersImage")?.trim() ?? "";
+  const runners = {
+    enabled,
+    githubConfigUrl: cfg.get("ciRunnersGithubConfigUrl") ?? "https://github.com/GRID-check/grid-oib-agent",
+    githubApp: {
+      appId: cfg.get("ciRunnersGithubAppId") ?? "",
+      installationId: cfg.get("ciRunnersGithubAppInstallationId") ?? "",
+      privateKey: cfg.getSecret("ciRunnersGithubAppPrivateKey") ?? pulumi.secret(""),
+    },
+    image,
+    scaleSetName: cfg.get("ciRunnersScaleSetName") ?? "grid-ci",
+    minRunners: Math.max(0, num(cfg, "ciRunnersMinRunners", 0)),
+    maxRunners: Math.max(1, num(cfg, "ciRunnersMaxRunners", 8)),
+    resources: {
+      requests: {
+        cpu: cfg.get("ciRunnersRequestsCpu") ?? "2",
+        memory: cfg.get("ciRunnersRequestsMemory") ?? "4Gi",
+      },
+      limits: {
+        cpu: cfg.get("ciRunnersLimitsCpu") ?? "4",
+        memory: cfg.get("ciRunnersLimitsMemory") ?? "8Gi",
+      },
+    },
+    nodeGroup: nodeGroup(cfg, "ciRunnersNodeGroup"),
+  };
+  if (!enabled) return runners;
+  if (!bool(cfg, "networkPolicies", true)) {
+    throw new Error(
+      "grid-oib:ciRunnersEnabled requires grid-oib:networkPolicies. A runner runs a pull " +
+        "request's code, and its NetworkPolicy is what keeps it off every in-cluster " +
+        "address but DNS.",
+    );
+  }
+  if (!runners.githubApp.appId || !runners.githubApp.installationId || !cfg.get("ciRunnersGithubAppPrivateKey")) {
+    throw new Error(
+      "grid-oib:ciRunnersEnabled needs the GitHub App the controller registers runners with: " +
+        "ciRunnersGithubAppId, ciRunnersGithubAppInstallationId and (with --secret) " +
+        "ciRunnersGithubAppPrivateKey.",
+    );
+  }
+  if (!/@sha256:[a-f0-9]{64}$/.test(image)) {
+    throw new Error(
+      `grid-oib:ciRunnersImage must name the runner image by digest (<image>@sha256:<64 hex>), got "${image}". ` +
+        "A tag lets the toolchain change under a pull request that did not change it.",
+    );
+  }
+  if (runners.minRunners > runners.maxRunners) {
+    throw new Error(
+      `grid-oib:ciRunnersMinRunners (${runners.minRunners}) exceeds ciRunnersMaxRunners (${runners.maxRunners}).`,
+    );
+  }
+  return runners;
 }
 
 function bool(cfg: pulumi.Config, key: string, fallback: boolean): boolean {
@@ -2944,6 +3032,7 @@ export function loadConfig(): GridConfig {
       renditionConcurrency: Math.max(1, num(cfg, "bffJobsRenditionConcurrency", 1)),
     },
     keda: { install: cfg.getBoolean("installKeda") ?? true },
+    ciRunners: loadCiRunners(cfg),
 
     // Defaults are the backend image's own (`adapter.py`, `processing.py`,
     // `provider_limiter.py`), written down here so the stack file, not a Python

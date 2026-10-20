@@ -309,8 +309,8 @@ does **not** expire on its own.
 
 One interaction to plan for: the Control Center can restrict **API access**
 (blocked / country-allowlist / IP-allowlist). CI deploys need the runner to
-reach the cluster API — GitHub-hosted and Blacksmith runners have changing
-egress IPs, so a strict IP-allowlist will break `pulumi up` from CI. Either
+reach the cluster API — GitHub-hosted runners have changing egress IPs, so a
+strict IP-allowlist will break `pulumi up` from CI. Either
 keep the API open and rely on the ServiceAccount token as the credential, use a
 country allowlist that covers the runners, or run deploys from a self-hosted
 runner with a fixed egress IP.
@@ -1968,10 +1968,41 @@ or an `environment:` import of `grid-oib/dev` — so an unconfigured or
 uncommitted `Pulumi.dev.yaml` fails there, with instructions. The
 **`PULUMI_ACCESS_TOKEN`** is Pulumi Cloud state that the
 preflight cannot see; a missing one fails later, when the gates and the apply
-call Pulumi Cloud. Two more infrastructure
-prerequisites: the `blacksmith-*` runner integration, and the `staging` GitHub
+call Pulumi Cloud. One more infrastructure prerequisite: the `staging` GitHub
 environment (created on first run; note that adding required reviewers to it
 turns the "automatic" deploy into an approval-gated one).
+
+### CI runners in the dev cluster (`grid-oib:ciRunnersEnabled`, ADR-0118)
+
+Off by default, and meant for the dev stack only. When on, the program installs
+GitHub's actions-runner-controller (`arc-systems`) and one runner scale set
+(`arc-runners`) that pull request jobs reach with
+`runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}`: set the repository variable
+`CI_RUNNER` to the scale set's name to move them, unset it to move them back.
+The code is `deploy/pulumi/src/platform/ci-runners.ts`.
+
+Every runner runs a pull request's code, so it runs in ARC's plain mode (no
+Docker daemon, no container hooks, no privileged pod), with no service-account
+token, every capability dropped, and a NetworkPolicy that allows the internet
+and cluster DNS and nothing else: no address in 10/8, 172.16/12, 192.168/16,
+100.64/10, 169.254/16 or 127/8, so none of staging's services and not the
+metadata endpoint. The program refuses to plan the runners without
+`networkPolicies`.
+
+| Key | Default | |
+|---|---|---|
+| `ciRunnersEnabled` | `false` | |
+| `ciRunnersImage` | (required) | `ghcr.io/grid-check/grid-ci-runner@sha256:…`, built from `deploy/ci-runner`; a tag is refused |
+| `ciRunnersGithubAppId`, `ciRunnersGithubAppInstallationId` | (required) | The GitHub App the controller registers runners with: Actions and Administration read/write on this repository |
+| `ciRunnersGithubAppPrivateKey` | (required, `--secret`) | Kept in a Secret of its own, not in the Helm release's values |
+| `ciRunnersGithubConfigUrl` | `https://github.com/GRID-check/grid-oib-agent` | |
+| `ciRunnersScaleSetName` | `grid-ci` | The `runs-on` label, and the value of `CI_RUNNER` |
+| `ciRunnersMinRunners`, `ciRunnersMaxRunners` | `0`, `8` | Idle runners cost a pod each; zero means a job waits for one to start |
+| `ciRunnersRequestsCpu`/`Memory`, `ciRunnersLimitsCpu`/`Memory` | `2`/`4Gi`, `4`/`8Gi` | Per runner |
+| `ciRunnersNodeGroup` | (unset) | An IPAX worker group for the runners. A group cannot be tainted, so it stays theirs because every other workload names its own |
+
+Image builds and every job that holds a secret or writes the registry stay on
+GitHub's runners; why, and the rollout order, are in ADR-0118.
 
 ### What has been validated without the provider cluster
 
