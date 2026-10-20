@@ -101,7 +101,7 @@ config:
   # dynamically from the merge commit — prod merge shas never have GHCR images;
 
   # only develop tips do.
-  grid-oib:imageTag: sha-b016e9af699882a37380ce58e51471a6609d88b3
+  grid-oib:imageTag: sha-9454c7a816bba4d56728752bcbeadb13062ce8a5
   # ── Storage (provider CSI, NVMe/TCP) ──
 
   # Classes offered by the provider (see `kubectl get storageclass`):
