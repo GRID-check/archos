@@ -79,7 +79,7 @@ if (cfg.ingress.installMetricsServer) {
   installMetricsServer(provider);
 }
 
-// GitHub Actions runners for pull requests (ADR-0118), on the dev cluster only:
+// GitHub Actions runners for pull requests (ADR-0119), on the dev cluster only:
 // their own namespaces, no Kubernetes credentials, and a NetworkPolicy that keeps
 // a pull request's code off everything here but DNS.
 if (cfg.ciRunners.enabled) {

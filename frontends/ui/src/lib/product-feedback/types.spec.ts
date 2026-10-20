@@ -13,7 +13,16 @@ describe('submitProductFeedbackSchema', () => {
       pagePath: null,
       allowContact: true,
       context: {},
+      posthog: { widgetSessionId: null, sessionId: null },
     })
+  })
+
+  it("keeps the browser's PostHog ids when they are id-shaped, and drops anything else", () => {
+    const parsed = submitProductFeedbackSchema.parse({
+      ...base,
+      posthog: { widgetSessionId: '0199f9a0-0000-7000-8000-00000000c1a0', sessionId: 'javascript:alert(1)' },
+    })
+    expect(parsed.posthog).toEqual({ widgetSessionId: '0199f9a0-0000-7000-8000-00000000c1a0', sessionId: null })
   })
 
   it('refuses a message too short to act on', () => {

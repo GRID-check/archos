@@ -34,7 +34,7 @@ export interface CiRunners {
 }
 
 /**
- * GitHub Actions runners in this cluster (ADR-0118).
+ * GitHub Actions runners in this cluster (ADR-0119).
  *
  * Bought, not built: the actions-runner-controller is GitHub's own autoscaler
  * for runner pods. What is written here is the boundary around it, because
@@ -43,7 +43,7 @@ export interface CiRunners {
  * - The runners run in ARC's plain mode: no Docker daemon, no container hooks,
  *   no privileged pod. The jobs that run here need none of those: the runner
  *   image carries Postgres, Qdrant and the scanners as binaries. Image builds
- *   stay on GitHub's runners until a BuildKit pin clears trivy (ADR-0118).
+ *   stay on GitHub's runners until a BuildKit pin clears trivy (ADR-0119).
  * - A runner pod gets no Kubernetes credentials: the chart's no-permission
  *   service account, and no token mounted at all.
  * - A NetworkPolicy gives the runners the internet and nothing in the cluster

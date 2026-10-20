@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The image the cluster's CI runners run (ADR-0118): GitHub's runner image plus
+# The image the cluster's CI runners run (ADR-0119): GitHub's runner image plus
 # what CI's jobs expect a runner to have and `ubuntu-latest` happens to ship.
 # The setup actions (Python, uv, Node, Bun, go-task) still install their own
 # pinned versions in every job, so a workflow behaves the same on either runner

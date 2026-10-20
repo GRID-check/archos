@@ -2,7 +2,7 @@
 
 Each pin below is written in more than one place, because each place has to be
 readable on its own: the Pulumi program deploys production, the CI runner image
-(`deploy/ci-runner/Dockerfile`, ADR-0118) carries binaries for the cluster's
+(`deploy/ci-runner/Dockerfile`, ADR-0119) carries binaries for the cluster's
 runners, the test scripts fetch the same binaries anywhere else, and the
 workflow pins what GitHub's runners use. Nothing but this file holds them
 together, and the failure it prevents is quiet: the RLS suite ran on Postgres 16

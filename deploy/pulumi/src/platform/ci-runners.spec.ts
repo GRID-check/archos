@@ -3,7 +3,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
 
 /**
- * The CI runners (ADR-0118). Every runner runs a pull request's code, so what
+ * The CI runners (ADR-0119). Every runner runs a pull request's code, so what
  * is checked here is the boundary: the plain runner mode with no Docker daemon
  * and no Kubernetes credentials, egress to the internet and nothing private,
  * nothing allowed in, and a config that refuses to plan any of it without

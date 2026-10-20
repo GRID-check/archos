@@ -1972,7 +1972,7 @@ call Pulumi Cloud. One more infrastructure prerequisite: the `staging` GitHub
 environment (created on first run; note that adding required reviewers to it
 turns the "automatic" deploy into an approval-gated one).
 
-### CI runners in the dev cluster (`grid-oib:ciRunnersEnabled`, ADR-0118)
+### CI runners in the dev cluster (`grid-oib:ciRunnersEnabled`, ADR-0119)
 
 Off by default, and meant for the dev stack only. When on, the program installs
 GitHub's actions-runner-controller (`arc-systems`) and one runner scale set
@@ -2002,7 +2002,7 @@ metadata endpoint. The program refuses to plan the runners without
 | `ciRunnersNodeGroup` | (unset) | An IPAX worker group for the runners. A group cannot be tainted, so it stays theirs because every other workload names its own |
 
 Image builds and every job that holds a secret or writes the registry stay on
-GitHub's runners; why, and the rollout order, are in ADR-0118.
+GitHub's runners; why, and the rollout order, are in ADR-0119.
 
 ### What has been validated without the provider cluster
 

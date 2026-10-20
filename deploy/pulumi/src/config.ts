@@ -73,6 +73,8 @@ const SEAWEED_FILER_DB = "seaweedfs_filer";
  */
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 export const POSTHOG_DEFAULT_PROJECT_TOKEN = "phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X"; // pragma: allowlist secret
+/** The same project's numeric id, for the private API (PostHog Support). */
+export const POSTHOG_DEFAULT_PROJECT_ID = "269895";
 
 export interface GridConfig {
   namespace: string;
@@ -1076,7 +1078,7 @@ export interface GridConfig {
   keda: { install: boolean };
 
   /**
-   * GitHub Actions runners in this cluster (ADR-0118): the actions-runner-
+   * GitHub Actions runners in this cluster (ADR-0119): the actions-runner-
    * controller and one runner scale set that pull request jobs pick with
    * `runs-on`. Off unless `ciRunnersEnabled`; meant for the dev cluster only,
    * never production's. Every runner runs code from a pull request, so the
@@ -1191,6 +1193,21 @@ export interface GridConfig {
      * exception to the release by id. Empty = no release link.
      */
     releaseId: string;
+    /**
+     * Personal API key for PostHog Support (`grid-oib:posthogPersonalApiKey`,
+     * a secret in the stack's ESC environment; scopes `ticket:read`, `ticket:write`,
+     * `project:read`). The BFF opens a Support ticket per feedback report and
+     * lists and updates them on Platform -> Feedback
+     * (`frontends/ui/src/lib/posthog-support/`). `undefined` when the stack
+     * does not set it: then neither it nor `projectId` reaches a pod, and the
+     * page shows the local feedback log only.
+     */
+    personalApiKey: pulumi.Output<string> | undefined;
+    /**
+     * Numeric project id for that API (`grid-oib:posthogProjectId`, default
+     * `POSTHOG_DEFAULT_PROJECT_ID`). Only emitted alongside the key.
+     */
+    projectId: string;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -1543,7 +1560,7 @@ function nodeGroup(cfg: pulumi.Config, key: string): string | undefined {
 }
 
 /**
- * The CI runner knobs (ADR-0118). Disabled, nothing is required and nothing is
+ * The CI runner knobs (ADR-0119). Disabled, nothing is required and nothing is
  * read but the defaults. Enabled, the GitHub App and a digest-pinned image are
  * required, and so are NetworkPolicies: they are what keeps a pull request's
  * code off the rest of the cluster.
@@ -3074,6 +3091,8 @@ export function loadConfig(): GridConfig {
       sessionReplay: bool(cfg, "posthogSessionReplay", true),
       replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
       releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),
+      personalApiKey: cfg.getSecret("posthogPersonalApiKey"),
+      projectId: (cfg.get("posthogProjectId") ?? POSTHOG_DEFAULT_PROJECT_ID).trim(),
     },
 
     internal: {

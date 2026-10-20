@@ -11,7 +11,7 @@
 #
 # A binary, not a container, for the same reason scripts/rls-test-db.sh runs
 # Postgres from its server binaries: the same command works on a laptop, on a
-# GitHub-hosted runner and on the cluster's runners (ADR-0118), and none of them
+# GitHub-hosted runner and on the cluster's runners (ADR-0119), and none of them
 # needs a Docker daemon. The version is production's (the drift test in
 # tests/test_ci_toolchain_pins.py holds the two together). The binary is found
 # in $QDRANT_BIN, then in the CI runner image (/opt/qdrant/<version>), then in

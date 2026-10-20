@@ -29,8 +29,23 @@
 
 import { posthogAssetHost, POSTHOG_PROXY_PATH, type PostHogConfig } from './posthog-config'
 
-/** Request headers PostHog needs. Everything else, cookies above all, stays here. */
-const FORWARDED_REQUEST_HEADERS = ['content-type', 'accept', 'accept-language', 'user-agent'] as const
+/**
+ * Request headers PostHog needs. Everything else, cookies above all, stays here.
+ *
+ * `x-conversations-token` is the Support widget's public token (the project's
+ * `conversations_settings.widget_public_token`, which posthog-js fetches from
+ * remote config and sends on every `/api/conversations/v1/widget/*` call).
+ * Without it PostHog answers 403, `posthog.conversations.sendMessage` rejects,
+ * and no feedback report ever became a Support ticket: the widget still loaded
+ * (`$conversations_loaded`), so nothing looked broken.
+ */
+const FORWARDED_REQUEST_HEADERS = [
+  'content-type',
+  'accept',
+  'accept-language',
+  'user-agent',
+  'x-conversations-token',
+] as const
 
 /**
  * Response headers worth returning. `content-encoding`/`content-length` are
