@@ -35,7 +35,7 @@ SESSION_COLLECTION_PREFIX = "s_"
 #: The order a structural fetch (:meth:`BaseRetriever.fetch`) can ask for: the
 #: page a chunk starts on, as an integer, ``0`` when it has none. It is the
 #: leading term of every document order a reader sorts by (``read_passage``'s
-#: ``_punkt_sort_key`` starts with ``Chunk.page_number or 0``), so a fetch that
+#: ``_clause_sort_key`` starts with ``Chunk.page_number or 0``), so a fetch that
 #: keeps the first N chunks in this order, and never splits a tie, hands that
 #: reader exactly the chunks its own finer sort would have kept.
 READING_ORDER = "reading_order"

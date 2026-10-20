@@ -72,7 +72,7 @@ function StatusBanner({
 
   // A closed project leads with when its work ended, not with the day someone
   // clicked: a project finished in 2019 and closed today ended in 2019.
-  const abschluss = lifecycle.endedOn
+  const closing = lifecycle.endedOn
     ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
         new Date(`${lifecycle.endedOn}-01T00:00:00Z`)
       )
@@ -80,7 +80,7 @@ function StatusBanner({
   const sentences = paused
     ? [date ? t('lifecycle.banner.pausedOn', { date }) : '', t('lifecycle.banner.pausedBody')]
     : [
-        abschluss ? t('lifecycle.banner.endedIn', { month: abschluss }) : '',
+        closing ? t('lifecycle.banner.endedIn', { month: closing }) : '',
         date ? t('lifecycle.banner.closedOn', { date }) : '',
         lifecycle.closedOutcome === 'cancelled' ? t('lifecycle.banner.cancelled') : '',
         t('lifecycle.banner.body'),

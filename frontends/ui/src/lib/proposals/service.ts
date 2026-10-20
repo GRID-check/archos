@@ -33,7 +33,7 @@
  * - **The Büroablage** (0146): a proposal with no project is the office
  *   shelf's, and can only move its documents. Any member reads the Büroablage,
  *   so reading needs no project right; deciding needs its curators' right
- *   (`canManageArchiv`), the one every write to it asks.
+ *   (`canManageOfficeShelf`), the one every write to it asks.
  * - **A proposal no conversation made** (a filing suggestion, `lib/filing`)
  *   has no card to borrow a reader from, so it is read through the documents
  *   it names: every one must resolve for the reader on their shelf, or it is
@@ -48,7 +48,7 @@ import 'server-only'
 import { defaultLocale, type Locale } from '@/i18n/config'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
@@ -270,7 +270,7 @@ const deciderNeedsWrite = (kind: ProposedChangeKind) =>
 async function requireDecider(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   if (!row.projectId) {
     // The Büroablage: its curators write it, so they decide what moves in it.
-    if (!canManageArchiv(session)) throw deciderNeedsWrite(row.kind)
+    if (!canManageOfficeShelf(session)) throw deciderNeedsWrite(row.kind)
     return
   }
   try {

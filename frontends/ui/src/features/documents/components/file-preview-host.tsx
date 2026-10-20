@@ -409,9 +409,9 @@ export function FilePreviewHost({
             context.onTagsUpdated?.(fileId, tags, topics)
           }}
           onOpenDocument={context.onOpenDocument}
-          onFassungChanged={(fileId, fassung) => {
-            if (fileId === file.id) patchFile({ fassung })
-            context.onFassungChanged?.(fileId, fassung)
+          onRevisionChanged={(fileId, revision) => {
+            if (fileId === file.id) patchFile({ fassung: revision })
+            context.onRevisionChanged?.(fileId, revision)
           }}
           onAssigneesChanged={(assignees) => patchFile({ assignees })}
           onLifecycleChanged={(fileId, summary) => {

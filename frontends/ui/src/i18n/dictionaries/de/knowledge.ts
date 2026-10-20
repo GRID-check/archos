@@ -107,9 +107,9 @@ export const knowledge: typeof en.knowledge = {
     close: '„Im Büro behandelt“ schließen',
     backToSource: 'Zurück zur Fundstelle',
     found: '{count, plural, one {In # Projekt gefunden} other {In # Projekten gefunden}}',
-    foundWithArchiv:
+    foundWithOfficeShelf:
       '{count, plural, one {In # Projekt und der Büroablage gefunden} other {In # Projekten und der Büroablage gefunden}}',
-    foundOnlyArchiv: 'In der Büroablage gefunden',
+    foundOnlyOfficeShelf: 'In der Büroablage gefunden',
     loading: 'Piloti sieht in Ihren Projekten nach…',
     emptyTitle: 'Im Büro noch nicht behandelt',
     emptyBody:
@@ -120,9 +120,9 @@ export const knowledge: typeof en.knowledge = {
     heldBody: 'Sobald die Prüfung abgeschlossen ist, sieht Piloti im Büro nach.',
     retry: 'Erneut versuchen',
     groupCurrent: 'Dieses Projekt',
-    groupArchiv: 'Büroablage',
+    groupOfficeShelf: 'Büroablage',
     groupClosed: 'abgeschlossen',
-    standDate: 'Stand {date}',
+    datedOn: 'Stand {date}',
     page: 'S. {page}',
     open: 'Öffnen',
     openPassage: '{document}, Seite {page} öffnen',

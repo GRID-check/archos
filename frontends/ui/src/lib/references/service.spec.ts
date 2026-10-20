@@ -253,7 +253,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
     expect(vi.mocked(can)).toHaveBeenCalledWith(session, 'project:edit', { type: 'project', id: 'current' })
   })
 
-  it('reads the Bundesland and the period, and ends a closed project without an end date on its closing day', async () => {
+  it('reads the federal state and the period, and ends a closed project without an end date on its closing day', async () => {
     const result = (await getSimilarProjects(session, 'current')).projects
     const byId = Object.fromEntries(result.map((project) => [project.id, project]))
     expect(byId['closed-near'].period).toEqual({ start: '2019-03-01', end: '2021-11-30' })
@@ -274,7 +274,7 @@ describe('getSimilarProjects: what each project shares and records', () => {
     expect(byId['closed-far'].oibEdition).toBeNull()
   })
 
-  it('marks a Bundesland read from the documents as unconfirmed', async () => {
+  it('marks a federal state read from the documents as unconfirmed', async () => {
     const suggestedLand = closed('closed-near', {
       profile: profileOf({ gebaeudeklasse: 4 }, { bundesland: suggestion('niederoesterreich') }),
     })

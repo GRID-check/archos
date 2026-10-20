@@ -47,7 +47,7 @@ export function useFilingSuggestions({
 }): FilingSuggestions {
   const [listed, setListed] = useState<readonly ListedProposal[]>(EMPTY)
   const projectId = query?.projectId
-  const archiv = query?.shelf === 'archiv'
+  const officeShelf = query?.shelf === 'archiv'
   const asked = query !== null
   const generation = useRef(0)
 
@@ -65,7 +65,7 @@ export function useFilingSuggestions({
 
   useEffect(() => {
     reload()
-  }, [reload, refreshKey, archiv])
+  }, [reload, refreshKey, officeShelf])
 
   useEffect(() => {
     if (!watching || !asked) return

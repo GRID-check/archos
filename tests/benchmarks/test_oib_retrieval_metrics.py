@@ -32,8 +32,8 @@ FIXTURES = Path(__file__).resolve().parents[2] / "frontends" / "benchmarks" / "o
 
 
 @pytest.fixture(scope="module")
-def punkt_index() -> qrels.PunktIndex:
-    return qrels.load_punkt_index(FIXTURES / "punkt_index.json")
+def clause_index() -> qrels.ClauseIndex:
+    return qrels.load_clause_index(FIXTURES / "clause_index.json")
 
 
 @pytest.fixture(scope="module")
@@ -113,7 +113,7 @@ def test_ndcg_at_k_uses_exponential_gain_so_one_grade_three_outranks_three_grade
     assert answer_first > context_first
 
 
-def test_ndcg_at_k_caps_the_ideal_at_the_cutoff_so_a_two_page_punkt_can_score_one_at_k_one():
+def test_ndcg_at_k_caps_the_ideal_at_the_cutoff_so_a_two_page_clause_can_score_one_at_k_one():
     grades = {"a": 3, "b": 3}
     assert metrics.ndcg_at_k(["a"], grades, 1) == pytest.approx(1.0)
     assert metrics.ndcg_at_k(["a"], grades, 2) == pytest.approx(7.0 / (7.0 + 7.0 / math.log2(3)))
@@ -161,50 +161,50 @@ def test_fill_rate_is_one_when_the_retriever_fills_every_slot_of_an_unanswerable
 # ---------------------------------------------------------------------------
 
 
-def test_the_committed_punkt_index_holds_946_punkte_across_12_richtlinien(punkt_index):
-    assert len(punkt_index.richtlinien) == 12
-    assert punkt_index.total_punkte() == 946
+def test_the_committed_clause_index_holds_946_clauses_across_12_guidelines(clause_index):
+    assert len(clause_index.guidelines) == 12
+    assert clause_index.total_clauses() == 946
 
 
-def test_expanding_a_punkt_yields_one_unit_per_page_it_occupies(punkt_index):
-    units = punkt_index.units("2", "12")
+def test_expanding_a_clause_yields_one_unit_per_page_it_occupies(clause_index):
+    units = clause_index.units("2", "12")
     assert units[0] == qrels.Unit("oib-rl_2_ausgabe_mai_2023.pdf", 23)
     assert len(units) == 10
     assert all(unit.file_name == "oib-rl_2_ausgabe_mai_2023.pdf" for unit in units)
 
 
-def test_an_unknown_richtlinie_or_punkt_raises_rather_than_being_silently_dropped(punkt_index):
+def test_an_unknown_guideline_or_clause_raises_rather_than_being_silently_dropped(clause_index):
     with pytest.raises(KeyError):
-        punkt_index.units("99", "1")
+        clause_index.units("99", "1")
     with pytest.raises(KeyError):
-        punkt_index.units("2", "99.99.99")
+        clause_index.units("2", "99.99.99")
 
 
-def test_a_punkt_with_numbered_children_is_a_structural_parent(punkt_index):
-    assert punkt_index.has_children("2", "3.1") is True
-    assert punkt_index.has_children("2", "3.1.1") is False
+def test_a_clause_with_numbered_children_is_a_structural_parent(clause_index):
+    assert clause_index.has_children("2", "3.1") is True
+    assert clause_index.has_children("2", "3.1.1") is False
 
 
-def test_expansion_keeps_the_higher_grade_when_two_labels_share_a_page(punkt_index):
+def test_expansion_keeps_the_higher_grade_when_two_labels_share_a_page(clause_index):
     entry = qrels.GoldenEntry(
         id="t",
         need_id="t",
         language="de",
         question="q",
         question_class="c",
-        relevant=(qrels.PunktLabel("2", "5.1.1", 3), qrels.PunktLabel("2", "5.1.4", 1)),
+        relevant=(qrels.ClauseLabel("2", "5.1.1", 3), qrels.ClauseLabel("2", "5.1.4", 1)),
         provenance="test",
         label_method="test",
         notes="both Punkte are on page 13",
         calibration_pending=True,
     )
-    graded = qrels.expand(entry, punkt_index)
+    graded = qrels.expand(entry, clause_index)
     assert graded == {qrels.Unit("oib-rl_2_ausgabe_mai_2023.pdf", 13): 3}
 
 
 def test_a_grade_outside_one_to_three_is_rejected_at_construction():
     with pytest.raises(ValueError):
-        qrels.PunktLabel("2", "5.1.1", 0)
+        qrels.ClauseLabel("2", "5.1.1", 0)
 
 
 def test_the_forbidden_container_matches_by_file_name_prefix_only():
@@ -232,11 +232,11 @@ def test_every_golden_entry_carries_provenance_a_label_method_and_notes(golden):
         assert entry.language in ("de", "en"), entry.id
 
 
-def test_every_german_question_has_an_english_sibling_with_identical_qrels(golden, punkt_index):
+def test_every_german_question_has_an_english_sibling_with_identical_qrels(golden, clause_index):
     # The load-bearing invariant of the language-parity number: if the two sides' expected
     # output differed at all, a measured gap could be blamed on the labels instead of on
     # retrieval. This raises rather than asserts, so the failure names the offending need.
-    qrels.assert_siblings_share_qrels(golden, punkt_index)
+    qrels.assert_siblings_share_qrels(golden, clause_index)
     assert len(golden.sibling_pairs()) == len({entry.need_id for entry in golden.entries})
 
 
@@ -247,7 +247,7 @@ def test_the_golden_set_contains_should_refuse_cases_with_empty_qrels(golden):
     assert all(not entry.relevant for entry in refusals)
 
 
-def test_the_golden_set_contains_german_morphology_variants_sharing_one_needs_qrels(golden, punkt_index):
+def test_the_golden_set_contains_german_morphology_variants_sharing_one_needs_qrels(golden, clause_index):
     variants = [entry for entry in golden.entries if entry.variant_of is not None]
     assert len(variants) >= 2
     by_id = {entry.id: entry for entry in golden.entries}
@@ -255,15 +255,15 @@ def test_the_golden_set_contains_german_morphology_variants_sharing_one_needs_qr
         parent = by_id[variant.variant_of]
         assert variant.language == parent.language == "de"
         assert variant.question != parent.question
-        assert qrels.expand(variant, punkt_index) == qrels.expand(parent, punkt_index)
+        assert qrels.expand(variant, clause_index) == qrels.expand(parent, clause_index)
 
 
-def test_the_forbidden_rule_names_the_aenderungen_change_logs(golden):
+def test_the_forbidden_rule_names_the_amendments_change_logs(golden):
     assert "aenderungen_" in golden.forbidden_file_prefixes
 
 
-def test_every_golden_label_resolves_against_the_committed_punkt_index(golden, punkt_index):
-    for judged in qrels.build_judgements(golden, punkt_index):
+def test_every_golden_label_resolves_against_the_committed_clause_index(golden, clause_index):
+    for judged in qrels.build_judgements(golden, clause_index):
         if judged.entry.should_refuse:
             assert judged.graded == {}
         else:

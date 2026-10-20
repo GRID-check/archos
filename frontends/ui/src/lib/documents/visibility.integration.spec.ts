@@ -172,12 +172,12 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
     ['a project reviewer reading the Büroablage as a member', () => ({
       kind: 'shelves',
       project: REVIEWER_READER,
-      archiv: memberReader(UPLOADER),
+      officeShelf: memberReader(UPLOADER),
     })],
     ['a curator reading the project as a member', () => ({
       kind: 'shelves',
       project: memberReader('user_vis_nobody'),
-      archiv: REVIEWER_READER,
+      officeShelf: REVIEWER_READER,
     })],
     ['the projects grid, reviewing this project', () => ({ kind: 'projects', userId: 'user_vis_nobody', reviewedProjectIds: [projectId] })],
     ['the projects grid, reviewing none', () => ({ kind: 'projects', userId: UPLOADER, reviewedProjectIds: [] })],

@@ -48,8 +48,8 @@ import 'server-only'
 import { captureServer } from '@/lib/analytics/posthog-server'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { addResourceAssignment, listAssignmentCandidates } from '@/lib/assignments/service'
-import { ensureArchivFolderPaths, listArchivFolders, updateArchivFolder } from '@/lib/archiv/folder-service'
-import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
+import { ensureOfficeShelfFolderPaths, listOfficeShelfFolders, updateOfficeShelfFolder } from '@/lib/office-shelf/folder-service'
+import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
 import { renameDocument, resolveProjectDocumentsByName } from '@/lib/documents/service'
 import type { FolderRow } from '@/lib/documents/shelf-folders'
@@ -106,7 +106,7 @@ async function documentIdFor(item: FileOperationItem, { session, projectId }: Ex
   const name = item.document ?? ''
   const rows =
     shelfOf(item) === 'buero'
-      ? await resolveArchivDocumentsByName(session, [name])
+      ? await resolveOfficeShelfDocumentsByName(session, [name])
       : await resolveProjectDocumentsByName(session, requireProject(projectId), [name])
   const wanted = nameKey(name)
   const newest = rows
@@ -130,11 +130,11 @@ export async function resolveItemDocuments(
 ): Promise<Array<{ id: string; name: string }> | null> {
   const named = items.filter((item) => (item.document ?? '').trim().length > 0)
   const byShelf = (shelf: Shelf) => [...new Set(named.filter((item) => shelfOf(item) === shelf).map((item) => item.document ?? ''))]
-  const [projekt, buero] = [byShelf('projekt'), byShelf('buero')]
+  const [projekt, office] = [byShelf('projekt'), byShelf('buero')]
   if (projekt.length > 0 && !projectId) return null
   const rows = [
     ...(projekt.length > 0 && projectId ? await resolveProjectDocumentsByName(session, projectId, projekt) : []),
-    ...(buero.length > 0 ? await resolveArchivDocumentsByName(session, buero) : []),
+    ...(office.length > 0 ? await resolveOfficeShelfDocumentsByName(session, office) : []),
   ]
   const newest = new Map<string, { id: string; createdAt: number }>()
   for (const row of rows) {
@@ -212,7 +212,7 @@ async function makeNewFolder(
   const input = { parentId: null, paths: [folder.path] }
   const outcome =
     shelf === 'buero'
-      ? await ensureArchivFolderPaths(session, input)
+      ? await ensureOfficeShelfFolderPaths(session, input)
       : await ensureProjectFolderPaths({ ...input, projectId: requireProject(projectId) }, session)
   if (!outcome.ok) throw new Error(outcome.error)
   const id = outcome.folderIdByPath[folder.path]
@@ -221,7 +221,7 @@ async function makeNewFolder(
   if (madeHere && folder.description) {
     const described =
       shelf === 'buero'
-        ? await updateArchivFolder(session, { folderId: id, description: folder.description })
+        ? await updateOfficeShelfFolder(session, { folderId: id, description: folder.description })
         : await updateProjectFolder(
             { projectId: requireProject(projectId), folderId: id, description: folder.description },
             session
@@ -295,7 +295,7 @@ export async function applyFileOperations(
   const { operation, operations: items } = payload
   const cache = new Map<Shelf, Promise<FolderRow[]>>()
   const loadFolders = (shelf: Shelf): Promise<FolderRow[]> =>
-    shelf === 'buero' ? listArchivFolders(base.session) : listProjectFolders(requireProject(base.projectId), base.session)
+    shelf === 'buero' ? listOfficeShelfFolders(base.session) : listProjectFolders(requireProject(base.projectId), base.session)
   const made = new Map<Shelf, Promise<string>>()
   const newFolder = operation === 'move' ? (payload.new_folder ?? null) : null
   const context: ExecutionContext = {

@@ -133,7 +133,7 @@ export default function AppRailPreview(): JSX.Element {
           canViewOrganization
           canManageOrganization
           canManagePlatform
-          canAccessArchiv
+          canAccessOfficeShelf
           canAccessInbox
           showModels
           showSkills
@@ -153,7 +153,7 @@ export default function AppRailPreview(): JSX.Element {
           <span className="md:hidden"> · phone: tab bar lit for {PREVIEW_PATH}</span>
         </p>
       </main>
-      <PhoneTabBar projectId="p-1" canAccessArchiv canAccessInbox pathname={PREVIEW_PATH} />
+      <PhoneTabBar projectId="p-1" canAccessOfficeShelf canAccessInbox pathname={PREVIEW_PATH} />
       <ProjectSwitcherSheet projects={PROJECTS} activeProjectId="p-1" />
     </div>
   )

@@ -320,7 +320,7 @@ when the format changes; they are the cheapest part of that change.
   module's legacy branch. Harmless (the branch is tested), but it means one
   storage path writes the envelope and one does not.
 - `/api/archiv/documents` is fetched on every preview-index load even when the
-  org-archiv flag is off (403, degrades cleanly), and `listArchiv` is unpaginated.
+  org-archiv flag is off (403, degrades cleanly), and `listOfficeShelf` is unpaginated.
 - **The passage highlight has no telemetry.** How often the matcher finds
   nothing, and on which documents, is exactly the signal that would say whether
   the thresholds are set right — and nothing currently records it. The matcher

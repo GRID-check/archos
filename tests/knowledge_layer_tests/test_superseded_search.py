@@ -24,7 +24,7 @@ from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 from sources.knowledge_layer.src.register import knowledge_retrieval
 
 PROJECT = "proj_1"
-ARCHIV = "archiv_1"
+OFFICE_SHELF = "archiv_1"
 BASE = "oib_knowledge"
 
 DOCS = [
@@ -149,7 +149,7 @@ class TestTheExclusion:
         assert "Statik_Index_B.pdf, p.1" not in _cited(out)
         assert {"Statik_Index_C.pdf, p.1", "Brandschutz.pdf, p.1"} <= set(_cited(out))
 
-    async def test_the_result_says_which_fassungen_were_left_out_and_how_to_read_one(self, search):
+    async def test_the_result_says_which_revisions_were_left_out_and_how_to_read_one(self, search):
         search(POOLS, REPLACED)
 
         out = await _ranked_search(query="Bewehrung der Decke")
@@ -166,7 +166,7 @@ class TestTheExclusion:
         assert "Statik_Index_B.pdf, p.1" in _cited(out)
         assert "Ältere Fassungen ausgeblendet" not in out
 
-    async def test_naming_an_older_fassung_says_which_one_is_current(self, search):
+    async def test_naming_an_older_revision_says_which_one_is_current(self, search):
         # Read on purpose, but not presented as the document's current state: the same line
         # `read_passage` gives the model when it opens an older Fassung.
         store = search(POOLS, {PROJECT: {"Statik_Index_A.pdf": "Statik_Index_B.pdf", **REPLACED[PROJECT]}})
@@ -179,7 +179,7 @@ class TestTheExclusion:
             "aktuell ist Statik_Index_C.pdf." in out
         )
 
-    async def test_naming_the_current_fassung_says_nothing_about_older_ones(self, search):
+    async def test_naming_the_current_revision_says_nothing_about_older_ones(self, search):
         search(POOLS, REPLACED)
 
         out = await _ranked_search(query="Bewehrung der Decke", file_name="Statik_Index_C.pdf")
@@ -198,16 +198,16 @@ class TestTheExclusion:
     async def test_each_user_shelf_gets_its_own_exclusion(self, search):
         scope = [
             ScopedCollection(BASE, Shelf.BASE),
-            ScopedCollection(ARCHIV, Shelf.ARCHIV),
+            ScopedCollection(OFFICE_SHELF, Shelf.OFFICE_SHELF),
             ScopedCollection(PROJECT, Shelf.PROJECT),
         ]
-        pools = {**POOLS, ARCHIV: [_chunk("Altbau.pdf", collection=ARCHIV)]}
-        store = search(pools, {**REPLACED, ARCHIV: {"Altbau.pdf": "Neubau.pdf"}}, scope=scope)
+        pools = {**POOLS, OFFICE_SHELF: [_chunk("Altbau.pdf", collection=OFFICE_SHELF)]}
+        store = search(pools, {**REPLACED, OFFICE_SHELF: {"Altbau.pdf": "Neubau.pdf"}}, scope=scope)
 
         out = await _ranked_search(query="Bewehrung der Decke")
 
         by_collection = {call["collection"]: call["filters"] for call in store.calls}
-        assert by_collection[ARCHIV] == {"superseded": {"$ne": True}}
+        assert by_collection[OFFICE_SHELF] == {"superseded": {"$ne": True}}
         assert by_collection[PROJECT] == {"superseded": {"$ne": True}}
         assert "Altbau.pdf" in out.split("Ältere Fassungen ausgeblendet", 1)[1].splitlines()[0]
 

@@ -39,7 +39,7 @@ beforeEach(() => {
   vi.mocked(uploadDocument).mockResolvedValue({ documentId: 'd1', jobId: null, status: 'uploaded', filename: 'x.pdf' })
 })
 
-describe('POST /api/documents/upload — fassungOf', () => {
+describe('POST /api/documents/upload — revision link', () => {
   it('passes the older document’s id to the service, which checks it', async () => {
     const response = await post({ fassungOf: OLDER })
 
@@ -57,7 +57,7 @@ describe('POST /api/documents/upload — fassungOf', () => {
     expect(uploadDocument).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ fassungOf: null }), expect.any(Request))
   })
 
-  it('refuses a fassungOf that is a file name, before anything is stored', async () => {
+  it('refuses a revision-of value that is a file name, before anything is stored', async () => {
     const response = await post({ fassungOf: 'EG_Grundriss_Index_B.pdf' })
 
     expect(response.status).toBe(400)

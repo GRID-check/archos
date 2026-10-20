@@ -24,9 +24,9 @@ import { onDocumentsChanged } from '@/lib/documents/document-changes'
 /** Every row answering to one name, per shelf. */
 export interface NamedDocuments {
   /** The project's rows (none without a project). */
-  projekt: ResolvedDocumentRow[]
+  project: ResolvedDocumentRow[]
   /** The org Archiv's rows (none when the Archiv is gated off). */
-  buero: ResolvedDocumentRow[]
+  officeShelf: ResolvedDocumentRow[]
   /**
    * A GENUINE failure (network, 5xx, a refused project) — the answer may be
    * incomplete. A gated Archiv (403/404) is not one: it simply holds nothing.
@@ -38,7 +38,7 @@ export interface NamedDocuments {
 export const documentNameLookupKey = (name: string): string => name.normalize('NFC').trim().toLowerCase()
 
 /** Archiv statuses that mean "no Archiv here", not "the lookup failed". */
-const SOFT_ARCHIV_STATUSES = new Set([403, 404])
+const SOFT_OFFICE_SHELF_STATUSES = new Set([403, 404])
 
 const cache = new Map<string, Promise<NamedDocuments>>()
 
@@ -94,19 +94,19 @@ async function flush(projectId: string | null): Promise<void> {
   pending.delete(scope)
   if (!batch) return
   const names = [...batch.names.values()]
-  const [project, archiv] = await Promise.all([
+  const [project, officeShelf] = await Promise.all([
     projectId
       ? settled(client.project(projectId, names), new Set())
       : Promise.resolve({ rows: [], failed: false }),
-    settled(client.archiv(names), SOFT_ARCHIV_STATUSES),
+    settled(client.officeShelf(names), SOFT_OFFICE_SHELF_STATUSES),
   ])
   const projektByKey = groupByKey(project.rows)
-  const bueroByKey = groupByKey(archiv.rows)
-  const error = project.failed || archiv.failed
+  const officeShelfByKey = groupByKey(officeShelf.rows)
+  const error = project.failed || officeShelf.failed
   for (const [key, resolvers] of batch.settle) {
     const result: NamedDocuments = {
-      projekt: projektByKey.get(key) ?? [],
-      buero: bueroByKey.get(key) ?? [],
+      project: projektByKey.get(key) ?? [],
+      officeShelf: officeShelfByKey.get(key) ?? [],
       error,
     }
     for (const resolve of resolvers) resolve(result)

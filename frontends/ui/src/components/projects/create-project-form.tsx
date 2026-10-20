@@ -22,7 +22,7 @@
  * for (how it ended, Beginn, Abschluss), rather than created running and then
  * walked through the three-step close dialog. Those facts reuse the close
  * dialog's rules and wording: the outcome is chosen, never preselected, and the
- * Abschluss is bounded by `abschlussBounds`.
+ * Abschluss is bounded by `closingBounds`.
  */
 
 import type { JSX } from 'react'
@@ -55,15 +55,15 @@ import { capturePosthog } from '@/lib/analytics/posthog'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import { currentMonth, isMonth, type Month } from '@/lib/projects/month'
 import {
-  abschlussBounds,
-  abschlussProblem,
-  defaultAbschluss,
+  closingBounds,
+  closingProblem,
+  defaultClosing,
   type ProjectOutcome,
 } from '@/lib/projects/project-status'
 import { isRedirectSignal } from '@/lib/utils/redirect-signal'
 
 export type CreateProjectState = 'active' | 'closed'
-type AbschlussProblem = ReturnType<typeof abschlussProblem>
+type AbschlussProblem = ReturnType<typeof closingProblem>
 
 export interface CreateProjectFormProps {
   /** Leaves without creating anything; the dialog closes itself. */
@@ -146,7 +146,7 @@ export function CreateProjectForm({
       state: 'active' as CreateProjectState,
       outcome: '' as ProjectOutcome | '',
       startedOn: '',
-      endedOn: defaultAbschluss(null, null, thisMonth) as string,
+      endedOn: defaultClosing(null, null, thisMonth) as string,
     },
     onSubmit: async ({ value }) => {
       setServerError(null)
@@ -206,7 +206,7 @@ export function CreateProjectForm({
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
   const closed = values.state === 'closed'
   const abschlussError =
-    serverAbschluss ?? abschlussProblem(values.endedOn, startedOnOf(values.startedOn), thisMonth)
+    serverAbschluss ?? closingProblem(values.endedOn, startedOnOf(values.startedOn), thisMonth)
   const nameValid = values.name.trim().length > 0 && values.name.trim().length <= 255
   const ready = nameValid && (!closed || (values.outcome !== '' && abschlussError === null))
 
@@ -632,8 +632,8 @@ function PeriodFields({
 }: PeriodFieldsProps): JSX.Element {
   const t = useTranslations('projects')
   const { locale } = useLocale()
-  const bounds = abschlussBounds(startedOnOf(startedOn), thisMonth)
-  const placeholder = { month: t('steckbrief.month'), year: t('steckbrief.year') }
+  const bounds = closingBounds(startedOnOf(startedOn), thisMonth)
+  const placeholder = { month: t('projectRecord.month'), year: t('projectRecord.year') }
   const problemCopy =
     problem === 'beforeStart'
       ? t('form.closed.endedOnBeforeStart')
@@ -653,8 +653,8 @@ function PeriodFields({
           value={startedOn}
           onChange={onStartedOn}
           locale={locale}
-          monthLabel={`${t('form.closed.startedOn')}, ${t('steckbrief.month')}`}
-          yearLabel={`${t('form.closed.startedOn')}, ${t('steckbrief.year')}`}
+          monthLabel={`${t('form.closed.startedOn')}, ${t('projectRecord.month')}`}
+          yearLabel={`${t('form.closed.startedOn')}, ${t('projectRecord.year')}`}
           placeholder={placeholder}
           clearLabel={t('form.closed.clearStartedOn')}
           toYear={Number(thisMonth.slice(0, 4))}
@@ -670,8 +670,8 @@ function PeriodFields({
           value={endedOn}
           onChange={onEndedOn}
           locale={locale}
-          monthLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('steckbrief.month')}`}
-          yearLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('steckbrief.year')}`}
+          monthLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('projectRecord.month')}`}
+          yearLabel={`${t('lifecycle.closeDialog.endedOn.label')}, ${t('projectRecord.year')}`}
           placeholder={placeholder}
           fromYear={bounds.min ? Number(bounds.min.slice(0, 4)) : undefined}
           toYear={Number(bounds.max.slice(0, 4))}

@@ -47,7 +47,7 @@ from .factory import get_ingestor
 from .factory import get_retriever
 from .factory import get_superseded_files
 from .factory import get_topic_vocabulary
-from .factory import link_document_fassung
+from .factory import link_document_revision
 from .factory import list_summary_collections
 from .factory import register_ingestor
 from .factory import register_retriever
@@ -125,7 +125,7 @@ __all__ = [
     "set_document_revision_facts",
     "set_document_revision_suggestion",
     "dismiss_document_revision_suggestion",
-    "link_document_fassung",
+    "link_document_revision",
     "get_document_revision_suggestions",
     "set_document_change_summary",
     "set_document_doc_class",

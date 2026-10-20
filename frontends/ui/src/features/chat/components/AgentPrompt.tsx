@@ -137,7 +137,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
   // composer writes. The approval carries the ids; the card shows the names.
   const enabledSourceIds = useLayoutStore((s) => s.enabledDataSourceIds)
   const availableSources = useLayoutStore((s) => s.availableDataSources)
-  const rahmen = useMemo(() => {
+  const frame = useMemo(() => {
     if (!plan) return undefined
     const ids = enabledSourceIds.filter((id) => (availableSources ?? []).some((s) => s.id === id))
     const labels = ids.map((id) => (availableSources ?? []).find((s) => s.id === id)?.name ?? id)
@@ -173,9 +173,9 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
   const handleApprove = useCallback(() => {
     if (isResponded) return
     respondToInteractionFn?.(
-      plan && shownPlan ? approvalReply(plan, shownPlan, rahmen?.ids ?? []) : 'approve'
+      plan && shownPlan ? approvalReply(plan, shownPlan, frame?.ids ?? []) : 'approve'
     )
-  }, [isResponded, respondToInteractionFn, plan, shownPlan, rahmen])
+  }, [isResponded, respondToInteractionFn, plan, shownPlan, frame])
 
   const handleShallow = useCallback(() => {
     if (isResponded) return
@@ -257,7 +257,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
                 {/* A colleague's settled list for a choice prompt is the options
                     above; every other prompt echoes its answer here. */}
                 {options.length === 0 && plan && decidedPlan ? (
-                  <PlanRecord label={recordLabel} plan={decidedPlan} rahmen={rahmen} />
+                  <PlanRecord label={recordLabel} plan={decidedPlan} frame={frame} />
                 ) : (
                   options.length === 0 && <ResponseDisplay response={responseLabel} />
                 )}
@@ -268,7 +268,7 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
                   <PlanChecklist
                     plan={shownPlan}
                     disabled={!isAddressee || !respondToInteractionFn}
-                    rahmen={rahmen}
+                    frame={frame}
                     onChange={setEditedPlan}
                   />
                 )}
@@ -410,8 +410,8 @@ const AnswerSlotBody: FC<{ children: ReactNode }> = ({ children }) => {
 const PlanRecord: FC<{
   label?: string
   plan: PlanShape
-  rahmen?: { ids: string[]; labels: string[] }
-}> = ({ label, plan, rahmen }) => {
+  frame?: { ids: string[]; labels: string[] }
+}> = ({ label, plan, frame }) => {
   const t = useTranslations('chat')
   const [open, setOpen] = useState(false)
   return (
@@ -436,7 +436,7 @@ const PlanRecord: FC<{
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
-        <PlanChecklist plan={plan} disabled rahmen={rahmen} onChange={() => undefined} />
+        <PlanChecklist plan={plan} disabled frame={frame} onChange={() => undefined} />
       </CollapsibleContent>
     </Collapsible>
   )

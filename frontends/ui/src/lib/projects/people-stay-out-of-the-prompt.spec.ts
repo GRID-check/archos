@@ -30,7 +30,7 @@ const CONTEXT_BUILDERS = [
 ]
 
 /** What reads or names the people. */
-const PEOPLE = /steckbrief-(service|repository)|['"]@\/lib\/db\/schema\/project-people['"]|\bprojectPeople\b|project_people/
+const PEOPLE = /project-record-(service|repository)|['"]@\/lib\/db\/schema\/project-people['"]|\bprojectPeople\b|project_people/
 
 function sources(path: string): string[] {
   const full = join(ROOT, path)
@@ -40,14 +40,14 @@ function sources(path: string): string[] {
     .map((file) => join(full, file))
 }
 
-describe("the Steckbrief's people stay out of the agent's prompt", () => {
+describe("the project record's people stay out of the agent's prompt", () => {
   it('no module that builds the agent context, nor any agent route, reads them', () => {
     const offenders = CONTEXT_BUILDERS.flatMap(sources).filter((file) => PEOPLE.test(readFileSync(file, 'utf8')))
     expect(offenders.map((file) => file.slice(ROOT.length + 1))).toEqual([])
   })
 
   it('the pattern would see an import if one were added', () => {
-    expect(PEOPLE.test("import { listProjectPeople } from '@/lib/projects/steckbrief-repository'")).toBe(true)
+    expect(PEOPLE.test("import { listProjectPeople } from '@/lib/projects/project-record-repository'")).toBe(true)
     expect(PEOPLE.test('db.select().from(projectPeople)')).toBe(true)
   })
 })

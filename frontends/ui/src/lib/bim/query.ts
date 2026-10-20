@@ -141,7 +141,7 @@ export type BimPropertyFilter = z.infer<typeof propertyFilterSchema>
  * Mirrors `projectProfilePatchOperation`'s published list; an unknown value is
  * now a rejection the agent is told to correct, not a quiet non-answer.
  */
-export const BIM_HAUPTNUTZUNG = [
+export const BIM_MAIN_USE = [
   'wohnen',
   'buero',
   'beherbergung',
@@ -154,7 +154,7 @@ export const BIM_HAUPTNUTZUNG = [
 ] as const
 
 /** The Hauptnutzung values the rule catalogue understands. */
-export type BimHauptnutzung = (typeof BIM_HAUPTNUTZUNG)[number]
+export type BimMainUse = (typeof BIM_MAIN_USE)[number]
 
 export const bimFilterSchema = z.object({
   /** Canonical IFC type names (`IfcWall`). Matched case-insensitively. */
@@ -241,7 +241,7 @@ export const bimQuerySchema = z.discriminatedUnion('op', [
      * a pass, which is the exact failure this subsystem exists to prevent.
      */
     gebaeudeklasse: z.number().int().min(1).max(5).nullish(),
-    hauptnutzung: z.enum(BIM_HAUPTNUTZUNG).nullish(),
+    hauptnutzung: z.enum(BIM_MAIN_USE).nullish(),
   }).strict(),
   z.object({
     /** The same catalog over two revisions, reporting only what MOVED. */
@@ -249,7 +249,7 @@ export const bimQuerySchema = z.discriminatedUnion('op', [
     /** The OLDER revision; this model is the newer one. */
     baseModelId: z.string().uuid().optional(),
     gebaeudeklasse: z.number().int().min(1).max(5).nullish(),
-    hauptnutzung: z.enum(BIM_HAUPTNUTZUNG).nullish(),
+    hauptnutzung: z.enum(BIM_MAIN_USE).nullish(),
   }).strict(),
   z.object({ op: z.literal('profile') }).strict(),
   z.object({

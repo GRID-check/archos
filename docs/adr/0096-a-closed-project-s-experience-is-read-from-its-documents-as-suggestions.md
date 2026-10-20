@@ -136,7 +136,7 @@ it.
 ## More Information
 
 Not chosen: an in-force table of editions. The agent's data has none; the only
-one in the repo is marketing copy (`frontends/web/src/data/landing/baurecht.ts`)
+one in the repo is marketing copy (`frontends/web/src/data/landing/building-law.ts`)
 and the norm registry marks the Wien case open. Revisit when such a table is
 maintained as data with a source, or when the import asks for an unattended
 reading. Design and wire contract:

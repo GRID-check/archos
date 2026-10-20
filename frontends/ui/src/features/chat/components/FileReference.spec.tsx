@@ -165,14 +165,14 @@ describe('FileReferenceLink', () => {
     expect(useFilePreviewStore.getState().mode).toBe('modal')
   })
 
-  it('resolves a Büroablage file into the archive scope', async () => {
+  it('resolves a office shelf file into the archive scope', async () => {
     const user = userEvent.setup()
     renderReference({
       href: fileReferenceHref('pd8280-2.pdf'),
       resolve: () => stored({ corpus: 'buero' }),
     })
     await user.click(screen.getByTestId('file-reference'))
-    expect(useFilePreviewStore.getState().context.scope).toBe('archiv')
+    expect(useFilePreviewStore.getState().context.scope).toBe('officeShelf')
   })
 
   it('previews the file’s facts on focus without opening anything', async () => {

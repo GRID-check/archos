@@ -102,7 +102,7 @@ def test_a_family_search_opens_its_members_so_the_later_outline_read_is_a_repeat
     assert ledger[1]["new_docs"] == []
 
 
-def test_one_document_opened_at_five_punkte_is_one_new_document():
+def test_one_document_opened_at_five_clauses_is_one_new_document():
     """Five loci of one file are five hits and ONE document the round did work on."""
     announcements = [
         _announcement(0, ["knowledge_search"], ["knowledge"], query="Fluchtweg"),
@@ -222,7 +222,7 @@ def test_the_same_passage_opened_twice_is_a_repeat():
     assert [doc["repeat"] for doc in ledger[1]["docs"]] == [True]
 
 
-def test_reopening_a_document_at_another_punkt_is_a_repeat():
+def test_reopening_a_document_at_another_clause_is_a_repeat():
     """An earlier round OPENED the file; reading further into it is a re-fetch.
 
     The reader has the document open already — the distinction the marker

@@ -56,7 +56,7 @@ export const uploadBatches = {
       empty: 'No file from this upload reached Piloti.',
       pages: '{count, plural, one {# page} other {# pages}}',
       openInFiles: 'Open in Files',
-      openInArchiv: 'Open in Office filing',
+      openInOfficeShelf: 'Open in Office filing',
       changedHint: 'A new revision of a document that was already here. The previous one stays readable under “Revisions and approval”.',
       protectedHint: 'Filed in a folder with its own access list. The lock on the folder shows who may open and change it.',
       requestRelease: 'Ask for a review',

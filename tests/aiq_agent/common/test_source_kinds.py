@@ -112,11 +112,11 @@ class TestWireKind:
         entry = SourceEntry(url="https://www.ris.bka.gv.at/Dokumente/Bundesnormen/NOR99999999", source_type="generic")
         assert source_entry_to_wire(entry)["kind"] == "baurecht"
 
-    def test_org_archiv_is_buero(self):
+    def test_org_office_shelf_is_office(self):
         entry = SourceEntry(citation_key="detail.pdf", collection="archiv_org123", source_type="knowledge_layer")
         assert source_entry_to_wire(entry)["kind"] == "buero"
 
-    def test_project_collection_is_projekt(self):
+    def test_project_collection_is_project(self):
         entry = SourceEntry(citation_key="einreichplan.pdf", collection="proj_abc", source_type="knowledge_layer")
         assert source_entry_to_wire(entry)["kind"] == "projekt"
 
@@ -159,7 +159,7 @@ class TestShelf:
     @pytest.mark.parametrize(
         "value,expected",
         [
-            ("archiv", Shelf.ARCHIV),
+            ("archiv", Shelf.OFFICE_SHELF),
             ("project", Shelf.PROJECT),
             ("session", Shelf.SESSION),
             ("base", Shelf.BASE),
@@ -179,7 +179,7 @@ class TestShelf:
     def test_every_shelf_renders_a_qualifier(self):
         assert {shelf: shelf_qualifier(shelf) for shelf in Shelf} == SHELF_QUALIFIERS
 
-    def test_a_session_file_is_no_longer_projektwissen(self):
+    def test_a_session_file_is_no_longer_project_knowledge(self):
         # The headline bug: a file the user attached privately to a chat was
         # cited as "Projektwissen" because `('s_', 'projekt')` was the only guess.
         assert shelf_qualifier(Shelf.SESSION) == "Private Sitzung"
@@ -199,7 +199,7 @@ class TestShelf:
     def test_qualifiers_are_matched_case_insensitively(self):
         # The qualifier survives a round trip through an LLM, which may recase it.
         assert shelf_for_qualifier("projektwissen") is Shelf.PROJECT
-        assert shelf_for_qualifier("  BÜROARCHIV  ") is Shelf.ARCHIV
+        assert shelf_for_qualifier("  BÜROARCHIV  ") is Shelf.OFFICE_SHELF
         assert shelf_for_qualifier("private sitzung") is Shelf.SESSION
 
     def test_an_unqualified_or_unknown_key_names_no_shelf(self):
@@ -217,8 +217,8 @@ class TestShelf:
     def test_the_shelfs_retired_name_still_parses_and_is_never_written(self):
         # The archiv shelf was „Büroarchiv" until 6 Oct 2026. Keys persisted
         # before the rename carry that qualifier; the writer now says Büroablage.
-        assert shelf_qualifier(Shelf.ARCHIV) == "Büroablage"
-        assert shelf_for_qualifier("Büroarchiv") is Shelf.ARCHIV
+        assert shelf_qualifier(Shelf.OFFICE_SHELF) == "Büroablage"
+        assert shelf_for_qualifier("Büroarchiv") is Shelf.OFFICE_SHELF
         assert scope_for_qualifier("Büroarchiv") == "buero"
         assert "Büroarchiv" not in SHELF_QUALIFIERS.values()
 
@@ -226,7 +226,7 @@ class TestShelf:
     def test_a_key_under_either_name_strips_to_the_file(self, qualifier):
         from aiq_agent.common.citation_verification import _parse_citation_ref
 
-        assert _parse_citation_ref(f"Plan.pdf ({qualifier}), p.3") == ("Plan.pdf", Shelf.ARCHIV, 3)
+        assert _parse_citation_ref(f"Plan.pdf ({qualifier}), p.3") == ("Plan.pdf", Shelf.OFFICE_SHELF, 3)
 
 
 class TestLegacyShelfFallback:
@@ -235,7 +235,7 @@ class TestLegacyShelfFallback:
     @pytest.mark.parametrize(
         "collection,expected",
         [
-            ("archiv_org1", Shelf.ARCHIV),
+            ("archiv_org1", Shelf.OFFICE_SHELF),
             ("proj_alpha", Shelf.PROJECT),
             # NOT `project`: a session collection is its own shelf now.
             ("s_9f2a4c", Shelf.SESSION),

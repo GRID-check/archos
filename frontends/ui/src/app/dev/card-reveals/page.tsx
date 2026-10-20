@@ -27,7 +27,7 @@ import type { CalculationStepData } from '@/features/grid-cards/schematics/types
 const OIB4 = { document: 'OIB-Richtlinie 4', section: 'Pkt. 3.2', edition: 'Ausgabe Mai 2023' }
 const OIB6 = { document: 'OIB-Richtlinie 6', section: 'Pkt. 4.2', edition: 'Ausgabe Mai 2023' }
 
-const SCHRITTMASS: CalculationStepData[] = [
+const STEP_DIMENSIONS: CalculationStepData[] = [
   {
     label: 'Schrittmaß',
     operation: 'sum',
@@ -135,7 +135,7 @@ export default function CardRevealsPreviewPage() {
           <div data-preview="sources">
             <CalculationCard
               title="Schrittmaßregel – Treppenlauf Haus A"
-              steps={SCHRITTMASS}
+              steps={STEP_DIMENSIONS}
               limit={{
                 comparator: 'between',
                 value: 59,

@@ -1,6 +1,6 @@
 """The base corpus never answers with a cover page or an Impressum.
 
-``punkt_documents`` tags the Punkt body chunks ``chunking: "punkt"`` and the
+``clause_documents`` tags the Punkt body chunks ``chunking: "punkt"`` and the
 matter around them — the cover page, the Impressum — ``chunking: "page"``.
 Neither of the latter is citable evidence, and a title-shaped query
 ("OIB-Richtlinie 2 Ausgabe Mai 2023") matched exactly them, so an overview

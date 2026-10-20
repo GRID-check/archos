@@ -162,7 +162,7 @@ def test_a_second_kind_the_question_accepts_holds(tmp_path):
     assert suite.check(both, run, run.envelope)["kind"] is True
 
 
-def test_a_question_about_a_richtlinie_the_corpus_lacks_is_skipped_by_name(tmp_path, monkeypatch):
+def test_a_question_about_a_guideline_the_corpus_lacks_is_skipped_by_name(tmp_path, monkeypatch):
     from aiq_agent import corpus_store
     from tests.object_corpus_fakes import install
 

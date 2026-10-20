@@ -64,7 +64,7 @@ const session: AuthorizedSession = {
   featureFlags: null,
 }
 
-const FOLDER = { plaene: 'f-plaene', vertraege: 'f-vertraege', honorare: 'f-honorare' }
+const FOLDER = { plans: 'f-plaene', contracts: 'f-vertraege', fees: 'f-honorare' }
 const UUID = (n: number) => `00000000-0000-4000-8000-00000000000${n}`
 
 const row = (n: number, filename: string, folderId: string | null, extra: Record<string, unknown> = {}) => ({
@@ -85,10 +85,10 @@ const row = (n: number, filename: string, folderId: string | null, extra: Record
 
 /** Pläne: write. Verträge: read only. Honorare: hidden. */
 const ROWS = [
-  row(1, 'Einreichplan_v1.pdf', FOLDER.plaene),
-  row(2, 'Einreichplan_v2.pdf', FOLDER.plaene),
-  row(3, 'Kopie von Werkvertrag.pdf', FOLDER.vertraege),
-  row(4, 'Honorarnote alt.pdf', FOLDER.honorare),
+  row(1, 'Einreichplan_v1.pdf', FOLDER.plans),
+  row(2, 'Einreichplan_v2.pdf', FOLDER.plans),
+  row(3, 'Kopie von Werkvertrag.pdf', FOLDER.contracts),
+  row(4, 'Honorarnote alt.pdf', FOLDER.fees),
   row(5, '~$Baubeschreibung.docx', null),
   row(6, 'Baubeschreibung.docx', null, { summary: 'Baubeschreibung für die Einreichung' }),
 ]
@@ -99,13 +99,13 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.requireProjectAccess.mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
   mocks.getProjectFolderAccess.mockResolvedValue({
-    hiddenFolderIds: new Set([FOLDER.honorare]),
-    isVisible: (folderId: string | null) => folderId !== FOLDER.honorare,
-    levelOf: (folderId: string | null) => (folderId === FOLDER.vertraege ? 'read' : folderId === FOLDER.honorare ? 'none' : 'write'),
+    hiddenFolderIds: new Set([FOLDER.fees]),
+    isVisible: (folderId: string | null) => folderId !== FOLDER.fees,
+    levelOf: (folderId: string | null) => (folderId === FOLDER.contracts ? 'read' : folderId === FOLDER.fees ? 'none' : 'write'),
   })
   mocks.listProjectFolders.mockResolvedValue([
-    { id: FOLDER.plaene, path: 'Pläne' },
-    { id: FOLDER.vertraege, path: 'Verträge' },
+    { id: FOLDER.plans, path: 'Pläne' },
+    { id: FOLDER.contracts, path: 'Verträge' },
   ])
   mocks.reconcileDocumentStatuses.mockImplementation(async (rows: unknown[]) => rows)
   mocks.summarizeDocumentVersions.mockResolvedValue(new Map())
@@ -134,7 +134,7 @@ function screening(
 ) {
   const byId = new Map(Object.entries(outcomes).map(([n, outcome]) => [UUID(Number(n)), outcome]))
   mocks.listProjectDocumentPage.mockResolvedValue({
-    rows: ROWS.filter((r) => r.folderId !== FOLDER.honorare).map((r) => ({ ...r, ...(byId.get(r.id) ?? {}) })),
+    rows: ROWS.filter((r) => r.folderId !== FOLDER.fees).map((r) => ({ ...r, ...(byId.get(r.id) ?? {}) })),
     nextCursor: null,
   })
 }
@@ -243,15 +243,15 @@ describe('confirmCleanup', () => {
     })
 
     expect(result).toEqual({ removed: 3, binEntries: 2 })
-    expect(mocks.createProjectFolder.mock.calls.map(([input]) => input.parentId)).toEqual([FOLDER.plaene, null])
+    expect(mocks.createProjectFolder.mock.calls.map(([input]) => input.parentId)).toEqual([FOLDER.plans, null])
     expect(mocks.createProjectFolder.mock.calls[0][0].name).toMatch(/^Ausgemistet \d{4}-\d{2}-\d{2}$/)
     expect(mocks.moveDocumentToFolder.mock.calls.map(([input]) => [input.documentId, input.folderId])).toEqual([
-      [UUID(1), `bin-holder-${FOLDER.plaene}`],
+      [UUID(1), `bin-holder-${FOLDER.plans}`],
       [UUID(5), 'bin-holder-root'],
       [UUID(6), 'bin-holder-root'],
     ])
     expect(mocks.moveFolderToBin.mock.calls.map(([, input]) => input.folderId)).toEqual([
-      `bin-holder-${FOLDER.plaene}`,
+      `bin-holder-${FOLDER.plans}`,
       'bin-holder-root',
     ])
     // Each subfolder is binned only holding exactly what was moved into it.
@@ -285,15 +285,15 @@ describe('confirmCleanup', () => {
     ).rejects.toMatchObject({ status: 502 })
 
     // The first subfolder, already binned, is restored; every document goes back where it was; both subfolders go.
-    expect(mocks.restoreFolderFromBin.mock.calls.map(([, input]) => input.folderId)).toEqual([`bin-holder-${FOLDER.plaene}`])
+    expect(mocks.restoreFolderFromBin.mock.calls.map(([, input]) => input.folderId)).toEqual([`bin-holder-${FOLDER.plans}`])
     expect(mocks.moveDocumentToFolder.mock.calls.slice(3).map(([input]) => [input.documentId, input.folderId])).toEqual([
       [UUID(6), null],
       [UUID(5), null],
-      [UUID(1), FOLDER.plaene],
+      [UUID(1), FOLDER.plans],
     ])
     expect(mocks.deleteEmptyCreatedFolder.mock.calls.map(([, , folderId]) => folderId)).toEqual([
       'bin-holder-root',
-      `bin-holder-${FOLDER.plaene}`,
+      `bin-holder-${FOLDER.plans}`,
     ])
     expect(mocks.recordAuditEvent).not.toHaveBeenCalled()
   })
@@ -309,11 +309,11 @@ describe('confirmCleanup', () => {
 
     expect(mocks.moveFolderToBin).not.toHaveBeenCalled()
     expect(mocks.moveDocumentToFolder.mock.calls.slice(2).map(([input]) => [input.documentId, input.folderId])).toEqual([
-      [UUID(1), FOLDER.plaene],
+      [UUID(1), FOLDER.plans],
     ])
     expect(mocks.deleteEmptyCreatedFolder.mock.calls.map(([, , folderId]) => folderId)).toEqual([
       'bin-holder-root',
-      `bin-holder-${FOLDER.plaene}`,
+      `bin-holder-${FOLDER.plans}`,
     ])
     expect(mocks.recordAuditEvent).not.toHaveBeenCalled()
   })
@@ -321,7 +321,7 @@ describe('confirmCleanup', () => {
   it('says where files may be left when the undo itself stops short, and keeps the original status', async () => {
     mocks.moveFolderToBin.mockResolvedValueOnce({}).mockRejectedValueOnce(new UpstreamError('index did not confirm'))
     // The Pläne subfolder cannot be removed: something is still in it.
-    mocks.deleteEmptyCreatedFolder.mockImplementation(async (_org: string, _project: string, id: string) => id !== `bin-holder-${FOLDER.plaene}`)
+    mocks.deleteEmptyCreatedFolder.mockImplementation(async (_org: string, _project: string, id: string) => id !== `bin-holder-${FOLDER.plans}`)
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
 
     const failure = await confirmCleanup(session, 'p1', { documentIds: [UUID(1), UUID(5)], proposedIds: [], aiUsed: true }).catch(
@@ -332,7 +332,7 @@ describe('confirmCleanup', () => {
       details: { reason: 'cleanup-partially-undone', folders: [expect.stringMatching(/^Ausgemistet \d{4}-\d{2}-\d{2}$/)] },
     })
     expect((failure as Error).message).toMatch(/could not be fully undone.*Papierkorb/)
-    expect(errors).toHaveBeenCalledWith(expect.stringContaining(`remove bin-holder-${FOLDER.plaene} failed`), expect.anything())
+    expect(errors).toHaveBeenCalledWith(expect.stringContaining(`remove bin-holder-${FOLDER.plans} failed`), expect.anything())
     expect(mocks.recordAuditEvent).not.toHaveBeenCalled()
     errors.mockRestore()
   })

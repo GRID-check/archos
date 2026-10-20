@@ -94,7 +94,7 @@ BUNDESLAENDER: tuple[str, ...] = (
 # frontends/ui/src/lib/project-profile/intake-definition.ts) -> canonical names.
 # `ausserhalb_oesterreichs` maps to None on purpose: the project is explicitly
 # outside Austria, so no state's law should be prioritized.
-BUNDESLAND_TOKENS: dict[str, str | None] = {
+FEDERAL_STATE_TOKENS: dict[str, str | None] = {
     "wien": "Wien",
     "niederoesterreich": "Niederösterreich",
     "oberoesterreich": "Oberösterreich",
@@ -107,7 +107,7 @@ BUNDESLAND_TOKENS: dict[str, str | None] = {
     "ausserhalb_oesterreichs": None,
 }
 
-_STRUCTURED_BUNDESLAND_RE = re.compile(r"\bbundesland=([a-z_]+)")
+_STRUCTURED_FEDERAL_STATE_RE = re.compile(r"\bbundesland=([a-z_]+)")
 
 # Terms shorter than this never match (guards against noise words).
 _MIN_TOPIC_LENGTH = 4
@@ -468,7 +468,7 @@ def match_entries(registry: NormRegistry, query: str) -> list[NormEntry]:
     return matches
 
 
-def extract_bundesland(text: str | None) -> str | None:
+def extract_federal_state(text: str | None) -> str | None:
     """The Bundesland the text points at, or None. Pure text matching.
 
     The structured `bundesland=<token>` fact line (written by the intake wizard
@@ -480,16 +480,16 @@ def extract_bundesland(text: str | None) -> str | None:
     if not text:
         return None
     normalized = _normalize(text)
-    structured = _STRUCTURED_BUNDESLAND_RE.search(normalized)
+    structured = _STRUCTURED_FEDERAL_STATE_RE.search(normalized)
     if structured:
-        return BUNDESLAND_TOKENS.get(structured.group(1))
+        return FEDERAL_STATE_TOKENS.get(structured.group(1))
     for state in BUNDESLAENDER:
         if _normalize(state) in normalized:
             return state
     return None
 
 
-def resolve_bundesland(text: str | None) -> str | None:
+def resolve_federal_state(text: str | None) -> str | None:
     """The Bundesland to focus/rank the catalog on, structured-first.
 
     Precedence (jurisdiction is a cross-cutting request fact and must travel
@@ -505,8 +505,8 @@ def resolve_bundesland(text: str | None) -> str | None:
 
     structured_token = GridRequestContext.from_context().bundesland
     if structured_token is not None:
-        return BUNDESLAND_TOKENS.get(structured_token)
-    return extract_bundesland(text)
+        return FEDERAL_STATE_TOKENS.get(structured_token)
+    return extract_federal_state(text)
 
 
 _STRUCTURED_COUNTRY_RE = re.compile(r"\bcountry=([a-z]{2})\b")
@@ -671,7 +671,7 @@ def render_block_for_prompt(project_context: str | None, norms_dir: str | None =
         corpus_note = profile.corpus_note if profile else None
     except Exception:  # noqa: BLE001
         logger.warning("norm_registry: corpus-note profile lookup failed", exc_info=True)
-    block = render_prompt_block(registry, bundesland=resolve_bundesland(project_context), corpus_note=corpus_note)
+    block = render_prompt_block(registry, bundesland=resolve_federal_state(project_context), corpus_note=corpus_note)
     try:
         from aiq_agent.common.applicability import render_project_block
 
@@ -933,7 +933,7 @@ def guess_display_title(file_name: str) -> str | None:
         revision = f"Rev. {revision_match.group(1)}"
         low = (low[: revision_match.start()] + low[revision_match.end() :]).strip("_")
 
-    is_leitfaden = "leitfaden" in low
+    is_guide = "leitfaden" in low
     low = low.replace("leitfaden", "").strip("_")
 
     if low.startswith("begriffsbestimmungen"):
@@ -948,7 +948,7 @@ def guess_display_title(file_name: str) -> str | None:
             return None
         subject = f"OIB-Richtlinie {number_match.group(1)}"
 
-    if is_leitfaden:
+    if is_guide:
         subject += " – Leitfaden"
 
     title = f"{role_prefix}{subject}"
@@ -1252,7 +1252,7 @@ def lane_for_hit(
     if is_agent_author(authored_by):
         return (AGENT_AUTHORED_LANE, AGENT_AUTHORED_LANE_LABEL)
     known_shelf = parse_shelf(shelf) or legacy_shelf_for_collection_name(collection)
-    users_shelf = known_shelf in (Shelf.ARCHIV, Shelf.PROJECT, Shelf.SESSION)
+    users_shelf = known_shelf in (Shelf.OFFICE_SHELF, Shelf.PROJECT, Shelf.SESSION)
     if doc_class:
         from aiq_agent.knowledge.document_classification import DEFAULT_DOC_CLASS
         from aiq_agent.knowledge.document_classification import DOCUMENT_CLASS_LANES
@@ -1261,7 +1261,7 @@ def lane_for_hit(
         if is_valid_doc_class(doc_class) and not (doc_class == DEFAULT_DOC_CLASS and users_shelf):
             lane_key = DOCUMENT_CLASS_LANES[doc_class]
             return (lane_key, _LANE_LABELS.get(lane_key, "Baurecht"))
-    if known_shelf is Shelf.ARCHIV:
+    if known_shelf is Shelf.OFFICE_SHELF:
         return ("buero", "Büroablage")
     if known_shelf is Shelf.PROJECT:
         return ("projekt", "Projektwissen")

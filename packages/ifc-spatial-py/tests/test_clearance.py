@@ -34,7 +34,7 @@ from ifc_spatial.model import WrongKindError
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-NO_GEOMETRY = FIXTURES / "haus-mit-raeumen.ifc"
+NO_GEOMETRY = FIXTURES / "house-with-rooms.ifc"
 
 #: ``Windows_Sgl_Plain:1810x1210mm``
 WINDOW = "3cUkl32yn9qRSPvBJVyWcE"
@@ -457,7 +457,7 @@ def test_a_door_with_no_opening_chain_falls_back_and_calls_it_an_upper_bound(
     assert "zu groß" in answer.caveat
 
 
-def test_the_caveat_says_rohbaulichte_and_never_says_erfuellt(house: SpatialModel) -> None:
+def test_the_caveat_says_shell_construction_and_never_says_met(house: SpatialModel) -> None:
     """This layer measures; the Bestimmung judges.
 
     The Rohbaulichte and the lichte Durchgangsbreite differ by 15–25 % on an

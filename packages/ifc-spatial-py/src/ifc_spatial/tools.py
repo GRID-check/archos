@@ -1097,7 +1097,7 @@ def create_tools(cache: SpatialCache | None = None) -> list[ToolDef]:
         what = next((k for k in FIRE_ASPECTS if k.lower() == wanted), wanted)
         ids = [part.strip() for part in str(args.get("globalId") or "").split(",") if part.strip()]
         if what == "fluchtniveau":
-            return run(lambda: fi.fluchtniveau(model))
+            return run(lambda: fi.escape_level(model))
         if what == "compartmentArea":
             if not ids:
                 raise ToolError(

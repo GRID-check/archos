@@ -10,10 +10,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { crossProjectJsonSchema } from './cross-project-schema'
 import {
-  CROSS_PROJECT_FACT_BAUWEISEN,
-  CROSS_PROJECT_FACT_BUNDESLAENDER,
-  CROSS_PROJECT_FACT_NUTZUNGEN,
-  CROSS_PROJECT_FACT_VORHABENSARTEN,
+  CROSS_PROJECT_FACT_CONSTRUCTION_METHODS,
+  CROSS_PROJECT_FACT_FEDERAL_STATES,
+  CROSS_PROJECT_FACT_USES,
+  CROSS_PROJECT_FACT_WORK_TYPES,
   CROSS_PROJECT_WIRE_SCHEMAS,
   crossProjectListRequestSchema,
   crossProjectSearchRequestSchema,
@@ -62,11 +62,11 @@ describe('cross-project JSON Schema', () => {
     ).toBe(true)
     expect(listed({ bundesland: ['niederoesterreich'] }).success).toBe(true)
     // Each vocabulary is the wizard's, „noch offen" and a site abroad left out (neither is a value a project can match).
-    expect(CROSS_PROJECT_FACT_BUNDESLAENDER).toContain('vorarlberg')
-    expect(CROSS_PROJECT_FACT_BUNDESLAENDER).not.toContain('ausserhalb_oesterreichs')
-    expect(CROSS_PROJECT_FACT_BAUWEISEN).not.toContain('offen')
-    expect(CROSS_PROJECT_FACT_NUTZUNGEN).toContain('gastro')
-    expect(CROSS_PROJECT_FACT_VORHABENSARTEN).toContain('nutzungsaenderung')
+    expect(CROSS_PROJECT_FACT_FEDERAL_STATES).toContain('vorarlberg')
+    expect(CROSS_PROJECT_FACT_FEDERAL_STATES).not.toContain('ausserhalb_oesterreichs')
+    expect(CROSS_PROJECT_FACT_CONSTRUCTION_METHODS).not.toContain('offen')
+    expect(CROSS_PROJECT_FACT_USES).toContain('gastro')
+    expect(CROSS_PROJECT_FACT_WORK_TYPES).toContain('nutzungsaenderung')
     for (const refused of [
       { bundesland: ['Tirol'] },
       { bundesland: ['ausserhalb_oesterreichs'] },

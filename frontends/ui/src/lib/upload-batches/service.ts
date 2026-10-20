@@ -27,7 +27,7 @@ import {
   type FolderTree,
   type ProjectFolderAccess,
 } from '@/lib/authz/folder-access'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Document, UploadBatch, UploadBatchExclusion, UploadBatchScope } from '@/lib/db/schema'
 import { surfaceStateOf, type SurfaceState } from '@/lib/documents/surface-state'
@@ -75,7 +75,7 @@ export async function openUploadBatch(session: AuthorizedSession, input: OpenUpl
   if (input.scope === 'project') {
     if (!input.projectId) throw new BadRequestError('A project upload names its project')
     await requireProjectAccess(session, input.projectId, ['project:documents:write', 'project:edit'])
-  } else if (input.scope === 'archiv' && !canManageArchiv(session)) {
+  } else if (input.scope === 'archiv' && !canManageOfficeShelf(session)) {
     throw new NotFoundError('Upload not found')
   }
   await insertUploadBatch({

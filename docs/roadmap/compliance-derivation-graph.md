@@ -43,7 +43,7 @@ knows about the others:
 
 | # | Encoding | Where | Granularity | Who maintains it |
 |---|---|---|---|---|
-| 1 | Passages in the vector store, with a Punkt id in the chunk metadata | `oib_knowledge`, `punkt_chunking.py`, `fixtures/punkt_index.json` (946 Punkte) | Punkt | ingest |
+| 1 | Passages in the vector store, with a Punkt id in the chunk metadata | `oib_knowledge`, `clause_chunking.py`, `fixtures/clause_index.json` (946 Punkte) | Punkt | ingest |
 | 2 | A `RequirementProfile` extracted **per run** by one LLM call per Richtlinie, never cached, never reviewed | `agents/compliance_checker/agent.py` Stage 1; README: "For each Richtlinie … ONE structured LLM call" | requirement | nobody; regenerated and discarded on every check |
 | 3 | Hand-written TypeScript rules with thresholds and OIB citations | `frontends/ui/src/lib/bim/rules.ts` (1531 lines): `oib3-raumhoehe`, `oib4-tuer-durchgangsbreite`, `oib2-feuerwiderstand-tragend`, `oib6-u-wert-aussenwand`, … | requirement, for what IFC can measure | a developer, by hand |
 | 4 | Hand-written Richtlinie-level applicability, in Python **and** in TypeScript, kept in step "by construction" | `src/aiq_agent/common/applicability.py:143`, `frontends/ui/src/lib/oib/applicable-standards.ts:83` | Richtlinie (OIB 1 … 6) | two developers, by hand, twice |

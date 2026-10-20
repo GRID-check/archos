@@ -9,17 +9,17 @@
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { documentSummaryFilterSchema } from '@/lib/documents/list-query'
-import { summarizeArchivDocuments } from '@/lib/documents/shelf-summary'
+import { summarizeOfficeShelfDocuments } from '@/lib/documents/shelf-summary'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
     const { authoredBy, includeArchived } = parseQuery(request, documentSummaryFilterSchema)
-    return summarizeArchivDocuments(session, { authoredBy, includeArchived: includeArchived === 'true' })
+    return summarizeOfficeShelfDocuments(session, { authoredBy, includeArchived: includeArchived === 'true' })
   },
   {
     authz: {
       sessionOnly: true,
-      why: 'the Archiv is org-wide shared knowledge; summarizeArchivDocuments scopes to session.organizationId and counts the rows listArchiv already shows any member',
+      why: 'the Archiv is org-wide shared knowledge; summarizeOfficeShelfDocuments scopes to session.organizationId and counts the rows listOfficeShelf already shows any member',
     },
   }
 )

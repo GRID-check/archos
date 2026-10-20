@@ -29,7 +29,7 @@ from ifc_spatial.tools import create_tools
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-NO_NORTH = FIXTURES / "haus-mit-raeumen.ifc"
+NO_NORTH = FIXTURES / "house-with-rooms.ifc"
 
 WINDOW = "3cUkl32yn9qRSPvBJVyWcE"
 BEDROOM = "3w0zWKm7n8SB1qbfwUzt0J"
@@ -868,7 +868,7 @@ def test_survey_names_the_rooms_it_could_not_measure(tools: list) -> None:
     summary that reads like a complete answer. Every one of them comes back
     listed, with the name a CAD operator would search for.
     """
-    galerie = call(tools, "open_model", {"path": str(FIXTURES / "dachgeschoss-galerie.ifc")})["model"]
+    galerie = call(tools, "open_model", {"path": str(FIXTURES / "attic-gallery.ifc")})["model"]
     surveyed = call(tools, "survey", {"model": galerie, "measure": "clearHeight", "ifcType": "IfcSpace"})
     summary = surveyed["summary"]
 

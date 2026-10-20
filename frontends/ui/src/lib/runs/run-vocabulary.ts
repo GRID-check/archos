@@ -97,13 +97,13 @@ export function stepsInPhase(ledger: RunLedger, phase: RunPhase): RunStep[] {
  * named is either read, with where, or reported unread — never silently
  * dropped.
  */
-export interface GrundlageReceiptRow {
+export interface BasisReceiptRow {
   doc: RunLedgerDoc
   read: boolean
   loci: string[]
 }
 
-export function grundlageReceipt(ledger: RunLedger): GrundlageReceiptRow[] {
+export function basisReceipt(ledger: RunLedger): BasisReceiptRow[] {
   const named = ledger.grundlage ?? []
   if (named.length === 0) return []
   const reached = new Map<string, string[]>()

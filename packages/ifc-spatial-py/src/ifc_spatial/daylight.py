@@ -836,7 +836,7 @@ def _by_type(model: SpatialModel, ifc_type: str) -> list[Any]:
 
     ``IfcMapConversion`` arrived in IFC4, and asking an IFC2X3 file for it raises
     ``RuntimeError: Entity with name 'IfcMapConversion' not found in schema
-    'IFC2X3'`` — not an empty list. ``einheiten-fuss.ifc`` is such a file, and an
+    'IFC2X3'`` — not an empty list. ``units-feet.ifc`` is such a file, and an
     unguarded lookup turns "dieses Modell ist nicht georeferenziert" into a
     traceback. ``operators._has`` guards the same call for the same reason.
     """

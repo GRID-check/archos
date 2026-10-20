@@ -34,7 +34,7 @@ import { requestReingest } from '../../lib/reingest-request'
 import { requestCancelIngest } from '../../lib/cancel-request'
 
 /** Which corpus the document belongs to — and so which words and which route. */
-export type DocumentScope = 'files' | 'archiv'
+export type DocumentScope = 'files' | 'officeShelf'
 
 /** The least a surface has to know about a document to act on it. */
 export interface ActionableDocument extends NamedDocument {
@@ -187,7 +187,7 @@ export function useDocumentActions({
     setIsDeleting(true)
     try {
       const url =
-        scope === 'archiv'
+        scope === 'officeShelf'
           ? `/api/archiv/documents/${document.id}`
           : `/api/documents/${document.id}`
       const res = await fetch(url, { method: 'DELETE' })

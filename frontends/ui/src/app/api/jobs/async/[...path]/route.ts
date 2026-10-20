@@ -51,7 +51,7 @@ import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
 import { isAuthzError } from '@/lib/auth-utils'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { loadProjectBundesland } from '@/lib/project-profile/prompt-view'
+import { loadProjectFederalState } from '@/lib/project-profile/prompt-view'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import {
   signJobRequestContext,
@@ -146,12 +146,12 @@ async function resolveSubmitContext(
     // a lookup failure must not block job submission; the backend falls back
     // to prompt-text parsing of `project_context` (unaffected either way).
     try {
-      const bundesland = await loadProjectBundesland(projectId, session?.organizationId)
-      if (bundesland) {
-        input.bundesland = bundesland
+      const federalState = await loadProjectFederalState(projectId, session?.organizationId)
+      if (federalState) {
+        input.bundesland = federalState
       }
     } catch (error) {
-      console.warn('[Deep Research API] Failed to load bundesland fact:', error)
+      console.warn('[Deep Research API] Failed to load federal-state fact:', error)
     }
   }
 

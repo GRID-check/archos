@@ -13,11 +13,11 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 
-vi.mock('@/lib/documents/fassung-service', () => ({
-  setFassungLink: vi.fn(),
+vi.mock('@/lib/documents/revision-service', () => ({
+  setRevisionLink: vi.fn(),
 }))
 
-import { setFassungLink } from '@/lib/documents/fassung-service'
+import { setRevisionLink } from '@/lib/documents/revision-service'
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { PUT } from './route'
 
@@ -38,13 +38,13 @@ describe('PUT /api/documents/[id]/fassung', () => {
 
   it('links the older document to the one in the path and returns both documents’ facts', async () => {
     const answer = { id: 'doc-b', fassung: null, older: { id: OLDER, fassung: null } }
-    vi.mocked(setFassungLink).mockResolvedValue(answer)
+    vi.mocked(setRevisionLink).mockResolvedValue(answer)
 
     const response = await call('doc-b', { older: OLDER, linked: true })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual(answer)
-    expect(setFassungLink).toHaveBeenCalledWith(
+    expect(setRevisionLink).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'user-1' }),
       'doc-b',
       OLDER,
@@ -54,10 +54,10 @@ describe('PUT /api/documents/[id]/fassung', () => {
   })
 
   it('unlinks with linked: false', async () => {
-    vi.mocked(setFassungLink).mockResolvedValue({ id: 'doc-b', fassung: null, older: { id: OLDER, fassung: null } })
+    vi.mocked(setRevisionLink).mockResolvedValue({ id: 'doc-b', fassung: null, older: { id: OLDER, fassung: null } })
 
     expect((await call('doc-b', { older: OLDER, linked: false })).status).toBe(200)
-    expect(setFassungLink).toHaveBeenCalledWith(expect.anything(), 'doc-b', OLDER, false, expect.any(Request))
+    expect(setRevisionLink).toHaveBeenCalledWith(expect.anything(), 'doc-b', OLDER, false, expect.any(Request))
   })
 
   it.each([
@@ -67,17 +67,17 @@ describe('PUT /api/documents/[id]/fassung', () => {
     ['no linked', { older: OLDER }],
   ])('rejects %s (zod) without calling the service', async (_name, body) => {
     expect((await call('doc-b', body)).status).toBe(400)
-    expect(setFassungLink).not.toHaveBeenCalled()
+    expect(setRevisionLink).not.toHaveBeenCalled()
   })
 
   it('maps the service’s refusals: 403 without write access, 404 for a document not seen, 400 across collections', async () => {
-    vi.mocked(setFassungLink).mockRejectedValueOnce(new ForbiddenError())
+    vi.mocked(setRevisionLink).mockRejectedValueOnce(new ForbiddenError())
     expect((await call('doc-b', { older: OLDER, linked: true })).status).toBe(403)
 
-    vi.mocked(setFassungLink).mockRejectedValueOnce(new NotFoundError())
+    vi.mocked(setRevisionLink).mockRejectedValueOnce(new NotFoundError())
     expect((await call('doc-b', { older: OLDER, linked: true })).status).toBe(404)
 
-    vi.mocked(setFassungLink).mockRejectedValueOnce(new BadRequestError('x', { reason: 'different_collection' }))
+    vi.mocked(setRevisionLink).mockRejectedValueOnce(new BadRequestError('x', { reason: 'different_collection' }))
     expect((await call('doc-b', { older: OLDER, linked: true })).status).toBe(400)
   })
 })

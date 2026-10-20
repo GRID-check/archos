@@ -118,7 +118,7 @@ second model turn. This is the pattern every new card should follow.
 - `docs/architecture/cards.md` says **27 types**; it is 32 model-facing + 2 system.
   `verdict_header`, `condition_tree`, `typed_table`, `norm_chain`,
   `ifc_model_picker`, `key_takeaways`, `callout` are all undocumented.
-- `thinking.herleitungSummary` interpolates `{sources}` unconditionally, so a
+- `thinking.derivationSummary` interpolates `{sources}` unconditionally, so a
   measurement answer reads "Herleitung · 3 Schritte · 0 Quellen". Also
   un-pluralised: "1 Schritte". Needs a no-sources variant + plural handling in
   both dictionaries. (i18n files were owned by another agent when found.)

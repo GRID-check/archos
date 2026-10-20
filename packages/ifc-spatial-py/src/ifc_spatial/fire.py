@@ -5,7 +5,7 @@ Richtlinie 2 (*welcher Weg, wie lang*). This module is the other half, the one
 about **compartments and distances**, and it deliberately overlaps with nothing
 there:
 
-  - :func:`fluchtniveau` — the height of the topmost floor level intended for
+  - :func:`escape_level` — the height of the topmost floor level intended for
     occupancy, above the lowest adjoining ground.
   - :func:`compartment_area` — the floor area a Brandabschnitt is measured on,
     over a group of spaces taken together.
@@ -18,7 +18,7 @@ there:
 
 **No verdict, no threshold, and above all no Gebäudeklasse.**
 
-:func:`fluchtniveau` returns a HEIGHT IN METRES. Which Gebäudeklasse that height
+:func:`escape_level` returns a HEIGHT IN METRES. Which Gebäudeklasse that height
 implies is a *legal* classification: OIB Richtlinie 2 sets the bands, the
 Landesrecht adopts them with its own amendments, and the classification also
 depends on the number of Geschoße, the Brutto-Grundfläche and the use — none of
@@ -56,7 +56,7 @@ Measured on this repository's five fixtures:
 
 "Intended for occupancy" is not measurable. A 16 m² room on the top floor is a
 Büro or a Lüftungszentrale depending on what the plan says it is, and the plan
-is not in the file. :func:`fluchtniveau` therefore reuses this package's own
+is not in the file. :func:`escape_level` therefore reuses this package's own
 room lexicon (:func:`~ifc_spatial.briefing.classify_rooms`) plus the storey's
 name, returns ``inferred``, and reports **every** storey it looked at with the
 reason it was counted or not — so a reviewer can correct the one storey that is
@@ -169,7 +169,7 @@ MIN_OVERLAP_AREA = 0.01
 #: :func:`_fire_rating_scan`.
 _FIRE_RATING_MEMO = "_ifc_spatial_fire_declares_rating"
 
-_NO_GEBAEUDEKLASSE = (
+_NO_BUILDING_CLASS = (
     "Diese Zahl ist eine HÖHE in Metern, keine Einstufung. Welche Gebäudeklasse sich daraus ergibt, "
     "bestimmt die OIB-Richtlinie 2 zusammen mit dem jeweiligen Landesrecht und hängt außerdem von der "
     "Anzahl der Geschoße, der Brutto-Grundfläche und der Nutzung ab — nichts davon ist eine geometrische "
@@ -220,7 +220,7 @@ class StoreyJudgement:
         }
 
 
-def fluchtniveau(model: SpatialModel) -> Answer[dict[str, Any]]:
+def escape_level(model: SpatialModel) -> Answer[dict[str, Any]]:
     """The topmost occupied floor level above the lowest adjoining ground, in metres.
 
     ``Fluchtniveau`` in the OIB sense: *die Höhenlage des höchstgelegenen zum
@@ -357,9 +357,9 @@ def fluchtniveau(model: SpatialModel) -> Answer[dict[str, Any]]:
         )
 
     value = round(float(top.elevation) - ground["z"], 4)
-    because, confidence = _fluchtniveau_reasons(judgements, top, ground)
+    because, confidence = _escape_level_reasons(judgements, top, ground)
 
-    caveat = [_NO_GEBAEUDEKLASSE, _GROUND_CAVEAT]
+    caveat = [_NO_BUILDING_CLASS, _GROUND_CAVEAT]
     caveat.append(
         f"Gezählt wurden {len(counted)} von {len(judgements)} Geschoß(en); maßgeblich ist "
         f"„{top.name or top.global_id}“ auf {_metres(top.elevation)}. Die vollständige Liste mit Begründung "
@@ -624,7 +624,7 @@ def _ground_reference(model: SpatialModel) -> dict[str, Any] | None:
     return chosen
 
 
-def _fluchtniveau_reasons(
+def _escape_level_reasons(
     judgements: Sequence[StoreyJudgement], top: StoreyJudgement, ground: dict[str, Any]
 ) -> tuple[list[str], float]:
     """The `because` list and a confidence that moves for stated reasons only."""
@@ -1916,6 +1916,6 @@ __all__ = [
     "StoreyJudgement",
     "compartment_area",
     "distance_to_site_boundary",
-    "fluchtniveau",
+    "escape_level",
     "separating_elements",
 ]

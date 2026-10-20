@@ -117,7 +117,7 @@ vi.mock('./repository', () => ({
   setDocumentIngestJob: vi.fn().mockResolvedValue(undefined),
   markDocumentIngestFailed: vi.fn().mockResolvedValue(undefined),
   findFolderPathInProject: vi.fn().mockResolvedValue(null),
-  findFolderPathInArchiv: vi.fn().mockResolvedValue(null),
+  findFolderPathInOfficeShelf: vi.fn().mockResolvedValue(null),
   findDocumentInOrg: vi.fn(),
   // Default: no collision, so the upload path is the insert path it has always
   // been. The replace path is driven per-test.
@@ -143,8 +143,8 @@ vi.mock('@/lib/jobs-queue/repository', () => ({
   findOpenJobId: vi.fn().mockResolvedValue(null),
 }))
 
-// Which documents a Fassung link names, resolved for the reader, is `fassung-facts.spec.ts`'s subject.
-vi.mock('./fassung-facts', () => ({ loadFassungFacts: vi.fn(async () => new Map()) }))
+// Which documents a Fassung link names, resolved for the reader, is `revision-links-loader.spec.ts`'s subject.
+vi.mock('./revision-links-loader', () => ({ loadRevisionLinks: vi.fn(async () => new Map()) }))
 vi.mock('@/lib/annotations/repository', () => ({ tallyLiveMarks: vi.fn(async () => new Map()) }))
 vi.mock('./reconcile-status', async (importOriginal) => ({
   // Reading the job id off a row is pure; the reconciler itself is mocked.
@@ -170,7 +170,7 @@ vi.mock('@/lib/compliance/repository', () => ({
 }))
 
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { loadFassungFacts } from './fassung-facts'
+import { loadRevisionLinks } from './revision-links-loader'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { isCoveredByActiveHold } from '@/lib/compliance/repository'
 import { eraseDocumentObjectsOrKeepRow } from '@/lib/documents/object-cleanup'
@@ -186,7 +186,7 @@ import {
   findDocumentInOrg,
   findLiveDocumentByFilename,
   findFolderPathInProject,
-  findFolderPathInArchiv,
+  findFolderPathInOfficeShelf,
   listProjectDocumentPage,
   listDocumentLevelPage,
   findProjectDocumentsByFilenames,
@@ -715,9 +715,9 @@ describe('uploadDocument ingest dispatch', () => {
 /*
  * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0099):
  * the browser sends the older document's ID, the upload checks it before a byte
- * is stored (`resolveFassungOf`), the ingest job gets the older document's FILE
+ * is stored (`resolveRevisionOf`), the ingest job gets the older document's FILE
  * NAME as `fassung_of`, and the trail records the choice. Each link has its own
- * spec (`fassung-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
+ * spec (`revision-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
  * the chain between them.
  */
 describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
@@ -1138,7 +1138,7 @@ describe('joinHitsToFiles', () => {
   // There is deliberately no test for a row that omits `authoredBy`: the
   // signature requires the column, so a caller that forgets it is a compile
   // error, not a runtime fail-open. Both callers select it — `listProjectDocuments`
-  // (documents/repository.ts) and `listArchiv` (archiv/repository.ts).
+  // (documents/repository.ts) and `listOfficeShelf` (archiv/repository.ts).
   it('takes the authorship of each row, not of the first one seen', () => {
     // Guards the loop shape: a `break`-like early exit, or hoisting the check out
     // of the loop, would let a generated row ride in behind a user row.
@@ -1475,7 +1475,7 @@ describe('searchProjectDocuments', () => {
           { supersededBy: { id: 'doc-b', filename: 'permit.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
         ],
       ])
-    vi.mocked(loadFassungFacts).mockResolvedValueOnce(replaced()).mockResolvedValueOnce(replaced())
+    vi.mocked(loadRevisionLinks).mockResolvedValueOnce(replaced()).mockResolvedValueOnce(replaced())
 
     const forPerson = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20)
     const forModel = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20, { forModel: true })
@@ -1938,12 +1938,12 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
         folderId: 'folder-1',
       })
     )
-    vi.mocked(findFolderPathInArchiv).mockResolvedValue('Normen/Brandschutz')
+    vi.mocked(findFolderPathInOfficeShelf).mockResolvedValue('Normen/Brandschutz')
 
     // An admin holds `org:archiv:manage`, which re-ingesting an Archiv document takes.
     await reingestDocument({ ...session, role: 'admin' }, 'doc-99')
 
-    expect(findFolderPathInArchiv).toHaveBeenCalledWith('folder-1', 'org-1')
+    expect(findFolderPathInOfficeShelf).toHaveBeenCalledWith('folder-1', 'org-1')
     expect(findFolderPathInProject).not.toHaveBeenCalled()
     expect(ingestBody().folder_path).toBe('Normen/Brandschutz')
   })
@@ -2312,7 +2312,7 @@ describe('renameDocument', () => {
   it('renames an Archiv document too, under the Archiv action', async () => {
     // Scope-aware: the Archiv has no project, so `getAccessibleDocument` applies
     // the org-level manage check instead of project FGA. The session here holds
-    // it (admin role in `canManageArchiv` terms is asserted in the archiv specs);
+    // it (admin role in `canManageOfficeShelf` terms is asserted in the archiv specs);
     // what this asserts is that the path is not project-only, as DELETE is.
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
@@ -2359,7 +2359,7 @@ describe('getDocumentStatus', () => {
     await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', null)
 
     const facts = { supersededBy: { id: 'doc-2', filename: 'b.pdf' }, supersedes: [], suggestion: null, changeSummary: null }
-    vi.mocked(loadFassungFacts).mockResolvedValueOnce(new Map([[projectDoc.id, facts]]))
+    vi.mocked(loadRevisionLinks).mockResolvedValueOnce(new Map([[projectDoc.id, facts]]))
 
     await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', facts)
   })

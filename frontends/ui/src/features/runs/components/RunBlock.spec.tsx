@@ -596,9 +596,9 @@ describe('RunBlock — the documents the reader named', () => {
 
   it('prints the receipt: every named document read with its loci, or unread', () => {
     render(<RunBlock ledger={named(researching())} title={TITLE} />)
-    const receipt = screen.getByTestId('run-grundlage')
+    const receipt = screen.getByTestId('run-basis')
     expect(receipt).toHaveTextContent('1 of 2 named documents read')
-    const docs = screen.getAllByTestId('run-grundlage-doc')
+    const docs = screen.getAllByTestId('run-basis-doc')
     expect(docs[0]).toHaveAttribute('data-read', 'true')
     expect(docs[0]).toHaveTextContent('Grundriss EG · Achse C–E')
     expect(docs[1]).toHaveAttribute('data-read', 'false')
@@ -640,6 +640,6 @@ describe('RunBlock — the documents the reader named', () => {
 
   it('says nothing about documents when none was named', () => {
     render(<RunBlock ledger={researching()} title={TITLE} />)
-    expect(screen.queryByTestId('run-grundlage')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('run-basis')).not.toBeInTheDocument()
   })
 })

@@ -21,13 +21,13 @@
  * per-role folder access; `requireShelfWrite` is its whole gate.
  *
  * `@/lib/documents/service#uploadDocument` and
- * `@/lib/archiv/service#uploadArchivDocument` are the names the two shelves'
+ * `@/lib/office-shelf/service#uploadOfficeShelfDocument` are the names the two shelves'
  * routes call; both are one line over this.
  */
 
 import 'server-only'
 import { PutObjectCommand } from '@aws-sdk/client-s3'
-import { s3Client, bucketAdminS3Client, buildArchivStorageKey, buildStorageKey } from '@/lib/s3'
+import { s3Client, bucketAdminS3Client, buildOfficeShelfStorageKey, buildStorageKey } from '@/lib/s3'
 import { ensureTenantBucketChecked } from '@/lib/storage/bucket'
 import { ConflictError, NotFoundError } from '@/lib/api/errors'
 import { folderReadOnlyError, getProjectFolderAccess } from '@/lib/authz/folder-access'
@@ -43,7 +43,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { contentDigest } from './content-digest'
 import { documentReadFamily } from './document-status'
 import { nextVersionNumber, recordUploadedVersionOrDiscard } from './lifecycle'
-import { resolveFassungOf, type FassungOfIgnoredReason } from './fassung-upload'
+import { resolveRevisionOf, type RevisionOfIgnoredReason } from './revision-upload'
 import { documentNameKey } from './name-match'
 import { NAME_TAKEN_DETAILS, nameTakenMessage } from './name-taken'
 import { normalizeOriginPath, sanitizeOriginPath } from './origin-path'
@@ -79,7 +79,7 @@ export interface ShelfUploadInput {
   /**
    * The id of the document this file is filed as the new Fassung of, when the
    * reader ticked „Als neue Fassung von X ablegen" (ADR-0099). Checked before
-   * anything is stored (`resolveFassungOf`); the ingest job then writes the
+   * anything is stored (`resolveRevisionOf`); the ingest job then writes the
    * link once the file has been read. Ignored when the older document has this
    * file's own name: that is a new version (ADR-0054).
    */
@@ -112,10 +112,10 @@ export interface UploadDocumentResult {
   unchanged?: true
   /**
    * The reader filed it as the new Fassung of a document, and that choice could
-   * not be honoured (`resolveFassungOf`): the file is stored as a document of
+   * not be honoured (`resolveRevisionOf`): the file is stored as a document of
    * its own, and this says why it is not linked. Present only then.
    */
-  fassungOfIgnored?: FassungOfIgnoredReason
+  fassungOfIgnored?: RevisionOfIgnoredReason
 }
 
 /** 1 and 4 of the four differences between the shelves: the object key's owner prefix. */
@@ -128,7 +128,7 @@ function uploadStorageKey(
 ): string {
   return shelf.kind === 'project'
     ? buildStorageKey(organizationId, shelf.projectId, documentId, filename, folderPath)
-    : buildArchivStorageKey(organizationId, documentId, filename, folderPath)
+    : buildOfficeShelfStorageKey(organizationId, documentId, filename, folderPath)
 }
 
 /**
@@ -151,7 +151,7 @@ async function uploadAuditEvent(
     /** The older document the reader filed it as the next Fassung of, when they did. */
     fassungOf: string | null
     /** Why that choice was dropped, when it was: the file went in as a document of its own. */
-    fassungOfIgnored: FassungOfIgnoredReason | null
+    fassungOfIgnored: RevisionOfIgnoredReason | null
   },
 ): Promise<void> {
   const located =
@@ -194,7 +194,7 @@ interface PlaceUploadInput {
   /** The file name of the older document this is filed as the next Fassung of, checked; null for none. */
   fassungOf: string | null
   /** Why the reader's Fassung choice was dropped, when it was. */
-  fassungOfIgnored: FassungOfIgnoredReason | null
+  fassungOfIgnored: RevisionOfIgnoredReason | null
   /** Whether the session may write into a folder of this shelf (a superseded document's). */
   mayWriteFolder: (folderId: string | null) => boolean
   /** The screening matches the uploader released (ADR-0086), audited once stored. */
@@ -409,7 +409,7 @@ async function prepareUpload(
   }
   // A Fassung the reader chose, before a byte is stored. One that may not be
   // honoured is dropped and reported, never a reason to lose the file.
-  const fassung = await resolveFassungOf(session, input.fassungOf, { shelf, collectionName, filename })
+  const revision = await resolveRevisionOf(session, input.fassungOf, { shelf, collectionName, filename })
 
   // Create the organization's bucket if this is its first upload (ADR-0043). A
   // no-op when per-org buckets are off. Done before the PUT so a provisioning
@@ -440,8 +440,8 @@ async function prepareUpload(
     contentHash: contentDigest(bytes),
     storageBucket,
     uploadBatchId,
-    fassungOf: fassung.fassungOf,
-    fassungOfIgnored: fassung.ignored,
+    fassungOf: revision.fassungOf,
+    fassungOfIgnored: revision.ignored,
     mayWriteFolder: gate.mayWriteFolder,
     screeningOverridden: nameGate.overridden,
   }

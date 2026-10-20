@@ -91,7 +91,7 @@ const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
             <Archive className="size-4" />
           </span>
         }
-        name={t('similar.groupArchiv')}
+        name={t('similar.groupOfficeShelf')}
       />
     )
   }
@@ -114,9 +114,9 @@ const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
 /** The answer in one line: in how many projects, and whether the Büroablage holds it too. */
 const headlineOf = (groups: SimilarGroup[], t: ReturnType<typeof useTranslations>): string => {
   const projects = groups.filter((group) => group.kind !== 'archiv').length
-  const archiv = groups.some((group) => group.kind === 'archiv')
-  if (projects === 0) return t('similar.foundOnlyArchiv')
-  return archiv ? t('similar.foundWithArchiv', { count: projects }) : t('similar.found', { count: projects })
+  const officeShelf = groups.some((group) => group.kind === 'archiv')
+  if (projects === 0) return t('similar.foundOnlyOfficeShelf')
+  return officeShelf ? t('similar.foundWithOfficeShelf', { count: projects }) : t('similar.found', { count: projects })
 }
 
 const Results: FC<{
@@ -127,7 +127,7 @@ const Results: FC<{
   const t = useTranslations('knowledge')
   const documents = similarDocumentsOf(response)
   const groupLabelOf = (group: SimilarGroup): string => {
-    if (group.kind === 'archiv') return t('similar.groupArchiv')
+    if (group.kind === 'archiv') return t('similar.groupOfficeShelf')
     if (group.kind === 'current') return t('similar.groupCurrent')
     return group.project?.name ?? ''
   }
@@ -152,14 +152,14 @@ const Results: FC<{
           <div className="flex flex-col gap-1.5">
             {group.documents.flatMap((document) => {
               const rank = documents.indexOf(document)
-              const fassung = document.stand
+              const revision = document.stand
                 ? document.stand.kind === 'index'
                   ? document.stand.text
-                  : t('similar.standDate', { date: document.stand.text })
+                  : t('similar.datedOn', { date: document.stand.text })
                 : null
               return document.passages.map((passage, index) => {
                 const key = passageKey(document, index)
-                const where = [nameOf(document), fassung].filter(Boolean)
+                const where = [nameOf(document), revision].filter(Boolean)
                 return (
                   <SimilarPassageButton
                     key={key}

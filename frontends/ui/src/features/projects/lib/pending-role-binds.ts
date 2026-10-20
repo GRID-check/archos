@@ -4,7 +4,7 @@
  * Modul I (Projektgrundlagen) comes before the save, so during a first intake
  * every building added in the wizard exists only in the browser's draft. The
  * server accepts a binding only for a building the stored profile names
- * (`projectHasBauwerk`), and refused "Bauwerk 'bw2' does not exist": the plan
+ * (`projectHasBuilding`), and refused "Bauwerk 'bw2' does not exist": the plan
  * was uploaded and left unbound. Relaxing the server would bring back the
  * binding to nowhere it exists to refuse, so the wizard keeps such a binding
  * here instead, shows it, keeps it in the draft, drops it with its building,
@@ -13,7 +13,7 @@
 
 import {
   answersFromProfile,
-  defaultBauwerke,
+  defaultBuildings,
   type ProjectIntakeDefinition,
 } from '@/lib/project-profile/intake-definition'
 import { documentRoleDefinition, type DocumentRole } from '@/lib/project-profile/document-roles'
@@ -27,14 +27,14 @@ export interface PendingRoleBind {
   scopeInstanceId: string
 }
 
-/** The buildings the server will accept a binding for: the stored profile's, as `projectHasBauwerk` reads them. */
-export function persistedBauwerkIds(
+/** The buildings the server will accept a binding for: the stored profile's, as `projectHasBuilding` reads them. */
+export function persistedBuildingIds(
   profile: ProjectProfile | null | undefined,
   definition: ProjectIntakeDefinition | null
 ): ReadonlySet<string> {
-  const bauwerke =
-    profile && definition ? answersFromProfile(profile, definition).bauwerke : defaultBauwerke()
-  return new Set(bauwerke.map((bauwerk) => bauwerk.id))
+  const buildings =
+    profile && definition ? answersFromProfile(profile, definition).buildings : defaultBuildings()
+  return new Set(buildings.map((building) => building.id))
 }
 
 /** Add a pending binding; a single-holder role keeps only the newest for its slot. */
@@ -52,11 +52,11 @@ export function withPendingBind(
 }
 
 /** Without the pending bindings of a building the wizard removed. */
-export function withoutBauwerk(
+export function withoutBuilding(
   pending: readonly PendingRoleBind[],
-  bauwerkId: string
+  buildingId: string
 ): PendingRoleBind[] {
-  return pending.filter((bind) => bind.scopeInstanceId !== bauwerkId)
+  return pending.filter((bind) => bind.scopeInstanceId !== buildingId)
 }
 
 /** Without one pending binding (the user took it back). */

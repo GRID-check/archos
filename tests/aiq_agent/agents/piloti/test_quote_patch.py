@@ -153,20 +153,20 @@ def test_the_page_quoted_is_chosen_over_a_page_sharing_one_long_phrase():
     assert select([flagged]) == [flagged]
 
 
-BRANDWAND_PASSAGE = "Als Brandabschnitt gilt der Bereich „zwischen Brandwänden“ eines Geschosses nach Punkt 3.1."
-BRANDWAND = "Als Brandabschnitt gilt der Bereich „zwischen Brandwänden“"
-BRANDWAND_MISQUOTE = "Als Brandabschnitt gilt der Raum „zwischen Brandwänden“"
+FIRE_WALL_PASSAGE = "Als Brandabschnitt gilt der Bereich „zwischen Brandwänden“ eines Geschosses nach Punkt 3.1."
+FIRE_WALL = "Als Brandabschnitt gilt der Bereich „zwischen Brandwänden“"
+FIRE_WALL_MISQUOTE = "Als Brandabschnitt gilt der Raum „zwischen Brandwänden“"
 
 
 def test_a_quotation_mark_that_is_the_passages_wording_is_kept():
     # The closing “ is the passage's; stripping it spliced an unbalanced „.
-    assert accept(BRANDWAND_MISQUOTE, BRANDWAND, BRANDWAND_PASSAGE, span=f"»{BRANDWAND_MISQUOTE}«") == BRANDWAND
+    assert accept(FIRE_WALL_MISQUOTE, FIRE_WALL, FIRE_WALL_PASSAGE, span=f"»{FIRE_WALL_MISQUOTE}«") == FIRE_WALL
 
 
 def test_a_correction_that_would_nest_the_enclosing_marks_is_refused():
     # Inside „…“, the correction's own „…“ closes the quote early: the verifier
     # would re-read only „zwischen Brandwänden“, and the patch ship unchecked.
-    assert accept(BRANDWAND_MISQUOTE, BRANDWAND, BRANDWAND_PASSAGE, span=f"„{BRANDWAND_MISQUOTE}“") is None
+    assert accept(FIRE_WALL_MISQUOTE, FIRE_WALL, FIRE_WALL_PASSAGE, span=f"„{FIRE_WALL_MISQUOTE}“") is None
 
 
 WRAPPED_PASSAGE = (

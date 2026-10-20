@@ -41,7 +41,7 @@ We will introduce a new module `processing.py` in the llamaindex package that ow
 
 ### Server-side size enforcement
 
-New `assertFileSizeAllowed(file.size)` function in the BFF documents service, called by both `uploadDocument` and `uploadArchivDocument`. Uses the same `getFileUploadConfigFromEnv` config that drives the client-side limit.
+New `assertFileSizeAllowed(file.size)` function in the BFF documents service, called by both `uploadDocument` and `uploadOfficeShelfDocument`. Uses the same `getFileUploadConfigFromEnv` config that drives the client-side limit.
 
 ## Consequences
 

@@ -7,17 +7,17 @@
  * with the name probe's body, plus where each name lands (`folders`), and gated
  * like it. POST because a folder drop
  * carries up to two thousand names. Thin handler; the logic lives in
- * `@/lib/documents/fassung-candidates`.
+ * `@/lib/documents/revision-candidates`.
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { probeProjectFassungCandidates } from '@/lib/documents/fassung-candidates'
-import { projectFassungCandidatesRequestSchema, type FassungCandidatesResponse } from '@/lib/documents/name-probe-types'
+import { probeProjectRevisionCandidates } from '@/lib/documents/revision-candidates'
+import { projectRevisionCandidatesRequestSchema, type RevisionCandidatesResponse } from '@/lib/documents/name-probe-types'
 
 export const POST = apiRoute(
-  async ({ session, request }): Promise<FassungCandidatesResponse> => {
-    const { projectId, names, folders } = await parseJsonBody(request, projectFassungCandidatesRequestSchema)
-    return { candidates: await probeProjectFassungCandidates(session, projectId, names, folders) }
+  async ({ session, request }): Promise<RevisionCandidatesResponse> => {
+    const { projectId, names, folders } = await parseJsonBody(request, projectRevisionCandidatesRequestSchema)
+    return { candidates: await probeProjectRevisionCandidates(session, projectId, names, folders) }
   },
-  { authz: { enforcedBy: 'probeProjectFassungCandidates (requireProjectAccess project:view)' } }
+  { authz: { enforcedBy: 'probeProjectRevisionCandidates (requireProjectAccess project:view)' } }
 )

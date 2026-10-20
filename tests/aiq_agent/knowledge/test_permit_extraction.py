@@ -21,7 +21,7 @@ from aiq_agent.knowledge.permit_extraction import MAX_REQUIREMENTS
 from aiq_agent.knowledge.permit_extraction import MAX_TEXT_CHARS
 from aiq_agent.knowledge.permit_extraction import PermitExtraction
 from aiq_agent.knowledge.permit_extraction import extract_permit_record
-from aiq_agent.knowledge.permit_extraction import is_bescheid
+from aiq_agent.knowledge.permit_extraction import is_permit_decision
 from aiq_agent.knowledge.permit_extraction import pages_with_markers
 
 # docs/design/permitting-memory.md, "Contract": the kinds the tables' CHECK constraints allow.
@@ -229,16 +229,16 @@ def test_the_model_name_is_read_off_the_llm():
     assert permit_extraction.llm_model_name(object()) == "unknown"
 
 
-def test_the_bescheid_tag_is_the_controlled_vocabulary_one():
-    assert permit_extraction.BESCHEID_TAG in DOCUMENT_TYPE_TAGS
+def test_the_permit_decision_tag_is_the_controlled_vocabulary_one():
+    assert permit_extraction.PERMIT_DECISION_TAG in DOCUMENT_TYPE_TAGS
 
 
 @pytest.mark.parametrize(
     ("tags", "expected"),
     [(["Bescheid"], True), (["Bescheid", "Brandschutz"], True), (["Gutachten"], False), ([], False), (None, False)],
 )
-def test_is_bescheid_reads_the_tag_decision(tags, expected):
-    assert is_bescheid(tags) is expected
+def test_is_permit_decision_reads_the_tag_decision(tags, expected):
+    assert is_permit_decision(tags) is expected
 
 
 @pytest.mark.parametrize("document_id", ["doc-baden-bescheid", "doc-moedling-nachforderung", "doc-wien22-ma37"])

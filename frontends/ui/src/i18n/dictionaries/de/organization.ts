@@ -108,7 +108,7 @@ export const organization: typeof en.organization = {
     access: { download: 'Download', open: 'Geöffnet' },
     columns: { when: 'Wann', person: 'Person', action: 'Was', document: 'Dokument', place: 'Wo' },
     place: {
-      archiv: 'Büroablage',
+      officeShelf: 'Büroablage',
       session: 'Chat-Anhang',
       project: 'Projekt',
       root: 'Projektebene',
@@ -541,7 +541,7 @@ export const organization: typeof en.organization = {
     overQuota: 'Kontingent erreicht — neue Uploads werden abgelehnt, bis Platz frei wird',
     nearQuota: 'Fast voll — neue Uploads werden bald abgelehnt',
     projectDocuments: 'Projektdokumente',
-    archivDocuments: 'Büroablage',
+    officeShelfDocuments: 'Büroablage',
     /** Count-neutral: wird auch bei genau einem Dokument gerendert. */
     documentCount: 'Dokumente: {count}',
     /** Die Obergrenze je Datei, nur lesend; `size` kommt mit Einheit. */
@@ -697,7 +697,7 @@ export const organization: typeof en.organization = {
       'Hält die Inhaltsprüfung eine Datei zurück, erscheint sie hier. Sie sehen die Dateien, die Sie prüfen dürfen.',
     whereProject: 'Projekt {name}',
     whereProjectUnknown: 'Ein Projekt',
-    whereArchiv: 'Büroablage',
+    whereOfficeShelf: 'Büroablage',
     whereSession: 'Chat-Anhang',
     noReason: 'Kein Grund gespeichert. Öffnen Sie die Datei, um selbst zu prüfen.',
     unscreened:

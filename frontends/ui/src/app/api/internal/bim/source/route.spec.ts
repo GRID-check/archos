@@ -137,7 +137,7 @@ describe('POST /api/internal/bim/source', () => {
 
       expect(vi.mocked(listBimModels).mock.calls[0][1]).toMatchObject({
         projectId: PROJECT,
-        includeArchiv: true,
+        includeOfficeShelf: true,
       })
     })
 

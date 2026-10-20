@@ -36,7 +36,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { CITATION_FORMATS, renderCitations, type CitationFormat } from '../lib/citation-export'
-import { toFachtext, toQuoteList } from '../lib/source-citation'
+import { toTechnicalText, toQuoteList } from '../lib/source-citation'
 import type { CitationRef } from '../lib/citations'
 
 /** Write to the clipboard, reporting failure instead of swallowing it. */
@@ -146,7 +146,7 @@ export const CopySourceCitationButton: FC<{ citation: CitationRef }> = ({ citati
     await copyText(
       citation.locus?.snippet
         ? toQuoteList([citation], new Date())
-        : toFachtext(citation, new Date()),
+        : toTechnicalText(citation, new Date()),
       flashCopied,
       t('answerSources.copyFailed')
     )

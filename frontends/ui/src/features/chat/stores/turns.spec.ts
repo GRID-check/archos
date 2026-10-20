@@ -123,7 +123,7 @@ describe('a turn folded into its thread', () => {
     expect(questionOf(TURN).thinkingSteps![0]).toBe(step)
   })
 
-  it('settles on the terminal result, persists the answer and the Herleitung, and lands its stages', async () => {
+  it('settles on the terminal result, persists the answer and the derivation, and lands its stages', async () => {
     ask(answered)
     useChatStore.getState().applyTurnEvents(answered)
 

@@ -36,9 +36,9 @@ FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtu
 #: English room names, no IfcRelSpaceBoundary, TrueNorth and georeferencing present.
 SAMPLE_HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
 #: German room names, WITH IfcRelSpaceBoundary, no TrueNorth, no georeferencing.
-GERMAN_HOUSE = FIXTURES / "haus-mit-raeumen.ifc"
+GERMAN_HOUSE = FIXTURES / "house-with-rooms.ifc"
 #: No spaces at all.
-NO_SPACES = FIXTURES / "einheiten-fuss.ifc"
+NO_SPACES = FIXTURES / "units-feet.ifc"
 
 
 @pytest.fixture(scope="module")

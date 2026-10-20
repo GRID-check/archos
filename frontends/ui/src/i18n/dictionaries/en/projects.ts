@@ -52,7 +52,7 @@ export const projects = {
   section: {
     loading: 'Loading…',
   },
-  steckbrief: {
+  projectRecord: {
     heading: 'Project record',
     dialogDescription: 'Where, when and with whom. This stays once the project is closed.',
     edit: 'Edit',
@@ -314,7 +314,7 @@ export const projects = {
     overview: 'Overview',
     overviewAria: 'Open overview of {name}',
   },
-  archivCard: {
+  officeShelfCard: {
     title: 'Office filing',
     subtitle:
       "Your office's organization-wide knowledge — shared documents and proven details, available in every project.",
@@ -497,10 +497,10 @@ export const projects = {
       uploadedUnbound: '{name} was filed but not assigned.',
     },
     modulePickerAria: 'Module {module}, {title}. Show all modules',
-    schnellstart: 'Quick start',
-    schnellstartOn:
+    quickStart: 'Quick start',
+    quickStartOn:
       'Core questions only. Everything else is recorded as “open” and listed in the summary as an open point.',
-    schnellstartOff: 'Every question in this module.',
+    quickStartOff: 'Every question in this module.',
     skipRest: 'Skip the rest',
     skipRestDone: 'Recorded as open',
     moduleProgress: '{answered} of {total}',
@@ -537,7 +537,7 @@ export const projects = {
       geschaetzt: 'Estimate',
       offen: 'still open',
     },
-    bauwerk: {
+    building: {
       nameAria: 'Name of the building',
       remove: 'remove',
       add: 'Add building',
@@ -564,8 +564,8 @@ export const projects = {
       revise: 'Revise',
       proceed: 'Save anyway',
       rules: {
-        fossilNeubauConflict:
-          'A gas heat supply for {bauwerk} conflicts with a new build — the Erneuerbare-Wärme-Gesetz prohibits fossil systems in new buildings.',
+        fossilNewBuildConflict:
+          'A gas heat supply for {building} conflicts with a new build — the Erneuerbare-Wärme-Gesetz prohibits fossil systems in new buildings.',
       },
     },
   },

@@ -69,11 +69,11 @@ from the roster: whoever holds a role on the project now is on the Steckbrief.
 
 ### Confirmation
 
-`steckbrief-service.spec.ts` (merge, former only with a known roster, the
+`project-record-service.spec.ts` (merge, former only with a known roster, the
 Beginn default and its limit, a member described twice, leaving and coming
 back, nothing in a closed project), `members-service.spec.ts` (which removals
-keep a former member), `project-steckbrief.spec.tsx` and
-`closing-steckbrief.spec.tsx`. `people-stay-out-of-the-prompt.spec.ts` still
+keep a former member), `project-record.spec.tsx` and
+`closing-project-record.spec.tsx`. `people-stay-out-of-the-prompt.spec.ts` still
 holds: nothing in the agent's context reads the roster or the table.
 
 ## More Information

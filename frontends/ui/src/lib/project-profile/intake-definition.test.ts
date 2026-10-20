@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import {
   answerKeyFor,
   answersFromProfile,
-  BUNDESLAND_TOKENS,
+  FEDERAL_STATE_TOKENS,
   buildIntakeProfile,
   COUNTRY_TOKENS,
   evaluateIntakeCondition,
@@ -14,7 +14,7 @@ import {
   flattenIntakeQuestions,
   formatIntakeAnswer,
   humanizeProfileKey,
-  isValidBundeslandToken,
+  isValidFederalStateToken,
   isValidCountryToken,
   labelForProfileKey,
   mergeIntakeProfile,
@@ -71,7 +71,7 @@ describe('buildIntakeProfile', () => {
     expect(profile.facts.project_name?.value).toBe('Renamed Project')
   })
 
-  it('captures the Bundesland as a confirmed fact (jurisdiction is a hard fact)', () => {
+  it('captures the federal state as a confirmed fact (jurisdiction is a hard fact)', () => {
     const profile = buildIntakeProfile({ A2_country: 'at', A2_land: 'tirol' }, definition)
 
     expect(profile.facts.bundesland?.value).toBe('tirol')
@@ -80,7 +80,7 @@ describe('buildIntakeProfile', () => {
     expect(profile.unknowns).not.toContain('standort_details')
   })
 
-  it('records the missing Bundesland as an unknown', () => {
+  it('records the missing federal state as an unknown', () => {
     const profile = buildIntakeProfile({ A2_country: 'at', A5: ['neubau'] }, definition)
     expect(profile.unknowns).toContain('bundesland')
   })
@@ -98,7 +98,7 @@ describe('buildIntakeProfile', () => {
   })
 
   it('maps the number_tri answer modes onto facts / assumptions / unknowns', () => {
-    // C3 (above-ground storeys, per building) needs its building to be a Gebäude.
+    // C3 (above-ground storeys, per building) needs its building to be a building.
     const base: Answers = { 'C1@bw1': 'gebaeude' }
 
     const confirmed = buildIntakeProfile(
@@ -156,8 +156,8 @@ describe('buildIntakeProfile', () => {
     expect(open.unknowns).toContain('anbau_grundgrenze')
   })
 
-  it('expands the bauwerk scope over every building and the zone scope over selected uses', () => {
-    const bauwerke = [
+  it('expands the building scope over every building and the zone scope over selected uses', () => {
+    const buildings = [
       { id: 'bw1', name: 'Haupthaus' },
       { id: 'bw2', name: 'Nebengebäude' },
     ]
@@ -171,7 +171,7 @@ describe('buildIntakeProfile', () => {
       [modeKeyFor('D_we@bw1@wohnen')]: 'wert',
     }
 
-    const profile = buildIntakeProfile(answers, definition, { bauwerke })
+    const profile = buildIntakeProfile(answers, definition, { buildings })
 
     expect(profile.facts['geschosse_oberirdisch@bw1']?.value).toBe(5)
     expect(profile.facts['bauwerk_name@bw1']?.value).toBe('Haupthaus')
@@ -182,7 +182,7 @@ describe('buildIntakeProfile', () => {
 
 describe('answersFromProfile', () => {
   it('round-trips a built profile back into wizard answers and the building list', () => {
-    const bauwerke = [{ id: 'bw1', name: 'Haupthaus' }]
+    const buildings = [{ id: 'bw1', name: 'Haupthaus' }]
     const answers: Answers = {
       A2_country: 'at',
       A2_land: 'wien',
@@ -193,7 +193,7 @@ describe('answersFromProfile', () => {
       B8: 'ja',
     }
 
-    const profile = buildIntakeProfile(answers, definition, { bauwerke })
+    const profile = buildIntakeProfile(answers, definition, { buildings })
     const restored = answersFromProfile(profile, definition)
 
     expect(restored.answers.A2_land).toBe('wien')
@@ -202,7 +202,7 @@ describe('answersFromProfile', () => {
     expect(restored.answers['C5@bw1']).toBe(9)
     expect(restored.answers[modeKeyFor('C5@bw1')]).toBe('geschaetzt')
     expect(restored.answers.B8).toBe('ja')
-    expect(restored.bauwerke).toEqual([{ id: 'bw1', name: 'Haupthaus' }])
+    expect(restored.buildings).toEqual([{ id: 'bw1', name: 'Haupthaus' }])
   })
 })
 
@@ -259,7 +259,7 @@ describe('validateProfilePatchVocabulary', () => {
     expect(() => validate('add', '/facts/bauwerkstyp', 'nope')).toThrow(/Bauwerkstyp/)
   })
 
-  it('rejects a Bundesland outside the vocabulary', () => {
+  it('rejects a federal state outside the vocabulary', () => {
     expect(() => validate('add', '/facts/bundesland', 'bayern')).toThrow(/Bundesland/)
     expect(() => validate('add', '/facts/bundesland', 'wien')).not.toThrow()
     expect(() => validate('add', '/facts/bundesland', 'ausserhalb_oesterreichs')).not.toThrow()
@@ -326,7 +326,7 @@ describe('pruneStaleConditionalAnswers', () => {
     expect(pruned['CB1@bw1']).toBe(1962)
   })
 
-  it('prunes a bauwerk-scope conditional within its instance', () => {
+  it('prunes a building-scope conditional within its instance', () => {
     // C2@bw1 depends on C1@bw1 === 'gebaeude'. Flip the building type → prune C2.
     const pruned = pruneStaleConditionalAnswers(
       { 'C1@bw1': 'klein', 'C3@bw1': 3, [modeKeyFor('C3@bw1')]: 'wert' },
@@ -458,7 +458,7 @@ describe('mergeIntakeProfile', () => {
       const built = buildIntakeProfile(
         { 'C1@bw1': 'gebaeude', 'C3@bw1': 4, [modeKeyFor('C3@bw1')]: 'geschaetzt' },
         definition,
-        { bauwerke: [{ id: 'bw1', name: 'Bauwerk 1' }] }
+        { buildings: [{ id: 'bw1', name: 'Bauwerk 1' }] }
       )
       expect(built.assumptions['geschosse_oberirdisch@bw1']?.source).toBe('onboarding_default')
 
@@ -597,7 +597,7 @@ describe('mergeIntakeProfile', () => {
 })
 
 describe('evaluateIntakeCondition', () => {
-  it('handles includes_any against a bauwerk-scope multi-select', () => {
+  it('handles includes_any against a building-scope multi-select', () => {
     // CB6 needs C2=bestand AND a hull-touching measure in CB4.
     const cb6 = findIntakeQuestion(definition, 'CB6')!
     const base = { 'C2@bw1': 'bestand' }
@@ -607,7 +607,7 @@ describe('evaluateIntakeCondition', () => {
     )
   })
 
-  it('asks for the Bundesland while the country is open or Austria, never elsewhere', () => {
+  it('asks for the federal state while the country is open or Austria, never elsewhere', () => {
     const land = findIntakeQuestion(definition, 'A2_land')!
     expect(evaluateIntakeCondition(land, {})).toBe(true)
     expect(evaluateIntakeCondition(land, { A2_country: 'at' })).toBe(true)
@@ -616,7 +616,7 @@ describe('evaluateIntakeCondition', () => {
     }
   })
 
-  it('resolves a bauwerk-scope param within the current instance', () => {
+  it('resolves a building-scope param within the current instance', () => {
     const c3 = findIntakeQuestion(definition, 'C3')!
     expect(evaluateIntakeCondition(c3, { 'C1@bw1': 'gebaeude' }, 'bw1')).toBe(true)
     expect(evaluateIntakeCondition(c3, { 'C1@bw1': 'klein' }, 'bw1')).toBe(false)
@@ -629,7 +629,7 @@ describe('evaluateIntakeCondition', () => {
 
   describe('lte (the C8 gate)', () => {
     const c8 = findIntakeQuestion(definition, 'C8')!
-    const gebaeude = { 'C1@bw1': 'gebaeude' }
+    const building = { 'C1@bw1': 'gebaeude' }
 
     it('is satisfied below the bound, not only AT it', () => {
       // 3 as well as 4: a bound of 4 exercised only with 4 passes just as well
@@ -638,7 +638,7 @@ describe('evaluateIntakeCondition', () => {
         expect(
           evaluateIntakeCondition(
             c8,
-            { ...gebaeude, 'C3@bw1': storeys, [modeKeyFor('C3@bw1')]: 'wert' },
+            { ...building, 'C3@bw1': storeys, [modeKeyFor('C3@bw1')]: 'wert' },
             'bw1'
           )
         ).toBe(true)
@@ -646,7 +646,7 @@ describe('evaluateIntakeCondition', () => {
       expect(
         evaluateIntakeCondition(
           c8,
-          { ...gebaeude, 'C3@bw1': 5, [modeKeyFor('C3@bw1')]: 'wert' },
+          { ...building, 'C3@bw1': 5, [modeKeyFor('C3@bw1')]: 'wert' },
           'bw1'
         )
       ).toBe(false)
@@ -657,17 +657,17 @@ describe('evaluateIntakeCondition', () => {
       expect(
         evaluateIntakeCondition(
           c8,
-          { ...gebaeude, 'C3@bw1': 3, [modeKeyFor('C3@bw1')]: 'geschaetzt' },
+          { ...building, 'C3@bw1': 3, [modeKeyFor('C3@bw1')]: 'geschaetzt' },
           'bw1'
         )
       ).toBe(true)
       expect(
-        evaluateIntakeCondition(c8, { ...gebaeude, [modeKeyFor('C3@bw1')]: 'offen' }, 'bw1')
+        evaluateIntakeCondition(c8, { ...building, [modeKeyFor('C3@bw1')]: 'offen' }, 'bw1')
       ).toBe(false)
     })
 
     it('an absent storey count never reveals the question', () => {
-      expect(evaluateIntakeCondition(c8, gebaeude, 'bw1')).toBe(false)
+      expect(evaluateIntakeCondition(c8, building, 'bw1')).toBe(false)
     })
   })
 })
@@ -705,9 +705,9 @@ describe('projectIntakeDefinitionV1 shape', () => {
   })
 })
 
-describe('BUNDESLAND_TOKENS / isValidBundeslandToken', () => {
-  it('contains exactly the nine Bundesland tokens plus ausserhalb_oesterreichs', () => {
-    expect(new Set(BUNDESLAND_TOKENS)).toEqual(
+describe('FEDERAL_STATE_TOKENS / isValidFederalStateToken', () => {
+  it('contains exactly the nine federal state tokens plus ausserhalb_oesterreichs', () => {
+    expect(new Set(FEDERAL_STATE_TOKENS)).toEqual(
       new Set([
         'wien',
         'niederoesterreich',
@@ -725,19 +725,19 @@ describe('BUNDESLAND_TOKENS / isValidBundeslandToken', () => {
 
   it('stays byte-identical to the A2_land question options (single source of truth)', () => {
     const question = flattenIntakeQuestions(definition).find((q) => q.id === 'A2_land')!
-    expect(BUNDESLAND_TOKENS).toEqual(question.options?.map((option) => option.value))
+    expect(FEDERAL_STATE_TOKENS).toEqual(question.options?.map((option) => option.value))
   })
 
-  it('isValidBundeslandToken accepts every known token', () => {
-    for (const token of BUNDESLAND_TOKENS) {
-      expect(isValidBundeslandToken(token)).toBe(true)
+  it('isValidFederalStateToken accepts every known token', () => {
+    for (const token of FEDERAL_STATE_TOKENS) {
+      expect(isValidFederalStateToken(token)).toBe(true)
     }
   })
 
-  it('isValidBundeslandToken rejects unknown/malformed tokens', () => {
-    expect(isValidBundeslandToken('atlantis')).toBe(false)
-    expect(isValidBundeslandToken('')).toBe(false)
-    expect(isValidBundeslandToken('Wien')).toBe(false)
+  it('isValidFederalStateToken rejects unknown/malformed tokens', () => {
+    expect(isValidFederalStateToken('atlantis')).toBe(false)
+    expect(isValidFederalStateToken('')).toBe(false)
+    expect(isValidFederalStateToken('Wien')).toBe(false)
   })
 })
 
@@ -1096,14 +1096,14 @@ describe('where a value is found, and what it feeds', () => {
     }
   })
 
-  it('marks exactly the inputs of the Gebäudeklasse as feeding it', () => {
+  it('marks exactly the inputs of the building class as feeding it', () => {
     const feeding = questions
       .filter((question) => question.feeds === 'gebaeudeklasse')
       .map((question) => question.id)
     expect(feeding.sort()).toEqual(['C1', 'C3', 'C5', 'C6', 'C7', 'C8', 'C9', 'C9_zugang', 'D0'])
   })
 
-  it('asks about access on three sides only for a freistehendes Gebäude, after the Gebäudestellung', () => {
+  it('asks about access on three sides only for a freistehendes building, after the Gebäudestellung', () => {
     const ids = definition.stages
       .find((stage) => stage.id === 'C')!
       .questions.map((question) => question.id)
@@ -1130,7 +1130,7 @@ describe('where a value is found, and what it feeds', () => {
       'C9_zugang@bw1': 'ja',
     }
     const profile = buildIntakeProfile(answers, definition, {
-      bauwerke: [{ id: 'bw1', name: 'Haus' }],
+      buildings: [{ id: 'bw1', name: 'Haus' }],
     })
     expect(profile.facts['zugang_drei_seiten@bw1']?.value).toBe(true)
     expect(answersFromProfile(profile, definition).answers['C9_zugang@bw1']).toBe('ja')

@@ -153,7 +153,7 @@ class TestTheFixtureBff:
         assert logged[0]["body"] == {"query": "Traufe"}
 
 
-def test_the_fixture_permit_records_are_of_documents_the_office_holds_and_the_ingest_typed_bescheid():
+def test_the_fixture_permit_records_are_of_documents_the_office_holds_and_the_ingest_typed_permit_decision():
     """`permits.json` is the pen's output over the office: a record for a document that is not one is a stale render."""
     permits = json.loads(
         (REPO_ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent" / "permits.json").read_text()
@@ -163,15 +163,15 @@ def test_the_fixture_permit_records_are_of_documents_the_office_holds_and_the_in
         for project in FixtureOffice().office["projects"]
         for document in project["documents"]
     }
-    bescheide = {
+    permit_decisions = {
         document_id for document_id, document in documents.items() if "Bescheid" in (document.get("tags") or [])
     }
 
     assert permits["records"], "no record at all: render_fixture_permits.py has not been run"
     assert set(permits["records"]) <= set(documents)
-    assert set(permits["records"]) <= bescheide
+    assert set(permits["records"]) <= permit_decisions
     # A Bescheid with no record would be a fixture office the production ingest does not produce.
-    assert set(permits["records"]) == bescheide
+    assert set(permits["records"]) == permit_decisions
 
 
 def test_the_envelope_the_suite_mints_is_one_the_agent_accepts():

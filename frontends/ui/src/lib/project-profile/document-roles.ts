@@ -18,7 +18,7 @@
  *
  * A role is a fourth, genuinely different axis: a DECLARED, SCOPED binding
  * between a document and a slot in the project model. Scoped is the part the
- * other three cannot express — "Bestandsplan *of Bauwerk bw2*" — and without it
+ * other three cannot express — "Bestandsplan *of building bw2*" — and without it
  * the whole thing is useless for the mixed Neubau/Bestand projects the intake
  * concept exists to serve.
  *
@@ -243,7 +243,7 @@ export function documentRoleLabel(role: DocumentRole): string {
  */
 export function roleRequiresScopeInstance(role: DocumentRole): boolean {
   // `bauwerk` only, deliberately. A project has many buildings and the wizard
-  // mints an id for each, so a bauwerk role without one would match every
+  // mints an id for each, so a building role without one would match every
   // building. It has exactly ONE plot and mints no id for it (the data model
   // allows more, and v1 starts with one), so demanding an instance for a
   // `grundstueck` role would make the Bebauungsplan unbindable today. When

@@ -164,7 +164,7 @@ describe('CitationDocumentDialog and similar passages', () => {
     expect(seen.props).toMatchObject({ src: '/oib.pdf', page: 2, highlight: CITED })
   })
 
-  test('closing the rail brings back the Fundstellen', async () => {
+  test('closing the rail brings back the loci', async () => {
     openCitation()
     fireEvent.click(screen.getByRole('button', { name: 'Check where your office has dealt with this passage' }))
     await screen.findByRole('button', { name: 'Open Bescheid.pdf, page 3' })

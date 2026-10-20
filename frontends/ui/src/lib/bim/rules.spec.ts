@@ -134,8 +134,8 @@ describe('OIB 2 Tabelle 1b, row 1 — the storey decides the duration', () => {
       storeyName,
       properties: { Pset_WallCommon: { LoadBearing: true, FireRating: rating } },
     })
-  const fire = (elements: ReturnType<typeof element>[], gebaeudeklasse: 1 | 2 | 3 | 4 | 5) =>
-    runBimRules(elements, { gebaeudeklasse, storeys: STOREYS }).filter(
+  const fire = (elements: ReturnType<typeof element>[], buildingClass: 1 | 2 | 3 | 4 | 5) =>
+    runBimRules(elements, { gebaeudeklasse: buildingClass, storeys: STOREYS }).filter(
       (r) => r.ruleId === 'oib2-feuerwiderstand-tragend'
     )[0]
 

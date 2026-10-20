@@ -17,7 +17,7 @@ import { useChatStore } from '@/features/chat/store'
 import { PHONE_ON_ITS_SIDE_QUERY } from '@/hooks/phone-on-its-side'
 import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../components/project-file-workspace'
-import type { FassungFacts } from '@/lib/documents/fassung'
+import type { RevisionLinks } from '@/lib/documents/revision-links'
 import type { MarkTally } from '@/lib/annotations/types'
 import type {
   DocumentLifecyclePermission,
@@ -143,7 +143,7 @@ export interface FilePreviewContext {
    */
   onOpenDocument?: (fileId: string) => void
   /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
-  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
+  onRevisionChanged?: (fileId: string, revision: RevisionLinks | null) => void
   /**
    * A decision was taken in the pane's Freigabe section, so the listing behind
    * it can move the badge without re-reading the whole corpus — the same shape

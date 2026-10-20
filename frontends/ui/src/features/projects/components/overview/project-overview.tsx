@@ -37,7 +37,7 @@ import { ActionMenu } from '@/components/ui/action-menu'
 import { BentoCell, BentoGrid, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Button } from '@/components/ui/button'
 import { ProjectStatusMark } from '@/components/projects/project-status'
-import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
+import type { ProjectRecordView } from '@/lib/projects/project-record-types'
 import type { IntakeCounts, IntakeStatus } from '@/lib/project-intake/types'
 import { useLocale, useTranslations, type Translator } from '@/i18n'
 import { formatBytes, formatDate } from '@/lib/format'
@@ -47,7 +47,7 @@ import { ProjectDeleteDialog } from '../project-delete-dialog'
 import { ProjectLifecycleCard } from '../project-lifecycle-card'
 import { useProjectLifecycle } from '../../lib/use-project-lifecycle'
 import { ProjectRenameDialog } from '../project-rename-dialog'
-import { ProjectSteckbrief } from '../project-steckbrief'
+import { ProjectRecord } from '../project-record'
 import type { ProjectUsageView } from '../settings/usage-settings'
 import { ActivityPanel, type ProjectActivityView } from './activity-panel'
 import { DocumentsTile } from './documents-tile'
@@ -80,7 +80,7 @@ export interface ProjectOverviewProps {
   /** Null for a reader who may not see the project's spend. */
   usage: ProjectUsageView | null
   /** The Steckbrief (ADR-0091): period and people, what stays once the project closes. */
-  steckbrief?: SteckbriefView
+  projectRecord?: ProjectRecordView
   /**
    * The similar-projects tile, streamed: finding them reads every closed
    * project's memory and permits, and the rest of the dashboard should not wait
@@ -98,7 +98,7 @@ export function ProjectOverview({
   data,
   activity,
   usage,
-  steckbrief,
+  projectRecord,
   similar,
   setupOpen = false,
   setupProgress,
@@ -113,7 +113,7 @@ export function ProjectOverview({
   const membersSpan: BentoSpan = usage ? 'small' : 'wide'
   // The project's record beside the control that closes it; alone, the record
   // takes the row.
-  const steckbriefSpan: BentoSpan = access.changeStatus ? 'major' : 'wide'
+  const projectRecordSpan: BentoSpan = access.changeStatus ? 'major' : 'wide'
   return (
     <div className="flex flex-col gap-4">
       <BentoGrid data-testid="project-overview">
@@ -141,11 +141,11 @@ export function ProjectOverview({
             span={membersSpan}
           />
         )}
-        {steckbrief && <ProjectSteckbrief projectId={id} steckbrief={steckbrief} span={steckbriefSpan} />}
+        {projectRecord && <ProjectRecord projectId={id} projectRecord={projectRecord} span={projectRecordSpan} />}
         {/* The lifecycle (ADR-0098): pause, resume, close, reopen. Reopening is
             the one change a closed project allows. */}
         {access.changeStatus && (
-          <BentoCell span={steckbrief ? 'small' : 'wide'}>
+          <BentoCell span={projectRecord ? 'small' : 'wide'}>
             <ProjectLifecycleCard
               projectId={id}
               lifecycle={data.lifecycle}

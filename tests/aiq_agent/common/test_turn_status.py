@@ -810,7 +810,7 @@ class TestRoundAnnouncementMirrorsTheLiveFrame:
         """A locator round keeps its punkt key, not the search template."""
         record = turn_status.record_round_announcement(round_index=1, calls=_open_calls(), conclusion=None)
         assert record is not None
-        assert record["key"] == turn_status.KEY_RETRIEVAL_PUNKT
+        assert record["key"] == turn_status.KEY_RETRIEVAL_CLAUSE
         assert record["tools"] == ["read_passage"]
 
     def test_action_batches_and_empties_record_nothing(self) -> None:
@@ -967,7 +967,7 @@ class TestFetchSignature:
         )
         assert blank == turn_status.fetch_signature({"name": "knowledge_search", "args": {"query": "q"}})
 
-    def test_a_punkt_is_the_same_point_with_or_without_its_trailing_dot(self) -> None:
+    def test_a_clause_is_the_same_point_with_or_without_its_trailing_dot(self) -> None:
         """The Richtlinien print both, and so does the model."""
         dotted = turn_status.fetch_signature(
             {"name": "read_passage", "args": {"document": "OIB-Richtlinie 2", "punkt": "3.5.2."}}

@@ -77,8 +77,8 @@ import { audienceReach, type AudienceReach } from './audience-reach'
 import { searchProjectDecisions, type DecisionScope, type FoundDecision } from './decisions-repository'
 import { liveFolderAccess } from '@/lib/permits/live-access'
 import { searchPermitRequirements, type FoundPermitRecord } from '@/lib/permits/repository'
-import { bundeslandOf, rankBySimilarity, similarityFacts } from './similarity'
-import { abschlussOf, toProjectStatus } from '@/lib/projects/project-status'
+import { federalStateOf, rankBySimilarity, similarityFacts } from './similarity'
+import { closingOf, toProjectStatus } from '@/lib/projects/project-status'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
   CROSS_PROJECT_PAGE_PROJECTS,
@@ -158,7 +158,7 @@ export function projectPeriodOf(
   project: Pick<Project, 'createdAt' | 'startedOn' | 'endedOn' | 'status'>
 ): { start: string; end: string | null } {
   const start = project.startedOn ?? new Date(project.createdAt).toISOString().slice(0, 10)
-  return { start, end: abschlussOf(project) }
+  return { start, end: closingOf(project) }
 }
 
 /** Whether a period overlaps `[from, to]`, both optional and inclusive; an open end runs to today and beyond. */
@@ -178,7 +178,7 @@ function projectRefOf(project: Project): CrossProjectRef {
     id: project.id,
     name: project.name,
     status: projectStatusOf(project),
-    bundesland: bundeslandOf(project.profile),
+    bundesland: federalStateOf(project.profile),
   }
 }
 

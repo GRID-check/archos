@@ -63,17 +63,17 @@ const cache = new Map<string, Entry>()
  * the other is exactly the class of silent wrong answer this subsystem exists
  * to avoid. Both facts are part of the identity of the result.
  */
-function key(modelId: string, gebaeudeklasse: number | null, hauptnutzung: string | null): string {
-  return `${modelId}|${gebaeudeklasse ?? ''}|${hauptnutzung ?? ''}`
+function key(modelId: string, buildingClass: number | null, mainUse: string | null): string {
+  return `${modelId}|${buildingClass ?? ''}|${mainUse ?? ''}`
 }
 
 export function readComplianceCache(
   modelId: string,
-  gebaeudeklasse: number | null,
-  hauptnutzung: string | null,
+  buildingClass: number | null,
+  mainUse: string | null,
   now: number = Date.now()
 ): CachedCompliance | null {
-  const id = key(modelId, gebaeudeklasse, hauptnutzung)
+  const id = key(modelId, buildingClass, mainUse)
   const entry = cache.get(id)
   if (!entry) return null
   if (now - entry.storedAt > TTL_MS) {
@@ -89,12 +89,12 @@ export function readComplianceCache(
 
 export function writeComplianceCache(
   modelId: string,
-  gebaeudeklasse: number | null,
-  hauptnutzung: string | null,
+  buildingClass: number | null,
+  mainUse: string | null,
   value: CachedCompliance,
   now: number = Date.now()
 ): void {
-  const id = key(modelId, gebaeudeklasse, hauptnutzung)
+  const id = key(modelId, buildingClass, mainUse)
   cache.delete(id)
   cache.set(id, { value, storedAt: now })
   while (cache.size > MAX_ENTRIES) {

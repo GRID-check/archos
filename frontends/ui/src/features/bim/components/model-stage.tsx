@@ -408,7 +408,7 @@ export function ModelStage({
    * `IfcFilePreview` uses for the same reason.
    */
   const projectModels = useProjectBimModels(projectId)
-  const archivModel = useDocumentBimModel(projectId ? null : (documentId ?? null))
+  const officeShelfModel = useDocumentBimModel(projectId ? null : (documentId ?? null))
   const {
     data: models,
     isLoading,
@@ -420,12 +420,12 @@ export function ModelStage({
       // One model is still a list, so every reader below — the rail, the
       // picker, `pickStageModel` — works unchanged rather than growing a
       // second code path for the Archiv.
-      data: archivModel.data === null ? (archivModel.isLoading ? null : []) : [archivModel.data],
-      isLoading: archivModel.isLoading,
-      error: archivModel.error,
-      reload: archivModel.reload,
+      data: officeShelfModel.data === null ? (officeShelfModel.isLoading ? null : []) : [officeShelfModel.data],
+      isLoading: officeShelfModel.isLoading,
+      error: officeShelfModel.error,
+      reload: officeShelfModel.reload,
     }
-  }, [projectId, projectModels, archivModel])
+  }, [projectId, projectModels, officeShelfModel])
   const model = useMemo(() => pickStageModel(models ?? [], view.model), [models, view.model])
   /**
    * The link named a model this project does not have.
@@ -1362,7 +1362,7 @@ export function ModelStage({
                   // retrieval does). An Archiv model has no project, and its
                   // delete goes to the org-scoped route — the project one
                   // answers 404 for it on purpose.
-                  scope={model.projectId === null ? 'archiv' : 'files'}
+                  scope={model.projectId === null ? 'officeShelf' : 'files'}
                   onRenamed={onModelRenamed}
                   onDeleted={(documentId) => {
                     onModelDeleted?.(documentId)

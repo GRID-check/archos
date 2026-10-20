@@ -10,7 +10,7 @@
  * page whose script never runs shows every object in its final state. Under
  * `prefers-reduced-motion: reduce` nothing is armed at all.
  *
- * Imported as a module by Quellen.astro (the Prüfblatt); a module runs once
+ * Imported as a module by Sources.astro (the Prüfblatt); a module runs once
  * however many components import it.
  */
 function arm() {

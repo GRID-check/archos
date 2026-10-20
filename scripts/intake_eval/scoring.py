@@ -223,7 +223,7 @@ def _slim(record: Mapping[str, Any]) -> dict[str, Any]:
     return {name: record[name] for name in keep if name in record}
 
 
-def fassung_result(
+def revision_result(
     records: Iterable[Mapping[str, Any]], profile: Mapping[str, Any], answer_key: Mapping[str, Any]
 ) -> str:
     """``handled``, ``older_recorded`` (the older Fassung's value landed) or ``not_recorded``."""
@@ -396,7 +396,7 @@ def score_run(
         "missed": missed,
         "filled_open": filled,
         "traps": trap_results(records, attempts, [str(call.get("output", "")) for call in tool_calls], answer_key),
-        "fassung": fassung_result(records, profile, answer_key),
+        "fassung": revision_result(records, profile, answer_key),
         "finish_called": finished_by_model,
         "summary": summary,
         "summary_check": summary_check(summary, records, counts, question_texts),

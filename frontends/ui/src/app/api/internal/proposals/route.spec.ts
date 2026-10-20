@@ -38,8 +38,8 @@ vi.mock('@/lib/proposals/executors', async (original) => ({
   applyFileOperations: vi.fn(),
 }))
 vi.mock('@/lib/assignments/service', () => ({}))
-vi.mock('@/lib/archiv/folder-service', () => ({}))
-vi.mock('@/lib/archiv/service', () => ({}))
+vi.mock('@/lib/office-shelf/folder-service', () => ({}))
+vi.mock('@/lib/office-shelf/service', () => ({}))
 vi.mock('@/lib/documents/move-to-folder', () => ({}))
 vi.mock('@/lib/documents/service', () => ({}))
 vi.mock('@/lib/projects/folder-service', () => ({}))

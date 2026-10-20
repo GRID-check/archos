@@ -155,7 +155,7 @@ export const MODEL_VIEW_SEGMENT = 'files'
  * point is that an `.ifc` behaves identically wherever it is opened. Same
  * `buildModelQuery`, so a view copied from one surface parses on the other.
  */
-export const ARCHIV_MODEL_PATH = '/app/archiv'
+export const OFFICE_SHELF_MODEL_PATH = '/app/archiv'
 
 /** Absolute in-app href for a model view. */
 export function buildModelHref(projectId: string, view: BimModelView = {}): string {
@@ -163,8 +163,8 @@ export function buildModelHref(projectId: string, view: BimModelView = {}): stri
 }
 
 /** The same view, opened from the Archiv, where there is no project to name. */
-export function buildArchivModelHref(view: BimModelView = {}): string {
-  return `${ARCHIV_MODEL_PATH}${buildModelQuery(view)}`
+export function buildOfficeShelfModelHref(view: BimModelView = {}): string {
+  return `${OFFICE_SHELF_MODEL_PATH}${buildModelQuery(view)}`
 }
 
 /**

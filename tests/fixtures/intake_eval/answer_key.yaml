@@ -18,6 +18,7 @@ values:
     accept: [[zubau, umbau], [zubau]]
     source: "Baubeschreibung S. 1 „ein Zubau in Form einer Aufstockung … sowie der Umbau der Erschließung“"
   flaechenwidmung: {value: wohngebiet, source: "Bebauungsbestimmungen „Widmung: Wohngebiet“"}
+  grundstueck_ez: {contains: ["1234", "ottakring"], source: "Baubeschreibung S. 1 „Liegenschaft: … EZ 1234, KG Ottakring, Gst.Nr. 567/3“"}
   flaechenwidmung_orig: {contains: ["wohngebiet"], source: "Bebauungsbestimmungen"}
   bebauungsplan: {value: true, source: "Bebauungsbestimmungen „Flächenwidmungs- und Bebauungsplan Plandokument 8125“"}
   bebauungsweise: {value: geschlossen, source: "Bebauungsbestimmungen „Bauweise: geschlossene Bauweise“"}
@@ -60,6 +61,7 @@ open:
   laermsituation: "Not stated."
   denkmalschutz@bw1: "Not stated."
   wasserrecht: "Not stated."
+  grundstuecksflaeche: "Not stated: the Baubeschreibung names the Gst.Nr., not its area; the BGF figures are floor areas."
   gebaeudeklasse@bw1: "Derived by the system, never recorded; no document states this project's class."
 
 either:

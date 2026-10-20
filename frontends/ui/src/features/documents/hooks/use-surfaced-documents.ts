@@ -47,9 +47,9 @@ export interface ResolvedSurfacedDocument {
 
 interface SurfacedIndex {
   /** filename → row, project corpus. */
-  projekt: Map<string, FileItem>
+  project: Map<string, FileItem>
   /** filename → row, Büroablage. */
-  buero: Map<string, FileItem>
+  officeShelf: Map<string, FileItem>
   /**
    * filename → row, THIS conversation's private attachments (ADR-0047's
    * `session` shelf). Empty unless the caller named a conversation.
@@ -154,7 +154,7 @@ export async function resolveStoredDocument(
   source: 'projekt' | 'buero',
 ): Promise<FileItem | null> {
   const index = await loadNamedIndex(projectId, [fileName])
-  return corpusLookup(source === 'buero' ? index.buero : index.projekt, fileName) ?? null
+  return corpusLookup(source === 'buero' ? index.officeShelf : index.project, fileName) ?? null
 }
 
 /**
@@ -166,8 +166,8 @@ async function loadNamedIndex(projectId: string | null, names: readonly string[]
   const named = await resolveDocumentsByName(projectId, names)
   const answers = [...named.values()]
   return {
-    projekt: indexByFilename(answers.flatMap((answer) => answer.projekt)),
-    buero: indexByFilename(answers.flatMap((answer) => answer.buero)),
+    project: indexByFilename(answers.flatMap((answer) => answer.project)),
+    officeShelf: indexByFilename(answers.flatMap((answer) => answer.officeShelf)),
     session: new Map(),
     error: answers.some((answer) => answer.error),
   }
@@ -200,8 +200,8 @@ export async function storedFileIndex(
   const byName = new Map<string, StoredFile>()
   const corpora: ReadonlyArray<readonly [DocumentCorpus, Map<string, FileItem>]> = [
     ['session', index.session],
-    ['buero', index.buero],
-    ['projekt', index.projekt],
+    ['buero', index.officeShelf],
+    ['projekt', index.project],
   ]
   // Written least-specific first, so the project's copy overwrites the rest.
   for (const [corpus, rows] of corpora) {
@@ -219,7 +219,7 @@ function loadSurfacedIndex(
   if (existing) return existing
 
   const promise = (async (): Promise<SurfacedIndex> => {
-    const [projektRes, bueroRes, sessionRes] = await Promise.all([
+    const [projectRes, officeShelfRes, sessionRes] = await Promise.all([
       // The project list is the primary corpus — any non-ok is a genuine error.
       projectId
         ? fetchCorpus(`/api/documents?projectId=${encodeURIComponent(projectId)}`, [])
@@ -237,10 +237,10 @@ function loadSurfacedIndex(
         : Promise.resolve({ rows: null, failed: false }),
     ])
     return {
-      projekt: indexByFilename(projektRes.rows),
-      buero: indexByFilename(bueroRes.rows),
+      project: indexByFilename(projectRes.rows),
+      officeShelf: indexByFilename(officeShelfRes.rows),
       session: indexByFilename(sessionRes.rows),
-      error: projektRes.failed || bueroRes.failed || sessionRes.failed,
+      error: projectRes.failed || officeShelfRes.failed || sessionRes.failed,
     }
   })()
 
@@ -299,7 +299,7 @@ export function useSurfacedDocuments(
       })
       .catch(() => {
         if (!cancelled) {
-          setIndex({ projekt: new Map(), buero: new Map(), session: new Map(), error: true })
+          setIndex({ project: new Map(), officeShelf: new Map(), session: new Map(), error: true })
         }
       })
     return () => {
@@ -328,17 +328,17 @@ export function useSurfacedDocuments(
         // resolution is allowed only when the tool gave no source, purely as a
         // best-effort last resort.
         if (surfaced.source === 'projekt' || surfaced.source === 'buero') {
-          const map = surfaced.source === 'buero' ? index.buero : index.projekt
+          const map = surfaced.source === 'buero' ? index.officeShelf : index.project
           const hit = corpusLookup(map, surfaced.file_name)
           return hit
             ? { key, surfaced, file: hit, docSource: surfaced.source }
             : { key, surfaced, file: null, docSource: null }
         }
 
-        const inProjekt = corpusLookup(index.projekt, surfaced.file_name)
-        if (inProjekt) return { key, surfaced, file: inProjekt, docSource: 'projekt' }
-        const inBuero = corpusLookup(index.buero, surfaced.file_name)
-        if (inBuero) return { key, surfaced, file: inBuero, docSource: 'buero' }
+        const inProject = corpusLookup(index.project, surfaced.file_name)
+        if (inProject) return { key, surfaced, file: inProject, docSource: 'projekt' }
+        const inOfficeShelf = corpusLookup(index.officeShelf, surfaced.file_name)
+        if (inOfficeShelf) return { key, surfaced, file: inOfficeShelf, docSource: 'buero' }
         return { key, surfaced, file: null, docSource: null }
       }),
     [documents, index]

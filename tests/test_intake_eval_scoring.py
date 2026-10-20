@@ -153,12 +153,12 @@ class TestTraps:
         assert not neighbour["resisted"]
         assert neighbour["fell_for"][0]["fileName"] == "Gutachten.pdf"
 
-    def test_the_fassung(self):
+    def test_the_revision(self):
         newer = [_record("nutzungseinheiten@bw1", 10)]
-        assert scoring.fassung_result(newer, _profile(nutzungseinheiten__bw1=10), KEY) == "handled"
+        assert scoring.revision_result(newer, _profile(nutzungseinheiten__bw1=10), KEY) == "handled"
         both = [*newer, _record("nutzungseinheiten@bw1", 11, "contradiction")]
-        assert scoring.fassung_result(both, _profile(nutzungseinheiten__bw1=10), KEY) == "older_recorded"
-        assert scoring.fassung_result([], _profile(), KEY) == "not_recorded"
+        assert scoring.revision_result(both, _profile(nutzungseinheiten__bw1=10), KEY) == "older_recorded"
+        assert scoring.revision_result([], _profile(), KEY) == "not_recorded"
 
 
 class TestSummary:
@@ -396,7 +396,7 @@ class TestTheReadingTools:
             ("EP-01_Grundrisse_Index-B.pdf", 2),
         }
 
-    async def test_the_listing_marks_the_older_fassung(self):
+    async def test_the_listing_marks_the_older_revision(self):
         from scripts.intake_eval.fixture import shared_tools
 
         tools = {tool.name: tool for tool in shared_tools(load_fixture())}

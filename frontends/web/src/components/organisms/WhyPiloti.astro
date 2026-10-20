@@ -6,7 +6,7 @@
  * i18n/pages.ts; every capability named there is in the changelog.
  */
 import PageHead from '../molecules/PageHead.astro'
-import Arbeit from './Arbeit.astro'
+import Handover from './Handover.astro'
 import CompareTable from '../molecules/CompareTable.astro'
 import Pill from '../atoms/Pill.astro'
 import { PLATES } from '../craft/plates'
@@ -42,7 +42,7 @@ const h2 = 'm-0 font-voice text-v4 text-ink'
 </div>
 
 <!-- The week of work first: it is the answer to "why", before any table. -->
-<Arbeit locale={locale} standalone />
+<Handover locale={locale} standalone />
 
 <div class="frame">
   <section aria-labelledby="why-audiences" class="section-y border-t border-ink/15">

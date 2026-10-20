@@ -53,12 +53,12 @@ export interface PhoneTab {
 }
 
 export interface PhoneTabFlags {
-  canAccessArchiv: boolean
+  canAccessOfficeShelf: boolean
   canAccessInbox: boolean
 }
 
 const INBOX_HREF = '/app/inbox'
-const ARCHIV_HREF = '/app/archiv'
+const OFFICE_SHELF_HREF = '/app/archiv'
 const PROJECTS_HREF = '/app/projects'
 
 function isUnder(pathname: string, href: string): boolean {
@@ -141,14 +141,14 @@ export function orgPhoneTabs(pathname: string, flags: PhoneTabFlags): PhoneTab[]
       tourAnchor: 'tab-projects',
     },
   ]
-  if (flags.canAccessArchiv) {
+  if (flags.canAccessOfficeShelf) {
     tabs.push({
       key: 'archiv',
-      href: ARCHIV_HREF,
+      href: OFFICE_SHELF_HREF,
       icon: Archive,
       label: { namespace: 'nav', key: 'sections.archiv' },
-      active: isUnder(pathname, ARCHIV_HREF),
-      tourAnchor: TOUR_ANCHORS.archiv,
+      active: isUnder(pathname, OFFICE_SHELF_HREF),
+      tourAnchor: TOUR_ANCHORS.officeShelf,
     })
   }
   if (flags.canAccessInbox) tabs.push(inboxTab(pathname, TOUR_ANCHORS.inbox))

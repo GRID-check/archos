@@ -39,9 +39,9 @@ from ifc_spatial.tools import create_tools
 
 FIXTURES = Path(__file__).resolve().parents[2] / "ifc-spatial" / "test" / "fixtures"
 HOUSE = FIXTURES / "Ifc4_SampleHouse.ifc"
-STACKED = FIXTURES / "geschossdecke-und-fenster.ifc"
-NO_BODIES = FIXTURES / "haus-mit-raeumen.ifc"
-FEET = FIXTURES / "einheiten-fuss.ifc"
+STACKED = FIXTURES / "floor-slab-and-window.ifc"
+NO_BODIES = FIXTURES / "house-with-rooms.ifc"
+FEET = FIXTURES / "units-feet.ifc"
 
 LIVING = "3w0zWKm7n8SB1qbfwUzt0U"
 BEDROOM = "3w0zWKm7n8SB1qbfwUzt0J"
@@ -61,7 +61,7 @@ BEDROOM_WINDOW = "3cUkl32yn9qRSPvBJVyWcE"
 #: `TestAWindowsDeclaredAreaIsNotAnOpeningArea`, which publishes a
 #: `BaseQuantities.Area` of its own that is not an opening area either.
 INTERNAL_DOOR = "3cUkl32yn9qRSPvBJVyWaG"
-#: `einheiten-fuss.ifc` declares this wall and gives it no representation.
+#: `units-feet.ifc` declares this wall and gives it no representation.
 BODYLESS_WALL = "3Fuss000000Wall000001"
 
 
@@ -83,7 +83,7 @@ def handle(tools: list) -> str:
 class TestAdjacencyIsNotStacking:
     """Two rooms on either side of the same floor slab are not neighbours.
 
-    `geschossdecke-und-fenster.ifc` was authored to pin exactly this — its header
+    `floor-slab-and-window.ifc` was authored to pin exactly this — its header
     records a real export in which one slab produced 4 278 false pairs — and no
     test had ever run `adjacentSpaces` against it.
     """
@@ -1035,7 +1035,7 @@ class TestARoomWhoseBodyIsAShellIsStillMeasurable:
     it reproduces the classifier miss exactly.
     """
 
-    FIXTURE = FIXTURES / "keller-brep-raum.ifc"
+    FIXTURE = FIXTURES / "basement-brep-room.ifc"
 
     @pytest.fixture(scope="class")
     @classmethod
@@ -1146,7 +1146,7 @@ class TestAnExternalWallBoundsMoreThanOneRoom:
     openings and their windows, extracted from that file.
     """
 
-    FIXTURE = FIXTURES / "aussenwand-ohne-isexternal.ifc"
+    FIXTURE = FIXTURES / "exterior-wall-without-isexternal.ifc"
 
     @pytest.fixture(scope="class")
     @classmethod
@@ -1250,11 +1250,11 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
     below.
     """
 
-    FIXTURE = FIXTURES / "galerie-deckendurchbruch.ifc"
+    FIXTURE = FIXTURES / "gallery-slab-opening.ifc"
     GALERIE = "2dQFggKBb1fOc1CqZDIDlx"
-    WOHNEN = "0Lt8gR_E9ESeGH5uY_g9e9"
+    LIVING_SPACE = "0Lt8gR_E9ESeGH5uY_g9e9"
     #: Under the same slab, 4.144 m from the void in plan — the locality case.
-    FERNER_RAUM = "2RSCzLOBz4FAK$_wE8VckM"
+    FAR_ROOM = "2RSCzLOBz4FAK$_wE8VckM"
     VOID = "16PF6khT5_p$Z03P73inyv"
     RAILINGS = {"0o5vgCKyTBzO5$QJcI2YDP", "09axaKU7X1_O8n6dmmiZ1E"}
 
@@ -1273,7 +1273,7 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
         host = op.hosted_in(model, self.VOID)
         assert host.decidable and host.value[0].ifc_type == "IfcSlab"
         assert round(float(model.geometry(self.GALERIE).box[0][2]), 3) == 2.700
-        assert round(float(model.geometry(self.WOHNEN).box[0][2]), 3) == 0.000
+        assert round(float(model.geometry(self.LIVING_SPACE).box[0][2]), 3) == 0.000
 
     def test_it_is_a_hole_in_a_floor_and_gets_no_wall_frame(self, model: SpatialModel) -> None:
         """15.805 m² of plan against 1.704 m² of face. Every operator that needs
@@ -1315,7 +1315,7 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
         means the opposite thing there: nobody falls up through their own
         ceiling. Listed with `fall = null` and the reason, rather than dropped —
         and NOT an edge."""
-        answer = ac.balustrade_check(model, self.WOHNEN, 1.0)
+        answer = ac.balustrade_check(model, self.LIVING_SPACE, 1.0)
         assert answer.decidable
         entry = next(o for o in answer.value["openings"] if o["globalId"] == self.VOID)
         assert entry["fall"] is None
@@ -1334,7 +1334,7 @@ class TestAGalleryVoidIsMeasuredDownwardAndNotSideways:
         Here it is `IfcSpace 2RSCzLOBz4FAK$_wE8VckM`, under the same slab and
         4.144 m from the void in plan. Listed with the distance and `fall =
         null`, because the reason it appears at all is worth saying."""
-        answer = ac.balustrade_check(model, self.FERNER_RAUM, 1.0)
+        answer = ac.balustrade_check(model, self.FAR_ROOM, 1.0)
         assert answer.decidable
         entry = next(o for o in answer.value["openings"] if o["globalId"] == self.VOID)
         assert entry["fall"] is None
@@ -1381,7 +1381,7 @@ class TestConnectsRefusesForATypeTheExportNeverConnects:
     between the two walls.
     """
 
-    FIXTURE = FIXTURES / "verbindungen-nur-wand-an-wand.ifc"
+    FIXTURE = FIXTURES / "connections-wall-to-wall-only.ifc"
     WALLS = ("3PfS__Y_DBAfq5naM6zD2Z", "2XPyKWY018sA1ygZKgQPtU")
     DOOR = "1Oms875aH3Wg$9l65H2ZGw"
     WINDOW = "1srAI$R4T8ihLXSNHmUSET"
@@ -1514,7 +1514,7 @@ class TestASideIsNotDecidedByTheRoomsWeCouldPlace:
     `_faces_outside` calls its windows daylight, `_facade_candidates` ranks it
     as the room's facade.
 
-    This is not hypothetical for these exports. `haus-mit-raeumen.ifc` carries
+    This is not hypothetical for these exports. `house-with-rooms.ifc` carries
     two `IfcSpace` with `Representation = NULL`, which is exactly the shape.
     """
 
@@ -1527,7 +1527,7 @@ class TestASideIsNotDecidedByTheRoomsWeCouldPlace:
         return None, None
 
     def test_one_bodiless_room_makes_the_side_undecided(self, monkeypatch) -> None:
-        model = SpatialModel(str(FIXTURES / "aussenwand-ohne-isexternal.ifc"))
+        model = SpatialModel(str(FIXTURES / "exterior-wall-without-isexternal.ifc"))
         wall, rooms = self._wall_between(model)
         assert wall is not None, "the fixture has a wall bounding several rooms"
         # Sanity: with every room placed, the wall is decided.
@@ -1553,7 +1553,7 @@ class TestASideIsNotDecidedByTheRoomsWeCouldPlace:
         Collapsing the two skips into one refusal would make every such export
         undecidable.
         """
-        model = SpatialModel(str(FIXTURES / "aussenwand-ohne-isexternal.ifc"))
+        model = SpatialModel(str(FIXTURES / "exterior-wall-without-isexternal.ifc"))
         wall, rooms = self._wall_between(model)
         real = model.geometry
         centre = np.asarray(real(wall.GlobalId).centroid, dtype=float)

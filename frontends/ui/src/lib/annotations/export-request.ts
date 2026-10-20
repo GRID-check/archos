@@ -22,8 +22,8 @@ export type AnnotationExportScope = (typeof ANNOTATION_EXPORT_SCOPES)[number]
  * still open from an earlier one. `all`: the closed marks of earlier Fassungen
  * too. Open work is never narrowed by Fassung (`selectMarks`).
  */
-export const ANNOTATION_EXPORT_FASSUNGEN = ['current', 'all'] as const
-export type AnnotationExportFassung = (typeof ANNOTATION_EXPORT_FASSUNGEN)[number]
+export const ANNOTATION_EXPORT_REVISIONS = ['current', 'all'] as const
+export type AnnotationExportRevision = (typeof ANNOTATION_EXPORT_REVISIONS)[number]
 
 /**
  * The query. Every field has a default, so a bare link exports every open
@@ -35,7 +35,7 @@ export type AnnotationExportFassung = (typeof ANNOTATION_EXPORT_FASSUNGEN)[numbe
 export const annotationExportQuerySchema = z.object({
   format: z.enum(ANNOTATION_EXPORT_FORMATS).default('pdf'),
   scope: z.enum(ANNOTATION_EXPORT_SCOPES).default('open'),
-  fassung: z.enum(ANNOTATION_EXPORT_FASSUNGEN).default('current'),
+  fassung: z.enum(ANNOTATION_EXPORT_REVISIONS).default('current'),
   includeProposals: z
     .enum(['0', '1'])
     .default('0')
@@ -45,7 +45,7 @@ export const annotationExportQuerySchema = z.object({
 export interface AnnotationExportOptions {
   format: AnnotationExportFormat
   scope: AnnotationExportScope
-  fassung: AnnotationExportFassung
+  fassung: AnnotationExportRevision
   includeProposals: boolean
 }
 

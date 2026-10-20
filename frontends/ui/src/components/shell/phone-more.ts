@@ -89,7 +89,7 @@ export function moreDestinations(projectId: string | null, pathname: string, fla
   const onBar = carried(projectPhoneTabs(projectId, pathname, flags))
   const sectionFlags: ProjectSectionFlags = {
     showSkills: flags.showSkills,
-    canAccessArchiv: flags.canAccessArchiv,
+    canAccessOfficeShelf: flags.canAccessOfficeShelf,
     canAccessInbox: flags.canAccessInbox,
   }
   const places = railSections(sectionFlags)

@@ -253,10 +253,10 @@ export async function deleteBindings(projectId: string, ids: readonly string[]):
 /**
  * Remove the building-scoped bindings of every building not in `keep`; how many.
  *
- * A non-null scope instance is always a Bauwerk id: no other scope takes one
+ * A non-null scope instance is always a building id: no other scope takes one
  * (`roleRequiresScopeInstance`).
  */
-export async function deleteBindingsOutsideBauwerke(
+export async function deleteBindingsOutsideBuildings(
   projectId: string,
   keep: readonly string[],
   tx: DbTransaction

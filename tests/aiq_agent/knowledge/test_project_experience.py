@@ -155,7 +155,7 @@ def test_a_summary_is_cut_to_400_characters():
 
 # --- extract_fingerprint --------------------------------------------------------------------
 
-BUNDESLAND_QUOTE = "Das Vorhaben liegt in Niederösterreich."
+FEDERAL_STATE_QUOTE = "Das Vorhaben liegt in Niederösterreich."
 
 
 def test_a_token_outside_the_vocabulary_is_dropped():
@@ -201,7 +201,7 @@ def test_a_key_the_vocabulary_does_not_have_is_dropped():
 def test_a_confirmed_fact_is_not_asked_and_is_not_in_the_prompt():
     llm = FakeLLM({"values": []})
 
-    extract_fingerprint(f"Der Bau ist fertig. {BUNDESLAND_QUOTE}", VOCABULARY, ["bundesland"], llm)
+    extract_fingerprint(f"Der Bau ist fertig. {FEDERAL_STATE_QUOTE}", VOCABULARY, ["bundesland"], llm)
 
     assert "bundesland" not in llm.user_prompt()
     assert "bundesland" not in llm.system_prompt()

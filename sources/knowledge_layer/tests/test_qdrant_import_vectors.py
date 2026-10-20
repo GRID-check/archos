@@ -362,7 +362,7 @@ def test_a_rerun_numbers_the_points_an_earlier_import_left_without_an_ordinal(qd
     assert sorted(_ordinals(store, "proj_alpha").values()) == [0, 0, 1, 1]
 
 
-def test_a_buero_scope_gets_its_office_from_its_name(qdrant, tmp_path):
+def test_an_office_shelf_scope_gets_its_office_from_its_name(qdrant, tmp_path):
     assert _load_script().main(["--in", str(_export(tmp_path, {"archiv_org_7": _records(3)}))]) == 0
     assert _store().count("archiv_org_7", {"office_id": "org_7"}) == 3
 

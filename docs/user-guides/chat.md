@@ -218,7 +218,7 @@ the reader opens the one they want. A step opened by hand stays open as later
 steps stream in. The choice lives for as long as the panel is open — it is a
 reading preference for one Herleitung, not a saved setting.
 
-Rendered evidence: capture `/dev/herleitung`.
+Rendered evidence: capture `/dev/derivation`.
 
 ## After a long answer: "Als Aktenvermerk schreiben"
 

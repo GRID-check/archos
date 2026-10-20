@@ -38,8 +38,8 @@ export function resolveCorpusFileName(label: string, files: CorpusFileCandidate[
   const candidates = [...canonical.keys()].filter((f) => f.startsWith(`${MAIN_DOC_PREFIX}${code}_`) || f.startsWith(`${MAIN_DOC_PREFIX}${code}-`))
   if (candidates.length === 0) return null
 
-  const wantsLeitfaden = norm.includes('leitfaden')
-  const leitfaden = candidates.find((f) => f.includes('leitfaden'))
+  const wantsGuide = norm.includes('leitfaden')
+  const guide = candidates.find((f) => f.includes('leitfaden'))
   const guideline = candidates.find((f) => !f.includes('leitfaden'))
-  return pick((wantsLeitfaden ? leitfaden : guideline) ?? candidates[0])
+  return pick((wantsGuide ? guide : guideline) ?? candidates[0])
 }

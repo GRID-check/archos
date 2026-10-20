@@ -71,7 +71,7 @@ describe('setProjectStatus', () => {
     findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', name: 'Seestadt D12', startedOn: '2023-04-01' }))
   })
 
-  it('closes: project:manage asked even though closing makes it read-only, with who, when, how and the Abschluss, audited', async () => {
+  it('closes: project:manage asked even though closing makes it read-only, with who, when, how and the closing, audited', async () => {
     setProjectStatusInOrg.mockResolvedValue(
       makeProject({ id: 'p1', name: 'Seestadt D12', status: 'closed', closedAt: NOW, closedBy: 'user_pl', closedOutcome: 'completed' })
     )
@@ -108,7 +108,7 @@ describe('setProjectStatus', () => {
   it.each([
     ['in the future', '2026-11', 'abschluss-in-future'],
     ['before the Beginn', '2023-03', 'abschluss-before-beginn'],
-  ])('refuses an Abschluss %s, and writes nothing', async (_, endedOn, reason) => {
+  ])('refuses a closing %s, and writes nothing', async (_, endedOn, reason) => {
     await expect(
       setProjectStatus(session, 'p1', { status: 'closed', outcome: 'completed', endedOn: endedOn as '2026-11' }, undefined, NOW)
     ).rejects.toMatchObject({ status: 400, details: { reason } })
@@ -116,7 +116,7 @@ describe('setProjectStatus', () => {
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
 
-  it('closes a project whose Beginn lies ahead in the Beginn\'s month: nothing earlier fits', async () => {
+  it('closes a project whose start lies ahead in the start\'s month: nothing earlier fits', async () => {
     findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', startedOn: '2027-03-01' }))
     setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
 

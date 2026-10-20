@@ -16,7 +16,7 @@ import { filingBarEntries, suggestionsByDocument, suggestionsByFolder } from '..
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
 
-const BESCHEIDE_ID = '00000000-0000-4000-8000-0000000000b1'
+const PERMIT_DECISIONS_ID = '00000000-0000-4000-8000-0000000000b1'
 const BRIEF_ID = '00000000-0000-4000-8000-0000000000b2'
 
 const filing = (id: string, folder: string, names: string[], patch: Partial<FileProposal['payload']> = {}): FileProposal => ({
@@ -30,8 +30,8 @@ const filing = (id: string, folder: string, names: string[], patch: Partial<File
   },
 })
 
-const BESCHEIDE: ListedProposal = {
-  proposal: filing(BESCHEIDE_ID, 'Behörde/Bescheide', ['MA37.pdf', 'MA22.pdf']),
+const PERMIT_DECISIONS: ListedProposal = {
+  proposal: filing(PERMIT_DECISIONS_ID, 'Behörde/Bescheide', ['MA37.pdf', 'MA22.pdf']),
   documents: [
     { id: 'doc_ma37', name: 'MA37.pdf' },
     { id: 'doc_ma22', name: 'MA22.pdf' },
@@ -42,7 +42,7 @@ const BRIEF: ListedProposal = {
   documents: [{ id: 'doc_brief', name: 'Brief.pdf' }],
 }
 const ONE_EACH: ListedProposal = {
-  proposal: filing(BESCHEIDE_ID, 'Behörde/Bescheide', ['MA37.pdf']),
+  proposal: filing(PERMIT_DECISIONS_ID, 'Behörde/Bescheide', ['MA37.pdf']),
   documents: [{ id: 'doc_ma37', name: 'MA37.pdf' }],
 }
 
@@ -77,7 +77,7 @@ let store: Map<string, FileProposal>
 
 beforeEach(() => {
   useFakeStream()
-  store = new Map([BESCHEIDE, BRIEF].map(({ proposal }) => [proposal.id, proposal as FileProposal]))
+  store = new Map([PERMIT_DECISIONS, BRIEF].map(({ proposal }) => [proposal.id, proposal as FileProposal]))
   server.use(
     http.get('/api/proposals/:id', ({ params }) => HttpResponse.json({ proposal: store.get(String(params.id)) })),
     http.post('/api/proposals/:id/apply', ({ params }) => {
@@ -120,7 +120,7 @@ describe('FilingViewBar', () => {
   })
 
   it('appears once a folder collects two files, and then lists every target folder of the view', async () => {
-    renderView([BESCHEIDE, BRIEF])
+    renderView([PERMIT_DECISIONS, BRIEF])
     const bar = screen.getByTestId('filing-bar')
     expect(bar).toHaveAccessibleName('Piloti suggests filing 3 files')
     const lines = within(bar).getAllByTestId('filing-bar-line')
@@ -142,13 +142,13 @@ describe('FilingViewBar', () => {
 
   it('outlines exactly the cards a line would move while it is hovered, and none after', async () => {
     const user = userEvent.setup()
-    renderView([BESCHEIDE, BRIEF])
-    const [bescheide, brief] = screen.getAllByTestId('filing-bar-line')
+    renderView([PERMIT_DECISIONS, BRIEF])
+    const [permitDecisions, brief] = screen.getAllByTestId('filing-bar-line')
     expect(litCards()).toEqual([])
 
-    await user.hover(bescheide)
+    await user.hover(permitDecisions)
     expect(litCards()).toEqual(['doc_ma37', 'doc_ma22'])
-    expect(bescheide).toHaveAttribute('data-active')
+    expect(permitDecisions).toHaveAttribute('data-active')
 
     await user.hover(brief)
     expect(litCards()).toEqual(['doc_brief'])
@@ -159,9 +159,9 @@ describe('FilingViewBar', () => {
 
   it('outlines them while focus is in the line, for a keyboard', async () => {
     const user = userEvent.setup()
-    renderView([BESCHEIDE, BRIEF])
-    const [bescheide] = screen.getAllByTestId('filing-bar-line')
-    within(bescheide).getByRole('button', { name: 'Leave it' }).focus()
+    renderView([PERMIT_DECISIONS, BRIEF])
+    const [permitDecisions] = screen.getAllByTestId('filing-bar-line')
+    within(permitDecisions).getByRole('button', { name: 'Leave it' }).focus()
     await waitFor(() => expect(litCards()).toEqual(['doc_ma37', 'doc_ma22']))
     await user.tab({ shift: true })
     await waitFor(() => expect(litCards()).toEqual([]))
@@ -169,7 +169,7 @@ describe('FilingViewBar', () => {
 
   it('outlines the rows of the list the same way, and no others', async () => {
     const user = userEvent.setup()
-    renderView([BESCHEIDE, BRIEF], { view: 'list' })
+    renderView([PERMIT_DECISIONS, BRIEF], { view: 'list' })
     await user.hover(screen.getAllByTestId('filing-bar-line')[0])
     const lit = screen
       .getAllByTestId('file-list-row')
@@ -182,15 +182,15 @@ describe('FilingViewBar', () => {
 
   it('moves a folder’s files through its proposal and tells the shelf to re-read', async () => {
     const user = userEvent.setup()
-    const onSettled = renderView([BESCHEIDE, BRIEF])
-    const [bescheide] = screen.getAllByTestId('filing-bar-line')
-    await user.click(await within(bescheide).findByRole('button', { name: 'Move' }))
-    expect(await within(bescheide).findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
+    const onSettled = renderView([PERMIT_DECISIONS, BRIEF])
+    const [permitDecisions] = screen.getAllByTestId('filing-bar-line')
+    await user.click(await within(permitDecisions).findByRole('button', { name: 'Move' }))
+    expect(await within(permitDecisions).findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
     await waitFor(() => expect(onSettled).toHaveBeenCalled())
   })
 
   it('shows a reader who may not decide no buttons', async () => {
-    const readOnly = [BESCHEIDE, BRIEF].map((entry) => ({ ...entry, proposal: { ...entry.proposal, canDecide: false } }))
+    const readOnly = [PERMIT_DECISIONS, BRIEF].map((entry) => ({ ...entry, proposal: { ...entry.proposal, canDecide: false } }))
     for (const { proposal } of readOnly) store.set(proposal.id, proposal as FileProposal)
     renderView(readOnly)
     const bar = screen.getByTestId('filing-bar')
@@ -200,7 +200,7 @@ describe('FilingViewBar', () => {
 })
 
 describe('filingBarEntries', () => {
-  const byFolder = suggestionsByFolder([BESCHEIDE, BRIEF])
+  const byFolder = suggestionsByFolder([PERMIT_DECISIONS, BRIEF])
 
   it('keeps the folders whose files are in view, when one of them collects enough', () => {
     expect(filingBarEntries(byFolder, IDS, 2).map((entry) => entry.suggestion.folder)).toEqual([

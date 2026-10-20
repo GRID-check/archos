@@ -25,7 +25,7 @@ from aiq_agent.common.citation_verification import get_session_registry
 from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.plan_documents import PlanDocuments
-from aiq_agent.common.plan_documents import unread_grundlage
+from aiq_agent.common.plan_documents import unread_basis
 from aiq_agent.common.turn_status import CUTOFF_USER_REQUESTED
 from aiq_agent.common.turn_status import DEGRADED_NO_REPORT_FILE
 from aiq_agent.common.turn_status import begin_lane_capture
@@ -458,7 +458,7 @@ class DeepResearcherAgent:
         # The receipt: a Grundlage document with no passage in the registry was
         # never read, whatever the writer wrote about it. That includes one the
         # reader added while the run went, announced to the orchestrator or not.
-        unread = unread_grundlage(artifacts.plan_documents, middleware.read_file_names(), all_added_documents())
+        unread = unread_basis(artifacts.plan_documents, middleware.read_file_names(), all_added_documents())
         finalized = finalize_report(
             verification,
             self_confidence=self_confidence,

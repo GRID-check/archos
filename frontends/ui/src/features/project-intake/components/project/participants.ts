@@ -10,7 +10,7 @@
  * on the roster but is not on the Steckbrief, and is not listed here either.
  */
 
-import type { ProjectPersonView } from '@/lib/projects/steckbrief-types'
+import type { ProjectPersonView } from '@/lib/projects/project-record-types'
 import type { ProjectMemberRoleSlug, ProjectRoster, RosterMember } from '@/lib/projects/participants-client'
 
 export interface ParticipantRow {

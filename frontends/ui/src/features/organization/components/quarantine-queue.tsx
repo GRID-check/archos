@@ -216,7 +216,7 @@ const QuarantineRow: FC<{
 
   const where =
     item.scope === 'archiv'
-      ? t('quarantine.whereArchiv')
+      ? t('quarantine.whereOfficeShelf')
       : item.scope === 'session'
         ? t('quarantine.whereSession')
         : projectName

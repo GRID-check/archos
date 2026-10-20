@@ -100,18 +100,18 @@ describe('buildCitationModel', () => {
       page: 1,
       isCited: true,
     }
-    const archivPlan: CitationSource = {
+    const officeShelfPlan: CitationSource = {
       ...projectPlan,
       id: 'a',
       kind: 'buero',
       collection: 'archiv_xyz',
     }
-    const docs = buildCitationModel({ citations: [projectPlan, archivPlan] })
+    const docs = buildCitationModel({ citations: [projectPlan, officeShelfPlan] })
     expect(docs).toHaveLength(2)
     expect(docs.map((doc) => doc.kind).sort()).toEqual(['buero', 'projekt'])
   })
 
-  it('does not collapse a file that merely MENTIONS a Richtlinie onto the card naming it', () => {
+  it('does not collapse a file that merely MENTIONS a guideline onto the card naming it', () => {
     // „OIB-Richtlinie 6 Kommentar.pdf" is somebody's commentary ABOUT a
     // Richtlinie, not the Richtlinie. Merging them made two sources one chip
     // whose page-9 locus opened the commentary in place of the base-law
@@ -146,7 +146,7 @@ describe('buildCitationModel', () => {
     expect(accumulator.build()).toHaveLength(2)
   })
 
-  it('tells a corpus Richtlinie apart from a file that merely mentions one', () => {
+  it('tells a corpus guideline apart from a file that merely mentions one', () => {
     // The residue test, at the boundary it exists to hold. A name is the
     // Richtlinie when nothing is left after removing its number and the words
     // the key already models (role, Leitfaden, edition, month); anything else

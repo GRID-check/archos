@@ -839,7 +839,7 @@ def adjacent_spaces(model: SpatialModel, space_global_id: str) -> Answer[list[El
             continue
         # A shared FLOOR is not adjacency. Two rooms stacked on either side of
         # the same slab share a bounding element and are not neighbours in any
-        # sense a person means — `geschossdecke-und-fenster.ifc` exists to pin
+        # sense a person means — `floor-slab-and-window.ifc` exists to pin
         # exactly this, and its header records a real export where one slab
         # produced 4 278 false pairs. Being above or below something is a
         # different question, and `above`/`below` answer it.

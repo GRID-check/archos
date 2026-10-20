@@ -30,7 +30,7 @@ shoving another's content.
   `stop_before_steps`, `stop_during_steps`, `job_admission_rejected`,
   `hitl_choice`, `hitl_plan`, `proposal_accept`
   (`app/dev/turn-outcomes/scenarios.ts`).
-- HL = `/dev/herleitung?variant=`. CT = `/dev/chat-turn` (static answer
+- HL = `/dev/derivation?variant=`. CT = `/dev/chat-turn` (static answer
   variants). SR = `/dev/stream-replay`. RB = `/dev/run-block`. SH =
   `/dev/shared-thread`.
 - MP = `frontends/ui/scripts/measure-stream-socket.mjs`

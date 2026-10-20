@@ -220,7 +220,7 @@ class Shelf(StrEnum):
     a generated artifact on the core retrieval path.
     """
 
-    ARCHIV = "archiv"
+    OFFICE_SHELF = "archiv"
     PROJECT = "project"
     SESSION = "session"
     BASE = "base"
@@ -251,7 +251,7 @@ def parse_shelf(value: object) -> Shelf | None:
 #: shelf was renamed from „Büroarchiv" to „Büroablage" (product decision,
 #: 6 Oct 2026); the old qualifier lives on in :data:`RETIRED_SHELF_QUALIFIERS`.
 SHELF_QUALIFIERS: dict[Shelf, str] = {
-    Shelf.ARCHIV: "Büroablage",
+    Shelf.OFFICE_SHELF: "Büroablage",
     Shelf.PROJECT: "Projektwissen",
     Shelf.SESSION: "Private Sitzung",
     Shelf.BASE: "Basiswissen",
@@ -263,7 +263,7 @@ SHELF_QUALIFIERS: dict[Shelf, str] = {
 #: keys keep PARSING. ``session`` never existed in that vocabulary, so it takes
 #: the shelf's own name. Do not treat this table as transport.
 SCOPE_QUALIFIERS: dict[str, str] = {
-    "buero": SHELF_QUALIFIERS[Shelf.ARCHIV],
+    "buero": SHELF_QUALIFIERS[Shelf.OFFICE_SHELF],
     "projekt": SHELF_QUALIFIERS[Shelf.PROJECT],
     "baurecht": SHELF_QUALIFIERS[Shelf.BASE],
     "session": SHELF_QUALIFIERS[Shelf.SESSION],
@@ -274,7 +274,7 @@ SCOPE_QUALIFIERS: dict[str, str] = {
 #: shown to the model. The frontend mirror lists the same strings in
 #: ``CITATION_KEY_QUALIFIERS``.
 RETIRED_SHELF_QUALIFIERS: dict[str, Shelf] = {
-    "Büroarchiv": Shelf.ARCHIV,
+    "Büroarchiv": Shelf.OFFICE_SHELF,
 }
 
 #: Every qualifier a reader strips from a key: what writers emit now, then the
@@ -304,8 +304,8 @@ def shelf_qualifier(shelf: Shelf | str | None) -> str | None:
     rendering as unattributed.
     """
     match parse_shelf(shelf):
-        case Shelf.ARCHIV:
-            return SHELF_QUALIFIERS[Shelf.ARCHIV]
+        case Shelf.OFFICE_SHELF:
+            return SHELF_QUALIFIERS[Shelf.OFFICE_SHELF]
         case Shelf.PROJECT:
             return SHELF_QUALIFIERS[Shelf.PROJECT]
         case Shelf.SESSION:
@@ -353,7 +353,7 @@ def legacy_shelf_for_collection_name(collection: str | None) -> Shelf | None:
     """
     key = (collection or "").strip().lower()
     if key.startswith("archiv_"):
-        return Shelf.ARCHIV
+        return Shelf.OFFICE_SHELF
     if key.startswith("proj_"):
         return Shelf.PROJECT
     if key.startswith("s_"):

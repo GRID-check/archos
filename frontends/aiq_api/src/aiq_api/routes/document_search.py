@@ -209,7 +209,7 @@ def _ranked_group_hits(
 #: unless asked for by name, and the grouped search names no file). ``$ne``
 #: keeps a point the mirror has not stamped yet, as ``knowledge_search``'s
 #: pre-filter and the similar-passages query do; the BFF checks the row again.
-CURRENT_FASSUNGEN: dict[str, Any] = {"superseded": {"$ne": True}}
+CURRENT_REVISIONS: dict[str, Any] = {"superseded": {"$ne": True}}
 
 
 def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
@@ -220,7 +220,7 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     tag group is a separate any-of, as the BFF's ``matchesTags`` reads them.
     """
     if filters is None:
-        return CURRENT_FASSUNGEN
+        return CURRENT_REVISIONS
     parts: list[dict[str, Any]] = []
     for group in (filters.document_types, filters.disciplines):
         if group:
@@ -234,8 +234,8 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
     if filters.project_status:
         parts.append({"project_status": {"$in": list(filters.project_status)}})
     if not parts:
-        return CURRENT_FASSUNGEN
-    return {"$and": [*parts, CURRENT_FASSUNGEN]}
+        return CURRENT_REVISIONS
+    return {"$and": [*parts, CURRENT_REVISIONS]}
 
 
 def add_document_search_routes(router: APIRouter):

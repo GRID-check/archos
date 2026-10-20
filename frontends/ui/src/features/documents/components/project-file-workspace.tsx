@@ -119,7 +119,7 @@ export function ProjectFileWorkspace({
     useUpload: ({ collectionName: collection, folderId, onComplete }) =>
       useProjectDocuments({ projectId, collectionName: collection, folderId, onComplete }),
     probeNames: (names) => probe.project(projectId, names),
-    probeFassungen: (names, landsIn) => probe.projectFassungen(projectId, names, landsIn),
+    probeRevisions: (names, landsIn) => probe.projectRevisions(projectId, names, landsIn),
     handoverKey: projectId,
     preview: { kind: 'store', projectName },
     messages: {

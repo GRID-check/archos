@@ -70,7 +70,7 @@ The route uses the existing `apiRoute` factory, `signingS3Client`, and `bucketNa
 | `frontends/ui/src/lib/documents/service.ts` | New `getDocumentThumbnail()` service function |
 | `frontends/ui/src/features/documents/components/project-file-workspace.tsx` | Add `thumbnailUrl` to `FileItem` |
 | `frontends/ui/src/features/documents/components/file-browser-pane.tsx` | Render thumbnail in `FileCard` |
-| `frontends/ui/src/features/documents/components/archiv-workspace.tsx` | Same thumbnail support for Archiv cards |
+| `frontends/ui/src/features/documents/components/office-shelf-workspace.tsx` | Same thumbnail support for Archiv cards |
 | `docs/architecture/backend-deep-dive.md` | Document thumbnail generation |
 
 ## Edge cases

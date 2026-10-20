@@ -32,10 +32,10 @@ const DELETED_ID = 'dead0000-0000-4000-8000-000000000001'
 const VERTRAEGE = `${COLLECTION}_r0123456789ab`
 const PERSONAL = `${COLLECTION}_rba9876543210`
 /** „Honorare" in another project (ADR-0094): Geschäftsführung only. */
-const HONORARE_ID = 'aaaa0000-0000-4000-8000-0000000000aa'
+const FEES_ID = 'aaaa0000-0000-4000-8000-0000000000aa'
 /** On every Geschäftsführung list; reads Opened too, once it gets one. */
 const GF: FolderClearance = {
-  levels: { [VERTRAEGE_ID]: 'write', [PERSONAL_ID]: 'write', [DELETED_ID]: 'read', [OPENED_ID]: 'read', [HONORARE_ID]: 'read' },
+  levels: { [VERTRAEGE_ID]: 'write', [PERSONAL_ID]: 'write', [DELETED_ID]: 'read', [OPENED_ID]: 'read', [FEES_ID]: 'read' },
   seesEverything: false,
 }
 /** Reads Verträge, and nothing else with a list. */
@@ -521,25 +521,25 @@ describe('lockedConversationIds: which of a list the session may no longer read 
 describe('a chat that drew on another project (ADR-0094)', () => {
   const OTHER = 'project_2'
   /** An open folder of the other project. */
-  const PLAENE_ID = 'aaaa0000-0000-4000-8000-0000000000bb'
+  const PLANS_ID = 'aaaa0000-0000-4000-8000-0000000000bb'
   const OTHER_TREE: AccessFolder[] = [
-    { id: HONORARE_ID, parentId: null, accessMode: 'custom', everyoneReads: false },
-    { id: PLAENE_ID, parentId: null, accessMode: 'inherit', everyoneReads: false },
+    { id: FEES_ID, parentId: null, accessMode: 'custom', everyoneReads: false },
+    { id: PLANS_ID, parentId: null, accessMode: 'inherit', everyoneReads: false },
   ]
   const toIna = { kind: 'person', userId: 'user_ina', self: false } as const
 
   beforeEach(() => {
     state.trees = new Map([[OTHER, OTHER_TREE]])
     state.folderOwners = new Map([
-      [HONORARE_ID, OTHER],
-      [PLAENE_ID, OTHER],
+      [FEES_ID, OTHER],
+      [PLANS_ID, OTHER],
     ])
     state.projects = [OTHER]
     state.members.set('user_ina', GF)
   })
 
   it('judges a folder of the other project in that project’s tree, so its creator still reads the chat', async () => {
-    state.recorded = [HONORARE_ID]
+    state.recorded = [FEES_ID]
     state.opens = new Set([`${OWNER}:${OTHER}`, `user_vertraege:${OTHER}`])
 
     const readers = await peopleWhoMayRead(ORG, CONV, [OWNER, 'user_vertraege'])
@@ -548,12 +548,12 @@ describe('a chat that drew on another project (ADR-0094)', () => {
   })
 
   it('judges it in that tree for a chat outside every project too', async () => {
-    state.recorded = [HONORARE_ID]
+    state.recorded = [FEES_ID]
     state.audiences = [{ ...audience(), projectId: null }]
     state.opens = new Set([`${OWNER}:${OTHER}`])
 
     expect([...(await peopleWhoMayRead(ORG, CONV, [OWNER]))]).toEqual([OWNER])
-    expect(await recordedRestrictedFolders(CONV, ORG)).toEqual([HONORARE_ID])
+    expect(await recordedRestrictedFolders(CONV, ORG)).toEqual([FEES_ID])
   })
 
   it('lets only people who may open every recorded project read it, whatever their folder roles', async () => {
@@ -565,7 +565,7 @@ describe('a chat that drew on another project (ADR-0094)', () => {
   })
 
   it('drops an open folder of the other project from the record: the project record covers it', async () => {
-    state.recorded = [PLAENE_ID]
+    state.recorded = [PLANS_ID]
 
     expect(await recordedRestrictedFolders(CONV, ORG)).toEqual([])
   })
@@ -596,7 +596,7 @@ describe('a chat that drew on another project (ADR-0094)', () => {
   })
 
   it('lets in a person who may open every recorded project and read every recorded folder', async () => {
-    state.recorded = [HONORARE_ID]
+    state.recorded = [FEES_ID]
     state.opens = new Set([`user_ina:${OTHER}`])
     const write = vi.fn(async () => 'written')
 

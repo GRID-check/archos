@@ -293,19 +293,19 @@ describe('tag filter', () => {
   })
 })
 
-describe('showOlderFassungen', () => {
+describe('showOlderRevisions', () => {
   test('is off by default, on the empty set and in no count', () => {
-    expect(NO_FILE_FILTERS.showOlderFassungen).toBe(false)
+    expect(NO_FILE_FILTERS.showOlderRevisions).toBe(false)
     expect(activeFilterCount(NO_FILE_FILTERS, true)).toBe(0)
   })
 
   test('counts once on the Filter button when asked for', () => {
-    expect(activeFilterCount({ ...NO_FILE_FILTERS, showOlderFassungen: true }, false)).toBe(1)
+    expect(activeFilterCount({ ...NO_FILE_FILTERS, showOlderRevisions: true }, false)).toBe(1)
   })
 
   test('is not a narrowing in applyFileFilters: the listing rule is applied by the workspace', () => {
     const files = [file({ id: 'a' }), file({ id: 'b' })]
-    const shown = { ...NO_FILE_FILTERS, showOlderFassungen: true }
+    const shown = { ...NO_FILE_FILTERS, showOlderRevisions: true }
     expect(applyFileFilters(files, shown, { canCollaborate: false })).toBe(files)
   })
 })

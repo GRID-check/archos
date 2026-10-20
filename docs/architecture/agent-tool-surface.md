@@ -336,7 +336,7 @@ been uploaded and read).
   tool of its own.** `fassungen_of` names the newer one (or the document, meaning its
   current Fassung) and `compare_to` the other, by file name or as „vorige“; the order
   comes from the chain, not the arguments (`browse.resolve_compare`). The report is
-  read from what the index holds, with no model call (`knowledge/fassung_diff.py`):
+  read from what the index holds, with no model call (`knowledge/revision_diff.py`):
   the Plankopf's Index and Stand, pages aligned by their text so an inserted sheet
   shifts nothing, values that moved inside a printed line („Fluchtweglänge 38 m →
   42 m“), and from the drawing analysis the quantities and verbatim dimension strings
@@ -350,10 +350,10 @@ been uploaded and read).
   in the grounding block's notice slot like the search's „Ältere Fassungen
   ausgeblendet“, reads `Ältere Fassung: <file> ist durch <current> ersetzt
   (bestätigt), aktuell ist <current>.` `<current>` is the end of the confirmed
-  chain inside the file's collection (`read_passage._current_fassung`), and is not
+  chain inside the file's collection (`read_passage._current_revision`), and is not
   named when that collection is a restricted folder this turn did not admit.
 - **The citation says it too (UI).** The by-name resolve a chip already makes
   (`POST /api/documents/by-name`) returns the listing row with
-  `fassung.supersededBy`, resolved for the reader by `loadFassungFacts`. The peek
+  `fassung.supersededBy`, resolved for the reader by `loadRevisionLinks`. The peek
   turns it into one line, „Ältere Fassung — aktuell: <Name>“, whose name opens the
-  current Fassung (`CitationPeek`, `use-open-current-fassung.ts`).
+  current Fassung (`CitationPeek`, `use-open-current-revision.ts`).

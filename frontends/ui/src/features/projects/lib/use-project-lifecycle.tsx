@@ -28,7 +28,7 @@ import type { ProjectLifecycleView, ProjectOutcome } from '@/lib/projects/projec
 import type { Month } from '@/lib/projects/month'
 import { CloseProjectDialog } from '../components/close-project-dialog'
 import { ClosingDebrief } from '../components/closing-debrief'
-import { ClosingSteckbrief } from '../components/closing-steckbrief'
+import { ClosingProjectRecord } from '../components/closing-project-record'
 
 export interface UseProjectLifecycleOptions {
   projectId: string
@@ -114,7 +114,7 @@ export function useProjectLifecycle({
         <CloseProjectDialog projectId={projectId} lifecycle={lifecycle} open onOpenChange={setClosing} onClose={close}>
           <div className="space-y-5">
             <ClosingDebrief projectId={projectId} profile={profile} canWriteMemory={canWriteMemory} />
-            <ClosingSteckbrief projectId={projectId} />
+            <ClosingProjectRecord projectId={projectId} />
           </div>
         </CloseProjectDialog>
       )}

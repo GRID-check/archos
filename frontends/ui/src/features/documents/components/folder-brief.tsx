@@ -686,13 +686,13 @@ function MissingSection({ missing }: { missing: readonly MissingDocument[] }) {
   const t = useTranslations('files')
   const shown = missing.slice(0, MAX_MISSING_SHOWN)
   const more = missing.length - shown.length
-  const name = (entry: MissingDocument) => (entry.bauwerkName ? `${entry.label} · ${entry.bauwerkName}` : entry.label)
+  const name = (entry: MissingDocument) => (entry.buildingName ? `${entry.label} · ${entry.buildingName}` : entry.label)
   return (
     <BriefDisclosure id="folder-brief-missing" title={t('brief.missingTitle')} summary={missing.map(name).join(', ')}>
       <p className="text-foreground text-[13px] leading-snug">{t('brief.missingLead')}</p>
       <ul className="flex min-w-0 flex-wrap gap-1.5 pointer-coarse:gap-2">
         {shown.map((entry) => (
-          <li key={`${entry.role}@${entry.bauwerkName ?? ''}`} className="min-w-0 max-w-full">
+          <li key={`${entry.role}@${entry.buildingName ?? ''}`} className="min-w-0 max-w-full">
             <Chip variant="outline" size="sm" title={name(entry)}>
               <ToneSwatch tone="muted" />
               <ChipLabel>{name(entry)}</ChipLabel>

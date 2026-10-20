@@ -21,13 +21,13 @@ from urllib.parse import urlparse
 from ris_adapter.client import ALLOWED_DOCUMENT_HOSTS
 from ris_adapter.client import public_host
 from ris_adapter.register import _CATALOG_AVAILABLE
-from ris_adapter.register import extract_bundesland
+from ris_adapter.register import extract_federal_state
 
 logger = logging.getLogger(__name__)
 
 PARAGRAPH_RE = re.compile(r"§+\s*(\d+[a-z]?)")
-ARTIKEL_RE = re.compile(r"\bArt(?:ikel)?\.?\s*(\d+[a-z]?)\b", re.IGNORECASE)
-ABSATZ_RE = re.compile(r"\bAbs(?:atz|\.)?\s*(\d+[a-z]?)\b", re.IGNORECASE)
+ARTICLE_RE = re.compile(r"\bArt(?:ikel)?\.?\s*(\d+[a-z]?)\b", re.IGNORECASE)
+SUBSECTION_RE = re.compile(r"\bAbs(?:atz|\.)?\s*(\d+[a-z]?)\b", re.IGNORECASE)
 
 #: A LIST of §§ or Artikel: "§§ 75 und 81", "§§ 2, 3", "§§ 63 bis 65",
 #: "§ 5 und § 7", "§ 5 Abs 2 und § 7", "Art. 5 und 7". Every one it names is
@@ -63,7 +63,7 @@ _QUALIFIER_RE = re.compile(
 )
 #: An Absatz with a list after it, where no § stands before it: taken out of
 #: the law's name whole, so no "und 3" is left to be read as the law.
-_ABSATZ_LIST_RE = re.compile(r"\bAbs(?:atz|\.)?\s*\d+[a-z]?(?:\s*(?:,|und|bis|–|-)\s*\d+[a-z]?)*", re.IGNORECASE)
+_SUBSECTION_LIST_RE = re.compile(r"\bAbs(?:atz|\.)?\s*\d+[a-z]?(?:\s*(?:,|und|bis|–|-)\s*\d+[a-z]?)*", re.IGNORECASE)
 
 #: The word that introduced a later § reference ("§ 3 BO Wien, siehe §§ 75 und
 #: 81"), left dangling once that list is cut out. The law name is the live RIS
@@ -137,7 +137,7 @@ def _first_section(text: str) -> tuple[str, str, int]:
     paragraph = PARAGRAPH_RE.search(text)
     if paragraph:
         return "§", paragraph.group(1), paragraph.start()
-    artikel = ARTIKEL_RE.search(text)
+    artikel = ARTICLE_RE.search(text)
     return ("Art", artikel.group(1), artikel.start()) if artikel else ("", "", -1)
 
 
@@ -237,7 +237,7 @@ def parse_address(question: str, instrument: str, jurisdiction: str) -> Address:
     listed = items if len(items) > 1 else ()
     # An Absatz narrows ONE §; with a list it would narrow all of them to the
     # same number, which is never what "§ 5 Abs 2 und § 7" means.
-    absatz = None if listed else (ABSATZ_RE.search(instrument) or ABSATZ_RE.search(question or ""))
+    absatz = None if listed else (SUBSECTION_RE.search(instrument) or SUBSECTION_RE.search(question or ""))
     land, land_source = resolve_land(jurisdiction, instrument, question or "")
     return Address(
         kind=kind,
@@ -266,7 +266,7 @@ def _law_name(instrument: str, url: str, number: str) -> str:
             break
         _items, end = _list_from(rest, kind, where)
         rest = f"{rest[:where]} {rest[max(end, where + 1) :]}"
-    rest = _ABSATZ_LIST_RE.sub("", rest)
+    rest = _SUBSECTION_LIST_RE.sub("", rest)
     rest = _TRAILING_REFERENCE_RE.sub("", re.sub(r"\s{2,}", " ", rest).strip(" ,;-–"))
     return rest.strip(" ,.;-–")
 
@@ -287,7 +287,7 @@ def resolve_land(jurisdiction: str, instrument: str, question: str) -> tuple[str
         (instrument, LAND_FROM_INSTRUMENT),
         (question, LAND_FROM_QUESTION),
     ):
-        land = extract_bundesland(value) if value else None
+        land = extract_federal_state(value) if value else None
         if land:
             return land, origin
     return _land_from_brief()
@@ -316,9 +316,9 @@ def _land_from_brief() -> tuple[str, str]:
     adapter standalone) there simply is no project, which is not an error.
     """
     try:
-        from aiq_agent.common.norm_registry import resolve_bundesland
+        from aiq_agent.common.norm_registry import resolve_federal_state
 
-        land = resolve_bundesland(None)
+        land = resolve_federal_state(None)
     except Exception:  # noqa: BLE001 — no request context is the normal case off-request
         logger.debug("ris_lookup: no project-brief jurisdiction available", exc_info=True)
         return "", ""

@@ -101,12 +101,12 @@ const answer = [
 ].join('\n')
 
 /** A project document a person has since replaced by Index C: the peek of a citation of the older one. */
-const olderFassungRef = () => {
+const olderRevisionRef = () => {
   const fileName = 'EG_Grundriss_Index_B.pdf'
   const [document] = buildCitationModel({
     citations: [
       {
-        id: 'older-fassung',
+        id: 'older-revision',
         content: `[KB] ${fileName}, p.1`,
         citationKey: `${fileName}, p.1`,
         fileName,
@@ -244,7 +244,7 @@ export default function CitationInteractionPreview() {
       >
         <div className="w-80 rounded-lg border bg-popover p-3">
           {(() => {
-            const ref = olderFassungRef()
+            const ref = olderRevisionRef()
             return ref ? (
               <CitationPeek
                 citation={ref}

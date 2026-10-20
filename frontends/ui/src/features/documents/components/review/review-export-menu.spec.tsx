@@ -43,7 +43,7 @@ afterEach(() => vi.unstubAllGlobals())
 
 const open = async (props: Partial<Parameters<typeof ReviewExportMenu>[0]> = {}) => {
   const user = userEvent.setup()
-  render(<ReviewExportMenu documentId="doc_1" hasFassungen={false} hasProposals={false} {...props} />)
+  render(<ReviewExportMenu documentId="doc_1" hasRevisions={false} hasProposals={false} {...props} />)
   await user.click(screen.getByRole('button', { name: 'Export minutes' }))
   return user
 }
@@ -67,7 +67,7 @@ describe('ReviewExportMenu', () => {
   })
 
   it('carries the scope, the Fassung and the proposals into the link, and stays open while choosing', async () => {
-    const user = await open({ hasFassungen: true, hasProposals: true })
+    const user = await open({ hasRevisions: true, hasProposals: true })
     await user.click(await screen.findByRole('menuitemradio', { name: 'Resolved ones too' }))
     await user.click(screen.getByRole('menuitemradio', { name: 'All revisions' }))
     await user.click(screen.getByRole('menuitemcheckbox', { name: 'Add Piloti’s proposals' }))
@@ -79,7 +79,7 @@ describe('ReviewExportMenu', () => {
   })
 
   it('offers the Fassung only for the record: open marks come from every Fassung whatever it says', async () => {
-    const user = await open({ hasFassungen: true })
+    const user = await open({ hasRevisions: true })
     expect(await screen.findByRole('menuitemradio', { name: 'Open only' })).toBeInTheDocument()
     expect(screen.queryByRole('menuitemradio', { name: 'All revisions' })).toBeNull()
     await user.click(screen.getByRole('menuitemradio', { name: 'Resolved ones too' }))

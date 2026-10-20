@@ -59,7 +59,7 @@ class DigestEntry:
     file_name: str
     collection: str
     pages: set[int] = field(default_factory=set)
-    punkts: set[str] = field(default_factory=set)
+    clauses: set[str] = field(default_factory=set)
     turn: int = 1
 
 
@@ -68,7 +68,7 @@ def estimate_tokens(text: str) -> int:
     return max(1, len(text) // 4)
 
 
-def _punkt_sort_key(raw: str) -> tuple:
+def _clause_sort_key(raw: str) -> tuple:
     """Numeric Punkt ordering (``3.5.2`` before ``3.12``), then lexicographic."""
     try:
         numbered = tuple(int(part) for part in raw.split(".")) if raw else ()
@@ -78,14 +78,14 @@ def _punkt_sort_key(raw: str) -> tuple:
 
 
 def format_digest_line(
-    file_name: str, collection: str, pages: set[int] | Sequence[int], punkts: set[str] | Sequence[str], turn: int
+    file_name: str, collection: str, pages: set[int] | Sequence[int], clauses: set[str] | Sequence[str], turn: int
 ) -> str:
     """One digest line: ``"<file> | <collection> | Seiten <p> | Punkte <n> | Turn <k>"``."""
     ordered_pages = sorted({int(page) for page in pages})
-    ordered_punkts = sorted({str(punkt) for punkt in punkts if str(punkt).strip()}, key=_punkt_sort_key)
+    ordered_clauses = sorted({str(punkt) for punkt in clauses if str(punkt).strip()}, key=_clause_sort_key)
     pages_bit = ", ".join(str(page) for page in ordered_pages) if ordered_pages else "-"
-    punkts_bit = ", ".join(ordered_punkts) if ordered_punkts else "-"
-    return f"{file_name} | {collection} | Seiten {pages_bit} | Punkte {punkts_bit} | Turn {max(1, int(turn))}"
+    clauses_bit = ", ".join(ordered_clauses) if ordered_clauses else "-"
+    return f"{file_name} | {collection} | Seiten {pages_bit} | Punkte {clauses_bit} | Turn {max(1, int(turn))}"
 
 
 def parse_digest_line(line: str) -> DigestEntry | None:
@@ -97,8 +97,13 @@ def parse_digest_line(line: str) -> DigestEntry | None:
     parts = [part.strip() for part in str(line or "").split(" | ")]
     if len(parts) != 5:
         return None
-    file_name, collection, seiten, punkte, turn_bit = parts
-    if not file_name or not collection or not seiten.startswith("Seiten ") or not punkte.startswith("Punkte "):
+    file_name, collection, pages_part, clauses_part, turn_bit = parts
+    if (
+        not file_name
+        or not collection
+        or not pages_part.startswith("Seiten ")
+        or not clauses_part.startswith("Punkte ")
+    ):
         return None
     if not turn_bit.startswith("Turn "):
         return None
@@ -107,20 +112,20 @@ def parse_digest_line(line: str) -> DigestEntry | None:
     except ValueError:
         return None
     pages: set[int] = set()
-    raw_pages = seiten[len("Seiten ") :].strip()
+    raw_pages = pages_part[len("Seiten ") :].strip()
     if raw_pages and raw_pages != "-":
         for token in raw_pages.split(","):
             try:
                 pages.add(int(token.strip()))
             except ValueError:
                 return None
-    punkts: set[str] = set()
-    raw_punkts = punkte[len("Punkte ") :].strip()
-    if raw_punkts and raw_punkts != "-":
-        punkts = {token.strip() for token in raw_punkts.split(",") if token.strip()}
-        if not punkts:
+    clauses: set[str] = set()
+    raw_clauses = clauses_part[len("Punkte ") :].strip()
+    if raw_clauses and raw_clauses != "-":
+        clauses = {token.strip() for token in raw_clauses.split(",") if token.strip()}
+        if not clauses:
             return None
-    return DigestEntry(file_name=file_name, collection=collection, pages=pages, punkts=punkts, turn=turn)
+    return DigestEntry(file_name=file_name, collection=collection, pages=pages, clauses=clauses, turn=turn)
 
 
 def _capture_identity(entry: Any) -> tuple[str, str, str, str] | None:
@@ -153,7 +158,7 @@ def _capture_page(entry: Any) -> int | None:
     return page
 
 
-def _capture_punkt(entry: Any) -> str | None:
+def _capture_clause(entry: Any) -> str | None:
     punkt = str(getattr(entry, "punkt", None) or "").strip()
     return punkt or None
 
@@ -181,7 +186,7 @@ def merge_digest(previous: Sequence[str] | None, captures: Sequence[Any], turn: 
             merged[key] = parsed
         else:
             known.pages |= parsed.pages
-            known.punkts |= parsed.punkts
+            known.clauses |= parsed.clauses
             known.turn = max(known.turn, parsed.turn)
     for entry in captures or ():
         identity = _capture_identity(entry)
@@ -189,25 +194,25 @@ def merge_digest(previous: Sequence[str] | None, captures: Sequence[Any], turn: 
             continue
         key, file_name, collection, _citation_key = identity
         page = _capture_page(entry)
-        punkt = _capture_punkt(entry)
+        punkt = _capture_clause(entry)
         known = merged.get(key)
         if known is None:
             merged[key] = DigestEntry(
                 file_name=file_name,
                 collection=collection,
                 pages={page} if page is not None else set(),
-                punkts={punkt} if punkt else set(),
+                clauses={punkt} if punkt else set(),
                 turn=current,
             )
         else:
             if page is not None:
                 known.pages.add(page)
             if punkt:
-                known.punkts.add(punkt)
+                known.clauses.add(punkt)
             known.turn = current
             merged.move_to_end(key)
     lines = [
-        format_digest_line(item.file_name, item.collection, item.pages, item.punkts, item.turn)
+        format_digest_line(item.file_name, item.collection, item.pages, item.clauses, item.turn)
         for item in merged.values()
     ]
     while len(lines) > MAX_DIGEST_DOCS:

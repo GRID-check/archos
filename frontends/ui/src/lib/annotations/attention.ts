@@ -507,7 +507,7 @@ export interface SetMark {
 /**
  * New marks on a document tell the document's people: who is Verantwortlich
  * for it (ADR-0047) and who uploaded it, as a new Fassung does
- * (`lib/documents/fassung-notify.ts`). Without it a review only reached the
+ * (`lib/documents/revision-notify.ts`). Without it a review only reached the
  * room, and a mark nobody was assigned or mentioned on waited for somebody to
  * open the document.
  *

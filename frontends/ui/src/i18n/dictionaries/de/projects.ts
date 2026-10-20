@@ -49,7 +49,7 @@ export const projects: typeof en.projects = {
   section: {
     loading: 'Wird geladen…',
   },
-  steckbrief: {
+  projectRecord: {
     heading: 'Steckbrief',
     dialogDescription: 'Wo, wann und mit wem. Das bleibt, wenn das Projekt abgeschlossen ist.',
     edit: 'Bearbeiten',
@@ -312,7 +312,7 @@ export const projects: typeof en.projects = {
     overview: 'Übersicht',
     overviewAria: 'Übersicht von {name} öffnen',
   },
-  archivCard: {
+  officeShelfCard: {
     title: 'Büroablage',
     subtitle:
       'Das organisationsweite Wissen Ihres Büros — geteilte Dokumente und bewährte Details, in jedem Projekt verfügbar.',
@@ -501,10 +501,10 @@ export const projects: typeof en.projects = {
       uploadedUnbound: '{name} wurde abgelegt, aber nicht zugeordnet.',
     },
     modulePickerAria: 'Modul {module}, {title}. Alle Module anzeigen',
-    schnellstart: 'Schnellstart',
-    schnellstartOn:
+    quickStart: 'Schnellstart',
+    quickStartOn:
       'Nur Kernfragen. Alles Übrige wird als „offen“ übernommen und in der Zusammenfassung als offener Punkt gelistet.',
-    schnellstartOff: 'Alle Fragen dieses Moduls.',
+    quickStartOff: 'Alle Fragen dieses Moduls.',
     skipRest: 'Rest überspringen',
     skipRestDone: 'Als offen übernommen',
     moduleProgress: '{answered} von {total}',
@@ -542,7 +542,7 @@ export const projects: typeof en.projects = {
       geschaetzt: 'Schätzung',
       offen: 'noch offen',
     },
-    bauwerk: {
+    building: {
       nameAria: 'Name des Bauwerks',
       remove: 'entfernen',
       add: 'Bauwerk hinzufügen',
@@ -570,8 +570,8 @@ export const projects: typeof en.projects = {
       revise: 'Überarbeiten',
       proceed: 'Trotzdem speichern',
       rules: {
-        fossilNeubauConflict:
-          'Eine Gas-Wärmeversorgung für {bauwerk} widerspricht einem Neubau — das Erneuerbare-Wärme-Gesetz verbietet fossile Systeme im Neubau.',
+        fossilNewBuildConflict:
+          'Eine Gas-Wärmeversorgung für {building} widerspricht einem Neubau — das Erneuerbare-Wärme-Gesetz verbietet fossile Systeme im Neubau.',
       },
     },
   },

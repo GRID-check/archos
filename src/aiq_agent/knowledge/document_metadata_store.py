@@ -114,7 +114,7 @@ REFUSAL_REASON = "Von einer Person abgelehnt."
 
 
 class LinkOutcome(StrEnum):
-    """What :meth:`DocumentMetadataStore.link_fassung` did."""
+    """What :meth:`DocumentMetadataStore.link_revision` did."""
 
     LINKED = "linked"
     #: ``newer`` already leads to ``older`` through replacements; nothing was written.
@@ -123,7 +123,7 @@ class LinkOutcome(StrEnum):
     MISSING = "missing"
 
 
-def dismissed_fassungen(suggestion: Any) -> list[str]:
+def dismissed_revisions(suggestion: Any) -> list[str]:
     """The file names a person refused as the older Fassung of a document, oldest refusal first.
 
     Reads the stored record in both shapes: the current one carries ``dismissed_of``; a record
@@ -146,7 +146,7 @@ def _link_lock_key(collection: str) -> int:
 
 @dataclass(frozen=True, slots=True)
 class _LinkRow:
-    """What :meth:`DocumentMetadataStore.link_fassung` reads of each row of the collection."""
+    """What :meth:`DocumentMetadataStore.link_revision` reads of each row of the collection."""
 
     superseded_by: str | None
     change_basis: str | None
@@ -187,7 +187,7 @@ def _merged_suggestion(stored: dict[str, Any] | None, new: dict[str, Any] | None
 
     ``new`` of ``None`` clears the open suggestion; what is left is the refusals, or nothing.
     """
-    refused = list(dict.fromkeys(dismissed_fassungen(stored) + dismissed_fassungen(new)))
+    refused = list(dict.fromkeys(dismissed_revisions(stored) + dismissed_revisions(new)))
     if new is None:
         return _refusal_record(refused)
     return {**new, "dismissed": new["of"] in refused, "dismissed_of": refused}
@@ -195,7 +195,7 @@ def _merged_suggestion(stored: dict[str, Any] | None, new: dict[str, Any] | None
 
 def _with_refusal(stored: dict[str, Any] | None, older: str) -> dict[str, Any]:
     """``stored`` with ``older`` refused: the open suggestion dismissed when it names ``older``, else kept open."""
-    refused = [name for name in dismissed_fassungen(stored) if name != older] + [older]
+    refused = [name for name in dismissed_revisions(stored) if name != older] + [older]
     if stored is None or stored["of"] == older or stored["dismissed"]:
         return {**(stored or {}), **_refusal_record(refused), **_kept_reason(stored, older)}
     return {**stored, "dismissed_of": refused}
@@ -269,7 +269,7 @@ class DocumentMetadataStore:
     _sync_engine_cache: dict[str, tuple[Any, float]] = {}
     _cache_lock = threading.Lock()
     _tables_initialized: set[str] = set()
-    #: Serialises :meth:`link_fassung` on SQLite, which has no advisory lock (dev and tests run one process).
+    #: Serialises :meth:`link_revision` on SQLite, which has no advisory lock (dev and tests run one process).
     _link_lock = threading.Lock()
 
     def __init__(self, db_url: str):
@@ -966,7 +966,7 @@ class DocumentMetadataStore:
 
         Without a loop check, so it is for lifting a link (``None``) and for
         carrying one that already exists onto another spelling. A NEW link goes
-        through :meth:`link_fassung`, which refuses a loop in the same transaction.
+        through :meth:`link_revision`, which refuses a loop in the same transaction.
         """
         return self._update_column(collection, older, "superseded_by", newer or None)
 
@@ -1033,7 +1033,7 @@ class DocumentMetadataStore:
             logger.warning("Failed to write the revision suggestion for %s: %s", filename, e)
             return False
 
-    def link_fassung(self, collection: str, older: str, newer: str) -> LinkOutcome:
+    def link_revision(self, collection: str, older: str, newer: str) -> LinkOutcome:
         """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop, in one locked transaction.
 
         The loop check and the write are one step: two people confirming A over B
@@ -1049,11 +1049,11 @@ class DocumentMetadataStore:
         still missing has the link waiting for it (:meth:`_attach_supersedes`).
         """
         if self._is_postgres():
-            return self._link_fassung_locked(collection, older, newer)
+            return self._link_revision_locked(collection, older, newer)
         with DocumentMetadataStore._link_lock:
-            return self._link_fassung_locked(collection, older, newer)
+            return self._link_revision_locked(collection, older, newer)
 
-    def _link_fassung_locked(self, collection: str, older: str, newer: str) -> LinkOutcome:
+    def _link_revision_locked(self, collection: str, older: str, newer: str) -> LinkOutcome:
         from sqlalchemy import text
 
         from .document_revisions import would_loop
@@ -1459,7 +1459,7 @@ class DocumentMetadataStore:
         ``of`` is the older file name, ``confidence`` a number in 0..1 (a flag is
         not one, and NaN is not one), ``reason`` a non-empty text, ``basis`` one
         of :data:`SUGGESTION_BASES`. ``dismissed_of`` lists every file a person
-        refused as the older Fassung (:func:`dismissed_fassungen`, which also reads
+        refused as the older Fassung (:func:`dismissed_revisions`, which also reads
         the older record with one dismissed ``of``), and ``dismissed`` says whether
         ``of`` is among them. A suggestion missing any of the first four is no suggestion.
         """
@@ -1473,7 +1473,7 @@ class DocumentMetadataStore:
             return None
         if not isinstance(reason, str) or not reason.strip() or basis not in SUGGESTION_BASES:
             return None
-        refused = dismissed_fassungen(value)
+        refused = dismissed_revisions(value)
         return {
             "of": older,
             "confidence": float(confidence),

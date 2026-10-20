@@ -37,13 +37,13 @@ const PROJECT = '3f8b0d2e-0000-4000-8000-000000000001'
 const COLLECTION = 'proj_3f8b0d2e'
 /** Source folders, by id (ADR-0088): the record names folders, not collections. */
 const VERTRAEGE = 'vertraege'
-const HONORARE = 'honorare'
+const FEES = 'honorare'
 const CONV = 's_conv_1'
 
 /** Verträge (own list) › Honorare (own list); Offen inherits; Alt is a deleted folder's tombstone. */
 const TREE: AccessFolder[] = [
   { id: VERTRAEGE, parentId: null, accessMode: 'custom', everyoneReads: false },
-  { id: HONORARE, parentId: VERTRAEGE, accessMode: 'custom', everyoneReads: false },
+  { id: FEES, parentId: VERTRAEGE, accessMode: 'custom', everyoneReads: false },
   { id: 'open', parentId: null, accessMode: 'inherit', everyoneReads: false },
   { id: 'alt', parentId: null, accessMode: 'custom', everyoneReads: false, deleted: true },
 ]
@@ -123,12 +123,12 @@ describe('requireMayFileFrom — only where every reader is cleared for what the
       requireMayFileFrom({ conversationId: CONV, locale: 'de' }, destination(VERTRAEGE))
     ).resolves.toBeUndefined()
     await expect(
-      requireMayFileFrom({ conversationId: CONV, locale: 'de' }, destination(HONORARE))
+      requireMayFileFrom({ conversationId: CONV, locale: 'de' }, destination(FEES))
     ).resolves.toBeUndefined()
   })
 
   it('refuses the parent of a recorded folder: its readers need not be able to read the narrower one', async () => {
-    vi.mocked(recordedRestrictedFolders).mockResolvedValue([VERTRAEGE, HONORARE])
+    vi.mocked(recordedRestrictedFolders).mockResolvedValue([VERTRAEGE, FEES])
     await refusal(requireMayFileFrom({ conversationId: CONV, locale: 'de' }, destination(VERTRAEGE)))
   })
 
@@ -163,7 +163,7 @@ describe('requireMayFileFrom — only where every reader is cleared for what the
 describe('folderRestrictsReading — whether a revision task may quote a draft', () => {
   it('is true for a folder with its own list, and for one below it', async () => {
     await expect(folderRestrictsReading(ORG, PROJECT, VERTRAEGE)).resolves.toBe(true)
-    await expect(folderRestrictsReading(ORG, PROJECT, HONORARE)).resolves.toBe(true)
+    await expect(folderRestrictsReading(ORG, PROJECT, FEES)).resolves.toBe(true)
     expect(listProjectFolderTree).toHaveBeenCalledWith(ORG, PROJECT)
   })
 
@@ -193,7 +193,7 @@ describe('requirePlanDocumentsOpen — a run’s Unterlagen', () => {
     ({ id: `doc-${filename}`, filename, folderId }) as DocumentListRow
 
   it('refuses a name any row of which sits below a folder not every member reads, a tombstone included', async () => {
-    for (const folderId of [VERTRAEGE, HONORARE, 'alt', 'unknown-folder']) {
+    for (const folderId of [VERTRAEGE, FEES, 'alt', 'unknown-folder']) {
       vi.mocked(findProjectDocumentsByFilenames).mockResolvedValue([row('a.pdf', 'open'), row('a.pdf', folderId)])
       const error = await refusal(requirePlanDocumentsOpen(ORG, PROJECT, [{ name: 'a.pdf' }], 'de'))
       expect(error.details).toEqual({ action: 'planDocument' })
@@ -230,7 +230,7 @@ describe('a conversation that drew on another project (ADR-0094)', () => {
   })
 
   it('refuses filing anywhere, even into the narrowest folder of this project', async () => {
-    expect((await refusal(requireMayFileFrom(origin, destination(HONORARE)))).action).toBe('filing')
+    expect((await refusal(requireMayFileFrom(origin, destination(FEES)))).action).toBe('filing')
     expect(vi.mocked(listProjectFolderTree)).not.toHaveBeenCalled()
   })
 

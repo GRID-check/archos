@@ -113,7 +113,7 @@ describe('KeyboardShortcuts', () => {
   })
 
   test('the cheatsheet documents every jump the handler actually binds', async () => {
-    render(<KeyboardShortcuts authRequired canViewOrganization canAccessArchiv />)
+    render(<KeyboardShortcuts authRequired canViewOrganization canAccessOfficeShelf />)
 
     fireEvent.keyDown(window, { key: '?', shiftKey: true })
 
@@ -175,7 +175,7 @@ describe('KeyboardShortcuts', () => {
 
   test('cross-project doorways jump from anywhere, and stay gated', async () => {
     pathname = '/app/profile'
-    const { unmount } = render(<KeyboardShortcuts authRequired canViewOrganization canAccessArchiv />)
+    const { unmount } = render(<KeyboardShortcuts authRequired canViewOrganization canAccessOfficeShelf />)
 
     fireEvent.keyDown(window, { key: 'g' })
     fireEvent.keyDown(window, { key: 'a' })

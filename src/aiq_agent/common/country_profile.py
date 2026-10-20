@@ -119,7 +119,7 @@ def _register_austria() -> None:
         CountryProfile(
             country="at",
             language="de-AT",
-            states=dict(nr.BUNDESLAND_TOKENS),
+            states=dict(nr.FEDERAL_STATE_TOKENS),
             state_probe_order=tuple(nr.BUNDESLAENDER),
             corpus_collection="oib_knowledge",
             corpus_note=nr.OIB_CORPUS_NOTE,

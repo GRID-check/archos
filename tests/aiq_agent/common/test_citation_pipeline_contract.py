@@ -191,7 +191,7 @@ class TestProducerParserContract:
         collection="proj_abc",
         body="Der Einreichplan zeigt die Lage der Fluchtwege im Obergeschoss.",
     )
-    ARCHIV = Hit(
+    OFFICE_SHELF = Hit(
         file_name="detail_attika.pdf",
         page=7,
         collection="archiv_org1",
@@ -200,12 +200,12 @@ class TestProducerParserContract:
 
     def test_only_some_hits_classified_keeps_every_field_on_its_own_hit(self):
         """The audited bug: one unclassified hit shifted doc_class onto its neighbour."""
-        entries = roundtrip(self.PROJEKT, self.OIB, self.ARCHIV)
-        assert identities(entries) == [self.PROJEKT.identity, self.OIB.identity, self.ARCHIV.identity]
+        entries = roundtrip(self.PROJEKT, self.OIB, self.OFFICE_SHELF)
+        assert identities(entries) == [self.PROJEKT.identity, self.OIB.identity, self.OFFICE_SHELF.identity]
 
     def test_the_unclassified_hit_is_not_rendered_as_building_law(self):
         """The user-visible consequence of a shift: chip colour and authority badge."""
-        projekt, oib, archiv = roundtrip(self.PROJEKT, self.OIB, self.ARCHIV)
+        projekt, oib, archiv = roundtrip(self.PROJEKT, self.OIB, self.OFFICE_SHELF)
         assert source_lane(projekt) == ("projekt", "Projektwissen")
         assert source_lane(archiv) == ("buero", "Büroablage")
         assert source_lane(oib) == ("baurecht_oib", "OIB-Richtlinie")
@@ -222,8 +222,8 @@ class TestProducerParserContract:
         assert identities(entries) == [self.OIB.identity, second.identity]
 
     def test_no_hit_classified(self):
-        entries = roundtrip(self.PROJEKT, self.ARCHIV)
-        assert identities(entries) == [self.PROJEKT.identity, self.ARCHIV.identity]
+        entries = roundtrip(self.PROJEKT, self.OFFICE_SHELF)
+        assert identities(entries) == [self.PROJEKT.identity, self.OFFICE_SHELF.identity]
         assert all(entry.doc_class is None for entry in entries)
 
     def test_hit_without_a_collection_claims_no_collection(self):
@@ -285,8 +285,8 @@ class TestProducerParserContract:
         assert entries[-1].chunk_text == self.OIB.body
 
     def test_each_body_reaches_the_entry_that_retrieved_it(self):
-        entries = roundtrip(self.PROJEKT, self.OIB, self.ARCHIV)
-        assert [entry.chunk_text for entry in entries] == [self.PROJEKT.body, self.OIB.body, self.ARCHIV.body]
+        entries = roundtrip(self.PROJEKT, self.OIB, self.OFFICE_SHELF)
+        assert [entry.chunk_text for entry in entries] == [self.PROJEKT.body, self.OIB.body, self.OFFICE_SHELF.body]
 
     def test_producer_emits_the_optional_lines_only_when_the_hit_has_them(self):
         """Guards the premise of every test above.
@@ -607,7 +607,7 @@ class TestTheTwoReadersAgree:
             title="Bauordnung für Wien",
             url="https://www.ris.bka.gv.at/Bauordnung-Wien",
             collection="ris/LrKons/Wien",
-            punkt_label="§ 63 Abs 1",
+            clause_label="§ 63 Abs 1",
             citation="Bauordnung für Wien, § 63 Abs 1",
             body="Dem Ansuchen um Baubewilligung sind anzuschließen …",
             score=SCORE_ADDRESSED,
@@ -617,7 +617,7 @@ class TestTheTwoReadersAgree:
             title="Wiener Garagengesetz",
             url="https://www.ris.bka.gv.at/Garagengesetz",
             collection="ris/LrKons/Wien",
-            punkt_label="§ 50",
+            clause_label="§ 50",
             citation="Wiener Garagengesetz, § 50",
             body="Stellplätze sind in der erforderlichen Anzahl herzustellen.",
             score=SCORE_RANKED_TOP,

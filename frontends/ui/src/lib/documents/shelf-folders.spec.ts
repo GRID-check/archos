@@ -33,18 +33,18 @@ vi.mock('@/lib/db/schema', () => ({
     folderId: 'd.folder_id',
   },
 }))
-vi.mock('@/lib/authz/organizations', () => ({ canManageArchiv: vi.fn() }))
+vi.mock('@/lib/authz/organizations', () => ({ canManageOfficeShelf: vi.fn() }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: vi.fn().mockReturnValue('http://backend:8000') }))
 
 import { getDb } from '@/lib/db'
-import { canManageArchiv } from '@/lib/authz/organizations'
+import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
 import { asDb } from '@/test-utils/db-fixtures'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { ARCHIV_SHELF, projectShelf } from './shelf'
+import { OFFICE_SHELF, projectShelf } from './shelf'
 import {
   createShelfFolder,
   deleteShelfFolder,
@@ -115,7 +115,7 @@ let fetchSpy: ReturnType<typeof vi.fn>
 beforeEach(() => {
   fetchSpy = vi.fn().mockResolvedValue({ ok: true })
   vi.stubGlobal('fetch', fetchSpy)
-  vi.mocked(canManageArchiv).mockReturnValue(true)
+  vi.mocked(canManageOfficeShelf).mockReturnValue(true)
 })
 
 afterEach(() => {
@@ -125,23 +125,23 @@ afterEach(() => {
 
 describe('who may touch the Archiv shelf', () => {
   it('lets any member read the tree, and checks nothing for it', async () => {
-    vi.mocked(canManageArchiv).mockReturnValue(false)
+    vi.mocked(canManageOfficeShelf).mockReturnValue(false)
     vi.mocked(getDb).mockReturnValue(asDb(fakeDb([[folder('f-1', 'Normen', 'Normen')]]).db))
 
-    const folders = await listShelfFolders(session, ARCHIV_SHELF)
+    const folders = await listShelfFolders(session, OFFICE_SHELF)
 
     expect(folders.map((row) => row.path)).toEqual(['Normen'])
     expect(folders[0].projectId).toBeNull()
-    expect(canManageArchiv).not.toHaveBeenCalled()
+    expect(canManageOfficeShelf).not.toHaveBeenCalled()
   })
 
   it.each([
-    ['create', () => createShelfFolder(session, ARCHIV_SHELF, { name: 'Normen' })],
-    ['update', () => updateShelfFolder(session, ARCHIV_SHELF, { folderId: 'f-1', name: 'Neu' })],
-    ['delete', () => deleteShelfFolder(session, ARCHIV_SHELF, 'f-1')],
-    ['ensure', () => ensureShelfFolderPaths(session, ARCHIV_SHELF, { parentId: null, paths: ['A/B'] })],
+    ['create', () => createShelfFolder(session, OFFICE_SHELF, { name: 'Normen' })],
+    ['update', () => updateShelfFolder(session, OFFICE_SHELF, { folderId: 'f-1', name: 'Neu' })],
+    ['delete', () => deleteShelfFolder(session, OFFICE_SHELF, 'f-1')],
+    ['ensure', () => ensureShelfFolderPaths(session, OFFICE_SHELF, { parentId: null, paths: ['A/B'] })],
   ])('refuses %s to a member without org:archiv:manage, before touching the database', async (_name, run) => {
-    vi.mocked(canManageArchiv).mockReturnValue(false)
+    vi.mocked(canManageOfficeShelf).mockReturnValue(false)
 
     await expect(run()).rejects.toBeInstanceOf(ForbiddenError)
 
@@ -158,7 +158,7 @@ describe('who may touch the Archiv shelf', () => {
       'project:documents:write',
       'project:edit',
     ])
-    expect(canManageArchiv).not.toHaveBeenCalled()
+    expect(canManageOfficeShelf).not.toHaveBeenCalled()
   })
 })
 
@@ -167,7 +167,7 @@ describe('a folder row on the Archiv shelf', () => {
     const fake = fakeDb([])
     vi.mocked(getDb).mockReturnValue(asDb(fake.db))
 
-    const result = await createShelfFolder(session, ARCHIV_SHELF, { name: 'Normen' })
+    const result = await createShelfFolder(session, OFFICE_SHELF, { name: 'Normen' })
 
     expect(result.ok).toBe(true)
     expect(fake.writes.inserted).toEqual([
@@ -186,7 +186,7 @@ describe('a folder row on the Archiv shelf', () => {
     })
     vi.mocked(getDb).mockReturnValue(asDb(fake.db))
 
-    await expect(createShelfFolder(session, ARCHIV_SHELF, { name: 'Normen' })).resolves.toEqual({
+    await expect(createShelfFolder(session, OFFICE_SHELF, { name: 'Normen' })).resolves.toEqual({
       ok: false,
       error: 'A folder with this name already exists here.',
     })
@@ -196,7 +196,7 @@ describe('a folder row on the Archiv shelf', () => {
     vi.mocked(getDb).mockReturnValue(asDb(fakeDb([[]]).db))
 
     await expect(
-      createShelfFolder(session, ARCHIV_SHELF, { name: 'EN', parentId: 'f-elsewhere' }),
+      createShelfFolder(session, OFFICE_SHELF, { name: 'EN', parentId: 'f-elsewhere' }),
     ).resolves.toEqual({ ok: false, error: 'Parent folder not found.' })
   })
 
@@ -204,7 +204,7 @@ describe('a folder row on the Archiv shelf', () => {
     const fake = fakeDb([[]])
     vi.mocked(getDb).mockReturnValue(asDb(fake.db))
 
-    const created = await getOrCreateShelfRootFolder(ARCHIV_SHELF, 'org-1', 'Berichte')
+    const created = await getOrCreateShelfRootFolder(OFFICE_SHELF, 'org-1', 'Berichte')
 
     expect(created.path).toBe('Berichte')
     expect(fake.writes.inserted[0]).toMatchObject({ scope: 'archiv', projectId: null, organizationId: 'org-1' })
@@ -216,7 +216,7 @@ describe('moving and renaming an Archiv folder', () => {
     const fake = fakeDb([[folder('f-1', 'Normen', 'Normen')]])
     vi.mocked(getDb).mockReturnValue(asDb(fake.db))
 
-    const result = await updateShelfFolder(session, ARCHIV_SHELF, { folderId: 'f-1', name: 'Neu' })
+    const result = await updateShelfFolder(session, OFFICE_SHELF, { folderId: 'f-1', name: 'Neu' })
 
     expect(result.ok).toBe(true)
     expect(fetchSpy.mock.calls[0][0]).toBe('http://backend:8000/v1/collections/archiv_org-1/folder-paths')
@@ -237,7 +237,7 @@ describe('moving and renaming an Archiv folder', () => {
     )
 
     await expect(
-      updateShelfFolder(session, ARCHIV_SHELF, { folderId: 'f-1', parentId: 'f-2' }),
+      updateShelfFolder(session, OFFICE_SHELF, { folderId: 'f-1', parentId: 'f-2' }),
     ).resolves.toEqual({ ok: false, error: 'A folder cannot be moved into its own subfolder.' })
     expect(fetchSpy).not.toHaveBeenCalled()
   })
@@ -252,7 +252,7 @@ describe('moving and renaming an Archiv folder', () => {
     }
     vi.mocked(getDb).mockReturnValue(asDb(fake.db))
 
-    await expect(updateShelfFolder(session, ARCHIV_SHELF, { folderId: 'f-1', parentId: 'f-2' })).resolves.toEqual({
+    await expect(updateShelfFolder(session, OFFICE_SHELF, { folderId: 'f-1', parentId: 'f-2' })).resolves.toEqual({
       ok: false,
       error: 'A folder with this name already exists here.',
     })
@@ -263,7 +263,7 @@ describe('moving and renaming an Archiv folder', () => {
     vi.mocked(getDb).mockReturnValue(asDb(fakeDb([[]]).db))
 
     await expect(
-      updateShelfFolder(session, ARCHIV_SHELF, { folderId: 'f-other', name: 'x' }),
+      updateShelfFolder(session, OFFICE_SHELF, { folderId: 'f-other', name: 'x' }),
     ).resolves.toEqual({ ok: false, error: 'Folder not found.' })
   })
 })
@@ -277,7 +277,7 @@ describe('deleting an Archiv folder', () => {
     ])
     vi.mocked(getDb).mockReturnValue(asDb(fake.db))
 
-    const result = await deleteShelfFolder(session, ARCHIV_SHELF, 'f-2')
+    const result = await deleteShelfFolder(session, OFFICE_SHELF, 'f-2')
 
     expect(result.ok && result.result).toEqual({ documentsMoved: 1, foldersMoved: 1 })
     // The row goes: the Archiv has no Papierkorb and no tombstone (ADR-0088),

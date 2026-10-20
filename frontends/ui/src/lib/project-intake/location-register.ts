@@ -19,7 +19,7 @@
  * beyond the two Altstadt laws below.
  */
 
-import { BUNDESLAND_TOKENS, FOUND_IN } from '@/lib/project-profile/intake-definition'
+import { FEDERAL_STATE_TOKENS, FOUND_IN } from '@/lib/project-profile/intake-definition'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
 import type {
   DocumentRequest,
@@ -244,7 +244,7 @@ const asList = (value: ProjectPrimitiveValue | undefined): string[] | null => {
 }
 
 function isFederalState(value: unknown): value is FederalState {
-  return typeof value === 'string' && value !== 'ausserhalb_oesterreichs' && BUNDESLAND_TOKENS.includes(value)
+  return typeof value === 'string' && value !== 'ausserhalb_oesterreichs' && FEDERAL_STATE_TOKENS.includes(value)
 }
 
 function situationOf(input: LocationRegisterInput): Situation {

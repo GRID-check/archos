@@ -68,7 +68,7 @@ LIKENESS = 0.05
 
 #: Uses compared for "at least n shared". The combinations grow as n choose
 #: k, and the intake records a handful of uses per project.
-MAX_NUTZUNGEN = 6
+MAX_USES = 6
 
 
 @dataclass(frozen=True)
@@ -142,7 +142,7 @@ def _use_terms(uses: list[str], weights: FactWeights) -> list[tuple[float, Any]]
     """``min(shared * nutzung, nutzung_max)`` as steps: "at least n uses shared" for n = 1, 2, ..."""
     if weights.nutzung <= 0 or not uses:
         return []
-    uses = uses[:MAX_NUTZUNGEN]
+    uses = uses[:MAX_USES]
     terms: list[tuple[float, Any]] = []
     for shared in range(1, len(uses) + 1):
         step = min(weights.nutzung, weights.nutzung_max - (shared - 1) * weights.nutzung)

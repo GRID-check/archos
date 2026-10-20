@@ -185,13 +185,13 @@ describe('validateCollectionName', () => {
 
   // The org-wide Archiv collection (ADR-0024): must be THIS org's Archiv AND the
   // caller must hold org:archiv:manage (proxy routes cover writes).
-  const archivManager = {
+  const officeShelfManager = {
     organizationId: 'org-1',
     userId: 'user-1',
     role: 'member',
     permissions: ['org:archiv:manage'],
   } as unknown as GridSession
-  const archivMember = {
+  const officeShelfMember = {
     organizationId: 'org-1',
     userId: 'user-2',
     role: 'member',
@@ -200,14 +200,14 @@ describe('validateCollectionName', () => {
 
   it('accepts the caller-org Archiv collection for a manager', async () => {
     expect(
-      await validateCollectionName(['collections', 'archiv_org-1'], archivManager, {}, { deps: deps() })
+      await validateCollectionName(['collections', 'archiv_org-1'], officeShelfManager, {}, { deps: deps() })
     ).toBeNull()
   })
 
   it('rejects the Archiv collection for a member without manage (403)', async () => {
     const response = await validateCollectionName(
       ['collections', 'archiv_org-1'],
-      archivMember,
+      officeShelfMember,
       {}, { deps: deps() })
     expect(response?.status).toBe(403)
   })
@@ -215,7 +215,7 @@ describe('validateCollectionName', () => {
   it("rejects another org's Archiv collection (403)", async () => {
     const response = await validateCollectionName(
       ['collections', 'archiv_org-2'],
-      archivManager,
+      officeShelfManager,
       {}, { deps: deps() })
     expect(response?.status).toBe(403)
   })
@@ -345,7 +345,7 @@ describe('validateCollectionName — a chat collection is read-only', () => {
 })
 
 describe('validateCollectionName — what the proxy never does', () => {
-  const archivManager = {
+  const officeShelfManager = {
     organizationId: 'org-1',
     userId: 'user-1',
     permissions: ['org:archiv:manage'],
@@ -353,7 +353,7 @@ describe('validateCollectionName — what the proxy never does', () => {
 
   it.each([
     ['proj_abc', session],
-    ['archiv_org-1', archivManager],
+    ['archiv_org-1', officeShelfManager],
   ])('refuses to delete the whole %s collection (403), before any lookup', async (name, who) => {
     const d = deps()
     const response = await validateCollectionName(['collections', name], who, {}, { method: 'DELETE', deps: d })
@@ -363,7 +363,7 @@ describe('validateCollectionName — what the proxy never does', () => {
 
   it.each([
     ['proj_abc', session, '/api/documents/upload'],
-    ['archiv_org-1', archivManager, '/api/archiv/documents/upload'],
+    ['archiv_org-1', officeShelfManager, '/api/archiv/documents/upload'],
   ])(
     'refuses a raw upload into %s (403): the first-party route writes the row and runs the admission',
     async (name, who, route) => {
@@ -380,7 +380,7 @@ describe('validateCollectionName — what the proxy never does', () => {
 
   it.each([
     ['proj_abc', session, '/api/documents/[id]'],
-    ['archiv_org-1', archivManager, '/api/archiv/documents/[id]'],
+    ['archiv_org-1', officeShelfManager, '/api/archiv/documents/[id]'],
   ])(
     'refuses a chunk-only file delete in %s (403): the row, the object and the audit entry would stay',
     async (name, who, route) => {

@@ -26,6 +26,12 @@ _Avoid_: tenant, in product copy.
 One building project inside an organization, with its own documents, intake
 facts and members, who are a subset of the organization's people.
 
+**Steckbrief** (project record):
+The project's profile page: its facts (federal state, building class, plot,
+planned work) and the people on it, kept apart from them (ADR-0091, ADR-0101).
+_Code_: `projectRecord` (`lib/projects/project-record-*`, `ProjectRecordView`);
+the Bundesland is `federalState`, the Gebäudeklasse `buildingClass`.
+
 **Aktiv / Ruhend / Abgeschlossen** (active / paused / closed):
 The three states of a project's lifecycle, moved between only on purpose: a
 paused project is waiting and will go on, a closed one is over and has become
@@ -94,10 +100,15 @@ verdict.
 
 **Shelf**:
 Where a document lives, which decides who may read it and what a search reaches:
-the *Büroablage* (the organization's shelf, formerly „Archiv"; the code keeps
-`archiv`), a project, a single chat, or the shared OIB base every organization
+the *Büroablage* (the organization's shelf, formerly „Archiv"; code name
+`officeShelf`, never `archive`, which already means soft-archived), a project, a single chat, or the shared OIB base every organization
 sees. The Büroablage can hold norms an office uploaded itself (ÖNORMEN,
 Weisungen) that the OIB base does not carry.
+_Code_: `officeShelf` in identifiers, file names and modules (`lib/office-shelf`,
+`OfficeShelfWorkspace`, `canManageOfficeShelf`). The stored and public forms
+still read `archiv` until the migration PRs: the shelf value in the database and
+on the wire, the `/archiv` and `/api/archiv` URLs, and the permission slug
+`org:archiv:manage`.
 _Avoid_: folder; folders organise documents within a shelf, a shelf decides who sees them.
 
 **Dokumentart** (document type):
@@ -115,6 +126,11 @@ _Avoid_: Plan, Planstand, for any file. A name with an index says a file has
 Fassungen, not that it is a drawing; only its Dokumentart says what it is. Say
 Dokument, Datei, Fassung or Stand. Also avoid „Version“ and “version” where a
 reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a state.
+_Code_: `revision`. The links between the Fassungen of one document are
+`RevisionLinks` (`lib/documents/revision-links.ts`); `RevisionFacts` is the
+Index and Rev read off a title block, a different thing. Stored names such as
+the `document_fassung_announcements` table and the `fassung` wire field keep the
+German word until the migration PRs.
 
 **Freigabe** (approval):
 The office approving one Fassung, and only that. Its status (*Freigabestatus*)
@@ -192,6 +208,7 @@ settled answer.
 **Herleitung** (derivation):
 The visible trace of a turn above its answer: what Piloti searched, what it
 found, where it checked.
+_Code_: `derivation`.
 
 **Belegt durch** (backed by):
 The row of source chips under an answer, one per document that backs its claims.
@@ -260,6 +277,8 @@ the run may draw on at all.
 One requirement checked: *erfüllt* (met), *nicht erfüllt* (not met), *offen*
 (open) or *nicht anwendbar* (not applicable), with its Fundstelle. The
 *Befundmatrix* is the table of all of a report's findings.
+_Code_: `finding`, `findingsMatrix`; the four results are `met`, `notMet`, `open`
+and `notApplicable` in identifiers.
 
 **Abdeckung** (coverage):
 Whether the sources a search found answer the question. *Abdeckung:
@@ -281,6 +300,8 @@ The element in the thread that shows a run: *angelegt* (created), *läuft*
 (running), *wartet* (waiting), *fertig* (done), *fehlgeschlagen* (failed),
 *abgebrochen* (cancelled) or *unterbrochen* (stopped early, with a report from
 what was there).
+_Code_: `RunBlock`; the states are `running`, `waiting`, `done`, `cancelled` and
+`interrupted`.
 
 ## Sharing and keeping
 

@@ -1,11 +1,11 @@
 /**
  * Archiv API — document-centric semantic search over the org's shared Archiv.
- * Thin handler; all logic lives in `@/lib/archiv/service` (ADR-0024).
+ * Thin handler; all logic lives in `@/lib/office-shelf/service` (ADR-0024).
  */
 
 import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { searchArchivDocuments } from '@/lib/archiv/service'
+import { searchOfficeShelfDocuments } from '@/lib/office-shelf/service'
 
 const searchBodySchema = z.object({
   q: z.string().trim().min(1).max(1000),
@@ -15,7 +15,7 @@ const searchBodySchema = z.object({
 export const POST = apiRoute(
   async ({ session, request }) => {
     const { q, topK } = await parseJsonBody(request, searchBodySchema)
-    return searchArchivDocuments(session, q, topK)
+    return searchOfficeShelfDocuments(session, q, topK)
   },
   {
     authz: {

@@ -57,7 +57,7 @@ describe('the binding status the backend actually emits', () => {
     }
   })
 
-  test('a Richtlinie the backend classified arrives as its classification', () => {
+  test('a guideline the backend classified arrives as its classification', () => {
     const [oib] = WIRE_SOURCES
     expect(oib.file_name).toBe('oib-rl_2_ausgabe_mai_2023.pdf')
     expect(oib.binding_status).toBe('verbindlich_erklaert')

@@ -1514,8 +1514,8 @@ def _geometry_blind_spots(model: SpatialModel) -> list[BlindSpot]:
 
     „sie sind aber berechenbar, dieser Export trägt Geometrie" was emitted
     unconditionally, on files that contain no body at all. Four of the five
-    fixtures — ``haus-mit-raeumen.ifc``, ``einheiten-fuss.ifc``,
-    ``geschossdecke-und-fenster.ifc`` and ``strasse-ifc4x3.ifc`` — carry a
+    fixtures — ``house-with-rooms.ifc``, ``units-feet.ifc``,
+    ``floor-slab-and-window.ifc`` and ``road-ifc4x3.ifc`` — carry a
     ``Representation`` on **0** of their ``IfcProduct`` entities, and every one
     of them was told the geometric answers were only a call away. A false
     capability claim in the block whose whole job is to say what the file cannot

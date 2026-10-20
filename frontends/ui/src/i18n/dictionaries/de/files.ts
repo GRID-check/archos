@@ -159,7 +159,7 @@ export const files: typeof en.files = {
       location: 'Standort',
     },
     /** Die Fassungsgeschichte eines Dokuments (document-fassungen.tsx). Nie „Plan“: der Name sagt nicht, was eine Datei ist. */
-    fassung: {
+    revision: {
       unlink: 'Verknüpfung lösen',
       timeline: 'Alle Fassungen dieses Dokuments',
       current: 'aktuell',
@@ -808,10 +808,10 @@ export const files: typeof en.files = {
     compareError: 'Der Bestand konnte nicht verglichen werden. Es wurde nichts hochgeladen.',
     planChanged: 'Die Vorschau hat sich geändert. Es wurde nichts hochgeladen. Bitte prüfen Sie sie und bestätigen Sie erneut.',
     single: {
-      newFassungTitle: 'Neue Fassung von „{name}“?',
+      newRevisionTitle: 'Neue Fassung von „{name}“?',
       updateExplain:
         '„{name}“ liegt hier bereits unter diesem Namen. Die neue Datei wird die aktuelle Fassung; die bisherige bleibt unter „Fassungen und Freigabe“ lesbar.',
-      fassungExplain:
+      revisionExplain:
         '„{file}“ setzt „{name}“ fort: Index oder Datum im Namen sind neuer. Die ältere Fassung bleibt lesbar, Piloti antwortet aus der neuen und hält fest, was sich geändert hat; die Verknüpfung lässt sich später lösen.',
       unclearTitle: 'Ist „{file}“ eine neue Fassung?',
       unclearExplain:
@@ -822,7 +822,7 @@ export const files: typeof en.files = {
       unchangedExplain: '„{name}“ ist mit dieser Datei identisch. Es wird nichts hochgeladen.',
       refiled: 'Das Dokument liegt derzeit in einem anderen Ordner und wird nach „{folder}“ verschoben.',
       archived: 'Das Dokument ist archiviert. Die neue Fassung wird ihm hinzugefügt und erscheint erst wieder in der Liste, wenn es wiederhergestellt wird.',
-      confirmFassung: 'Als neue Fassung ablegen',
+      confirmRevision: 'Als neue Fassung ablegen',
       confirmSeparate: 'Als eigenes Dokument hochladen',
     },
     destination: 'Die Ordnerstruktur wird in „{folder}“ nachgebildet.',
@@ -859,7 +859,7 @@ export const files: typeof en.files = {
     // gleichem Namen (ADR-0054) oder über eine Namensreihe unter anderem Namen
     // (ADR-0099). Ein Begriff, gleich wie Piloti es erkannt hat (ADR-0099). Sagen
     // Sie Dokument, Datei, Fassung: ein Name mit Index sagt nicht, was eine Datei ist.
-    fassung: {
+    revision: {
       title: '{count, plural, one {# neue Fassung} other {# neue Fassungen}}',
       consequence:
         'Die ältere Fassung bleibt lesbar, Piloti antwortet aus der neuen und hält fest, was sich geändert hat; abgewählte Dateien kommen als eigene Dokumente hinein, und jede Verknüpfung lässt sich später lösen.',
@@ -883,7 +883,7 @@ export const files: typeof en.files = {
     showAll: '{count, plural, one {Die Datei anzeigen} other {Alle # Dateien anzeigen}}',
     action: {
       new: 'Neu',
-      fassung: 'Neue Fassung',
+      revision: 'Neue Fassung',
       unchanged: 'Unverändert',
       collision: 'Konflikt',
       duplicate: 'Schon vorhanden',
@@ -891,7 +891,7 @@ export const files: typeof en.files = {
       excluded: 'Nicht hochgeladen',
     },
     confirm: '{count, plural, one {# Datei hochladen} other {# Dateien hochladen}}',
-    confirmWithFassungen: '{count, plural, one {# Datei hochladen} other {# Dateien hochladen}}, {fassungen} davon als neue Fassung',
+    confirmWithRevisions: '{count, plural, one {# Datei hochladen} other {# Dateien hochladen}}, {revisions} davon als neue Fassung',
     confirmMoveOnly: '{count, plural, one {# Dokument verschieben} other {# Dokumente verschieben}}',
     nothingToDo: 'Nichts hochzuladen',
     cancel: 'Abbrechen',
@@ -1130,7 +1130,7 @@ export const files: typeof en.files = {
     sliceEmpty: 'Hier liegt nichts mehr vor.',
   },
   /** Die Anzahl auf Karte und Zeile, wenn ein Dokument Fassungen unter anderen Dateinamen hat (ADR-0099). */
-  fassungBadge: {
+  revisionBadge: {
     count: '{count, plural, one {# Fassung} other {# Fassungen}}',
     countTitle: '{count, plural, one {# Fassung dieses Dokuments} other {# Fassungen dieses Dokuments}}',
     older: 'Ältere Fassung',
@@ -1215,7 +1215,7 @@ export const files: typeof en.files = {
     alsoShowLabel: 'Auch zeigen',
     alsoShow: {
       retired: 'Stillgelegte',
-      olderFassungen: 'Ältere Fassungen',
+      olderRevisions: 'Ältere Fassungen',
     },
     // Was der Leserin fehlt, wenn Typ oder Status die Ebene geleert haben: die
     // Tatsache, dass ein Filter und nicht ein leerer Ordner der Grund ist.
@@ -1333,7 +1333,7 @@ export const files: typeof en.files = {
     // Datum), die handelnde Person und den Zeitpunkt, und die Checkbox ist die
     // Unterschrift.
     approveConfirm: {
-      stand: 'Fassung {number} · Stand vom {date}',
+      asOf: 'Fassung {number} · Stand vom {date}',
       actingWithName: 'Handelnd: {name} · {date}',
       actingDateOnly: 'Handelnd: {date}',
       checkbox: 'Ich gebe diese Fassung frei',
@@ -1395,7 +1395,7 @@ export const files: typeof en.files = {
       // NICHT „archiviert“: siehe `states.archived`.
       archived: 'Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr.',
       none: 'Noch keine Fassung.',
-      olderFassung: 'Ältere Fassung. Piloti antwortet aus der neueren.',
+      olderRevision: 'Ältere Fassung. Piloti antwortet aus der neueren.',
     },
     comment: {
       reasonLabel: 'Grund der Ablehnung',
@@ -1501,9 +1501,9 @@ export const files: typeof en.files = {
       defect: 'Mangel',
     },
     cancel: 'Abbrechen',
-    earlierFassung: 'auf Fassung {number} gesetzt',
-    earlierFassungUnnumbered: 'auf einer früheren Fassung gesetzt',
-    earlierFassungHint:
+    earlierRevision: 'auf Fassung {number} gesetzt',
+    earlierRevisionUnnumbered: 'auf einer früheren Fassung gesetzt',
+    earlierRevisionHint:
       'Gesetzt, bevor die aktuelle Fassung kam. Die Stelle kann sich verschoben haben, darum ist sie nicht eingezeichnet.',
     loadError: 'Anmerkungen konnten nicht geladen werden.',
     retry: 'Erneut versuchen',
@@ -1596,7 +1596,7 @@ export const files: typeof en.files = {
     nothingOpen: 'Nichts offen',
     // Der Knopf zur Liste auf dem Telefon zeigt die offenen; sein Name sagt den ganzen Satz des Chips.
     listOpen: 'Anmerkungen: {marks}',
-    fassung: 'Fassung {number}',
+    revision: 'Fassung {number}',
     offline: 'Verbindung unterbrochen',
     toolsLabel: 'Werkzeuge',
     offlineHint: 'Gerade nicht verbunden. Anmerkungen lassen sich weiter setzen; was andere tun, erscheint beim nächsten Laden.',
@@ -1811,9 +1811,9 @@ export const files: typeof en.files = {
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',
     linkCopyFailed: 'Der Link konnte nicht kopiert werden.',
-    earlierFassung: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
+    earlierRevision: 'Aus Fassung {number}. Auf diesem Blatt nicht eingezeichnet.',
     // Offen: hohl und punktiert dort gezeichnet, wo sie auf ihrer Fassung stand.
-    earlierFassungGhost: 'Aus Fassung {number}. Der hohle Punkt zeigt, wo sie dort stand.',
+    earlierRevisionGhost: 'Aus Fassung {number}. Der hohle Punkt zeigt, wo sie dort stand.',
     // „Gilt weiter": eine offene Anmerkung geht mit der aktuellen Fassung weiter,
     // an derselben Stelle, mit Nummer und Verlauf. Eine Anmerkung eines
     // ersetzten Dokuments kommt als verknüpfte Anmerkung in das neue.
@@ -1823,7 +1823,7 @@ export const files: typeof en.files = {
     carryMarkTo: 'Anmerkung {number} in „{name}“ übernehmen',
     carryAll: 'Alle übernehmen',
     carryFailed: 'Nicht alle Anmerkungen konnten übernommen werden. Bitte noch einmal.',
-    compareFassungen: 'Fassungen vergleichen',
+    compareRevisions: 'Fassungen vergleichen',
     earlierOpen: 'Offen aus früheren Fassungen: {count}',
     carriedGroup: 'Aus Fassung „{name}“',
     carriedGroupHint:
@@ -1841,7 +1841,7 @@ export const files: typeof en.files = {
     checkFixed: {
       action: 'Piloti prüfen lassen, was behoben ist',
       running: 'Piloti prüft, was behoben ist …',
-      currentFassung: 'der aktuellen Fassung',
+      currentRevision: 'der aktuellen Fassung',
       seed:
         'Prüfen, ob {count, plural, one {die offene Anmerkung {numbers}} other {die offenen Anmerkungen {numbers}}} aus einer früheren Fassung in {current} behoben {count, plural, one {ist} other {sind}}. Je Anmerkung lesen, die Stelle in diesem Dokument ansehen und im Verlauf der Anmerkung antworten, beginnend mit „In {current} behoben:“ oder „Weiterhin offen:“, und in einem Satz sagen, woran das zu sehen ist. Keine Anmerkung erledigen oder sonst ändern: Das entscheiden wir selbst.',
       seedFrom:
@@ -1921,8 +1921,8 @@ export const files: typeof en.files = {
         open: 'Nur offene',
         all: 'Auch erledigte',
       },
-      fassungLabel: 'Fassung',
-      fassungen: {
+      revisionLabel: 'Fassung',
+      revisions: {
         current: 'Aktuelle Fassung',
         all: 'Alle Fassungen',
       },
@@ -1950,18 +1950,18 @@ export const files: typeof en.files = {
       document: {
         title: 'Anmerkungen – {name}',
         fileName: 'Anmerkungen – {name}',
-        fileNameFassung: 'Anmerkungen – {name} – Fassung {number}',
+        fileNameRevision: 'Anmerkungen – {name} – Fassung {number}',
         fileNameAll: 'Anmerkungen – {name} – alle Fassungen',
         document: 'Dokument',
-        fassung: 'Fassung',
-        fassungOf: 'Fassung {number} von {total} · Stand vom {date}',
+        revision: 'Fassung',
+        revisionOf: 'Fassung {number} von {total} · Stand vom {date}',
         project: 'Projekt',
         scope: 'Umfang',
         scopes: {
           open: 'Offene Anmerkungen',
           all: 'Alle Anmerkungen, auch erledigte und verworfene',
         },
-        fassungen: {
+        revisions: {
           current: 'aktuelle Fassung',
           all: 'alle Fassungen',
           // Auch Erledigtes, aber nur der aktuellen Fassung: was aus früheren noch offen ist, steht trotzdem drin.

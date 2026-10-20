@@ -343,7 +343,7 @@ class TestNoInProcessFallback:
 
 
 class TestUpload:
-    def test_an_upload_queues_its_job_at_once_with_the_admins_dokumentart(self, ingestor):
+    def test_an_upload_queues_its_job_at_once_with_the_admins_doc_class(self, ingestor):
         queued = oib_sync.store_and_request("plan.pdf", b"%PDF plan", "oib_leitfaden")
 
         assert queued is True

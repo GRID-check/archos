@@ -25,7 +25,7 @@ def _chunk(file_name, score, content="passage", page=1):
 
 
 class TestSourceForCollection:
-    def test_project_and_archiv_and_base(self):
+    def test_project_and_office_shelf_and_base(self):
         assert _source_for_collection("proj_abc") == "projekt"
         assert _source_for_collection("archiv_org1") == "buero"
         assert _source_for_collection("oib_knowledge") is None
@@ -43,7 +43,7 @@ class TestSourceForCollection:
 
 
 class TestTargetCollections:
-    def test_keeps_only_project_and_archiv_dedup_order(self):
+    def test_keeps_only_project_and_office_shelf_dedup_order(self):
         scope = ["oib_knowledge", "proj_a", "archiv_o", "proj_a", "s_x"]
         assert _target_collections(scope) == ["proj_a", "archiv_o"]
 
@@ -63,11 +63,11 @@ class TestTargetCollections:
     def test_base_only_scope_yields_nothing(self):
         assert _target_collections(["oib_knowledge"]) == []
 
-    def test_shelf_archiv_drops_project(self):
+    def test_shelf_office_shelf_drops_project(self):
         scope = ["proj_a", "archiv_o", "oib_knowledge"]
         assert _target_collections(scope, shelf="archiv") == ["archiv_o"]
 
-    def test_shelf_project_drops_archiv(self):
+    def test_shelf_project_drops_office_shelf(self):
         scope = ["proj_a", "archiv_o"]
         assert _target_collections(scope, shelf="project") == ["proj_a"]
 
@@ -77,7 +77,7 @@ class TestTargetCollections:
 
         scoped = [
             ScopedCollection("custom_project_store", Shelf.PROJECT),
-            ScopedCollection("custom_office_store", Shelf.ARCHIV),
+            ScopedCollection("custom_office_store", Shelf.OFFICE_SHELF),
             ScopedCollection("oib_knowledge", Shelf.BASE),
         ]
         assert _target_collections([], shelf="archiv", scoped=scoped) == ["custom_office_store"]

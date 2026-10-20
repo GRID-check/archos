@@ -55,7 +55,7 @@ export function useIntakeUpload({ projectId, collectionName, dropKey, onSettled 
       projectId,
       handoverKey: projectId,
       probeNames: (names) => probe.project(projectId, names),
-      probeFassungen: (names, landsIn) => probe.projectFassungen(projectId, names, landsIn),
+      probeRevisions: (names, landsIn) => probe.projectRevisions(projectId, names, landsIn),
     },
     upload,
     folders: tree.folders,

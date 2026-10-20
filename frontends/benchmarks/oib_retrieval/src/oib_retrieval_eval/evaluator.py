@@ -37,10 +37,10 @@ from .citations import extract_units
 from .metrics import mrr
 from .metrics import ndcg_at_k
 from .metrics import recall_at_k
+from .qrels import ClauseLabel
 from .qrels import ForbiddenUnits
-from .qrels import PunktLabel
 from .qrels import Unit
-from .qrels import load_punkt_index
+from .qrels import load_clause_index
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +52,7 @@ DEFAULT_FORBIDDEN_PREFIXES = ("aenderungen_",)
 
 
 def _default_index_path() -> Path:
-    return Path(__file__).resolve().parents[2] / "fixtures" / "punkt_index.json"
+    return Path(__file__).resolve().parents[2] / "fixtures" / "clause_index.json"
 
 
 class OIBRetrievalEvaluatorConfig(EvaluatorBaseConfig, name="oib_retrieval_citation_evaluator"):
@@ -60,7 +60,7 @@ class OIBRetrievalEvaluatorConfig(EvaluatorBaseConfig, name="oib_retrieval_citat
 
     punkt_index_path: str = Field(
         default="",
-        description="Path to punkt_index.json. Empty uses the copy committed with this suite.",
+        description="Path to clause_index.json. Empty uses the copy committed with this suite.",
     )
     k: int = Field(default=DEFAULT_K, ge=1, description="Cutoff for recall/nDCG over the cited units.")
     forbidden_file_prefixes: list[str] = Field(
@@ -93,7 +93,7 @@ class OIBRetrievalEvaluator(BaseEvaluator):
         forbidden_file_prefixes: tuple[str, ...] = DEFAULT_FORBIDDEN_PREFIXES,
     ):
         super().__init__(max_concurrency=max_concurrency, tqdm_desc="OIB Retrieval Citation Evaluation")
-        self.index = load_punkt_index(index_path or _default_index_path())
+        self.index = load_clause_index(index_path or _default_index_path())
         self.k = k
         self.forbidden = ForbiddenUnits(forbidden_file_prefixes)
 
@@ -118,7 +118,7 @@ class OIBRetrievalEvaluator(BaseEvaluator):
         graded: dict[Unit, int] = {}
         try:
             for raw in labels:
-                label = PunktLabel(str(raw["richtlinie"]), str(raw["punkt"]), int(raw["grade"]))
+                label = ClauseLabel(str(raw["richtlinie"]), str(raw["punkt"]), int(raw["grade"]))
                 for unit in self.index.units(label.richtlinie, label.punkt):
                     graded[unit] = max(graded.get(unit, 0), label.grade)
         except (KeyError, TypeError, ValueError) as error:

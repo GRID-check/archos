@@ -5,7 +5,7 @@ vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn() }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleTo: vi.fn(), requireFolderWrite: vi.fn() }))
 vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
-vi.mock('@/lib/authz/organizations', () => ({ canManageArchiv: vi.fn() }))
+vi.mock('@/lib/authz/organizations', () => ({ canManageOfficeShelf: vi.fn() }))
 
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'

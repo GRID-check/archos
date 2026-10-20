@@ -29,7 +29,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { listShelfFailedDocuments, summarizeShelfFolders } from './repository'
-import { summarizeArchivDocuments, summarizeProjectDocuments } from './shelf-summary'
+import { summarizeOfficeShelfDocuments, summarizeProjectDocuments } from './shelf-summary'
 
 const session = { userId: 'user-1', organizationId: 'org-1' } as AuthorizedSession
 
@@ -68,9 +68,9 @@ describe('summarizeProjectDocuments', () => {
   })
 })
 
-describe('summarizeArchivDocuments', () => {
+describe('summarizeOfficeShelfDocuments', () => {
   it("counts the organization's Archiv for this reader", async () => {
-    await summarizeArchivDocuments(session)
+    await summarizeOfficeShelfDocuments(session)
 
     expect(requireProjectAccess).not.toHaveBeenCalled()
     expect(shelfReaderFor).toHaveBeenCalledWith(session, { scope: 'archiv', projectId: null })

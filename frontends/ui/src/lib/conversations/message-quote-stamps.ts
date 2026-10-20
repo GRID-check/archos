@@ -37,7 +37,7 @@ const MAX_STAMPS = 40
 const MAX_TEXT_CHARS = 1200
 const MAX_TITLE_CHARS = 256
 const MAX_NAME_CHARS = 256
-const MAX_PUNKT_CHARS = 64
+const MAX_CLAUSE_CHARS = 64
 const MAX_URL_CHARS = 1024
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -64,8 +64,8 @@ function sanitizeStamp(input: unknown): QuoteStamp | undefined {
   if (fileName) stamp.fileName = fileName
   const page = positive(input.page)
   if (page !== undefined) stamp.page = page
-  const punkt = cap(input.punkt, MAX_PUNKT_CHARS)
-  if (punkt) stamp.punkt = punkt
+  const clause = cap(input.punkt, MAX_CLAUSE_CHARS)
+  if (clause) stamp.punkt = clause
   const url = cap(input.url, MAX_URL_CHARS)
   if (url && /^https?:\/\//i.test(url)) stamp.url = url
   return stamp

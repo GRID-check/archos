@@ -90,7 +90,7 @@ describe('AppSidebar - click-dummy IA (FB-9/FB-10)', () => {
   })
 
   test('Members, Research, Knowledge and History no longer appear in the nav', () => {
-    render(<AppSidebar {...baseProps} canAccessArchiv />)
+    render(<AppSidebar {...baseProps} canAccessOfficeShelf />)
     // "Overview" is back, but as the label of the pinned project hub (the
     // settings segment), not the old top-level Overview route: see the next test.
     expect(screen.queryByText('Members')).not.toBeInTheDocument()
@@ -147,9 +147,9 @@ describe('AppSidebar - Automation nav item', () => {
   })
 })
 
-describe('AppSidebar - Archiv nav item (ADR-0024)', () => {
-  test('shows Archiv when canAccessArchiv is true, linking to the org Archiv', () => {
-    render(<AppSidebar {...baseProps} canAccessArchiv />)
+describe('AppSidebar - office shelf nav item (ADR-0024)', () => {
+  test('shows office shelf when canAccessOfficeShelf is true, linking to the org office shelf', () => {
+    render(<AppSidebar {...baseProps} canAccessOfficeShelf />)
     const links = screen.getAllByText('Office filing').map((el) => el.closest('a'))
     expect(links.length).toBeGreaterThan(0)
     for (const link of links) {
@@ -157,13 +157,13 @@ describe('AppSidebar - Archiv nav item (ADR-0024)', () => {
     }
   })
 
-  test('hides Archiv by default (org feature flag off)', () => {
+  test('hides office shelf by default (org feature flag off)', () => {
     render(<AppSidebar {...baseProps} />)
     expect(screen.queryByText('Office filing')).not.toBeInTheDocument()
   })
 
   test('orders Ask Piloti first and Inbox last in the section nav', () => {
-    const { container } = render(<AppSidebar {...baseProps} canAccessArchiv />)
+    const { container } = render(<AppSidebar {...baseProps} canAccessOfficeShelf />)
     // Scope to the rail's own <nav> elements so the wordmark / Settings footer
     // stay out. Archiv and Inbox are the bottom-pinned org group — a second,
     // sibling <nav> outside `[data-sidebar="content"]` — so this reads every
@@ -341,18 +341,18 @@ describe('AppSidebar - layout store mobile nav sync', () => {
 })
 
 describe('AppSidebar - the org doorways stay reachable from inside a project', () => {
-  test('marks the Archiv doorway current while its sheet is open over the project', () => {
+  test('marks the office shelf doorway current while its sheet is open over the project', () => {
     // Opening the Archiv from a project is an intercepted route: the URL is
     // `/app/archiv` while the project page (and this rail) keep standing under
     // the sheet. The rail must say where the reader IS — the doorway — without
     // un-marking the project scope it is still rendering.
     pathname = '/app/archiv'
-    render(<AppSidebar {...baseProps} canAccessArchiv />)
-    const archiv = screen
+    render(<AppSidebar {...baseProps} canAccessOfficeShelf />)
+    const officeShelf = screen
       .getAllByText('Office filing')
       .map((el) => el.closest('a'))
       .filter((link): link is HTMLAnchorElement => link !== null)
-    expect(archiv.some((link) => link.getAttribute('aria-current') === 'page')).toBe(true)
+    expect(officeShelf.some((link) => link.getAttribute('aria-current') === 'page')).toBe(true)
     // The project's own sections are still offered — the project did not go away.
     expect(screen.getAllByText('Files').length).toBeGreaterThan(0)
   })

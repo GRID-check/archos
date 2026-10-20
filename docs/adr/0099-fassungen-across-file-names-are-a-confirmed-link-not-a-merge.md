@@ -114,7 +114,7 @@ ADR-0054's same-name chain stays as it is. A same-name re-upload also gets a
 
 ### Confirmation
 
-* `frontends/ui/src/lib/documents/fassung.spec.ts` proves a held document's
+* `frontends/ui/src/lib/documents/revision-links.spec.ts` proves a held document's
   name never appears in the projected Fassung facts.
 * The aiq_api route tests prove that only the PUT creates a link and that a
   dismissed suggestion is not made again.

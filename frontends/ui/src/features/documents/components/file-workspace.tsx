@@ -54,7 +54,7 @@ import { useBriefCollapsed } from '../hooks/use-brief-collapsed'
 import { useBulkReingest } from '../hooks/use-bulk-reingest'
 import { useCompareParam } from '../hooks/use-compare-param'
 import { useMissingDocuments } from '../hooks/use-missing-documents'
-import { COMPARE_PARAM } from '../lib/fassung-compare-link'
+import { COMPARE_PARAM } from '../lib/revision-compare-link'
 import {
   buildFolderBrief,
   buildFolderBriefFromSummary,
@@ -87,7 +87,7 @@ import { FilePreviewDialog } from './file-preview-dialog'
 import { FolderBrief } from './folder-brief'
 import { FolderPickerSheet } from './folder-picker-sheet'
 import { SelectionBar } from './selection-bar'
-import { withoutOlderFassungen } from '../lib/fassung-chain'
+import { withoutOlderRevisions } from '../lib/revision-chain'
 import { sortedFolderDestinations } from '../lib/folder-path-label'
 import { FilesHeaderControls } from './files-header-controls'
 import { FolderAccessDialog } from './folder-access-dialog'
@@ -299,7 +299,7 @@ export function FileWorkspace({
   // A link (`?doc=`, `?compare=`, the Archiv's `?model=`) to a document no
   // loaded page holds is read on its own.
   const byNameClient = useMemo(() => createDocumentByNameClient(), [])
-  const resolveArchivByName = useCallback((name: string) => byNameClient.archiv([name]), [byNameClient])
+  const resolveOfficeShelfByName = useCallback((name: string) => byNameClient.officeShelf([name]), [byNameClient])
   const loadedFiles = useMemo(
     () => (listing.files.length === 0 ? level.files : mergeById(level.files, listing.files)),
     [level.files, listing.files]
@@ -309,7 +309,7 @@ export function FileWorkspace({
     ids: [searchParams?.get('doc'), searchParams?.get(COMPARE_PARAM)],
     byName:
       shelf.showModels && shelf.projectId === null
-        ? { name: searchParams?.get('model')?.trim() || null, resolve: resolveArchivByName }
+        ? { name: searchParams?.get('model')?.trim() || null, resolve: resolveOfficeShelfByName }
         : undefined,
   })
   const files = useMemo(
@@ -448,7 +448,7 @@ export function FileWorkspace({
         if (file) openRef.current(file)
       },
       // A link was confirmed or taken back: the section reports BOTH documents of it.
-      onFassungChanged: (id, fassung) => patchFile(id, { fassung }),
+      onRevisionChanged: (id, revision) => patchFile(id, { fassung: revision }),
       // After a successful re-ingestion the document is back to 'pending'; the
       // dead-end failure UI clears and the badge flips to "Processing".
       onReingested: (id, status) => patchFile(id, { status, errorMessage: null }),
@@ -640,15 +640,15 @@ export function FileWorkspace({
     [paneFiles, filters, canCollaborate, shelf.currentUserId]
   )
   // One entry per document: an older Fassung leaves the listing when its newer
-  // one is listed (`isOlderFassung`). Asked after the other filters, over what
+  // one is listed (`isOlderRevision`). Asked after the other filters, over what
   // they kept, so an older one whose newer one a filter hid stays visible. On a
   // paged level it is asked of the pages read so far: which document replaces
   // which is a link in the backend's index, not a column the server could
   // leave a row out by (ADR-0099, ADR-0102). The search runs on
   // `filteredFiles` and applies the same rule to its own matches in the pane.
   const listedFiles = useMemo(
-    () => withoutOlderFassungen(filteredFiles, filters.showOlderFassungen),
-    [filteredFiles, filters.showOlderFassungen]
+    () => withoutOlderRevisions(filteredFiles, filters.showOlderRevisions),
+    [filteredFiles, filters.showOlderRevisions]
   )
   // The rows of the level on screen. A paged level already is one, and the
   // filter keeps a row moved out of it from lingering until the next read.
@@ -957,7 +957,7 @@ export function FileWorkspace({
             <FileBrowserPane
               files={levelFiles}
               searchFiles={filteredFiles}
-              showOlderFassungen={filters.showOlderFassungen}
+              showOlderRevisions={filters.showOlderRevisions}
               selectedFileId={channel.openId}
               onSelectFile={selectFile}
               // A skeleton only while there is nothing to show: a reload of the
@@ -1066,7 +1066,7 @@ export function FileWorkspace({
         pending={shelfUpload.decision.pending}
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
-        onFassungChange={shelfUpload.onFassungChange}
+        onRevisionChange={shelfUpload.onRevisionChange}
       />
 
       {/* What belongs in a folder (migration 0145), on both shelves. */}
@@ -1102,7 +1102,7 @@ export function FileWorkspace({
           onReingested={handlers.onReingested}
           onTagsUpdated={handlers.onTagsUpdated}
           onOpenDocument={handlers.onOpenDocument}
-          onFassungChanged={handlers.onFassungChanged}
+          onRevisionChanged={handlers.onRevisionChanged}
           onMarksChanged={handlers.onMarksChanged}
           onRenamed={handlers.onRenamed}
           onDeleted={handlers.onDeleted}

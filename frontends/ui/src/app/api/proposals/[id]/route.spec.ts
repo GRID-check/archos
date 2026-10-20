@@ -40,8 +40,8 @@ vi.mock('@/lib/documents/service', () => ({
   resolveProjectDocumentsByName: vi.fn(),
   renameDocument: vi.fn(),
 }))
-vi.mock('@/lib/archiv/service', () => ({ resolveArchivDocumentsByName: vi.fn() }))
-vi.mock('@/lib/archiv/folder-service', () => ({ listArchivFolders: vi.fn() }))
+vi.mock('@/lib/office-shelf/service', () => ({ resolveOfficeShelfDocumentsByName: vi.fn() }))
+vi.mock('@/lib/office-shelf/folder-service', () => ({ listOfficeShelfFolders: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ listProjectFolders: vi.fn(), createProjectFolder: vi.fn() }))
 vi.mock('@/lib/documents/move-to-folder', () => ({ moveDocumentToFolder: vi.fn() }))
 vi.mock('@/lib/assignments/service', () => ({
@@ -87,8 +87,8 @@ import {
   NotFoundError,
 } from '@/lib/api/errors'
 import { addResourceAssignment, listAssignmentCandidates } from '@/lib/assignments/service'
-import { listArchivFolders } from '@/lib/archiv/folder-service'
-import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
+import { listOfficeShelfFolders } from '@/lib/office-shelf/folder-service'
+import { resolveOfficeShelfDocumentsByName } from '@/lib/office-shelf/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { requireMayRememberFrom } from '@/lib/conversations/cross-project-use'
 import { findConversationInOrg } from '@/lib/conversations/repository'
@@ -409,8 +409,8 @@ describe('POST /api/proposals/[id]/apply', () => {
   })
 
   it('moves an Archiv document within the Archiv’s own folders, and to the root on an empty path', async () => {
-    vi.mocked(resolveArchivDocumentsByName).mockResolvedValue([listed('doc_b', 'Vorlage.docx')])
-    vi.mocked(listArchivFolders).mockResolvedValue([folder('a_vorlagen', 'Vorlagen')])
+    vi.mocked(resolveOfficeShelfDocumentsByName).mockResolvedValue([listed('doc_b', 'Vorlage.docx')])
+    vi.mocked(listOfficeShelfFolders).mockResolvedValue([folder('a_vorlagen', 'Vorlagen')])
     store.set(
       ID,
       row({

@@ -1081,7 +1081,7 @@ describe('a ledger round draws its own fan', () => {
     expect(fanSlots(g, 0).map((s) => s.loci?.map((l) => l.detail))).toEqual([[undefined], [undefined]])
   })
 
-  test('one document opened at two Punkte is ONE slot carrying both', () => {
+  test('one document opened at two clauses is ONE slot carrying both', () => {
     const g = build(ledger)
     const slots = fanSlots(g, 2)
     expect(slots.map((s) => s.card?.id)).toEqual(['a'])

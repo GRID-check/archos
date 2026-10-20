@@ -151,7 +151,7 @@ class TestTheEffects:
         def row(name: str, shelf: Shelf) -> AvailableDocument:
             return stamp_document(AvailableDocument(file_name=name), collection="c", shelf=shelf)
 
-        docs = [row(f"p{i}.pdf", Shelf.PROJECT) for i in range(3)] + [row("a.pdf", Shelf.ARCHIV)]
+        docs = [row(f"p{i}.pdf", Shelf.PROJECT) for i in range(3)] + [row("a.pdf", Shelf.OFFICE_SHELF)]
         state = ResearchAgentState(messages=[HumanMessage(content="Was steht im Bescheid?")], available_documents=docs)
         facts = _turn_facts(state, None)
         assert (facts.project_files, facts.archive_files) == (3, 1)

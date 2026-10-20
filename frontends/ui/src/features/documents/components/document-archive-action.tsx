@@ -103,7 +103,7 @@ export function DocumentArchiveAction({
           data-testid="document-lifecycle-archive"
           onClick={() => setAsking(true)}
         >
-          {t('preview.fassung.rail.archive')}
+          {t('preview.revision.rail.archive')}
         </Button>
       ) : (
         <>

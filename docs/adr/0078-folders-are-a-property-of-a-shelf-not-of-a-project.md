@@ -71,7 +71,7 @@ prefix and the audit action's name. Everything else is written once:
 * the folder route handlers (`folder-route-handlers.ts`); each `route.ts` still
   calls `apiRoute` and declares its own `authz`.
 
-`lib/projects/folder-service.ts` and `lib/archiv/folder-service.ts` are the names
+`lib/projects/folder-service.ts` and `lib/office-shelf/folder-service.ts` are the names
 each shelf's callers know these by, nothing more.
 
 ### The schema (migration 0102)
@@ -106,7 +106,7 @@ something else forces a table swap.
 
 Any member of the organization reads the Archiv's folders, as they read the
 Archiv. Creating, renaming, moving, deleting, ensuring and filing take
-`org:archiv:manage` (`canManageArchiv`), the permission that already gates
+`org:archiv:manage` (`canManageOfficeShelf`), the permission that already gates
 uploading into and deleting from the Archiv. No new permission, so nothing to
 provision.
 

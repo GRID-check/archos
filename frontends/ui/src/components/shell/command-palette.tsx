@@ -100,7 +100,7 @@ export interface CommandPaletteProps {
    */
   showSkills?: boolean
   /** Whether the org-wide Archiv is reachable (ADR-0024). */
-  canAccessArchiv?: boolean
+  canAccessOfficeShelf?: boolean
 }
 
 export function CommandPalette({
@@ -111,7 +111,7 @@ export function CommandPalette({
   showKnowledge = false,
   showModels = false,
   showSkills = false,
-  canAccessArchiv = false,
+  canAccessOfficeShelf = false,
 }: CommandPaletteProps) {
   const router = useRouter()
   const pathname = usePathname() ?? ''
@@ -217,7 +217,7 @@ export function CommandPalette({
           <>
             <CommandSeparator />
             <CommandGroup heading={t('groups.currentProject')}>
-              {paletteSections({ showKnowledge, showSkills, showModels, canAccessArchiv }).map((item) => {
+              {paletteSections({ showKnowledge, showSkills, showModels, canAccessOfficeShelf }).map((item) => {
                 const Icon = item.icon
                 const label = tNav(`sections.${item.i18nKey}`)
                 const href =

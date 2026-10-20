@@ -118,7 +118,7 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     PROJECT_STATUS_FIELD,
     *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "gebaeudeklasse"),
     PARAGRAPH_FIELD,
-    # Locators and labels the chunkers write (``punkt_chunking``,
+    # Locators and labels the chunkers write (``clause_chunking``,
     # ``section_chunking``, the adapter's visual documents) and a model may
     # name in ``knowledge_search``'s raw ``filters``. ``page_end`` is written
     # as a string, like ``page_label``. Large or unbounded fields

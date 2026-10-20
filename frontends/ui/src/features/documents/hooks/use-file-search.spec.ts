@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { act, renderHook, waitFor } from '@/test-utils'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
-import { ARCHIV_SEARCH_SCOPE, projectSearchScope } from '../lib/file-shelf'
+import { OFFICE_SHELF_SEARCH_SCOPE, projectSearchScope } from '../lib/file-shelf'
 import { useFileSearch } from './use-file-search'
 
 describe('useFileSearch', () => {
@@ -30,7 +30,7 @@ describe('useFileSearch', () => {
   })
 
   it('searches the Archiv on its own route, shelf-wide', async () => {
-    const { result } = renderHook(() => useFileSearch(ARCHIV_SEARCH_SCOPE))
+    const { result } = renderHook(() => useFileSearch(OFFICE_SHELF_SEARCH_SCOPE))
     act(() => result.current.setQuery('Brandschutz'))
     act(() => result.current.run())
 
@@ -46,7 +46,7 @@ describe('useFileSearch', () => {
   })
 
   it('drops semantic mode on any edit to the query', async () => {
-    const { result } = renderHook(() => useFileSearch(ARCHIV_SEARCH_SCOPE))
+    const { result } = renderHook(() => useFileSearch(OFFICE_SHELF_SEARCH_SCOPE))
     act(() => result.current.setQuery('a'))
     act(() => result.current.run())
     await waitFor(() => expect(result.current.semantic.active).toBe(true))

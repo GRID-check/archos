@@ -88,7 +88,7 @@ export const proposedChanges = pgTable(
       .where(sql`${table.status} = 'proposed'`),
     scopeKnown: check('proposed_changes_scope_known', sql`${table.scope} IN (${list(PROPOSAL_SCOPES)})`),
     scopeOwner: check('proposed_changes_scope_owner', sql`(${table.scope} = 'project') = (${table.projectId} IS NOT NULL)`),
-    archivMove: check(
+    officeShelfMove: check(
       'proposed_changes_archiv_move',
       sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "buero"))'), false)`
     ),

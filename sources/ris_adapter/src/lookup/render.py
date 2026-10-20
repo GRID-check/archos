@@ -114,7 +114,7 @@ def _hit(passage: Passage) -> GroundingHit:
         folder_path=None,
         # The locus as a lawyer reads it, ``§ 63 Abs 1``: the same string the
         # citation key carries and the chip shows.
-        punkt=passage.punkt_label or None,
+        punkt=passage.clause_label or None,
         score=passage.score,
         content_type="text",
         provenance=None,

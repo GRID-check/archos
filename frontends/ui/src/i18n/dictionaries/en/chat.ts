@@ -83,7 +83,7 @@ export const chat = {
     // actionable card (the assistant referenced it; open in Office filing / project
     // files) rather than a silent dead tile.
     unresolvedHint: 'The assistant referenced this file.',
-    openInArchive: 'Open in Office filing',
+    openInOfficeShelf: 'Open in Office filing',
     openInFiles: 'Open in project files',
     // The resolve fetch failed — a retry affordance, not a permanent dead tile.
     loadError: 'Documents couldn’t be loaded.',
@@ -262,8 +262,8 @@ export const chat = {
     // sources use: the count first, every name on expand.
     more: '+{count} more',
     less: 'Show fewer',
-    punkt: 'Pkt. {punkt}',
-    punktPage: 'Pkt. {punkt} · p. {page}',
+    clause: 'Pkt. {clause}',
+    clausePage: 'Pkt. {clause} · p. {page}',
     // Citations the user can actually paste somewhere — per source (Fachtext)
     // and for the whole answer in the formats external tools ingest.
     copyCitation: 'Copy citation',
@@ -390,9 +390,9 @@ export const chat = {
     retrievedOnly: 'Read',
     // The cited document is a Fassung a person has since replaced. The citation stays true of the file it names;
     // the reader should know before relying on it.
-    olderFassung: 'Older revision. Current:',
-    openCurrentFassungAria: 'Open the current revision: {name}',
-    currentFassungUnavailable: 'The current revision cannot be opened.',
+    olderRevision: 'Older revision. Current:',
+    openCurrentRevisionAria: 'Open the current revision: {name}',
+    currentRevisionUnavailable: 'The current revision cannot be opened.',
   },
   breadcrumb: {
     ariaLabel: 'Conversation breadcrumb',
@@ -444,11 +444,11 @@ export const chat = {
       groupAria: 'Follow-up questions',
       // The one client-side chip under a long answer: the offer nobody
       // otherwise discovers — Piloti writes, too (ledger 23).
-      aktenvermerk: 'Write this up as a file note',
+      fileNote: 'Write this up as a file note',
       // What the chip types into the composer. Deliberately not the label: the
       // label is a sentence fragment, not a request. It is prefill and not a
       // command, so the reader can edit it before pressing send.
-      aktenvermerkPrefill: 'Write that up as a file note in my project.',
+      fileNotePrefill: 'Write that up as a file note in my project.',
     },
     keyTakeaways: {
       eyebrow: 'What matters most',
@@ -747,17 +747,17 @@ export const chat = {
       fireAccess: {
         routeWidth: 'Access route width',
         gateClearance: 'Gateway clear height',
-        aufstellflaecheWidth: 'Aufstellfläche width',
-        aufstellflaecheLength: 'Aufstellfläche length',
+        stagingAreaWidth: 'Aufstellfläche width',
+        stagingAreaLength: 'Aufstellfläche length',
         facadeDistance: 'Distance to facade',
         walkToEntrance: 'Walk to entrance',
         parcel: 'Parcel {width} × {depth} m',
         route: 'ACCESS',
         building: 'Building',
-        aufstellflaeche: 'Aufstellfläche',
+        stagingArea: 'Aufstellfläche',
         entrance: 'Entrance',
         street: 'STREET',
-        gebaeudeklasse: 'Gebäudeklasse',
+        buildingClass: 'Gebäudeklasse',
         walkTooFar: ' — the walk to the entrance exceeds the permitted distance.',
       },
       guardrail: {
@@ -819,17 +819,17 @@ export const chat = {
       depth: 'Depth',
       depths: { kurzpruefung: 'Short review', gutachten: 'Full opinion' },
       /** The documents the reader names for the run, and the sources it may use. */
-      unterlagen: {
+      documents: {
         label: 'Documents',
-        grundlage: 'Read in full:',
-        ausgeschlossen: 'Excluded:',
+        basis: 'Read in full:',
+        excluded: 'Excluded:',
         none: 'No documents named — the research reads what it finds.',
         choose: 'Choose documents',
         removeRead: 'No longer read in full: {name}',
         removeExcluded: 'No longer excluded: {name}',
       },
-      rahmen: 'Sources',
-      rahmenNote: 'The sources selected in the composer. Change them there before approving.',
+      frame: 'Sources',
+      frameNote: 'The sources selected in the composer. Change them there before approving.',
     },
     needsInput: 'Piloti needs your input',
     receivedInput: 'Piloti received your input',
@@ -1117,8 +1117,8 @@ export const chat = {
     // not turns or calls (see ChatThinking). The sources clause is ABSENT when
     // there are none: "0 sources" is a true number that reads as a failure, and
     // an answer grounded in a measurement of the model rightly has no citations.
-    herleitungSummary: 'Trace',
-    herleitungSummaryWithSources: 'Trace · {count, plural, one {# source} other {# sources}}',
+    derivationSummary: 'Trace',
+    derivationSummaryWithSources: 'Trace · {count, plural, one {# source} other {# sources}}',
     // aria-label naming the reasoning graph as one region for screen readers.
     reasoningGraphLabel: 'Reasoning trace',
     stepsLabel: 'Thinking steps',
@@ -1175,8 +1175,8 @@ export const chat = {
       // The locus half of `roundFoldOne`, in the answer's own words (cf.
       // `answerSources.punktPage`): the passage, not the mechanism.
       roundFoldLocusPage: 'p. {page}',
-      roundFoldLocusPunkt: 'Pkt. {punkt}',
-      roundFoldLocusPunktPage: 'Pkt. {punkt} · p. {page}',
+      roundFoldLocusClause: 'Pkt. {clause}',
+      roundFoldLocusClausePage: 'Pkt. {clause} · p. {page}',
       // Accessible name of the control that folds and unfolds the layer. The
       // card's own text is a conclusion and makes a poor control name.
       roundFold: 'Collapse step {n}',

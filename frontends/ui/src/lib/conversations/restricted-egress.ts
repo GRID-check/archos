@@ -173,7 +173,7 @@ export async function folderRestrictsReading(
 }
 
 /** The Archiv is the organization's shelf: every member reads it, and no project folder restricts it. */
-const ARCHIV_SHELF = 'archiv'
+const OFFICE_SHELF = 'archiv'
 
 /**
  * Refuse a run's Unterlagen when one of them is a project document filed in a
@@ -199,7 +199,7 @@ export async function requirePlanDocumentsOpen(
   documents: readonly PlanDocument[],
   locale: Locale
 ): Promise<void> {
-  const names = documents.filter((document) => document.shelf !== ARCHIV_SHELF).map((document) => document.name)
+  const names = documents.filter((document) => document.shelf !== OFFICE_SHELF).map((document) => document.name)
   if (names.length === 0) return
   const folders = await listProjectFolderTree(organizationId, projectId)
   // No folder has its own list, so every folder is read by every member.

@@ -207,7 +207,7 @@ class TestParseDrawingFields:
 
 
 class TestSummaryFromDrawingFields:
-    def test_prefers_zusammenfassung_sentences(self):
+    def test_prefers_summary_sentences(self):
         pages = [{"fields": _parse_drawing_fields(_VLM_DRAWING_RESPONSE)}]
         summary = _summary_from_drawing_fields(pages)
         assert summary is not None

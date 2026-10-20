@@ -371,8 +371,8 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   // failure to find anything.
   const summaryLabel =
     sourceCount > 0
-      ? t('thinking.herleitungSummaryWithSources', { count: sourceCount })
-      : t('thinking.herleitungSummary')
+      ? t('thinking.derivationSummaryWithSources', { count: sourceCount })
+      : t('thinking.derivationSummary')
 
   const status: HeaderStatus = isThinking
     ? 'live'
@@ -471,7 +471,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
               phase is announced from a status outside the button. */}
           <button
             type="button"
-            data-herleitung-trigger
+            data-derivation-trigger
             className="group relative flex min-h-12 w-full cursor-pointer items-center justify-between rounded-2xl px-4 py-3 text-left outline-none transition-colors duration-snap ease-out motion-reduce:transition-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             <span className="sr-only">{`${phaseWord} · ${summaryLabel}`}</span>
@@ -500,7 +500,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                 <AnimatePresence mode="popLayout" initial={false}>
                   <motion.span
                     key={labelKey}
-                    data-herleitung-label
+                    data-derivation-label
                     className={cn(
                       'block text-sm font-semibold',
                       shimmer ? undefined : 'text-foreground'
@@ -570,7 +570,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
         <AnimatePresence initial={false} custom={{ reason: closeReason, reducedMotion }}>
           {open && (
             <motion.div
-              key="herleitung-content"
+              key="derivation-content"
               custom={{ reason: closeReason, reducedMotion }}
               variants={contentVariants}
               initial="hidden"
@@ -757,7 +757,7 @@ const RollingCount: FC<{ value: string; roll: RollMotion }> = ({ value, roll }) 
         className="invisible absolute whitespace-nowrap before:content-[attr(data-text)]"
       />
       <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span key={value} data-herleitung-count className="col-start-1 row-start-1" {...roll}>
+        <motion.span key={value} data-derivation-count className="col-start-1 row-start-1" {...roll}>
           {value}
         </motion.span>
       </AnimatePresence>

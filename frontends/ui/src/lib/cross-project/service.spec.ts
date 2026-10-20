@@ -454,9 +454,9 @@ describe('searchAcrossProjects', () => {
   })
 
   it('walks the projects most like the current one first by default', async () => {
-    const facts = (bundesland: string, gk: number) => ({
+    const facts = (federalState: string, gk: number) => ({
       facts: {
-        bundesland: { value: bundesland, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
+        bundesland: { value: federalState, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
         gebaeudeklasse: { value: gk, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
       },
       goals: {},
@@ -562,8 +562,8 @@ describe('searchAcrossProjects', () => {
     // The turn's precedent prefetch searches `closed`: newest first, it searched
     // the eight newest closed projects and missed the catalog's closest ones.
     const closed = { status: 'closed' as const, closedAt: new Date(), closedBy: OWNER }
-    const profile = (bundesland: string) => ({
-      facts: { bundesland: { value: bundesland, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' } },
+    const profile = (federalState: string) => ({
+      facts: { bundesland: { value: federalState, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' } },
       goals: {},
       unknowns: [],
       assumptions: {},
@@ -805,13 +805,13 @@ describe('searchAcrossProjects in one grouped query (ADR-0116)', () => {
     expect(state.groupedCalls[0].options.boost).toEqual({
       facts: { bundesland: 'wien', gebaeudeklasse: [], bauweise: ['holzbau'], nutzungen: [], vorhabensart: [] },
       weights: {
-        bundesland: SIMILARITY_WEIGHTS.bundesland,
-        gebaeudeklasse: SIMILARITY_WEIGHTS.gebaeudeklasse,
-        gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.gebaeudeklasseAdjacent,
-        bauweise: SIMILARITY_WEIGHTS.bauweise,
-        nutzung: SIMILARITY_WEIGHTS.nutzung,
-        nutzung_max: SIMILARITY_WEIGHTS.nutzungMax,
-        vorhabensart: SIMILARITY_WEIGHTS.vorhabensart,
+        bundesland: SIMILARITY_WEIGHTS.federalState,
+        gebaeudeklasse: SIMILARITY_WEIGHTS.buildingClass,
+        gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.buildingClassAdjacent,
+        bauweise: SIMILARITY_WEIGHTS.constructionMethod,
+        nutzung: SIMILARITY_WEIGHTS.use,
+        nutzung_max: SIMILARITY_WEIGHTS.useMax,
+        vorhabensart: SIMILARITY_WEIGHTS.workType,
       },
     })
     // `all` walks newest first by definition: nothing to be like.

@@ -16,7 +16,7 @@ same input, same output, in order of first appearance, deduplicated, capped at `
 from __future__ import annotations
 
 _PARAGRAPH = "§"
-_OIB_RICHTLINIE_TOKEN = "oib-richtlinie"
+_OIB_GUIDELINE_TOKEN = "oib-richtlinie"
 _MIN_ALLCAPS_LEN = 3
 
 #: Quote characters that open/close a quoted phrase (straight + German low/high pairs).
@@ -170,7 +170,7 @@ def extract_exact_terms(query: str, *, max_terms: int = 3) -> list[str]:
             skip_next = True
         elif token.startswith(_PARAGRAPH) and _is_paragraph_number(token[len(_PARAGRAPH) :]):
             found.append((start, f"{_PARAGRAPH} {token[len(_PARAGRAPH) :].rstrip('.')}"))
-        elif token.casefold() == _OIB_RICHTLINIE_TOKEN and _is_paragraph_number(following):
+        elif token.casefold() == _OIB_GUIDELINE_TOKEN and _is_paragraph_number(following):
             found.append((start, f"OIB-Richtlinie {following.rstrip('.')}"))
             skip_next = True
         elif len(token) >= _MIN_ALLCAPS_LEN and token.isupper():

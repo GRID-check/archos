@@ -30,10 +30,10 @@ from aiq_agent.knowledge.scoping import ScopedCollection
 from sources.knowledge_layer.src.read_passage import _MAX_PASSAGE_CHUNKS
 from sources.knowledge_layer.src.read_passage import _READ_PASSAGE_DESCRIPTION
 from sources.knowledge_layer.src.read_passage import ReadPassageConfig
+from sources.knowledge_layer.src.read_passage import _clause_sort_key
 from sources.knowledge_layer.src.read_passage import _document_names
 from sources.knowledge_layer.src.read_passage import _matches
 from sources.knowledge_layer.src.read_passage import _passage_filters
-from sources.knowledge_layer.src.read_passage import _punkt_sort_key
 from sources.knowledge_layer.src.read_passage import read_passage
 from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
 
@@ -149,7 +149,7 @@ class TestResolution:
     def test_a_parts_alias_never_opens_its_sibling(self, wanted: str):
         assert not _matches(_document("oib-rl_2.1_ausgabe_mai_2023.pdf"), wanted.casefold())
 
-    def test_a_leitfaden_gets_no_member_alias(self):
+    def test_a_guide_gets_no_member_alias(self):
         names = _document_names(_document("oib-rl_2_leitfaden_ausgabe_mai_2023.pdf"))
         assert not any(name.startswith(("OIB 2", "OIB-RL 2")) for name in names)
 
@@ -174,7 +174,7 @@ class TestResolution:
         assert store.calls == []
         assert "--- Result 1 ---" not in out
 
-    async def test_a_document_with_no_such_punkt_says_so_rather_than_returning_a_neighbour(self, store):
+    async def test_a_document_with_no_such_clause_says_so_rather_than_returning_a_neighbour(self, store):
         store.chunks = []
 
         out = await _read(document=OIB, punkt="9.9.9")
@@ -186,7 +186,7 @@ class TestResolution:
 class TestTheFilterIsTheAnswer:
     """What comes back is what was addressed, decided by the store, not by rank."""
 
-    def test_a_punkt_request_filters_on_file_and_punkt(self):
+    def test_a_clause_request_filters_on_file_and_clause(self):
         assert _passage_filters(OIB, "3.5.2", None) == {
             "$and": [{"file_name": {"$eq": OIB}}, {"punkt_id": {"$eq": "3.5.2"}}]
         }
@@ -199,7 +199,7 @@ class TestTheFilterIsTheAnswer:
             "$and": [{"file_name": {"$eq": OIB}}, {"page_label": {"$in": labels}}]
         }
 
-    def test_both_together_read_that_punkt_on_that_page(self):
+    def test_both_together_read_that_clause_on_that_page(self):
         clauses = _passage_filters(OIB, "3.5.2", 12)["$and"]
         assert clauses == [
             {"file_name": {"$eq": OIB}},
@@ -207,7 +207,7 @@ class TestTheFilterIsTheAnswer:
             {"page_label": {"$in": [str(number) for number in range(4, 13)]}},
         ]
 
-    async def test_a_punkt_request_drops_the_page_beside_it(self, store):
+    async def test_a_clause_request_drops_the_page_beside_it(self, store):
         """Every chunk of a Punkt is filed under its first page, so a page next
         to the number can only repeat it or empty the read."""
         await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", punkt="3.5.2", page=13)
@@ -216,7 +216,7 @@ class TestTheFilterIsTheAnswer:
         assert {"punkt_id": {"$eq": "3.5.2"}} in call["filters"]["$and"]
         assert not any("page_label" in clause for clause in call["filters"]["$and"])
 
-    async def test_the_punkt_reaches_the_store_as_a_filter(self, store):
+    async def test_the_clause_reaches_the_store_as_a_filter(self, store):
         await _read(document="OIB-Richtlinie 2, Ausgabe Mai 2023", punkt="3.5.2")
 
         (call,) = store.calls
@@ -254,7 +254,7 @@ class TestTheFilterIsTheAnswer:
     def test_a_paragraph_locator_asks_for_both_spellings(self):
         assert _passage_filters(OIB, "§3", None)["$and"][1] == {"punkt_id": {"$in": ["§ 3", "§3"]}}
 
-    async def test_neither_punkt_nor_page_outlines_the_document_instead_of_refusing(self, store):
+    async def test_neither_clause_nor_page_outlines_the_document_instead_of_refusing(self, store):
         """Naming only the document is the OVERVIEW question, not a malformed call.
 
         It used to be refused, and the model answered the refusal by guessing a
@@ -271,20 +271,20 @@ class TestTheFilterIsTheAnswer:
         assert "## Gliederung" not in out
         assert len(store.calls) == 2
 
-    def test_the_order_is_page_then_punkt_numerically(self):
+    def test_the_order_is_page_then_clause_numerically(self):
         """`3.10` after `3.9`, which a string sort gets backwards."""
         chunks = [
             _chunk(punkt="3.10", page=5, chunk_id="x"),
             _chunk(punkt="3.9", page=5, chunk_id="y"),
             _chunk(punkt="1.1", page=4, chunk_id="z"),
         ]
-        assert [c.chunk_id for c in sorted(chunks, key=_punkt_sort_key)] == ["z", "y", "x"]
+        assert [c.chunk_id for c in sorted(chunks, key=_clause_sort_key)] == ["z", "y", "x"]
 
     def test_a_long_tables_row_groups_come_back_in_order(self):
         """Every row group of a table shares page and ``punkt_id`` and its chunk
         id is a random uuid: "Teil 1 von N" … "Teil N von N" came back shuffled."""
         from knowledge_layer.llamaindex.captioned_tables import PageTable
-        from knowledge_layer.llamaindex.punkt_chunking import punkt_documents
+        from knowledge_layer.llamaindex.clause_chunking import clause_documents
 
         body = "\n".join(f"{n} Punkt Nummer {n}\nText zu Punkt {n}, lang genug um zu zählen." for n in range(1, 8))
         rows = [[f"{n} Bauteil mit einer längeren Bezeichnung", "REI 60", "REI 90"] for n in range(120)]
@@ -293,7 +293,7 @@ class TestTheFilterIsTheAnswer:
             {"page_number": 1, "text": "OIB-Richtlinie 9 Ausgabe Mai 2023\n" + body},
             {"page_number": 2, "text": "", "tables": [table]},
         ]
-        groups = [d for d in punkt_documents(pages, OIB, 1) if d.metadata["chunking"] == "table"]
+        groups = [d for d in clause_documents(pages, OIB, 1) if d.metadata["chunking"] == "table"]
         assert len(groups) > 2
         # Chunk ids that sort against the parts, as a uuid may.
         chunks = [
@@ -303,7 +303,7 @@ class TestTheFilterIsTheAnswer:
         for chunk, doc in zip(chunks, groups, strict=True):
             chunk.metadata["table_part"] = doc.metadata["table_part"]
 
-        ordered = sorted(chunks, key=_punkt_sort_key)
+        ordered = sorted(chunks, key=_clause_sort_key)
 
         assert [f"Teil {n} von {len(groups)}" in c.content for n, c in enumerate(ordered, start=1)] == [True] * len(
             groups
@@ -314,7 +314,7 @@ class TestTheFilterIsTheAnswer:
         chunks = [_chunk(punkt="3.2", page=7, chunk_id=f"{9 - n}") for n in range(1, 4)]
         for part, chunk in enumerate(chunks, start=1):
             chunk.metadata["section_part"] = part
-        assert [c.metadata["section_part"] for c in sorted(chunks, key=_punkt_sort_key)] == [1, 2, 3]
+        assert [c.metadata["section_part"] for c in sorted(chunks, key=_clause_sort_key)] == [1, 2, 3]
 
     def test_pageless_sections_come_back_in_document_order_not_alphabetically(self):
         """A Markdown file has no page and its sections no number to sort on."""
@@ -322,7 +322,7 @@ class TestTheFilterIsTheAnswer:
         chunks = [_chunk(punkt=title, chunk_id=title) for title in titles]
         for order, chunk in enumerate(chunks):
             chunk.metadata["section_order"] = order
-        assert [c.chunk_id for c in sorted(reversed(chunks), key=_punkt_sort_key)] == titles
+        assert [c.chunk_id for c in sorted(reversed(chunks), key=_clause_sort_key)] == titles
 
 
 class TestFormatParity:
@@ -347,7 +347,7 @@ class TestFormatParity:
         )
         assert out == expected
 
-    async def test_the_block_carries_the_citation_the_punkt_and_the_trace_lanes(self, store):
+    async def test_the_block_carries_the_citation_the_clause_and_the_trace_lanes(self, store):
         out = await _read(document=OIB, punkt="3.5.2")
 
         assert f"Citation: {OIB}, p.12" in out
@@ -396,7 +396,7 @@ class TestLaneToolStamp:
 
         assert turn_status.current_lane_tool() is None
 
-    async def test_only_the_addressed_punkt_is_returned(self, store):
+    async def test_only_the_addressed_clause_is_returned(self, store):
         """The stub store ignores filters, so the tool must not.
 
         A real store applies the metadata filter; this one hands back all three

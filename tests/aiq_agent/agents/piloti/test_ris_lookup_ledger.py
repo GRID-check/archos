@@ -48,7 +48,7 @@ def _passage(punkt: str, *, title: str = "Bauordnung für Wien", url: str = _LAW
         title=title,
         url=url,
         collection="ris/LrKons/Wien",
-        punkt_label=punkt,
+        clause_label=punkt,
         citation=f"{title}, {punkt}",
         body="…",
         score=1.0,

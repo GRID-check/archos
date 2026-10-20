@@ -70,7 +70,7 @@ describe('FollowUpsRail', () => {
 /**
  * „Als Aktenvermerk schreiben" (ledger 23) — the one chip the CLIENT offers.
  *
- * The condition lives in `lib/aktenvermerk-chip` and is tested there; what is
+ * The condition lives in `lib/file-note-chip` and is tested there; what is
  * tested here is that the offer reaches the rail, keeps the chips' one promise
  * (fill the composer, do nothing else), and — the part a stage-only rail got
  * wrong — that it can appear on a turn the follow-up stage never produced
@@ -89,7 +89,7 @@ describe('FollowUpsRail — the Aktenvermerk offer', () => {
   })
 
   it('rides beside the questions, last', () => {
-    render(<FollowUpsRail items={items} offerAktenvermerk />)
+    render(<FollowUpsRail items={items} offerFileNote />)
     const labels = screen.getAllByRole('button').map((b) => b.textContent)
     expect(labels).toHaveLength(3)
     expect(labels[2]).toContain('file note')
@@ -98,13 +98,13 @@ describe('FollowUpsRail — the Aktenvermerk offer', () => {
   it('appears on a turn that produced no follow-up questions at all', () => {
     // The rail used to be mounted only where a stage had delivered items, so an
     // offer computed in the browser had no surface to land on.
-    render(<FollowUpsRail items={[]} offerAktenvermerk />)
+    render(<FollowUpsRail items={[]} offerFileNote />)
     expect(screen.getByTestId('follow-ups-rail')).toBeInTheDocument()
     expect(screen.getAllByRole('button')).toHaveLength(1)
   })
 
   it('fills the composer with the ASK, not with its own label, and writes nothing', async () => {
-    render(<FollowUpsRail items={[]} offerAktenvermerk />)
+    render(<FollowUpsRail items={[]} offerFileNote />)
     await userEvent.click(screen.getByTestId('follow-up-action-aktenvermerk'))
 
     expect(setComposerPrefill).toHaveBeenCalledTimes(1)

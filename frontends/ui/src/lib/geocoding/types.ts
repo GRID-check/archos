@@ -27,7 +27,7 @@ export const geocodeResultSchema = z.object({
   /**
    * The intake `A2_land` token (`wien`, `niederoesterreich`, …), or null when
    * the provider named no Land we can match. The wizard's own vocabulary:
-   * `BUNDESLAND_TOKENS` in `lib/project-profile/intake-definition.ts`.
+   * `FEDERAL_STATE_TOKENS` in `lib/project-profile/intake-definition.ts`.
    */
   bundesland: z.string().nullable(),
   /** The provider's state label as it reads to a person ("Niederösterreich"); Vienna is "Wien". */
@@ -39,7 +39,7 @@ export const geocodeResultSchema = z.object({
 })
 export type GeocodeResult = z.infer<typeof geocodeResultSchema>
 
-/** `enabled: false` means no geocoder is configured: choose the Bundesland by hand. */
+/** `enabled: false` means no geocoder is configured: choose the federal state by hand. */
 export const geocodeResponseSchema = z.object({
   enabled: z.boolean(),
   results: z.array(geocodeResultSchema),

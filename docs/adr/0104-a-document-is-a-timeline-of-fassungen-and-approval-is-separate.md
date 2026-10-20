@@ -158,7 +158,7 @@ are the words a reader sees.
 ### Comparing two Fassungen, for the agent and the UI
 
 A compare is a workspace primitive with one implementation (ADR-0055). It lives
-in the knowledge layer as a pure module, `fassung_diff`, over facts already
+in the knowledge layer as a pure module, `revision_diff`, over facts already
 stored, and has two clients: the agent, through `list_files(fassungen_of=…,
 compare_to=…)`, which calls the module in-process the way the chain itself is
 read (a mode of the browser rather than a tool of its own, because every bound
@@ -172,7 +172,7 @@ It answers in rising cost, and stops where the caller asks it to:
 | Title block | `revision_facts` of both | Index, date, scale, title, document number: what moved | No |
 | Pages | the indexed text of both, page by page (`collection_pages.read_pages`) | pages added, removed, changed, unchanged; for a changed page the changed lines; values that changed („Fluchtweglänge 38 m → 42 m“) | No |
 | Words | both descriptions | the change summary that ingestion or a confirmation already writes | Already paid |
-| Marks | one page of both, rendered | boxes on what changed, with a sentence each (`fassung_compare`, today's route) | One vision call per page, cached |
+| Marks | one page of both, rendered | boxes on what changed, with a sentence each (`revision_compare`, today's route) | One vision call per page, cached |
 
 Pages are aligned by page label first and by order second, so a sheet inserted
 in the middle shifts nothing after it. The deterministic layers are cached by
@@ -293,5 +293,5 @@ Slices, each shippable on its own:
 Revisit rule 2 if vector storage per organization becomes a cost driver, and
 rule 5 when an office asks to approve and issue on different days.
 
-[`docs/architecture/fassungen.md`](../architecture/fassungen.md) describes what
+[`docs/architecture/revisions.md`](../architecture/revisions.md) describes what
 runs today and points here; it changes with each slice.

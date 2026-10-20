@@ -9,14 +9,14 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
-vi.mock('@/lib/documents/fassung-facts', () => ({ loadFassungFacts: vi.fn() }))
+vi.mock('@/lib/documents/revision-links-loader', () => ({ loadRevisionLinks: vi.fn() }))
 vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({ shelfReaderFor: vi.fn().mockResolvedValue({}) }))
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
-import { loadFassungFacts } from '@/lib/documents/fassung-facts'
+import { loadRevisionLinks } from '@/lib/documents/revision-links-loader'
 import { replacingDocumentOf } from './carry'
 
 const session = { userId: 'user_1', organizationId: 'org_1' } as unknown as AuthorizedSession
@@ -26,7 +26,7 @@ const doc = (id: string) => ({ id }) as unknown as Document
 const CHAIN: Record<string, string> = { B: 'C', C: 'D' }
 
 beforeEach(() => {
-  vi.mocked(loadFassungFacts).mockImplementation(async (_session, [current]) => {
+  vi.mocked(loadRevisionLinks).mockImplementation(async (_session, [current]) => {
     const next = CHAIN[current!.id]
     return new Map([[current!.id, { supersededBy: next ? { id: next } : null }]]) as never
   })

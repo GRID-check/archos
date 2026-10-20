@@ -151,7 +151,7 @@ export const DOCUMENT_VERSION_EFFECTS = [
   'openRevisionTask',
   /**
    * Tell the people who follow this document that a newer Fassung of it is
-   * published (`./fassung-notify`). A no-op for a first version. Detached and
+   * published (`./revision-notify`). A no-op for a first version. Detached and
    * logged: it never fails the transition.
    */
   'announceNewFassung',

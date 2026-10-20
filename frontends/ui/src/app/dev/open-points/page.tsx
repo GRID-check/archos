@@ -105,10 +105,10 @@ const mark = (document: (typeof DOCUMENTS)[number], overrides: Partial<ProjectMa
   }
 }
 
-const [grundriss, schnitt, ansicht, brandschutz] = DOCUMENTS
+const [floorPlan, section, elevation, fireSafety] = DOCUMENTS
 
 const MARKS: ProjectMarkView[] = [
-  mark(grundriss, {
+  mark(floorPlan, {
     number: 2,
     kind: 'defect',
     body: 'Lichte Breite der Fluchttür T30 unter 90 cm – bitte mit der Tischlerliste abgleichen.',
@@ -117,7 +117,7 @@ const MARKS: ProjectMarkView[] = [
     dueOn: addCalendarDays(TODAY, -3),
     replies: [reply('Tischlerliste kommt Donnerstag.', 'Bernd Huber')],
   }),
-  mark(grundriss, {
+  mark(floorPlan, {
     number: 4,
     page: 2,
     kind: 'question',
@@ -127,7 +127,7 @@ const MARKS: ProjectMarkView[] = [
     assigneeName: 'Lena Gruber',
     dueOn: addCalendarDays(TODAY, 2),
   }),
-  mark(grundriss, {
+  mark(floorPlan, {
     number: 7,
     page: 2,
     kind: 'hint',
@@ -135,7 +135,7 @@ const MARKS: ProjectMarkView[] = [
     fassungNumber: 2,
     onCurrentFassung: false,
   }),
-  mark(schnitt, {
+  mark(section, {
     number: 1,
     kind: 'defect',
     body: 'Geländerhöhe im Stiegenhaus unter 1,00 m (OIB-RL 4, 2.3.2).',
@@ -149,12 +149,12 @@ const MARKS: ProjectMarkView[] = [
     assigneeName: 'Anna Berger',
     dueOn: addCalendarDays(TODAY, 5),
   }),
-  mark(schnitt, {
+  mark(section, {
     number: 3,
     kind: 'question',
     body: 'Höhenkote Fußbodenoberkante 1. OG prüfen.',
   }),
-  mark(ansicht, {
+  mark(elevation, {
     number: 1,
     kind: 'hint',
     body: 'Fensterteilung wie in der Einreichung, nicht wie im Vorentwurf.',
@@ -162,7 +162,7 @@ const MARKS: ProjectMarkView[] = [
     assigneeName: 'Lena Gruber',
     dueOn: addCalendarDays(TODAY, 12),
   }),
-  mark(brandschutz, {
+  mark(fireSafety, {
     number: 5,
     page: 4,
     kind: 'defect',

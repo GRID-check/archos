@@ -34,7 +34,7 @@ const wire = (overrides: Parameters<typeof makeMemoryItem>[0]) => ({
 // Built by the intake's own producer, so the debrief is tested on the shape
 // production stores (a building's answers under `@bw1`).
 const built = (answers: Record<string, ProjectPrimitiveValue>) =>
-  buildIntakeProfile(answers, projectIntakeDefinitionV1, { bauwerke: [{ id: 'bw1', name: 'Bauwerk 1' }] })
+  buildIntakeProfile(answers, projectIntakeDefinitionV1, { buildings: [{ id: 'bw1', name: 'Bauwerk 1' }] })
 
 const profile: ProjectProfile = built({
   A2_country: 'at',

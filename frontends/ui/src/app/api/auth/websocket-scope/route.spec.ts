@@ -20,10 +20,10 @@ vi.mock('@/lib/collection-scope-request', () => ({
 }))
 
 const loadProjectPromptView = vi.fn()
-const loadProjectBundesland = vi.fn()
+const loadProjectFederalState = vi.fn()
 vi.mock('@/lib/project-profile/prompt-view', () => ({
   loadProjectPromptView: (...args: unknown[]) => loadProjectPromptView(...args),
-  loadProjectBundesland: (...args: unknown[]) => loadProjectBundesland(...args),
+  loadProjectFederalState: (...args: unknown[]) => loadProjectFederalState(...args),
 }))
 
 const buildProposalDecisionsBlock = vi.fn()
@@ -118,7 +118,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     isWebSearchEnabledForOrg.mockResolvedValue(true)
     getEffectiveModelOverrides.mockResolvedValue(null)
     loadProjectPromptView.mockResolvedValue('prompt-view')
-    loadProjectBundesland.mockResolvedValue('bayern')
+    loadProjectFederalState.mockResolvedValue('bayern')
     buildProjectMemoryDigest.mockResolvedValue('digest')
     buildProposalDecisionsBlock.mockResolvedValue('decisions')
   })
@@ -160,7 +160,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({ error: 'Budget exhausted' })
     expect(loadProjectPromptView).not.toHaveBeenCalled()
-    expect(loadProjectBundesland).not.toHaveBeenCalled()
+    expect(loadProjectFederalState).not.toHaveBeenCalled()
     expect(buildProjectMemoryDigest).not.toHaveBeenCalled()
     expect(buildProposalDecisionsBlock).not.toHaveBeenCalled()
   })
@@ -213,7 +213,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     // Before the effective-project fix every call below received `undefined`
     // here and silently missed the implicit project.
     expect(getBudgetStatus).toHaveBeenCalledWith('org_1', 'user_1', 'proj_implicit')
-    expect(loadProjectBundesland).toHaveBeenCalledWith('proj_implicit', 'org_1')
+    expect(loadProjectFederalState).toHaveBeenCalledWith('proj_implicit', 'org_1')
     expect(await response.json()).toMatchObject({ projectId: 'proj_implicit' })
   })
 
@@ -234,7 +234,7 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
 
     expect(response.status).toBe(403)
     expect(await response.json()).toMatchObject({ error: 'Forbidden' })
-    expect(loadProjectBundesland).not.toHaveBeenCalled()
+    expect(loadProjectFederalState).not.toHaveBeenCalled()
     expect(buildProjectMemoryDigest).not.toHaveBeenCalled()
   })
 

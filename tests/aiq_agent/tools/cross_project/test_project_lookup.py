@@ -48,7 +48,7 @@ SCHEMA_PATH = (
 HEADER, SIGNATURE = "eyJzaWduZWQiOiJ0dXJuIn0", "c0ffee"
 OTHER = "22222222-0000-4000-8000-000000000002"
 OTHER_COLLECTION = "proj_22222222"
-HONORARE = f"{OTHER_COLLECTION}_rabcdef012345"
+FEES = f"{OTHER_COLLECTION}_rabcdef012345"
 
 
 def _hit(filename: str, collection: str = OTHER_COLLECTION, **extra: Any) -> dict[str, Any]:
@@ -86,7 +86,7 @@ def _listed_project(**extra: Any) -> dict[str, Any]:
 SEARCH_BODY = {
     "decisions": [],
     "permits": [],
-    "hits": [_hit("Detail Traufe.pdf"), _hit("Honorar.pdf", HONORARE)],
+    "hits": [_hit("Detail Traufe.pdf"), _hit("Honorar.pdf", FEES)],
     "projectsInScope": 12,
     "projectsSearched": 8,
     "nextOffset": 8,
@@ -330,13 +330,13 @@ async def test_project_lookup_admits_what_the_bff_handed_out_and_shuts_the_turns
 ) -> None:
     _answering(monkeypatch, calls, SEARCH_BODY)
     result = await lookup.run_project_lookup("search", query="Traufe")
-    message = ToolMessage(content=result, tool_call_id="c1", response_metadata={COLLECTIONS_READ_KEY: [HONORARE]})
+    message = ToolMessage(content=result, tool_call_id="c1", response_metadata={COLLECTIONS_READ_KEY: [FEES]})
 
     [admitted] = await admit_tool_results([message])
 
     assert admitted.content == result
     assert turn.drew_on_others
-    assert may_name(HONORARE)
+    assert may_name(FEES)
 
 
 def _decision(content: str, *, status: str = "closed", restricted: bool = False, **extra: Any) -> dict[str, Any]:
@@ -466,7 +466,7 @@ class TestThePermitRecords:
 
     @pytest.mark.parametrize(
         "permit",
-        [{"status": "active"}, {"restricted": True}, {"collection": HONORARE}],
+        [{"status": "active"}, {"restricted": True}, {"collection": FEES}],
         ids=["running project", "restricted folder flag", "restricted folder collection"],
     )
     async def test_a_running_projects_or_a_restricted_permit_shuts_the_doors(
@@ -647,16 +647,16 @@ class TestTheRecordedDecisions:
 
 class TestTheAdmission:
     async def test_another_projects_restricted_collection_not_handed_out_is_withheld(self, turn) -> None:
-        stray = ToolMessage(content=f"Aus {HONORARE}: Honorar 48.000 €", tool_call_id="c2")
+        stray = ToolMessage(content=f"Aus {FEES}: Honorar 48.000 €", tool_call_id="c2")
 
         [withheld] = await admit_tool_results([stray])
 
         assert withheld.content == WITHHELD_NOTICE
-        assert not may_name(HONORARE)
+        assert not may_name(FEES)
 
     async def test_without_a_bound_turn_nothing_is_admitted(self) -> None:
-        restricted_use.note_cross_project_hand_out([HONORARE], restricting=True)
-        stray = ToolMessage(content=f"Aus {HONORARE}", tool_call_id="c3")
+        restricted_use.note_cross_project_hand_out([FEES], restricting=True)
+        stray = ToolMessage(content=f"Aus {FEES}", tool_call_id="c3")
 
         [withheld] = await admit_tool_results([stray])
 

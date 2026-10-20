@@ -29,7 +29,7 @@ import {
 } from './kit'
 import { sketchRect } from './rough'
 import { useTranslations } from '@/i18n'
-import type { AufstellflaechePlanData, DimensionCheckData, NormReferenceData } from './types'
+import type { StagingAreaPlanData, DimensionCheckData, NormReferenceData } from './types'
 
 interface FireAccessPlanCardProps {
   title: string
@@ -39,7 +39,7 @@ interface FireAccessPlanCardProps {
   building_depth_m: number
   route_width: DimensionCheckData
   gate_clearance_height?: DimensionCheckData | null
-  aufstellflaeche: AufstellflaechePlanData
+  aufstellflaeche: StagingAreaPlanData
   walk_distance_to_entrance: DimensionCheckData
   gebaeudeklasse?: string | null
   reference?: NormReferenceData | null
@@ -48,8 +48,8 @@ interface FireAccessPlanCardProps {
 
 /** Neutral drawing geometry when a value is unknown (labels stay "missing"). */
 const FALLBACK_ROUTE_W_M = 3
-const FALLBACK_AUFSTELL_W_M = 5
-const FALLBACK_AUFSTELL_L_M = 10
+const FALLBACK_STAGING_AREA_W_M = 5
+const FALLBACK_STAGING_AREA_L_M = 10
 const FALLBACK_FACADE_DIST_M = 1
 
 export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
@@ -60,9 +60,9 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
   building_depth_m: buildingD,
   route_width,
   gate_clearance_height,
-  aufstellflaeche,
+  aufstellflaeche: stagingArea,
   walk_distance_to_entrance,
-  gebaeudeklasse,
+  gebaeudeklasse: buildingClass,
   reference,
   note,
 }) => {
@@ -90,16 +90,16 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
   const routeColor = statusColor(route_width.status)
 
   // Aufstellfläche beside the front facade, fed by the route.
-  const aufW = aufstellflaeche.width.value ?? FALLBACK_AUFSTELL_W_M // perpendicular to facade
-  const aufL = aufstellflaeche.length.value ?? FALLBACK_AUFSTELL_L_M // along the facade
-  const facadeDist = aufstellflaeche.distance_to_facade?.value ?? FALLBACK_FACADE_DIST_M
+  const aufW = stagingArea.width.value ?? FALLBACK_STAGING_AREA_W_M // perpendicular to facade
+  const aufL = stagingArea.length.value ?? FALLBACK_STAGING_AREA_L_M // along the facade
+  const facadeDist = stagingArea.distance_to_facade?.value ?? FALLBACK_FACADE_DIST_M
   const ax = Math.max(rx + RW, bx)
   const ay = facadeY + facadeDist * k
   const AL = Math.min(aufL * k, px + PW - ax - 6)
   const AW = Math.min(aufW * k, py + PD - ay - 8)
   const aufWorst = worstStatus(
-    [aufstellflaeche.width.status, aufstellflaeche.length.status].concat(
-      aufstellflaeche.distance_to_facade ? [aufstellflaeche.distance_to_facade.status] : []
+    [stagingArea.width.status, stagingArea.length.status].concat(
+      stagingArea.distance_to_facade ? [stagingArea.distance_to_facade.status] : []
     )
   )
   const aufColor = aufWorst === 'fail' ? statusColor('fail') : 'var(--text-color-feedback-info)'
@@ -131,23 +131,23 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
         ]
       : []),
     {
-      ...aufstellflaeche.width,
-      label: aufstellflaeche.width.label || t('cards.schematics.fireAccess.aufstellflaecheWidth'),
-      unit: aufstellflaeche.width.unit ?? 'm',
+      ...stagingArea.width,
+      label: stagingArea.width.label || t('cards.schematics.fireAccess.stagingAreaWidth'),
+      unit: stagingArea.width.unit ?? 'm',
     },
     {
-      ...aufstellflaeche.length,
-      label: aufstellflaeche.length.label || t('cards.schematics.fireAccess.aufstellflaecheLength'),
-      unit: aufstellflaeche.length.unit ?? 'm',
+      ...stagingArea.length,
+      label: stagingArea.length.label || t('cards.schematics.fireAccess.stagingAreaLength'),
+      unit: stagingArea.length.unit ?? 'm',
     },
-    ...(aufstellflaeche.distance_to_facade
+    ...(stagingArea.distance_to_facade
       ? [
           {
-            ...aufstellflaeche.distance_to_facade,
+            ...stagingArea.distance_to_facade,
             label:
-              aufstellflaeche.distance_to_facade.label ||
+              stagingArea.distance_to_facade.label ||
               t('cards.schematics.fireAccess.facadeDistance'),
-            unit: aufstellflaeche.distance_to_facade.unit ?? 'm',
+            unit: stagingArea.distance_to_facade.unit ?? 'm',
           },
         ]
       : []),
@@ -249,15 +249,15 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
           weight={600}
           fill={aufColor}
         >
-          {t('cards.schematics.fireAccess.aufstellflaeche')}
+          {t('cards.schematics.fireAccess.stagingArea')}
         </SvgLabel>
         <DimensionArrow
           x1={ax}
           y1={ay + AW + 10}
           x2={ax + AL}
           y2={ay + AW + 10}
-          label={fmtDim(aufstellflaeche.length.value, aufstellflaeche.length.unit ?? 'm', t)}
-          status={aufstellflaeche.length.status}
+          label={fmtDim(stagingArea.length.value, stagingArea.length.unit ?? 'm', t)}
+          status={stagingArea.length.status}
           labelOffset={9}
           fontSize={9}
         />
@@ -266,12 +266,12 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
           y1={ay + AW}
           x2={ax + AL + 10}
           y2={ay}
-          label={fmtDim(aufstellflaeche.width.value, aufstellflaeche.width.unit ?? 'm', t)}
-          status={aufstellflaeche.width.status}
+          label={fmtDim(stagingArea.width.value, stagingArea.width.unit ?? 'm', t)}
+          status={stagingArea.width.status}
           labelOffset={11}
           fontSize={9}
         />
-        {aufstellflaeche.distance_to_facade && (
+        {stagingArea.distance_to_facade && (
           <g>
             <ExtensionLine x1={ax} y1={facadeY} x2={ax - 16} y2={facadeY} />
             <ExtensionLine x1={ax} y1={ay} x2={ax - 16} y2={ay} />
@@ -281,11 +281,11 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
               x2={ax - 12}
               y2={ay}
               label={fmtDim(
-                aufstellflaeche.distance_to_facade.value,
-                aufstellflaeche.distance_to_facade.unit ?? 'm',
+                stagingArea.distance_to_facade.value,
+                stagingArea.distance_to_facade.unit ?? 'm',
                 t
               )}
-              status={aufstellflaeche.distance_to_facade.status}
+              status={stagingArea.distance_to_facade.status}
               labelOffset={-12}
               fontSize={8.5}
             />
@@ -317,19 +317,19 @@ export const FireAccessPlanCard: FC<FireAccessPlanCardProps> = ({
         </SvgLabel>
 
         {/* Gebäudeklasse tag */}
-        {gebaeudeklasse && (
+        {buildingClass && (
           <SvgLabel x={px + PW + 14} y={py + 8} size={9} weight={600} fill="var(--foreground)">
-            {gebaeudeklasse}
+            {buildingClass}
           </SvgLabel>
         )}
       </SchematicCanvas>
 
       <DimChecksList checks={checks} />
 
-      {gebaeudeklasse && (
+      {buildingClass && (
         <p className="text-xs text-muted-foreground">
-          {t('cards.schematics.fireAccess.gebaeudeklasse')}:{' '}
-          <span className="font-medium text-foreground">{gebaeudeklasse}</span>
+          {t('cards.schematics.fireAccess.buildingClass')}:{' '}
+          <span className="font-medium text-foreground">{buildingClass}</span>
           {walkColor === statusColor('fail') ? t('cards.schematics.fireAccess.walkTooFar') : ''}
         </p>
       )}

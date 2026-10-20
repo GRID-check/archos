@@ -704,7 +704,7 @@ this, and building one is exactly what the harness was for.
 
 ## 17. The fix: choose the outline, do not commit to it
 
-Four changes, each measured, in `punkt_chunking`:
+Four changes, each measured, in `clause_chunking`:
 
 1. **Best-chain search replaces the greedy scan.** All heading candidates are
    collected, then the best outline-consistent chain over the whole document is

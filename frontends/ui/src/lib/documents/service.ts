@@ -78,7 +78,7 @@ import {
   extractIngestJobId,
 } from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
-import { loadFassungFacts } from './fassung-facts'
+import { loadRevisionLinks } from './revision-links-loader'
 import { documentShelf, projectShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
 import type { DocumentLevelQuery } from './list-query'
@@ -348,7 +348,7 @@ export interface DispatchIngestExtras {
    * The FILE NAME of the document in this collection that these bytes replace,
    * when a person filed the upload as its new Fassung (ADR-0099). Sent as
    * `fassung_of`; once the file has been read, the ingest job writes the link
-   * `PUT /v1/collections/{c}/fassung` writes. Absent for every other dispatch,
+   * `PUT /v1/collections/{c}/revision-links` writes. Absent for every other dispatch,
    * and then not sent at all.
    */
   fassungOf?: string | null
@@ -963,7 +963,7 @@ export function joinHitsToFiles<
  * rows by collection and filename. Fail-open: a backend error/timeout yields `{ hits: [] }`,
  * never a crash.
  *
- * The rows are looked up BY THE HIT NAMES, as `searchArchivDocuments` does,
+ * The rows are looked up BY THE HIT NAMES, as `searchOfficeShelfDocuments` does,
  * never read from the listing: the listing is paged, and a hit on a document
  * past its first page used to be dropped as if the search had not found it.
  *
@@ -1080,7 +1080,7 @@ export interface UploadDocumentInput {
    * for this project; anything else is ignored rather than refused.
    */
   uploadBatchId?: string | null
-  /** See `ShelfUploadInput.fassungOf`: the document this is filed as the new Fassung of. */
+  /** See `ShelfUploadInput.revisionOf`: the document this is filed as the new Fassung of. */
   fassungOf?: string | null
   /** See `ShelfUploadInput.priority`: `bulk` for a machine filing on a person's behalf. */
   priority?: IngestPriority
@@ -1205,7 +1205,7 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
   provenance?: AgentDocumentProvenance | null
   /**
    * The file name of the older document this upload was filed as the new
-   * Fassung of, already checked (`resolveFassungOf`). Read by the ingest paths
+   * Fassung of, already checked (`resolveRevisionOf`). Read by the ingest paths
    * only: an IFC model's digest is not the file the row names.
    */
   fassungOf?: string | null
@@ -2637,7 +2637,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
  * owning project — the same permission the upload path checks. A legal hold on
  * the document, its project, its uploader or the organization refuses it with
  * a 409 before anything is erased (`@/lib/compliance/holds`). Mirrors
- * {@link import('@/lib/archiv/service').deleteArchivDocument}, differing only in
+ * {@link import('@/lib/office-shelf/service').deleteOfficeShelfDocument}, differing only in
  * scope: per-project FGA instead of org-level `org:archiv:manage`.
  *
  * Only `project` documents are deletable here. An Archiv id goes through the
@@ -3247,8 +3247,8 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     findOpenVersion(reconciled.id, session.organizationId),
     listDocumentVersionSummaries([reconciled.id], session.organizationId),
   ])
-  const fassung =
-    (await loadFassungFacts(session, [reconciled], await shelfReaderFor(session, reconciled))).get(reconciled.id) ?? null
+  const revision =
+    (await loadRevisionLinks(session, [reconciled], await shelfReaderFor(session, reconciled))).get(reconciled.id) ?? null
 
   return {
     id: reconciled.id,
@@ -3283,7 +3283,7 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     capture: reconciled.capture,
     revisionFacts: reconciled.revisionFacts,
     // Resolved for THIS reader: a document they may not open is not in it.
-    fassung,
+    fassung: revision,
     // The place in the ingest queue, null once the job is claimed or settled.
     queueAhead: reconciled.queueAhead ?? null,
     // Whose hand wrote the bytes. Added because this payload is how the CHAT
