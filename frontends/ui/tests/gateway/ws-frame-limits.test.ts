@@ -150,6 +150,10 @@ function openSocket(port: number, cookie: string): Promise<Duplex> {
     })
     req.on('upgrade', (_res, sock) => {
       sock.on('error', () => {})
+      // An upgraded socket starts paused, and a paused socket never reports the
+      // peer closing: 'end' and 'close' wait for the read side to drain. Without
+      // MSW's http patch (which happened to pump it) `closedWithin` timed out.
+      sock.resume()
       resolve(sock)
     })
     req.on('response', (res) => {
