@@ -23,6 +23,7 @@ import {
 import type { ProjectAssumption, ProjectFact, ProjectProfile } from '@/lib/project-profile/types'
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
 import { deriveAll } from './derivation-view'
+import { locationRegisterFor } from './location-register'
 import { GEBAEUDEKLASSE_DERIVATION } from './derivations'
 import { profileKeyParts } from './profile-edits'
 import {
@@ -223,5 +224,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
     derivations: derivationReviews(profile, definition, needs),
     canDecide: input.canDecide,
     canComplete: input.canComplete,
+    // Step 4, Rückfragen: what the location decides, and the documents for it.
+    locationRegister: locationRegisterFor({ profile, location: row.location ?? null, mode: row.mode, needs }),
   }
 }
