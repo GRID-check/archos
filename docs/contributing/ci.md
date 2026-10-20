@@ -62,7 +62,9 @@ It also lists the third-party image pins the change adds or moves
 | Plan (`changes`) | always | the three answers above, written to the run summary with the reason for each |
 | Repo checks (`repo`) | unless reused | pre-commit on all files, the agent-skill lockfile, ruff, the tests of `ci/`, the workflows and the release-note pipeline (`task be:test:harness`), release-note lint and (PRs) the release-note requirement, gitleaks over the full history of the commit under test |
 | SAST (`semgrep`) | PRs touching code | Semgrep, diff-aware: blocks findings the PR introduces |
-| Backend core (`backend`) | backend tier | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
+| Backend affected tests (`backend-affected`) | PRs, backend tier, selection possible | per suite (core, aiq_api, `sources/`), only the tests the change reaches (`task be:test:affected`), plus the claim queues on Postgres |
+| Backend test database (`backend-testmon`) | every push to `develop` | records which test runs which code (`task be:test:testmon`) and caches it when green. Not a check |
+| Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
 | Backend suites (`backend-suites`) | backend tier | the aiq_api suite, the `sources/` suites, the migration test, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
@@ -277,6 +279,24 @@ What it was made of, and what was done about each:
   16 MB); the steps that read a file at the base fetch it on demand, with the
   job token handed to git through that step's env (`ci/git_auth.sh`) rather
   than written to `.git/config`.
+
+**A pull request runs only the Python tests its change reaches.** Sharding
+made the full suite ~5 minutes; a typical change reaches a few dozen tests.
+Every push to `develop` records, with pytest-testmon, which test executed which
+function, one database per suite, and caches it when every test passed. A pull
+request restores it and runs the tests whose recorded functions it changed,
+plus every test file that names a changed non-Python file (a config, a prompt,
+a schema), which coverage cannot connect to anything. The full sharded suite
+and the 65% coverage gate run on every push to `develop`, which the deploy
+waits for, so a test a selection missed turns `develop` red before staging,
+not production. [`ci/py_selection.py`](../../ci/py_selection.py) decides, and
+runs the full suite on a pull request whenever testmon cannot see the change:
+a conftest, the lockfile or a `pyproject.toml`, how the backend jobs run,
+Python outside the tested packages (tests load `scripts/` and
+`frontends/benchmarks/` by path or in a subprocess), package data no test
+names, or no recorded database. Known blind spot: a test that only exercises
+code in a subprocess is selected when its own file changes, not when the code
+it spawns does; the push run is what catches that.
 
 Not done, and why: a prebuilt container with the toolchain and venv baked in
 saves ~28s of setup per backend job and costs 20 to 30s to pull and unpack on
