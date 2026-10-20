@@ -348,16 +348,11 @@ export const projects = {
     },
     addressLabel: 'Address',
     addressPlaceholder: 'Street and number, or the town',
-    addressHelp: 'Piloti takes the Gemeinde and the Bundesland from it.',
+    addressHelp: 'Piloti finds the Gemeinde and Bundesland in the documents.',
     address: {
       searching: 'Searching…',
-      none: 'No match. You can add the address later.',
       suggestions: 'Address suggestions',
-      change: 'Choose another address',
     },
-    bundeslandLabel: 'Bundesland',
-    bundeslandPlaceholder: 'Choose a Bundesland',
-    bundeslandHelp: 'Address search is not set up here, so choose the Bundesland.',
     sameAddress: {
       heading: 'There is already a project at this address',
       hint: 'Its documents may be the best source for the new one.',

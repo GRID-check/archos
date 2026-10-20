@@ -13,3 +13,6 @@ fixes:
   - >
     With no project yet, the projects page shows one button to create the
     first project instead of two.
+  - >
+    The address in the new-project dialog keeps what you type. Before, it
+    turned into a Bundesland list after three letters and dropped the text.

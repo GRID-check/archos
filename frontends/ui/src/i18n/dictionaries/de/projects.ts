@@ -349,16 +349,11 @@ export const projects: typeof en.projects = {
     },
     addressLabel: 'Adresse',
     addressPlaceholder: 'Straße und Hausnummer oder Ort',
-    addressHelp: 'Gemeinde und Bundesland übernimmt Piloti daraus.',
+    addressHelp: 'Gemeinde und Bundesland findet Piloti in den Unterlagen.',
     address: {
       searching: 'Suche läuft…',
-      none: 'Keine Übereinstimmung. Die Adresse lässt sich später ergänzen.',
       suggestions: 'Adressvorschläge',
-      change: 'Andere Adresse wählen',
     },
-    bundeslandLabel: 'Bundesland',
-    bundeslandPlaceholder: 'Bundesland wählen',
-    bundeslandHelp: 'Die Adresssuche ist hier nicht eingerichtet. Wählen Sie das Bundesland.',
     sameAddress: {
       heading: 'An dieser Adresse gibt es schon ein Projekt',
       hint: 'Seine Dokumente sind oft die beste Quelle für das neue.',

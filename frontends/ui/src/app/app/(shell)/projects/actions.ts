@@ -128,23 +128,24 @@ function closingFromForm(formData: FormData): ProjectClosing | FormRefusal | und
   return { outcome, endedOn, startedOn: startedOn === '' ? null : startedOn }
 }
 
-/** The form's Einrichtung, „Worum geht es?", address and Bundesland, checked as the route checks its body. */
+/** The form's Einrichtung, „Worum geht es?", address (chosen or typed) and Bundesland, checked as the route checks its body. */
 function setupFromForm(
   formData: FormData
-): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'bundesland'>) | FormRefusal {
+): (Required<Pick<CreateProjectInput, 'setup'>> & Pick<CreateProjectInput, 'description' | 'location' | 'address' | 'bundesland'>) | FormRefusal {
   const location = formData.get('location')
-  const parsed = createProjectSchema.pick({ setup: true, description: true, location: true, bundesland: true }).safeParse({
+  const parsed = createProjectSchema.pick({ setup: true, description: true, location: true, address: true, bundesland: true }).safeParse({
     setup: formData.get('setup') ?? 'self',
     description: formData.get('description') ?? undefined,
     location: typeof location === 'string' && location !== '' ? safeJson(location) : undefined,
+    address: formData.get('address') ?? undefined,
     bundesland: formData.get('bundesland') || undefined,
   })
   if (!parsed.success) return { error: 'The setup details are not valid.', reason: 'invalid-setup' }
-  const { setup, description, location: place, bundesland } = parsed.data
+  const { setup, description, location: place, address, bundesland } = parsed.data
   return {
     setup,
     ...(description ? { description } : {}),
-    ...(place ? { location: place } : {}),
+    ...(place ? { location: place } : address ? { address } : {}),
     ...(bundesland ? { bundesland } : {}),
   }
 }

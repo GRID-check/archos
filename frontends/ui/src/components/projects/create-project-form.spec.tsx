@@ -1,7 +1,8 @@
 /**
  * Creating a project, running or already closed: what reaches the server
- * action, and what keeps the submit shut. And the setup: the address (a
- * combobox over the address search, or the Bundesland when there is none),
+ * action, and what keeps the submit shut. And the setup: the address (a text
+ * field that keeps what is typed, with the address search's hits where one is
+ * configured),
  * „Worum geht es?", Piloti or the person setting it up, and a project folder
  * dropped on the dialog.
  */
@@ -244,7 +245,7 @@ describe('CreateProjectForm', () => {
       await user.click(await screen.findByRole('option', { name: /Hauptstraße 12, 1010 Wien/ }))
 
       // The chosen hit names its Gemeinde and Bundesland.
-      expect(screen.getByTestId('create-project-address-chosen')).toHaveTextContent('Wien · Wien')
+      expect(screen.getByTestId('create-project-address-place')).toHaveTextContent('Wien · Wien')
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
@@ -317,54 +318,73 @@ describe('CreateProjectForm', () => {
       await user.keyboard('{ArrowDown}')
       await user.keyboard('{Enter}')
       // Enter chose; it did not submit the form.
-      expect(screen.getByTestId('create-project-address-chosen')).toHaveTextContent('Hauptstraße 3, 2340 Mödling')
-      expect(screen.getByTestId('create-project-address-chosen')).toHaveTextContent('Mödling · Niederösterreich')
+      expect(combobox).toHaveValue('Hauptstraße 3, 2340 Mödling')
+      expect(screen.getByTestId('create-project-address-place')).toHaveTextContent('Mödling · Niederösterreich')
       expect(action).not.toHaveBeenCalled()
     })
 
-    test('says so when the address has no match, and still creates the project without one', async () => {
+    test('an address with no match is kept as typed and sent', async () => {
       search.mockResolvedValue({ enabled: true, results: [] } satisfies GeocodeResponse)
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Wettbewerb')
-      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Nirgendwo')
-      expect(await screen.findByText(/No match/)).toBeInTheDocument()
+      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Am Bahnhof 4, Gänserndorf')
+      await waitFor(() => expect(search).toHaveBeenCalled())
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Wettbewerb', state: 'active', setup: 'piloti' })
+      expect(sent()).toEqual({ name: 'Wettbewerb', state: 'active', setup: 'piloti', address: 'Am Bahnhof 4, Gänserndorf' })
     })
 
-    test('with no geocoder configured, the Bundesland is a select and is sent', async () => {
+    test('editing a chosen address lets go of the hit: the line is sent as typed', async () => {
+      search.mockResolvedValue({ enabled: true, results: [hauptstrasse] } satisfies GeocodeResponse)
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+
+      await user.type(screen.getByLabelText('Project name'), 'Aufstockung')
+      const field = screen.getByRole('combobox', { name: 'Address' })
+      await user.type(field, 'Hauptstraße')
+      await user.click(await screen.findByRole('option', { name: /Hauptstraße 12/ }))
+      search.mockResolvedValue({ enabled: true, results: [] } satisfies GeocodeResponse)
+      await user.type(field, '/3')
+      expect(screen.queryByTestId('create-project-address-place')).toBeNull()
+      await user.click(submit())
+
+      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
+      expect(sent()).toMatchObject({ address: 'Hauptstraße 12, 1010 Wien/3' })
+      expect(sent()).not.toHaveProperty('location')
+    })
+
+    test('with no address search configured, the field stays a text field and keeps what was typed', async () => {
       search.mockResolvedValue({ enabled: false, results: [] } satisfies GeocodeResponse)
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
       await user.type(screen.getByLabelText('Project name'), 'Haus am See')
-      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Seestraße')
+      await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Seestraße 5, 9220 Velden')
 
-      const select = await screen.findByRole('combobox', { name: 'Bundesland' })
-      expect(screen.queryByRole('combobox', { name: 'Address' })).toBeNull()
-      await user.click(select)
-      expect(screen.queryByRole('option', { name: 'Außerhalb Österreichs' })).toBeNull()
-      await user.click(await screen.findByRole('option', { name: 'Kärnten' }))
+      // The pilot onboarding typed three letters and lost them to a Bundesland select.
+      const field = await screen.findByRole('textbox', { name: 'Address' })
+      expect(field).toHaveValue('Seestraße 5, 9220 Velden')
+      expect(screen.queryByRole('combobox', { name: 'Bundesland' })).toBeNull()
       await user.click(submit())
 
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Haus am See', state: 'active', setup: 'piloti', bundesland: 'kaernten' })
+      expect(sent()).toEqual({ name: 'Haus am See', state: 'active', setup: 'piloti', address: 'Seestraße 5, 9220 Velden' })
+      expect(search).toHaveBeenCalledTimes(1)
     })
 
-    test('remembers that there is no geocoder, so the next dialog opens as the select', async () => {
+    test('remembers that there is no address search, so the next dialog asks no more', async () => {
       search.mockResolvedValue({ enabled: false, results: [] } satisfies GeocodeResponse)
       const user = userEvent.setup()
       const first = render(<CreateProjectForm />)
       await user.type(screen.getByRole('combobox', { name: 'Address' }), 'Seestraße')
-      await screen.findByRole('combobox', { name: 'Bundesland' })
+      await screen.findByRole('textbox', { name: 'Address' })
       first.unmount()
 
       render(<CreateProjectForm />)
-      expect(screen.getByRole('combobox', { name: 'Bundesland' })).toBeInTheDocument()
+      await user.type(screen.getByRole('textbox', { name: 'Address' }), 'Hauptplatz 1')
       expect(search).toHaveBeenCalledTimes(1)
     })
 

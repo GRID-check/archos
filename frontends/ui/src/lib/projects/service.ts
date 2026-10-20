@@ -231,7 +231,9 @@ export interface CreateProjectInput {
   description?: string
   /** The address search's hit. Seeds the profile (address, country, Bundesland). */
   location?: GeocodeResult
-  /** A Bundesland token chosen by hand when no geocoder is configured. */
+  /** The address as the person typed it, when no search hit was chosen. Seeds `standort_adresse` only. */
+  address?: string
+  /** A Bundesland token chosen by hand (API callers; the dialog no longer asks). */
   bundesland?: string
 }
 
@@ -328,6 +330,7 @@ export async function createProject(
         {
           description: input.description,
           location: input.location,
+          address: input.address,
           bundesland: input.bundesland,
           closing: closing && { outcome: closing.outcome, startedOn: closing.startedOn, endedOn: closing.endedOn },
         },

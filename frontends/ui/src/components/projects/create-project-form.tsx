@@ -31,7 +31,7 @@ import { Collapsible, CollapsibleContent } from '@/components/ui/collapsible'
 import { DialogFooter } from '@/components/ui/dialog'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { MonthInput } from '@/components/ui/month-input'
-import { AddressField, type AddressFieldProps } from './address-field'
+import { AddressField, type AddressFieldProps, type AddressValue } from './address-field'
 import { createProject } from '@/app/app/(shell)/projects/actions'
 import { FileDropOverlay, useWindowDragGuard } from '@/features/documents/components/file-drop-overlay'
 import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
@@ -42,7 +42,6 @@ import {
 } from '@/features/documents/lib/dropped-file-handover'
 import { useLocale, useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
-import type { GeocodeResult } from '@/lib/geocoding/types'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
 import type { ProjectSetup } from '@/lib/projects/create-project-schema'
 import { currentMonth, isMonth, type Month } from '@/lib/projects/month'
@@ -110,8 +109,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
     defaultValues: {
       name: '',
       setup: 'piloti' as ProjectSetup,
-      location: null as GeocodeResult | null,
-      bundesland: '',
+      address: { text: '', place: null } as AddressValue,
       description: '',
       state: 'active' as CreateProjectState,
       outcome: '' as ProjectOutcome | '',
@@ -217,20 +215,14 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
         <Collapsible open={piloti}>
           <CollapsibleContent>
             <FieldGroup className="gap-5" data-testid="create-project-piloti-fields">
-              <form.Field name="location">
-                {(location) => (
-                  <form.Field name="bundesland">
-                    {(bundesland) => (
-                      <AddressField
-                        value={location.state.value}
-                        onChange={location.handleChange}
-                        bundesland={bundesland.state.value}
-                        onBundeslandChange={bundesland.handleChange}
-                        disabled={isSubmitting}
-                        {...addressClients}
-                      />
-                    )}
-                  </form.Field>
+              <form.Field name="address">
+                {(address) => (
+                  <AddressField
+                    value={address.state.value}
+                    onChange={address.handleChange}
+                    disabled={isSubmitting}
+                    {...addressClients}
+                  />
                 )}
               </form.Field>
               <form.AppField name="description" validators={{ onChange: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH) }}>
@@ -440,13 +432,12 @@ function DroppedFolderNote({ dropped, onRemove }: { dropped: DroppedFolder; onRe
 
 /**
  * The action's fields. `name`, `state` and `setup` always; the closed project's facts only when it is
- * closed; the address, the description and a hand-chosen Bundesland only when Piloti sets it up.
+ * closed; the address (the chosen hit, else the typed line) and the description only when Piloti sets it up.
  */
 function toFormData(value: {
   name: string
   setup: ProjectSetup
-  location: GeocodeResult | null
-  bundesland: string
+  address: AddressValue
   description: string
   state: CreateProjectState
   outcome: string
@@ -459,8 +450,8 @@ function toFormData(value: {
   formData.set('setup', value.setup)
   if (value.setup === 'piloti') {
     if (value.description.trim() !== '') formData.set('description', value.description.trim())
-    if (value.location) formData.set('location', JSON.stringify(value.location))
-    else if (value.bundesland !== '') formData.set('bundesland', value.bundesland)
+    if (value.address.place) formData.set('location', JSON.stringify(value.address.place))
+    else if (value.address.text.trim() !== '') formData.set('address', value.address.text.trim())
   }
   if (value.state !== 'closed') return formData
   formData.set('outcome', value.outcome)
