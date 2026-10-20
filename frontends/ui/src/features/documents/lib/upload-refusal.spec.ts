@@ -48,16 +48,33 @@ describe('uploadRefusalOf', () => {
   it('never passes on the English of a refusal whose reason it does not know', () => {
     expect(uploadRefusalOf(answer(409, { error: 'Internal words', details: { reason: 'new_reason' } }))).toEqual({
       kind: 'other',
-      message: null,
     })
   })
 
-  it('keeps the server’s words only for a refusal without a reason', () => {
-    expect(uploadRefusalOf(answer(400, { error: 'File type not allowed' }))).toEqual({
-      kind: 'other',
-      message: 'File type not allowed',
+  it('never passes on the English of a refusal without a reason either', () => {
+    expect(uploadRefusalOf(answer(400, { error: 'File type not allowed' }))).toEqual({ kind: 'other' })
+    expect(uploadRefusalOf(answer(502, '<html>bad gateway</html>'))).toEqual({ kind: 'other' })
+  })
+
+  it('names a size, a full store and a file type by the code and details the server sends', () => {
+    const tooLarge = uploadRefusalOf(
+      answer(413, {
+        error: 'File exceeds the maximum upload size of 100 MB',
+        code: 'FILE_TOO_LARGE',
+        details: { fileSize: 2e8, maxSizeBytes: 1e8 },
+      })
+    )
+    expect(tooLarge).toEqual({ kind: 'too-large', limitBytes: 1e8 })
+    expect(mayRetryRefusal(tooLarge)).toBe(false)
+    expect(uploadRefusalOf(answer(413, { code: 'PAYLOAD_TOO_LARGE' }))).toEqual({ kind: 'too-large', limitBytes: null })
+    expect(uploadRefusalOf(answer(507, { error: 'Storage quota exceeded', code: 'STORAGE_QUOTA_EXCEEDED' }))).toEqual({
+      kind: 'storage-full',
     })
-    expect(uploadRefusalOf(answer(502, '<html>bad gateway</html>'))).toEqual({ kind: 'other', message: null })
+    const type = uploadRefusalOf(
+      answer(400, { error: 'File type "exe" is not permitted', details: { extension: 'exe', accepted: ['.pdf', '.ifc'] } })
+    )
+    expect(type).toEqual({ kind: 'invalid-type', accepted: ['.pdf', '.ifc'] })
+    expect(mayRetryRefusal(type)).toBe(false)
   })
 
   it('is null for anything that is not the server’s answer', () => {

@@ -19,6 +19,8 @@ import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import type { TrackedFile } from '../types'
 import { uploadPhase, type UploadPhase } from '../lib/upload-progress'
 import { HeldUploadReason } from './held-upload-reason'
+import { IngestFailureNotice } from './ingest-failure-notice'
+import { failedWhileReading } from '../lib/ingest-failure'
 import { ingestionMarkOfPhase, IngestionStatusWord } from './ingestion-atoms'
 import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
 import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
@@ -51,6 +53,8 @@ interface UploadedFile {
   file: File
   phase: UploadPhase
   errorMessage?: string
+  /** Failed while the server read it: `errorMessage` is the stored ingest failure, said through `IngestFailureNotice`. */
+  failedReading: boolean
   replacesHeld?: TrackedFile['replacesHeld']
   /** Why a held file is held (`quarantineVerdictOf`), read once where the row is mirrored. */
   verdict: QuarantineVerdict | null
@@ -123,6 +127,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
         file: tf.file!,
         phase: uploadPhase(tf),
         errorMessage: tf.errorMessage ?? undefined,
+        failedReading: failedWhileReading(tf),
         replacesHeld: tf.replacesHeld,
         verdict: tf.status === 'held' ? quarantineVerdictOf(tf) : null,
       }))
@@ -245,7 +250,12 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
                     message={item.errorMessage}
                     testId="upload-zone-held"
                   />
+                ) : item.phase === 'failed' && item.errorMessage && item.failedReading ? (
+                  // The knowledge layer's stored text (`pdf_pages_unreadable: …`),
+                  // said in the reader's language as the upload tray says it.
+                  <IngestFailureNotice errorMessage={item.errorMessage} sentenceClassName="text-destructive" />
                 ) : item.phase === 'failed' && item.errorMessage ? (
+                  // An upload's own failure: a dictionary sentence (`lib/upload-failure.ts`).
                   <p className="text-xs text-destructive">{item.errorMessage}</p>
                 ) : null}
               </div>
