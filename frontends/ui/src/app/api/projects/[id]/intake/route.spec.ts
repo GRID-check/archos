@@ -112,6 +112,11 @@ const VIEW: IntakeView = {
   derivations: [],
   canDecide: true,
   canComplete: true,
+  readingProgress: {
+    documentsOpened: 0,
+    documentsTotal: 0,
+    site: { bundesland: null, gemeinde: null, address: null, source: null, confirmed: false },
+  },
 }
 
 beforeEach(() => {

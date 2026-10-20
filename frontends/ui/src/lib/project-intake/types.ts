@@ -412,8 +412,41 @@ export const intakeViewSchema = z.object({
    * from a BFF without the register (a rolling deploy) shows no requests.
    */
   locationRegister: locationRegisterViewSchema.optional(),
+  // --- Step 3, Erfassung (`reading`, `steps/reading-step.tsx`) ---------------
+  // The reading's milestones, live while it runs. Values, contradictions and
+  // decisive gaps are `counts` above: computed from the profile on every read,
+  // so they move with each `record`. What only the run knows (which documents
+  // it has opened) and where the site stands are here.
+  readingProgress: z.object({
+    /**
+     * Readable documents the current or last reading opened, as the run
+     * reported them while reading (`op: 'progress'`, `reading_files`).
+     */
+    documentsOpened: count,
+    /**
+     * The documents that reading has before it: the ones no finished reading
+     * has read, and the ones it opened. „{documentsOpened} von {documentsTotal}".
+     */
+    documentsTotal: count,
+    /**
+     * Where the site stands: the Bundesland (as a person reads it), the
+     * Gemeinde and the address, and where the Bundesland came from. `source`
+     * is null while no Bundesland is known; `confirmed` is true when a person
+     * or the address search set it, false while it is a reading's suggestion.
+     */
+    site: z.object({
+      bundesland: z.string().max(200).nullable(),
+      gemeinde: z.string().max(200).nullable(),
+      address: z.string().max(500).nullable(),
+      source: z.enum(['geocoder', 'document', 'person']).nullable(),
+      confirmed: z.boolean(),
+    }),
+  }),
+  // --- end of step 3 ---------------------------------------------------------
 })
 export type IntakeView = z.infer<typeof intakeViewSchema>
+/** Step 3's live milestones (`IntakeView.readingProgress`). */
+export type ReadingProgress = IntakeView['readingProgress']
 
 /** What every person route answers with: the intake as it stands after the call. */
 export const intakeResponseSchema = z.object({ intake: intakeViewSchema })
@@ -509,6 +542,15 @@ export const internalIntakeRequestSchema = z.discriminatedUnion('op', [
     .strict(),
   z
     .object({
+      // Every file the run has opened so far, sent whole each time it opens a
+      // new one: the setup page's live „x von y gelesen" (step 3).
+      op: z.literal('progress'),
+      jobId,
+      filesOpened: z.array(z.string().min(1).max(512)).max(MAX_DOCUMENTS_READ),
+    })
+    .strict(),
+  z
+    .object({
       op: z.literal('finish'),
       jobId,
       summary: z.string().max(MAX_INTAKE_SUMMARY_LENGTH),
@@ -573,6 +615,12 @@ export const internalIntakeWithdrawResponseSchema = z.object({
 })
 export type InternalIntakeWithdrawResponse = z.infer<typeof internalIntakeWithdrawResponseSchema>
 
+/** `progress`: how many files the intake now holds as opened by this reading. */
+export const internalIntakeProgressResponseSchema = z.object({
+  filesOpened: count,
+})
+export type InternalIntakeProgressResponse = z.infer<typeof internalIntakeProgressResponseSchema>
+
 /** `finish`: the status the intake is in afterwards. */
 export const internalIntakeFinishResponseSchema = z.object({
   status: z.enum(INTAKE_STATUSES),
@@ -584,6 +632,7 @@ export const INTERNAL_INTAKE_RESPONSE_SCHEMAS = {
   needs: internalIntakeNeedsResponseSchema,
   record: internalIntakeRecordResponseSchema,
   withdraw: internalIntakeWithdrawResponseSchema,
+  progress: internalIntakeProgressResponseSchema,
   finish: internalIntakeFinishResponseSchema,
 } as const satisfies Record<InternalIntakeOp, z.ZodTypeAny>
 

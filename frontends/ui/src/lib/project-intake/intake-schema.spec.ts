@@ -44,6 +44,7 @@ describe('project intake JSON Schema', () => {
       'needs',
       'record',
       'withdraw',
+      'progress',
       'finish',
     ])
     for (const option of request.oneOf ?? []) {

@@ -2146,3 +2146,29 @@ apply_in grid_reply_edit 0152_annotation_reply_edits.sql
 apply_in grid_reply_edit 0152_annotation_reply_edits.sql
 check_in grid_reply_edit "SELECT coalesce(edited_at::text, 'null') FROM document_annotation_replies" "null" "0152 re-applies, twice"
 echo "==> 0152 reply edits and down migration verified"
+
+# ---------------------------------------------------------------------------
+# On a database of its own, migrated to 0154. An intake written before 0155
+# has opened nothing; a reading's files are an array and nothing else; the
+# down drops the column and leaves the intake; the up re-applies, twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0155 reading files and their down migration on grid_rfiles"
+migrate_until grid_rfiles 0154_organization_default_locale_unset
+sql_in grid_rfiles <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000155', 'org_0155', 'Erfassung 0155', 'user_1', 'proj_0155');
+INSERT INTO project_intakes (organization_id, project_id, created_by, status, job_id, requested_by)
+VALUES ('org_0155', 'aaaaaaaa-0000-4000-8000-000000000155', 'user_1', 'reading', 'job_0155', 'user_1');
+SQL
+apply_in grid_rfiles 0155_intake_reading_files.sql
+check_in grid_rfiles "SELECT reading_files::text FROM project_intakes" "[]" "an intake written before 0155 has opened nothing"
+sql_in grid_rfiles <<<"UPDATE project_intakes SET reading_files = '[\"Einreichplan.pdf\"]'::jsonb"
+check_in grid_rfiles "SELECT reading_files->>0 FROM project_intakes" "Einreichplan.pdf" "a reading's opened files are stored"
+refused_in grid_rfiles "UPDATE project_intakes SET reading_files = '{\"a\":1}'::jsonb" "project_intakes_reading_files_array" "reading files that are not an array were accepted"
+apply_in grid_rfiles 0155_intake_reading_files.down.sql
+check_in grid_rfiles "SELECT count(*) FROM information_schema.columns WHERE column_name = 'reading_files' AND table_name = 'project_intakes'" "0" "down dropped the column"
+check_in grid_rfiles "SELECT status FROM project_intakes" "reading" "down left the intake"
+apply_in grid_rfiles 0155_intake_reading_files.sql
+apply_in grid_rfiles 0155_intake_reading_files.sql
+check_in grid_rfiles "SELECT reading_files::text FROM project_intakes" "[]" "0155 re-applies, twice"
+echo "==> 0154 reading files and down migration verified"

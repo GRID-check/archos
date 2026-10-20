@@ -98,7 +98,12 @@ export function setupStepSummaries(view: IntakeView, tShell: Translator): SetupS
   const total = counts.documentsRead + counts.unreadDocuments
   const finished = view.status === 'completed'
   const readingNote = (): string | undefined => {
-    if (view.status === 'reading') return tShell('notes.readOf', { read: counts.documentsRead, total })
+    // While a reading runs, how far THIS reading got: `documentsRead` is only
+    // written when it finishes.
+    if (view.status === 'reading') {
+      const { documentsOpened, documentsTotal } = view.readingProgress
+      return tShell('notes.readOf', { read: documentsOpened, total: documentsTotal })
+    }
     if (view.status === 'failed') return tShell('notes.failed')
     return counts.documentsRead > 0 ? tShell('notes.read', { count: counts.documentsRead }) : undefined
   }

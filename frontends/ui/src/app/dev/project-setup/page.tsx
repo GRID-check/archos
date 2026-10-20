@@ -31,9 +31,16 @@ import {
 } from '@/app/dev/_fixtures/project-intake'
 import { installFixtureDocuments } from './fixture-documents'
 import { IntakeSetupView } from '@/features/project-intake/components/intake-setup-view'
-import { createFixtureParticipantsClient, isProjectStepState } from '@/app/dev/_fixtures/project-setup-project'
-import { PROFILE_STEP_FIXTURES, type ProfileStepFixtureName } from '@/app/dev/_fixtures/project-setup-profile'
+import {
+  createFixtureParticipantsClient,
+  isProjectStepState,
+} from '@/app/dev/_fixtures/project-setup-project'
+import {
+  PROFILE_STEP_FIXTURES,
+  type ProfileStepFixtureName,
+} from '@/app/dev/_fixtures/project-setup-profile'
 import { QUESTIONS_FIXTURES } from '@/app/dev/_fixtures/project-setup-questions'
+import { READING_FIXTURES } from '@/app/dev/_fixtures/project-setup-reading'
 import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import type { IntakeDecision } from '@/lib/project-intake/types'
 
@@ -67,21 +74,32 @@ export default function ProjectSetupPreviewPage({
     typeof params.questions === 'string' && params.questions in QUESTIONS_FIXTURES
       ? (params.questions as keyof typeof QUESTIONS_FIXTURES)
       : null
-  const view = profileName
-    ? PROFILE_STEP_FIXTURES[profileName]
-    : questionsName
-      ? QUESTIONS_FIXTURES[questionsName]
-      : INTAKE_FIXTURES[name]
+  // `?reading=waiting | queued | reading | … | completed` draws step 3's fixtures.
+  const readingName =
+    typeof params.reading === 'string' && params.reading in READING_FIXTURES
+      ? (params.reading as keyof typeof READING_FIXTURES)
+      : null
+  const view = readingName
+    ? READING_FIXTURES[readingName]
+    : profileName
+      ? PROFILE_STEP_FIXTURES[profileName]
+      : questionsName
+        ? QUESTIONS_FIXTURES[questionsName]
+        : INTAKE_FIXTURES[name]
   const [sent, setSent] = useState<string | null>(null)
   // Step 1 reads the Beteiligte from its own API; here from an in-memory one
   // (`?project=fresh | team | viewer | closing`), made once per state.
   const projectState = isProjectStepState(params.project) ? params.project : 'team'
-  const participantsClient = useMemo(() => createFixtureParticipantsClient(projectState), [projectState])
+  const participantsClient = useMemo(
+    () => createFixtureParticipantsClient(projectState),
+    [projectState]
+  )
   // The connected page's own hook, against a faked proposals API: a decided
   // suggestion is read away, as it is there.
   const proposalsReady = useFakeProposalClient(INTAKE_FILING)
   const filing = useFilingSuggestions({
-    query: proposalsReady && INTAKE_FILING_STATES.includes(name) ? { projectId: view.projectId } : null,
+    query:
+      proposalsReady && INTAKE_FILING_STATES.includes(name) ? { projectId: view.projectId } : null,
     watching: false,
   })
 
@@ -90,7 +108,7 @@ export default function ProjectSetupPreviewPage({
       <ProjectSectionHeader state={name} />
       <IntakeSetupView
         // A new state is a new page: the step it opens on is chosen again.
-        key={`${name}-${projectState}-${profileName ?? ''}-${questionsName ?? ''}`}
+        key={`${name}-${projectState}-${profileName ?? ''}-${questionsName ?? ''}-${readingName ?? ''}`}
         participantsClient={participantsClient}
         view={view}
         projectId={view.projectId}
@@ -113,7 +131,7 @@ export default function ProjectSetupPreviewPage({
         filing={{ entries: filing.byFolder, onSettled: filing.reload }}
       />
       {sent && (
-        <pre className="text-muted-foreground mx-auto max-w-5xl px-4 pb-8 font-mono text-xs break-all whitespace-pre-wrap md:px-8">
+        <pre className="text-muted-foreground mx-auto max-w-5xl whitespace-pre-wrap break-all px-4 pb-8 font-mono text-xs md:px-8">
           {sent}
         </pre>
       )}

@@ -26,7 +26,8 @@ export function IntakeStatusLine({ view }: { view: IntakeView }): JSX.Element {
     t('counts.questions', { count: counts.decisiveOpen }),
   ]
   const hasOpen = counts.contradictions > 0 || counts.decisiveOpen > 0
-  const total = counts.documentsRead + counts.unreadDocuments
+  // The bar is THIS reading's: `documentsRead` is only written when it finishes.
+  const readingTotal = view.readingProgress.documentsTotal
   return (
     <div className="space-y-1" data-testid="intake-status-line">
       <p className="text-sm font-medium" aria-live="polite">
@@ -45,11 +46,11 @@ export function IntakeStatusLine({ view }: { view: IntakeView }): JSX.Element {
           </span>
         </p>
       )}
-      {view.status === 'reading' && total > 0 && (
+      {view.status === 'reading' && readingTotal > 0 && (
         <Progress
           className="mt-2 max-w-xs"
-          value={Math.round((counts.documentsRead / total) * 100)}
-          aria-label={t('reading.progressAria', { read: counts.documentsRead, total })}
+          value={Math.round((view.readingProgress.documentsOpened / readingTotal) * 100)}
+          aria-label={t('reading.progressAria', { read: view.readingProgress.documentsOpened, total: readingTotal })}
         />
       )}
       {counts.unreadDocuments > 0 && view.status !== 'reading' && (

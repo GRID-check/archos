@@ -274,6 +274,7 @@ itself.
 | `job_id`, `requested_by`, `trace_id` | the current or last reading; `job_id` partial unique |
 | `rerun_requested` | a trigger arrived during a reading |
 | `documents_read` jsonb | `[{ documentId, contentHash }]` |
+| `reading_files` jsonb | file names the current or last reading opened, reported while it runs (`progress`, migration 0154); emptied at a claim |
 | `dismissed` jsonb | `[{ key, value }]` a person dismissed, so they are not suggested again |
 | `counts` jsonb | `{ documentsRead, suggested, contradictions, decisiveOpen }` at the last finish |
 | `summary` | the agent's closing sentence |
@@ -340,6 +341,7 @@ envelope, `withTenant`. Discriminated on `op`, each branch strict, each with
 | `needs` | `{ jobId }` | `{ needs: Need[], unreadFiles: string[] (≤ 200), description, location, mode, previousSummary }` (`previousSummary`: the last finished reading's stored, masked summary, or null) |
 | `record` | `{ jobId, values: [{ key, value, evidence: { fileName, page, quote } }] }` (1..20) | `{ results: [{ key, outcome: 'suggested' \| 'corroborated' \| 'contradiction' \| 'refused', reason?: 'vocabulary' \| 'unknown-key' \| 'dismissed' \| 'unreadable-file' }], opened: [{ key, decisive }] }` |
 | `withdraw` | `{ jobId, keys: string[] }` (1..20) | `{ results: [{ key, outcome: 'withdrawn' \| 'refused', reason?: 'nothing-suggested' \| 'confirmed' \| 'not-this-reading' }] }` |
+| `progress` | `{ jobId, filesOpened: string[] }` (≤ 500), every file the run opened so far, sent after a tool call that opened a new one | `{ filesOpened }`. Stored in `reading_files` (migration 0154) for the setup page's live „x von y gelesen" (step 3); never what decides the next reading's unread files |
 | `finish` | `{ jobId, summary (≤ 2000), documentsRead: string[] (≤ 500), traceId: string \| null }` | `{ status }` |
 
 A stale `jobId` answers 409 `stale-reading`. The BFF decides what a value

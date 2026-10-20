@@ -27,3 +27,19 @@ export function ReadingSkeleton(): JSX.Element {
     </div>
   )
 }
+
+/**
+ * Where the reading's summary will stand once Piloti has finished, drawn as
+ * its lines: the Erfassung step's one ambient loop while it reads. Wordless
+ * for the same reason as {@link ReadingSkeleton}; the step says in words that
+ * the summary follows.
+ */
+export function ReadingSummarySkeleton(): JSX.Element {
+  return (
+    <div className="space-y-2" aria-hidden="true" data-testid="intake-reading-skeleton">
+      <Skeleton className="h-4 w-full" />
+      <Skeleton className="h-4 w-11/12" />
+      <Skeleton className="h-4 w-2/3" />
+    </div>
+  )
+}
