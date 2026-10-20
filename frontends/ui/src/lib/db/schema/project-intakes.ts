@@ -50,7 +50,7 @@ export const projectIntakes = pgTable(
     dismissed: jsonb('dismissed').$type<DismissedValue[]>().notNull().default(sql`'[]'::jsonb`),
     /**
      * The file names the current or last reading opened, as the run reported
-     * them while reading (migration 0156): the setup page's live „x von y
+     * them while reading (migration 0157): the setup page's live „x von y
      * gelesen". Emptied at a claim; never what decides the next reading's
      * unread files, which is `documentsRead`, written at the finish.
      */

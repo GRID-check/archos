@@ -363,7 +363,9 @@ def test_overview_is_the_weakest_cohort(report):
     assert recalls["overview"] < recalls["paraphrase"], _diff(report)
 
 
-def test_rankings_are_deterministic(entries):
-    first = [result.ranked for result in overview.run(entries).results]
+def test_rankings_are_deterministic(entries, report):
+    # `report` is a separate, earlier run of the harness; the second run here is
+    # fresh, so two independent runs are still compared.
+    first = [result.ranked for result in report.results]
     second = [result.ranked for result in overview.run(entries).results]
     assert first == second

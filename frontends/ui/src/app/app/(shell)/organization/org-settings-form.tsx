@@ -111,7 +111,7 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
         <FieldLabel>{t('settings.defaultLocale')}</FieldLabel>
         {/* „Nicht festgelegt" is a value of its own, not a preselected
             language: a preselected English was saved with every other field
-            and switched German offices to English (migration 0155). */}
+            and switched German offices to English (migration 0156). */}
         <Select
           value={defaultLocaleValue ?? BROWSER_LANGUAGE}
           onValueChange={(v) => setDefaultLocaleValue(v === BROWSER_LANGUAGE ? null : (v as Locale))}

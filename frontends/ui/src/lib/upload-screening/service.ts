@@ -47,7 +47,7 @@ export async function getUploadScreeningPolicy(organizationId: string): Promise<
   })
 }
 
-/** What one project changes about the office's name terms (migration 0157), or null. */
+/** What one project changes about the office's name terms (migration 0158), or null. */
 export async function getProjectScreeningOverride(
   organizationId: string,
   projectId: string
@@ -186,7 +186,7 @@ export interface NameGateResult {
  * returned so the caller can audit it once the document has an id.
  *
  * `projectId` is the project the file goes into, when it goes into one: the
- * project's own name terms apply there (migration 0157), exactly as the
+ * project's own name terms apply there (migration 0158), exactly as the
  * browser screened with them (`GET /api/projects/{id}/upload-screening`).
  */
 export async function assertUploadNameAllowed(

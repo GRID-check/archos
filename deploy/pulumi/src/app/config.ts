@@ -17,7 +17,7 @@ export interface AppWiring {
   seaweedPublicEndpoint: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
-  /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0118). */
+  /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0120). */
   geocoderUrl?: pulumi.Output<string>;
   /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
   qdrantUrl: pulumi.Output<string>;
@@ -157,6 +157,9 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     GRID_JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
     GRID_WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
+    // PostHog Support (feedback tickets). Absent unless the stack sets it, so
+    // `frontendEnv` can leave the variable off the pod rather than empty.
+    ...(cfg.posthog.personalApiKey ? { POSTHOG_PERSONAL_API_KEY: cfg.posthog.personalApiKey } : {}),
     WORKOS_API_KEY: cfg.auth.workosApiKey,
     WORKOS_COOKIE_PASSWORD: cfg.auth.workosCookiePassword,
     GRID_BYOK_LOCAL_KEK: cfg.auth.byokLocalKek,
@@ -561,6 +564,14 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
     { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
     { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
+    // PostHog Support (frontends/ui/src/lib/posthog-support/config.ts): the BFF
+    // opens a ticket per feedback report and triages them on Platform ->
+    // Feedback. Server-side only, despite living beside the NEXT_PUBLIC_ ones.
+    // Both or neither: the project id is meaningless without the key, and the
+    // key is in the Secret only when the stack set it.
+    ...(cfg.posthog.personalApiKey
+      ? [sref("POSTHOG_PERSONAL_API_KEY"), { name: "POSTHOG_PROJECT_ID", value: cfg.posthog.projectId }]
+      : []),
     // Web Push for the inbox (ADR-0112). Empty = off. The bff-jobs pool inherits
     // these (`bffJobsEnv`) and is the one that sends; the frontend serves the
     // public key to the browser.
@@ -623,7 +634,7 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // source it indexes those from (ADR-0071). Absent ⇒ those files are
     // marked failed (retryable); .xlsx/.xlsm index without preview.
     ...(w.gotenbergUrl ? [{ name: "GOTENBERG_URL", value: w.gotenbergUrl }] : []),
-    // Address search for the project dialog (ADR-0118), behind `/api/geocode`.
+    // Address search for the project dialog (ADR-0120), behind `/api/geocode`.
     // Absent ⇒ the route answers `enabled: false` and the address stays a plain
     // text field. Only ever the in-cluster Photon: an address is client data.
     ...(w.geocoderUrl ? [{ name: "GRID_GEOCODER_URL", value: w.geocoderUrl }] : []),
@@ -689,7 +700,7 @@ const BFF_JOBS_OVERRIDES = new Set(["OTEL_SERVICE_NAME", "GRID_SHUTDOWN_DRAIN_MS
  * open. Erasing traces is the purger's and the scheduler's (ADR-0044).
  *
  * The geocoder's URL likewise: address search is a request-path feature, and
- * `geocoder-frontend-only` admits the frontend alone (ADR-0118).
+ * `geocoder-frontend-only` admits the frontend alone (ADR-0120).
  */
 const BFF_JOBS_WITHHELD = new Set([
   "LANGFUSE_HOST",

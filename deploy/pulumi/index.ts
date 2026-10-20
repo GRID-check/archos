@@ -188,7 +188,7 @@ const qdrant = installQdrant(cfg, provider, namespace, seaweed.internalEndpoint,
 const gotenberg = cfg.gotenberg.enabled
   ? installGotenberg(cfg, provider, namespace, [ns])
   : undefined;
-// Address search for the project dialog (ADR-0118): Photon over the Austrian
+// Address search for the project dialog (ADR-0120): Photon over the Austrian
 // extract, in the cluster because an address is client data. Off by default
 // (`geocoderEnabled`). The frontend fails open without it, so nothing waits.
 const geocoder = cfg.geocoder.enabled

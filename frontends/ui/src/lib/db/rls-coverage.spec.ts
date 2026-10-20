@@ -172,7 +172,7 @@ const BOUNDARY_MIGRATIONS = [
   // Adds project_upload_screening — what one project changes about the
   // office's sensitive-data name terms (ADR-0086, 2026-10-20). Keyed by its
   // organization; the composite foreign key ties it to the project's.
-  '0157_project_upload_screening.sql',
+  '0158_project_upload_screening.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

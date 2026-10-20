@@ -78,7 +78,7 @@ export function fetchScript(dataPath: string = GEOCODER.dataPath): string {
 }
 
 /**
- * The geocoder (ADR-0118): Photon over the Austrian OSM extract, the provider
+ * The geocoder (ADR-0120): Photon over the Austrian OSM extract, the provider
  * behind `GET /api/geocode` and the project creation dialog's address search.
  *
  * Every keystroke of an address a person types reaches this pod, and an

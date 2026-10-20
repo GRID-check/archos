@@ -5,7 +5,7 @@ import { projects } from './projects'
 
 /**
  * What one project changes about the office's sensitive-data NAME terms
- * (migration 0157, ADR-0086 amendment of 2026-10-20): terms it adds, and office
+ * (migration 0158, ADR-0086 amendment of 2026-10-20): terms it adds, and office
  * terms it sets aside. One row per project that changed anything; no row is
  * the office's list unchanged. The office's list itself stays in
  * `organizations.settings.uploadScreening`.

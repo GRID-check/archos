@@ -39,6 +39,10 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:workosCookiePassword  "$(openssl rand -hex 32)" --secret
 
+#   # PostHog Support for product feedback (ADR-0118). Optional: unset, no tickets open.
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:posthogPersonalApiKey "phx_..." --secret
+
 #   # Encrypts DB-claimed job payloads at rest (they carry the user auth token).
 
 #   # REQUIRED (the deploy fails closed without it; set

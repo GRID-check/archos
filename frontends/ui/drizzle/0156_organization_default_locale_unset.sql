@@ -1,4 +1,4 @@
--- 0155: `organizations.default_locale` can say "nobody chose one".
+-- 0156: `organizations.default_locale` can say "nobody chose one".
 --
 -- The column was NOT NULL DEFAULT 'en', and nothing could tell 'en' chosen from
 -- 'en' defaulted: every write of the row re-wrote the default it read
@@ -25,4 +25,4 @@ ALTER TABLE "organizations"
   CHECK ("default_locale" IS NULL OR "default_locale" IN ('de', 'en'));
 --> statement-breakpoint
 COMMENT ON COLUMN "organizations"."default_locale" IS
-  'The interface language for members who never picked one (migration 0155): de | en, NULL until an admin chooses. Read by i18n/request-locale.ts and I18nProvider.';
+  'The interface language for members who never picked one (migration 0156): de | en, NULL until an admin chooses. Read by i18n/request-locale.ts and I18nProvider.';

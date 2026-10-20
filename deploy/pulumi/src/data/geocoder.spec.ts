@@ -11,7 +11,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig } from "../test-support/stack-config";
 
 /**
- * The geocoder (ADR-0118): Photon over the Austrian extract, behind the
+ * The geocoder (ADR-0120): Photon over the Austrian extract, behind the
  * project dialog's address search.
  *
  * What a green plan would hide here:

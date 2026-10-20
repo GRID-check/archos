@@ -7,6 +7,7 @@ import {
   buildSessionRecordingOptions,
   capturePosthog,
   getPosthogSessionId,
+  getPosthogSupportContext,
   identifyPosthog,
   initPosthogClient,
   isPosthogEnabled,
@@ -17,7 +18,6 @@ import {
   registerPosthogContext,
   resetPosthog,
   scrubEvent,
-  sendPosthogSupportMessage,
   stripUrlQuery,
   type PostHogConfig,
 } from './posthog'
@@ -40,10 +40,10 @@ const sdk = vi.hoisted(() => ({
   opt_out_capturing: vi.fn(),
   opt_in_capturing: vi.fn(),
   has_opted_out_capturing: vi.fn(() => false),
+  get_session_id: vi.fn((): unknown => '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70'),
   conversations: {
-    isAvailable: vi.fn(() => true),
-    sendMessage: vi.fn(),
-  },
+    getWidgetSessionId: vi.fn((): unknown => '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c'),
+  } as { getWidgetSessionId?: () => unknown } | undefined,
 }))
 
 vi.mock('posthog-js', () => ({ default: sdk }))
@@ -71,7 +71,7 @@ describe('posthog analytics facade', () => {
       resetPosthog()
     }).not.toThrow()
     expect(isPosthogOptedOut()).toBe(false)
-    await expect(sendPosthogSupportMessage('hello')).resolves.toBe(false)
+    expect(getPosthogSupportContext()).toEqual({ widgetSessionId: null, sessionId: null })
     expect(isPosthogEnabled()).toBe(false)
   })
 
@@ -428,8 +428,10 @@ describe('posthog enabled path', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    sdk.conversations.isAvailable.mockReturnValue(true)
-    sdk.conversations.sendMessage.mockResolvedValue({ ticket_id: 't1' })
+    sdk.conversations = {
+      getWidgetSessionId: vi.fn((): unknown => '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c'),
+    }
+    sdk.get_session_id.mockReturnValue('0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70')
   })
 
   afterEach(() => {
@@ -501,30 +503,42 @@ describe('posthog enabled path', () => {
     expect(sdk.reset).toHaveBeenCalledTimes(1)
   })
 
-  test('support: opens a new ticket without traits when Support is available', async () => {
+  test('support context: hands the server the widget session and the replay session', async () => {
     const mod = await load()
-    await expect(mod.sendPosthogSupportMessage('[bug] it broke')).resolves.toBe(true)
-    // Third argument true = always a new ticket; second undefined = no email/name traits.
-    expect(sdk.conversations.sendMessage).toHaveBeenCalledWith('[bug] it broke', undefined, true)
+    expect(mod.getPosthogSupportContext()).toEqual({
+      widgetSessionId: '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c',
+      sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
+    })
   })
 
-  test('support: reports false and sends nothing when Support is not available', async () => {
-    sdk.conversations.isAvailable.mockReturnValue(false)
+  test('support context: no widget session while Support is not loaded', async () => {
+    sdk.conversations = undefined
     const mod = await load()
-    await expect(mod.sendPosthogSupportMessage('hi')).resolves.toBe(false)
-    expect(sdk.conversations.sendMessage).not.toHaveBeenCalled()
+    expect(mod.getPosthogSupportContext()).toEqual({
+      widgetSessionId: null,
+      sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
+    })
   })
 
-  test('support: a failing request never throws into the first-party submit', async () => {
-    sdk.conversations.sendMessage.mockRejectedValue(new Error('offline'))
+  test('support context: an SDK without the method, or an empty id, is null', async () => {
+    sdk.conversations = {}
     const mod = await load()
-    await expect(mod.sendPosthogSupportMessage('hi')).resolves.toBe(false)
+    expect(mod.getPosthogSupportContext().widgetSessionId).toBeNull()
+    sdk.conversations = { getWidgetSessionId: () => '' }
+    expect(mod.getPosthogSupportContext().widgetSessionId).toBeNull()
   })
 
-  test('support: a null response (not loaded yet) is not a success', async () => {
-    sdk.conversations.sendMessage.mockResolvedValue(null)
+  test('support context: a throwing SDK never fails the submit', async () => {
+    sdk.conversations = {
+      getWidgetSessionId: () => {
+        throw new Error('not ready')
+      },
+    }
+    sdk.get_session_id.mockImplementation(() => {
+      throw new Error('not ready')
+    })
     const mod = await load()
-    await expect(mod.sendPosthogSupportMessage('hi')).resolves.toBe(false)
+    expect(mod.getPosthogSupportContext()).toEqual({ widgetSessionId: null, sessionId: null })
   })
 })
 

@@ -31,7 +31,7 @@ export const UID = {
   /** Gotenberg image (upstream `build/Dockerfile`): user `gotenberg` = 1001. */
   gotenberg: 1001,
   /**
-   * The geocoder (ADR-0118). Neither image it runs fixes a user (`eclipse-temurin`
+   * The geocoder (ADR-0120). Neither image it runs fixes a user (`eclipse-temurin`
    * and `alpine` start as root), so the UID is ours; `fsGroup` makes the index
    * volume writable to it.
    */
@@ -74,7 +74,7 @@ export const PORT = {
   clickhouseNative: 9000,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
-  /** Photon, the address search behind `GRID_GEOCODER_URL` (ADR-0118). Upstream default. */
+  /** Photon, the address search behind `GRID_GEOCODER_URL` (ADR-0120). Upstream default. */
   geocoder: 2322,
   /** Qdrant REST API: clients, probes and the snapshot CronJob. Upstream default. */
   qdrantHttp: 6333,
@@ -396,7 +396,7 @@ export const EDGE_RATE_LIMIT = {
 } as const;
 
 /**
- * The geocoder (ADR-0118): a self-hosted Photon over the Austrian OSM extract,
+ * The geocoder (ADR-0120): a self-hosted Photon over the Austrian OSM extract,
  * behind the project creation dialog's address search (`GRID_GEOCODER_URL`,
  * `frontends/ui/src/lib/geocoding/photon.ts`).
  *

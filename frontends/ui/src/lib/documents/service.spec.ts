@@ -91,7 +91,7 @@ vi.mock('@/lib/organizations/service', () => ({
   getOrgSettings: vi.fn().mockResolvedValue({ displayName: null, defaultLocale: 'de', settings: {} }),
 }))
 
-// A project may change the office's name terms for itself (migration 0157);
+// A project may change the office's name terms for itself (migration 0158);
 // these projects change nothing, so the office's list is the one in force.
 vi.mock('@/lib/upload-screening/project-repository', () => ({
   findProjectScreeningOverride: vi.fn().mockResolvedValue(null),

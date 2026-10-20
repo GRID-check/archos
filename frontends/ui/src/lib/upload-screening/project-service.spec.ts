@@ -1,5 +1,5 @@
 /**
- * One project's sensitive-data list (migration 0157): who reads it, who may
+ * One project's sensitive-data list (migration 0158): who reads it, who may
  * change it, and that only what changes something is stored and audited.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'

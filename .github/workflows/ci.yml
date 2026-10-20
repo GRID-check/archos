@@ -77,17 +77,33 @@ jobs:
       web: ${{ steps.filter.outputs.web || 'false' }}
       infra: ${{ steps.filter.outputs.infra || 'false' }}
       packages: ${{ steps.filter.outputs.packages || 'false' }}
+      migrations: ${{ steps.filter.outputs.migrations || 'false' }}
       sast: ${{ steps.filter.outputs.sast || 'false' }}
       # The images this run builds (a matrix), and all three with their hashes.
       build: ${{ steps.images.outputs.build }}
       images: ${{ steps.images.outputs.images }}
       # Third-party image pins this change adds or moves, for trivy.
       pins: ${{ steps.pins.outputs.pins || '[]' }}
+      # What a pull request's test lanes run: 'select' only the tests its
+      # change reaches since its last green run, 'full' the sharded,
+      # coverage-gated suite, 'none' (UI) nothing. A push is always full.
+      # ci/pr_selection.py says why, in this job's log.
+      backend_mode: ${{ steps.pysel.outputs.py_mode || 'full' }}
+      py_extra: ${{ steps.pysel.outputs.py_extra || '[]' }}
+      ui_mode: ${{ steps.pysel.outputs.ui_mode || 'full' }}
+      ui_files: ${{ steps.pysel.outputs.ui_files || '[]' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           fetch-depth: 0
+          # Every commit and tree, no file contents: the diff base, the merge
+          # base and `git diff --name-only` need only those. The full history
+          # is 1.1 GB and fetching it cost this job, which every other job
+          # waits for, ~29s; blobless it is 16 MB. The few blobs the image and
+          # pin scripts read at the base are fetched on demand by the two
+          # steps below that source ci/git_auth.sh.
+          filter: blob:none
           # synchronize checks out the PR head. The default PR checkout is a
           # merge commit, which would mix develop into the diff.
           ref: ${{ github.event.action == 'synchronize' && (github.event.pull_request.head.sha || github.sha) || github.sha }}
@@ -136,18 +152,33 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
+          . ci/git_auth.sh
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             python3 ci/image_inputs.py plan --base "$BASE"
           else
             python3 ci/image_inputs.py plan --registry "$GITHUB_REPOSITORY_OWNER"
           fi
 
+      - name: Tests this change reaches
+        id: pysel
+        if: github.event_name == 'pull_request' && (steps.filter.outputs.backend == 'true' || steps.filter.outputs.frontend == 'true')
+        # A failure here leaves every mode unset, which reads 'full'.
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_HEAD_REF: ${{ github.head_ref }}
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: python3 ci/pr_selection.py "$BASE"
+
       - name: Image pins this change adds
         id: pins
         if: steps.reuse.outputs.hit != 'true'
         env:
+          GH_TOKEN: ${{ github.token }}
           BASE: ${{ github.event.pull_request.base.sha || steps.green.outputs.sha }}
-        run: python3 ci/pinned_images.py new "$BASE"
+        run: |
+          . ci/git_auth.sh
+          python3 ci/pinned_images.py new "$BASE"
 
       # A skipped job reads as passed, so the run page says what was decided
       # and why: the diff base, reuse, tiers, images, pins.
@@ -213,6 +244,11 @@ jobs:
       # `github` output makes each finding an annotation on the diff.
       - name: Backend lint (ruff)
         run: task be:lint -- --output-format=github
+      # The tests of ci/, the workflows and the release-note pipeline. Here
+      # rather than only in the backend suite, so the backend filter need not
+      # fire for a change that only touches those (.github/filters.yml).
+      - name: Repository machinery tests (CI, release notes)
+        run: task be:test:harness
       # The notes are published verbatim to piloti.at, so their prose is linted
       # on every run, a push straight to release/** included.
       - name: Release notes (lint)
@@ -277,24 +313,28 @@ jobs:
         continue-on-error: true
         run: python3 ci/semgrep_summary.py semgrep.json "new findings this pull request introduces" >> "$GITHUB_STEP_SUMMARY"
 
-  # Core suite (coverage-gated), the aiq_api plugin suite and the sources/
-  # suites, in one job: they share the environment, and the plugin suites
-  # (~1 min) fit inside the time the frontend lane takes anyway, so a second
-  # job bought no wall clock and cost a queued runner slot.
+  # The core suite, in four shards. It is ~900 CPU-seconds on a 2-vCPU runner
+  # and nothing in it dominates (docs/contributing/ci.md#the-backend-lane), so
+  # as one job it was the whole run's critical path: 7-8 of a 14-minute run,
+  # with the other suites queued behind it in the same job. Each shard takes
+  # its share by recorded test time (pytest-split), writes coverage data and
+  # gates nothing; `backend-coverage` combines the data and applies the gate.
   backend:
-    name: Backend tests
+    name: Backend core (shard ${{ matrix.shard }}/4)
     needs: changes
-    if: needs.changes.outputs.backend == 'true'
+    if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
     runs-on: ubuntu-latest
-    timeout-minutes: 20
-    permissions:
-      contents: read
-      pull-requests: write # coverage sticky comment
+    timeout-minutes: 15
+    strategy:
+      # One shard's failure should not hide the others' results.
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
     # A real Qdrant for every Python suite (ADR-0115): it is the only vector
     # store, and the behaviour under test (German BM25, fusion, strict mode,
     # group_by) is the server's, so a mock would only test the mock. Same
-    # version as production. Job-wide, so a suite that gains a store test
-    # cannot run it against nothing.
+    # version as production. In every backend job, so a suite that gains a
+    # store test cannot run it against nothing.
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -311,10 +351,81 @@ jobs:
         with:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
-      - name: Core suite (coverage-gated)
-        run: task be:test:ci
+      - name: Core suite, shard ${{ matrix.shard }}/4
+        run: task be:test:shard SHARD=${{ matrix.shard }}/4
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: backend-coverage-${{ matrix.shard }}
+          path: .coverage.shard${{ matrix.shard }}
+          include-hidden-files: true
+          retention-days: 1
+
+  # The core suite's coverage gate (65% of src/aiq_agent) over all four shards,
+  # and the PR comment. In `CI OK`, unlike the frontend's comment-only merge,
+  # because the gate is a check.
+  backend-coverage:
+    name: Backend coverage gate
+    needs: [changes, backend]
+    if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write # coverage sticky comment
+    steps:
+      # The sources the data names, for the report; no environment beyond
+      # coverage itself, at the version the shards ran.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: backend-coverage-*
+          merge-multiple: true
+      - name: Combine the shards and apply the gate
+        run: |
+          coverage="coverage==$(uv export --frozen --only-group dev --no-hashes --no-emit-workspace | sed -n 's/^coverage==\([^ ;]*\).*/\1/p')"
+          uvx --from "$coverage" coverage combine --keep .coverage.shard*
+          uvx --from "$coverage" coverage xml -o coverage.xml
+          uvx --from "$coverage" coverage report --fail-under=65
+      - name: Coverage comment (backend)
+        if: github.event_name == 'pull_request'
+        continue-on-error: true # never fail CI on a comment hiccup
+        uses: MishaKav/pytest-coverage-comment@9ee59af31bd7bcada1cc496f086b407122602dbd # v1.12.3
+        with:
+          pytest-xml-coverage-path: coverage.xml
+          # The whole-tree table passed GitHub's 65,536-character comment
+          # limit, and the action then posted only the badge.
+          report-only-changed-files: true
+          title: Backend coverage (src/aiq_agent)
+          unique-id-for-comment: backend-coverage
+
+  # Every Python suite but the core one: they share the environment and fit
+  # beside a core shard.
+  backend-suites:
+    name: Backend suites (aiq_api, sources, migration, claim queues)
+    needs: changes
+    if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.14"
+      - uses: ./.github/actions/setup-task
       - name: aiq_api plugin suite
-        run: task be:test:api:ci
+        run: task be:test:api
       - name: sources/ package suites
         run: task be:test:sources
       - name: Chroma exporter and the one-time migration, end to end
@@ -329,17 +440,106 @@ jobs:
         env:
           # Turns "the Postgres branch skipped" into a failure for THIS step only.
           AIQ_TEST_POSTGRES_REQUIRED: "1"
-      - name: Coverage comment (backend)
-        if: github.event_name == 'pull_request'
-        continue-on-error: true # never fail CI on a comment hiccup
-        uses: MishaKav/pytest-coverage-comment@9ee59af31bd7bcada1cc496f086b407122602dbd # v1.12.3
+
+  # A pull request whose change testmon can see runs only the tests that
+  # change reaches, per suite, from the database the last green develop push
+  # recorded (`backend-testmon`). The full sharded suite and the coverage gate
+  # run on every push to develop, which the deploy waits for, so a test this
+  # selection misses still turns develop red before staging. What forces the
+  # full suite on a pull request instead: ci/pr_selection.py.
+  backend-affected:
+    name: Backend affected tests (${{ matrix.suite }})
+    needs: changes
+    if: github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' && needs.changes.outputs.backend_mode == 'select'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [core, api, sources]
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          pytest-xml-coverage-path: coverage.xml
-          # The whole-tree table passed GitHub's 65,536-character comment
-          # limit, and the action then posted only the badge.
-          report-only-changed-files: true
-          title: Backend coverage (src/aiq_agent)
-          unique-id-for-comment: backend-coverage
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.14"
+      - uses: ./.github/actions/setup-task
+      # This pull request's own database first: it carries what the last push
+      # ran, so the next push re-runs only what it changed (and anything that
+      # failed, which testmon keeps selecting until it passes). Else develop's.
+      - name: Restore the recorded test database
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-${{ matrix.suite }}
+          key: testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-${{ github.sha }}
+          restore-keys: |
+            testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-
+            testmon-
+      - name: The ${{ matrix.suite }} tests this change reaches
+        id: affected
+        env:
+          SUITE: ${{ matrix.suite }}
+          EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
+        run: |
+          # The named test files that belong to this suite.
+          case "$SUITE" in core) root=tests/ ;; api) root=frontends/aiq_api/tests/ ;; sources) root=sources/ ;; esac
+          extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
+          task be:test:affected SUITE="$SUITE" EXTRA="$extra"
+      # Saved red or green: a failed test is recorded as failed and re-runs.
+      - name: Keep this pull request's database for its next push
+        if: always() && steps.affected.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-${{ matrix.suite }}
+          key: testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-${{ github.sha }}
+      # Production's claim SQL, beside the suite whose queue it is cheapest to
+      # pair with. 14 seconds; not worth selecting.
+      - name: Claim queues on real Postgres
+        if: matrix.suite == 'api'
+        run: task be:test:postgres
+        env:
+          AIQ_TEST_POSTGRES_REQUIRED: "1"
+
+  # Records which test runs which code, for `backend-affected`. On every push
+  # to develop, reused or not: a squash merge of a green pull request skips the
+  # checks, and the database would otherwise stop following develop. Saved only
+  # when every test passed, because testmon re-runs a recorded failure forever.
+  # Not a check, so not in `CI OK` or `publish`: it holds nobody up.
+  backend-testmon:
+    name: Backend test database (testmon)
+    needs: changes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
+    env:
+      AIQ_QDRANT_TEST_URL: http://localhost:6333
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/setup-python-env
+        with:
+          python-version: "3.14"
+      - uses: ./.github/actions/setup-task
+      - run: task be:test:testmon
+      - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-*
+          key: testmon-${{ github.sha }}
 
   # Everything on the UI's toolchain except the test shards. The production
   # build is NOT here: the frontend image build (`image`) runs the same
@@ -384,25 +584,28 @@ jobs:
           # Turns "the suite skipped" into a failure for THIS step only: the
           # unit shards legitimately have no database.
           GRID_RLS_SUITE_REQUIRED: "1"
+          # The per-migration checks only when a migration or the script moved.
+          GRID_RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 
   frontend-test:
-    name: Frontend tests (shard ${{ matrix.shard }}/4)
+    name: Frontend tests (shard ${{ matrix.shard }}/6)
     needs: changes
-    if: needs.changes.outputs.frontend == 'true'
+    # A pull request whose change no UI spec reads since its last green run
+    # ('none') runs none; one that a selection can see runs only the specs
+    # its change reaches ('select'); everything else, and every push, all.
+    if: needs.changes.outputs.frontend == 'true' && (github.event_name == 'push' || needs.changes.outputs.ui_mode != 'none')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       # One shard's failure should not hide the others' results.
       fail-fast: false
-      # Four, not six: under a runner cap each shard is a slot a queued run
-      # waits for. The price, measured on 2026-10-09:
-      # the test step took 2:05, 2:45, 2:33 and 4:04 per shard, so shard 4 is
-      # the run's critical path, about a minute behind the backend lane (3:16).
-      # vitest shards by FILE, so one shard carries the heavy files
-      # (InputArea.spec.tsx alone was 46s of 210s). Split the heavy files to
-      # balance it; adding shards back trades slots for that minute.
+      # Six. The suite is mostly per-file startup (import and setup are ~60%
+      # of a shard), so it scales with shards, and by 2026-10-19 four shards
+      # took 7-11 minutes each against ~3:30 for a backend core shard. The
+      # old reason for four, queued runner slots, did not hold up: job-level
+      # queueing was under three seconds in every run measured then.
       matrix:
-        shard: [1, 2, 3, 4]
+        shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -413,12 +616,20 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       - run: task fe:install
-      - run: task fe:test:shard SHARD=${{ matrix.shard }}/4
+      - name: All specs, shard ${{ matrix.shard }}/6
+        if: github.event_name == 'push' || needs.changes.outputs.ui_mode == 'full'
+        run: task fe:test:shard SHARD=${{ matrix.shard }}/6
+      - name: The specs this change reaches, shard ${{ matrix.shard }}/6
+        if: github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'select'
+        env:
+          SHARD: ${{ matrix.shard }}/6
+          FILES_JSON: ${{ needs.changes.outputs.ui_files }}
+        run: task fe:test:related SHARD="$SHARD" FILES="$(jq -r 'join(" ")' <<<"$FILES_JSON")"
       # Coverage is collected per shard and merged below: a shard only loads
       # its own slice of the app. Uploaded even when the shard failed, because
       # the merged report is where a reviewer looks.
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        if: always() && github.event_name == 'pull_request'
+        if: always() && github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'full'
         with:
           name: vitest-blob-${{ matrix.shard }}
           path: frontends/ui/.vitest-reports
@@ -431,7 +642,7 @@ jobs:
   frontend-coverage:
     name: Frontend coverage
     needs: [changes, frontend-test]
-    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' }}
+    if: ${{ !cancelled() && github.event_name == 'pull_request' && needs.changes.outputs.frontend == 'true' && needs.changes.outputs.ui_mode == 'full' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -654,7 +865,7 @@ jobs:
   # has all three images, and no commit CI failed has any.
   publish:
     name: Tag images for this commit
-    needs: [changes, repo, backend, frontend, frontend-test, web, infra, packages, trivy, image-push]
+    needs: [changes, repo, backend, backend-coverage, backend-suites, frontend, frontend-test, web, infra, packages, trivy, image-push]
     if: >-
       always() && github.event_name == 'push' && needs.changes.result == 'success'
       && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
@@ -704,7 +915,7 @@ jobs:
     # checkout can hold a corpus to measure, and a job that can only pass
     # vacuously is worse than none. It survives as `task be:eval:retrieval`;
     # ADR-0058 "Update (2026-09-09)" says what restoring the gate would take.
-    needs: [changes, repo, semgrep, backend, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
+    needs: [changes, repo, semgrep, backend, backend-coverage, backend-suites, backend-affected, frontend, frontend-test, web, infra, packages, trivy, image, image-push, publish]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:

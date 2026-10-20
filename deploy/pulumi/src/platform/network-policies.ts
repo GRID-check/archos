@@ -470,7 +470,7 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 20. The geocoder (ADR-0118): the frontend in, DNS and HTTPS out.
+  // 20. The geocoder (ADR-0120): the frontend in, DNS and HTTPS out.
   //
   //     Every address a person types in the project dialog reaches it, so it
   //     is withheld from rule 2: the frontend BFF (`/api/geocode`) is its one

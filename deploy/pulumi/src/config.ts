@@ -74,6 +74,8 @@ const SEAWEED_FILER_DB = "seaweedfs_filer";
  */
 export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
 export const POSTHOG_DEFAULT_PROJECT_TOKEN = "phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X"; // pragma: allowlist secret
+/** The same project's numeric id, for the private API (PostHog Support). */
+export const POSTHOG_DEFAULT_PROJECT_ID = "269895";
 
 export interface GridConfig {
   namespace: string;
@@ -565,7 +567,7 @@ export interface GridConfig {
   };
 
   /**
-   * The self-hosted address search (ADR-0118, `data/geocoder.ts`): Photon over
+   * The self-hosted address search (ADR-0120, `data/geocoder.ts`): Photon over
    * the Austrian OSM extract. The frontend gets `GRID_GEOCODER_URL` exactly
    * when this is on; off, the project dialog's address stays a plain text field.
    */
@@ -1194,6 +1196,21 @@ export interface GridConfig {
      * exception to the release by id. Empty = no release link.
      */
     releaseId: string;
+    /**
+     * Personal API key for PostHog Support (`grid-oib:posthogPersonalApiKey`,
+     * a secret in the stack's ESC environment; scopes `ticket:read`, `ticket:write`,
+     * `project:read`). The BFF opens a Support ticket per feedback report and
+     * lists and updates them on Platform -> Feedback
+     * (`frontends/ui/src/lib/posthog-support/`). `undefined` when the stack
+     * does not set it: then neither it nor `projectId` reaches a pod, and the
+     * page shows the local feedback log only.
+     */
+    personalApiKey: pulumi.Output<string> | undefined;
+    /**
+     * Numeric project id for that API (`grid-oib:posthogProjectId`, default
+     * `POSTHOG_DEFAULT_PROJECT_ID`). Only emitted alongside the key.
+     */
+    projectId: string;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -2762,7 +2779,7 @@ export function loadConfig(): GridConfig {
     geocoder: {
       enabled: bool(cfg, "geocoderEnabled", false),
       // Both official images, pinned by digest: there is no upstream Photon
-      // image, and this pod sees every address a person types (ADR-0118).
+      // image, and this pod sees every address a person types (ADR-0120).
       image:
         cfg.get("geocoderImage") ??
         "eclipse-temurin:21.0.12_8-jre-noble@sha256:7739f0ffce786528961eea6bf46d9610ee968ac6127c9b2e93494757bdecce9f",
@@ -3029,6 +3046,8 @@ export function loadConfig(): GridConfig {
       sessionReplay: bool(cfg, "posthogSessionReplay", true),
       replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
       releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),
+      personalApiKey: cfg.getSecret("posthogPersonalApiKey"),
+      projectId: (cfg.get("posthogProjectId") ?? POSTHOG_DEFAULT_PROJECT_ID).trim(),
     },
 
     internal: {

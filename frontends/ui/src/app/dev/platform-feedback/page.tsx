@@ -10,6 +10,10 @@
  *   /dev/platform-feedback?focus=f2      as reached from an inbox row
  *   /dev/platform-feedback?readonly=1    Platform Support: view only
  *   /dev/platform-feedback?empty=1       nothing new
+ *   /dev/platform-feedback?source=local  PostHog not configured or unreachable: the local log
+ *
+ * The PostHog list always carries one report whose ticket failed to open
+ * (`unticketed`), so the "not in PostHog yet" section is in every capture.
  */
 
 import type { JSX } from 'react'
@@ -22,7 +26,12 @@ import {
   FeedbackTriage,
   type FeedbackTriageClient,
 } from '@/features/product-feedback/components/feedback-triage'
-import type { ProductFeedbackReportView, ProductFeedbackStatus } from '@/lib/product-feedback/types'
+import {
+  SUPPORT_TICKET_STATUSES,
+  type ProductFeedbackListResponse,
+  type ProductFeedbackReportView,
+  type SupportTicketStatus,
+} from '@/lib/product-feedback/types'
 
 const now = Date.now()
 const ago = (minutes: number): string => new Date(now - minutes * 60_000).toISOString()
@@ -35,11 +44,23 @@ const CONTEXT = {
   timeZone: 'Europe/Vienna',
 }
 
+const POSTHOG = 'https://eu.posthog.com/project/12345'
+
+const ticket = (id: string, number: number, status: SupportTicketStatus) => ({
+  id,
+  number,
+  status,
+  url: `${POSTHOG}/support/tickets/${id}`,
+})
+
+const person = (userId: string): string => `${POSTHOG}/person/${userId}`
+
 const SEED: ProductFeedbackReportView[] = [
   {
     id: 'f1',
     kind: 'bug',
-    status: 'new',
+    ticket: ticket('5b1f0c2e-1d4a-4c7e-9f3b-2a6d8e0c4b11', 41, 'new'),
+    posthogPersonUrl: person('u1'),
     message:
       'Beim Hochladen eines 80-MB-Plans bleibt der Fortschritt bei 99 % stehen, auch nach 10 Minuten. Nach einem Neuladen ist die Datei nicht im Projekt.',
     pagePath: '/app/projects/3f2a/files',
@@ -48,15 +69,14 @@ const SEED: ProductFeedbackReportView[] = [
     organizationId: 'org_nord',
     organizationName: 'Architekturbüro Nord',
     reporter: { userId: 'u1', name: 'Maria Huber', email: 'maria.huber@buero-nord.at' },
-    triagedBy: null,
-    triagedAt: null,
     createdAt: ago(4),
     updatedAt: ago(4),
   },
   {
     id: 'f2',
     kind: 'idea',
-    status: 'new',
+    ticket: ticket('7c2e1d3f-2e5b-4d8f-8a4c-3b7e9f1d5c22', 40, 'new'),
+    posthogPersonUrl: person('u2'),
     message:
       'Es wäre großartig, wenn ich eine Antwort direkt als Aktennotiz ins Archiv legen könnte, mit Quellenangaben.\n\nDerzeit kopiere ich alles händisch in Word.',
     pagePath: '/app/projects/3f2a/chat',
@@ -65,15 +85,14 @@ const SEED: ProductFeedbackReportView[] = [
     organizationId: 'org_sued',
     organizationName: 'Ingenieurbüro Süd',
     reporter: { userId: 'u2', name: 'Thomas Leitner', email: 'leitner@ib-sued.at' },
-    triagedBy: null,
-    triagedAt: null,
     createdAt: ago(95),
     updatedAt: ago(95),
   },
   {
     id: 'f3',
     kind: 'praise',
-    status: 'new',
+    ticket: ticket('9d3f2e4a-3f6c-4e9a-9b5d-4c8f0a2e6d33', 39, 'pending'),
+    posthogPersonUrl: person('u3'),
     message:
       'Die Herleitung der OIB-2-Anforderungen hat uns heute einen halben Tag gespart. Danke!',
     pagePath: '/app/projects/9c1d/chat',
@@ -82,15 +101,14 @@ const SEED: ProductFeedbackReportView[] = [
     organizationId: 'org_nord',
     organizationName: 'Architekturbüro Nord',
     reporter: { userId: 'u3', name: 'Sabine Gruber', email: null },
-    triagedBy: null,
-    triagedAt: null,
     createdAt: ago(60 * 26),
     updatedAt: ago(60 * 26),
   },
   {
     id: 'f4',
     kind: 'question',
-    status: 'in_progress',
+    ticket: ticket('1e4a3f5b-4a7d-4fab-8c6e-5d9a1b3f7e44', 37, 'open'),
+    posthogPersonUrl: person('u4'),
     message:
       'Kann ich eigene Normen (z. B. ÖNORM B 1600) hochladen, damit Piloti sie berücksichtigt?',
     pagePath: '/app/archiv',
@@ -99,33 +117,75 @@ const SEED: ProductFeedbackReportView[] = [
     organizationId: 'org_west',
     organizationName: 'Planungsgruppe West',
     reporter: { userId: 'u4', name: 'Lukas Berger', email: 'lb@pg-west.at' },
-    triagedBy: 'owner@piloti.at',
-    triagedAt: ago(60 * 20),
     createdAt: ago(60 * 48),
     updatedAt: ago(60 * 20),
   },
 ]
 
-function memoryClient(empty: boolean): FeedbackTriageClient {
+/** A report whose ticket failed to open: shown apart while PostHog is read. */
+const UNTICKETED: ProductFeedbackReportView = {
+  id: 'f5',
+  kind: 'bug',
+  ticket: null,
+  posthogPersonUrl: person('u5'),
+  message: 'Der Export als PDF bricht ohne Meldung ab, sobald das Dokument mehr als 40 Seiten hat.',
+  pagePath: '/app/projects/3f2a/export',
+  context: CONTEXT,
+  allowContact: true,
+  organizationId: 'org_west',
+  organizationName: 'Planungsgruppe West',
+  reporter: { userId: 'u5', name: 'Eva Steiner', email: 'steiner@pg-west.at' },
+  createdAt: ago(12),
+  updatedAt: ago(12),
+}
+
+const byNewest = (a: ProductFeedbackReportView, b: ProductFeedbackReportView): number =>
+  b.createdAt.localeCompare(a.createdAt)
+
+/**
+ * An in-memory stand-in for the BFF. `posthog` lists the tickets and keeps the
+ * unticketed report apart; `local` is the fallback, every report newest first
+ * with no ticket and no counts.
+ */
+function memoryClient(empty: boolean, source: ProductFeedbackListResponse['source']): FeedbackTriageClient {
   let reports = empty ? [] : SEED.map((report) => ({ ...report }))
+  const unticketed = empty ? [] : [UNTICKETED]
   const counts = () =>
-    reports.reduce<Record<ProductFeedbackStatus, number>>(
-      (acc, report) => ({ ...acc, [report.status]: acc[report.status] + 1 }),
-      { new: 0, in_progress: 0, resolved: 0, dismissed: 0 }
+    reports.reduce<Record<SupportTicketStatus, number>>(
+      (acc, report) => (report.ticket ? { ...acc, [report.ticket.status]: acc[report.ticket.status] + 1 } : acc),
+      Object.fromEntries(SUPPORT_TICKET_STATUSES.map((status) => [status, 0])) as Record<SupportTicketStatus, number>
     )
+  const local = (report: ProductFeedbackReportView): ProductFeedbackReportView => ({ ...report, ticket: null })
   return {
-    list: async ({ status, kind }) => ({
-      reports: reports.filter(
-        (report) => (!status || report.status === status) && (!kind || report.kind === kind)
-      ),
-      counts: counts(),
-      nextCursor: null,
-    }),
-    get: async (id) => reports.find((report) => report.id === id) ?? null,
+    list: async ({ status, kind }) =>
+      source === 'local'
+        ? {
+            source,
+            reports: [...reports, ...unticketed]
+              .map(local)
+              .filter((report) => !kind || report.kind === kind)
+              .sort(byNewest),
+            counts: null,
+            unticketed: [],
+            nextCursor: null,
+          }
+        : {
+            source,
+            reports: reports.filter(
+              (report) => (!status || report.ticket?.status === status) && (!kind || report.kind === kind)
+            ),
+            counts: counts(),
+            unticketed: unticketed.filter((report) => !kind || report.kind === kind),
+            nextCursor: null,
+          },
+    get: async (id) => {
+      const found = [...reports, ...unticketed].find((report) => report.id === id) ?? null
+      return found && source === 'local' ? local(found) : found
+    },
     triage: async (id, status) => {
       reports = reports.map((report) =>
-        report.id === id
-          ? { ...report, status, triagedBy: 'owner@piloti.at', triagedAt: new Date().toISOString() }
+        report.id === id && report.ticket
+          ? { ...report, ticket: { ...report.ticket, status }, updatedAt: new Date().toISOString() }
           : report
       )
       const updated = reports.find((report) => report.id === id)
@@ -146,7 +206,8 @@ function PreviewHeader(): JSX.Element {
 function Preview(): JSX.Element {
   const params = useSearchParams()
   const empty = params.get('empty') === '1'
-  const client = React.useMemo(() => memoryClient(empty), [empty])
+  const source = params.get('source') === 'local' ? 'local' : 'posthog'
+  const client = React.useMemo(() => memoryClient(empty, source), [empty, source])
   return (
     <I18nProvider initialLocale={params.get('lang') === 'en' ? 'en' : 'de'} fixedLocale>
       <div className="bg-background min-h-dvh px-4 py-8 md:px-8">

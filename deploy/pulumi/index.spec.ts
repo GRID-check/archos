@@ -240,7 +240,7 @@ describe("the program constructs in the split topology", () => {
     );
   });
 
-  it("leaves the geocoder off by default, and the frontend without its URL (ADR-0118)", () => {
+  it("leaves the geocoder off by default, and the frontend without its URL (ADR-0120)", () => {
     // Prepared, not switched on: a stack opts in with `geocoderEnabled`. A
     // default flip would start a 1 GB download on every stack at the next `up`.
     expect(named("kubernetes:apps/v1:StatefulSet")).not.toContain("geocoder");

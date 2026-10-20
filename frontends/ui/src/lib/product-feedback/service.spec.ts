@@ -14,13 +14,21 @@ vi.mock('@/lib/organizations/service', () => ({ getOrganizationDisplayName: vi.f
 vi.mock('@/lib/organizations/display-names', () => ({ getOrganizationDisplayNames: vi.fn() }))
 vi.mock('./announce', () => ({ announceProductFeedback: vi.fn() }))
 vi.mock('@/lib/upload-screening/service', () => ({ maskChatText: vi.fn() }))
+vi.mock('@/lib/posthog-support/config', () => ({ posthogSupportConfigFromEnv: vi.fn() }))
+vi.mock('@/lib/posthog-support/client', () => ({
+  openFeedbackTicket: vi.fn(),
+  listFeedbackTickets: vi.fn(),
+  countFeedbackTicketsByStatus: vi.fn(),
+  getSupportTicket: vi.fn(),
+  updateSupportTicketStatus: vi.fn(),
+}))
 vi.mock('./repository', () => ({
   PRODUCT_FEEDBACK_LIST_LIMIT: 2,
   insertProductFeedback: vi.fn(),
+  setProductFeedbackTicket: vi.fn(),
   listProductFeedback: vi.fn(),
   getProductFeedback: vi.fn(),
-  countProductFeedbackByStatus: vi.fn(),
-  updateProductFeedbackStatus: vi.fn(),
+  getProductFeedbackByTicketIds: vi.fn(),
 }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -28,6 +36,19 @@ import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
+import {
+  countFeedbackTicketsByStatus,
+  getSupportTicket,
+  listFeedbackTickets,
+  openFeedbackTicket,
+  updateSupportTicketStatus,
+} from '@/lib/posthog-support/client'
+import { posthogSupportConfigFromEnv } from '@/lib/posthog-support/config'
+import {
+  PosthogSupportUnavailableError,
+  type PosthogSupportConfig,
+  type SupportTicket,
+} from '@/lib/posthog-support/types'
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import * as repository from './repository'
@@ -37,6 +58,7 @@ import {
   getProductFeedbackForPlatform,
   listProductFeedbackForPlatform,
   submitProductFeedback,
+  supportTicketText,
   triageProductFeedback,
 } from './service'
 
@@ -52,11 +74,19 @@ const session: AuthorizedSession = {
   featureFlags: null,
 }
 
+const config: PosthogSupportConfig = {
+  appHost: 'https://eu.posthog.com',
+  ingestHost: 'https://eu.i.posthog.com',
+  projectId: '269895',
+  personalApiKey: 'phx_test',
+}
+
 const at = new Date('2026-09-29T08:00:00Z')
+const REPORT_ID = '7b6a2c1e-0000-4000-8000-000000000001'
 
 function stored(overrides: Partial<ProductFeedback> = {}): ProductFeedback & { organizationName: string | null } {
   return {
-    id: '7b6a2c1e-0000-4000-8000-000000000001',
+    id: REPORT_ID,
     organizationId: 'org_tenant',
     organizationName: 'Büro Nord',
     userId: 'user_reporter',
@@ -67,29 +97,42 @@ function stored(overrides: Partial<ProductFeedback> = {}): ProductFeedback & { o
     pagePath: '/app/projects',
     context: { viewport: '1440x900' },
     allowContact: true,
-    status: 'new',
-    triagedBy: null,
-    triagedAt: null,
+    posthogTicketId: null,
     createdAt: at,
     updatedAt: at,
     ...overrides,
   }
 }
 
+function ticket(overrides: Partial<SupportTicket> = {}): SupportTicket {
+  return {
+    id: 'ticket-1',
+    ticketNumber: 42,
+    status: 'open',
+    tags: ['piloti-feedback', 'kind:bug'],
+    createdAt: at.toISOString(),
+    updatedAt: at.toISOString(),
+    url: 'https://eu.posthog.com/project/269895/support/tickets/ticket-1',
+    ...overrides,
+  }
+}
+
+const NO_COUNTS = { new: 0, open: 0, pending: 0, on_hold: 0, resolved: 0 }
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requirePlatformPermission).mockResolvedValue(undefined)
   vi.mocked(repository.insertProductFeedback).mockResolvedValue(stored())
+  vi.mocked(repository.listProductFeedback).mockResolvedValue([])
+  vi.mocked(repository.getProductFeedbackByTicketIds).mockResolvedValue(new Map())
   vi.mocked(getOrganizationDisplayName).mockResolvedValue('Büro Nord')
   vi.mocked(getOrganizationDisplayNames).mockResolvedValue(new Map())
   vi.mocked(announceProductFeedback).mockResolvedValue({ status: 'announced', recipients: 2 })
   vi.mocked(maskChatText).mockImplementation(async (_organizationId, text) => ({ text }) as never)
-  vi.mocked(repository.countProductFeedbackByStatus).mockResolvedValue({
-    new: 1,
-    in_progress: 0,
-    resolved: 0,
-    dismissed: 0,
-  })
+  vi.mocked(posthogSupportConfigFromEnv).mockReturnValue(config)
+  vi.mocked(openFeedbackTicket).mockResolvedValue('ticket-1')
+  vi.mocked(listFeedbackTickets).mockResolvedValue({ tickets: [], count: 0 })
+  vi.mocked(countFeedbackTicketsByStatus).mockResolvedValue(NO_COUNTS)
 })
 
 describe('submitProductFeedback', () => {
@@ -99,6 +142,7 @@ describe('submitProductFeedback', () => {
     pagePath: '/app/projects',
     allowContact: true,
     context: { viewport: '1440x900' },
+    posthog: { widgetSessionId: 'w-0199', sessionId: 's-0199' },
   }
 
   it('stores the report as the caller, in the caller organization', async () => {
@@ -119,42 +163,72 @@ describe('submitProductFeedback', () => {
     const view = await submitProductFeedback(session, input)
 
     expect(announceProductFeedback).toHaveBeenCalledWith(stored(), 'Büro Nord')
-    expect(view).toEqual({
-      id: stored().id,
-      kind: 'bug',
-      createdAt: at.toISOString(),
-      relayText: 'Der Upload bleibt bei 99 % stehen.',
-    })
+    expect(view).toEqual({ id: REPORT_ID, kind: 'bug', createdAt: at.toISOString() })
   })
 
-  it('answers with the message masked against the caller organization policy, never as typed', async () => {
+  it("opens a tagged ticket in the reporter's widget session, and remembers its id", async () => {
+    await submitProductFeedback(session, input)
+
+    expect(openFeedbackTicket).toHaveBeenCalledWith(config, {
+      message: supportTicketText('bug', REPORT_ID, '/app/projects', input.message),
+      distinctId: 'user_reporter',
+      widgetSessionId: 'w-0199',
+      sessionId: 's-0199',
+      tags: ['piloti-feedback', 'kind:bug'],
+    })
+    expect(repository.setProductFeedbackTicket).toHaveBeenCalledWith(REPORT_ID, 'ticket-1')
+  })
+
+  it('sends the words masked against the caller organization policy, never as typed', async () => {
     vi.mocked(maskChatText).mockResolvedValue({ text: 'Honorar [maskiert] zu hoch' } as never)
 
-    const view = await submitProductFeedback(session, { ...input, message: 'Honorar 48.000 EUR zu hoch' })
+    await submitProductFeedback(session, { ...input, message: 'Honorar 48.000 EUR zu hoch' })
 
     expect(maskChatText).toHaveBeenCalledWith('org_tenant', 'Honorar 48.000 EUR zu hoch')
-    expect(view.relayText).toBe('Honorar [maskiert] zu hoch')
-    // The stored record is what the reporter typed; platform owners triage that.
+    expect(vi.mocked(openFeedbackTicket).mock.calls[0]?.[1].message).toBe(
+      `[bug] #${REPORT_ID} /app/projects\nHonorar [maskiert] zu hoch`,
+    )
+    // The stored record is what the reporter typed; platform owners read that.
     expect(repository.insertProductFeedback).toHaveBeenCalledWith(
       expect.objectContaining({ message: 'Honorar 48.000 EUR zu hoch' }),
     )
   })
 
-  it('hands nothing to relay when the reporter did not agree to be contacted', async () => {
-    const view = await submitProductFeedback(session, { ...input, allowContact: false })
+  it('opens a ticket for a reporter who declined contact too, tagged so nobody replies', async () => {
+    vi.mocked(repository.insertProductFeedback).mockResolvedValue(stored({ allowContact: false }))
 
-    expect(view.relayText).toBeNull()
-    expect(maskChatText).not.toHaveBeenCalled()
+    await submitProductFeedback(session, { ...input, allowContact: false })
+
+    expect(vi.mocked(openFeedbackTicket).mock.calls[0]?.[1].tags).toEqual(['piloti-feedback', 'kind:bug', 'no-contact'])
   })
 
-  it('hands nothing to relay, rather than the raw text, when the policy cannot be read', async () => {
+  it('opens no ticket, rather than sending the raw text, when the policy cannot be read', async () => {
     vi.mocked(maskChatText).mockRejectedValue(new Error('settings unavailable'))
     vi.spyOn(console, 'error').mockImplementation(() => undefined)
 
     const view = await submitProductFeedback(session, input)
 
-    expect(view.relayText).toBeNull()
-    expect(repository.insertProductFeedback).toHaveBeenCalledTimes(1)
+    expect(openFeedbackTicket).not.toHaveBeenCalled()
+    expect(view.id).toBe(REPORT_ID)
+  })
+
+  it('still thanks the reporter when PostHog refuses the ticket', async () => {
+    vi.mocked(openFeedbackTicket).mockRejectedValue(new PosthogSupportUnavailableError('down', 503))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const view = await submitProductFeedback(session, input)
+
+    expect(view.id).toBe(REPORT_ID)
+    expect(repository.setProductFeedbackTicket).not.toHaveBeenCalled()
+  })
+
+  it('opens no ticket where Support is not configured', async () => {
+    vi.mocked(posthogSupportConfigFromEnv).mockReturnValue(null)
+
+    await submitProductFeedback(session, input)
+
+    expect(openFeedbackTicket).not.toHaveBeenCalled()
+    expect(maskChatText).not.toHaveBeenCalled()
   })
 
   it('still announces when the organization name cannot be resolved', async () => {
@@ -168,53 +242,156 @@ describe('submitProductFeedback', () => {
 
 describe('the platform half is gated in the service, not only on the route', () => {
   it('reads with settings:view', async () => {
-    vi.mocked(repository.listProductFeedback).mockResolvedValue([])
     await listProductFeedbackForPlatform(session, {})
     expect(requirePlatformPermission).toHaveBeenCalledWith(session, 'platform:settings:view')
   })
 
-  it('triages with settings:manage and refuses before touching a row', async () => {
+  it('triages with settings:manage and refuses before touching PostHog', async () => {
     vi.mocked(requirePlatformPermission).mockRejectedValue(new Error('denied'))
 
-    await expect(triageProductFeedback(session, stored().id, 'resolved')).rejects.toThrow('denied')
+    await expect(triageProductFeedback(session, REPORT_ID, 'resolved')).rejects.toThrow('denied')
     expect(requirePlatformPermission).toHaveBeenCalledWith(session, 'platform:settings:manage')
-    expect(repository.updateProductFeedbackStatus).not.toHaveBeenCalled()
-  })
-
-  it('attributes a triage to the caller', async () => {
-    vi.mocked(repository.updateProductFeedbackStatus).mockResolvedValue(stored({ status: 'resolved' }))
-    vi.mocked(repository.getProductFeedback).mockResolvedValue(
-      stored({ status: 'resolved', triagedBy: 'maria@buero.test', triagedAt: at }),
-    )
-
-    const view = await triageProductFeedback(session, stored().id, 'resolved')
-
-    expect(repository.updateProductFeedbackStatus).toHaveBeenCalledWith(
-      stored().id,
-      'resolved',
-      'maria@buero.test',
-    )
-    expect(view.status).toBe('resolved')
+    expect(updateSupportTicketStatus).not.toHaveBeenCalled()
   })
 
   it('answers not found for an unknown report', async () => {
     vi.mocked(repository.getProductFeedback).mockResolvedValue(null)
-    await expect(getProductFeedbackForPlatform(session, stored().id)).rejects.toThrow(/Unknown/)
+    await expect(getProductFeedbackForPlatform(session, REPORT_ID)).rejects.toThrow(/Unknown/)
   })
 })
 
-describe('the triage view', () => {
+describe('the triage list reads PostHog', () => {
+  it("joins a page of tickets to their reports and carries PostHog's counts", async () => {
+    const counts = { ...NO_COUNTS, open: 1 }
+    vi.mocked(listFeedbackTickets).mockResolvedValue({ tickets: [ticket()], count: 1 })
+    vi.mocked(countFeedbackTicketsByStatus).mockResolvedValue(counts)
+    vi.mocked(repository.getProductFeedbackByTicketIds).mockResolvedValue(
+      new Map([['ticket-1', stored({ posthogTicketId: 'ticket-1' })]]),
+    )
+
+    const list = await listProductFeedbackForPlatform(session, { status: 'open', kind: 'bug' })
+
+    expect(listFeedbackTickets).toHaveBeenCalledWith(config, { status: 'open', kind: 'bug', limit: 2, offset: 0 })
+    expect(list.source).toBe('posthog')
+    expect(list.counts).toEqual(counts)
+    expect(list.reports).toHaveLength(1)
+    expect(list.reports[0]?.ticket).toEqual({ id: 'ticket-1', number: 42, status: 'open', url: ticket().url })
+    expect(list.reports[0]?.posthogPersonUrl).toBe('https://eu.posthog.com/project/269895/person/user_reporter')
+  })
+
+  it('lists recent reports whose ticket never opened beside the tickets, on the first page', async () => {
+    vi.mocked(repository.listProductFeedback).mockResolvedValue([stored()])
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(repository.listProductFeedback).toHaveBeenCalledWith(expect.objectContaining({ unticketed: true }))
+    expect(list.unticketed.map((report) => report.id)).toEqual([REPORT_ID])
+    expect(list.unticketed[0]?.ticket).toBeNull()
+  })
+
+  it('skips a tagged ticket whose report is gone', async () => {
+    vi.mocked(listFeedbackTickets).mockResolvedValue({ tickets: [ticket()], count: 1 })
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(list.reports).toEqual([])
+  })
+
+  it('pages by offset while PostHog has more', async () => {
+    const tickets = [ticket(), ticket({ id: 'ticket-2' })]
+    vi.mocked(listFeedbackTickets).mockResolvedValue({ tickets, count: 5 })
+
+    const first = await listProductFeedbackForPlatform(session, {})
+    expect(first.nextCursor).toBe('o:2')
+
+    await listProductFeedbackForPlatform(session, { cursor: 'o:2' })
+    expect(listFeedbackTickets).toHaveBeenLastCalledWith(config, expect.objectContaining({ offset: 2 }))
+  })
+
+  it('falls back to the local log, read-only, when PostHog cannot be read', async () => {
+    vi.mocked(listFeedbackTickets).mockRejectedValue(new PosthogSupportUnavailableError('down', 502))
+    vi.mocked(repository.listProductFeedback).mockResolvedValue([stored({ posthogTicketId: 'ticket-1' })])
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const list = await listProductFeedbackForPlatform(session, { cursor: 'o:50' })
+
+    expect(list.source).toBe('local')
+    expect(list.counts).toBeNull()
+    expect(list.reports[0]?.ticket).toBeNull()
+    // The offset cursor means nothing to the local log.
+    expect(repository.listProductFeedback).toHaveBeenCalledWith(expect.objectContaining({ before: undefined }))
+  })
+
+  it('lists the local log where Support is not configured, with no PostHog links', async () => {
+    vi.mocked(posthogSupportConfigFromEnv).mockReturnValue(null)
+    vi.mocked(repository.listProductFeedback).mockResolvedValue([stored()])
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(listFeedbackTickets).not.toHaveBeenCalled()
+    expect(list.source).toBe('local')
+    expect(list.reports[0]?.posthogPersonUrl).toBeNull()
+  })
+})
+
+describe('one report', () => {
+  it('carries its live ticket', async () => {
+    vi.mocked(repository.getProductFeedback).mockResolvedValue(stored({ posthogTicketId: 'ticket-1' }))
+    vi.mocked(getSupportTicket).mockResolvedValue(ticket({ status: 'pending' }))
+
+    const view = await getProductFeedbackForPlatform(session, REPORT_ID)
+
+    expect(getSupportTicket).toHaveBeenCalledWith(config, 'ticket-1')
+    expect(view.ticket?.status).toBe('pending')
+  })
+
+  it('still opens when PostHog cannot say where its ticket is', async () => {
+    vi.mocked(repository.getProductFeedback).mockResolvedValue(stored({ posthogTicketId: 'ticket-1' }))
+    vi.mocked(getSupportTicket).mockRejectedValue(new PosthogSupportUnavailableError('down'))
+
+    const view = await getProductFeedbackForPlatform(session, REPORT_ID)
+
+    expect(view.ticket).toBeNull()
+  })
+
   it('withholds the address of a reporter who did not agree to be contacted', async () => {
     vi.mocked(repository.getProductFeedback).mockResolvedValue(stored({ allowContact: false }))
 
-    const view = await getProductFeedbackForPlatform(session, stored().id)
+    const view = await getProductFeedbackForPlatform(session, REPORT_ID)
 
     expect(view.reporter).toEqual({ userId: 'user_reporter', name: 'Maria Huber', email: null })
   })
 })
 
+describe('triage moves the PostHog ticket', () => {
+  it('sends the status to PostHog and answers with the moved ticket', async () => {
+    vi.mocked(repository.getProductFeedback).mockResolvedValue(stored({ posthogTicketId: 'ticket-1' }))
+    vi.mocked(updateSupportTicketStatus).mockResolvedValue(ticket({ status: 'resolved' }))
+
+    const view = await triageProductFeedback(session, REPORT_ID, 'resolved')
+
+    expect(updateSupportTicketStatus).toHaveBeenCalledWith(config, 'ticket-1', 'resolved')
+    expect(view.ticket?.status).toBe('resolved')
+  })
+
+  it('refuses a report that has no ticket to move', async () => {
+    vi.mocked(repository.getProductFeedback).mockResolvedValue(stored())
+
+    await expect(triageProductFeedback(session, REPORT_ID, 'resolved')).rejects.toMatchObject({ status: 409 })
+    expect(updateSupportTicketStatus).not.toHaveBeenCalled()
+  })
+
+  it('answers 502 when PostHog does not take the change', async () => {
+    vi.mocked(repository.getProductFeedback).mockResolvedValue(stored({ posthogTicketId: 'ticket-1' }))
+    vi.mocked(updateSupportTicketStatus).mockRejectedValue(new PosthogSupportUnavailableError('down', 503))
+
+    await expect(triageProductFeedback(session, REPORT_ID, 'resolved')).rejects.toMatchObject({ status: 502 })
+  })
+})
+
 describe('organization names', () => {
   it('names an organization without a local row through the resolver, never as unknown', async () => {
+    vi.mocked(posthogSupportConfigFromEnv).mockReturnValue(null)
     const unnamed = stored({ organizationId: 'org_prod', organizationName: null } as never)
     vi.mocked(repository.listProductFeedback).mockResolvedValue([unnamed, stored()])
     vi.mocked(repository.getProductFeedback).mockResolvedValue(unnamed)
@@ -230,9 +407,13 @@ describe('organization names', () => {
   })
 })
 
-describe('paging', () => {
+describe('paging the local log', () => {
   it('hands out a cursor only when the page is full', async () => {
-    vi.mocked(repository.listProductFeedback).mockResolvedValue([stored(), stored({ id: 'b'.repeat(8) + '-0000-4000-8000-000000000002' })])
+    vi.mocked(posthogSupportConfigFromEnv).mockReturnValue(null)
+    vi.mocked(repository.listProductFeedback).mockResolvedValue([
+      stored(),
+      stored({ id: 'b'.repeat(8) + '-0000-4000-8000-000000000002' }),
+    ])
     const full = await listProductFeedbackForPlatform(session, {})
     expect(full.nextCursor).not.toBeNull()
 
@@ -243,7 +424,7 @@ describe('paging', () => {
 
   it('round-trips a cursor and rejects junk', () => {
     const cursor = encodeCursor(stored())
-    expect(decodeCursor(cursor)).toEqual({ createdAt: at, id: stored().id })
+    expect(decodeCursor(cursor)).toEqual({ createdAt: at, id: REPORT_ID })
     expect(decodeCursor('not-a-cursor')).toBeUndefined()
     expect(decodeCursor(`${at.toISOString()}|'; drop table`)).toBeUndefined()
   })

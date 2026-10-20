@@ -58,7 +58,7 @@ describe('assertUploadNameAllowed', () => {
   })
 })
 
-describe('assertUploadNameAllowed into a project (migration 0157)', () => {
+describe('assertUploadNameAllowed into a project (migration 0158)', () => {
   beforeEach(() => {
     vi.mocked(getOrgSettings).mockResolvedValue({
       displayName: null,
