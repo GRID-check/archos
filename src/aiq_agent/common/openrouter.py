@@ -36,6 +36,12 @@ A call site picks the adapter for its shape and never writes its own merge:
   model, the reranker): :func:`limited_async_http_client`, which queues the
   call for a provider slot (ADR-0081) and leaves the routing to the body.
 
+The same two seams (this module's transports and
+``llm_factory.prepare_request``) stamp every call with whose work it is:
+``user`` and ``metadata`` from the ambient cost tracker
+(:func:`attribution_fields`), so OpenRouter's activity can be filtered by
+organization, person and project.
+
 Detached work with no request (an ingest job) enters its organization's
 policy with :func:`data_policy_scope`; code that reads it with
 :func:`scoped_data_policy` and finds no scope pins.
@@ -235,24 +241,109 @@ def pin_chat_model(llm: object, policy: DataPolicy) -> object:
     return pinned
 
 
-def _pinned_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
-    """``request`` with ``policy`` merged into its JSON body."""
-    if not policy.zdr or request.method != "POST" or not targets_openrouter(str(request.url)):
+#: The tracker fields an OpenRouter call carries as ``metadata``, in this order.
+#: OpenRouter takes at most 16 pairs, keys up to 64 characters, values up to 512.
+ATTRIBUTION_METADATA_KEYS = (
+    "organization_id",
+    "user_id",
+    "project_id",
+    "conversation_id",
+    "job_id",
+    "message_id",
+    "activity",
+)
+_METADATA_VALUE_MAX = 512
+_USER_MAX = 256
+
+#: The endpoints whose request schema declares ``metadata``. Embeddings, rerank
+#: and image generation declare ``user`` but not ``metadata``.
+_METADATA_PATHS = ("/chat/completions", "/responses")
+
+
+def attribution_fields(*, metadata: bool = True) -> dict[str, Any]:
+    """The ``user`` and ``metadata`` that say whose work an OpenRouter call is.
+
+    Read from the ambient cost tracker, the same identity the call is booked to
+    on the usage ledger (ADR-0015), so a row in OpenRouter's activity and a row
+    on the ledger name the same organization, person and project. A call made
+    outside any tracker is on no ledger and gets no attribution either.
+
+    ``user`` is ``<organization_id>/<user_id>`` (either half alone when only it
+    is known): OpenRouter's one filterable per-end-user field, and the identity
+    it isolates abuse blocks by, so one person tripping a provider's filter no
+    longer blocks the whole account. WorkOS ids only, never a name or an email.
+    """
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    tracker = grid_cost_tracker_var.get()
+    if tracker is None:
+        return {}
+    fields: dict[str, Any] = {}
+    user = "/".join(
+        part for part in (getattr(tracker, "organization_id", None), getattr(tracker, "user_id", None)) if part
+    )
+    if user:
+        fields["user"] = user[:_USER_MAX]
+    pairs = {
+        key: str(value)[:_METADATA_VALUE_MAX]
+        for key in ATTRIBUTION_METADATA_KEYS
+        if (value := getattr(tracker, key, None))
+    }
+    if metadata and pairs:
+        fields["metadata"] = pairs
+    return fields
+
+
+def with_attribution(body: dict[str, Any], fields: Mapping[str, Any]) -> dict[str, Any]:
+    """``body`` carrying ``fields``; ``body`` itself when there is nothing to add.
+
+    What the caller already set wins: its own ``user``, and each ``metadata``
+    key it named. A NEW dict whenever anything is added.
+    """
+    added: dict[str, Any] = {}
+    if fields.get("user") and not body.get("user"):
+        added["user"] = fields["user"]
+    existing = body.get("metadata")
+    extra = fields.get("metadata") or {}
+    if extra and (existing is None or isinstance(existing, Mapping)):
+        merged = {**extra, **(existing or {})}
+        if merged != existing:
+            added["metadata"] = merged
+    return {**body, **added} if added else body
+
+
+def _carries_metadata(path: str) -> bool:
+    return path.rstrip("/").endswith(_METADATA_PATHS)
+
+
+def _shaped_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
+    """``request`` with ``policy`` and the call's attribution merged into its JSON body.
+
+    A body that cannot be parsed is refused only when the policy must be applied
+    to it; attribution is never a reason to fail a call.
+    """
+    if request.method != "POST" or not targets_openrouter(str(request.url)):
+        return request
+    fields = attribution_fields(metadata=_carries_metadata(request.url.path))
+    if not policy.zdr and not fields:
         return request
     try:
         body = json.loads(request.content or b"null")
     except ValueError:
         body = None
     if not isinstance(body, dict):
-        raise ZdrRoutingError(f"cannot pin a non-JSON request to {request.url.path} to ZDR endpoints")
-    if policy.is_applied_to(body):
+        if policy.zdr:
+            raise ZdrRoutingError(f"cannot pin a non-JSON request to {request.url.path} to ZDR endpoints")
+        return request
+    shaped = with_attribution(body if policy.is_applied_to(body) else policy.apply(body), fields)
+    if shaped is body:
         return request
     headers = {k: v for k, v in request.headers.items() if k.lower() != "content-length"}
     return httpx.Request(
         request.method,
         request.url,
         headers=headers,
-        content=json.dumps(policy.apply(body)).encode("utf-8"),
+        content=json.dumps(shaped).encode("utf-8"),
         extensions=request.extensions,
     )
 
@@ -381,7 +472,7 @@ class _PinningTransport(httpx.BaseTransport):
         self._inner = inner or httpx.HTTPTransport()
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        request = _pinned_request(request, self._policy)
+        request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return self._inner.handle_request(request)
         model = _request_model(request)
@@ -417,7 +508,7 @@ class _AsyncPinningTransport(httpx.AsyncBaseTransport):
         self._inner = inner or httpx.AsyncHTTPTransport()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        request = _pinned_request(request, self._policy)
+        request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return await self._inner.handle_async_request(request)
         model = _request_model(request)

@@ -200,6 +200,44 @@ def test_provider_order_is_not_pinned():
     assert "provider" not in payload["extra_body"]
 
 
+def _booked_to(**identity):
+    from aiq_agent.common.cost_tracking import GridCostTracker
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    return grid_cost_tracker_var.set(GridCostTracker(**identity))
+
+
+@pytest.mark.parametrize("responses_api", [False, True])
+def test_the_payload_names_whose_work_the_call_is(responses_api):
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    token = _booked_to(organization_id="org_1", user_id="user_2", conversation_id="c_3")
+    try:
+        payload = _sent_payload(_openrouter_chat_model(use_responses_api=responses_api), _messages())
+    finally:
+        grid_cost_tracker_var.reset(token)
+    extra_body = payload["extra_body"]
+    assert extra_body["user"] == "org_1/user_2"
+    assert extra_body["metadata"] == {"organization_id": "org_1", "user_id": "user_2", "conversation_id": "c_3"}
+    assert extra_body["plugins"] == [{"id": "response-healing"}], "attribution displaced the instance's extra_body"
+
+
+def test_attribution_keeps_the_instance_extra_body_without_a_cache_key():
+    # No system message means no cache key; the attribution must still layer
+    # over the instance's extra_body rather than replace it.
+    from langchain_core.messages import HumanMessage
+
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    token = _booked_to(organization_id="org_1")
+    try:
+        payload = _sent_payload(_openrouter_chat_model(), [HumanMessage(content="Hallo")])
+    finally:
+        grid_cost_tracker_var.reset(token)
+    assert payload["extra_body"]["user"] == "org_1"
+    assert payload["extra_body"]["plugins"] == [{"id": "response-healing"}]
+
+
 def test_a_turns_iterations_share_one_key():
     from langchain_core.messages import AIMessage
     from langchain_core.messages import ToolMessage

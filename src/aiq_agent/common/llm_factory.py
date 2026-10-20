@@ -47,7 +47,9 @@ from typing import Any
 
 from aiq_agent.common import provider_limiter
 from aiq_agent.common.message_contract import normalize_chat_request
+from aiq_agent.common.openrouter import attribution_fields
 from aiq_agent.common.openrouter import targets_openrouter
+from aiq_agent.common.openrouter import with_attribution
 from nat.plugin_api import LLMFrameworkEnum
 from nat.utils.exception_handlers.automatic_retries import patch_with_retry
 
@@ -192,17 +194,21 @@ def _request_organization_id() -> str | None:
 
 
 def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
-    """Apply both request-shaping rules to one outgoing call, in place on ``kwargs``.
+    """Apply the request-shaping rules to one outgoing call, in place on ``kwargs``.
 
     Returns the messages to send and mutates the call's ``kwargs`` with the
-    prompt-cache routing fields. Both halves are no-ops where they do not
-    apply — a non-OpenRouter model keeps its body untouched, and a call with no
-    leading system message gets no key.
+    prompt-cache routing fields and the call's attribution (``user`` and
+    ``metadata``, :func:`aiq_agent.common.openrouter.attribution_fields`). Each
+    is a no-op where it does not apply — a non-OpenRouter model keeps its body
+    untouched, a call with no leading system message gets no key, and a call
+    outside any cost tracker names nobody.
 
     The merge order matters: the instance's own ``extra_body`` (the
     response-healing plugin, ZDR provider routing) is the base, a per-call
     ``extra_body`` from a binding layers over it, and only then are the cache
-    fields filled in — so nothing this adds can drop what was already there.
+    and attribution fields filled in — so nothing this adds can drop what was
+    already there. A per-call ``extra_body`` replaces the instance's in the
+    request LangChain builds, which is why the merged base is what gets set.
     """
     normalized = normalize_chat_request(messages)
     if not llm_targets_openrouter(llm):
@@ -218,8 +224,11 @@ def prepare_request(llm: Any, messages: Any, kwargs: dict[str, Any]) -> Any:
         organization_id=_request_organization_id(),
         model=getattr(llm, "model_name", None) or getattr(llm, "model", None),
     )
+    fields = attribution_fields()
+    if extra_body is None and fields:
+        extra_body = merged_base
     if extra_body is not None:
-        kwargs["extra_body"] = extra_body
+        kwargs["extra_body"] = with_attribution(extra_body, fields)
     return normalized
 
 

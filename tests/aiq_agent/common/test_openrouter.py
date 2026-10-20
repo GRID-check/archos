@@ -5,6 +5,7 @@ from __future__ import annotations
 import contextvars
 import json
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import httpx
@@ -137,6 +138,77 @@ class TestThePinnedHttpClient:
     def test_a_body_it_cannot_pin_is_refused(self):
         with pytest.raises(ZdrRoutingError):
             self._send("https://openrouter.ai/api/v1/embeddings", b"not json")
+
+
+@contextmanager
+def _booked_to(**identity):
+    """Run the block inside a cost tracker naming ``identity``, as a turn or an ingest job does."""
+    from aiq_agent.common.cost_tracking import GridCostTracker
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    token = grid_cost_tracker_var.set(
+        GridCostTracker(organization_id=identity.pop("organization_id", None), **identity)
+    )
+    try:
+        yield
+    finally:
+        grid_cost_tracker_var.reset(token)
+
+
+class TestAttribution:
+    def _send(self, url, body, policy=NO_RETENTION_LIMITS):
+        return TestThePinnedHttpClient()._send(url, json.dumps(body), policy)
+
+    def test_a_chat_call_names_its_organization_person_and_project(self):
+        with _booked_to(organization_id="org_1", user_id="user_2", project_id="p_3", activity="ingest"):
+            body = json.loads(self._send("https://openrouter.ai/api/v1/chat/completions", {"model": "m"}).content)
+        assert body["user"] == "org_1/user_2"
+        assert body["metadata"] == {
+            "organization_id": "org_1",
+            "user_id": "user_2",
+            "project_id": "p_3",
+            "activity": "ingest",
+        }
+
+    def test_an_embedding_call_carries_user_but_no_metadata(self):
+        # OpenRouter's embeddings schema declares `user` and not `metadata`.
+        with _booked_to(organization_id="org_1"):
+            body = json.loads(self._send("https://openrouter.ai/api/v1/embeddings", {"input": ["x"]}).content)
+        assert body["user"] == "org_1" and "metadata" not in body
+
+    def test_attribution_rides_along_with_the_pin(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            body = json.loads(
+                self._send("https://openrouter.ai/api/v1/responses", {"model": "m"}, ZERO_DATA_RETENTION).content
+            )
+        assert body["provider"]["zdr"] is True and body["user"] == "org_1/user_2"
+
+    def test_what_the_caller_set_wins(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            body = json.loads(
+                self._send(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    {"user": "mine", "metadata": {"organization_id": "kept", "x": "y"}},
+                ).content
+            )
+        assert body["user"] == "mine"
+        assert body["metadata"] == {"organization_id": "kept", "user_id": "user_2", "x": "y"}
+
+    def test_outside_a_tracker_nothing_is_added(self):
+        sent = self._send("https://openrouter.ai/api/v1/chat/completions", {"model": "m"})
+        assert json.loads(sent.content) == {"model": "m"}
+
+    def test_another_host_never_learns_who_asked(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            body = json.loads(self._send("https://api.openai.com/v1/chat/completions", {"model": "m"}).content)
+        assert "user" not in body and "metadata" not in body
+
+    def test_an_unparseable_body_is_sent_as_is_when_nothing_must_be_pinned(self):
+        with _booked_to(organization_id="org_1"):
+            sent = TestThePinnedHttpClient()._send(
+                "https://openrouter.ai/api/v1/chat/completions", b"not json", NO_RETENTION_LIMITS
+            )
+        assert sent.content == b"not json"
 
 
 class TestTheIngestScope:

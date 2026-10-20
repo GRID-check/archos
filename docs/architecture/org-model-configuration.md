@@ -215,6 +215,18 @@ setting. The ZDR bit fails CLOSED: a BFF error or a missing
 `GRID_INTERNAL_API_TOKEN` pins it, while the model overrides in the same lookup
 still fail open to the YAML models.
 
+The same two seams (the transports in `openrouter.py` and
+`llm_factory.prepare_request`) say whose work each OpenRouter call is. `user`
+is `<organization_id>/<user_id>`, and on chat completions and the Responses
+API `metadata` carries `organization_id`, `user_id`, `project_id`,
+`conversation_id`, `job_id`, `message_id` and `activity`. Both come from the
+ambient cost tracker, so they name exactly what the usage ledger books the
+call to. A call outside any tracker carries neither, and a host other than
+OpenRouter never receives them. WorkOS ids only, never names or emails.
+Filter OpenRouter's activity by `user` to see one organization or person.
+`user` is also the identity OpenRouter isolates abuse blocks by. One key per
+organization, which isolates tenants at the gateway as well, is ADR-0118.
+
 ## Agent groups
 
 The override points sit *above* the YAML LLM names, so the YAML can reshuffle
