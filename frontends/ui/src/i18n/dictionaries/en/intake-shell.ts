@@ -7,6 +7,7 @@ export const intakeShell = {
     eyebrow: 'Setup',
     later: 'Continue later',
     laterAria: 'Leave the setup for the project overview. Piloti keeps reading, and the setup waits there.',
+    stepMenu: 'Step {current} of {total}: {step}. Choose another step',
   },
   steps: {
     label: 'Steps of the setup',
@@ -16,6 +17,9 @@ export const intakeShell = {
     reading: 'Reading',
     questions: 'Questions',
     profile: 'Profile',
+  },
+  footer: {
+    next: 'On to {step}',
   },
   notes: {
     documents: '{count, plural, one {# document} other {# documents}}',

@@ -21,7 +21,6 @@
  */
 
 import { use, useMemo, useState } from 'react'
-import { ProjectSectionHeader } from './section-header'
 import { useFakeProposalClient } from '@/app/dev/_fixtures/fake-proposals'
 import {
   INTAKE_FILING,
@@ -104,8 +103,8 @@ export default function ProjectSetupPreviewPage({
   })
 
   return (
-    <main className="bg-background min-h-dvh" data-testid="project-setup-preview">
-      <ProjectSectionHeader state={name} />
+    // The real page fills the shell's content area; here the viewport.
+    <div className="bg-background h-dvh" data-testid="project-setup-preview">
       <IntakeSetupView
         // A new state is a new page: the step it opens on is chosen again.
         key={`${name}-${projectState}-${profileName ?? ''}-${questionsName ?? ''}-${readingName ?? ''}`}
@@ -131,10 +130,10 @@ export default function ProjectSetupPreviewPage({
         filing={{ entries: filing.byFolder, onSettled: filing.reload }}
       />
       {sent && (
-        <pre className="text-muted-foreground mx-auto max-w-5xl whitespace-pre-wrap break-all px-4 pb-8 font-mono text-xs md:px-8">
+        <pre className="bg-card text-muted-foreground fixed bottom-24 left-4 z-50 max-h-40 max-w-md overflow-auto whitespace-pre-wrap break-all rounded-md border p-2 font-mono text-xs shadow">
           {sent}
         </pre>
       )}
-    </main>
+    </div>
   )
 }

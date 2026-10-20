@@ -89,10 +89,10 @@ describe('IntakeSetup', () => {
       />
     )
 
-    expect(screen.getByRole('heading', { name: 'Wohnanlage Gartenstraße 12' })).toBeInTheDocument()
+    expect(screen.getByTestId('intake-setup-head')).toHaveTextContent('Wohnanlage Gartenstraße 12')
     // No documents yet: the Ablage, where they go in.
     expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'filing')
-    expect(screen.getByRole('list', { name: 'Steps of the setup' })).toBeInTheDocument()
+    expect(screen.getByRole('navigation', { name: 'Steps of the setup' })).toBeInTheDocument()
   })
 
   it('opens the step the address names', () => {

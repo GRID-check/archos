@@ -6,6 +6,7 @@ export const intakeShell: typeof en.intakeShell = {
     eyebrow: 'Einrichtung',
     later: 'Später fortsetzen',
     laterAria: 'Die Einrichtung verlassen und zur Projektübersicht gehen. Piloti liest weiter, die Einrichtung wartet dort.',
+    stepMenu: 'Schritt {current} von {total}: {step}. Anderen Schritt wählen',
   },
   steps: {
     label: 'Schritte der Einrichtung',
@@ -15,6 +16,9 @@ export const intakeShell: typeof en.intakeShell = {
     reading: 'Erfassung',
     questions: 'Rückfragen',
     profile: 'Steckbrief',
+  },
+  footer: {
+    next: 'Weiter zu {step}',
   },
   notes: {
     documents: '{count, plural, one {# Dokument} other {# Dokumente}}',

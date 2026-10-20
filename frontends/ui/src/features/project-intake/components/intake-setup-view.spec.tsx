@@ -20,6 +20,7 @@ import type { IntakeView } from '@/lib/project-intake/types'
 import { defaultSetupStep, IntakeSetupView, type IntakeSetupViewProps } from './intake-setup-view'
 import { QUESTIONS_READY } from '@/app/dev/_fixtures/project-setup-questions'
 import type { SetupStepId, SetupStepProps } from './steps/types'
+import { StepFooter } from './setup-frame'
 
 vi.mock('@/shared/context', () => ({
   useAppConfig: () => ({
@@ -78,9 +79,15 @@ vi.mock('./steps/questions-step', () => ({ QuestionsStep: (props: SetupStepProps
 vi.mock('./steps/profile-step', () => ({
   ProfileStep: (props: SetupStepProps & { onComplete: () => Promise<boolean> }) => (
     <StubStep id="profile" {...props}>
-      <button type="button" onClick={() => void props.onComplete()}>
-        stub complete
-      </button>
+      <StepFooter
+        primary={
+          <button type="button" onClick={() => void props.onComplete()}>
+            stub complete
+          </button>
+        }
+        aside={<button type="button">stub aside</button>}
+        progress={{ done: 1, total: 6, label: '1 of 6 done' }}
+      />
     </StubStep>
   ),
 }))
@@ -138,7 +145,8 @@ function at(search: string): void {
 }
 
 const shown = (): string | null => screen.getByTestId('intake-setup').getAttribute('data-step')
-const stepButton = (name: RegExp) => within(screen.getByRole('list', { name: 'Steps of the setup' })).getByRole('button', { name })
+const rail = () => screen.getByRole('navigation', { name: 'Steps of the setup' })
+const stepButton = (name: RegExp) => within(rail()).getByRole('button', { name })
 
 describe('IntakeSetupView', () => {
   let pushState: ReturnType<typeof vi.spyOn>
@@ -255,17 +263,17 @@ describe('IntakeSetupView', () => {
 
     it('scrolls to the top when the step changes, not on the first paint', async () => {
       const scroll = vi.fn()
-      const before = Element.prototype.scrollIntoView
-      Element.prototype.scrollIntoView = scroll
+      const before = Element.prototype.scrollTo
+      Element.prototype.scrollTo = scroll
       try {
         setup(INTAKE_READY)
         expect(scroll).not.toHaveBeenCalled()
 
         await userEvent.click(screen.getByRole('button', { name: 'stub next' }))
         expect(shown()).toBe('profile')
-        expect(scroll).toHaveBeenCalledWith({ block: 'start', behavior: 'smooth' })
+        expect(scroll).toHaveBeenCalledWith({ top: 0 })
       } finally {
-        Element.prototype.scrollIntoView = before
+        Element.prototype.scrollTo = before
       }
     })
 
@@ -279,8 +287,7 @@ describe('IntakeSetupView', () => {
   describe('the stepper', () => {
     it('names the five steps, all of them reachable, with a note on each that has one', () => {
       setup(INTAKE_READY)
-      const rail = screen.getByRole('list', { name: 'Steps of the setup' })
-      const names = within(rail)
+      const names = within(rail())
         .getAllByRole('button')
         .map((button) => button.getAttribute('aria-label'))
       expect(names).toEqual([
@@ -290,8 +297,8 @@ describe('IntakeSetupView', () => {
         '4. Questions — 3 open',
         '5. Profile — 1 contradiction',
       ])
-      for (const button of within(rail).getAllByRole('button')) expect(button).toBeEnabled()
-      expect(screen.getByText('Step 4 of 5')).toBeInTheDocument()
+      for (const button of within(rail()).getAllByRole('button')) expect(button).toBeEnabled()
+      expect(within(screen.getByTestId('intake-setup-footer')).getByText('Step 4 of 5')).toBeInTheDocument()
     })
 
     it('says how far the reading is while it runs, and that a failed one was interrupted', () => {
@@ -346,7 +353,6 @@ describe('IntakeSetupView', () => {
       at('?step=filing')
       setup(INTAKE_READY, { canUpload: false })
       expect(screen.getByTestId('setup-step-filing')).toHaveAttribute('data-can-upload', 'false')
-      expect(within(screen.getByTestId('intake-header')).queryByRole('button', { name: 'Add documents' })).toBeNull()
     })
 
     it('hands the Ablage the filing suggestions and the upload tray', () => {
@@ -357,76 +363,55 @@ describe('IntakeSetupView', () => {
       expect(step).toHaveTextContent('upload tray')
     })
 
-    it('hands the Steckbrief the finish', async () => {
-      setup(INTAKE_CLOSING)
-      await userEvent.click(screen.getByRole('button', { name: 'stub complete' }))
-      expect(onComplete).toHaveBeenCalledTimes(1)
-    })
   })
 
-  describe('the head and the reading’s line', () => {
-    it('names the project and the setup, and offers to continue later from the overview', () => {
+  describe('the bar and the footer', () => {
+    it('names the setup and the project, and offers to continue later from the overview', () => {
       setup(INTAKE_READY)
       const head = screen.getByTestId('intake-setup-head')
       expect(head).toHaveTextContent('Setup')
-      expect(within(head).getByRole('heading', { name: 'Wohnanlage Gartenstraße 12' })).toBeInTheDocument()
-      const later = within(head).getByRole('link', { name: /Leave the setup for the project overview/ })
-      expect(later).toHaveAttribute('href', `/app/projects/${INTAKE_READY.projectId}/settings`)
-      expect(later).toHaveTextContent('Continue later')
+      expect(head).toHaveTextContent('Wohnanlage Gartenstraße 12')
+      // One link on a desk, one (the back arrow) on a phone; both go to the overview.
+      const later = within(head).getAllByRole('link', { name: /Leave the setup for the project overview/ })
+      expect(later).toHaveLength(2)
+      for (const link of later) expect(link).toHaveAttribute('href', `/app/projects/${INTAKE_READY.projectId}/settings`)
+      expect(later[0]).toHaveTextContent('Continue later')
     })
 
-    it('shows the reading’s status above the steps, with the counts', () => {
+    it('marks a step before the shown one done only when it asks nothing more', () => {
+      at('?step=profile')
       setup(INTAKE_READY)
-      expect(screen.getByTestId('intake-status-line')).toHaveTextContent(
-        '23 documents read · 41 values · 1 contradiction · 3 questions'
-      )
+      // Filing asks nothing (documents are in); the Rückfragen still have three open.
+      expect(stepButton(/^2\. Filing/).querySelector('svg')).not.toBeNull()
+      expect(stepButton(/^4\. Questions/)).toHaveTextContent('4')
+      expect(stepButton(/^4\. Questions/).querySelector('svg')).toBeNull()
+      expect(stepButton(/^5\. Profile/)).toHaveAttribute('aria-current', 'step')
     })
 
-    it('leaves the status line to the reading step, which shows the reading in full', () => {
-      at('?step=reading')
-      setup(INTAKE_READING)
-      expect(screen.queryByTestId('intake-status-line')).toBeNull()
-      expect(screen.getByTestId('intake-header')).toBeInTheDocument()
-    })
-
-    it('shows reading as progress, with nothing that spins', () => {
-      setup(INTAKE_READING)
-      expect(screen.getByRole('progressbar', { name: 'Reading progress: 9 of 23 documents' })).toBeInTheDocument()
-      expect(screen.getByTestId('intake-status-line').querySelector('[data-slot="spinner"]')).toBeNull()
-    })
-
-    it('waits, never disables, reading again while a reading runs', () => {
-      setup(INTAKE_READING)
-      const reread = screen.getByRole('button', { name: /Read the documents that have not been read yet/ })
-      expect(reread).toHaveAttribute('aria-disabled', 'true')
-      expect(reread).not.toBeDisabled()
-    })
-
-    it('starts a reading of what is new', async () => {
+    it('names the step and its count on a phone, with a menu of all five', async () => {
       setup(INTAKE_READY)
-      await userEvent.click(screen.getByRole('button', { name: /Read the documents that have not been read yet/ }))
-      expect(onReread).toHaveBeenCalledTimes(1)
+      await userEvent.click(screen.getByRole('button', { name: 'Step 4 of 5: Questions. Choose another step' }))
+      await userEvent.click(await screen.findByRole('menuitem', { name: /Profile/ }))
+      expect(shown()).toBe('profile')
     })
 
-    it('offers ONE upload on the Ablage while there are no documents, and the header’s on every other step', () => {
-      const { unmount } = setup(INTAKE_WAITING)
-      expect(shown()).toBe('filing')
-      expect(within(screen.getByTestId('intake-header')).queryByRole('button', { name: 'Add documents' })).toBeNull()
-      unmount()
-      at('?step=project')
-      setup(INTAKE_WAITING)
-      expect(within(screen.getByTestId('intake-header')).getByRole('button', { name: 'Add documents' })).toBeInTheDocument()
+    it('offers the next step in the footer when a step names no action of its own', async () => {
+      setup(INTAKE_READY)
+      const footer = screen.getByTestId('intake-setup-footer')
+      await userEvent.click(within(footer).getByRole('button', { name: 'On to Profile' }))
+      expect(shown()).toBe('profile')
     })
 
-    it('links the Briefing-Editor quietly, and not once the setup is finished', () => {
-      const { unmount } = setup(INTAKE_READY)
-      expect(screen.getByRole('link', { name: 'Open the briefing wizard for this project' })).toHaveAttribute(
-        'href',
-        `/app/projects/${INTAKE_READY.projectId}/intake`
-      )
-      unmount()
-      setup(INTAKE_COMPLETED)
-      expect(screen.queryByRole('link', { name: 'Open the briefing wizard for this project' })).toBeNull()
+    it('draws the action, the second way on and the progress a step hands it', async () => {
+      at('?step=profile')
+      setup(INTAKE_CLOSING)
+      const footer = screen.getByTestId('intake-setup-footer')
+      expect(within(footer).queryByRole('button', { name: /^On to/ })).toBeNull()
+      // The aside twice: beside the count on a desk, under the action on a phone.
+      expect(within(footer).getAllByRole('button', { name: 'stub aside' })).toHaveLength(2)
+      expect(screen.getAllByRole('progressbar', { name: '1 of 6 done' })).toHaveLength(2)
+      await userEvent.click(within(footer).getByRole('button', { name: 'stub complete' }))
+      expect(onComplete).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -483,14 +468,6 @@ describe('IntakeSetupView', () => {
       fireEvent.drop(screen.getByTestId('intake-setup'), dataTransfer(file))
 
       await vi.waitFor(() => expect(onFiles).toHaveBeenCalledWith([file], { truncated: false, unreadable: 0 }))
-    })
-
-    it('keeps the overlay’s label in view on a page that scrolls', () => {
-      setup(INTAKE_READY)
-      fireEvent.dragEnter(screen.getByTestId('intake-setup'), dataTransfer(new File(['%PDF'], 'EG.pdf', { type: 'application/pdf' })))
-
-      // Centred on the whole page, the label sat below the fold of a long step.
-      expect(screen.getByTestId('intake-drop-overlay').querySelector('[data-follow-scroll]')).toHaveClass('sticky')
     })
 
     it('takes no drop on a finished setup', () => {

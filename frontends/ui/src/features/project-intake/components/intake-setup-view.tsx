@@ -2,14 +2,11 @@
 
 import type { JSX, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { ArrowLeft, Info, RefreshCw, TriangleAlert } from 'lucide-react'
+import { Info, RefreshCw, TriangleAlert } from 'lucide-react'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
-import { SectionLabel } from '@/components/ui/section-label'
-import { Stepper } from '@/components/ui/stepper'
 import {
   FileDropOverlay,
   useWindowDragGuard,
@@ -21,7 +18,7 @@ import type { IntakeDecision, IntakeView } from '@/lib/project-intake/types'
 import { usePressed } from '../hooks/use-pressed'
 import { CompletedNote } from './complete-footer'
 import { EvidenceProjectContext } from './evidence-chips'
-import { IntakeHeader } from './intake-header'
+import { SetupBar, SetupFooter, StepFooterProvider, useStepFooterChannel } from './setup-frame'
 import { FilingStep } from './steps/filing-step'
 import { ProfileStep } from './steps/profile-step'
 import { ProjectStep } from './steps/project-step'
@@ -203,14 +200,15 @@ export function IntakeSetupView({
   })
   useWindowDragGuard()
   const [step, go] = useSetupStep(view)
-  const top = useRef<HTMLDivElement>(null)
+  const top = useRef<HTMLElement>(null)
+  const footer = useStepFooterChannel()
   const shown = useRef(step)
   // To the top of the page whenever the step changes, by a click or by back
   // and forward; not on the first paint.
   useEffect(() => {
     if (shown.current === step) return
     shown.current = step
-    top.current?.scrollIntoView?.({ block: 'start', behavior: 'smooth' })
+    top.current?.scrollTo?.({ top: 0 })
   }, [step])
 
   const index = SETUP_STEP_IDS.indexOf(step)
@@ -232,106 +230,84 @@ export function IntakeSetupView({
 
   return (
     <EvidenceProjectContext.Provider value={projectId}>
-      <div
-        ref={top}
-        className="relative mx-auto w-full max-w-3xl scroll-mt-4 space-y-6 px-4 py-6 md:px-8 md:py-8"
-        data-testid="intake-setup"
-        data-status={view.status}
-        data-step={step}
-        {...dragHandlers}
-      >
-        {isDragging && (
-          <FileDropOverlay
-            isUnsupported={isUnsupportedDrag}
-            uploadLabel={t('upload.dropOverlay')}
-            unsupportedLabel={t('upload.unsupportedOverlay')}
-            // The page runs far below the fold on the longer steps.
-            followScroll
-            testId="intake-drop-overlay"
+      <StepFooterProvider value={footer.channel}>
+        <div
+          className="bg-background relative flex h-full min-h-0 flex-col"
+          data-testid="intake-setup"
+          data-status={view.status}
+          data-step={step}
+          {...dragHandlers}
+        >
+          {isDragging && (
+            <FileDropOverlay
+              isUnsupported={isUnsupportedDrag}
+              uploadLabel={t('upload.dropOverlay')}
+              unsupportedLabel={t('upload.unsupportedOverlay')}
+              testId="intake-drop-overlay"
+            />
+          )}
+
+          <SetupBar
+            projectId={projectId}
+            projectName={projectName}
+            step={step}
+            summaries={summaries}
+            progress={footer.progress ?? undefined}
+            onGoTo={go}
           />
-        )}
 
-        <SetupHead projectId={projectId} projectName={projectName} />
+          <main
+            ref={top}
+            className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-6 md:px-8 md:pt-9"
+            aria-label={tShell(`steps.${step}`)}
+          >
+            {(stale || (!view.canDecide && !finished) || finished || view.status === 'failed') && (
+              <div className="mx-auto mb-6 w-full max-w-[1040px] space-y-3">
+                {stale && (
+                  <Alert variant="destructive">
+                    <TriangleAlert aria-hidden />
+                    <AlertDescription className="text-current">
+                      <p>{t('errors.load')}</p>
+                      <Button type="button" size="sm" variant="outline" onClick={onRetry}>
+                        {t('errors.retry')}
+                      </Button>
+                    </AlertDescription>
+                  </Alert>
+                )}
+                {!view.canDecide && !finished && (
+                  <Alert role="status">
+                    <Info aria-hidden />
+                    <AlertDescription>{t('header.readOnly')}</AlertDescription>
+                  </Alert>
+                )}
+                {finished && <CompletedNote view={view} />}
+                {view.status === 'failed' && (
+                  <FailedReading canRetry={view.canDecide} busy={busy} onReread={onReread} />
+                )}
+              </div>
+            )}
 
-        {/* Where the reading stands, on every step: it runs in the background
-            while the person works, and reading again or adding a document is
-            never more than one step away. The Ablage has its own upload while
-            the project has no documents, so the header offers none there. */}
-        <IntakeHeader
-          view={view}
-          projectId={projectId}
-          busy={busy}
-          uploading={uploading}
-          canUpload={dropping && !(step === 'filing' && hasNoDocuments(view))}
-          showStatus={step !== 'reading'}
-          onReread={onReread}
-          onFiles={onFiles}
-        />
+            {step === 'project' && <ProjectStep {...stepProps} client={participantsClient} />}
+            {step === 'filing' && (
+              <FilingStep {...stepProps} filing={filing}>
+                {children}
+              </FilingStep>
+            )}
+            {step === 'reading' && <ReadingStep {...stepProps} />}
+            {step === 'questions' && <QuestionsStep {...stepProps} />}
+            {step === 'profile' && <ProfileStep {...stepProps} onComplete={onComplete} />}
+          </main>
 
-        <Stepper
-          steps={summaries.map((summary) => ({ key: summary.id, label: tShell(`steps.${summary.id}`), note: summary.note }))}
-          current={index}
-          // Every step is open from the start: nothing in one blocks the next.
-          furthest={SETUP_STEP_IDS.length - 1}
-          onSelect={(selected) => go(SETUP_STEP_IDS[selected] ?? step)}
-          label={tShell('steps.label')}
-          progressLabel={tShell('steps.progress', { current: index + 1, total: SETUP_STEP_IDS.length })}
-        />
-
-        {stale && (
-          <Alert variant="destructive">
-            <TriangleAlert aria-hidden />
-            <AlertDescription className="text-current">
-              <p>{t('errors.load')}</p>
-              <Button type="button" size="sm" variant="outline" onClick={onRetry}>
-                {t('errors.retry')}
-              </Button>
-            </AlertDescription>
-          </Alert>
-        )}
-        {!view.canDecide && !finished && (
-          <Alert role="status">
-            <Info aria-hidden />
-            <AlertDescription>{t('header.readOnly')}</AlertDescription>
-          </Alert>
-        )}
-        {finished && <CompletedNote view={view} />}
-        {view.status === 'failed' && <FailedReading canRetry={view.canDecide} busy={busy} onReread={onReread} />}
-
-        {step === 'project' && <ProjectStep {...stepProps} client={participantsClient} />}
-        {step === 'filing' && (
-          <FilingStep {...stepProps} filing={filing}>
-            {children}
-          </FilingStep>
-        )}
-        {step === 'reading' && <ReadingStep {...stepProps} />}
-        {step === 'questions' && <QuestionsStep {...stepProps} />}
-        {step === 'profile' && <ProfileStep {...stepProps} onComplete={onComplete} />}
-      </div>
+          <SetupFooter
+            step={step}
+            progress={footer.progress}
+            ownsPrimary={footer.ownsPrimary}
+            slotRef={footer.slotRef}
+            onNext={stepProps.onNext}
+          />
+        </div>
+      </StepFooterProvider>
     </EvidenceProjectContext.Provider>
-  )
-}
-
-/**
- * Where the person is, and the way out. The ticket lets a person leave while
- * Piloti reads, so leaving is a named control rather than the browser's back:
- * „Später fortsetzen" goes to the overview, which keeps the way back in.
- */
-function SetupHead({ projectId, projectName }: { projectId: string; projectName?: string }): JSX.Element {
-  const tShell = useTranslations('intakeShell')
-  return (
-    <div className="flex min-w-0 items-center justify-between gap-3" data-testid="intake-setup-head">
-      <div className="min-w-0">
-        <SectionLabel as="p">{tShell('head.eyebrow')}</SectionLabel>
-        {projectName && <h2 className="truncate text-base font-semibold">{projectName}</h2>}
-      </div>
-      <Button asChild size="sm" variant="ghost" className="shrink-0">
-        <Link href={`/app/projects/${encodeURIComponent(projectId)}/settings`} aria-label={tShell('head.laterAria')}>
-          <ArrowLeft aria-hidden />
-          {tShell('head.later')}
-        </Link>
-      </Button>
-    </div>
   )
 }
 
