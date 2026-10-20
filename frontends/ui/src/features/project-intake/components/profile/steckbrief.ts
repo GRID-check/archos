@@ -57,6 +57,18 @@ export function restByTopic(groups: readonly SuggestionGroup[], shown: readonly 
     .filter((group) => group.items.length > 0)
 }
 
+/**
+ * What „Alles übernehmen und abschließen“ takes: every open value the table
+ * shows and every open Gebäudeklasse. Each is the same `confirm` a person
+ * sends for one value, recorded with them and its evidence.
+ */
+export function finishDecisions(view: Pick<IntakeView, 'groups' | 'derivations'>): IntakeDecision[] {
+  const classes = view.derivations.flatMap(({ suggestion }): IntakeDecision[] =>
+    suggestion?.state === 'suggested' ? [{ key: suggestion.key, action: 'confirm' }] : []
+  )
+  return [...takeAllDecisions(view.groups), ...classes]
+}
+
 /** Every open suggestion the table shows, taken in one call. */
 export function takeAllDecisions(groups: readonly SuggestionGroup[]): IntakeDecision[] {
   return findings(groups)

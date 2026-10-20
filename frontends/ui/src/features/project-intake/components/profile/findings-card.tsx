@@ -4,7 +4,6 @@ import type { JSX } from 'react'
 import { useState } from 'react'
 import Link from 'next/link'
 import { Check, X } from 'lucide-react'
-import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useTranslations } from '@/i18n'
@@ -13,7 +12,8 @@ import { cn } from '@/lib/utils'
 import { usePressed } from '../../hooks/use-pressed'
 import { bauwerkNumber } from '../../lib/display'
 import { SourcePeek } from './source-peek'
-import { findings, restByTopic, shortLabel, takeAllDecisions, topFindings } from './steckbrief'
+import { EditValue } from './edit-value'
+import { findings, restByTopic, shortLabel, topFindings } from './steckbrief'
 
 interface Decide {
   canDecide: boolean
@@ -27,9 +27,10 @@ const ROW_GRID = 'md:grid md:grid-cols-[200px_minmax(0,1fr)_200px_148px] md:item
 /**
  * „Was Piloti gefunden hat": one table of the values the reading found, each
  * with the place it stands. The few that decide the most are shown (the inputs
- * of the Gebäudeklasse first); the rest fold away by topic behind one link, and
- * every open one can be taken at once. A value is a suggestion until someone
- * takes it („Vorschlagen, nicht setzen“); one already taken says so.
+ * of the Gebäudeklasse first); the rest fold away by topic behind one link.
+ * The person checks rather than approves: they change what is wrong, and the
+ * footer's „Alles übernehmen und abschließen“ takes the rest, each value as
+ * their confirmation with its evidence.
  */
 export function FindingsCard({
   projectId,
@@ -48,14 +49,11 @@ export function FindingsCard({
   editable: boolean
 }): JSX.Element {
   const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
   const [open, setOpen] = useState(false)
-  const [taking, take] = usePressed()
   const all = findings(groups)
   const top = topFindings(groups, derivations)
   const rest = restByTopic(groups, top)
   const confirmed = all.filter((item) => item.state === 'confirmed').length
-  const takeAll = takeAllDecisions(groups)
   const severalBauwerke = new Set(all.map((item) => item.bauwerkId).filter(Boolean)).size > 1
   const restCount = rest.reduce((sum, group) => sum + group.items.length, 0)
 
@@ -112,7 +110,7 @@ export function FindingsCard({
           </>
         )}
 
-        {(restCount > 0 || editable || (decide.canDecide && takeAll.length > 0)) && (
+        {(restCount > 0 || editable) && (
           <footer className="border-border flex flex-col gap-2 border-t px-4 py-3 md:flex-row md:items-center md:justify-between md:px-[18px]">
             {restCount > 0 ? (
               <CollapsibleTrigger asChild>
@@ -132,20 +130,6 @@ export function FindingsCard({
                 >
                   {t('findings.editor')}
                 </Link>
-              )}
-              {decide.canDecide && takeAll.length > 0 && (
-                <BusyButton
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="bg-card text-[13px]"
-                  busy={taking}
-                  blocked={decide.busy}
-                  busyLabel={tIntake('busy.confirm')}
-                  onClick={() => take(() => decide.onDecide(takeAll))}
-                >
-                  {t('findings.takeAll', { count: takeAll.length })}
-                </BusyButton>
               )}
             </div>
           </footer>
@@ -201,11 +185,13 @@ function FindingRow({ item, severalBauwerke, ...decide }: Decide & { item: Sugge
   )
 }
 
-/** Take or discard a suggestion; a value already taken says who took it. */
+/**
+ * What a row offers. Nothing to approve: what is right is taken with
+ * „Alles übernehmen und abschließen“. A person changes what is wrong
+ * („Ändern“) or says it is not right at all (✕); a value they set says so.
+ */
 function RowAction({ item, label, canDecide, busy, onDecide }: Decide & { item: Suggestion; label: string }): JSX.Element {
   const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
-  const [taking, take] = usePressed()
   const [dismissing, dismiss] = usePressed()
   if (item.state === 'confirmed') {
     return (
@@ -220,19 +206,7 @@ function RowAction({ item, label, canDecide, busy, onDecide }: Decide & { item: 
   }
   return (
     <span className="flex items-center gap-1 justify-self-end">
-      <BusyButton
-        type="button"
-        size="sm"
-        variant="outline"
-        className="bg-card h-[30px] px-2.5 text-[13px]"
-        busy={taking}
-        blocked={busy}
-        busyLabel={tIntake('busy.confirm')}
-        aria-label={t('findings.takeAria', { value: item.display, label })}
-        onClick={() => take(() => onDecide([{ key: item.key, action: 'confirm' }]))}
-      >
-        {t('findings.take')}
-      </BusyButton>
+      <EditValue item={item} label={label} busy={busy} onDecide={onDecide} />
       <Button
         type="button"
         size="icon"

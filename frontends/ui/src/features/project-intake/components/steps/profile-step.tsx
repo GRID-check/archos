@@ -11,6 +11,7 @@ import { usePressed } from '../../hooks/use-pressed'
 import { formatMonth } from '../completed-note'
 import { ClassCard } from '../profile/class-card'
 import { FindingsCard } from '../profile/findings-card'
+import { finishDecisions } from '../profile/steckbrief'
 import { RulesCard } from '../profile/rules-card'
 import { PRIMARY_ACTION_CLASS, StepFooter } from '../setup-frame'
 import type { SetupStepProps } from './types'
@@ -28,9 +29,9 @@ export interface ProfileStepProps extends SetupStepProps {
  * fold away by topic, and every open one can be taken at once.
  *
  * Contradictions are decided in the Rückfragen; one quiet line points there
- * while any is open. Nothing here is set for the person: what nobody confirms
- * stays a suggestion („Vorschlagen, nicht setzen“), which is what the footer
- * says beside the one way on, „Einrichtung abschließen".
+ * while any is open. The person checks rather than approves: nothing asks to
+ * be clicked one by one. They change what is wrong, and the one way on,
+ * „Alles übernehmen und abschließen“, takes the rest as theirs.
  */
 export function ProfileStep({ view, projectId, canDecide, busy, onDecide, onComplete, onGoTo }: ProfileStepProps): JSX.Element {
   const t = useTranslations('intakeProfileStep')
@@ -40,7 +41,7 @@ export function ProfileStep({ view, projectId, canDecide, busy, onDecide, onComp
     <div className="mx-auto w-full max-w-[1040px]" data-testid="setup-step-profile">
       <h1 className="sr-only">{t('heading')}</h1>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1.12fr)] md:gap-5">
-        <ClassCard derivations={view.derivations} onAnswer={() => onGoTo('questions')} {...decide} />
+        <ClassCard derivations={view.derivations} onAnswer={() => onGoTo('questions')} />
         <RulesCard view={view} />
       </div>
       {view.contradictions.length > 0 && (
@@ -61,7 +62,7 @@ export function ProfileStep({ view, projectId, canDecide, busy, onDecide, onComp
           {...decide}
         />
       </div>
-      <FinishFooter view={view} busy={busy} onComplete={onComplete} />
+      <FinishFooter view={view} canDecide={canDecide} busy={busy} onDecide={onDecide} onComplete={onComplete} />
     </div>
   )
 }
@@ -78,25 +79,29 @@ export function canFinish(view: IntakeView): boolean {
 }
 
 /**
- * The footer: the note that nothing unconfirmed is lost, and „Einrichtung
- * abschließen". Finishing an ongoing project only ends the setup, so it goes
+ * The footer's one action. „Alles übernehmen und abschließen“ takes every open
+ * value and class as the person's confirmation, then ends the setup; what they
+ * changed or struck out is already decided. Finishing an ongoing project goes
  * at once; finishing a past one closes the project with its outcome and
- * period, so that asks first.
+ * period, so that asks first. A reader who may not decide only finishes.
  */
 function FinishFooter({
   view,
+  canDecide,
   busy,
+  onDecide,
   onComplete,
-}: {
-  view: IntakeView
-  busy: boolean
-  onComplete: () => Promise<boolean>
-}): JSX.Element {
+}: Pick<ProfileStepProps, 'view' | 'canDecide' | 'busy' | 'onDecide' | 'onComplete'>): JSX.Element {
   const t = useTranslations('intakeProfileStep')
   const tIntake = useTranslations('projectIntake')
   const [finishing, finish] = usePressed()
   const [asking, setAsking] = useState(false)
   const closing = view.closing
+  const decisions = canDecide ? finishDecisions(view) : []
+  const takeAndFinish = async (): Promise<boolean> => {
+    if (decisions.length > 0 && !(await onDecide(decisions))) return false
+    return onComplete()
+  }
   const primary = canFinish(view) ? (
     <BusyButton
       type="button"
@@ -104,15 +109,18 @@ function FinishFooter({
       busy={finishing}
       blocked={busy}
       busyLabel={tIntake('busy.complete')}
-      onClick={() => (closing ? setAsking(true) : finish(onComplete))}
+      onClick={() => (closing ? setAsking(true) : finish(takeAndFinish))}
       data-testid="profile-finish"
     >
-      {t('finish.button')}
+      {decisions.length > 0 ? t('finish.takeAll') : t('finish.button')}
     </BusyButton>
   ) : undefined
   return (
     <>
-      <StepFooter primary={primary} note={primary ? t('finish.note') : undefined} />
+      <StepFooter
+        primary={primary}
+        note={primary ? (decisions.length > 0 ? t('finish.noteTakeAll') : t('finish.note')) : undefined}
+      />
       {closing && (
         <ConfirmDialog
           open={asking}
@@ -124,7 +132,7 @@ function FinishFooter({
           tone="warning"
           pending={busy}
           onConfirm={async () => {
-            if (await onComplete()) setAsking(false)
+            if (await takeAndFinish()) setAsking(false)
           }}
         />
       )}

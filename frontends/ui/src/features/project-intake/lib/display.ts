@@ -32,6 +32,25 @@ function questionFor(baseKey: string): ProjectIntakeQuestion | undefined {
 
 export const baseKeyOf = (key: string): string => key.split('@')[0]
 
+/**
+ * The wizard's question for a profile key, asked the way the setup asks it
+ * (as {@link questionOfNeed} does): a plain number, a Ja or Nein. Undefined
+ * for a key no wizard question writes.
+ */
+export function questionForKey(key: string): ProjectIntakeQuestion | undefined {
+  const question = questionFor(baseKeyOf(key))
+  if (!question) return undefined
+  const type = question.type === 'number_tri' ? 'number' : question.type === 'yes_no_open' ? 'boolean' : question.type
+  return {
+    id: key,
+    label: question.label,
+    type,
+    ...(question.unit ? { unit: question.unit } : {}),
+    ...(question.placeholder ? { placeholder: question.placeholder } : {}),
+    ...(question.options ? { options: question.options } : {}),
+  }
+}
+
 /** A value as a person reads it: the option's label, the unit, Ja and Nein. */
 export function displayValue(key: string, value: ProjectPrimitiveValue): string {
   const baseKey = baseKeyOf(key)

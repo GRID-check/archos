@@ -68,15 +68,15 @@ describe('ProfileStep', () => {
   })
 
   describe('the Gebäudeklasse', () => {
-    it('shows the class as a result with why in one line, and takes it on its own', async () => {
+    it('shows the class as a result with why in one line, with nothing to click to confirm it', () => {
       setup(PROFILE_REVIEW)
       const card = screen.getByTestId('profile-class')
       expect(within(card).getByTestId('profile-class-title')).toHaveTextContent('Gebäudeklasse 5')
       expect(within(card).getByTestId('profile-class-reason')).toHaveTextContent(
         'Escape level 18,4 m · 6 storeys above ground · 14 units'
       )
-      await userEvent.click(within(card).getByRole('button', { name: 'Confirm Gebäudeklasse 5 for Building 1' }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
+      // Taken with everything else by the footer's one action.
+      expect(within(card).queryByRole('button', { name: /Confirm/ })).toBeNull()
     })
 
     it('folds the working: every input, which are only suggested, and what it rests on', async () => {
@@ -147,7 +147,7 @@ describe('ProfileStep', () => {
         'oib_ausgabe',
       ])
       expect(screen.queryByTestId('profile-finding-geschosse_oberirdisch@bw1')).toBeNull()
-      expect(screen.getByTestId('profile-findings-counts')).toHaveTextContent('7 values · 2 confirmed')
+      expect(screen.getByTestId('profile-findings-counts')).toHaveTextContent('7 values · 2 by you')
     })
 
     it('folds the rest by topic behind one link', async () => {
@@ -160,20 +160,22 @@ describe('ProfileStep', () => {
       expect(within(topic).getByTestId('profile-finding-projektphase')).toHaveTextContent('Your answer')
     })
 
-    it('takes or discards one value, and takes every open one at once', async () => {
+    it('asks nothing to be approved row by row: a value is changed or struck out', async () => {
       setup(PROFILE_REVIEW)
-      await userEvent.click(screen.getByRole('button', { name: 'Use 18,4 m for Fluchtniveau' }))
-      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'fluchtniveau_m@bw1', action: 'confirm' }])
-      await userEvent.click(screen.getByRole('button', { name: 'Discard 2023 for OIB-Ausgabe' }))
+      expect(screen.queryByRole('button', { name: /^Use / })).toBeNull()
+      await userEvent.click(screen.getByRole('button', { name: '2023 for OIB-Ausgabe is not right: discard' }))
       expect(onDecide).toHaveBeenLastCalledWith([{ key: 'oib_ausgabe', action: 'dismiss' }])
-      await userEvent.click(screen.getByRole('button', { name: 'Use all 5 open' }))
-      expect(onDecide).toHaveBeenLastCalledWith([
-        { key: 'oib_ausgabe', action: 'confirm' },
-        { key: 'bauwerkstyp@bw1', action: 'confirm' },
-        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
-        { key: 'gebaeudestellung@bw1', action: 'confirm' },
-        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
-      ])
+    })
+
+    it('changes a value with the wizard’s own control, written as the person’s answer', async () => {
+      setup(PROFILE_REVIEW)
+      await userEvent.click(screen.getByRole('button', { name: 'Change Anzahl Nutzungseinheiten' }))
+      const editor = await screen.findByTestId('profile-edit-nutzungseinheiten@bw1')
+      const field = within(editor).getByRole('spinbutton')
+      await userEvent.clear(field)
+      await userEvent.type(field, '16')
+      await userEvent.click(within(editor).getByRole('button', { name: 'Use' }))
+      expect(onDecide).toHaveBeenLastCalledWith([{ key: 'nutzungseinheiten@bw1', action: 'answer', value: 16 }])
     })
 
     it('names the source without its file type, and shows its quote when it is focused', async () => {
@@ -236,14 +238,13 @@ describe('ProfileStep', () => {
 
   it('holds every control while a call is in flight, without ever disabling one', async () => {
     setup(PROFILE_REVIEW, { busy: true })
-    for (const name of ['Use 18,4 m for Fluchtniveau', 'Use all 5 open', 'Confirm Gebäudeklasse 5 for Building 1', 'Finish setup']) {
+    for (const name of ['2023 for OIB-Ausgabe is not right: discard', 'Take everything and finish']) {
       const control = screen.getByRole('button', { name })
       expect(control).toHaveAttribute('aria-disabled', 'true')
       expect(control).not.toBeDisabled()
     }
-    await userEvent.click(screen.getByRole('button', { name: 'Use 18,4 m for Fluchtniveau' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Discard 2023 for OIB-Ausgabe' }))
-    await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
+    await userEvent.click(screen.getByRole('button', { name: '2023 for OIB-Ausgabe is not right: discard' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Take everything and finish' }))
     expect(onDecide).not.toHaveBeenCalled()
     expect(onComplete).not.toHaveBeenCalled()
   })
@@ -251,21 +252,57 @@ describe('ProfileStep', () => {
   describe('finishing', () => {
     const footer = (): HTMLElement => screen.getByTestId('intake-setup-footer')
 
-    it('is the footer’s one primary, beside the note that nothing unconfirmed is lost, and finishes at once', async () => {
+    it('takes every open value and class as the person’s, then finishes, in one action', async () => {
       setup(PROFILE_REVIEW)
-      expect(footer()).toHaveTextContent('Anything not confirmed stays a suggestion and can be changed at any time.')
-      await userEvent.click(within(footer()).getByRole('button', { name: 'Finish setup' }))
+      expect(footer()).toHaveTextContent('What you did not change, Piloti takes as it is, with its source.')
+      await userEvent.click(within(footer()).getByRole('button', { name: 'Take everything and finish' }))
+      expect(onDecide).toHaveBeenCalledWith([
+        { key: 'oib_ausgabe', action: 'confirm' },
+        { key: 'bauwerkstyp@bw1', action: 'confirm' },
+        { key: 'fluchtniveau_m@bw1', action: 'confirm' },
+        { key: 'gebaeudestellung@bw1', action: 'confirm' },
+        { key: 'nutzungseinheiten@bw1', action: 'confirm' },
+        { key: 'gebaeudeklasse@bw1', action: 'confirm' },
+      ])
       expect(onComplete).toHaveBeenCalledTimes(1)
       expect(screen.queryByRole('dialog')).toBeNull()
     })
 
+    it('does not finish when taking the values failed', async () => {
+      onDecide.mockResolvedValue(false)
+      setup(PROFILE_REVIEW)
+      await userEvent.click(within(footer()).getByRole('button', { name: 'Take everything and finish' }))
+      expect(onDecide).toHaveBeenCalledTimes(1)
+      expect(onComplete).not.toHaveBeenCalled()
+    })
+
+    it('only finishes when nothing is left to take', async () => {
+      const taken: IntakeView = {
+        ...PROFILE_CONFIRMED,
+        groups: PROFILE_CONFIRMED.groups.map((group) => ({
+          ...group,
+          items: group.items.map((item) => ({ ...item, state: 'confirmed' as const })),
+        })),
+        derivations: PROFILE_CONFIRMED.derivations.map((derivation) => ({
+          ...derivation,
+          suggestion: derivation.suggestion && { ...derivation.suggestion, state: 'confirmed' as const },
+        })),
+      }
+      setup(taken)
+      await userEvent.click(within(footer()).getByRole('button', { name: 'Finish setup' }))
+      expect(onDecide).not.toHaveBeenCalled()
+      expect(onComplete).toHaveBeenCalledTimes(1)
+    })
+
     it('asks first when finishing closes a past project, with its outcome and period', async () => {
       setup(INTAKE_CLOSING)
-      await userEvent.click(within(footer()).getByRole('button', { name: 'Finish setup' }))
+      await userEvent.click(within(footer()).getByRole('button', { name: 'Take everything and finish' }))
+      expect(onDecide).not.toHaveBeenCalled()
       expect(onComplete).not.toHaveBeenCalled()
       const dialog = await screen.findByRole('dialog')
       expect(dialog).toHaveTextContent('The project is closed with it: outcome “Completed”, period 03/2019 to 08/2022.')
       await userEvent.click(within(dialog).getByRole('button', { name: 'Finish and close' }))
+      expect(onDecide).toHaveBeenCalledTimes(1)
       expect(onComplete).toHaveBeenCalledTimes(1)
     })
 

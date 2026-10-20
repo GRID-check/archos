@@ -3,35 +3,31 @@
 import type { JSX, ReactNode } from 'react'
 import { useState } from 'react'
 import { Check } from 'lucide-react'
-import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
-import type { DerivationReview, IntakeDecision } from '@/lib/project-intake/types'
+import type { DerivationReview } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
-import { usePressed } from '../../hooks/use-pressed'
 import { bauwerkNumber, displayValue, keyLabel } from '../../lib/display'
 import { leadDerivation, reasonInputs, shortLabel } from './steckbrief'
 
 interface ClassCardProps {
   derivations: readonly DerivationReview[]
-  canDecide: boolean
-  busy: boolean
-  onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
   /** Go to the Rückfragen, where a missing input is asked. */
   onAnswer: () => void
 }
 
 /**
- * The Gebäudeklasse as a result: the class big, why in one line, and the one
- * thing to do with it, confirm it („Vorschlagen, nicht setzen“). How it was
+ * The Gebäudeklasse as a result: the class big and why in one line. Nothing to
+ * click to confirm it: „Alles übernehmen und abschließen“ in the footer takes
+ * it with the values it rests on, and changing an input changes it. How it was
  * worked out (every input, which ones only suggested, the Fundstelle) folds
  * open under „Wie gerechnet?". With several Bauwerke a switch picks which
  * one's class is shown; a Hochhaus has none, and a class still open says
  * what it lacks and where that is asked.
  */
-export function ClassCard({ derivations, canDecide, busy, onDecide, onAnswer }: ClassCardProps): JSX.Element {
+export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Element {
   const t = useTranslations('intakeProfileStep')
   const tIntake = useTranslations('projectIntake')
   const lead = leadDerivation(derivations)
@@ -46,9 +42,6 @@ export function ClassCard({ derivations, canDecide, busy, onDecide, onAnswer }: 
       {derivation ? (
         <ClassResult
           derivation={derivation}
-          canDecide={canDecide}
-          busy={busy}
-          onDecide={onDecide}
           onAnswer={onAnswer}
           switcher={
             derivations.length > 1 ? (
@@ -122,19 +115,13 @@ function useReason(derivation: DerivationReview): string {
 
 function ClassResult({
   derivation,
-  canDecide,
-  busy,
-  onDecide,
   onAnswer,
   switcher,
 }: Omit<ClassCardProps, 'derivations'> & { derivation: DerivationReview; switcher: ReactNode }): JSX.Element {
   const t = useTranslations('intakeProfileStep')
-  const tIntake = useTranslations('projectIntake')
-  const [confirming, confirm] = usePressed()
   const [open, setOpen] = useState(false)
   const reason = useReason(derivation)
   const suggestion = derivation.suggestion
-  const bauwerk = tIntake('derivations.bauwerk', { number: bauwerkNumber(derivation.bauwerkId) })
   const title = derivation.hochhaus
     ? t('class.hochhaus')
     : derivation.value === null
@@ -163,21 +150,6 @@ function ClassResult({
             </p>
           )}
           <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
-            {canDecide && suggestion?.state === 'suggested' && (
-              <BusyButton
-                type="button"
-                size="sm"
-                variant="outline"
-                className="bg-card h-[30px] px-2.5 text-[13px]"
-                busy={confirming}
-                blocked={busy}
-                busyLabel={tIntake('busy.confirm')}
-                aria-label={t('class.confirmAria', { value: derivation.value ?? '', bauwerk })}
-                onClick={() => confirm(() => onDecide([{ key: suggestion.key, action: 'confirm' }]))}
-              >
-                {t('class.confirm')}
-              </BusyButton>
-            )}
             {suggestion?.state === 'confirmed' && (
               <span className="text-success flex items-center gap-1.5 text-xs" data-testid="profile-class-confirmed">
                 <Check className="size-3" strokeWidth={3} aria-hidden />
