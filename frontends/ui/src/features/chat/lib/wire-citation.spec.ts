@@ -191,13 +191,13 @@ describe('citationsFromWireList', () => {
 
 describe('projectFromWire (ADR-0094)', () => {
   test('carries the Land the agent stated, verbatim, warning included', () => {
-    const landNote = 'Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung'
+    const federalStateNote = 'Steiermark — nicht das Bundesland dieses Projekts: dort gilt eine andere Bauordnung'
 
-    expect(projectFromWire({ id: 'p9', name: 'Wohnbau Graz', status: 'closed', landNote })).toEqual({
+    expect(projectFromWire({ id: 'p9', name: 'Wohnbau Graz', status: 'closed', federalStateNote })).toEqual({
       id: 'p9',
       name: 'Wohnbau Graz',
       status: 'closed',
-      landNote,
+      federalStateNote,
     })
   })
 
@@ -206,11 +206,11 @@ describe('projectFromWire (ADR-0094)', () => {
       id: 'p9',
       name: 'Wohnbau Graz',
       status: 'active',
-      landNote: null,
+      federalStateNote: null,
     })
   })
 
   test('a blank land note is no land note', () => {
-    expect(projectFromWire({ id: 'p9', name: 'Wohnbau Graz', status: 'active', landNote: '  ' })?.landNote).toBeNull()
+    expect(projectFromWire({ id: 'p9', name: 'Wohnbau Graz', status: 'active', federalStateNote: '  ' })?.federalStateNote).toBeNull()
   })
 })

@@ -57,7 +57,7 @@ export interface AddressFieldProps {
   value: GeocodeResult | null
   onChange: (value: GeocodeResult | null) => void
   /** The Bundesland chosen by hand, used while there is no geocoder. */
-  bundesland: string
+  federalState: string
   onFederalStateChange: (value: string) => void
   disabled?: boolean
   /** The address search; the real one unless a spec brings its own. */
@@ -68,7 +68,7 @@ export interface AddressFieldProps {
 export function AddressField({
   value,
   onChange,
-  bundesland: federalState,
+  federalState,
   onFederalStateChange,
   disabled = false,
   client,
@@ -80,9 +80,9 @@ export function AddressField({
   if (off) {
     return (
       <Field>
-        <FieldLabel htmlFor="create-project-bundesland">{t('form.federalStateLabel')}</FieldLabel>
+        <FieldLabel htmlFor="create-project-federal-state">{t('form.federalStateLabel')}</FieldLabel>
         <Select value={federalState} onValueChange={onFederalStateChange} disabled={disabled}>
-          <SelectTrigger id="create-project-bundesland" className="w-full">
+          <SelectTrigger id="create-project-federal-state" className="w-full">
             <SelectValue placeholder={t('form.federalStatePlaceholder')} />
           </SelectTrigger>
           <SelectContent>

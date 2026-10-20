@@ -46,7 +46,7 @@ import {
   opensTo,
 } from '../operators/topology.js'
 import { toRef, toRefs, type ElementRef } from '../operators/refs.js'
-import { inventory, renderBriefing, storeyHeights } from '../operators/model.js'
+import { inventory, renderBriefing, roomUseKindOf, storeyHeights } from '../operators/model.js'
 import { azimuth, clearHeight, distance, elevation, extent, floorArea, sillAndHead } from '../operators/metric.js'
 import type { GeometryIndex } from '../geometry/pass.js'
 import { project, type ViewKind } from '../render/project.js'
@@ -546,11 +546,11 @@ export function createTools(cache: SpatialCache): ToolDef[] {
         type: 'object',
         properties: {
           model: { type: 'string' },
-          kind: { type: 'string', enum: ['aufenthaltsraum', 'nebenraum', 'erschliessung'] },
+          kind: { type: 'string', enum: ['habitable_room', 'ancillary_room', 'circulation'] },
         },
         required: ['model', 'kind'],
       },
-      handler: async (args) => inventory(resolve(args.model), args.kind as 'aufenthaltsraum' | 'nebenraum' | 'erschliessung'),
+      handler: async (args) => inventory(resolve(args.model), roomUseKindOf(String(args.kind))),
     },
   ]
 }

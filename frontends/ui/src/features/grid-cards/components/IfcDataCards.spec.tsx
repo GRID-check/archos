@@ -587,8 +587,8 @@ describe('IfcComplianceCard', () => {
     await waitFor(() =>
       expect(queriedBodies(fetchMock)).toContainEqual({
         op: 'compliance',
-        gebaeudeklasse: 4,
-        hauptnutzung: 'residential',
+        buildingClass: 4,
+        mainUse: 'residential',
       })
     )
   })
@@ -614,7 +614,7 @@ describe('IfcComplianceCard', () => {
     const download = await screen.findByRole('link', { name: /Open items as BCF/ })
     expect(download).toHaveAttribute(
       'href',
-      '/api/projects/p1/bim/checks/export?modelId=model-v2&gebaeudeklasse=4'
+      '/api/projects/p1/bim/checks/export?modelId=model-v2&buildingClass=4'
     )
     expect(download).toHaveAttribute('download')
   })

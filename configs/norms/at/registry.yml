@@ -198,7 +198,7 @@ entries:
   verify:
     title_query: Baugesetz
     expect: Baugesetz
-    gesetzesnummer: '20000734'
+    statute_number: '20000734'
   verified_at: '2026-07-17'
 - id: bo-bgld
   title: Burgenländisches Baugesetz 1997
@@ -255,7 +255,7 @@ entries:
   verify:
     title_query: Arbeitsstättenverordnung
     expect: Arbeitsstätten
-    gesetzesnummer: '10009098'
+    statute_number: '10009098'
   verified_at: '2026-07-17'
 - id: bkag
   title: Bauarbeitenkoordinationsgesetz
@@ -418,7 +418,7 @@ entries:
   verify:
     title_query: Wasserrechtsgesetz
     expect: Wasserrecht
-    gesetzesnummer: '10010290'
+    statute_number: '10010290'
   verified_at: '2026-07-17'
 - id: forstg
   title: Forstgesetz 1975
@@ -458,7 +458,7 @@ entries:
   verify:
     title_query: Gewerbeordnung
     expect: Gewerbeordnung
-    gesetzesnummer: '10007517'
+    statute_number: '10007517'
   verified_at: '2026-07-17'
 - id: ma37-merkblaetter
   title: MA 37 (Baupolizei Wien) — Merkblätter, Weisungen und Checklisten

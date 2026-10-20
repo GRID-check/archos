@@ -455,10 +455,10 @@ export async function exportAccessibleComplianceBcf(
     modelId: string | null
     /** File name, for the callers that address models the way people do. */
     modelName?: string | null
-    gebaeudeklasse: number | null
+    buildingClass: number | null
     // The vocabulary, not free text: the catalogue stands rules down for a
     // value it does not recognise, and a stand-down reads as a verdict.
-    hauptnutzung: BimMainUse | null
+    mainUse: BimMainUse | null
   }
 ): Promise<BcfExport> {
   assertIfcModelsEnabled(session)
@@ -473,8 +473,8 @@ export async function exportAccessibleComplianceBcf(
     runBimQuery(
       {
         op: 'compliance',
-        gebaeudeklasse: input.gebaeudeklasse,
-        hauptnutzung: input.hauptnutzung,
+        buildingClass: input.buildingClass,
+        mainUse: input.mainUse,
       },
       { modelId: model.id, organizationId: session.organizationId }
     ),

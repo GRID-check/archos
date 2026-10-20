@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { useBimComplianceDiff } from './use-bim-model'
 
-const NO_FACTS = { gebaeudeklasse: null, hauptnutzung: null }
+const NO_FACTS = { buildingClass: null, mainUse: null }
 
 let fetchMock: ReturnType<typeof vi.fn>
 
@@ -81,7 +81,7 @@ describe('useBimComplianceDiff', () => {
     fetchMock.mockResolvedValue(ok([change('oib-2-1')]))
     const { result, rerender } = renderHook(
       ({ gk }: { gk: number }) =>
-        useBimComplianceDiff('m-new', 'm-old', { gebaeudeklasse: gk, hauptnutzung: null }),
+        useBimComplianceDiff('m-new', 'm-old', { buildingClass: gk, mainUse: null }),
       { initialProps: { gk: 3 } }
     )
 

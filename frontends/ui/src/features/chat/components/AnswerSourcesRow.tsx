@@ -105,12 +105,12 @@ const usePrecedentNote = (): ((doc: CitedDocument) => string | null) => {
   const chatProjectId = useChatStore((s) => s.projectId)
   return (doc) => {
     if (!doc.project || !isPrecedent(doc, chatProjectId)) return null
-    const { name, status, landNote } = doc.project
+    const { name, status, federalStateNote } = doc.project
     const named = t('answerSources.precedentProject', {
       name,
       status: t(`answerSources.projectStatus.${status}`),
     })
-    return landNote ? `${named} · ${landNote}` : named
+    return federalStateNote ? `${named} · ${federalStateNote}` : named
   }
 }
 

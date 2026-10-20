@@ -48,9 +48,9 @@ export type BimCheckStatus = 'pass' | 'fail' | 'undecidable'
 /** The project facts a rule's applicability may depend on. */
 export interface BimRuleFacts {
   /** `1` … `5`, as the intake vocabulary records it. */
-  gebaeudeklasse?: number | null
+  buildingClass?: number | null
   /** Intake main-use token: `residential`, `office`, `lodging`, … */
-  hauptnutzung?: string | null
+  mainUse?: string | null
   /**
    * The model's storeys with their elevations, from `summary.storeys`.
    *
@@ -890,11 +890,11 @@ export const BIM_RULES: RuleDefinition[] = [
           missing: 'IfcBuildingStorey.Elevation (Höhenlage der Geschoße)',
         }
       }
-      const minutes = FIRE_RESISTANCE_R_MINUTES[position][facts.gebaeudeklasse ?? 0]
+      const minutes = FIRE_RESISTANCE_R_MINUTES[position][facts.buildingClass ?? 0]
       if (minutes === null) {
         return {
           status: 'pass',
-          reading: `Im obersten Geschoß der Gebäudeklasse ${facts.gebaeudeklasse} wird kein Feuerwiderstand gefordert`,
+          reading: `Im obersten Geschoß der Gebäudeklasse ${facts.buildingClass} wird kein Feuerwiderstand gefordert`,
         }
       }
       const required = minutes ? `R ${minutes}` : undefined
@@ -930,7 +930,7 @@ export const BIM_RULES: RuleDefinition[] = [
         status: verdict === 'meets' ? 'pass' : 'fail',
         reading:
           `Feuerwiderstand ${declared} — erforderlich ${required} ` +
-          `(Gebäudeklasse ${facts.gebaeudeklasse}, ${STOREY_LABEL[position]})`,
+          `(Gebäudeklasse ${facts.buildingClass}, ${STOREY_LABEL[position]})`,
       }
     },
   },
@@ -943,7 +943,7 @@ export const BIM_RULES: RuleDefinition[] = [
     ifcTypes: ['IfcWall', 'IfcWallStandardCase'],
     scope: isExternal,
     notApplicable: (facts) =>
-      facts.hauptnutzung === 'storage' || facts.hauptnutzung === 'agriculture'
+      facts.mainUse === 'storage' || facts.mainUse === 'agriculture'
         ? 'OIB 6 gilt für unkonditionierte Lager-/landwirtschaftliche Gebäude nicht ohne Weiteres'
         : null,
     judge: (element) => {
@@ -979,7 +979,7 @@ export const BIM_RULES: RuleDefinition[] = [
     thresholdDe: 'U ≤ 1,40 W/m²K',
     ifcTypes: ['IfcWindow'],
     notApplicable: (facts) =>
-      facts.hauptnutzung === 'storage' || facts.hauptnutzung === 'agriculture'
+      facts.mainUse === 'storage' || facts.mainUse === 'agriculture'
         ? 'OIB 6 gilt für unkonditionierte Lager-/landwirtschaftliche Gebäude nicht ohne Weiteres'
         : null,
     judge: (element) => {
@@ -1015,7 +1015,7 @@ export const BIM_RULES: RuleDefinition[] = [
     // internal ones — an external wall's Schallschutz is a different clause.
     scope: (element) => !isExternal(element),
     notApplicable: (facts) =>
-      facts.hauptnutzung && !['residential', 'lodging', 'healthcare', 'office', 'assembly'].includes(facts.hauptnutzung)
+      facts.mainUse && !['residential', 'lodging', 'healthcare', 'office', 'assembly'].includes(facts.mainUse)
         ? 'OIB 5 ist für diese Nutzung nicht lärmempfindlich einschlägig'
         : null,
     judge: (element) => {

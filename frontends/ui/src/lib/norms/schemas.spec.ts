@@ -25,7 +25,7 @@ const validEntry = {
   aliases: ['Richtlinie 2'],
   binding_note: 'Verbindlich in Wien.',
   review_note: 'Neuauflage 2024 prüfen.',
-  verify: { title_query: 'OIB Richtlinie 2', exclude: ['Salzburg'], gesetzesnummer: '20000123' },
+  verify: { title_query: 'OIB Richtlinie 2', exclude: ['Salzburg'], statute_number: '20000123' },
   verified_at: '2026-01-15',
 }
 

@@ -95,7 +95,7 @@ _FEDERAL_STATE_PARAMS: dict[str, str] = {
 def _pick_hit(entry_id: str, verify, hits):
     """Select the currently-in-force whole-law anchor (the '§ 0' document).
 
-    Applies the verify seed's expect/exclude/gesetzesnummer guards and fails loud
+    Applies the verify seed's expect/exclude/statute_number guards and fails loud
     (SystemExit) when the number of surviving candidates is not exactly one.
     """
     candidates = []
@@ -109,7 +109,7 @@ def _pick_hit(entry_id: str, verify, hits):
             continue
         if not hit.full_law_url:
             continue
-        if verify.gesetzesnummer and f"Gesetzesnummer={verify.gesetzesnummer}" not in hit.full_law_url:
+        if verify.statute_number and f"Gesetzesnummer={verify.statute_number}" not in hit.full_law_url:
             continue
         candidates.append(hit)
     in_force = [h for h in candidates if not h.metadata.get("Außer Kraft seit")]

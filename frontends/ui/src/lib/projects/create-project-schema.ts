@@ -18,7 +18,7 @@ const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMo
 export const PROJECT_SETUPS = ['piloti', 'self'] as const
 export type ProjectSetup = (typeof PROJECT_SETUPS)[number]
 
-export const createProjectSchema = z
+export const createProjectFieldsSchema = z
   .object({
     name: z.string().min(1).max(255).trim(),
     closing: z
@@ -40,13 +40,25 @@ export const createProjectSchema = z
       .optional(),
     /** The address search's hit. */
     location: geocodeResultSchema.optional(),
-    /** An A2_land token chosen by hand when no geocoder is configured. A tab that has not reloaded still sends the German token. */
-    bundesland: z
+    /** A federal-state token chosen by hand when no geocoder is configured. A tab that has not reloaded still sends the German token. */
+    federalState: z
       .string()
       .transform((token) => normalizeProfileToken('federal_state', token))
       .refine(isValidFederalStateToken, 'A Bundesland token.')
       .optional(),
   })
   .strict()
+
+/**
+ * A tab that has not reloaded still posts `bundesland`. Read for one release
+ * (remove after); a body that sends both keeps the new one.
+ */
+const renameLegacyFederalState = (value: unknown): unknown => {
+  if (typeof value !== 'object' || value === null || !('bundesland' in value)) return value
+  const { bundesland, ...rest } = value as Record<string, unknown>
+  return 'federalState' in rest ? rest : { ...rest, federalState: bundesland }
+}
+
+export const createProjectSchema = z.preprocess(renameLegacyFederalState, createProjectFieldsSchema)
 
 export type CreateProjectBody = z.infer<typeof createProjectSchema>

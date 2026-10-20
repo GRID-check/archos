@@ -27,6 +27,11 @@ read German are listed after the table.
 | Herleitung | `derivation` (`/dev/derivation`) | |
 | Papierkorb | `bin` (`/dev/bin`) | |
 | Punkt, Absatz (of a norm) | `clause`, `subsection` (`clause_chunking.py`, `build_clause_index.py`) | |
+| Hauptnutzung | `mainUse` / `main_use` (the `ifc_query` compliance argument, the BCF export query) | |
+| Aufenthaltsraum, Nebenraum, Erschließung (a room's suspected use) | `habitable_room`, `ancillary_room`, `circulation`; unmatched `unclassified` (`room_inventory`, `RoomUseKind`). The lexicon terms (`buero`, `flur`) stay German: they are the room names to match | |
+| Fluchtniveau (the `fire` aspect) | `escape_level` | |
+| Gesetzesnummer (RIS law number in a norm's verify seed) | `statute_number` | the RIS URL parameter `Gesetzesnummer`, which is the external API's |
+| Spatial result keys (`warum`, `abhilfe`, `lage`, `trennend`, `gemeinsam`, `oeffnungen` …) | `why`, `remedy`, `position`, `separating`, `shared`, `openings` … (`ifc-spatial`, `ifc-spatial-py`) | |
 | Befund, Befundmatrix | `finding`, `findingsMatrix` | |
 | erfüllt, nicht erfüllt, offen, nicht anwendbar | `met`, `notMet`, `open`, `notApplicable` | |
 | Laufblock | `RunBlock`; states `running`, `waiting`, `done`, `cancelled`, `interrupted` | |

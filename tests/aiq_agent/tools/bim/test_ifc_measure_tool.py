@@ -230,10 +230,18 @@ class TestBuildCall:
         answer = build(operation="room_inventory", room_kind="wohnraum")
         assert isinstance(answer, str)
         assert "room_kind 'wohnraum' does not exist" in answer
-        assert "aufenthaltsraum" in answer
+        assert "habitable_room" in answer
+
+    def test_the_german_room_kinds_and_fire_aspect_are_still_accepted_for_one_release(self):
+        """Remove with ``_LEGACY_TOKENS``."""
+        from aiq_agent.tools.bim.measure_register import IfcMeasureInput
+
+        assert IfcMeasureInput(operation="room_inventory", room_kind="Aufenthaltsraum").room_kind == "habitable_room"
+        assert IfcMeasureInput(operation="room_inventory", room_kind="erschliessung").room_kind == "circulation"
+        assert IfcMeasureInput(operation="fire", kind="fluchtniveau").kind == "escape_level"
 
     def test_the_room_kinds_the_lexicon_knows_pass_through_lowercased(self):
-        for value in ("aufenthaltsraum", "nebenraum", "erschliessung"):
+        for value in ("habitable_room", "ancillary_room", "circulation"):
             assert build(operation="room_inventory", room_kind=value.upper()) == (
                 "room_inventory",
                 {"kind": value},
@@ -1649,7 +1657,7 @@ class TestTheDescriptionDescribesTheRealTool:
     def test_it_teaches_the_three_provenances_as_three_german_sentences(self):
         description, _ = self._description_and_parameters()
 
-        assert "deklariert" in description
+        assert "declared" in description
         assert "gemessen" in description
         assert "vermutlich" in description
         # And forbids the one substitution that turns our number into the
@@ -1896,27 +1904,27 @@ class TestTheDoorGraphRendersAsDoorsAndNotAsCounts:
                     "globalId": "d1",
                     "name": "Haustür",
                     "ifcType": "IfcDoor",
-                    "verbindet": ["r1", "AUSSEN"],
+                    "connects": ["r1", "AUSSEN"],
                     "length": 3.2,
                     "external": True,
                     "via": "geom.tree.select",
                 }
             ],
-            "unbestimmt": [
+            "undetermined": [
                 {
                     "globalId": "d2",
                     "name": "Zimmertür",
                     "ifcType": "IfcDoor",
-                    "warum": "Körpergeometrie fehlt",
-                    "abhilfe": "mit Körpergeometrie exportieren",
+                    "why": "Körpergeometrie fehlt",
+                    "remedy": "mit Körpergeometrie exportieren",
                 }
             ],
-            "ausgeschlossen": [
+            "excluded": [
                 {
                     "globalId": "d3",
                     "name": "Bodenluke",
                     "ifcType": "IfcDoor",
-                    "warum": "PredefinedType = TRAPDOOR: nicht begehbar",
+                    "why": "PredefinedType = TRAPDOOR: nicht begehbar",
                 }
             ],
             "buildSeconds": 1.005,
@@ -2535,8 +2543,8 @@ class TestEveryWellFormedCallStillDispatchesIdentically:
             ("storey_heights", {}),
         ),
         (
-            {"operation": "room_inventory", "room_kind": "aufenthaltsraum"},
-            ("room_inventory", {"kind": "aufenthaltsraum"}),
+            {"operation": "room_inventory", "room_kind": "habitable_room"},
+            ("room_inventory", {"kind": "habitable_room"}),
         ),
         (
             {"operation": "draw", "storey": "Keller", "ifc_type": "IfcWall"},
@@ -2679,8 +2687,8 @@ class TestEveryWellFormedCallStillDispatchesIdentically:
         [
             ("operation", "Briefing", "briefing"),
             ("kind", "Compactness", "compactness"),
-            ("kind", "FLUCHTNIVEAU", "fluchtniveau"),
-            ("room_kind", "Aufenthaltsraum", "aufenthaltsraum"),
+            ("kind", "ESCAPE_LEVEL", "escape_level"),
+            ("room_kind", "Habitable_Room", "habitable_room"),
             ("mode", "Horizontal", "horizontal"),
         ],
     )

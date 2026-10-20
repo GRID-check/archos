@@ -189,7 +189,7 @@ def _catalog_entry(**overrides) -> NormEntry:
         "document_number": "NOR12345678",
         "citation_url": "https://www.ris.bka.gv.at/eli/lgbl/WI/1930/11",
         "full_law_url": "https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000123",
-        "bundesland": "Wien",
+        "federal_state": "Wien",
         "topics": ["bauordnung", "bauantrag"],
         "relevance": "State building code for Vienna",
         "verified_at": "2026-07-16",
@@ -337,7 +337,7 @@ class TestRisSearchPlanner:
         plan = RisSearchPlan(
             application="LrKons",
             suchworte="Stellplatzverpflichtung",
-            bundesland="Wien",
+            federal_state="Wien",
             reasoning="Bauordnung questions are state law",
         )
         llm = _FakeStructuredLLM(plan)
@@ -377,7 +377,7 @@ class TestRisSearchPlanner:
 
         config = RisSearchToolConfig(planner_llm="ris_planner_llm")
         async with ris_search(config, _builder_with_planner(llm)) as info:
-            await _call(info, query="Garagengesetz", bundesland="Tirol", application="LrKons")
+            await _call(info, query="Garagengesetz", federal_state="Tirol", application="LrKons")
 
         call = fake_client.search_calls[0]
         assert call["application"] == "LrKons"
@@ -395,7 +395,7 @@ class TestRisSearchPlanner:
         good_plan = RisSearchPlan(
             application="LrKons",
             suchworte="Stellplatzverpflichtung",
-            bundesland="Wien",
+            federal_state="Wien",
         )
         llm = _SequenceStructuredLLM([validation_error, good_plan])
 
@@ -655,7 +655,9 @@ class TestFormatCatalogEntry:
         assert "Relevance: State building code for Vienna" in output
 
     def test_skips_empty_optional_fields(self):
-        output = _format_catalog_entry(1, _catalog_entry(bundesland="", citation_url="", full_law_url="", relevance=""))
+        output = _format_catalog_entry(
+            1, _catalog_entry(federal_state="", citation_url="", full_law_url="", relevance="")
+        )
 
         assert "Bundesland:" not in output
         assert "Source:" not in output
@@ -696,7 +698,7 @@ class TestRisCatalogLookupTool:
             entries=[
                 _catalog_entry(),
                 _catalog_entry(
-                    id="bo-noe", short="BO NÖ", bundesland="Niederösterreich", document_number="NOR87654321"
+                    id="bo-noe", short="BO NÖ", federal_state="Niederösterreich", document_number="NOR87654321"
                 ),
             ]
         )
@@ -718,18 +720,18 @@ class TestRisCatalogLookupTool:
             entries=[
                 _catalog_entry(),  # Wien, catalog head
                 _catalog_entry(
-                    id="bo-noe", short="NÖ BO", bundesland="Niederösterreich", document_number="NOR00000002"
+                    id="bo-noe", short="NÖ BO", federal_state="Niederösterreich", document_number="NOR00000002"
                 ),
                 _catalog_entry(
-                    id="bo-ooe", short="Oö. BauO", bundesland="Oberösterreich", document_number="NOR00000003"
+                    id="bo-ooe", short="Oö. BauO", federal_state="Oberösterreich", document_number="NOR00000003"
                 ),
                 _catalog_entry(
-                    id="bo-stmk", short="Stmk. BauG", bundesland="Steiermark", document_number="NOR00000004"
+                    id="bo-stmk", short="Stmk. BauG", federal_state="Steiermark", document_number="NOR00000004"
                 ),
-                _catalog_entry(id="bo-ktn", short="Ktn. BO", bundesland="Kärnten", document_number="NOR00000005"),
-                _catalog_entry(id="bo-tirol", short="Tiroler BO", bundesland="Tirol", document_number="NOR00000006"),
+                _catalog_entry(id="bo-ktn", short="Ktn. BO", federal_state="Kärnten", document_number="NOR00000005"),
+                _catalog_entry(id="bo-tirol", short="Tiroler BO", federal_state="Tirol", document_number="NOR00000006"),
                 _catalog_entry(
-                    id="aschg", short="ASchG", application="BrKons", bundesland="", document_number="NOR00000007"
+                    id="aschg", short="ASchG", application="BrKons", federal_state="", document_number="NOR00000007"
                 ),
             ]
         )
@@ -787,13 +789,13 @@ class TestRisSearchCatalogShortcut:
         catalog = NormRegistry(
             entries=[
                 _catalog_entry(),  # Wien
-                _catalog_entry(id="bo-tirol", short="Tiroler BO", bundesland="Tirol", document_number="NOR00000006"),
+                _catalog_entry(id="bo-tirol", short="Tiroler BO", federal_state="Tirol", document_number="NOR00000006"),
             ]
         )
         monkeypatch.setattr("ris_adapter.register.load_registry", lambda path=None: catalog)
 
         async with ris_search(RisSearchToolConfig(), MagicMock()) as info:
-            output = await _call(info, query="bauordnung", bundesland="Tirol")
+            output = await _call(info, query="bauordnung", federal_state="Tirol")
 
         assert fake_client.search_calls == []
         assert "NOR00000006" in output
@@ -805,7 +807,7 @@ class TestRisSearchCatalogShortcut:
             entries=[
                 _catalog_entry(),  # LrKons Wien
                 _catalog_entry(
-                    id="aschg", short="ASchG", application="BrKons", bundesland="", document_number="NOR00000007"
+                    id="aschg", short="ASchG", application="BrKons", federal_state="", document_number="NOR00000007"
                 ),
             ]
         )
@@ -925,7 +927,7 @@ class TestPlatformRetrievalSettings:
             entries=[
                 _catalog_entry(),
                 _catalog_entry(
-                    id="bo-noe", short="BO NÖ", bundesland="Niederösterreich", document_number="NOR87654321"
+                    id="bo-noe", short="BO NÖ", federal_state="Niederösterreich", document_number="NOR87654321"
                 ),
             ]
         )
@@ -941,7 +943,7 @@ class TestPlatformRetrievalSettings:
 
     async def test_catalog_lookup_respects_platform_max_matches(self, fake_catalog, monkeypatch):
         fake_catalog.entries.append(
-            _catalog_entry(id="bo-noe", short="BO NÖ", bundesland="Niederösterreich", document_number="NOR87654321")
+            _catalog_entry(id="bo-noe", short="BO NÖ", federal_state="Niederösterreich", document_number="NOR87654321")
         )
         _override_setting(monkeypatch, {"ris_catalog.max_matches": 1})
 
@@ -1067,3 +1069,12 @@ class TestLaneCapture:
                 "detail": "NOR40217157",
             }
         ]
+
+
+def test_ris_search_still_reads_the_old_state_argument_for_one_release():
+    """Remove with the ``bundesland`` alias on ``RisSearchInput``."""
+    from ris_adapter.register import RisSearchInput
+
+    assert RisSearchInput.model_validate({"query": "x", "bundesland": "Wien"}).federal_state == "Wien"
+    assert RisSearchInput.model_validate({"query": "x", "federal_state": "Tirol"}).federal_state == "Tirol"
+    assert "bundesland" not in RisSearchInput.model_json_schema()["properties"]

@@ -328,7 +328,7 @@ export async function createProject(
         {
           description: input.description,
           location: input.location,
-          bundesland: input.federalState,
+          federalState: input.federalState,
           closing: closing && { outcome: closing.outcome, startedOn: closing.startedOn, endedOn: closing.endedOn },
         },
         now

@@ -112,7 +112,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
       name: '',
       setup: 'piloti' as ProjectSetup,
       location: null as GeocodeResult | null,
-      bundesland: '',
+      federalState: '',
       description: '',
       state: 'active' as CreateProjectState,
       outcome: '' as ProjectOutcome | '',
@@ -230,12 +230,12 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
             <FieldGroup className="gap-5" data-testid="create-project-piloti-fields">
               <form.Field name="location">
                 {(location) => (
-                  <form.Field name="bundesland">
+                  <form.Field name="federalState">
                     {(federalState) => (
                       <AddressField
                         value={location.state.value}
                         onChange={location.handleChange}
-                        bundesland={federalState.state.value}
+                        federalState={federalState.state.value}
                         onFederalStateChange={federalState.handleChange}
                         disabled={isSubmitting}
                         {...addressClients}
@@ -431,7 +431,7 @@ function toFormData(value: {
   name: string
   setup: ProjectSetup
   location: GeocodeResult | null
-  bundesland: string
+  federalState: string
   description: string
   state: CreateProjectState
   outcome: string
@@ -445,7 +445,7 @@ function toFormData(value: {
   if (value.setup === 'piloti') {
     if (value.description.trim() !== '') formData.set('description', value.description.trim())
     if (value.location) formData.set('location', JSON.stringify(value.location))
-    else if (value.bundesland !== '') formData.set('federal_state', value.bundesland)
+    else if (value.federalState !== '') formData.set('federal_state', value.federalState)
   }
   if (value.state !== 'closed') return formData
   formData.set('outcome', value.outcome)

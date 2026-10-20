@@ -59,7 +59,7 @@ const ENTRIES = [
       'https://ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=Bundesnormen&Gesetzesnummer=20001234',
     aliases: ['OIB 2', 'Richtlinie 2'],
     binding_note: 'In allen Bundesländern durch Verweis verbindlich gestellt.',
-    verify: { title_query: 'OIB-Richtlinie 2', exclude: ['Entwurf'], gesetzesnummer: '20001234' },
+    verify: { title_query: 'OIB-Richtlinie 2', exclude: ['Entwurf'], statute_number: '20001234' },
     verified_at: '2026-05-12',
   },
   {

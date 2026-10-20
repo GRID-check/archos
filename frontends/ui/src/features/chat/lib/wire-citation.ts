@@ -24,14 +24,15 @@ export const normalizeOrigin = (value: unknown): CitationSource['origin'] | unde
 /** The other project a source came from (ADR-0094), when the wire states a well-formed one. */
 export const projectFromWire = (value: unknown): CitationProject | undefined => {
   if (!value || typeof value !== 'object') return undefined
-  const { id, name, status, landNote } = value as Record<string, unknown>
+  // `landNote` is what a pod that has not rolled yet still sends. Remove after one release.
+  const { id, name, status, federalStateNote, landNote } = value as Record<string, unknown>
   const projectId = trimmed(id)
   if (!projectId) return undefined
   return {
     id: projectId,
     name: trimmed(name) ?? '',
     status: toProjectStatus(status),
-    landNote: trimmed(landNote) ?? null,
+    federalStateNote: trimmed(federalStateNote ?? landNote) ?? null,
   }
 }
 

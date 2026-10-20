@@ -49,7 +49,7 @@ async def test_a_catalog_entry_with_no_full_text_is_named_and_not_invented(looku
             document_number="",
             citation_url="",
             full_law_url="",
-            bundesland="",
+            federal_state="",
             topics=["bauordnung", "objektsicherheit"],
         )
     )
@@ -74,7 +74,7 @@ async def test_a_web_only_catalog_entry_hands_the_web_tool_its_next_move(lookup,
             citation_url="",
             full_law_url="",
             source_url="https://www.wien.gv.at/merkblatt",
-            bundesland="Wien",
+            federal_state="Wien",
             topics=["bauordnung", "einreichung"],
         )
     )

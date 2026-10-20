@@ -93,7 +93,7 @@ def test_every_result_survives_json(tools: list, house: str) -> None:
         ("measure", {"model": house, "globalId": WINDOW, "measure": "extent"}),
         ("distance", {"model": house, "a": WINDOW, "b": BEDROOM, "mode": "horizontal"}),
         ("storey_heights", {"model": house}),
-        ("room_inventory", {"model": house, "kind": "aufenthaltsraum"}),
+        ("room_inventory", {"model": house, "kind": "habitable_room"}),
     ]:
         text = json.dumps(call(tools, name, args), ensure_ascii=False)
         assert text and "ndarray" not in text and "object at 0x" not in text
@@ -560,7 +560,7 @@ class TestTheDoorGraphReachesTheSurface:
         # Four IfcSpace plus the OUTSIDE node.
         assert len(graph["nodes"]) == 5
         assert len(graph["edges"]) == 3
-        with_edges = {node for edge in graph["edges"] for node in edge["verbindet"]}
+        with_edges = {node for edge in graph["edges"] for node in edge["connects"]}
         stranded = [ref["name"] for ref in graph["nodes"] if ref["globalId"] not in with_edges]
         assert stranded == ["Roof"]
         assert "keine Türkante" in answer["caveat"]
@@ -570,14 +570,14 @@ class TestTheDoorGraphReachesTheSurface:
         their emptiness are different claims: „no unreadable doors" is a fact
         about this export, and a renderer that omits the key says nothing."""
         graph = call(tools, "fire", {"model": house, "what": "doorGraph"})["value"]
-        assert graph["unbestimmt"] == []
-        assert graph["ausgeschlossen"] == []
+        assert graph["undetermined"] == []
+        assert graph["excluded"] == []
 
     def test_the_aspect_is_matched_case_insensitively(self, tools: list, house: str) -> None:
         assert call(tools, "fire", {"model": house, "what": "DOORGRAPH"})["decidable"] is True
 
     def test_it_needs_no_global_id(self, tools: list, house: str) -> None:
-        """Like `fluchtniveau`, and unlike the other three aspects: the graph IS
+        """Like `escape_level`, and unlike the other three aspects: the graph IS
         the building, so there is nothing to point at."""
         assert call(tools, "fire", {"model": house, "what": "doorGraph"})["decidable"] is True
 

@@ -145,18 +145,18 @@ def _is_heading(line: str) -> bool:
     return not line.endswith((".", ":", ",", ";")) and not SECTION_LINE_RE.match(line)
 
 
-def subsection_body(section: Section, absatz: str) -> tuple[str, str]:
-    """``(body, absatz)`` narrowed to one Absatz, or the whole section.
+def subsection_body(section: Section, subsection: str) -> tuple[str, str]:
+    """``(body, subsection)`` narrowed to one Absatz, or the whole section.
 
     An Absatz the document does not carry returns the section unchanged: the
     honest answer to "§ 63 Abs 9" in a § with three Absätze is § 63, never an
     empty passage and never the wrong Absatz.
     """
-    if not absatz or not section.number:
+    if not subsection or not section.number:
         return section.body, ""
     marks = _subsection_marks(section.body)
     for position, (number, start) in enumerate(marks):
-        if number.lower() != absatz.lower():
+        if number.lower() != subsection.lower():
             continue
         end = marks[position + 1][1] if position + 1 < len(marks) else len(section.body)
         return section.body[start:end].strip(), number
@@ -164,7 +164,7 @@ def subsection_body(section: Section, absatz: str) -> tuple[str, str]:
 
 
 def _subsection_marks(body: str) -> list[tuple[str, int]]:
-    """``(absatz, offset)`` for every Absatz marker, the run-in one included."""
+    """``(subsection, offset)`` for every Absatz marker, the run-in one included."""
     marks = [(match.group(1), match.start()) for match in SUBSECTION_LINE_RE.finditer(body)]
     inline = SUBSECTION_INLINE_RE.match(body)
     if inline:

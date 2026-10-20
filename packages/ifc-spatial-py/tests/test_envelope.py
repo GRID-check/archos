@@ -31,9 +31,9 @@ def test_computed_carries_one_and_inferred_carries_reasons() -> None:
     assert measured.tolerance == 0.005
 
     guess = inferred(
-        "aufenthaltsraum",
+        "habitable_room",
         from_=["space"],
-        method="inventory(graph, 'aufenthaltsraum')",
+        method="inventory(graph, 'habitable_room')",
         confidence=0.8,
         because=["Name „Wohnen“", "24,3 m²", "Fenster an der Südfassade"],
     )

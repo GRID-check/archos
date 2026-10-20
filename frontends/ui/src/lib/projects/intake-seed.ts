@@ -32,7 +32,7 @@ export interface IntakeSeedInput {
   description?: string | undefined
   location?: GeocodeResult | undefined
   /** An A2_land token chosen by hand, when no address was searched. */
-  bundesland?: string | undefined
+  federalState?: string | undefined
   closing?: ClosingIntent | undefined
 }
 
@@ -51,11 +51,11 @@ function fact(value: string, now: Date, evidence?: ProjectFact['evidence']): Pro
  * Empty when neither was given. Pure.
  */
 export function intakeSeedFacts(
-  input: Pick<IntakeSeedInput, 'location' | 'bundesland'>,
+  input: Pick<IntakeSeedInput, 'location' | 'federalState'>,
   now: Date
 ): Record<string, ProjectFact> {
   const { location } = input
-  const federalState = location?.federalState ?? input.bundesland ?? null
+  const federalState = location?.federalState ?? input.federalState ?? null
   const facts: Record<string, ProjectFact> = {}
   if (location) {
     facts.site_address = fact(location.label, now, [

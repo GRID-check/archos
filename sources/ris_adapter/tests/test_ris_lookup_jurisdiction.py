@@ -33,7 +33,7 @@ def _two_states(catalog):
             document_number="NOR40200002",
             citation_url="https://www.ris.bka.gv.at/eli/lgbl/TI/2022/1",
             full_law_url=LookupHarness.TIROL_URL,
-            bundesland="Tirol",
+            federal_state="Tirol",
             topics=["bauordnung", "stellplatz"],
         ),
     )
@@ -80,7 +80,7 @@ async def test_the_caller_land_outranks_the_planner_in_a_live_search(lookup, mon
     """A planner that forgets the Bundesland must not widen the search back out."""
     from sources.ris_adapter.tests.conftest import FakePlanner
 
-    planner = FakePlanner(application="LrKons", suchworte="Stellplatzverpflichtung", bundesland="")
+    planner = FakePlanner(application="LrKons", suchworte="Stellplatzverpflichtung", federal_state="")
     lookup.with_llms(monkeypatch, planner=planner)
 
     await lookup.run(question=_QUESTION, jurisdiction="Tirol")

@@ -44,6 +44,16 @@ export const CITATIONS_PAYLOAD_VERSION = 1
  * read back from the database goes through exactly the normalizer a live
  * stream does.
  */
+/**
+ * A stored message names the other project's state note `landNote`. Read for one
+ * release (remove after); nothing writes that name any more.
+ */
+const renameLegacyProjectNote = (value: unknown): unknown => {
+  if (typeof value !== 'object' || value === null || !('landNote' in value)) return value
+  const { landNote, ...rest } = value as Record<string, unknown>
+  return 'federalStateNote' in rest ? rest : { ...rest, federalStateNote: landNote }
+}
+
 const wireSourceSchema = z
   .object({
     content: z.string().optional(),
@@ -85,12 +95,15 @@ const wireSourceSchema = z
     regions: z.array(z.unknown()).nullish(),
     /** The other project a cross-project lookup found it in (ADR-0094); validated by `projectFromWire`. */
     project: z
-      .object({
-        id: z.string(),
-        name: z.string(),
-        status: z.string(),
-        landNote: z.string().nullish(),
-      })
+      .preprocess(
+        renameLegacyProjectNote,
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          status: z.string(),
+          federalStateNote: z.string().nullish(),
+        })
+      )
       .nullish(),
     /** Whether the answer cited this source, as opposed to merely retrieving it. */
     is_cited: z.boolean().nullish(),

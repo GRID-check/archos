@@ -490,7 +490,7 @@ export interface CitationProject {
    * The project's Bundesland as the agent states it, warning included when the
    * Land is not the chat's (ADR-0094). Absent on messages from before it was sent.
    */
-  landNote?: string | null
+  federalStateNote?: string | null
 }
 
 export interface CitationSource {
