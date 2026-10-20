@@ -343,7 +343,6 @@ export const projects = {
       optional: 'optional',
       clearStartedOn: 'Clear start',
       endedOnBeforeStart: 'The completion lies before the start.',
-      readOnly: 'A closed project is read-only. To add documents or the brief, reopen it.',
       readOnlyPiloti: 'The project stays open while Piloti reads its documents. It closes when you finish the review.',
     },
     addressLabel: 'Address',
@@ -364,12 +363,6 @@ export const projects = {
       placeholder: 'e.g. Adding two storeys to a Gründerzeit building, attic conversion with 6 flats',
       help: 'One or two sentences help Piloti read the documents.',
     },
-    setup: {
-      pilotiLine: 'Next, Piloti reads the project documents and suggests the values; you check them.',
-      selfLine: 'You answer the project briefing questions yourself, one by one.',
-      switchToSelf: 'Fill it in myself instead',
-      switchToPiloti: 'Let Piloti set it up after all',
-    },
     drop: {
       hint: 'You can also drop the project folder on this window.',
       overlay: 'Drop the project folder',
@@ -379,7 +372,6 @@ export const projects = {
     },
     cancel: 'Cancel',
     submit: 'Create project',
-    submitClosed: 'Create closed project',
   },
   applicableStandards: {
     heading: 'Applicable standards',

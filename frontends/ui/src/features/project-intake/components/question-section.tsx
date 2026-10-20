@@ -2,7 +2,9 @@
 
 import type { JSX } from 'react'
 import { useMemo, useState } from 'react'
+import { ArrowRight } from 'lucide-react'
 import { BusyButton } from '@/components/ui/busy-button'
+import { Button } from '@/components/ui/button'
 import { RaisedCard, RaisedCardBody } from '@/components/ui/raised-card'
 import { QuestionControl } from '@/features/projects/components/intake-question-field'
 import { useTranslations } from '@/i18n'
@@ -60,12 +62,19 @@ function QuestionCard({
   busy,
   onDecide,
   onFiles,
+  onSkip,
+  position,
 }: {
   need: Need
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
-  onFiles: (files: File[], info?: DropInfo) => void
+  /** Where the answer's document may be handed in; absent, the card offers none. */
+  onFiles?: (files: File[], info?: DropInfo) => void
+  /** Leave the question for later without saying anything about it. */
+  onSkip?: () => void
+  /** „Frage 2 von 9", when the card is one of a series. */
+  position?: string
 }): JSX.Element {
   const t = useTranslations('projectIntake')
   const question = useMemo(() => questionOfNeed(need), [need])
@@ -77,6 +86,7 @@ function QuestionCard({
     <RaisedCard data-testid={`intake-question-${need.key}`}>
       <RaisedCardBody className="divide-border divide-y p-0">
         <div className="space-y-3 px-4 pt-3.5 pb-3">
+          {position && <p className="text-muted-foreground text-xs tabular-nums">{position}</p>}
           <QuestionControl
             question={question}
             answerKey={need.key}
@@ -116,12 +126,76 @@ function QuestionCard({
             >
               {t('questions.unknown')}
             </BusyButton>
+            {onSkip && (
+              <Button type="button" size="sm" variant="ghost" className="sm:ml-auto" onClick={onSkip}>
+                {t('interview.skip')}
+                <ArrowRight aria-hidden />
+              </Button>
+            )}
           </div>
         </div>
-        <div className="px-2 py-1.5">
-          <DocumentHandIn label={need.label} onFiles={onFiles} disabled={!canDecide} />
-        </div>
+        {onFiles && (
+          <div className="px-2 py-1.5">
+            <DocumentHandIn label={need.label} onFiles={onFiles} disabled={!canDecide} />
+          </div>
+        )}
       </RaisedCardBody>
     </RaisedCard>
+  )
+}
+
+/**
+ * Weitere Angaben: every need no document and no person has answered that
+ * decides no class, asked one at a time in the wizard's order. This is the
+ * interview: with no documents at all it is how a project is set up by hand,
+ * so creating a project needs no choice between Piloti and the wizard. Each
+ * question can be answered, marked unknown, or skipped for now; an answered
+ * one leaves the list when the review is read again, a skipped one only for
+ * this visit.
+ */
+export function InterviewSection({
+  needs,
+  canDecide,
+  busy,
+  onDecide,
+}: {
+  needs: readonly Need[]
+  canDecide: boolean
+  busy: boolean
+  onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
+}): JSX.Element | null {
+  const t = useTranslations('projectIntake')
+  const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set())
+  const waiting = needs.filter((need) => !skipped.has(need.key))
+  if (needs.length === 0) return null
+  const current = waiting[0]
+  const answered = needs.length - waiting.length
+  return (
+    <IntakeSection
+      label={t('interview.heading')}
+      count={needs.length}
+      description={t('interview.description')}
+      testId="intake-interview"
+    >
+      {current ? (
+        // Keyed by the question: a new one starts with an empty draft.
+        <QuestionCard
+          key={current.key}
+          need={current}
+          canDecide={canDecide}
+          busy={busy}
+          onDecide={onDecide}
+          onSkip={() => setSkipped((previous) => new Set(previous).add(current.key))}
+          position={t('interview.position', { index: answered + 1, total: needs.length })}
+        />
+      ) : (
+        <p className="text-muted-foreground rounded-lg border border-dashed px-4 py-5 text-sm" data-testid="intake-interview-skipped">
+          {t('interview.allSkipped', { count: skipped.size })}{' '}
+          <Button type="button" variant="link" className="h-auto p-0 text-sm" onClick={() => setSkipped(new Set())}>
+            {t('interview.again')}
+          </Button>
+        </p>
+      )}
+    </IntakeSection>
   )
 }

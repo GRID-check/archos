@@ -118,28 +118,52 @@ describe('IntakeSetupView', () => {
     })
 
     it('keeps the finish button while reading with something to review, as a secondary', () => {
-      setup(INTAKE_READING)
+      setup(INTAKE_READING, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
     })
 
     it('hides the finish button while reading with nothing found yet', () => {
-      setup({ ...INTAKE_READING, counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] })
+      setup({ ...INTAKE_READING, counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] }, { initialStep: 'profile' })
       expect(screen.queryByTestId('intake-complete')).toBeNull()
     })
 
-    it('shows the review in order: contradictions, questions, review, derivations, finish', () => {
+    it('opens on the step with work to do, and shows each part on its own step', async () => {
       setup(INTAKE_READY)
 
       expect(screen.getByTestId('intake-status-line')).toHaveTextContent('23 documents read · 41 values · 1 contradiction · 3 questions')
-      const order = ['intake-contradictions', 'intake-questions', 'intake-review', 'intake-derivations', 'intake-complete']
+      // A contradiction and decisive questions are open: the page opens on them.
+      expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'questions')
+      expect(screen.getByTestId('intake-contradictions')).toBeInTheDocument()
+      expect(screen.getByTestId('intake-questions')).toBeInTheDocument()
+      expect(screen.queryByTestId('intake-review')).toBeNull()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Continue to the profile' }))
+      expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'profile')
+      const order = ['intake-derivations', 'intake-review', 'intake-complete']
       const nodes = order.map((id) => screen.getByTestId(id))
       nodes.slice(1).forEach((node, index) => {
         expect(nodes[index].compareDocumentPosition(node) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
       })
+      expect(screen.queryByTestId('intake-contradictions')).toBeNull()
+    })
+
+    it('opens on the documents while there are none, and goes on without them', async () => {
+      setup(INTAKE_WAITING)
+      expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'documents')
+
+      await userEvent.click(screen.getByRole('button', { name: 'Continue without documents' }))
+      expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'questions')
+      // With no documents the interview is how the project is filled in.
+      expect(screen.getByTestId('intake-interview')).toHaveTextContent('Question 1 of 3')
+    })
+
+    it('opens on the profile when nothing is left to answer', () => {
+      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
+      expect(screen.getByTestId('intake-setup')).toHaveAttribute('data-step', 'profile')
     })
 
     it('marks a decisive row, a confirmed one and a contested one in words', () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
 
       const row = screen.getByTestId('intake-suggestion-fluchtniveau_m@bw1')
       expect(row).toHaveTextContent('Decisive')
@@ -155,7 +179,7 @@ describe('IntakeSetupView', () => {
     })
 
     it('shows the Gebäudeklasse of a Bauwerk with its inputs, and „still open“ with what is missing', () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
 
       const done = screen.getByTestId('intake-derivation-bw1')
       expect(done).toHaveTextContent('GK 5')
@@ -177,7 +201,7 @@ describe('IntakeSetupView', () => {
       setup({
         ...INTAKE_READY,
         derivations: [{ ...INTAKE_READY.derivations[1], bauwerkId: 'bw3', hochhaus: true, missing: [] }],
-      })
+      }, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-derivation-bw3')).toHaveTextContent('High-rise')
     })
 
@@ -257,7 +281,7 @@ describe('IntakeSetupView', () => {
     })
 
     it('says a spreadsheet\'s source without a page', () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-suggestion-nutzungseinheiten@bw1')).toHaveTextContent('Wohnungsliste.xlsx')
       expect(screen.getByTestId('intake-suggestion-nutzungseinheiten@bw1')).not.toHaveTextContent('Wohnungsliste.xlsx, p.')
     })
@@ -371,7 +395,7 @@ describe('IntakeSetupView', () => {
     })
 
     it('confirms a decisive suggestion on its own, and dismisses any one', async () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
       await userEvent.click(screen.getByRole('button', { name: /Use 18.4 m for Fluchtniveau/ }))
       expect(onDecide).toHaveBeenLastCalledWith([{ key: 'fluchtniveau_m@bw1', action: 'confirm' }])
 
@@ -380,13 +404,13 @@ describe('IntakeSetupView', () => {
     })
 
     it('offers no one-by-one confirm for a value that decides nothing: the rest is taken together', () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
       expect(screen.queryByRole('button', { name: /Use 2023 for OIB-Ausgabe/ })).toBeNull()
       expect(screen.getByRole('button', { name: /Discard 2023 for OIB-Ausgabe/ })).toBeInTheDocument()
     })
 
     it('takes every remaining suggestion in one call, across the groups, but no decisive, confirmed or contested one', async () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
 
       await userEvent.click(screen.getByRole('button', { name: 'Use 3 remaining values' }))
 
@@ -399,20 +423,25 @@ describe('IntakeSetupView', () => {
     })
 
     it('confirms the Gebäudeklasse through the suggestion its derivation carries', async () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
       await userEvent.click(screen.getByRole('button', { name: /Use Gebäudeklasse GK 5 for Building 1/ }))
       expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
     })
 
     it('holds every control while a call is in flight, without ever disabling one', async () => {
       setup(INTAKE_READY, { busy: true })
-      for (const name of [/Use 6 for Anzahl/, /Use 3 remaining/, 'Finish setup']) {
+      const contested = screen.getByRole('button', { name: /Use 6 for Anzahl/ })
+      expect(contested).toHaveAttribute('aria-disabled', 'true')
+      expect(contested).not.toBeDisabled()
+      await userEvent.click(contested)
+      expect(onDecide).not.toHaveBeenCalled()
+
+      await userEvent.click(screen.getByRole('button', { name: 'Continue to the profile' }))
+      for (const name of [/Use 3 remaining/, 'Finish setup']) {
         const control = screen.getByRole('button', { name })
         expect(control).toHaveAttribute('aria-disabled', 'true')
         expect(control).not.toBeDisabled()
       }
-
-      await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl/ }))
       await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
       expect(onDecide).not.toHaveBeenCalled()
       expect(screen.queryByRole('dialog')).toBeNull()
@@ -446,23 +475,23 @@ describe('IntakeSetupView', () => {
 
   describe('finishing', () => {
     it('is the ink primary only when nothing is open', () => {
-      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
+      setup({ ...INTAKE_READY, contradictions: [], questions: [] }, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-complete')).toHaveAttribute('data-primary')
       expect(screen.queryByTestId('intake-open')).toBeNull()
     })
 
     it('stays on screen on a phone once nothing is open, and never floats while something is', () => {
-      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
+      setup({ ...INTAKE_READY, contradictions: [], questions: [] }, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-complete')).toHaveClass('max-sm:sticky', 'max-sm:bottom-0')
     })
 
     it('does not float over the work that is still to do', () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-complete')).not.toHaveClass('max-sm:sticky')
     })
 
     it('is a secondary button and says what is still open while a contradiction or Rückfrage waits', () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
 
       expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
       expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 1 contradiction, 3 questions – you can finish anyway.')
@@ -470,12 +499,12 @@ describe('IntakeSetupView', () => {
     })
 
     it('names only what is open', () => {
-      setup({ ...INTAKE_READY, contradictions: [] })
+      setup({ ...INTAKE_READY, contradictions: [] }, { initialStep: 'profile' })
       expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 3 questions')
     })
 
     it('asks before it finishes, then completes', async () => {
-      setup(INTAKE_READY)
+      setup(INTAKE_READY, { initialStep: 'profile' })
       await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
       expect(onComplete).not.toHaveBeenCalled()
 
@@ -487,7 +516,7 @@ describe('IntakeSetupView', () => {
     })
 
     it('says a closing intent closes the project with outcome and period', async () => {
-      setup(INTAKE_CLOSING)
+      setup(INTAKE_CLOSING, { initialStep: 'profile' })
 
       expect(screen.getByTestId('intake-complete')).toHaveTextContent('This closes the project: outcome “Completed”, period 03/2019 to 08/2022.')
       await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
@@ -500,7 +529,7 @@ describe('IntakeSetupView', () => {
     })
 
     it('offers no finish to a reader who may not', () => {
-      setup({ ...INTAKE_READY, canComplete: false })
+      setup({ ...INTAKE_READY, canComplete: false }, { initialStep: 'profile' })
       expect(screen.queryByRole('button', { name: 'Finish setup' })).toBeNull()
     })
   })
@@ -559,8 +588,8 @@ describe('IntakeSetupView', () => {
     })
     afterEach(resetKit)
 
-    it('renders the filing bar, one line per target folder with the files that go there, after Prüfen and before Ableitungen', async () => {
-      setup(INTAKE_READY, filing())
+    it('renders the filing bar on the documents step, one line per target folder with the files that go there', async () => {
+      setup(INTAKE_READY, { ...filing(), initialStep: 'documents' })
 
       const section = screen.getByTestId('intake-filing')
       expect(within(section).getByRole('heading', { name: 'Filing' })).toBeInTheDocument()
@@ -575,14 +604,11 @@ describe('IntakeSetupView', () => {
       expect(lines[1]).toHaveTextContent('Gutachten')
       expect(within(lines[1]).getByText('new')).toBeInTheDocument()
       expect(await within(lines[1]).findByRole('button', { name: 'Create and move' })).toBeInTheDocument()
-      const follows = (a: HTMLElement, b: HTMLElement) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
-      expect(follows(screen.getByTestId('intake-review'), section)).toBeTruthy()
-      expect(follows(section, screen.getByTestId('intake-derivations'))).toBeTruthy()
     })
 
     it('applies through the proposals service and tells the page to re-read', async () => {
       const user = userEvent.setup()
-      setup(INTAKE_READY, filing())
+      setup(INTAKE_READY, { ...filing(), initialStep: 'documents' })
 
       const [bescheideLine] = screen.getAllByTestId('filing-bar-line')
       await user.click(await within(bescheideLine).findByRole('button', { name: 'Move' }))

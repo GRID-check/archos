@@ -75,6 +75,7 @@ const VIEW: IntakeView = {
   readingFinishedAt: '2026-10-14T09:04:00.000Z',
   summary: 'Zwei Pläne gelesen.',
   contradictions: [],
+  openQuestions: [],
   questions: [
     {
       key: 'fluchtniveau_m@bw1',

@@ -46,15 +46,18 @@ export function CompleteFooter({
   view,
   busy,
   onComplete,
+  onResolve,
 }: {
   view: IntakeView
   busy: boolean
   onComplete: () => Promise<boolean>
+  /** Go to where the open items are answered (the Rückfragen step). */
+  onResolve?: () => void
 }): JSX.Element | null {
   if (view.status === 'completed' || !view.canComplete) return null
-  if (view.status === 'waiting') return null
+  if (view.status === 'waiting' && nothingToReview(view)) return null
   if (view.status !== 'ready' && nothingToReview(view)) return null
-  return <CompleteAction view={view} busy={busy} onComplete={onComplete} />
+  return <CompleteAction view={view} busy={busy} onComplete={onComplete} onResolve={onResolve} />
 }
 
 /**
@@ -89,10 +92,12 @@ function CompleteAction({
   view,
   busy,
   onComplete,
+  onResolve,
 }: {
   view: IntakeView
   busy: boolean
   onComplete: () => Promise<boolean>
+  onResolve?: () => void
 }): JSX.Element {
   const t = useTranslations('projectIntake')
   const [asking, setAsking] = useState(false)
@@ -162,7 +167,19 @@ function CompleteAction({
         onConfirm={async () => {
           if (await onComplete()) setAsking(false)
         }}
-      />
+      >
+        <FinishSummary
+          view={view}
+          onResolve={
+            onResolve && open.length > 0
+              ? () => {
+                  setAsking(false)
+                  onResolve()
+                }
+              : undefined
+          }
+        />
+      </ConfirmDialog>
     </div>
   )
 }
@@ -178,5 +195,56 @@ function ClosingHint({ closing, confirm = false }: { closing: ClosingIntent; con
         ? t('complete.confirmDescriptionClosing', { outcome, period })
         : t('complete.hintClosing', { outcome, period })}
     </>
+  )
+}
+
+/**
+ * What finishing leaves behind, said before it happens: the values confirmed,
+ * the class, and what stays open. „Sie können trotzdem abschließen" alone did
+ * not say what „trotzdem" costs; this says where each open item goes, and
+ * offers to answer them now instead.
+ */
+export function FinishSummary({ view, onResolve }: { view: IntakeView; onResolve?: () => void }): JSX.Element {
+  const t = useTranslations('projectIntake')
+  const items = view.groups.flatMap((group) => group.items)
+  const confirmed = items.filter((item) => item.state === 'confirmed').length
+  const unconfirmed = items.filter((item) => item.state === 'suggested').length
+  const classes = view.derivations
+    .filter((derivation) => derivation.value !== null || derivation.hochhaus)
+    .map((derivation) => (derivation.hochhaus ? t('finish.hochhaus') : t('finish.class', { value: derivation.value ?? 0 })))
+  const open = view.contradictions.length + view.questions.length
+  const rows: Array<{ key: string; label: string; value: string; tone?: 'open' }> = [
+    { key: 'confirmed', label: t('finish.confirmed'), value: t('counts.values', { count: confirmed }) },
+    {
+      key: 'class',
+      label: t('finish.classLabel'),
+      value: classes.length > 0 ? classes.join(', ') : t('finish.classOpen'),
+    },
+  ]
+  if (unconfirmed > 0) {
+    rows.push({ key: 'unconfirmed', label: t('finish.unconfirmed'), value: t('counts.values', { count: unconfirmed }) })
+  }
+  if (open > 0) {
+    rows.push({ key: 'open', label: t('finish.open'), value: t('finish.openValue', { count: open }), tone: 'open' })
+  }
+  return (
+    <div className="space-y-3" data-testid="intake-finish-summary">
+      <dl className="border-border divide-border divide-y rounded-lg border text-sm">
+        {rows.map((row) => (
+          <div key={row.key} className="flex items-baseline justify-between gap-4 px-3.5 py-2">
+            <dt className="text-muted-foreground">{row.label}</dt>
+            <dd className={cn('text-right font-medium tabular-nums', row.tone === 'open' && 'text-warning')}>
+              {row.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+      {(open > 0 || unconfirmed > 0) && <p className="text-muted-foreground text-xs">{t('finish.later')}</p>}
+      {onResolve && (
+        <Button type="button" variant="outline" size="sm" onClick={onResolve} data-testid="intake-finish-resolve">
+          {t('finish.resolve')}
+        </Button>
+      )}
+    </div>
   )
 }

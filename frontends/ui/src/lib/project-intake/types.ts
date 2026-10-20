@@ -309,6 +309,13 @@ export const intakeViewSchema = z.object({
   summary: z.string().max(MAX_INTAKE_SUMMARY_LENGTH).nullable(),
   contradictions: z.array(suggestionSchema),
   questions: z.array(needSchema).max(MAX_INTAKE_NEEDS),
+  /**
+   * Every other need no document has answered and no person has, in the
+   * wizard's order: what the review asks one at a time after the decisive
+   * questions. Without it a project with no documents yet had two questions
+   * and no way to say anything else (the „interview" a pilot sync missed).
+   */
+  openQuestions: z.array(needSchema).max(MAX_INTAKE_NEEDS),
   groups: z.array(suggestionGroupSchema),
   derivations: z.array(derivationReviewSchema),
   /** The reader may decide (profile write: `project:memory:write` or `project:edit`) and start a reading. */

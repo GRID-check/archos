@@ -203,6 +203,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
   const groups = suggestionGroups(profile, definition, needs)
   const contradictions = contestedItems(profile, definition, needs)
   const questions = needs.filter((need) => need.decisive && need.state === 'open').slice(0, MAX_INTAKE_NEEDS)
+  const openQuestions = needs.filter((need) => !need.decisive && need.state === 'open').slice(0, MAX_INTAKE_NEEDS)
   const counts = intakeCounts(profile, definition, needs, row.documentsRead.length)
   return {
     projectId: row.projectId,
@@ -217,6 +218,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
     summary: row.summary ?? null,
     contradictions,
     questions,
+    openQuestions,
     groups,
     derivations: derivationReviews(profile, definition, needs),
     canDecide: input.canDecide,

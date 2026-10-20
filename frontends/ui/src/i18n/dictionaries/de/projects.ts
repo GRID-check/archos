@@ -342,8 +342,6 @@ export const projects: typeof en.projects = {
       optional: 'optional',
       clearStartedOn: 'Beginn leeren',
       endedOnBeforeStart: 'Der Abschluss liegt vor dem Beginn.',
-      readOnly:
-        'Ein abgeschlossenes Projekt ist schreibgeschützt. Dokumente und Briefing ergänzen Sie, indem Sie es wieder öffnen.',
       readOnlyPiloti:
         'Das Projekt bleibt offen, solange Piloti die Dokumente liest. Es wird abgeschlossen, wenn Sie die Erfassung beenden.',
     },
@@ -365,12 +363,6 @@ export const projects: typeof en.projects = {
       placeholder: 'z. B. Aufstockung eines Gründerzeithauses um zwei Geschoße, Dachgeschoßausbau mit 6 Wohnungen',
       help: 'Ein, zwei Sätze helfen Piloti beim Lesen der Unterlagen.',
     },
-    setup: {
-      pilotiLine: 'Piloti liest im nächsten Schritt die Projektunterlagen und schlägt die Werte vor, Sie prüfen.',
-      selfLine: 'Sie beantworten die Fragen des Projekt-Briefings selbst, der Reihe nach.',
-      switchToSelf: 'Lieber selbst ausfüllen',
-      switchToPiloti: 'Doch Piloti einrichten lassen',
-    },
     drop: {
       hint: 'Den Projektordner können Sie auch auf dieses Fenster ziehen.',
       overlay: 'Projektordner hier ablegen',
@@ -380,7 +372,6 @@ export const projects: typeof en.projects = {
     },
     cancel: 'Abbrechen',
     submit: 'Projekt anlegen',
-    submitClosed: 'Abgeschlossen anlegen',
   },
   applicableStandards: {
     heading: 'Anwendbare Standards',

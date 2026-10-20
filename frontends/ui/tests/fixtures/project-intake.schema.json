@@ -1633,6 +1633,118 @@
           },
           "maxItems": 500
         },
+        "openQuestions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "baseKey": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "bauwerkId": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "label": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 300
+              },
+              "type": {
+                "type": "string",
+                "enum": [
+                  "single_select",
+                  "multi_select",
+                  "boolean",
+                  "number",
+                  "text",
+                  "textarea",
+                  "number_tri",
+                  "yes_no_open"
+                ]
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "token": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "label": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300
+                    }
+                  },
+                  "required": [
+                    "token",
+                    "label"
+                  ],
+                  "additionalProperties": true
+                },
+                "maxItems": 100
+              },
+              "unit": {
+                "type": "string",
+                "maxLength": 20
+              },
+              "why": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "foundIn": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 100
+                },
+                "maxItems": 20
+              },
+              "decisive": {
+                "type": "boolean"
+              },
+              "state": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "suggested",
+                  "confirmed"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "baseKey",
+              "bauwerkId",
+              "label",
+              "type",
+              "foundIn",
+              "decisive",
+              "state"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 500
+        },
         "groups": {
           "type": "array",
           "items": {
@@ -2703,6 +2815,7 @@
         "summary",
         "contradictions",
         "questions",
+        "openQuestions",
         "groups",
         "derivations",
         "canDecide",

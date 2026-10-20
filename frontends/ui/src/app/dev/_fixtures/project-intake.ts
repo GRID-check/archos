@@ -170,6 +170,54 @@ export const QUESTION_AREA: Need = {
   state: 'open',
 }
 
+/** Needs that decide no class: asked one at a time after the decisive ones, in the wizard's order. */
+export const OPEN_PHASE: Need = {
+  key: 'projektphase',
+  baseKey: 'projektphase',
+  bauwerkId: null,
+  label: 'Aktuelle Projektphase',
+  type: 'single_select',
+  options: [
+    { token: 'vorentwurf', label: 'Vorentwurf' },
+    { token: 'entwurf', label: 'Entwurf' },
+    { token: 'einreichplanung', label: 'Einreichplanung' },
+    { token: 'ausfuehrungsplanung', label: 'Ausführungsplanung' },
+  ],
+  why: 'Steuert die Erwartung an die Antwortgüte: in frühen Phasen bietet Piloti Schätzwerte an.',
+  foundIn: ['Plankopf', 'Baubeschreibung'],
+  decisive: false,
+  state: 'open',
+}
+
+export const OPEN_PROJECT_KIND: Need = {
+  key: 'vorhabensart',
+  baseKey: 'vorhabensart',
+  bauwerkId: null,
+  label: 'Art des Vorhabens (Projekt gesamt)',
+  type: 'multi_select',
+  options: [
+    { token: 'neubau', label: 'Neubau' },
+    { token: 'zubau', label: 'Zubau' },
+    { token: 'umbau', label: 'Umbau' },
+    { token: 'sanierung', label: 'Sanierung' },
+  ],
+  why: 'Steuert, welche Fragen und Themen für dieses Projekt überhaupt relevant sind.',
+  foundIn: ['Baubeschreibung', 'Bescheid'],
+  decisive: false,
+  state: 'open',
+}
+
+export const OPEN_ZONING: Need = {
+  key: 'widmung',
+  baseKey: 'widmung',
+  bauwerkId: null,
+  label: 'Flächenwidmung (Kategorie)',
+  type: 'text',
+  foundIn: ['Flächenwidmungs- und Bebauungsplan'],
+  decisive: false,
+  state: 'open',
+}
+
 export const QUESTION_POSITION: Need = {
   key: 'einheiten_ueber_400@bw1',
   baseKey: 'einheiten_ueber_400',
@@ -241,6 +289,7 @@ const BASE: IntakeView = {
   summary: null,
   contradictions: [],
   questions: [],
+  openQuestions: [OPEN_PHASE, OPEN_PROJECT_KIND, OPEN_ZONING],
   groups: [],
   derivations: [],
   canDecide: true,
@@ -280,6 +329,7 @@ export const INTAKE_READY: IntakeView = {
     '23 Dokumente gelesen. Die Geschoßanzahl ist widersprüchlich (Baubeschreibung: 6, Schnitt: 7); Fläche und Einheiten über 400 m² stehen in keinem Dokument.',
   contradictions: [SUGGESTION_STOREYS],
   questions: [QUESTION_AREA, QUESTION_POSITION, QUESTION_USE],
+  openQuestions: [OPEN_PROJECT_KIND, OPEN_ZONING],
   groups: [GROUP_BASE, GROUP_BAUWERKE],
   derivations: [DERIVATION_READY, DERIVATION_OPEN],
 }
@@ -304,6 +354,7 @@ export const INTAKE_COMPLETED: IntakeView = {
   counts: { documentsRead: 23, unreadDocuments: 0, suggested: 0, contradictions: 0, decisiveOpen: 0 },
   contradictions: [],
   questions: [],
+  openQuestions: [],
   summary: null,
   groups: [GROUP_BASE, GROUP_BAUWERKE].map((group) => ({
     ...group,

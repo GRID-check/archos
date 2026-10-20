@@ -1,14 +1,17 @@
 'use client'
 
 /**
- * Creating a project: a name, an address, a line about it, whether it is
- * running or already over, and who sets it up.
+ * Creating a project: a name, an address, a line about it, and whether it is
+ * running or already over. Nothing about how it is set up.
  *
- * Piloti sets the project up (ADR-0111): the address seeds the profile, „Worum
- * geht es?" tells the reading what the project is, and a project folder dropped
- * on the dialog names the project and is filed once it exists. That is not a
- * choice the dialog asks for; one link under the fields switches to „Selbst
- * ausfüllen", the wizard exactly as before, which asks for none of that here.
+ * Every project lands on its setup (ADR-0111): the documents, the questions
+ * they leave open, the profile to confirm. Answering the questions without any
+ * documents is how a project is filled in by hand, so the dialog no longer asks
+ * „Piloti richtet ein" or „Selbst ausfüllen" (pilot onboardings, 2026-10: a
+ * choice the person could not judge yet, and the wrong one led to a different
+ * tool). The address seeds the profile, „Worum geht es?" tells the reading what
+ * the project is, and a project folder dropped on the dialog names the project
+ * and is filed once it exists.
  *
  * A closed project is how an office brings a past project in as a reference
  * (ADR-0098): it is created closed, with the facts a close would have asked
@@ -21,7 +24,7 @@
 import type { JSX } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useStore } from '@tanstack/react-form'
-import { Archive, CircleCheck, CircleSlash, FolderInput, PencilLine, PlayCircle, Sparkles, X } from 'lucide-react'
+import { Archive, CircleCheck, CircleSlash, FolderInput, PlayCircle, X } from 'lucide-react'
 import { z } from 'zod'
 import { useAppForm } from '@/components/form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -33,7 +36,10 @@ import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field
 import { MonthInput } from '@/components/ui/month-input'
 import { AddressField, type AddressFieldProps, type AddressValue } from './address-field'
 import { createProject } from '@/app/app/(shell)/projects/actions'
-import { FileDropOverlay, useWindowDragGuard } from '@/features/documents/components/file-drop-overlay'
+import {
+  FileDropOverlay,
+  useWindowDragGuard,
+} from '@/features/documents/components/file-drop-overlay'
 import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
 import {
   discardDroppedFiles,
@@ -43,9 +49,13 @@ import {
 import { useLocale, useTranslations } from '@/i18n'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
-import type { ProjectSetup } from '@/lib/projects/create-project-schema'
 import { currentMonth, isMonth, type Month } from '@/lib/projects/month'
-import { abschlussBounds, abschlussProblem, defaultAbschluss, type ProjectOutcome } from '@/lib/projects/project-status'
+import {
+  abschlussBounds,
+  abschlussProblem,
+  defaultAbschluss,
+  type ProjectOutcome,
+} from '@/lib/projects/project-status'
 
 export type CreateProjectState = 'active' | 'closed'
 type AbschlussProblem = ReturnType<typeof abschlussProblem>
@@ -76,11 +86,15 @@ export function folderNameOf(files: readonly File[]): string | null {
   const pathOf = (file: File): string => file.webkitRelativePath ?? ''
   const nested = files.find((file) => pathOf(file).includes('/'))
   if (nested) return pathOf(nested).split('/')[0] || null
-  if (files.length === 1 && /\.zip$/i.test(files[0].name)) return files[0].name.replace(/\.zip$/i, '')
+  if (files.length === 1 && /\.zip$/i.test(files[0].name))
+    return files[0].name.replace(/\.zip$/i, '')
   return null
 }
 
-export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFormProps): JSX.Element {
+export function CreateProjectForm({
+  onCancel,
+  addressClients,
+}: CreateProjectFormProps): JSX.Element {
   const t = useTranslations('projects')
   const tFiles = useTranslations('files')
   const [thisMonth] = useState(() => currentMonth())
@@ -103,18 +117,21 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   const [focusNameOnOpen] = useState(() =>
     typeof window === 'undefined' || typeof window.matchMedia !== 'function'
       ? true
-      : window.matchMedia('(pointer: fine)').matches,
+      : window.matchMedia('(pointer: fine)').matches
   )
 
   // On the name field, not the form: a form-level validator re-runs when the
   // Stand changes, and the blur of choosing a card would flag an untouched,
   // empty name as an error. The submit button stays disabled until it is set.
-  const nameSchema = z.string().trim().min(1, t('form.nameRequired')).max(255, t('form.nameTooLong'))
+  const nameSchema = z
+    .string()
+    .trim()
+    .min(1, t('form.nameRequired'))
+    .max(255, t('form.nameTooLong'))
 
   const form = useAppForm({
     defaultValues: {
       name: '',
-      setup: 'piloti' as ProjectSetup,
       address: { text: '', place: null } as AddressValue,
       description: '',
       state: 'active' as CreateProjectState,
@@ -125,22 +142,21 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
     onSubmit: async ({ value }) => {
       setServerError(null)
       setServerAbschluss(null)
-      // Only a project Piloti sets up has a setup page to take a drop: one held
-      // for a project the person fills in would wait for the NEXT project
-      // Piloti reads, and be filed there.
-      if (value.setup === 'self') forgetDrop()
       created.current = true
       let result: Awaited<ReturnType<typeof createProject>>
       try {
-        result = await createProject({}, toFormData(value, holding.current && value.setup === 'piloti' ? dropKey : null))
+        result = await createProject({}, toFormData(value, holding.current ? dropKey : null))
       } catch (error) {
-        // Thrown, not answered: nothing was created, so a held drop is let go
-        // of when the dialog closes, as for any dialog that created nothing.
+        // Thrown, not answered (the network, the action itself): nothing was
+        // created, so a held drop is let go of when the dialog closes, as for
+        // any dialog that created nothing, and the person may try again.
         created.current = false
-        throw error
+        console.error('[CreateProjectForm] create threw:', error)
+        setServerError(t('form.createError'))
+        return
       }
       if (!result?.error) {
-        capturePosthog('project_created', { state: value.state, setup: value.setup })
+        capturePosthog('project_created', { state: value.state, setup: 'piloti' })
         return
       }
       created.current = false
@@ -172,7 +188,6 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   const values = useStore(form.store, (state) => state.values)
   const isSubmitting = useStore(form.store, (state) => state.isSubmitting)
   const closed = values.state === 'closed'
-  const piloti = values.setup === 'piloti'
   const abschlussError =
     serverAbschluss ?? abschlussProblem(values.endedOn, startedOnOf(values.startedOn), thisMonth)
   const nameValid = values.name.trim().length > 0 && values.name.trim().length <= 255
@@ -180,14 +195,16 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
 
   // A project folder dropped on the dialog names the project (when it has no
   // name yet) and waits, with its files, for the project to exist. Dropping it
-  // is asking for Piloti to read it, so the setup follows.
+  // is asking for Piloti to read it.
   const takeDrop = (files: File[]): void => {
     if (files.length === 0) return
     const folder = folderNameOf(files)
     handOverDroppedFiles(dropKey, files)
     holding.current = true
-    setDropped((previous) => ({ name: folder ?? previous?.name ?? null, count: (previous?.count ?? 0) + files.length }))
-    form.setFieldValue('setup', 'piloti')
+    setDropped((previous) => ({
+      name: folder ?? previous?.name ?? null,
+      count: (previous?.count ?? 0) + files.length,
+    }))
     if (folder && form.getFieldValue('name').trim() === '') form.setFieldValue('name', folder)
   }
   const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
@@ -228,34 +245,33 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           )}
         </form.AppField>
 
-        <Collapsible open={piloti}>
-          <CollapsibleContent>
-            <FieldGroup className="gap-5" data-testid="create-project-piloti-fields">
-              <form.Field name="address">
-                {(address) => (
-                  <AddressField
-                    value={address.state.value}
-                    onChange={address.handleChange}
-                    disabled={isSubmitting}
-                    {...addressClients}
-                  />
-                )}
-              </form.Field>
-              <form.AppField name="description" validators={{ onChange: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH) }}>
-                {(field) => (
-                  <field.TextAreaField
-                    label={t('form.description.label')}
-                    description={t('form.description.help')}
-                    placeholder={t('form.description.placeholder')}
-                    maxLength={MAX_INTAKE_DESCRIPTION_LENGTH}
-                    rows={3}
-                    disabled={isSubmitting}
-                  />
-                )}
-              </form.AppField>
-            </FieldGroup>
-          </CollapsibleContent>
-        </Collapsible>
+        <FieldGroup className="gap-5" data-testid="create-project-piloti-fields">
+          <form.Field name="address">
+            {(address) => (
+              <AddressField
+                value={address.state.value}
+                onChange={address.handleChange}
+                disabled={isSubmitting}
+                {...addressClients}
+              />
+            )}
+          </form.Field>
+          <form.AppField
+            name="description"
+            validators={{ onChange: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH) }}
+          >
+            {(field) => (
+              <field.TextAreaField
+                label={t('form.description.label')}
+                description={t('form.description.help')}
+                placeholder={t('form.description.placeholder')}
+                maxLength={MAX_INTAKE_DESCRIPTION_LENGTH}
+                rows={3}
+                disabled={isSubmitting}
+              />
+            )}
+          </form.AppField>
+        </FieldGroup>
 
         <form.Field name="state">
           {(field) => (
@@ -263,7 +279,9 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
               <FieldLabel id="create-project-state-label">{t('form.state.label')}</FieldLabel>
               <ChoiceCardGroup
                 value={field.state.value}
-                onValueChange={(next) => field.handleChange(next === 'closed' ? 'closed' : 'active')}
+                onValueChange={(next) =>
+                  field.handleChange(next === 'closed' ? 'closed' : 'active')
+                }
                 aria-labelledby="create-project-state-label"
                 disabled={isSubmitting}
                 className="sm:grid-cols-2"
@@ -313,38 +331,24 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
                 }}
               />
               <p className="text-muted-foreground text-sm" data-testid="create-project-closed-note">
-                {piloti ? t('form.closed.readOnlyPiloti') : t('form.closed.readOnly')}
+                {t('form.closed.readOnlyPiloti')}
               </p>
             </FieldGroup>
           </CollapsibleContent>
         </Collapsible>
 
-        {dropped && (
-          <DroppedFolderNote
-            dropped={dropped}
-            onRemove={forgetDrop}
-          />
-        )}
+        {dropped && <DroppedFolderNote dropped={dropped} onRemove={forgetDrop} />}
 
-        {/* Who sets the project up is not a question for the person creating
-            it: Piloti does, and the next page is where the documents go. The
-            wizard stays one quiet switch away, for an office that would rather
-            answer the questions itself (pilot onboardings, 2026-10). */}
-        <form.Field name="setup">
-          {(field) => (
-            <SetupLine
-              setup={field.state.value}
-              showDropHint={!dropped}
-              disabled={isSubmitting}
-              onChange={(next) => {
-                // Filling it in oneself asks for no reading, so a held folder
-                // is let go of here, where the reader sees its note go.
-                if (next === 'self') forgetDrop()
-                field.handleChange(next)
-              }}
-            />
-          )}
-        </form.Field>
+        {!dropped && (
+          // Dragging a folder onto the window is a desktop gesture; on a touch
+          // device the line describes something the reader cannot do.
+          <p
+            className="text-muted-foreground pointer-coarse:hidden text-xs"
+            data-testid="create-project-drop-hint"
+          >
+            {t('form.drop.hint')}
+          </p>
+        )}
 
         {serverError && (
           <Alert variant="destructive">
@@ -356,16 +360,14 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
             the fields scroll: the form is longer than the viewport once Piloti
             sets it up. Cancel and the action share one row (the action takes
             the width) so the bar costs one button's height. */}
-        <DialogFooter className="pt-1 phone:pt-3 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:[&>:last-child]:flex-1">
+        <DialogFooter className="phone:pt-3 pt-1 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:[&>:last-child]:flex-1">
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
               {t('form.cancel')}
             </Button>
           )}
           <form.AppForm>
-            <form.SubmitButton disabled={!ready}>
-              {closed && !piloti ? t('form.submitClosed') : t('form.submit')}
-            </form.SubmitButton>
+            <form.SubmitButton disabled={!ready}>{t('form.submit')}</form.SubmitButton>
           </form.AppForm>
         </DialogFooter>
       </form>
@@ -373,53 +375,13 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   )
 }
 
-/**
- * How the project gets set up, as one line rather than a choice to make: Piloti
- * reads the documents (with the hint that a folder may be dropped here), or the
- * person answers the wizard's questions. Each says how to switch to the other.
- */
-function SetupLine({
-  setup,
-  showDropHint,
-  disabled,
-  onChange,
+function DroppedFolderNote({
+  dropped,
+  onRemove,
 }: {
-  setup: ProjectSetup
-  showDropHint: boolean
-  disabled: boolean
-  onChange: (next: ProjectSetup) => void
+  dropped: DroppedFolder
+  onRemove: () => void
 }): JSX.Element {
-  const t = useTranslations('projects')
-  const piloti = setup === 'piloti'
-  const Icon = piloti ? Sparkles : PencilLine
-  return (
-    <div className="text-muted-foreground flex items-start gap-2.5 text-xs" data-testid="create-project-setup">
-      <Icon className="mt-px size-3.5 shrink-0" aria-hidden />
-      <p className="min-w-0 leading-relaxed">
-        {piloti ? t('form.setup.pilotiLine') : t('form.setup.selfLine')}
-        {piloti && showDropHint && (
-          // Dragging a folder onto the window is a desktop gesture; on a touch
-          // device the sentence describes something the reader cannot do.
-          <span className="pointer-coarse:hidden" data-testid="create-project-drop-hint">
-            {' '}
-            {t('form.drop.hint')}
-          </span>
-        )}{' '}
-        <Button
-          type="button"
-          variant="link"
-          className="text-foreground h-auto p-0 text-xs font-medium"
-          disabled={disabled}
-          onClick={() => onChange(piloti ? 'self' : 'piloti')}
-        >
-          {piloti ? t('form.setup.switchToSelf') : t('form.setup.switchToPiloti')}
-        </Button>
-      </p>
-    </div>
-  )
-}
-
-function DroppedFolderNote({ dropped, onRemove }: { dropped: DroppedFolder; onRemove: () => void }): JSX.Element {
   const t = useTranslations('projects')
   return (
     <div
@@ -447,29 +409,29 @@ function DroppedFolderNote({ dropped, onRemove }: { dropped: DroppedFolder; onRe
 }
 
 /**
- * The action's fields. `name`, `state` and `setup` always; the closed project's facts only when it is
- * closed; the address (the chosen hit, else the typed line) and the description only when Piloti sets it up.
+ * The action's fields. `name`, `state` and `setup` always; the address (the chosen hit, else the typed
+ * line), the description and the held drop's key when given; the closed project's facts when it is closed.
  */
-function toFormData(value: {
-  name: string
-  setup: ProjectSetup
-  address: AddressValue
-  description: string
-  state: CreateProjectState
-  outcome: string
-  startedOn: string
-  endedOn: string
-}, dropKey: string | null): FormData {
+function toFormData(
+  value: {
+    name: string
+    address: AddressValue
+    description: string
+    state: CreateProjectState
+    outcome: string
+    startedOn: string
+    endedOn: string
+  },
+  dropKey: string | null
+): FormData {
   const formData = new FormData()
   if (dropKey) formData.set('dropKey', dropKey)
   formData.set('name', value.name.trim())
   formData.set('state', value.state)
-  formData.set('setup', value.setup)
-  if (value.setup === 'piloti') {
-    if (value.description.trim() !== '') formData.set('description', value.description.trim())
-    if (value.address.place) formData.set('location', JSON.stringify(value.address.place))
-    else if (value.address.text.trim() !== '') formData.set('address', value.address.text.trim())
-  }
+  formData.set('setup', 'piloti')
+  if (value.description.trim() !== '') formData.set('description', value.description.trim())
+  if (value.address.place) formData.set('location', JSON.stringify(value.address.place))
+  else if (value.address.text.trim() !== '') formData.set('address', value.address.text.trim())
   if (value.state !== 'closed') return formData
   formData.set('outcome', value.outcome)
   formData.set('startedOn', value.startedOn)
@@ -489,7 +451,9 @@ function OutcomeField({
   const t = useTranslations('projects')
   return (
     <Field>
-      <FieldLabel id="create-project-outcome-label">{t('lifecycle.closeDialog.outcome.label')}</FieldLabel>
+      <FieldLabel id="create-project-outcome-label">
+        {t('lifecycle.closeDialog.outcome.label')}
+      </FieldLabel>
       <ChoiceCardGroup
         value={value}
         onValueChange={(next) => onChange(next === 'cancelled' ? 'cancelled' : 'completed')}
@@ -540,7 +504,11 @@ function PeriodFields({
   const bounds = abschlussBounds(startedOnOf(startedOn), thisMonth)
   const placeholder = { month: t('steckbrief.month'), year: t('steckbrief.year') }
   const problemCopy =
-    problem === 'beforeStart' ? t('form.closed.endedOnBeforeStart') : problem ? t(`lifecycle.closeDialog.endedOn.${problem}`) : null
+    problem === 'beforeStart'
+      ? t('form.closed.endedOnBeforeStart')
+      : problem
+        ? t(`lifecycle.closeDialog.endedOn.${problem}`)
+        : null
 
   return (
     <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
@@ -563,7 +531,9 @@ function PeriodFields({
         />
       </Field>
       <Field>
-        <FieldLabel htmlFor="create-project-ended-on">{t('lifecycle.closeDialog.endedOn.label')}</FieldLabel>
+        <FieldLabel htmlFor="create-project-ended-on">
+          {t('lifecycle.closeDialog.endedOn.label')}
+        </FieldLabel>
         <MonthInput
           id="create-project-ended-on"
           value={endedOn}

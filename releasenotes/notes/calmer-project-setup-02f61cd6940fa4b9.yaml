@@ -2,9 +2,9 @@
 features:
   - >
     Creating a project asks only for its name, address, a line about it and
-    whether it is running or finished, and Piloti sets it up from the
-    documents. Filling the briefing in yourself is one link below the fields
-    instead of a second choice to make.
+    whether it is running or finished. The setup that follows takes the
+    documents, the questions they leave open and the profile in three steps,
+    and works without any documents too.
   - >
     The Projekterfassung no longer asks you to confirm every value one by
     one. Values that decide the Gebäudeklasse are confirmed individually;

@@ -479,23 +479,6 @@ describe('CreateProjectForm', () => {
       expect(takeDroppedFiles(DROP_KEY)).toEqual([])
     })
 
-    test('choosing to fill it in oneself lets go of the held folder: it would be filed in the next project', async () => {
-      const user = userEvent.setup()
-      const first = render(<CreateProjectForm />)
-      dropFiles(screen.getByTestId('create-project-drop'), [withPath(new File(['a'], 'a.pdf'), 'Ordner/a.pdf')])
-      await screen.findByTestId('create-project-dropped')
-
-      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
-      expect(screen.queryByTestId('create-project-dropped')).toBeNull()
-      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
-
-      // And nothing is held for the setup page after the project is created.
-      await user.click(submit())
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      first.unmount()
-      expect(takeDroppedFiles(DROP_KEY)).toEqual([])
-    })
-
     test('a file dragged over the dialog that it cannot take says so', () => {
       render(<CreateProjectForm />)
       const program = new File(['x'], 'Setup.exe', { type: 'application/x-msdownload' })
@@ -546,67 +529,31 @@ describe('CreateProjectForm', () => {
       // Held on, they would have been filed in the next project waiting for documents.
       expect(takeDroppedFiles(DROP_KEY)).toEqual([])
     })
+
+    test('a create that throws says so calmly and lets the person try again', async () => {
+      action.mockRejectedValueOnce(new Error('network'))
+      const user = userEvent.setup()
+      render(<CreateProjectForm />)
+      await user.type(screen.getByLabelText('Project name'), 'Seestadt')
+      await user.click(submit())
+      expect(await screen.findByText(/couldn't create this project/)).toBeInTheDocument()
+      expect(submit()).toBeEnabled()
+    })
   })
 
-  describe('Selbst ausfüllen', () => {
-    test('is a switch under the fields, not a question the dialog asks, and switches back', async () => {
+  describe('no setup question', () => {
+    test('the dialog asks nothing about who sets the project up: the setup page does both', async () => {
       const user = userEvent.setup()
       render(<CreateProjectForm />)
 
-      // The only choice cards left are the project's state.
+      // The only choice cards are the project's state.
       expect(screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))).toEqual(['active', 'closed'])
-      expect(screen.getByTestId('create-project-setup')).toHaveTextContent('Piloti reads the project documents')
+      expect(screen.queryByRole('button', { name: /myself/i })).toBeNull()
 
-      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
-      expect(screen.getByTestId('create-project-setup')).toHaveTextContent('You answer the project briefing questions')
-      expect(screen.queryByTestId('create-project-drop-hint')).toBeNull()
-
-      await user.click(screen.getByRole('button', { name: 'Let Piloti set it up after all' }))
       await user.type(screen.getByLabelText('Project name'), 'Villa K')
       await user.click(submit())
       await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
       expect(sent()).toEqual({ name: 'Villa K', state: 'active', setup: 'piloti' })
-    })
-
-    test('is today: no address, no description, no setup fields, the old closed label', async () => {
-      const user = userEvent.setup()
-      render(<CreateProjectForm />)
-
-      await user.type(screen.getByLabelText('Project name'), 'Villa K')
-      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
-      await user.click(submit())
-
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toEqual({ name: 'Villa K', state: 'active', setup: 'self' })
-      expect(capturePosthog).toHaveBeenCalledWith('project_created', { state: 'active', setup: 'self' })
-    })
-
-    test('a typed description is left out of what is sent', async () => {
-      const user = userEvent.setup()
-      render(<CreateProjectForm />)
-
-      await user.type(screen.getByLabelText('Project name'), 'Villa K')
-      await user.type(screen.getByRole('textbox', { name: 'What is it about?' }), 'ignored')
-      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
-      await user.click(submit())
-
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).not.toHaveProperty('description')
-    })
-
-    test('a closed project is created closed at once, with the old label', async () => {
-      const user = userEvent.setup()
-      render(<CreateProjectForm />)
-
-      await user.type(screen.getByLabelText('Project name'), 'Schule Nord')
-      await user.click(screen.getByRole('button', { name: 'Fill it in myself instead' }))
-      await user.click(screen.getByRole('radio', { name: /^Closed/ }))
-      await user.click(await screen.findByRole('radio', { name: /Completed/ }))
-      expect(screen.getByTestId('create-project-closed-note')).toHaveTextContent('A closed project is read-only.')
-      await user.click(submit(/^Create closed project$/))
-
-      await waitFor(() => expect(action).toHaveBeenCalledTimes(1))
-      expect(sent()).toMatchObject({ setup: 'self', state: 'closed', outcome: 'completed' })
     })
   })
 })

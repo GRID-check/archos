@@ -286,7 +286,10 @@ function HeroTile({
             </Link>
           </Button>
         )}
-        {access.editProfile && (
+        {/* One way into the profile at a time: while the setup is open it is
+            where the profile is filled, and a second button to the wizard read
+            as a second, different thing to do. */}
+        {access.editProfile && !setupOpen && (
           <Button asChild variant="outline">
             <Link href={`${projectPath}/intake`}>
               <ClipboardList className="size-4" aria-hidden />
