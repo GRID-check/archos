@@ -260,7 +260,7 @@ export const derivationViewSchema = z.object({
   /** The Fundstelle, as the derivation's evidence names it. */
   citation: z.string().min(1).max(300),
   value: z.number().int().min(1).max(5).nullable(),
-  hochhaus: z.boolean(),
+  highRise: z.boolean(),
   inputs: z.array(derivationInputSchema).max(20),
   missing: z.array(key).max(20),
 })
@@ -292,7 +292,7 @@ export type SuggestionGroup = z.infer<typeof suggestionGroupSchema>
  * and Bebauungsbestimmungen, Denkmalschutz, Naturgefahren and Altlasten (one
  * profile key holds both, `gefahrenzonen`), and Lärm.
  */
-export const LOCATION_DETERMINANTS = ['grundstueck', 'widmung', 'denkmalschutz', 'standortrisiken', 'laerm'] as const
+export const LOCATION_DETERMINANTS = ['plot', 'zoning', 'heritage', 'hazards', 'noise'] as const
 export type LocationDeterminant = (typeof LOCATION_DETERMINANTS)[number]
 
 /**
@@ -333,8 +333,8 @@ export type DocumentRequest = z.infer<typeof documentRequestSchema>
  * Bundesland, the Vorhaben), and the documents it asks for.
  */
 export const locationRegisterViewSchema = z.object({
-  bundesland: z.string().min(1).max(64).nullable(),
-  gemeinde: z.string().min(1).max(200).nullable(),
+  federalState: z.string().min(1).max(64).nullable(),
+  municipality: z.string().min(1).max(200).nullable(),
   questions: z.array(needSchema).max(10),
   documentRequests: z.array(documentRequestSchema).max(LOCATION_DETERMINANTS.length),
 })
@@ -435,8 +435,8 @@ export const intakeViewSchema = z.object({
      * or the address search set it, false while it is a reading's suggestion.
      */
     site: z.object({
-      bundesland: z.string().max(200).nullable(),
-      gemeinde: z.string().max(200).nullable(),
+      federalState: z.string().max(200).nullable(),
+      municipality: z.string().max(200).nullable(),
       address: z.string().max(500).nullable(),
       source: z.enum(['geocoder', 'document', 'person']).nullable(),
       confirmed: z.boolean(),

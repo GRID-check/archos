@@ -98,12 +98,12 @@ export const projectIntake: typeof en.projectIntake = {
   derivations: {
     heading: 'Ableitungen',
     description: 'Aus den Werten oben folgt die Gebäudeklasse jedes Bauwerks.',
-    bauwerk: 'Bauwerk {number}',
+    building: 'Bauwerk {number}',
     rule: 'Gebäudeklasse',
     value: 'GK {value}',
     open: 'noch offen',
     missing: 'Es fehlt noch: {inputs}',
-    hochhaus: 'Hochhaus: Das Fluchtniveau liegt über 22 m, daher gibt es keine Gebäudeklasse (OIB-RL 2.3).',
+    highRise: 'Hochhaus: Das Fluchtniveau liegt über 22 m, daher gibt es keine Gebäudeklasse (OIB-RL 2.3).',
     inputs: 'Grundlage',
     suggestedMark: 'vorgeschlagen',
     confirm: 'Gebäudeklasse übernehmen',
@@ -131,7 +131,7 @@ export const projectIntake: typeof en.projectIntake = {
     classConfirmed: 'GK {value}, bestätigt',
     classSuggested: 'GK {value}, vorgeschlagen',
     classOf: '{bauwerk}: {value}',
-    hochhaus: 'Hochhaus',
+    highRise: 'Hochhaus',
     classOpen: 'noch offen',
     rulesLabel: 'Regelwerke',
     rules: {

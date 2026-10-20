@@ -45,7 +45,7 @@ const personViewSchema = z.object({
   endedOn: month.nullable(),
 })
 
-const steckbriefViewSchema = z.object({
+const peopleRecordSchema = z.object({
   address: z.string().nullable(),
   startedOn: month.nullable(),
   startedOnIsDefault: z.boolean(),
@@ -91,7 +91,7 @@ export class ParticipantsRequestError extends Error {
 
 export interface ParticipantsClient {
   project(projectId: string): Promise<ProjectBasics>
-  steckbrief(projectId: string): Promise<SteckbriefView>
+  peopleRecord(projectId: string): Promise<SteckbriefView>
   /** The roster with roles, or null when the reader may not manage the project's members. */
   roster(projectId: string): Promise<ProjectRoster | null>
   /** Give a member a role, or take their access away with `''`. */
@@ -123,8 +123,8 @@ export function createParticipantsClient(fetchImpl: ParticipantsFetch = defaultF
     async project(projectId) {
       return projectBasicsSchema.parse(await request(fetchImpl, projectPath(projectId), 'GET'))
     },
-    async steckbrief(projectId) {
-      return steckbriefViewSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/steckbrief`, 'GET'))
+    async peopleRecord(projectId) {
+      return peopleRecordSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/steckbrief`, 'GET'))
     },
     async roster(projectId) {
       try {

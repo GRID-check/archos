@@ -10,7 +10,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import type { ApplicableStatus } from '@/lib/oib/applicable-standards'
 import type { IntakeView } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
-import { confirmedCount } from './steckbrief'
+import { confirmedCount } from './profile-review'
 import { byStatus, standardReasonId, standardShortId } from './standard-reasons'
 
 type Standard = NonNullable<IntakeView['applicableStandards']>[number]

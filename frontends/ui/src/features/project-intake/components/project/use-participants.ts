@@ -15,7 +15,7 @@ export interface ParticipantsState {
   /** Still reading for the first time. */
   loading: boolean
   project: ProjectBasics | null
-  steckbrief: SteckbriefView | null
+  peopleRecord: SteckbriefView | null
   /** Null while loading, when it failed, or when the reader may not manage the members. */
   roster: ProjectRoster | null
   reload: () => Promise<void>
@@ -25,16 +25,16 @@ export function useParticipants(projectId: string, client: ParticipantsClient): 
   const [state, setState] = useState<Omit<ParticipantsState, 'reload'>>({
     loading: true,
     project: null,
-    steckbrief: null,
+    peopleRecord: null,
     roster: null,
   })
   const generation = useRef(0)
 
   const reload = useCallback(async (): Promise<void> => {
     const mine = ++generation.current
-    const [project, steckbrief, roster] = await Promise.allSettled([
+    const [project, peopleRecord, roster] = await Promise.allSettled([
       client.project(projectId),
-      client.steckbrief(projectId),
+      client.peopleRecord(projectId),
       client.roster(projectId),
     ])
     // A slower earlier read never lands over a later one.
@@ -42,7 +42,7 @@ export function useParticipants(projectId: string, client: ParticipantsClient): 
     setState((current) => ({
       loading: false,
       project: project.status === 'fulfilled' ? project.value : current.project,
-      steckbrief: steckbrief.status === 'fulfilled' ? steckbrief.value : current.steckbrief,
+      peopleRecord: peopleRecord.status === 'fulfilled' ? peopleRecord.value : current.peopleRecord,
       roster: roster.status === 'fulfilled' ? roster.value : current.roster,
     }))
   }, [client, projectId])

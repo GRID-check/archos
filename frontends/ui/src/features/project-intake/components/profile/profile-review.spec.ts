@@ -14,11 +14,11 @@ import {
   shortLabel,
   takeAllDecisions,
   topFindings,
-} from './steckbrief'
+} from './profile-review'
 
 const keys = (items: readonly { key: string }[]) => items.map((item) => item.key)
 
-describe('steckbrief', () => {
+describe('profileReview', () => {
   it('leaves a contested value out of the table: the Rückfragen decide it', () => {
     expect(keys(findings(PROFILE_REVIEW.groups))).not.toContain('geschosse_oberirdisch@bw1')
   })

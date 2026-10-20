@@ -13,7 +13,7 @@ import { EvidenceChips } from '../evidence-chips'
 import { distinctSources } from './confidence'
 import { hasExcerpt, type DocumentEvidence } from './excerpt-loader'
 import { PageExcerpt } from './page-excerpt'
-import { documentName } from './steckbrief'
+import { documentName } from './profile-review'
 
 /** The source a row names: a cited PDF page first, then any document, then whatever there is. */
 export function leadEvidence(evidence: readonly ProfileEvidence[]): ProfileEvidence | null {

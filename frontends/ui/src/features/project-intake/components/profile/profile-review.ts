@@ -96,7 +96,7 @@ export function documentName(fileName: string): string {
 export function leadDerivation(derivations: readonly DerivationReview[]): DerivationReview | null {
   return (
     derivations.find((derivation) => derivation.suggestion?.state === 'suggested') ??
-    derivations.find((derivation) => derivation.value !== null || derivation.hochhaus) ??
+    derivations.find((derivation) => derivation.value !== null || derivation.highRise) ??
     derivations[0] ??
     null
   )
@@ -111,6 +111,15 @@ export const REASON_INPUTS = [
   'bgf_oberirdisch',
 ] as const
 export type ReasonInput = (typeof REASON_INPUTS)[number]
+
+/** Each input's words under `intakeProfileStep.class.reason`, by its base key. */
+export const REASON_INPUT_IDS = {
+  fluchtniveau_m: 'escapeLevel',
+  geschosse_oberirdisch: 'storeysAboveGround',
+  nutzungseinheiten: 'units',
+  einheiten_ueber_400: 'unitOver400',
+  bgf_oberirdisch: 'grossFloorArea',
+} as const satisfies Record<ReasonInput, string>
 
 /** Up to three inputs of a derivation for its one-line reason, each with its base key. */
 export function reasonInputs(

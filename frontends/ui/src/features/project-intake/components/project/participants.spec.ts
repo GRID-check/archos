@@ -11,7 +11,7 @@ const team = PROJECT_STEP_FIXTURES.team
 
 describe('participantRows', () => {
   test('members lead, then everyone added by hand, then former members', () => {
-    const rows = participantRows(team.steckbrief.people, team.roster)
+    const rows = participantRows(team.peopleRecord.people, team.roster)
     expect(rows.map((row) => [row.person.name, row.person.kind])).toEqual([
       ['Mag. arch. Martina Kogler', 'member'],
       ['Andreas Berger', 'member'],
@@ -23,7 +23,7 @@ describe('participantRows', () => {
   })
 
   test("a member carries the roster's role; the reader's own row shows it but may not change it", () => {
-    const rows = participantRows(team.steckbrief.people, team.roster)
+    const rows = participantRows(team.peopleRecord.people, team.roster)
     const [me, andreas] = rows
     expect(me).toMatchObject({ you: true, role: 'project-admin', membership: null })
     expect(andreas).toMatchObject({ you: false, role: 'project-editor' })
@@ -31,9 +31,9 @@ describe('participantRows', () => {
   })
 
   test('an external or former person has no role, and without the roster nobody does', () => {
-    const rows = participantRows(team.steckbrief.people, team.roster)
+    const rows = participantRows(team.peopleRecord.people, team.roster)
     expect(rows.filter((row) => row.person.kind !== 'member').every((row) => row.role === null && row.membership === null)).toBe(true)
-    expect(participantRows(team.steckbrief.people, null).every((row) => row.role === null && !row.you)).toBe(true)
+    expect(participantRows(team.peopleRecord.people, null).every((row) => row.role === null && !row.you)).toBe(true)
   })
 
   test('someone with a role on the roster but not on the Steckbrief (an organization admin) is not listed', () => {

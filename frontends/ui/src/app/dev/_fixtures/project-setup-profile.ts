@@ -108,14 +108,14 @@ const ESCAPE_LEVEL_HIGH: Suggestion = {
 }
 
 /** Bauwerk 1 is a high-rise: no class, OIB-RL 2.3 required. */
-export const PROFILE_HOCHHAUS: IntakeView = {
+export const PROFILE_HIGH_RISE: IntakeView = {
   ...PROFILE_CONFIRMED,
   groups: withItems(PROFILE_CONFIRMED.groups, (item) => (item.key === ESCAPE_LEVEL_HIGH.key ? ESCAPE_LEVEL_HIGH : item)),
   derivations: [
     {
       ...DERIVATION_READY,
       value: null,
-      hochhaus: true,
+      highRise: true,
       inputs: DERIVATION_READY.inputs.map((input) =>
         input.key === ESCAPE_LEVEL_HIGH.key ? { ...input, value: 24.6, suggested: false } : input
       ),
@@ -132,7 +132,7 @@ export const PROFILE_READONLY: IntakeView = { ...PROFILE_REVIEW, canDecide: fals
 export const PROFILE_STEP_FIXTURES = {
   review: PROFILE_REVIEW,
   confirmed: PROFILE_CONFIRMED,
-  hochhaus: PROFILE_HOCHHAUS,
+  highRise: PROFILE_HIGH_RISE,
   readonly: PROFILE_READONLY,
 } as const
 

@@ -43,7 +43,7 @@ function registerOf(
 }
 
 /** The Aufstockung in Wien: a Bestand with Wohnungen, Zubau and Umbau; the reading found the Widmung. */
-const WIEN_AUFSTOCKUNG = {
+const VIENNA_STOREY_ADDITION = {
   country: 'at',
   bundesland: 'wien',
   vorhabensart: ['zubau', 'umbau'],
@@ -53,7 +53,7 @@ const WIEN_AUFSTOCKUNG = {
 }
 
 const REGISTER_READY = registerOf(
-  profileOf(WIEN_AUFSTOCKUNG, { flaechenwidmung: 'wohngebiet', bebauungsplan: 'ja' }),
+  profileOf(VIENNA_STOREY_ADDITION, { flaechenwidmung: 'wohngebiet', bebauungsplan: 'ja' }),
   FIXTURE_LOCATION
 )
 
@@ -87,7 +87,7 @@ export const QUESTIONS_DONE: IntakeView = {
   openQuestions: [],
   locationRegister: registerOf(
     profileOf(
-      { ...WIEN_AUFSTOCKUNG, grundstueck_ez: 'EZ 1234, KG Hernals', 'denkmalschutz@bw1': 'nein' },
+      { ...VIENNA_STOREY_ADDITION, grundstueck_ez: 'EZ 1234, KG Hernals', 'denkmalschutz@bw1': 'nein' },
       { flaechenwidmung: 'wohngebiet', bebauungsplan: 'ja', gefahrenzonen: ['keine'], laermsituation: 'strasse' },
       ['grundstuecksflaeche']
     ),

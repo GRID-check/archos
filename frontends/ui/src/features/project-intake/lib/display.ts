@@ -63,8 +63,8 @@ export function displayValue(key: string, value: ProjectPrimitiveValue): string 
 export const keyLabel = (key: string): string => labelForProfileKey(projectIntakeDefinitionV1, key)
 
 /** `bw3` → 3, for „Bauwerk 3". */
-export function bauwerkNumber(bauwerkId: string): string {
-  return /\d+/.exec(bauwerkId)?.[0] ?? bauwerkId
+export function buildingNumber(buildingId: string): string {
+  return /\d+/.exec(buildingId)?.[0] ?? buildingId
 }
 
 /**

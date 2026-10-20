@@ -186,7 +186,7 @@ describe('ProjectStep', () => {
   test('says so when the people cannot be read, and the footer’s way on stays', async () => {
     const user = userEvent.setup()
     const client = createFixtureParticipantsClient('fresh')
-    vi.spyOn(client, 'steckbrief').mockRejectedValue(new Error('down'))
+    vi.spyOn(client, 'peopleRecord').mockRejectedValue(new Error('down'))
     const { onNext } = renderStep('fresh', { client })
     expect(await screen.findByText('The people could not be loaded.')).toBeInTheDocument()
     const footer = screen.getByTestId('intake-setup-footer')

@@ -52,7 +52,7 @@ type SheetTask = { kind: 'colleague' } | { kind: 'external' } | { kind: 'describ
 export interface ParticipantsSectionProps {
   projectId: string
   client: ParticipantsClient
-  steckbrief: SteckbriefView | null
+  peopleRecord: SteckbriefView | null
   roster: ProjectRoster | null
   loading: boolean
   reload: () => Promise<void>
@@ -70,7 +70,7 @@ const personInput = (person: Pick<ProjectPersonView, 'startedOn' | 'endedOn' | '
 /** The quiet bordered button at the card's foot, 34px on a desk and 44px under a finger. */
 const ADD_CLASS = 'h-[34px] gap-1.5 px-3 text-[13px] font-normal pointer-coarse:h-11'
 
-export function ParticipantsSection({ projectId, client, steckbrief, roster, loading, reload }: ParticipantsSectionProps): JSX.Element {
+export function ParticipantsSection({ projectId, client, peopleRecord, roster, loading, reload }: ParticipantsSectionProps): JSX.Element {
   const t = useTranslations('intakeProjectStep')
   const tMembers = useTranslations('members')
   const tCommon = useTranslations('common')
@@ -101,7 +101,7 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
     return ok
   }
 
-  if (!steckbrief) {
+  if (!peopleRecord) {
     return (
       <StepCard title={t('people.label')} data-testid="project-step-people">
         {loading ? (
@@ -125,11 +125,11 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
     )
   }
 
-  const rows = participantRows(steckbrief.people, roster)
+  const rows = participantRows(peopleRecord.people, roster)
   const current = rows.filter((row) => row.person.kind !== 'former')
   const former = rows.filter((row) => row.person.kind === 'former')
   const candidates = colleagueCandidates(roster)
-  const canAddColleague = roster !== null && steckbrief.canEdit
+  const canAddColleague = roster !== null && peopleRecord.canEdit
   const busy = pending !== null
   const close = (): void => setTask(null)
 
@@ -189,8 +189,8 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
     <ParticipantItem
       key={row.key}
       row={row}
-      canEdit={steckbrief.canEdit}
-      canErase={steckbrief.canErase}
+      canEdit={peopleRecord.canEdit}
+      canErase={peopleRecord.canErase}
       busy={busy}
       roleLabel={roleLabel}
       onDescribe={() => setTask({ kind: 'describe', row })}
@@ -200,7 +200,7 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
     />
   )
 
-  const note = !steckbrief.canEdit ? t('people.readOnly') : roster === null ? t('people.membersByAdmins') : null
+  const note = !peopleRecord.canEdit ? t('people.readOnly') : roster === null ? t('people.membersByAdmins') : null
 
   return (
     <StepCard
@@ -237,7 +237,7 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
         </Collapsible>
       )}
 
-      {(steckbrief.canEdit || note) && (
+      {(peopleRecord.canEdit || note) && (
         <div className="border-border/60 flex flex-wrap items-center gap-2 border-t px-4 py-3.5 sm:px-[18px]">
           {canAddColleague && (
             <Button
@@ -253,7 +253,7 @@ export function ParticipantsSection({ projectId, client, steckbrief, roster, loa
               {t('people.addColleague')}
             </Button>
           )}
-          {steckbrief.canEdit && (
+          {peopleRecord.canEdit && (
             <Button type="button" variant="outline" size="sm" className={ADD_CLASS} onClick={() => setTask({ kind: 'external' })}>
               <Plus aria-hidden />
               {t('people.addExternal')}

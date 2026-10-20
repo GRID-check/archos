@@ -2300,7 +2300,7 @@
                   }
                 ]
               },
-              "hochhaus": {
+              "highRise": {
                 "type": "boolean"
               },
               "inputs": {
@@ -2827,7 +2827,7 @@
               "rule",
               "citation",
               "value",
-              "hochhaus",
+              "highRise",
               "inputs",
               "missing",
               "suggestion"
@@ -2896,7 +2896,7 @@
         "locationRegister": {
           "type": "object",
           "properties": {
-            "bundesland": {
+            "federalState": {
               "anyOf": [
                 {
                   "type": "string",
@@ -2908,7 +2908,7 @@
                 }
               ]
             },
-            "gemeinde": {
+            "municipality": {
               "anyOf": [
                 {
                   "type": "string",
@@ -3040,11 +3040,11 @@
                   "determinant": {
                     "type": "string",
                     "enum": [
-                      "grundstueck",
-                      "widmung",
-                      "denkmalschutz",
-                      "standortrisiken",
-                      "laerm"
+                      "plot",
+                      "zoning",
+                      "heritage",
+                      "hazards",
+                      "noise"
                     ]
                   },
                   "label": {
@@ -3230,8 +3230,8 @@
             }
           },
           "required": [
-            "bundesland",
-            "gemeinde",
+            "federalState",
+            "municipality",
             "questions",
             "documentRequests"
           ],
@@ -3249,7 +3249,7 @@
             "site": {
               "type": "object",
               "properties": {
-                "bundesland": {
+                "federalState": {
                   "anyOf": [
                     {
                       "type": "string",
@@ -3260,7 +3260,7 @@
                     }
                   ]
                 },
-                "gemeinde": {
+                "municipality": {
                   "anyOf": [
                     {
                       "type": "string",
@@ -3302,8 +3302,8 @@
                 }
               },
               "required": [
-                "bundesland",
-                "gemeinde",
+                "federalState",
+                "municipality",
                 "address",
                 "source",
                 "confirmed"

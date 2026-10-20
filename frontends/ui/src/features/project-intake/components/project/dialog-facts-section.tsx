@@ -32,14 +32,14 @@ import { MAX_INTAKE_DESCRIPTION_LENGTH, type IntakeDecision, type IntakeView } f
 import type { ProjectBasics } from '@/lib/projects/participants-client'
 import { createSameAddressClient, type SameAddressClient } from '@/lib/projects/same-address-client'
 import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
-import { ADDRESS_KEY, BUNDESLAND_KEY, COUNTRY_KEY, DESCRIPTION_KEY, dialogFacts } from './dialog-facts'
+import { ADDRESS_KEY, FEDERAL_STATE_KEY, COUNTRY_KEY, DESCRIPTION_KEY, dialogFacts } from './dialog-facts'
 import { FactRow, StepCard } from './step-card'
 
 export interface DialogFactsSectionProps {
   view: IntakeView
   projectId: string
   project: ProjectBasics | null
-  steckbrief: SteckbriefView | null
+  peopleRecord: SteckbriefView | null
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
@@ -57,7 +57,7 @@ export function factDecisions(
     const place = after.address.place
     if (place && place.label === address) {
       decisions.push({ key: COUNTRY_KEY, action: 'answer', value: place.country })
-      if (place.bundesland) decisions.push({ key: BUNDESLAND_KEY, action: 'answer', value: place.bundesland })
+      if (place.bundesland) decisions.push({ key: FEDERAL_STATE_KEY, action: 'answer', value: place.bundesland })
     }
   }
   const description = after.description.trim()
@@ -78,13 +78,13 @@ function sameAddressExcept(projectId: string): SameAddressClient {
   }
 }
 
-export function DialogFactsSection({ view, projectId, project, steckbrief, canDecide, busy, onDecide }: DialogFactsSectionProps): JSX.Element {
+export function DialogFactsSection({ view, projectId, project, peopleRecord, canDecide, busy, onDecide }: DialogFactsSectionProps): JSX.Element {
   const t = useTranslations('intakeProjectStep')
   const facts = dialogFacts(view)
   const [editing, setEditing] = useState(false)
-  const status = useStatusText(view, project, steckbrief)
+  const status = useStatusText(view, project, peopleRecord)
   // Wien is its own Bundesland: „Wien · Wien“ says nothing twice.
-  const place = [...new Set([facts.gemeinde, facts.bundesland].filter(Boolean))].join(' · ')
+  const place = [...new Set([facts.municipality, facts.federalState].filter(Boolean))].join(' · ')
 
   return (
     <StepCard
@@ -111,7 +111,7 @@ export function DialogFactsSection({ view, projectId, project, steckbrief, canDe
           {place && (
             <span className="text-muted-foreground mt-0.5 flex flex-wrap items-center gap-1.5 text-xs" data-testid="project-step-place">
               {place}
-              {facts.bundeslandSuggested && (
+              {facts.federalStateSuggested && (
                 <Chip size="sm" variant="info">
                   {t('facts.suggested')}
                 </Chip>
@@ -156,13 +156,13 @@ export function DialogFactsSection({ view, projectId, project, steckbrief, canDe
 }
 
 /** „Aktiv · seit März 2026", „Fertiggestellt, wird nach der Prüfung abgeschlossen · März 2024 – Juni 2026". */
-function useStatusText(view: IntakeView, project: ProjectBasics | null, steckbrief: SteckbriefView | null): string {
+function useStatusText(view: IntakeView, project: ProjectBasics | null, peopleRecord: SteckbriefView | null): string {
   const t = useTranslations('intakeProjectStep')
   const { span } = useSteckbriefFormat()
-  const period = useProjectPeriodText(steckbrief ?? { startedOn: null, endedOn: null })
+  const period = useProjectPeriodText(peopleRecord ?? { startedOn: null, endedOn: null })
   const closing = view.closing && project?.status !== 'closed' ? view.closing : null
   const label = closing ? t(`facts.closingIntent.${closing.outcome}`) : project ? t(`facts.statuses.${project.status}`) : null
-  const when = closing ? span(closing.startedOn ?? null, closing.endedOn) : steckbrief ? period : ''
+  const when = closing ? span(closing.startedOn ?? null, closing.endedOn) : peopleRecord ? period : ''
   return [label, when].filter(Boolean).join(' · ') || '–'
 }
 

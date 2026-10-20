@@ -12,7 +12,7 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   PROFILE_CONFIRMED,
-  PROFILE_HOCHHAUS,
+  PROFILE_HIGH_RISE,
   PROFILE_READONLY,
   PROFILE_REVIEW,
 } from '@/app/dev/_fixtures/project-setup-profile'
@@ -108,7 +108,7 @@ describe('ProfileStep', () => {
     })
 
     it('says a high-rise has no class, and requires OIB-RL 2.3', () => {
-      setup(PROFILE_HOCHHAUS)
+      setup(PROFILE_HIGH_RISE)
       expect(screen.getByTestId('profile-class-title')).toHaveTextContent('High-rise')
       expect(screen.getByTestId('profile-class-reason')).toHaveTextContent('OIB-RL 2.3 applies')
       expect(screen.getByTestId('profile-rule-OIB 2.3')).toHaveAttribute('data-status', 'required')

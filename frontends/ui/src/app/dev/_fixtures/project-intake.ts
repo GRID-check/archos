@@ -44,8 +44,8 @@ export const fromDocument = (fileName: string, page: number | null, quote: strin
   quote,
 })
 
-const BAUBESCHREIBUNG = 'Baubeschreibung.pdf'
-const SCHNITT = 'E-02 Schnitt A-A.pdf'
+const BUILDING_DESCRIPTION = 'Baubeschreibung.pdf'
+const SECTION_A_A = 'E-02 Schnitt A-A.pdf'
 
 const suggestion = (
   key: string,
@@ -88,13 +88,13 @@ export const SUGGESTION_STOREYS = suggestion(
     state: 'contested',
     decisive: true,
     evidence: [
-      fromDocument(BAUBESCHREIBUNG, 3, 'Das Gebäude erhält nach der Aufstockung insgesamt sechs oberirdische Geschoße.'),
+      fromDocument(BUILDING_DESCRIPTION, 3, 'Das Gebäude erhält nach der Aufstockung insgesamt sechs oberirdische Geschoße.'),
     ],
     alternatives: [
       {
         value: 7,
         recordedAt: AT,
-        evidence: [fromDocument(SCHNITT, 1, 'EG, 1.OG, 2.OG, 3.OG, 4.OG, 5.OG, DG (neu)')],
+        evidence: [fromDocument(SECTION_A_A, 1, 'EG, 1.OG, 2.OG, 3.OG, 4.OG, 5.OG, DG (neu)')],
       },
     ],
   }
@@ -102,21 +102,21 @@ export const SUGGESTION_STOREYS = suggestion(
 
 export const SUGGESTION_ESCAPE_LEVEL = suggestion('fluchtniveau_m@bw1', 'Fluchtniveau (Zielzustand)', 18.4, '18,4 m', {
   decisive: true,
-  evidence: [fromDocument(SCHNITT, 1, 'Fluchtniveau +18,40 m über Gelände')],
+  evidence: [fromDocument(SECTION_A_A, 1, 'Fluchtniveau +18,40 m über Gelände')],
 })
 
 export const SUGGESTION_TYPE = suggestion('bauwerkstyp@bw1', 'Art des Bauwerks', 'gebaeude', 'Gebäude', {
-  evidence: [fromDocument(BAUBESCHREIBUNG, 1, 'Gegenstand des Verfahrens ist ein Wohngebäude in geschlossener Bauweise.')],
+  evidence: [fromDocument(BUILDING_DESCRIPTION, 1, 'Gegenstand des Verfahrens ist ein Wohngebäude in geschlossener Bauweise.')],
 })
 
 export const SUGGESTION_POSITION = suggestion('gebaeudestellung@bw1', 'Gebäudestellung', 'angebaut', 'angebaut', {
-  evidence: [fromDocument(BAUBESCHREIBUNG, 2, 'Das Haus ist beidseitig an die Nachbargebäude angebaut.')],
+  evidence: [fromDocument(BUILDING_DESCRIPTION, 2, 'Das Haus ist beidseitig an die Nachbargebäude angebaut.')],
 })
 
 export const SUGGESTION_UNITS = suggestion('nutzungseinheiten@bw1', 'Anzahl Nutzungseinheiten (Wohnungen + Betriebseinheiten, Zielzustand)', 14, '14', {
   decisive: true,
   evidence: [
-    fromDocument(BAUBESCHREIBUNG, 4, 'Im Bestand befinden sich 8 Wohnungen, im Dachgeschoß entstehen 6 weitere.'),
+    fromDocument(BUILDING_DESCRIPTION, 4, 'Im Bestand befinden sich 8 Wohnungen, im Dachgeschoß entstehen 6 weitere.'),
     fromDocument('Wohnungsliste.xlsx', null, 'Top 1 bis Top 14'),
   ],
 })
@@ -151,7 +151,7 @@ const GROUP_BASE: SuggestionGroup = {
   items: [SUGGESTION_ADDRESS, SUGGESTION_EDITION, SUGGESTION_PHASE],
 }
 
-const GROUP_BAUWERKE: SuggestionGroup = {
+const GROUP_BUILDINGS: SuggestionGroup = {
   stage: 'C',
   title: 'Bauwerke',
   items: [SUGGESTION_TYPE, SUGGESTION_STOREYS, SUGGESTION_ESCAPE_LEVEL, SUGGESTION_POSITION, SUGGESTION_UNITS],
@@ -253,7 +253,7 @@ export const DERIVATION_READY: DerivationReview = {
   rule: 'gebaeudeklasse',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: 5,
-  hochhaus: false,
+  highRise: false,
   inputs: [
     { key: 'bauwerkstyp@bw1', value: 'gebaeude', suggested: true },
     { key: 'geschosse_oberirdisch@bw1', value: 6, suggested: true },
@@ -270,7 +270,7 @@ export const DERIVATION_OPEN: DerivationReview = {
   rule: 'gebaeudeklasse',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
   value: null,
-  hochhaus: false,
+  highRise: false,
   inputs: [{ key: 'bauwerkstyp@bw2', value: 'gebaeude', suggested: false }],
   missing: ['geschosse_oberirdisch', 'fluchtniveau_m', 'bgf_oberirdisch'],
   suggestion: null,
@@ -299,7 +299,7 @@ const BASE: IntakeView = {
   readingProgress: {
     documentsOpened: 0,
     documentsTotal: 0,
-    site: { bundesland: 'Wien', gemeinde: 'Wien', address: FIXTURE_LOCATION.label, source: 'geocoder', confirmed: true },
+    site: { federalState: 'Wien', municipality: 'Wien', address: FIXTURE_LOCATION.label, source: 'geocoder', confirmed: true },
   },
 }
 
@@ -315,7 +315,7 @@ export const INTAKE_READING: IntakeView = {
   readingProgress: { ...BASE.readingProgress, documentsOpened: 9, documentsTotal: 23 },
   groups: [
     { ...GROUP_BASE, items: [SUGGESTION_ADDRESS, SUGGESTION_EDITION] },
-    { ...GROUP_BAUWERKE, items: [SUGGESTION_TYPE, SUGGESTION_POSITION] },
+    { ...GROUP_BUILDINGS, items: [SUGGESTION_TYPE, SUGGESTION_POSITION] },
   ],
 }
 
@@ -338,7 +338,7 @@ export const INTAKE_READY: IntakeView = {
   contradictions: [SUGGESTION_STOREYS],
   questions: [QUESTION_AREA, QUESTION_POSITION, QUESTION_USE],
   openQuestions: [OPEN_PROJECT_KIND, OPEN_ZONING],
-  groups: [GROUP_BASE, GROUP_BAUWERKE],
+  groups: [GROUP_BASE, GROUP_BUILDINGS],
   derivations: [DERIVATION_READY, DERIVATION_OPEN],
 }
 
@@ -351,7 +351,7 @@ export const INTAKE_CLOSING: IntakeView = {
   summary: null,
   contradictions: [],
   questions: [],
-  groups: [GROUP_BASE, { ...GROUP_BAUWERKE, items: GROUP_BAUWERKE.items.map((item) => ({ ...item, decisive: false })) }],
+  groups: [GROUP_BASE, { ...GROUP_BUILDINGS, items: GROUP_BUILDINGS.items.map((item) => ({ ...item, decisive: false })) }],
   derivations: [DERIVATION_READY],
 }
 
@@ -364,7 +364,7 @@ export const INTAKE_COMPLETED: IntakeView = {
   questions: [],
   openQuestions: [],
   summary: null,
-  groups: [GROUP_BASE, GROUP_BAUWERKE].map((group) => ({
+  groups: [GROUP_BASE, GROUP_BUILDINGS].map((group) => ({
     ...group,
     items: group.items.map((item) => ({ ...item, state: 'confirmed' as const, alternatives: [] })),
   })),

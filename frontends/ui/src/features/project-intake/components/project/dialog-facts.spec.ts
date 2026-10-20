@@ -28,9 +28,9 @@ describe('dialogFacts', () => {
   test("a project just created: the geocoder's address with its Gemeinde and Bundesland, and the dialog's description", () => {
     expect(dialogFacts(INTAKE_WAITING)).toEqual({
       address: FIXTURE_LOCATION.label,
-      gemeinde: 'Wien',
-      bundesland: 'Wien',
-      bundeslandSuggested: false,
+      municipality: 'Wien',
+      federalState: 'Wien',
+      federalStateSuggested: false,
       description: FIXTURE_DESCRIPTION,
     })
   })
@@ -39,9 +39,9 @@ describe('dialogFacts', () => {
     const view = withItems(INTAKE_WAITING, [item('standort_adresse', 'Hauptplatz 1, 3100 St. Pölten'), item('bundesland', 'Niederösterreich', 'suggested')])
     expect(dialogFacts(view)).toMatchObject({
       address: 'Hauptplatz 1, 3100 St. Pölten',
-      gemeinde: null,
-      bundesland: 'Niederösterreich',
-      bundeslandSuggested: true,
+      municipality: null,
+      federalState: 'Niederösterreich',
+      federalStateSuggested: true,
     })
   })
 
@@ -52,9 +52,9 @@ describe('dialogFacts', () => {
   test('nothing typed in the dialog reads as nothing', () => {
     expect(dialogFacts({ ...INTAKE_WAITING, groups: [], location: null, description: null })).toEqual({
       address: null,
-      gemeinde: null,
-      bundesland: null,
-      bundeslandSuggested: false,
+      municipality: null,
+      federalState: null,
+      federalStateSuggested: false,
       description: null,
     })
   })

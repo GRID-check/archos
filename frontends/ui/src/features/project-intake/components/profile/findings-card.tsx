@@ -10,10 +10,10 @@ import { useTranslations } from '@/i18n'
 import type { DerivationReview, IntakeDecision, Suggestion, SuggestionGroup } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 import { usePressed } from '../../hooks/use-pressed'
-import { bauwerkNumber } from '../../lib/display'
+import { buildingNumber } from '../../lib/display'
 import { SourcePeek } from './source-peek'
 import { EditValue } from './edit-value'
-import { findings, restByTopic, shortLabel, topFindings } from './steckbrief'
+import { findings, restByTopic, shortLabel, topFindings } from './profile-review'
 
 interface Decide {
   canDecide: boolean
@@ -54,7 +54,7 @@ export function FindingsCard({
   const top = topFindings(groups, derivations)
   const rest = restByTopic(groups, top)
   const confirmed = all.filter((item) => item.state === 'confirmed').length
-  const severalBauwerke = new Set(all.map((item) => item.bauwerkId).filter(Boolean)).size > 1
+  const severalBuildings = new Set(all.map((item) => item.bauwerkId).filter(Boolean)).size > 1
   const restCount = rest.reduce((sum, group) => sum + group.items.length, 0)
 
   return (
@@ -96,14 +96,14 @@ export function FindingsCard({
               <span>{t('findings.columns.source')}</span>
               <span />
             </div>
-            <FindingRows items={top} severalBauwerke={severalBauwerke} testId="profile-findings-top" {...decide} />
+            <FindingRows items={top} severalBuildings={severalBuildings} testId="profile-findings-top" {...decide} />
             <CollapsibleContent data-testid="profile-findings-rest">
               {rest.map((group) => (
                 <div key={group.stage} data-testid={`profile-topic-${group.stage}`}>
                   <h3 className="text-muted-foreground border-border border-t px-4 pb-2 pt-3.5 text-[11px] uppercase tracking-[0.06em] md:px-[18px]">
                     {group.title}
                   </h3>
-                  <FindingRows items={group.items} severalBauwerke={severalBauwerke} {...decide} />
+                  <FindingRows items={group.items} severalBuildings={severalBuildings} {...decide} />
                 </div>
               ))}
             </CollapsibleContent>
@@ -141,24 +141,24 @@ export function FindingsCard({
 
 function FindingRows({
   items,
-  severalBauwerke,
+  severalBuildings,
   testId,
   ...decide
-}: Decide & { items: readonly Suggestion[]; severalBauwerke: boolean; testId?: string }): JSX.Element {
+}: Decide & { items: readonly Suggestion[]; severalBuildings: boolean; testId?: string }): JSX.Element {
   return (
     <ul data-testid={testId}>
       {items.map((item) => (
-        <FindingRow key={item.key} item={item} severalBauwerke={severalBauwerke} {...decide} />
+        <FindingRow key={item.key} item={item} severalBuildings={severalBuildings} {...decide} />
       ))}
     </ul>
   )
 }
 
-function FindingRow({ item, severalBauwerke, ...decide }: Decide & { item: Suggestion; severalBauwerke: boolean }): JSX.Element {
+function FindingRow({ item, severalBuildings, ...decide }: Decide & { item: Suggestion; severalBuildings: boolean }): JSX.Element {
   const t = useTranslations('intakeProfileStep')
   const label = shortLabel(item.label)
-  const bauwerk =
-    severalBauwerke && item.bauwerkId ? t('findings.bauwerk', { number: bauwerkNumber(item.bauwerkId) }) : null
+  const building =
+    severalBuildings && item.bauwerkId ? t('findings.building', { number: buildingNumber(item.bauwerkId) }) : null
   return (
     <li
       className={cn(
@@ -170,7 +170,7 @@ function FindingRow({ item, severalBauwerke, ...decide }: Decide & { item: Sugge
     >
       <span className="text-muted-foreground col-span-2 min-w-0 truncate text-[13px] md:col-span-1" title={item.label}>
         {label}
-        {bauwerk && <span className="text-muted-foreground/80"> · {bauwerk}</span>}
+        {building && <span className="text-muted-foreground/80"> · {building}</span>}
       </span>
       <span className="min-w-0 truncate text-[15px] font-medium md:text-sm" title={item.display}>
         {item.display}

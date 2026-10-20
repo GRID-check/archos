@@ -301,8 +301,8 @@ export function readingSite(
   const address = profile.facts.standort_adresse ?? profile.assumptions.standort_adresse
   const addressText = address ? String(address.value) : (row.location?.label ?? null)
   return {
-    bundesland: entry ? shown('bundesland', entry.value).slice(0, 200) : null,
-    gemeinde: row.location?.gemeinde?.slice(0, 200) ?? null,
+    federalState: entry ? shown('bundesland', entry.value).slice(0, 200) : null,
+    municipality: row.location?.gemeinde?.slice(0, 200) ?? null,
     address: addressText ? addressText.slice(0, 500) : null,
     source: entry ? siteSource(entry, Boolean(fact), row) : null,
     confirmed: Boolean(fact),

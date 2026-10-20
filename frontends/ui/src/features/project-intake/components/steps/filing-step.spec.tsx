@@ -284,20 +284,20 @@ describe('FilingStep', () => {
   })
 
   describe("Piloti's open filing suggestions", () => {
-    const [bescheide] = INTAKE_FILING
+    const [permits] = INTAKE_FILING
     const onSettled = vi.fn()
     const filing = (entries = suggestionsByFolder(INTAKE_FILING)) => ({ filing: { entries, onSettled } })
-    let current = bescheide.proposal
+    let current = permits.proposal
 
     beforeEach(() => {
       useFakeStream()
-      current = bescheide.proposal
+      current = permits.proposal
       server.use(
         http.get('/api/proposals/:id', ({ params }) =>
           HttpResponse.json({ proposal: INTAKE_FILING.find((entry) => entry.proposal.id === params.id)?.proposal ?? current })
         ),
-        http.post(`/api/proposals/${bescheide.proposal.id}/apply`, () => {
-          current = { ...bescheide.proposal, status: 'applied', canDecide: false, results: [] }
+        http.post(`/api/proposals/${permits.proposal.id}/apply`, () => {
+          current = { ...permits.proposal, status: 'applied', canDecide: false, results: [] }
           return HttpResponse.json({ proposal: current })
         })
       )
@@ -326,8 +326,8 @@ describe('FilingStep', () => {
       const user = userEvent.setup()
       setup(INTAKE_READY, filing())
 
-      const [bescheideLine] = screen.getAllByTestId('filing-bar-line')
-      await user.click(await within(bescheideLine).findByRole('button', { name: 'Move' }))
+      const [permitsLine] = screen.getAllByTestId('filing-bar-line')
+      await user.click(await within(permitsLine).findByRole('button', { name: 'Move' }))
 
       expect(await screen.findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
       await vi.waitFor(() => expect(onSettled).toHaveBeenCalled())

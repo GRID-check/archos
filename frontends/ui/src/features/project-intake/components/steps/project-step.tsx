@@ -43,7 +43,7 @@ export function ProjectStep({ view, projectId, busy, canDecide, onDecide, onNext
           view={view}
           projectId={projectId}
           project={participants.project}
-          steckbrief={participants.steckbrief}
+          peopleRecord={participants.peopleRecord}
           canDecide={canDecide}
           busy={busy}
           onDecide={onDecide}
@@ -51,7 +51,7 @@ export function ProjectStep({ view, projectId, busy, canDecide, onDecide, onNext
         <ParticipantsSection
           projectId={projectId}
           client={client}
-          steckbrief={participants.steckbrief}
+          peopleRecord={participants.peopleRecord}
           roster={participants.roster}
           loading={participants.loading}
           reload={participants.reload}

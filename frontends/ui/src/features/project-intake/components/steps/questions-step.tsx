@@ -25,10 +25,10 @@ export { questionRound, type QuestionRound } from '../../lib/question-round'
 /** „Wien", „Graz, Steiermark": where the register reads the location. */
 function placeOf(view: IntakeView): string | null {
   const register = view.locationRegister
-  if (!register?.bundesland) return null
-  const land = displayValue('bundesland', register.bundesland)
-  const gemeinde = register.gemeinde
-  return gemeinde && gemeinde.localeCompare(land, 'de', { sensitivity: 'base' }) !== 0 ? `${gemeinde}, ${land}` : land
+  if (!register?.federalState) return null
+  const federalState = displayValue('bundesland', register.federalState)
+  const municipality = register.municipality
+  return municipality && municipality.localeCompare(federalState, 'de', { sensitivity: 'base' }) !== 0 ? `${municipality}, ${federalState}` : federalState
 }
 
 /**

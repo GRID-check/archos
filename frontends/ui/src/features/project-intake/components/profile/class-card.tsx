@@ -9,8 +9,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
 import type { DerivationReview } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
-import { bauwerkNumber, displayValue, keyLabel } from '../../lib/display'
-import { leadDerivation, reasonInputs, shortLabel } from './steckbrief'
+import { buildingNumber, displayValue, keyLabel } from '../../lib/display'
+import { leadDerivation, REASON_INPUT_IDS, reasonInputs, shortLabel } from './profile-review'
 
 interface ClassCardProps {
   derivations: readonly DerivationReview[]
@@ -51,12 +51,12 @@ export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Elemen
                 segmented
                 value={derivation.bauwerkId}
                 onValueChange={(value) => value && setChosen(value)}
-                aria-label={t('class.bauwerke')}
+                aria-label={t('class.buildings')}
                 className="shrink-0"
               >
                 {derivations.map((candidate) => (
                   <ToggleGroupItem key={candidate.bauwerkId} value={candidate.bauwerkId} className="h-7 px-2 text-xs">
-                    {tIntake('derivations.bauwerk', { number: bauwerkNumber(candidate.bauwerkId) })}
+                    {tIntake('derivations.building', { number: buildingNumber(candidate.bauwerkId) })}
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
@@ -77,9 +77,9 @@ export function ClassCard({ derivations, onAnswer }: ClassCardProps): JSX.Elemen
 }
 
 /** The big tile: ink for a class, quiet while it is open. */
-function ClassTile({ value, hochhaus = false }: { value: number | null; hochhaus?: boolean }): JSX.Element {
+function ClassTile({ value, highRise = false }: { value: number | null; highRise?: boolean }): JSX.Element {
   const t = useTranslations('intakeProfileStep')
-  const known = value !== null || hochhaus
+  const known = value !== null || highRise
   return (
     <div
       aria-hidden
@@ -88,9 +88,9 @@ function ClassTile({ value, hochhaus = false }: { value: number | null; hochhaus
         known ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground border-border border border-dashed',
       )}
     >
-      {!hochhaus && <span className="text-[11px] tracking-[0.06em] opacity-70">{t('class.eyebrow')}</span>}
+      {!highRise && <span className="text-[11px] tracking-[0.06em] opacity-70">{t('class.eyebrow')}</span>}
       <span className="text-[30px] font-semibold leading-none md:text-4xl">
-        {hochhaus ? t('class.hochhausTile') : (value ?? '–')}
+        {highRise ? t('class.highRiseTile') : (value ?? '–')}
       </span>
     </div>
   )
@@ -98,7 +98,7 @@ function ClassTile({ value, hochhaus = false }: { value: number | null; hochhaus
 
 function useReason(derivation: DerivationReview): string {
   const t = useTranslations('intakeProfileStep')
-  if (derivation.hochhaus) return t('class.hochhausReason')
+  if (derivation.highRise) return t('class.highRiseReason')
   if (derivation.value === null) {
     if (derivation.missing.length === 0) return t('class.none')
     return t('class.missing', { inputs: derivation.missing.map((key) => shortLabel(keyLabel(key))).join(', ') })
@@ -106,9 +106,9 @@ function useReason(derivation: DerivationReview): string {
   return reasonInputs(derivation)
     .map(({ base, key, value }) => {
       if (base === 'einheiten_ueber_400') {
-        return value === true ? t('class.reason.einheiten_ueber_400') : t('class.reason.einheiten_ueber_400_none')
+        return value === true ? t('class.reason.unitOver400') : t('class.reason.unitOver400None')
       }
-      return t(`class.reason.${base}`, { value: displayValue(key, value) })
+      return t(`class.reason.${REASON_INPUT_IDS[base]}`, { value: displayValue(key, value) })
     })
     .join(' · ')
 }
@@ -122,18 +122,18 @@ function ClassResult({
   const [open, setOpen] = useState(false)
   const reason = useReason(derivation)
   const suggestion = derivation.suggestion
-  const title = derivation.hochhaus
-    ? t('class.hochhaus')
+  const title = derivation.highRise
+    ? t('class.highRise')
     : derivation.value === null
       ? t('class.open')
       : t('class.title', { value: derivation.value })
   const unconfirmed = derivation.inputs.filter((input) => input.suggested).length
-  const missingAsked = derivation.value === null && !derivation.hochhaus && derivation.missing.length > 0
+  const missingAsked = derivation.value === null && !derivation.highRise && derivation.missing.length > 0
 
   return (
     <Collapsible open={open} onOpenChange={setOpen} data-testid={`profile-class-${derivation.bauwerkId}`}>
       <div className="flex items-center gap-4 md:gap-5">
-        <ClassTile value={derivation.value} hochhaus={derivation.hochhaus} />
+        <ClassTile value={derivation.value} highRise={derivation.highRise} />
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
             <p className="text-base font-semibold" data-testid="profile-class-title">

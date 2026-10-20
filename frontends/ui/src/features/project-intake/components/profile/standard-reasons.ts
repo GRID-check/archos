@@ -22,11 +22,11 @@ export const STANDARD_REASON_IDS = [
   'soundLikely',
   'energy',
   'energyExempt',
-  'betriebsbau',
-  'betriebsbauCheck',
+  'industrialBuilding',
+  'industrialBuildingCheck',
   'garage',
-  'hochhaus',
-  'hochhausCheck',
+  'highRise',
+  'highRiseCheck',
 ] as const
 export type StandardReasonId = (typeof STANDARD_REASON_IDS)[number]
 
@@ -42,11 +42,11 @@ const REASONS: Record<string, StandardReasonId> = {
   'Sound protection typically applies.': 'soundLikely',
   'Energy and thermal-performance requirements apply.': 'energy',
   'Unconditioned storage/agricultural buildings may be partly exempt from OIB 6.': 'energyExempt',
-  'Manufacturing/storage use is a Betriebsbau.': 'betriebsbau',
-  'Applies if the building qualifies as a Betriebsbau.': 'betriebsbauCheck',
+  'Manufacturing/storage use is a Betriebsbau.': 'industrialBuilding',
+  'Applies if the building qualifies as a Betriebsbau.': 'industrialBuildingCheck',
   'Applies if the project includes a garage or covered parking.': 'garage',
-  'Top escape level over 22 m — the building is a Hochhaus.': 'hochhaus',
-  'GK5 building — confirm whether the top escape level exceeds 22 m.': 'hochhausCheck',
+  'Top escape level over 22 m — the building is a Hochhaus.': 'highRise',
+  'GK5 building — confirm whether the top escape level exceeds 22 m.': 'highRiseCheck',
 }
 
 /** The key of a reason, or null for a sentence nobody translated yet. */

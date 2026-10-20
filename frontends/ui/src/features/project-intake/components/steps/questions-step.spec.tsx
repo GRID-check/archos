@@ -70,24 +70,24 @@ describe('questionRound', () => {
       'gebaeudestellung@bw1',
     ])
     expect(round.requests.map((request) => request.determinant)).toEqual([
-      'grundstueck',
-      'denkmalschutz',
-      'standortrisiken',
-      'laerm',
+      'plot',
+      'heritage',
+      'hazards',
+      'noise',
     ])
     expect(round.contradictions.map((item) => item.key)).toEqual(['geschosse_oberirdisch@bw1'])
     expect(round.openIds).toEqual([
       'question:bgf_oberirdisch@bw1',
       'question:einheiten_ueber_400@bw1',
       'question:gebaeudestellung@bw1',
-      'request:grundstueck',
-      'request:denkmalschutz',
-      'request:standortrisiken',
-      'request:laerm',
+      'request:plot',
+      'request:heritage',
+      'request:hazards',
+      'request:noise',
       'contradiction:geschosse_oberirdisch@bw1',
     ])
     // The Widmung was found by the reading: settled, so it counts as done.
-    expect(round.settledIds).toEqual(['request:widmung'])
+    expect(round.settledIds).toEqual(['request:zoning'])
     expect(round.more.map((need) => need.key)).toEqual(['vorhabensart', 'widmung'])
   })
 
@@ -203,7 +203,7 @@ describe('QuestionsStep', () => {
     it('names the document, why, the law it rests on and the place', async () => {
       setup(QUESTIONS_READY)
       await choose(/Denkmal- und Ortsbildschutz/)
-      const card = screen.getByTestId('document-request-denkmalschutz')
+      const card = screen.getByTestId('document-request-heritage')
       expect(card).toHaveTextContent('Auszug aus der Denkmalliste oder Unterschutzstellungsbescheid')
       expect(card).toHaveTextContent('Bundesdenkmalamts')
       expect(card).toHaveTextContent('Basis: Denkmalschutzgesetz (DMSG)')
@@ -213,7 +213,7 @@ describe('QuestionsStep', () => {
     it('takes its values stated directly', async () => {
       setup(QUESTIONS_READY)
       await choose(/Grundstück, Fläche und Einlagezahl/)
-      const card = screen.getByTestId('document-request-grundstueck')
+      const card = screen.getByTestId('document-request-plot')
       await userEvent.type(within(screen.getByTestId('intake-need-grundstueck_ez')).getByRole('textbox'), 'EZ 1234')
       await userEvent.click(within(card).getByRole('button', { name: 'Use and continue' }))
       expect(onDecide).toHaveBeenCalledWith([{ key: 'grundstueck_ez', action: 'answer', value: 'EZ 1234' }])
@@ -233,7 +233,7 @@ describe('QuestionsStep', () => {
       setup(QUESTIONS_TYPED_ADDRESS)
       expect(screen.getByTestId('intake-question-bundesland')).toBeInTheDocument()
       await choose(/Grundstück, Fläche und Einlagezahl/)
-      expect(screen.getByTestId('document-request-grundstueck').textContent).toMatch(/· called for by the location(?! in)/)
+      expect(screen.getByTestId('document-request-plot').textContent).toMatch(/· called for by the location(?! in)/)
     })
   })
 
@@ -279,7 +279,7 @@ describe('QuestionsStep', () => {
   it('says the round follows the reading, and still takes answers', () => {
     setup(QUESTIONS_READING)
     expect(screen.getByTestId('questions-reading-note')).toBeInTheDocument()
-    expect(screen.getByTestId('document-request-grundstueck')).toBeInTheDocument()
+    expect(screen.getByTestId('document-request-plot')).toBeInTheDocument()
   })
 
   it('asks a past project only its Bundesland, and requests no document', () => {

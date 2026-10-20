@@ -52,6 +52,6 @@ describe('createParticipantsClient', () => {
 
   test('parses the Steckbrief rather than casting it', async () => {
     const client = createParticipantsClient(async () => reply({ people: 'nobody' }))
-    await expect(client.steckbrief('p1')).rejects.toThrow()
+    await expect(client.peopleRecord('p1')).rejects.toThrow()
   })
 })

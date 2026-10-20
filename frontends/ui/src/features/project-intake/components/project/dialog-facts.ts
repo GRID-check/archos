@@ -18,18 +18,18 @@ import type { IntakeView, Suggestion } from '@/lib/project-intake/types'
 
 /** The profile keys step 1 reads and writes. */
 export const ADDRESS_KEY = 'standort_adresse'
-export const BUNDESLAND_KEY = 'bundesland'
+export const FEDERAL_STATE_KEY = 'bundesland'
 export const COUNTRY_KEY = 'country'
 export const DESCRIPTION_KEY = 'kontext_beschreibung'
 
 export interface DialogFacts {
   address: string | null
   /** „Wien", or null when no hit was chosen and nobody named the Gemeinde. */
-  gemeinde: string | null
+  municipality: string | null
   /** The Bundesland as a person reads it („Niederösterreich"). */
-  bundesland: string | null
+  federalState: string | null
   /** Whether the Bundesland is still only Piloti's suggestion. */
-  bundeslandSuggested: boolean
+  federalStateSuggested: boolean
   description: string | null
 }
 
@@ -50,12 +50,12 @@ export function dialogFacts(view: IntakeView): DialogFacts {
   const location: GeocodeResult | null = view.location
   const address = text(profileItem(view, ADDRESS_KEY)) ?? location?.label ?? null
   const fromHit = location !== null && address === location.label
-  const bundeslandItem = profileItem(view, BUNDESLAND_KEY)
+  const federalStateItem = profileItem(view, FEDERAL_STATE_KEY)
   return {
     address,
-    gemeinde: fromHit ? location.gemeinde : null,
-    bundesland: text(bundeslandItem) ?? (fromHit ? location.state : null),
-    bundeslandSuggested: bundeslandItem?.state === 'suggested',
+    municipality: fromHit ? location.gemeinde : null,
+    federalState: text(federalStateItem) ?? (fromHit ? location.state : null),
+    federalStateSuggested: federalStateItem?.state === 'suggested',
     description: text(profileItem(view, DESCRIPTION_KEY)) ?? view.description,
   }
 }

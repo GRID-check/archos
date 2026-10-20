@@ -115,7 +115,7 @@ const VIEW: IntakeView = {
   readingProgress: {
     documentsOpened: 0,
     documentsTotal: 0,
-    site: { bundesland: null, gemeinde: null, address: null, source: null, confirmed: false },
+    site: { federalState: null, municipality: null, address: null, source: null, confirmed: false },
   },
 }
 

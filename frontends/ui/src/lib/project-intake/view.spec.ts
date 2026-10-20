@@ -91,13 +91,13 @@ const view = () => buildIntakeView(input())
 describe('buildIntakeView', () => {
   it('groups every value by its module, labelled and displayed as the wizard does', () => {
     const { groups } = view()
-    const projektbasis = groups.find((group) => group.title === 'Projektbasis')
-    const bauwerke = groups.find((group) => group.title === 'Bauwerke')
+    const projectBasis = groups.find((group) => group.title === 'Projektbasis')
+    const buildings = groups.find((group) => group.title === 'Bauwerke')
 
-    expect(projektbasis?.items).toEqual([
+    expect(projectBasis?.items).toEqual([
       expect.objectContaining({ key: 'bundesland', value: 'wien', display: 'Wien', state: 'contested', bauwerkId: null }),
     ])
-    expect(bauwerke?.items).toEqual(
+    expect(buildings?.items).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           key: 'bauwerkstyp@bw1',
@@ -166,9 +166,9 @@ describe('buildIntakeView', () => {
       ...input(),
       needs: [{ ...need('grundstueck_ez', false), bauwerkId: null }],
     })
-    expect(result.locationRegister).toMatchObject({ bundesland: 'wien', gemeinde: 'Wien', questions: [] })
+    expect(result.locationRegister).toMatchObject({ federalState: 'wien', municipality: 'Wien', questions: [] })
     expect(result.locationRegister?.documentRequests[0]).toMatchObject({
-      determinant: 'grundstueck',
+      determinant: 'plot',
       document: 'Grundbuchauszug',
       satisfied: false,
       needs: [expect.objectContaining({ key: 'grundstueck_ez' })],
@@ -260,8 +260,8 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
       },
     }
     expect(readingSite({ ...row, location }, profile, projectIntakeDefinitionV1)).toEqual({
-      bundesland: 'Wien',
-      gemeinde: 'Wien',
+      federalState: 'Wien',
+      municipality: 'Wien',
       address: 'Lacknergasse 12, 1170 Wien',
       source: 'geocoder',
       confirmed: true,
@@ -283,8 +283,8 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
       },
     }
     expect(readingSite(row, profile, projectIntakeDefinitionV1)).toMatchObject({
-      bundesland: 'Niederösterreich',
-      gemeinde: null,
+      federalState: 'Niederösterreich',
+      municipality: null,
       address: null,
       source: 'document',
       confirmed: false,
@@ -299,8 +299,8 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
       },
     }
     expect(readingSite(row, profile, projectIntakeDefinitionV1)).toEqual({
-      bundesland: null,
-      gemeinde: null,
+      federalState: null,
+      municipality: null,
       address: 'Hauptstraße 3',
       source: null,
       confirmed: false,
@@ -308,6 +308,6 @@ describe('step 3, Erfassung: the reading’s live milestones', () => {
   })
 
   it('is on every view', () => {
-    expect(view().readingProgress).toMatchObject({ documentsOpened: 0, documentsTotal: 0, site: { bundesland: 'Wien' } })
+    expect(view().readingProgress).toMatchObject({ documentsOpened: 0, documentsTotal: 0, site: { federalState: 'Wien' } })
   })
 })

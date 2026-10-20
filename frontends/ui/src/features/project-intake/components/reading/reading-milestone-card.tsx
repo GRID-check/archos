@@ -41,7 +41,7 @@ interface RowWords {
 }
 
 function place(site: Extract<ReadingMilestone, { id: 'site' }>['site']): string {
-  return [site.bundesland, site.gemeinde && site.gemeinde !== site.bundesland ? site.gemeinde : null]
+  return [site.federalState, site.municipality && site.municipality !== site.federalState ? site.municipality : null]
     .filter((part): part is string => Boolean(part))
     .join(' · ')
 }

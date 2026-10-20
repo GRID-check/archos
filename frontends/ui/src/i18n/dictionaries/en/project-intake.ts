@@ -96,12 +96,12 @@ export const projectIntake = {
   derivations: {
     heading: 'Derivations',
     description: 'The Gebäudeklasse of each building follows from the values above.',
-    bauwerk: 'Building {number}',
+    building: 'Building {number}',
     rule: 'Gebäudeklasse',
     value: 'GK {value}',
     open: 'still open',
     missing: 'Still missing: {inputs}',
-    hochhaus: 'High-rise: the escape level is above 22 m, so there is no Gebäudeklasse (OIB-RL 2.3).',
+    highRise: 'High-rise: the escape level is above 22 m, so there is no Gebäudeklasse (OIB-RL 2.3).',
     inputs: 'Based on',
     suggestedMark: 'suggested',
     confirm: 'Use Gebäudeklasse',
@@ -129,7 +129,7 @@ export const projectIntake = {
     classConfirmed: 'GK {value}, confirmed',
     classSuggested: 'GK {value}, suggested',
     classOf: '{bauwerk}: {value}',
-    hochhaus: 'Hochhaus',
+    highRise: 'Hochhaus',
     classOpen: 'still open',
     rulesLabel: 'Rule sets',
     rules: {

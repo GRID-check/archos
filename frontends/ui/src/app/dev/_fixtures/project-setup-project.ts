@@ -35,7 +35,7 @@ export function isProjectStepState(value: unknown): value is ProjectStepState {
 export interface ProjectStepFixture {
   view: IntakeView
   project: ProjectBasics
-  steckbrief: SteckbriefView
+  peopleRecord: SteckbriefView
   /** Null: the reader may not manage the project's members. */
   roster: ProjectRoster | null
 }
@@ -84,7 +84,7 @@ const OFFICE = [
   roster('user-tw', 'Thomas Wimmer', 't.wimmer@buero-kogler.at', null),
 ]
 
-const STECKBRIEF: SteckbriefView = {
+const PEOPLE_RECORD: SteckbriefView = {
   address: 'Lacknergasse 12, 1170 Wien',
   startedOn: '2026-10',
   startedOnIsDefault: true,
@@ -95,8 +95,8 @@ const STECKBRIEF: SteckbriefView = {
   canErase: true,
 }
 
-const TEAM_STECKBRIEF: SteckbriefView = {
-  ...STECKBRIEF,
+const TEAM_PEOPLE_RECORD: SteckbriefView = {
+  ...PEOPLE_RECORD,
   startedOn: '2026-03',
   startedOnIsDefault: false,
   people: [
@@ -117,25 +117,25 @@ export const PROJECT_STEP_FIXTURES: Record<ProjectStepState, ProjectStepFixture>
   fresh: {
     view: INTAKE_WAITING,
     project: PROJECT,
-    steckbrief: STECKBRIEF,
+    peopleRecord: PEOPLE_RECORD,
     roster: { members: OFFICE, viewerUserId: ME },
   },
   team: {
     view: INTAKE_READY,
     project: PROJECT,
-    steckbrief: TEAM_STECKBRIEF,
+    peopleRecord: TEAM_PEOPLE_RECORD,
     roster: { members: TEAM_OFFICE, viewerUserId: ME },
   },
   viewer: {
     view: { ...INTAKE_READY, canDecide: false },
     project: PROJECT,
-    steckbrief: { ...TEAM_STECKBRIEF, canEdit: false, canErase: false },
+    peopleRecord: { ...TEAM_PEOPLE_RECORD, canEdit: false, canErase: false },
     roster: null,
   },
   closing: {
     view: INTAKE_CLOSING,
     project: { ...PROJECT, name: 'Wohnhausanlage Quellenstraße' },
-    steckbrief: { ...STECKBRIEF, startedOn: '2019-03', startedOnIsDefault: false },
+    peopleRecord: { ...PEOPLE_RECORD, startedOn: '2019-03', startedOnIsDefault: false },
     roster: { members: OFFICE, viewerUserId: ME },
   },
 }
@@ -147,40 +147,40 @@ export const PROJECT_STEP_FIXTURES: Record<ProjectStepState, ProjectStepFixture>
  */
 export function createFixtureParticipantsClient(state: ProjectStepState): ParticipantsClient {
   const fixture = PROJECT_STEP_FIXTURES[state]
-  let steckbrief = structuredClone(fixture.steckbrief)
+  let peopleRecord = structuredClone(fixture.peopleRecord)
   let office = fixture.roster ? structuredClone(fixture.roster.members) : null
   let next = 0
   const thisMonth = '2026-10' as const
 
   return {
     project: async () => fixture.project,
-    steckbrief: async () => structuredClone(steckbrief),
+    peopleRecord: async () => structuredClone(peopleRecord),
     roster: async () => (office && fixture.roster ? { members: structuredClone(office), viewerUserId: fixture.roster.viewerUserId } : null),
     async setRole(_projectId, organizationMembershipId, role) {
       const entry = office?.find((candidate) => candidate.organizationMembershipId === organizationMembershipId)
       if (!office || !entry) throw new Error('No such member in the fixture')
       office = office.map((candidate) => (candidate === entry ? { ...candidate, role: role || null } : candidate))
-      const listed = steckbrief.people.find((person) => person.userId === entry.userId)
+      const listed = peopleRecord.people.find((person) => person.userId === entry.userId)
       const people = role
         ? listed
-          ? steckbrief.people.map((person) => (person === listed ? { ...person, kind: 'member' as const, endedOn: null } : person))
-          : [...steckbrief.people, member(entry.userId, entry.name, { startedOn: thisMonth })]
-        : steckbrief.people.map((person) =>
+          ? peopleRecord.people.map((person) => (person === listed ? { ...person, kind: 'member' as const, endedOn: null } : person))
+          : [...peopleRecord.people, member(entry.userId, entry.name, { startedOn: thisMonth })]
+        : peopleRecord.people.map((person) =>
             person === listed ? { ...person, id: person.id ?? `person-${++next}`, kind: 'former' as const, endedOn: thisMonth } : person
           )
-      steckbrief = { ...steckbrief, people }
+      peopleRecord = { ...peopleRecord, people }
     },
     async savePerson(_projectId, input, personId) {
       const fields = { name: input.name, function: input.function, company: input.company, startedOn: input.startedOn, endedOn: input.endedOn }
-      const byUser = input.userId ? steckbrief.people.find((person) => person.userId === input.userId) : undefined
-      const target = personId ? steckbrief.people.find((person) => person.id === personId) : byUser
+      const byUser = input.userId ? peopleRecord.people.find((person) => person.userId === input.userId) : undefined
+      const target = personId ? peopleRecord.people.find((person) => person.id === personId) : byUser
       const people = target
-        ? steckbrief.people.map((person) => (person === target ? { ...person, ...fields, id: person.id ?? `person-${++next}` } : person))
-        : [...steckbrief.people, { ...fields, id: `person-${++next}`, kind: 'added' as const, userId: null }]
-      steckbrief = { ...steckbrief, people }
+        ? peopleRecord.people.map((person) => (person === target ? { ...person, ...fields, id: person.id ?? `person-${++next}` } : person))
+        : [...peopleRecord.people, { ...fields, id: `person-${++next}`, kind: 'added' as const, userId: null }]
+      peopleRecord = { ...peopleRecord, people }
     },
     async removePerson(_projectId, personId) {
-      steckbrief = { ...steckbrief, people: steckbrief.people.filter((person) => person.id !== personId) }
+      peopleRecord = { ...peopleRecord, people: peopleRecord.people.filter((person) => person.id !== personId) }
     },
   }
 }

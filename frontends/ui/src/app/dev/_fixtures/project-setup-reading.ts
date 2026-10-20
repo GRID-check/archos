@@ -16,8 +16,8 @@ import {
 } from './project-intake'
 
 const SITE_FROM_GEOCODER: ReadingProgress['site'] = {
-  bundesland: 'Wien',
-  gemeinde: 'Wien',
+  federalState: 'Wien',
+  municipality: 'Wien',
   address: FIXTURE_LOCATION.label,
   source: 'geocoder',
   confirmed: true,
@@ -51,8 +51,8 @@ export const READING_SITE_FROM_DOCUMENTS: IntakeView = {
   ...READING_RUNNING,
   location: null,
   readingProgress: progress(14, 23, {
-    bundesland: 'Niederösterreich',
-    gemeinde: null,
+    federalState: 'Niederösterreich',
+    municipality: null,
     address: 'Hauptplatz 4, 3100 St. Pölten',
     source: 'document',
     confirmed: false,
@@ -63,7 +63,7 @@ export const READING_SITE_FROM_DOCUMENTS: IntakeView = {
 export const READING_SITE_SEARCHING: IntakeView = {
   ...READING_RUNNING,
   location: null,
-  readingProgress: progress(3, 23, { bundesland: null, gemeinde: null, address: null, source: null, confirmed: false }),
+  readingProgress: progress(3, 23, { federalState: null, municipality: null, address: null, source: null, confirmed: false }),
 }
 
 /** Done: every document read, the ticket's own numbers, and Piloti's summary. */
