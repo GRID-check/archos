@@ -843,16 +843,47 @@ export async function getUsageOverview(
     filter.userId = session.userId
   }
 
-  const unit = await getOrgBudgetUnit(session.organizationId)
+  return assembleUsageOverview(session.organizationId, {
+    filter,
+    statusUserId: session.userId,
+    admin,
+    scope: admin ? filter : { userId: session.userId },
+  })
+}
+
+/**
+ * One organization's Budgets view as its own admins see it, for the platform's
+ * per-organization drill-down (`lib/budgets/platform-service.ts`). The same
+ * assembly as {@link getUsageOverview}, so the platform reads exactly the
+ * numbers the office reads. The caller holds the platform permission and the
+ * tenant scope.
+ */
+export async function getOrganizationUsageOverview(organizationId: string): Promise<UsageOverview> {
+  return assembleUsageOverview(organizationId, { filter: {}, statusUserId: null, admin: true, scope: {} })
+}
+
+async function assembleUsageOverview(
+  organizationId: string,
+  options: {
+    filter: { userId?: string; projectId?: string }
+    /** Whose member budget the blocked status includes; `null` for the organization alone. */
+    statusUserId: string | null
+    /** Budget admins also get the member breakdown and the 30-day trend. */
+    admin: boolean
+    scope: { userId?: string; projectId?: string }
+  },
+): Promise<UsageOverview> {
+  const { filter, statusUserId, admin, scope } = options
+  const unit = await getOrgBudgetUnit(organizationId)
   const project = toTenantWindow(unit)
 
   const [summary, orgBudget, status, perMember, dailyTrend] = await Promise.all([
-    getSpendSummary(session.organizationId, filter),
-    getOrgBudget(session.organizationId, unit),
-    getBudgetStatus(session.organizationId, session.userId, null),
+    getSpendSummary(organizationId, filter),
+    getOrgBudget(organizationId, unit),
+    getBudgetStatus(organizationId, statusUserId, null),
     // Member breakdown + trend feed the admin dashboard only.
-    admin ? getSpendByMember(session.organizationId) : Promise.resolve(null),
-    admin ? getDailySpendTrend({ organizationId: session.organizationId, days: 30 }) : Promise.resolve(null),
+    admin ? getSpendByMember(organizationId) : Promise.resolve(null),
+    admin ? getDailySpendTrend({ organizationId, days: 30 }) : Promise.resolve(null),
   ])
 
   return {
@@ -876,7 +907,7 @@ export async function getUsageOverview(
       explicit: orgBudget.explicit,
     },
     status: { blocked: status.blocked, blockedScope: status.blockedScope },
-    scope: admin ? filter : { userId: session.userId },
+    scope,
   }
 }
 

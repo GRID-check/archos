@@ -8,8 +8,9 @@ and what a person still has to click.
 The PostHog project is **EU Cloud, project 269895** (`https://eu.posthog.com`,
 ingestion `https://eu.i.posthog.com`). It is on by default in every Pulumi
 stack, staging and production alike: the host and the public project token
-are the program's defaults (`deploy/pulumi/src/config.ts`), and each event's
-`environment` tells the two apart. A stack opts out with an empty
+are the program's defaults (`deploy/pulumi/src/config.ts`). The browser's
+`$host` and the server's `app_host` tell the two apart; `APP_ENV` is
+`production` in both stacks, so the Python tiers' `environment` does not. A stack opts out with an empty
 `grid-oib:posthogHost`.
 
 ## What goes where

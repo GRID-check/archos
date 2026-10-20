@@ -514,3 +514,67 @@ async def test_an_async_chat_call_resolves_the_organizations_key_off_the_event_l
         reset_credential_cache()
     assert seen and seen[0].headers["authorization"] == "Bearer sk-or-org"
     assert resolved_on and resolved_on[0] != threading.main_thread().name
+
+
+# -- a model that cannot stop reasoning ---------------------------------------
+#
+# A role configured with `reasoning_effort: none` (the follow-ups stage) that an
+# org override points at a reasoning-mandatory model got OpenRouter's 400 on
+# every call, and the stage failed for every answer on that model. The call is
+# re-sent at the lowest effort instead, and the model is remembered.
+
+_REASONING_MANDATORY_400 = (
+    "Error code: 400 - {'error': {'message': 'Reasoning is mandatory for this endpoint and cannot be "
+    "disabled.', 'code': 400, 'metadata': {'provider_name': None}}}"
+)
+
+
+def _efforts_sent(llm, monkeypatch, *, refuse=_REASONING_MANDATORY_400):
+    """Patch the base class so reasoning-off is refused; returns the list of efforts each call went out with."""
+    from langchain_core.messages import AIMessage
+    from langchain_core.outputs import ChatGeneration
+    from langchain_core.outputs import ChatResult
+
+    from aiq_agent.common import llm_factory
+
+    monkeypatch.setattr(llm_factory, "_REASONING_MANDATORY", llm_factory.OrderedDict())
+    sent = []
+
+    async def _refuse_reasoning_off(self, messages, stop=None, run_manager=None, **kwargs):
+        sent.append(self.reasoning_effort)
+        if self.reasoning_effort == "none":
+            raise ValueError(refuse)
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content='{"items": []}'))])
+
+    monkeypatch.setattr(type(llm).__mro__[1], "_agenerate", _refuse_reasoning_off)
+    return sent
+
+
+async def test_a_reasoning_off_call_to_a_model_that_must_reason_is_sent_at_the_floor(monkeypatch):
+    llm = _openrouter_chat_model(reasoning_effort="none")
+    sent = _efforts_sent(llm, monkeypatch)
+
+    result = await llm.bind(max_tokens=400).ainvoke(_messages())
+
+    assert result.content == '{"items": []}'
+    assert sent == ["none", "minimal"]
+    assert llm.reasoning_effort == "none", "the shared instance must not be changed"
+
+
+async def test_the_next_call_to_that_model_goes_to_the_floor_directly(monkeypatch):
+    llm = _openrouter_chat_model(reasoning_effort="none")
+    sent = _efforts_sent(llm, monkeypatch)
+
+    await llm.ainvoke(_messages())
+    await llm.ainvoke(_messages())
+
+    assert sent == ["none", "minimal", "minimal"]
+
+
+async def test_any_other_refusal_is_not_resent(monkeypatch):
+    llm = _openrouter_chat_model(reasoning_effort="none")
+    sent = _efforts_sent(llm, monkeypatch, refuse="Error code: 400 - context length exceeded")
+
+    with pytest.raises(ValueError, match="context length"):
+        await llm.ainvoke(_messages())
+    assert sent == ["none"]

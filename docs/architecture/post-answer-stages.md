@@ -1659,7 +1659,11 @@ Then the specific risks:
    > existed. The group is declared `reasoningOff`, for the reason in §5.2: the
    > stage's output-token ceiling is spent by reasoning tokens too, so a
    > reasoning-mandatory model here truncates the JSON and the stage silently
-   > returns nothing. The `AgentGroup` is its own and not `MEMORY_REFLECTION`'s
+   > returns nothing. The admin UI's denylist (`REASONING_MANDATORY_PREFIXES`)
+   > keeps known ones out; one it misses no longer fails the stage on
+   > OpenRouter's 400 "Reasoning is mandatory": `llm_factory` re-sends the call
+   > at `reasoning_effort: minimal`, remembers the model, and logs a warning
+   > naming it for the denylist. The `AgentGroup` is its own and not `MEMORY_REFLECTION`'s
    > because the `llms` map is keyed by group — one key can hold one model, and
    > the two stages' capability bits have to be independent, or unsetting
    > `memory_reflection_llm` would silence follow-ups too.

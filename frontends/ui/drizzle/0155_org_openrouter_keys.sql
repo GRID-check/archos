@@ -1,4 +1,4 @@
--- 0154: org_openrouter_keys — the OpenRouter key the platform provisions for
+-- 0155: org_openrouter_keys — the OpenRouter key the platform provisions for
 -- each organization (ADR-0118).
 --
 -- ## What was missing

@@ -1,4 +1,4 @@
-import type { PlatformOrgBudget, PlatformOrgBudgetInput } from './platform-contract'
+import type { PlatformOrgBudget, PlatformOrgBudgetInput, PlatformOrgUsage } from './platform-contract'
 
 export class PlatformBudgetRequestError extends Error {
   constructor(readonly status: number) {
@@ -20,4 +20,12 @@ export async function fetchPlatformOrgBudget(
   })
   if (!response.ok) throw new PlatformBudgetRequestError(response.status)
   return (await response.json()) as PlatformOrgBudget
+}
+
+export async function fetchPlatformOrgUsage(organizationId: string): Promise<PlatformOrgUsage> {
+  const response = await fetch(`/api/platform/organizations/${encodeURIComponent(organizationId)}/usage`, {
+    credentials: 'same-origin',
+  })
+  if (!response.ok) throw new PlatformBudgetRequestError(response.status)
+  return (await response.json()) as PlatformOrgUsage
 }

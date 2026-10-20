@@ -92,12 +92,25 @@ describe('captureServer', () => {
     enable()
     vi.stubEnv('GRID_GIT_SHA', 'abc1234')
     vi.stubEnv('OTEL_SERVICE_NAME', 'grid-scheduler')
+    vi.stubEnv('WORKOS_REDIRECT_URI', '')
+    vi.stubEnv('NEXT_PUBLIC_WORKOS_REDIRECT_URI', '')
 
     getPosthogServer()
     getPosthogServer()
 
     expect(register).toHaveBeenCalledTimes(1)
     expect(register).toHaveBeenCalledWith({ release: 'abc1234', service: 'grid-scheduler' })
+  })
+
+  test('names the deployment by its app host, so staging and production stay apart', () => {
+    enable()
+    vi.stubEnv('GRID_GIT_SHA', 'abc1234')
+    vi.stubEnv('OTEL_SERVICE_NAME', 'grid-ui')
+    vi.stubEnv('WORKOS_REDIRECT_URI', 'https://app.dev.piloti.at/api/auth/callback')
+
+    getPosthogServer()
+
+    expect(register).toHaveBeenCalledWith({ release: 'abc1234', service: 'grid-ui', app_host: 'app.dev.piloti.at' })
   })
 
   test('omits organization_id when the event has no organization', () => {
