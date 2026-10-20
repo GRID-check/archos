@@ -29,7 +29,7 @@ import { en } from './dictionaries/en'
  */
 const FILE_NAMESPACES = [
   'files',
-  'office_shelf',
+  'officeShelf',
   'uploadBatches',
   'knowledge',
   'onboarding',
@@ -114,8 +114,10 @@ describe('file copy never calls a file a plan', () => {
     ['en', en],
   ] as const) {
     it(`${locale}: no „Plan“ wording in the file namespaces`, () => {
-      const scanned = FILE_NAMESPACES.filter((ns) => ns in dictionary)
-      expect(scanned).toContain('files')
+      // Every listed namespace must exist: a renamed one used to drop out of the
+      // scan without a word (`archiv` became `officeShelf` and went unchecked).
+      expect(FILE_NAMESPACES.filter((ns) => !(ns in dictionary))).toEqual([])
+      const scanned = FILE_NAMESPACES
       const offenders = scanned
         .flatMap((ns) => leaves((dictionary as Record<string, unknown>)[ns], ns))
         .filter(([, text]) => FORBIDDEN[locale].test(text))
