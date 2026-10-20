@@ -190,7 +190,7 @@ def resolve_org_keys(organization_id: str) -> OrgKeys:
     _remember(organization_id, _CacheEntry(keys, None, POSITIVE_TTL_SECONDS))
     if keys.byok is not None:
         logger.info(
-            "BYOK credential active for org %s (provider=%s, fingerprint=%s)",
+            "BYOK active for org %s (provider=%s, fingerprint=%s)",
             organization_id,
             keys.byok.provider,
             keys.byok.key_fingerprint,
