@@ -82,12 +82,21 @@ class _Schema(BaseModel):
 
 
 def _route_keys(app: FastAPI) -> set[tuple[str, str]]:
+    return _routes_under(app.routes, "")
+
+
+def _routes_under(routes: list, prefix: str) -> set[tuple[str, str]]:
+    # FastAPI 0.143 keeps an included router as one lazy `_IncludedRouter` entry
+    # instead of copying its routes onto the app, so descend into it, or every
+    # route mounted through `include_router` reads as missing.
     keys: set[tuple[str, str]] = set()
-    for route in app.routes:
+    for route in routes:
         if isinstance(route, APIWebSocketRoute):
-            keys.add(("WS", route.path))
+            keys.add(("WS", prefix + route.path))
         elif isinstance(route, (APIRoute, Route)):
-            keys.update((method, route.path) for method in (route.methods or set()) if method != "HEAD")
+            keys.update((method, prefix + route.path) for method in (route.methods or set()) if method != "HEAD")
+        elif hasattr(route, "original_router"):
+            keys |= _routes_under(route.original_router.routes, prefix + route.include_context.prefix)
     return keys
 
 
