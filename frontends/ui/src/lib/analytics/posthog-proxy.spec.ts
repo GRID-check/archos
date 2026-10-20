@@ -106,6 +106,23 @@ describe('forwardToPosthog', () => {
     })
   })
 
+  test('forwards the Support widget token, or every ticket is refused with 403', async () => {
+    const fetchImpl = vi.fn(async () => upstreamReply())
+    await forwardToPosthog(
+      new Request('https://app.example/ingest/api/conversations/v1/widget/message', {
+        method: 'POST',
+        body: '{}',
+        headers: { 'content-type': 'application/json', 'x-conversations-token': 'public-widget-token' },
+      }),
+      config,
+      fetchImpl as unknown as typeof fetch
+    )
+
+    const [url, init] = fetchImpl.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe('https://eu.i.posthog.com/api/conversations/v1/widget/message')
+    expect((init.headers as Headers).get('x-conversations-token')).toBe('public-widget-token')
+  })
+
   test('returns status and body, and drops the upstream cookie and encoding headers', async () => {
     const fetchImpl = vi.fn(async () => upstreamReply('{"ok":true}', 200))
     const response = await forwardToPosthog(new Request('https://app.example/ingest/flags/'), config, fetchImpl as unknown as typeof fetch)
