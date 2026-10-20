@@ -23,6 +23,7 @@ import 'server-only'
 
 import { PostHog } from 'posthog-node'
 
+import { configuredAppOrigin } from '@/lib/app-origin'
 import { deployedSha } from '@/lib/boot'
 
 import { scrubServerEvent } from './scrub-server-event'
@@ -65,6 +66,8 @@ export type ServerEvent =
   | 'annotation_created'
   | 'annotation_closed'
   | 'annotation_carried'
+  | 'llm_usage_hourly'
+  | 'organization_budget_snapshot'
 
 let client: PostHog | null = null
 let resolved = false
@@ -80,11 +83,21 @@ export const posthogServerSettings = (): { host: string; projectToken: string } 
 /** Whether the BFF sends anything to PostHog: both settings reached it. */
 export const isPosthogServerEnabled = (): boolean => posthogServerSettings() !== null
 
-/** What every server event carries: the deployed commit and which process sent it. */
-export const serverSuperProperties = (): { release: string; service: string } => ({
-  release: deployedSha(),
-  service: process.env.OTEL_SERVICE_NAME ?? 'grid-ui',
-})
+/**
+ * What every server event carries: the deployed commit, which process sent it,
+ * and which deployment it came from. Staging and production share one PostHog
+ * project and both run `APP_ENV=production`, so `app_host` (the app's own host,
+ * from the pinned redirect URI) is what tells their server events apart, the
+ * way `$host` does for the browser's. Absent when the deployment pins no origin.
+ */
+export const serverSuperProperties = (): { release: string; service: string; app_host?: string } => {
+  const origin = configuredAppOrigin()
+  return {
+    release: deployedSha(),
+    service: process.env.OTEL_SERVICE_NAME ?? 'grid-ui',
+    ...(origin ? { app_host: new URL(origin).host } : {}),
+  }
+}
 
 /** The process-wide client, built on first use; `null` while PostHog is off. */
 export const getPosthogServer = (): PostHog | null => {
@@ -140,6 +153,53 @@ export const captureServer = ({ event, distinctId, organizationId, properties }:
   } catch (error) {
     console.debug('[posthog] could not queue event', event, error)
     return false
+  }
+}
+
+/**
+ * A client of its own for one export run (`usage-export.ts`), unlike the shared
+ * fire-and-forget one: it never flushes by itself, so every event reaches
+ * PostHog through `flush()`, which rejects when the send failed. The export only
+ * moves its cursor after that resolves, which is what keeps an hour from being
+ * lost or sent twice. Each event carries its own `timestamp` (the hour it sums)
+ * and is personless. `null` while PostHog is off.
+ */
+export interface PosthogBatch {
+  capture(event: ServerCapture & { timestamp: Date }): void
+  /** Send what is queued; rejects when PostHog did not take it. */
+  flush(): Promise<void>
+  close(): Promise<void>
+}
+
+/** Larger than the exporter's flush chunk, so nothing queued is ever dropped. */
+const BATCH_QUEUE_LIMIT = 2_000
+
+export const createPosthogBatch = (): PosthogBatch | null => {
+  const config = posthogServerSettings()
+  if (!config) return null
+  const posthog = new PostHog(config.projectToken, {
+    host: config.host,
+    disableGeoip: true,
+    before_send: scrubServerEvent,
+    flushAt: BATCH_QUEUE_LIMIT,
+    flushInterval: 0,
+    maxQueueSize: BATCH_QUEUE_LIMIT,
+  })
+  void posthog.register(serverSuperProperties())
+  return {
+    capture: ({ event, distinctId, organizationId, properties, timestamp }) => {
+      const props: ServerProperties = { ...properties }
+      if (organizationId) props.organization_id = organizationId
+      posthog.capture({ event, distinctId: distinctId ?? undefined, properties: props, timestamp })
+    },
+    flush: () => posthog.flush(),
+    close: async () => {
+      try {
+        await posthog.shutdown()
+      } catch (error) {
+        console.debug('[posthog] export client shutdown failed', error)
+      }
+    },
   }
 }
 

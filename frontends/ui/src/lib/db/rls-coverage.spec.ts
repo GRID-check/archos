@@ -165,6 +165,10 @@ const BOUNDARY_MIGRATIONS = [
   // on for (ADR-0112). Keyed directly by its organization; the endpoint is
   // unique across tenants, so a device belongs to its last registrant.
   '0147_push_subscriptions.sql',
+  // Adds analytics_export_cursors — how far each export to PostHog has got.
+  // Platform bookkeeping with no tenant data, so a PLATFORM table: every
+  // tenant reads, only the platform role (the exporter) writes.
+  '0154_analytics_export_cursors.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>
