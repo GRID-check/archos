@@ -69,10 +69,12 @@ import {
   ForbiddenError,
   PayloadTooLargeError,
   TooManyRequestsError,
+  UpstreamError,
 } from './errors'
 import { requestBodyLimitBytes } from '@/shared/config/request-body-limit'
 import { REQUEST_ID_HEADER, resolveRequestId } from './request-id'
 import { databaseUnavailableCode } from '@/lib/db/errors'
+import { captureUpstreamError, upstreamContext } from '@/lib/analytics/upstream-error'
 import {
   LEGAL_HOLD_MESSAGE,
   LEGAL_HOLD_REASON,
@@ -268,6 +270,27 @@ function errorPayload(
   )
 }
 
+/**
+ * One ERROR line for a dependency that failed: object storage, the agent
+ * backend, the knowledge layer. Every other `ApiError` is an answer about the
+ * request and stays quiet, but a 502 is an outage, and it used to be answered
+ * without a word in the logs. A SeaweedFS that had run out of volume slots
+ * refused every new organization's first upload (2026-10-20), and the
+ * only signal was a user reading „Object storage is unavailable“.
+ *
+ * The path stays out, as with `[db] database unavailable`, so one outage files
+ * one issue rather than one per route. `operation` and `code` come from the
+ * error's details when the thrower put them there (`ensureTenantBucketChecked`
+ * does), because the S3 code is what tells a full disk from a missing slot.
+ * The same error goes to PostHog error tracking, where alerts are configured.
+ */
+function logUpstreamError(error: UpstreamError, requestId: string): void {
+  const { operation, code } = upstreamContext(error)
+  const context = `${operation ? ` operation=${operation}` : ''}${code ? ` code=${code}` : ''}`
+  console.error(`[upstream] ${error.message}${context} requestId=${requestId}`)
+  captureUpstreamError(error, requestId)
+}
+
 /** Seconds a client should wait before retrying a request the database outage refused. */
 const DATABASE_RETRY_AFTER_S = 5
 
@@ -282,6 +305,7 @@ export function errorResponse(error: unknown, request: Request): Response {
     // the retry storm the limit exists to stop (ADR-0040).
     const headers =
       error instanceof TooManyRequestsError ? rateLimitHeaders(error.decision) : undefined
+    if (error instanceof UpstreamError) logUpstreamError(error, requestId)
     return errorPayload(body, error.status, requestId, headers)
   }
   // Legacy guards (requireGridSession, requireProjectAccess, WorkOS client
