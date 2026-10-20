@@ -706,6 +706,34 @@ read only where the typed verdict is absent. A decision row and the
 (`reasonsOmitted`). The decision and its reasons:
 [ADR-0113](0113-a-held-files-reason-is-a-typed-verdict-stored-as-data.md).
 
+## Amendment (2026-10-20): a project may change the name terms for itself
+
+Ticket 26 („Blacklist akzeptieren / abändern für das Projekt"): the setup's
+Ablage step shows what the office's list holds back of the chosen project
+folder, and a project may change that for itself. A project adds name terms
+only it needs, or sets office name terms aside (a project whose „Verträge" are
+the Bauvertrag and the Werkverträge). Stored in `project_upload_screening`
+(migration 0154), one row per project that changes anything; read through
+`GET /api/projects/{id}/upload-screening` (`project:view`), written through its
+`PUT` (`project:manage`), audited as `project.upload_screening.updated` with
+counts, never terms.
+
+- **Only the name half.** The name gate is what a person sees before the upload,
+  so a change can be checked against its effect on the spot. Content terms and
+  detectors stay the office's: the content gate runs on text nobody has seen.
+- **Both name gates use it.** The browser reads the project's policy for an
+  upload into the project (`loadUploadScreeningPolicy(projectId)`), and the
+  BFF's repeat applies the same one (`assertUploadNameAllowed(…, projectId)`,
+  from `shelf-upload.ts`). Unreadable is a refusal, as for the office's list.
+- **Why `project:manage` may set a term aside.** The project's managers already
+  review its quarantine and may release any held file in it one by one; the
+  override changes the default, not who may decide. A switched-off office list
+  stays off: a project cannot screen alone what the office chose not to.
+- Chat attachments and the Büroablage keep the office's list. The document-role
+  hand-in (`document-role-field.tsx`) still reads the office's list in the
+  browser; the server applies the project's, so a project term surfaces there
+  as the server's refusal.
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.

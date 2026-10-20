@@ -52,6 +52,7 @@ export function useIntakeUpload({ projectId, collectionName, dropKey, onSettled 
   const shelfUpload = useShelfUpload({
     shelf: {
       endpoints,
+      projectId,
       handoverKey: projectId,
       probeNames: (names) => probe.project(projectId, names),
       probeFassungen: (names, landsIn) => probe.projectFassungen(projectId, names, landsIn),

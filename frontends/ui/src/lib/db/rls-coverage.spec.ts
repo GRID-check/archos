@@ -165,6 +165,10 @@ const BOUNDARY_MIGRATIONS = [
   // on for (ADR-0112). Keyed directly by its organization; the endpoint is
   // unique across tenants, so a device belongs to its last registrant.
   '0147_push_subscriptions.sql',
+  // Adds project_upload_screening — what one project changes about the
+  // office's sensitive-data name terms (ADR-0086, 2026-10-20). Keyed by its
+  // organization; the composite foreign key ties it to the project's.
+  '0154_project_upload_screening.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>
