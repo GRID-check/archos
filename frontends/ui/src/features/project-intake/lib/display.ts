@@ -12,6 +12,7 @@ import {
   type ProjectIntakeQuestion,
 } from '@/lib/project-profile/intake-definition'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
+import { OIB_EDITIONS } from '@/lib/project-experience/vocabulary'
 import type { Need } from '@/lib/project-intake/types'
 
 const WRITTEN_KEY = /^\/(?:facts|goals)\/([^/]+)/
@@ -38,6 +39,7 @@ export const baseKeyOf = (key: string): string => key.split('@')[0]
  * for a key no wizard question writes.
  */
 export function questionForKey(key: string): ProjectIntakeQuestion | undefined {
+  if (baseKeyOf(key) === 'oib_ausgabe') return oibEditionQuestion(key)
   const question = questionFor(baseKeyOf(key))
   if (!question) return undefined
   const type = question.type === 'number_tri' ? 'number' : question.type === 'yes_no_open' ? 'boolean' : question.type
@@ -48,6 +50,20 @@ export function questionForKey(key: string): ProjectIntakeQuestion | undefined {
     ...(question.unit ? { unit: question.unit } : {}),
     ...(question.placeholder ? { placeholder: question.placeholder } : {}),
     ...(question.options ? { options: question.options } : {}),
+  }
+}
+
+/**
+ * The OIB edition is read off a Bescheid or a Baubeschreibung and no wizard
+ * question writes it, yet it decides which Richtlinien apply: a person picks
+ * it from the editions the cross-project vocabulary knows.
+ */
+function oibEditionQuestion(key: string): ProjectIntakeQuestion {
+  return {
+    id: key,
+    label: labelForProfileKey(projectIntakeDefinitionV1, key),
+    type: 'single_select',
+    options: OIB_EDITIONS.map((year) => ({ value: year, label: year })),
   }
 }
 

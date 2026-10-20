@@ -145,7 +145,7 @@ function ClassResult({
             {reason}
           </p>
           {derivation.value !== null && (
-            <p className="text-muted-foreground mt-0.5 truncate text-[13px] leading-snug" title={derivation.citation}>
+            <p className="text-muted-foreground mt-0.5 text-pretty text-[13px] leading-snug">
               {derivation.citation}
             </p>
           )}

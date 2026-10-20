@@ -34,8 +34,10 @@ export function EditValue({
   const [open, setOpen] = useState(false)
   const [value, setValue] = useState<ProjectPrimitiveValue>(item.value)
   const [saving, save] = usePressed()
-  const question = questionForKey(item.key)
-  if (!question) return null
+  const asked = questionForKey(item.key)
+  if (!asked) return null
+  // The control is named like the row it changes.
+  const question = { ...asked, label }
   const provided = isIntakeAnswerProvided(value)
   return (
     <Popover

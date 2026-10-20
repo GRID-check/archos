@@ -178,6 +178,13 @@ describe('ProfileStep', () => {
       expect(onDecide).toHaveBeenLastCalledWith([{ key: 'nutzungseinheiten@bw1', action: 'answer', value: 16 }])
     })
 
+    it('lets the OIB edition be changed too, though no wizard question asks it', async () => {
+      setup(PROFILE_REVIEW)
+      await userEvent.click(screen.getByRole('button', { name: 'Change OIB-Ausgabe' }))
+      const editor = await screen.findByTestId('profile-edit-oib_ausgabe')
+      expect(within(editor).getByRole('combobox')).toHaveTextContent('2023')
+    })
+
     it('names the source without its file type, and shows its quote when it is focused', async () => {
       setup(PROFILE_REVIEW)
       const row = screen.getByTestId('profile-finding-fluchtniveau_m@bw1')
