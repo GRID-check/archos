@@ -554,8 +554,8 @@ def is_reasoning_incompatible_error(err: BaseException) -> bool:
     An org override can point a ``reasoning_effort: none`` role at a
     reasoning-mandatory model (e.g. ``x-ai/grok-4.5``);
     OpenRouter then 400s with "Reasoning is mandatory for this endpoint and
-    cannot be disabled". Callers use this to fall back to the workflow-default
-    model instead of failing the turn. Matched conservatively: the message must
+    cannot be disabled". ``llm_factory`` uses this to re-send the call at the
+    lowest reasoning effort instead of failing it. Matched conservatively: the message must
     mention reasoning AND carry a mandatory/cannot-disable/400 signal, so
     ordinary reasoning-themed content errors do not trigger a fallback.
     """

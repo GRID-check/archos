@@ -179,6 +179,7 @@ Consequences, where a reader looks for them.
 | [0115](0115-qdrant-replaces-chroma-reached-through-qdrant-client.md) | Qdrant replaces Chroma as the vector store, reached through qdrant-client | Accepted |
 | [0116](0116-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md) | Retrieval scope is a payload filter compiled in one place, not a collection | Accepted |
 | [0117](0117-a-document-is-parsed-on-one-worker-in-a-bounded-page-pipeline.md) | A document is parsed on one worker, in a bounded page pipeline | Proposed |
+| [0118](0118-posthog-support-is-the-record-for-product-feedback.md) | PostHog Support is the record of triage for product feedback | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

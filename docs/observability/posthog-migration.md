@@ -8,8 +8,9 @@ and what a person still has to click.
 The PostHog project is **EU Cloud, project 269895** (`https://eu.posthog.com`,
 ingestion `https://eu.i.posthog.com`). It is on by default in every Pulumi
 stack, staging and production alike: the host and the public project token
-are the program's defaults (`deploy/pulumi/src/config.ts`), and each event's
-`environment` tells the two apart. A stack opts out with an empty
+are the program's defaults (`deploy/pulumi/src/config.ts`). The browser's
+`$host` and the server's `app_host` tell the two apart; `APP_ENV` is
+`production` in both stacks, so the Python tiers' `environment` does not. A stack opts out with an empty
 `grid-oib:posthogHost`.
 
 ## What goes where
@@ -23,7 +24,7 @@ are the program's defaults (`deploy/pulumi/src/config.ts`), and each event's
 | Server-side events | PostHog | `posthog-node` behind `lib/analytics/posthog-server.ts` | Code in this change |
 | err2issue (ERROR logs → GitHub issues) | PostHog error tracking | Browser autocapture, BFF `onRequestError`, Python logging handler (caught-and-logged exceptions), source maps per release | Code in this change; err2issue deleted from the Pulumi program |
 | Aspire log pane | Retired. WARN+ logs go to PostHog Logs, traces are read in Langfuse | An exporter on the collector, `grid-oib:posthogLogsEnabled` (default on); the dashboard, its listener and its metrics pipeline are deleted | Code in this change; old dashboard keys to remove |
-| Product feedback dialog (Postgres, inbox; the GitHub filing is removed) | Unchanged, and also a PostHog Support conversation (report id and server-masked text, only when contact is allowed) | `posthog.conversations.sendMessage` | Code in this change |
+| Product feedback dialog (Postgres, inbox, its own triage statuses; the GitHub filing is removed) | A PostHog Support ticket for every report (report id and server-masked text, tagged `piloti-feedback`, `kind:<kind>`, `no-contact`), which is the record of triage; Postgres keeps the intake log and the ticket id, and Platform → Feedback reads and moves the tickets ([ADR-0118](../adr/0118-posthog-support-is-the-record-for-product-feedback.md)) | The BFF, through PostHog's widget endpoint in the reporter's widget session, and the private API with a personal API key | Code done; needs the key, see [checklist](#checklist) |
 | No surveys | PostHog Surveys (NPS, CSAT, churn), German first | Defined in PostHog | Drafts created, not launched |
 | No alerts | PostHog alerts on errors, logs and insights | Defined in PostHog | Created in the project |
 | No release markers | PostHog annotations and error-tracking releases per deploy | `deploy.yml` steps, skipped without the secret | Code in this change |
@@ -102,6 +103,14 @@ date.
   `POSTHOG_CLI_API_KEY` (personal API key, scopes `error_tracking:write`,
   `organization:read`, `annotation:write`) and repository variable
   `POSTHOG_PROJECT_ID=269895` ([`contributing/ci.md`](../contributing/ci.md)).
+- [ ] **Support key for product feedback**: a person with PostHog access creates a
+  personal API key with scopes `ticket:read`, `ticket:write`, `project:read`, and
+  puts it in each stack's ESC environment: `esc env set
+  matthiasbigl/grid-oib/<dev|prod> pulumiConfig.grid-oib:posthogPersonalApiKey
+  "phx_..." --secret`. `grid-oib:posthogProjectId` defaults to `269895`. Until
+  the key is set, feedback reports open no Support ticket and Platform → Feedback
+  shows the local log, read-only ([ADR-0118](../adr/0118-posthog-support-is-the-record-for-product-feedback.md)).
+  The key belongs to that person: rotate it when they leave.
 - [ ] **Turn the scouts on**: once consent and GitHub are in place, set the dry-run
   scouts to write to the inbox (`emit`) one at a time, and turn on pr-follow-up.
 - [ ] **Survey translations** (English) and launch, after the events they target
@@ -152,10 +161,13 @@ date.
 6. **Replay link needs two flags.** The browser's session id only reaches the
    trace with `GRID_WIRE_V2_ADDITIVE_FIELDS` on, its default (the hello withholds
    `accepts` when it is set off) and `GRID_TRACE_IDENTITY_ATTRIBUTES` on.
-7. **Support replies.** A feedback report opens a PostHog Support ticket, but
-   replies are visible to the member only through PostHog's own widget, which
-   adds its own bubble. The alternative is an in-app "Antworten vom Support" view
-   on `posthog.conversations.getTickets`/`getMessages`, which is not built.
+7. **Support replies.** The BFF opens a PostHog Support ticket for every
+   feedback report, in the reporter's widget session (ADR-0118), so a reply
+   reaches the member only through PostHog's own widget, which adds its own
+   bubble. A report sent from a browser without PostHog gets a fresh widget
+   session and cannot be answered there at all, and a `no-contact` ticket must
+   not be. The alternative is an in-app "Antworten vom Support" view on
+   `posthog.conversations.getTickets`/`getMessages`, which is not built.
 8. **Browser storage.** Persistence is `localStorage+cookie` (cross-subdomain),
    so the anonymous id and session survive the WorkOS redirect and a reload. The
    privacy notice names the `ph_<token>_posthog` cookie and entry and the survey

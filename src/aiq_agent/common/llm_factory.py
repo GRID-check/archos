@@ -24,6 +24,11 @@ automatically:
   :func:`disable_previous_response_id`): OpenRouter's Responses API is
   stateless and rejects the field, while NAT turns it on for every
   ``api_type: responses`` client.
+- the reasoning floor (see :func:`_needs_reasoning_floor`): a role configured
+  with ``reasoning_effort: none`` that a model override points at a model which
+  cannot stop reasoning gets the 400 "Reasoning is mandatory" on every call. The
+  call is sent once more at the lowest effort instead, and the model is
+  remembered so later calls go there directly.
 
 Every one of these is OpenRouter-specific, so each is applied only to LLMs
 whose ``base_url`` points at OpenRouter — non-OpenRouter deployments (e.g.
@@ -42,6 +47,7 @@ https://openrouter.ai/docs/guides/features/plugins/response-healing
 from __future__ import annotations
 
 import logging
+from collections import OrderedDict
 from contextlib import nullcontext
 from typing import Any
 
@@ -70,6 +76,16 @@ _CONTRACT_SUBCLASSES: dict[type, type] = {}
 #: generic error (GRID-check/grid-oib-agent#826). Matched on the provider's
 #: error code, which is what OpenRouter puts in front of the message.
 _STREAMED_RATE_LIMIT_MESSAGES = ("rate_limit_exceeded",)
+
+
+#: The effort a reasoning-off call is re-sent at when its model cannot stop
+#: reasoning. OpenRouter maps it to the lowest level the model supports.
+_REASONING_FLOOR = "minimal"
+
+#: Model ids a provider has refused reasoning-off for, in first-seen order.
+#: Process-lifetime and bounded, keyed by model id only: no tenant or turn data.
+_REASONING_MANDATORY: OrderedDict[str, None] = OrderedDict()
+_REASONING_MANDATORY_MAX = 64
 
 
 def retry_messages(configured: list[str] | None) -> list[str]:
@@ -242,6 +258,41 @@ def _provider_slot_async(llm: Any):
     return provider_limiter.aslot(model=_model_label(llm))
 
 
+def _reasoning_off(llm: Any) -> bool:
+    return getattr(llm, "reasoning_effort", None) == "none"
+
+
+def _with_reasoning_floor(llm: Any) -> Any:
+    """``llm`` itself, or a copy at the floor effort when its model is known to refuse reasoning-off."""
+    if not _reasoning_off(llm) or _model_label(llm) not in _REASONING_MANDATORY:
+        return llm
+    return llm.model_copy(update={"reasoning_effort": _REASONING_FLOOR})
+
+
+def _needs_reasoning_floor(llm: Any, target: Any, error: BaseException) -> bool:
+    """True when ``error`` is the provider refusing reasoning-off for ``llm``'s model; remembers the model.
+
+    Only for a call that went out with reasoning off (``target is llm``): a copy
+    already at the floor that fails again fails for another reason.
+    """
+    from aiq_agent.common.model_overrides import is_reasoning_incompatible_error
+
+    if target is not llm or not _reasoning_off(llm) or not is_reasoning_incompatible_error(error):
+        return False
+    model = _model_label(llm) or "?"
+    if model not in _REASONING_MANDATORY:
+        logger.warning(
+            "Model %s cannot run with reasoning off; sending its calls at reasoning_effort=%s. "
+            "Add it to REASONING_MANDATORY_PREFIXES so the admin UI stops offering it to reasoning-off groups.",
+            model,
+            _REASONING_FLOOR,
+        )
+    _REASONING_MANDATORY[model] = None
+    while len(_REASONING_MANDATORY) > _REASONING_MANDATORY_MAX:
+        _REASONING_MANDATORY.popitem(last=False)
+    return True
+
+
 def _contract_subclass(base: type) -> type:
     """Build (once per base class) a subclass that normalizes outgoing requests.
 
@@ -263,25 +314,62 @@ def _contract_subclass(base: type) -> type:
 
     from langchain_core.language_models.chat_models import BaseChatModel
 
+    # Each entry point sends once more at the reasoning floor when the provider
+    # refuses reasoning-off (`_needs_reasoning_floor`). A stream is re-sent only
+    # if nothing of it was yielded yet; the refusal comes before the first chunk.
     def _generate(self, messages, stop=None, run_manager=None, **kwargs):
         prepared = prepare_request(self, messages, kwargs)
+        target = _with_reasoning_floor(self)
         with _provider_slot(self):
-            return base._generate(self, prepared, stop=stop, run_manager=run_manager, **kwargs)
+            try:
+                return base._generate(target, prepared, stop=stop, run_manager=run_manager, **kwargs)
+            except Exception as exc:
+                if not _needs_reasoning_floor(self, target, exc):
+                    raise
+            return base._generate(_with_reasoning_floor(self), prepared, stop=stop, run_manager=run_manager, **kwargs)
 
     async def _agenerate(self, messages, stop=None, run_manager=None, **kwargs):
         prepared = prepare_request(self, messages, kwargs)
+        target = _with_reasoning_floor(self)
         async with _provider_slot_async(self):
-            return await base._agenerate(self, prepared, stop=stop, run_manager=run_manager, **kwargs)
+            try:
+                return await base._agenerate(target, prepared, stop=stop, run_manager=run_manager, **kwargs)
+            except Exception as exc:
+                if not _needs_reasoning_floor(self, target, exc):
+                    raise
+            floored = _with_reasoning_floor(self)
+            return await base._agenerate(floored, prepared, stop=stop, run_manager=run_manager, **kwargs)
 
     def _stream(self, messages, stop=None, run_manager=None, **kwargs):
         prepared = prepare_request(self, messages, kwargs)
+        target = _with_reasoning_floor(self)
         with _provider_slot(self):
-            yield from base._stream(self, prepared, stop=stop, run_manager=run_manager, **kwargs)
+            started = False
+            try:
+                for chunk in base._stream(target, prepared, stop=stop, run_manager=run_manager, **kwargs):
+                    started = True
+                    yield chunk
+                return
+            except Exception as exc:
+                if started or not _needs_reasoning_floor(self, target, exc):
+                    raise
+            yield from base._stream(_with_reasoning_floor(self), prepared, stop=stop, run_manager=run_manager, **kwargs)
 
     async def _astream(self, messages, stop=None, run_manager=None, **kwargs):
         prepared = prepare_request(self, messages, kwargs)
+        target = _with_reasoning_floor(self)
         async with _provider_slot_async(self):
-            async for chunk in base._astream(self, prepared, stop=stop, run_manager=run_manager, **kwargs):
+            started = False
+            try:
+                async for chunk in base._astream(target, prepared, stop=stop, run_manager=run_manager, **kwargs):
+                    started = True
+                    yield chunk
+                return
+            except Exception as exc:
+                if started or not _needs_reasoning_floor(self, target, exc):
+                    raise
+            floored = _with_reasoning_floor(self)
+            async for chunk in base._astream(floored, prepared, stop=stop, run_manager=run_manager, **kwargs):
                 yield chunk
 
     namespace: dict[str, Any] = {_CONTRACT_MARKER: True, "_generate": _generate, "_agenerate": _agenerate}
