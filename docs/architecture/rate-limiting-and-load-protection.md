@@ -502,15 +502,13 @@ than an admission.
   never fill. The budget (`vlmFleetConcurrency`,
   `vlmBatchWorkers`, `providerLimitCeiling`, `providerModelLimitCeiling`) is
   stack config, not image defaults.
-- **Measured, with no sink today.** `grid.queue.depth{queue,status}`,
+- **Measured, in PostHog Metrics.** `grid.queue.depth{queue,status}`,
   `grid.queue.oldest_age_seconds`, `grid.queue.claim_latency_ms`,
-  `grid.queue.job_duration_seconds{kind}` and `grid.queue.dead_total` are
-  instruments on the OpenTelemetry API. Nothing installs a `MeterProvider` and
-  the collector's one metrics pipeline scrapes Qdrant, not OTLP, so they are
-  no-ops: the Aspire
-  dashboard was their only consumer and is retired. Depth and age are readable
-  from Postgres (the KEDA scalers read them there); the rest need a sink before
-  a queue is tuned from them, which is the owner's call.
+  `grid.queue.job_duration_seconds{kind}` and `grid.queue.dead_total`, for
+  every queue (the BFF's included), reach PostHog through the collector
+  (ADR-0119, [`metrics.md`](../observability/metrics.md)). Every replica
+  reports the same depth, read from the same table, so chart depth and age
+  with `max`, not `sum`.
 - **A fixed ceiling at the provider.** However many workers run, at most
   `AIQ_VLM_FLEET_CONCURRENCY` vision calls are in flight, a Dragonfly lease pool
   sharing L3's scripts (`common/lease_slots.py`). A 429 backs off outside its
