@@ -22,6 +22,7 @@ import {
 } from '@/lib/project-profile/intake-definition'
 import type { ProjectAssumption, ProjectFact, ProjectProfile } from '@/lib/project-profile/types'
 import type { ProjectIntakeRow } from '@/lib/db/schema/project-intakes'
+import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { deriveAll } from './derivation-view'
 import { GEBAEUDEKLASSE_DERIVATION } from './derivations'
 import { profileKeyParts } from './profile-edits'
@@ -223,5 +224,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
     derivations: derivationReviews(profile, definition, needs),
     canDecide: input.canDecide,
     canComplete: input.canComplete,
+    // Step 5, Steckbrief: the Ampel from the confirmed values (facts) only.
+    applicableStandards: getApplicableStandards(profile),
   }
 }

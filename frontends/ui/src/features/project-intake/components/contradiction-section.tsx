@@ -7,8 +7,9 @@ import { useTranslations } from '@/i18n'
 import type { IntakeDecision, ProfileEvidence, Suggestion } from '@/lib/project-intake/types'
 import { usePressed } from '../hooks/use-pressed'
 import { displayValue } from '../lib/display'
-import { DecisiveBadge, IntakeSection } from './intake-atoms'
-import { EvidenceChips } from './evidence-chips'
+import { ConfidenceNote, DecisiveBadge, IntakeSection } from './intake-atoms'
+import { confidenceOf } from './profile/confidence'
+import { ValueEvidence } from './profile/value-evidence'
 
 /** One value a contradiction offers: the value on the profile, or an alternative found beside it. */
 interface Option {
@@ -35,6 +36,8 @@ function optionsOf(item: Suggestion): Option[] {
  * profile's own value, or the alternative at its index); an alternative can
  * also be discarded, which Piloti remembers so it is not suggested again.
  * One card per key, its values divided by hairlines: no box inside the box.
+ * Each value says how many sources back it and shows the excerpt of the page
+ * it was read from, so the two can be compared where they were found.
  */
 export function ContradictionSection({
   items,
@@ -48,6 +51,7 @@ export function ContradictionSection({
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
 }): JSX.Element | null {
   const t = useTranslations('projectIntake')
+  const tStep = useTranslations('intakeProfileStep')
   if (items.length === 0) return null
 
   return (
@@ -67,6 +71,10 @@ export function ContradictionSection({
                   {item.decisive && (
                     <DecisiveBadge label={t('review.decisive')} title={t('review.decisiveHint')} />
                   )}
+                  <ConfidenceNote
+                    level="contested"
+                    label={tStep('confidence.contested', { count: 1 + item.alternatives.length })}
+                  />
                 </div>
                 <ul className="divide-border divide-y border-t">
                   {optionsOf(item).map((option) => (
@@ -107,13 +115,19 @@ function OptionRow({
   const [discarding, discard] = usePressed()
   const { alternativeIndex } = option
   return (
-    <li className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
-      <div className="flex min-w-0 flex-col items-start gap-1.5">
+    <li className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+      <div className="flex min-w-0 flex-1 flex-col items-start gap-1.5">
         <p className="text-muted-foreground text-xs">
           {alternativeIndex === undefined ? t('contradictions.current') : t('contradictions.found')}
         </p>
         <p className="text-base font-medium break-words hyphens-auto">{option.display}</p>
-        <EvidenceChips evidence={option.evidence} />
+        <ValueEvidence
+          item={item}
+          evidence={option.evidence}
+          confidence={confidenceOf({ state: 'suggested', evidence: option.evidence, alternatives: [] })}
+          excerptOpen
+          className="w-full"
+        />
       </div>
       <div className="flex flex-wrap gap-2 sm:shrink-0 sm:justify-end">
         <BusyButton

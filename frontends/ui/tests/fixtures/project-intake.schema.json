@@ -2800,6 +2800,58 @@
         },
         "canComplete": {
           "type": "boolean"
+        },
+        "applicableStandards": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 32
+              },
+              "titleEn": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "titleDe": {
+                "type": "string",
+                "maxLength": 300
+              },
+              "scope": {
+                "type": "string",
+                "maxLength": 1000
+              },
+              "oibUrl": {
+                "type": "string",
+                "maxLength": 500
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "required",
+                  "likely",
+                  "check"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "maxLength": 1000
+              }
+            },
+            "required": [
+              "code",
+              "titleEn",
+              "titleDe",
+              "scope",
+              "oibUrl",
+              "status",
+              "reason"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 40
         }
       },
       "required": [

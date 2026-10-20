@@ -166,4 +166,28 @@ describe('buildIntakeView', () => {
     expect(derivation.inputs).toEqual([{ key: 'bauwerkstyp@bw1', value: 'gebaeude', suggested: true }])
     expect(derivation.missing.length).toBeGreaterThan(0)
   })
+
+  // Step 5, Steckbrief: the rule set's Ampel reads what a person confirmed, never a suggestion.
+  it('computes the applicable Richtlinien from the confirmed values only', () => {
+    const highRise = { value: 25, status: 'unconfirmed' as const, reason: 'r', source: 'agent_suggested' as const, updatedAt: NOW }
+    const suggested = buildIntakeView({
+      ...input(),
+      profile: { ...profile, assumptions: { ...profile.assumptions, 'fluchtniveau_m@bw1': highRise } },
+    })
+    expect(suggested.applicableStandards?.map((standard) => standard.code)).not.toContain('OIB 2.3')
+
+    const confirmed = buildIntakeView({
+      ...input(),
+      profile: {
+        ...profile,
+        facts: {
+          ...profile.facts,
+          'fluchtniveau_m@bw1': { value: 25, confidence: 'confirmed', source: 'onboarding', updatedAt: NOW },
+        },
+      },
+    })
+    expect(confirmed.applicableStandards).toContainEqual(
+      expect.objectContaining({ code: 'OIB 2.3', status: 'required' })
+    )
+  })
 })
