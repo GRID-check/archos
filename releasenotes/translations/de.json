@@ -1196,6 +1196,10 @@
     "de": "Ctrl+F (Cmd+F am Mac) durchsucht ein PDF. Die Suche zählt die Treffer und springt zwischen ihnen."
   },
   {
+    "en": "Custom roles grant the Büroablage under a new permission name. Roles that hold the old one keep their access; the role editor offers only the new one.",
+    "de": "Benutzerdefinierte Rollen gewähren unter einem neuen Berechtigungsnamen Zugriff auf die Büroablage. Rollen mit der alten Berechtigung behalten ihren Zugriff; der Rollen-Editor bietet nur die neue Berechtigung an."
+  },
+  {
     "en": "Dateien and the Archiv now update while you look at them: a colleague's upload, a file Piloti filed, a move, a rename or a new folder appears without reloading the page, and a file's status changes as soon as it has been read.",
     "de": "Dateien und das Archiv aktualisieren sich jetzt, während Sie sie ansehen: Der Upload eines Kollegen, eine von Piloti abgelegte Datei, ein Verschieben, eine Umbenennung oder ein neuer Ordner werden ohne Neuladen der Seite angezeigt, und der Status einer Datei ändert sich, sobald sie gelesen wird."
   },
@@ -2608,8 +2612,16 @@
     "de": "Der Bereich Automation eines Projekts hat einen neuen Tab „Tasks“. Er listet die Aufgaben auf, die Sie an Piloti übergeben haben, aus einem Chat, aus einer Prüfentscheidung oder aus einem Zeitplan, mit Aufgabenstellung, Fortschritt, Bewertung und einem Link zu dem Dokument oder Chat, in dem das Ergebnis gelandet ist."
   },
   {
+    "en": "The BCF file of open BIM check items downloads as compliance-checks-<model>-<revision>.bcfzip instead of pruefbuch-….",
+    "de": "Die BCF-Datei der offenen BIM-Prüfpunkte wird als compliance-checks-<model>-<revision>.bcfzip statt als pruefbuch-… heruntergeladen."
+  },
+  {
     "en": "The Belegt durch line shows „+N weitere“ beyond eight sources and expands on request, and Alle Quellen kopieren always copies every source.",
     "de": "Die Zeile „Belegt durch“ zeigt ab acht Quellen „+N weitere“ und klappt auf Wunsch alle auf, und „Alle Quellen kopieren“ übernimmt stets jede Quelle."
+  },
+  {
+    "en": "The Büroablage now opens at /app/office-shelf. Bookmarks, shared links and Postfach entries that point to /app/archiv keep working and lead there.",
+    "de": "Die Büroablage öffnet sich jetzt unter /app/office-shelf. Lesezeichen, geteilte Links und Postfach-Einträge, die auf /app/archiv verweisen, funktionieren weiterhin und führen dorthin."
   },
   {
     "en": "The English website now has English addresses, for example /en/use-cases/ and /en/why-piloti/ instead of German words after /en/. Links you saved or shared before still work and lead to the new address.",

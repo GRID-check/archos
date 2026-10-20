@@ -138,6 +138,18 @@
               "de": "Die integrierten Skills haben englische Namen: /submission-check, /fire-safety, /existing-building, /safety-in-use, /building-class, /thermal-protection, /plot-development und /inspection-report-writer. Die bisherigen Namen, etwa /einreichcheck, funktionieren weiterhin bei der Eingabe und in geplanten Aufgaben. Wenn Sie einen davon eingeben, wird der Skill weiterhin im Menü angezeigt."
             },
             {
+              "en": "The Büroablage now opens at /app/office-shelf. Bookmarks, shared links and Postfach entries that point to /app/archiv keep working and lead there.",
+              "de": "Die Büroablage öffnet sich jetzt unter /app/office-shelf. Lesezeichen, geteilte Links und Postfach-Einträge, die auf /app/archiv verweisen, funktionieren weiterhin und führen dorthin."
+            },
+            {
+              "en": "The BCF file of open BIM check items downloads as compliance-checks-<model>-<revision>.bcfzip instead of pruefbuch-….",
+              "de": "Die BCF-Datei der offenen BIM-Prüfpunkte wird als compliance-checks-<model>-<revision>.bcfzip statt als pruefbuch-… heruntergeladen."
+            },
+            {
+              "en": "Custom roles grant the Büroablage under a new permission name. Roles that hold the old one keep their access; the role editor offers only the new one.",
+              "de": "Benutzerdefinierte Rollen gewähren unter einem neuen Berechtigungsnamen Zugriff auf die Büroablage. Rollen mit der alten Berechtigung behalten ihren Zugriff; der Rollen-Editor bietet nur die neue Berechtigung an."
+            },
+            {
               "en": "An office's default language under Organisation → Einstellungen is now \"Nicht festgelegt\" until an administrator picks one, and each person then starts in their browser's language. Offices that had the English preset stored have it reset; set it again there if your office wants English.",
               "de": "Die Standardsprache eines Büros unter Organisation → Einstellungen ist jetzt „Nicht festgelegt“, bis ein Administrator eine Sprache auswählt. Anschließend startet jede Person in der Sprache ihres Browsers. Bei Büros, bei denen Englisch als Voreinstellung gespeichert war, wird diese zurückgesetzt. Wählen Sie Englisch dort erneut aus, wenn Ihr Büro Englisch verwenden möchte."
             }
