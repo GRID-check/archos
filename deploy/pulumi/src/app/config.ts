@@ -17,6 +17,8 @@ export interface AppWiring {
   seaweedPublicEndpoint: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
+  /** The self-hosted Photon's URL (set when cfg.geocoder.enabled, ADR-0118). */
+  geocoderUrl?: pulumi.Output<string>;
   /** The Qdrant cluster's client URL (ADR-0115): the one vector store, so there is no embedded one. */
   qdrantUrl: pulumi.Output<string>;
   /** Every DSN states its route (`via`), pooled or direct: see `PgRoute` in `data/postgres.ts`. */
@@ -621,6 +623,10 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // source it indexes those from (ADR-0071). Absent ⇒ those files are
     // marked failed (retryable); .xlsx/.xlsm index without preview.
     ...(w.gotenbergUrl ? [{ name: "GOTENBERG_URL", value: w.gotenbergUrl }] : []),
+    // Address search for the project dialog (ADR-0118), behind `/api/geocode`.
+    // Absent ⇒ the route answers `enabled: false` and the address stays a plain
+    // text field. Only ever the in-cluster Photon: an address is client data.
+    ...(w.geocoderUrl ? [{ name: "GRID_GEOCODER_URL", value: w.geocoderUrl }] : []),
     // OTLP tracing via the cluster collector — injected only when the
     // observability tier is deployed, which is what makes
     // src/instrumentation.ts register @vercel/otel (it no-ops without the
@@ -681,6 +687,9 @@ const BFF_JOBS_OVERRIDES = new Set(["OTEL_SERVICE_NAME", "GRID_SHUTDOWN_DRAIN_MS
  * Only the request path scores a vote, and `allow-frontend-to-langfuse` admits
  * the frontend alone, so a job holding them could reach for an API it cannot
  * open. Erasing traces is the purger's and the scheduler's (ADR-0044).
+ *
+ * The geocoder's URL likewise: address search is a request-path feature, and
+ * `geocoder-frontend-only` admits the frontend alone (ADR-0118).
  */
 const BFF_JOBS_WITHHELD = new Set([
   "LANGFUSE_HOST",
@@ -688,6 +697,7 @@ const BFF_JOBS_WITHHELD = new Set([
   "LANGFUSE_PROJECT_ID",
   "LANGFUSE_PUBLIC_KEY",
   "LANGFUSE_SECRET_KEY",
+  "GRID_GEOCODER_URL",
 ]);
 const inheritedByBffJobs = (env: EnvVar) =>
   typeof env.name !== "string" || !(BFF_JOBS_OVERRIDES.has(env.name) || BFF_JOBS_WITHHELD.has(env.name));
