@@ -31,6 +31,10 @@ describe('AuthKit v4 proxy', () => {
             '/api/auth/websocket-scope',
             '/auth/error',
             '/api/internal/(.*)',
+            // The MCP server checks its own bearer token or envelope (ADR-0121);
+            // the OAuth protected-resource metadata is public by RFC 9728.
+            '/api/mcp',
+            '/.well-known/(.*)',
             // The image optimizer re-enters the router in-process, so
             // middleware runs on this route with a cookie-less mocked request.
             '/api/documents/(.*)/image',
