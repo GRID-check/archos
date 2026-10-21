@@ -2920,11 +2920,43 @@
           "title": "Newer Id",
           "type": "string"
         },
+        "newer_name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The newer Fassung's file name, when the comparison named it; the side's label",
+          "title": "Newer Name"
+        },
         "older_id": {
           "description": "The older Fassung's workspace document id",
           "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
           "title": "Older Id",
           "type": "string"
+        },
+        "older_name": {
+          "anyOf": [
+            {
+              "maxLength": 255,
+              "minLength": 1,
+              "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The older Fassung's file name, when the comparison named it; the side's label",
+          "title": "Older Name"
         },
         "page": {
           "description": "The page compared, from 1; the same page of both Fassungen",

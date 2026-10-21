@@ -464,6 +464,8 @@ export const GridCardView: FC<GridCardViewProps> = ({
         <RevisionCompareCard
           olderId={card.older_id}
           newerId={card.newer_id}
+          olderName={card.older_name}
+          newerName={card.newer_name}
           page={card.page}
           changes={card.changes}
           summary={card.summary}

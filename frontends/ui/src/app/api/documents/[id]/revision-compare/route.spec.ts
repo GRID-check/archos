@@ -36,10 +36,12 @@ const call = (id: string, body: unknown) =>
 describe('POST /api/documents/[id]/revision-compare', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('compares the older document with the one in the path and returns regions and summary', async () => {
+  it('compares the older document with the one in the path and returns regions, summary and both file names', async () => {
     const answer = {
       regions: [{ page: 2, x: 0.1, y: 0.2, w: 0.3, h: 0.4, label: 'Tür neu' }],
       summary: ['Eine Tür ist neu.'],
+      older_name: 'Grundriss_A.pdf',
+      newer_name: 'Grundriss_B.pdf',
     }
     vi.mocked(compareRevisionVisually).mockResolvedValue(answer)
 
@@ -51,7 +53,7 @@ describe('POST /api/documents/[id]/revision-compare', () => {
   })
 
   it('takes page 1 when none is given', async () => {
-    vi.mocked(compareRevisionVisually).mockResolvedValue({ regions: [], summary: [] })
+    vi.mocked(compareRevisionVisually).mockResolvedValue({ regions: [], summary: [], older_name: 'a.pdf', newer_name: 'b.pdf' })
 
     expect((await call('doc-b', { older: OLDER })).status).toBe(200)
     expect(compareRevisionVisually).toHaveBeenCalledWith(expect.anything(), 'doc-b', OLDER, 1)

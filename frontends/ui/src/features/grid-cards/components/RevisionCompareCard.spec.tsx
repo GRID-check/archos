@@ -49,6 +49,20 @@ describe('RevisionCompareCard', () => {
     expect(lines.map((line) => line.textContent)).toEqual(['Plankopf: Index B statt A', 'Treppe breiter'])
   })
 
+  test('labels each side with its file name when the comparison named it, and with its role otherwise', () => {
+    const { rerender } = render(<RevisionCompareCard {...props} olderName="Grundriss_A.pdf" newerName="Grundriss_B.pdf" />)
+    const sides = screen.getAllByTestId('revision-compare-side')
+    expect(sides[0]).toHaveTextContent('Grundriss_A.pdf')
+    expect(sides[1]).toHaveTextContent('Grundriss_B.pdf')
+    expect(sides[0]).not.toHaveTextContent('Older Fassung')
+    expect(screen.getByRole('button', { name: 'Grundriss_A.pdf, p. 2: open with the changes' })).toBeInTheDocument()
+
+    rerender(<RevisionCompareCard {...props} olderName="Grundriss_A.pdf" />)
+    const mixed = screen.getAllByTestId('revision-compare-side')
+    expect(mixed[0]).toHaveTextContent('Grundriss_A.pdf')
+    expect(mixed[1]).toHaveTextContent('Newer Fassung')
+  })
+
   test('a change is a corner pair for the viewer, and each side is an address of its own document', () => {
     expect(changeRegions(card.changes)).toEqual([
       { box: [0.6, 0.1, 0.8, 0.2] },

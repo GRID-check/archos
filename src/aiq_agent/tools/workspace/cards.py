@@ -125,13 +125,21 @@ def _compare_summary(structured: dict[str, Any]) -> list[str]:
     return [line.strip()[:400] for line in structured.get("summary") or [] if isinstance(line, str) and line.strip()]
 
 
+def _compare_name(structured: dict[str, Any], key: str) -> str | None:
+    """A file name the comparison returned, or ``None`` (the card then labels the side by its role)."""
+    value = structured.get(key)
+    name = value.strip()[:255] if isinstance(value, str) else ""
+    return name or None
+
+
 def emit_revision_compare_card(structured: object, call_input: dict[str, Any] | None) -> int | None:
     """Show a ``document-revision-compare`` result as a card; its number in the turn (``[[card:N]]``), or ``None``.
 
     ``call_input`` is what the model called the operation with: the newer document is
     ``params.id``, the older ``body.older`` and the page ``body.page`` (1 when absent, as
-    the route defaults it). Only the ids, the page and what the comparison returned go on the
-    card: an address, never a picture. A result without sentences (a refusal, a truncated
+    the route defaults it). Only the ids, the file names the result carries
+    (``older_name``/``newer_name``, when present), the page and what the comparison
+    returned go on the card: an address, never a picture. A result without sentences (a refusal, a truncated
     answer) has no card, and a pair already shown on the same page gets no second one.
     """
     registry = get_card_registry()
@@ -153,6 +161,8 @@ def emit_revision_compare_card(structured: object, call_input: dict[str, Any] | 
                 "type": REVISION_COMPARE_CARD_TYPE,
                 "older_id": body.get("older"),
                 "newer_id": params.get("id"),
+                "older_name": _compare_name(structured, "older_name"),
+                "newer_name": _compare_name(structured, "newer_name"),
                 "page": page,
                 "changes": _compare_changes(structured, page),
                 "summary": summary,

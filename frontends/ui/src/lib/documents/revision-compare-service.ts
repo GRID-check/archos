@@ -145,6 +145,18 @@ export async function compareRevisionPage(
   page: number,
   purpose: ComparePurpose = 'person',
 ): Promise<RevisionPageComparison> {
+  const { changes, traceId } = await comparePair(session, newerId, olderId, page, purpose)
+  return { changes, traceId }
+}
+
+/** {@link compareRevisionPage} with the two file names the pair was loaded under. */
+async function comparePair(
+  session: AuthorizedSession,
+  newerId: string,
+  olderId: string,
+  page: number,
+  purpose: ComparePurpose,
+): Promise<RevisionPageComparison & { olderName: string; newerName: string }> {
   const [newer, older] = await loadPair(session, newerId, olderId)
   const response = await postToBackend(session, compareUrl(getBackendUrl(), newer.collectionName), {
     older: older.filename,
@@ -157,20 +169,23 @@ export async function compareRevisionPage(
     throw refusalFor(response.status)
   }
   const raw: unknown = await response.json().catch(() => null)
-  return { changes: parseRevisionVisualChanges(raw), traceId: traceIdOf(raw) }
+  return { changes: parseRevisionVisualChanges(raw), traceId: traceIdOf(raw), olderName: older.filename, newerName: newer.filename }
 }
 
 /**
  * What changed on `page` between `olderId` and `newerId`: boxes on the newer page and
- * the changes in words. Throws an `ApiError` on every failure.
+ * the changes in words, with the two documents' file names (the route already loaded
+ * both to check access, so naming them costs no lookup; an agent's card labels its
+ * sides with them). Throws an `ApiError` on every failure.
  */
 export async function compareRevisionVisually(
   session: AuthorizedSession,
   newerId: string,
   olderId: string,
   page: number,
-): Promise<RevisionVisualChanges> {
-  return (await compareRevisionPage(session, newerId, olderId, page)).changes
+): Promise<RevisionVisualChanges & { older_name: string; newer_name: string }> {
+  const { changes, olderName, newerName } = await comparePair(session, newerId, olderId, page, 'person')
+  return { ...changes, older_name: olderName, newer_name: newerName }
 }
 
 /** Which pages of the newer Fassung changed, read from the index (no model call). */

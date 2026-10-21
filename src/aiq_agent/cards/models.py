@@ -1499,6 +1499,20 @@ class RevisionCompareCard(CardModel):
     type: Literal["revision_compare"] = "revision_compare"
     older_id: str = Field(pattern=_UUID_PATTERN, description="The older Fassung's workspace document id")
     newer_id: str = Field(pattern=_UUID_PATTERN, description="The newer Fassung's workspace document id")
+    older_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        pattern=_NOT_A_DATA_URL,
+        description="The older Fassung's file name, when the comparison named it; the side's label",
+    )
+    newer_name: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=255,
+        pattern=_NOT_A_DATA_URL,
+        description="The newer Fassung's file name, when the comparison named it; the side's label",
+    )
     page: int = Field(ge=1, description="The page compared, from 1; the same page of both Fassungen")
     changes: list[RevisionCompareChange] = Field(
         default_factory=list, max_length=MAX_REVISION_CHANGES, description="The boxed changes; empty when none"

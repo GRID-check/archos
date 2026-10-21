@@ -31,6 +31,9 @@ type RevisionCompareData = Extract<GridCard, { type: 'revision_compare' }>
 interface RevisionCompareCardProps {
   olderId: RevisionCompareData['older_id']
   newerId: RevisionCompareData['newer_id']
+  /** The Fassungen's file names, when the comparison named them; a side without one is labelled by its role. */
+  olderName?: RevisionCompareData['older_name']
+  newerName?: RevisionCompareData['newer_name']
   page: RevisionCompareData['page']
   changes: RevisionCompareData['changes']
   summary: RevisionCompareData['summary']
@@ -51,7 +54,7 @@ export const changeRegions = (changes: RevisionCompareData['changes']): PageRegi
     return [{ box: [x, y, Math.min(1, x + w), Math.min(1, y + h)] as PageRegion['box'] }]
   })
 
-/** One Fassung's page as a place; the document's name is not known to the card, so `name` is the side's own word. */
+/** One Fassung's page as a place; `name` is the file name when the comparison carried it, else the side's own word. */
 export const sidePlace = (id: string, name: string, page: number): PagePlace => ({
   document: { id, name, shelf: 'stored' },
   page,
@@ -59,12 +62,21 @@ export const sidePlace = (id: string, name: string, page: number): PagePlace => 
   region: null,
 })
 
-export const RevisionCompareCard: FC<RevisionCompareCardProps> = ({ olderId, newerId, page, changes, summary, eager }) => {
+export const RevisionCompareCard: FC<RevisionCompareCardProps> = ({
+  olderId,
+  newerId,
+  olderName,
+  newerName,
+  page,
+  changes,
+  summary,
+  eager,
+}) => {
   const t = useTranslations('chat')
   const marks = changeRegions(changes)
   const sides = [
-    { key: 'older', id: olderId, name: t('cards.revisionCompare.older') },
-    { key: 'newer', id: newerId, name: t('cards.revisionCompare.newer') },
+    { key: 'older', id: olderId, name: olderName || t('cards.revisionCompare.older') },
+    { key: 'newer', id: newerId, name: newerName || t('cards.revisionCompare.newer') },
   ] as const
 
   return (

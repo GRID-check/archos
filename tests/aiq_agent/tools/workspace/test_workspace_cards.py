@@ -263,6 +263,26 @@ async def test_a_comparison_puts_both_pages_and_the_boxes_in_the_chat(server, re
     assert grid_card_adapter.validate_python(card).model_dump(exclude_none=True) == card
 
 
+async def test_a_comparison_that_names_its_documents_puts_the_file_names_on_the_card(server, registry) -> None:
+    named = {**COMPARED, "older_name": "Grundriss_A.pdf", "newer_name": " Grundriss_B.pdf "}
+    server.append(structured_answer(named, "{}"))
+
+    await workspace.run_call("document-revision-compare", COMPARE_INPUT)
+
+    (card,) = registry.snapshot()
+    assert (card["older_name"], card["newer_name"]) == ("Grundriss_A.pdf", "Grundriss_B.pdf")
+
+
+async def test_a_comparison_without_names_leaves_them_off_the_card(server, registry) -> None:
+    server.append(structured_answer({**COMPARED, "older_name": "", "newer_name": 7}, "{}"))
+
+    await workspace.run_call("document-revision-compare", COMPARE_INPUT)
+
+    (card,) = registry.snapshot()
+    assert "older_name" not in card
+    assert "newer_name" not in card
+
+
 async def test_a_comparison_with_no_visible_change_still_shows_both_pages(server, registry) -> None:
     server.append(structured_answer({"regions": [], "summary": ["keine sichtbare Änderung"]}, "{}"))
 

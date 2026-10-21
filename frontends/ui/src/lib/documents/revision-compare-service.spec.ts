@@ -75,7 +75,12 @@ describe('compareRevisionVisually', () => {
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body)).toEqual({ older: 'Grundriss_A.pdf', newer: 'Grundriss_B.pdf', page: 2, purpose: 'person' })
     expect(init.headers).toMatchObject({ 'x-grid-organization-id': 'org-1', 'x-grid-user-id': 'user-1' })
-    expect(result).toEqual({ regions: [REGION], summary: ['Die Wand ist nach Osten gerückt.'] })
+    expect(result).toEqual({
+      regions: [REGION],
+      summary: ['Die Wand ist nach Osten gerückt.'],
+      older_name: 'Grundriss_A.pdf',
+      newer_name: 'Grundriss_B.pdf',
+    })
   })
 
   it('encodes the collection name into the path', async () => {
@@ -211,7 +216,12 @@ describe('compareRevisionVisually', () => {
         }),
       )
 
-      expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({ regions: [REGION], summary: ['Satz'] })
+      expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({
+        regions: [REGION],
+        summary: ['Satz'],
+        older_name: 'Grundriss_A.pdf',
+        newer_name: 'Grundriss_B.pdf',
+      })
     })
 
     it('reads a reply with nothing in it as „keine sichtbare Änderung“', async () => {
@@ -219,12 +229,16 @@ describe('compareRevisionVisually', () => {
       expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({
         regions: [],
         summary: [NO_VISIBLE_CHANGE],
+        older_name: 'Grundriss_A.pdf',
+        newer_name: 'Grundriss_B.pdf',
       })
 
       mockFetch.mockResolvedValue(new Response('not json', { status: 200 }))
       expect(await compareRevisionVisually(session, 'doc-b', 'doc-a', 1)).toEqual({
         regions: [],
         summary: [NO_VISIBLE_CHANGE],
+        older_name: 'Grundriss_A.pdf',
+        newer_name: 'Grundriss_B.pdf',
       })
     })
 
