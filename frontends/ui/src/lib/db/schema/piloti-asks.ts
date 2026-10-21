@@ -7,7 +7,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
 
 /**
  * A question another agent asked Piloti on a person's behalf (ADR-0124,
- * migration 0178): one row per ask, whether it came through the MCP door
+ * migration 0179): one row per ask, whether it came through the MCP door
  * (`piloti-ask-create`) or the A2A door (`SendMessage`), which calls the same
  * route.
  *

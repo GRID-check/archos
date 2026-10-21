@@ -108,7 +108,7 @@ export function summaryOfOperation(op: AgentOperation, input: OperationInput): s
  * conversation when it names a project outside the audience's reach
  * (`proposalReachRefusal`, ADR-0094): its card sits where every reader reads
  * it. A turn in no project files it on the
- * organization (0175). The same call repeated in the conversation, for the same
+ * organization (0176). The same call repeated in the conversation, for the same
  * person, while the first proposal is still open files nothing and returns that
  * one. Runs in the person's tenant scope: the conversation, the open proposal
  * and the insert are tenant rows. Returns the proposal's id, which the card

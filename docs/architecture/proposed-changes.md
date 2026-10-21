@@ -15,7 +15,7 @@ All four share one lifecycle, one table, one set of routes and one receipt
 card. A file operation may also be on the Büroablage, which has no project
 (0146), and Piloti files one of its own whenever an upload lands in the wrong
 folder ([Filing suggestions](#filing-suggestions)). An `operation` may be the
-organization's, with no project (0175). What differs between them is held in one file,
+organization's, with no project (0176). What differs between them is held in one file,
 `frontends/ui/src/lib/proposals/kinds.ts`: the payload schema, who may decide,
 what is refused when it is proposed, the inbox line, and which applier runs.
 The lifecycle in `service.ts` is the same for every kind and asks `kinds.ts`
@@ -34,7 +34,7 @@ deciding person's session, and the decision is one row every reader sees.
 | Piece | Where |
 |---|---|
 | The contract (zod, shared by every slice) | `frontends/ui/src/lib/proposals/types.ts` |
-| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, the kinds and the card index in `0143_proposal_kinds.sql`, the shelf and the trace in `0146_proposal_shelves.sql`, the `operation` kind in `0174_operation_proposals.sql`, the organization shelf and the open-call index in `0175_organization_operation_proposals.sql`; mirrored in `src/lib/db/schema/proposed-changes.ts` |
+| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, the kinds and the card index in `0143_proposal_kinds.sql`, the shelf and the trace in `0146_proposal_shelves.sql`, the `operation` kind in `0176_operation_proposals.sql`, the organization shelf and the open-call index in `0177_organization_operation_proposals.sql`; mirrored in `src/lib/db/schema/proposed-changes.ts` |
 | SQL | `src/lib/proposals/repository.ts` |
 | Rules: who may read, who may decide, how apply runs | `src/lib/proposals/service.ts` |
 | What differs per kind: payload, gate, refusal when proposed, summary, applier | `src/lib/proposals/kinds.ts` |
@@ -65,7 +65,7 @@ row cannot name another tenant's project or conversation.
 | Column | Holds |
 |---|---|
 | `project_id` | the project the change is for: the turn's, taken from the signed envelope, or the upload's for a filing suggestion. NULL for a Büroablage proposal |
-| `scope` | the shelf, `project`, `office_shelf` (0146, `project_folders.scope`'s vocabulary) or `organization` (0175): `project` exactly when there is a project. A Büroablage proposal moves its documents; an organization's is an `operation` |
+| `scope` | the shelf, `project`, `office_shelf` (0146, `project_folders.scope`'s vocabulary) or `organization` (0176): `project` exactly when there is a project. A Büroablage proposal moves its documents; an organization's is an `operation` |
 | `origin_trace_id` | the Langfuse trace of the judgement that proposed it, for a proposal no turn made (a filing suggestion); the decision score goes there |
 | `kind`, `payload` | one of the three kinds and its payload, below |
 | `status` | `proposed`, `applied`, `partially_applied`, `failed`, `dismissed` |
@@ -84,7 +84,7 @@ The CHECKs hold the lifecycle, so no code path can break it:
   `failed`), and `results` is an array.
 - The claim has both columns or neither, and exists only while the proposal is
   `proposed`.
-- `kind` is `file_operation`, `memory`, `project_profile` or `operation` (0174);
+- `kind` is `file_operation`, `memory`, `project_profile` or `operation` (0175);
   `status` and
   `proposed_by_kind` are known values; `payload` is an object.
 - `origin_card_index` is null or not negative, and needs an `origin_message_id`
@@ -93,11 +93,11 @@ The CHECKs hold the lifecycle, so no code path can break it:
   Büroablage proposal is a `file_operation` that moves one or more items, every
   one with `source: buero` (`proposed_changes_office_shelf_move`, which reads a
   missing key as a refusal, not as a pass); an organization-scoped one is an
-  `operation` (`proposed_changes_organization_operation`, 0175).
+  `operation` (`proposed_changes_organization_operation`, 0176).
 - One open call is one proposal: of two `operation` proposals in one
   conversation for the same person with the same operation and the same input,
-  only one can be `proposed` (`uniq_proposed_changes_open_operation`, 0175,
-  with `on_behalf_of` since 0177). Deciding the first frees the call.
+  only one can be `proposed` (`uniq_proposed_changes_open_operation`, 0176,
+  with `on_behalf_of` since 0178). Deciding the first frees the call.
 
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
 against a real PostgreSQL, applies the down migrations, and re-applies the up
@@ -215,7 +215,7 @@ of an admin who can, and the admin's click would apply it. The kind has no creat
 `internalProposalRequestSchema`: nothing but `proposeOperation` makes one.
 
 **No project, the organization's.** A turn in no project still proposes: the
-proposal is `scope: organization` (0175) with no `project_id`, for the writes
+proposal is `scope: organization` (0176) with no `project_id`, for the writes
 that are the office's and not a project's (its memory, a skill). It is read
 through the conversation it was made in (`viewer`), or, made in none, by the
 person it was made for alone, and it is listed on `GET /api/proposals?shelf=organization`.
@@ -224,7 +224,7 @@ person it was made for alone, and it is listed on `GET /api/proposals?shelf=orga
 person, the same operation with the same input (compared as jsonb, so key order
 does not matter), while its proposal is still `proposed` gets that proposal back
 and files nothing: no second inbox item, no second audit line. Another person's
-identical call in the same conversation is their own proposal (0177).
+identical call in the same conversation is their own proposal (0178).
 `createProposal` looks first; the unique index `uniq_proposed_changes_open_operation`
 settles two identical calls running at once. A decided proposal frees the call,
 so asking again after a „no" is a new proposal.

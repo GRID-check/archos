@@ -720,7 +720,7 @@ write never runs: it becomes an `operation` proposal, shown as a card,
 that the person accepts or dismisses (ADR-0105). The accepting person's session is
 the one the operation runs in. A turn in no project files the proposal on the
 organization, and the same call repeated for the same person while its proposal
-is open files nothing new (0177). The proposal is filed in the person's tenant
+is open files nothing new (0178). The proposal is filed in the person's tenant
 scope, carries the turn's answer as its origin message, and is refused (404)
 when the call names a project, document, folder or conversation the person may
 not read: a member's Piloti cannot put a change to a project the member cannot

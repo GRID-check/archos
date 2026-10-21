@@ -245,7 +245,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
 
 /**
  * Types as they were stored before migrations 0165 (`document.new_fassung`) and
- * 0176 (`job.*`, which named a task run "job"; a job is a claim-queue item, see
+ * 0177 (`job.*`, which named a task run "job"; a job is a claim-queue item, see
  * `docs/glossary.md`). An older pod keeps writing the old name until it is
  * replaced, and the migration ran before it was; the read path treats such a row
  * as the current type (`canonicalInboxType`, and `legacyInboxTypeAliases` for

@@ -7,7 +7,7 @@
  * dispatcher the MCP server itself uses, so the operation's route decides:
  * its `authz`, its rate limit, its tenant slot and its own body schema. The
  * proposal adds no second rule; `DECIDE_PERMISSIONS.operation` is only the
- * right to see the project, and an organization-scoped one (no project, 0175)
+ * right to see the project, and an organization-scoped one (no project, 0176)
  * needs nothing but the right to read it.
  *
  * Two outcomes, as for every kind (`./appliers.ts`). What belongs to the

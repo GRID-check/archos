@@ -74,7 +74,7 @@ export const DECIDE_PERMISSIONS: Record<ProposedChangeKind, readonly ProjectPerm
 }
 
 /**
- * The kinds that may be the organization's, with no project (0175), and are
+ * The kinds that may be the organization's, with no project (0176), and are
  * decided by anyone who can read the proposal: their gate is not a project
  * right but the route they run, in the decider's session.
  */

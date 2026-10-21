@@ -411,7 +411,7 @@ describe('applyRunLedgerOp', () => {
         recipientUserId: 'user_1',
         groupKey: expect.stringMatching(/^task_run\.waiting:/),
       },
-      // A row an older pod wrote before 0176 settles too.
+      // A row an older pod wrote before 0177 settles too.
       {
         organizationId: 'org_1',
         recipientUserId: 'user_1',

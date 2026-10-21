@@ -1221,38 +1221,38 @@
       "breakpoints": true
     },
     {
-      "idx": 174,
-      "version": "7",
-      "when": 1792454415544,
-      "tag": "0174_operation_proposals",
-      "breakpoints": true
-    },
-    {
       "idx": 175,
       "version": "7",
-      "when": 1792454416044,
-      "tag": "0175_organization_operation_proposals",
+      "when": 1792454415544,
+      "tag": "0175_operation_proposals",
       "breakpoints": true
     },
     {
       "idx": 176,
       "version": "7",
-      "when": 1792454417044,
-      "tag": "0176_task_run_inbox_types",
+      "when": 1792454416044,
+      "tag": "0176_organization_operation_proposals",
       "breakpoints": true
     },
     {
       "idx": 177,
       "version": "7",
-      "when": 1792540817044,
-      "tag": "0177_open_operation_per_person",
+      "when": 1792454417044,
+      "tag": "0177_task_run_inbox_types",
       "breakpoints": true
     },
     {
       "idx": 178,
       "version": "7",
+      "when": 1792540817044,
+      "tag": "0178_open_operation_per_person",
+      "breakpoints": true
+    },
+    {
+      "idx": 179,
+      "version": "7",
       "when": 1792627217044,
-      "tag": "0178_piloti_asks",
+      "tag": "0179_piloti_asks",
       "breakpoints": true
     }
   ]

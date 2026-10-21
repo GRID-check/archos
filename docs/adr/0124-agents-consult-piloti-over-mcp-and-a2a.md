@@ -66,7 +66,7 @@ domain, because an ask is a conversation.
 2. The thread: a new private conversation of the person, in the project they
    name (`requireProjectAccess` with the chat permissions), or one an earlier ask
    of the same person started, never another conversation.
-3. A row in `piloti_asks` (migration 0178) and the question as the person's
+3. A row in `piloti_asks` (migration 0179) and the question as the person's
    message in the thread, both under one id: the ask's id is the turn id and the
    A2A task id.
 4. `resolveTurnContext` for that session and thread, which refuses a spent
@@ -237,7 +237,7 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog and an
   the stream.
 * `app/api/piloti-asks/route.spec.ts`, `lib/a2a/*.spec.ts`,
   `lib/turns/outcome.spec.ts`, `tests/aiq_agent/agents/piloti/test_trigger_prompt.py`.
-* `rls-coverage.spec.ts` lists 0178; `task db:test:rls` covers the table.
+* `rls-coverage.spec.ts` lists 0179; `task db:test:rls` covers the table.
 
 ## More Information
 

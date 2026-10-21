@@ -2629,102 +2629,102 @@ check_in grid_revmarks "SELECT payload->>'marksRevision' FROM inbox_items WHERE 
 echo "==> 0172 inbox revision marks and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0175: an organization-scoped operation proposal, one open call per
+# Migration 0176: an organization-scoped operation proposal, one open call per
 # conversation, and the DOWN.
 #
-# On a database of its own, migrated to whatever precedes 0175, with three open
-# operation proposals for one call in one conversation (the repeat 0175 folds), a
+# On a database of its own, migrated to whatever precedes 0176, with three open
+# operation proposals for one call in one conversation (the repeat 0176 folds), a
 # different call, and a Büroablage move. The scope accepts `organization` with
 # no project and only for an `operation`; the Büroablage CHECK still holds for
 # the Büroablage; the unique index refuses a second open call, and frees it
 # once decided. The runtime role sees its organization's proposals and no other's.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0175 organization operation proposals and their down migration on grid_orgop"
-migrate_before grid_orgop 0175_organization_operation_proposals
+echo "==> verifying the 0176 organization operation proposals and their down migration on grid_orgop"
+migrate_before grid_orgop 0177_organization_operation_proposals
 sql_in grid_orgop <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000174', 'org_0175', 'Haus 0175', 'user_1', 'proj_0175');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000174', 'org_0176', 'Haus 0176', 'user_1', 'proj_0176');
 INSERT INTO conversations (id, organization_id, created_by, project_id)
-VALUES ('conv_0175', 'org_0175', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000174');
+VALUES ('conv_0176', 'org_0176', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000174');
 INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id, created_at) VALUES
-  ('d1d1d1d1-0000-4000-8000-000000000174', 'org_0175', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
-   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"A"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0175', '2026-01-01 10:00:00+00'),
-  ('d2d2d2d2-0000-4000-8000-000000000174', 'org_0175', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
-   '{"operation":"folder-rename","input":{"body":{"name":"A"},"params":{"id":"p"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0175', '2026-01-01 10:01:00+00'),
-  ('d3d3d3d3-0000-4000-8000-000000000174', 'org_0175', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
-   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"A"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0175', '2026-01-01 10:02:00+00'),
-  ('d4d4d4d4-0000-4000-8000-000000000174', 'org_0175', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
-   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"B"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0175', '2026-01-01 10:03:00+00');
+  ('d1d1d1d1-0000-4000-8000-000000000174', 'org_0176', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"A"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0176', '2026-01-01 10:00:00+00'),
+  ('d2d2d2d2-0000-4000-8000-000000000174', 'org_0176', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"body":{"name":"A"},"params":{"id":"p"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0176', '2026-01-01 10:01:00+00'),
+  ('d3d3d3d3-0000-4000-8000-000000000174', 'org_0176', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"A"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0176', '2026-01-01 10:02:00+00'),
+  ('d4d4d4d4-0000-4000-8000-000000000174', 'org_0176', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"B"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0176', '2026-01-01 10:03:00+00');
 INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES
-  ('d5d5d5d5-0000-4000-8000-000000000174', 'org_0175', NULL, 'office_shelf', 'file_operation',
+  ('d5d5d5d5-0000-4000-8000-000000000174', 'org_0176', NULL, 'office_shelf', 'file_operation',
    '{"operation":"move","operations":[{"document":"Norm.pdf","source":"office","target_folder":"Normen"}]}', 'piloti', 'user_1');
 SQL
-refused_in grid_orgop "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0175', NULL, 'organization', 'operation', '{}', 'piloti', 'user_1')" "violates check constraint" "the organization scope existed before 0175"
-apply_in grid_orgop 0175_organization_operation_proposals.sql
-check_in grid_orgop "SELECT string_agg(left(id::text, 2), ',' ORDER BY created_at) FROM proposed_changes WHERE kind = 'operation'" "d1,d4" "0175 folds a repeated open call to its oldest proposal, however its keys were ordered, and keeps another input"
-check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'office_shelf'" "1" "0175 leaves the Büroablage's proposal"
-PO174="INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id) VALUES ('org_0175'"
-sql_in grid_orgop <<<"$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"s\"}', 'piloti', 'user_1', 'conv_0175')"
+refused_in grid_orgop "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0176', NULL, 'organization', 'operation', '{}', 'piloti', 'user_1')" "violates check constraint" "the organization scope existed before 0176"
+apply_in grid_orgop 0177_organization_operation_proposals.sql
+check_in grid_orgop "SELECT string_agg(left(id::text, 2), ',' ORDER BY created_at) FROM proposed_changes WHERE kind = 'operation'" "d1,d4" "0176 folds a repeated open call to its oldest proposal, however its keys were ordered, and keeps another input"
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'office_shelf'" "1" "0176 leaves the Büroablage's proposal"
+PO174="INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id) VALUES ('org_0176'"
+sql_in grid_orgop <<<"$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"s\"}', 'piloti', 'user_1', 'conv_0176')"
 check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization'" "1" "an operation is stored on the organization with no project"
 refused_in grid_orgop "$PO174, NULL, 'organization', 'memory', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_organization_operation" "an organization-scoped note was accepted"
 refused_in grid_orgop "$PO174, NULL, 'organization', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\",\"source\":\"office\"}]}', 'piloti', 'user_1', NULL)" "proposed_changes_organization_operation" "an organization-scoped file move was accepted"
 refused_in grid_orgop "$PO174, 'aaaaaaaa-0000-4000-8000-000000000174', 'organization', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_scope_owner" "an organization-scoped proposal naming a project was accepted"
 refused_in grid_orgop "$PO174, NULL, 'regal', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_scope_known" "an unknown shelf was accepted"
 refused_in grid_orgop "$PO174, NULL, 'office_shelf', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_office_shelf_move" "a Büroablage proposal of another kind was accepted"
-refused_in grid_orgop "$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"again\"}', 'piloti', 'user_1', 'conv_0175')" "uniq_proposed_changes_open_operation" "a second open proposal of the same call was accepted"
-sql_in grid_orgop <<<"$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"no chat\"}', 'piloti', 'user_1', NULL), ('org_0175', NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"no chat\"}', 'piloti', 'user_1', NULL)"
+refused_in grid_orgop "$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"again\"}', 'piloti', 'user_1', 'conv_0176')" "uniq_proposed_changes_open_operation" "a second open proposal of the same call was accepted"
+sql_in grid_orgop <<<"$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"no chat\"}', 'piloti', 'user_1', NULL), ('org_0176', NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"no chat\"}', 'piloti', 'user_1', NULL)"
 sql_in grid_orgop <<'SQL'
 UPDATE proposed_changes SET status = 'dismissed', decided_by = 'user_1', decided_at = now()
-  WHERE scope = 'organization' AND origin_conversation_id = 'conv_0175';
+  WHERE scope = 'organization' AND origin_conversation_id = 'conv_0176';
 INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id)
-VALUES ('org_0175', NULL, 'organization', 'operation',
-        '{"operation":"organization-memory-create","input":{"body":{"content":"x"}},"summary":"again"}', 'piloti', 'user_1', 'conv_0175');
+VALUES ('org_0176', NULL, 'organization', 'operation',
+        '{"operation":"organization-memory-create","input":{"body":{"content":"x"}},"summary":"again"}', 'piloti', 'user_1', 'conv_0176');
 SQL
-check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization' AND origin_conversation_id = 'conv_0175'" "2" "a decided proposal frees its call, and a repeat in no conversation is not folded"
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization' AND origin_conversation_id = 'conv_0176'" "2" "a decided proposal frees its call, and a repeat in no conversation is not folded"
 RW174=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_orgop -qtA \
-  -c "SET grid.organization_id = 'org_other_0175'" \
+  -c "SET grid.organization_id = 'org_other_0176'" \
   -c "SELECT count(*) FROM proposed_changes WHERE scope = 'organization'")
 if [ "$RW174" != "0" ]; then
   echo "MIGRATION ASSERTION FAILED on grid_orgop: the runtime role saw another organization's organization-scoped proposals (got: $RW174)" >&2
   exit 1
 fi
-apply_in grid_orgop 0175_organization_operation_proposals.down.sql
+apply_in grid_orgop 0177_organization_operation_proposals.down.sql
 check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization'" "0" "down deleted the organization-scoped proposals"
 check_in grid_orgop "SELECT count(*) FROM pg_indexes WHERE indexname = 'uniq_proposed_changes_open_operation'" "0" "down dropped the open call's unique index"
 refused_in grid_orgop "$PO174, NULL, 'organization', 'operation', '{}', 'piloti', 'user_1', NULL)" "violates check constraint" "down left the organization scope allowed"
 refused_in grid_orgop "$PO174, NULL, 'office_shelf', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_office_shelf_move" "down left the Büroablage CHECK open to another kind"
-apply_in grid_orgop 0175_organization_operation_proposals.sql
-apply_in grid_orgop 0175_organization_operation_proposals.sql
-check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE kind = 'operation'" "2" "0175 re-applies, twice, keeping the proposals it should"
-echo "==> 0175 organization operation proposals and down migration verified"
+apply_in grid_orgop 0177_organization_operation_proposals.sql
+apply_in grid_orgop 0177_organization_operation_proposals.sql
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE kind = 'operation'" "2" "0176 re-applies, twice, keeping the proposals it should"
+echo "==> 0176 organization operation proposals and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0176: the inbox types of a task run say `task_run`, not `job`, and
+# Migration 0177: the inbox types of a task run say `task_run`, not `job`, and
 # the DOWN.
 #
-# On a database of its own, migrated to whatever precedes 0176. Each of the three
+# On a database of its own, migrated to whatever precedes 0177. Each of the three
 # types moves with the front of its group key; another type is not touched.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0176 task run inbox types and their down migration on grid_taskruninbox"
-migrate_before grid_taskruninbox 0176_task_run_inbox_types
+echo "==> verifying the 0177 task run inbox types and their down migration on grid_taskruninbox"
+migrate_before grid_taskruninbox 0178_task_run_inbox_types
 sql_in grid_taskruninbox <<'SQL'
 INSERT INTO inbox_items (id, organization_id, recipient_user_id, type, resource_type, resource_id, group_key, actionable) VALUES
-  ('a1a1a1a1-0000-4000-8000-000000000175', 'org_0176', 'user_1', 'job.completed', 'project', 'p1', 'job.completed:project:p1:j1', false),
-  ('a2a2a2a2-0000-4000-8000-000000000175', 'org_0176', 'user_1', 'job.failed', 'project', 'p1', 'job.failed:project:p1:j2', false),
-  ('a3a3a3a3-0000-4000-8000-000000000175', 'org_0176', 'user_1', 'job.waiting', 'project', 'p1', 'job.waiting:project:p1:r3', true),
-  ('a4a4a4a4-0000-4000-8000-000000000175', 'org_0176', 'user_1', 'document.new_revision', 'document', 'd1', 'document.new_revision:document:d1:d2', false);
+  ('a1a1a1a1-0000-4000-8000-000000000175', 'org_0177', 'user_1', 'job.completed', 'project', 'p1', 'job.completed:project:p1:j1', false),
+  ('a2a2a2a2-0000-4000-8000-000000000175', 'org_0177', 'user_1', 'job.failed', 'project', 'p1', 'job.failed:project:p1:j2', false),
+  ('a3a3a3a3-0000-4000-8000-000000000175', 'org_0177', 'user_1', 'job.waiting', 'project', 'p1', 'job.waiting:project:p1:r3', true),
+  ('a4a4a4a4-0000-4000-8000-000000000175', 'org_0177', 'user_1', 'document.new_revision', 'document', 'd1', 'document.new_revision:document:d1:d2', false);
 SQL
-apply_in grid_taskruninbox 0176_task_run_inbox_types.sql
-check_in grid_taskruninbox "SELECT string_agg(type || '=' || group_key, ' ' ORDER BY id) FROM inbox_items" "task_run.completed=task_run.completed:project:p1:j1 task_run.failed=task_run.failed:project:p1:j2 task_run.waiting=task_run.waiting:project:p1:r3 document.new_revision=document.new_revision:document:d1:d2" "0176 renames the three task run types with their group keys and leaves the others"
-apply_in grid_taskruninbox 0176_task_run_inbox_types.down.sql
+apply_in grid_taskruninbox 0178_task_run_inbox_types.sql
+check_in grid_taskruninbox "SELECT string_agg(type || '=' || group_key, ' ' ORDER BY id) FROM inbox_items" "task_run.completed=task_run.completed:project:p1:j1 task_run.failed=task_run.failed:project:p1:j2 task_run.waiting=task_run.waiting:project:p1:r3 document.new_revision=document.new_revision:document:d1:d2" "0177 renames the three task run types with their group keys and leaves the others"
+apply_in grid_taskruninbox 0178_task_run_inbox_types.down.sql
 check_in grid_taskruninbox "SELECT string_agg(type || '=' || group_key, ' ' ORDER BY id) FROM inbox_items" "job.completed=job.completed:project:p1:j1 job.failed=job.failed:project:p1:j2 job.waiting=job.waiting:project:p1:r3 document.new_revision=document.new_revision:document:d1:d2" "down restores the job types and their group keys"
-apply_in grid_taskruninbox 0176_task_run_inbox_types.sql
-apply_in grid_taskruninbox 0176_task_run_inbox_types.sql
-check_in grid_taskruninbox "SELECT count(*) FROM inbox_items WHERE type LIKE 'task_run.%'" "3" "0176 re-applies, twice"
-echo "==> 0176 task run inbox types and down migration verified"
-# Migration 0178: the asks another agent puts to Piloti (ADR-0124), and the DOWN.
+apply_in grid_taskruninbox 0178_task_run_inbox_types.sql
+apply_in grid_taskruninbox 0178_task_run_inbox_types.sql
+check_in grid_taskruninbox "SELECT count(*) FROM inbox_items WHERE type LIKE 'task_run.%'" "3" "0177 re-applies, twice"
+echo "==> 0177 task run inbox types and down migration verified"
+# Migration 0179: the asks another agent puts to Piloti (ADR-0124), and the DOWN.
 #
-# On a database of its own, migrated through 0178, with one conversation per
+# On a database of its own, migrated through 0179, with one conversation per
 # organization. The CHECKs refuse an unknown state, a refusal without its
 # reason, a reason on a running ask, a terminal ask without its end and a
 # running one with an end; the composite key refuses an ask on another
@@ -2732,43 +2732,43 @@ echo "==> 0176 task run inbox types and down migration verified"
 # role sees its organization's asks and no other's. The down drops the table
 # and leaves the conversations.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0178 asks and their down migration on grid_asks"
-migrate_until grid_asks 0178_piloti_asks
+echo "==> verifying the 0179 asks and their down migration on grid_asks"
+migrate_until grid_asks 0179_piloti_asks
 sql_in grid_asks <<'SQL'
 INSERT INTO conversations (id, organization_id, created_by) VALUES
-  ('conv_0178_a', 'org_0178_a', 'user_1'),
-  ('conv_0178_b', 'org_0178_b', 'user_2');
+  ('conv_0179_a', 'org_0179_a', 'user_1'),
+  ('conv_0179_b', 'org_0179_b', 'user_2');
 INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES
-  ('a1a1a1a1-0000-4000-8000-000000000177', 'org_0178_a', 'conv_0178_a', 'user_1'),
-  ('b1b1b1b1-0000-4000-8000-000000000177', 'org_0178_b', 'conv_0178_b', 'user_2');
+  ('a1a1a1a1-0000-4000-8000-000000000177', 'org_0179_a', 'conv_0179_a', 'user_1'),
+  ('b1b1b1b1-0000-4000-8000-000000000177', 'org_0179_b', 'conv_0179_b', 'user_2');
 UPDATE piloti_asks SET state = 'completed', ended_at = now() WHERE id = 'a1a1a1a1-0000-4000-8000-000000000177';
 SQL
-check_in grid_asks "SELECT state FROM piloti_asks WHERE id = 'b1b1b1b1-0000-4000-8000-000000000177'" "submitted" "0178: an ask starts submitted"
-PA177="INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by, state, reason, ended_at) VALUES (gen_random_uuid(), 'org_0178_a', 'conv_0178_a', 'user_1'"
+check_in grid_asks "SELECT state FROM piloti_asks WHERE id = 'b1b1b1b1-0000-4000-8000-000000000177'" "submitted" "0179: an ask starts submitted"
+PA177="INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by, state, reason, ended_at) VALUES (gen_random_uuid(), 'org_0179_a', 'conv_0179_a', 'user_1'"
 refused_in grid_asks "$PA177, 'input-required', NULL, now())" "piloti_asks_state_known" "an unknown state"
 refused_in grid_asks "$PA177, 'rejected', NULL, now())" "piloti_asks_reason_when_refused" "a rejected ask without its reason"
 refused_in grid_asks "$PA177, 'working', 'why', NULL)" "piloti_asks_reason_when_refused" "a reason on a running ask"
 refused_in grid_asks "$PA177, 'failed', '', now())" "piloti_asks_reason_length" "an empty reason"
 refused_in grid_asks "$PA177, 'completed', NULL, NULL)" "piloti_asks_ended_when_terminal" "a completed ask without its end"
 refused_in grid_asks "$PA177, 'working', NULL, now())" "piloti_asks_ended_when_terminal" "a running ask with an end"
-refused_in grid_asks "INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES (gen_random_uuid(), 'org_0178_a', 'conv_0178_b', 'user_1')" "piloti_asks_conversation_fkey" "an ask on another organization's conversation"
+refused_in grid_asks "INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES (gen_random_uuid(), 'org_0179_a', 'conv_0179_b', 'user_1')" "piloti_asks_conversation_fkey" "an ask on another organization's conversation"
 RW177=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_asks -qtA \
-  -c "SET grid.organization_id = 'org_0178_a'" \
+  -c "SET grid.organization_id = 'org_0179_a'" \
   -c "SELECT string_agg(id::text, ',') FROM piloti_asks")
 if [ "$RW177" != "a1a1a1a1-0000-4000-8000-000000000177" ]; then
   echo "MIGRATION ASSERTION FAILED on grid_asks: the runtime role saw asks that are not its organization's (got: $RW177)" >&2
   exit 1
 fi
-sql_in grid_asks <<<"DELETE FROM conversations WHERE id = 'conv_0178_b';"
-check_in grid_asks "SELECT count(*) FROM piloti_asks WHERE organization_id = 'org_0178_b'" "0" "0178: an ask goes with its conversation"
-apply_in grid_asks 0178_piloti_asks.sql
-check_in grid_asks "SELECT count(*) FROM piloti_asks" "1" "0178 re-applies and keeps the asks"
-apply_in grid_asks 0178_piloti_asks.down.sql
-check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_asks'" "0" "0178 down drops the table"
-check_in grid_asks "SELECT count(*) FROM conversations WHERE id = 'conv_0178_a'" "1" "0178 down leaves the conversations"
-apply_in grid_asks 0178_piloti_asks.sql
-check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_asks'" "1" "0178 applies again after its down"
-echo "==> 0178 asks and down migration verified"
+sql_in grid_asks <<<"DELETE FROM conversations WHERE id = 'conv_0179_b';"
+check_in grid_asks "SELECT count(*) FROM piloti_asks WHERE organization_id = 'org_0179_b'" "0" "0179: an ask goes with its conversation"
+apply_in grid_asks 0179_piloti_asks.sql
+check_in grid_asks "SELECT count(*) FROM piloti_asks" "1" "0179 re-applies and keeps the asks"
+apply_in grid_asks 0179_piloti_asks.down.sql
+check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_asks'" "0" "0179 down drops the table"
+check_in grid_asks "SELECT count(*) FROM conversations WHERE id = 'conv_0179_a'" "1" "0179 down leaves the conversations"
+apply_in grid_asks 0179_piloti_asks.sql
+check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_asks'" "1" "0179 applies again after its down"
+echo "==> 0179 asks and down migration verified"
 
 # ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.

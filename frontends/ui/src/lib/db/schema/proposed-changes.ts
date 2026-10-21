@@ -37,12 +37,12 @@ export const proposedChanges = pgTable(
     organizationId: text('organization_id').notNull(),
     /**
      * The project the change is for; NULL for a Büroablage (0146) or an
-     * organization-scoped (0175) proposal, exactly when `scope` is not
+     * organization-scoped (0176) proposal, exactly when `scope` is not
      * `project` (`proposed_changes_scope_owner`).
      */
     projectId: uuid('project_id'),
     /**
-     * The shelf (0146, 0175). A Büroablage proposal moves Büroablage documents
+     * The shelf (0146, 0176). A Büroablage proposal moves Büroablage documents
      * and nothing else (`proposed_changes_office_shelf_move`); an
      * organization's is an `operation` and nothing else
      * (`proposed_changes_organization_operation`).
@@ -98,8 +98,8 @@ export const proposedChanges = pgTable(
       'proposed_changes_organization_operation',
       sql`${table.scope} <> 'organization' OR ${table.kind} = 'operation'`
     ),
-    // One open call, one proposal (0175): the same operation with the same input, in one conversation,
-    // for one person (0177).
+    // One open call, one proposal (0176): the same operation with the same input, in one conversation,
+    // for one person (0178).
     openOperationUidx: uniqueIndex('uniq_proposed_changes_open_operation')
       .on(
         table.organizationId,

@@ -183,7 +183,7 @@ const BOUNDARY_MIGRATIONS = [
   // Adds piloti_asks — a question another agent asked Piloti on a person's
   // behalf (ADR-0124). Keyed by its organization; the composite foreign key
   // ties it to its conversation's.
-  '0178_piloti_asks.sql',
+  '0179_piloti_asks.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

@@ -49,7 +49,7 @@ export interface OperationCall {
 
 /**
  * The still-`proposed` operation proposal of this conversation for this call,
- * made for this person, or null (0175, 0177). `payload->'input'` is compared as
+ * made for this person, or null (0176, 0178). `payload->'input'` is compared as
  * jsonb, which has one spelling per value, so key order and white space do not
  * tell two calls apart; this is the predicate of
  * `uniq_proposed_changes_open_operation`. The person is part of it: in a
@@ -96,7 +96,7 @@ function dedupedCall(input: NewProposedChange): OperationCall | null {
  * `uniq_proposed_changes_origin_card`: the same card of the same answer a
  * second time inserts nothing and returns the FIRST proposal, as it stands.
  * An operation proposal in a conversation is idempotent on
- * `uniq_proposed_changes_open_operation` (0175): a second identical call
+ * `uniq_proposed_changes_open_operation` (0176): a second identical call
  * while the first is still `proposed` returns the first, so two calls running
  * at once still make one.
  */

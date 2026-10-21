@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * The asks against a REAL Postgres (migration 0178, ADR-0124), through the
+ * The asks against a REAL Postgres (migration 0179, ADR-0124), through the
  * restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
