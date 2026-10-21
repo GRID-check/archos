@@ -340,6 +340,12 @@ const FileChip: FC<{
   // Kept and never read: the chat cannot answer from it, so no green check.
   const isStored = file.status === 'stored'
   const isSuccess = file.status === 'success'
+  // Whether the reader watched this chip work: only then does its check land
+  // (on the icon-swap spring) when the file turns readable. A chip that was
+  // already ready when the thread opened shows its check standing.
+  const [sawPending, setSawPending] = useState(isPending)
+  if (isPending && !sawPending) setSawPending(true)
+  const glyph = useIconSwapTransition()
   const thumbnail = usePhotoThumbnail(file.file)
   // A file refused because the document it replaces is held carries a
   // sentence, not a verdict (ADR-0086): it is said as it is.
@@ -384,7 +390,13 @@ const FileChip: FC<{
       <span className="sr-only">{t('inputArea.fileFailedStatus')}</span>
     </>
   ) : (
-    <Check className="text-status-active size-3 shrink-0" aria-hidden="true" />
+    <motion.span
+      className="inline-flex shrink-0"
+      initial={sawPending ? { opacity: 0, scale: 0.6 } : false}
+      animate={{ opacity: 1, scale: 1, transition: glyph.enter }}
+    >
+      <Check className="text-status-active size-3 shrink-0" aria-hidden="true" />
+    </motion.span>
   )
 
   return (
