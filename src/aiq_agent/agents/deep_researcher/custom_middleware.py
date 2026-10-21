@@ -522,8 +522,74 @@ def _without_results(content: str, refused: Callable[[str], bool]) -> tuple[str,
 _TRUNCATION_SUFFIX = "\n\n[... truncated ...]"
 
 
-def _truncated(msg: ToolMessage, max_chars: int) -> str:
-    return str(msg.content)[:max_chars] + _TRUNCATION_SUFFIX
+def _is_image_block(block: Any) -> bool:
+    return isinstance(block, dict) and block.get("type") in ("image_url", "image")
+
+
+def _has_image(msg: ToolMessage) -> bool:
+    return isinstance(msg.content, list) and any(_is_image_block(block) for block in msg.content)
+
+
+def _text_of(content: Any) -> str:
+    """The readable text of a tool result: image blocks (base64) are never text."""
+    if isinstance(content, str):
+        return content
+    if not isinstance(content, list):
+        return str(content)
+    parts = [
+        block if isinstance(block, str) else str(block.get("text", ""))
+        for block in content
+        if not _is_image_block(block) and (isinstance(block, str) or isinstance(block, dict))
+    ]
+    return "\n".join(part for part in parts if part)
+
+
+def _measured_chars(msg: ToolMessage) -> int:
+    """Characters of text the result costs the context; an image block counts for none."""
+    return len(_text_of(msg.content))
+
+
+def _is_prunable(msg: Any, max_chars: int) -> bool:
+    """An oversized text result, or any result carrying an image (which text length cannot size)."""
+    if not isinstance(msg, ToolMessage) or not msg.content:
+        return False
+    return _has_image(msg) or _measured_chars(msg) > max_chars
+
+
+def _viewed_call_args(messages: Sequence[Any]) -> dict[str, dict[str, Any]]:
+    """Tool-call arguments by call id, to name what an old image result showed."""
+    calls: dict[str, dict[str, Any]] = {}
+    for msg in messages:
+        for call in getattr(msg, "tool_calls", None) or []:
+            if call.get("id"):
+                calls[call["id"]] = call.get("args") or {}
+    return calls
+
+
+def _first_arg(args: Mapping[str, Any], *names: str) -> Any:
+    return next((args[name] for name in names if args.get(name) not in (None, "")), None)
+
+
+def _image_stub(msg: ToolMessage, args: Mapping[str, Any]) -> str:
+    """What replaces an old image result: where it looked, never the pixels or the base64."""
+    document = _first_arg(args, "file_name", "document", "name")
+    page = _first_arg(args, "page_number", "page")
+    region = _first_arg(args, "region")
+    if document is None:
+        caption = _text_of(msg.content).strip().splitlines()
+        document = caption[0][:120] if caption else "unknown"
+    label = str(document)
+    if page is not None:
+        label += f" p.{page}"
+    if region is not None:
+        label += f" {region}"
+    return f"[image viewed: {label}]"
+
+
+def _truncated(msg: ToolMessage, max_chars: int, calls: Mapping[str, Mapping[str, Any]] | None = None) -> str:
+    if _has_image(msg):
+        return _image_stub(msg, (calls or {}).get(msg.tool_call_id, {}))
+    return _text_of(msg.content)[:max_chars] + _TRUNCATION_SUFFIX
 
 
 def _evictions(
@@ -543,24 +609,27 @@ def _evictions(
     cannot grow unbounded across many research notes. Messages in ``already``
     are never decided twice (monotonicity), and only messages with an id can
     be remembered at all.
+
+    A result with an image block is measured by its text alone and always
+    occupies a window slot; once evicted it becomes a short text stub naming the
+    document, page and region, never a cut of the base64.
     """
-    oversized = [
-        msg for msg in messages if isinstance(msg, ToolMessage) and msg.content and len(str(msg.content)) > max_chars
-    ]
+    calls = _viewed_call_args(messages)
+    oversized = [msg for msg in messages if _is_prunable(msg, max_chars)]
     window_start = max(len(oversized) - keep_last_n, 0)
-    evicted = {msg.id: _truncated(msg, max_chars) for msg in oversized[:window_start] if msg.id is not None}
+    evicted = {msg.id: _truncated(msg, max_chars, calls) for msg in oversized[:window_start] if msg.id is not None}
     evicted = {msg_id: content for msg_id, content in evicted.items() if msg_id not in already}
     if total_char_budget <= 0:
         return evicted
     window = oversized[window_start:]
-    total = sum(len(already.get(msg.id, str(msg.content))) for msg in window)
+    total = sum(len(already.get(msg.id, _text_of(msg.content))) for msg in window)
     for msg in window:
         if total <= total_char_budget:
             break
         if msg.id is None or msg.id in already:
             continue
-        evicted[msg.id] = _truncated(msg, max_chars)
-        total += len(evicted[msg.id]) - len(str(msg.content))
+        evicted[msg.id] = _truncated(msg, max_chars, calls)
+        total += len(evicted[msg.id]) - _measured_chars(msg)
     return evicted
 
 

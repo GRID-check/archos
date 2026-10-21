@@ -7,6 +7,7 @@ import pytest
 from deepagents.middleware.filesystem import _apply_permissions_to_ls_results
 from deepagents.middleware.filesystem import _check_fs_permission
 from langchain.agents.middleware import AgentMiddleware
+from langchain_core.messages import AIMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import tool
 
@@ -478,3 +479,80 @@ class TestToolResultPruningCacheStability:
         sent = await _sent_messages(middleware, messages)
 
         assert all(len(m.content) == 500 for m in sent)
+
+
+def _image_result(idx: int, *, text: str = "page 3 of 'plan.pdf'", b64_size: int = 50_000) -> ToolMessage:
+    return ToolMessage(
+        content=[
+            {"type": "text", "text": text},
+            {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64," + "A" * b64_size}},
+        ],
+        tool_call_id=f"img_{idx}",
+        name="view_knowledge_image",
+        id=f"img_msg_{idx}",
+    )
+
+
+def _look_call(idx: int, **args) -> AIMessage:
+    return AIMessage(content="", tool_calls=[{"id": f"img_{idx}", "name": "view_knowledge_image", "args": args}])
+
+
+class TestToolResultPruningImages:
+    """An image result is measured by its text, and an old one becomes a stub, never cut base64."""
+
+    async def test_recent_image_result_is_sent_intact(self):
+        middleware = ToolResultPruningMiddleware(keep_last_n=2, max_chars=100)
+        messages = [_look_call(0, file_name="plan.pdf", page_number=3), _image_result(0)]
+
+        sent = await _sent_messages(middleware, messages)
+
+        assert sent[1].content == messages[1].content
+
+    async def test_old_image_result_becomes_a_text_stub_naming_document_page_region(self):
+        middleware = ToolResultPruningMiddleware(keep_last_n=1, max_chars=100)
+        messages = [
+            _look_call(0, file_name="plan.pdf", page_number=3, region=[0.1, 0.2, 0.5, 0.6]),
+            _image_result(0),
+            _look_call(1, file_name="plan.pdf", page_number=4),
+            _image_result(1),
+        ]
+
+        sent = await _sent_messages(middleware, messages)
+
+        assert sent[1].content == "[image viewed: plan.pdf p.3 [0.1, 0.2, 0.5, 0.6]]"
+        assert sent[3].content == messages[3].content
+
+    async def test_stub_falls_back_to_the_caption_when_the_call_is_unknown(self):
+        middleware = ToolResultPruningMiddleware(keep_last_n=1, max_chars=100)
+
+        sent = await _sent_messages(middleware, [_image_result(0), _image_result(1)])
+
+        assert sent[0].content == "[image viewed: page 3 of 'plan.pdf']"
+
+    async def test_stub_is_byte_identical_on_later_calls(self):
+        middleware = ToolResultPruningMiddleware(keep_last_n=1, max_chars=100)
+        history = [_image_result(0), _image_result(1)]
+        first = await _sent_messages(middleware, list(history))
+        history.append(_image_result(2))
+
+        second = await _sent_messages(middleware, list(history))
+
+        assert second[0].content == first[0].content
+        assert second[1].content.startswith("[image viewed:")
+
+    async def test_base64_does_not_count_as_text_and_text_blocks_still_truncate(self):
+        middleware = ToolResultPruningMiddleware(keep_last_n=10, max_chars=100, total_char_budget=300)
+        long_text = _tool_msg(9, 250)
+        sent = await _sent_messages(middleware, [_image_result(0, b64_size=1_000_000), long_text])
+
+        # The image's 1 MB of base64 did not blow the 300-char budget, so nothing was evicted.
+        assert sent[0].content == _image_result(0, b64_size=1_000_000).content
+        assert len(sent[1].content) == 250
+
+    async def test_list_of_text_blocks_is_truncated_as_text_not_as_repr(self):
+        middleware = ToolResultPruningMiddleware(keep_last_n=1, max_chars=100)
+        blocks = ToolMessage(content=[{"type": "text", "text": "y" * 500}], tool_call_id="t", name="n", id="blk")
+
+        sent = await _sent_messages(middleware, [blocks, _tool_msg(1, 500)])
+
+        assert sent[0].content == "y" * 100 + "\n\n[... truncated ...]"

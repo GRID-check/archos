@@ -45,6 +45,7 @@ Findings are the writer's evidence. Keep the number, the Fundstelle, the edition
 - Never pass agent source tool names to `execute`.
 {% endif %}
 - Default source budget per ResearchQuery: one primary source-tool call, plus at most one fallback or corroboration call.
+- A query about the office's own documents (Büroablage, project files) may spend more: list the folder as a tree, then an exact or regex search, then a ranged read of the pages or cursor you need. Each step must narrow the next. Before you state a dimension, a count or a title-block value from a drawing, look at that region of the page and cite what you read there.
 - For broad survey queries, make at most one extra targeted follow-up after the first results, only when needed for target_components.
 - Prefer batch-capable source tool calls for related concrete search angles when the tool schema supports a list input.
 - When the primary source tool supports batch input and subqueries are still useful after assessing the main query, pass the remaining related concrete search angles as one ordered list.

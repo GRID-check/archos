@@ -400,3 +400,57 @@ async def test_an_upstream_timeout_from_the_tool_itself_is_a_tool_error_not_a_ru
     assert result.startswith("ERROR: ris_search_tool did not answer in time")
     assert "upstream RIS did not answer" in result
     assert "another source" in result
+
+
+class _NavigationArgs(BaseModel):
+    """The shape of the office-document verbs: a query or document plus optional narrowing arguments."""
+
+    query: str
+    match: str = "meaning"
+    context: int = 0
+    group_by: str | None = None
+    pages: str | None = None
+    cursor: str | None = None
+    view: str = "list"
+    depth: int | None = None
+
+
+@pytest.mark.asyncio
+async def test_multi_argument_tools_keep_schema_and_receive_every_argument_unchanged():
+    received: list[dict] = []
+
+    async def _navigate(**kwargs) -> str:
+        received.append(kwargs)
+        return "ok"
+
+    navigate = StructuredTool.from_function(
+        coroutine=_navigate, name="knowledge_search", description="Search.", args_schema=_NavigationArgs
+    )
+
+    [adapted] = adapt_source_tools_for_research([navigate], source_tool_names={"knowledge_search"})
+
+    assert adapted.args_schema is _NavigationArgs
+    await adapted.ainvoke(
+        {
+            "query": "Fluchtweg",
+            "match": "regex",
+            "context": 2,
+            "group_by": "document",
+            "pages": "4-6",
+            "cursor": "abc",
+            "view": "tree",
+            "depth": 2,
+        }
+    )
+    assert received == [
+        {
+            "query": "Fluchtweg",
+            "match": "regex",
+            "context": 2,
+            "group_by": "document",
+            "pages": "4-6",
+            "cursor": "abc",
+            "view": "tree",
+            "depth": 2,
+        }
+    ]
