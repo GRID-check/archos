@@ -158,6 +158,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/project-intake/repository.integration.spec.ts \
     src/lib/changes/repository.integration.spec.ts \
     src/lib/push/repository.integration.spec.ts \
+    src/lib/piloti-asks/repository.integration.spec.ts \
     src/lib/inbox/repository.integration.spec.ts \
     src/lib/project-experience/readable-files.integration.spec.ts \
     src/lib/projects/memory-evidence.integration.spec.ts \
@@ -2692,6 +2693,55 @@ apply_in grid_orgop 0174_organization_operation_proposals.sql
 apply_in grid_orgop 0174_organization_operation_proposals.sql
 check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE kind = 'operation'" "2" "0174 re-applies, twice, keeping the proposals it should"
 echo "==> 0174 organization operation proposals and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0175: the asks another agent puts to Piloti (ADR-0122), and the DOWN.
+#
+# On a database of its own, migrated through 0175, with one conversation per
+# organization. The CHECKs refuse an unknown state, a refusal without its
+# reason, a reason on a running ask, a terminal ask without its end and a
+# running one with an end; the composite key refuses an ask on another
+# organization's conversation and cascades with the conversation. The runtime
+# role sees its organization's asks and no other's. The down drops the table
+# and leaves the conversations.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0175 asks and their down migration on grid_asks"
+migrate_until grid_asks 0175_piloti_asks
+sql_in grid_asks <<'SQL'
+INSERT INTO conversations (id, organization_id, created_by) VALUES
+  ('conv_0175_a', 'org_0175_a', 'user_1'),
+  ('conv_0175_b', 'org_0175_b', 'user_2');
+INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000175', 'org_0175_a', 'conv_0175_a', 'user_1'),
+  ('b1b1b1b1-0000-4000-8000-000000000175', 'org_0175_b', 'conv_0175_b', 'user_2');
+UPDATE piloti_asks SET state = 'completed', ended_at = now() WHERE id = 'a1a1a1a1-0000-4000-8000-000000000175';
+SQL
+check_in grid_asks "SELECT state FROM piloti_asks WHERE id = 'b1b1b1b1-0000-4000-8000-000000000175'" "submitted" "0175: an ask starts submitted"
+PA175="INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by, state, reason, ended_at) VALUES (gen_random_uuid(), 'org_0175_a', 'conv_0175_a', 'user_1'"
+refused_in grid_asks "$PA175, 'input-required', NULL, NULL)" "piloti_asks_state_known" "an unknown state"
+refused_in grid_asks "$PA175, 'rejected', NULL, now())" "piloti_asks_reason_when_refused" "a rejected ask without its reason"
+refused_in grid_asks "$PA175, 'working', 'why', NULL)" "piloti_asks_reason_when_refused" "a reason on a running ask"
+refused_in grid_asks "$PA175, 'failed', '', now())" "piloti_asks_reason_length" "an empty reason"
+refused_in grid_asks "$PA175, 'completed', NULL, NULL)" "piloti_asks_ended_when_terminal" "a completed ask without its end"
+refused_in grid_asks "$PA175, 'working', NULL, now())" "piloti_asks_ended_when_terminal" "a running ask with an end"
+refused_in grid_asks "INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by) VALUES (gen_random_uuid(), 'org_0175_a', 'conv_0175_b', 'user_1')" "piloti_asks_conversation_fkey" "an ask on another organization's conversation"
+RW175=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_asks -qtA \
+  -c "SET grid.organization_id = 'org_0175_a'" \
+  -c "SELECT string_agg(id::text, ',') FROM piloti_asks")
+if [ "$RW175" != "a1a1a1a1-0000-4000-8000-000000000175" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_asks: the runtime role saw asks that are not its organization's (got: $RW175)" >&2
+  exit 1
+fi
+sql_in grid_asks <<<"DELETE FROM conversations WHERE id = 'conv_0175_b';"
+check_in grid_asks "SELECT count(*) FROM piloti_asks WHERE organization_id = 'org_0175_b'" "0" "0175: an ask goes with its conversation"
+apply_in grid_asks 0175_piloti_asks.sql
+check_in grid_asks "SELECT count(*) FROM piloti_asks" "1" "0175 re-applies and keeps the asks"
+apply_in grid_asks 0175_piloti_asks.down.sql
+check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_asks'" "0" "0175 down drops the table"
+check_in grid_asks "SELECT count(*) FROM conversations WHERE id = 'conv_0175_a'" "1" "0175 down leaves the conversations"
+apply_in grid_asks 0175_piloti_asks.sql
+check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_asks'" "1" "0175 applies again after its down"
+echo "==> 0175 asks and down migration verified"
 
 # ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
