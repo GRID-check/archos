@@ -98,7 +98,7 @@ class TestSelectFiles:
 
     def test_an_unknown_folder_is_refused_not_guessed(self):
         text = render_listing(select_files(_rows(), folder="Statik"))
-        assert "Kein Ordner „Statik“" in text
+        assert 'No folder "Statik"' in text
 
     def test_name_words_all_match_in_name_or_title_whatever_the_umlaut_spelling(self):
         listing = select_files(_rows(), name_contains="brandschutz muellerstrasse")
@@ -120,12 +120,12 @@ class TestSelectFiles:
 
     def test_the_listing_says_it_is_an_index_and_names_files_verbatim(self):
         text = render_listing(select_files(_rows(), folder="Brandschutz"))
-        assert "- Brandschutzkonzept.pdf · „Brandschutzkonzept Müllerstraße“" in text
-        assert "keine Quelle" in text
+        assert '- Brandschutzkonzept.pdf · "Brandschutzkonzept Müllerstraße"' in text
+        assert "An index, not a source" in text
 
     def test_files_still_being_read_are_named(self):
         text = render_listing(select_files(_rows()), in_flight=["Neu.pdf"])
-        assert "Noch in Verarbeitung" in text and "Neu.pdf" in text
+        assert "Still processing" in text and "Neu.pdf" in text
 
 
 def _builder() -> MagicMock:
@@ -161,7 +161,7 @@ class TestListFilesTool:
 
     async def test_reads_the_turns_uncapped_rows(self, scope):
         text = await self._call(folder="Plaene/Grundrisse")
-        assert "2 Datei(en) auf Projektwissen und Büroablage und Private Sitzung" in text
+        assert "2 file(s) on Projektwissen and Büroablage and Private Sitzung" in text
         assert "Grundriss_OG1.pdf" in text
 
     async def test_falls_back_to_the_scope_when_no_rows_are_bound(self, scope, monkeypatch):
@@ -277,18 +277,18 @@ class TestExactSearch:
         )
         text = await _exact(query="BA-03")
         assert "Citation: Schnitt_A-A.pdf, p.4" in text
-        assert "## Fundstellen für „BA-03“" in text
-        assert "- Schnitt_A-A.pdf (Projektwissen): 2×, S. 4" in text
-        assert "- Leitfaden_Buero.pdf (Büroablage): 1×, S. 9" in text
+        assert '## Matches for "BA-03"' in text
+        assert "- Schnitt_A-A.pdf (Projektwissen): 2×, p. 4" in text
+        assert "- Leitfaden_Buero.pdf (Büroablage): 1×, p. 9" in text
         # Same scope as the ranked search, but the reader's own files are listed first.
-        table = text[text.index("## Fundstellen") :]
+        table = text[text.index("## Matches") :]
         assert table.index("Schnitt_A-A.pdf") < table.index("oib-rl_2.pdf")
         assert {call["collection"] for call in store.calls} == {"proj_1", "archiv_1", "oib_knowledge"}
 
     async def test_a_folder_narrows_to_the_files_filed_under_it(self, search_with):
         store = search_with(_TextStore([]))
         text = await _exact(query="BA-03", folder="Plaene")
-        assert "Keine Fundstelle" in text
+        assert "No match for" in text
         assert [call["collection"] for call in store.calls] == ["proj_1"]
         assert store.calls[0]["filters"] == {
             "file_name": {"$in": ["Grundriss_EG.pdf", "Grundriss_OG1.pdf", "Schnitt_A-A.pdf"]}
@@ -304,7 +304,7 @@ class TestExactSearch:
                 return None
 
         search_with(_Ranked())
-        assert "nicht verfügbar" in await _exact(query="BA-03")
+        assert "not available" in await _exact(query="BA-03")
 
     async def test_too_short_a_phrase_is_refused(self, search_with):
         search_with(_TextStore([]))
@@ -420,7 +420,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
     async def test_unnarrowed_search_drops_excluded_editions_and_page_chunks(self, corpus):
         text = await self._run(corpus, query="EI 90")
         assert "oib-rl_2_2019.pdf" not in text
-        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, S. 3" in text
+        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, p. 3" in text
         assert "Deckblatt" not in text
         assert "Notiz.docx" in text  # user collections are never filtered
 
@@ -428,7 +428,7 @@ class TestExactSearchReadsTheBaseCorpusLikeTheRankedSearch:
         text = await self._run(corpus, query="EI 90", file_name="oib-rl_2")
         assert "oib-rl_2_2019.pdf" not in text
         assert "Deckblatt" not in text
-        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, S. 3" in text
+        assert "- oib-rl_2_2023.pdf (Basiswissen): 1×, p. 3" in text
 
     async def test_the_callers_filters_reach_the_base_collection_only(self, search_with):
         store = search_with(_TextStore([]))
@@ -467,21 +467,21 @@ class TestAStoreOutageIsNeverANo:
     async def test_every_collection_failing_says_the_search_did_not_run(self, search_with):
         search_with(_FailingStore([], {"proj_1", "archiv_1", "oib_knowledge"}))
         text = await _exact(query="BA-03")
-        assert "konnte nicht laufen" in text
-        assert "Keine Fundstelle" not in text and "belastbares Nein" not in text
+        assert "could not run" in text
+        assert "No match for" not in text and "solid no" not in text
 
     async def test_a_partial_failure_counts_only_what_answered_and_says_it_is_incomplete(self, search_with):
         search_with(_FailingStore([], {"archiv_1"}))
         text = await _exact(query="BA-03")
-        assert "in 2 Sammlung(en)" in text
-        assert "UNVOLLSTÄNDIG" in text and "archiv_1" in text
+        assert "in 2 collection(s)" in text
+        assert "INCOMPLETE" in text and "archiv_1" in text
         assert "belastbares Nein" not in text
 
     async def test_a_partial_failure_beside_matches_flags_the_table(self, search_with):
         search_with(_FailingStore([_chunk("Grundriss_EG.pdf", "BA-03", page=1, chunk_id="1")], {"archiv_1"}))
         text = await _exact(query="BA-03")
         assert "- Grundriss_EG.pdf (Projektwissen): 1×" in text
-        assert "UNVOLLSTÄNDIG" in text
+        assert "INCOMPLETE" in text
 
 
 class TestNarrowingLikeTheMeaningMode:
@@ -514,7 +514,7 @@ class TestListFilesHonoursTheTurn:
         text = await self._call()
         assert "Leitfaden_Buero.pdf" in text
         assert "Grundriss_EG.pdf" not in text
-        assert "1 Datei(en) auf Büroablage und Private Sitzung" in text
+        assert "1 file(s) on Büroablage and Private Sitzung" in text
 
     async def test_a_restriction_that_would_leave_nothing_keeps_everything(self, scope, turn_shelves):
         set_turn_documents([_doc("Grundriss_EG.pdf", "Plaene")])
@@ -619,9 +619,9 @@ def test_overlapping_alternatives_are_counted_once_in_python_too():
 
 def test_the_no_says_what_it_tolerated_and_that_a_short_term_is_a_whole_word():
     text = no_match_message(["EG", "Brandschutzplan"], 3)
-    assert "Zeilenumbruch" in text and "ß/ss" in text
-    assert "„EG“ nur als ganzes Wort" in text
-    assert "Brandschutzplan“ nur als ganzes Wort" not in text
+    assert "line break" in text and "ß/ss" in text
+    assert '"EG" was searched as a whole word only' in text
+    assert '"Brandschutzplan" was searched as a whole word only' not in text
 
 
 async def test_a_query_too_long_for_one_pattern_is_refused(search_with):
@@ -640,8 +640,8 @@ class TestAShelfTheTurnRemoved:
         turn_shelves({"office_shelf", "session", "base"})
         text = await self._call(shelf="project")
         assert "Keine Datei" not in text
-        assert "auf Büroablage, Private Sitzung und Basiswissen beschränkt" in text
-        assert "Projektwissen hier nicht gelistet" in text
+        assert "to Büroablage, Private Sitzung and Basiswissen" in text
+        assert "so Projektwissen is not listed here" in text
         assert "Grundriss_EG.pdf" not in text
 
     async def test_an_explicit_shelf_inside_the_selection_still_lists(self, scope, turn_shelves):
@@ -650,7 +650,7 @@ class TestAShelfTheTurnRemoved:
 
 
 # ---------------------------------------------------------------------------
-# The Dokumentarten line: what a selection holds, counted over all of it.
+# The Dokumentart line: what a selection holds, counted over all of it.
 # ---------------------------------------------------------------------------
 
 
@@ -659,7 +659,7 @@ def _typed(*tag_sets: tuple[str, ...], folder: str = "Plaene"):
 
 
 def _profile_line(text: str) -> str:
-    return next(line for line in text.splitlines() if line.startswith("Dokumentarten"))
+    return next(line for line in text.splitlines() if line.startswith("Dokumentart ("))
 
 
 class TestTheDokumentartProfile:
@@ -670,13 +670,13 @@ class TestTheDokumentartProfile:
         last = select_files(rows, offset=6, limit=2)
 
         assert first.types == last.types == [("Grundriss", 5), ("Schnitt", 2)]
-        expected = "Dokumentarten (von Piloti zugeordnet): Grundriss 5 · Schnitt 2."
+        expected = "Dokumentart (assigned by Piloti): Grundriss 5 · Schnitt 2."
         assert _profile_line(render_listing(first)) == _profile_line(render_listing(last)) == expected
 
     def test_it_sits_directly_under_the_count_line(self):
         lines = render_listing(select_files(_typed(("Grundriss",)))).splitlines()
-        count = next(index for index, line in enumerate(lines) if " Datei(en) auf " in line)
-        assert lines[count + 1].startswith("Dokumentarten")
+        count = next(index for index, line in enumerate(lines) if " file(s) on " in line)
+        assert lines[count + 1].startswith("Dokumentart (")
 
     def test_the_most_frequent_type_comes_first_and_ties_follow_the_vocabulary(self):
         rows = _typed(
@@ -700,11 +700,11 @@ class TestTheDokumentartProfile:
 
     def test_the_untyped_count_is_named_on_the_profile_line(self):
         text = render_listing(select_files(_typed(("Grundriss",), ("Brandschutz",))))
-        assert _profile_line(text) == "Dokumentarten (von Piloti zugeordnet): Grundriss 1; ohne Dokumentart: 1."
+        assert _profile_line(text) == "Dokumentart (assigned by Piloti): Grundriss 1; without Dokumentart: 1."
 
     def test_no_untyped_clause_when_every_row_has_a_type(self):
         text = render_listing(select_files(_typed(("Grundriss",), ("Grundriss",))))
-        assert _profile_line(text) == "Dokumentarten (von Piloti zugeordnet): Grundriss 2."
+        assert _profile_line(text) == "Dokumentart (assigned by Piloti): Grundriss 2."
 
     def test_at_most_the_cap_is_named_and_the_listing_keeps_them_all(self):
         types = [tag for tag in DOCUMENT_TYPE_TAGS if tag != "Sonstiges"][:10]
@@ -718,14 +718,14 @@ class TestTheDokumentartProfile:
 
     def test_a_selection_with_no_document_type_says_so_rather_than_saying_nothing(self):
         rendered = render_listing(select_files(_typed((), ("Brandschutz",))))
-        assert "keiner dieser Dateien hat Piloti eine Dokumentart zugeordnet" in rendered
-        assert "Dokumentarten (von Piloti zugeordnet)" not in rendered
+        assert "Piloti has assigned none of these files a Dokumentart" in rendered
+        assert "Dokumentart (assigned by Piloti)" not in rendered
 
     def test_no_profile_line_for_an_empty_selection(self):
-        assert "Dokumentarten" not in render_listing(select_files([]))
+        assert "Dokumentart" not in render_listing(select_files([]))
 
     def test_the_closing_note_says_unreadable_files_are_not_listed_and_names_their_key(self):
-        closing = render_listing(select_files(_rows())).rsplit("Das ist ein Verzeichnis", 1)[1]
+        closing = render_listing(select_files(_rows())).rsplit("An index, not a source", 1)[1]
         assert "documents_unreadable:" in closing
 
 
@@ -763,14 +763,14 @@ class TestTopicsAndCaptureInTheListing:
         )
         line = next(line for line in render_listing(select_files(rows)).splitlines() if line.startswith("- Foto.jpg"))
         assert (
-            "Tags: Foto · Themen: Attika, Fluchtweg · aufgenommen 2026-10-09 (Kamera: Canon EOS R5) "
-            "· hochgeladen 2026-10-10" in line
+            "Tags: Foto · Topics: Attika, Fluchtweg · taken 2026-10-09 (camera: Canon EOS R5) "
+            "· uploaded 2026-10-10" in line
         )
 
     def test_a_camera_without_a_date_is_still_named(self):
         rows = file_rows([_doc("Foto.jpg", "Fotos", capture={"camera": "DJI Mavic 3"})])
-        assert "Kamera: DJI Mavic 3" in render_listing(select_files(rows))
-        assert "aufgenommen" not in render_listing(select_files(rows))
+        assert "camera: DJI Mavic 3" in render_listing(select_files(rows))
+        assert "taken" not in render_listing(select_files(rows))
 
     def test_coordinates_never_appear_in_the_listing_for_a_model_object(self):
         rows = file_rows(
@@ -788,7 +788,7 @@ class TestTopicsAndCaptureInTheListing:
             ]
         )
         text = render_listing(select_files(rows))
-        assert "aufgenommen 2026-10-09" in text
+        assert "taken 2026-10-09" in text
         assert str(LATITUDE) not in text
         assert str(LONGITUDE) not in text
 
@@ -800,7 +800,7 @@ class TestTopicsAndCaptureInTheListing:
             "capture": {"captured_at": "2026-10-09T14:30:00", "latitude": LATITUDE, "longitude": LONGITUDE},
         }
         text = render_listing(select_files(file_rows([row])))
-        assert "aufgenommen 2026-10-09" in text
+        assert "taken 2026-10-09" in text
         assert str(LATITUDE) not in text and str(LONGITUDE) not in text
         assert not hasattr(file_row(row), "latitude")
 
@@ -819,24 +819,24 @@ class TestTopicsAndCaptureInTheListing:
         rows = _topical(("Attika", "Fluchtweg"), ("attika",), ("Holz",))
         listing = select_files(rows)
         assert listing.topics == [("Attika", 2), ("Fluchtweg", 1), ("Holz", 1)]
-        assert "Themen (von Piloti erkannt): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
+        assert "Topics (recognised by Piloti): Attika 2 · Fluchtweg 1 · Holz 1." in render_listing(listing).splitlines()
 
     def test_the_profile_names_at_most_eight_topics_and_counts_the_whole_selection(self):
         rows = _topical(*[(f"Thema{index:02}",) for index in range(10)])
         listing = select_files(rows, limit=1)
-        line = _profile(render_listing(listing), "Themen (von Piloti erkannt)")
+        line = _profile(render_listing(listing), "Topics (recognised by Piloti)")
         assert len(listing.topics) == 10
         assert line.count(" · ") == MAX_TOPIC_COUNTS - 1
         assert "Thema08" not in line
 
     def test_no_profile_line_without_topics(self):
-        assert "Themen (von Piloti erkannt)" not in render_listing(select_files(_rows()))
+        assert "Topics (recognised by Piloti)" not in render_listing(select_files(_rows()))
 
     def test_the_profile_sits_directly_under_the_dokumentarten_line(self):
         rows = file_rows([_doc("Plan.pdf", "Plaene", tags=["Grundriss"], topics=["Attika"])])
         lines = render_listing(select_files(rows)).splitlines()
-        dokumentarten = next(index for index, line in enumerate(lines) if line.startswith("Dokumentarten"))
-        assert lines[dokumentarten + 1] == "Themen (von Piloti erkannt): Attika 1."
+        dokumentarten = next(index for index, line in enumerate(lines) if line.startswith("Dokumentart ("))
+        assert lines[dokumentarten + 1] == "Topics (recognised by Piloti): Attika 1."
 
 
 class TestTopicsThroughTheTool:
@@ -878,18 +878,18 @@ def test_an_older_revision_is_marked_and_names_the_current_one():
     text = render_listing(select_files(_revisions(), shelf="project"))
     older = next(line for line in text.splitlines() if line.startswith("- EG_Grundriss_Index_A"))
     current = next(line for line in text.splitlines() if line.startswith("- EG_Grundriss_Index_B"))
-    assert "ältere Fassung (Index A · 01.06.2026)" in older
-    assert "aktuell dem Namen nach: EG_Grundriss_Index_B_2026-07-02.pdf" in older
-    assert "aktuelle Fassung (Index B · 02.07.2026; 1 ältere" in current
+    assert "older Fassung (Index A · 01.06.2026)" in older
+    assert "current by file name: EG_Grundriss_Index_B_2026-07-02.pdf" in older
+    assert "current Fassung (Index B · 02.07.2026; 1 older" in current
     assert "Fassung" not in next(line for line in text.splitlines() if line.startswith("- Baubeschreibung"))
-    assert "Fassungen: 1 Dokument(e)" in text
+    assert "Fassungen: 1 document(s)" in text
 
 
 def test_a_folder_filter_keeps_the_mark_of_a_current_revision_kept_elsewhere():
     """The older Fassung sits in ``alt/``; listing only it still names the current one."""
     text = render_listing(select_files(_revisions(), shelf="project", folder="alt"))
-    assert "aktuell dem Namen nach: EG_Grundriss_Index_B_2026-07-02.pdf" in text
-    assert "Fassungen: 1 Dokument(e)" in text
+    assert "current by file name: EG_Grundriss_Index_B_2026-07-02.pdf" in text
+    assert "Fassungen: 1 document(s)" in text
 
 
 def test_revisions_never_span_two_shelves():

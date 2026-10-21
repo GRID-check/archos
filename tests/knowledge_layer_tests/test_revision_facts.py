@@ -562,12 +562,12 @@ class TestListFiles:
         listing = select_files(rows, shelf="project")
         text = render_listing(listing)
 
-        assert "aktuelle Fassung laut Plankopf (Index C; 1 ältere)" in _line(text, "Entwurf neu.pdf")
+        assert "current Fassung by Plankopf (Index C; 1 older)" in _line(text, "Entwurf neu.pdf")
         older = _line(text, "Zeichnung 7.pdf")
-        assert "ältere Fassung laut Plankopf (Index B)" in older and "aktuell laut Plankopf: Entwurf neu.pdf" in older
-        assert "laut Plankopf" not in _line(text, "Zeichnung 9.pdf")
+        assert "older Fassung by Plankopf (Index B)" in older and "current by Plankopf: Entwurf neu.pdf" in older
+        assert "by Plankopf" not in _line(text, "Zeichnung 9.pdf")
         assert listing.title_block_series == 1
-        assert "Fassungen (Plankopf): 1 Dokument(e)" in text
+        assert "Fassungen (Plankopf): 1 document(s)" in text
 
     def test_the_title_block_outranks_the_name_in_which_is_current(self):
         rows = file_rows(
@@ -578,9 +578,9 @@ class TestListFiles:
         )
         text = render_listing(select_files(rows, shelf="project"))
 
-        assert "aktuelle Fassung laut Plankopf" in _line(text, "Grundriss Index B.pdf")
-        assert "laut Plankopf" in _line(text, "Grundriss Index C.pdf")
-        assert "dem Namen nach" not in text
+        assert "current Fassung by Plankopf" in _line(text, "Grundriss Index B.pdf")
+        assert "by Plankopf" in _line(text, "Grundriss Index C.pdf")
+        assert "by file name" not in text
 
     def test_the_same_number_and_the_same_state_twice_is_a_copy_not_a_series(self):
         rows = file_rows(
@@ -590,7 +590,7 @@ class TestListFiles:
             ]
         )
         listing = select_files(rows, shelf="project")
-        assert listing.title_block_series == 0 and "laut Plankopf" not in render_listing(listing)
+        assert listing.title_block_series == 0 and "by Plankopf" not in render_listing(listing)
 
     def test_a_series_never_crosses_collections(self):
         rows = file_rows(
@@ -616,8 +616,8 @@ class TestListFiles:
         )
         text = render_listing(select_files(rows, shelf="project"))
 
-        assert "ersetzt durch neu.pdf (bestätigt)" in _line(text, "alt.pdf")
-        assert "laut Plankopf" not in _line(text, "alt.pdf")
+        assert "replaced by neu.pdf (confirmed)" in _line(text, "alt.pdf")
+        assert "by Plankopf" not in _line(text, "alt.pdf")
         assert "Fassungen (Plankopf)" not in text
 
 

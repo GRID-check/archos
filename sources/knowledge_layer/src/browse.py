@@ -54,6 +54,7 @@ from dataclasses import dataclass
 from dataclasses import field
 from dataclasses import replace
 from typing import Any
+from typing import Literal
 
 from pydantic import Field
 
@@ -165,6 +166,8 @@ class FileRow:
     #: What the title block (Plankopf) of the document's first drawing page says: ``document_number``,
     #: ``revision`` (Index), ``revision_date`` (ISO), ``scale``, ``title``; present keys only.
     revision_facts: Mapping[str, Any] | None = field(default=None, compare=False)
+    #: Pages the document has, when the store knows (None: not recorded, never "zero").
+    page_count: int | None = None
 
     @property
     def searchable(self) -> str:
@@ -173,6 +176,15 @@ class FileRow:
 
 def _attr(row: Any, name: str) -> Any:
     return row.get(name) if isinstance(row, dict) else getattr(row, name, None)
+
+
+def _page_count(value: Any) -> int | None:
+    """A stored page count as a positive int; anything else is unknown."""
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+    return count if count > 0 else None
 
 
 def file_row(row: Any) -> FileRow | None:
@@ -204,6 +216,7 @@ def file_row(row: Any) -> FileRow | None:
         change_summary=(str(_attr(row, "change_summary") or "").strip() or None),
         change_basis=(str(_attr(row, "change_basis") or "").strip() or None),
         revision_facts=revision_facts if isinstance(revision_facts, dict) and revision_facts else None,
+        page_count=_page_count(_attr(row, "page_count")),
     )
 
 
@@ -357,13 +370,13 @@ def revision_marks(rows: Sequence[FileRow]) -> tuple[dict[_RowKey, str], dict[_R
             head_key = (head.collection, head.file_name)
             series_of[head_key] = head_key
             marks[(head.collection, head.file_name)] = (
-                f"aktuelle Fassung ({label}; {len(series.older)} ältere, dem Namen nach)"
+                f"current Fassung ({label}; {len(series.older)} older, by file name)"
             )
             for member in series.older:
                 older = member.item
                 series_of[(older.collection, older.file_name)] = head_key
                 marks[(older.collection, older.file_name)] = (
-                    f"ältere Fassung ({revision_label(member.revision)}) — aktuell dem Namen nach: {head.file_name}"
+                    f"older Fassung ({revision_label(member.revision)}), current by file name: {head.file_name}"
                 )
     return marks, series_of
 
@@ -374,7 +387,7 @@ def _state_label(facts: Mapping[str, Any] | None) -> str:
     parts = [f"Index {facts['revision']}"] if facts.get("revision") else []
     if facts.get("revision_date"):
         parts.append(f"Stand {display_date(str(facts['revision_date']))}")
-    return ", ".join(parts) or "ohne Index"
+    return ", ".join(parts) or "no Index"
 
 
 def title_block_marks(rows: Sequence[FileRow]) -> tuple[dict[_RowKey, str], dict[_RowKey, _RowKey]]:
@@ -403,12 +416,11 @@ def title_block_marks(rows: Sequence[FileRow]) -> tuple[dict[_RowKey, str], dict
         head, older = ordered[0], ordered[1:]
         head_key = (head.collection, head.file_name)
         series_of[head_key] = head_key
-        marks[head_key] = f"aktuelle Fassung laut Plankopf ({_state_label(head.revision_facts)}; {len(older)} ältere)"
+        marks[head_key] = f"current Fassung by Plankopf ({_state_label(head.revision_facts)}; {len(older)} older)"
         for row in older:
             series_of[(row.collection, row.file_name)] = head_key
             marks[(row.collection, row.file_name)] = (
-                f"ältere Fassung laut Plankopf ({_state_label(row.revision_facts)}) — aktuell laut Plankopf: "
-                f"{head.file_name}"
+                f"older Fassung by Plankopf ({_state_label(row.revision_facts)}), current by Plankopf: {head.file_name}"
             )
     return marks, series_of
 
@@ -426,11 +438,17 @@ def confirmed_revision_marks(rows: Sequence[FileRow]) -> dict[_RowKey, str]:
     for row in rows:
         key = (row.collection, row.file_name)
         if row.superseded_by and (row.collection, row.superseded_by) in present:
-            marks.setdefault(key, []).append(f"ersetzt durch {row.superseded_by} (bestätigt)")
+            marks.setdefault(key, []).append(f"replaced by {row.superseded_by} (confirmed)")
         replaced = [name for name in row.supersedes if (row.collection, name) in present]
         if replaced:
-            marks.setdefault(key, []).append(f"ersetzt {', '.join(replaced)} (bestätigt)")
+            marks.setdefault(key, []).append(f"replaces {', '.join(replaced)} (confirmed)")
     return {key: "; ".join(parts) for key, parts in marks.items()}
+
+
+def on_shelves(rows: Sequence[FileRow], *, shelf: str | None, default_shelves: Sequence[str]) -> list[FileRow]:
+    """The rows on the asked shelf, or on the default shelves (plus rows with no shelf) when none is asked."""
+    shelves = (shelf,) if shelf else tuple(default_shelves)
+    return [row for row in rows if row.shelf in shelves or (not shelf and row.shelf is None)]
 
 
 def select_files(
@@ -454,7 +472,7 @@ def select_files(
     """
     notes: list[str] = []
     shelves = (shelf,) if shelf else tuple(default_shelves)
-    selected = [row for row in rows if row.shelf in shelves or (not shelf and row.shelf is None)]
+    selected = on_shelves(rows, shelf=shelf, default_shelves=default_shelves)
     marks, series_of = revision_marks(selected)
     block_marks, block_series_of = title_block_marks(selected)
     confirmed = confirmed_revision_marks(selected)
@@ -463,7 +481,7 @@ def select_files(
     if folder:
         resolved_folder = _folder_matches(selected, folder)
         if resolved_folder is None:
-            notes.append(f"Kein Ordner „{folder}“ auf diesen Regalen. Ohne `folder` aufrufen, um die Ordner zu sehen.")
+            notes.append(f'No folder "{folder}" on these shelves. Call without `folder` to see the folders.')
             return Listing([], 0, offset, limit, folder, shelves=shelves, notes=notes)
         selected = [row for row in selected if _in_folder(row, resolved_folder)]
 
@@ -542,7 +560,7 @@ def _compared_with_own_upload(row: FileRow) -> bool:
 
 
 def _change_bit(row: FileRow) -> str:
-    """„geändert: …“ for what changed against the Fassung this file replaced, bounded; empty when none is stored.
+    """``changed: …`` for what changed against the Fassung this file replaced, bounded; empty when none is stored.
 
     A change line against the file's own previous upload (``change_basis`` is its
     own name) says so, because the previous upload is not another file.
@@ -550,25 +568,27 @@ def _change_bit(row: FileRow) -> str:
     text = _change_text(row, MAX_CHANGE_CHARS)
     if not text:
         return ""
-    return f"geändert (vorige Fassung): {text}" if _compared_with_own_upload(row) else f"geändert: {text}"
+    return f"changed (previous Fassung): {text}" if _compared_with_own_upload(row) else f"changed: {text}"
 
 
 def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str:
     bits: list[str] = []
     if row.display_title and fold(row.display_title) != fold(row.file_name):
-        bits.append(f"„{row.display_title}“")
-    bits.append(f"Ordner: {row.folder}" if row.folder else "Ordner: (oberste Ebene)")
+        bits.append(f'"{row.display_title}"')
+    bits.append(f"Folder: {row.folder}" if row.folder else "Folder: (top level)")
     if row.doc_class:
         bits.append(f"Dokumentart: {row.doc_class}")
+    if row.page_count:
+        bits.append(f"{row.page_count} page{'' if row.page_count == 1 else 's'}")
     if row.tags:
         bits.append(f"Tags: {', '.join(row.tags)}")
     if row.topics:
-        bits.append(f"Themen: {', '.join(row.topics)}")
+        bits.append(f"Topics: {', '.join(row.topics)}")
     if row.captured_at:
-        camera = f" (Kamera: {row.camera})" if row.camera else ""
-        bits.append(f"aufgenommen {row.captured_at[:10]}{camera}")
+        camera = f" (camera: {row.camera})" if row.camera else ""
+        bits.append(f"taken {row.captured_at[:10]}{camera}")
     elif row.camera:
-        bits.append(f"Kamera: {row.camera}")
+        bits.append(f"camera: {row.camera}")
     title_block = title_block_label(row.revision_facts)
     if title_block:
         bits.append(f"Plankopf: {title_block}")
@@ -578,7 +598,7 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     if change:
         bits.append(change)
     if row.added_at:
-        bits.append(f"hochgeladen {row.added_at}")
+        bits.append(f"uploaded {row.added_at}")
     if show_shelf and row.shelf:
         bits.append(_SHELF_LABELS.get(row.shelf, row.shelf))
     summary = row.summary
@@ -588,65 +608,78 @@ def _row_line(row: FileRow, *, show_shelf: bool, mark: str | None = None) -> str
     return f"- {row.file_name} · {' · '.join(bits)}{tail}"
 
 
+def _scope_of(listing: Listing) -> str:
+    """Where a listing looked: the shelves, and the folder when one was asked for."""
+    where = " and ".join(_SHELF_LABELS.get(shelf, shelf) for shelf in listing.shelves)
+    return f'{where}, folder "{listing.folder}" with subfolders' if listing.folder else where
+
+
+def _in_flight_line(in_flight: Sequence[str]) -> str:
+    return (
+        "Still processing (uploaded but not yet readable, so neither listed here nor searchable): "
+        + ", ".join(in_flight[:10])
+        + (f" and {len(in_flight) - 10} more" if len(in_flight) > 10 else "")
+    )
+
+
 def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
     """The listing as the model reads it: counts first, then folders, then files."""
-    where = " und ".join(_SHELF_LABELS.get(shelf, shelf) for shelf in listing.shelves)
-    scope = f"{where}, Ordner „{listing.folder}“ mit Unterordnern" if listing.folder else where
+    scope = _scope_of(listing)
     lines: list[str] = [*listing.notes]
     if listing.notes and not listing.total:
         return "\n".join(lines)
     if not listing.total:
-        lines.append(f"Keine Datei auf {scope} passt zu diesen Filtern.")
+        lines.append(f"No file on {scope} matches these filters.")
     else:
         first = listing.offset + 1
         last = listing.offset + len(listing.rows)
-        shown = f"{first}–{last}" if listing.rows else "keine (offset liegt hinter dem Ende)"
-        lines.append(f"{listing.total} Datei(en) auf {scope}; hier {shown}.")
+        shown = f"{first}–{last}" if listing.rows else "none (offset is past the end)"
+        lines.append(f"{listing.total} file(s) on {scope}; showing {shown}.")
         if listing.types:
             profile = " · ".join(f"{tag} {count}" for tag, count in listing.types[:MAX_TYPE_COUNTS])
-            untyped = f"; ohne Dokumentart: {listing.untyped}" if listing.untyped else ""
-            lines.append(f"Dokumentarten (von Piloti zugeordnet): {profile}{untyped}.")
+            untyped = f"; without Dokumentart: {listing.untyped}" if listing.untyped else ""
+            lines.append(f"Dokumentart (assigned by Piloti): {profile}{untyped}.")
         elif listing.untyped:
             # Said rather than left out: no line would read the same as "no profile".
-            lines.append("Dokumentarten: keiner dieser Dateien hat Piloti eine Dokumentart zugeordnet.")
+            lines.append("Dokumentart: Piloti has assigned none of these files a Dokumentart.")
         if listing.topics:
             profile = " · ".join(f"{topic} {count}" for topic, count in listing.topics[:MAX_TOPIC_COUNTS])
-            lines.append(f"Themen (von Piloti erkannt): {profile}.")
+            lines.append(f"Topics (recognised by Piloti): {profile}.")
         if listing.confirmed_replacements:
             lines.append(
-                f"Fassungen (bestätigt): {listing.confirmed_replacements} Datei(en) hat eine Person durch eine "
-                "neuere ersetzt; die Zeilen sagen welche. Stütze dich auf die neuere und nenne die ältere nur, "
-                "wenn danach gefragt ist oder du vergleichst. Die ältere bleibt mit file_name= lesbar."
+                f"Fassungen (confirmed): a person replaced {listing.confirmed_replacements} file(s) with a "
+                "newer one; the rows say which. Rely on the newer one and name the older one only when asked or "
+                "when comparing. The older one stays readable with file_name=."
             )
         if listing.title_block_series:
             lines.append(
-                f"Fassungen (Plankopf): {listing.title_block_series} Dokument(e) tragen dieselbe Plannummer im "
-                "Plankopf in mehreren Ständen (Index, Datum); die Zeilen sind markiert. Stütze dich auf die "
-                "aktuelle Fassung und nenne eine ältere nur, wenn danach gefragt ist oder du vergleichst. Es ist "
-                "eine Lesart des Plankopfs, keine Bestätigung: sage „laut Plankopf“."
+                f"Fassungen (Plankopf): {listing.title_block_series} document(s) carry the same document number in "
+                "their Plankopf in several states (Index, date); the rows are marked. Rely on the current Fassung "
+                "and name an older one only when asked or when comparing. It is a reading of the Plankopf, not a "
+                'confirmation: say "by Plankopf".'
             )
         if listing.revision_series:
             lines.append(
-                f"Fassungen: {listing.revision_series} Dokument(e) liegen dem Dateinamen nach (Index, Datum) in "
-                "mehreren Fassungen vor; die Zeilen sind markiert. Stütze dich auf die aktuelle Fassung und "
-                "nenne eine ältere nur, wenn danach gefragt ist oder du vergleichst. Es ist eine Lesart der "
-                "Namen, keine Bestätigung: sage „dem Namen nach“."
+                f"Fassungen: {listing.revision_series} document(s) exist in several Fassungen by file name (Index, "
+                "date); the rows are marked. Rely on the current Fassung and name an older one only when asked or "
+                "when comparing. It is a reading of the names, not a confirmation: "
+                'say "by file name".'
             )
 
     if listing.subfolders:
         lines.append("")
-        lines.append("Unterordner (Dateien im ganzen Teilbaum):")
+        lines.append("Subfolders (files in the whole subtree):")
         for path, count in listing.subfolders[:MAX_FOLDER_LINES]:
             lines.append(f"- {path}/ ({count})")
         rest = len(listing.subfolders) - MAX_FOLDER_LINES
         if rest > 0:
-            lines.append(f"- … und {rest} weitere Ordner")
+            lines.append(f"- … and {rest} more folders")
         if listing.here:
-            lines.append(f"Direkt in diesem Ordner: {listing.here} Datei(en).")
+            lines.append(f"Directly in this folder: {listing.here} file(s).")
 
     if listing.rows:
         lines.append("")
-        lines.append("Dateien:")
+        lines.append("Files:")
         show_shelf = len(listing.shelves) > 1
         lines.extend(
             _row_line(row, show_shelf=show_shelf, mark=listing.revision_marks.get((row.collection, row.file_name)))
@@ -655,26 +688,258 @@ def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
         remaining = listing.total - (listing.offset + len(listing.rows))
         if remaining > 0:
             lines.append(
-                f"… {remaining} weitere. Nächste Seite: gleicher Aufruf mit "
-                f"`offset={listing.offset + len(listing.rows)}`."
+                f"… {remaining} more. Next page: the same call with `offset={listing.offset + len(listing.rows)}`."
             )
 
     if in_flight:
         lines.append("")
-        lines.append(
-            "Noch in Verarbeitung (hochgeladen, aber noch nicht lesbar — weder hier gelistet noch durchsuchbar): "
-            + ", ".join(in_flight[:10])
-            + (f" und {len(in_flight) - 10} weitere" if len(in_flight) > 10 else "")
-        )
+        lines.append(_in_flight_line(in_flight))
 
     lines.append("")
     lines.append(
-        "Das ist ein Verzeichnis, keine Quelle: eine Zeile beweist, dass die Datei existiert, nicht was "
-        "darin steht. Es zeigt nur, was Piloti lesen konnte — eine Datei, deren Lesen fehlgeschlagen ist, "
-        "steht hier nicht, aber unter `documents_unreadable:` im Projektkontext; fehlt eine Datei hier, ist "
-        "das kein Beweis, dass es sie nicht gibt. Schreibe Dateinamen genau so, wie sie hier stehen — "
-        "der Leser sieht jeden als Link, der die Datei öffnet. Lesen: `read_passage(document=…)`; darin suchen: "
-        '`knowledge_search(file_name=…)`, wörtlich mit `match="exact"`; eine Seite ansehen: `view_knowledge_image`.'
+        "An index, not a source: a row proves the file exists, not what it says. It shows only what Piloti could "
+        "read; a file whose reading failed is not here but under `documents_unreadable:` in the project context, "
+        "and a file missing here is no proof it does not exist. Write file names exactly as they appear here: the "
+        "reader sees each as a link that opens the file. Read: `read_passage(document=…)`; search inside: "
+        '`knowledge_search(file_name=…)`, literally with `match="exact"`; see a page: `view_knowledge_image`.'
+    )
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# list_files(view="tree"): a card per folder
+# ---------------------------------------------------------------------------
+
+#: Levels of folders below the asked one that get a card, by default and at most.
+DEFAULT_TREE_DEPTH = 2
+MAX_TREE_DEPTH = 4
+#: Cards one tree call renders before it counts the rest, and current Fassungen one card names.
+MAX_TREE_CARDS = 30
+MAX_CURRENT_LINES = 3
+#: Subfolders a card names, and older files one "replaces" clause names.
+MAX_CARD_SUBFOLDERS = 8
+MAX_REPLACED_NAMES = 3
+
+
+@dataclass(frozen=True)
+class FolderCard:
+    """What one folder holds, counted from the rows alone: tier 0, nothing stored, nothing stale."""
+
+    path: str
+    #: Levels below the folder the call asked about (the asked folder is 0).
+    depth: int
+    #: Documents directly in the folder, and in the whole subtree (the direct ones included).
+    direct: int
+    total: int
+    #: Child folders with their subtree counts.
+    subfolders: tuple[tuple[str, int], ...]
+    #: Document types over the subtree, most frequent first, and how many documents carry none.
+    types: tuple[tuple[str, int], ...]
+    untyped: int
+    #: Pages summed over the documents that have a count, and how many have none.
+    pages: int
+    pages_unknown: int
+    first_added: str | None
+    last_added: str | None
+    #: ``"name (date)"`` of the most recently added document, or empty.
+    newest: str
+    #: One line per series whose current Fassung is in the subtree, and how many older Fassungen it holds.
+    current: tuple[str, ...]
+    superseded: int
+
+
+@dataclass(frozen=True)
+class _Series:
+    """A document in several Fassungen: the current one, what says so, and the names it replaces."""
+
+    head: FileRow
+    basis: str
+    older: tuple[str, ...]
+
+
+def _revision_series(rows: Sequence[FileRow]) -> list[_Series]:
+    """Every series of Fassungen among ``rows``, by the same precedence ``select_files`` marks them.
+
+    A person's confirmation beats the title block, which beats the file name.
+    """
+    by_key = {(row.collection, row.file_name): row for row in rows}
+    confirmed = confirmed_revision_marks(rows)
+    replaced: dict[_RowKey, list[str]] = {}
+    for row in rows:
+        target = (row.collection, row.superseded_by or "")
+        if target in by_key and (row.collection, row.file_name) in confirmed:
+            replaced.setdefault(target, []).append(row.file_name)
+    series = [_Series(by_key[head], "confirmed", tuple(sorted(names, key=fold))) for head, names in replaced.items()]
+    _, block_series_of = title_block_marks(rows)
+    _, name_series_of = revision_marks(rows)
+    for basis, series_of, skip in (
+        ("by Plankopf", block_series_of, set(confirmed)),
+        ("by file name", name_series_of, set(confirmed) | set(block_series_of)),
+    ):
+        groups: dict[_RowKey, list[str]] = {}
+        for key, head_key in series_of.items():
+            if key != head_key and key not in skip:
+                groups.setdefault(head_key, []).append(key[1])
+        series += [_Series(by_key[head], basis, tuple(sorted(names, key=fold))) for head, names in groups.items()]
+    return series
+
+
+def _series_label(head: FileRow, basis: str) -> str:
+    """``Index B, Stand 03.02.2026; by Plankopf``: the state the current file carries, and what says it is current."""
+    facts = head.revision_facts or {}
+    state = _state_label(facts) if facts.get("revision") or facts.get("revision_date") else ""
+    if not state:
+        name_revision = parse_revision_name(head.file_name)
+        state = revision_label(name_revision) if name_revision is not None else ""
+    return "; ".join(part for part in (state, basis) if part)
+
+
+def _current_lines(series: Sequence[_Series], keys: set[_RowKey]) -> tuple[list[str], int]:
+    """The ``Current Fassung`` lines for the series whose current file is among ``keys``, and the older files held."""
+    lines: list[str] = []
+    older_held = 0
+    for entry in sorted(series, key=lambda item: fold(item.head.file_name)):
+        collection = entry.head.collection
+        older_held += sum(1 for name in entry.older if (collection, name) in keys)
+        if (collection, entry.head.file_name) not in keys:
+            continue
+        shown = ", ".join(entry.older[:MAX_REPLACED_NAMES])
+        more = len(entry.older) - MAX_REPLACED_NAMES
+        replaces = f"{shown} and {more} more" if more > 0 else shown
+        lines.append(f"{entry.head.file_name} ({_series_label(entry.head, entry.basis)}) replaces {replaces}")
+    return lines, older_held
+
+
+def _folder_card(path: str, depth: int, rows: Sequence[FileRow], series: Sequence[_Series]) -> FolderCard:
+    subfolders, direct = _subfolders(rows, path or None)
+    types, untyped = _type_profile(rows)
+    dated = [row for row in rows if row.added_at]
+    newest = max(dated, key=lambda row: (row.added_at or "", fold(row.file_name)), default=None)
+    current, older_held = _current_lines(series, {(row.collection, row.file_name) for row in rows})
+    return FolderCard(
+        path=path,
+        depth=depth,
+        direct=direct,
+        total=len(rows),
+        subfolders=tuple(subfolders),
+        types=tuple(types),
+        untyped=untyped,
+        pages=sum(row.page_count or 0 for row in rows),
+        pages_unknown=sum(1 for row in rows if row.page_count is None),
+        first_added=min((row.added_at or "" for row in dated), default=None),
+        last_added=max((row.added_at or "" for row in dated), default=None),
+        newest=f"{newest.file_name} ({newest.added_at})" if newest else "",
+        current=tuple(current),
+        superseded=older_held,
+    )
+
+
+def _card_ancestors(folder: str, root: str, depth: int) -> list[str]:
+    """``root`` and every folder from it down to ``folder``, no deeper than ``depth`` below ``root``."""
+    base = len(root.split("/")) if root else 0
+    parts = folder.split("/") if folder else []
+    return ["/".join(parts[:count]) for count in range(base, min(len(parts), base + depth) + 1)]
+
+
+def _card_order(card: FolderCard) -> list[str]:
+    """Parents before children, siblings by name."""
+    return [fold(part) for part in card.path.split("/")] if card.path else []
+
+
+def folder_cards(
+    rows: Sequence[FileRow],
+    *,
+    root: str | None,
+    depth: int = DEFAULT_TREE_DEPTH,
+    series_rows: Sequence[FileRow] | None = None,
+) -> list[FolderCard]:
+    """One card for ``root`` and for every folder up to ``depth`` levels below it, parents first.
+
+    Pure, and one pass over the rows: each row is folded into every card above
+    it. ``rows`` are the selection (already inside ``root``); the Fassungen are
+    read over ``series_rows`` when given, because an older Fassung is often
+    filed in a folder the selection cut away.
+    """
+    root = root or ""
+    depth = max(0, min(depth, MAX_TREE_DEPTH))
+    members: dict[str, list[FileRow]] = {}
+    for row in rows:
+        for path in _card_ancestors(row.folder, root, depth):
+            members.setdefault(path, []).append(row)
+    series = _revision_series(series_rows if series_rows is not None else rows)
+    base = len(root.split("/")) if root else 0
+    cards = [
+        _folder_card(path, (len(path.split("/")) if path else 0) - base, group, series)
+        for path, group in members.items()
+    ]
+    return sorted(cards, key=_card_order)
+
+
+def _count(number: int, noun: str) -> str:
+    return f"{number} {noun}{'' if number == 1 else 's'}"
+
+
+def _card_lines(card: FolderCard) -> list[str]:
+    """One card as the model reads it: counts, document types, dates, current Fassungen, subfolders."""
+    older = f"; {card.superseded} older Fassung{'' if card.superseded == 1 else 'en'}" if card.superseded else ""
+    here = f"{card.direct} here, {card.total - card.direct} below{older}" if card.subfolders else f"all here{older}"
+    head = f"{card.path}/" if card.path else "Top level"
+    head += f"  {_count(card.total, 'document')} ({here})"
+    if card.subfolders:
+        head += f", {_count(len(card.subfolders), 'subfolder')}"
+    if card.pages:
+        head += f", {_count(card.pages, 'page')}"
+        head += f" ({card.pages_unknown} without count)" if card.pages_unknown else ""
+    lines = [head]
+    types = [f"{tag} {count}" for tag, count in card.types[:MAX_TYPE_COUNTS]]
+    if card.untyped:
+        types.append(f"untyped {card.untyped}")
+    lines.append(f"  Dokumentart: {' · '.join(types)}")
+    if card.first_added:
+        span = card.first_added if card.first_added == card.last_added else f"{card.first_added} to {card.last_added}"
+        lines.append(f"  Added: {span}. Newest: {card.newest}")
+    lines.extend(f"  Current Fassung: {line}" for line in card.current[:MAX_CURRENT_LINES])
+    if len(card.current) > MAX_CURRENT_LINES:
+        lines.append(f"  … and {len(card.current) - MAX_CURRENT_LINES} more documents with several Fassungen")
+    if card.subfolders:
+        names = [f"{path.rsplit('/', 1)[-1]}/ ({count})" for path, count in card.subfolders[:MAX_CARD_SUBFOLDERS]]
+        rest = len(card.subfolders) - MAX_CARD_SUBFOLDERS
+        lines.append(f"  Subfolders: {' · '.join(names)}{f' · and {rest} more' if rest > 0 else ''}")
+    indent = "  " * card.depth
+    return [indent + line for line in lines]
+
+
+def render_tree(
+    cards: Sequence[FolderCard],
+    *,
+    total_rows: int,
+    notes: Sequence[str] = (),
+    scope: str = "",
+    in_flight: Sequence[str] = (),
+) -> str:
+    """The folder tree as the model reads it: a card per folder, bounded, ending with how to go on."""
+    lines: list[str] = [*notes]
+    if not cards:
+        if not notes:
+            lines.append(f"No file{f' on {scope}' if scope else ''} matches these filters.")
+        return "\n".join(lines)
+    lines.append(f"{_count(total_rows, 'document')}{f' on {scope}' if scope else ''}, as folder cards:")
+    shown = sorted(
+        sorted(cards, key=lambda card: (card.depth, -card.total, _card_order(card)))[:MAX_TREE_CARDS], key=_card_order
+    )
+    for card in shown:
+        lines.extend(_card_lines(card))
+    hidden = len(cards) - len(shown)
+    if hidden:
+        lines.append(
+            f"… {_count(hidden, 'folder')} not shown (the {MAX_TREE_CARDS} largest of the shallowest levels are). "
+            'Open one with `list_files(folder="…", view="tree")`.'
+        )
+    if in_flight:
+        lines.append(_in_flight_line(in_flight))
+    lines.append(
+        'The files of a folder: `list_files(folder="…")`. An index, not a source: never cite it; '
+        "open a document with read_passage."
     )
     return "\n".join(lines)
 
@@ -800,31 +1065,31 @@ def _chain_order(members: Sequence[FileRow]) -> list[FileRow]:
 def _chain_line(position: int, row: FileRow, *, current: bool, mark: str | None, basis: str) -> str:
     """One Fassung: the Index and date its name carries, its Plankopf, who vouches for its place, upload, change.
 
-    ``basis`` is what ordered the chain when no person confirmed the row: „laut Plankopf“ or „dem Namen nach“.
+    ``basis`` is what ordered the chain when no person confirmed the row: "by Plankopf" or "by file name".
     """
     revision = parse_revision_name(row.file_name)
     label = revision_label(revision) if revision is not None else ""
-    bits = [label or "kein Index und kein Datum im Namen"]
+    bits = [label or "no Index and no date in the name"]
     title_block = title_block_label(row.revision_facts)
     if title_block:
         bits.append(f"Plankopf: {title_block}")
     if current:
-        bits.append("aktuelle Fassung" + ("" if mark else f" ({basis})"))
+        bits.append("current Fassung" + ("" if mark else f" ({basis})"))
     elif not mark:
-        bits.append(f"ältere Fassung ({basis})")
+        bits.append(f"older Fassung ({basis})")
     if mark:
         bits.append(mark)
     if row.added_at:
-        bits.append(f"hochgeladen {row.added_at}")
+        bits.append(f"uploaded {row.added_at}")
     text = _change_text(row, MAX_CHAIN_CHANGE_CHARS)
     if text and _compared_with_own_upload(row):
-        bits.append(f"geändert gegenüber ihrer vorigen Hochladung (gleicher Dateiname): {text}")
+        bits.append(f"changed against its previous upload (same file name): {text}")
     elif text and row.change_basis:
-        bits.append(f"geändert gegenüber {row.change_basis}: {text}")
+        bits.append(f"changed against {row.change_basis}: {text}")
     elif text:
-        bits.append(f"geändert: {text}")
+        bits.append(f"changed: {text}")
     else:
-        bits.append("keine Änderungsangabe gespeichert")
+        bits.append("no change note stored")
     return f"{position}. {row.file_name} · {' · '.join(bits)}"
 
 
@@ -853,11 +1118,11 @@ def _resolve_chain(
     """
     shelves = (shelf,) if shelf else tuple(default_shelves)
     scoped = [row for row in rows if row.shelf in shelves or (not shelf and row.shelf is None)]
-    where = " und ".join(_SHELF_LABELS.get(name, name) for name in shelves)
+    where = " and ".join(_SHELF_LABELS.get(name, name) for name in shelves)
     matches = _chain_candidates(scoped, wanted)
     if not matches:
         return [], (
-            f"Keine Datei auf {where} heißt oder enthält „{wanted.strip()}“. Den genauen Namen findest du mit "
+            f'No file on {where} is named or contains "{wanted.strip()}". Find the exact name with '
             "`list_files(name_contains=…)`."
         )
     chains: dict[frozenset[tuple[str, str]], list[FileRow]] = {}
@@ -868,9 +1133,9 @@ def _resolve_chain(
         names = [row.file_name for row in matches[:MAX_CHAIN_CANDIDATES]]
         rest = len(matches) - len(names)
         return [], (
-            f"„{wanted.strip()}“ passt zu {len(chains)} verschiedenen Dokumenten: {', '.join(names)}"
-            f"{f' und {rest} weitere' if rest > 0 else ''}. Rufe `list_files(revisions_of=…)` mit dem genauen "
-            "Dateinamen eines davon auf."
+            f'"{wanted.strip()}" matches {len(chains)} different documents: {", ".join(names)}'
+            f"{f' and {rest} more' if rest > 0 else ''}. Call `list_files(revisions_of=…)` with the exact "
+            "file name of one of them."
         )
     return _chain_order(_with_supersedes(next(iter(chains.values())))), ""
 
@@ -893,13 +1158,13 @@ def render_revisions(
     if refusal:
         return refusal
     confirmed = confirmed_revision_marks(members)
-    where = " und ".join(dict.fromkeys(_SHELF_LABELS.get(row.shelf or "", row.shelf or "") for row in members))
-    basis = "laut Plankopf" if _by_title_block(members) else "dem Namen nach"
+    where = " and ".join(dict.fromkeys(_SHELF_LABELS.get(row.shelf or "", row.shelf or "") for row in members))
+    basis = "by Plankopf" if _by_title_block(members) else "by file name"
     asked = wanted.strip()
     lines = [
-        f"Fassungen von „{asked}“ auf {where}: {len(members)} Dateien, neueste zuerst."
+        f'Fassungen of "{asked}" on {where}: {len(members)} files, newest first.'
         if len(members) > 1
-        else f"„{asked}“ auf {where}: nur diese eine Fassung."
+        else f'"{asked}" on {where}: only this one Fassung.'
     ]
     for number, row in enumerate(members[:MAX_CHAIN_LINES], start=1):
         lines.append(
@@ -908,21 +1173,20 @@ def render_revisions(
             )
         )
     if len(members) > MAX_CHAIN_LINES:
-        lines.append(f"… und {len(members) - MAX_CHAIN_LINES} weitere, ältere Fassungen.")
+        lines.append(f"… and {len(members) - MAX_CHAIN_LINES} more, older Fassungen.")
     if len(members) == 1:
         lines.append(
-            "Kein anderer Dateiname dieses Regals gehört dem Namen nach (Index, Datum) dazu, und keine Person hat "
-            "eine Ersetzung bestätigt. Wurde dieselbe Datei erneut hochgeladen, steht das in der Zeile als Änderung "
-            "gegenüber der vorigen Hochladung."
+            "No other file name on this shelf belongs to it by name (Index, date), and no person has confirmed a "
+            "replacement. If the same file was uploaded again, the row says so as a change against the previous "
+            "upload."
         )
         return "\n".join(lines)
     lines.append(
-        "Die Änderungsangabe steht an der NEUEREN Fassung und vergleicht sie mit der darunter genannten Basis; "
-        "zwischen zwei nicht benachbarten Fassungen lies die Zeilen dazwischen zusammen. Sie ist eine "
-        "Zusammenfassung von Piloti, kein Beweis: was sich Seite für Seite geändert hat, zeigt "
-        "`list_files(revisions_of=…, compare_to=…)`, und ein Maß prüfst du mit `read_passage(document=…)`. "
-        "Eine ältere Fassung bleibt auf Wunsch lesbar; sonst stütze dich auf die aktuelle. "
-        "Schreibe Dateinamen genau so, wie sie hier stehen."
+        "The change note sits on the NEWER Fassung and compares it with the base named beside it; between two "
+        "Fassungen that are not neighbours, read the rows in between together. It is a summary by Piloti, not "
+        "proof: what changed page by page is shown by `list_files(revisions_of=…, compare_to=…)`, and you check a "
+        "measurement with `read_passage(document=…)`. An older Fassung stays readable on request; otherwise rely "
+        "on the current one. Write file names exactly as they appear here."
     )
     return "\n".join(lines)
 
@@ -943,7 +1207,7 @@ def resolve_compare(
 
     ``wanted`` names the document and, when it names one Fassung exactly, that
     Fassung; otherwise the current one. ``compare_to`` names the other Fassung
-    in the same chain, or says „vorige“ (the default) for the one right before.
+    in the same chain, or says "previous" (the default) for the one right before.
     Pure, over the rows the turn may list, like :func:`render_revisions`.
     """
     members, refusal = _resolve_chain(rows, wanted, shelf=shelf, default_shelves=default_shelves)
@@ -954,9 +1218,9 @@ def resolve_compare(
             None,
             None,
             (
-                f"Von „{wanted.strip()}“ gibt es auf diesem Regal nur diese eine Datei, also nichts zu vergleichen. "
-                "Frühere Hochladungen unter DEMSELBEN Dateinamen sind noch nicht im Index; was sich dort geändert hat, "
-                "steht als Änderungszeile in `list_files(revisions_of=…)`."
+                f'Of "{wanted.strip()}" there is only this one file on this shelf, so there is nothing to compare. '
+                "Earlier uploads under the SAME file name are not in the index yet; what changed there is in the "
+                "change note of `list_files(revisions_of=…)`."
             ),
         )
     exact = [row for row in members if fold(wanted.strip()) in (fold(row.file_name), fold(row.display_title or ""))]
@@ -969,12 +1233,12 @@ def resolve_compare(
         candidates = _chain_candidates(members, target)
         names = ", ".join(row.file_name for row in members[:MAX_CHAIN_CANDIDATES])
         if not candidates:
-            return None, None, f"„{target}“ ist keine Fassung dieses Dokuments. Seine Fassungen: {names}."
+            return None, None, f'"{target}" is not a Fassung of this document. Its Fassungen: {names}.'
         if len(candidates) > 1:
-            return None, None, f"„{target}“ passt zu mehreren Fassungen; nenne eine genau: {names}."
+            return None, None, f'"{target}" matches several Fassungen; name one exactly: {names}.'
         other = candidates[0]
     if other is anchor:
-        return None, None, "Das ist zweimal dieselbe Datei. Nenne in `compare_to` eine andere Fassung."
+        return None, None, "That is the same file twice. Name a different Fassung in `compare_to`."
     newer, older = (anchor, other) if position < members.index(other) else (other, anchor)
     return older, newer, ""
 
@@ -1016,15 +1280,16 @@ async def compare_revisions(older: FileRow, newer: FileRow) -> str:
         logger.warning("compare_revisions: the index did not answer", exc_info=True)
         # Marked like read_passage's failed fetch, so a retry is not refused as a repeat.
         return (
-            f"{FETCH_FAILED_MARKER} Der Index ist gerade nicht erreichbar, „{older.file_name}“ und "
-            f"„{newer.file_name}“ wurden nicht verglichen. Einmal erneut versuchen; schlägt es wieder fehl, "
-            "das so sagen und keinen Unterschied behaupten."
+            f'{FETCH_FAILED_MARKER} The index is not reachable right now; "{older.file_name}" and '
+            f'"{newer.file_name}" were not compared. Try once more; if it fails again, say so and claim no '
+            "difference."
         )
     missing = [row.file_name for row, chunks in ((older, older_chunks), (newer, newer_chunks)) if chunks is None]
     if missing:
+        names = " and ".join(f'"{name}"' for name in missing)
         return (
-            f"Der gelesene Inhalt von {' und '.join(f'„{name}“' for name in missing)} ist nicht im Index, "
-            "also lässt sich nichts vergleichen. Wird die Datei noch gelesen, später erneut versuchen."
+            f"The read content of {names} is not in the index, "
+            "so nothing can be compared. If the file is still being read, try again later."
         )
     # The report quotes both files' content: reported for the restricted-use
     # admission (ADR-0088), as every read of a document's text is.
@@ -1192,7 +1457,7 @@ def _pages_label(pages: Sequence[int], limit: int = 12) -> str:
         return ""
     shown = ", ".join(str(page) for page in pages[:limit])
     more = f" … (+{len(pages) - limit})" if len(pages) > limit else ""
-    return f", S. {shown}{more}"
+    return f", p. {shown}{more}"
 
 
 def _collection_names(collections: Sequence[str]) -> str:
@@ -1204,73 +1469,71 @@ def _collection_names(collections: Sequence[str]) -> str:
     from aiq_agent.knowledge.restricted_collections import is_restricted_collection
 
     return ", ".join(
-        "Ordner mit eingeschränktem Zugriff" if is_restricted_collection(name) else name for name in collections
+        "folder with restricted access" if is_restricted_collection(name) else name for name in collections
     )
 
 
 def _failed_note(failed: Sequence[str]) -> str:
     return (
-        f"UNVOLLSTÄNDIG: {len(failed)} Sammlung(en) konnten nicht durchsucht werden ({_collection_names(failed)}). "
-        "Was dort steht, fehlt in dieser Antwort — sag das dem Leser, statt daraus ein Nein zu machen."
+        f"INCOMPLETE: {len(failed)} collection(s) could not be searched ({_collection_names(failed)}). "
+        "What is in them is missing from this answer; tell the reader so instead of turning it into a no."
     )
 
 
 #: What the pattern tolerates, said where a count or a „Nein“ is stated.
 _TOLERATED = (
-    "Groß-/Kleinschreibung, Umlaut-Schreibweise (ä/ae, ö/oe, ü/ue, ß/ss) und Zeilenumbruch, Leerzeichen "
-    "oder Bindestrich zwischen den Wörtern berücksichtigt"
+    "ignoring case, umlaut spelling (ä/ae, ö/oe, ü/ue, ß/ss), and a line break, space or hyphen between the words"
 )
 
 
 def match_table(
     groups: Sequence[FileMatches], phrases: Sequence[str], *, truncated: bool, failed: Sequence[str] = ()
 ) -> str:
-    """The per-file answer to „wo steht das überall“: every file, not the top three."""
-    wanted = " | ".join(f"„{phrase}“" for phrase in phrases)
-    floor = "mindestens " if truncated else ""
+    """The per-file answer to "where does this appear": every file, not the top three."""
+    wanted = " | ".join(f'"{phrase}"' for phrase in phrases)
+    floor = "at least " if truncated else ""
     lines = [
-        f"## Fundstellen für {wanted}",
-        f"{floor}{sum(group.occurrences for group in groups)} Vorkommen in {len(groups)} Datei(en), {_TOLERATED}:",
+        f"## Matches for {wanted}",
+        f"{floor}{sum(group.occurrences for group in groups)} occurrence(s) in {len(groups)} file(s), {_TOLERATED}:",
     ]
     for group in groups:
         shelf = f" ({_SHELF_LABELS[group.shelf]})" if group.shelf in _SHELF_LABELS else ""
         lines.append(f"- {group.file_name}{shelf}: {group.occurrences}×{_pages_label(group.pages)}")
     if truncated:
         lines.append(
-            "Die Suche hat an ihrer Obergrenze abgebrochen: die Liste ist unvollständig. Grenze sie mit "
-            "`folder=` oder `file_name=` ein."
+            "The search stopped at its upper limit: the list is incomplete. Narrow it with `folder=` or `file_name=`."
         )
     if failed:
         lines.append(_failed_note(failed))
     lines.append(
-        "Die Tabelle ist ein Verzeichnis; zitierbar sind nur die Passagen oben. Eine weitere Stelle öffnest "
-        "du mit `read_passage(document=…, page=…)`."
+        "The table is an index; only the passages above are citable. Open another match with "
+        "`read_passage(document=…, page=…)`."
     )
     return "\n".join(lines)
 
 
 def no_match_message(phrases: Sequence[str], searched: int, failed: Sequence[str] = ()) -> str:
-    """„Nicht gefunden“ over the ``searched`` collections that ANSWERED; never an Nein over one that failed."""
-    wanted = " | ".join(f"„{phrase}“" for phrase in phrases)
-    short = " | ".join(f"„{phrase}“" for phrase in phrases if len(phrase) <= WHOLE_WORD_MAX_CHARS)
-    whole_word = f" {short} nur als ganzes Wort gesucht, nicht innerhalb längerer Wörter." if short else ""
-    head = f"Keine Fundstelle für {wanted} in {searched} Sammlung(en) — {_TOLERATED}.{whole_word}"
+    """``No match`` over the ``searched`` collections that ANSWERED; never a "no" over one that failed."""
+    wanted = " | ".join(f'"{phrase}"' for phrase in phrases)
+    short = " | ".join(f'"{phrase}"' for phrase in phrases if len(phrase) <= WHOLE_WORD_MAX_CHARS)
+    whole_word = f" {short} was searched as a whole word only, not inside longer words." if short else ""
+    head = f"No match for {wanted} in {searched} collection(s), {_TOLERATED}.{whole_word}"
     if failed:
-        return f"{head} {_failed_note(failed)} Für diese Sammlungen ist das KEIN Nein."
+        return f"{head} {_failed_note(failed)} For those collections this is NOT a no."
     return (
-        f"{head} Das ist ein belastbares Nein für den WORTLAUT, nicht für das Thema: eine "
-        "andere Formulierung findet `knowledge_search` ohne `match`. Eingescannte Seiten ohne Textebene "
-        "und Dateien, die noch verarbeitet werden, sind nicht durchsuchbar."
+        f"{head} That is a solid no for the WORDING, not for the topic: `knowledge_search` without `match` "
+        "finds another phrasing. Scanned pages without a text layer and files still being processed are not "
+        "searchable."
     )
 
 
 def search_failed_message(phrases: Sequence[str], failed: Sequence[str]) -> str:
     """Every collection failed: there is no answer, and in particular no Nein."""
-    wanted = " | ".join(f"„{phrase}“" for phrase in phrases)
+    wanted = " | ".join(f'"{phrase}"' for phrase in phrases)
     return (
-        f"Die Volltextsuche nach {wanted} konnte nicht laufen: keine der {len(failed)} Sammlung(en) hat "
-        f"geantwortet ({_collection_names(failed)}). Das ist KEIN Ergebnis — weder ein Treffer noch ein Nein. Sag dem "
-        "Leser, dass die Suche gerade nicht möglich war, oder versuche `knowledge_search` ohne `match`."
+        f"The full-text search for {wanted} could not run: none of the {len(failed)} collection(s) answered "
+        f"({_collection_names(failed)}). This is NOT a result, neither a hit nor a no. Tell the reader the search "
+        "was not possible just now, or try `knowledge_search` without `match`."
     )
 
 
@@ -1382,11 +1645,10 @@ def shelf_restricted_message(shelf: str, allowed: Iterable[str]) -> str:
     """
     allowed = set(allowed)
     names = [_SHELF_LABELS[known] for known in KNOWN_SHELVES if known in allowed]
-    where = names[0] if len(names) == 1 else f"{', '.join(names[:-1])} und {names[-1]}"
+    where = names[0] if len(names) == 1 else f"{', '.join(names[:-1])} and {names[-1]}"
     return (
-        f"Diese Frage ist durch die aktuelle Auswahl des Nutzers auf {where} beschränkt, deshalb wird "
-        f"{_SHELF_LABELS.get(shelf, shelf)} hier nicht gelistet. Das sagt nichts darüber, was dort liegt; "
-        "die Auswahl ändert nur der Nutzer."
+        f"The user's current selection limits this question to {where}, so {_SHELF_LABELS.get(shelf, shelf)} "
+        "is not listed here. That says nothing about what lies there; only the user changes the selection."
     )
 
 
@@ -1422,6 +1684,9 @@ _LIST_FILES_DESCRIPTION = (
     "- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n"
     "- `shelf=` project | office_shelf | session | base (base = the platform OIB corpus, listed only when asked).\n"
     "- `offset=` the next page, as the result says.\n"
+    '- `view="tree"` (`depth=` 1-4, default 2): a card per folder instead of file lines: counts, Dokumentart mix, '
+    "pages, dates, the current Fassung. Call it for „was liegt in diesem Projekt“, „wie viele Einreichunterlagen, "
+    "welcher Index gilt“, then open what you need. Filters apply; no paging.\n"
     "- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
     "upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; "
     "every other filter is ignored.\n"
@@ -1431,7 +1696,7 @@ _LIST_FILES_DESCRIPTION = (
     "WHEN NOT TO CALL — to learn what a file SAYS: that is `read_passage` / `knowledge_search`. To "
     'find which files MENTION a term: `knowledge_search(match="exact")`.\n'
     "RETURNS — a count, the subfolders, then one line per file: exact file name, title, folder, "
-    "Dokumentart, Themen, the date a photo was taken, a Fassung mark (read from the name, or a replacement "
+    "Dokumentart, page count, topics, the date a photo was taken, a Fassung mark (read from the name, or a replacement "
     "a person confirmed with what changed), upload date, a one-line summary. "
     "An index, not a source: never cite it and never "
     "answer what a file contains from its summary. Write file names exactly as returned — each "
@@ -1484,6 +1749,8 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
         topic: str | None = None,
         revisions_of: str | None = None,
         compare_to: str | None = None,
+        view: Literal["files", "tree"] | None = None,
+        depth: int | str | None = None,
     ) -> str:
         """List the reader's files, like opening a folder in the Files pane.
 
@@ -1501,9 +1768,12 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             revisions_of (str | None): A file name; returns that document's chain of Fassungen instead of a listing.
             compare_to (str | None): With `revisions_of`: compare that Fassung with this one (a file name of the
                 same chain, or "previous" for the one before) and return what changed, page by page.
+            view (str | None): files (default) lists files; tree returns a card per folder instead.
+            depth (int | None): With view=tree: folder levels below `folder` that get a card, 1 to 4, default 2.
 
         Returns:
-            str: A count, the subfolders with counts, and one line per file with its exact name.
+            str: A count, the subfolders with counts, and one line per file with its exact name; as a tree,
+                a card per folder.
         """
         shelf, refusal = _check_shelf(shelf)
         if refusal:
@@ -1537,10 +1807,14 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
                 return f"Invalid doc_class {doc_class!r}. Valid values: {', '.join(DOCUMENT_CLASSES)}."
             doc_class = current_doc_class
 
+        view = (view or "files").strip().lower()
+        if view not in ("files", "tree"):
+            return "`view` must be files or tree."
         turn = restrict_rows_to_turn(await _turn_rows(search_config))
         if shelf and turn.allowed is not None and shelf not in turn.allowed:
             return shelf_restricted_message(shelf, turn.allowed)
         rows = turn.rows
+        tree = view == "tree"
         listing = select_files(
             rows,
             default_shelves=turn.own_shelves,
@@ -1551,13 +1825,24 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             added_since=added_since,
             topic=(topic or "").strip() or None,
             sort=sort,
-            offset=_coerce_int(offset, 0, low=0, high=100_000),
-            limit=_coerce_int(limit, DEFAULT_PAGE_SIZE, low=1, high=MAX_PAGE_SIZE),
+            # A tree is not paged: its rows all go into the cards.
+            offset=0 if tree else _coerce_int(offset, 0, low=0, high=100_000),
+            limit=len(rows) + 1 if tree else _coerce_int(limit, DEFAULT_PAGE_SIZE, low=1, high=MAX_PAGE_SIZE),
         )
         collections = sorted({row.collection for row in rows if row.shelf in listing.shelves and row.collection})
         in_flight = await asyncio.to_thread(_in_flight, collections) if collections else []
-        logger.info("list_files: %d of %d row(s) selected", listing.total, len(rows))
-        return render_listing(listing, in_flight=in_flight)
+        logger.info("list_files: %d of %d row(s) selected, view=%s", listing.total, len(rows), view)
+        if not tree:
+            return render_listing(listing, in_flight=in_flight)
+        cards = folder_cards(
+            listing.rows,
+            root=listing.folder,
+            depth=_coerce_int(depth, DEFAULT_TREE_DEPTH, low=1, high=MAX_TREE_DEPTH),
+            series_rows=on_shelves(rows, shelf=shelf, default_shelves=turn.own_shelves),
+        )
+        return render_tree(
+            cards, total_rows=listing.total, notes=listing.notes, scope=_scope_of(listing), in_flight=in_flight
+        )
 
     yield FunctionInfo.from_fn(_list, description=_LIST_FILES_DESCRIPTION)
 
@@ -1728,7 +2013,7 @@ async def _search(
     if not answered:
         if failed:
             return search_failed_message(phrases, failed)
-        return "Die Volltextsuche ist in dieser Umgebung nicht verfügbar. Nutze `knowledge_search`."
+        return "Full-text search is not available in this environment. Use `knowledge_search`."
 
     groups = group_matches(chunks, pattern)
     if not groups:

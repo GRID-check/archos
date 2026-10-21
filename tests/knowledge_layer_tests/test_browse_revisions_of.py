@@ -76,21 +76,21 @@ class TestTheChain:
     def test_each_line_carries_the_index_and_date_read_from_the_name_and_the_upload_date(self):
         lines = _numbered(render_revisions(_floor_plan(), "EG_Grundriss_Index_B.pdf"))
 
-        assert "Index C · 14.08.2026" in lines[0] and "hochgeladen 2026-08-15" in lines[0]
-        assert "Index B" in lines[1] and "hochgeladen 2026-08-10" in lines[1]
-        assert "kein Index und kein Datum im Namen" in lines[2]
+        assert "Index C · 14.08.2026" in lines[0] and "uploaded 2026-08-15" in lines[0]
+        assert "Index B" in lines[1] and "uploaded 2026-08-10" in lines[1]
+        assert "no Index and no date in the name" in lines[2]
 
     def test_the_change_line_sits_on_the_newer_revision_and_names_what_it_compares_against(self):
         lines = _numbered(render_revisions(_floor_plan(), "EG_Grundriss_Index_B.pdf"))
 
-        assert "geändert gegenüber EG_Grundriss_Index_B.pdf: Wand in Achse 3 um 12 cm versetzt; Tür T3 neu" in lines[0]
-        assert "keine Änderungsangabe gespeichert" in lines[1]
+        assert "changed against EG_Grundriss_Index_B.pdf: Wand in Achse 3 um 12 cm versetzt; Tür T3 neu" in lines[0]
+        assert "no change note stored" in lines[1]
 
     def test_the_current_revision_is_marked_and_a_name_reading_is_said_to_be_one(self):
         lines = _numbered(render_revisions(_floor_plan(), "EG_Grundriss.pdf"))
 
-        assert "aktuelle Fassung (dem Namen nach)" in lines[0]
-        assert "ältere Fassung (dem Namen nach)" in lines[1]
+        assert "current Fassung (by file name)" in lines[0]
+        assert "older Fassung (by file name)" in lines[1]
 
     def test_a_different_document_is_not_in_the_chain(self):
         assert "Schnitt_AA.pdf" not in render_revisions(_floor_plan(), "EG_Grundriss.pdf")
@@ -109,7 +109,7 @@ class TestTheChain:
         )
 
         line = _numbered(render_revisions(rows, "P_Index_A.pdf"))[0]
-        change = line.split("geändert gegenüber P_Index_A.pdf: ")[1].split(" · ")[0]
+        change = line.split("changed against P_Index_A.pdf: ")[1].split(" · ")[0]
         assert 160 < len(change) <= MAX_CHAIN_CHANGE_CHARS and change.endswith("…")
 
     def test_a_long_chain_is_counted_not_dumped(self):
@@ -117,7 +117,7 @@ class TestTheChain:
         text = render_revisions(file_rows([_doc(name) for name in names]), names[0])
 
         assert len(_numbered(text)) == MAX_CHAIN_LINES
-        assert "und 5 weitere, ältere Fassungen" in text
+        assert "and 5 more, older Fassungen" in text
 
 
 class TestAConfirmedLinkAcrossFileNames:
@@ -147,13 +147,12 @@ class TestAConfirmedLinkAcrossFileNames:
     def test_it_says_which_links_a_person_confirmed(self):
         lines = _numbered(render_revisions(self._rows(), "Statik alt.pdf"))
 
-        assert "ersetzt Statik neu.pdf (bestätigt)" in lines[0]
+        assert "replaces Statik neu.pdf (confirmed)" in lines[0]
         assert (
-            "ersetzt durch Statik final.pdf (bestätigt)" in lines[1]
-            and "ersetzt Statik alt.pdf (bestätigt)" in lines[1]
+            "replaced by Statik final.pdf (confirmed)" in lines[1] and "replaces Statik alt.pdf (confirmed)" in lines[1]
         )
-        assert "ersetzt durch Statik neu.pdf (bestätigt)" in lines[2]
-        assert "geändert gegenüber Statik neu.pdf: Lift neu" in lines[0]
+        assert "replaced by Statik neu.pdf (confirmed)" in lines[2]
+        assert "changed against Statik neu.pdf: Lift neu" in lines[0]
 
     def test_a_confirmed_link_beats_what_the_names_say(self):
         rows = file_rows(
@@ -171,7 +170,7 @@ class TestAConfirmedLinkAcrossFileNames:
     def test_a_link_to_a_file_outside_the_rows_joins_nothing(self):
         text = render_revisions(file_rows([_doc("alt.pdf", superseded_by="weg.pdf")]), "alt.pdf")
 
-        assert "nur diese eine Fassung" in text
+        assert "only this one Fassung" in text
         assert "weg.pdf" not in text
 
     def test_a_loop_the_store_refuses_still_terminates(self):
@@ -214,7 +213,7 @@ class TestTheTitleBlock:
     def test_the_sheet_decides_which_is_newer_and_the_line_says_so(self):
         lines = _numbered(render_revisions(self._rows(), "Schnitt final.pdf"))
 
-        assert "aktuelle Fassung (laut Plankopf)" in lines[0] and "ältere Fassung (laut Plankopf)" in lines[1]
+        assert "current Fassung (by Plankopf)" in lines[0] and "older Fassung (by Plankopf)" in lines[1]
         assert "Plankopf: Nr. a 201, Index C, Stand 02.05.2026" in lines[1]
 
     def test_the_sheet_beats_the_index_in_the_name(self):
@@ -237,7 +236,7 @@ class TestTheTitleBlock:
 
         text = render_revisions(rows, "Plan_Index_B.pdf")
         assert _names(text) == ["Plan_Index_B.pdf", "Plan_Index_A.pdf"]
-        assert "dem Namen nach" in text and "laut Plankopf" not in text
+        assert "by file name" in text and "by Plankopf" not in text
 
 
 class TestAskingForTheName:
@@ -259,7 +258,7 @@ class TestAskingForTheName:
     def test_a_name_that_matches_two_documents_asks_for_the_exact_one(self):
         text = render_revisions(_floor_plan(), "pdf")
 
-        assert "2 verschiedenen Dokumenten" in text
+        assert "2 different documents" in text
         assert "revisions_of=" in text and not _numbered(text)
 
     def test_a_name_that_matches_nothing_points_at_the_name_filter(self):
@@ -270,14 +269,14 @@ class TestAskingForTheName:
     def test_a_document_with_no_other_revision_says_so_and_shows_its_one_line(self):
         text = render_revisions(_floor_plan(), "Schnitt_AA.pdf")
 
-        assert "nur diese eine Fassung" in text
+        assert "only this one Fassung" in text
         assert _names(text) == ["Schnitt_AA.pdf"]
 
     def test_a_reupload_under_the_same_name_is_told_apart_from_another_file(self):
         rows = file_rows([_doc("Statik.pdf", change_summary="- Lift neu", change_basis="Statik.pdf")])
 
         line = _numbered(render_revisions(rows, "Statik.pdf"))[0]
-        assert "vorigen Hochladung (gleicher Dateiname): Lift neu" in line
+        assert "previous upload (same file name): Lift neu" in line
 
 
 class TestOnlyWhatTheTurnMayList:
@@ -343,8 +342,8 @@ class TestTheTool:
         text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="project")
 
         assert _names(text) == ["Plan_Index_B.pdf", "Plan_Index_A.pdf"]
-        assert "geändert gegenüber Plan_Index_A.pdf: Wand neu" in text
-        assert "Datei(en) auf" not in text
+        assert "changed against Plan_Index_A.pdf: Wand neu" in text
+        assert "file(s) on" not in text
 
     async def test_every_other_filter_is_ignored(self, scope):
         text = await self._call(
@@ -361,14 +360,14 @@ class TestTheTool:
     async def test_a_name_on_two_shelves_is_two_documents_and_is_not_merged(self, scope):
         text = await self._call(revisions_of="Plan_Index_A.pdf")
 
-        assert "2 verschiedenen Dokumenten" in text
+        assert "2 different documents" in text
 
     async def test_a_shelf_the_turn_did_not_ask_for_is_refused_as_the_listing_does(self, scope, monkeypatch):
         monkeypatch.setattr("aiq_agent.common.focus_file.get_turn_shelves", lambda: frozenset({"project"}))
 
         text = await self._call(revisions_of="Plan_Index_A.pdf", shelf="office_shelf")
 
-        assert "beschränkt" in text and not _numbered(text)
+        assert "limits this question" in text and not _numbered(text)
 
     async def test_a_restricted_folders_revision_is_not_named(self, scope):
         restricted = "proj_1_r0123456789ab"
@@ -387,7 +386,7 @@ class TestTheTool:
     async def test_a_blank_argument_is_an_ordinary_listing(self, scope):
         text = await self._call(revisions_of="  ", shelf="project")
 
-        assert "2 Datei(en) auf Projektwissen" in text
+        assert "2 file(s) on Projektwissen" in text
 
     def test_the_description_says_when_to_call_it(self):
         assert "revisions_of" in _LIST_FILES_DESCRIPTION
