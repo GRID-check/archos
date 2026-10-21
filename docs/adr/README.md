@@ -183,6 +183,7 @@ Consequences, where a reader looks for them.
 | [0119](0119-every-metric-goes-to-posthog-through-the-collector.md) | Every metric goes to PostHog, through the collector, from an agent on every node | Accepted |
 | [0120](0120-addresses-are-geocoded-by-a-self-hosted-photon.md) | Addresses are geocoded by a Photon in the cluster, over the Austrian OSM extract | Proposed |
 | [0121](0121-bulk-work-is-owned-by-the-server.md) | Bulk work is owned by the server: a durable run on `bff_job_queue`, never a loop in the browser | Accepted |
+| [0122](0122-object-storage-grows-as-a-pool-never-a-disk-per-organization.md) | Object storage grows as a shared pool of volume servers, never as a disk per organization | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
