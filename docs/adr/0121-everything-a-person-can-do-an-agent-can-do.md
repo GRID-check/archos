@@ -142,9 +142,18 @@ reads, Piloti runs no workspace read and no backend read, and relays a refusal
 instead; writes are still proposed, since they run as whoever accepts them. In a
 conversation that is the requester's alone, the read runs after every folder of
 the turn's project that restricts someone and that the requester may read is
-recorded for the conversation and the turn's answer is marked, so a later share
-is judged against them. Fail closed: running the read as the audience instead
-would need every route to answer for a group, and none does.
+recorded for the conversation and the turn's answer is marked, in one
+transaction under the conversation's audience lock with the audience read again
+inside it, so a later share is judged against them and a share that slipped in
+first refuses the read. A read there that names another project (by id, or
+through a document, folder, model or conversation of one), or any project in a
+turn that has none, is refused: the record covers the turn's own project only,
+and recording another project as a cross-project hand-out (ADR-0094) would claim
+the answer was what the audience may read, which a route's answer is not. Fail
+closed: running the read as the audience instead would need every route to
+answer for a group, and none does. An organization-wide read that names no
+project (the inbox, a list across projects) still runs on the turn's record;
+that is the remaining gap.
 
 ### Sensitive operations
 
@@ -193,9 +202,11 @@ the person says yes or no to each such call; the guards are how that holds:
 **Built.** Twenty-four route methods are catalogued with a sensitivity, and
 `agent-reachability.spec.ts` (`SENSITIVE`) holds each to exactly its class and
 nothing else to one: folder access, sharing visibility and grants (add, change,
-revoke) and custom roles (create, change, delete) as `access`; the LLM provider
-keys (list, connect, revoke, verify, mode) and the two audit-log portal links as
-`secret`. The routes stay the gate: each still runs its own `authz` and feature
+revoke), project roles (add, remove) and custom roles (create, change, delete)
+as `access`; the LLM provider keys (list, connect, revoke, verify, mode) and the
+two audit-log portal links as `secret`; zero data retention, the two upload
+screening policies, letting a held file through, lifting a hold, download-log
+retention and the deleted-folder content policy as `control`. The routes stay the gate: each still runs its own `authz` and feature
 gate as the person. Until the scope is enforced in WorkOS no external client sees
 any of them, whatever the organization switched on.
 
@@ -319,8 +330,12 @@ the way the three consumers of ADR-0055 did.
 - `read-only-writes.spec.ts` lists every non-GET operation that claims
   `readOnly`, each with the reason its service writes nothing; a new claim fails
   until it has one, and no sensitive operation may claim it.
-- `/api/mcp` charges `mcp-request` (`lib/limits/rules.js`) once per request;
-  `app/api/mcp/route.spec.ts` holds it.
+- `/api/mcp` charges `mcp-request` (`lib/limits/rules.js`) once per request,
+  and refuses a JSON-RPC batch (400), so one request is one call;
+  `app/api/mcp/route.spec.ts` holds both.
+- `read-gate.integration.spec.ts` and `operation-proposals.integration.spec.ts`
+  run the solo-read refusals and record, and the proposal's tenant scope and
+  confused-deputy refusal, against Postgres (`task db:test:rls`).
 - PostHog events, through the collector (ADR-0119): `agent_operation_called`
   (operation, client, status) and `agent_operation_missing` (that an agent
   found no operation, by the length of what it wanted, never its words).
@@ -354,8 +369,14 @@ because it reaches persisted data or another wave's code:
   question handed to deep research, persisted in stored answers and the
   envelope schema.
 - **The `file_operation` proposal payload's `operation` field to `action`**: it
-  collides with the agent surface's "operation" and is stored in
-  `proposed_changes.payload`.
+  collides with the agent surface's "operation" (in an `operation` proposal the
+  same key names the catalog operation) and is stored in
+  `proposed_changes.payload`. Left out of the security fix wave because it is
+  not contained: the key is read by the CHECK `proposed_changes_office_shelf_move`
+  (0146, 0174), by Python's `propose_file_change` and its JSON Schema fixture,
+  by the notice variants and by the file cards, some sixty files. One migration
+  rewrites the stored payloads and the CHECK, and the agent's side changes in
+  the same commit; the `operation` kind keeps `operation`.
 - **`AGENT_REFUSAL_LOCALE` to English**: the internal routes Piloti's native
   tools call still refuse in German, because two person-facing paths fall back to
   that constant without naming their reader. Give each caller an explicit reader,

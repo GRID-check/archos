@@ -37,6 +37,7 @@ vi.mock('@/lib/agent-api/operation-proposals', () => ({ proposeOperation: vi.fn(
 vi.mock('@/lib/agent-api/conversation-audience', () => ({
   conversationReachOf: vi.fn(),
   recordSoloWorkspaceRead: vi.fn(),
+  soloReadRefusal: vi.fn(async () => null),
 }))
 vi.mock('@/lib/agent-api/dispatch', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/agent-api/dispatch')>()),
@@ -164,7 +165,7 @@ beforeEach(() => {
     body: { projects: [{ id: 'proj_1', name: 'Haus Muster' }] },
   })
   vi.mocked(conversationReachOf).mockResolvedValue('solo')
-  vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(undefined)
+  vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(true)
   vi.mocked(proposeOperation).mockResolvedValue({
     proposalId: 'prop_1',
     summary: 'Add user_2 to proj_1 as viewer',

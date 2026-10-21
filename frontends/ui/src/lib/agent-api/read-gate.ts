@@ -20,10 +20,15 @@ import 'server-only'
  *    be listed in {@link AUDIENCE_SAFE_READ_DOMAINS}; none is today (project
  *    names, the member list's admin-only fields, a person's inbox and tasks
  *    all depend on who asks).
- *  - In a conversation that is the requester's alone, the read runs, after the
- *    restricted folders it may have drawn on are recorded and the turn's
- *    answer is marked (`recordSoloWorkspaceRead`), once per MCP request, so
- *    a later share is judged against them.
+ *  - In a conversation that is the requester's alone, a read that names
+ *    another project (by id, or through a document, folder, model or
+ *    conversation of one), or any project in a turn that has none, is refused
+ *    (`soloReadRefusal`): the record below covers the turn's own project only.
+ *    Every other read runs after the restricted folders it may have drawn on
+ *    are recorded and the turn's answer is marked (`recordSoloWorkspaceRead`),
+ *    once per MCP request, under the conversation's audience lock with the
+ *    audience read again inside it, so a later share is judged against them
+ *    and a share that slipped in first refuses the read.
  *  - A call that belongs to no conversation (an external agent, a run with no
  *    chat) writes no transcript, and passes.
  *
@@ -31,8 +36,9 @@ import 'server-only'
  * audience is read once per request and never outlives it.
  */
 
-import { type ConversationReach, conversationReachOf, recordSoloWorkspaceRead } from './conversation-audience'
-import type { AgentDomain } from './operation'
+import { type ConversationReach, conversationReachOf, recordSoloWorkspaceRead, soloReadRefusal } from './conversation-audience'
+import type { AgentDomain, AgentOperation } from './operation'
+import type { TargetInput } from './operation-targets'
 import type { AgentPrincipal } from './principal'
 
 /** Domains Piloti may read in a shared conversation. Empty: see the module docstring before adding one. */
@@ -70,11 +76,16 @@ export function sharedConversationReadRefusal(): string {
 
 export interface ReadGate {
   /**
-   * Before a read runs: `null` when it may run, else the refusal the model
-   * relays. In a solo conversation the record is written before this resolves;
-   * a failure to read the audience or to record rejects, and the read must not run.
+   * Before a read of `op` with `input` runs: `null` when it may run, else the
+   * refusal the model relays. In a solo conversation the record is written
+   * before this resolves; a failure to read the audience, to resolve what the
+   * call names or to record rejects, and the read must not run. A backend read
+   * (no `path`) names nothing here; Piloti never sees one.
    */
-  beforeRead(op: { readonly name: string; readonly domain: AgentDomain }): Promise<string | null>
+  beforeRead(
+    op: { readonly name: string; readonly domain: AgentDomain; readonly path?: AgentOperation['path'] },
+    input?: TargetInput,
+  ): Promise<string | null>
   /** After a read ran: whether its answer may hand on a link (a redirect, a `resource_link`). */
   mayHandOnLink(): Promise<boolean>
 }
@@ -83,18 +94,20 @@ const gates = new WeakMap<AgentPrincipal, ReadGate>()
 
 function buildGate(principal: AgentPrincipal): ReadGate {
   let reach: Promise<ConversationReach> | undefined
-  let recorded: Promise<void> | undefined
+  let recorded: Promise<boolean> | undefined
   const reachOnce = () => (reach ??= conversationReachOf(principal))
   return {
-    async beforeRead(op) {
+    async beforeRead(op, input = {}) {
       const now = await reachOnce()
       if (now === 'none') return null
       if (now === 'shared') {
         const safe = AUDIENCE_SAFE_READ_DOMAINS.has(op.domain) && !LINK_BEARING_OPERATIONS.has(op.name)
         return safe ? null : sharedConversationReadRefusal()
       }
-      await (recorded ??= recordSoloWorkspaceRead(principal))
-      return null
+      const refused = op.path ? await soloReadRefusal(principal, { path: op.path }, input) : null
+      if (refused) return refused
+      // Shared since the audience was first read: the lock saw it, nothing was recorded, nothing runs.
+      return (await (recorded ??= recordSoloWorkspaceRead(principal))) ? null : sharedConversationReadRefusal()
     },
     async mayHandOnLink() {
       return (await reachOnce()) !== 'shared'

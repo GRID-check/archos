@@ -88,7 +88,7 @@ is how old the answers about the person may be:
 | Client | A read | A write |
 |---|---|---|
 | External agent | Runs | The client asks its user, driven by the tool annotations |
-| Piloti in-product, in a conversation that is the person's alone | Runs, after the restricted folders it may draw on are recorded (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
+| Piloti in-product, in a conversation that is the person's alone | Runs if it names nothing outside the turn's project, after the restricted folders it may draw on are recorded (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
 | Piloti in-product, in a shared conversation | Refused, with a sentence the model relays | As above |
 
 ### Shared conversations
@@ -108,20 +108,35 @@ person's and does not say which folder or project its content came from, so
   presigned link is never handed on there either. `AUDIENCE_SAFE_READ_DOMAINS`
   is empty: a domain belongs in it only when every reader of the conversation
   may read every answer of every operation in it.
-- **Solo** (private, the requester's alone, or not created yet): before the
-  first read of the request, `recordSoloWorkspaceRead` admits every folder of
-  the turn's project that restricts someone and that the requester may read
-  (`admitSourceFolders`), and marks the turn's answer (`markTurnAnswer`), as
-  the internal restricted-use route does. A later share is then judged against
-  those folders. This over-records on purpose: the answer's own provenance is
-  unknown. The answer's id comes from the agent in `x-grid-answer-message-id`
-  (`turn_answer_message_id`), as the other internal tools send `answerMessageId`.
+- **Solo** (private, the requester's alone, or not created yet): first,
+  `soloReadRefusal` resolves what the call names (`operation-targets.ts`: the
+  path's `projects/[id]`, `documents/[id]`, `folders/[folderId]`,
+  `conversations/[id]`, `models/[modelId]` and the like, and `projectId`,
+  `documentId`, `folderId`, `conversationId` keys at any depth of the query and
+  body) to where each lives. A read that names another project, or any project
+  in a turn that has none, is refused with a sentence the model relays; so is a
+  read of another conversation that drew on another project. Then, before the
+  first read of the request, `recordSoloWorkspaceRead` takes the
+  conversation's audience lock (`lockConversationAudience`, the one every
+  share takes), reads the audience again under it, and records every folder of
+  the turn's project that restricts someone and that the requester may read,
+  and marks the turn's answer, in that one transaction. A conversation shared
+  in the meantime records nothing and the read is refused. A later share is
+  judged against the record. This over-records on purpose: the answer's own
+  provenance is unknown. The answer's id comes from the agent in
+  `x-grid-answer-message-id` (`turn_answer_message_id`), as the other internal
+  tools send `answerMessageId`.
 - **No conversation** (an external agent, a run with no chat): nothing to judge.
 
-Not covered yet: a read in a solo conversation of another project's object, by
-id, records only the turn's own project. A later share of that conversation is
-not judged against the other project (ADR-0094's `conversation_source_projects`
-is written by the cross-project lookups alone).
+A read in a solo conversation of another project is refused rather than
+recorded as a cross-project hand-out (`recordCrossProjectHandOut`,
+`conversation_source_projects`): that record says the conversation drew on the
+project as its audience may read it, and a route's answer is the requester's,
+with every restricted folder they may open. Not covered: an organization-wide
+read that names no project (the inbox, the conversation list, a document
+summary across projects) still runs, and records only the turn's own project.
+`read-gate.integration.spec.ts` proves the refusals and the record against
+Postgres.
 
 `read-gate.spec.ts` walks the real catalog and every backend operation and fails
 if any read Piloti can name reaches `callOperation` or `callBackendOperation` in
@@ -420,8 +435,9 @@ the map does not give it, or none where it does:
 
 | Class | Operations |
 |---|---|
-| `access` | `project-folder-access-set`, `sharing-visibility-set`, `sharing-grant-add`, `sharing-grant-update`, `sharing-grant-revoke`, `organization-role-create`, `organization-role-update`, `organization-role-delete` |
+| `access` | `project-folder-access-set`, `sharing-visibility-set`, `sharing-grant-add`, `sharing-grant-update`, `sharing-grant-revoke`, `organization-role-create`, `organization-role-update`, `organization-role-delete`, `project-member-add`, `project-member-remove` |
 | `secret` | `organization-llm-credential-list`, `organization-llm-credential-create`, `organization-llm-credential-revoke`, `organization-llm-credential-verify`, `organization-llm-provider-mode-set`, `organization-audit-portal-link-create`, `platform-audit-portal-link` |
+| `control` | `organization-zdr-set`, `organization-upload-screening-set`, `project-upload-screening-set`, `document-quarantine-allow`, `hold-release`, `organization-download-log-retention-set`, `organization-deleted-folder-content-set` |
 
 A new operation that widens access, touches a credential or turns a control down
 gets its line in `SENSITIVE` in the same change. Its description says that the
@@ -441,7 +457,6 @@ channel, the proxies), browser sign-in plumbing (the AuthKit callback and
 redirect) and typing indicators. "Nobody would ask an agent to do that" is not a
 reason; an operation costs a few lines.
 
-| `control` | `organization-zdr-set`, `organization-upload-screening-set`, `project-upload-screening-set`, `document-quarantine-allow`, `hold-release`, `organization-download-log-retention-set`, `organization-deleted-folder-content-set` |
 ## The ratchet
 
 `agent-reachability.spec.ts` walks every `app/api/**/route.ts` and fails when:

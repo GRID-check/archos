@@ -2,9 +2,9 @@
  * @vitest-environment node
  */
 /**
- * Who reads the conversation Piloti answers in, and what a solo read records
- * (H1, ADR-0093). The database is replaced at the repository seam; the rule
- * deciding solo (`isSoloAudience`) and the admission are the real ones' callers.
+ * Who reads the conversation Piloti answers in (H1, ADR-0093). The database is
+ * replaced at the repository seam; the rule deciding solo (`isSoloAudience`) is
+ * the real one.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -19,21 +19,12 @@ vi.mock('@/lib/conversations/cross-project-use', async () => {
       (audience.visibility === 'private' && audience.createdBy === userId && audience.grantees.every((g) => g === userId)),
   }
 })
-vi.mock('@/lib/conversations/restricted-use', () => ({
-  ADMISSION_MAX_COLLECTIONS: 2,
-  admitSourceFolders: vi.fn(),
-  markTurnAnswer: vi.fn(),
-}))
 vi.mock('@/lib/authz/folder-access-repository', () => ({ listProjectFolderTree: vi.fn() }))
-vi.mock('@/lib/authz/folder-access', () => ({
-  folderTree: (folders: { id: string; restricted: boolean }[]) => new Map(folders.map((folder) => [folder.id, folder])),
-  readableByEveryMember: (tree: Map<string, { restricted: boolean }>, id: string) => !tree.get(id)?.restricted,
-}))
+vi.mock('@/lib/authz/folder-access', () => ({}))
+vi.mock('./operation-targets', () => ({}))
 
-import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
-import { admitSourceFolders, markTurnAnswer } from '@/lib/conversations/restricted-use'
 import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
-import { conversationReachOf, recordSoloWorkspaceRead } from './conversation-audience'
+import { conversationReachOf } from './conversation-audience'
 import type { AgentPrincipal } from './principal'
 
 const session = {
@@ -47,7 +38,6 @@ const session = {
   permissions: [],
   featureFlags: null,
 }
-const ANSWER = '6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e'
 const piloti = (extra: Partial<AgentPrincipal> = {}): AgentPrincipal => ({
   actor: 'piloti',
   session,
@@ -55,7 +45,6 @@ const piloti = (extra: Partial<AgentPrincipal> = {}): AgentPrincipal => ({
   scopes: [],
   conversationId: 'conv_1',
   projectId: 'proj_1',
-  answerMessageId: ANSWER,
   ...extra,
 })
 const audience = (extra: object) => ({
@@ -93,32 +82,5 @@ describe('conversationReachOf', () => {
   })
 })
 
-describe('recordSoloWorkspaceRead', () => {
-  it('admits every restricting folder of the turn’s project, in parts, then marks the answer', async () => {
-    vi.mocked(listProjectFolderTree).mockResolvedValue([
-      { id: 'f_open', restricted: false },
-      { id: 'f_a', restricted: true },
-      { id: 'f_b', restricted: true },
-      { id: 'f_c', restricted: true },
-    ] as never)
-    await recordSoloWorkspaceRead(piloti())
-
-    const request = {
-      organizationId: 'org_1',
-      conversationId: 'conv_1',
-      userId: 'user_1',
-      projectId: 'proj_1',
-      answerMessageId: ANSWER,
-    }
-    expect(admitSourceFolders).toHaveBeenNthCalledWith(1, request, ['f_a', 'f_b'])
-    expect(admitSourceFolders).toHaveBeenNthCalledWith(2, request, ['f_c'])
-    expect(markTurnAnswer).toHaveBeenCalledWith(request)
-  })
-
-  it('in no project admits nothing and still marks the answer', async () => {
-    await recordSoloWorkspaceRead(piloti({ projectId: null }))
-    expect(listProjectFolderTree).not.toHaveBeenCalled()
-    expect(admitSourceFolders).not.toHaveBeenCalled()
-    expect(markTurnAnswer).toHaveBeenCalledWith(expect.objectContaining({ projectId: null, answerMessageId: ANSWER }))
-  })
-})
+// What a solo read records, and what it refuses, is SQL under the audience lock: proven against
+// Postgres in `read-gate.integration.spec.ts`, not here.

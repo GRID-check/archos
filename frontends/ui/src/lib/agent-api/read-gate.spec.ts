@@ -26,11 +26,12 @@ vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapability
 vi.mock('./conversation-audience', () => ({
   conversationReachOf: vi.fn(),
   recordSoloWorkspaceRead: vi.fn(),
+  soloReadRefusal: vi.fn(),
 }))
 
 import { BACKEND_OPERATIONS, callBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
-import { conversationReachOf, recordSoloWorkspaceRead } from './conversation-audience'
+import { conversationReachOf, recordSoloWorkspaceRead, soloReadRefusal } from './conversation-audience'
 import { callOperation } from './dispatch'
 import { runBackendOperation, runOperation } from './discovery'
 import { proposeOperation } from './operation-proposals'
@@ -68,7 +69,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(callOperation).mockResolvedValue({ status: 200, ok: true, body: { ok: true } })
   vi.mocked(callBackendOperation).mockResolvedValue({ status: 200, ok: true, body: { result: 'ok' } })
-  vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(undefined)
+  vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(true)
+  vi.mocked(soloReadRefusal).mockResolvedValue(null)
 })
 
 describe('in a shared conversation', () => {
@@ -144,6 +146,28 @@ describe('in a conversation that is the requester’s alone', () => {
       vi.mocked(callOperation).mock.invocationCallOrder[0],
     )
     expect(callOperation).toHaveBeenCalledTimes(2)
+  })
+
+  it('asks what each read names, with the call’s own input, before it runs', async () => {
+    const principal = piloti()
+    const input = { params: { id: 'doc_1' } }
+    await runOperation(ctx(principal), 'document-get', input)
+    expect(soloReadRefusal).toHaveBeenCalledWith(principal, { path: '/api/documents/[id]' }, input)
+  })
+
+  it('runs nothing that names another project, and relays the refusal (the SQL is proven in read-gate.integration.spec.ts)', async () => {
+    vi.mocked(soloReadRefusal).mockResolvedValue('That belongs to another project')
+    const result = await runOperation(ctx(piloti()), 'document-get', { params: { id: 'doc_1' } })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toBe('That belongs to another project')
+    expect(callOperation).not.toHaveBeenCalled()
+  })
+
+  it('runs nothing once the lock finds the conversation shared after all', async () => {
+    vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(false)
+    const result = await runOperation(ctx(piloti()), 'project-list', {})
+    expect(text(result)).toBe(sharedConversationReadRefusal())
+    expect(callOperation).not.toHaveBeenCalled()
   })
 
   it('runs nothing when the record cannot be written', async () => {
