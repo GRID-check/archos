@@ -100,6 +100,10 @@ should carry more than a name. Use Qdrant properly. Keep the pipeline changes sm
   `knowledge_search` with the navigation moves, teach three moves in the prompt, and make
   every folder a card: an exact part computed when it is read, and a written part built
   bottom-up only on change.
+* **A shell over a virtual projection of the files** (Vercel's `just-bash`: a simulated
+  bash with a virtual file system). Each project appears as read-only directories, each
+  document as a text file with page markers, each folder with a README holding its card;
+  the agent runs `ls`, `tree`, `sed -n`, `grep -rn` and pipes.
 
 ## Decision Outcome
 
@@ -258,6 +262,38 @@ flowchart LR
 * Bad, because there are more moving parts (see Consequences), and because nobody has
   published a benchmark for "folder card, then chunk" routing. The `pf-*` arms are our
   evidence, which is why they come first.
+
+### A shell over a virtual projection (`just-bash`)
+
+Evaluated on 2026-10-21 (`just-bash` 3.6.0, README and threat model read) and rejected
+by the product owner the same day; not kept as an eval arm.
+
+* Good, because models know bash well from training and a pipe answers some counting
+  questions in one call.
+* Bad, because `grep -rn` over the projection materialises every document's text per
+  command, where the regex search here runs inside Qdrant behind the folder filter.
+* Bad, because `cat` output carries no chunk identity, so a citation still needs
+  `read_passage`: a second read path to every document (ADR-0055).
+* Bad, because `just-bash` provides no isolation and trusts the file system it is
+  given, so every tenancy guarantee would be ours to rebuild, in a TypeScript runtime
+  beside a Python agent.
+* Neutral: outside agents on the MCP door already have their own shells; the door
+  stays tools-only.
+
+## Consumers
+
+The verbs grow on tools three agents share, so the change reaches all of them.
+
+| Agent | What changes |
+|---|---|
+| Piloti in the chat | Everything above; the eval and the prompt rebalance are written for it |
+| Deep research (`agents/deep_researcher/`) | Binds the same `list_files`, `read_passage` and `knowledge_search`, so it gets the tree, ranges and regex through config. Its researcher prompt allows list, then exact search, then a ranged read for questions about the office's own documents, and `adapt_source_tools_for_research` passes the new arguments through. It keeps its own working directory for plan and notes |
+| Project intake | Binds `list_files` and `read_passage`; nothing in its prompt changes in this decision |
+
+Deep research is not merged into the chat agent here: its run is an approved plan, six
+parallel workers and a report on a 40-minute clock, which a chat turn's budget cannot
+hold. Revisit when the `navigate` arm shows the chat agent matching it on office-file
+questions.
 
 ## More Information
 

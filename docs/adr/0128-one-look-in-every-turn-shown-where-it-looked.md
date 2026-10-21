@@ -270,6 +270,14 @@ in short:
 * Bad, because the research report's own design (`inspect_region`) is
   `look` plus `question`; the composition fits as a parameter.
 
+## Consumers
+
+| Agent | What changes |
+|---|---|
+| Piloti in the chat, on the canvas and through `piloti-ask` | Everything above |
+| Deep research | Rebinds `view_knowledge_image` to `look`, gets its own image budget per run (it had none: the per-turn budget was bound only for chat turns), and its pruning of old tool results replaces an old image with a one-line stub instead of cutting base64 as text. Its researcher prompt says when to look; the how stays in the tool description |
+| Project intake | Stays without `look` until it has an image budget of its own |
+
 ## More Information
 
 * Visual audit and research, 2026-10-21 (session reports `vis-audit.md`,
