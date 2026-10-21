@@ -1,0 +1,50 @@
+{
+  "comment": "Written by workspace-contract.spec.ts from the real route; read by test_workspace_mcp_contract.py. Regenerate with UPDATE_FIXTURES=1.",
+  "responses": {
+    "call_read": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"projects\\\": [\\n    {\\n      \\\"id\\\": \\\"proj_1\\\",\\n      \\\"name\\\": \\\"Haus Muster\\\"\\n    }\\n  ]\\n}\"}],\"structuredContent\":{\"projects\":[{\"id\":\"proj_1\",\"name\":\"Haus Muster\"}]}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+    },
+    "call_write": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"proposed\\\": true,\\n  \\\"applied\\\": false,\\n  \\\"proposalId\\\": \\\"prop_1\\\",\\n  \\\"summary\\\": \\\"Add user_2 to proj_1 as viewer\\\",\\n  \\\"note\\\": \\\"Nothing was changed. The person sees this proposal in Piloti and accepts or dismisses it.\\\"\\n}\"}],\"structuredContent\":{\"proposed\":true,\"applied\":false,\"proposalId\":\"prop_1\",\"summary\":\"Add user_2 to proj_1 as viewer\",\"note\":\"Nothing was changed. The person sees this proposal in Piloti and accepts or dismisses it.\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+    },
+    "describe": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"name\\\": \\\"project-member-add\\\",\\n  \\\"domain\\\": \\\"projects\\\",\\n  \\\"summary\\\": \\\"Add a person to a project\\\",\\n  \\\"description\\\": \\\"Adds an organization member to a project with a role. The user id comes from organization-member-list.\\\",\\n  \\\"annotations\\\": {\\n    \\\"title\\\": \\\"Add a person to a project\\\",\\n    \\\"readOnlyHint\\\": false,\\n    \\\"destructiveHint\\\": false,\\n    \\\"idempotentHint\\\": false,\\n    \\\"openWorldHint\\\": false\\n  },\\n  \\\"sensitivity\\\": null,\\n  \\\"inputSchema\\\": {\\n    \\\"type\\\": \\\"object\\\",\\n    \\\"properties\\\": {\\n      \\\"params\\\": {\\n        \\\"type\\\": \\\"object\\\",\\n        \\\"properties\\\": {\\n          \\\"id\\\": {\\n            \\\"type\\\": \\\"string\\\",\\n            \\\"description\\\": \\\"The project id, from project-list.\\\"\\n          }\\n        },\\n        \\\"required\\\": [\\n          \\\"id\\\"\\n        ],\\n        \\\"additionalProperties\\\": true\\n      },\\n      \\\"body\\\": {\\n        \\\"type\\\": \\\"object\\\",\\n        \\\"properties\\\": {\\n          \\\"userId\\\": {\\n            \\\"type\\\": \\\"string\\\"\\n          },\\n          \\\"role\\\": {\\n            \\\"type\\\": \\\"string\\\",\\n            \\\"enum\\\": [\\n              \\\"viewer\\\",\\n              \\\"editor\\\"\\n            ]\\n          }\\n        },\\n        \\\"required\\\": [\\n          \\\"userId\\\",\\n          \\\"role\\\"\\n        ],\\n        \\\"additionalProperties\\\": false\\n      }\\n    },\\n    \\\"additionalProperties\\\": false,\\n    \\\"required\\\": [\\n      \\\"params\\\",\\n      \\\"body\\\"\\n    ]\\n  }\\n}\"}],\"structuredContent\":{\"name\":\"project-member-add\",\"domain\":\"projects\",\"summary\":\"Add a person to a project\",\"description\":\"Adds an organization member to a project with a role. The user id comes from organization-member-list.\",\"annotations\":{\"title\":\"Add a person to a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"],\"additionalProperties\":true},\"body\":{\"type\":\"object\",\"properties\":{\"userId\":{\"type\":\"string\"},\"role\":{\"type\":\"string\",\"enum\":[\"viewer\",\"editor\"]}},\"required\":[\"userId\",\"role\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+    },
+    "refused_forged_envelope": {
+      "status": 401,
+      "contentType": "application/json",
+      "body": "{\"error\":\"Missing or invalid request context envelope\",\"code\":\"UNAUTHORIZED\"}"
+    },
+    "refused_no_envelope": {
+      "status": 401,
+      "contentType": "application/json",
+      "body": "{\"error\":\"Missing or invalid request context envelope\",\"code\":\"UNAUTHORIZED\"}"
+    },
+    "refused_wrong_token": {
+      "status": 403,
+      "contentType": "application/json",
+      "body": "{\"error\":\"Forbidden\"}"
+    },
+    "report_missing": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"status\\\": \\\"recorded\\\"\\n}\"}],\"structuredContent\":{\"status\":\"recorded\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+    },
+    "search": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"total\\\": 3,\\n  \\\"operations\\\": [\\n    {\\n      \\\"name\\\": \\\"project-list\\\",\\n      \\\"summary\\\": \\\"List the projects the person can open\\\",\\n      \\\"domain\\\": \\\"projects\\\",\\n      \\\"readOnly\\\": true,\\n      \\\"destructive\\\": false\\n    },\\n    {\\n      \\\"name\\\": \\\"project-member-add\\\",\\n      \\\"summary\\\": \\\"Add a person to a project\\\",\\n      \\\"domain\\\": \\\"projects\\\",\\n      \\\"readOnly\\\": false,\\n      \\\"destructive\\\": false\\n    },\\n    {\\n      \\\"name\\\": \\\"project-delete\\\",\\n      \\\"summary\\\": \\\"Delete a project\\\",\\n      \\\"domain\\\": \\\"projects\\\",\\n      \\\"readOnly\\\": false,\\n      \\\"destructive\\\": true\\n    }\\n  ],\\n  \\\"next\\\": \\\"Call describe-operation for the input schema, then call-operation.\\\"\\n}\"}],\"structuredContent\":{\"total\":3,\"operations\":[{\"name\":\"project-list\",\"summary\":\"List the projects the person can open\",\"domain\":\"projects\",\"readOnly\":true,\"destructive\":false},{\"name\":\"project-member-add\",\"summary\":\"Add a person to a project\",\"domain\":\"projects\",\"readOnly\":false,\"destructive\":false},{\"name\":\"project-delete\",\"summary\":\"Delete a project\",\"domain\":\"projects\",\"readOnly\":false,\"destructive\":true}],\"next\":\"Call describe-operation for the input schema, then call-operation.\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+    },
+    "unknown_operation": {
+      "status": 200,
+      "contentType": "text/event-stream",
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Unknown operation \\\"nope\\\". Use search-operations to find the right name.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+    }
+  }
+}
