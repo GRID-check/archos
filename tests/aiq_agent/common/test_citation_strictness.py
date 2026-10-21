@@ -78,14 +78,14 @@ class TestLocus:
         text = "Nach § 3 gilt das. Die Höhe regelt § 5 Abs. 2 [1]"
         assert locus_before(text, text.index("[1]")) == Locus("paragraph", "5")
         text = "Siehe Pkt. 3.5.2 [1]"
-        assert locus_before(text, text.index("[1]")) == Locus("punkt", "3.5.2")
+        assert locus_before(text, text.index("[1]")) == Locus("clause", "3.5.2")
         text = "Die Höhe beträgt 2,50 m [1]"
         assert locus_before(text, text.index("[1]")) is None
 
     def test_a_clause_agrees_on_a_dot_boundary(self):
-        assert locus_in_entry(Locus("punkt", "3.5.2"), _oib(clause="3.5"))
-        assert locus_in_entry(Locus("punkt", "3.5"), _oib(clause="3.5.2"))
-        assert not locus_in_entry(Locus("punkt", "3.5.20"), _oib(clause="3.5.2", text="nichts"))
+        assert locus_in_entry(Locus("clause", "3.5.2"), _oib(clause="3.5"))
+        assert locus_in_entry(Locus("clause", "3.5"), _oib(clause="3.5.2"))
+        assert not locus_in_entry(Locus("clause", "3.5.20"), _oib(clause="3.5.2", text="nichts"))
 
     def test_an_entry_with_nothing_to_check_against_passes(self):
         assert locus_in_entry(Locus("paragraph", "5"), SourceEntry(url="https://example.com/a")) is None

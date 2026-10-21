@@ -40,7 +40,7 @@ _CLAUSE_END_RE = re.compile(r"(?<!\d)\.(?=\s+[A-ZÄÖÜ„\"])|[;!?\n]|\[\d+\]")
 #: the sentence's subject, not the marker's address.
 _LOOKBACK_CHARS = 80
 
-_PUNKT_RE = re.compile(r"\b(?:Punkt|Pkt\.?|Pt\.)\s*(\d+(?:\.\d+)+)\b", re.IGNORECASE)
+_CLAUSE_NUMBER_RE = re.compile(r"\b(?:Punkt|Pkt\.?|Pt\.)\s*(\d+(?:\.\d+)+)\b", re.IGNORECASE)
 _PARAGRAPH_RE = re.compile(r"§§?\s*(\d+[a-z]?)\b", re.IGNORECASE)
 _INLINE_MARKER_RE = re.compile(r"\[(\d+)\]")
 
@@ -59,11 +59,11 @@ class LocusEntry(Protocol):
 class Locus:
     """One locus the prose wrote beside a marker."""
 
-    kind: str  # "punkt" or "paragraph"
+    kind: str  # "clause" or "paragraph"
     value: str
 
     def __str__(self) -> str:
-        return f"Punkt {self.value}" if self.kind == "punkt" else f"§ {self.value}"
+        return f"Punkt {self.value}" if self.kind == "clause" else f"§ {self.value}"
 
 
 @dataclass(frozen=True)
@@ -84,7 +84,7 @@ def locus_before(text: str, marker_start: int) -> Locus | None:
     if ends:
         window = window[ends[-1].end() :]
     found: list[tuple[int, Locus]] = []
-    found += [(match.start(), Locus("punkt", match.group(1))) for match in _PUNKT_RE.finditer(window)]
+    found += [(match.start(), Locus("clause", match.group(1))) for match in _CLAUSE_NUMBER_RE.finditer(window)]
     found += [(match.start(), Locus("paragraph", match.group(1).lower())) for match in _PARAGRAPH_RE.finditer(window)]
     if not found:
         return None
@@ -103,7 +103,7 @@ def locus_in_entry(locus: Locus, entry: LocusEntry) -> bool | None:
     text = " ".join(part for part in (entry.chunk_text, entry.title, entry.citation_key) if part)
     if not (entry.chunk_text or entry.clause):
         return None
-    if locus.kind == "punkt":
+    if locus.kind == "clause":
         if entry.clause and _clause_agrees(entry.clause, locus.value):
             return True
         return re.search(rf"(?<![\d.]){re.escape(locus.value)}(?![\d]|\.\d)", text) is not None
