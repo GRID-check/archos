@@ -45,13 +45,13 @@ describe('FileDropOverlay', () => {
   const labels = { uploadLabel: 'Hier ablegen', unsupportedLabel: 'Nicht unterstützt', testId: 'overlay' }
 
   it('names where the files go', () => {
-    render(<FileDropOverlay {...labels} isUnsupported={false} />)
+    render(<FileDropOverlay show {...labels} isUnsupported={false} />)
     expect(screen.getByTestId('overlay')).toHaveTextContent('Hier ablegen')
     expect(screen.getByTestId('overlay')).not.toHaveAttribute('data-refused')
   })
 
   it('says a refusal over every other label, and marks itself refused', () => {
-    render(<FileDropOverlay {...labels} isUnsupported refusal="Nur lesen" />)
+    render(<FileDropOverlay show {...labels} isUnsupported refusal="Nur lesen" />)
     const overlay = screen.getByTestId('overlay')
     expect(overlay).toHaveTextContent('Nur lesen')
     expect(overlay).toHaveAttribute('data-refused')
