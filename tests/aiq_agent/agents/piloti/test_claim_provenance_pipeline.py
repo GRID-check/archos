@@ -94,6 +94,28 @@ async def test_last_turns_workspace_read_grounds_nothing_this_turn():
     assert [stamp["provenance"] for stamp in final.claim_stamps] == ["model_knowledge"]
 
 
+async def test_a_locus_the_cited_passage_does_not_hold_is_labelled_in_the_answer():
+    from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
+    from aiq_agent.common.citation_verification import SourceEntry
+
+    registry = SourceRegistry()
+    registry.add(
+        SourceEntry(
+            citation_key="oib-rl_3.pdf, p.7",
+            source_type="knowledge_layer",
+            tool_name="knowledge_search",
+            chunk_text="11.2.1 Die lichte Raumhöhe von Aufenthaltsräumen muss mindestens 2,50 m betragen.",
+            clause="11.2.1",
+        )
+    )
+    prose = "Die Raumhöhe regelt Punkt 11.2.1 [1], die Belichtung Punkt 9.1 [1].\\n\\n**Quellen:**\\n- [1] oib-rl_3.pdf, p.7"
+    messages = [HumanMessage("Raumhöhe?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+    final, _ = await _finalize(messages, registry)
+
+    assert f"Punkt 11.2.1 [1], die Belichtung Punkt 9.1 {DROPPED_CITATION_MARKER}." in final.content
+
+
 async def test_the_three_scores_are_written(monkeypatch):
     written: list = []
     monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
