@@ -37,7 +37,7 @@ class ContextBlocks:
     #: like this one), so the agent can look there unasked. None from an older
     #: BFF, or when the office has none.
     reference_projects: str | None = None
-    #: The WORKSPACE block (ADR-0122): who asks, where, and what is open now,
+    #: The WORKSPACE block (ADR-0123): who asks, where, and what is open now,
     #: this conversation's proposals included. None from an older BFF.
     workspace: str | None = None
 

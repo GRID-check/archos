@@ -31,10 +31,10 @@ describe('AuthKit v4 proxy', () => {
             '/api/auth/websocket-scope',
             '/auth/error',
             '/api/internal/(.*)',
-            // The MCP server checks its own bearer token or envelope (ADR-0121);
+            // The MCP server checks its own bearer token or envelope (ADR-0122);
             // the OAuth protected-resource metadata is public by RFC 9728.
             '/api/mcp',
-            // The A2A server checks the same bearer token (ADR-0123).
+            // The A2A server checks the same bearer token (ADR-0124).
             '/api/a2a',
             // The platform door checks a bearer token for its own audience (ADR-0126).
             '/api/platform/mcp',

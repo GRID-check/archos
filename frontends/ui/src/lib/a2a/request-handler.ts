@@ -1,5 +1,5 @@
 /**
- * The A2A door's request handler (ADR-0123): the SDK's `A2ARequestHandler`,
+ * The A2A door's request handler (ADR-0124): the SDK's `A2ARequestHandler`,
  * answered by the ask routes.
  *
  * Not a second path to the asks: every method calls `/api/piloti-asks` through

@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * The contract between Piloti's Python agent and its own MCP server (ADR-0121).
+ * The contract between Piloti's Python agent and its own MCP server (ADR-0122).
  *
  * `tests/fixtures/workspace_mcp_requests.json` is written by the Python test
  * `tests/aiq_agent/tools/workspace/test_workspace_mcp_contract.py` from the real

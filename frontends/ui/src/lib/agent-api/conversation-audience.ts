@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * Who reads the conversation Piloti answers in, and what a workspace read hands
- * out there (ADR-0093, ADR-0094, ADR-0121). `read-gate.ts` asks; this file
+ * out there (ADR-0093, ADR-0094, ADR-0122). `read-gate.ts` asks; this file
  * answers with the database.
  *
  * There is one rule for reaching other projects, ADR-0094's, and the workspace

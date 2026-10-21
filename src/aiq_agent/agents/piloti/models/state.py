@@ -212,7 +212,7 @@ class ResearchAgentState(BaseModel):
     answer_claims_ceiling: Literal["low", "medium", "high"] | None = None
     answer_weakest_claim: list[str] | None = None
     # A passage lookup ran and found nothing, and the answer shipped anyway with
-    # every unsupported sentence labelled as model knowledge (ADR-0124). The
+    # every unsupported sentence labelled as model knowledge (ADR-0125). The
     # reader is shown a banner; presence is the fact.
     answer_lookup_found_nothing: bool = False
     # Structured control-marker signals extracted (and stripped from the answer
@@ -377,7 +377,7 @@ class ResearchAgentState(BaseModel):
         ``answer_confidence_marker`` is what the model claimed. With claim
         stamps it is held under the weakest load-bearing sentence
         (:func:`~aiq_agent.agents.piloti.markers.surface_claim_confidence`,
-        ADR-0124); without them, under the answer-level floors.
+        ADR-0125); without them, under the answer-level floors.
         """
         if self.claim_stamps is not None:
             return surface_claim_confidence(

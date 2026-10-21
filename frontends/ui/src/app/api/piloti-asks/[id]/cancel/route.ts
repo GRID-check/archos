@@ -1,5 +1,5 @@
 /**
- * Stop an ask (ADR-0123): `POST` → the ask as `AskView`, `canceled` once its
+ * Stop an ask (ADR-0124): `POST` → the ask as `AskView`, `canceled` once its
  * turn stopped. 409 when it had already ended. Behind `piloti-ask-cancel` and
  * the A2A door's `CancelTask`. Thin handler; the rules live in
  * `@/lib/piloti-asks/service`.

@@ -1,0 +1,4 @@
+---
+security:
+  - >
+    Moving a document into a folder with restricted access could, when clearing it from the project's open search failed, leave it findable there by people without access to that folder. Such a move is now refused and can be retried, and nothing becomes findable outside the folder's audience.

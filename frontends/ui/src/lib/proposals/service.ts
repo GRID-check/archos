@@ -34,13 +34,13 @@
  *   shelf's, and can only move its documents. Any member reads the Büroablage,
  *   so reading needs no project right; deciding needs its curators' right
  *   (`canManageOfficeShelf`), the one every write to it asks.
- * - **The organization** (0174): a proposal with no project that is not the
+ * - **The organization** (0175): a proposal with no project that is not the
  *   Büroablage's is an `operation` Piloti proposed in a turn outside any
  *   project (the office's memory, a skill). It is read like a project's, by
  *   `viewer` on its conversation (or, made in none, by the person it was made
  *   for alone), and decided by anyone who reads it: it asks no project right,
  *   because the operation's own route, run in the decider's session, is the
- *   gate (ADR-0121).
+ *   gate (ADR-0122).
  * - **A proposal no conversation made** (a filing suggestion, `lib/filing`)
  *   has no card to borrow a reader from, so it is read through the documents
  *   it names: every one must resolve for the reader on their shelf, or it is
@@ -123,7 +123,7 @@ function scopeOf(projectId: string | null, typed: KindPayload): ProposalScope {
 export interface CreateProposalInput {
   /**
    * The project. Null files it on the Büroablage (0146), where only a move of
-   * its documents is proposable, or, for an `operation`, on the organization (0174).
+   * its documents is proposable, or, for an `operation`, on the organization (0175).
    */
   projectId: string | null
   kind: ProposedChangeKind
@@ -144,7 +144,7 @@ export interface CreateProposalInput {
  * kind's write. The same card of the same answer a second time returns the
  * first proposal as it stands, and tells nobody again; so does an operation
  * proposal repeated in its conversation for the same person while the first is
- * still `proposed` (the same operation, the same input, 0174 and 0176).
+ * still `proposed` (the same operation, the same input, 0175 and 0177).
  */
 export async function createProposal(session: AuthorizedSession, input: CreateProposalInput): Promise<ProposedChangeRow> {
   // Any member reads the Büroablage; a project is read with `project:view`.
@@ -255,7 +255,7 @@ async function documentsFor(
 }
 
 /**
- * An organization-scoped proposal made in no conversation (0174) has no card to
+ * An organization-scoped proposal made in no conversation (0175) has no card to
  * borrow a reader from and names nothing a reader could be checked against: it
  * is read by the person it was made for and nobody else.
  */
@@ -278,7 +278,7 @@ async function readableBy(session: AuthorizedSession, row: ProposedChangeRow): P
  * alike. A project's needs `project:view`; one made in a conversation needs
  * `viewer` on it, and one made in none needs every document it names to
  * resolve for the reader. The Büroablage is every member's to read. An
- * organization's (0174) is read through its conversation, or by the person it
+ * organization's (0175) is read through its conversation, or by the person it
  * was made for.
  */
 export async function requireReadableProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeRow> {
@@ -306,7 +306,7 @@ const deciderNeedsWrite = (kind: ProposedChangeKind) =>
 /** Refuse a decision from a reader without the kind's right: 403, or the closed project's own 403. */
 async function requireDecider(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   if (!row.projectId) {
-    // The organization's (0174): the operation's own route, run as the decider, is the gate.
+    // The organization's (0175): the operation's own route, run as the decider, is the gate.
     if (row.scope === 'organization' && ORGANIZATION_KINDS.has(row.kind)) return
     // The Büroablage: its curators write it, so they decide what moves in it.
     if (!canManageOfficeShelf(session)) throw deciderNeedsWrite(row.kind)
@@ -333,7 +333,7 @@ async function mayDecide(session: AuthorizedSession, row: ProposedChangeRow): Pr
 
 /**
  * Refuse a decider who may not read everything an `operation` proposal names
- * (ADR-0121: a card names each target for its reader). Their apply would run as
+ * (ADR-0122: a card names each target for its reader). Their apply would run as
  * them, the route would answer 404, and the card would end `failed` for
  * everyone; asked first, the proposal stays open for somebody who can read it.
  */
@@ -490,7 +490,7 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
  * One the reader may not read is left out rather than refused: the list is a
  * view of what waits, not a probe. Whether the reader may decide is asked once
  * per kind, because it is a property of the shelf and the kind, not the row.
- * The organization's shelf (0174) lists the open organization-scoped operations
+ * The organization's shelf (0175) lists the open organization-scoped operations
  * this reader may read.
  */
 export async function listOpenProposals(session: AuthorizedSession, query: ProposalListQuery): Promise<ListedProposal[]> {

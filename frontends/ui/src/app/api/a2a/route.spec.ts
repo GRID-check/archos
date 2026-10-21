@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The A2A door (ADR-0123), end to end below the principal: a JSON-RPC request
+ * The A2A door (ADR-0124), end to end below the principal: a JSON-RPC request
  * goes through the official SDK, the request handler, the dispatcher and the
  * real ask routes, and stops at the ask service, which is mocked. Pinned: who
  * is turned away (no token, Piloti's own credential: the recursion lock), both

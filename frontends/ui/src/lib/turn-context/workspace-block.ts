@@ -1,5 +1,5 @@
 /**
- * The WORKSPACE block of a turn's context (ADR-0122): who is asking, where, and
+ * The WORKSPACE block of a turn's context (ADR-0123): who is asking, where, and
  * what is open right now, so office work starts from the state instead of
  * spending its first rounds reading it.
  *

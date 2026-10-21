@@ -4,7 +4,7 @@ Every capability a person has in Piloti is catalogued as an operation, and an
 agent can do on that person's behalf, through one MCP server at `/api/mcp`, what
 only Piloti has: the office's workspace, Piloti's domain knowledge and Piloti
 itself ([What the door offers](#what-the-door-offers)). This page is the long form of
-[ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md): how the
+[ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md): how the
 server works, how to add an operation, how to connect a client, and how to set up
 WorkOS. The rule for contributors, in short, is
 [`../contributing/headless-first.md`](../contributing/headless-first.md).
@@ -92,68 +92,90 @@ is how old the answers about the person may be:
 | Client | A read | A write |
 |---|---|---|
 | External agent | Runs | The client asks its user, driven by the tool annotations |
-| Piloti in-product, in a conversation that is the person's alone | Runs if it names nothing outside the turn's project, after the restricted folders it may draw on are recorded (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
-| Piloti in-product, in a shared conversation | Refused, with a sentence the model relays | As above |
+| Piloti in-product, in a conversation that is the person's alone | Runs if what it names lies in a project the person may chat in, after what it may carry is recorded on the conversation (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
+| Piloti in-product, in a shared conversation | Runs only a document's content or a project's facts (`AUDIENCE_READS`), of the conversation's own project or one every reader may open, never of a restricted folder, recorded first; every other read is refused with a sentence the model relays | As above, refused when it names a project outside the audience's reach |
 
-### Shared conversations
+### Reads in a conversation
 
 A read runs as the requester, and its answer lands in a transcript everyone the
-conversation is shared with reads. Piloti's own retrieval is held to that
-audience (ADR-0093, ADR-0094: it searches only what every reader may read, and
-records what it used before the model sees it). A route's answer is one
-person's and does not say which folder or project its content came from, so
-`read-gate.ts` fails closed, once per MCP request:
+conversation is shared with reads. There is one rule for what Piloti may hand
+out there, [ADR-0094](../adr/0094-the-agent-searches-other-projects-as-the-conversations-audience.md)'s,
+and the door follows it with the code `project_lookup` uses
+(`read-gate.ts` asks, `conversation-audience.ts` decides and records, once per
+read, with the audience read once per MCP request):
 
-- **Shared** (named grantees, or visible to the project or the office): no
-  workspace read and no backend read runs. The model gets
-  `SHARED_CONVERSATION_READ_REFUSAL` ("This conversation is shared, so Piloti
-  reads nothing from the workspace in it …"), in English whatever the person's
-  locale, and words it for the reader (see [English only](#english-only)). A redirect or a
-  presigned link is never handed on there either. `AUDIENCE_SAFE_READ_DOMAINS`
-  is empty: a domain belongs in it only when every reader of the conversation
-  may read every answer of every operation in it.
-- **Solo** (private, the requester's alone, or not created yet): first,
-  `soloReadRefusal` resolves what the call names (`operation-targets.ts`: the
+- **Reach is the audience's.** What the call names (`operation-targets.ts`: the
   path's `projects/[id]`, `documents/[id]`, `folders/[folderId]`,
   `conversations/[id]`, `models/[modelId]` and the like, and `projectId`,
   `documentId`, `folderId`, `conversationId` keys at any depth of the query and
-  body) to where each lives. A read that names another project, or any project
-  in a turn that has none, is refused with a sentence the model relays; so is a
-  read of another conversation that drew on another project. Then, before the
-  first read of the request, `recordSoloWorkspaceRead` takes the
-  conversation's audience lock (`lockConversationAudience`, the one every
-  share takes), reads the audience again under it, and records every folder of
-  the turn's project that restricts someone and that the requester may read,
-  and marks the turn's answer, in that one transaction. A conversation shared
-  in the meantime records nothing and the read is refused. A later share is
-  judged against the record. This over-records on purpose: the answer's own
-  provenance is unknown. The answer's id comes from the agent in
-  `x-grid-answer-message-id` (`turn_answer_message_id`), as the other internal
-  tools send `answerMessageId`.
+  body) is resolved to where each lives. Every project other than the
+  conversation's own must lie in `audienceReachAmong`
+  (`lib/cross-project/audience-reach.ts`, the function `audienceReach` is built
+  on): in a conversation that is the requester's alone (or not created yet),
+  every project they may chat in, restricted folders they may read included;
+  shared with at most ten named people, the closed projects and the active
+  ones every reader may open; visible to the project or the office, or shared
+  wider, the closed projects. Never a restricted folder in a shared
+  conversation.
+- **Recorded before it runs.** `recordCrossProjectHandOut`, the lookups' own
+  record, takes the conversation's audience lock (the one every share takes),
+  checks the audience is the one the read was judged for, and records the other
+  projects the read touches (`conversation_source_projects`) and the restricted
+  folders it may carry (`conversation_restricted_folders`), and marks the
+  turn's answer, in one transaction. A conversation shared in the meantime
+  records nothing, and the read is refused (`READ_REFUSALS.audienceChanged`).
+  The record is judged when read, so a project closed now restricts nobody.
+  The answer's id comes from the agent in `x-grid-answer-message-id`
+  (`turn_answer_message_id`), as the other internal tools send `answerMessageId`.
+- **What a read may carry.** A route answers as the requester and does not say
+  which folder its content came from, so a read of a whole project records
+  every folder of it that restricts someone and the requester may read: over on
+  purpose. A read listed in `AUDIENCE_READS` (`read-gate.ts`) says what its
+  answer is: one document's content (`document-get`, `document-text-get`),
+  which records the restricted folders on that document's path, the folder a
+  lookup's passage of it records; or a project's facts (`project-get`,
+  `project-profile-get`), which records no folder. In a solo conversation the
+  conversation's own project keeps the record it always had: every folder of it
+  that restricts someone and that the requester may read.
+- **A shared conversation** runs only the `AUDIENCE_READS`: every other route
+  answers with the requester's own view (their projects, their inbox, a member
+  list's admin-only fields, their own held uploads), which is not the
+  audience's. A listed read there is refused when what it names sits in a
+  restricted folder, is a file still held by screening, belongs to another
+  conversation, or lies outside every project. No backend read runs there, and
+  no redirect or presigned link is handed on (`LINK_BEARING_OPERATIONS` are
+  never listed).
+- **Unchanged.** A read whose answer can carry any project's content without
+  naming one declares `spansProjects` in the catalog (`always`: similar
+  passages, the project list, the inbox, the holds, quarantine and deletion
+  queues, the download log; `unlessScoped`: the conversation and proposal lists
+  without a `projectId`) and is refused in a project's conversation: it is the
+  requester's view of every project, not one the reach can be checked against.
+  `read-gate.spec.ts` lists every other Piloti read that names no place, each
+  with the reason it carries no project's content. A read naming something the
+  lookup does not find (a held upload a reviewer could open, a mistyped id, a
+  `resourceType` it cannot place) is refused, except the conversation's own id
+  before its row exists. A read of another conversation that drew on other
+  projects is refused: its record is not copied.
 - **No conversation** (an external agent, a run with no chat): nothing to judge.
 
-A read in a solo conversation of another project is refused rather than
-recorded as a cross-project hand-out (`recordCrossProjectHandOut`,
-`conversation_source_projects`): that record says the conversation drew on the
-project as its audience may read it, and a route's answer is the requester's,
-with every restricted folder they may open. A read whose answer can carry any
-project's content without naming one declares `spansProjects` in the catalog
-(`always`: similar passages, the project list, the inbox, the holds, quarantine
-and deletion queues, the download log; `unlessScoped`: the conversation and
-proposal lists without a `projectId`) and is refused in a project's
-conversation. `read-gate.spec.ts` lists every other Piloti read that names no
-place, each with the reason it carries no project's content, and fails on a new
-one. A read naming something the lookup does not find (a held upload a
-reviewer could open, a mistyped id, a `resourceType` it cannot place) is
-refused as well, except the
-conversation's own id before its row exists. Not covered: in a conversation
-outside any project a cross-project read still runs on the turn's record.
-`read-gate.integration.spec.ts` proves the refusals and the record against
-Postgres.
+Every refusal is an English sentence in `READ_REFUSALS`, which the model words
+for the reader (see [English only](#english-only)). Not covered: in a
+conversation outside any project, a spanning read still runs unrecorded, and a
+later share hands its answer to the new readers.
 
-`read-gate.spec.ts` walks the real catalog and every backend operation and fails
-if any read Piloti can name reaches `callOperation` or `callBackendOperation` in
-a shared conversation.
+A write is a proposal wherever it is made. In a shared conversation it is
+refused when it names a project outside the audience's reach
+(`proposalReachRefusal`): its card, and what the change returns, sit where every
+reader reads them. In a solo conversation the confused-deputy check (the
+requester may read every target) is the whole check.
+
+`read-gate.spec.ts` walks the real catalog and every backend operation with the
+real judge, and fails if any read outside `AUDIENCE_READS` reaches
+`callOperation`, or any read reaches `callBackendOperation`, in a shared
+conversation. `read-gate.integration.spec.ts` proves the reach, the record, the
+refusals, a share racing a read and the same record as `project_lookup` for one
+document against Postgres.
 
 `annotationsOf` in `operation.ts` states every hint: `readOnlyHint`,
 `destructiveHint`, `idempotentHint`, `openWorldHint`. A hint left out would
@@ -239,11 +261,11 @@ words are in [`../glossary.md`](../glossary.md#agent-surface-and-standard-terms)
   `tests/aiq_agent/tools/workspace/test_english_only.py`, for what the workspace
   tools tell Piloti's model.
 - Not yet: the internal routes Piloti's native tools call still refuse in German
-  (`AGENT_REFUSAL_LOCALE`); see ADR-0121, "Follow-ups".
+  (`AGENT_REFUSAL_LOCALE`); see ADR-0122, "Follow-ups".
 
 ## What the door offers
 
-The rule ([ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md),
+The rule ([ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md),
 "Amendment: the door offers what only Piloti has"): a calling agent comes to
 Piloti for what it cannot get elsewhere. The office door offers
 
@@ -467,7 +489,7 @@ a time-limited link. A route that redirects (3xx with `Location`) is handed on a
 `resource_link` and never followed server-side; the link is a credential and expires.
 `document-download`, `document-preview-get`, `document-thumbnail-get` and `bim-model-source-get`
 answer JSON holding such a URL, so they are plain reads, and never run for Piloti in a shared
-conversation (`LINK_BEARING_OPERATIONS`).
+conversation (`LINK_BEARING_OPERATIONS`, never in `AUDIENCE_READS`).
 
 A JSON or text answer is streamed with a cap too, `MAX_TEXT_BYTES` (5 MiB): past it nothing more
 is read and the agent is told to narrow the call. The backend operations' answers are read by the
@@ -603,12 +625,12 @@ And two PostHog events, sent through the collector (ADR-0119):
 Piloti reaches the workspace through the same server, as one more client. In a
 turn it echoes the turn's signed request-context envelope; the BFF resolves the
 person it names and builds the pinned session. Python never signs an envelope. A
-read runs, unless the conversation is shared ([above](#shared-conversations)). A
+read runs when what it names lies in the conversation audience's reach ([above](#reads-in-a-conversation)). A
 write never runs: it becomes an `operation` proposal, shown as a card,
 that the person accepts or dismisses (ADR-0105). The accepting person's session is
 the one the operation runs in. A turn in no project files the proposal on the
 organization, and the same call repeated for the same person while its proposal
-is open files nothing new (0176). The proposal is filed in the person's tenant
+is open files nothing new (0177). The proposal is filed in the person's tenant
 scope, carries the turn's answer as its origin message, and is refused (404)
 when the call names a project, document, folder or conversation the person may
 not read: a member's Piloti cannot put a change to a project the member cannot
@@ -622,7 +644,7 @@ been unfolded ([`proposed-changes.md`](proposed-changes.md#operation)). The serv
 ([`proposed-changes.md`](proposed-changes.md#operation)).
 
 What Piloti knows before its first call, and how it reports
-([ADR-0122](../adr/0122-piloti-works-the-office-through-its-door.md)):
+([ADR-0123](../adr/0123-piloti-works-the-office-through-its-door.md)):
 
 - **The WORKSPACE block** of each turn's context (`lib/turn-context/workspace-block.ts`):
   the asker's organization and project role, the project's name and id, whether
@@ -656,8 +678,8 @@ The workspace set of the answer suite measures all of it
 ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set)).
 ## Consulting Piloti, and the A2A door
 
-An agent can also ask Piloti itself (ADR-0123,
-[`../adr/0123-agents-consult-piloti-over-mcp-and-a2a.md`](../adr/0123-agents-consult-piloti-over-mcp-and-a2a.md)).
+An agent can also ask Piloti itself (ADR-0124,
+[`../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md`](../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md)).
 `piloti-ask-create` (`catalog/consult.ts`) calls `POST /api/piloti-asks`, which
 runs a headless turn (ADR-0106) as the person in their own private thread, with
 the trigger `agent_consult`, waits up to 40 seconds and otherwise answers
@@ -756,11 +778,11 @@ applied by the deploy.
 The protected-resource metadata (RFC 9728) is served by the app and names the
 authorization server; a client reads it from the `WWW-Authenticate` challenge on
 its first, unauthenticated call. The routes that serve it use `publicApiRoute`
-and are covered by ADR-0121.
+and are covered by ADR-0122.
 
 ## Related
 
-- [ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md): the decision and the options that lost.
+- [ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md): the decision and the options that lost.
 - [ADR-0055](../adr/0055-api-first-workspace-primitives.md): one HTTP surface per primitive.
 - [ADR-0105](../adr/0105-piloti-works-on-shared-objects.md) and [`proposed-changes.md`](proposed-changes.md): proposals, the person decides.
 - [ADR-0108](../adr/0108-background-runs-act-as-the-person-who-commissioned-them.md): resolving the person on every call.

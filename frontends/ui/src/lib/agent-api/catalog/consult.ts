@@ -1,5 +1,5 @@
 /**
- * Consulting Piloti (ADR-0123): an agent acting for a person asks Piloti, the
+ * Consulting Piloti (ADR-0124): an agent acting for a person asks Piloti, the
  * office's colleague, a question, and Piloti answers in a turn run as that
  * person. In the `conversations` domain because the ask is a conversation: the
  * person's own private thread, readable in Piloti like any other.

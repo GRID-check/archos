@@ -10,7 +10,7 @@ informed: everyone working in this repo
 
 ## Context and Problem Statement
 
-Since ADR-0121 an agent acting for a person (Claude, Cursor, ChatGPT) can do in
+Since ADR-0122 an agent acting for a person (Claude, Cursor, ChatGPT) can do in
 Piloti everything that person can do, through one MCP server. It could not do
 what a colleague does most: ask Piloti. Piloti answers from the office's
 documents, the project's files and building law, with retrieval and tools no
@@ -32,7 +32,7 @@ second gate, without a loop of Piloti asking itself, and on whose budget?
   the organization's LLM budget, and the organization switches it on.
 * No recursion: a turn an ask started cannot start another, and Piloti's own door
   cannot ask Piloti.
-* One gate (ADR-0055, ADR-0121): a capability is one route; every door is a
+* One gate (ADR-0055, ADR-0122): a capability is one route; every door is a
   client of it.
 * Standards first: MCP for agents, A2A for agent-to-agent work, its vocabulary
   (task, context, message, part, artifact), and its official SDK if it fits.
@@ -66,7 +66,7 @@ domain, because an ask is a conversation.
 2. The thread: a new private conversation of the person, in the project they
    name (`requireProjectAccess` with the chat permissions), or one an earlier ask
    of the same person started, never another conversation.
-3. A row in `piloti_asks` (migration 0177) and the question as the person's
+3. A row in `piloti_asks` (migration 0178) and the question as the person's
    message in the thread, both under one id: the ask's id is the turn id and the
    A2A task id.
 4. `resolveTurnContext` for that session and thread, which refuses a spent
@@ -102,7 +102,7 @@ because `ask_user` refuses on a headless turn.
 ### The recursion lock
 
 * In-product Piloti never runs a write through the agent door; it files a
-  proposal (ADR-0121). `lib/proposals/operation-applier.ts` refuses to file or
+  proposal (ADR-0122). `lib/proposals/operation-applier.ts` refuses to file or
   apply any operation in `PILOTI_ASK_OPERATIONS`, so neither a typed turn nor a
   turn an ask started can ask Piloti again. The model reads the refusal.
 * The A2A door refuses Piloti's own credential (the internal token with the
@@ -201,7 +201,7 @@ The ask is a turn, so it has its Langfuse trace like every turn, with
 `turn_trigger: agent_consult` and the ask's id as `trigger_event_id`, and the tag
 `trigger:agent_consult` (`record_turn_trigger`). The BFF makes no model call of
 its own. The MCP door's calls are `agent_operation_called` in PostHog and an
-`agent-tool-call` trace in Langfuse (ADR-0121); so is each A2A method, door
+`agent-tool-call` trace in Langfuse (ADR-0122); so is each A2A method, door
 `a2a`, its observation `a2a.<operation>`.
 
 ### Consequences
@@ -237,13 +237,13 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog and an
   the stream.
 * `app/api/piloti-asks/route.spec.ts`, `lib/a2a/*.spec.ts`,
   `lib/turns/outcome.spec.ts`, `tests/aiq_agent/agents/piloti/test_trigger_prompt.py`.
-* `rls-coverage.spec.ts` lists 0177; `task db:test:rls` covers the table.
+* `rls-coverage.spec.ts` lists 0178; `task db:test:rls` covers the table.
 
 ## More Information
 
 * [ADR-0106](0106-events-on-pilotis-work-wake-a-turn.md): the headless turn.
 * [ADR-0108](0108-background-runs-act-as-the-person-who-commissioned-them.md): acting as the person.
-* [ADR-0121](0121-everything-a-person-can-do-an-agent-can-do.md): the agent door.
+* [ADR-0122](0122-everything-a-person-can-do-an-agent-can-do.md): the agent door.
 * A2A [specification](https://a2a-protocol.org/latest/specification/) 1.0, and
   the [JavaScript SDK](https://github.com/a2aproject/a2a-js).
 * The user guide: [`../user-guides/connect-your-agent.md`](../user-guides/connect-your-agent.md#ask-piloti).

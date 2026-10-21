@@ -260,7 +260,7 @@ describe('GET /api/proposals', () => {
     expect((await run('/api/proposals?shelf=project')).status).toBe(400)
   })
 
-  it('lists the organization’s shelf (0174), which has no project either', async () => {
+  it('lists the organization’s shelf (0175), which has no project either', async () => {
     const res = await run('/api/proposals?shelf=organization')
     expect(res.status).toBe(200)
     expect(listShelfProposals).toHaveBeenCalledWith('org_1', { scope: 'organization' }, expect.objectContaining({ statuses: ['proposed'] }))

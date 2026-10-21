@@ -1,7 +1,7 @@
--- 0176: one open operation call is one proposal PER PERSON in a conversation
--- (ADR-0105, ADR-0121).
+-- 0177: one open operation call is one proposal PER PERSON in a conversation
+-- (ADR-0105, ADR-0122).
 --
--- 0174 made the same operation with the same input, in one conversation, one
+-- 0175 made the same operation with the same input, in one conversation, one
 -- open proposal. In a conversation two people ask in, that folded B's call into
 -- A's card: B's turn got back a proposal filed on A's behalf (`on_behalf_of` is
 -- A), so the inbox, the audit trail and the decision's score named the wrong

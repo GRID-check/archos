@@ -2,7 +2,7 @@
 
 What you do when you add or change something a person can do in Piloti. The
 reason and the design are in
-[ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md) and
+[ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md) and
 [`../architecture/agent-surface.md`](../architecture/agent-surface.md).
 
 **The rule.** A capability is a route and an operation. The operation is the
@@ -12,7 +12,7 @@ on it), Piloti's domain knowledge (the legal corpus, BIM/IFC analysis of the
 office's models) and Piloti itself (`piloti-ask`), with the person saying yes
 or no to every write.
 
-**What the door does not offer** (ADR-0121, "Amendment: the door offers what
+**What the door does not offer** (ADR-0122, "Amendment: the door offers what
 only Piloti has"). Such an operation is still written, then marked
 `withheld: { category, reason }`, and reads as an unknown name on every door:
 
@@ -52,7 +52,7 @@ see.
 | Move a route-local zod schema | Into `lib/<area>/<x>-wire.ts`, imported by the route and the catalog |
 | Cover a route that sits in `agent-reachability-baseline.json` | Remove it from the baseline (`UPDATE_FIXTURES=1`) |
 | Add a Python tool for a workspace capability | Do not. A capability is a route and an operation. A Python tool is for task-shaped reasoning (retrieval, IFC, canvas) |
-| Touch sharing grants, folder access, custom roles, a held file let through or a legal hold lifted | Catalogue it with its `sensitivity`, and its line in `SENSITIVE` ([ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md), "Sensitive operations") |
+| Touch sharing grants, folder access, custom roles, a held file let through or a legal hold lifted | Catalogue it with its `sensitivity`, and its line in `SENSITIVE` ([ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md), "Sensitive operations") |
 
 ## Checklist
 
@@ -78,7 +78,7 @@ operation sits on a product-configuration path (`/api/organization/settings`,
 
 ## Not sure it deserves a tool
 
-Three layers (ADR-0121): an operation per route method; a hand-written
+Three layers (ADR-0122): an operation per route method; a hand-written
 task-shaped tool where an agent needs more than CRUD; a skill that teaches
 composition. If a person can click it, it is layer one, whether or not you think
 an agent would ask for it. Whether the door offers it is the separate question

@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * Run one operation as a person, through the browser's own route handler
- * (ADR-0121).
+ * (ADR-0122).
  *
  * The call is a `Request` built from the operation's method and path and
  * handed to the route's exported handler in-process, inside

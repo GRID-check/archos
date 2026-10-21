@@ -1,6 +1,6 @@
 /**
  * Where the agent doors live and who vouches for the tokens they accept
- * (ADR-0121, ADR-0123).
+ * (ADR-0122, ADR-0124).
  *
  * One module, because three things must agree to the character: the audience a
  * bearer token has to carry, the `resource` the protected-resource metadata

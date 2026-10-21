@@ -182,10 +182,11 @@ Consequences, where a reader looks for them.
 | [0118](0118-posthog-support-is-the-record-for-product-feedback.md) | PostHog Support is the record of triage for product feedback | Accepted |
 | [0119](0119-every-metric-goes-to-posthog-through-the-collector.md) | Every metric goes to PostHog, through the collector, from an agent on every node | Accepted |
 | [0120](0120-addresses-are-geocoded-by-a-self-hosted-photon.md) | Addresses are geocoded by a Photon in the cluster, over the Austrian OSM extract | Proposed |
-| [0121](0121-everything-a-person-can-do-an-agent-can-do.md) | Everything a person can do, an agent can do: one MCP server, every agent a client | Accepted |
-| [0122](0122-piloti-works-the-office-through-its-door.md) | Piloti works the office through its door: workspace state in every turn, a work report, and an eval that measures it | Proposed |
-| [0123](0123-agents-consult-piloti-over-mcp-and-a2a.md) | Agents consult Piloti: an ask over MCP, and an A2A server on the same primitive | Accepted |
-| [0124](0124-every-sentence-shows-where-it-comes-from.md) | Every sentence shows where it comes from: per-sentence provenance, confidence held to the weakest claim | Accepted |
+| [0121](0121-bulk-work-is-owned-by-the-server.md) | Bulk work is owned by the server: a durable run on `bff_job_queue`, never a loop in the browser | Accepted |
+| [0122](0122-everything-a-person-can-do-an-agent-can-do.md) | Everything a person can do, an agent can do: one MCP server, every agent a client | Accepted |
+| [0123](0123-piloti-works-the-office-through-its-door.md) | Piloti works the office through its door: workspace state in every turn, a work report, and an eval that measures it | Proposed |
+| [0124](0124-agents-consult-piloti-over-mcp-and-a2a.md) | Agents consult Piloti: an ask over MCP, and an A2A server on the same primitive | Accepted |
+| [0125](0125-every-sentence-shows-where-it-comes-from.md) | Every sentence shows where it comes from: per-sentence provenance, confidence held to the weakest claim | Accepted |
 | [0126](0126-the-operator-console-has-its-own-mcp-door.md) | The operator console has its own MCP door: a second server for platform staff, its own audience | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every

@@ -316,7 +316,7 @@ const DICTATION_LIMIT = {
 }
 
 /**
- * One HTTP request to the agent door, `/api/mcp` (ADR-0121), per member.
+ * One HTTP request to the agent door, `/api/mcp` (ADR-0122), per member.
  *
  * Charged once per request after the caller is known (an external agent's
  * token, or Piloti's envelope: both are the same person's budget), before any

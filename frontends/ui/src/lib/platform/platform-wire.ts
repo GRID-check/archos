@@ -1,6 +1,6 @@
 /**
  * The bodies of the platform settings routes, shared by the routes and the
- * agent catalog (`lib/agent-api/catalog/platform.ts`, ADR-0121). One schema, two
+ * agent catalog (`lib/agent-api/catalog/platform.ts`, ADR-0122). One schema, two
  * readers: a second hand-written copy is the drift ADR-0055 exists to prevent.
  */
 

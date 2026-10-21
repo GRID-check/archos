@@ -1,5 +1,5 @@
 /**
- * The agent-reachable API as an OpenAPI 3.1 document (ADR-0121).
+ * The agent-reachable API as an OpenAPI 3.1 document (ADR-0122).
  *
  * Generated from the one catalog, `AGENT_OPERATIONS`, so it documents exactly
  * the routes an agent can already call and opens nothing new: each path here is

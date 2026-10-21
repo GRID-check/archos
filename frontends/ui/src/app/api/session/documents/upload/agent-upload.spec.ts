@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * `session-document-upload` (ADR-0121): the multipart form the dispatcher builds from an
+ * `session-document-upload` (ADR-0122): the multipart form the dispatcher builds from an
  * agent's base64 body is accepted by this route's own parser, field for field.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'

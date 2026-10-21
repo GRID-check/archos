@@ -1,5 +1,5 @@
 /**
- * The collaboration operations (ADR-0121): inbox, push notifications, sharing
+ * The collaboration operations (ADR-0122): inbox, push notifications, sharing
  * state, assignments, mentions, proposed changes, Piloti's changes, the
  * person's preferences and the files attached to a chat.
  * See `projects.ts` for the shape and `docs/architecture/agent-surface.md` for

@@ -1,5 +1,5 @@
 /**
- * The platform operations (ADR-0121): the GRID operator console. See
+ * The platform operations (ADR-0122): the GRID operator console. See
  * `projects.ts` for the shape and `docs/architecture/agent-surface.md` for the rules.
  *
  * Every route here is declared through `platformApiRoute`, so only a platform

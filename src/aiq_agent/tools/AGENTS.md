@@ -168,7 +168,7 @@ Three consequences worth knowing before adding a fifth operation:
 ## A new workspace capability is a route and an operation, not a tool
 
 Piloti reaches the workspace through the BFF's MCP server (`/api/mcp`) like any
-agent (ADR-0121). Everything a person can do there is an operation in
+agent (ADR-0122). Everything a person can do there is an operation in
 `frontends/ui/src/lib/agent-api/catalog/`, run as the person (except the ones
 `withheld` from every agent: product configuration, proxied services, screen state), and a write from
 this tier becomes a proposal the person accepts. So a capability that has a UI
@@ -179,7 +179,7 @@ served to other agents through the same server
 
 ## The workspace tools are Piloti as a client of its own MCP server
 
-`workspace` (`workspace/`, the `piloti_workspace` function group, ADR-0121) is
+`workspace` (`workspace/`, the `piloti_workspace` function group, ADR-0122) is
 four tools, `workspace__search`, `workspace__describe`, `workspace__call` and
 `workspace__report_missing`: the meta-tools an external agent gets from
 `POST /api/mcp` in `discovery` mode. Each call is one stateless JSON-RPC
@@ -212,6 +212,17 @@ running project or a restricted folder; a closed project's open folder does
 not), which is what shuts the turn's doors. A second tool that reads another
 project must go through the same routes; one that admitted foreign content on
 its own say-so would let the agent decide access.
+
+The workspace tools are the second: `workspace__call` reads other projects
+through the BFF's MCP door, and the BFF holds those reads to the same reach
+(`audienceReachAmong`) and records them through the same
+`recordCrossProjectHandOut` before the read runs (ADR-0094's amendment,
+[`agent-surface.md`](../../../docs/architecture/agent-surface.md#reads-in-a-conversation)).
+A shared chat reads only a document's content or a project's facts there.
+The workspace result carries no `restricting` flag yet, so a door read of a
+running project shuts the turn's doors only where the server judges them (a
+memory write, a run, a share is refused against the record), not ahead of time
+as `project_lookup` does.
 
 ## Obligations
 

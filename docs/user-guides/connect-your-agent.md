@@ -6,7 +6,7 @@ documents, reviews, tasks and conversations, with Piloti's building-law
 knowledge and BIM analysis, and by asking Piloti itself. It asks you before it changes or deletes anything, and Piloti never gives
 it more than you have. How the server works underneath:
 [the agent surface](../architecture/agent-surface.md) and
-[ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md).
+[ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md).
 
 You find the short version, with the address to copy, in **Profil → Agent
 verbinden**.
@@ -94,7 +94,7 @@ restricted to other people, does not exist for it.
 Your agent can also ask Piloti itself, the way you would ask a colleague who
 knows the office's documents, the project's files and building law. Piloti
 answers as you, with your rights, and may file a document while it answers
-([ADR-0123](../adr/0123-agents-consult-piloti-over-mcp-and-a2a.md)).
+([ADR-0124](../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md)).
 
 - **Your organization switches it on.** Asking Piloti is a second switch,
   `piloti-ask`, beside agent access. Each question is a Piloti answer like one

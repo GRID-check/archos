@@ -1,7 +1,7 @@
 /**
  * The request shapes of the conversation routes, kept out of the route files (a
  * Next route exports handlers only) so each route and the MCP catalog
- * (`lib/agent-api/catalog/conversations.ts`, ADR-0121) parse against one schema.
+ * (`lib/agent-api/catalog/conversations.ts`, ADR-0122) parse against one schema.
  */
 
 import { z } from 'zod'

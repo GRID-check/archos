@@ -1,4 +1,4 @@
-"""The workspace eval: office work through Piloti's MCP door, asked in a fixture office (ADR-0122).
+"""The workspace eval: office work through Piloti's MCP door, asked in a fixture office (ADR-0123).
 
 ``suite.py --set workspace`` runs ``tests/fixtures/workspace/workspace_questions.yaml``
 through the real agent, each run in the fixture office's current project with a

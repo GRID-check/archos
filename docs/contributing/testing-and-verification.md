@@ -634,7 +634,7 @@ measured on 2026-09-24, and the effort A/B:
 
 ### The workspace set
 
-**The workspace set** (`-- --set workspace`, ADR-0122) asks Piloti for office
+**The workspace set** (`-- --set workspace`, ADR-0123) asks Piloti for office
 work through its MCP door: reads, writes that must come back as proposals with
 the right input, two writes in one turn, an ambiguous target it must ask about,
 German and English, and follow-up turns in one conversation (a row's `turns`

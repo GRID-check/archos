@@ -370,7 +370,7 @@ function_groups:
     _type: document_canvas
 
   # Everything a person can do in Piloti, through Piloti's own MCP server
-  # (src/aiq_agent/tools/workspace, ADR-0121): `workspace__search`,
+  # (src/aiq_agent/tools/workspace, ADR-0122): `workspace__search`,
   # `workspace__describe`, `workspace__call`, `workspace__report_missing`. The
   # model finds an operation, reads its schema, calls it; a write comes back as a
   # proposal the person accepts. Each call echoes the turn's signed envelope, so

@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * The HTTP edge of an MCP door, shared by the office door (`/api/mcp`, ADR-0121)
+ * The HTTP edge of an MCP door, shared by the office door (`/api/mcp`, ADR-0122)
  * and the platform door (`/api/platform/mcp`, ADR-0126). One edge, so the two
  * cannot drift: the origin check, the batch refusal, the principal (and its JSON
  * 503 while WorkOS cannot answer), one charge of the agent budget, then the same

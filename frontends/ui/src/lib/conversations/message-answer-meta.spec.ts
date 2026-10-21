@@ -22,7 +22,7 @@ const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/answer_me
 
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as Record<string, unknown>
 
-/** The work report's crossing, gated by the backend the same way (ADR-0122). */
+/** The work report's crossing, gated by the backend the same way (ADR-0123). */
 const WORK_FIXTURE = JSON.parse(
   readFileSync(resolve(__dirname, '../../../../../tests/fixtures/answer_meta/work_payload.json'), 'utf-8')
 ) as Record<string, unknown>

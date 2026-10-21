@@ -1,6 +1,6 @@
 /**
  * Where each sentence of an answer comes from (`TurnResult.claim_stamps`,
- * `src/aiq_agent/common/claim_provenance.py`, ADR-0124), made durable.
+ * `src/aiq_agent/common/claim_provenance.py`, ADR-0125), made durable.
  *
  * One stamp per sentence, in document order: its provenance class (a quoted or
  * cited passage, a workspace record, an action, a measurement, an

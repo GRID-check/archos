@@ -3,7 +3,7 @@
 /**
  * Dev preview — the proposal cards as receipts of a proposal the server holds
  * (ADR-0105): files, a memory note, a change to the project facts, and an
- * action of the agent catalog (ADR-0121), whose long value „Übernehmen“ waits on.
+ * action of the agent catalog (ADR-0122), whose long value „Übernehmen“ waits on.
  *
  * `/dev` has no backend, so the proposals API is faked
  * (`../_fixtures/fake-proposals.ts`) with the real response shape: pressing

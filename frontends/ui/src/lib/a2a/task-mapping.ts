@@ -1,5 +1,5 @@
 /**
- * An ask as an A2A task, and an A2A message as an ask (ADR-0123). Pure.
+ * An ask as an A2A task, and an A2A message as an ask (ADR-0124). Pure.
  *
  * | A2A | Piloti |
  * |---|---|

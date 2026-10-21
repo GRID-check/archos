@@ -1500,8 +1500,9 @@ split is stated explicitly).
 ## bff_job_queue / bff_job_lane_turns (migration 0104, ADR-0079)
 
 The BFF's durable background work: one row is one job a `bff-jobs` replica
-claims and runs (project reindex, failed-ingestion rescan, the re-read of the
-documents collection placement moved `placement_reingest`; and, one step each,
+claims and runs (project reindex, failed-ingestion rescan, the sort of a shelf's root
+`root_sort`, ADR-0121, the re-read of the documents collection placement moved
+`placement_reingest`; and, one step each,
 IFC extraction `bim_extract`, office conversion `office_rendition` and research
 report filing `file_research_report`). The claim is SQL in
 `frontends/ui/workers/job-queue.js`, in the order ADR-0076 proved for
@@ -1548,6 +1549,23 @@ after the migrations, not a migration: the role exists only where CloudNativePG
 declares it. `grid_tenant_isolation` is untouched.
 
 ---
+
+## root_sort_runs (migration 0173, ADR-0121)
+
+A person's run of sorting a shelf's root into its folders. The run is the
+state: the BFF job `root_sort` advances the row a bounded slice at a time, and
+the dialog only reads it and asks for the next step (apply, undo, cancel).
+`status` walks `judging`, `grouping`, `ready`, `applying`, `applied`, then
+`undoing` and `undone`; `cancelled` and `failed` end it. The lists the run keeps
+(`document_ids`, `placements`, `kept_moves`, `moved_documents`, and the rest)
+are JSONB and bounded by CHECK, at 5000 documents each. Ids and folder paths
+only, never document content.
+
+Unique partial index `root_sort_runs_one_in_work_per_shelf` on
+`(organization_id, scope, project)` `WHERE status IN ('judging', 'grouping',
+'applying', 'undoing')`: one run in work per shelf. A project run's
+organization is the project's (composite foreign key); an Archiv run has no
+project (CHECK). Tenant-secured by `grid_secure_table` on `organization_id`.
 
 ## message_restricted_use (migration 0124)
 
@@ -1797,7 +1815,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `task_run.completed` / `task_run.failed` / `task_run.waiting` (a task run ended, failed or stopped to ask; `job.*` until migration 0175, still read through `LEGACY_INBOX_TYPES` for one release), `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `task_run.completed` / `task_run.failed` / `task_run.waiting` (a task run ended, failed or stopped to ask; `job.*` until migration 0176, still read through `LEGACY_INBOX_TYPES` for one release), `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_revision` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. A row about a mark (`annotation.*`) writes `payload.mentions` beside every `payload.excerpt`: whom the quoted text mentions, `[{targetId, display}]` as the mark kept them, `[]` for none, read back through the bounded mention schema. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

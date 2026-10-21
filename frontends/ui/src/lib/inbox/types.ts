@@ -239,11 +239,13 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
   // The chat mention's glyph: one sign for „someone asked you", wherever it was.
   'annotation.mentioned': { icon: 'at-sign', i18nKey: 'annotationMentioned', tone: 'request', anchor: 'mark' },
+  'root_sort.ready': { icon: 'check-circle', i18nKey: 'rootSortReady', tone: 'info' },
+  'root_sort.failed': { icon: 'alert-triangle', i18nKey: 'rootSortFailed', tone: 'warning' },
 }
 
 /**
  * Types as they were stored before migrations 0165 (`document.new_fassung`) and
- * 0175 (`job.*`, which named a task run "job"; a job is a claim-queue item, see
+ * 0176 (`job.*`, which named a task run "job"; a job is a claim-queue item, see
  * `docs/glossary.md`). An older pod keeps writing the old name until it is
  * replaced, and the migration ran before it was; the read path treats such a row
  * as the current type (`canonicalInboxType`, and `legacyInboxTypeAliases` for

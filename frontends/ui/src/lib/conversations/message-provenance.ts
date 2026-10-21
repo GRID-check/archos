@@ -253,13 +253,13 @@ export interface MessageProvenance {
    */
   quoteStamps?: QuoteStamp[]
   /**
-   * Where each sentence comes from (`message-claim-stamps.ts`, ADR-0124). The
+   * Where each sentence comes from (`message-claim-stamps.ts`, ADR-0125). The
    * confidence chip explains its level as their mix.
    */
   claimStamps?: ClaimStamp[]
   /**
    * Which rule computed `answerConfidence`: 2 the per-sentence formula
-   * (ADR-0124). Absent on every answer stored before it, which renders under
+   * (ADR-0125). Absent on every answer stored before it, which renders under
    * the answer-level floors it was computed with.
    */
   answerConfidenceVersion?: 1 | 2

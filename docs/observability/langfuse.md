@@ -17,7 +17,7 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 
 | Field in Langfuse | Where it comes from | Values |
 |---|---|---|
-| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
+| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs, or a root sort's chunk with `purpose: sort`; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `folder-proposals.map` and `folder-proposals.reduce` (a root sort's new folders: the groups of one chunk, then the merge across them), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
 | Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
@@ -46,7 +46,7 @@ Trace metadata on the root:
 | `error_code` | on a failed turn |
 | `usage_llm_calls`, `usage_prompt_tokens`, `usage_completion_tokens`, `usage_total_tokens`, `usage_cost_usd`, `usage_cost_source`, `usage_error` | the turn's whole spend (`usage_rollup`) |
 | `answer_dialect` | block census and repairs by kind |
-| `answer_kind`, `work_done`, `work_proposed`, `work_blocked`, `work_next` | the answer's `kind` (`work` is an operations turn, ADR-0122), and on a work turn how many lines each section of its report holds |
+| `answer_kind`, `work_done`, `work_proposed`, `work_blocked`, `work_next` | the answer's `kind` (`work` is an operations turn, ADR-0123), and on a work turn how many lines each section of its report holds |
 | `lessons_arm`, `lesson_ids` | the platform-lessons experiment (`turn/context.py`): `treated`, `holdout` or `off`, and the comma-joined ids of the lessons in the digest the turn carried (none on a holdout turn). The holdout is a breakdown on these, not a join to the vote table. Always recorded: neither names a person |
 | `ifc_op`, `ifc_outcome`, `ifc_model`, … | what a building-model tool did (`tools/bim/trace.py`) |
 | `answer_precedent_sources`, `answer_precedent_projects` | cited sources from another project (ADR-0094), and from how many projects: the office's experience reaching the answer |
@@ -125,11 +125,11 @@ the turn held back is the technical step `status:steered:<round>` beside
 
 ### A tool call on the agent door
 
-Each MCP tool call at `/api/mcp` (ADR-0121), from an external agent or from
+Each MCP tool call at `/api/mcp` (ADR-0122), from an external agent or from
 Piloti's own `workspace__*` tools, is a root trace `agent-tool-call` holding one
 `TOOL` observation named `mcp.<operation>` (`search-operations`, `call-operation`
 is recorded under the operation it ran, `unknown` for a name no operation has:
-that is the agent's own text). Each A2A method at `/api/a2a` (ADR-0123) is one
+that is the agent's own text). Each A2A method at `/api/a2a` (ADR-0124) is one
 too, its observation `a2a.<operation>` (`piloti-ask-create`, `piloti-ask-get`,
 `piloti-ask-cancel`); the polls a blocking call or a stream makes while it
 waits are not. A tool call on the platform door at `/api/platform/mcp`
@@ -198,7 +198,7 @@ a name is written but not declared, or declared but not listed here.
 | `citations-removed` | numeric | agent | citations verification dropped |
 | `quotes-unverified` | numeric | agent | quoted spans no passage holds |
 | `retrieval-precision` | numeric 0–1 | agent | share of distinct retrieved sources the answer cited |
-| `citation-fallback` | boolean | agent | retired with the single-source fallback (ADR-0124); no longer written, kept so older traces chart |
+| `citation-fallback` | boolean | agent | retired with the single-source fallback (ADR-0125); no longer written, kept so older traces chart |
 | `sources-empty` | boolean | agent | a lookup ran and found nothing |
 | `answer-confidence` | categorical | agent | `low`, `medium`, `high` as shown |
 | `confidence-capped` | categorical | agent | which guard lowered it, or `none` |
@@ -206,11 +206,11 @@ a name is written but not declared, or declared but not listed here.
 | `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
-| `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0124); the comment and `metadata.count` say how many sentences |
+| `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0125); the comment and `metadata.count` say how many sentences |
 | `claims-normative-uncited` | numeric | agent | sentences about the law with no quoted or cited passage behind them |
 | `citations-dropped-labelled` | numeric | agent | places the answer cited something that did not resolve (no source, or a § / Punkt the cited passage does not hold), labelled in the text instead of removed |
 | `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
-| `work-report-matches` | boolean | agent, at the terminal | on a work turn (`kind: work`, ADR-0122) only: true when the report's `proposed` list is as long as the proposal cards the turn showed. The comment says both counts (`reported N, filed M`). Counted after the unfiled lines below are dropped, so false is mostly a turn that filed a proposal it did not report |
+| `work-report-matches` | boolean | agent, at the terminal | on a work turn (`kind: work`, ADR-0123) only: true when the report's `proposed` list is as long as the proposal cards the turn showed. The comment says both counts (`reported N, filed M`). Counted after the unfiled lines below are dropped, so false is mostly a turn that filed a proposal it did not report |
 | `work-proposals-unfiled` | numeric | agent | on a work turn only: the report's `proposed` lines whose `ref` named no proposal this turn's workspace writes filed, dropped before the person saw them (`answer_envelope.drop_unfiled_proposals`). Above zero is a turn that claimed a proposal it did not make |
 | `thread-answered-in-place` | boolean | agent, when the turn leaves the canvas | on a turn asked to answer in an Anmerkung's thread: true when the model replied there itself (`canvas__reply`), false when it did not and the socket posts the answer for it. No score when the turn may not post there (`thread_reply` = `skipped_withheld`). The false rate is how often the prompt is ignored, which the fallback otherwise hides |
 | `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |

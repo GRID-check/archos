@@ -122,7 +122,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "citation-fallback",
         "BOOLEAN",
-        "Retired with the single-source fallback (ADR-0124); no longer written. Kept so older traces chart.",
+        "Retired with the single-source fallback (ADR-0125); no longer written. Kept so older traces chart.",
     ),
     ScoreDefinition(
         "sources-empty",
@@ -182,21 +182,21 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "work-report-matches",
         "BOOLEAN",
-        "On a work turn (kind work, ADR-0122): true when the report lists as many proposals as the turn put "
+        "On a work turn (kind work, ADR-0123): true when the report lists as many proposals as the turn put "
         "in front of the person as proposal cards. A reported proposal no write filed is dropped before this "
         "is counted (work-proposals-unfiled), so false is mostly a turn that filed a proposal it did not report.",
     ),
     ScoreDefinition(
         "work-proposals-unfiled",
         "NUMERIC",
-        "On a work turn (kind work, ADR-0122): the report's proposed lines whose ref named no proposal this "
+        "On a work turn (kind work, ADR-0123): the report's proposed lines whose ref named no proposal this "
         "turn filed, dropped before the person saw them. Above zero is a turn that claimed a proposal it did not make.",
         min_value=0,
     ),
     ScoreDefinition(
         "claims-by-class",
         "CATEGORICAL",
-        "One score per provenance class present in the answer (ADR-0124): where its sentences come from. "
+        "One score per provenance class present in the answer (ADR-0125): where its sentences come from. "
         "The comment and metadata carry how many sentences of that class.",
         categories=(
             "quoted",

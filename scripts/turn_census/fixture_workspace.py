@@ -1,4 +1,4 @@
-"""The workspace eval's MCP door: Piloti's four meta-tools, served from a fixture office (ADR-0122).
+"""The workspace eval's MCP door: Piloti's four meta-tools, served from a fixture office (ADR-0123).
 
 The answer suite runs the real agent with no BFF, so its workspace tools
 (``tools/workspace``) reach nothing and an office-operations turn cannot be

@@ -305,7 +305,7 @@ class QuoteStamp(_Model):
 
 
 class ClaimStamp(_Model):
-    """Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0124), in document order.
+    """Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.
 
     ``provenance`` is the strongest evidence the sentence has; ``claim_type``
     whether it states the law, a value, or a description. ``load_bearing``
@@ -356,10 +356,10 @@ class TurnResult(_Model):
     retrieval_ledger: list[dict[str, Any]] = Field(default_factory=list)
     #: One stamp per quote line of ``text``, in document order.
     quote_stamps: list[QuoteStamp] = Field(default_factory=list)
-    #: One stamp per sentence of ``text``, in document order (ADR-0124).
+    #: One stamp per sentence of ``text``, in document order (ADR-0125).
     claim_stamps: list[ClaimStamp] = Field(default_factory=list)
     #: Which rule computed ``answer_confidence``: 2 the per-sentence formula
-    #: (ADR-0124). Absent on every turn stored before it, which the reader
+    #: (ADR-0125). Absent on every turn stored before it, which the reader
     #: renders under the answer-level floors it was computed with.
     answer_confidence_version: Literal[1, 2] | None = None
     #: A lookup ran and found nothing; the answer is the model's own knowledge
@@ -913,7 +913,7 @@ class TurnTrigger(_Model):
     happened. For a wake, ``event_id`` is the reply (or assignment) id the job
     was enqueued for and ``annotation_id`` the Anmerkung it happened on.
     ``agent_consult`` is a question another agent asked on the person's behalf
-    (ADR-0123): ``event_id`` is the ask's id, and there is no Anmerkung.
+    (ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.
     """
 
     kind: Literal["thread_mention", "thread_reply", "assigned", "agent_consult"]

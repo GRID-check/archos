@@ -62,7 +62,7 @@ export function sessionRoles(fromAuth: unknown, fromClaims: unknown, single: str
  * Returns `null` when the user is not signed in.
  */
 export async function getGridSession(): Promise<GridSession | null> {
-  // A call dispatched by Piloti's MCP server (ADR-0121) runs the browser's
+  // A call dispatched by Piloti's MCP server (ADR-0122) runs the browser's
   // route handler as the person the endpoint already authenticated.
   const actingSession = currentActingSession()
   if (actingSession) {

@@ -329,7 +329,7 @@ async function notifyWaiting(run: TaskRun, before: RunLedger, after: RunLedger):
   const groupKey = inboxGroupKey('task_run.waiting', 'project', run.projectId, run.id)
   try {
     if (!isWaiting) {
-      // The row an older pod wrote before 0175 still carries `job.waiting` in its key; resolve it too
+      // The row an older pod wrote before 0176 still carries `job.waiting` in its key; resolve it too
       // for one release (`LEGACY_INBOX_TYPES`).
       const legacyGroupKey = `job.waiting${groupKey.slice('task_run.waiting'.length)}`
       await resolveInboxItemsFor([

@@ -96,7 +96,7 @@ export interface AnswerMetaWorkItem {
 }
 
 /**
- * The report of an operations turn (`kind: work`, ADR-0122): what ran, what
+ * The report of an operations turn (`kind: work`, ADR-0123): what ran, what
  * waits for the person as a proposal, what is blocked and on whom, and what
  * comes next. Each list is optional and at most {@link WORK_ITEMS_MAX} long.
  */

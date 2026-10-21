@@ -149,7 +149,7 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # `file_draft` above; without one every canvas tool refuses.
     "document_canvas": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
     # Piloti's own MCP server (`tools/workspace/`, the `workspace` function group,
-    # ADR-0121). Every call echoes the envelope and the BFF runs the operation as
+    # ADR-0122). Every call echoes the envelope and the BFF runs the operation as
     # the person it names; no project header, because an operation names its own
     # project in its parameters. Without an envelope every tool refuses.
     "piloti_workspace": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),

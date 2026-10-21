@@ -1,5 +1,5 @@
 /**
- * The agent-reachable API as an OpenAPI 3.1 document (ADR-0121).
+ * The agent-reachable API as an OpenAPI 3.1 document (ADR-0122).
  *
  * Built from the operation catalog on each request, so it never disagrees with
  * what `/api/mcp` offers. It describes routes that already exist and opens no

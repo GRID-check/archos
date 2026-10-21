@@ -1,4 +1,4 @@
-"""The workspace client and the BFF's MCP server, tested against each other (ADR-0121).
+"""The workspace client and the BFF's MCP server, tested against each other (ADR-0122).
 
 Each side was tested alone: ``test_workspace_client.py`` against a fake socket,
 ``api/mcp/route.spec.ts`` against hand-built requests. Nothing proved the request

@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * Only the dispatcher may enter the acting session (ADR-0121).
+ * Only the dispatcher may enter the acting session (ADR-0122).
  *
  * `runAsActingSession` makes `getGridSession()` answer with a session no
  * cookie proved, so every route's `authz` trusts whoever bound it. The

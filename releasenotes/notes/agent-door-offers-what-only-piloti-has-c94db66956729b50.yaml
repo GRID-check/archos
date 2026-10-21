@@ -8,5 +8,5 @@ features:
 operators:
   - >
     The agent door withholds product configuration, proxied services, model
-    compute and screen state (ADR-0121 amendment), and no longer offers the
+    compute and screen state (ADR-0122 amendment), and no longer offers the
     platform console; that waits for a separate platform MCP server.

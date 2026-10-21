@@ -3,7 +3,7 @@
  */
 /**
  * The workspace eval's catalog, written by the production code
- * (`task be:eval:answer-suite -- --set workspace`, ADR-0122). What in-product
+ * (`task be:eval:answer-suite -- --set workspace`, ADR-0123). What in-product
  * Piloti sees on its MCP door — every operation it may name, and what
  * `describe-operation` answers for each — is written to
  * `tests/fixtures/workspace/catalog.json`, which

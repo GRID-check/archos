@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * The session an agent call runs as (ADR-0121).
+ * The session an agent call runs as (ADR-0122).
  *
  * Piloti's MCP server reaches the workspace through the same route handlers a
  * browser does, so every rule that lives at a route (the `authz` declaration,

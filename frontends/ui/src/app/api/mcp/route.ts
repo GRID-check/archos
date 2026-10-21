@@ -1,5 +1,5 @@
 /**
- * The agent door: Piloti's MCP server (ADR-0121).
+ * The agent door: Piloti's MCP server (ADR-0122).
  *
  * `POST /api/mcp` speaks MCP (spec 2026-07-28, stateless; 2025-era clients are
  * served by the SDK's stateless legacy fallback). One endpoint serves every

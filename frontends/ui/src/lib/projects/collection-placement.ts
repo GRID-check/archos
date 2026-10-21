@@ -85,7 +85,7 @@ import {
 
 export { PLACEMENT_PAGE }
 
-const PURGE_TIMEOUT_MS = 15_000
+export const PURGE_TIMEOUT_MS = 15_000
 
 export interface PlacementResult {
   /** Documents re-pointed to the collection their folder puts them in. */

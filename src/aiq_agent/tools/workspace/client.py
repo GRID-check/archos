@@ -1,4 +1,4 @@
-"""Piloti as a client of Piloti's own MCP server (ADR-0121): one stateless ``tools/call`` per call.
+"""Piloti as a client of Piloti's own MCP server (ADR-0122): one stateless ``tools/call`` per call.
 
 The server (``POST /api/mcp`` on the BFF) is the agent surface of the product;
 external agents reach it with OAuth, this tier reaches it by ECHOING the turn's

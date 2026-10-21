@@ -1,5 +1,5 @@
 /**
- * The HTTP half of the A2A door (ADR-0123): which protocol version a request
+ * The HTTP half of the A2A door (ADR-0124): which protocol version a request
  * speaks, and how an SDK answer becomes a response. Pure, so the route stays a
  * thin adapter and the specs reach these without a server.
  */

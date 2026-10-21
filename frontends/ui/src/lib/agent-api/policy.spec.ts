@@ -114,7 +114,7 @@ describe('visibleOperations', () => {
     expect(findVisibleOperation(person(), 'citation-format')).toBeUndefined()
   })
 
-  it('hides the asks from Piloti, and only from Piloti: Piloti never asks Piloti (ADR-0123)', () => {
+  it('hides the asks from Piloti, and only from Piloti: Piloti never asks Piloti (ADR-0124)', () => {
     for (const name of ['piloti-ask-create', 'piloti-ask-get', 'piloti-ask-cancel']) {
       const ask = { ...op('project-list'), name, domain: 'conversations' as const }
       expect(canSee(piloti, ask), name).toBe(false)
@@ -128,7 +128,7 @@ describe('visibleOperations', () => {
   })
 })
 
-describe('the guards on a sensitive operation (ADR-0121)', () => {
+describe('the guards on a sensitive operation (ADR-0122)', () => {
   const optedIn = (sensitiveOptIns: AgentPrincipal['sensitiveOptIns'], scopes = [SENSITIVE_SCOPE]): AgentPrincipal => ({
     ...person(scopes),
     sensitiveOptIns,

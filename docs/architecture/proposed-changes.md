@@ -9,13 +9,13 @@ not a card that executes itself (ADR-0105). Four kinds exist:
 | `file_operation` | move documents into a folder, rename them, create a folder, or assign a document to a colleague | `file_operation_proposal` |
 | `memory` | a note for the office's memory, or for the project's | `memory_proposal` |
 | `project_profile` | a change to the project's facts, goals, unknowns or assumptions, as a JSON patch on the profile | `project_profile_patch` |
-| `operation` | any write operation of the agent catalog that Piloti called through the MCP surface (ADR-0121) | `operation_proposal` |
+| `operation` | any write operation of the agent catalog that Piloti called through the MCP surface (ADR-0122) | `operation_proposal` |
 
 All four share one lifecycle, one table, one set of routes and one receipt
 card. A file operation may also be on the Büroablage, which has no project
 (0146), and Piloti files one of its own whenever an upload lands in the wrong
 folder ([Filing suggestions](#filing-suggestions)). An `operation` may be the
-organization's, with no project (0174). What differs between them is held in one file,
+organization's, with no project (0175). What differs between them is held in one file,
 `frontends/ui/src/lib/proposals/kinds.ts`: the payload schema, who may decide,
 what is refused when it is proposed, the inbox line, and which applier runs.
 The lifecycle in `service.ts` is the same for every kind and asks `kinds.ts`
@@ -34,7 +34,7 @@ deciding person's session, and the decision is one row every reader sees.
 | Piece | Where |
 |---|---|
 | The contract (zod, shared by every slice) | `frontends/ui/src/lib/proposals/types.ts` |
-| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, the kinds and the card index in `0143_proposal_kinds.sql`, the shelf and the trace in `0146_proposal_shelves.sql`, the `operation` kind in `0173_operation_proposals.sql`, the organization shelf and the open-call index in `0174_organization_operation_proposals.sql`; mirrored in `src/lib/db/schema/proposed-changes.ts` |
+| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, the kinds and the card index in `0143_proposal_kinds.sql`, the shelf and the trace in `0146_proposal_shelves.sql`, the `operation` kind in `0174_operation_proposals.sql`, the organization shelf and the open-call index in `0175_organization_operation_proposals.sql`; mirrored in `src/lib/db/schema/proposed-changes.ts` |
 | SQL | `src/lib/proposals/repository.ts` |
 | Rules: who may read, who may decide, how apply runs | `src/lib/proposals/service.ts` |
 | What differs per kind: payload, gate, refusal when proposed, summary, applier | `src/lib/proposals/kinds.ts` |
@@ -65,7 +65,7 @@ row cannot name another tenant's project or conversation.
 | Column | Holds |
 |---|---|
 | `project_id` | the project the change is for: the turn's, taken from the signed envelope, or the upload's for a filing suggestion. NULL for a Büroablage proposal |
-| `scope` | the shelf, `project`, `office_shelf` (0146, `project_folders.scope`'s vocabulary) or `organization` (0174): `project` exactly when there is a project. A Büroablage proposal moves its documents; an organization's is an `operation` |
+| `scope` | the shelf, `project`, `office_shelf` (0146, `project_folders.scope`'s vocabulary) or `organization` (0175): `project` exactly when there is a project. A Büroablage proposal moves its documents; an organization's is an `operation` |
 | `origin_trace_id` | the Langfuse trace of the judgement that proposed it, for a proposal no turn made (a filing suggestion); the decision score goes there |
 | `kind`, `payload` | one of the three kinds and its payload, below |
 | `status` | `proposed`, `applied`, `partially_applied`, `failed`, `dismissed` |
@@ -84,7 +84,7 @@ The CHECKs hold the lifecycle, so no code path can break it:
   `failed`), and `results` is an array.
 - The claim has both columns or neither, and exists only while the proposal is
   `proposed`.
-- `kind` is `file_operation`, `memory`, `project_profile` or `operation` (0173);
+- `kind` is `file_operation`, `memory`, `project_profile` or `operation` (0174);
   `status` and
   `proposed_by_kind` are known values; `payload` is an object.
 - `origin_card_index` is null or not negative, and needs an `origin_message_id`
@@ -93,11 +93,11 @@ The CHECKs hold the lifecycle, so no code path can break it:
   Büroablage proposal is a `file_operation` that moves one or more items, every
   one with `source: buero` (`proposed_changes_office_shelf_move`, which reads a
   missing key as a refusal, not as a pass); an organization-scoped one is an
-  `operation` (`proposed_changes_organization_operation`, 0174).
+  `operation` (`proposed_changes_organization_operation`, 0175).
 - One open call is one proposal: of two `operation` proposals in one
   conversation for the same person with the same operation and the same input,
-  only one can be `proposed` (`uniq_proposed_changes_open_operation`, 0174,
-  with `on_behalf_of` since 0176). Deciding the first frees the call.
+  only one can be `proposed` (`uniq_proposed_changes_open_operation`, 0175,
+  with `on_behalf_of` since 0177). Deciding the first frees the call.
 
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
 against a real PostgreSQL, applies the down migrations, and re-applies the up
@@ -215,7 +215,7 @@ of an admin who can, and the admin's click would apply it. The kind has no creat
 `internalProposalRequestSchema`: nothing but `proposeOperation` makes one.
 
 **No project, the organization's.** A turn in no project still proposes: the
-proposal is `scope: organization` (0174) with no `project_id`, for the writes
+proposal is `scope: organization` (0175) with no `project_id`, for the writes
 that are the office's and not a project's (its memory, a skill). It is read
 through the conversation it was made in (`viewer`), or, made in none, by the
 person it was made for alone, and it is listed on `GET /api/proposals?shelf=organization`.
@@ -224,7 +224,7 @@ person it was made for alone, and it is listed on `GET /api/proposals?shelf=orga
 person, the same operation with the same input (compared as jsonb, so key order
 does not matter), while its proposal is still `proposed` gets that proposal back
 and files nothing: no second inbox item, no second audit line. Another person's
-identical call in the same conversation is their own proposal (0176).
+identical call in the same conversation is their own proposal (0177).
 `createProposal` looks first; the unique index `uniq_proposed_changes_open_operation`
 settles two identical calls running at once. A decided proposal frees the call,
 so asking again after a „no" is a new proposal.
@@ -393,7 +393,7 @@ route sends rather than its service, is sent for an assign too.
 
 ## How decisions reach Piloti
 
-**This conversation's own proposals, every status (ADR-0122).** The turn
+**This conversation's own proposals, every status (ADR-0123).** The turn
 context's WORKSPACE block (`lib/turn-context/workspace-block.ts`, read by
 `listConversationProposals`) lists the newest eight proposals made in the
 conversation the turn answers in, `proposed` and `failed` included, each with
@@ -586,6 +586,121 @@ and in the inbox, pointing at the shelf. `GRID_FILING_SUGGESTIONS=off` switches 
 (`FileOperationReceipt`) draws a move's `new_folder` („Neuer Ordner“, its path
 and description) above the rows and each item's `reason` under its row, so a
 proposal that carries them reads the same wherever it is shown.
+
+### Sorting the root
+
+Upload filing judges files as they arrive. A root that already holds a
+hundred loose files, from before the folders existed, needs the other
+direction: one run over the whole root. It is in the file browser's overflow
+menu, under the Advanced section, as „Alle Dateien in Ordner einsortieren…“,
+and it is rare by design.
+
+**A run is the server's (ADR-0121).** It is a row in `root_sort_runs`
+(migration 0173), worked by the BFF job `root_sort` on `bff_job_queue`
+(ADR-0079), a bounded slice at a time. The browser starts the run, reads it,
+and asks for its next step; it loops over nothing. Nothing runs because a tab
+is open: closing the dialog leaves the run going, and reopening it reads the
+person's latest run on that shelf and shows where it is. A run is its
+requester's. Only they see it and act on it, and the job runs as them, with
+their rights read again at every slice. One run may be in work per shelf at a
+time; the partial unique index `root_sort_runs_one_in_work_per_shelf` refuses a
+second.
+
+**The routes.** `POST /api/projects/[id]/root-sort` and
+`POST /api/office-shelf/root-sort` start a run over the root as it is now.
+`GET /api/root-sort-runs/[runId]` reads it, and `…/apply`, `…/undo` and
+`…/cancel` ask for the next step. The dialog polls the run every two seconds
+while it works. The service is `lib/filing/root-sort-run.ts`; the typed client
+is `lib/filing/root-sort-client.ts`.
+
+**The statuses.** `judging` → `grouping` → `ready` → `applying` → `applied`,
+and after an undo `undoing` → `undone`. `cancelled` ends a run before anything
+moved (from `judging`, `grouping` or `ready`; a run that is `applying` finishes
+what it started). `failed` ends a run with its reason when a slice is refused
+(the person lost the shelf, the project closed). A transient error is not a
+refusal: the queue retries that slice.
+
+**A run is never left working with nothing working on it.** The run names the
+job that works it (`job_id`). If that job cannot be queued, the step that moved
+the run is taken back (a new run ends `failed` with `not_queued`, an apply
+returns to `ready`, an undo to `applied`). If the job is gone (it finished
+without moving the run on, or died after its attempts), the run is ended
+`failed` with `stalled` whenever anyone opens the sort, starts one or reads a
+run of that shelf, so the one-in-work index frees the shelf. A run whose job is
+queued or claimed is never ended this way, however long a backlog keeps it
+waiting. A slice runs as its requester looked up strictly: an identity provider
+that does not answer is retried by the queue, and a requester who left ends
+the run (`requester_left`). A run that failed part of the way through applying
+can still be undone.
+
+**A slice is bounded in time and writes only over what it read.** An apply or
+undo slice starts moves for 180 s (`MOVE_SLICE_BUDGET_MS`) and carries on from
+the first move it did not reach; every write is conditioned on the status and
+the cursor the slice read, so a slice the runner gave up on that finishes late
+changes nothing. An apply moves a document only from the root, where the run
+found it, into a folder the review offered or a new folder the run proposed
+(checked on the server, not only in the dialog); it records each document it
+really moved with the folder it put it in, and an undo moves back only what is
+still there. Starting a run cancels the person's older runs still waiting for
+review.
+
+**The person is told.** When a run becomes `ready` or `failed`, its requester
+gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
+`lib/filing/root-sort-announce.ts`) that opens the shelf with the dialog
+(`?rootSort=<runId>`), so closing the dialog never means missing the result.
+
+**The slices.** Each one is bounded well inside the runner's 300 s ceiling
+(`GRID_BFF_JOBS_SLICE_TIMEOUT_MS`), and the cursor is saved after each one.
+
+1. **Scan** (the start request, not a slice). The shelf's open folders and the
+   root documents the judgement may read: screened, and read by ingestion.
+   Others are counted as unreadable. At most 5000 root documents per run.
+2. **Judge** (`judging`). A slice runs three chunks of 60 documents side by
+   side through the filing judgement (`POST /v1/filing-fit` with
+   `purpose: "sort"`). It places every document that has a plausible home, in
+   the deepest folder that fits, and may propose a folder the office uses in
+   its other projects but this shelf lacks. Jev (ADR-0064) scores each
+   placement's folder; at 0.8 or more a placement reads as sure, below it as
+   unsure. The threshold is measured (`task be:eval:root-sort`, two runs over
+   150 labelled documents): sure placements were right 0.972 of the time at
+   0.8, against 0.93 at 0.6; most misses were one level too high and score
+   below the cut. A chunk that fails is recorded,
+   and its documents stay in the root.
+3. **Group** (`grouping`, one slice). The documents no folder fits, up to 1000,
+   go to `POST /v1/folder-proposals` in parallel chunks, and one merge call
+   unifies the names into at most 12 new folders, so names agree across the
+   whole run. The slice is capped at 240 s (`NEW_FOLDERS_TIMEOUT_MS`), an
+   estimate, unmeasured. When interactive chats hold the model provider's
+   slots, the Python side can still be waiting at that cap; the BFF then
+   records `grouping_error` and the run carries on. A grouping that fails or
+   times out leaves those files in the root, and the review says so.
+   The run then waits in `ready`.
+4. **Review** (`ready`, no job). The person reviews the result as a tree:
+   unchecks what they do not want, re-targets a placement, or shows only the
+   unsure ones. Nothing has moved. The review is read only while the run waits
+   on the person.
+5. **Apply** (`applying`). The apply request records what the person kept on
+   the row. The first slice creates the kept new folders through the shelf's
+   folder ensure. Each slice then moves at most 100 documents, each through
+   `moveDocumentToFolder` with all its checks, and records each outcome; a move
+   that fails is recorded and the rest go on.
+6. **Undo** (`undoing`). Moves the documents the run moved back to the root, 100
+   per slice, from `applied` or from a `failed` run that had moved some, and
+   only where a document is still in the folder the run put it in: one a
+   colleague filed since stays where they put it. The folders it created stay.
+   What it could not move back is kept apart (`undo_failures`) and named in the
+   dialog.
+
+**The reading rules are the upload filing's.** Only folders every member may
+read, only screened documents, nothing on a closed project. The gate is
+`requireShelfWrite` (`project:documents:write` or `project:edit`; for the
+Archiv, `canManageOfficeShelf`), checked again by `requireSortable` at every
+slice.
+
+**Observability.** Each placement chunk is a `filing-fit` generation
+(`purpose: sort`), each new-folder call is `folder-proposals.map` or
+`folder-proposals.reduce`, and each Jev call is a `decide.*` generation
+([`langfuse.md`](../observability/langfuse.md)).
 
 ## What is not done yet
 

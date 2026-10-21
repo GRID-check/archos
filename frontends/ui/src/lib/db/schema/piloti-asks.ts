@@ -6,8 +6,8 @@ import { conversations } from './conversations'
 const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${value}'`).join(', '))
 
 /**
- * A question another agent asked Piloti on a person's behalf (ADR-0123,
- * migration 0177): one row per ask, whether it came through the MCP door
+ * A question another agent asked Piloti on a person's behalf (ADR-0124,
+ * migration 0178): one row per ask, whether it came through the MCP door
  * (`piloti-ask-create`) or the A2A door (`SendMessage`), which calls the same
  * route.
  *

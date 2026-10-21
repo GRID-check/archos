@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview: what an answer rests on, sentence by sentence (ADR-0124).
+ * Dev preview: what an answer rests on, sentence by sentence (ADR-0125).
  *
  * Four answers through the real `AgentResponse`, and the confidence chip on its
  * own beside each, so its tooltip can be hovered without opening the details:

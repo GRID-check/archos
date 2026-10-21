@@ -20,7 +20,7 @@
  * reason included) and `onWakeEnded` tells the attention slice, each once.
  *
  * A turn that is not a wake may be an ask another agent put to Piloti
- * (ADR-0123): its outcome ends the ask (`recordAskOutcome`), by the same id.
+ * (ADR-0124): its outcome ends the ask (`recordAskOutcome`), by the same id.
  *
  * Idempotent and forgiving: a turn that is neither (a browser's), a
  * conversation that is not the wake's thread, and a wake that already ended
@@ -171,7 +171,7 @@ export async function recordTurnOutcome(request: TurnOutcomeRequest): Promise<Tu
     'turn outcome: the chat socket names a turn by id, before any organization is known',
     () => findWakeById(request.turnId)
   )
-  // Not a wake: the turn may be an ask another agent put to Piloti (ADR-0123).
+  // Not a wake: the turn may be an ask another agent put to Piloti (ADR-0124).
   if (!wake) return { settled: await recordAskOutcome(request) }
   if (wake.status !== 'started' && wake.status !== 'queued') return NOT_SETTLED
   // The thread the wake ran in is derived, never stored; a mismatch is a turn that is not this wake's.

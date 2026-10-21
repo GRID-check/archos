@@ -1,5 +1,5 @@
 /**
- * One thing a person can do in Piloti, described for an agent (ADR-0121).
+ * One thing a person can do in Piloti, described for an agent (ADR-0122).
  *
  * An operation is not a new door. It names a route the UI already calls
  * (`method` + `path`), says in words an agent can act on when to call it and
@@ -120,14 +120,14 @@ export interface AgentOperation {
    * control down or off (`control`: zero data retention, upload screening, a
    * held file let through, a legal hold lifted, retention shortened). An agent
    * may call it for a person who holds
-   * the right, under the extra guards ADR-0121 names: the organization opted
+   * the right, under the extra guards ADR-0122 names: the organization opted
    * in, the client was granted the step-up scope, the person confirms, and
    * Piloti in-product only ever proposes it.
    */
   readonly sensitivity?: Sensitivity
   /**
    * A read whose answer can carry content of every project the person may
-   * read, not only the one a call names (ADR-0121, "Shared conversations").
+   * read, not only the one a call names (ADR-0122, "Shared conversations").
    * `always`: whatever the call names (similar passages search every project
    * the person reads). `unlessScoped`: unless the call names a project (the
    * conversation list without `projectId`). Piloti's read gate refuses it in a
@@ -135,7 +135,7 @@ export interface AgentOperation {
    */
   readonly spansProjects?: SpansProjects
   /**
-   * Kept in the catalog, offered on no door (ADR-0121, "Amendment: the door
+   * Kept in the catalog, offered on no door (ADR-0122, "Amendment: the door
    * offers what only Piloti has"): the operation is described and its route
    * stays the UI's, but to every agent it reads as an unknown name. Absent:
    * offered. To offer it again, delete the line; `agent-reachability.spec.ts`

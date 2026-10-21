@@ -1,4 +1,4 @@
-"""The work report: ``kind: "work"`` and its ``work`` field (ADR-0122).
+"""The work report: ``kind: "work"`` and its ``work`` field (ADR-0123).
 
 An operations turn is not forced into the legal answer's shape any more: it
 reports what it did, what waits for the person as a proposal, what is blocked

@@ -1,4 +1,4 @@
-"""The ``operation_proposal`` card, for a write the server turned into a proposal (ADR-0121, ADR-0105).
+"""The ``operation_proposal`` card, for a write the server turned into a proposal (ADR-0122, ADR-0105).
 
 When ``workspace__call`` runs a WRITE operation, the server (``lib/agent-api/discovery.ts``)
 changes nothing: it stores an ``operation`` proposal in the turn's conversation and answers with

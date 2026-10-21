@@ -1,4 +1,4 @@
--- 0175: the inbox types of a task run say "task_run", not "job".
+-- 0176: the inbox types of a task run say "task_run", not "job".
 --
 -- `job.completed`, `job.failed` and `job.waiting` announce a task run (one
 -- attempt at a task: ended, failed, stopped to ask). "Job" is the claim-queue

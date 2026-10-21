@@ -1,4 +1,4 @@
-"""Per-sentence provenance (ADR-0124): each class from the evidence that earns it, and the ceilings."""
+"""Per-sentence provenance (ADR-0125): each class from the evidence that earns it, and the ceilings."""
 
 from __future__ import annotations
 
@@ -113,7 +113,7 @@ class TestEachClassFromItsEvidence:
         assert _classes(prose, ClaimEvidence(records=[PROPOSAL])) == [("action", "normative")]
 
     def test_the_name_a_proposal_was_filed_with_is_not_read_as_building_law(self):
-        # A work turn (ADR-0122) names what it proposed: „den Ordner Brandschutz". The name is the
+        # A work turn (ADR-0123) names what it proposed: „den Ordner Brandschutz". The name is the
         # proposal's own data; the detector reads „Brandschutz" as law, so it is left out first.
         folder = record_from_result(
             "project-folder-create",
@@ -257,7 +257,7 @@ class TestTheCeilings:
         assert claims_ceiling(stamps) == "medium"
 
     def test_an_answer_with_no_sentence_is_floored_not_left_unchecked(self):
-        # Rule 1's intent (ADR-0124): nothing behind the answer, so the self-report cannot stand.
+        # Rule 1's intent (ADR-0125): nothing behind the answer, so the self-report cannot stand.
         assert claims_ceiling([]) == "low" and weakest_claim([]) is None
         stamps = classify_claims(
             "## Ergebnis\n\n[[card:1]]", ClaimEvidence(), normative=answer_mentions_normative_claim

@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * Piloti's writes through the MCP surface are proposals (ADR-0121, ADR-0105).
+ * Piloti's writes through the MCP surface are proposals (ADR-0122, ADR-0105).
  *
  * When the in-product agent calls a WRITE operation of the catalog, nothing is
  * applied. `proposeOperation` files an `operation` proposal in the turn's
@@ -108,7 +108,7 @@ export function summaryOfOperation(op: AgentOperation, input: OperationInput): s
  * conversation when it names a project outside the audience's reach
  * (`proposalReachRefusal`, ADR-0094): its card sits where every reader reads
  * it. A turn in no project files it on the
- * organization (0174). The same call repeated in the conversation, for the same
+ * organization (0175). The same call repeated in the conversation, for the same
  * person, while the first proposal is still open files nothing and returns that
  * one. Runs in the person's tenant scope: the conversation, the open proposal
  * and the insert are tenant rows. Returns the proposal's id, which the card
@@ -132,7 +132,7 @@ export async function proposeOperation({
   // A sensitive operation widens who may do what, touches the organization's
   // secrets, or turns a control off. Accepting a proposal is one click on a card
   // the agent worded, which is not the confirmation such a change needs, so
-  // Piloti files none (ADR-0121).
+  // Piloti files none (ADR-0122).
   if (op.sensitivity) throw new ForbiddenError(sensitiveProposalRefusal(op))
   const stored: OperationPayload['input'] = {
     params: input.params,

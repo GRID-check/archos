@@ -8,6 +8,7 @@ const move = (documentId: string, folder: string, extra: Partial<FilingMove> = {
   folder,
   reason: `${documentId} gehört nach ${folder}.`,
   newFolder: null,
+  confidence: null,
   ...extra,
 })
 

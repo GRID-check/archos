@@ -1,4 +1,4 @@
-"""The joins of ADR-0124: every answer stamped, records grounding through their own channel, scores written.
+"""The joins of ADR-0125: every answer stamped, records grounding through their own channel, scores written.
 
 The parts are tested in ``tests/aiq_agent/common``; these go through
 ``finalize_answer`` and the state, where a part nobody calls would show.
@@ -134,7 +134,7 @@ async def test_the_three_scores_are_written(monkeypatch):
     assert by_name[("citations-dropped-labelled", None)] == 1.0
 
 
-# --- a work turn (kind work, ADR-0122) under per-sentence provenance (ADR-0124) ---
+# --- a work turn (kind work, ADR-0123) under per-sentence provenance (ADR-0125) ---
 #
 # A work turn reports what it read and proposed in the office; it is not a legal
 # answer. Its sentences are grounded by the records and proposals this turn left

@@ -1,6 +1,6 @@
 /**
  * What an operation call names: the projects, documents, folders and
- * conversations its input points at (ADR-0121, ADR-0093, ADR-0094).
+ * conversations its input points at (ADR-0122, ADR-0093, ADR-0094).
  *
  * Two gates ask it, each about a different person:
  *

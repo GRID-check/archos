@@ -10,7 +10,7 @@ informed: everyone working in this repo
 
 ## Context and Problem Statement
 
-ADR-0121 put every person-facing route behind one MCP server at `/api/mcp`. Its
+ADR-0122 put every person-facing route behind one MCP server at `/api/mcp`. Its
 amendment ("the door offers what only Piloti has") took the `platform` domain off
 that door for everyone, platform staff included: the operator console is GRID's,
 not an office's, and every write there (default models, prices, the base corpus,
@@ -28,7 +28,7 @@ implementation of the MCP server, and without a token that opens both?
 * An office token must never reach the console, and a console token must never
   act in an office: one token, one door (RFC 8707 audience binding).
 * One implementation: the same handler factory, catalog, dispatcher, search,
-  describe and call (ADR-0055, ADR-0121). A door is a filter, not a fork.
+  describe and call (ADR-0055, ADR-0122). A door is a filter, not a fork.
 * The route stays the gate: each console route already checks its own
   `platform:*` permission through `platformApiRoute`, and the read-only Platform
   Support role must stay read-only through an agent.
@@ -69,7 +69,7 @@ moves all three and no new environment variable is needed. Its metadata is at
 points there.
 
 **Audiences.** `acceptedAudiences(door)` has two groups. The office doors
-(`/api/mcp`, `/api/a2a`) accept each other's tokens, as ADR-0123 decided. The
+(`/api/mcp`, `/api/a2a`) accept each other's tokens, as ADR-0124 decided. The
 platform door accepts only its own audience, and neither office door accepts it.
 A token for the wrong group fails signature-time verification with 401
 `invalid_token`.
@@ -178,8 +178,8 @@ metadata and tags.
 
 ## More Information
 
-* ADR-0121 and its amendment: the office door, and why the platform domain left it.
-* ADR-0123: the A2A door, the office doors' shared audience.
+* ADR-0122 and its amendment: the office door, and why the platform domain left it.
+* ADR-0124: the A2A door, the office doors' shared audience.
 * ADR-0016: the GRID Platform organization and its roles.
 * [`../architecture/agent-surface.md`](../architecture/agent-surface.md), "The platform door".
 * [`../deployment/workos-provisioning.md`](../deployment/workos-provisioning.md): the flag and the resource indicator.

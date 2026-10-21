@@ -1,4 +1,4 @@
-/** The bim operations (ADR-0121). See `projects.ts` for the shape and `docs/architecture/agent-surface.md` for the rules. */
+/** The bim operations (ADR-0122). See `projects.ts` for the shape and `docs/architecture/agent-surface.md` for the rules. */
 
 import { z } from 'zod'
 import { bimQuerySchema } from '@/lib/bim/query'

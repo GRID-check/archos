@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The agent door's HTTP edge (ADR-0121): who is turned away before the MCP
+ * The agent door's HTTP edge (ADR-0122): who is turned away before the MCP
  * handler runs, the challenge an MCP client needs to start OAuth, and one real
  * round trip through the SDK so the server we build is the server that answers.
  */

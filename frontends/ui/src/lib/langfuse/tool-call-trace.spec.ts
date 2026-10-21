@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * One MCP tool call is one Langfuse trace (ADR-0089, ADR-0121). The mapping is
+ * One MCP tool call is one Langfuse trace (ADR-0089, ADR-0122). The mapping is
  * pure and checked field by field; the posting is checked at the network, the
  * way the agent door really sends it: through `recordOperationCalled`, the one
  * place every tool call is recorded.

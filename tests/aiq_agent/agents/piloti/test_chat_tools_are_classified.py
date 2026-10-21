@@ -41,7 +41,7 @@ NOT_SOURCES = {
     "workspace": (
         "Piloti's own MCP server (a function group): finds and runs workspace operations as the asker, a write "
         "comes back as a proposal; its results are records of the office's own state, not passages a reader cites. "
-        "They ground sentences through their own channel (common/workspace_records, ADR-0124), never the registry"
+        "They ground sentences through their own channel (common/workspace_records, ADR-0125), never the registry"
     ),
     "ask_user": "asks the reader a question",
     "ifc_query": "answers from the building model through cards, not passages",

@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * Progressive discovery for the agent door (ADR-0121).
+ * Progressive discovery for the agent door (ADR-0122).
  *
  * The catalog is large, and MCP has no standard tool search. Putting every
  * operation in `tools/list` costs a client thousands of tokens before its first
@@ -389,7 +389,7 @@ interface Hit {
 }
 
 /**
- * Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0122).
+ * Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0123).
  * `query` is at most {@link MAX_SEARCH_QUERY_LENGTH} characters: the search schema refuses a longer one.
  */
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {

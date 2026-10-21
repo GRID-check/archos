@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The agent-reachability gate (ADR-0121): everything a person can do in
+ * The agent-reachability gate (ADR-0122): everything a person can do in
  * Piloti, an agent can do through Piloti's MCP server.
  *
  * It walks every `app/api/**\/route.ts` the way `authz-coverage.spec.ts` does
@@ -39,7 +39,7 @@ const METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'] as const
 
 /**
  * Why a route or an operation is not on the agent door, in the categories of
- * ADR-0121's amendment: the withheld ones (`WithheldCategory`), plus `other`
+ * ADR-0122's amendment: the withheld ones (`WithheldCategory`), plus `other`
  * for what is not an act at all (transport, sign-in plumbing, the doors themselves).
  */
 type ExemptionCategory = WithheldCategory | 'other'
@@ -119,7 +119,7 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
   },
   '* /api/a2a': {
     category: 'other',
-    reason: 'the A2A endpoint (ADR-0123): another protocol onto the piloti-ask operations, which an MCP client calls directly',
+    reason: 'the A2A endpoint (ADR-0124): another protocol onto the piloti-ask operations, which an MCP client calls directly',
   },
   '* /api/v1/[...path]': {
     category: 'other',
@@ -140,7 +140,7 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
 }
 
 /**
- * Every route method an agent reaches only under the extra guards of ADR-0121
+ * Every route method an agent reaches only under the extra guards of ADR-0122
  * ("Sensitive operations"), with its class: `access` changes who may see or do
  * what, `secret` touches the organization's credentials, `control` turns a
  * security or compliance control down or off. Each is catalogued
@@ -178,7 +178,7 @@ const SENSITIVE: Record<string, Sensitivity> = {
 }
 
 /**
- * Every withheld operation (ADR-0121, "Amendment: the door offers what only
+ * Every withheld operation (ADR-0122, "Amendment: the door offers what only
  * Piloti has"), with its category: catalogued, its route still the UI's, and on
  * no door. Withholding one more, or offering one again (delete its `withheld`
  * line), changes this list in the same diff, so the decision is in review.
@@ -330,7 +330,7 @@ if (process.env.UPDATE_FIXTURES === '1') {
   writeFileSync(BASELINE_FILE, `${JSON.stringify(UNCOVERED, null, 2)}\n`)
 }
 
-describe('every person-facing route is agent-reachable (ADR-0121)', () => {
+describe('every person-facing route is agent-reachable (ADR-0122)', () => {
   const baseline = new Set(readBaseline())
 
   it('finds the routes', () => {
@@ -374,7 +374,7 @@ describe('every person-facing route is agent-reachable (ADR-0121)', () => {
   })
 })
 
-describe('what the door offers (ADR-0121, amendment of 2026-10-21)', () => {
+describe('what the door offers (ADR-0122, amendment of 2026-10-21)', () => {
   const offered = AGENT_OPERATIONS.filter((op) => op.withheld === undefined)
 
   it('withholds exactly the listed operations, each with its category', () => {

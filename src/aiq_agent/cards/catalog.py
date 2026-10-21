@@ -42,7 +42,7 @@ SYSTEM_CARD_TYPES = frozenset(
     {
         "memory_proposal",
         # `operation_proposal` from the product's own MCP server: the card names
-        # a stored `operation` proposal a person decides (ADR-0121).
+        # a stored `operation` proposal a person decides (ADR-0122).
         "operation_proposal",
         "document_grid",
         "document_draft",

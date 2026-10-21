@@ -1,4 +1,4 @@
-"""The workspace eval's harness, the part a CI machine can run (ADR-0122).
+"""The workspace eval's harness, the part a CI machine can run (ADR-0123).
 
 `scripts/turn_census/suite.py --set workspace` needs a model key to RUN. What is
 testable offline: that the fixture door ranks a search exactly as the server

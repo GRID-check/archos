@@ -1,5 +1,5 @@
 /**
- * What the profile's "Agent verbinden" section may show a person (ADR-0121).
+ * What the profile's "Agent verbinden" section may show a person (ADR-0122).
  *
  * Decided on the server, so the page never offers a URL that leads to a
  * refusal and never ships an environment value: the client island receives a

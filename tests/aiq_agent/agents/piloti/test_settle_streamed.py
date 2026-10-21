@@ -32,7 +32,7 @@ SOURCES = (
 def test_an_unbacked_marker_is_labelled_and_the_rest_take_the_numbers_the_terminal_will_give():
     settled = settle_streamed_citations("Fluchtweg 40 m [1], erfunden [2], Treppe [3].", SOURCES, _registry())
     body, _, section = settled.content.partition("\n\n")
-    # Labelled where it stood, not silently removed (ADR-0124): the claim's
+    # Labelled where it stood, not silently removed (ADR-0125): the claim's
     # pointer did not hold, and the reader is told so.
     assert body == f"Fluchtweg 40 m [1], erfunden {DROPPED_CITATION_MARKER}, Treppe [2]."
     # The source list rides along, renumbered, the unbacked line gone.
@@ -99,7 +99,7 @@ def _one_source() -> SourceRegistry:
 def test_no_source_the_model_did_not_cite_is_attached():
     # The single-source fallback attached the registry's one source when the
     # only line named nothing retrieved; that source could be two turns old
-    # (ADR-0124). The marker is labelled and no chip is invented.
+    # (ADR-0125). The marker is labelled and no chip is invented.
     settled = settle_streamed_citations(
         "Treppen brauchen 2,10 m [1].", "## Quellen\n- [1] erfunden.pdf, p.9", _one_source()
     )

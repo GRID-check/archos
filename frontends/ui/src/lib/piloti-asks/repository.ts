@@ -1,5 +1,5 @@
 /**
- * The SQL of the asks (ADR-0123, migration 0177). Every read is one row or a
+ * The SQL of the asks (ADR-0124, migration 0178). Every read is one row or a
  * bounded list; every write states the organization and runs in its tenant
  * scope, so row-level security is the backstop and not the plan.
  */

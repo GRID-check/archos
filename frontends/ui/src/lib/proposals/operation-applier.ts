@@ -1,5 +1,5 @@
 /**
- * Proposed operations (`operation`, ADR-0121): any WRITE operation of the
+ * Proposed operations (`operation`, ADR-0122): any WRITE operation of the
  * agent catalog that Piloti called through the MCP surface, held as a proposal
  * until a person accepts it.
  *
@@ -7,7 +7,7 @@
  * dispatcher the MCP server itself uses, so the operation's route decides:
  * its `authz`, its rate limit, its tenant slot and its own body schema. The
  * proposal adds no second rule; `DECIDE_PERMISSIONS.operation` is only the
- * right to see the project, and an organization-scoped one (no project, 0174)
+ * right to see the project, and an organization-scoped one (no project, 0175)
  * needs nothing but the right to read it.
  *
  * Two outcomes, as for every kind (`./appliers.ts`). What belongs to the
@@ -30,7 +30,7 @@ import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
 /**
- * Why Piloti never asks Piloti (ADR-0123, the recursion lock): every operation
+ * Why Piloti never asks Piloti (ADR-0124, the recursion lock): every operation
  * Piloti's own door reaches arrives here as a proposal, so refusing an ask here
  * is what keeps a turn, a turn an ask started included, from starting another.
  */

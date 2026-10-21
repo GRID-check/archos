@@ -244,7 +244,7 @@ class TestRetrieval:
         assert _live(steps)[0].key == "status.action.remember"
 
     def test_a_workspace_call_says_it_works_in_the_workspace_and_its_bookkeeping_says_nothing(self, steps) -> None:
-        """Keyed on the qualified name: a bare ``call`` from another group is not the workspace (ADR-0124)."""
+        """Keyed on the qualified name: a bare ``call`` from another group is not the workspace (ADR-0125)."""
         call = {"name": "workspace__call", "args": {"name": "project-members-list", "input": {}}}
         turn_status.emit_retrieval([call], round_index=0)
         turn_status.emit_retrieval([{"name": "workspace__search", "args": {"query": "Mitglieder"}}], round_index=1)

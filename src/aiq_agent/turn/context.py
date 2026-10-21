@@ -63,7 +63,7 @@ class TurnContext:
     #: each: rendered as ``<referenzprojekte>`` so the agent looks there unasked
     #: (docs/design/cross-project-escalation.md). None: none, or not loaded.
     reference_projects: str | None = None
-    #: The WORKSPACE block (ADR-0122): the asker's roles, the project, the
+    #: The WORKSPACE block (ADR-0123): the asker's roles, the project, the
     #: conversation's audience, what waits, and this conversation's proposals
     #: with every status. Rendered when the workspace tools are bound.
     workspace: str | None = None

@@ -1,8 +1,8 @@
--- Reverse 0175. ORDER: roll the frontend back first; the newer build writes and
+-- Reverse 0176. ORDER: roll the frontend back first; the newer build writes and
 -- reads `task_run.*`.
 --
 -- Exact: every row's type and group key come back as they were. A row an older
--- pod wrote as `job.*` after 0175 is already in the old form and is left alone.
+-- pod wrote as `job.*` after 0176 is already in the old form and is left alone.
 UPDATE "inbox_items"
   SET "type" = 'job.completed',
       "group_key" = 'job.completed' || substr("group_key", length('task_run.completed') + 1)

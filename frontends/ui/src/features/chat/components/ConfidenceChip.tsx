@@ -51,7 +51,7 @@ interface ConfidenceChipProps {
    */
   reason?: string
   /**
-   * Which rule computed the level. 2 is the per-sentence formula (ADR-0124):
+   * Which rule computed the level. 2 is the per-sentence formula (ADR-0125):
    * the level is held to the weakest sentence the answer rests on, and the
    * tooltip says what its sentences rest on. Absent on an answer stored before
    * it, which keeps the copy of the answer-level floors it was computed with.

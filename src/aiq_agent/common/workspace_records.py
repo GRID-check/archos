@@ -1,7 +1,7 @@
 """Workspace reads and proposals as RECORDS: the third channel of evidence, beside passages and measurements.
 
 Piloti reaches the office's own state through its MCP server (``workspace__call``,
-ADR-0121): who is on a project, which approvals are open, what a task says. A
+ADR-0122): who is on a project, which approvals are open, what a task says. A
 sentence read straight off that state is grounded more firmly than any passage,
 because the server row IS the fact. Before this module, the answer pipeline
 could not tell: the workspace is not a data source (``NOT_SOURCES``), nothing

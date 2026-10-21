@@ -185,6 +185,20 @@ export const INBOX_ITEM_TYPES = [
    * everyone when the mark is closed; made inert when it is deleted.
    */
   'annotation.mentioned',
+  /**
+   * Informational, operational tier: a sort of a shelf's root (ADR-0121) has
+   * read every file and proposed where each goes, and waits for its requester
+   * to review it. Addressed to the requester only, anchored on the run, and
+   * opens the shelf's files with the sort dialog. Informational: the dialog is
+   * where the decision is made, and an unread row already counts in the badge.
+   */
+  'root_sort.ready',
+  /**
+   * Informational, operational tier: a sort of a shelf's root stopped on an
+   * error (ADR-0121). Addressed to the requester only, anchored on the run,
+   * and opens the shelf's files with the sort dialog, which holds the reason.
+   */
+  'root_sort.failed',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]
 

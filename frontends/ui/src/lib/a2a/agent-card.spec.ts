@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * Piloti's A2A agent card (ADR-0123): the endpoint and the two protocol
+ * Piloti's A2A agent card (ADR-0124): the endpoint and the two protocol
  * versions it speaks, the agent door's OAuth scheme, one skill, and the 1.0
  * serialization the well-known path answers.
  */

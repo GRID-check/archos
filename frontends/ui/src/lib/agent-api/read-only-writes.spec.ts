@@ -3,7 +3,7 @@
  */
 /**
  * Every operation that says `readOnly: true` while its method could write, with
- * the reason it really changes nothing (H2, ADR-0121).
+ * the reason it really changes nothing (H2, ADR-0122).
  *
  * `readOnly` decides what Piloti runs without asking: a read runs as the
  * requester, a write becomes a proposal the person decides. An operation that

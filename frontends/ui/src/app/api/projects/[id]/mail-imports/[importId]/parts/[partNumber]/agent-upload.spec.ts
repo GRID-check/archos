@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * `mail-import-part-upload` (ADR-0121): the raw part the dispatcher sends from an agent's base64
+ * `mail-import-part-upload` (ADR-0122): the raw part the dispatcher sends from an agent's base64
  * body is read by this route as the browser's part is: the bytes as the body, their length
  * stated, the part number from the path.
  */

@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * The MCP server of the agent door, built per request for one principal
- * (ADR-0121). Stateless: the handler calls the factory once per HTTP request,
+ * (ADR-0122). Stateless: the handler calls the factory once per HTTP request,
  * so nothing here outlives a call and the principal is a closure.
  *
  * Two modes, chosen by the client (`x-piloti-mcp-mode` header or `?mode=`):

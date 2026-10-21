@@ -124,8 +124,9 @@ The agent acts for a person, and the person decides what changes.
   asks its user before a call the annotations mark as a write.
 - **Piloti in-product never applies a write itself.** Every write it attempts
   becomes an `operation` proposal, a server object the person accepts, which runs
-  as the accepting person, or dismisses (ADR-0105). A read runs at once, unless
-  the conversation is shared. A proposal may only name what the person whose
+  as the accepting person, or dismisses (ADR-0105). A read runs at once when
+  what it names lies in the conversation audience's reach (ADR-0094, below).
+  A proposal may only name what the person whose
   turn it is may read: otherwise a member's Piloti could put a change to a
   project the member cannot see in front of an admin, whose click would apply
   it. Piloti never files the person's own decisions: applying or dismissing
@@ -137,35 +138,30 @@ The agent acts for a person, and the person decides what changes.
   „Apply“ waits until each value shown in part has been unfolded, so nobody
   accepts text they were not shown.
 
-#### Shared conversations
+#### Reads in a conversation
 
-A read runs as the requester and its answer lands in the transcript, which
-everyone the conversation is shared with reads. Piloti's own retrieval answers
-to that audience (ADR-0093, ADR-0094); a route's answer is one person's and does
-not say which folder or project it came from. So in a conversation anyone else
-reads, Piloti runs no workspace read and no backend read, and relays a refusal
-instead; writes are still proposed, since they run as whoever accepts them. In a
-conversation that is the requester's alone, the read runs after every folder of
-the turn's project that restricts someone and that the requester may read is
-recorded for the conversation and the turn's answer is marked, in one
-transaction under the conversation's audience lock with the audience read again
-inside it, so a later share is judged against them and a share that slipped in
-first refuses the read. A read there that names another project (by id, or
-through a document, folder, model or conversation of one), or any project in a
-turn that has none, is refused: the record covers the turn's own project only,
-and recording another project as a cross-project hand-out (ADR-0094) would claim
-the answer was what the audience may read, which a route's answer is not. Fail
-closed: running the read as the audience instead would need every route to
-answer for a group, and none does. A read whose answer can carry any project's
-content without naming one (similar passages, the project list, the inbox, an
-unnarrowed conversation list) says so in the catalog (`spansProjects`) and is
-refused in a project's conversation; `read-gate.spec.ts` holds every other read
-that names no place to a list with the reason it carries no project's content.
-A read naming something the target lookup does not find is refused too: the
-lookup reads as the member, a route may read as the reviewer, and an unresolved
-place could not be recorded. The remaining gap is the conversation outside any
-project: a cross-project read there still runs on the turn's record, and a
-later share hands its answer to the new readers.
+*Amended 2026-10-21, product owner.* This section held a rule of its own for
+reads in a conversation: a solo conversation refused any read naming another
+project, a shared one refused every read. That was a second rule for something
+[ADR-0094](0094-the-agent-searches-other-projects-as-the-conversations-audience.md)
+already decides, and the door now follows it with the lookups' own code:
+
+- what a read names (`operation-targets.ts`) must lie in the conversation
+  audience's reach, computed by the function `project_lookup` uses
+  (`audienceReachAmong` in `lib/cross-project/audience-reach.ts`);
+- the read is recorded through `recordCrossProjectHandOut` before it runs,
+  under the audience lock, and refused when the audience changed: the other
+  projects it touches and the restricted folders it may carry. The
+  conversation's own project keeps the record of its restricted folders;
+- in a shared conversation only a read whose answer is what every reader of
+  the place reads runs (`AUDIENCE_READS`: a document's content, a project's
+  facts), never of a restricted folder; a write is still proposed, unless it
+  names a project outside the reach.
+
+A read whose answer spans the office's projects (`spansProjects`) is still
+refused in a project's conversation, and one naming something the lookup cannot
+place everywhere. The rule in full, and what each read records:
+[`agent-surface.md`](../architecture/agent-surface.md#reads-in-a-conversation).
 
 ### Sensitive operations
 
@@ -428,8 +424,9 @@ the way the three consumers of ADR-0055 did.
   Schema export can describe.
 - The principal and policy specs under `lib/agent-api/` cover who may call (the
   `agent-mcp` flag, scopes, audience) and what the client must confirm.
-- `read-gate.spec.ts` walks the real catalog and the backend operations: no read
-  Piloti can name reaches the dispatcher or the backend in a shared conversation.
+- `read-gate.spec.ts` walks the real catalog and the backend operations: in a
+  shared conversation no read outside `AUDIENCE_READS` reaches the dispatcher,
+  and none reaches the backend.
 - `read-only-writes.spec.ts` lists every non-GET operation that claims
   `readOnly`, each with the reason its service writes nothing; a new claim fails
   until it has one, and no sensitive operation may claim it.
@@ -437,8 +434,10 @@ the way the three consumers of ADR-0055 did.
   and refuses a JSON-RPC batch (400), so one request is one call;
   `app/api/mcp/route.spec.ts` holds both.
 - `read-gate.integration.spec.ts` and `operation-proposals.integration.spec.ts`
-  run the solo-read refusals and record, and the proposal's tenant scope and
-  confused-deputy refusal, against Postgres (`task db:test:rls`).
+  run ADR-0094's reach and record for reads (solo and shared, a share racing a
+  read, the same record as `project_lookup` for one document), and the
+  proposal's tenant scope, confused-deputy refusal and reach in a shared
+  conversation, against Postgres (`task db:test:rls`).
 - PostHog events, through the collector (ADR-0119): `agent_operation_called`
   (operation, client, status) and `agent_operation_missing` (that an agent
   found no operation, by the length of what it wanted, never its words).
@@ -457,7 +456,7 @@ the operations (`job-*` to `task-*`, `run-*` to `task-run-*`, quarantine
 `release` to `allow`), the mode (`discovery` to `search`), the missing-operation
 tool and event, the principal's `kind: 'person' | 'piloti'` to RFC 8693's actor
 (`external_agent` | `piloti`, the person being the subject), and the inbox types
-`job.*` to `task_run.*` (migration 0175). Left for their own changes, each
+`job.*` to `task_run.*` (migration 0176). Left for their own changes, each
 because it reaches persisted data or another wave's code:
 
 - **Run status on A2A's task states.** A task run's status is stored in four
@@ -476,7 +475,7 @@ because it reaches persisted data or another wave's code:
   same key names the catalog operation) and is stored in
   `proposed_changes.payload`. Left out of the security fix wave because it is
   not contained: the key is read by the CHECK `proposed_changes_office_shelf_move`
-  (0146, 0174), by Python's `propose_file_change` and its JSON Schema fixture,
+  (0146, 0175), by Python's `propose_file_change` and its JSON Schema fixture,
   by the notice variants and by the file cards, some sixty files. One migration
   rewrites the stored payloads and the CHECK, and the agent's side changes in
   the same commit; the `operation` kind keeps `operation`.

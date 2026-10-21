@@ -22,7 +22,7 @@
 
 import 'server-only'
 import type { ZodType } from 'zod'
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSession, resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import {
   runBimExtractJob,
@@ -38,6 +38,7 @@ import { runPilotiWake } from '@/lib/annotations/wake-job'
 import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
 import { runIntakeReadSlice } from '@/lib/project-intake/service'
 import { runFilingReviewSlice } from '@/lib/filing/job'
+import { endRunOfDepartedRequester, runRootSortSlice } from '@/lib/filing/root-sort-run'
 import { runInboxPush } from '@/lib/push/inbox-push-job'
 import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { isLastAttempt } from './attempts'
@@ -57,6 +58,7 @@ import {
   reindexProjectPayloadSchema,
   reingestFailedPayloadSchema,
   restoreFolderBinPayloadSchema,
+  rootSortPayloadSchema,
   type BffJobKind,
   type JobAttempt,
   type JobRequester,
@@ -151,6 +153,24 @@ const mailImportHandler: JobHandler = async ({ organizationId, payload }) => {
 const pilotiWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>
   runPilotiWake(organizationId, pilotiWakePayloadSchema.parse(payload), { last: isLastAttempt(attempts) })
 
+/**
+ * A root sort's slice (ADR-0121). Not {@link handler}: a membership lookup the
+ * identity provider did not answer must be retried, not read as "they left",
+ * which would end the slice quietly and leave the run working with nothing
+ * working on it. So the strict lookup, which throws for the queue to retry;
+ * a requester who really left ends their run, so the shelf is not locked.
+ */
+const rootSortHandler: JobHandler = async ({ organizationId, payload }) => {
+  const parsed = rootSortPayloadSchema.parse(payload)
+  const { userId, email } = parsed.requester
+  const session = await resolvePinnedRequesterSessionStrict({ userId, email, organizationId })
+  if (!session) {
+    await endRunOfDepartedRequester(organizationId, parsed.runId)
+    return { done: true, payload: parsed }
+  }
+  return runRootSortSlice(session, parsed)
+}
+
 /** One handler per kind; the record's type makes a kind without one a compile error. */
 export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   reindex_project: handler(reindexProjectPayloadSchema, runReindexSlice),
@@ -166,6 +186,7 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
   project_intake_read: handler(projectIntakeReadPayloadSchema, runIntakeReadSlice),
   filing_review: handler(filingReviewPayloadSchema, runFilingReviewSlice),
+  root_sort: rootSortHandler,
   inbox_push: systemHandler(inboxPushPayloadSchema, async (organizationId, payload, attempt) => {
     await runInboxPush(organizationId, payload, attempt)
   }),

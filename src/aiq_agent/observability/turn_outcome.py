@@ -153,7 +153,7 @@ def _level_for(outcome: str) -> str:
 
 
 def _work_counts(meta: Any) -> dict[str, int | None]:
-    """A work report's lines per section (ADR-0122); nothing for any other answer."""
+    """A work report's lines per section (ADR-0123); nothing for any other answer."""
     work = meta.get("work") if isinstance(meta, dict) else None
     if not isinstance(work, dict):
         return {}
@@ -188,7 +188,7 @@ def outcome_metadata(*, outcome: str, result: Any) -> dict[str, Any]:
         "skills_activated": list(getattr(result, "skills_activated", None) or []) or None,
         "reasoning_effort": getattr(result, "reasoning_effort", None),
         "handed_off_to_run": True if getattr(result, "run", None) is not None else None,
-        # The answer's shape, `work` for an operations turn (ADR-0122), and its report's size.
+        # The answer's shape, `work` for an operations turn (ADR-0123), and its report's size.
         "answer_kind": _answer_kind(getattr(result, "answer_meta", None)),
         **_work_counts(getattr(result, "answer_meta", None)),
     }

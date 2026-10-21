@@ -1,4 +1,4 @@
--- Reverse 0173. ORDER: roll the frontend back first; the newer build writes the
+-- Reverse 0174. ORDER: roll the frontend back first; the newer build writes the
 -- `operation` kind.
 --
 -- Lossy: operation proposals are deleted (the older build cannot read them).

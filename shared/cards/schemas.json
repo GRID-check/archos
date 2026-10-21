@@ -2501,7 +2501,7 @@
       "type": "object"
     },
     "OperationProposalCard": {
-      "description": "A workspace operation the agent PROPOSES through the MCP surface and a person runs.\n\nSystem-emitted for a write operation Piloti called on the product's own MCP\nserver (ADR-0121): the call changed nothing, it stored an ``operation``\nproposal (ADR-0105) and this card shows it. Accepting runs the operation\nas the ACCEPTING person through the operation's own route, so that route's\nauthorization decides; dismissing runs nothing. ``proposal_id`` is\nrequired: a call that stored no proposal has no card, and says so in its\nown result text.",
+      "description": "A workspace operation the agent PROPOSES through the MCP surface and a person runs.\n\nSystem-emitted for a write operation Piloti called on the product's own MCP\nserver (ADR-0122): the call changed nothing, it stored an ``operation``\nproposal (ADR-0105) and this card shows it. Accepting runs the operation\nas the ACCEPTING person through the operation's own route, so that route's\nauthorization decides; dismissing runs nothing. ``proposal_id`` is\nrequired: a call that stored no proposal has no card, and says so in its\nown result text.",
       "properties": {
         "input": {
           "additionalProperties": true,

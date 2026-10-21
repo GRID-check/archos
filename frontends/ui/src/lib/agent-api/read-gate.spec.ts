@@ -3,7 +3,7 @@
  */
 /**
  * The ratchet on Piloti's reads in a conversation (H1, ADR-0093, ADR-0094,
- * ADR-0121).
+ * ADR-0122).
  *
  * A read runs as the requester and lands in a transcript the whole audience
  * reads. In a shared conversation only a read listed in `AUDIENCE_READS` (one

@@ -84,7 +84,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Agent skills](contributing/agent-skills.md) | When a procedure is a skill rather than a document, how `.claude/` is generated, which skills are installed |
 | [Lifecycle matrix](contributing/lifecycle-matrix.md) | Every phase and edge of a very heavy surface with its fixture and check; instances in [`design/lifecycles/`](design/lifecycles/README.md) |
 | [Correction ratchet](contributing/correction-ratchet.md) | Closing the layer that allowed an error |
-| [Headless first](contributing/headless-first.md) | A capability is a route and an operation; how an agent reaches everything a person can do ([ADR-0121](adr/0121-everything-a-person-can-do-an-agent-can-do.md)) |
+| [Headless first](contributing/headless-first.md) | A capability is a route and an operation; how an agent reaches everything a person can do ([ADR-0122](adr/0122-everything-a-person-can-do-an-agent-can-do.md)) |
 | [Documentation obligations](contributing/documentation.md) | Which doc to update for which change |
 | [Lint evaluation](contributing/lint-evaluation.md) | Why the UI lints with oxlint, not ESLint or Biome, and what that cost |
 

@@ -1,4 +1,4 @@
-"""A work turn in Langfuse (ADR-0122): its kind, its report's size, and whether the report told the truth."""
+"""A work turn in Langfuse (ADR-0123): its kind, its report's size, and whether the report told the truth."""
 
 from __future__ import annotations
 

@@ -22,7 +22,7 @@ export const turnContextResponseSchema = z.object({
    */
   referenceProjects: z.string().nullable(),
   /**
-   * The WORKSPACE block (`workspace-block.ts`, ADR-0122): the asker's roles,
+   * The WORKSPACE block (`workspace-block.ts`, ADR-0123): the asker's roles,
    * the project, the conversation's audience, the inbox and runs that wait,
    * and this conversation's proposals with every status. Null when it could
    * not be read; an older agent ignores it.

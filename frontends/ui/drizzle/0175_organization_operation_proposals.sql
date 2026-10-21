@@ -1,9 +1,9 @@
--- 0174: an `operation` proposal may be the organization's, with no project, and
--- one open call is one open proposal (ADR-0105, ADR-0121).
+-- 0175: an `operation` proposal may be the organization's, with no project, and
+-- one open call is one open proposal (ADR-0105, ADR-0122).
 --
 -- ## An organization-scoped proposal
 --
--- Piloti's writes through the MCP server are proposals (0173). Many writes are
+-- Piloti's writes through the MCP server are proposals (0174). Many writes are
 -- not in a project at all: the office's memory, a skill, a setting. A turn with
 -- no project had nowhere to file them, so `proposed_changes.scope` learns a
 -- third shelf, `organization`. Like the Büroablage's (0146) it has no project
@@ -32,7 +32,7 @@
 -- Before the index, a repeat that already got through is folded: of several
 -- open operation proposals for one call in one conversation, the oldest stays
 -- and the later ones are deleted. They are undecided, were filed by Piloti
--- after 0173 (days ago), and a person has nothing to lose: the survivor shows
+-- after 0174 (days ago), and a person has nothing to lose: the survivor shows
 -- the same change.
 --
 -- Idempotent: every constraint and the index are dropped before they are added.

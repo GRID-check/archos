@@ -180,7 +180,7 @@ def detect_and_strip_confidence_marker(content: Any) -> tuple[Any, ConfidenceLev
 # Two rules, and a turn says which it was computed under
 # (``claim_provenance.CONFIDENCE_RULE_VERSION`` on the wire):
 #
-# - **Rule 2, chat** (:func:`surface_claim_confidence`, ADR-0124): the level is
+# - **Rule 2, chat** (:func:`surface_claim_confidence`, ADR-0125): the level is
 #   the self-report, held under the weakest load-bearing SENTENCE's ceiling
 #   (``common/claim_provenance.py``). A record, an action or a measurement
 #   grounds the sentences it states; a normative sentence still needs a
@@ -202,7 +202,7 @@ def detect_and_strip_confidence_marker(content: Any) -> tuple[Any, ConfidenceLev
 #: - ``measurement_only``       rule 1 only: measurement-grounded and purely
 #:   descriptive, so "high" was reduced to "medium".
 #: - ``citation_fallback``      no longer produced: the single-source fallback is
-#:   gone (ADR-0124). Kept because stored turns carry it.
+#:   gone (ADR-0125). Kept because stored turns carry it.
 CappedReason = Literal[
     "ungrounded",
     "quote_unverified",

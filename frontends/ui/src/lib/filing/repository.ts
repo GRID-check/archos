@@ -10,7 +10,7 @@ import { getDb } from '@/lib/db'
 import { documents, projectFolders, type Document } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { DocumentReader } from '@/lib/documents/document-reader'
-import { shelfDocumentWhere, type DocumentShelf } from '@/lib/documents/shelf'
+import { shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from '@/lib/documents/shelf'
 import { documentVisibleTo } from '@/lib/documents/visibility'
 
 /** Most folder rows read across the office's other projects. */
@@ -127,4 +127,68 @@ export async function listFiledDocuments(
       .orderBy(desc(documents.createdAt))
       .limit(MAX_FILED_SAMPLE)
   )
+}
+
+/**
+ * The documents at a shelf's root (no folder), as `reader` may see them, by
+ * name: what a root sort reads. Bounded by `limit`, which the caller sets one
+ * above what it will judge to know whether the root holds more.
+ */
+export async function listRootDocuments(
+  organizationId: string,
+  shelf: DocumentShelf,
+  reader: DocumentReader,
+  limit: number
+): Promise<Document[]> {
+  return withTenant({ organizationId }, () =>
+    getDb()
+      .select()
+      .from(documents)
+      .where(and(shelfDocumentWhere(shelf, organizationId), isNull(documents.folderId), documentVisibleTo(reader)))
+      .orderBy(documents.filename)
+      .limit(limit)
+  )
+}
+
+/** These documents, when they sit at the shelf's root and `reader` may see them. At most `ids.length`. */
+export async function findRootDocuments(
+  organizationId: string,
+  shelf: DocumentShelf,
+  reader: DocumentReader,
+  ids: readonly string[]
+): Promise<Document[]> {
+  if (ids.length === 0) return []
+  return withTenant({ organizationId }, () =>
+    getDb()
+      .select()
+      .from(documents)
+      .where(
+        and(
+          shelfDocumentWhere(shelf, organizationId),
+          isNull(documents.folderId),
+          inArray(documents.id, [...ids]),
+          documentVisibleTo(reader)
+        )
+      )
+      .limit(ids.length)
+  )
+}
+
+/** Most folder paths a shelf is checked against before a new folder is proposed. */
+export const MAX_SHELF_FOLDER_PATHS = 5000
+
+/**
+ * Every living folder path of a shelf, whoever may read it: what a proposed
+ * new folder must not collide with. Paths only, and never returned to a
+ * person; bounded by {@link MAX_SHELF_FOLDER_PATHS}.
+ */
+export async function listShelfFolderPaths(organizationId: string, shelf: DocumentShelf): Promise<string[]> {
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .select({ path: projectFolders.path })
+      .from(projectFolders)
+      .where(shelfFolderWhere(shelf, organizationId))
+      .limit(MAX_SHELF_FOLDER_PATHS)
+  )
+  return rows.map((row) => row.path)
 }

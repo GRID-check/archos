@@ -123,7 +123,7 @@ describe('the other ends', () => {
     expect(messages.map((m) => m.id)).toEqual(['turn-1'])
   })
 
-  it('answered: the claim stamps, the rule version and the found-nothing flag reach the message (ADR-0124)', () => {
+  it('answered: the claim stamps, the rule version and the found-nothing flag reach the message (ADR-0125)', () => {
     const messages = play([
       ...preamble,
       body(5, {
