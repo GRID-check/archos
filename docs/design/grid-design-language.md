@@ -801,6 +801,10 @@ times stops being a physical cue and becomes texture.
   `padding`, `top/left/right/bottom`, `gap` or `grid-template-*`, and
   `height` only as the arrival/fold described under *Height* above. A panel
   that changes size sets its size in one pass and **translates** its content.
+  A proportion that changes is a `scaleX` from its start edge, not a width or
+  a `flex-grow` (`SegmentMeter`), and a band that sweeps across a surface is a
+  translated layer, never an animated `background-position`, which repaints
+  every frame (the skeleton shimmer, `ShimmerText`).
 - **`prefers-reduced-motion` flattens everything.** `<MotionConfig
   reducedMotion="user">` covers only motion/react's transform and layout
   animations: opacity, colour and height still tween, and delays still hold.
