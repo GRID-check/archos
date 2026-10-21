@@ -12,7 +12,7 @@ vi.mock('server-only', () => ({}))
 vi.mock('./operation-targets-repository', () => ({ findTargetPlace: vi.fn(), findProjectName: vi.fn() }))
 
 import { findOperation } from './catalog'
-import { targetsOf } from './operation-targets'
+import { namesUntypedResource, targetsOf } from './operation-targets'
 
 const op = (name: string) => {
   const found = findOperation(name)
@@ -34,5 +34,13 @@ describe('targetsOf', () => {
 
   it('names the project a scoped list is narrowed to', () => {
     expect(targetsOf(op('conversation-list'), { query: { projectId: 'p1' } })).toEqual([{ type: 'project', id: 'p1' }])
+  })
+
+  it('names nothing for a resource of a type it cannot place, and says so', () => {
+    const input = { params: { resourceType: 'annotation', resourceId: 'a1' } }
+    expect(targetsOf(op('assignment-candidate-list'), input)).toEqual([])
+    expect(namesUntypedResource(input)).toBe(true)
+    expect(namesUntypedResource({ params: { resourceType: 'document', resourceId: 'd1' } })).toBe(false)
+    expect(namesUntypedResource({ body: { items: [{ entityType: 'mark', entityId: 'm1' }] } })).toBe(true)
   })
 })

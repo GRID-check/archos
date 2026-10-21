@@ -159,6 +159,33 @@ export function targetsOf(op: Pick<AgentOperation, 'path'>, input: TargetInput):
   return unique
 }
 
+const TYPE_ID_PAIRS = [
+  ['resourceType', 'resourceId'],
+  ['entityType', 'entityId'],
+] as const
+
+function namesUntyped(value: unknown, depth: number): boolean {
+  if (depth > MAX_DEPTH) return false
+  if (Array.isArray(value)) return value.some((item) => namesUntyped(item, depth + 1))
+  if (!isRecord(value)) return false
+  const here = TYPE_ID_PAIRS.some(
+    ([typeKey, idKey]) =>
+      typeof value[typeKey] === 'string' && !TYPED_TARGETS[value[typeKey] as string] && idsOf(value[idKey]).length > 0,
+  )
+  return here || Object.values(value).some((inner) => namesUntyped(inner, depth + 1))
+}
+
+/**
+ * Whether `input` names a resource by a type this file cannot place (a
+ * `resourceType` of `project_folder`, an `entityType` of `annotation`): the
+ * call reaches something {@link targetsOf} does not list. The solo read gate
+ * refuses such a read, because it cannot tell which project's content the
+ * answer carries.
+ */
+export function namesUntypedResource(input: TargetInput): boolean {
+  return namesUntyped(input.params, 0) || namesUntyped(input.query, 0) || namesUntyped(input.body, 0)
+}
+
 /** Where each target lives, in the caller's tenant scope; a target that does not exist there is `null`. */
 export async function placesOf(
   organizationId: string,

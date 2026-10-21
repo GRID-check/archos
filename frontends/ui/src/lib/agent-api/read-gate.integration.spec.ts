@@ -213,6 +213,10 @@ describe.skipIf(!url)('Piloti’s reads in a solo conversation against Postgres'
       audience.SOLO_READ_REFUSALS.unknown
     )
     expect(await audience.soloReadRefusal(principal(chat, ids.own), op('conversation-get'), { params: { id: chat } })).toBeNull()
+    // A resource of a type the lookup cannot place names nothing it could check.
+    expect(
+      await reads.beforeRead(op('assignment-candidate-list'), { params: { resourceType: 'annotation', resourceId: randomUUID() } })
+    ).toBe(audience.SOLO_READ_REFUSALS.unknown)
   })
 
   it('records nothing and refuses the read once the conversation was shared before the lock', async () => {

@@ -57,7 +57,7 @@ import {
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { AgentOperation } from './operation'
-import { type TargetInput, TooManyTargetsError, placesOf, targetsOf } from './operation-targets'
+import { type TargetInput, TooManyTargetsError, namesUntypedResource, placesOf, targetsOf } from './operation-targets'
 import type { AgentPrincipal } from './principal'
 
 /** `none`: the call belongs to no conversation. `solo`: the requester's alone. `shared`: anyone else reads it. */
@@ -119,6 +119,7 @@ export async function soloReadRefusal(
     if (error instanceof TooManyTargetsError) return SOLO_READ_REFUSALS.tooMany
     throw error
   }
+  if (namesUntypedResource(input)) return SOLO_READ_REFUSALS.unknown
   const namesProject = targets.some((target) => target.type === 'project')
   if (op.spansProjects === 'unlessScoped' && turnProject && !namesProject) return SOLO_READ_REFUSALS.spansProjects
   if (targets.length === 0) return null

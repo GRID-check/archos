@@ -140,7 +140,8 @@ proposal lists without a `projectId`) and is refused in a project's
 conversation. `read-gate.spec.ts` lists every other Piloti read that names no
 place, each with the reason it carries no project's content, and fails on a new
 one. A read naming something the lookup does not find (a held upload a
-reviewer could open, a mistyped id) is refused as well, except the
+reviewer could open, a mistyped id, a `resourceType` it cannot place) is
+refused as well, except the
 conversation's own id before its row exists. Not covered: in a conversation
 outside any project a cross-project read still runs on the turn's record.
 `read-gate.integration.spec.ts` proves the refusals and the record against
