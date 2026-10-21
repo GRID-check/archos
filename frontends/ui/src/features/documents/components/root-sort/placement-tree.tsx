@@ -56,9 +56,9 @@ export interface PlacementTreeViewProps {
 
 const collator = new Intl.Collator('de', { numeric: true, sensitivity: 'base' })
 
-/** 12px to the card's edge, 20px a level: a subfolder's chevron sits in its parent's indent. */
+/** Room for the chevron (pulled 28px left) plus 8px to the card's edge, then 20px a level. */
 const indent = (depth: number): CSSProperties => ({
-  paddingInlineStart: `${12 + (depth - 1) * 20}px`,
+  paddingInlineStart: `${36 + (depth - 1) * 20}px`,
 })
 
 const ROW = 'border-border/60 flex min-h-11 items-center gap-2 border-t pr-3 text-sm'
@@ -295,7 +295,8 @@ function MoveMenu({
           aria-label={t('rootSort.tree.moveAria', { name: file.name })}
         >
           <ArrowRight aria-hidden />
-          {t('rootSort.tree.moveTo')}
+          {/* On a phone the arrow alone: the file name needs the width, and the aria-label names the action. */}
+          <span className="hidden sm:inline">{t('rootSort.tree.moveTo')}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="max-h-[min(60dvh,24rem)] w-72 overflow-y-auto">
