@@ -1452,33 +1452,6 @@
    "describe": "{\"name\":\"mention-request-release\",\"domain\":\"collaboration\",\"summary\":\"Carry on without the person a thread waits on\",\"description\":\"Releases an open hand-off (request id from conversation-awaiting-get) so the thread no longer waits. Any contributor may do it. The mentioned colleague’s inbox item is settled.\",\"annotations\":{\"title\":\"Carry on without the person a thread waits on\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"requestId\":{\"type\":\"string\",\"description\":\"The mention request id, from conversation-awaiting-get.\"}},\"required\":[\"requestId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "piloti-change-undo",
-   "domain": "collaboration",
-   "summary": "Undo a change Piloti made",
-   "description": "Reverses one change Piloti applied (id from conversation-message-changes). Answers 409 with `moved-on` if the object has changed since, or `already-undone`. The inverse runs with the person’s own rights.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"piloti-change-undo\",\"domain\":\"collaboration\",\"summary\":\"Undo a change Piloti made\",\"description\":\"Reverses one change Piloti applied (id from conversation-message-changes). Answers 409 with `moved-on` if the object has changed since, or `already-undone`. The inverse runs with the person’s own rights.\",\"annotations\":{\"title\":\"Undo a change Piloti made\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The change id (a UUID), from conversation-message-changes.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "proposal-apply",
-   "domain": "collaboration",
-   "summary": "Apply a proposed change",
-   "description": "Carries out a proposal that is still `proposed` as the person (409 otherwise) and returns it with its `results`. The body is optional; `memoryScope: project` keeps a proposed note on the project. Needs the right the proposal’s kind requires. Reverse it with piloti-change-undo where the result allows.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"proposal-apply\",\"domain\":\"collaboration\",\"summary\":\"Apply a proposed change\",\"description\":\"Carries out a proposal that is still `proposed` as the person (409 otherwise) and returns it with its `results`. The body is optional; `memoryScope: project` keeps a proposed note on the project. Needs the right the proposal’s kind requires. Reverse it with piloti-change-undo where the result allows.\",\"annotations\":{\"title\":\"Apply a proposed change\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The proposed change id, from proposal-list or the answer’s card.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"memoryScope\":{\"const\":\"project\"}},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
-   "name": "proposal-dismiss",
-   "domain": "collaboration",
-   "summary": "Dismiss a proposed change",
-   "description": "Rejects a proposal that is still `proposed` (409 otherwise). Nothing is changed in the workspace.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"proposal-dismiss\",\"domain\":\"collaboration\",\"summary\":\"Dismiss a proposed change\",\"description\":\"Rejects a proposal that is still `proposed` (409 otherwise). Nothing is changed in the workspace.\",\"annotations\":{\"title\":\"Dismiss a proposed change\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The proposed change id, from proposal-list or the answer’s card.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
    "name": "proposal-get",
    "domain": "collaboration",
    "summary": "Read one proposed change",
@@ -2121,10 +2094,10 @@
    "name": "organization-settings-update",
    "domain": "organization",
    "summary": "Update the organization’s settings",
-   "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set. Read the current values first with organization-settings-get.",
+   "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set, web search with organization-web-search-set. Read the current values first with organization-settings-get.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"organization-settings-update\",\"domain\":\"organization\",\"summary\":\"Update the organization’s settings\",\"description\":\"Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set. Read the current values first with organization-settings-get.\",\"annotations\":{\"title\":\"Update the organization’s settings\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"displayName\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"defaultLocale\":{\"anyOf\":[{\"type\":\"string\",\"enum\":[\"en\",\"de\"]},{\"type\":\"null\"}]},\"settings\":{\"type\":\"object\",\"additionalProperties\":{}}}}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+   "describe": "{\"name\":\"organization-settings-update\",\"domain\":\"organization\",\"summary\":\"Update the organization’s settings\",\"description\":\"Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set, web search with organization-web-search-set. Read the current values first with organization-settings-get.\",\"annotations\":{\"title\":\"Update the organization’s settings\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"displayName\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"defaultLocale\":{\"anyOf\":[{\"type\":\"string\",\"enum\":[\"en\",\"de\"]},{\"type\":\"null\"}]},\"settings\":{\"type\":\"object\",\"additionalProperties\":{}}}}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "organization-storage-get",
@@ -2441,8 +2414,6 @@
    "inbox-unread-anchor-list"
   ],
   "offene Vorschläge": [
-   "proposal-apply",
-   "proposal-dismiss",
    "proposal-get",
    "proposal-list",
    "project-cleanup-confirm",

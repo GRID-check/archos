@@ -18,6 +18,13 @@ import { AGENT_GROUP_IDS, MODEL_ID_PATTERN } from '@/lib/model-config/agent-grou
 import { ORG_INSTRUCTIONS_MAX_CHARS } from '@/lib/org-instructions/constants'
 import { CHAT_EFFORT_SETTING, CHAT_EFFORTS, isChatEffort } from '@/lib/reasoning-settings/catalog'
 
+// --- web search ------------------------------------------------------------
+
+/** `PUT /api/organization/web-search`: whether Piloti may search the web for this organization (ADR-0022). */
+export const webSearchPutSchema = z.object({
+  enabled: z.boolean().describe('true lets Piloti search the web for this organization; false keeps every answer inside it.'),
+})
+
 // --- budgets ---------------------------------------------------------------
 
 const limitSchema = z.number().min(0).finite().nullable()

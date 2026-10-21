@@ -15,6 +15,7 @@ import {
   patchOrgMemorySchema,
   usageNoticeQuerySchema,
   usageQuerySchema,
+  webSearchPutSchema,
   zdrPutSchema,
 } from '@/lib/organizations/organization-wire'
 import { createRoleSchema, updateRoleSchema } from '@/lib/authz/role-wire'
@@ -138,11 +139,27 @@ export const organizationOperations: readonly AgentOperation[] = [
       'Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. ' +
       'Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with ' +
       'organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with ' +
-      'organization-download-log-retention-set. Read the current values first with organization-settings-get.',
+      'organization-download-log-retention-set, web search with organization-web-search-set. Read the current ' +
+      'values first with organization-settings-get.',
     method: 'PUT',
     path: '/api/organization/settings',
     body: orgSettingsPutSchema,
     load: () => import('@/app/api/organization/settings/route'),
+  },
+  {
+    name: 'organization-web-search-set',
+    domain: 'organization',
+    summary: 'Switch web search on or off',
+    description:
+      'Switches whether Piloti may search the web when it answers the organization’s members. Needs ' +
+      'org:settings:manage. Switching it on sends the members’ questions to a web search provider; read the ' +
+      'current value (`settings.webSearchEnabled`, absent means on) with organization-settings-get. Returns ' +
+      '`{ webSearchEnabled }`. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'PUT',
+    path: '/api/organization/web-search',
+    body: webSearchPutSchema,
+    sensitivity: 'control',
+    load: () => import('@/app/api/organization/web-search/route'),
   },
   {
     name: 'organization-instructions-get',

@@ -84,9 +84,9 @@ describe('platform-owned settings keys', () => {
   })
 
   it('still accepts the keys the tenant does own', async () => {
-    await updateOrgSettings('org-1', { settings: { chatEffort: 'low', webSearchEnabled: false } })
+    await updateOrgSettings('org-1', { settings: { chatEffort: 'low' } })
     expect(upsertOrganization).toHaveBeenCalledWith(
-      expect.objectContaining({ settings: { chatEffort: 'low', webSearchEnabled: false } })
+      expect.objectContaining({ settings: { chatEffort: 'low' } })
     )
   })
 

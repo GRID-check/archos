@@ -20752,7 +20752,7 @@
       "put": {
         "operationId": "organization-settings-update",
         "summary": "Update the organization’s settings",
-        "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set. Read the current values first with organization-settings-get.",
+        "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set, web search with organization-web-search-set. Read the current values first with organization-settings-get.",
         "tags": [
           "organization"
         ],
@@ -21121,6 +21121,69 @@
           "title": "Read the budget warning for the asking person",
           "readOnlyHint": true,
           "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/organization/web-search": {
+      "put": {
+        "operationId": "organization-web-search-set",
+        "summary": "Switch web search on or off",
+        "description": "Switches whether Piloti may search the web when it answers the organization’s members. Needs org:settings:manage. Switching it on sends the members’ questions to a web search provider; read the current value (`settings.webSearchEnabled`, absent means on) with organization-settings-get. Returns `{ webSearchEnabled }`. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "true lets Piloti search the web for this organization; false keeps every answer inside it."
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "control",
+        "x-mcp-annotations": {
+          "title": "Switch web search on or off",
+          "readOnlyHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }

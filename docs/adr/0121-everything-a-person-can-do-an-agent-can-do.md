@@ -179,7 +179,13 @@ and a purged folder's derived content are kept.
 `control` is its own class, not `access`, because it is a different decision for
 an office to delegate: an office may let its agents share and grant project
 roles and still keep its privacy and retention settings to people, and one
-opt-in per class is how it says so. Each of these switches is one a person can
+opt-in per class is how it says so. Web search is one: switching it on sends
+the members' questions to a web search provider (ADR-0022). Budgets are not:
+a budget limits what the office spends, not where its data goes or what it
+keeps as evidence, and one operation sets a limit either way (`null` is
+unlimited), so marking it would put routine tightening behind the opt-in to
+catch loosening. A loosened budget is recoverable, audited, and confirmed by
+the person like any write. Each of these switches is one a person can
 flip in the UI, so under the product owner's rule an agent may flip it too,
 behind the same guards as the other classes.
 
@@ -209,14 +215,17 @@ the person says yes or no to each such call; the guards are how that holds:
   holds every result, refusal and telemetry event of the key operations free of
   the key.
 
-**Built.** Twenty-four route methods are catalogued with a sensitivity, and
+**Built.** Twenty-five route methods are catalogued with a sensitivity, and
 `agent-reachability.spec.ts` (`SENSITIVE`) holds each to exactly its class and
 nothing else to one: folder access, sharing visibility and grants (add, change,
 revoke), project roles (add, remove) and custom roles (create, change, delete)
 as `access`; the LLM provider keys (list, connect, revoke, verify, mode) and the
 two audit-log portal links as `secret`; zero data retention, the two upload
 screening policies, letting a held file through, lifting a hold, download-log
-retention and the deleted-folder content policy as `control`. The routes stay the gate: each still runs its own `authz` and feature
+retention, the deleted-folder content policy and web search as `control`. Web
+search is a switch of its own route (`PUT /api/organization/web-search`): the
+generic settings save merged it unmarked, and refuses the key now, as it does
+every key a dedicated route owns. The routes stay the gate: each still runs its own `authz` and feature
 gate as the person. Until the scope is enforced in WorkOS no external client sees
 any of them, whatever the organization switched on.
 
