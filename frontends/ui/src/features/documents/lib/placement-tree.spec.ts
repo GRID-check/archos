@@ -58,7 +58,7 @@ const proposal = (
 const folders = [
   folder('f1', '01 Entwurf', '01 Entwurf'),
   folder('f2', 'Grundrisse', '01 Entwurf/Grundrisse', 'f1'),
-  folder('f3', 'Plan 2', '01 Entwurf/Grundrisse/Plan 2', 'f2'),
+  folder('f3', 'EG', '01 Entwurf/Grundrisse/EG', 'f2'),
   folder('f4', '02 Genehmigung', '02 Genehmigung'),
   folder('f5', 'Leer', '03 Leer'),
 ]
@@ -85,22 +85,22 @@ function findFolder(nodes: readonly FolderNode[], path: string): FolderNode | un
 describe('buildPlacementTree', () => {
   it('nests a file three folders deep and counts it at every level', () => {
     const tree = buildPlacementTree(input(), NO_CHANGES)
-    const entwurf = tree.folders.find((node) => node.path === '01 Entwurf')
-    expect(entwurf?.depth).toBe(1)
-    expect(entwurf?.placedBelow).toBe(2)
-    const grundrisse = findFolder(tree.folders, '01 Entwurf/Grundrisse')
-    expect(grundrisse?.depth).toBe(2)
-    expect(grundrisse?.files.map((file) => file.id)).toEqual(['d3'])
-    const plan2 = findFolder(tree.folders, '01 Entwurf/Grundrisse/Plan 2')
-    expect(plan2?.depth).toBe(3)
-    expect(plan2?.files.map((file) => file.id)).toEqual(['d1'])
-    expect(grundrisse?.placedBelow).toBe(2)
+    const design = tree.folders.find((node) => node.path === '01 Entwurf')
+    expect(design?.depth).toBe(1)
+    expect(design?.placedBelow).toBe(2)
+    const floorPlans = findFolder(tree.folders, '01 Entwurf/Grundrisse')
+    expect(floorPlans?.depth).toBe(2)
+    expect(floorPlans?.files.map((file) => file.id)).toEqual(['d3'])
+    const deepest = findFolder(tree.folders, '01 Entwurf/Grundrisse/EG')
+    expect(deepest?.depth).toBe(3)
+    expect(deepest?.files.map((file) => file.id)).toEqual(['d1'])
+    expect(floorPlans?.placedBelow).toBe(2)
   })
 
   it('omits folders with nothing placed below them', () => {
     const tree = buildPlacementTree(input(), NO_CHANGES)
     expect(tree.folders.map((node) => node.path)).not.toContain('03 Leer')
-    expect(findFolder(tree.folders, '01 Entwurf/Grundrisse/Plan 2')).toBeDefined()
+    expect(findFolder(tree.folders, '01 Entwurf/Grundrisse/EG')).toBeDefined()
   })
 
   it('puts a file with no target in the root group', () => {
@@ -113,10 +113,10 @@ describe('buildPlacementTree', () => {
     const tree = buildPlacementTree(input(), NO_CHANGES)
     expect(tree.summary.sure).toBe(2)
     expect(tree.summary.unsure).toBe(1)
-    const genehmigung = findFolder(tree.folders, '02 Genehmigung')
-    expect(genehmigung?.unsureBelow).toBe(1)
-    const entwurf = findFolder(tree.folders, '01 Entwurf')
-    expect(entwurf?.unsureBelow).toBe(0)
+    const permit = findFolder(tree.folders, '02 Genehmigung')
+    expect(permit?.unsureBelow).toBe(1)
+    const design = findFolder(tree.folders, '01 Entwurf')
+    expect(design?.unsureBelow).toBe(0)
   })
 
   it('reads a placement the decision model did not score as unsure', () => {
@@ -134,10 +134,10 @@ describe('buildPlacementTree', () => {
       }),
       NO_CHANGES
     )
-    const schnitte = findFolder(tree.folders, '01 Entwurf/Schnitte')
-    expect(schnitte?.isNew).toBe(true)
-    expect(schnitte?.depth).toBe(2)
-    expect(schnitte?.files[0]?.certainty).toBe('unsure')
+    const sections = findFolder(tree.folders, '01 Entwurf/Schnitte')
+    expect(sections?.isNew).toBe(true)
+    expect(sections?.depth).toBe(2)
+    expect(sections?.files[0]?.certainty).toBe('unsure')
     const top = tree.folders.find((node) => node.path === 'Neu')
     expect(top?.isNew).toBe(true)
     expect(top?.depth).toBe(1)
@@ -151,7 +151,7 @@ describe('buildPlacementTree', () => {
       'd1',
       'd2',
     ])
-    expect(findFolder(tree.folders, '01 Entwurf/Grundrisse/Plan 2')).toBeUndefined()
+    expect(findFolder(tree.folders, '01 Entwurf/Grundrisse/EG')).toBeUndefined()
     const moved = keptMoves(input(), state).moves.find((move) => move.documentId === 'd1')
     expect(moved?.folderId).toBe('f4')
   })
@@ -184,7 +184,7 @@ describe('exclusions', () => {
   it('keeps an unchecked file where it is, but not in the moves', () => {
     const state = setFileKept(NO_CHANGES, 'd1', false)
     const tree = buildPlacementTree(input(), state)
-    expect(findFolder(tree.folders, '01 Entwurf/Grundrisse/Plan 2')?.files[0]?.included).toBe(false)
+    expect(findFolder(tree.folders, '01 Entwurf/Grundrisse/EG')?.files[0]?.included).toBe(false)
     expect(keptMoves(input(), state).moves.map((move) => move.documentId)).toEqual(['d2', 'd3'])
     expect(tree.summary.included).toBe(2)
   })
@@ -229,9 +229,9 @@ describe('exclusions', () => {
 
   it('unchecking a folder unchecks every file below it, and checking it again restores them', () => {
     const tree = buildPlacementTree(input(), NO_CHANGES)
-    const entwurf = tree.folders.find((node) => node.path === '01 Entwurf') as FolderNode
-    expect(folderKept(entwurf)).toBe(true)
-    const off = setFolderKept(NO_CHANGES, entwurf, false)
+    const design = tree.folders.find((node) => node.path === '01 Entwurf') as FolderNode
+    expect(folderKept(design)).toBe(true)
+    const off = setFolderKept(NO_CHANGES, design, false)
     expect(keptMoves(input(), off).moves.map((move) => move.documentId)).toEqual(['d2'])
     expect(
       folderKept(
@@ -240,7 +240,7 @@ describe('exclusions', () => {
         ) as FolderNode
       )
     ).toBe(false)
-    const on = setFolderKept(off, entwurf, true)
+    const on = setFolderKept(off, design, true)
     expect(keptMoves(input(), on).moves.map((move) => move.documentId)).toEqual(['d1', 'd2', 'd3'])
   })
 
