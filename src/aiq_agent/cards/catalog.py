@@ -59,6 +59,11 @@ SYSTEM_CARD_TYPES = frozenset(
         # places Piloti actually rendered or showed the room, built once the
         # answer is final from the looks it relies on (`tools/look/cards.py`).
         "look",
+        # `revision_compare` from `workspace__call` of `document-revision-compare`
+        # (ADR-0128, V10): the card shows the result of a comparison that ran, by
+        # the two documents' ids, so a model that could emit it could present a
+        # comparison nobody made.
+        "revision_compare",
     }
 )
 

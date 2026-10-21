@@ -82,6 +82,10 @@ _EXAMPLE_EXEMPT = {
     # actually rendered or shown. An example would teach the model to author
     # evidence of a look it never took.
     "look",
+    # System-emitted (by `workspace__call` of `document-revision-compare`) from a
+    # comparison that ran. An example would teach the model to author a comparison
+    # nobody made.
+    "revision_compare",
 }
 
 

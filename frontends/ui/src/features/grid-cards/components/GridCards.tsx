@@ -7,6 +7,7 @@ import { OperationReceipt } from './ProposalReceipts'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
 import { CanvasActivityCard } from './CanvasActivityCard'
 import { LookCard } from './LookCard'
+import { RevisionCompareCard } from './RevisionCompareCard'
 import { CalculationCard } from './CalculationCard'
 import { BuildingSectionCard } from '../schematics/BuildingSectionCard'
 import { StairDiagramCard } from '../schematics/StairDiagramCard'
@@ -453,6 +454,20 @@ export const GridCardView: FC<GridCardViewProps> = ({
     return (
       <FadeIn distance={6}>
         <LookCard document={card.document} items={card.items} />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'revision_compare') {
+    return (
+      <FadeIn distance={6}>
+        <RevisionCompareCard
+          olderId={card.older_id}
+          newerId={card.newer_id}
+          page={card.page}
+          changes={card.changes}
+          summary={card.summary}
+        />
       </FadeIn>
     )
   }

@@ -36,7 +36,9 @@ from nat.plugin_api import FunctionGroupBaseConfig
 from nat.plugin_api import register_function_group
 
 from ..documents.filing import SignedEnvelope
+from .cards import REVISION_COMPARE_OPERATION
 from .cards import emit_operation_proposal_card
+from .cards import emit_revision_compare_card
 from .cards import proposal_from
 from .client import WorkspaceError
 from .client import call_tool_result
@@ -144,6 +146,11 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
         return RATE_LIMITED
     if step == "call":
         text = _show_proposal(result.structured, arguments, text, outcome)
+        if arguments.get("name") == REVISION_COMPARE_OPERATION:
+            number = emit_revision_compare_card(result.structured, arguments.get("input"))
+            outcome["compare_card"] = number
+            if number is not None:
+                text = f"{text}\n\nThe person sees both pages side by side, the changes boxed: [[card:{number}]]."
         _record_read(result, arguments, outcome)
     _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, outcome)
     return text

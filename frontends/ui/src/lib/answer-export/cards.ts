@@ -203,6 +203,9 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
   // it is coordinates with no picture. Revisit when the card draws its thumbnail
   // (ADR-0128 plan, V4): the crop itself would be a finding a Behörde can read.
   look: 'chrome',
+  // The same: two page addresses and boxes, whose pictures the browser draws from the documents;
+  // printed, it is ids and coordinates with no picture.
+  revision_compare: 'chrome',
 
   // Read live from the project's model; exported as a title plus `liveCard`.
   ifc_viewer: 'live',

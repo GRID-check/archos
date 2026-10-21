@@ -261,10 +261,9 @@
     "step": null
    },
    "chat": {
-    "kind": "gap",
-    "slice": "V10",
-    "reason": "Piloti can compare through the door, but the result has no card and no thumbnail pair in the chat; the look card shows one Fassung, never the pair",
-    "card": null,
+    "kind": "rendering",
+    "component": "features/grid-cards/components/RevisionCompareCard.tsx",
+    "card": "revision_compare",
     "step": null
    }
   },
@@ -298,9 +297,8 @@
     "step": null
    },
    "chat": {
-    "kind": "gap",
-    "slice": "V10",
-    "reason": "A chat turn carries the Fokusbereich of a canvas question only; a chat question about an open document gets no selection",
+    "kind": "rendering",
+    "component": "features/documents/lib/review-focus.ts",
     "card": null,
     "step": null
    }

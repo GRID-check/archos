@@ -568,6 +568,14 @@ export const chat = {
       embeddedImage: 'image {index}',
       open: 'Open {document} at p. {page}',
     },
+    // Two Fassungen of a document, the changes boxed on each (ADR-0128, V10).
+    revisionCompare: {
+      eyebrow: 'Fassungen compared',
+      page: 'p. {page}',
+      older: 'Older Fassung',
+      newer: 'Newer Fassung',
+      open: '{side}, p. {page}: open with the changes',
+    },
     taskCreated: {
       eyebrow: 'Task',
       due: 'by {date}',

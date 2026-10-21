@@ -2902,6 +2902,96 @@
       "title": "ProjectProfilePatchPreviewItem",
       "type": "object"
     },
+    "RevisionCompareCard": {
+      "description": "The same page of an older and a newer Fassung, side by side, with the changes boxed on each.\n\nSystem-emitted (``tools/workspace/cards.py``) from a ``document-revision-compare``\nresult; the model cannot emit it (``SYSTEM_CARD_TYPES``). The boxes were found\non the newer page and are drawn at the same place on the older one.",
+      "properties": {
+        "changes": {
+          "description": "The boxed changes; empty when none",
+          "items": {
+            "$ref": "#/$defs/RevisionCompareChange"
+          },
+          "maxItems": 12,
+          "title": "Changes",
+          "type": "array"
+        },
+        "newer_id": {
+          "description": "The newer Fassung's workspace document id",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "Newer Id",
+          "type": "string"
+        },
+        "older_id": {
+          "description": "The older Fassung's workspace document id",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "Older Id",
+          "type": "string"
+        },
+        "page": {
+          "description": "The page compared, from 1; the same page of both Fassungen",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "summary": {
+          "description": "What changed, in short sentences",
+          "items": {
+            "maxLength": 400,
+            "minLength": 1,
+            "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+            "type": "string"
+          },
+          "maxItems": 8,
+          "minItems": 1,
+          "title": "Summary",
+          "type": "array"
+        },
+        "type": {
+          "const": "revision_compare",
+          "default": "revision_compare",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "older_id",
+        "newer_id",
+        "page",
+        "summary"
+      ],
+      "title": "RevisionCompareCard",
+      "type": "object"
+    },
+    "RevisionCompareChange": {
+      "description": "One change, boxed on the page (the same frame on both Fassungen).",
+      "properties": {
+        "label": {
+          "description": "What changed there",
+          "maxLength": 200,
+          "minLength": 1,
+          "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+          "title": "Label",
+          "type": "string"
+        },
+        "region": {
+          "description": "[x, y, w, h] as shares of the page, origin top left; x + w and y + h at most 1",
+          "items": {
+            "maximum": 1,
+            "minimum": 0,
+            "type": "number"
+          },
+          "maxItems": 4,
+          "minItems": 4,
+          "title": "Region",
+          "type": "array"
+        }
+      },
+      "required": [
+        "region",
+        "label"
+      ],
+      "title": "RevisionCompareChange",
+      "type": "object"
+    },
     "SectionMarker": {
       "description": "A horizontal reference line at a given height in the section.",
       "properties": {
@@ -3491,6 +3581,7 @@
       "memory_proposal": "#/$defs/MemoryProposalCard",
       "operation_proposal": "#/$defs/OperationProposalCard",
       "project_profile_patch": "#/$defs/ProjectProfilePatchCard",
+      "revision_compare": "#/$defs/RevisionCompareCard",
       "setback_plan": "#/$defs/SetbackPlanCard",
       "stair_diagram": "#/$defs/StairDiagramCard",
       "surface": "#/$defs/SurfaceCard",
@@ -3552,6 +3643,9 @@
     },
     {
       "$ref": "#/$defs/LookCard"
+    },
+    {
+      "$ref": "#/$defs/RevisionCompareCard"
     },
     {
       "$ref": "#/$defs/IfcViewerCard"

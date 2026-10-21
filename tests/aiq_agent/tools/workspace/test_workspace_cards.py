@@ -225,3 +225,113 @@ async def test_a_read_lands_in_the_retrieval_ledger_and_a_proposal_or_refusal_do
         end_lane_capture(token)
 
     assert [(hit["name"], hit.get("shelf")) for hit in hits] == [("project-list", workspace.WORKSPACE_SHELF)]
+
+
+# ---------------------------------------------------------------------------
+# document-revision-compare -> revision_compare card (ADR-0128, slice V10)
+# ---------------------------------------------------------------------------
+
+NEWER_ID = str(uuid.uuid4())
+OLDER_ID = str(uuid.uuid4())
+COMPARE_INPUT = {"params": {"id": NEWER_ID}, "body": {"older": OLDER_ID, "page": 2}}
+COMPARED = {
+    "regions": [
+        {"page": 2, "x": 0.6, "y": 0.1, "w": 0.2, "h": 0.1, "label": "Laufbreite 1,10 m statt 1,00 m"},
+        {"page": 2, "x": 0.9, "y": 0.9, "w": 0.3, "h": 0.3, "label": "Plankopf"},
+        {"page": 3, "x": 0.1, "y": 0.1, "w": 0.1, "h": 0.1, "label": "another page"},
+        {"page": 2, "x": 0.1, "y": 0.1, "w": 0, "h": 0.1, "label": "no area"},
+    ],
+    "summary": ["Treppe breiter", "Plankopf geändert"],
+}
+
+
+async def test_a_comparison_puts_both_pages_and_the_boxes_in_the_chat(server, registry) -> None:
+    server.append(structured_answer(COMPARED, "{}"))
+
+    text = await workspace.run_call("document-revision-compare", COMPARE_INPUT)
+
+    (card,) = registry.snapshot()
+    assert card["type"] == "revision_compare"
+    assert (card["older_id"], card["newer_id"], card["page"]) == (OLDER_ID, NEWER_ID, 2)
+    assert card["summary"] == ["Treppe breiter", "Plankopf geändert"]
+    # Only boxes on the compared page that have an area; one reaching past the edge is clamped onto it.
+    assert card["changes"] == [
+        {"region": [0.6, 0.1, 0.2, 0.1], "label": "Laufbreite 1,10 m statt 1,00 m"},
+        {"region": [0.9, 0.9, 0.1, 0.1], "label": "Plankopf"},
+    ]
+    assert text.endswith("[[card:1]].")
+    assert grid_card_adapter.validate_python(card).model_dump(exclude_none=True) == card
+
+
+async def test_a_comparison_with_no_visible_change_still_shows_both_pages(server, registry) -> None:
+    server.append(structured_answer({"regions": [], "summary": ["keine sichtbare Änderung"]}, "{}"))
+
+    await workspace.run_call("document-revision-compare", COMPARE_INPUT)
+
+    (card,) = registry.snapshot()
+    assert card.get("changes", []) == []
+    assert card["summary"] == ["keine sichtbare Änderung"]
+
+
+async def test_the_same_pair_on_the_same_page_is_one_card_and_the_model_gets_its_number_again(server, registry) -> None:
+    server.extend([structured_answer(COMPARED, "{}"), structured_answer(COMPARED, "{}")])
+
+    await workspace.run_call("document-revision-compare", COMPARE_INPUT)
+    text = await workspace.run_call("document-revision-compare", COMPARE_INPUT)
+
+    assert len(registry.snapshot()) == 1
+    assert text.endswith("[[card:1]].")
+
+
+async def test_the_page_defaults_to_one_as_the_route_does(server, registry) -> None:
+    server.append(
+        structured_answer(
+            {"regions": [{"page": 1, "x": 0, "y": 0, "w": 1, "h": 1, "label": "x"}], "summary": ["a"]}, "{}"
+        )
+    )
+
+    await workspace.run_call("document-revision-compare", {"params": {"id": NEWER_ID}, "body": {"older": OLDER_ID}})
+
+    (card,) = registry.snapshot()
+    assert card["page"] == 1
+    assert len(card["changes"]) == 1
+
+
+@pytest.mark.parametrize(
+    ("structured", "call_input"),
+    [
+        (None, COMPARE_INPUT),  # a refusal or a truncated answer carries no structured content
+        ({"regions": [], "summary": []}, COMPARE_INPUT),
+        (COMPARED, {"params": {"id": "not-a-uuid"}, "body": {"older": OLDER_ID, "page": 2}}),
+        (COMPARED, {}),
+    ],
+)
+async def test_anything_that_is_not_a_comparison_of_two_documents_emits_no_card(
+    server, registry, structured, call_input
+) -> None:
+    server.append(structured_answer(structured, "{}"))
+
+    text = await workspace.run_call("document-revision-compare", call_input)
+
+    assert registry.snapshot() == []
+    assert "[[card:" not in text
+
+
+async def test_another_operation_with_the_same_result_shape_emits_no_comparison_card(server, registry) -> None:
+    server.append(structured_answer(COMPARED, "{}"))
+
+    await workspace.run_call("document-version-diff", COMPARE_INPUT)
+
+    assert registry.snapshot() == []
+
+
+def test_a_comparison_card_holds_an_address_never_image_bytes() -> None:
+    card = {
+        "type": "revision_compare",
+        "older_id": OLDER_ID,
+        "newer_id": NEWER_ID,
+        "page": 1,
+        "summary": ["data:image/png;base64,AAAA"],
+    }
+    with pytest.raises(ValueError, match="image bytes"):
+        grid_card_adapter.validate_python(card)

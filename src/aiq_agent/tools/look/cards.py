@@ -69,7 +69,7 @@ def _document_key(document: dict[str, Any]) -> str:
     return f"{document.get('shelf', 'stored')}:{_key(document.get('name'))}"
 
 
-def _region(region: Any) -> list[float] | None:
+def clamp_region(region: Any) -> list[float] | None:
     """``[x, y, w, h]`` on the page, clamped onto it and rounded; None for none or for a box with no area."""
     if region is None:
         return None
@@ -135,7 +135,7 @@ def note_look(
     """
     try:
         document = _looked_document(resolved)
-        box = _region(region)
+        box = clamp_region(region)
         frame = "image" if image_index is not None else "page"
         item: dict[str, Any] = {
             "origin": "look",
@@ -180,7 +180,7 @@ def note_reference(
 ) -> None:
     """Record a box (``highlight``) or a pointer (``point``) Piloti showed the room, as a ``reference`` item."""
     try:
-        box = _region(region)
+        box = clamp_region(region)
         item: dict[str, Any] = {"origin": "reference", "page": max(1, int(page or 1)), "frame": "page"}
         if box is not None:
             item.update(scope="region", region=box, where=_where(box))

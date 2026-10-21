@@ -13,6 +13,7 @@
 
 import type { FC } from 'react'
 import { PdfViewerDialog } from './pdf-viewer-dialog'
+import type { PageRegion } from '../lib/page-region'
 import { placeFileUrl, placeRegions, type PagePlace } from '../lib/page-place'
 
 export interface PagePlaceDialogProps {
@@ -23,9 +24,11 @@ export interface PagePlaceDialogProps {
   color?: string
   /** An image upload's signed URL, from its thumbnail; the document opens as an image. */
   imageUrl?: string | null
+  /** The boxes to mark instead of the place's own: a page with several (a comparison's changes). */
+  regions?: readonly PageRegion[]
 }
 
-export const PagePlaceDialog: FC<PagePlaceDialogProps> = ({ place, open, onOpenChange, color, imageUrl }) => {
+export const PagePlaceDialog: FC<PagePlaceDialogProps> = ({ place, open, onOpenChange, color, imageUrl, regions }) => {
   const src = imageUrl ?? placeFileUrl(place) ?? undefined
   return (
     <PdfViewerDialog
@@ -36,7 +39,7 @@ export const PagePlaceDialog: FC<PagePlaceDialogProps> = ({ place, open, onOpenC
       src={src}
       page={place.page}
       isImage={Boolean(imageUrl)}
-      regions={placeRegions(place)}
+      regions={regions ?? placeRegions(place)}
       highlightColor={color}
     />
   )

@@ -1451,6 +1451,70 @@ class LookCard(CardModel):
 
 
 # ---------------------------------------------------------------------------
+# Revision compare card (ADR-0128, slice V10)
+# ---------------------------------------------------------------------------
+# Two Fassungen of a document side by side with what changed boxed on each.
+# Built by `tools/workspace/cards.py` from the result of the
+# `document-revision-compare` operation; the model cannot emit it
+# (`SYSTEM_CARD_TYPES`). Like the look card it is an ADDRESS (the two documents'
+# ids, the page, the boxes), never pixels: the browser draws each thumbnail from
+# the document's own routes, so only a reader who may open both sees the pages.
+
+#: Changes one card carries: the comparison returns at most this many boxes.
+MAX_REVISION_CHANGES = 12
+#: Sentences one card carries: the comparison returns at most this many.
+MAX_REVISION_SUMMARY = 8
+
+
+class RevisionCompareChange(CardModel):
+    """One change, boxed on the page (the same frame on both Fassungen)."""
+
+    model_config = ConfigDict(regex_engine="python-re")
+
+    region: list[_Share] = Field(
+        min_length=4,
+        max_length=4,
+        description="[x, y, w, h] as shares of the page, origin top left; x + w and y + h at most 1",
+    )
+    label: str = Field(min_length=1, max_length=200, pattern=_NOT_A_DATA_URL, description="What changed there")
+
+    @model_validator(mode="after")
+    def _a_box(self) -> "RevisionCompareChange":
+        x, y, w, h = self.region
+        if w <= 0 or h <= 0 or x + w > 1 + 1e-6 or y + h > 1 + 1e-6:
+            raise ValueError("the region reaches past the page or has no area: x + w and y + h are at most 1")
+        return self
+
+
+class RevisionCompareCard(CardModel):
+    """The same page of an older and a newer Fassung, side by side, with the changes boxed on each.
+
+    System-emitted (``tools/workspace/cards.py``) from a ``document-revision-compare``
+    result; the model cannot emit it (``SYSTEM_CARD_TYPES``). The boxes were found
+    on the newer page and are drawn at the same place on the older one.
+    """
+
+    model_config = ConfigDict(regex_engine="python-re")
+
+    type: Literal["revision_compare"] = "revision_compare"
+    older_id: str = Field(pattern=_UUID_PATTERN, description="The older Fassung's workspace document id")
+    newer_id: str = Field(pattern=_UUID_PATTERN, description="The newer Fassung's workspace document id")
+    page: int = Field(ge=1, description="The page compared, from 1; the same page of both Fassungen")
+    changes: list[RevisionCompareChange] = Field(
+        default_factory=list, max_length=MAX_REVISION_CHANGES, description="The boxed changes; empty when none"
+    )
+    summary: list[Annotated[str, Field(min_length=1, max_length=400, pattern=_NOT_A_DATA_URL)]] = Field(
+        min_length=1, max_length=MAX_REVISION_SUMMARY, description="What changed, in short sentences"
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _no_bytes(cls, data: Any) -> Any:
+        _refuse_data_urls(data)
+        return data
+
+
+# ---------------------------------------------------------------------------
 # IFC/BIM viewer card
 # ---------------------------------------------------------------------------
 # The one card that renders the architect's ACTUAL building rather than a
@@ -2015,6 +2079,7 @@ GridCard = (
     | FileOperationProposalCard
     | CanvasActivityCard
     | LookCard
+    | RevisionCompareCard
     | IfcViewerCard
     | IfcComplianceCard
     | IfcScheduleCard
@@ -2047,6 +2112,8 @@ __all__ = [
     "LookCard",
     "LookDocument",
     "LookItem",
+    "RevisionCompareCard",
+    "RevisionCompareChange",
     "MemoryProposalCard",
     "OperationProposalCard",
     "SurfacedDocument",

@@ -112,6 +112,9 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // Where Piloti looked (ADR-0128): places on a document. Opening one is a
   // read-only preview, so there is nothing to remember.
   look: 'presentational',
+  // Two Fassungen side by side with the changes boxed (ADR-0128, V10): addresses of
+  // documents. Opening a page is a read-only preview, so there is nothing to remember.
+  revision_compare: 'presentational',
   document_grid: 'presentational',
   // Reports a draft the working directory holds, and — once it has been filed,
   // whether by Piloti or by the reader's own press — the project document it

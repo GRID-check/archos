@@ -208,6 +208,18 @@ const RAW_FIXTURES: CardInput[] = [
     ],
   },
   {
+    // Two Fassungen of one page, two changes boxed on each (ADR-0128, V10).
+    type: 'revision_compare',
+    older_id: '00000000-0000-4000-8000-0000000000d1',
+    newer_id: '00000000-0000-4000-8000-0000000000d2',
+    page: 2,
+    changes: [
+      { region: [0.62, 0.04, 0.34, 0.22], label: 'Plankopf: Index B statt A' },
+      { region: [0.58, 0.34, 0.14, 0.22], label: 'Laufbreite 1,10 m statt 1,00 m' },
+    ],
+    summary: ['Plankopf: Index B statt A', 'Treppe: Laufbreite 1,10 m statt 1,00 m'],
+  },
+  {
     // Both kinds of row: two marks to take over or discard, a box and a
     // point, and an answer in an existing thread.
     type: 'canvas_activity',

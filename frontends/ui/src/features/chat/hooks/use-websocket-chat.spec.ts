@@ -84,6 +84,7 @@ import { useFilePreviewStore } from '@/features/documents/stores/file-preview-st
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
 import { ACK_TIMEOUT_MS, DELTA_FLUSH_MS, useWebSocketChat } from './use-websocket-chat'
 import type { ChatMessage, Conversation } from '../types'
+import { registerCanvasFocusProvider } from '../lib/canvas-bridge'
 
 const conversationOf = (id: string, messages: ChatMessage[] = []): Conversation => ({
   id,
@@ -209,6 +210,32 @@ describe('a question', () => {
     posthogSessionId.mockReturnValueOnce('0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70')
     act(() => void result.current.sendMessage('Zweite Frage'))
     expect(sentOf('user_message')[1]).toMatchObject({ posthog_session_id: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })
+  })
+
+  it('carries the box drawn on the document open over the chat as the canvas question does, and nothing once it is gone', () => {
+    const { result } = open(conversationOf(CONVERSATION))
+    const withdraw = registerCanvasFocusProvider(() => ({
+      documentId: 'doc-1',
+      fileName: 'Grundriss.pdf',
+      versionId: null,
+      versionState: null,
+      shelf: 'project',
+      region: { page: 2, x: 0.1, y: 0.2, w: 0.3, h: 0.4 },
+      replyInThread: false,
+    }))
+
+    act(() => void result.current.sendMessage('Wie breit ist die Tür hier?'))
+    expect(sentOf('user_message')[0]).toMatchObject({
+      focus_document_id: 'doc-1',
+      focus_file_name: 'Grundriss.pdf',
+      focus_region: { page: 2, x: 0.1, y: 0.2, w: 0.3, h: 0.4 },
+    })
+    expect(sentOf('user_message')[0]).not.toHaveProperty('reply_in_thread')
+
+    withdraw()
+    deliver(retarget(answered, CONVERSATION, sentOf('user_message')[0]!.message_id as string).slice(0, 1))
+    act(() => void result.current.sendMessage('Und allgemein?'))
+    expect(sentOf('user_message')[1]).not.toHaveProperty('focus_region')
   })
 
   it('tells PostHog a turn started, by its shape alone', () => {

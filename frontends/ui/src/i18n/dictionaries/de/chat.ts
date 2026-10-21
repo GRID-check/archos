@@ -566,6 +566,14 @@ export const chat: typeof en.chat = {
       embeddedImage: 'Bild {index}',
       open: '{document}, S. {page} öffnen',
     },
+    // Zwei Fassungen eines Dokuments, die Änderungen auf jeder eingerahmt (ADR-0128, V10).
+    revisionCompare: {
+      eyebrow: 'Fassungen verglichen',
+      page: 'S. {page}',
+      older: 'Ältere Fassung',
+      newer: 'Neuere Fassung',
+      open: '{side}, S. {page}: mit den Änderungen öffnen',
+    },
     taskCreated: {
       eyebrow: 'Aufgabe',
       due: 'bis {date}',

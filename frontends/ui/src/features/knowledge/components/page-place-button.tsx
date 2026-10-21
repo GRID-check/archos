@@ -14,6 +14,7 @@ import { useState, type FC, type ReactNode } from 'react'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { cn } from '@/lib/utils'
 import type { PagePlace } from '../lib/page-place'
+import type { PageRegion } from '../lib/page-region'
 import { PagePlaceDialog } from './page-place-dialog'
 import { PageRegionThumbnail } from './page-region-thumbnail'
 
@@ -26,6 +27,11 @@ export interface PagePlaceButtonProps {
   /** The thumbnail's width in CSS pixels; the button's own width when unset. */
   thumbnailWidth?: number
   thumbnailMaxHeight?: number
+  /**
+   * Several boxes on the page instead of the place's own: the thumbnail then draws the
+   * whole page with all of them, and the viewer opens with all of them (a comparison's changes).
+   */
+  marks?: readonly PageRegion[]
   /** Shown under the thumbnail. */
   children?: ReactNode
   className?: string
@@ -39,6 +45,7 @@ export const PagePlaceButton: FC<PagePlaceButtonProps> = ({
   color,
   thumbnailWidth,
   thumbnailMaxHeight,
+  marks,
   children,
   className,
   eager,
@@ -68,6 +75,8 @@ export const PagePlaceButton: FC<PagePlaceButtonProps> = ({
           color={color}
           width={thumbnailWidth}
           maxHeight={thumbnailMaxHeight}
+          clip={marks ? false : undefined}
+          marks={marks}
           lazy={!eager}
           label={label}
           onDrawn={({ image }) => setImageUrl(image?.url ?? null)}
@@ -76,7 +85,7 @@ export const PagePlaceButton: FC<PagePlaceButtonProps> = ({
         {children}
       </button>
       {open && (
-        <PagePlaceDialog place={place} open={open} onOpenChange={setOpen} color={color} imageUrl={imageUrl} />
+        <PagePlaceDialog place={place} open={open} onOpenChange={setOpen} color={color} imageUrl={imageUrl} regions={marks} />
       )}
     </>
   )

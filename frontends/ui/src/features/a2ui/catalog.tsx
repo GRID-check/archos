@@ -295,6 +295,7 @@ export const SURFACE_EXCLUDED_LEAVES: ReadonlySet<string> = new Set([
   'project_profile_patch',
   'canvas_activity',
   'look',
+  'revision_compare',
 ])
 
 /**

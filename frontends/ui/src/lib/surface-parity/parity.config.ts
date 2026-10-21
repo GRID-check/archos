@@ -166,12 +166,8 @@ export const SURFACE_CAPABILITIES = {
     summary: 'Compare two Fassungen of a document: what changed on a page, boxed',
     operations: ['document-revision-compare', 'document-revision-candidates', 'document-revision-link-set'],
     canvas: { component: 'features/documents/components/document-revisions.tsx' },
-    chat: {
-      gap: {
-        slice: 'V10',
-        reason: 'Piloti can compare through the door, but the result has no card and no thumbnail pair in the chat; the look card shows one Fassung, never the pair',
-      },
-    },
+    // The result of Piloti's comparison is the card: both pages side by side, the changes boxed on each.
+    chat: { card: 'revision_compare', component: 'features/grid-cards/components/RevisionCompareCard.tsx' },
   },
   askAboutBox: {
     summary: 'Draw a box on a page and ask about it; Piloti answers in context of that box',
@@ -182,12 +178,8 @@ export const SURFACE_CAPABILITIES = {
     summary: 'Piloti reads what the person selected or points at when the question says "here"',
     tool: 'canvas__room',
     canvas: { component: `${REVIEW}/document-review.tsx` },
-    chat: {
-      gap: {
-        slice: 'V10',
-        reason: 'A chat turn carries the Fokusbereich of a canvas question only; a chat question about an open document gets no selection',
-      },
-    },
+    // The review offers its selection to the chat's own turns (`registerCanvasFocusProvider`); the turn sends it as `focus_region`.
+    chat: { component: 'features/documents/lib/review-focus.ts' },
   },
   openAtPlace: {
     summary: 'Open a document at a page, with a region glowing',
