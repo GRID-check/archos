@@ -197,6 +197,8 @@ def mark(
         }
         for path in sorted(paths)
     ]
+    # Only module constants are interpolated; every value is bound.
+    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
     statement = text(
         f"INSERT INTO {QUEUE_TABLE} "
         "(collection, folder_path, organization_id, depth, dirty_since, marked_at, claimed_at, attempts) "
@@ -222,6 +224,8 @@ def claim(limit: int, *, now: float | None = None, url: str | None = None) -> li
     engine = _engine(url or db_url())
     with engine.begin() as conn:
         due = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"SELECT collection, folder_path, organization_id, depth, attempts FROM {QUEUE_TABLE} "
                 "WHERE (claimed_at IS NULL OR claimed_at < :stale) "
@@ -241,6 +245,8 @@ def claim(limit: int, *, now: float | None = None, url: str | None = None) -> li
             queued[name] = [
                 row[0]
                 for row in conn.execute(
+                    # Only module constants are interpolated; every value is bound.
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     text(f"SELECT folder_path FROM {QUEUE_TABLE} WHERE collection = :collection"),
                     {"collection": name},
                 ).fetchall()
@@ -253,6 +259,8 @@ def claim(limit: int, *, now: float | None = None, url: str | None = None) -> li
             continue
         with engine.begin() as conn:
             won = conn.execute(
+                # Only module constants are interpolated; every value is bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"UPDATE {QUEUE_TABLE} SET claimed_at = :now, attempts = attempts + 1 "
                     "WHERE collection = :collection AND folder_path = :path "
@@ -272,6 +280,8 @@ def finish(claim_: Claim, *, url: str | None = None) -> None:
     keys = {"collection": claim_.collection, "path": claim_.folder_path, "claimed_at": claim_.claimed_at}
     with _engine(url or db_url()).begin() as conn:
         gone = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"DELETE FROM {QUEUE_TABLE} WHERE collection = :collection AND folder_path = :path "
                 "AND marked_at <= :claimed_at"
@@ -281,6 +291,8 @@ def finish(claim_: Claim, *, url: str | None = None) -> None:
         if not gone:
             # Marked during the build: a new quiet period starts from that mark.
             conn.execute(
+                # Only module constants are interpolated; every value is bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 text(
                     f"UPDATE {QUEUE_TABLE} SET claimed_at = NULL, attempts = 0, dirty_since = marked_at "
                     "WHERE collection = :collection AND folder_path = :path"
@@ -297,11 +309,16 @@ def fail(claim_: Claim, *, now: float | None = None, url: str | None = None) -> 
     with _engine(url or db_url()).begin() as conn:
         if claim_.attempts >= MAX_ATTEMPTS:
             conn.execute(
-                text(f"DELETE FROM {QUEUE_TABLE} WHERE collection = :collection AND folder_path = :path"), keys
+                # Only module constants are interpolated; every value is bound.
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(f"DELETE FROM {QUEUE_TABLE} WHERE collection = :collection AND folder_path = :path"),
+                keys,
             )
             return True
         # A retry waits out a quiet period, so a provider outage is not a tight loop.
         conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"UPDATE {QUEUE_TABLE} SET claimed_at = NULL, marked_at = :now "
                 "WHERE collection = :collection AND folder_path = :path"
@@ -317,6 +334,8 @@ def queued(collection: str, *, url: str | None = None) -> list[tuple[str, float,
 
     with _engine(url or db_url()).begin() as conn:
         rows = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"SELECT folder_path, dirty_since, marked_at FROM {QUEUE_TABLE} "
                 "WHERE collection = :collection ORDER BY folder_path"
@@ -336,6 +355,8 @@ def remember_collection(collection: str, organization_id: str, *, url: str | Non
 
     with _engine(url or db_url()).begin() as conn:
         conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"INSERT INTO {COLLECTIONS_TABLE} (collection, organization_id, reconciled_at) "
                 "VALUES (:collection, :organization_id, NULL) "
@@ -350,6 +371,8 @@ def organization_of(collection: str, *, url: str | None = None) -> str | None:
 
     with _engine(url or db_url()).begin() as conn:
         row = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(f"SELECT organization_id FROM {COLLECTIONS_TABLE} WHERE collection = :collection"),
             {"collection": collection},
         ).fetchone()
@@ -365,6 +388,8 @@ def collections_due_for_reconcile(
     stamp = time.time() if now is None else now
     with _engine(url or db_url()).begin() as conn:
         rows = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"SELECT collection, organization_id FROM {COLLECTIONS_TABLE} "
                 "WHERE reconciled_at IS NULL OR reconciled_at < :before ORDER BY collection"
@@ -379,6 +404,8 @@ def set_reconciled(collection: str, *, now: float | None = None, url: str | None
 
     with _engine(url or db_url()).begin() as conn:
         conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(f"UPDATE {COLLECTIONS_TABLE} SET reconciled_at = :now WHERE collection = :collection"),
             {"collection": collection, "now": time.time() if now is None else now},
         )
@@ -395,6 +422,8 @@ def tokens_used(organization_id: str, *, now: float | None = None, url: str | No
     month = month_of(time.time() if now is None else now)
     with _engine(url or db_url()).begin() as conn:
         row = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(f"SELECT tokens FROM {USAGE_TABLE} WHERE organization_id = :organization_id AND month = :month"),
             {"organization_id": organization_id, "month": month},
         ).fetchone()
@@ -408,6 +437,8 @@ def add_tokens(organization_id: str, tokens: int, *, now: float | None = None, u
         return
     with _engine(url or db_url()).begin() as conn:
         conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"INSERT INTO {USAGE_TABLE} (organization_id, month, tokens) "
                 "VALUES (:organization_id, :month, :tokens) "
@@ -432,6 +463,8 @@ def get_manifest(collection: str, folder_path: str, *, url: str | None = None) -
 
     with _engine(url or db_url()).begin() as conn:
         row = conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(f"SELECT manifest FROM {MANIFEST_TABLE} WHERE collection = :collection AND folder_path = :path"),
             {"collection": collection, "path": folder_path},
         ).fetchone()
@@ -443,6 +476,8 @@ def put_manifest(collection: str, folder_path: str, manifest: str, *, url: str |
 
     with _engine(url or db_url()).begin() as conn:
         conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
                 f"INSERT INTO {MANIFEST_TABLE} (collection, folder_path, manifest) "
                 "VALUES (:collection, :path, :manifest) "
@@ -457,6 +492,8 @@ def delete_manifest(collection: str, folder_path: str, *, url: str | None = None
 
     with _engine(url or db_url()).begin() as conn:
         conn.execute(
+            # Only module constants are interpolated; every value is bound.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(f"DELETE FROM {MANIFEST_TABLE} WHERE collection = :collection AND folder_path = :path"),
             {"collection": collection, "path": folder_path},
         )
