@@ -21,7 +21,10 @@
  *   - the same call again in the conversation is the same proposal;
  *   - a member's Piloti cannot file a change to a project the member cannot
  *     see (the confused deputy), and nothing is stored;
- *   - the card names the target for a reader who may read it, by name.
+ *   - the card names the target for a reader who may read it, by name;
+ *   - a reader who may decide the proposal's project but not read its target
+ *     sees no decision on the card, and an apply of theirs is refused and
+ *     leaves the card open for somebody who can (it used to end it `failed`).
  */
 
 import { randomUUID } from 'node:crypto'
@@ -62,6 +65,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let proposeOperation: typeof import('./operation-proposals').proposeOperation
   let getProposal: typeof import('@/lib/proposals/service').getProposal
+  let applyProposal: typeof import('@/lib/proposals/service').applyProposal
   let rename: import('./operation').AgentOperation
   const conversation = `conv_opprop_${STAMP}`
 
@@ -95,6 +99,7 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     db = (await import('@/lib/db')).getDb()
     proposeOperation = (await import('./operation-proposals')).proposeOperation
     getProposal = (await import('@/lib/proposals/service')).getProposal
+    applyProposal = (await import('@/lib/proposals/service')).applyProposal
     const found = (await import('./catalog')).findOperation('project-rename')
     if (!found) throw new Error('project-rename left the catalog: pick another write for this suite')
     rename = found
@@ -165,5 +170,27 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
     })
     const view = await inOrg(() => getProposal(admin, proposalId))
     expect(view.kind === 'operation' && view.targets).toEqual([{ type: 'project', id: ids.hidden, name: 'Verborgen' }])
+  })
+
+  it('gives no decision to a reader who cannot read the target, and keeps the card open when they try', async () => {
+    const { proposalId } = await proposeOperation({
+      principal: { session: admin, conversationId: conversation, projectId: ids.visible },
+      op: rename,
+      input: { params: { id: ids.hidden }, body: { name: 'Verborgen, nochmals' } },
+    })
+    // The member reads the conversation (and so the card), and may decide in its project, not see the target.
+    await inOrg(() =>
+      db.execute(sql`
+        insert into resource_shares (organization_id, resource_type, resource_id, subject_user_id, role, granted_by)
+        values (${ORG}, 'conversation', ${conversation}, ${MEMBER}, 'viewer', ${ADMIN})
+        on conflict do nothing`)
+    )
+    const asMember = <T>(run: () => PromiseLike<T>) => withTenant({ organizationId: ORG, userId: MEMBER }, run)
+    expect((await inOrg(() => getProposal(admin, proposalId))).canDecide).toBe(true)
+    expect((await asMember(() => getProposal(member, proposalId))).canDecide).toBe(false)
+    await expect(
+      asMember(() => applyProposal(member, proposalId, new Request('http://localhost/api/proposals/apply', { method: 'POST' })))
+    ).rejects.toMatchObject({ status: 403 })
+    expect((await inOrg(() => getProposal(admin, proposalId))).status).toBe('proposed')
   })
 })

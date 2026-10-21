@@ -131,7 +131,9 @@ The agent acts for a person, and the person decides what changes.
   it. Piloti never files the person's own decisions: applying or dismissing
   a proposal and undoing a change it made are hidden from it and refused at
   the click (`PILOTI_HIDDEN_OPERATIONS`), so one card can never accept
-  another. The card names each target for its reader and shows every input whole;
+  another. Only a reader who may read every target may decide the card:
+  another's `canDecide` is false and their apply is refused with the card left
+  open. The card names each target for its reader and shows every input whole;
   „Apply“ waits until each value shown in part has been unfolded, so nobody
   accepts text they were not shown.
 

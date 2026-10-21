@@ -279,7 +279,10 @@ proposed ──apply──▶ applied | partially_applied | failed
    is enough. The route returns the id and the status, and the card carries the
    id as `proposal_id`.
 2. **A person reads it.** `GET /api/proposals/[id]` returns the view with
-   `canDecide`.
+   `canDecide`. For an `operation` proposal it is false unless the reader may
+   also read every target the call names, and such a reader's apply is refused
+   (403 `proposal-decider-cannot-read-target`) with the proposal left open: run
+   as them, the route would answer 404 and end the card `failed` for everyone.
 3. **A person decides.** They apply it or dismiss it. Both transitions are
    compare-and-swap on `proposed`, so a decision that is too late gets a 409.
 
