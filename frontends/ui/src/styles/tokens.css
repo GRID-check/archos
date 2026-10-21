@@ -543,6 +543,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
 
+  /* Bare `shadow` (Tailwind v3's name for today's `shadow-sm`) resolved to
+     Tailwind's own deprecated `--shadow`, a cold black drop shadow on no
+     elevation step and the same in both themes. It is the `sm` step here. */
+  --shadow: var(--elevation-sm);
   --shadow-2xs: var(--shadow-hairline);
   --shadow-xs: var(--elevation-xs);
   --shadow-sm: var(--elevation-sm);

@@ -140,7 +140,7 @@ The ramp targets the dummy's 9.5–24px scale: **20px page titles**, **23px hero
 | Page title (≈20px) | `text-xl font-semibold tracking-tight` |
 | Section heading | `text-lg font-semibold tracking-tight` |
 | Card/subsection title | `text-sm font-semibold` |
-| Eyebrow / label (uppercase ≈10.5px) | `text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground` (existing `text-xs` eyebrows are acceptable until a screen is restyled) |
+| Eyebrow / label (uppercase ≈10.5px) | `text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground`, written once as `.card-eyebrow` (`tracking-wider` is its 0.05em) and reached through `SectionLabel`; `TableHead` takes it too (existing `text-xs` eyebrows are acceptable until a screen is restyled) |
 | Body | `text-sm` (leading-relaxed for prose) |
 | Body secondary | `text-sm text-muted-foreground` |
 | Caption / meta | `text-xs text-muted-foreground` |
@@ -164,7 +164,7 @@ only if it arrives whole.
 - **Card padding:** `p-6` for feature cards, `p-5` for stat cards, `px-4 py-3` for list rows.
 - **Radius ladder:** controls `rounded-md` (8px — buttons, fields, badges, chips, tooltips, inner panels, selection bars), cards `rounded-lg` (12px, `--radius`), floating panels `rounded-xl` (16px — dialogs, popovers, select content). Radius is paint: a radius-only change moves no layout box.
 - **Glyph sizes:** the glyph sits two steps below its well — `size-3.5` in badges/chips, `size-4` free-floating UI glyphs (pagination chevrons, dialog close, `size-9` wells), `size-3.5` in `size-7` wells, `size-5` in the empty-state/confirm discs. A new well picks the glyph its size already owns; it does not invent one.
-- **Borders:** hairline `border` (border-border — alpha ink, composites on any surface). Prefer a single border + `bg-card` over nested boxes. Use `divide-y` for list groups inside one bordered container. Depth = surface step + layered soft shadow (`shadow-xs/sm/md/lg` are bound to `--elevation-*`), never a heavy border.
+- **Borders:** hairline `border` (border-border — alpha ink, composites on any surface). Prefer a single border + `bg-card` over nested boxes. Use `divide-y` for list groups inside one bordered container. Depth = surface step + layered soft shadow (`shadow-xs/sm/md/lg` are bound to `--elevation-*`, and a bare `shadow` is the `sm` step rather than Tailwind's cold black default), never a heavy border.
 
 ## Touch
 
