@@ -7,11 +7,16 @@
  * 0.88) on two durations, so a citation chip, the copy link beside it and the
  * card row under it each answered the same click differently. This is that one
  * press for anything that is not a `Button`: the same scale, the same split of
- * durations (colour on `--motion-quick`, the transform on `--motion-snap`), and
+ * durations (colour on `--motion-quick`, the scale on `--motion-snap`), and
  * the same reduced-motion escape.
  *
+ * The list names `scale`, not `transform`. Tailwind v4's `scale-*`,
+ * `translate-*` and `rotate-*` set the independent `scale` / `translate` /
+ * `rotate` properties, and a transition on `transform` does not cover them:
+ * until 2026-10 every press in the app snapped while its comment said it eased.
+ *
  * The transition list names `filter` and `border-color` as well as colour,
- * background and transform: a chip's hover is a brightness step and a card's
+ * background and scale: a chip's hover is a brightness step and a card's
  * lifecycle accent is a border colour, and a property missing from the list
  * changes in one frame while its neighbours ease.
  *
@@ -19,7 +24,7 @@
  * keyboard ring, and `outline-none`.
  */
 export const PRESSABLE =
-  'transition-[color,background-color,border-color,filter,transform] ' +
+  'transition-[color,background-color,border-color,filter,scale] ' +
   '[transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ' +
   'ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100'
 
@@ -39,5 +44,5 @@ export const PRESSABLE =
  * ring snaps. Compose with {@link FOCUS_RING} and `outline-none`.
  */
 export const PRESSABLE_SMALL =
-  'transition-[color,background-color,border-color,opacity,transform] duration-snap ease-out ' +
+  'transition-[color,background-color,border-color,opacity,scale] duration-snap ease-out ' +
   'active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100'

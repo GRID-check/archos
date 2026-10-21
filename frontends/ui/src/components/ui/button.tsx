@@ -22,8 +22,11 @@ const buttonVariants = cva(
   // 31.6 rad/s, so it is within 2% of target in ~126ms — `duration-snap`.
   //
   // The duration is a LIST matched to the property list: colour and opacity
-  // keep the 180ms default (`--motion-quick`), the transform gets the 120ms
-  // press curve (`--motion-snap`). One `duration-*` utility could not say that,
+  // keep the 180ms default (`--motion-quick`), the scale gets the 120ms press
+  // curve (`--motion-snap`). `scale`, not `transform`: in Tailwind v4
+  // `active:scale-[0.98]` sets the independent `scale` property, so a list
+  // naming `transform` never eased the press at all (it snapped, app-wide,
+  // until 2026-10; `grid/motion-vocabulary` now flags the pairing). One `duration-*` utility could not say that,
   // and running the press at the colour's duration is what made the dip read
   // as a lag rather than as the button giving way.
   //
@@ -31,7 +34,11 @@ const buttonVariants = cva(
   // (`FOCUS_RING`) is a box-shadow, and a ring that fades in is not there yet
   // when the reader looks for it. Opacity is, so a button turning disabled (or
   // a `BusyButton` dimming) eases instead of blinking.
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,opacity,transform] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 outline-none pointer-coarse:min-w-11 aria-invalid:ring-destructive/20 aria-invalid:border-destructive " +
+  //
+  // `select-none` and no touch callout: a long press on a phone selected the
+  // label, or offered to share a link-button, where a native control does
+  // neither. The label of a control is not content anyone copies.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium select-none [-webkit-touch-callout:none] transition-[color,background-color,opacity,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 outline-none pointer-coarse:min-w-11 aria-invalid:ring-destructive/20 aria-invalid:border-destructive " +
     FOCUS_RING,
   {
     variants: {
@@ -95,7 +102,13 @@ export interface ButtonProps
    * In-flight. The spinner takes the leading icon's place — same 16px glyph in
    * the same slot — so the label neither moves nor disappears and the button
    * keeps its width; a button that swaps its label for a spinner makes the
-   * reader re-read it to find out what they just triggered. A second press is
+   * reader re-read it to find out what they just triggered. A button with no
+   * icon has no slot to give: there the spinner sits over the centre and the
+   * label turns transparent underneath it, still holding the width (and the
+   * accessible name). Inserting a spinner beside it instead pushed the label
+   * sideways and widened the button, moving its neighbours. Where the label
+   * must stay readable, `BusyButton` swaps it for a busy label of the same
+   * width. A second press is
    * swallowed (it would fire the action twice), but the button is NOT
    * `disabled`: Chrome blurs a focused element the moment it is disabled, so
    * the keyboard reader who pressed it was dropped onto `<body>` and a dialog
@@ -133,10 +146,25 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
     // rendered: under `asChild`, Slot demands exactly one element child, and
     // wrapping it in a fragment — even one whose other half is `null` — is what
     // makes Slot throw "Expected a single React element child".
+    //
+    // While loading, the children sit in one `peer/label` span so CSS can ask
+    // the question JavaScript cannot answer reliably: is there a leading icon?
+    // With one (`:has(>svg)`), its first svg hides and the spinner (placed
+    // first by `order-first`) takes its slot. Without one, the label goes
+    // transparent and the spinner centres over it.
     const content = showSpinner ? (
       <>
-        <Spinner size="sm" aria-hidden="true" className="shrink-0" />
-        {children}
+        <span
+          data-slot="button-label"
+          className="peer/label inline-flex items-center justify-center gap-[inherit] [&>svg:first-of-type]:hidden [&:not(:has(>svg))]:opacity-0"
+        >
+          {children}
+        </span>
+        <Spinner
+          size="sm"
+          aria-hidden="true"
+          className="order-first shrink-0 peer-[:not(:has(>svg))]/label:absolute peer-[:not(:has(>svg))]/label:inset-0 peer-[:not(:has(>svg))]/label:m-auto peer-[:not(:has(>svg))]/label:size-4"
+        />
       </>
     ) : (
       children
@@ -146,11 +174,13 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         data-slot="button"
         className={cn(
           buttonVariants({ variant, size }),
-          // Hide the caller's first `<svg>` child — the leading icon at every
-          // current call site — rather than sitting the spinner beside it: two
-          // icons is a busier button, not a busy one, and dropping the glyph is
-          // what keeps the width identical to the resting state.
-          showSpinner && '[&>svg:first-of-type]:hidden',
+          // The caller's first `<svg>` child (the leading icon at every current
+          // call site) hides inside the label span rather than sitting the
+          // spinner beside it: two icons is a busier button, not a busy one,
+          // and dropping the glyph is what keeps the width identical to the
+          // resting state. `relative` anchors the centred spinner of a button
+          // with no icon.
+          showSpinner && 'relative',
           className
         )}
         ref={ref}

@@ -95,7 +95,7 @@ export function LiveCursor({
             className={cn(
               'absolute top-[15px] left-[12px] inline-flex max-w-44 items-center gap-1 rounded-full rounded-tl-sm px-2 py-0.5 text-[11px] leading-4 font-medium whitespace-nowrap text-white shadow-md',
               'pointer-coarse:max-w-36 pointer-coarse:px-1.5 pointer-coarse:text-[10px]',
-              'origin-top-left transition-[opacity,transform] duration-base ease-out motion-reduce:transition-none',
+              'origin-top-left transition-[opacity,scale] duration-base ease-out motion-reduce:transition-none',
               idle && 'scale-90 opacity-0'
             )}
             style={{ backgroundColor: color }}

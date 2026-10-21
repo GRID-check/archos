@@ -730,7 +730,13 @@ times stops being a physical cue and becomes texture.
   pressable (a citation chip, a copy link, a card row) composes `PRESSABLE`
   (`components/ui/press.ts`): colour, background, border, filter on
   `--motion-quick`, `active:scale-[0.98]` on `--motion-snap`, flat under
-  reduced motion. Its keyboard ring is `FOCUS_RING`
+  reduced motion. **A transition list names `scale`, not `transform`.**
+  Tailwind v4's `scale-*`, `translate-*` and `rotate-*` set the independent
+  `scale` / `translate` / `rotate` properties, which a transition on
+  `transform` does not cover: until 2026-10 every press in the app snapped
+  while its comment said it eased. `grid/motion-vocabulary` flags a list that
+  names `transform` beside one of those utilities; `transition-transform` lists
+  all four. Its keyboard ring is `FOCUS_RING`
   (`components/ui/focus-ring`) with `outline-none`. The hand-rolled controls
   around an answer had drifted to four scales on two durations. Two
   exceptions, both from size, never from taste. A control under ~24px (a

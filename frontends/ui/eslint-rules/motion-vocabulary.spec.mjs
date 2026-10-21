@@ -26,6 +26,10 @@ ruleTester.run('motion-vocabulary', rule, {
     `const a = 'animate-spin duration-ambient ease-cycle'`,
     // Named-property transitions and the sanctioned easings.
     `const a = 'transition-transform ease-exit'`,
+    // A press list that names the property v4's scale utility sets.
+    `const a = 'transition-[color,scale] active:scale-[0.98]'`,
+    // `transform` alone is fine where nothing in the list moves by a v4 utility.
+    `const a = 'transition-[opacity,transform] duration-quick'`,
     // Words that merely start the same are not durations.
     `const a = 'duration-snappy'`,
     // The sanctioned loop utilities, and an easing that only shares a prefix.
@@ -53,6 +57,15 @@ ruleTester.run('motion-vocabulary', rule, {
     `const x = <motion.span animate={{ opacity: 1 }} transition={landing} />`,
   ],
   invalid: [
+    {
+      // v4's active:scale-* sets `scale`, which a transform transition misses.
+      code: `const a = 'transition-[color,transform] duration-quick active:scale-[0.98]'`,
+      errors: [{ messageId: 'transformList' }],
+    },
+    {
+      code: `const a = 'transition-[opacity,transform] data-[state=checked]:translate-x-4'`,
+      errors: [{ messageId: 'transformList' }],
+    },
     {
       code: `const a = 'transition-colors duration-200 ease-out'`,
       errors: [{ messageId: 'literalDuration' }],
