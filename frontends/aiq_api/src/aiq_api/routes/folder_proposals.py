@@ -11,7 +11,9 @@ Map-reduce, because a shelf root can hold about a thousand documents:
 * MAP: the documents go in chunks of ``MAP_CHUNK``, one call each, at most ``MAP_CONCURRENCY`` in flight.
   Each chunk proposes candidate folders under the same rules. A chunk whose call fails is skipped.
 * REDUCE: when more than one chunk proposed a folder, one call sees only the candidates (path,
-  description, document count, never a document) and merges the ones that mean the same thing.
+  description, document count, never a document) and merges the ones that mean the same thing. A path two
+  chunks proposed is one candidate holding both chunks' documents. A failed reduce proposes the largest
+  grouped candidates instead, so the map's work is not thrown away.
 * VERIFY: Jev (ADR-0064) gives each proposed document's probability for its folder, as
   ``confidences``. It only adds a number: a failed decision leaves the proposals as they are.
 
@@ -30,6 +32,7 @@ import asyncio
 import json
 import logging
 from collections.abc import Callable
+from collections.abc import Iterable
 from collections.abc import Sequence
 from typing import Any
 
@@ -64,9 +67,13 @@ REDUCE_TRACE = "folder-proposals.reduce"
 #: The decision slot of the verification (``decide.folder-proposals``).
 SCORE_SLOT = "folder-proposals"
 
+# The BFF waits at most 240 s for this endpoint, inside a 300 s job slice. Worst case with these numbers:
+# 10 chunks at MAP_CONCURRENCY 5 are 2 rounds of 45 s, the reduce 45 s, the verification 60 s: 195 s.
+# The provider slot wait is not in that sum: an interactive call waits as long as the pool stays full
+# (aiq_agent.common.openrouter._slot_wait), so a saturated fleet can still outlast the BFF's 240 s.
 MAX_DOCUMENTS = 1000
 MAP_CHUNK = 100
-MAP_CONCURRENCY = 4
+MAP_CONCURRENCY = 5
 MAX_PROPOSALS = 12
 MAX_NAME = 255
 MAX_DESCRIPTION = 500
@@ -74,6 +81,7 @@ MIN_DOCUMENTS = 2
 MAX_TOKENS = 3000
 
 _REQUEST_TIMEOUT_SECONDS = 45.0
+VERIFY_BUDGET_S = 60.0
 
 SYSTEM_PROMPT = (
     "An architecture office sorted the root of its shelf into its folders, and the documents below fit none "
@@ -194,30 +202,61 @@ def _description(raw: object) -> str | None:
     return str(raw or "").strip()[:MAX_DESCRIPTION] or None
 
 
+def _union(*lists: Sequence[str]) -> list[str]:
+    """Each id once, in the order the lists name them."""
+    return list(dict.fromkeys(document_id for ids in lists for document_id in ids))
+
+
+def group_by_path(candidates: Iterable[FolderProposal]) -> list[FolderProposal]:
+    """One folder per path key, in first-appearance order, holding the documents of every candidate under that key.
+
+    The first non-empty description is kept. Two chunks that proposed the same path give one folder, never two rows.
+    """
+    grouped: dict[str, FolderProposal] = {}
+    for candidate in candidates:
+        key = _path_key(candidate.path)
+        first = grouped.get(key)
+        if first is None:
+            grouped[key] = candidate
+        else:
+            grouped[key] = FolderProposal(
+                path=first.path,
+                description=first.description or candidate.description,
+                ids=_union(first.ids, candidate.ids),
+            )
+    return list(grouped.values())
+
+
+def _disjoint(folders: Sequence[FolderProposal], documents: set[str]) -> list[FolderProposal]:
+    """Folders in order, each keeping the documents no earlier folder took, needing two, at most ``MAX_PROPOSALS``."""
+    found: list[FolderProposal] = []
+    used: set[str] = set()
+    for folder in folders:
+        if len(found) >= MAX_PROPOSALS:
+            break
+        ids = _checked_ids(folder.ids, documents, used)
+        if len(ids) < MIN_DOCUMENTS:
+            continue
+        found.append(FolderProposal(path=folder.path, description=folder.description, ids=ids))
+        used.update(ids)
+    return found
+
+
 def _checked_folders(
     raw: object, existing: set[str], documents: set[str], ids_of: Callable[[dict[str, Any]], object]
 ) -> list[FolderProposal] | None:
-    """Folders checked one by one in order, at most ``MAX_PROPOSALS``; ``None`` when the list is not a list."""
+    """Folders checked in order, a path named twice as one folder; ``None`` when the list is not a list."""
     if not isinstance(raw, list):
         return None
-    found: list[FolderProposal] = []
-    used: set[str] = set()
-    paths: set[str] = set()
+    named: list[FolderProposal] = []
     for item in raw:
-        if len(found) >= MAX_PROPOSALS:
-            break
         if not isinstance(item, dict):
             continue
         path = _checked_path(item.get("path"), existing)
-        if path is None or _path_key(path) in paths:
-            continue
-        ids = _checked_ids(ids_of(item), documents, used)
-        if len(ids) < MIN_DOCUMENTS:
-            continue
-        found.append(FolderProposal(path=path, description=_description(item.get("description")), ids=ids))
-        paths.add(_path_key(path))
-        used.update(ids)
-    return found
+        if path is not None:
+            ids = _checked_ids(ids_of(item), documents, set())
+            named.append(FolderProposal(path=path, description=_description(item.get("description")), ids=ids))
+    return _disjoint(group_by_path(named), documents)
 
 
 def _parse_proposals(
@@ -392,20 +431,42 @@ def _apply_confidences(
         proposals[index].confidences[document_id] = round(distribution.get(f"f{index}", 0.0), 3)
 
 
+def _fallback(request: FolderProposalsRequest, candidates: Sequence[FolderProposal]) -> list[FolderProposal]:
+    """What a failed reduce leaves: the grouped candidates under the same rules, the twelve with the most documents."""
+    existing = {_path_key(folder.path) for folder in request.folders}
+    valid = [candidate for candidate in candidates if _checked_path(candidate.path, existing) is not None]
+    ranked = sorted(valid, key=lambda candidate: len(candidate.ids), reverse=True)
+    return _disjoint(ranked, {document_id for candidate in ranked for document_id in candidate.ids})
+
+
+async def _verify_within_budget(
+    documents: Sequence[FolderProposalDocument], proposals: Sequence[FolderProposal], organization_id: str | None
+) -> None:
+    """``_verify`` under ``VERIFY_BUDGET_S``. Over it the proposals stay, with empty confidences (ADR-0064)."""
+    try:
+        await asyncio.wait_for(_verify(documents, proposals, organization_id), timeout=VERIFY_BUDGET_S)
+    except TimeoutError:
+        logger.warning(
+            "Folder proposal verification ran over %s s; keeping proposals without confidences", VERIFY_BUDGET_S
+        )
+
+
 async def _propose(cred: Any, request: FolderProposalsRequest, organization_id: str | None) -> FolderProposalsResponse:
-    """Map, reduce when several chunks proposed folders, then verify."""
+    """Map, reduce when several chunks proposed folders, then verify. A failed reduce keeps the grouped candidates."""
     answered, trace_id = await _map_shelf(cred, request)
     if not answered:
         return FolderProposalsResponse(error="llm_request_failed", model=cred.model, trace_id=trace_id)
     producing = [proposals for proposals in answered if proposals]
-    candidates = [proposal for proposals in producing for proposal in proposals]
-    final: list[FolderProposal] | None = candidates
+    candidates = group_by_path(proposal for proposals in producing for proposal in proposals)
+    final: list[FolderProposal] = candidates
     if len(producing) > 1:
-        final, error, reduce_trace = await _reduce(cred, request, candidates)
+        reduced, error, reduce_trace = await _reduce(cred, request, candidates)
         trace_id = reduce_trace or trace_id
-        if final is None:
-            return FolderProposalsResponse(error=error, model=cred.model, trace_id=trace_id)
-    await _verify(request.documents, final, organization_id)
+        if reduced is None:
+            logger.warning("Folder proposal reduce failed (%s); proposing the grouped candidates", error)
+            reduced = _fallback(request, candidates)
+        final = reduced
+    await _verify_within_budget(request.documents, final, organization_id)
     return FolderProposalsResponse(proposals=final, model=cred.model, trace_id=trace_id)
 
 

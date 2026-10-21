@@ -1,5 +1,6 @@
 """New folders for the shelf root's documents (`/v1/folder-proposals`): map, reduce, verify, and checked answers."""
 
+import asyncio
 import json
 from unittest.mock import AsyncMock
 from unittest.mock import MagicMock
@@ -18,6 +19,7 @@ from aiq_api.routes import folder_proposals as module
 from aiq_api.routes.folder_proposals import MAX_DOCUMENTS
 from aiq_api.routes.folder_proposals import REDUCE_PROMPT
 from aiq_api.routes.folder_proposals import SYSTEM_PROMPT
+from aiq_api.routes.folder_proposals import FolderProposal
 from aiq_api.routes.folder_proposals import FolderProposalsRequest
 from aiq_api.routes.folder_proposals import add_folder_proposals_routes
 from aiq_api.routes.folder_proposals import parse_proposals
@@ -123,8 +125,33 @@ def test_a_path_appears_once():
     assert proposals is not None and [p.path for p in proposals] == ["Neu"]
 
 
+def test_a_path_named_twice_in_one_answer_keeps_the_documents_of_both():
+    answer = {
+        "proposals": [
+            {"path": "08 Personal", "description": "", "ids": ["d1", "d2"]},
+            {"path": "08 personal", "description": "Persönliches", "ids": ["d3", "d4"]},
+        ]
+    }
+    proposals = parse_proposals(answer, _request())
+    assert proposals is not None
+    assert [(p.path, p.ids, p.description) for p in proposals] == [
+        ("08 Personal", ["d1", "d2", "d3", "d4"], "Persönliches")
+    ]
+
+
 def test_an_answer_without_a_proposal_list_is_no_answer():
     assert parse_proposals({"folders": []}, _request()) is None
+
+
+def test_the_fallback_keeps_the_twelve_largest_candidates_of_two_or_more_documents():
+    request = _request(documents=_documents(31))
+    candidates = [
+        FolderProposal(path=f"Neu {index}", ids=[f"d{2 * index + 1}", f"d{2 * index + 2}"]) for index in range(13)
+    ]
+    candidates.append(FolderProposal(path="Gross", ids=["d27", "d28", "d29", "d30"]))
+    candidates.append(FolderProposal(path="Solo", ids=["d31"]))
+    fallback = module._fallback(request, candidates)
+    assert [p.path for p in fallback] == ["Gross"] + [f"Neu {index}" for index in range(11)]
 
 
 def test_the_request_refuses_a_field_it_does_not_know():
@@ -303,16 +330,56 @@ async def test_every_chunk_failing_is_an_error(app, decided):
 
 
 @pytest.mark.asyncio
-async def test_an_unreadable_reduce_is_an_error_and_proposes_nothing(app, decided):
+async def test_the_same_path_from_two_chunks_keeps_the_documents_of_both(app, decided):
+    documents = _documents(150)
+    first = {"proposals": [{"path": "08 Personal", "description": "Personal", "ids": ["d1", "d2"]}]}
+    second = {"proposals": [{"path": "08 Personal", "ids": ["d101", "d102"]}]}
+    reduce = json.dumps({"folders": [{"path": "08 Personal", "description": "Personal", "merge": ["08 Personal"]}]})
+    fake, post = _fake_http(_route([("d1", json.dumps(first)), ("d101", json.dumps(second))], reduce=reduce))
+    body = (await _propose(app, fake, {**BODY, "documents": documents})).json()
+    assert body["error"] is None
+    assert [(p["path"], p["ids"]) for p in body["proposals"]] == [("08 Personal", ["d1", "d2", "d101", "d102"])]
+    reduce_user = next(
+        c.kwargs["json"]["messages"][1]["content"]
+        for c in post.call_args_list
+        if c.kwargs["json"]["messages"][0]["content"] == REDUCE_PROMPT
+    )
+    assert reduce_user.count('"path": "08 Personal"') == 1
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("reduce", [httpx.ConnectError("down"), "Ich weiß es nicht."])
+async def test_a_failed_reduce_proposes_the_grouped_candidates(app, decided, reduce):
     documents = _documents(150)
     first = {"proposals": [{"path": "Fotos", "ids": ["d1", "d2"]}]}
-    second = {"proposals": [{"path": "Bilder", "ids": ["d101", "d102"]}]}
-    fake, _post = _fake_http(
-        _route([("d1", json.dumps(first)), ("d101", json.dumps(second))], reduce="Ich weiß es nicht.")
-    )
+    second = {
+        "proposals": [
+            {"path": "Bilder", "ids": ["d101", "d102"]},
+            {"path": "fotos", "ids": ["d103", "d104"]},
+        ]
+    }
+    fake, post = _fake_http(_route([("d1", json.dumps(first)), ("d101", json.dumps(second))], reduce=reduce))
     body = (await _propose(app, fake, {**BODY, "documents": documents})).json()
-    assert body["proposals"] == []
-    assert body["error"] == "llm_response_malformed"
+    assert body["error"] is None
+    assert [(p["path"], p["ids"]) for p in body["proposals"]] == [
+        ("Fotos", ["d1", "d2", "d103", "d104"]),
+        ("Bilder", ["d101", "d102"]),
+    ]
+    assert post.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_a_verification_over_its_budget_keeps_the_proposals_without_confidences(app, monkeypatch):
+    async def slow(states, *_args, **_kwargs):
+        await asyncio.sleep(0.5)
+        return [_Answer({"f0": 0.8, "none": 0.1}) for _ in states]
+
+    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", slow)
+    monkeypatch.setattr(module, "VERIFY_BUDGET_S", 0.05)
+    fake, _post = _fake_http(_route([("d1", json.dumps(PROPOSAL))]))
+    body = (await _propose(app, fake)).json()
+    assert body["error"] is None
+    assert [(p["path"], p["ids"], p["confidences"]) for p in body["proposals"]] == [("Lagepläne", ["d1", "d2"], {})]
 
 
 @pytest.mark.asyncio
