@@ -118,6 +118,11 @@ export interface FanCard {
   card?: CitedDocument
   /** The ledger's own name for the document; the label of a bare slot. */
   name: string
+  /**
+   * A read of the office's own state through the workspace door (`shelf: 'workspace'`): `name` is the
+   * operation it ran, an identifier, so the slot is worded for the reader rather than shown as a file.
+   */
+  workspace?: boolean
   /** The ledger's display title, when it carried one. */
   title?: string
   /**
@@ -126,6 +131,9 @@ export interface FanCard {
    */
   loci?: RoundLocus[]
 }
+
+/** The shelf a workspace read carries in the ledger (`WORKSPACE_SHELF` in `tools/workspace/register.py`). */
+export const WORKSPACE_SHELF = 'workspace'
 
 /** A slot under construction — `loci` is the array the fold pushes onto. */
 type LedgerSlot = FanCard & { loci: RoundLocus[] }
@@ -166,6 +174,7 @@ export const ledgerFan = (entry: RetrievalLedgerEntry, cards: CitedDocument[]): 
       ...(card ? { card } : {}),
       name: doc.name,
       ...(doc.title ? { title: doc.title } : {}),
+      ...(doc.shelf === WORKSPACE_SHELF ? { workspace: true } : {}),
       loci: [locus],
     })
   }

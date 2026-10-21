@@ -432,7 +432,8 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
                 />
               ) : (
                 <BareSourceCard
-                  name={documentShortName(fanCard.name, fanCard.title)}
+                  name={fanCard.workspace ? fanCard.name : documentShortName(fanCard.name, fanCard.title)}
+                  {...(fanCard.workspace ? { workspace: true } : {})}
                   {...(fanCard.loci ? { loci: fanCard.loci } : {})}
                 />
               )}

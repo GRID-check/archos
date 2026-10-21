@@ -1243,6 +1243,7 @@ export const chat: typeof en.chat = {
       // damit bei jeder Wiederholung dieselbe — genau das ließ ein erneutes
       // Aufschlagen wie einen zweiten Abruf aussehen.
       roundDocRepeat: 'bereits abgerufen',
+      workspaceRead: 'Aus dem Arbeitsbereich gelesen',
       contextLabel: 'Kontext',
       sourcesTab: 'Quellen',
       sourcesTitle: 'Geprüfte Quellen',

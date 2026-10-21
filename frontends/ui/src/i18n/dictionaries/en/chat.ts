@@ -1227,6 +1227,7 @@ export const chat = {
       // The count is the whole turn's tally and therefore identical on every
       // repeat — which is what made a re-read look like a second fetch.
       roundDocRepeat: 'already retrieved',
+      workspaceRead: 'Read from the workspace',
       contextLabel: 'Context',
       sourcesTab: 'Sources',
       sourcesTitle: 'Sources examined',

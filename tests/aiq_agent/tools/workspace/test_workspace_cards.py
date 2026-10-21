@@ -201,3 +201,27 @@ def test_proposal_from_reads_only_the_documented_shape() -> None:
     assert cards.proposal_from(None) is None
     assert cards.proposal_from("propose") is None
     assert cards.proposal_from({**proposed(), "summary": "  "}) is None
+
+
+async def test_a_read_lands_in_the_herleitung_ledger_and_a_proposal_or_refusal_does_not(server, registry) -> None:
+    from aiq_agent.common.turn_status import begin_lane_capture
+    from aiq_agent.common.turn_status import end_lane_capture
+    from aiq_agent.common.turn_status import get_lane_captures
+
+    server.extend(
+        [
+            structured_answer({"projects": [{"id": "p1"}]}, '{"projects": [{"id": "p1"}]}'),
+            structured_answer(proposed()),
+            structured_answer(None, "Not allowed (HTTP 403, FORBIDDEN)", is_error=True),
+        ]
+    )
+    token = begin_lane_capture()
+    try:
+        await workspace.run_call("project-list", {})
+        await workspace.run_call("folder-rename", CALL_INPUT)
+        await workspace.run_call("project-delete", {"params": {"id": "p1"}})
+        hits = get_lane_captures()
+    finally:
+        end_lane_capture(token)
+
+    assert [(hit["name"], hit.get("shelf")) for hit in hits] == [("project-list", workspace.WORKSPACE_SHELF)]

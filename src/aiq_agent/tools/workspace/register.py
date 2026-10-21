@@ -26,6 +26,7 @@ from pathlib import Path
 from typing import Any
 
 from aiq_agent import project_context
+from aiq_agent.common.turn_status import record_lane_hit
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.retrieval_trace import emit_step_span
 from aiq_agent.turn.response import turn_answer_message_id
@@ -43,6 +44,11 @@ from .client import call_tool_result
 logger = logging.getLogger(__name__)
 
 FEATURE_TAG = "feature:workspace-mcp"
+
+#: The ``shelf`` a workspace read carries in the retrieval ledger (``common/retrieval_ledger.py``). An English
+#: token, like every shelf: the UI words it for the reader (``chat.thinking.node.workspaceRead``), and the
+#: lane's ``name`` is the operation, the identifier the read ran.
+WORKSPACE_SHELF = "workspace"
 
 #: The server's tool names (kebab-case, fixed by the contract), by this group's function.
 SERVER_TOOLS = {
@@ -138,8 +144,21 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
         return RATE_LIMITED
     if step == "call":
         text = _show_proposal(result.structured, arguments, text, outcome)
+        _record_read(result, arguments, outcome)
     _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, outcome)
     return text
+
+
+def _record_read(result: Any, arguments: dict[str, Any], outcome: dict[str, Any]) -> None:
+    """Put a read that answered into the retrieval ledger, the account of what the turn read off the office.
+
+    Only a read. A proposal is no reading (its card stands for it), and a refusal read nothing.
+    """
+    if "proposed" in outcome or result.structured is None:
+        return
+    operation = str(arguments.get("name") or "").strip()
+    if operation:
+        record_lane_hit(operation, shelf=WORKSPACE_SHELF)
 
 
 #: Appended when the server stored the proposal and this run has nowhere to draw its card. The person

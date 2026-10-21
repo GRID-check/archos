@@ -110,6 +110,18 @@ Changed alongside:
   (`TurnResult.lookup_found_nothing`). A `ruling` is still refused.
 - **Quote polarity** (`common/quote_polarity.py`): a quote whose aligned passage
   stretch negates or restricts something else is not verbatim.
+- **A work turn** (`kind: "work"`, ADR-0122) is judged by the same rule. It is
+  not a legal answer: its sentences rest on what it read (`record`) and
+  proposed (`action`), so it reaches the model's own level, and a sentence about
+  the law inside it still needs a passage. The name a proposal was filed with
+  („den Ordner Brandschutz") is the proposal's data and is left out before the
+  claim type is decided, like the zu-infinitive; an input that is long or
+  prescriptive stays in (`claim_provenance._proposal_names`).
+- **A workspace read is a step of the Herleitung.** `workspace__call` records
+  each read that answered as a lane hit (`shelf: "workspace"`, the operation as
+  its name); the Herleitung words it for the reader („Aus dem Arbeitsbereich
+  gelesen") with the operation beneath, never as a file. A proposal or a
+  refusal is not recorded.
 - **The wire** carries `claim_stamps` and `answer_confidence_version` (2).
   A turn stored without the version renders under rule 1, and deep research,
   which has no per-sentence stamps yet, keeps rule 1.
@@ -141,6 +153,9 @@ Changed alongside:
   `finalize_answer`, a record grounds a workspace answer, never a legal sentence,
   never enters the registry, last turn's read grounds nothing, the scores are written.
 * `tests/aiq_agent/common/test_citation_strictness.py`: label, locus, polarity.
+* `test_claim_provenance_pipeline.py` (work turns) and `test_claim_provenance.py`
+  (proposal names); `tests/aiq_agent/tools/workspace/test_workspace_cards.py` and
+  `SourceCard.workspace.spec.tsx` for the read in the Herleitung.
 * `tests/aiq_agent/agents/piloti/conversation/test_measurement_confidence.py`
   `TestRuleTwoKeepsTheLaunderingPathShut`: a measurement grounds the number, not the verdict.
 * `test_agent.py`: a ruling whose lookup found nothing is refused; nothing uncited is appended.
