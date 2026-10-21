@@ -31,7 +31,7 @@ import {
   isBinaryBody,
   isOversizedBody,
   isRedirectBody,
-  parseOperationInput,
+  validateOperationInput,
 } from './dispatch'
 import { type BackendOperation, callBackendOperation, toMcpContent } from './backend-operations'
 import { type AgentOperation, annotationsOf } from './operation'
@@ -317,7 +317,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
 
   try {
     if (decision === 'propose') {
-      const parsed = parseOperationInput(op, input)
+      const parsed = validateOperationInput(op, input)
       const proposal = await proposeOperation({ principal: ctx.principal, op, input: parsed })
       record(202)
       // The result shape the in-product client reads to show the card (`tools/workspace/register.py`):
@@ -333,7 +333,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
       }
     }
     const gate = readGateFor(ctx.principal)
-    const refused = await gate.beforeRead(op)
+    const refused = await gate.beforeRead(op, input)
     if (refused) {
       record(403)
       return failure(refused)

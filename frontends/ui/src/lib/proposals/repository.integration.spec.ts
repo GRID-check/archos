@@ -29,8 +29,8 @@
  *     decided one;
  *   - an organization-scoped proposal (0174) has no project, is an `operation`
  *     and nothing else, and is listed on its own shelf; one open operation
- *     call is one proposal per conversation, however it is spelled and however
- *     many run at once, and a decided one frees the call.
+ *     call is one proposal per conversation and person (0176), however it is
+ *     spelled and however many run at once, and a decided one frees the call.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -458,7 +458,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
       // The same call with its keys in another order: jsonb has one spelling per value.
       const again = await operationProposal(call({ body: { note: 'x', name: 'Pläne' }, params: { id: 'a' } }))
       expect(again).toMatchObject({ created: false, row: { id: first.row.id } })
-      expect(await inOrg(ORG, () => repo.findOpenOperationProposal(ORG, ids.conversation, call({
+      expect(await inOrg(ORG, () => repo.findOpenOperationProposal(ORG, ids.conversation, USER, call({
         body: { name: 'Pläne', note: 'x' },
         params: { id: 'a' },
       })))).toMatchObject({ id: first.row.id })
@@ -484,6 +484,20 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
       expect(
         new Set([base, otherInput, otherOperation, otherConversation].map((result) => result.row.id)).size
       ).toBe(4)
+    })
+
+    it('keeps the same call for another person apart: B’s call is never folded into A’s card (0176)', async () => {
+      const mine = await operationProposal(call({ body: { content: 'zu zweit' } }))
+      const theirs = await operationProposal(call({ body: { content: 'zu zweit' } }), { onBehalfOf: OTHER_USER })
+      expect(theirs).toMatchObject({ created: true, row: { onBehalfOf: OTHER_USER } })
+      expect(theirs.row.id).not.toBe(mine.row.id)
+      const again = await operationProposal(call({ body: { content: 'zu zweit' } }), { onBehalfOf: OTHER_USER })
+      expect(again).toMatchObject({ created: false, row: { id: theirs.row.id } })
+      expect(
+        await inOrg(ORG, () =>
+          repo.findOpenOperationProposal(ORG, ids.conversation, OTHER_USER, call({ body: { content: 'zu zweit' } }))
+        )
+      ).toMatchObject({ id: theirs.row.id })
     })
 
     it('frees the call once the proposal is decided', async () => {

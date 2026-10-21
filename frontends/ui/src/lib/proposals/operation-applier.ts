@@ -11,8 +11,9 @@
  * needs nothing but the right to read it.
  *
  * Two outcomes, as for every kind (`./appliers.ts`). What belongs to the
- * proposal is a failed result with the reason: the operation left the catalog
- * or became read-only since it was proposed, its input no longer fits, or the
+ * proposal is a failed result with the reason: the operation left the catalog,
+ * or became read-only, sensitive or hidden from Piloti since it was proposed,
+ * its input no longer fits, or the
  * route answered with a refusal (its own message). A refusal of the decider is
  * not special-cased: the route's 403 is the route's message, and the proposal
  * is `failed` with it.
@@ -21,15 +22,26 @@
 import 'server-only'
 import { UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { callOperation, OperationInputError, parseOperationInput } from '@/lib/agent-api/dispatch'
+import { callOperation, OperationInputError, validateOperationInput } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
+import { PILOTI_HIDDEN_DOMAINS } from '@/lib/agent-api/policy'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
-/** Why `name` cannot be applied as a proposal, or null when it can: it exists and it writes. */
+/**
+ * Why `name` cannot be applied as a proposal, or null when it can: it exists, it
+ * writes, and Piloti may propose it. Every operation proposal is Piloti's
+ * (`proposeOperation` files them), and Piloti never proposes a sensitive
+ * operation nor one of a domain it does not see (`policy.ts`). Asked again
+ * here, at the click, because the catalog may have changed since the proposal
+ * was filed: an operation that became sensitive, or moved to a hidden domain,
+ * since then is not run on a card the agent worded.
+ */
 function unusableReason(op: AgentOperation | undefined, name: string): string | null {
   if (!op) return `The operation ${name} no longer exists`
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
+  if (op.sensitivity) return `The operation ${name} is not one Piloti may propose; make the change in Piloti yourself`
+  if (PILOTI_HIDDEN_DOMAINS.has(op.domain)) return `The operation ${name} is not one Piloti may propose`
   return null
 }
 
@@ -48,7 +60,7 @@ export function requireProposableOperation(payload: OperationPayload): void {
   const found = usableOperation(payload.operation)
   if ('reason' in found) throw new UnprocessableError(found.reason, { reason: 'proposal-operation-unusable' })
   try {
-    parseOperationInput(found.op, payload.input)
+    validateOperationInput(found.op, payload.input)
   } catch (error) {
     if (error instanceof OperationInputError) {
       throw new UnprocessableError(error.message, { reason: 'proposal-operation-input' })

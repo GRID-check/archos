@@ -48,15 +48,18 @@ export interface OperationCall {
 }
 
 /**
- * The still-`proposed` operation proposal of this conversation for this call, or
- * null (0174). `payload->'input'` is compared as jsonb, which has one spelling
- * per value, so key order and white space do not tell two calls apart; this is
- * the predicate of `uniq_proposed_changes_open_operation`.
+ * The still-`proposed` operation proposal of this conversation for this call,
+ * made for this person, or null (0174, 0176). `payload->'input'` is compared as
+ * jsonb, which has one spelling per value, so key order and white space do not
+ * tell two calls apart; this is the predicate of
+ * `uniq_proposed_changes_open_operation`. The person is part of it: in a
+ * conversation two people ask in, B's call is B's card, never A's.
  */
-const openOperationCall = (organizationId: string, conversationId: string, call: OperationCall) =>
+const openOperationCall = (organizationId: string, conversationId: string, onBehalfOf: string, call: OperationCall) =>
   and(
     eq(proposedChanges.organizationId, organizationId),
     eq(proposedChanges.originConversationId, conversationId),
+    eq(proposedChanges.onBehalfOf, onBehalfOf),
     eq(proposedChanges.kind, 'operation'),
     eq(proposedChanges.status, 'proposed'),
     sql`${proposedChanges.payload}->>'operation' = ${call.operation}`,
@@ -66,6 +69,7 @@ const openOperationCall = (organizationId: string, conversationId: string, call:
 export async function findOpenOperationProposal(
   organizationId: string,
   conversationId: string,
+  onBehalfOf: string,
   call: OperationCall
 ): Promise<ProposedChangeRow | null> {
   const db = getDb()
@@ -73,7 +77,7 @@ export async function findOpenOperationProposal(
     db
       .select()
       .from(proposedChanges)
-      .where(openOperationCall(organizationId, conversationId, call))
+      .where(openOperationCall(organizationId, conversationId, onBehalfOf, call))
       .orderBy(proposedChanges.createdAt)
       .limit(1)
   )
@@ -108,7 +112,7 @@ export async function insertProposedChange(input: NewProposedChange): Promise<In
       const [open] = await db
         .select()
         .from(proposedChanges)
-        .where(openOperationCall(organizationId, input.originConversationId, call))
+        .where(openOperationCall(organizationId, input.originConversationId, input.onBehalfOf, call))
         .orderBy(proposedChanges.createdAt)
         .limit(1)
       // The conflict was on this call's open row, so it is there: a miss is a bug, not a race.

@@ -50,7 +50,8 @@ vi.mock('@/lib/projects/service', () => ({
   MEMORY_WRITE_PERMISSIONS: ['project:memory:write', 'project:edit'],
 }))
 vi.mock('@/lib/projects/folders', () => ({ folderPathKey: vi.fn() }))
-vi.mock('@/lib/authz/folder-access-rule', () => ({
+vi.mock('@/lib/authz/folder-access-rule', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/authz/folder-access-rule')>()),
   DOCUMENT_WRITE_PERMISSIONS: ['project:documents:write'],
 }))
 vi.mock('@/lib/project-profile/intake-definition', () => ({
@@ -66,6 +67,14 @@ vi.mock('@/lib/proposals/repository', () => ({
   findOpenOperationProposal: vi.fn(),
   listShelfProposals: vi.fn(),
 }))
+
+// Where a target lives is SQL; the real-path proof is `operation-proposals.integration.spec.ts`.
+vi.mock('./operation-targets-repository', () => ({
+  findTargetPlace: vi.fn(async () => ({ projectId: '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f', conversationId: null })),
+  findProjectName: vi.fn(async () => 'Neubau Musterstraße'),
+}))
+vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleTo: vi.fn(async () => true) }))
+vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 
 const dispatch = vi.hoisted(() => ({ callOperation: vi.fn() }))
 vi.mock('./dispatch', async (original) => ({
@@ -132,7 +141,7 @@ import {
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { requireProposable, type KindPayload } from '@/lib/proposals/kinds'
 import { applyProposal, createProposal, dismissProposal, getProposal, listOpenProposals } from '@/lib/proposals/service'
-import { proposeOperation } from './operation-proposals'
+import { MAX_PROPOSED_INPUT_CHARS, proposeOperation } from './operation-proposals'
 import type { AgentOperation } from './operation'
 
 const PROJECT = '6f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f'
@@ -179,12 +188,13 @@ beforeEach(() => {
   vi.mocked(requireResourceAccess).mockReset()
   vi.mocked(findProposedChange).mockImplementation(async (_org, id) => store.get(id) ?? null)
   vi.mocked(findOpenOperationProposal).mockImplementation(
-    async (_org, conversationId, call) =>
+    async (_org, conversationId, onBehalfOf, call) =>
       [...store.values()].find(
         (row) =>
           row.kind === 'operation' &&
           row.status === 'proposed' &&
           row.originConversationId === conversationId &&
+          row.onBehalfOf === onBehalfOf &&
           (row.payload as { operation: string }).operation === call.operation &&
           JSON.stringify((row.payload as { input: unknown }).input) === JSON.stringify(call.input)
       ) ?? null
@@ -280,7 +290,7 @@ describe('proposeOperation', () => {
 
     expect(again).toEqual(first)
     expect(insertProposedChange).toHaveBeenCalledTimes(1)
-    expect(findOpenOperationProposal).toHaveBeenCalledWith('org_1', 'conv_1', {
+    expect(findOpenOperationProposal).toHaveBeenCalledWith('org_1', 'conv_1', 'user_1', {
       operation: 'folder-rename',
       input: INPUT,
       summary: first.summary,
@@ -303,6 +313,44 @@ describe('proposeOperation', () => {
     const afterDecision = await propose()
     expect(afterDecision.proposalId).not.toBe(first.proposalId)
     expect(insertProposedChange).toHaveBeenCalledTimes(4)
+  })
+
+  it('keeps the turn’s answer as the proposal’s origin message (x-grid-answer-message-id)', async () => {
+    const answerMessageId = '0d9f8e7c-6b5a-4c3d-9e2f-1a0b9c8d7e6f'
+    await proposeOperation({
+      principal: { session: ASKER, conversationId: 'conv_1', projectId: PROJECT, answerMessageId },
+      op: FOLDER_RENAME,
+      input: INPUT,
+    })
+    expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ originMessageId: answerMessageId }))
+  })
+
+  it('refuses a call naming a project the asker cannot read, before anything is filed (confused deputy)', async () => {
+    vi.mocked(requireProjectAccess).mockRejectedValue(new NotFoundError())
+    await expect(propose()).rejects.toBeInstanceOf(NotFoundError)
+    expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
+  it('names nested inputs in the summary and counts the ones it leaves out', async () => {
+    const op = { ...ORG_MEMORY_CREATE, body: z.object({ content: z.string(), tags: z.array(z.string()), meta: z.object({ a: z.string() }), x: z.string(), y: z.string() }) }
+    catalog = [...CATALOG, op]
+    const { summary } = await proposeOperation({
+      principal: { session: ASKER, conversationId: 'conv_1' },
+      op,
+      input: { body: { tags: ['a', 'b', 'c'], meta: { a: '1' }, content: 'Holz', x: '1', y: '2' } },
+    })
+    expect(summary).toBe('Add a note to the office’s memory (tags: 3 items, meta: 1 field, content: Holz, x: 1, +1 more)')
+  })
+
+  it('refuses an input longer than a person can read through on the card', async () => {
+    await expect(
+      proposeOperation({
+        principal: { session: ASKER, conversationId: 'conv_1' },
+        op: ORG_MEMORY_CREATE,
+        input: { body: { content: 'x'.repeat(MAX_PROPOSED_INPUT_CHARS) } },
+      })
+    ).rejects.toMatchObject({ status: 422, details: { reason: 'proposal-input-too-long' } })
+    expect(insertProposedChange).not.toHaveBeenCalled()
   })
 
   it('tells nobody again for the repeat: the inbox and the audit trail heard of the first only', async () => {
@@ -482,6 +530,24 @@ describe('applying an operation proposal', () => {
     catalog = []
     const gone = await applyProposal(ACCEPTER, second.proposalId, new Request('https://grid.test'))
     expect(gone.results?.[0]?.reason).toMatch(/no longer exists/)
+    expect(dispatch.callOperation).not.toHaveBeenCalled()
+  })
+
+  it('refuses an operation that turned sensitive or moved to a domain Piloti does not see since it was proposed', async () => {
+    const { proposalId } = await propose()
+    const second = await proposeOperation({
+      principal: { session: ASKER, conversationId: 'conv_1', projectId: PROJECT },
+      op: FOLDER_RENAME,
+      input: { ...INPUT, body: { name: 'Pläne 2' } },
+    })
+    catalog = [{ ...FOLDER_RENAME, sensitivity: 'control' }]
+    const sensitive = await applyProposal(ACCEPTER, proposalId, new Request('https://grid.test'))
+    expect(sensitive.status).toBe('failed')
+    expect(sensitive.results?.[0]?.reason).toMatch(/not one Piloti may propose/)
+
+    catalog = [{ ...FOLDER_RENAME, domain: 'platform' }]
+    const hidden = await applyProposal(ACCEPTER, second.proposalId, new Request('https://grid.test'))
+    expect(hidden.status).toBe('failed')
     expect(dispatch.callOperation).not.toHaveBeenCalled()
   })
 

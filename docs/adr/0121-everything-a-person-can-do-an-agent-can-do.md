@@ -125,7 +125,12 @@ The agent acts for a person, and the person decides what changes.
 - **Piloti in-product never applies a write itself.** Every write it attempts
   becomes an `operation` proposal, a server object the person accepts, which runs
   as the accepting person, or dismisses (ADR-0105). A read runs at once, unless
-  the conversation is shared.
+  the conversation is shared. A proposal may only name what the person whose
+  turn it is may read: otherwise a member's Piloti could put a change to a
+  project the member cannot see in front of an admin, whose click would apply
+  it. The card names each target for its reader and shows every input whole;
+  „Apply“ waits until each value shown in part has been unfolded, so nobody
+  accepts text they were not shown.
 
 #### Shared conversations
 
@@ -178,7 +183,8 @@ the person says yes or no to each such call; the guards are how that holds:
   included;
 - Piloti in-product neither sees nor proposes them: one click on a card the
   agent worded is not the confirmation they need. It does not see the `platform`
-  domain at all;
+  domain at all. Applying an `operation` proposal checks both again, so an
+  operation that became sensitive or hidden after it was proposed is not run;
 - a secret is write-only and never returned: the key list answers a masked
   hint (the last four characters) and a fingerprint, and `secret-operations.spec.ts`
   holds every result, refusal and telemetry event of the key operations free of

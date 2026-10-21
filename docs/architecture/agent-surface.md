@@ -481,8 +481,16 @@ read runs, unless the conversation is shared ([above](#shared-conversations)). A
 write never runs: it becomes an `operation` proposal, shown as a card,
 that the person accepts or dismisses (ADR-0105). The accepting person's session is
 the one the operation runs in. A turn in no project files the proposal on the
-organization, and the same call repeated while its proposal is open files nothing
-new. The server answers a proposed write with the short text the model reads and
+organization, and the same call repeated for the same person while its proposal
+is open files nothing new (0176). The proposal is filed in the person's tenant
+scope, carries the turn's answer as its origin message, and is refused (404)
+when the call names a project, document, folder or conversation the person may
+not read: a member's Piloti cannot put a change to a project the member cannot
+see in front of an admin who can. An input longer than
+`MAX_PROPOSED_INPUT_CHARS` (20,000 characters of JSON) is refused (422). The
+card names each target for its reader, by name where they may read it, shows
+every input whole, and keeps „Apply“ waiting until each value shown in part has
+been unfolded ([`proposed-changes.md`](proposed-changes.md#operation)). The server answers a proposed write with the short text the model reads and
 `structuredContent` `{ decision: 'propose', proposalId, summary, operation }`;
 `workspace__call` shows the card from that shape
 ([`proposed-changes.md`](proposed-changes.md#operation)).

@@ -1693,6 +1693,45 @@
                 "summary"
               ],
               "additionalProperties": false
+            },
+            "targets": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "project",
+                      "document",
+                      "folder",
+                      "conversation",
+                      "bim_model",
+                      "upload_batch",
+                      "proposal"
+                    ]
+                  },
+                  "id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "type",
+                  "id",
+                  "name"
+                ],
+                "additionalProperties": true
+              }
             }
           },
           "required": [
@@ -2707,6 +2746,45 @@
                     "summary"
                   ],
                   "additionalProperties": false
+                },
+                "targets": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "project",
+                          "document",
+                          "folder",
+                          "conversation",
+                          "bim_model",
+                          "upload_batch",
+                          "proposal"
+                        ]
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "type",
+                      "id",
+                      "name"
+                    ],
+                    "additionalProperties": true
+                  }
                 }
               },
               "required": [

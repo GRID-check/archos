@@ -58,6 +58,8 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
+import { findOperation } from '@/lib/agent-api/catalog'
+import { describeTargets } from '@/lib/agent-api/operation-targets'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordDecisionScore, type Decision } from '@/lib/langfuse/decision-score'
@@ -141,8 +143,8 @@ export interface CreateProposalInput {
  * read. Proposing changes nothing, so reading is enough; deciding takes the
  * kind's write. The same card of the same answer a second time returns the
  * first proposal as it stands, and tells nobody again; so does an operation
- * proposal repeated in its conversation while the first is still `proposed`
- * (the same operation, the same input).
+ * proposal repeated in its conversation for the same person while the first is
+ * still `proposed` (the same operation, the same input, 0174 and 0176).
  */
 export async function createProposal(session: AuthorizedSession, input: CreateProposalInput): Promise<ProposedChangeRow> {
   // Any member reads the Büroablage; a project is read with `project:view`.
@@ -154,7 +156,7 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
     const conversation = await findConversationInOrg(input.conversationId, session.organizationId)
     if (!conversation) throw new NotFoundError('Conversation not found')
     if (typed.kind === 'operation') {
-      const open = await findOpenOperationProposal(session.organizationId, input.conversationId, typed.payload)
+      const open = await findOpenOperationProposal(session.organizationId, input.conversationId, session.userId, typed.payload)
       if (open) return open
     }
   }
@@ -365,7 +367,12 @@ async function toView(
   }
   // Only a project's proposal has a project; the Büroablage's and the organization's have none.
   const projectId = row.scope === 'project' ? projectOf(row) : row.projectId
-  return { ...base, ...parseKindPayload(row.kind, row.payload), projectId }
+  const typed = parseKindPayload(row.kind, row.payload)
+  if (typed.kind !== 'operation') return { ...base, ...typed, projectId }
+  // What the call names, by name where THIS reader may read it, so the card never shows only an id.
+  const op = findOperation(typed.payload.operation)
+  const targets = op ? await describeTargets(session, op, typed.payload.input) : []
+  return { ...base, ...typed, projectId, targets }
 }
 
 export async function getProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeView> {

@@ -1233,6 +1233,13 @@
       "when": 1792454417044,
       "tag": "0175_task_run_inbox_types",
       "breakpoints": true
+    },
+    {
+      "idx": 176,
+      "version": "7",
+      "when": 1792540817044,
+      "tag": "0176_open_operation_per_person",
+      "breakpoints": true
     }
   ]
 }

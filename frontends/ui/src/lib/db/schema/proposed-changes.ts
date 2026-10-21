@@ -98,11 +98,13 @@ export const proposedChanges = pgTable(
       'proposed_changes_organization_operation',
       sql`${table.scope} <> 'organization' OR ${table.kind} = 'operation'`
     ),
-    // One open call, one proposal (0174): the same operation with the same input, in one conversation.
+    // One open call, one proposal (0174): the same operation with the same input, in one conversation,
+    // for one person (0176).
     openOperationUidx: uniqueIndex('uniq_proposed_changes_open_operation')
       .on(
         table.organizationId,
         table.originConversationId,
+        table.onBehalfOf,
         sql`(${table.payload}->>'operation')`,
         sql`md5((${table.payload}->'input')::text)`
       )

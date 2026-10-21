@@ -95,9 +95,9 @@ The CHECKs hold the lifecycle, so no code path can break it:
   missing key as a refusal, not as a pass); an organization-scoped one is an
   `operation` (`proposed_changes_organization_operation`, 0174).
 - One open call is one proposal: of two `operation` proposals in one
-  conversation with the same operation and the same input, only one can be
-  `proposed` (`uniq_proposed_changes_open_operation`, 0174). Deciding the first
-  frees the call.
+  conversation for the same person with the same operation and the same input,
+  only one can be `proposed` (`uniq_proposed_changes_open_operation`, 0174,
+  with `on_behalf_of` since 0176). Deciding the first frees the call.
 
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
 against a real PostgreSQL, applies the down migrations, and re-applies the up
@@ -201,9 +201,17 @@ Payload (`operationPayloadSchema`): `operation` (a catalog name, `lib/agent-api/
 
 Piloti's writes through the MCP server are never applied: `proposeOperation`
 (`lib/agent-api/operation-proposals.ts`) files this kind through `createProposal`,
-the service the internal route uses, in the turn's project and conversation. It is
-refused (422) when the operation only reads or is unknown, when the input does not
-fit the operation's schemas. The kind has no create in
+the service the internal route uses, in the turn's project and conversation, in
+the person's tenant scope (the MCP route opens none), with the turn's answer
+(`x-grid-answer-message-id`) as its origin message. It is refused (422) when the
+operation only reads or is unknown, when the input does not fit the operation's
+schemas, or when the input is longer than `MAX_PROPOSED_INPUT_CHARS` (20,000
+characters of JSON: the card shows all of it). It is refused (403) for a
+sensitive operation, and (404) when the call names a project, document, folder
+or conversation the person whose turn it is may not read
+(`requireTargetsReadable`, `lib/agent-api/operation-targets.ts`): otherwise a
+member's Piloti could put a change to a project the member cannot see in front
+of an admin who can, and the admin's click would apply it. The kind has no create in
 `internalProposalRequestSchema`: nothing but `proposeOperation` makes one.
 
 **No project, the organization's.** A turn in no project still proposes: the
@@ -212,10 +220,11 @@ that are the office's and not a project's (its memory, a skill). It is read
 through the conversation it was made in (`viewer`), or, made in none, by the
 person it was made for alone, and it is listed on `GET /api/proposals?shelf=organization`.
 
-**One open call, one proposal.** A model that repeats a call, the same
-operation with the same input (compared as jsonb, so key order does not
-matter), while its proposal is still `proposed` gets that proposal back and
-files nothing: no second inbox item, no second audit line.
+**One open call, one proposal.** A model that repeats a call for the same
+person, the same operation with the same input (compared as jsonb, so key order
+does not matter), while its proposal is still `proposed` gets that proposal back
+and files nothing: no second inbox item, no second audit line. Another person's
+identical call in the same conversation is their own proposal (0176).
 `createProposal` looks first; the unique index `uniq_proposed_changes_open_operation`
 settles two identical calls running at once. A decided proposal frees the call,
 so asking again after a „no" is a new proposal.
@@ -234,8 +243,8 @@ person's inbox.
 Gate: `project:view`, and for an organization-scoped one nothing beyond reading
 it. The accepting person's own authorization is the
 operation's route, which runs in their session. Applier: `applyOperation`
-(`operation-applier.ts`) re-checks that the operation still exists and writes,
-then calls `callOperation(op, input, acceptingSession)`. One result; a route
+(`operation-applier.ts`) re-checks that the operation still exists, writes, has
+no `sensitivity` and is not in a domain Piloti does not see, then calls `callOperation(op, input, acceptingSession)`. One result; a route
 refusal (any non-2xx) is a failed result carrying the route's own `error`
 message, so the status is `failed` and the card says why. Dismissing runs nothing.
 

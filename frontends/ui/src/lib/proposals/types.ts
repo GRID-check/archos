@@ -196,6 +196,32 @@ export const operationPayloadSchema = z
   .strict()
 export type OperationPayload = z.infer<typeof operationPayloadSchema>
 
+/** What a proposed operation's input may name: the targets `lib/agent-api/operation-targets.ts` reads from it. */
+export const OPERATION_TARGET_TYPES = [
+  'project',
+  'document',
+  'folder',
+  'conversation',
+  'bim_model',
+  'upload_batch',
+  'proposal',
+] as const
+export type OperationTargetType = (typeof OPERATION_TARGET_TYPES)[number]
+
+/**
+ * One target of a proposed operation as the card shows it to ITS reader: the
+ * name when that reader may read it (a project, a document), else null and the
+ * card shows the id. Resolved per reader when the proposal is read, never
+ * stored, so a card in a conversation never names to one reader what only the
+ * proposer could see.
+ */
+export const operationTargetViewSchema = z.object({
+  type: z.enum(OPERATION_TARGET_TYPES),
+  id: z.string(),
+  name: z.string().nullable(),
+})
+export type OperationTargetView = z.infer<typeof operationTargetViewSchema>
+
 /** What applying one item did, in words a person reads in the card. */
 export const proposedChangeResultSchema = z.object({
   label: z.string(),
@@ -249,7 +275,12 @@ export const proposedChangeViewSchema = z.discriminatedUnion('kind', [
   proposedChangeBaseSchema.extend({ kind: z.literal('file_operation'), payload: fileOperationPayloadSchema }),
   proposedChangeBaseSchema.extend({ kind: z.literal('memory'), payload: memoryPayloadSchema }),
   proposedChangeBaseSchema.extend({ kind: z.literal('project_profile'), payload: projectProfilePayloadSchema }),
-  proposedChangeBaseSchema.extend({ kind: z.literal('operation'), payload: operationPayloadSchema }),
+  proposedChangeBaseSchema.extend({
+    kind: z.literal('operation'),
+    payload: operationPayloadSchema,
+    /** What the call names, for this reader (`operationTargetViewSchema`); absent from a client that predates it. */
+    targets: z.array(operationTargetViewSchema).optional(),
+  }),
 ])
 export type ProposedChangeView = z.infer<typeof proposedChangeViewSchema>
 
