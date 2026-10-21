@@ -7,7 +7,7 @@
 import 'server-only'
 import { and, desc, eq, gte, inArray, lte } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { documents, documentVersions, pilotiAsks, type PilotiAskRow } from '@/lib/db/schema'
+import { documents, documentVersions, messages, pilotiAsks, type PilotiAskRow } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 import type { AskDocument, AskState } from './ask-wire'
@@ -83,6 +83,26 @@ export async function hasAskedInConversation(
       .limit(1),
   )
   return row !== undefined
+}
+
+/**
+ * Delete the question an ask wrote into a thread it continued, when its turn
+ * never started: nobody will answer it, and the thread should not show it.
+ * The message's id is the ask's.
+ */
+export async function deleteAskQuestion(organizationId: string, conversationId: string, askId: string): Promise<void> {
+  const db = getDb()
+  await withTenant({ organizationId }, () =>
+    db
+      .delete(messages)
+      .where(
+        and(
+          eq(messages.organizationId, organizationId),
+          eq(messages.conversationId, conversationId),
+          eq(messages.id, askId),
+        ),
+      ),
+  )
 }
 
 /** `submitted` to `working`, once the turn runs. False when the ask had moved on (its outcome came first). */

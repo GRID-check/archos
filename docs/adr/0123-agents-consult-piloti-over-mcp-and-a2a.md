@@ -77,10 +77,23 @@ domain, because an ask is a conversation.
 5. The chat socket posts every headless turn's outcome to
    `/api/internal/turns/outcome`. A turn that is not a wake is looked up as an
    ask there and ends it (`recordAskOutcome`), on whichever replica.
-6. The request waits up to 40 seconds (`ASK_WAIT_SECONDS`) by reading the row. An
-   ask that ended answers 200 with the answer, which is the message the turn
-   wrote, read by the id the agent derives (`answer_message_id`); one still
-   running answers 202 and the agent polls.
+6. The request waits up to 40 seconds (`ASK_WAIT_SECONDS`; `waitSeconds` in the
+   body asks for less, 0 for none) by reading the row. An ask that ended answers
+   200 with the answer, which is the message the turn wrote, read by the id the
+   agent derives (`answer_message_id`); one still running answers 202 and the
+   agent polls.
+
+An ask whose turn never started (a spent budget, a busy thread, a server that
+refused it, a deployment with no chat service) ends `rejected` or `failed` with
+the reason and takes back what it wrote: the question, and the thread when the
+ask opened it (its row goes with it, so a later read of the id is a 404). A
+throw while starting ends it `failed` too, never a 500 that leaves it
+`submitted`. A cancel ends a `submitted` ask before it sends the stop, and the
+start reads the row again before it sends the turn, so a cancel that lands
+first sends none; a turn sent while the ask was canceled is stopped. A cancel
+the server took answers `canceled` within five seconds even when the turn's own
+notice is late. An ask still open after `GRID_PILOTI_ASK_MAX_SECONDS` (30
+minutes) is ended `failed` when it is next read: its outcome notice was lost.
 
 The states are the A2A task states, lowercase: `submitted`, `working`,
 `completed`, `canceled`, `failed`, `rejected`. `input-required` does not occur,
@@ -194,7 +207,8 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog
   blocking A2A `SendMessage` for up to five minutes. Both poll the database once
   every 750 ms while they wait.
 * Bad, because an ask whose turn never reports its end (a lost outcome notice)
-  stays `working` until the agent cancels it. There is no reaper yet.
+  reads `working` for up to thirty minutes, and is ended only when somebody
+  reads it after that; nothing sweeps the table.
 * Bad, because an A2A client that cannot send a `resource` parameter at all
   gets a token with no audience of ours and is refused.
 * Neutral: legacy 0.3 clients that read the agent card in its 0.3 shape find a
@@ -224,4 +238,4 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog
   the [JavaScript SDK](https://github.com/a2aproject/a2a-js).
 * The user guide: [`../user-guides/connect-your-agent.md`](../user-guides/connect-your-agent.md#ask-piloti).
 * **Revisit when** WorkOS Agent Auth replaces the bearer audience, when a lost
-  outcome needs a reaper, or when A2A clients ask for push notifications.
+  outcome needs a sweep rather than expiry on read, or when A2A clients ask for push notifications.

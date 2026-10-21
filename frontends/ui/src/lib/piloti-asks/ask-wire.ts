@@ -38,6 +38,13 @@ export const MAX_QUESTION_CHARS = 8_000
 /** How long the asking request waits for the answer before it answers `working` and the agent polls. */
 export const ASK_WAIT_SECONDS = 40
 
+/**
+ * How long an ask may stay open before it is ended `failed` when it is next read:
+ * the turn's outcome notice was lost (a replica died mid-turn). Past the longest
+ * a turn runs; `GRID_PILOTI_ASK_MAX_SECONDS` overrides it.
+ */
+export const DEFAULT_ASK_MAX_SECONDS = 1_800
+
 export const createAskSchema = z
   .object({
     question: z
@@ -56,6 +63,16 @@ export const createAskSchema = z
       .describe(
         'Continue an earlier ask: its conversationId, from piloti-ask-create or piloti-ask-get. ' +
           'Piloti then sees the earlier questions and answers. Omit to start a new conversation.',
+      ),
+    waitSeconds: z
+      .number()
+      .int()
+      .min(0)
+      .max(ASK_WAIT_SECONDS)
+      .optional()
+      .describe(
+        `How long to wait for the answer before returning (default and most ${ASK_WAIT_SECONDS}); 0 returns the ` +
+          'ask at once, and piloti-ask-get reads it later.',
       ),
   })
   .strict()

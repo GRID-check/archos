@@ -372,6 +372,14 @@ An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own
 | `GRID_WAKE_MAX_PER_MARK_HOUR` | No | `6` | Most wakes of Piloti one Anmerkung gets in a rolling hour. Counted over the `piloti_wakes` rows that were let through, at enqueue and again when the job is claimed; a held wake is recorded as `suppressed` (`cap:mark-hour`) and audited as `piloti.wake.suppressed`. `0` lets none through. |
 | `GRID_WAKE_MAX_PER_PERSON_DAY` | No | `50` | Most wakes one person's acts cause in a rolling day, across every document of the organization. Held the same way (`cap:person-day`). |
 
+### Asks to Piloti (ADR-0123)
+
+An agent asks Piloti through `POST /api/piloti-asks` (the MCP operation `piloti-ask-create`, the A2A door's `SendMessage`); the BFF that takes the ask opens the chat socket as `bff-jobs` does for a wake, so it reads the same `BACKEND_CHAT_URL` and signs with `GRID_INTERNAL_API_TOKEN`. Without either, an ask ends `failed` with the reason, never a 500.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GRID_PILOTI_ASK_MAX_SECONDS` | No | `1800` | How long an ask may stay `submitted` or `working` before the next read of it (`piloti-ask-get`, a cancel) ends it `failed`: its turn's outcome notice never arrived, as when a replica died mid-turn. Above the longest a turn runs (deep research stops at 1200 s, and an ask ends when its turn hands off to it). |
+
 ---
 
 ## Decision model (ADR-0064)

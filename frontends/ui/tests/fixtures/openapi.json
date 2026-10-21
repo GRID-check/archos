@@ -13041,6 +13041,10 @@
                   "conversationId": {
                     "type": "string",
                     "description": "Continue an earlier ask: its conversationId, from piloti-ask-create or piloti-ask-get. Piloti then sees the earlier questions and answers. Omit to start a new conversation."
+                  },
+                  "waitSeconds": {
+                    "type": "integer",
+                    "description": "How long to wait for the answer before returning (default and most 40); 0 returns the ask at once, and piloti-ask-get reads it later."
                   }
                 },
                 "required": [

@@ -107,6 +107,36 @@ describe.skipIf(!url)('asks against Postgres', () => {
     expect(await as(OTHER_ORG, () => repo.findAskById(ask.id))).toBeNull()
   })
 
+  it('takes back only the question of the ask it names, in its own organization', async () => {
+    const ask = await newAsk()
+    const other = randomUUID()
+    const insertQuestion = (id: string) =>
+      as(ORG, () =>
+        db.execute(sql`INSERT INTO messages (id, conversation_id, organization_id, role, content)
+                       VALUES (${id}::uuid, ${THREAD}, ${ORG}, 'user', 'Und?')`),
+      )
+    await insertQuestion(ask.id)
+    await insertQuestion(other)
+    const count = (id: string) =>
+      as(ORG, async () =>
+        Number(Array.from(await db.execute<{ n: number }>(sql`SELECT count(*)::int AS n FROM messages WHERE id = ${id}::uuid`))[0]?.n),
+      )
+    await as(OTHER_ORG, () => repo.deleteAskQuestion(OTHER_ORG, THREAD, ask.id))
+    expect(await count(ask.id)).toBe(1)
+    await as(ORG, () => repo.deleteAskQuestion(ORG, THREAD, ask.id))
+    expect(await count(ask.id)).toBe(0)
+    expect(await count(other)).toBe(1)
+  })
+
+  it('goes with the thread it opened: deleting the conversation deletes the ask', async () => {
+    const thread = `s_${randomUUID().replace(/-/g, '_')}`
+    await as(ORG, () => db.execute(sql`INSERT INTO conversations (id, organization_id, created_by) VALUES (${thread}, ${ORG}, ${ANNA})`))
+    const ask = await newAsk(ORG, thread)
+    const { deleteConversationInOrg } = await import('@/lib/conversations/repository')
+    await as(ORG, () => deleteConversationInOrg(thread, ORG))
+    expect(await as(ORG, () => repo.findAsk(ORG, ask.id))).toBeNull()
+  })
+
   it('lists no documents for an ask that filed none', async () => {
     const ask = await newAsk()
     expect(await as(ORG, () => repo.listAskDocuments(ask, { kind: 'member', userId: ANNA }))).toEqual([])
