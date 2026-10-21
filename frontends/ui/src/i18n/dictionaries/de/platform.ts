@@ -869,7 +869,6 @@ export const platform: typeof en.platform = {
     emptyTitle: 'Noch keine Lektionen',
     emptyBody:
       'Wenn Nutzerinnen und Nutzer Antworten als nicht hilfreich markieren, werden die Meldungen hier zu Lektionen destilliert — automatisch, und jede bis zum Feedback dahinter nachvollziehbar.',
-    updated: 'Lektion aktualisiert.',
     updateError: 'Die Lektion konnte nicht aktualisiert werden.',
     groups: {
       candidate: 'Zur Prüfung zurückgehalten',
@@ -1096,7 +1095,6 @@ export const platform: typeof en.platform = {
     note: 'Änderungsnotiz',
     notePlaceholder: 'Warum diese Preisliste (optional)',
     save: 'Preisliste speichern',
-    saved: 'Preisliste gespeichert. Sie gilt ab der nächsten Anfrage.',
     saveError: 'Die Preisliste konnte nicht gespeichert werden.',
     loadError: 'Die Preisliste konnte nicht geladen werden.',
     confirmTitle: 'Preisliste für alle Organisationen ändern?',

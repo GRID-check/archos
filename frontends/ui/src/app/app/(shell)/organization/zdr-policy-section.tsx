@@ -65,8 +65,9 @@ export const ZdrPolicySection: FC<{
         return
       }
       if (!res.ok) throw new Error(String(res.status))
-      const body = (await res.json()) as { zdrOnly: boolean }
-      toast.success(body.zdrOnly ? t('models.zdrEnabled') : t('models.zdrDisabled'))
+      // No success toast: the switch lands in its new position once the
+      // configuration is re-read, and the coverage line under it follows.
+      // That is the confirmation, on the control the admin pressed.
       await onChanged()
     } catch {
       toast.error(t('models.zdrError'))

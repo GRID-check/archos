@@ -172,11 +172,9 @@ describe('PlatformPricingCard', () => {
     await retype('Margin multiplier', '3')
     await saveThroughConfirm()
 
-    await waitFor(() =>
-      expect(toast.success).toHaveBeenCalledWith(
-        'Price list saved. It applies from the next request.'
-      )
-    )
+    // The Save reports it, in place: no toast restating what the card says.
+    expect(await screen.findByRole('button', { name: 'Saved' })).toHaveAttribute('aria-disabled', 'true')
+    expect(toast.success).not.toHaveBeenCalled()
     expect(onSaved).toHaveBeenCalledTimes(1)
     // One GET (the mount) and one PUT: no second GET, and no skeleton.
     expect(fetchMock).toHaveBeenCalledTimes(2)

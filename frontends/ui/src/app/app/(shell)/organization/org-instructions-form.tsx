@@ -29,6 +29,7 @@ import { type FC, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
+import { SaveButton } from '@/components/form/save-button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Textarea } from '@/components/ui/textarea'
@@ -48,6 +49,8 @@ export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstr
   const [text, setText] = useState(initialInstructions ?? '')
   const [baseline, setBaseline] = useState(initialInstructions ?? '')
   const [saving, setSaving] = useState(false)
+  // Whether this session wrote what the box now holds: the Save reports it.
+  const [savedHere, setSavedHere] = useState(false)
   const [confirmingClear, setConfirmingClear] = useState(false)
 
   const remaining = ORG_INSTRUCTIONS_MAX_CHARS - text.length
@@ -66,7 +69,9 @@ export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstr
         if (!res.ok) throw new Error(`Save failed (${res.status})`)
         setBaseline(next.trim())
         setText(next)
-        toast.success(next.trim() ? t('instructions.saved') : t('instructions.cleared'))
+        // A clear is confirmed by the empty box it leaves; a save by the Save
+        // button turning into „Gespeichert". Neither needs a toast.
+        setSavedHere(next.trim() !== '')
       } catch {
         toast.error(t('instructions.saveError'))
       } finally {
@@ -116,13 +121,17 @@ export const OrgInstructionsForm: FC<OrgInstructionsFormProps> = ({ initialInstr
           first: it is a one-tap write of an empty instruction, and next to Save
           a one-handed tap lands on it as easily as on its neighbour. */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <Button
+        <SaveButton
           className="max-sm:w-full"
           onClick={() => void submit(text)}
-          disabled={saving || overCap || !isDirty}
+          busy={saving}
+          saved={savedHere && !isDirty}
+          disabled={overCap || !isDirty}
+          busyLabel={t('instructions.saving')}
+          savedLabel={tCommon('states.saved')}
         >
-          {saving ? t('instructions.saving') : t('instructions.save')}
-        </Button>
+          {t('instructions.save')}
+        </SaveButton>
         {/* Clearing is its own act, not "save an empty box": the box is often
             emptied on the way to rewriting it, and a Save that was disabled
             because nothing had changed yet must not become the thing that
