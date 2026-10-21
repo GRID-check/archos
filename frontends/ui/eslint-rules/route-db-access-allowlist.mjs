@@ -10,15 +10,10 @@
  * here no longer offends). Shrink it; never grow it.
  */
 export const PRE_EXISTING_DB_IMPORTERS = [
-  'app/api/conversations/[id]/route.ts',
   'app/api/internal/agent-profiler-spans/route.ts',
   'app/api/internal/citation-events/route.ts',
   'app/api/internal/memory/route.ts',
   'app/api/internal/usage/route.ts',
-  'app/api/organization/memory/[itemId]/route.ts',
-  'app/api/organization/memory/route.ts',
-  'app/api/projects/[id]/memory/[itemId]/route.ts',
-  'app/api/projects/[id]/memory/route.ts',
   'app/api/sharing/[resourceType]/[resourceId]/grants/route.ts',
   'app/api/sharing/[resourceType]/[resourceId]/route.ts',
 ]

@@ -4297,6 +4297,123 @@
         }
       }
     },
+    "/api/documents/{id}/download": {
+      "get": {
+        "operationId": "document-download",
+        "summary": "Get a time-limited download link for a document",
+        "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Get a time-limited download link for a document",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/file": {
+      "get": {
+        "operationId": "document-file-get",
+        "summary": "Read a stored PDF’s bytes",
+        "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with document-download. Only PDFs are served here.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read a stored PDF’s bytes",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/cancel": {
       "post": {
         "operationId": "document-ingest-cancel",
@@ -4551,6 +4668,60 @@
         },
         "x-mcp-annotations": {
           "title": "Check which file names already exist in a project",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/preview": {
+      "get": {
+        "operationId": "document-preview-get",
+        "summary": "Get a time-limited preview link for a document",
+        "description": "Presigns an inline preview of the document: `{ url, contentType, filename, imageUrl, rendition }`. An office document is previewed through its PDF rendition. The URL expires (an hour at most); call again for a fresh one. 415 for content that cannot be previewed, 502 `RENDITION_FAILED` when the conversion failed. No bytes are sent here.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Get a time-limited preview link for a document",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -5173,6 +5344,245 @@
         }
       }
     },
+    "/api/documents/{id}/thumbnail": {
+      "get": {
+        "operationId": "document-thumbnail-get",
+        "summary": "Get a document’s thumbnail link",
+        "description": "A time-limited URL of the document’s first-page thumbnail image, `{ url }`, with `url: null` when it has none (not drawn yet, or the file is held by the upload screening). The link expires; no bytes are sent here.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Get a document’s thumbnail link",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/upload": {
+      "post": {
+        "operationId": "document-upload",
+        "summary": "Upload a file to a project",
+        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds comes back held, and a reviewer releases it. Needs write access to the project’s documents.",
+        "tags": [
+          "documents"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "A multipart form: the file in the `file` part, the route’s text fields as their own parts. Over MCP send body.files[0] = { name, mimeType, contentBase64 } and body.fields instead.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "projectId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The project id, from project-list."
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "The folder id, from project-folder-list; omit for the project root."
+                  },
+                  "revisionOf": {
+                    "type": "string",
+                    "description": "The id of the older document this file is the new Fassung of; the service checks the pair."
+                  },
+                  "originPath": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "Where the file sat before upload, e.g. \"Pläne/EG/Grundriss.pdf\". Only for a folder upload; it is screened by name."
+                  },
+                  "screeningRelease": {
+                    "const": "name",
+                    "description": "Send \"name\" only when a reviewer released this file’s name from the upload screening."
+                  },
+                  "uploadBatchId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The batch uuid given to upload-batch-open, to file this upload under that batch."
+                  }
+                },
+                "required": [
+                  "file",
+                  "projectId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Upload a file to a project",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/versions/{versionId}/file": {
+      "get": {
+        "operationId": "document-version-file-get",
+        "summary": "Read one Fassung’s file bytes",
+        "description": "The bytes of one version (Fassung) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          },
+          {
+            "name": "versionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The version id, from document-version-list."
+            },
+            "description": "The version id, from document-version-list."
+          },
+          {
+            "name": "download",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "1",
+              "description": "Send 1 to ask for the file as a download."
+            },
+            "description": "Send 1 to ask for the file as a download."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/*": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read one Fassung’s file bytes",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents/{id}/visual-details": {
       "get": {
         "operationId": "document-visual-details-get",
@@ -5527,6 +5937,70 @@
         }
       }
     },
+    "/api/projects/{id}/mail-imports/{importId}/complete": {
+      "post": {
+        "operationId": "mail-import-complete",
+        "summary": "Finish sending an Outlook archive",
+        "description": "Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 400 when a part is missing.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The mail import id, from mail-import-list."
+            },
+            "description": "The mail import id, from mail-import-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Finish sending an Outlook archive",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/projects/{id}/mail-imports": {
       "get": {
         "operationId": "mail-import-list",
@@ -5575,6 +6049,169 @@
         "x-mcp-annotations": {
           "title": "List a project’s mail imports",
           "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "post": {
+        "operationId": "mail-import-start",
+        "summary": "Start an Outlook archive import",
+        "description": "Registers a .pst or .ost archive for import into the project (`filename`, `sizeBytes`) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Then send the archive in `partCount` parts of exactly `partSize` bytes (the last one shorter) with mail-import-part-upload, and finish with mail-import-complete. Needs the mail-import feature and write access to the project’s documents. Archives are large (up to 25 GB); each part is a 32 MiB call.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "filename": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "sizeBytes": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "filename",
+                  "sizeBytes"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Start an Outlook archive import",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/projects/{id}/mail-imports/{importId}/parts/{partNumber}": {
+      "put": {
+        "operationId": "mail-import-part-upload",
+        "summary": "Send one part of an Outlook archive",
+        "description": "Sends the raw bytes of part `partNumber` (1-based) of the archive started with mail-import-start, as `body.contentBase64`. Every part must be exactly the plan’s `partSize` bytes, the last one the remainder, or the route answers 400 with the size it expected. Sending a part again replaces it, so a broken send resumes: read mail-import-get for `uploadedParts` and send the rest. Only the person who started the import may send. Returns `{ partNumber }`.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "importId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The mail import id, from mail-import-list."
+            },
+            "description": "The mail import id, from mail-import-list."
+          },
+          {
+            "name": "partNumber",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The part number, 1-based, up to the plan’s `partCount`."
+            },
+            "description": "The part number, 1-based, up to the plan’s `partCount`."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "The raw bytes of the request. Over MCP send them as body.contentBase64.",
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "type": "string",
+                "format": "binary"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Send one part of an Outlook archive",
+          "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -6106,6 +6743,90 @@
         }
       }
     },
+    "/api/office-shelf/documents/upload": {
+      "post": {
+        "operationId": "office-shelf-document-upload",
+        "summary": "Upload a file to the Büroablage",
+        "description": "Stores one file in the office-wide Büroablage (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the Büroablage. Returns the stored document; follow ingestion with document-status.",
+        "tags": [
+          "documents"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "A multipart form: the file in the `file` part, the route’s text fields as their own parts. Over MCP send body.files[0] = { name, mimeType, contentBase64 } and body.fields instead.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "folderId": {
+                    "type": "string",
+                    "description": "The Büroablage folder id, from office-shelf-folder-list; omit for the root."
+                  },
+                  "revisionOf": {
+                    "type": "string",
+                    "description": "The id of the older document this file is the new Fassung of; the service checks the pair."
+                  },
+                  "originPath": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "Where the file sat before upload, e.g. \"Pläne/EG/Grundriss.pdf\". Only for a folder upload; it is screened by name."
+                  },
+                  "screeningRelease": {
+                    "const": "name",
+                    "description": "Send \"name\" only when a reviewer released this file’s name from the upload screening."
+                  },
+                  "uploadBatchId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The batch uuid given to upload-batch-open, to file this upload under that batch."
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Upload a file to the Büroablage",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/documents": {
       "get": {
         "operationId": "project-document-list",
@@ -6356,6 +7077,92 @@
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/session/documents/upload": {
+      "post": {
+        "operationId": "session-document-upload",
+        "summary": "Attach a file to a conversation",
+        "description": "Stores one file privately on one conversation (not in any project shelf) and ingests it for that chat. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created when it does not exist yet. Returns the stored document; follow ingestion with document-status.",
+        "tags": [
+          "documents"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "A multipart form: the file in the `file` part, the route’s text fields as their own parts. Over MCP send body.files[0] = { name, mimeType, contentBase64 } and body.fields instead.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "conversationId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "description": "The conversation the file is attached to (`s_` plus a UUID with underscores), from conversation-list."
+                  },
+                  "projectId": {
+                    "type": "string",
+                    "description": "The project of the conversation, only used when the conversation is created by this call."
+                  },
+                  "originPath": {
+                    "type": "string",
+                    "maxLength": 2000,
+                    "description": "Where the file sat before upload, e.g. \"Pläne/EG/Grundriss.pdf\". Only for a folder upload; it is screened by name."
+                  },
+                  "screeningRelease": {
+                    "const": "name",
+                    "description": "Send \"name\" only when a reviewer released this file’s name from the upload screening."
+                  },
+                  "uploadBatchId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The batch uuid given to upload-batch-open, to file this upload under that batch."
+                  }
+                },
+                "required": [
+                  "file",
+                  "conversationId"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Attach a file to a conversation",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }
@@ -6965,6 +7772,70 @@
         "x-mcp-annotations": {
           "title": "Resolve Büroablage folder paths, creating the missing",
           "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/projects/{id}/folders/{folderId}/access": {
+      "get": {
+        "operationId": "project-folder-access-get",
+        "summary": "Read who may open a project folder",
+        "description": "The folder’s access as it is now: `{ mode: \"inherit\" }`, or `{ mode: \"custom\", everyoneReads, people: [{ userId, level }] }`. Needs manage rights on the project and write access on the folder, as a change would. Changing access stays with a person in Piloti. Folder ids come from project-folder-list.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "folderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The folder id, from project-folder-list or project-folder-bin-list."
+            },
+            "description": "The folder id, from project-folder-list or project-folder-bin-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read who may open a project folder",
+          "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -8373,6 +9244,132 @@
         "x-mcp-annotations": {
           "title": "Reword one of your own replies",
           "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/annotations/export": {
+      "get": {
+        "operationId": "document-annotations-export",
+        "summary": "Export a document’s annotations as a Protokoll file",
+        "description": "The document’s Anmerkungen as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current Fassung or every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. For the data itself use annotation-list. Needs read access to the document.",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pdf",
+                "docx",
+                "md"
+              ],
+              "description": "pdf (default), docx or md."
+            },
+            "description": "pdf (default), docx or md."
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "all"
+              ],
+              "description": "open (default): what still asks something; all: closed ones too."
+            },
+            "description": "open (default): what still asks something; all: closed ones too."
+          },
+          {
+            "name": "revision",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "current",
+                "all"
+              ],
+              "description": "current (default), or all to include earlier Fassungen’s closed marks."
+            },
+            "description": "current (default), or all to include earlier Fassungen’s closed marks."
+          },
+          {
+            "name": "includeProposals",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ],
+              "description": "1 adds Piloti’s untaken proposals under a heading of their own."
+            },
+            "description": "1 adds Piloti’s untaken proposals under a heading of their own."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export a document’s annotations as a Protokoll file",
+          "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -9862,6 +10859,135 @@
         }
       }
     },
+    "/api/projects/{id}/annotations/export": {
+      "get": {
+        "operationId": "project-annotations-export",
+        "summary": "Export a project’s open points as a Protokoll file",
+        "description": "The project’s Offene Punkte as one Protokoll: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list (`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. Refused when more than 1000 marks match: narrow the filters. Records an audit event.",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "open",
+                "proposed",
+                "all-live"
+              ]
+            }
+          },
+          {
+            "name": "assignee",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          },
+          {
+            "name": "due",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "overdue",
+                "soon"
+              ]
+            }
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "document",
+                "due"
+              ]
+            }
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pdf",
+                "docx",
+                "md"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export a project’s open points as a Protokoll file",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/feedback/answers": {
       "get": {
         "operationId": "answer-feedback-list",
@@ -10974,6 +12100,79 @@
         },
         "x-mcp-annotations": {
           "title": "List what one answer changed",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/conversations/{id}/messages/{messageId}/export": {
+      "get": {
+        "operationId": "conversation-message-export",
+        "summary": "Export one saved answer as a Word document",
+        "description": "One answer of a conversation as a .docx, built from the stored message with its sources. Returned as an attached resource (base64 `blob`) up to 5 MiB. Needs access to the conversation. Message ids come from conversation-message-list; only an answer from Piloti can be exported.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The conversation id, from conversation-list."
+            },
+            "description": "The conversation id, from conversation-list."
+          },
+          {
+            "name": "messageId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The message id (a UUID), from conversation-message-list."
+            },
+            "description": "The message id (a UUID), from conversation-message-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.wordprocessingml.document": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export one saved answer as a Word document",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -12809,7 +14008,8 @@
               "type": "string",
               "enum": [
                 "project",
-                "office_shelf"
+                "office_shelf",
+                "organization"
               ],
               "description": "`office_shelf` for the office shelf instead of a project."
             },
@@ -15414,6 +16614,69 @@
         }
       }
     },
+    "/api/knowledge-base/documents/{fileName}": {
+      "get": {
+        "operationId": "knowledge-document-get",
+        "summary": "Read a base-corpus PDF",
+        "description": "The PDF of one document of the building-law base corpus (the file names are listed by knowledge-base-get), returned as an attached resource up to 5 MiB; a larger file is not sent. Identical for every organization. Use it to quote a source a citation points at.",
+        "tags": [
+          "knowledge"
+        ],
+        "parameters": [
+          {
+            "name": "fileName",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The base-corpus file name, exactly as knowledge-base-get lists it."
+            },
+            "description": "The base-corpus file name, exactly as knowledge-base-get lists it."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/pdf": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read a base-corpus PDF",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/ris/document": {
       "get": {
         "operationId": "ris-document-get",
@@ -15766,6 +17029,112 @@
           "title": "Withdraw a confirmed OIB rule",
           "readOnlyHint": false,
           "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/projects/{id}/bim/checks/export": {
+      "get": {
+        "operationId": "bim-checks-export",
+        "summary": "Export the Prüfbuch as a BCF archive",
+        "description": "The project’s OIB rule check ledger for one model as a BCF 2.1 zip, one topic per finding. Name the model with `modelId` (a uuid) or `model` (its file name), and state `buildingClass` (1 to 5) and `mainUse` so rules that need them do not stand down. Returned as an attached resource up to 5 MiB; a larger archive is not sent (ask for the findings with bim-check-list). The most expensive read in the product: it runs the whole catalogue and is rate limited. Needs the ifc-models feature.",
+        "tags": [
+          "bim"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "modelId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The model (revision) id, from bim-model-list. Give this or `model`."
+            },
+            "description": "The model (revision) id, from bim-model-list. Give this or `model`."
+          },
+          {
+            "name": "model",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 255,
+              "description": "The model’s file name. Give this or `modelId`."
+            },
+            "description": "The model’s file name. Give this or `modelId`."
+          },
+          {
+            "name": "buildingClass",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "The Gebäudeklasse, 1 to 5."
+            },
+            "description": "The Gebäudeklasse, 1 to 5."
+          },
+          {
+            "name": "mainUse",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "The main use (Hauptnutzung) as in bim-model-query; an unknown value is treated as not stated."
+            },
+            "description": "The main use (Hauptnutzung) as in bim-model-query; an unknown value is treated as not stated."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export the Prüfbuch as a BCF archive",
+          "readOnlyHint": true,
+          "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -16569,6 +17938,60 @@
         },
         "x-mcp-annotations": {
           "title": "Ask a structured question of a BIM model",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/bim/models/{modelId}/source": {
+      "get": {
+        "operationId": "bim-model-source-get",
+        "summary": "Get a time-limited link to a model’s IFC file",
+        "description": "A presigned URL of the raw .ifc, valid for ten minutes and minted for this person only: treat it as a credential, do not store or share it, and call again for a fresh one. The file itself is not sent (models run to hundreds of MB); open the link, or ask exact questions with bim-model-query. Needs the ifc-models feature. Get the model id from bim-model-list.",
+        "tags": [
+          "bim"
+        ],
+        "parameters": [
+          {
+            "name": "modelId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The BIM model (revision) id, from bim-model-list."
+            },
+            "description": "The BIM model (revision) id, from bim-model-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Get a time-limited link to a model’s IFC file",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -18725,6 +20148,296 @@
         }
       }
     },
+    "/api/platform/answer-feedback/export": {
+      "get": {
+        "operationId": "platform-answer-feedback-export",
+        "summary": "Export answer feedback as CSV or Excel",
+        "description": "The votes behind platform-answer-feedback-get as a file: `format` csv (default, returned as text) or xlsx (a four-sheet workbook, returned as an attached resource up to 5 MiB). Same scope and filters as the Ratings tab; `scope: \"all\"` ignores the ratings filters. `summary: \"weekly\"` exports a CSV per organization and ISO week instead. A cut export says so in its file name.",
+        "tags": [
+          "platform"
+        ],
+        "parameters": [
+          {
+            "name": "from",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "First day, YYYY-MM-DD, UTC, inclusive. Give `from` and `to` together."
+            },
+            "description": "First day, YYYY-MM-DD, UTC, inclusive. Give `from` and `to` together."
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Last day, YYYY-MM-DD, UTC, inclusive. At most 366 days after `from`."
+            },
+            "description": "Last day, YYYY-MM-DD, UTC, inclusive. At most 366 days after `from`."
+          },
+          {
+            "name": "days",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "const": 7
+                },
+                {
+                  "const": 30
+                },
+                {
+                  "const": 90
+                }
+              ],
+              "description": "A range ending today, used when `from` and `to` are absent. Default 30."
+            },
+            "description": "A range ending today, used when `from` and `to` are absent. Default 30."
+          },
+          {
+            "name": "org",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Limit to these organization ids; empty means every organization."
+            },
+            "description": "Limit to these organization ids; empty means every organization."
+          },
+          {
+            "name": "project",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Limit to these project ids; empty means every project."
+            },
+            "description": "Limit to these project ids; empty means every project."
+          },
+          {
+            "name": "verdict",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "up",
+                "down",
+                "all"
+              ],
+              "description": "Thumbs filter."
+            },
+            "description": "Thumbs filter."
+          },
+          {
+            "name": "reason",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "inaccurate",
+                  "wrong_source",
+                  "too_slow",
+                  "other"
+                ]
+              },
+              "description": "Down-vote reasons to keep."
+            },
+            "description": "Down-vote reasons to keep."
+          },
+          {
+            "name": "topic",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "fire_safety",
+                  "sound_insulation",
+                  "accessibility",
+                  "energy",
+                  "structural",
+                  "hygiene",
+                  "safety_in_use",
+                  "general"
+                ]
+              },
+              "description": "Conversation topics to keep."
+            },
+            "description": "Conversation topics to keep."
+          },
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "meta",
+                  "shallow",
+                  "deep",
+                  "report"
+                ]
+              },
+              "description": "Answer modes to keep."
+            },
+            "description": "Answer modes to keep."
+          },
+          {
+            "name": "confidence",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "low",
+                  "medium",
+                  "high"
+                ]
+              },
+              "description": "Answer confidence levels to keep."
+            },
+            "description": "Answer confidence levels to keep."
+          },
+          {
+            "name": "has_comment",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ],
+              "description": "1 keeps only votes with a comment."
+            },
+            "description": "1 keeps only votes with a comment."
+          },
+          {
+            "name": "has_expected",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ],
+              "description": "1 keeps only votes with an expected answer."
+            },
+            "description": "1 keeps only votes with an expected answer."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120,
+              "description": "Free-text search over the vote."
+            },
+            "description": "Free-text search over the vote."
+          },
+          {
+            "name": "format",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "csv",
+                "xlsx"
+              ],
+              "description": "csv (default) or xlsx."
+            },
+            "description": "csv (default) or xlsx."
+          },
+          {
+            "name": "scope",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "selection"
+              ],
+              "description": "all: every vote in the scope, ratings filters ignored."
+            },
+            "description": "all: every vote in the scope, ratings filters ignored."
+          },
+          {
+            "name": "summary",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "const": "weekly",
+              "description": "weekly: a CSV per organization and ISO week instead of the votes."
+            },
+            "description": "weekly: a CSV per organization and ISO week instead of the votes."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. A redirect to a time-limited link is handed on as a resource link and never followed.",
+            "content": {
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Export answer feedback as CSV or Excel",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/platform/answer-feedback": {
       "get": {
         "operationId": "platform-answer-feedback-get",
@@ -19896,6 +21609,73 @@
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/platform/knowledge/documents": {
+      "post": {
+        "operationId": "platform-knowledge-document-upload",
+        "summary": "Upload a PDF or ZIP to the base corpus",
+        "description": "Adds a PDF, or a ZIP of PDFs, to the shared building-law corpus every organization reads. Up to 32 MiB per call through the agent door. Send `body.files[0]` as { name, mimeType, contentBase64 }; `body.fields.doc_class` presets the Dokumentart of a single PDF. Ingestion runs in the background: the answer is `pending`, follow it with the corpus status operations. Platform owners only.",
+        "tags": [
+          "platform"
+        ],
+        "requestBody": {
+          "required": true,
+          "description": "A multipart form: the file in the `file` part, the route’s text fields as their own parts. Over MCP send body.files[0] = { name, mimeType, contentBase64 } and body.fields instead.",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  },
+                  "doc_class": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "description": "The Dokumentart for a single PDF; omit to let ingestion decide."
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Upload a PDF or ZIP to the base corpus",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }

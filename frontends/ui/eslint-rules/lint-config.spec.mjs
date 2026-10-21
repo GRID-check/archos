@@ -63,7 +63,7 @@ const FIXTURES = {
     'export const handle = [db, withTenant] as unknown as Users',
   ].join('\n'),
   // A file that imported the db before the rule existed stays allowed.
-  'src/app/api/conversations/[id]/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
+  'src/app/api/sharing/[resourceType]/[resourceId]/route.ts': "import { db } from '@/lib/db'\nexport const handle = db",
   'src/features/grid-cards/schematics/kit.tsx': "export const size = 'text-sm'",
   'tests/canary.test.ts': 'export const fixture: any = {}',
 }

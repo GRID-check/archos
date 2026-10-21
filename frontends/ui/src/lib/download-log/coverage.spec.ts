@@ -171,6 +171,10 @@ const ROUTES: Record<string, RouteDisposition> = {
   'stream/route.ts': { exempt: 'server-sent events.' },
   'realtime/route.ts': { exempt: 'server-sent events of the live channels (lib/realtime): presence, pointers and change hints; no file bytes.' },
   'health/route.ts': { exempt: 'the health probe; no files.' },
+  'mcp/route.ts': {
+    exempt:
+      'the MCP server hands file bytes only by running the person-facing route that serves them (lib/agent-api/dispatch.ts calls its exported handler in-process), so the bytes pass through that route and its logged function, which records the hand-over as the person.',
+  },
   'v1/[...path]/route.ts': { exempt: 'proxy of the allowlisted JSON endpoints of the agent service (lib/proxy/v1-allowlist); no file bytes.' },
   'knowledge-base/documents/[fileName]/route.ts': { exempt: 'the platform’s shared knowledge base (norms), served from the agent service; not an organization’s document.' },
   'internal/document-file/route.ts': { exempt: 'agent service only: tells it where an object is; it fetches the object itself for a turn.' },

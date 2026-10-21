@@ -14,9 +14,14 @@ vi.mock('./dispatch', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./dispatch')>()),
   callOperation: vi.fn(),
 }))
+vi.mock('./backend-operations', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./backend-operations')>()),
+  callBackendOperation: vi.fn(),
+}))
 vi.mock('./operation-proposals', () => ({ proposeOperation: vi.fn() }))
 vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapabilityMissing: vi.fn() }))
 
+import { callBackendOperation } from './backend-operations'
 import { callOperation, parseOperationInput } from './dispatch'
 import {
   MAX_RESULT_CHARS,
@@ -103,7 +108,7 @@ describe('search-operations', () => {
   })
 
   it('says what to do when nothing matches', () => {
-    const result = searchOperations(ctx(person), { query: 'zzz-nothing' })
+    const result = searchOperations(ctx(person), { query: 'zzz-qqxv' })
     expect(structured(result).total).toBe(0)
     expect(structured(result).next).toMatch(/report-missing-capability/)
   })
@@ -208,7 +213,14 @@ describe('call-operation', () => {
       op: expect.objectContaining({ name: 'project-member-add' }),
       input: expect.objectContaining({ params: { id: 'p1' } }),
     })
-    expect(structured(result)).toMatchObject({ proposed: true, applied: false, proposalId: 'prop_1' })
+    // The shape the in-product client reads to put the card in the chat (tools/workspace/register.py).
+    expect(structured(result)).toEqual({
+      decision: 'propose',
+      proposalId: 'prop_1',
+      summary: 'Add Anna to Haus A',
+      operation: 'project-member-add',
+    })
+    expect(result.content).toEqual([{ type: 'text', text: 'Proposed — the person decides. Nothing was changed.' }])
     expect(recordOperationCalled).toHaveBeenCalledWith(
       expect.anything(),
       expect.objectContaining({ decision: 'propose', status: 202 }),
@@ -252,6 +264,67 @@ describe('call-operation', () => {
   })
 })
 
+describe('call-operation with a file in the answer', () => {
+  const base64 = Buffer.from('%PDF-1.7 fake bytes').toString('base64')
+
+  it('returns a binary body as an embedded resource and keeps base64 out of the text', async () => {
+    vi.mocked(callOperation).mockResolvedValue({
+      status: 200,
+      ok: true,
+      body: { binary: true, contentType: 'application/pdf; charset=binary', bytes: 19, filename: 'Grundriss EG.pdf', base64 },
+    })
+    const result = await callOperationTool(ctx(person), { name: 'project-list' })
+    expect(result.isError).toBeUndefined()
+    expect(result.content).toEqual([
+      { type: 'text', text: expect.stringContaining('"Grundriss EG.pdf", application/pdf, 19 bytes') },
+      {
+        type: 'resource',
+        resource: { uri: 'piloti://operation/project-list/Grundriss_EG.pdf', mimeType: 'application/pdf', blob: base64 },
+      },
+    ])
+    expect(text(result)).not.toContain(base64)
+    expect(result.structuredContent).toBeUndefined()
+  })
+
+  it('names the resource "result" when the route sent no file name', async () => {
+    vi.mocked(callOperation).mockResolvedValue({
+      status: 200,
+      ok: true,
+      body: { binary: true, contentType: null, bytes: 3, base64: 'YWJj' },
+    })
+    const result = await callOperationTool(ctx(person), { name: 'project-list' })
+    expect(result.content[1]).toMatchObject({
+      resource: { uri: 'piloti://operation/project-list/result', mimeType: 'application/octet-stream' },
+    })
+  })
+
+  it('says how to read a file that was too large, and sends nothing', async () => {
+    vi.mocked(callOperation).mockResolvedValue({
+      status: 200,
+      ok: true,
+      body: { binary: true, contentType: 'application/pdf', bytes: 12 * 1024 * 1024, tooLarge: true },
+    })
+    const result = await callOperationTool(ctx(person), { name: 'project-list' })
+    expect(result.content).toHaveLength(1)
+    expect(text(result)).toMatch(/12\.0 MiB/)
+    expect(text(result)).toMatch(/5\.0 MiB/)
+    expect(text(result)).toMatch(/document-text-get/)
+    expect(result.structuredContent).toBeUndefined()
+  })
+
+  it('hands a redirect on as a resource link that expires, and does not follow it', async () => {
+    vi.mocked(callOperation).mockResolvedValue({
+      status: 302,
+      ok: true,
+      body: { redirect: true, location: 'https://store.test/obj?X-Amz-Signature=abc' },
+    })
+    const result = await callOperationTool(ctx(person), { name: 'project-list' })
+    expect(result.isError).toBeUndefined()
+    expect(result.content[1]).toMatchObject({ type: 'resource_link', uri: 'https://store.test/obj?X-Amz-Signature=abc', name: 'project-list' })
+    expect(text(result)).toMatch(/expires/)
+  })
+})
+
 describe('report-missing-capability', () => {
   it('answers recorded and sends only the length of the description', () => {
     const description = 'Export the Bauakt as a ZIP for Anna Muster'
@@ -262,5 +335,72 @@ describe('report-missing-capability', () => {
 
   it('refuses an empty description', () => {
     expect(reportMissingCapability(ctx(person), { description: '' }).isError).toBe(true)
+  })
+})
+
+describe('the Python agent’s read tools', () => {
+  const PROJECT = '0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11'
+
+  it('are found by search, beside the catalog, with a domain each', () => {
+    const result = searchOperations(ctx(person), { query: 'knowledge search' })
+    expect(structured(result).operations[0]).toMatchObject({
+      name: 'knowledge-search',
+      domain: 'knowledge',
+      readOnly: true,
+      destructive: false,
+    })
+    expect(structured(searchOperations(ctx(person), { query: '', domain: 'bim' })).operations.map((op) => op.name)).toEqual(
+      expect.arrayContaining(['ifc-query', 'ifc-measure']),
+    )
+  })
+
+  it('are described with the fixture’s input schema and read-only annotations', () => {
+    const result = describeOperation(ctx(person), { name: 'knowledge-search' })
+    const described = result.structuredContent as { inputSchema: { required: string[] }; annotations: Record<string, unknown> }
+    expect(described.inputSchema.required[0]).toBe('projectId')
+    expect(described.annotations).toMatchObject({ readOnlyHint: true, idempotentHint: true, openWorldHint: false })
+  })
+
+  it('are called through callBackendOperation as the person, with the project', async () => {
+    vi.mocked(callBackendOperation).mockResolvedValue({ status: 200, ok: true, body: { tool: 'knowledge_search', result: 'a passage' } })
+    const result = await callOperationTool(ctx(person), {
+      name: 'knowledge-search',
+      input: { projectId: PROJECT, query: 'Stellplätze' },
+    })
+    expect(callBackendOperation).toHaveBeenCalledWith(
+      'knowledge-search',
+      { projectId: PROJECT, query: 'Stellplätze' },
+      session,
+      { projectId: PROJECT },
+    )
+    expect(callOperation).not.toHaveBeenCalled()
+    expect(result.structuredContent).toEqual({ result: 'a passage' })
+    expect(text(result)).toBe('a passage')
+    expect(recordOperationCalled).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ operation: 'knowledge-search', domain: 'knowledge', decision: 'run', status: 200 }),
+    )
+  })
+
+  it('answer a refusal as an error with the message', async () => {
+    vi.mocked(callBackendOperation).mockResolvedValue({
+      status: 403,
+      ok: false,
+      body: { error: 'forbidden', message: 'You cannot use this project' },
+    })
+    const result = await callOperationTool(ctx(person), { name: 'files-list', input: { projectId: PROJECT } })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toContain('You cannot use this project')
+    expect(text(result)).toContain('HTTP 403')
+  })
+
+  it('are absent for in-product Piloti, which has them natively', async () => {
+    expect(structured(searchOperations(ctx(piloti), { query: 'knowledge search' })).operations.map((op) => op.name)).not.toContain(
+      'knowledge-search',
+    )
+    expect(describeOperation(ctx(piloti), { name: 'knowledge-search' }).isError).toBe(true)
+    const result = await callOperationTool(ctx(piloti), { name: 'knowledge-search', input: { projectId: PROJECT } })
+    expect(result.isError).toBe(true)
+    expect(callBackendOperation).not.toHaveBeenCalled()
   })
 })

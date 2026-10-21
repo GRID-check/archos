@@ -7,7 +7,8 @@
  * dispatcher the MCP server itself uses, so the operation's route decides:
  * its `authz`, its rate limit, its tenant slot and its own body schema. The
  * proposal adds no second rule; `DECIDE_PERMISSIONS.operation` is only the
- * right to see the project.
+ * right to see the project, and an organization-scoped one (no project, 0174)
+ * needs nothing but the right to read it.
  *
  * Two outcomes, as for every kind (`./appliers.ts`). What belongs to the
  * proposal is a failed result with the reason: the operation left the catalog
@@ -19,10 +20,10 @@
 
 import 'server-only'
 import { UnprocessableError } from '@/lib/api/errors'
+import type { AuthorizedSession } from '@/lib/auth/types'
 import { callOperation, OperationInputError, parseOperationInput } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
-import type { ApplyContext } from './appliers'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
 /** Why `name` cannot be applied as a proposal, or null when it can: it exists and it writes. */
@@ -70,7 +71,7 @@ const failed = (label: string, reason: string): ProposedChangeResult[] => [{ lab
 /** Run the proposal's operation as the deciding person: one result, the route's outcome. */
 export async function applyOperation(
   payload: OperationPayload,
-  context: ApplyContext
+  context: { session: AuthorizedSession }
 ): Promise<ProposedChangeResult[]> {
   const label = payload.summary
   const found = usableOperation(payload.operation)

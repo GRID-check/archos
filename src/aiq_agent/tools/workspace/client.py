@@ -29,6 +29,7 @@ import logging
 import os
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from typing import Any
 
 from ..documents.filing import SignedEnvelope
@@ -52,6 +53,18 @@ REQUEST_TIMEOUT_SECONDS = 30
 
 #: Cap on what is handed to the model; a longer answer says so (errors and truncation name the next call).
 MAX_RESULT_CHARS = 24_000
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    """A ``tools/call`` answer: the text the model reads, and the result's ``structuredContent`` when it has one.
+
+    ``structured`` is for the code around the model, never shown to it. It is ``None`` for a tool-level
+    error (``isError``): a refusal is words, not a shape to act on.
+    """
+
+    text: str
+    structured: dict[str, Any] | None = None
 
 
 class WorkspaceError(RuntimeError):
@@ -116,6 +129,15 @@ def _http_refusal(exc: urllib.error.HTTPError) -> WorkspaceError:
     return WorkspaceError(text, status=exc.code)
 
 
+def _structured_content(message: dict[str, Any]) -> dict[str, Any] | None:
+    """The result's ``structuredContent`` when it is an object and the result is not a tool-level error."""
+    result = message.get("result")
+    if not isinstance(result, dict) or result.get("isError"):
+        return None
+    structured = result.get("structuredContent")
+    return structured if isinstance(structured, dict) else None
+
+
 def _result_text(message: dict[str, Any]) -> str:
     """The text of a ``tools/call`` result; a tool-level error is prefixed so the model reads it as one."""
     error = message.get("error")
@@ -134,7 +156,12 @@ def _result_text(message: dict[str, Any]) -> str:
 
 
 def call_tool(name: str, arguments: dict[str, Any], envelope: SignedEnvelope) -> str:
-    """One MCP ``tools/call``; the result text. Blocking: call it through ``asyncio.to_thread``.
+    """One MCP ``tools/call``; the result text. See :func:`call_tool_result` for the rest of the answer."""
+    return call_tool_result(name, arguments, envelope).text
+
+
+def call_tool_result(name: str, arguments: dict[str, Any], envelope: SignedEnvelope) -> ToolResult:
+    """One MCP ``tools/call``; the text and the ``structuredContent``. Blocking: call it through ``asyncio.to_thread``.
 
     Raises :class:`WorkspaceError` for a refusal or a transport failure, so the
     tool has one thing to catch. A tool-level error (``isError``) is NOT raised:
@@ -155,7 +182,8 @@ def call_tool(name: str, arguments: dict[str, Any], envelope: SignedEnvelope) ->
         with _opener.open(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
             raw = response.read().decode("utf-8")
             content_type = response.headers.get("Content-Type", "")
-        return _result_text(_jsonrpc_from(raw, content_type))
+        message = _jsonrpc_from(raw, content_type)
+        return ToolResult(text=_result_text(message), structured=_structured_content(message))
     except urllib.error.HTTPError as exc:
         logger.warning("Workspace MCP refused the call (status=%s)", exc.code)
         raise _http_refusal(exc) from exc

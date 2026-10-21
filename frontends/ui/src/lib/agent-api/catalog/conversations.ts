@@ -309,4 +309,19 @@ export const conversationsOperations: readonly AgentOperation[] = [
     readOnly: true,
     load: () => import('@/app/api/passages/similar/route'),
   },
+  {
+    name: 'conversation-message-export',
+    domain: 'conversations',
+    summary: 'Export one saved answer as a Word document',
+    description:
+      'One answer of a conversation as a .docx, built from the stored message with its sources. Returned as an attached ' +
+      'resource (base64 `blob`) up to 5 MiB. Needs access to the conversation. Message ids come from conversation-message-list; ' +
+      'only an answer from Piloti can be exported.',
+    method: 'GET',
+    path: '/api/conversations/[id]/messages/[messageId]/export',
+    params: messageParams,
+    binaryResponse: ['application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    load: () => import('@/app/api/conversations/[id]/messages/[messageId]/export/route'),
+  },
+
 ]

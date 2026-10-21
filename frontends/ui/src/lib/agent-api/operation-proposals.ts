@@ -57,8 +57,10 @@ export function summaryOfOperation(op: AgentOperation, input: OperationInput): s
 
 /**
  * File the proposal for `op` called with `input` by the agent acting for
- * `principal.session`'s person. Refused (422) when the operation only reads, or
- * the input does not fit its schemas, or the turn is in no project. Returns the
+ * `principal.session`'s person. Refused (422) when the operation only reads or
+ * the input does not fit its schemas. A turn in no project files it on the
+ * organization (0174). The same call repeated in the conversation while the
+ * first proposal is still open files nothing and returns that one. Returns the
  * proposal's id, which the card carries, and the line the person will read.
  */
 export async function proposeOperation({

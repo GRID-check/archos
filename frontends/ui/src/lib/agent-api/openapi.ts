@@ -14,6 +14,7 @@
 
 import type { z, ZodTypeAny } from 'zod'
 import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
+// The backend operations (backend-operations.ts) are left out on purpose: they are not BFF routes, so there is no path to document.
 import { MCP_PATH } from './mcp-config'
 import { type AgentOperation, annotationsOf, pathParams } from './operation'
 
@@ -127,6 +128,70 @@ function errorResponses(): Record<string, JsonSchemaNode> {
   )
 }
 
+/** The `fields` of an upload body as the form's text parts. */
+function formFieldsOf(body: ZodTypeAny): Record<string, JsonSchemaNode> {
+  const node = schemaOf(body)
+  const fields = (node.properties as Record<string, JsonSchemaNode> | undefined)?.fields
+  return { ...((fields?.properties as Record<string, JsonSchemaNode> | undefined) ?? {}) }
+}
+
+/**
+ * The HTTP request body of an operation. A script posts what the UI posts: a
+ * JSON object, a multipart form with a `file` part, or raw bytes. Over MCP the
+ * file travels as base64 inside JSON (`upload-wire.ts`); the description says so.
+ */
+function requestBodyOf(op: AgentOperation, body: ZodTypeAny): JsonSchemaNode {
+  const required = !body.isOptional()
+  if (op.bodyEncoding === 'multipart') {
+    const fields = formFieldsOf(body)
+    const requiredFields = (schemaOf(body).properties as Record<string, JsonSchemaNode> | undefined)?.fields?.required
+    return {
+      required,
+      description:
+        'A multipart form: the file in the `file` part, the route’s text fields as their own parts. ' +
+        'Over MCP send body.files[0] = { name, mimeType, contentBase64 } and body.fields instead.',
+      content: {
+        'multipart/form-data': {
+          schema: {
+            type: 'object',
+            properties: { file: { type: 'string', format: 'binary' }, ...fields },
+            required: ['file', ...(Array.isArray(requiredFields) ? requiredFields : [])],
+          },
+        },
+      },
+    }
+  }
+  if (op.bodyEncoding === 'raw') {
+    return {
+      required,
+      description: 'The raw bytes of the request. Over MCP send them as body.contentBase64.',
+      content: { 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } },
+    }
+  }
+  return { required, content: { 'application/json': { schema: schemaOf(body) } } }
+}
+
+/** The 200 response: JSON by default, or the file's media types for an operation that returns one. */
+function successResponse(op: AgentOperation): JsonSchemaNode {
+  if (op.binaryResponse) {
+    return {
+      description:
+        'Success. The body is a file; the media type depends on the request (a text format such as Markdown or CSV is returned as ' +
+        'text). Over MCP it arrives as an embedded resource up to 5 MiB and is described, not sent, above that. ' +
+        'A redirect to a time-limited link is handed on as a resource link and never followed.',
+      content: Object.fromEntries(
+        [...op.binaryResponse, 'text/plain'].map((type) => [type, { schema: { type: 'string', format: 'binary' } }]),
+      ),
+    }
+  }
+  return {
+    description:
+      'Success. The body is the route’s JSON answer; no response schema is declared for it yet, ' +
+      'so read the operation description for what it contains.',
+    content: { 'application/json': { schema: {} } },
+  }
+}
+
 function operationObject(op: AgentOperation): JsonSchemaNode {
   const operation: JsonSchemaNode = {
     operationId: op.name,
@@ -137,18 +202,10 @@ function operationObject(op: AgentOperation): JsonSchemaNode {
   const parameters = [...pathParameters(op), ...queryParameters(op)]
   if (parameters.length > 0) operation.parameters = parameters
   if (op.body) {
-    operation.requestBody = {
-      required: !op.body.isOptional(),
-      content: { 'application/json': { schema: schemaOf(op.body) } },
-    }
+    operation.requestBody = requestBodyOf(op, op.body)
   }
   operation.responses = {
-    '200': {
-      description:
-        'Success. The body is the route’s JSON answer; no response schema is declared for it yet, ' +
-        'so read the operation description for what it contains.',
-      content: { 'application/json': { schema: {} } },
-    },
+    '200': successResponse(op),
     ...errorResponses(),
   }
   if (op.sensitivity) operation['x-piloti-sensitivity'] = op.sensitivity

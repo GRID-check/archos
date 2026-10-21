@@ -108,4 +108,40 @@ export const bimOperations: readonly AgentOperation[] = [
     body: fileDiagramSchema,
     load: () => import('@/app/api/projects/[id]/diagrams/route'),
   },
+  {
+    name: 'bim-model-source-get',
+    domain: 'bim',
+    summary: 'Get a time-limited link to a model’s IFC file',
+    description:
+      'A presigned URL of the raw .ifc, valid for ten minutes and minted for this person only: treat it as a credential, do not store ' +
+      'or share it, and call again for a fresh one. The file itself is not sent (models run to hundreds of MB); open the link, or ' +
+      'ask exact questions with bim-model-query. Needs the ifc-models feature. Get the model id from bim-model-list.',
+    method: 'GET',
+    path: '/api/bim/models/[modelId]/source',
+    params: modelParams,
+    load: () => import('@/app/api/bim/models/[modelId]/source/route'),
+  },
+  {
+    name: 'bim-checks-export',
+    domain: 'bim',
+    summary: 'Export the Prüfbuch as a BCF archive',
+    description:
+      'The project’s OIB rule check ledger for one model as a BCF 2.1 zip, one topic per finding. Name the model with `modelId` (a uuid) ' +
+      'or `model` (its file name), and state `buildingClass` (1 to 5) and `mainUse` so rules that need them do not stand down. ' +
+      'Returned as an attached resource up to 5 MiB; a larger archive is not sent (ask for the findings with bim-check-list). ' +
+      'The most expensive read in the product: it runs the whole catalogue and is rate limited. Needs the ifc-models feature.',
+    method: 'GET',
+    path: '/api/projects/[id]/bim/checks/export',
+    params: projectParams,
+    // The route's schema is a preprocess + refine (legacy names, a lenient `.catch`), which a query object cannot be; the route is the gate.
+    query: z.object({
+      modelId: z.string().uuid().optional().describe('The model (revision) id, from bim-model-list. Give this or `model`.'),
+      model: z.string().max(255).optional().describe('The model’s file name. Give this or `modelId`.'),
+      buildingClass: z.number().int().min(1).max(5).optional().describe('The Gebäudeklasse, 1 to 5.'),
+      mainUse: z.string().max(100).optional().describe('The main use (Hauptnutzung) as in bim-model-query; an unknown value is treated as not stated.'),
+    }),
+    binaryResponse: ['application/octet-stream'],
+    load: () => import('@/app/api/projects/[id]/bim/checks/export/route'),
+  },
+
 ]

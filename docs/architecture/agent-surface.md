@@ -178,10 +178,35 @@ the route's schema is the gate. The route's schema is always the gate.
 A hard delete with no restore is still catalogued, `destructive: true`, and says
 in the description that it cannot be undone. The client asks the person.
 
-### Not catalogued
+### Bytes in and out
 
-A route that sends or returns bytes (multipart upload, binary download) is not
-catalogued yet, because the dispatcher speaks JSON. It stays in the baseline.
+The dispatcher speaks JSON to an agent and the route's own encoding to the route.
+
+**Out.** A route that answers a file (PDF, Word, a BCF zip, an Excel workbook) is catalogued like any
+read, with `binaryResponse` listing its media types for OpenAPI. `dispatch.ts` reads the bytes; up
+to `MAX_INLINE_BYTES` (5 MiB) the result is an MCP `resource` content item (`blob` is the base64,
+`uri` is `piloti://operation/<name>/<file name or result>`) next to a one-line text summary. The
+base64 never enters `structuredContent` or the 40k text cap. Over the limit nothing is sent, and
+the text names the other ways in: `document-text-get` for the text in pages, `document-download` for
+a time-limited link. A route that redirects (3xx with `Location`) is handed on as a
+`resource_link` and never followed server-side; the link is a credential and expires.
+`document-download`, `document-preview-get`, `document-thumbnail-get` and `bim-model-source-get`
+answer JSON holding such a URL, so they are plain reads.
+
+**In.** An operation says `bodyEncoding`:
+
+| Value | The agent sends | The route receives |
+|---|---|---|
+| `json` (default) | the body | `application/json` |
+| `multipart` | `{ files: [{ name, mimeType, contentBase64 }], fields? }` | a `FormData` with a `file` part and the `fields` as text parts, as the UI's uploader builds it |
+| `raw` | `{ contentBase64 }` | those bytes as `application/octet-stream`, with `Content-Length` |
+
+The schemas are `uploadBodySchemaWith({ ...fields })` and `rawBodySchema` in
+`lib/agent-api/upload-wire.ts`: one file per call, at most 32 MiB decoded (the mail import's part
+size). The route's own parsing stays the gate, so name the real form fields in `fields` and add a
+`agent-upload.spec.ts` beside the route that proves the dispatcher's form passes its parser. An
+Outlook archive is three operations: `mail-import-start`, `mail-import-part-upload` (once per
+part), `mail-import-complete`.
 
 ### Sensitive operations
 
@@ -216,8 +241,8 @@ reason; an operation costs a few lines.
   description, a `load` that imports a different route than `path`, params that
   disagree with the path, or a schema the JSON Schema export cannot describe.
 
-`agent-reachability-baseline.json` holds the routes that predate the rule. It
-never grows. `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/` rewrites it
+`agent-reachability-baseline.json` held the routes that predate the rule. It is
+empty now and never grows. `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/` rewrites it
 after you cover a route, and the diff is the review.
 
 ## Telemetry
@@ -236,7 +261,12 @@ turn it echoes the turn's signed request-context envelope; the BFF resolves the
 person it names and builds the pinned session. Python never signs an envelope. A
 read runs. A write never runs: it becomes an `operation` proposal, shown as a card,
 that the person accepts or dismisses (ADR-0105). The accepting person's session is
-the one the operation runs in.
+the one the operation runs in. A turn in no project files the proposal on the
+organization, and the same call repeated while its proposal is open files nothing
+new. The server answers a proposed write with the short text the model reads and
+`structuredContent` `{ decision: 'propose', proposalId, summary, operation }`;
+`workspace__call` shows the card from that shape
+([`proposed-changes.md`](proposed-changes.md#operation)).
 
 ## Connecting a client
 

@@ -13,6 +13,7 @@
  *    itself; the person accepts or dismisses it (ADR-0105).
  */
 
+import { BACKEND_OPERATIONS, type BackendOperation, findBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS, findOperation } from './catalog'
 import type { AgentOperation } from './operation'
 import type { AgentPrincipal } from './principal'
@@ -41,6 +42,19 @@ export function visibleOperations(principal: AgentPrincipal): readonly AgentOper
 export function findVisibleOperation(principal: AgentPrincipal, name: string): AgentOperation | undefined {
   const op = findOperation(name)
   return op && canSee(principal, op) ? op : undefined
+}
+
+/**
+ * The Python agent's read tools (`backend-operations.ts`). An outside agent
+ * sees them; in-product Piloti does not, because it already has every one as a
+ * native tool and a second copy would bloat its context and blur its tool choice.
+ */
+export function visibleBackendOperations(principal: AgentPrincipal): readonly BackendOperation[] {
+  return principal.kind === 'piloti' ? [] : BACKEND_OPERATIONS
+}
+
+export function findVisibleBackendOperation(principal: AgentPrincipal, name: string): BackendOperation | undefined {
+  return principal.kind === 'piloti' ? undefined : findBackendOperation(name)
 }
 
 export function callDecision(principal: AgentPrincipal, op: AgentOperation): CallDecision {

@@ -31,8 +31,10 @@ from nat.plugin_api import FunctionGroupBaseConfig
 from nat.plugin_api import register_function_group
 
 from ..documents.filing import SignedEnvelope
+from .cards import emit_operation_proposal_card
+from .cards import proposal_from
 from .client import WorkspaceError
-from .client import call_tool
+from .client import call_tool_result
 
 logger = logging.getLogger(__name__)
 
@@ -106,15 +108,42 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"refused": "no_envelope"})
         return _NO_ENVELOPE
     try:
-        text = await asyncio.to_thread(call_tool, SERVER_TOOLS[step], arguments, envelope)
+        result = await asyncio.to_thread(call_tool_result, SERVER_TOOLS[step], arguments, envelope)
     except WorkspaceError as exc:
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"error": str(exc), "status": exc.status})
         return (
             f"Fehler beim Zugriff auf den Arbeitsbereich: {exc}. Es wurde nichts geändert; sage der Person, "
             "dass es nicht geklappt hat, und versuche es nicht in derselben Antwort erneut."
         )
-    _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, {"chars": len(text)})
+    text = result.text
+    outcome: dict[str, Any] = {"chars": len(text)}
+    if step == "call":
+        text = _show_proposal(result.structured, arguments, text, outcome)
+    _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, outcome)
     return text
+
+
+#: Appended when the server stored the proposal and this run has nowhere to draw its card. The person
+#: still finds it: the server told their inbox.
+_PROPOSED_WITHOUT_CARD = (
+    " Die Karte konnte in diesem Lauf nicht angezeigt werden; der Vorschlag wartet im Eingang der Person."
+)
+
+
+def _show_proposal(
+    structured: dict[str, Any] | None, arguments: dict[str, Any], text: str, outcome: dict[str, Any]
+) -> str:
+    """Put the card for a write the server proposed in front of the reader; the text the model reads.
+
+    A read, a refusal and any other answer pass through. The server's own short text ("Proposed — the
+    person decides") is what the model reads; it never sees the structured result.
+    """
+    proposal = proposal_from(structured)
+    if proposal is None:
+        return text
+    shown = emit_operation_proposal_card(proposal, arguments.get("input"))
+    outcome.update({"proposed": proposal.operation, "card": shown})
+    return text if shown else text + _PROPOSED_WITHOUT_CARD
 
 
 async def run_search(query: str, domain: str = "", limit: int = 10) -> str:

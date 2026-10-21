@@ -35,11 +35,14 @@ export const PROPOSED_CHANGE_STATUSES = ['proposed', 'applied', 'partially_appli
 export type ProposedChangeStatus = (typeof PROPOSED_CHANGE_STATUSES)[number]
 
 /**
- * The shelf a proposal is on (0146), `project_folders.scope`'s vocabulary. A
- * Büroablage (`office_shelf`) proposal has no project and can only move Büroablage
- * documents (`proposed_changes_office_shelf_move`).
+ * The shelf a proposal is on (0146, 0174). `project`: a project's. `office_shelf`
+ * (the Büroablage, `project_folders.scope`'s vocabulary): no project, and it can
+ * only move Büroablage documents (`proposed_changes_office_shelf_move`).
+ * `organization`: no project either, and only an `operation` (a write that is
+ * the organization's, not a project's: its memory, its skills;
+ * `proposed_changes_organization_operation`).
  */
-export const PROPOSAL_SCOPES = ['project', 'office_shelf'] as const
+export const PROPOSAL_SCOPES = ['project', 'office_shelf', 'organization'] as const
 export type ProposalScope = (typeof PROPOSAL_SCOPES)[number]
 
 export const FILE_OPERATIONS = ['move', 'rename', 'create_folder', 'assign'] as const
@@ -179,7 +182,8 @@ export type OperationProposalInput = z.infer<typeof operationInputSchema>
  * the route's own authorization decides; `summary` is the line the person reads.
  * Created only by `proposeOperation` (`lib/agent-api/operation-proposals.ts`),
  * which checks the operation exists and writes: there is no agent-facing
- * create for this kind in `internalProposalRequestSchema`.
+ * create for this kind in `internalProposalRequestSchema`. In a turn with no
+ * project it is the organization's (scope `organization`, 0174).
  */
 export const operationPayloadSchema = z
   .object({
@@ -211,8 +215,9 @@ export type ProposedChangeResult = z.infer<typeof proposedChangeResultSchema>
 const proposedChangeBaseSchema = z.object({
   id: z.string().uuid(),
   /**
-   * The project. Null only for a Büroablage file operation (0146), which has
-   * none; a memory note and a profile change are always made in a project.
+   * The project. Null only for a Büroablage file operation (0146) and an
+   * organization-scoped operation (0174); a memory note and a profile change
+   * are always made in a project.
    */
   projectId: z.string().nullable(),
   status: z.enum(PROPOSED_CHANGE_STATUSES),
@@ -318,8 +323,8 @@ export const proposalListQuerySchema = z
     shelf: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(PROPOSAL_SCOPES).optional()),
     kind: z.enum(PROPOSED_CHANGE_KINDS).optional(),
   })
-  .refine((query) => (query.shelf === 'office_shelf') !== Boolean(query.projectId), {
-    message: 'Name a project, or the Büroablage with shelf=office_shelf',
+  .refine((query) => (query.shelf === 'office_shelf' || query.shelf === 'organization') !== Boolean(query.projectId), {
+    message: 'Name a project, or a shelf without one: shelf=office_shelf (the Büroablage) or shelf=organization',
   })
 export type ProposalListQuery = z.infer<typeof proposalListQuerySchema>
 

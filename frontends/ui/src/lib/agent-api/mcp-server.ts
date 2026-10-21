@@ -14,6 +14,7 @@ import 'server-only'
 
 import { McpServer, fromJsonSchema } from '@modelcontextprotocol/server'
 import type { StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server'
+import type { BackendOperation } from './backend-operations'
 import type { OperationInput } from './dispatch'
 import {
   META_TOOLS,
@@ -21,11 +22,12 @@ import {
   describeOperation,
   inputSchemaOf,
   reportMissingCapability,
+  runBackendOperation,
   runOperation,
   searchOperations,
 } from './discovery'
 import { annotationsOf } from './operation'
-import { visibleOperations } from './policy'
+import { visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import type { McpCallContext, McpMode } from './telemetry'
 
@@ -55,6 +57,17 @@ function operationSchema(op: Parameters<typeof inputSchemaOf>[0]): StandardSchem
   if (!schema) {
     schema = fromJsonSchema(inputSchemaOf(op) as JsonSchemaInput)
     operationSchemas.set(op.name, schema)
+  }
+  return schema
+}
+
+const backendSchemas = new Map<string, StandardSchemaWithJSON>()
+
+function backendSchema(op: BackendOperation): StandardSchemaWithJSON {
+  let schema = backendSchemas.get(op.name)
+  if (!schema) {
+    schema = fromJsonSchema(op.inputSchema as JsonSchemaInput)
+    backendSchemas.set(op.name, schema)
   }
   return schema
 }
@@ -100,6 +113,19 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
         annotations,
       },
       (args: unknown) => runOperation(ctx, op.name, (args ?? {}) as OperationInput),
+    )
+  }
+  // The Python agent's read tools: flat arguments, read-only, and open-world only where they reach beyond the workspace.
+  for (const op of visibleBackendOperations(ctx.principal)) {
+    server.registerTool(
+      op.name,
+      {
+        title: op.summary,
+        description: op.description,
+        inputSchema: backendSchema(op),
+        annotations: op.annotations,
+      },
+      (args: unknown) => runBackendOperation(ctx, op, (args ?? {}) as Record<string, unknown>),
     )
   }
   // The meta-tool that still matters when the whole catalog is listed.

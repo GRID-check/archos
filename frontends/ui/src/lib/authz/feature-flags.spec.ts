@@ -43,6 +43,7 @@ describe('the registry', () => {
     const entitlements = REGISTRY_FLAG_SLUGS.filter((slug) => FLAG_KINDS[slug] === 'entitlement').sort()
     expect(entitlements).toEqual(
       [
+        'agent-mcp',
         'byok-llm',
         'collaboration',
         'deep-research',

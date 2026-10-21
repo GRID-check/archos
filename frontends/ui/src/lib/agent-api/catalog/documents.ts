@@ -12,9 +12,41 @@ import {
 } from '@/lib/documents/document-wire'
 import { projectNameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import type { AgentOperation } from '../operation'
+import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
 const documentParams = z.object({
   id: z.string().describe('The document id, from a project document listing or document-search.'),
+})
+
+const versionFileParams = documentParams.extend({
+  versionId: z.string().describe('The version id, from document-version-list.'),
+})
+
+/** The cap every upload operation shares (`upload-wire.ts`). */
+const SIZE_NOTE = `Up to ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB per call through the agent door; the document limit of the office applies too.`
+
+const revisionOfField = z
+  .string()
+  .optional()
+  .describe('The id of the older document this file is the new Fassung of; the service checks the pair.')
+const projectUploadBody = uploadBodySchemaWith({
+  projectId: z.string().min(1).describe('The project id, from project-list.'),
+  folderId: z.string().optional().describe('The folder id, from project-folder-list; omit for the project root.'),
+  revisionOf: revisionOfField,
+  ...documentUploadFields,
+})
+const officeShelfUploadBody = uploadBodySchemaWith({
+  folderId: z.string().optional().describe('The Büroablage folder id, from office-shelf-folder-list; omit for the root.'),
+  revisionOf: revisionOfField,
+  ...documentUploadFields,
+})
+const sessionUploadBody = uploadBodySchemaWith({
+  conversationId: z
+    .string()
+    .min(1)
+    .describe('The conversation the file is attached to (`s_` plus a UUID with underscores), from conversation-list.'),
+  projectId: z.string().optional().describe('The project of the conversation, only used when the conversation is created by this call.'),
+  ...documentUploadFields,
 })
 
 export const documentsOperations: readonly AgentOperation[] = [
@@ -223,4 +255,117 @@ export const documentsOperations: readonly AgentOperation[] = [
     readOnly: true,
     load: () => import('@/app/api/documents/name-matches/route'),
   },
+
+  // ---- Files: presigned links and bytes out, uploads in ----
+  {
+    name: 'document-download',
+    domain: 'documents',
+    summary: 'Get a time-limited download link for a document',
+    description:
+      'Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. ' +
+      'The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. ' +
+      'The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.',
+    method: 'GET',
+    path: '/api/documents/[id]/download',
+    params: documentParams,
+    load: () => import('@/app/api/documents/[id]/download/route'),
+  },
+  {
+    name: 'document-file-get',
+    domain: 'documents',
+    summary: 'Read a stored PDF’s bytes',
+    description:
+      'The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource ' +
+      '(base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with ' +
+      'document-download. Only PDFs are served here.',
+    method: 'GET',
+    path: '/api/documents/[id]/file',
+    params: documentParams,
+    binaryResponse: ['application/pdf'],
+    load: () => import('@/app/api/documents/[id]/file/route'),
+  },
+  {
+    name: 'document-preview-get',
+    domain: 'documents',
+    summary: 'Get a time-limited preview link for a document',
+    description:
+      'Presigns an inline preview of the document: `{ url, contentType, filename, imageUrl, rendition }`. An office document is ' +
+      'previewed through its PDF rendition. The URL expires (an hour at most); call again for a fresh one. 415 for content that ' +
+      'cannot be previewed, 502 `RENDITION_FAILED` when the conversion failed. No bytes are sent here.',
+    method: 'GET',
+    path: '/api/documents/[id]/preview',
+    params: documentParams,
+    load: () => import('@/app/api/documents/[id]/preview/route'),
+  },
+  {
+    name: 'document-thumbnail-get',
+    domain: 'documents',
+    summary: 'Get a document’s thumbnail link',
+    description:
+      'A time-limited URL of the document’s first-page thumbnail image, `{ url }`, with `url: null` when it has none (not drawn ' +
+      'yet, or the file is held by the upload screening). The link expires; no bytes are sent here.',
+    method: 'GET',
+    path: '/api/documents/[id]/thumbnail',
+    params: documentParams,
+    load: () => import('@/app/api/documents/[id]/thumbnail/route'),
+  },
+  {
+    name: 'document-version-file-get',
+    domain: 'documents',
+    summary: 'Read one Fassung’s file bytes',
+    description:
+      'The bytes of one version (Fassung) of a document under its name, from document-version-list: returned as an attached resource ' +
+      '(base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: "1"` marks it ' +
+      'as an attachment. Only published or superseded versions are served.',
+    method: 'GET',
+    path: '/api/documents/[id]/versions/[versionId]/file',
+    params: versionFileParams,
+    query: z.object({ download: z.literal('1').optional().describe('Send 1 to ask for the file as a download.') }),
+    binaryResponse: ['application/octet-stream', 'application/pdf', 'image/*'],
+    load: () => import('@/app/api/documents/[id]/versions/[versionId]/file/route'),
+  },
+  {
+    name: 'document-upload',
+    domain: 'documents',
+    summary: 'Upload a file to a project',
+    description:
+      `Stores one file in a project (optionally in a folder) and hands it to ingestion. ${SIZE_NOTE} ` +
+      'Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). ' +
+      'Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds ' +
+      'comes back held, and a reviewer releases it. Needs write access to the project’s documents.',
+    method: 'POST',
+    path: '/api/documents/upload',
+    body: projectUploadBody,
+    bodyEncoding: 'multipart',
+    load: () => import('@/app/api/documents/upload/route'),
+  },
+  {
+    name: 'office-shelf-document-upload',
+    domain: 'documents',
+    summary: 'Upload a file to the Büroablage',
+    description:
+      `Stores one file in the office-wide Büroablage (optionally in one of its folders) and ingests it into the shared collection. ${SIZE_NOTE} ` +
+      'Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the Büroablage. Returns the stored document; ' +
+      'follow ingestion with document-status.',
+    method: 'POST',
+    path: '/api/office-shelf/documents/upload',
+    body: officeShelfUploadBody,
+    bodyEncoding: 'multipart',
+    load: () => import('@/app/api/office-shelf/documents/upload/route'),
+  },
+  {
+    name: 'session-document-upload',
+    domain: 'documents',
+    summary: 'Attach a file to a conversation',
+    description:
+      `Stores one file privately on one conversation (not in any project shelf) and ingests it for that chat. ${SIZE_NOTE} ` +
+      'Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created ' +
+      'when it does not exist yet. Returns the stored document; follow ingestion with document-status.',
+    method: 'POST',
+    path: '/api/session/documents/upload',
+    body: sessionUploadBody,
+    bodyEncoding: 'multipart',
+    load: () => import('@/app/api/session/documents/upload/route'),
+  },
+
 ]

@@ -36,14 +36,16 @@ export const proposedChanges = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     organizationId: text('organization_id').notNull(),
     /**
-     * The project the change is for; NULL for a Büroablage proposal (0146),
-     * exactly when `scope` is `office_shelf` (`proposed_changes_scope_owner`).
+     * The project the change is for; NULL for a Büroablage (0146) or an
+     * organization-scoped (0174) proposal, exactly when `scope` is not
+     * `project` (`proposed_changes_scope_owner`).
      */
     projectId: uuid('project_id'),
     /**
-     * The shelf (0146), `project_folders.scope`'s vocabulary. A Büroablage
-     * proposal moves Büroablage documents and nothing else
-     * (`proposed_changes_office_shelf_move`).
+     * The shelf (0146, 0174). A Büroablage proposal moves Büroablage documents
+     * and nothing else (`proposed_changes_office_shelf_move`); an
+     * organization's is an `operation` and nothing else
+     * (`proposed_changes_organization_operation`).
      */
     scope: text('scope').$type<ProposalScope>().notNull().default('project'),
     kind: text('kind').$type<ProposedChangeKind>().notNull(),
@@ -90,8 +92,21 @@ export const proposedChanges = pgTable(
     scopeOwner: check('proposed_changes_scope_owner', sql`(${table.scope} = 'project') = (${table.projectId} IS NOT NULL)`),
     officeShelfMove: check(
       'proposed_changes_office_shelf_move',
-      sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "office"))'), false)`
+      sql`${table.scope} <> 'office_shelf' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "office"))'), false)`
     ),
+    organizationOperation: check(
+      'proposed_changes_organization_operation',
+      sql`${table.scope} <> 'organization' OR ${table.kind} = 'operation'`
+    ),
+    // One open call, one proposal (0174): the same operation with the same input, in one conversation.
+    openOperationUidx: uniqueIndex('uniq_proposed_changes_open_operation')
+      .on(
+        table.organizationId,
+        table.originConversationId,
+        sql`(${table.payload}->>'operation')`,
+        sql`md5((${table.payload}->'input')::text)`
+      )
+      .where(sql`${table.kind} = 'operation' AND ${table.status} = 'proposed' AND ${table.originConversationId} IS NOT NULL`),
     originCardUidx: uniqueIndex('uniq_proposed_changes_origin_card')
       .on(table.organizationId, table.originMessageId, table.originCardIndex)
       .where(sql`${table.originCardIndex} IS NOT NULL`),

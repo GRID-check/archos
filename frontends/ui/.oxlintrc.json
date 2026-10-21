@@ -225,15 +225,10 @@
       // import that module, so eslint-rules/lint-config.spec.mjs fails when
       // the two lists differ. Shrink both; never grow them.
       "files": [
-        "src/app/api/conversations/\\[id\\]/route.ts",
         "src/app/api/internal/agent-profiler-spans/route.ts",
         "src/app/api/internal/citation-events/route.ts",
         "src/app/api/internal/memory/route.ts",
         "src/app/api/internal/usage/route.ts",
-        "src/app/api/organization/memory/\\[itemId\\]/route.ts",
-        "src/app/api/organization/memory/route.ts",
-        "src/app/api/projects/\\[id\\]/memory/\\[itemId\\]/route.ts",
-        "src/app/api/projects/\\[id\\]/memory/route.ts",
         "src/app/api/sharing/\\[resourceType\\]/\\[resourceId\\]/grants/route.ts",
         "src/app/api/sharing/\\[resourceType\\]/\\[resourceId\\]/route.ts"
       ],

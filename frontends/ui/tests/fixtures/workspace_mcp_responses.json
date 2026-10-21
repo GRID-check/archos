@@ -9,7 +9,7 @@
     "call_write": {
       "status": 200,
       "contentType": "text/event-stream",
-      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\n  \\\"proposed\\\": true,\\n  \\\"applied\\\": false,\\n  \\\"proposalId\\\": \\\"prop_1\\\",\\n  \\\"summary\\\": \\\"Add user_2 to proj_1 as viewer\\\",\\n  \\\"note\\\": \\\"Nothing was changed. The person sees this proposal in Piloti and accepts or dismisses it.\\\"\\n}\"}],\"structuredContent\":{\"proposed\":true,\"applied\":false,\"proposalId\":\"prop_1\",\"summary\":\"Add user_2 to proj_1 as viewer\",\"note\":\"Nothing was changed. The person sees this proposal in Piloti and accepts or dismisses it.\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"Proposed — the person decides. Nothing was changed.\"}],\"structuredContent\":{\"decision\":\"propose\",\"proposalId\":\"prop_1\",\"summary\":\"Add user_2 to proj_1 as viewer\",\"operation\":\"project-member-add\"}},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
     },
     "describe": {
       "status": 200,

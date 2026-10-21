@@ -176,7 +176,7 @@ def test_every_server_tool_the_agent_names_is_in_the_fixture() -> None:
 EXPECTED_TEXT = {
     "search": ["project-list", "project-member-add"],
     "describe": ["project-member-add", "inputSchema"],
-    "call_write": ["proposed", "prop_1", "Nothing was changed"],
+    "call_write": ["Proposed", "the person decides", "Nothing was changed"],
     "call_read": ["proj_1"],
     "report_missing": ["recorded"],
 }
@@ -210,6 +210,34 @@ def test_client_reads_what_the_route_answers(case: str, monkeypatch: pytest.Monk
     assert not text.startswith("Fehler:"), text
     for needle in EXPECTED_TEXT[case]:
         assert needle in text
+
+
+def test_a_proposed_write_carries_the_shape_the_card_is_made_from(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``structuredContent`` ``{decision, proposalId, summary, operation}`` is what ``cards.proposal_from`` reads."""
+    entry = _responses()["responses"]["call_write"]
+    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    tool, arguments = next((t, a) for n, t, a in CASES if n == "call_write")
+
+    result = client.call_tool_result(tool, arguments, _envelope())
+
+    assert result.structured == {
+        "decision": "propose",
+        "proposalId": "prop_1",
+        "summary": "Add user_2 to proj_1 as viewer",
+        "operation": "project-member-add",
+    }
+    # The text is all the model reads: short, and it says nothing was done.
+    assert result.text == "Proposed — the person decides. Nothing was changed."
+
+
+def test_a_read_has_no_decision_to_propose(monkeypatch: pytest.MonkeyPatch) -> None:
+    from aiq_agent.tools.workspace.cards import proposal_from
+
+    entry = _responses()["responses"]["call_read"]
+    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    tool, arguments = next((t, a) for n, t, a in CASES if n == "call_read")
+
+    assert proposal_from(client.call_tool_result(tool, arguments, _envelope()).structured) is None
 
 
 @pytest.mark.parametrize("case", ["refused_no_envelope", "refused_forged_envelope", "refused_wrong_token"])

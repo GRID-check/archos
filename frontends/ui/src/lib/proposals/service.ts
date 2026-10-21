@@ -34,6 +34,13 @@
  *   shelf's, and can only move its documents. Any member reads the Büroablage,
  *   so reading needs no project right; deciding needs its curators' right
  *   (`canManageOfficeShelf`), the one every write to it asks.
+ * - **The organization** (0174): a proposal with no project that is not the
+ *   Büroablage's is an `operation` Piloti proposed in a turn outside any
+ *   project (the office's memory, a skill). It is read like a project's, by
+ *   `viewer` on its conversation (or, made in none, by the person it was made
+ *   for alone), and decided by anyone who reads it: it asks no project right,
+ *   because the operation's own route, run in the decider's session, is the
+ *   gate (ADR-0121).
  * - **A proposal no conversation made** (a filing suggestion, `lib/filing`)
  *   has no card to borrow a reader from, so it is read through the documents
  *   it names: every one must resolve for the reader on their shelf, or it is
@@ -61,6 +68,7 @@ import {
   applyKind,
   DECIDE_PERMISSIONS,
   noticeVariantOf,
+  ORGANIZATION_KINDS,
   parseKindPayload,
   requireProposable,
   summaryOf,
@@ -71,6 +79,7 @@ import {
   claimProposedChange,
   deleteUndecidedProposedChange,
   dismissProposedChange,
+  findOpenOperationProposal,
   findProposedChange,
   insertProposedChange,
   listShelfProposals,
@@ -84,6 +93,7 @@ import {
   type ApplyProposalRequest,
   type ListedProposal,
   type ProposalListQuery,
+  type ProposalScope,
   type ProposedChangeKind,
   type ProposedChangeResult,
   type ProposedChangeStatus,
@@ -102,8 +112,17 @@ const staleBefore = (now = Date.now()) => new Date(now - APPLY_CLAIM_TTL_MS)
 const claimIsLive = (row: ProposedChangeRow, now = Date.now()) =>
   row.applyingSince !== null && row.applyingSince.getTime() >= now - APPLY_CLAIM_TTL_MS
 
+/** The shelf a proposal with this payload and this project is on. */
+function scopeOf(projectId: string | null, typed: KindPayload): ProposalScope {
+  if (projectId) return 'project'
+  return ORGANIZATION_KINDS.has(typed.kind) ? 'organization' : 'office_shelf'
+}
+
 export interface CreateProposalInput {
-  /** The project; null files it on the Büroablage (0146), where only a move of its documents is proposable. */
+  /**
+   * The project. Null files it on the Büroablage (0146), where only a move of
+   * its documents is proposable, or, for an `operation`, on the organization (0174).
+   */
   projectId: string | null
   kind: ProposedChangeKind
   /** The contract's payload for `kind`; parsed here. */
@@ -121,17 +140,23 @@ export interface CreateProposalInput {
  * File Piloti's proposal on behalf of `session`'s person, in a project they can
  * read. Proposing changes nothing, so reading is enough; deciding takes the
  * kind's write. The same card of the same answer a second time returns the
- * first proposal as it stands, and tells nobody again.
+ * first proposal as it stands, and tells nobody again; so does an operation
+ * proposal repeated in its conversation while the first is still `proposed`
+ * (the same operation, the same input).
  */
 export async function createProposal(session: AuthorizedSession, input: CreateProposalInput): Promise<ProposedChangeRow> {
-  const scope = input.projectId ? ('project' as const) : ('office_shelf' as const)
   // Any member reads the Büroablage; a project is read with `project:view`.
   if (input.projectId) await requireProjectAccess(session, input.projectId, 'project:view')
   const typed = parseKindPayload(input.kind, input.payload)
+  const scope = scopeOf(input.projectId, typed)
   requireProposable(typed, scope)
   if (input.conversationId) {
     const conversation = await findConversationInOrg(input.conversationId, session.organizationId)
     if (!conversation) throw new NotFoundError('Conversation not found')
+    if (typed.kind === 'operation') {
+      const open = await findOpenOperationProposal(session.organizationId, input.conversationId, typed.payload)
+      if (open) return open
+    }
   }
   const { row, created } = await insertProposedChange({
     organizationId: session.organizationId,
@@ -227,15 +252,19 @@ async function documentsFor(
   return resolveItemDocuments(session, row.projectId, typed.payload.operations)
 }
 
+/**
+ * An organization-scoped proposal made in no conversation (0174) has no card to
+ * borrow a reader from and names nothing a reader could be checked against: it
+ * is read by the person it was made for and nobody else.
+ */
+const hiddenFromOthers = (session: AuthorizedSession, row: ProposedChangeRow) =>
+  row.scope === 'organization' && !row.originConversationId && row.onBehalfOf !== session.userId
+
 /** Whether `session` may read the row, as {@link requireReadableProposal} decides it, without throwing. */
 async function readableBy(session: AuthorizedSession, row: ProposedChangeRow): Promise<boolean> {
   try {
-    if (row.projectId) await requireProjectAccess(session, row.projectId, 'project:view')
-    if (row.originConversationId) {
-      await requireResourceAccess(session, 'conversation', row.originConversationId, 'viewer')
-      return true
-    }
-    return (await documentsFor(session, row)) !== null
+    await assertReadable(session, row)
+    return true
   } catch (error) {
     if (error instanceof NotFoundError || error instanceof ForbiddenError) return false
     throw error
@@ -246,18 +275,24 @@ async function readableBy(session: AuthorizedSession, row: ProposedChangeRow): P
  * The proposal, if `session` may read it; a 404 for "missing" and "not yours"
  * alike. A project's needs `project:view`; one made in a conversation needs
  * `viewer` on it, and one made in none needs every document it names to
- * resolve for the reader. The Büroablage is every member's to read.
+ * resolve for the reader. The Büroablage is every member's to read. An
+ * organization's (0174) is read through its conversation, or by the person it
+ * was made for.
  */
 export async function requireReadableProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeRow> {
   const row = await findProposedChange(session.organizationId, id)
   if (!row) throw new NotFoundError()
+  await assertReadable(session, row)
+  return row
+}
+
+async function assertReadable(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   if (row.projectId) await requireProjectAccess(session, row.projectId, 'project:view')
   if (row.originConversationId) {
     await requireResourceAccess(session, 'conversation', row.originConversationId, 'viewer')
-  } else if ((await documentsFor(session, row)) === null) {
+  } else if (hiddenFromOthers(session, row) || (await documentsFor(session, row)) === null) {
     throw new NotFoundError()
   }
-  return row
 }
 
 const deciderNeedsWrite = (kind: ProposedChangeKind) =>
@@ -269,6 +304,8 @@ const deciderNeedsWrite = (kind: ProposedChangeKind) =>
 /** Refuse a decision from a reader without the kind's right: 403, or the closed project's own 403. */
 async function requireDecider(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   if (!row.projectId) {
+    // The organization's (0174): the operation's own route, run as the decider, is the gate.
+    if (row.scope === 'organization' && ORGANIZATION_KINDS.has(row.kind)) return
     // The Büroablage: its curators write it, so they decide what moves in it.
     if (!canManageOfficeShelf(session)) throw deciderNeedsWrite(row.kind)
     return
@@ -297,7 +334,7 @@ const alreadyDecided = (row: ProposedChangeRow) =>
 
 const beingApplied = () => new ConflictError('This proposal is being applied', { reason: 'proposal-applying' })
 
-/** The project of a kind that always has one; `proposed_changes_office_shelf_move` makes a miss a bug. */
+/** The project of a proposal on a project's shelf; `proposed_changes_scope_owner` makes a miss a bug. */
 function projectOf(row: ProposedChangeRow): string {
   if (!row.projectId) throw new Error(`A ${row.kind} proposal without a project`)
   return row.projectId
@@ -326,8 +363,8 @@ async function toView(
     results: row.results ?? null,
     canDecide: undecided && (await decides(row)),
   }
-  // A file operation's project may be null (the Büroablage), the other kinds' never is.
-  const projectId = row.kind === 'file_operation' ? row.projectId : projectOf(row)
+  // Only a project's proposal has a project; the Büroablage's and the organization's have none.
+  const projectId = row.scope === 'project' ? projectOf(row) : row.projectId
   return { ...base, ...parseKindPayload(row.kind, row.payload), projectId }
 }
 
@@ -409,9 +446,13 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
  * One the reader may not read is left out rather than refused: the list is a
  * view of what waits, not a probe. Whether the reader may decide is asked once
  * per kind, because it is a property of the shelf and the kind, not the row.
+ * The organization's shelf (0174) lists the open organization-scoped operations
+ * this reader may read.
  */
 export async function listOpenProposals(session: AuthorizedSession, query: ProposalListQuery): Promise<ListedProposal[]> {
-  const shelf: ProposalShelf = query.projectId ? { scope: 'project', projectId: query.projectId } : { scope: 'office_shelf' }
+  const shelf: ProposalShelf = query.projectId
+    ? { scope: 'project', projectId: query.projectId }
+    : { scope: query.shelf === 'organization' ? 'organization' : 'office_shelf' }
   if (shelf.scope === 'project') await requireProjectAccess(session, shelf.projectId, 'project:view')
   const rows = await listShelfProposals(session.organizationId, shelf, {
     statuses: ['proposed'],
@@ -430,6 +471,7 @@ export async function listOpenProposals(session: AuthorizedSession, query: Propo
   const listed = await Promise.all(
     rows.map(async (row): Promise<ListedProposal | null> => {
       if (row.originConversationId && !(await readableBy(session, row))) return null
+      if (hiddenFromOthers(session, row)) return null
       const documents = await documentsFor(session, row)
       if (documents === null) return null
       return { proposal: await toView(session, row, decides), documents }

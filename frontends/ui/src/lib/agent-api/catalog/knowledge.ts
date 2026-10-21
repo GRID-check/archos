@@ -62,4 +62,19 @@ export const knowledgeOperations: readonly AgentOperation[] = [
     }),
     load: () => import('@/app/api/widgets/token/route'),
   },
+  {
+    name: 'knowledge-document-get',
+    domain: 'knowledge',
+    summary: 'Read a base-corpus PDF',
+    description:
+      'The PDF of one document of the building-law base corpus (the file names are listed by knowledge-base-get), returned as an ' +
+      'attached resource up to 5 MiB; a larger file is not sent. Identical for every organization. Use it to quote a source a ' +
+      'citation points at.',
+    method: 'GET',
+    path: '/api/knowledge-base/documents/[fileName]',
+    params: z.object({ fileName: z.string().describe('The base-corpus file name, exactly as knowledge-base-get lists it.') }),
+    binaryResponse: ['application/pdf'],
+    load: () => import('@/app/api/knowledge-base/documents/[fileName]/route'),
+  },
+
 ]

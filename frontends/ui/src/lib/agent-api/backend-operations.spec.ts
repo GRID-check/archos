@@ -125,7 +125,9 @@ describe('the operations', () => {
       expect(op.annotations).toMatchObject({
         readOnlyHint: true,
         destructiveHint: false,
-        openWorldHint: false,
+        idempotentHint: true,
+        // Only the law lookup leaves the workspace (it reaches the public RIS).
+        openWorldHint: op.name === 'law-lookup',
       })
       const schema = op.inputSchema
       if (op.name === 'law-lookup') {

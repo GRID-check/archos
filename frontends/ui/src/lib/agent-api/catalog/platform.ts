@@ -9,9 +9,6 @@
  * parsers (`parseQualityScopeStrict`, `requireFeedbackQuery`), not zod, so the
  * `query` schemas below describe those parameters for the agent; the route's
  * parser stays the gate.
- *
- * Left out on purpose: `POST /api/platform/knowledge/documents` (multipart
- * upload) and `GET /api/platform/answer-feedback/export` (CSV or XLSX download).
  */
 
 import { z } from 'zod'
@@ -40,6 +37,7 @@ import {
 } from '@/lib/skills/types'
 import { storageQuotaPutSchema, uploadLimitPutSchema } from '@/lib/storage/contract'
 import type { AgentOperation } from '../operation'
+import { MAX_UPLOAD_BYTES, uploadBodySchemaWith } from '../upload-wire'
 
 const organizationParams = z.object({
   organizationId: z.string().describe('The organization id, from platform-overview-get.'),
@@ -747,4 +745,40 @@ export const platformOperations: readonly AgentOperation[] = [
     destructive: true,
     load: () => import('@/app/api/platform/maintenance/reconcile-vectors/route'),
   },
+  {
+    name: 'platform-answer-feedback-export',
+    domain: 'platform',
+    summary: 'Export answer feedback as CSV or Excel',
+    description:
+      'The votes behind platform-answer-feedback-get as a file: `format` csv (default, returned as text) or xlsx (a four-sheet workbook, ' +
+      'returned as an attached resource up to 5 MiB). Same scope and filters as the Ratings tab; `scope: "all"` ignores the ratings filters. ' +
+      '`summary: "weekly"` exports a CSV per organization and ISO week instead. A cut export says so in its file name.',
+    method: 'GET',
+    path: '/api/platform/answer-feedback/export',
+    query: ratingsQuery.extend({
+      format: z.enum(['csv', 'xlsx']).optional().describe('csv (default) or xlsx.'),
+      scope: z.enum(['all', 'selection']).optional().describe('all: every vote in the scope, ratings filters ignored.'),
+      summary: z.literal('weekly').optional().describe('weekly: a CSV per organization and ISO week instead of the votes.'),
+    }),
+    binaryResponse: ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'],
+    load: () => import('@/app/api/platform/answer-feedback/export/route'),
+  },
+  {
+    name: 'platform-knowledge-document-upload',
+    domain: 'platform',
+    summary: 'Upload a PDF or ZIP to the base corpus',
+    description:
+      `Adds a PDF, or a ZIP of PDFs, to the shared building-law corpus every organization reads. Up to ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB per call ` +
+      'through the agent door. Send `body.files[0]` as { name, mimeType, contentBase64 }; `body.fields.doc_class` presets the Dokumentart ' +
+      'of a single PDF. Ingestion runs in the background: the answer is `pending`, follow it with the corpus status operations. ' +
+      'Platform owners only.',
+    method: 'POST',
+    path: '/api/platform/knowledge/documents',
+    body: uploadBodySchemaWith({
+      doc_class: z.string().max(100).optional().describe('The Dokumentart for a single PDF; omit to let ingestion decide.'),
+    }),
+    bodyEncoding: 'multipart',
+    load: () => import('@/app/api/platform/knowledge/documents/route'),
+  },
+
 ]

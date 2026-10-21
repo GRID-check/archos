@@ -2624,6 +2624,76 @@ check_in grid_revmarks "SELECT payload->>'marksRevision' FROM inbox_items WHERE 
 echo "==> 0172 inbox revision marks and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0174: an organization-scoped operation proposal, one open call per
+# conversation, and the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0174, with three open
+# operation proposals for one call in one conversation (the repeat 0174 folds), a
+# different call, and a Büroablage move. The scope accepts `organization` with
+# no project and only for an `operation`; the Büroablage CHECK still holds for
+# the Büroablage; the unique index refuses a second open call, and frees it
+# once decided. The runtime role sees its organization's proposals and no other's.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0174 organization operation proposals and their down migration on grid_orgop"
+migrate_before grid_orgop 0174_organization_operation_proposals
+sql_in grid_orgop <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000174', 'org_0174', 'Haus 0174', 'user_1', 'proj_0174');
+INSERT INTO conversations (id, organization_id, created_by, project_id)
+VALUES ('conv_0174', 'org_0174', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000174');
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id, created_at) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000174', 'org_0174', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"A"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0174', '2026-01-01 10:00:00+00'),
+  ('d2d2d2d2-0000-4000-8000-000000000174', 'org_0174', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"body":{"name":"A"},"params":{"id":"p"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0174', '2026-01-01 10:01:00+00'),
+  ('d3d3d3d3-0000-4000-8000-000000000174', 'org_0174', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"A"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0174', '2026-01-01 10:02:00+00'),
+  ('d4d4d4d4-0000-4000-8000-000000000174', 'org_0174', 'aaaaaaaa-0000-4000-8000-000000000174', 'project', 'operation',
+   '{"operation":"folder-rename","input":{"params":{"id":"p"},"body":{"name":"B"}},"summary":"s"}', 'piloti', 'user_1', 'conv_0174', '2026-01-01 10:03:00+00');
+INSERT INTO proposed_changes (id, organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES
+  ('d5d5d5d5-0000-4000-8000-000000000174', 'org_0174', NULL, 'office_shelf', 'file_operation',
+   '{"operation":"move","operations":[{"document":"Norm.pdf","source":"office","target_folder":"Normen"}]}', 'piloti', 'user_1');
+SQL
+refused_in grid_orgop "INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0174', NULL, 'organization', 'operation', '{}', 'piloti', 'user_1')" "violates check constraint" "the organization scope existed before 0174"
+apply_in grid_orgop 0174_organization_operation_proposals.sql
+check_in grid_orgop "SELECT string_agg(left(id::text, 2), ',' ORDER BY created_at) FROM proposed_changes WHERE kind = 'operation'" "d1,d4" "0174 folds a repeated open call to its oldest proposal, however its keys were ordered, and keeps another input"
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'office_shelf'" "1" "0174 leaves the Büroablage's proposal"
+PO174="INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id) VALUES ('org_0174'"
+sql_in grid_orgop <<<"$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"s\"}', 'piloti', 'user_1', 'conv_0174')"
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization'" "1" "an operation is stored on the organization with no project"
+refused_in grid_orgop "$PO174, NULL, 'organization', 'memory', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_organization_operation" "an organization-scoped note was accepted"
+refused_in grid_orgop "$PO174, NULL, 'organization', 'file_operation', '{\"operation\":\"move\",\"operations\":[{\"document\":\"a.pdf\",\"source\":\"office\"}]}', 'piloti', 'user_1', NULL)" "proposed_changes_organization_operation" "an organization-scoped file move was accepted"
+refused_in grid_orgop "$PO174, 'aaaaaaaa-0000-4000-8000-000000000174', 'organization', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_scope_owner" "an organization-scoped proposal naming a project was accepted"
+refused_in grid_orgop "$PO174, NULL, 'regal', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_scope_known" "an unknown shelf was accepted"
+refused_in grid_orgop "$PO174, NULL, 'office_shelf', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_office_shelf_move" "a Büroablage proposal of another kind was accepted"
+refused_in grid_orgop "$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"again\"}', 'piloti', 'user_1', 'conv_0174')" "uniq_proposed_changes_open_operation" "a second open proposal of the same call was accepted"
+sql_in grid_orgop <<<"$PO174, NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"no chat\"}', 'piloti', 'user_1', NULL), ('org_0174', NULL, 'organization', 'operation', '{\"operation\":\"organization-memory-create\",\"input\":{\"body\":{\"content\":\"x\"}},\"summary\":\"no chat\"}', 'piloti', 'user_1', NULL)"
+sql_in grid_orgop <<'SQL'
+UPDATE proposed_changes SET status = 'dismissed', decided_by = 'user_1', decided_at = now()
+  WHERE scope = 'organization' AND origin_conversation_id = 'conv_0174';
+INSERT INTO proposed_changes (organization_id, project_id, scope, kind, payload, proposed_by_kind, on_behalf_of, origin_conversation_id)
+VALUES ('org_0174', NULL, 'organization', 'operation',
+        '{"operation":"organization-memory-create","input":{"body":{"content":"x"}},"summary":"again"}', 'piloti', 'user_1', 'conv_0174');
+SQL
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization' AND origin_conversation_id = 'conv_0174'" "2" "a decided proposal frees its call, and a repeat in no conversation is not folded"
+RW174=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_orgop -qtA \
+  -c "SET grid.organization_id = 'org_other_0174'" \
+  -c "SELECT count(*) FROM proposed_changes WHERE scope = 'organization'")
+if [ "$RW174" != "0" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_orgop: the runtime role saw another organization's organization-scoped proposals (got: $RW174)" >&2
+  exit 1
+fi
+apply_in grid_orgop 0174_organization_operation_proposals.down.sql
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE scope = 'organization'" "0" "down deleted the organization-scoped proposals"
+check_in grid_orgop "SELECT count(*) FROM pg_indexes WHERE indexname = 'uniq_proposed_changes_open_operation'" "0" "down dropped the open call's unique index"
+refused_in grid_orgop "$PO174, NULL, 'organization', 'operation', '{}', 'piloti', 'user_1', NULL)" "violates check constraint" "down left the organization scope allowed"
+refused_in grid_orgop "$PO174, NULL, 'office_shelf', 'operation', '{}', 'piloti', 'user_1', NULL)" "proposed_changes_office_shelf_move" "down left the Büroablage CHECK open to another kind"
+apply_in grid_orgop 0174_organization_operation_proposals.sql
+apply_in grid_orgop 0174_organization_operation_proposals.sql
+check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE kind = 'operation'" "2" "0174 re-applies, twice, keeping the proposals it should"
+echo "==> 0174 organization operation proposals and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose

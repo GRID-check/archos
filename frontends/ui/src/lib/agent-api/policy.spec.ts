@@ -12,7 +12,14 @@ vi.mock('./catalog', async () => {
 })
 
 import { FAKE_OPERATIONS } from './test-operations'
-import { SENSITIVE_SCOPE, callDecision, findVisibleOperation, visibleOperations } from './policy'
+import {
+  SENSITIVE_SCOPE,
+  callDecision,
+  findVisibleBackendOperation,
+  findVisibleOperation,
+  visibleBackendOperations,
+  visibleOperations,
+} from './policy'
 import type { AgentPrincipal } from './principal'
 
 const session = {
@@ -68,5 +75,14 @@ describe('visibleOperations', () => {
   it('treats a hidden operation as absent', () => {
     expect(findVisibleOperation(person(), 'folder-access-grant')).toBeUndefined()
     expect(findVisibleOperation(person(), 'project-list')?.name).toBe('project-list')
+  })
+})
+
+describe('backend operations', () => {
+  it('are shown to a person and hidden from Piloti, which has them as native tools', () => {
+    expect(visibleBackendOperations(person()).map((o) => o.name)).toContain('knowledge-search')
+    expect(findVisibleBackendOperation(person(), 'knowledge-search')?.name).toBe('knowledge-search')
+    expect(visibleBackendOperations(piloti)).toEqual([])
+    expect(findVisibleBackendOperation(piloti, 'knowledge-search')).toBeUndefined()
   })
 })

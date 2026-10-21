@@ -1219,6 +1219,13 @@
       "when": 1792454415044,
       "tag": "0173_operation_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 174,
+      "version": "7",
+      "when": 1792454416044,
+      "tag": "0174_organization_operation_proposals",
+      "breakpoints": true
     }
   ]
 }

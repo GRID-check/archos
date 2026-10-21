@@ -2,8 +2,8 @@
  * The folders, documents, uploads and holds operations (ADR-0121). See `projects.ts` for the shape
  * and `docs/architecture/agent-surface.md` for the rules.
  *
- * Left out on purpose: multipart uploads and binary downloads (the dispatcher sends JSON), the mail
- * import's byte-stream protocol, and folder access, which stays with a person.
+ * Folder access is readable here (project-folder-access-get); changing it stays with a person.
+ * The mail import's byte protocol is three operations: start, part upload (raw), complete.
  */
 
 import { z } from 'zod'
@@ -28,7 +28,9 @@ import {
   sealUploadBatchSchema,
   uploadHistoryQuerySchema,
 } from '@/lib/upload-batches/batch-wire'
+import { startMailImportSchema } from '@/lib/mail-import/types'
 import type { AgentOperation } from '../operation'
+import { rawBodySchema } from '../upload-wire'
 
 const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })
 const folderParams = projectParams.extend({
@@ -544,4 +546,64 @@ export const foldersOperations: readonly AgentOperation[] = [
     query: projectMarksQuerySchema,
     load: () => import('@/app/api/projects/[id]/annotations/route'),
   },
+  {
+    name: 'mail-import-start',
+    domain: 'documents',
+    summary: 'Start an Outlook archive import',
+    description:
+      'Registers a .pst or .ost archive for import into the project (`filename`, `sizeBytes`) and answers the upload plan ' +
+      '`{ import, partSize, partCount, uploadedParts }`. Then send the archive in `partCount` parts of exactly `partSize` bytes ' +
+      '(the last one shorter) with mail-import-part-upload, and finish with mail-import-complete. Needs the mail-import feature ' +
+      'and write access to the project’s documents. Archives are large (up to 25 GB); each part is a 32 MiB call.',
+    method: 'POST',
+    path: '/api/projects/[id]/mail-imports',
+    params: projectParams,
+    body: startMailImportSchema,
+    load: () => import('@/app/api/projects/[id]/mail-imports/route'),
+  },
+  {
+    name: 'mail-import-part-upload',
+    domain: 'documents',
+    summary: 'Send one part of an Outlook archive',
+    description:
+      'Sends the raw bytes of part `partNumber` (1-based) of the archive started with mail-import-start, as `body.contentBase64`. ' +
+      'Every part must be exactly the plan’s `partSize` bytes, the last one the remainder, or the route answers 400 with the size ' +
+      'it expected. Sending a part again replaces it, so a broken send resumes: read mail-import-get for `uploadedParts` and send the ' +
+      'rest. Only the person who started the import may send. Returns `{ partNumber }`.',
+    method: 'PUT',
+    path: '/api/projects/[id]/mail-imports/[importId]/parts/[partNumber]',
+    params: mailImportParams.extend({
+      partNumber: z.string().describe('The part number, 1-based, up to the plan’s `partCount`.'),
+    }),
+    body: rawBodySchema,
+    bodyEncoding: 'raw',
+    idempotent: true,
+    load: () => import('@/app/api/projects/[id]/mail-imports/[importId]/parts/[partNumber]/route'),
+  },
+  {
+    name: 'mail-import-complete',
+    domain: 'documents',
+    summary: 'Finish sending an Outlook archive',
+    description:
+      'Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its ' +
+      'status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 400 when a part is missing.',
+    method: 'POST',
+    path: '/api/projects/[id]/mail-imports/[importId]/complete',
+    params: mailImportParams,
+    load: () => import('@/app/api/projects/[id]/mail-imports/[importId]/complete/route'),
+  },
+  {
+    name: 'project-folder-access-get',
+    domain: 'folders',
+    summary: 'Read who may open a project folder',
+    description:
+      'The folder’s access as it is now: `{ mode: "inherit" }`, or `{ mode: "custom", everyoneReads, people: [{ userId, level }] }`. ' +
+      'Needs manage rights on the project and write access on the folder, as a change would. Changing access stays with a person in Piloti. ' +
+      'Folder ids come from project-folder-list.',
+    method: 'GET',
+    path: '/api/projects/[id]/folders/[folderId]/access',
+    params: folderParams,
+    load: () => import('@/app/api/projects/[id]/folders/[folderId]/access/route'),
+  },
+
 ]

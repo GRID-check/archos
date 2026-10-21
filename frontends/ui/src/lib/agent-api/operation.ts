@@ -16,6 +16,8 @@
 
 import type { z } from 'zod'
 
+export type BodyEncoding = 'json' | 'multipart' | 'raw'
+
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
 
 /** A route handler as `lib/api/handler.ts` builds one. */
@@ -71,6 +73,20 @@ export interface AgentOperation {
   readonly query?: z.ZodObject<z.ZodRawShape>
   /** The JSON body the route parses, reused from the route's own schema where it is exported. */
   readonly body?: z.ZodTypeAny
+  /**
+   * How `body` reaches the route (default `json`). `multipart`: the agent sends
+   * `{ files: [{ name, mimeType, contentBase64 }], fields? }` (`upload-wire.ts`)
+   * and the dispatcher builds the `FormData` the UI's uploader builds. `raw`:
+   * the agent sends `{ contentBase64 }` and the route receives those bytes as
+   * `application/octet-stream`. The route's own parsing is the gate either way.
+   */
+  readonly bodyEncoding?: BodyEncoding
+  /**
+   * The media types a binary answer may have (a PDF, a Word file, a BCF zip).
+   * Absent: the route answers JSON or text. A binary answer reaches an MCP
+   * client as a `resource` content item, up to `MAX_INLINE_BYTES`.
+   */
+  readonly binaryResponse?: readonly string[]
   /**
    * A call that changes nothing. Defaults to `method === 'GET'`; a POST that
    * searches or computes says `true`.

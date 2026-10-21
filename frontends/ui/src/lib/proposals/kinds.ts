@@ -63,7 +63,8 @@ export function parseKindPayload(kind: ProposedChangeKind, payload: unknown): Ki
  *   the same two rights.
  * - `operation`: the right to see the project. The operation's own route is the
  *   gate and runs in the decider's session when it is applied (ADR-0121), so a
- *   second, narrower list here would only disagree with it.
+ *   second, narrower list here would only disagree with it. An organization-
+ *   scoped one has no project and no right here at all ({@link ORGANIZATION_KINDS}).
  */
 export const DECIDE_PERMISSIONS: Record<ProposedChangeKind, readonly ProjectPermission[]> = {
   file_operation: DOCUMENT_WRITE_PERMISSIONS,
@@ -71,6 +72,13 @@ export const DECIDE_PERMISSIONS: Record<ProposedChangeKind, readonly ProjectPerm
   project_profile: MEMORY_WRITE_PERMISSIONS,
   operation: ['project:view'],
 }
+
+/**
+ * The kinds that may be the organization's, with no project (0174), and are
+ * decided by anyone who can read the proposal: their gate is not a project
+ * right but the route they run, in the decider's session.
+ */
+export const ORGANIZATION_KINDS: ReadonlySet<ProposedChangeKind> = new Set(['operation'])
 
 /** Every file item carries the fields its verb needs, or the proposal is refused (422). */
 function requireItemFields(payload: FileOperationPayload): void {
@@ -141,13 +149,11 @@ function requireProfileVocabulary(payload: ProjectProfilePayload): void {
 
 /** Refuse, when it is proposed, what could only fail when it is applied. */
 export function requireProposable(typed: KindPayload, scope: ProposalScope = 'project'): void {
-  if (typed.kind === 'operation') {
-    if (scope !== 'project') {
-      throw new UnprocessableError('This conversation is not in a project. An operation is proposed in one.', {
-        reason: 'proposal-operation-needs-project',
-      })
-    }
-    requireProposableOperation(typed.payload)
+  if (typed.kind === 'operation') requireProposableOperation(typed.payload)
+  if (scope === 'organization' && !ORGANIZATION_KINDS.has(typed.kind)) {
+    throw new UnprocessableError('This conversation is not in a project. This kind of proposal is made in one.', {
+      reason: 'proposal-needs-project',
+    })
   }
   if (scope === 'office_shelf') requireOfficeShelfMove(typed)
   if (typed.kind === 'file_operation') {
@@ -209,6 +215,6 @@ export function applyKind(typed: KindPayload, context: KindApplyContext): Promis
     case 'project_profile':
       return applyProjectProfile(typed.payload, inProject(context))
     case 'operation':
-      return applyOperation(typed.payload, inProject(context))
+      return applyOperation(typed.payload, context)
   }
 }

@@ -47,6 +47,9 @@ export interface JsonSchemaObject {
   readonly [keyword: string]: unknown
 }
 
+/** {@link ToolAnnotations}, except that a tool may reach beyond the workspace (the RIS lookup does). */
+export type BackendAnnotations = Omit<ToolAnnotations, 'openWorldHint'> & { readonly openWorldHint: boolean }
+
 export interface BackendOperation {
   /** `<entity>-<verb>`, kebab-case, unique across the catalog as well. */
   readonly name: string
@@ -59,7 +62,7 @@ export interface BackendOperation {
   readonly tool: string
   /** The tool's input schema, with `projectId` added in front when the tool is project-scoped. */
   readonly inputSchema: JsonSchemaObject
-  readonly annotations: ToolAnnotations
+  readonly annotations: BackendAnnotations
   /** The call is scoped to a project, which the person must be able to chat in. */
   readonly needsProject: boolean
 }
@@ -78,6 +81,8 @@ interface Entry {
   readonly domain: BackendOperation['domain']
   readonly summary: string
   readonly needsProject: boolean
+  /** The tool reaches a public service outside the workspace. */
+  readonly openWorld?: boolean
 }
 
 const ENTRIES: readonly Entry[] = [
@@ -131,6 +136,8 @@ const ENTRIES: readonly Entry[] = [
     domain: 'knowledge',
     summary: 'Look up Austrian law in RIS and read the provision',
     needsProject: false,
+    // Reaches the public RIS, not only the office's own workspace.
+    openWorld: true,
   },
 ]
 
@@ -162,7 +169,7 @@ function build(entry: Entry): BackendOperation {
     description: tool.description,
     tool: entry.tool,
     inputSchema: entry.needsProject ? withProjectId(tool.inputSchema) : tool.inputSchema,
-    annotations: { title: entry.summary, ...tool.annotations },
+    annotations: { title: entry.summary, ...tool.annotations, openWorldHint: entry.openWorld ?? false },
     needsProject: entry.needsProject,
   }
 }

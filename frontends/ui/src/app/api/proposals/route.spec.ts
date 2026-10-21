@@ -192,7 +192,7 @@ beforeEach(() => {
   ])
   vi.mocked(findProposedChange).mockImplementation(async (_org, id) => store.get(id) ?? null)
   vi.mocked(listShelfProposals).mockImplementation(async (_org, shelf) =>
-    [...store.values()].filter((entry) => (shelf.scope === 'office_shelf' ? entry.projectId === null : entry.projectId === shelf.projectId))
+    [...store.values()].filter((entry) => (shelf.scope === 'project' ? entry.projectId === shelf.projectId : entry.scope === shelf.scope))
   )
   vi.mocked(claimProposedChange).mockImplementation(async (_org, id, userId) => {
     const current = store.get(id)
@@ -256,6 +256,14 @@ describe('GET /api/proposals', () => {
   it('refuses a query that names no shelf, or two', async () => {
     expect((await run('/api/proposals')).status).toBe(400)
     expect((await run(`/api/proposals?projectId=${PROJECT}&shelf=archiv`)).status).toBe(400)
+    expect((await run(`/api/proposals?projectId=${PROJECT}&shelf=organization`)).status).toBe(400)
+    expect((await run('/api/proposals?shelf=project')).status).toBe(400)
+  })
+
+  it('lists the organization’s shelf (0174), which has no project either', async () => {
+    const res = await run('/api/proposals?shelf=organization')
+    expect(res.status).toBe(200)
+    expect(listShelfProposals).toHaveBeenCalledWith('org_1', { scope: 'organization' }, expect.objectContaining({ statuses: ['proposed'] }))
   })
 })
 

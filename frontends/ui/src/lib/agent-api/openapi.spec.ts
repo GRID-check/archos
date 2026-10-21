@@ -77,6 +77,31 @@ describe('agent API OpenAPI document', () => {
     expect(operations).toHaveLength(AGENT_OPERATIONS.length)
   })
 
+  it('describes an upload as multipart/form-data with a binary file part and the route’s fields', () => {
+    const upload = paths['/api/documents/upload']?.post as unknown as {
+      requestBody: { content: Record<string, { schema: { properties: Record<string, unknown>; required: string[] } }> }
+    }
+    expect(Object.keys(upload.requestBody.content)).toEqual(['multipart/form-data'])
+    const schema = upload.requestBody.content['multipart/form-data']?.schema
+    expect(schema?.properties.file).toEqual({ type: 'string', format: 'binary' })
+    expect(Object.keys(schema?.properties ?? {})).toEqual(expect.arrayContaining(['projectId', 'folderId', 'uploadBatchId']))
+    expect(schema?.required).toEqual(['file', 'projectId'])
+  })
+
+  it('describes the mail import part as raw application/octet-stream', () => {
+    const part = paths['/api/projects/{id}/mail-imports/{importId}/parts/{partNumber}']?.put as unknown as {
+      requestBody: { content: Record<string, unknown> }
+    }
+    expect(part.requestBody.content).toEqual({ 'application/octet-stream': { schema: { type: 'string', format: 'binary' } } })
+  })
+
+  it('describes a file answer by its media types', () => {
+    const exported = paths['/api/documents/{id}/file']?.get as unknown as {
+      responses: { '200': { content: Record<string, unknown> } }
+    }
+    expect(Object.keys(exported.responses['200'].content)).toEqual(['application/pdf', 'text/plain'])
+  })
+
   it('leads with the workspace, and names the MCP door', () => {
     const info = document.info as { title: string; description: string }
     expect(info.title).toBe('Piloti workspace API')

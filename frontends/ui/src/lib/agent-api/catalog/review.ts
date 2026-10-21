@@ -18,11 +18,19 @@ import {
 } from '@/lib/documents/lifecycle-types'
 import { projectRevisionCandidatesRequestSchema } from '@/lib/documents/name-probe-types'
 import { revisionCompareBodySchema } from '@/lib/documents/revision-compare-types'
+import {
+  ANNOTATION_EXPORT_FORMATS,
+  ANNOTATION_EXPORT_REVISIONS,
+  ANNOTATION_EXPORT_SCOPES,
+} from '@/lib/annotations/export-request'
+import { projectProtocolQuerySchema } from '@/lib/annotations/project-types'
 import type { AgentOperation } from '../operation'
 
 const documentParams = z.object({
   id: z.string().describe('The document id, from a project document listing or document-search.'),
 })
+
+const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })
 
 const versionParams = documentParams.extend({
   versionId: z.string().describe('The version id, from document-version-list.'),
@@ -389,4 +397,41 @@ export const reviewOperations: readonly AgentOperation[] = [
     readOnly: true,
     load: () => import('@/app/api/documents/revision-candidates/route'),
   },
+  {
+    name: 'document-annotations-export',
+    domain: 'review',
+    summary: 'Export a document’s annotations as a Protokoll file',
+    description:
+      'The document’s Anmerkungen as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current Fassung or ' +
+      'every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. ' +
+      'For the data itself use annotation-list. Needs read access to the document.',
+    method: 'GET',
+    path: '/api/documents/[id]/annotations/export',
+    params: documentParams,
+    // The route's schema transforms (`includeProposals` becomes a boolean); the agent sends the URL's own values.
+    query: z.object({
+      format: z.enum(ANNOTATION_EXPORT_FORMATS).optional().describe('pdf (default), docx or md.'),
+      scope: z.enum(ANNOTATION_EXPORT_SCOPES).optional().describe('open (default): what still asks something; all: closed ones too.'),
+      revision: z.enum(ANNOTATION_EXPORT_REVISIONS).optional().describe('current (default), or all to include earlier Fassungen’s closed marks.'),
+      includeProposals: z.enum(['0', '1']).optional().describe('1 adds Piloti’s untaken proposals under a heading of their own.'),
+    }),
+    binaryResponse: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    load: () => import('@/app/api/documents/[id]/annotations/export/route'),
+  },
+  {
+    name: 'project-annotations-export',
+    domain: 'review',
+    summary: 'Export a project’s open points as a Protokoll file',
+    description:
+      'The project’s Offene Punkte as one Protokoll: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list ' +
+      '(`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. ' +
+      'Refused when more than 1000 marks match: narrow the filters. Records an audit event.',
+    method: 'GET',
+    path: '/api/projects/[id]/annotations/export',
+    params: projectParams,
+    query: projectProtocolQuerySchema,
+    binaryResponse: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+    load: () => import('@/app/api/projects/[id]/annotations/export/route'),
+  },
+
 ]

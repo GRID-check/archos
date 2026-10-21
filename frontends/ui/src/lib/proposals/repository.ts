@@ -41,16 +41,80 @@ export interface InsertedProposedChange {
   created: boolean
 }
 
+/** What names one call of an operation: which, and with what input. */
+export interface OperationCall {
+  operation: string
+  input: unknown
+}
+
+/**
+ * The still-`proposed` operation proposal of this conversation for this call, or
+ * null (0174). `payload->'input'` is compared as jsonb, which has one spelling
+ * per value, so key order and white space do not tell two calls apart; this is
+ * the predicate of `uniq_proposed_changes_open_operation`.
+ */
+const openOperationCall = (organizationId: string, conversationId: string, call: OperationCall) =>
+  and(
+    eq(proposedChanges.organizationId, organizationId),
+    eq(proposedChanges.originConversationId, conversationId),
+    eq(proposedChanges.kind, 'operation'),
+    eq(proposedChanges.status, 'proposed'),
+    sql`${proposedChanges.payload}->>'operation' = ${call.operation}`,
+    sql`${proposedChanges.payload}->'input' = ${JSON.stringify(call.input ?? {})}::jsonb`
+  )
+
+export async function findOpenOperationProposal(
+  organizationId: string,
+  conversationId: string,
+  call: OperationCall
+): Promise<ProposedChangeRow | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .select()
+      .from(proposedChanges)
+      .where(openOperationCall(organizationId, conversationId, call))
+      .orderBy(proposedChanges.createdAt)
+      .limit(1)
+  )
+  return row ?? null
+}
+
+/** The call an operation proposal's payload names, when it is one with a conversation to dedupe in (and no card: that key is its own). */
+function dedupedCall(input: NewProposedChange): OperationCall | null {
+  if (input.kind !== 'operation' || !input.originConversationId || input.originCardIndex != null) return null
+  const payload = input.payload as Partial<OperationCall> | null
+  return typeof payload?.operation === 'string' ? { operation: payload.operation, input: payload.input } : null
+}
+
 /**
  * Store a proposal. With a card index it is idempotent on
  * `uniq_proposed_changes_origin_card`: the same card of the same answer a
  * second time inserts nothing and returns the FIRST proposal, as it stands.
+ * An operation proposal in a conversation is idempotent on
+ * `uniq_proposed_changes_open_operation` (0174): a second identical call
+ * while the first is still `proposed` returns the first, so two calls running
+ * at once still make one.
  */
 export async function insertProposedChange(input: NewProposedChange): Promise<InsertedProposedChange> {
   const db = getDb()
   const { organizationId, originMessageId, originCardIndex } = input
   return withTenant({ organizationId }, async () => {
     const values = { ...input, originCardIndex: originCardIndex ?? null, status: 'proposed' as const }
+    const call = dedupedCall(input)
+    if (call && input.originConversationId) {
+      const [made] = await db.insert(proposedChanges).values(values).onConflictDoNothing().returning()
+      if (made) return { row: made, created: true }
+      const [open] = await db
+        .select()
+        .from(proposedChanges)
+        .where(openOperationCall(organizationId, input.originConversationId, call))
+        .orderBy(proposedChanges.createdAt)
+        .limit(1)
+      // The conflict was on this call's open row, so it is there: a miss is a bug, not a race.
+      if (!open) throw new Error('A proposal for this call conflicted and could not be read back')
+      return { row: open, created: false }
+    }
     if (originCardIndex === null || originCardIndex === undefined || !originMessageId) {
       const [row] = await db.insert(proposedChanges).values(values).returning()
       return { row, created: true }
@@ -199,8 +263,8 @@ export async function dismissProposedChange(
   return row ?? null
 }
 
-/** A shelf's proposals: a project's, or the Büroablage's (no project). */
-export type ProposalShelf = { scope: 'project'; projectId: string } | { scope: 'office_shelf' }
+/** A shelf's proposals: a project's, the Büroablage's, or the organization's (the last two have no project). */
+export type ProposalShelf = { scope: 'project'; projectId: string } | { scope: 'office_shelf' | 'organization' }
 
 const onShelf = (organizationId: string, shelf: ProposalShelf) =>
   and(

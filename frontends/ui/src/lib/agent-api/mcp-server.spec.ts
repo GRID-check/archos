@@ -13,7 +13,8 @@ import { createMcpHandler } from '@modelcontextprotocol/server'
 import { beforeAll, describe, expect, it } from 'vitest'
 import { AGENT_OPERATIONS } from './catalog'
 import { MCP_INSTRUCTIONS, buildMcpServer, resolveMode } from './mcp-server'
-import { visibleOperations } from './policy'
+import { BACKEND_OPERATIONS } from './backend-operations'
+import { visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 
 const principal: AgentPrincipal = {
@@ -38,7 +39,9 @@ beforeAll(() => {
   Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true })
 })
 
-async function listTools(mode: 'discovery' | 'tools'): Promise<{ name: string; inputSchema: unknown }[]> {
+type ListedTool = { name: string; inputSchema: unknown; annotations?: Record<string, unknown> }
+
+async function listTools(mode: 'discovery' | 'tools'): Promise<ListedTool[]> {
   const handler = createMcpHandler(() => buildMcpServer(principal, mode), { responseMode: 'json' })
   const response = await handler.fetch(
     new Request('https://app.piloti.test/api/mcp', {
@@ -49,16 +52,39 @@ async function listTools(mode: 'discovery' | 'tools'): Promise<{ name: string; i
   )
   const raw = await response.text()
   const data = raw.split('\n').find((line) => line.startsWith('data:'))
-  return (JSON.parse(data ? data.slice(5) : raw) as { result: { tools: { name: string; inputSchema: unknown }[] } }).result.tools
+  return (JSON.parse(data ? data.slice(5) : raw) as { result: { tools: ListedTool[] } }).result.tools
 }
 
 describe('tools mode over the real catalog', () => {
   it('publishes one tool per visible operation, plus report-missing-capability', async () => {
     const tools = await listTools('tools')
     const names = tools.map((tool) => tool.name)
-    expect(names).toEqual([...visibleOperations(principal).map((op) => op.name), 'report-missing-capability'])
+    expect(names).toEqual([
+      ...visibleOperations(principal).map((op) => op.name),
+      ...visibleBackendOperations(principal).map((op) => op.name),
+      'report-missing-capability',
+    ])
     expect(new Set(names).size).toBe(names.length)
     expect(AGENT_OPERATIONS.length).toBeGreaterThan(0)
+  })
+})
+
+describe('backend read tools in tools mode', () => {
+  it('are listed as reads, open-world only for the law lookup', async () => {
+    const tools = await listTools('tools')
+    for (const op of BACKEND_OPERATIONS) {
+      const tool = tools.find((candidate) => candidate.name === op.name)
+      expect(tool?.annotations).toMatchObject({
+        readOnlyHint: true,
+        idempotentHint: true,
+        openWorldHint: op.name === 'law-lookup',
+      })
+    }
+  })
+
+  it('never reuse a catalog name', () => {
+    const catalog = new Set(AGENT_OPERATIONS.map((op) => op.name))
+    for (const op of BACKEND_OPERATIONS) expect(catalog.has(op.name)).toBe(false)
   })
 })
 

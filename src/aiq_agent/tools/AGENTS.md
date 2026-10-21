@@ -129,6 +129,16 @@ audit trail and the feature gates are the ones that were already there — which
 is ADR-0055 read from this side: one HTTP surface per primitive, and this tier
 is a client of it like everybody else, never a second implementation.
 
+**The fourth kind has no creator in this tier.** An `operation` proposal is
+stored by the MCP server when `workspace__call` runs a write
+(`lib/agent-api/operation-proposals.ts`), so `workspace/cards.py` only SHOWS it:
+it reads `structuredContent` `{ decision: 'propose', proposalId, summary, operation }`
+off the result and adds an `operation_proposal` card carrying that `proposal_id`
+(one card per id: a repeated call gets the same proposal back). Reads and
+refusals carry no `decision` and emit no card. The model reads the server's short
+text only. Do not create the proposal from Python: a second path to the same row
+is the drift ADR-0055 forbids.
+
 Three consequences worth knowing before adding a fifth operation:
 
 - **Nothing is resolved that the turn cannot see.** A document is matched

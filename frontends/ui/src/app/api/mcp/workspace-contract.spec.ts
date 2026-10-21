@@ -222,10 +222,11 @@ describe('what client.py sends, replayed against the real route', () => {
     const result = messageOf<ToolResult>(
       await captured(await POST(replay(recorded('call_write'))))
     ).result
-    expect(result.structuredContent).toMatchObject({
-      proposed: true,
-      applied: false,
+    expect(result.structuredContent).toEqual({
+      decision: 'propose',
       proposalId: 'prop_1',
+      summary: 'Add user_2 to proj_1 as viewer',
+      operation: 'project-member-add',
     })
     expect(vi.mocked(proposeOperation)).toHaveBeenCalledTimes(1)
     expect(vi.mocked(callOperation)).not.toHaveBeenCalled()

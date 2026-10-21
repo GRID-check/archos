@@ -18,6 +18,7 @@ import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
 import { buildMcpServer, resolveMode } from '@/lib/agent-api/mcp-server'
 import { type AgentPrincipal, isChallenge, resolvePrincipal } from '@/lib/agent-api/principal'
 import type { McpMode } from '@/lib/agent-api/telemetry'
+import { tenantSlotRoute } from '@/lib/db/tenant-context'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ const handler = createMcpHandler(
   },
 )
 
-export async function POST(request: Request): Promise<Response> {
+export const POST = tenantSlotRoute(async (request: Request): Promise<Response> => {
   // Browsers attach Origin; agents and desktop clients do not. A page on another
   // origin must not be able to drive a signed-in person's agent.
   const rejected = originValidationResponse(request, allowedOriginHostnames())
@@ -56,7 +57,7 @@ export async function POST(request: Request): Promise<Response> {
     extra: { principal, mode: resolveMode(request) },
   }
   return handler.fetch(request, { authInfo })
-}
+})
 
 /** Stateless: there is no session to resume (GET) or end (DELETE). */
 const methodNotAllowed = (): Response =>
