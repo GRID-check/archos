@@ -523,6 +523,8 @@ export const projects: typeof en.projects = {
     saving: 'Wird gespeichert…',
     saveSuccess:
       'Projektprofil gespeichert — {count, plural, one {# Angabe} other {# Angaben}} erfasst',
+    saved: 'Gespeichert',
+    bindRefused: '{files} konnte nicht zugeordnet werden. Bitte in den Projektgrundlagen erneut wählen.',
     saveChanges: 'Änderungen speichern',
     saveAndSee: 'Speichern & meine Standards ansehen',
     next: 'Weiter',

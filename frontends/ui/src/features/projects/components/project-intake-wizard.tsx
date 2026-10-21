@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { toast } from 'sonner'
+import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import {
   AlertTriangle,
   Check,
@@ -16,7 +17,15 @@ import {
   Trash2,
 } from 'lucide-react'
 import { projectTourUrl } from '@/features/onboarding/lib/product-tour'
-import { AnimatePresence, motion } from '@/components/motion'
+import {
+  AnimatePresence,
+  motion,
+  motionDeliberate,
+  motionEntrance,
+  motionInstant,
+  useIconSwapTransition,
+  useMotionToken,
+} from '@/components/motion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -508,6 +517,10 @@ export function ProjectIntakeWizard({
   }, [stage, buildings, definition])
 
   const directionRef = useRef(1)
+  const stepEnter = useMotionToken(motionEntrance)
+  const completionBeat = useMotionToken(motionDeliberate)
+  const completionBeatMs = (completionBeat.duration ?? 0) * 1000
+  const [saved, setSaved] = useState(false)
 
   const goToStep = useCallback(
     (step: number) => {
@@ -622,9 +635,7 @@ export function ProjectIntakeWizard({
       // documents be bound to them.
       const refused = await sendPendingBinds(projectId, pendingBindsRef.current)
       if (refused.length > 0) {
-        toast.error(
-          `${refused.map((bind) => bind.filename).join(', ')} konnte nicht zugeordnet werden. Bitte in den Projektgrundlagen erneut wählen.`
-        )
+        toast.error(t('intake.bindRefused', { files: refused.map((bind) => bind.filename).join(', ') }))
       }
 
       try {
@@ -634,6 +645,14 @@ export function ProjectIntakeWizard({
       }
 
       const capturedCount = Object.keys(built.facts).length + Object.keys(built.goals).length
+      // The moment the intake is done: the button's spinner turns into a
+      // check that lands on `springSnap`, and the page holds one
+      // `motionDeliberate` beat so the reader sees it land before the
+      // project replaces the form. Without it, forty answers ended in a
+      // redirect that looked the same as a crash back to the project.
+      // Reduced motion drops the beat, not the check.
+      setSaved(true)
+      await new Promise((resolve) => window.setTimeout(resolve, completionBeatMs))
       toast.success(t('intake.saveSuccess', { count: capturedCount }))
       // A first setup hands over to the project tour; an edit goes back to
       // the project without one.
@@ -657,6 +676,7 @@ export function ProjectIntakeWizard({
     projectName,
     router,
     STORAGE_KEY,
+    completionBeatMs,
     t,
   ])
 
@@ -919,7 +939,7 @@ export function ProjectIntakeWizard({
             noValidate
             onSubmit={(event) => {
               event.preventDefault()
-              if (saving || checking) return
+              if (saving || checking || saved) return
               if (isReview) {
                 if (findings && findings.length > 0) return
                 void handleSave()
@@ -928,19 +948,24 @@ export function ProjectIntakeWizard({
               }
             }}
           >
+            {/* The old step leaves in the same frame and the new one arrives
+                from the side it lies on (12px, the reading direction of the
+                rail). `wait` with a 200ms exit held the reader on a blank form
+                for a fifth of a second on every Weiter, about forty times per
+                intake; two steps cross-fading in one place read as one garbled
+                form, so the outgoing one does not linger at all. */}
             <AnimatePresence mode="wait" initial={false} custom={directionRef.current}>
               <motion.div
                 key={currentStep}
                 custom={directionRef.current}
                 variants={{
                   enter: (direction: number) => ({ opacity: 0, x: direction * 12 }),
-                  center: { opacity: 1, x: 0 },
-                  exit: (direction: number) => ({ opacity: 0, x: direction * -12 }),
+                  center: { opacity: 1, x: 0, transition: stepEnter },
+                  exit: { opacity: 0, transition: motionInstant },
                 }}
                 initial="enter"
                 animate="center"
                 exit="exit"
-                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
               >
                 <div className="mb-6">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -1115,23 +1140,21 @@ export function ProjectIntakeWizard({
                 findings && findings.length > 0 ? (
                   <span aria-hidden className="inline-flex min-h-9 min-w-36 max-sm:hidden" />
                 ) : (
-                  <Button type="submit" disabled={saving || checking} className="min-w-36 max-sm:flex-1">
-                    <Loader2
-                      className={
-                        saving || checking
-                          ? 'size-4 animate-spin motion-reduce:animate-none'
-                          : 'size-4 opacity-0'
-                      }
-                      aria-hidden
-                    />
-                    {checking
-                      ? t('intake.consistency.checking')
-                      : saving
-                        ? t('intake.saving')
-                        : isEdit
-                          ? t('intake.saveChanges')
-                          : t('intake.saveAndSee')}
-                  </Button>
+                  <SaveIntakeButton
+                    working={saving || checking}
+                    saved={saved}
+                    label={
+                      saved
+                        ? t('intake.saved')
+                        : checking
+                          ? t('intake.consistency.checking')
+                          : saving
+                            ? t('intake.saving')
+                            : isEdit
+                              ? t('intake.saveChanges')
+                              : t('intake.saveAndSee')
+                    }
+                  />
                 )
               ) : (
                 <Button type="submit" disabled={saving} className="max-sm:flex-1">
@@ -1143,6 +1166,52 @@ export function ProjectIntakeWizard({
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * The intake's last press. Busy is not disabled: it keeps its focus while the
+ * save runs (`aria-disabled`, and the form's submit handler swallows a second
+ * press), and the spinner appears only once the wait has lasted 150 ms. When
+ * the save lands, the glyph slot takes a check on the icon-swap spring: the
+ * one physical cue of the intake, held for a beat before the project opens.
+ */
+function SaveIntakeButton({ working, saved, label }: { working: boolean; saved: boolean; label: string }) {
+  const showBusy = useDelayedFlag(working && !saved)
+  const glyph = useIconSwapTransition()
+  return (
+    <Button
+      type="submit"
+      aria-disabled={working || saved || undefined}
+      aria-busy={(working && !saved) || undefined}
+      className="aria-disabled:cursor-default min-w-36 max-sm:flex-1"
+    >
+      <span className="relative inline-flex size-4 items-center justify-center" aria-hidden>
+        <AnimatePresence mode="popLayout" initial={false}>
+          {saved ? (
+            <motion.span
+              key="saved"
+              className="inline-flex"
+              initial={{ opacity: 0, scale: 0.6 }}
+              animate={{ opacity: 1, scale: 1, transition: glyph.enter }}
+            >
+              <Check className="size-4" />
+            </motion.span>
+          ) : showBusy ? (
+            <motion.span
+              key="busy"
+              className="inline-flex"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1, transition: glyph.enter }}
+              exit={{ opacity: 0, transition: glyph.exit }}
+            >
+              <Loader2 className="size-4 animate-spin motion-reduce:animate-none" />
+            </motion.span>
+          ) : null}
+        </AnimatePresence>
+      </span>
+      {label}
+    </Button>
   )
 }
 

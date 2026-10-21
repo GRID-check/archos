@@ -518,6 +518,8 @@ export const projects = {
     saving: 'Saving…',
     saveSuccess:
       'Project profile saved — {count, plural, one {# detail} other {# details}} captured',
+    saved: 'Saved',
+    bindRefused: '{files} could not be assigned. Please choose again in the project basics.',
     saveChanges: 'Save changes',
     saveAndSee: 'Save & see my standards',
     next: 'Next',
