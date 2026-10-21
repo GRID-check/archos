@@ -27,10 +27,16 @@ vi.mock('@/lib/limits/enforce', async (original) => ({
   enforceLimit: vi.fn(async () => undefined),
 }))
 vi.mock('@/lib/piloti-asks/service', () => ({ askPiloti: vi.fn(), getAsk: vi.fn(), cancelAsk: vi.fn() }))
+vi.mock('@/lib/agent-api/telemetry', async (original) => ({
+  ...(await original<typeof import('@/lib/agent-api/telemetry')>()),
+  recordOperationCalled: vi.fn(),
+}))
 
 import { ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { actingReaderIsAgent } from '@/lib/agent-api/acting-session'
 import { resolvePrincipal, type AgentPrincipal } from '@/lib/agent-api/principal'
+import { recordOperationCalled } from '@/lib/agent-api/telemetry'
 import { enforceLimit, MCP_REQUEST_LIMIT, memberSubject } from '@/lib/limits'
 import type { AskView } from '@/lib/piloti-asks/ask-wire'
 import { askPiloti, cancelAsk, getAsk } from '@/lib/piloti-asks/service'
@@ -104,6 +110,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  vi.mocked(askPiloti).mockReset()
   process.env.WORKOS_AUTHKIT_DOMAIN = 'auth.piloti.test'
   process.env.GRID_MCP_RESOURCE_URL = 'https://app.piloti.test/api/mcp'
   vi.mocked(resolvePrincipal).mockResolvedValue(PERSON)
@@ -180,14 +187,68 @@ describe('A2A 1.0', () => {
     expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Und im Keller?', conversationId: THREAD })
   })
 
-  it('returnImmediately answers the task as it stands after the ask’s own wait', async () => {
+  it('returnImmediately asks with no wait and answers the task as it stands', async () => {
     vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
     const response = await POST(
       rpc('SendMessage', { message: userMessage('Lang?'), configuration: { returnImmediately: true } }, V1),
     )
     const body = (await response.json()) as Envelope
+    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Lang?', waitSeconds: 0 })
     expect(body.result?.task).toMatchObject({ status: { state: 'TASK_STATE_WORKING' } })
     expect(getAsk).not.toHaveBeenCalled()
+  })
+
+  it('a contextId the client made up starts a new conversation, whose id the task carries', async () => {
+    const body = (await (
+      await POST(rpc('SendMessage', { message: userMessage('Hallo?', { contextId: 'b3f1c2d4-ctx-from-client' }) }, V1))
+    ).json()) as Envelope
+    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Hallo?' })
+    expect(body.result?.task).toMatchObject({ contextId: THREAD, status: { state: 'TASK_STATE_COMPLETED' } })
+  })
+
+  it('a contextId shaped like ours that no ask of the person started starts a new conversation too', async () => {
+    const unknown = 's_99999999_9999_4999_8999_999999999999'
+    vi.mocked(askPiloti)
+      .mockRejectedValueOnce(new NotFoundError('No ask of yours started that conversation.'))
+      .mockResolvedValueOnce(view())
+    const body = (await (await POST(rpc('SendMessage', { message: userMessage('Hallo?', { contextId: unknown }) }, V1))).json()) as Envelope
+    expect(vi.mocked(askPiloti).mock.calls.map(([, input]) => input)).toEqual([
+      { question: 'Hallo?', conversationId: unknown },
+      { question: 'Hallo?' },
+    ])
+    expect(body.result?.task).toMatchObject({ contextId: THREAD })
+  })
+
+  it('runs the ask route with the agent as its reader, so a refusal reaches the client in English', async () => {
+    let agentReads: boolean | null = null
+    vi.mocked(askPiloti).mockImplementation(async () => {
+      agentReads = actingReaderIsAgent()
+      return view()
+    })
+    await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))
+    expect(agentReads).toBe(true)
+  })
+
+  it('records each method’s call on the agent door, door a2a, and not the polls it waits with', async () => {
+    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    await POST(rpc('SendMessage', { message: userMessage('Lang?') }, V1))
+    expect(getAsk).toHaveBeenCalled()
+    expect(recordOperationCalled).toHaveBeenCalledTimes(1)
+    expect(recordOperationCalled).toHaveBeenCalledWith(
+      expect.objectContaining({ principal: PERSON, mode: null, door: 'a2a' }),
+      expect.objectContaining({ operation: 'piloti-ask-create', domain: 'conversations', decision: 'run', status: 202 }),
+    )
+  })
+
+  it('answers a body that is not JSON with the JSON-RPC parse error', async () => {
+    const request = new Request(URL_, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', authorization: 'Bearer token', ...V1 },
+      body: '{"jsonrpc": "2.0", "method": ',
+    })
+    const body = (await (await POST(request)).json()) as Envelope
+    expect(body.error?.code).toBe(-32700)
+    expect(askPiloti).not.toHaveBeenCalled()
   })
 
   it('a blocking SendMessage polls until the task ends', async () => {
@@ -229,15 +290,29 @@ describe('A2A 1.0', () => {
     expect(body.error?.code).toBe(-32009)
   })
 
-  it('SendStreamingMessage answers server-sent events: the task, the artifact, the end', async () => {
-    const response = await POST(rpc('SendStreamingMessage', { message: userMessage('Welche Fluchtweglänge gilt?') }, V1))
-    expect(response.headers.get('content-type')).toBe('text/event-stream')
-    const events = (await response.text())
+  const streamed = async (response: Response) =>
+    (await response.text())
       .split('\n')
       .filter((line) => line.startsWith('data: '))
       .map((line) => JSON.parse(line.slice('data: '.length)) as Envelope)
+
+  it('SendStreamingMessage opens with the working task, then the artifact and the end', async () => {
+    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    const response = await POST(rpc('SendStreamingMessage', { message: userMessage('Welche Fluchtweglänge gilt?') }, V1))
+    expect(response.headers.get('content-type')).toBe('text/event-stream')
+    const events = await streamed(response)
+    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?', waitSeconds: 0 })
     expect(events.map((event) => Object.keys(event.result ?? {})[0])).toEqual(['task', 'artifactUpdate', 'statusUpdate'])
+    expect(events[0]?.result).toMatchObject({ task: { status: { state: 'TASK_STATE_WORKING' } } })
     expect(events.at(-1)?.result).toMatchObject({ statusUpdate: { status: { state: 'TASK_STATE_COMPLETED' } } })
+  })
+
+  it('a stream of an ask that ended at once is the whole task, artifacts included, and nothing after it', async () => {
+    const events = await streamed(await POST(rpc('SendStreamingMessage', { message: userMessage('Kurz?') }, V1)))
+    expect(events).toHaveLength(1)
+    const task = events[0]?.result?.task as Record<string, unknown>
+    expect(task).toMatchObject({ status: { state: 'TASK_STATE_COMPLETED' } })
+    expect(task.artifacts).toEqual([expect.objectContaining({ name: 'answer' })])
   })
 })
 
@@ -247,6 +322,16 @@ describe('A2A 0.3, for clients that send no version', () => {
     const body = (await response.json()) as Envelope
     expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Welche Fluchtweglänge gilt?' })
     expect(body.result).toMatchObject({ kind: 'task', id: ID, contextId: THREAD, status: { state: 'completed' } })
+  })
+
+  it('message/send with blocking false asks with no wait', async () => {
+    vi.mocked(askPiloti).mockResolvedValue(view({ state: 'working', answer: null, endedAt: null, pollAfterSeconds: 10 }))
+    const body = (await (
+      await POST(rpc('message/send', { message: legacyMessage('Lang?'), configuration: { blocking: false } }))
+    ).json()) as Envelope
+    expect(askPiloti).toHaveBeenCalledWith(SESSION, { question: 'Lang?', waitSeconds: 0 })
+    expect(body.result).toMatchObject({ kind: 'task', status: { state: 'working' } })
+    expect(getAsk).not.toHaveBeenCalled()
   })
 
   it('tasks/get reads the task', async () => {

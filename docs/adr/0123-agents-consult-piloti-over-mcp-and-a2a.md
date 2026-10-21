@@ -133,13 +133,20 @@ refused with their A2A errors.
 | A2A | Piloti |
 |---|---|
 | Task | the `piloti_asks` row; `Task.id` is the ask's id |
-| `contextId` | the conversation the ask ran in; send it back to follow up |
+| `contextId` | the conversation the ask ran in; send it back to follow up. One the client made up, or one no ask of the person started, starts a new conversation, and the task carries its id |
 | `TaskState` | the ask's state, the same word |
 | Message (user) | the question, the person's message in the thread |
 | Message (agent) | Piloti's answer, its message in the thread |
 | Artifact `answer` | the answer's text, `artifactId` the answer's message id |
 | Artifact per document | a document Piloti filed in the thread while answering, as a data part naming it |
 | `message.metadata.projectId` | the project to ask in (A2A has no field for it) |
+
+A non-blocking `SendMessage` (`returnImmediately`; in 0.3, `blocking: false`)
+and a stream ask with `waitSeconds: 0`, so the task comes back at once; a
+stream of an ask that ended at once is one event, the whole task with its
+artifacts. The ask routes run with the agent as reader, so a refusal reaches
+the client in English. A body that is not JSON is the JSON-RPC parse error
+(-32700), checked before the SDK, whose transport would answer -32602.
 
 **The SDK.** `@a2a-js/sdk` 1.3.0, the official JavaScript SDK of the A2A
 project, implements 1.0 with a 0.3 compatibility layer. We use its types and
@@ -191,8 +198,9 @@ the turn's message, which links the run.
 The ask is a turn, so it has its Langfuse trace like every turn, with
 `turn_trigger: agent_consult` and the ask's id as `trigger_event_id`, and the tag
 `trigger:agent_consult` (`record_turn_trigger`). The BFF makes no model call of
-its own. The MCP door's calls are `agent_operation_called` in PostHog
-(ADR-0121).
+its own. The MCP door's calls are `agent_operation_called` in PostHog and an
+`agent-tool-call` trace in Langfuse (ADR-0121); so is each A2A method, door
+`a2a`, its observation `a2a.<operation>`.
 
 ### Consequences
 

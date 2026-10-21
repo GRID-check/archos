@@ -77,13 +77,24 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
   } catch {
     return jsonRpcErrorResponse(PARSE_ERROR, 'The request body could not be read.')
   }
+  // JSON-RPC 2.0 answers text that is not JSON with -32700; the SDK's transport says -32602 (invalid params).
+  if (!isJson(body)) return jsonRpcErrorResponse(PARSE_ERROR, 'The request body is not JSON.')
 
-  const handler = new PilotiA2ARequestHandler(principal.session, card)
+  const handler = new PilotiA2ARequestHandler(principal, card)
   const context = new ServerCallContext({ requestedVersion: version })
   const transport =
     version === '1.0' ? new JsonRpcTransportHandler(handler) : new LegacyJsonRpcTransportHandler(handler)
   return jsonRpcResponse(await transport.handle(body, context))
 })
+
+function isJson(text: string): boolean {
+  try {
+    JSON.parse(text)
+    return true
+  } catch {
+    return false
+  }
+}
 
 /** JSON-RPC over POST only; the agent card is at `/.well-known/agent-card.json`. */
 const methodNotAllowed = (): Response =>
