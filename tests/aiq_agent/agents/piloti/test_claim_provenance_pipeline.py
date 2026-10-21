@@ -108,7 +108,10 @@ async def test_a_locus_the_cited_passage_does_not_hold_is_labelled_in_the_answer
             clause="11.2.1",
         )
     )
-    prose = "Die Raumhöhe regelt Punkt 11.2.1 [1], die Belichtung Punkt 9.1 [1].\\n\\n**Quellen:**\\n- [1] oib-rl_3.pdf, p.7"
+    prose = (
+        "Die Raumhöhe regelt Punkt 11.2.1 [1], die Belichtung Punkt 9.1 [1]."
+        "\\n\\n**Quellen:**\\n- [1] oib-rl_3.pdf, p.7"
+    )
     messages = [HumanMessage("Raumhöhe?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
 
     final, _ = await _finalize(messages, registry)
