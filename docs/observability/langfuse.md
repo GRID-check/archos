@@ -26,6 +26,13 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 | Prompt | `PromptLinkProcessor`, generations only | `piloti-system-static` and its version |
 | Usage and cost | `UsageAttributeProcessor` (NAT), `observed_generation` (auxiliary) | input, output, cached and reasoning tokens; the provider's cost when it reports one |
 
+**A trace never holds image bytes.** A page crop reaches the chat model as a `data:image/...;base64,...`
+block, and from there it is copied into the tool span's `output.value` and the next generation's
+`input.value`. `InlineImageRedactionProcessor` (installed first, always, whatever the redaction policy) rewrites
+every such URL in every string attribute of every span to `[image, N chars, sha256:<8>]`; auxiliary calls
+go through the same helper, `common/image_redaction.redact_inline_images`. A trace says that an image was
+sent, how large and which one, never the customer's drawing.
+
 ### A chat turn's root observation
 
 The root (`chat-turn`, type `agent`) is the turn as the reader got it: the
@@ -209,6 +216,7 @@ a name is written but not declared, or declared but not listed here.
 | `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0125); the comment and `metadata.count` say how many sentences |
 | `claims-normative-uncited` | numeric | agent | sentences about the law with no quoted or cited passage behind them |
 | `citations-dropped-labelled` | numeric | agent | places the answer cited something that did not resolve (no source, or a § / Punkt the cited passage does not hold), labelled in the text instead of removed |
+| `file-tools-used` | categorical | agent, at the terminal | on every turn that called a tool (ADR-0127): `search` (`knowledge_search`, the round-0 prefetch included), `navigate` (`list_files`, `read_passage`), `both` or `none`. The comment lists the file tools called. "Do turns ever list or read?" is a query on this score; the tool spans carry the mode (`view`, `match`, `pages`) |
 | `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
 | `work-report-matches` | boolean | agent, at the terminal | on a work turn (`kind: work`, ADR-0123) only: true when the report's `proposed` list is as long as the proposal cards the turn showed. The comment says both counts (`reported N, filed M`). Counted after the unfiled lines below are dropped, so false is mostly a turn that filed a proposal it did not report |
 | `work-proposals-unfiled` | numeric | agent | on a work turn only: the report's `proposed` lines whose `ref` named no proposal this turn's workspace writes filed, dropped before the person saw them (`answer_envelope.drop_unfiled_proposals`). Above zero is a turn that claimed a proposal it did not make |

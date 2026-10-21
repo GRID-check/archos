@@ -30,6 +30,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from aiq_agent.common.image_redaction import redact_inline_images
+
 #: Bumped whenever the prompt or the reply handling changes. Part of the cache
 #: identity, so a new prompt is never answered from the old one's results.
 PROMPT_VERSION = 1
@@ -142,23 +144,12 @@ def build_messages(older_data_url: str, newer_data_url: str) -> list[dict[str, A
 
 
 def traceable(messages: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """``messages`` with every inline image replaced by its size, for the Langfuse input.
+    """``messages`` with every inline image replaced by its size and hash, for the Langfuse input.
 
     A page image is megabytes of base64: a trace holds the prompt and what was
     sent (how many images, how large), never the pixels of a customer's drawing.
     """
-    redacted: list[dict[str, Any]] = []
-    for message in messages:
-        content = message.get("content")
-        if not isinstance(content, list):
-            redacted.append(message)
-            continue
-        parts = []
-        for part in content:
-            url = part.get("image_url", {}).get("url") if part.get("type") == "image_url" else None
-            parts.append({"type": "image_url", "image_url": {"url": f"[image, {len(url)} chars]"}} if url else part)
-        redacted.append({**message, "content": parts})
-    return redacted
+    return redact_inline_images(messages)
 
 
 def cache_key(model: str, collection: str, page: int, older_jpeg: bytes, newer_jpeg: bytes) -> str:
