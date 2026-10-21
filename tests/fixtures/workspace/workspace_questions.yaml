@@ -68,6 +68,7 @@ questions:
     expect:
       proposes:
         - operation: project-folder-create
+          or_tool: propose_file_change
           input:
             params.id: 3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d
             body.name: Brandschutz
@@ -77,6 +78,7 @@ questions:
     expect:
       proposes:
         - operation: document-move
+          or_tool: propose_file_change
           input:
             params.id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
             body.folderId: 1b2c3d4e-5f6a-4b7c-8d9e-0f1a2b3c4d5e
@@ -86,6 +88,7 @@ questions:
     expect:
       proposes:
         - operation: document-rename
+          or_tool: propose_file_change
           input:
             params.id: c3d4e5f6-a7b8-4c9d-8e0f-2a3b4c5d6e7f
             body.name: Statik_Vorbemessung_Rev1.pdf
