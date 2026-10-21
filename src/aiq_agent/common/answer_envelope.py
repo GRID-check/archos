@@ -163,8 +163,18 @@ TAKEAWAYS_MAX_ITEMS = 5
 #: floor the gate abstains rather than guessing in either direction.
 _MIN_MATCHABLE_NAME_CHARS = 4
 
-#: Exclusive shapes of a shallow answer. A verdict is kept only for ``ruling``.
-AnswerKind = Literal["direct", "walkthrough", "ruling", "handoff"]
+#: Exclusive shapes of a shallow answer. A verdict is kept only for ``ruling``,
+#: a work report only for ``work`` (ADR-0122).
+AnswerKind = Literal["direct", "walkthrough", "ruling", "handoff", "work"]
+
+#: A work report's lists hold at most this many lines each; a line longer than
+#: :data:`WORK_TEXT_MAX_CHARS` is a paragraph, not a line, and is dropped. The
+#: frontend sanitizer mirrors both (``WORK_ITEMS_MAX``, ``WORK_TEXT_MAX_CHARS``).
+WORK_ITEMS_MAX = 6
+WORK_TEXT_MAX_CHARS = 200
+#: The short fields of a work line: over these they are dropped from the line.
+WORK_FIELD_MAX_CHARS = {"ref": 80, "who": 80, "due": 40}
+WORK_SECTIONS = ("done", "proposed", "blocked", "next")
 ANSWER_KINDS: tuple[str, ...] = get_args(AnswerKind)
 
 
@@ -242,6 +252,35 @@ class AnswerMetaCallout(_EnvelopeModel):
     detail: str | None = Field(default=None, description="background revealed on expand; omit rather than pad")
 
 
+class AnswerMetaWorkItem(_EnvelopeModel):
+    """One line of a work report: what, and the object, the person and the time it names."""
+
+    text: str = Field(min_length=1, description="one line, what was done, proposed, blocked or comes next")
+    ref: str | None = Field(
+        default=None, description="the id it is about: the proposal id for a proposal, else the object's id"
+    )
+    who: str | None = Field(
+        default=None, description="who acts: the person or role a blocked step waits on, or who takes the next one"
+    )
+    due: str | None = Field(default=None, description="by when, in the answer's words; only when stated")
+
+
+class AnswerMetaWork(_EnvelopeModel):
+    """The report of an operations turn: what ran, what waits as a proposal, what is blocked, what is next."""
+
+    done: list[AnswerMetaWorkItem] | None = Field(
+        default=None, description="what this turn read or did that needed no one's yes"
+    )
+    proposed: list[AnswerMetaWorkItem] | None = Field(
+        default=None,
+        description="each write this turn proposed and the person still has to accept, with its proposal id as ref",
+    )
+    blocked: list[AnswerMetaWorkItem] | None = Field(
+        default=None, description="what could not be done, why, and who is needed (who)"
+    )
+    next: list[AnswerMetaWorkItem] | None = Field(default=None, description="what comes next, who does it and by when")
+
+
 class AnswerMetaConfidence(_EnvelopeModel):
     """The self-assessment, as a field instead of a bracket grammar.
 
@@ -279,7 +318,8 @@ class AnswerMeta(_EnvelopeModel):
     kind: AnswerKind | None = Field(
         default=None,
         description=(
-            'exclusive answer shape: "direct" | "walkthrough" | "ruling" | "handoff"; verdict is only for kind=ruling'
+            'exclusive answer shape: "direct" | "walkthrough" | "ruling" | "handoff" | "work"; verdict is only for '
+            "kind=ruling, work only for kind=work"
         ),
     )
     summary: str | None = Field(
@@ -307,6 +347,9 @@ class AnswerMeta(_EnvelopeModel):
     )
     takeaways: list[AnswerMetaTakeaway] | None = None
     callout: AnswerMetaCallout | None = None
+    #: ANATOMY, kind=work only (ADR-0122): the report the reader acts on and the
+    #: next turn can read back (it rides the stored message's ``answerMeta``).
+    work: AnswerMetaWork | None = None
     confidence: AnswerMetaConfidence | None = None
     escalate_to_deep: bool | None = Field(
         default=None,
@@ -372,6 +415,7 @@ class AnswerMeta(_EnvelopeModel):
             and self.context is None
             and not self.takeaways
             and self.callout is None
+            and self.work is None
             and self.confidence is None
             and self.escalate_to_deep is None
             and not self.skills_applied
@@ -669,6 +713,43 @@ def _gate_takeaways(meta: AnswerMeta, ctx: GateContext) -> list | None:
     return [_takeaway_payload(t) for t in takeaways]
 
 
+def _work_item_payload(item: AnswerMetaWorkItem) -> dict | None:
+    """One line on the wire, or None when it is not a line (blank, or a paragraph)."""
+    text = item.text.strip()
+    if not text or len(text) > WORK_TEXT_MAX_CHARS:
+        return None
+    payload: dict = {"text": text}
+    for name, limit in WORK_FIELD_MAX_CHARS.items():
+        value = (getattr(item, name) or "").strip()
+        if value and len(value) <= limit:
+            payload[name] = value
+    return payload
+
+
+def _gate_work(meta: AnswerMeta, ctx: GateContext) -> dict | None:
+    """The work report, kept only on a work turn, each list bounded, paragraphs dropped."""
+    if meta.work is None:
+        return None
+    if meta.kind != "work":
+        logger.info("answer_meta work gated out: kind %s is not work", meta.kind)
+        ctx.anatomy_dropped(field="work", reason="not_work_kind")
+        return None
+    report: dict = {}
+    dropped = 0
+    for section in WORK_SECTIONS:
+        items = getattr(meta.work, section) or []
+        kept = [payload for item in items if (payload := _work_item_payload(item)) is not None]
+        dropped += len(items) - len(kept)
+        if len(kept) > WORK_ITEMS_MAX:
+            dropped += len(kept) - WORK_ITEMS_MAX
+            kept = kept[:WORK_ITEMS_MAX]
+        if kept:
+            report[section] = kept
+    if dropped:
+        ctx.anatomy_dropped(field="work", reason="lines_dropped")
+    return report or None
+
+
 @dataclass(frozen=True)
 class AnatomyField:
     """One envelope field: its wire name and its deterministic gate.
@@ -690,6 +771,7 @@ ANATOMY_FIELDS: tuple[AnatomyField, ...] = (
     AnatomyField("context", _gate_context),
     AnatomyField("callout", _gate_callout),
     AnatomyField("takeaways", _gate_takeaways),
+    AnatomyField("work", _gate_work),
 )
 
 
@@ -1238,6 +1320,13 @@ def render_envelope_schema() -> str:
             continue
         if field.name == "takeaways":
             lines.append(f"takeaways: [{_shape(AnswerMetaTakeaway)}] (2-{TAKEAWAYS_MAX_ITEMS} items)")
+            continue
+        if field.name == "work":
+            item = _shape(AnswerMetaWorkItem)
+            sections = ", ".join(
+                f"{name}: [{item}] ({AnswerMetaWork.model_fields[name].description})" for name in WORK_SECTIONS
+            )
+            lines.append(f"work: {{ {sections} }} (only for kind=work; up to {WORK_ITEMS_MAX} lines each)")
             continue
         model_cls = field_models.get(field.name)
         if model_cls is not None:
