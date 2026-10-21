@@ -658,6 +658,16 @@ times stops being a physical cue and becomes texture.
   opened from the keyboard many times a day, and an entrance there is latency
   between the keystroke and the thing asked for. A dialog opened with a click
   on an occasional task keeps its entrance.
+- **Tooltips: one delay, then instant.** One `TooltipProvider` at the root
+  (`components/ui/tooltip.tsx`; a `Tooltip` joins the one above it and only
+  mounts its own where none exists). The first tooltip waits 300ms
+  (`TOOLTIP_OPEN_DELAY_MS`), then fades and scales from its trigger on
+  `--motion-quick`; within 300ms of one closing the next opens at once with no
+  entrance at all (Radix's `instant-open`), so reading along a toolbar keeps up
+  with the pointer. No slide: the scale from the trigger already says where it
+  came from. Keyboard focus opens it instantly too. A provider of its own
+  breaks the chain, so a surface adds one only to change the delay on purpose
+  (the usage charts do).
 - Content entrance: `animate-in fade-in-0` (+ `slide-in-from-bottom-1` for
   cards) via tw-animate-css.
 - **Chat turn entrance: the thread row owns it.** Every block arriving in the
