@@ -579,6 +579,7 @@ export const organization: typeof en.organization = {
     limitInvalid: 'Eine Zahl ab 0 eingeben oder leer lassen für kein Limit.',
     saveLimits: 'Limits speichern',
     limitsSaved: 'Budgetlimits gespeichert',
+    limitsRejected: 'Die Limits wurden nicht gespeichert: Ein Betrag liegt außerhalb dessen, was erlaubt ist.',
     limitsSaveError: 'Die Budgetlimits konnten nicht gespeichert werden.',
     membersTitle: 'Mitglieder — Verbrauch & Limits',
     membersDescription:

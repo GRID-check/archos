@@ -21,7 +21,8 @@
 
 import { useCallback, useEffect, useState, type FC, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { toast } from 'sonner'
+import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatBytes } from '@/lib/format'
 import { useLocale, useTranslations } from '@/i18n'
@@ -163,6 +164,7 @@ export const StorageUsageCard: FC<StorageUsageCardProps> = ({
   endpoint = STORAGE_ENDPOINT,
 }) => {
   const t = useTranslations('organization')
+  const tCommon = useTranslations('common')
   const { locale } = useLocale()
   const [data, setData] = useState<StorageResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -173,11 +175,12 @@ export const StorageUsageCard: FC<StorageUsageCardProps> = ({
       if (!res.ok) throw new Error('load failed')
       setData((await res.json()) as StorageResponse)
     } catch {
-      toast.error(t('storage.loadError'))
+      // Said in the card, with a retry (below); a toast as well said it twice.
+      setData(null)
     } finally {
       setLoading(false)
     }
-  }, [t, endpoint])
+  }, [endpoint])
 
   useEffect(() => {
     void load()
@@ -211,7 +214,23 @@ export const StorageUsageCard: FC<StorageUsageCardProps> = ({
   }
 
   if (!data) {
-    return <p className="text-muted-foreground text-sm">{t('storage.loadError')}</p>
+    return (
+      <Alert variant="destructive">
+        <AlertDescription className="flex flex-col items-start gap-3">
+          {t('storage.loadError')}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setLoading(true)
+              void load()
+            }}
+          >
+            {tCommon('actions.retry')}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
   }
 
   return (

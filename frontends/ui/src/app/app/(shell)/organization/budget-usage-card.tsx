@@ -79,10 +79,11 @@
  * own micro-labels (no table header to lose), and controls go full-width.
  */
 
-import { type FC, useCallback, useEffect, useMemo, useState } from 'react'
+import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -133,12 +134,15 @@ const policyLimitLabel = (
 
 export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const t = useTranslations('organization')
+  const tCommon = useTranslations('common')
   const { locale } = useLocale()
   const [usage, setUsage] = useState<UsageResponse | null>(null)
   const [policies, setPolicies] = useState<PolicyDto[]>([])
   const [members, setMembers] = useState<MemberDto[]>([])
   const [projects, setProjects] = useState<ProjectDto[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const loaded = useRef(false)
 
   const [dailyLimit, setDailyLimit] = useState('')
   const [monthlyLimit, setMonthlyLimit] = useState('')
@@ -161,8 +165,14 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
       setPolicies((budgetsBody.policies ?? []).filter((policy) => policy.scope !== 'organization'))
       setDailyLimit(budgetsBody.organization.dailyLimit?.toString() ?? '')
       setMonthlyLimit(budgetsBody.organization.monthlyLimit?.toString() ?? '')
+      setLoadFailed(false)
+      loaded.current = true
     } catch {
-      toast.error(t('budgets.loadError'))
+      // In place, with a retry: as a toast it left the skeleton standing for
+      // good under a message that had already gone. A failed re-read after a
+      // save keeps the card that is there.
+      if (!loaded.current) setLoadFailed(true)
+      else toast.error(t('budgets.loadError'))
     } finally {
       setLoading(false)
     }
@@ -223,8 +233,10 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
         }),
       })
       if (res.status === 422) {
-        const body = (await res.json()) as { error?: string }
-        toast.error(body.error ?? t('budgets.limitsSaveError'))
+        // The server's validation text is English and technical; the reader
+        // gets the sentence in their language (the fields are checked here
+        // first, so this is a limit the server refused on its own rules).
+        toast.error(t('budgets.limitsRejected'))
         return
       }
       if (!res.ok) throw new Error(String(res.status))
@@ -239,6 +251,27 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
   // Before the early return: a hook must run on every render.
   const { onOwnKey, formatBare, requestsLabel, unitWord } = useSpendFormat(usage?.unit ?? 'credit')
+
+  if (loadFailed && !usage) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription className="flex flex-col items-start gap-3">
+          {t('budgets.loadError')}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setLoadFailed(false)
+              setLoading(true)
+              void load()
+            }}
+          >
+            {tCommon('actions.retry')}
+          </Button>
+        </AlertDescription>
+      </Alert>
+    )
+  }
 
   if (loading || !usage) {
     return <UsageSkeleton />

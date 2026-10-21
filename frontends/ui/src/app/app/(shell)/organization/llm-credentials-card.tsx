@@ -117,15 +117,18 @@ export const LlmCredentialsCard: FC = () => {
       })
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null
-        throw new Error(body?.error || `save failed (${res.status})`)
+        // The sentence in the reader's language leads; the provider's own
+        // words (a refused key says why) are the secondary detail.
+        toast.error(t('byok.saveError'), body?.error ? { description: body.error } : undefined)
+        return
       }
       toast.success(active ? t('byok.rotated') : t('byok.connected'))
       setApiKey('')
       setLabel('')
       setBaseUrl('')
       await reload()
-    } catch (error) {
-      toast.error(error instanceof Error && error.message ? error.message : t('byok.saveError'))
+    } catch {
+      toast.error(t('byok.saveError'))
     } finally {
       setBusy(false)
     }
@@ -159,13 +162,14 @@ export const LlmCredentialsCard: FC = () => {
       const res = await fetch(`/api/organization/llm-credentials/${active.id}/verify`, { method: 'POST' })
       if (!res.ok) {
         const body = (await res.json().catch(() => null)) as { error?: string } | null
-        throw new Error(body?.error || `verify failed (${res.status})`)
+        toast.error(t('byok.verifyError'), body?.error ? { description: body.error } : undefined)
+        return
       }
       const data = (await res.json()) as { modelCount: number }
       toast.success(t('byok.verified', { count: data.modelCount }))
       await reload()
-    } catch (error) {
-      toast.error(error instanceof Error && error.message ? error.message : t('byok.verifyError'))
+    } catch {
+      toast.error(t('byok.verifyError'))
     } finally {
       setBusy(false)
     }

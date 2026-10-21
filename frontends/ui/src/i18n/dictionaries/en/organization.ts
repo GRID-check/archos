@@ -571,6 +571,7 @@ export const organization = {
     limitInvalid: 'Enter a number of 0 or more, or leave blank for no limit.',
     saveLimits: 'Save limits',
     limitsSaved: 'Budget limits saved',
+    limitsRejected: 'The limits were not saved: an amount is outside what is allowed.',
     limitsSaveError: 'Could not save the budget limits.',
     membersTitle: 'Members — usage & limits',
     membersDescription:
