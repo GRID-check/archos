@@ -90,7 +90,8 @@ describe('ChatUsageNotice', () => {
     answer(notice())
     const first = render(<ChatUsageNotice isAuthenticated />)
     await userEvent.click(await screen.findByRole('button', { name: 'Dismiss' }))
-    expect(screen.queryByTestId('usage-notice')).toBeNull()
+    // It folds away, then is gone.
+    await waitFor(() => expect(screen.queryByTestId('usage-notice')).toBeNull())
     expect(capturePosthog).toHaveBeenCalledWith('usage_notice_dismissed', { level: 'warning', scope: 'organization', window: 'day' })
     first.unmount()
 
