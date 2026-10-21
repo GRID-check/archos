@@ -25,7 +25,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { callOperation, OperationInputError, validateOperationInput } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
-import { PILOTI_HIDDEN_DOMAINS } from '@/lib/agent-api/policy'
+import { PILOTI_HIDDEN_DOMAINS, PILOTI_HIDDEN_OPERATIONS } from '@/lib/agent-api/policy'
 import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
@@ -36,6 +36,10 @@ import type { OperationPayload, ProposedChangeResult } from './types'
  */
 export const PILOTI_ASK_REFUSAL =
   'Piloti cannot ask Piloti: an ask is how another agent consults Piloti, and a turn may not start another.'
+
+/** Why Piloti never files a decision on a proposal, nor an undo: the person makes those (`PILOTI_HIDDEN_OPERATIONS`). */
+export const PROPOSAL_DECISION_REFUSAL =
+  'Piloti cannot apply, dismiss or undo a change for the person: they decide that themselves, on its own card.'
 
 /**
  * Why `name` cannot be applied as a proposal, or null when it can: it exists, it
@@ -52,6 +56,7 @@ function unusableReason(op: AgentOperation | undefined, name: string): string | 
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
   if (op.sensitivity) return `The operation ${name} is not one Piloti may propose; make the change in Piloti yourself`
   if (PILOTI_HIDDEN_DOMAINS.has(op.domain)) return `The operation ${name} is not one Piloti may propose`
+  if (PILOTI_HIDDEN_OPERATIONS.has(name)) return PROPOSAL_DECISION_REFUSAL
   return null
 }
 

@@ -415,7 +415,10 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
 - **Piloti in-product never sees one** and `proposeOperation` refuses to file one
   (403): accepting a card the agent worded is not the confirmation such a change
-  needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`).
+  needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`),
+  nor the person's own decisions: `proposal-apply`, `proposal-dismiss` and
+  `piloti-change-undo` (`PILOTI_HIDDEN_OPERATIONS`), which the applier also
+  refuses at the click, so a card Piloti worded never applies another.
 - **An external agent sees one only when its organization switched the class
   on**: the entitlements `agent-mcp-access`, `agent-mcp-secrets` and
   `agent-mcp-controls`, off by

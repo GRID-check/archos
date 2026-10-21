@@ -128,7 +128,10 @@ The agent acts for a person, and the person decides what changes.
   the conversation is shared. A proposal may only name what the person whose
   turn it is may read: otherwise a member's Piloti could put a change to a
   project the member cannot see in front of an admin, whose click would apply
-  it. The card names each target for its reader and shows every input whole;
+  it. Piloti never files the person's own decisions: applying or dismissing
+  a proposal and undoing a change it made are hidden from it and refused at
+  the click (`PILOTI_HIDDEN_OPERATIONS`), so one card can never accept
+  another. The card names each target for its reader and shows every input whole;
   „Apply“ waits until each value shown in part has been unfolded, so nobody
   accepts text they were not shown.
 
