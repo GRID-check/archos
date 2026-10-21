@@ -1,8 +1,9 @@
 # Connect your agent
 
 Your own AI assistant (Claude, ChatGPT, Cursor or any other client that speaks
-MCP) can work in Piloti for you: everything you can do in Piloti, with your
-rights. It asks you before it changes or deletes anything, and Piloti never gives
+MCP) can work in Piloti for you, with your rights: in your office's projects,
+documents, reviews, tasks and conversations, with Piloti's building-law
+knowledge and BIM analysis, and by asking Piloti itself. It asks you before it changes or deletes anything, and Piloti never gives
 it more than you have. How the server works underneath:
 [the agent surface](../architecture/agent-surface.md) and
 [ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md).
@@ -132,16 +133,20 @@ Piloti filed. Agent access (`agent-mcp`) and `piloti-ask` must both be on.
   call marked as a change or a deletion. Piloti marks every operation as a read,
   a change or a deletion, and a deletion that cannot be undone is marked as
   such. Read what the client shows before you confirm.
-- **Access changes and API keys work only once your organization switches them
-  on, and your agent always asks you first.** Sharing a document or a chat,
-  setting who may open a folder, defining a role, and the organization's LLM
-  provider keys are hidden from agents until an administrator switches them on
-  for the organization, one switch for access changes and one for API keys. Your
-  client must also have been granted the extra permission for them when you
-  signed in. Each such call is marked as one to confirm, so the client asks you
-  every time. An API key goes in and never comes back out: an agent sees only its
-  last four characters. Piloti itself, inside the product, never does any of
-  this for you.
+- **Access changes work only once your organization switches them on, and your
+  agent always asks you first.** Sharing a document or a chat, setting who may
+  open a folder, defining a role, letting a held file through and lifting a
+  legal hold are hidden from agents until an administrator switches them on for
+  the organization. Your client must also have been granted the extra permission
+  for them when you signed in. Each such call is marked as one to confirm, so the
+  client asks you every time. Piloti itself, inside the product, never does any
+  of this for you.
+- **How Piloti itself works stays in Piloti.** An agent does not change your
+  organization's settings, standing instructions, models, API keys, budgets,
+  upload screening or retention policies, does not switch web search, and does
+  not touch your own notification settings or read marks. You set those in
+  Piloti. Things your assistant already does itself (searching the web, looking
+  up an address, formatting a citation) it does with its own tools.
 - **No more than you have.** An agent never gets rights you lack.
 
 ## Revoke access

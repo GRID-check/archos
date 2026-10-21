@@ -36,11 +36,12 @@ describe('the meta-tools Piloti reads', () => {
     expect(readFileSync(FIXTURE, 'utf8'), 'The meta-tools changed. Re-run with UPDATE_FIXTURES=1 and commit the fixture.').toBe(generated)
   })
 
-  it('never offer Piloti the platform domain, and offer an external agent every domain', () => {
+  it('offer every caller the office door’s domains, never the operator console', () => {
     const domainsOf = (actor: 'piloti' | 'external_agent') =>
       (metaToolsFor({ actor })['search-operations'].inputSchema as { properties: { domain: { enum: string[] } } }).properties.domain.enum
-    expect(domainsOf('piloti')).not.toContain('platform')
-    expect(domainsOf('external_agent')).toEqual([...AGENT_DOMAINS])
+    for (const actor of ['piloti', 'external_agent'] as const) {
+      expect(domainsOf(actor)).toEqual(AGENT_DOMAINS.filter((domain) => domain !== 'platform'))
+    }
   })
 
   it('never claim a search the code does not do', () => {

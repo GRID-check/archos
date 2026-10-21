@@ -25,7 +25,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { callOperation, OperationInputError, validateOperationInput } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
-import { PILOTI_HIDDEN_DOMAINS, PILOTI_HIDDEN_OPERATIONS } from '@/lib/agent-api/policy'
+import { isOnDoor, PILOTI_HIDDEN_OPERATIONS } from '@/lib/agent-api/policy'
 import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
@@ -47,15 +47,15 @@ export const PROPOSAL_DECISION_REFUSAL =
  * Piloti's (`proposeOperation` files them), and Piloti never proposes a sensitive
  * operation nor one of a domain it does not see (`policy.ts`). Asked again
  * here, at the click, because the catalog may have changed since the proposal
- * was filed: an operation that became sensitive, or moved to a hidden domain,
+ * was filed: an operation that became sensitive or hidden, or left the door,
  * since then is not run on a card the agent worded.
  */
 function unusableReason(op: AgentOperation | undefined, name: string): string | null {
   if (isPilotiAskOperation(name)) return PILOTI_ASK_REFUSAL
-  if (!op) return `The operation ${name} no longer exists`
+  // Withheld or off the office door reads as unknown, here as on every door (`isOnDoor`).
+  if (!op || !isOnDoor(op)) return `The operation ${name} no longer exists`
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
   if (op.sensitivity) return `The operation ${name} is not one Piloti may propose; make the change in Piloti yourself`
-  if (PILOTI_HIDDEN_DOMAINS.has(op.domain)) return `The operation ${name} is not one Piloti may propose`
   if (PILOTI_HIDDEN_OPERATIONS.has(name)) return PROPOSAL_DECISION_REFUSAL
   return null
 }

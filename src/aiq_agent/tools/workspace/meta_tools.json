@@ -3,7 +3,7 @@
   "tools": {
     "search-operations": {
       "title": "Search operations",
-      "description": "Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, tasks, settings) by plain words, ranked over each operation's name, summary and description. Start here. Answers operation names with one line each and whether each reads, writes or destroys. Then call-operation.",
+      "description": "Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law knowledge, BIM models) by plain words, ranked over each operation's name, summary and description. Start here. Answers operation names with one line each and whether each reads, writes or destroys. Then call-operation.",
       "inputSchema": {
         "type": "object",
         "properties": {

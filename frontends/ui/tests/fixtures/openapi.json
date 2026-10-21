@@ -12130,7 +12130,7 @@
       "get": {
         "operationId": "conversation-message-list",
         "summary": "Read the messages of a conversation",
-        "description": "The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes and conversation-message-usage.",
+        "description": "The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes.",
         "tags": [
           "conversations"
         ],
@@ -16744,7 +16744,7 @@
       "post": {
         "operationId": "skill-create",
         "summary": "Author an organization skill",
-        "description": "Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill name). Needs org:skills:manage. Try skill-review on a draft first.",
+        "description": "Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill name). Needs org:skills:manage.",
         "tags": [
           "skills"
         ],
@@ -17002,7 +17002,7 @@
       "patch": {
         "operationId": "skill-update",
         "summary": "Change an organization skill",
-        "description": "Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` removes it from its category). Platform skills have no id here; use skill-curated-set-enabled for those. Needs org:skills:manage.",
+        "description": "Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` removes it from its category). Platform skills have no id here; a person switches those on or off. Needs org:skills:manage.",
         "tags": [
           "skills"
         ],
@@ -19820,7 +19820,7 @@
       "get": {
         "operationId": "organization-member-list",
         "summary": "List the organization’s members",
-        "description": "Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for per-member budgets (organization-budget-set) and for the userId filter of organization-download-log-list and organization-usage-get.",
+        "description": "Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for the userId filter of organization-download-log-list.",
         "tags": [
           "organization"
         ],

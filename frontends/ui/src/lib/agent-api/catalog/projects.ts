@@ -468,6 +468,10 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-upload-screening-get',
     domain: 'projects',
+    withheld: {
+      category: 'product-config',
+      reason: 'a project’s upload screening override; how Piloti treats uploads, set by a person',
+    },
     summary: 'Read the project’s sensitive-data list',
     description:
       'The upload screening policy in force for this project: the office’s list and what the project adds to or removes from its name terms. ' +
@@ -480,6 +484,10 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-upload-screening-set',
     domain: 'projects',
+    withheld: {
+      category: 'product-config',
+      reason: 'a project’s upload screening override; how Piloti treats uploads, set by a person',
+    },
     summary: 'Set the project’s sensitive name terms',
     description:
       'Saves the project’s whole override of the sensitive name terms: `addedNameTerms` and `removedNameTerms`. It replaces the earlier override, so read project-upload-screening-get first. ' +

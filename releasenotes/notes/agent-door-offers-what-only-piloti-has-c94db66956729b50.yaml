@@ -1,0 +1,12 @@
+---
+features:
+  - >
+    Your connected assistant now works with what only Piloti has: your office's
+    projects, documents, reviews and tasks, Piloti's building-law knowledge and
+    BIM analysis, and Piloti itself. Your organization's settings, models,
+    budgets and policies, web search and your notifications stay with you in Piloti.
+operators:
+  - >
+    The agent door withholds product configuration, proxied services, model
+    compute and screen state (ADR-0121 amendment), and no longer offers the
+    platform console; that waits for a separate platform MCP server.

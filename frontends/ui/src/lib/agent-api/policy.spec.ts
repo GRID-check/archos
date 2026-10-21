@@ -19,6 +19,7 @@ import {
   canSee,
   findVisibleBackendOperation,
   findVisibleOperation,
+  isOnDoor,
   maySeeSensitive,
   visibleBackendOperations,
   visibleOperations,
@@ -79,10 +80,24 @@ describe('visibleOperations', () => {
     expect(findVisibleOperation(piloti, 'folder-access-grant')).toBeUndefined()
   })
 
-  it('hides every platform operation from Piloti, and only from Piloti (H3)', () => {
+  it('keeps every platform operation off the office door, for everyone (H3): it waits for a door of its own', () => {
     const platformRead = { ...op('project-list'), name: 'platform-overview-get', domain: 'platform' as const }
+    expect(isOnDoor(platformRead)).toBe(false)
     expect(canSee(piloti, platformRead)).toBe(false)
-    expect(canSee(person(), platformRead)).toBe(true)
+    expect(canSee(person(), platformRead)).toBe(false)
+  })
+
+  it('offers a withheld operation to nobody, as if it did not exist', () => {
+    const withheld = {
+      ...op('project-list'),
+      name: 'organization-model-config-get',
+      withheld: { category: 'product-config' as const, reason: 'which models Piloti runs on; product configuration' },
+    }
+    expect(isOnDoor(withheld)).toBe(false)
+    expect(canSee(piloti, withheld)).toBe(false)
+    expect(canSee(person(), withheld)).toBe(false)
+    expect(findVisibleOperation(person(), 'organization-model-config-get')).toBeUndefined()
+    expect(findVisibleOperation(person(), 'citation-format')).toBeUndefined()
   })
 
   it('hides the asks from Piloti, and only from Piloti: Piloti never asks Piloti (ADR-0123)', () => {

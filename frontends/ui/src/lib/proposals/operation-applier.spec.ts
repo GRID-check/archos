@@ -61,3 +61,17 @@ describe('proposal decisions', () => {
     expect(callOperation).not.toHaveBeenCalled()
   })
 })
+
+describe('an operation off the office door (ADR-0121, amendment of 2026-10-21)', () => {
+  // A withheld operation and an operator-console one: proposed before they left the door, or never offered.
+  it.each(['organization-instructions-set', 'platform-lesson-update'])(
+    'is refused like an unknown name when %s is proposed or applied',
+    async (name) => {
+      expect(findOperation(name), `${name} is still catalogued`).toBeDefined()
+      expect(() => requireProposableOperation(payload(name))).toThrow(`The operation ${name} no longer exists`)
+      const results = await applyOperation(payload(name), { session: SESSION })
+      expect(results).toEqual([{ label: payload(name).summary, ok: false, reason: `The operation ${name} no longer exists` }])
+      expect(callOperation).not.toHaveBeenCalled()
+    },
+  )
+})

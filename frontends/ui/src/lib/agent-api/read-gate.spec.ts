@@ -189,10 +189,6 @@ describe('in a conversation that is the requester’s alone', () => {
  */
 const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
   'inbox-summary-get': 'a count of waiting items, no item',
-  'push-device-list': 'the person’s own devices',
-  'push-preference-get': 'the person’s own notification settings',
-  'user-preference-get': 'the person’s own preference bag',
-  'citation-format': 'formats the items the call sends; reads nothing',
   'office-shelf-folder-list': 'the office shelf, which belongs to no project',
   'office-shelf-document-list': 'the office shelf, which belongs to no project',
   'office-shelf-document-summary': 'the office shelf, which belongs to no project',
@@ -201,27 +197,13 @@ const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
   'office-shelf-document-revision-probe': 'the office shelf, which belongs to no project',
   'office-shelf-document-search': 'the office shelf, which belongs to no project',
   'knowledge-base-get': 'the platform’s base corpus, the same for every organization',
-  'ris-document-get': 'a public legal text',
-  'address-search': 'a public geocoder',
-  'widget-token-get': 'a token for the person’s own WorkOS widgets',
   'organization-member-list': 'the organization’s members, which every member sees',
   'organization-role-list': 'the organization’s roles',
-  'organization-settings-get': 'the organization’s settings',
-  'organization-instructions-get': 'the organization’s standing instructions, in every answer already',
   'organization-memory-list': 'the knowledge shared by every project, which every member reads',
-  'organization-model-config-get': 'the organization’s model configuration',
-  'organization-model-search': 'the model catalog',
-  'organization-model-config-version-list': 'the organization’s model configuration history',
-  'organization-budget-get': 'limits in credits; a project limit names the project by id only',
-  'organization-usage-get': 'usage in credits by model and day',
-  'organization-usage-notice-get': 'the budget window close to stopping the person',
   'organization-storage-get': 'storage totals of the organization',
-  'organization-upload-screening-get': 'the organization’s screening policy',
-  'organization-deleted-folder-content-get': 'the organization’s deleted-folder policy',
   'skill-list': 'the organization’s skills',
   'skill-invocable-list': 'the skills the person may invoke',
   'skill-category-list': 'the skill categories',
-  'skill-review': 'reviews the skill text the call sends',
 }
 
 describe('every read of no named place either spans projects or carries no project’s content', () => {

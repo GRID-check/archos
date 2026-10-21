@@ -300,15 +300,6 @@
    "describe": "{\"name\":\"project-summary-generate\",\"domain\":\"projects\",\"summary\":\"Write the project’s AI summary\",\"description\":\"Generates the profile summary with the backend model and stores it on the profile, replacing the earlier one. Needs project:edit. Answers the summary. Optionally pass `locale` (\\\"de\\\" or \\\"en\\\").\",\"annotations\":{\"title\":\"Write the project’s AI summary\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"description\":\"The language to write the summary in, \\\"de\\\" or \\\"en\\\". Defaults to the person’s UI language.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
-   "name": "project-upload-screening-get",
-   "domain": "projects",
-   "summary": "Read the project’s sensitive-data list",
-   "description": "The upload screening policy in force for this project: the office’s list and what the project adds to or removes from its name terms. Any member may read it. Edit with project-upload-screening-set.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"project-upload-screening-get\",\"domain\":\"projects\",\"summary\":\"Read the project’s sensitive-data list\",\"description\":\"The upload screening policy in force for this project: the office’s list and what the project adds to or removes from its name terms. Any member may read it. Edit with project-upload-screening-set.\",\"annotations\":{\"title\":\"Read the project’s sensitive-data list\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
    "name": "deletion-list",
    "domain": "documents",
    "summary": "List pending and failed deletions",
@@ -1164,15 +1155,6 @@
    "describe": "{\"name\":\"answer-feedback-submit\",\"domain\":\"conversations\",\"summary\":\"Vote on an answer\",\"description\":\"Records a verdict on one answer (messageId from conversation-message-list). Voting again replaces the earlier vote. A down-vote feeds Piloti’s failure learning, so add the reason when the answer was wrong.\",\"annotations\":{\"title\":\"Vote on an answer\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"messageId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"verdict\":{\"type\":\"string\",\"enum\":[\"up\",\"down\"]},\"reason\":{\"anyOf\":[{\"type\":\"string\",\"enum\":[\"inaccurate\",\"too_slow\",\"wrong_source\",\"other\"]},{\"type\":\"null\"}]},\"comment\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":2000},{\"type\":\"null\"}]},\"expectedAnswer\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":2000},{\"type\":\"null\"}]},\"conversationId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},{\"type\":\"null\"}]},\"projectId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]}},\"required\":[\"messageId\",\"verdict\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
-   "name": "citation-format",
-   "domain": "conversations",
-   "summary": "Format sources as APA, BibTeX or RIS",
-   "description": "Renders CSL-JSON `items` (the sources of an answer, up to 64) as an APA bibliography, BibTeX or RIS text. Pure formatting: nothing is read or stored. Returns `{ text }`.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"citation-format\",\"domain\":\"conversations\",\"summary\":\"Format sources as APA, BibTeX or RIS\",\"description\":\"Renders CSL-JSON `items` (the sources of an answer, up to 64) as an APA bibliography, BibTeX or RIS text. Pure formatting: nothing is read or stored. Returns `{ text }`.\",\"annotations\":{\"title\":\"Format sources as APA, BibTeX or RIS\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"format\":{\"type\":\"string\",\"enum\":[\"apa\",\"bibtex\",\"ris\"]},\"items\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{}},\"maxItems\":64}},\"required\":[\"format\",\"items\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
    "name": "conversation-create",
    "domain": "conversations",
    "summary": "Start a new conversation",
@@ -1257,10 +1239,10 @@
    "name": "conversation-message-list",
    "domain": "conversations",
    "summary": "Read the messages of a conversation",
-   "description": "The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes and conversation-message-usage.",
+   "description": "The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"conversation-message-list\",\"domain\":\"conversations\",\"summary\":\"Read the messages of a conversation\",\"description\":\"The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes and conversation-message-usage.\",\"annotations\":{\"title\":\"Read the messages of a conversation\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id (`s_` plus a UUID with underscores), from conversation-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"conversation-message-list\",\"domain\":\"conversations\",\"summary\":\"Read the messages of a conversation\",\"description\":\"The whole history of a conversation, oldest first: each message with id, role, content, structured mentions and the answer details Piloti stored. Message ids from here feed conversation-message-changes.\",\"annotations\":{\"title\":\"Read the messages of a conversation\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id (`s_` plus a UUID with underscores), from conversation-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "conversation-message-update",
@@ -1270,33 +1252,6 @@
    "readOnly": false,
    "destructive": false,
    "describe": "{\"name\":\"conversation-message-update\",\"domain\":\"conversations\",\"summary\":\"Record a card decision or details on an answer\",\"description\":\"Saves the person’s decisions on an answer’s interactive cards (`cardInteractions`, keyed like `memory_proposal-0`) and the answer’s own details (`provenance`, `promptState`, `stages`). Provide at least one field. The service whitelists the free-form parts; to act on a proposal use proposal-apply instead.\",\"annotations\":{\"title\":\"Record a card decision or details on an answer\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id, from conversation-list.\"},\"messageId\":{\"type\":\"string\",\"description\":\"The message id (a UUID), from conversation-message-list.\"}},\"required\":[\"id\",\"messageId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"cardInteractions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"object\",\"properties\":{\"decision\":{\"type\":\"string\",\"enum\":[\"accepted\",\"rejected\",\"savedOrg\",\"savedProject\",\"dismissed\",\"partiallyApplied\",\"filed\",\"submitted\"]},\"decidedAt\":{\"type\":\"string\",\"format\":\"date-time\"}},\"required\":[\"decision\",\"decidedAt\"]}},\"provenance\":{},\"promptState\":{},\"stages\":{}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
-   "name": "conversation-message-usage",
-   "domain": "conversations",
-   "summary": "Read what one answer cost",
-   "description": "The credits billed for one answer (or tokens, on the organization’s own key) with the token split. Returns `{ usage: null }` when no ledger row names the answer.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"conversation-message-usage\",\"domain\":\"conversations\",\"summary\":\"Read what one answer cost\",\"description\":\"The credits billed for one answer (or tokens, on the organization’s own key) with the token split. Returns `{ usage: null }` when no ledger row names the answer.\",\"annotations\":{\"title\":\"Read what one answer cost\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id, from conversation-list.\"},\"messageId\":{\"type\":\"string\",\"description\":\"The message id (a UUID), from conversation-message-list.\"}},\"required\":[\"id\",\"messageId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "conversation-read-mark",
-   "domain": "conversations",
-   "summary": "Mark a conversation read",
-   "description": "Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. Read state is per person. Send an empty object to mark everything read.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"conversation-read-mark\",\"domain\":\"conversations\",\"summary\":\"Mark a conversation read\",\"description\":\"Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. Read state is per person. Send an empty object to mark everything read.\",\"annotations\":{\"title\":\"Mark a conversation read\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id (`s_` plus a UUID with underscores), from conversation-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"lastReadMessageId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
-   "name": "conversation-title-generate",
-   "domain": "conversations",
-   "summary": "Let Piloti name a conversation",
-   "description": "Generates a short title and topic tags from the opening exchange (up to 20 messages with role and content) and saves them on the conversation. Pass `locale` for the title’s language. Returns the stored title.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"conversation-title-generate\",\"domain\":\"conversations\",\"summary\":\"Let Piloti name a conversation\",\"description\":\"Generates a short title and topic tags from the opening exchange (up to 20 messages with role and content) and saves them on the conversation. Pass `locale` for the title’s language. Returns the stored title.\",\"annotations\":{\"title\":\"Let Piloti name a conversation\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id (`s_` plus a UUID with underscores), from conversation-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"messages\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"role\":{\"type\":\"string\",\"enum\":[\"user\",\"assistant\"]},\"content\":{\"type\":\"string\"}},\"required\":[\"role\",\"content\"]},\"maxItems\":20},\"locale\":{\"type\":\"string\"}},\"required\":[\"messages\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "conversation-update",
@@ -1389,24 +1344,6 @@
    "describe": "{\"name\":\"inbox-item-archive\",\"domain\":\"collaboration\",\"summary\":\"Archive an inbox item\",\"description\":\"Puts one inbox item (id from inbox-list) away. The row survives and can be brought back with inbox-item-restore.\",\"annotations\":{\"title\":\"Archive an inbox item\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The inbox item id (a UUID), from inbox-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "inbox-item-mark-read",
-   "domain": "collaboration",
-   "summary": "Mark inbox items read",
-   "description": "Marks read by `itemIds` (from inbox-list), or everything with `{ all: true }`, or the news on one document annotation (`resourceType`, `resourceId`, `anchorId`), or the “new annotations” rows of a document (`marksSet: true`). Returns the recomputed badge count.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"inbox-item-mark-read\",\"domain\":\"collaboration\",\"summary\":\"Mark inbox items read\",\"description\":\"Marks read by `itemIds` (from inbox-list), or everything with `{ all: true }`, or the news on one document annotation (`resourceType`, `resourceId`, `anchorId`), or the “new annotations” rows of a document (`marksSet: true`). Returns the recomputed badge count.\",\"annotations\":{\"title\":\"Mark inbox items read\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"anyOf\":[{\"type\":\"object\",\"properties\":{\"itemIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":50}},\"required\":[\"itemIds\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"all\":{\"const\":true}},\"required\":[\"all\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"resourceType\":{\"const\":\"document\"},\"resourceId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"anchorId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"resourceType\",\"resourceId\",\"anchorId\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"resourceType\":{\"const\":\"document\"},\"resourceId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"marksSet\":{\"const\":true}},\"required\":[\"resourceType\",\"resourceId\",\"marksSet\"],\"additionalProperties\":false}]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "inbox-item-mark-unread",
-   "domain": "collaboration",
-   "summary": "Mark inbox items unread again",
-   "description": "The inverse of inbox-item-mark-read for `itemIds` from inbox-list. Returns the recomputed badge count.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"inbox-item-mark-unread\",\"domain\":\"collaboration\",\"summary\":\"Mark inbox items unread again\",\"description\":\"The inverse of inbox-item-mark-read for `itemIds` from inbox-list. Returns the recomputed badge count.\",\"annotations\":{\"title\":\"Mark inbox items unread again\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"itemIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":50}},\"required\":[\"itemIds\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
    "name": "inbox-item-restore",
    "domain": "collaboration",
    "summary": "Take an inbox item out of the archive",
@@ -1434,15 +1371,6 @@
    "describe": "{\"name\":\"inbox-summary-get\",\"domain\":\"collaboration\",\"summary\":\"Read the inbox badge count\",\"description\":\"Only the number of items waiting on the person, as the inbox badge shows it. Cheaper than inbox-list.\",\"annotations\":{\"title\":\"Read the inbox badge count\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
-   "name": "inbox-unread-anchor-list",
-   "domain": "collaboration",
-   "summary": "List unread annotations inside a document",
-   "description": "The ids of the annotations (anchors) in one document whose news the person has not read, as `{ anchorIds }`. resourceId is a document id from document-list. Opening an annotation’s thread clears it (inbox-item-mark-read).",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"inbox-unread-anchor-list\",\"domain\":\"collaboration\",\"summary\":\"List unread annotations inside a document\",\"description\":\"The ids of the annotations (anchors) in one document whose news the person has not read, as `{ anchorIds }`. resourceId is a document id from document-list. Opening an annotation’s thread clears it (inbox-item-mark-read).\",\"annotations\":{\"title\":\"List unread annotations inside a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"resourceType\":{\"const\":\"document\"},\"resourceId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"resourceType\",\"resourceId\"]}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
    "name": "mention-request-release",
    "domain": "collaboration",
    "summary": "Carry on without the person a thread waits on",
@@ -1468,42 +1396,6 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"proposal-list\",\"domain\":\"collaboration\",\"summary\":\"List open proposed changes on a shelf\",\"description\":\"Piloti’s open proposals (file operations, notes, profile changes) with the documents they name. Give `projectId` (from project-list) for a project, or `shelf: office_shelf` for the office shelf, and optionally `kind`. Ids feed proposal-get, proposal-apply and proposal-dismiss.\",\"annotations\":{\"title\":\"List open proposed changes on a shelf\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The project whose open proposals to list, from project-list.\"},\"shelf\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\",\"organization\"],\"description\":\"`office_shelf` for the office shelf instead of a project.\"},\"kind\":{\"type\":\"string\",\"enum\":[\"file_operation\",\"memory\",\"project_profile\",\"operation\"]}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
-   "name": "push-device-list",
-   "domain": "collaboration",
-   "summary": "List the devices that receive push notifications",
-   "description": "The person’s own registered browsers and devices. Ids feed push-device-remove.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"push-device-list\",\"domain\":\"collaboration\",\"summary\":\"List the devices that receive push notifications\",\"description\":\"The person’s own registered browsers and devices. Ids feed push-device-remove.\",\"annotations\":{\"title\":\"List the devices that receive push notifications\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "push-device-remove",
-   "domain": "collaboration",
-   "summary": "Stop push notifications to one device",
-   "description": "Removes one of the person’s own devices (id from push-device-list). It receives no more pushes.",
-   "readOnly": false,
-   "destructive": true,
-   "describe": "{\"name\":\"push-device-remove\",\"domain\":\"collaboration\",\"summary\":\"Stop push notifications to one device\",\"description\":\"Removes one of the person’s own devices (id from push-device-list). It receives no more pushes.\",\"annotations\":{\"title\":\"Stop push notifications to one device\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The device id (a UUID), from push-device-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "push-preference-get",
-   "domain": "collaboration",
-   "summary": "Read the push notification preferences",
-   "description": "What the person wants pushed (the categories requests, results, access, activity, office) and whether the lock screen shows content. Defaults are filled in.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"push-preference-get\",\"domain\":\"collaboration\",\"summary\":\"Read the push notification preferences\",\"description\":\"What the person wants pushed (the categories requests, results, access, activity, office) and whether the lock screen shows content. Defaults are filled in.\",\"annotations\":{\"title\":\"Read the push notification preferences\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "push-preference-update",
-   "domain": "collaboration",
-   "summary": "Change the push notification preferences",
-   "description": "Sets `showContent` and/or any of the `categories` booleans; fields left out stay as they are. Returns the resolved preferences.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"push-preference-update\",\"domain\":\"collaboration\",\"summary\":\"Change the push notification preferences\",\"description\":\"Sets `showContent` and/or any of the `categories` booleans; fields left out stay as they are. Returns the resolved preferences.\",\"annotations\":{\"title\":\"Change the push notification preferences\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"showContent\":{\"type\":\"boolean\"},\"categories\":{\"type\":\"object\",\"properties\":{\"requests\":{\"type\":\"boolean\"},\"results\":{\"type\":\"boolean\"},\"access\":{\"type\":\"boolean\"},\"activity\":{\"type\":\"boolean\"},\"office\":{\"type\":\"boolean\"}},\"additionalProperties\":false}},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "session-document-delete",
@@ -1540,24 +1432,6 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"sharing-get\",\"domain\":\"collaboration\",\"summary\":\"Read who has access to a resource\",\"description\":\"The sharing state of a conversation or other shareable resource: its visibility, the people with a grant and their roles, and the person’s own role. Change it with sharing-visibility-set, sharing-grant-add, sharing-grant-update and sharing-grant-revoke.\",\"annotations\":{\"title\":\"Read who has access to a resource\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"resourceType\":{\"type\":\"string\",\"description\":\"The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it.\"},\"resourceId\":{\"type\":\"string\",\"description\":\"The id of that resource, from its list operation.\"}},\"required\":[\"resourceType\",\"resourceId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "user-preference-get",
-   "domain": "collaboration",
-   "summary": "Read the person’s preferences",
-   "description": "The person’s own preference bag (language, active project and other UI settings) as `{ prefs }`.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"user-preference-get\",\"domain\":\"collaboration\",\"summary\":\"Read the person’s preferences\",\"description\":\"The person’s own preference bag (language, active project and other UI settings) as `{ prefs }`.\",\"annotations\":{\"title\":\"Read the person’s preferences\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "user-preference-update",
-   "domain": "collaboration",
-   "summary": "Change the person’s preferences",
-   "description": "Merges `prefs` into the person’s preference bag; keys not named stay. Setting `locale` also switches the interface language. Returns the merged `{ prefs }`.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"user-preference-update\",\"domain\":\"collaboration\",\"summary\":\"Change the person’s preferences\",\"description\":\"Merges `prefs` into the person’s preference bag; keys not named stay. Setting `locale` also switches the interface language. Returns the merged `{ prefs }`.\",\"annotations\":{\"title\":\"Change the person’s preferences\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"prefs\":{\"type\":\"object\",\"additionalProperties\":{}}},\"required\":[\"prefs\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "project-task-run-list",
@@ -1725,19 +1599,10 @@
    "name": "skill-create",
    "domain": "skills",
    "summary": "Author an organization skill",
-   "description": "Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill name). Needs org:skills:manage. Try skill-review on a draft first.",
+   "description": "Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill name). Needs org:skills:manage.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"skill-create\",\"domain\":\"skills\",\"summary\":\"Author an organization skill\",\"description\":\"Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill name). Needs org:skills:manage. Try skill-review on a draft first.\",\"annotations\":{\"title\":\"Author an organization skill\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"description\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":32000},\"metadata\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"}},\"enabled\":{\"type\":\"boolean\"},\"clonedFrom\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"categoryId\":{\"type\":\"string\",\"format\":\"uuid\"}},\"required\":[\"name\",\"description\",\"body\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "skill-curated-set-enabled",
-   "domain": "skills",
-   "summary": "Switch a platform skill on or off",
-   "description": "Turn a platform-curated skill on or off for this organization. Addressed by NAME (from skill-list), because a platform skill has no id; only curated skills can be switched, never the pipeline’s own machinery. Needs org:skills:manage.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"skill-curated-set-enabled\",\"domain\":\"skills\",\"summary\":\"Switch a platform skill on or off\",\"description\":\"Turn a platform-curated skill on or off for this organization. Addressed by NAME (from skill-list), because a platform skill has no id; only curated skills can be switched, never the pipeline’s own machinery. Needs org:skills:manage.\",\"annotations\":{\"title\":\"Switch a platform skill on or off\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"description\":\"The platform skill name, from skill-list.\"}},\"required\":[\"name\"]},\"body\":{\"type\":\"object\",\"properties\":{\"enabled\":{\"type\":\"boolean\"}},\"required\":[\"enabled\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"skill-create\",\"domain\":\"skills\",\"summary\":\"Author an organization skill\",\"description\":\"Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill name). Needs org:skills:manage.\",\"annotations\":{\"title\":\"Author an organization skill\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"description\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":32000},\"metadata\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"}},\"enabled\":{\"type\":\"boolean\"},\"clonedFrom\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"categoryId\":{\"type\":\"string\",\"format\":\"uuid\"}},\"required\":[\"name\",\"description\",\"body\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "skill-delete",
@@ -1767,31 +1632,13 @@
    "describe": "{\"name\":\"skill-list\",\"domain\":\"skills\",\"summary\":\"List the skills of the toolbox\",\"description\":\"The organization’s skill toolbox: platform-curated skills and the organization’s own, each with its name, description, category and whether it is enabled. Needs the skills feature on. Org skill ids from here feed skill-update and skill-delete; names feed task-create.\",\"annotations\":{\"title\":\"List the skills of the toolbox\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
-   "name": "skill-review",
-   "domain": "skills",
-   "summary": "Have the reviewer critique a skill draft",
-   "description": "Ask the backend reviewer what is wrong with a skill draft. Send whatever of `name`, `description` and `body` exists; an incomplete draft is fine. Answers 200 with `{ findings, error? }`; null findings means no review this time, not a pass. Changes nothing.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"skill-review\",\"domain\":\"skills\",\"summary\":\"Have the reviewer critique a skill draft\",\"description\":\"Ask the backend reviewer what is wrong with a skill draft. Send whatever of `name`, `description` and `body` exists; an incomplete draft is fine. Answers 200 with `{ findings, error? }`; null findings means no review this time, not a pass. Changes nothing.\",\"annotations\":{\"title\":\"Have the reviewer critique a skill draft\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"maxLength\":64},\"description\":{\"type\":\"string\",\"maxLength\":1024},\"body\":{\"type\":\"string\",\"maxLength\":32000}}}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
    "name": "skill-update",
    "domain": "skills",
    "summary": "Change an organization skill",
-   "description": "Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` removes it from its category). Platform skills have no id here; use skill-curated-set-enabled for those. Needs org:skills:manage.",
+   "description": "Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` removes it from its category). Platform skills have no id here; a person switches those on or off. Needs org:skills:manage.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"skill-update\",\"domain\":\"skills\",\"summary\":\"Change an organization skill\",\"description\":\"Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` removes it from its category). Platform skills have no id here; use skill-curated-set-enabled for those. Needs org:skills:manage.\",\"annotations\":{\"title\":\"Change an organization skill\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"skillId\":{\"type\":\"string\",\"description\":\"The org skill id, from skill-list.\"}},\"required\":[\"skillId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"description\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":32000},\"metadata\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"}},\"enabled\":{\"type\":\"boolean\"},\"categoryId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
-   "name": "address-search",
-   "domain": "knowledge",
-   "summary": "Look up an address",
-   "description": "Search public map data for an address (`q`, at least 3 characters; `limit` caps results). Answers `{ enabled, results }`; `enabled: false` means no geocoding provider is configured. Use it to resolve an address before creating a project.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"address-search\",\"domain\":\"knowledge\",\"summary\":\"Look up an address\",\"description\":\"Search public map data for an address (`q`, at least 3 characters; `limit` caps results). Answers `{ enabled, results }`; `enabled: false` means no geocoding provider is configured. Use it to resolve an address before creating a project.\",\"annotations\":{\"title\":\"Look up an address\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"q\":{\"type\":\"string\",\"minLength\":3,\"maxLength\":200},\"limit\":{\"type\":\"integer\"}},\"required\":[\"q\"]}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+   "describe": "{\"name\":\"skill-update\",\"domain\":\"skills\",\"summary\":\"Change an organization skill\",\"description\":\"Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` removes it from its category). Platform skills have no id here; a person switches those on or off. Needs org:skills:manage.\",\"annotations\":{\"title\":\"Change an organization skill\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"skillId\":{\"type\":\"string\",\"description\":\"The org skill id, from skill-list.\"}},\"required\":[\"skillId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"description\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":32000},\"metadata\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"}},\"enabled\":{\"type\":\"boolean\"},\"categoryId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "knowledge-base-get",
@@ -1810,24 +1657,6 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"knowledge-document-get\",\"domain\":\"knowledge\",\"summary\":\"Read a base-corpus PDF\",\"description\":\"The PDF of one document of the building-law base corpus (the file names are listed by knowledge-base-get), returned as an attached resource up to 5 MiB; a larger file is not sent. Identical for every organization. Use it to quote a source a citation points at.\",\"annotations\":{\"title\":\"Read a base-corpus PDF\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"fileName\":{\"type\":\"string\",\"description\":\"The base-corpus file name, exactly as knowledge-base-get lists it.\"}},\"required\":[\"fileName\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "ris-document-get",
-   "domain": "knowledge",
-   "summary": "Read the text of a RIS legal document",
-   "description": "Fetch the text of an Austrian RIS document from a citation: `reference` is a document number (NOR40217157) or a https://www.ris.bka.gv.at/ URL, `application` disambiguates a bare number, and `passage` windows a long document around the cited passage. Answers 404 when RIS serves no text for it and 502 when RIS is unreachable. Rate limited.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"ris-document-get\",\"domain\":\"knowledge\",\"summary\":\"Read the text of a RIS legal document\",\"description\":\"Fetch the text of an Austrian RIS document from a citation: `reference` is a document number (NOR40217157) or a https://www.ris.bka.gv.at/ URL, `application` disambiguates a bare number, and `passage` windows a long document around the cited passage. Answers 404 when RIS serves no text for it and 502 when RIS is unreachable. Rate limited.\",\"annotations\":{\"title\":\"Read the text of a RIS legal document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"reference\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2048},\"application\":{\"type\":\"string\",\"maxLength\":32},\"passage\":{\"type\":\"string\",\"maxLength\":2000}},\"required\":[\"reference\"]}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
-   "name": "widget-token-get",
-   "domain": "knowledge",
-   "summary": "Mint a short-lived WorkOS widget token",
-   "description": "A user-specific, short-lived WorkOS widget authorization token (never cache it) for the requested `scope` values; scopes the person does not hold are dropped. `org=platform` asks for the platform organization and is guarded. Returns `{ token }`. Only useful to a client that renders WorkOS widgets.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"widget-token-get\",\"domain\":\"knowledge\",\"summary\":\"Mint a short-lived WorkOS widget token\",\"description\":\"A user-specific, short-lived WorkOS widget authorization token (never cache it) for the requested `scope` values; scopes the person does not hold are dropped. `org=platform` asks for the platform organization and is guarded. Returns `{ token }`. Only useful to a client that renders WorkOS widgets.\",\"annotations\":{\"title\":\"Mint a short-lived WorkOS widget token\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"description\":\"A widget scope; repeat the parameter for several.\"},\"org\":{\"type\":\"string\",\"description\":\"Pass `platform` for the platform organization.\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "bim-check-confirm",
@@ -1911,42 +1740,6 @@
    "describe": "{\"name\":\"diagram-file\",\"domain\":\"bim\",\"summary\":\"File a drawn diagram into a project\",\"description\":\"File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.\",\"annotations\":{\"title\":\"File a drawn diagram into a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"runId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"sourceKind\":{\"type\":\"string\",\"enum\":[\"mermaid\",\"excalidraw\"]},\"source\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":524288},\"svg\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1048576},\"conversationId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128}},\"required\":[\"runId\",\"title\",\"sourceKind\",\"source\",\"svg\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
-   "name": "organization-budget-get",
-   "domain": "organization",
-   "summary": "Read the LLM budgets",
-   "description": "Daily and monthly limits (credits, or tokens for an organization on its own key) for the organization and the caller; budget admins also get every member and project limit. Change with organization-budget-set, remove a member or project limit with organization-budget-remove.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-budget-get\",\"domain\":\"organization\",\"summary\":\"Read the LLM budgets\",\"description\":\"Daily and monthly limits (credits, or tokens for an organization on its own key) for the organization and the caller; budget admins also get every member and project limit. Change with organization-budget-set, remove a member or project limit with organization-budget-remove.\",\"annotations\":{\"title\":\"Read the LLM budgets\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-budget-remove",
-   "domain": "organization",
-   "summary": "Remove a member or project budget limit",
-   "description": "Deletes the limit of one member or one project so that the organization limits alone apply. The organization limits themselves are changed with organization-budget-set. subjectId is a user id from organization-member-list or a project id from project-list.",
-   "readOnly": false,
-   "destructive": true,
-   "describe": "{\"name\":\"organization-budget-remove\",\"domain\":\"organization\",\"summary\":\"Remove a member or project budget limit\",\"description\":\"Deletes the limit of one member or one project so that the organization limits alone apply. The organization limits themselves are changed with organization-budget-set. subjectId is a user id from organization-member-list or a project id from project-list.\",\"annotations\":{\"title\":\"Remove a member or project budget limit\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"member\",\"project\"]},\"subjectId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120}},\"required\":[\"scope\",\"subjectId\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "organization-budget-set",
-   "domain": "organization",
-   "summary": "Set a budget limit",
-   "description": "Sets the daily and monthly limit (null means unlimited) for the organization, one member or one project. The unit follows the organization’s key mode. Organization and member scopes need budget admin rights; project scope also works for that project’s admins. subjectId is a user id from organization-member-list or a project id from project-list; omit it for the organization scope.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-budget-set\",\"domain\":\"organization\",\"summary\":\"Set a budget limit\",\"description\":\"Sets the daily and monthly limit (null means unlimited) for the organization, one member or one project. The unit follows the organization’s key mode. Organization and member scopes need budget admin rights; project scope also works for that project’s admins. subjectId is a user id from organization-member-list or a project id from project-list; omit it for the organization scope.\",\"annotations\":{\"title\":\"Set a budget limit\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"organization\",\"member\",\"project\"]},\"subjectId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},{\"type\":\"null\"}]},\"dailyLimit\":{\"anyOf\":[{\"type\":\"number\"},{\"type\":\"null\"}]},\"monthlyLimit\":{\"anyOf\":[{\"type\":\"number\"},{\"type\":\"null\"}]},\"note\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":500},{\"type\":\"null\"}]}},\"required\":[\"scope\",\"dailyLimit\",\"monthlyLimit\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "organization-deleted-folder-content-get",
-   "domain": "organization",
-   "summary": "Read the deleted-folder content policy",
-   "description": "Who may still see conversations, answers and notes drawn from a folder once the folder is purged. Any member may read. Change with organization-deleted-folder-content-set.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-deleted-folder-content-get\",\"domain\":\"organization\",\"summary\":\"Read the deleted-folder content policy\",\"description\":\"Who may still see conversations, answers and notes drawn from a folder once the folder is purged. Any member may read. Change with organization-deleted-folder-content-set.\",\"annotations\":{\"title\":\"Read the deleted-folder content policy\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
    "name": "organization-download-log-list",
    "domain": "organization",
    "summary": "Read the download log",
@@ -1965,31 +1758,13 @@
    "describe": "{\"name\":\"organization-failed-document-reingest\",\"domain\":\"organization\",\"summary\":\"Re-read every document that failed ingestion\",\"description\":\"Queues a job that sends every document of the organization that could not be read back through ingestion, and answers at once with the job id. Needs org:settings:manage. For a single document use its own retry operation.\",\"annotations\":{\"title\":\"Re-read every document that failed ingestion\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
-   "name": "organization-instructions-get",
-   "domain": "organization",
-   "summary": "Read the standing instructions",
-   "description": "The organization’s standing instruction block that shapes every answer its members get. Any member may read. Change it with organization-instructions-set.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-instructions-get\",\"domain\":\"organization\",\"summary\":\"Read the standing instructions\",\"description\":\"The organization’s standing instruction block that shapes every answer its members get. Any member may read. Change it with organization-instructions-set.\",\"annotations\":{\"title\":\"Read the standing instructions\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-instructions-set",
-   "domain": "organization",
-   "summary": "Replace the standing instructions",
-   "description": "Replaces the organization’s standing instruction block with the given text; an empty or blank text clears it. Needs org:settings:manage. The block applies to every member’s answers, so read the current text with organization-instructions-get and edit it rather than overwriting it blindly.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-instructions-set\",\"domain\":\"organization\",\"summary\":\"Replace the standing instructions\",\"description\":\"Replaces the organization’s standing instruction block with the given text; an empty or blank text clears it. Needs org:settings:manage. The block applies to every member’s answers, so read the current text with organization-instructions-get and edit it rather than overwriting it blindly.\",\"annotations\":{\"title\":\"Replace the standing instructions\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"instructions\":{\"type\":\"string\",\"maxLength\":1500}},\"required\":[\"instructions\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
    "name": "organization-member-list",
    "domain": "organization",
    "summary": "List the organization’s members",
-   "description": "Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for per-member budgets (organization-budget-set) and for the userId filter of organization-download-log-list and organization-usage-get.",
+   "description": "Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for the userId filter of organization-download-log-list.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"organization-member-list\",\"domain\":\"organization\",\"summary\":\"List the organization’s members\",\"description\":\"Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for per-member budgets (organization-budget-set) and for the userId filter of organization-download-log-list and organization-usage-get.\",\"annotations\":{\"title\":\"List the organization’s members\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
+   "describe": "{\"name\":\"organization-member-list\",\"domain\":\"organization\",\"summary\":\"List the organization’s members\",\"description\":\"Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for the userId filter of organization-download-log-list.\",\"annotations\":{\"title\":\"List the organization’s members\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
    "name": "organization-memory-create",
@@ -2028,51 +1803,6 @@
    "describe": "{\"name\":\"organization-memory-update\",\"domain\":\"organization\",\"summary\":\"Edit an organization memory item\",\"description\":\"Changes fields of one organization memory item (kind, content, status, confidence, verification, pinned). At least one field is required. The id comes from organization-memory-list.\",\"annotations\":{\"title\":\"Edit an organization memory item\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"itemId\":{\"type\":\"string\",\"description\":\"The organization memory item id, from organization-memory-list.\"}},\"required\":[\"itemId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"decision\",\"constraint\",\"open_question\",\"derived_fact\",\"preference\"]},\"content\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"status\":{\"type\":\"string\",\"enum\":[\"proposed\",\"active\",\"superseded\",\"dismissed\"]},\"confidence\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\"]},\"verification\":{\"type\":\"string\",\"enum\":[\"unverified\",\"source_grounded\",\"user_confirmed\"]},\"pinned\":{\"type\":\"boolean\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
-   "name": "organization-model-config-get",
-   "domain": "organization",
-   "summary": "Read the model configuration",
-   "description": "The agent groups, the active model configuration version, whether zero data retention is on and applicable, and which groups have no ZDR-capable model. Needs org:models:manage. Pick models with organization-model-search, then save with organization-model-config-set.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-model-config-get\",\"domain\":\"organization\",\"summary\":\"Read the model configuration\",\"description\":\"The agent groups, the active model configuration version, whether zero data retention is on and applicable, and which groups have no ZDR-capable model. Needs org:models:manage. Pick models with organization-model-search, then save with organization-model-config-set.\",\"annotations\":{\"title\":\"Read the model configuration\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-model-config-set",
-   "domain": "organization",
-   "summary": "Save a new model configuration",
-   "description": "Validates the chosen model per agent group against the live catalog (and ZDR, while it is on), then writes a new version and activates it for the whole organization. Needs org:models:manage. Group ids come from organization-model-config-get, model ids from organization-model-search. The earlier version stays in organization-model-config-version-list for rollback.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-model-config-set\",\"domain\":\"organization\",\"summary\":\"Save a new model configuration\",\"description\":\"Validates the chosen model per agent group against the live catalog (and ZDR, while it is on), then writes a new version and activates it for the whole organization. Needs org:models:manage. Group ids come from organization-model-config-get, model ids from organization-model-search. The earlier version stays in organization-model-config-version-list for rollback.\",\"annotations\":{\"title\":\"Save a new model configuration\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"overrides\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"object\",\"properties\":{\"model\":{\"type\":\"string\"}},\"required\":[\"model\"]}},\"comment\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":500},{\"type\":\"null\"}]}},\"required\":[\"overrides\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "organization-model-config-version-activate",
-   "domain": "organization",
-   "summary": "Roll back to a model configuration version",
-   "description": "Makes an earlier configuration version the active one for the whole organization, or pass the id \"none\" to drop every override and return to the inherited defaults. Needs org:models:manage. Refused with the offending groups when zero data retention is on and the version selects a model without a ZDR endpoint.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-model-config-version-activate\",\"domain\":\"organization\",\"summary\":\"Roll back to a model configuration version\",\"description\":\"Makes an earlier configuration version the active one for the whole organization, or pass the id \\\"none\\\" to drop every override and return to the inherited defaults. Needs org:models:manage. Refused with the offending groups when zero data retention is on and the version selects a model without a ZDR endpoint.\",\"annotations\":{\"title\":\"Roll back to a model configuration version\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"A model configuration version id (a UUID) from organization-model-config-version-list, or the word \\\"none\\\" to drop every override and return to the inherited defaults.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "organization-model-config-version-list",
-   "domain": "organization",
-   "summary": "List model configuration versions",
-   "description": "The history of the organization’s model configurations, newest first, with the id of the active one. Needs org:models:manage. A version id goes to organization-model-config-version-activate to roll back.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-model-config-version-list\",\"domain\":\"organization\",\"summary\":\"List model configuration versions\",\"description\":\"The history of the organization’s model configurations, newest first, with the id of the active one. Needs org:models:manage. A version id goes to organization-model-config-version-activate to roll back.\",\"annotations\":{\"title\":\"List model configuration versions\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-model-search",
-   "domain": "organization",
-   "summary": "Search models for an agent group",
-   "description": "Models that satisfy one agent group’s requirements, filtered by a search text, with context length, a ZDR mark and an approximate credit cost per request. Needs org:models:manage. The group id comes from organization-model-config-get; pass the chosen model id to organization-model-config-set.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-model-search\",\"domain\":\"organization\",\"summary\":\"Search models for an agent group\",\"description\":\"Models that satisfy one agent group’s requirements, filtered by a search text, with context length, a ZDR mark and an approximate credit cost per request. Needs org:models:manage. The group id comes from organization-model-config-get; pass the chosen model id to organization-model-config-set.\",\"annotations\":{\"title\":\"Search models for an agent group\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"group\":{\"type\":\"string\"},\"q\":{\"type\":\"string\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
    "name": "organization-role-list",
    "domain": "organization",
    "summary": "List the organization’s roles",
@@ -2082,24 +1812,6 @@
    "describe": "{\"name\":\"organization-role-list\",\"domain\":\"organization\",\"summary\":\"List the organization’s roles\",\"description\":\"The roles of this organization (built-in and the office’s custom roles) by name and slug; any member may read them. Permissions and the list of assignable permissions are included only for holders of org:members:manage. Role slugs are what a folder restriction names.\",\"annotations\":{\"title\":\"List the organization’s roles\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
-   "name": "organization-settings-get",
-   "domain": "organization",
-   "summary": "Read the organization’s settings",
-   "description": "Display name, default language and the settings bag of the caller’s organization. Any member may read. Change them with organization-settings-update.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-settings-get\",\"domain\":\"organization\",\"summary\":\"Read the organization’s settings\",\"description\":\"Display name, default language and the settings bag of the caller’s organization. Any member may read. Change them with organization-settings-update.\",\"annotations\":{\"title\":\"Read the organization’s settings\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-settings-update",
-   "domain": "organization",
-   "summary": "Update the organization’s settings",
-   "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set, web search with organization-web-search-set. Read the current values first with organization-settings-get.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-settings-update\",\"domain\":\"organization\",\"summary\":\"Update the organization’s settings\",\"description\":\"Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set, web search with organization-web-search-set. Read the current values first with organization-settings-get.\",\"annotations\":{\"title\":\"Update the organization’s settings\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"displayName\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"defaultLocale\":{\"anyOf\":[{\"type\":\"string\",\"enum\":[\"en\",\"de\"]},{\"type\":\"null\"}]},\"settings\":{\"type\":\"object\",\"additionalProperties\":{}}}}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
    "name": "organization-storage-get",
    "domain": "organization",
    "summary": "Read storage usage and quota",
@@ -2107,59 +1819,32 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"organization-storage-get\",\"domain\":\"organization\",\"summary\":\"Read storage usage and quota\",\"description\":\"How much storage the organization uses against its quota. Any member may read; the quota itself is set by the platform operator and cannot be changed here. Read this when an upload is refused.\",\"annotations\":{\"title\":\"Read storage usage and quota\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-upload-screening-get",
-   "domain": "organization",
-   "summary": "Read the upload screening policy",
-   "description": "The policy that screens file names before an upload, whether it is still Piloti’s suggested list, and that suggestion. Any member may read. Change with organization-upload-screening-set.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-upload-screening-get\",\"domain\":\"organization\",\"summary\":\"Read the upload screening policy\",\"description\":\"The policy that screens file names before an upload, whether it is still Piloti’s suggested list, and that suggestion. Any member may read. Change with organization-upload-screening-set.\",\"annotations\":{\"title\":\"Read the upload screening policy\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-usage-get",
-   "domain": "organization",
-   "summary": "Read LLM usage in credits",
-   "description": "Per-model usage by day and month in credits. Budget admins see the whole organization and may narrow it by userId or projectId; other members get their own usage only.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-usage-get\",\"domain\":\"organization\",\"summary\":\"Read LLM usage in credits\",\"description\":\"Per-model usage by day and month in credits. Budget admins see the whole organization and may narrow it by userId or projectId; other members get their own usage only.\",\"annotations\":{\"title\":\"Read LLM usage in credits\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"userId\":{\"type\":\"string\"},\"projectId\":{\"type\":\"string\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
-   "name": "organization-usage-notice-get",
-   "domain": "organization",
-   "summary": "Read the budget warning for the asking person",
-   "description": "The one budget window close enough to stop this person, or null when none is. Pass projectId to include that project's budget. Any member may read; amounts appear only for budget admins. Read this before starting long work.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-usage-notice-get\",\"domain\":\"organization\",\"summary\":\"Read the budget warning for the asking person\",\"description\":\"The one budget window close enough to stop this person, or null when none is. Pass projectId to include that project's budget. Any member may read; amounts appear only for budget admins. Read this before starting long work.\",\"annotations\":{\"title\":\"Read the budget warning for the asking person\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"maxLength\":120}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   }
  ],
  "search": {
   "add member project": [
    "project-person-add",
    "project-member-list",
-   "project-upload-screening-get",
    "project-same-address-list",
    "organization-memory-create",
    "project-create",
    "project-record-get",
    "assignment-candidate-list",
    "project-delete",
-   "project-experience-extract"
+   "project-experience-extract",
+   "project-get"
   ],
   "Mitglied zu Projekt hinzufügen": [
    "project-person-add",
    "project-member-list",
    "project-same-address-list",
-   "project-upload-screening-get",
    "project-create",
    "project-record-get",
    "project-delete",
    "project-experience-extract",
    "project-get",
-   "project-intake-get"
+   "project-intake-get",
+   "project-list"
   ],
   "list project members": [
    "project-member-list",
@@ -2176,14 +1861,14 @@
   "Projektmitglieder anzeigen": [
    "project-member-list",
    "project-record-get",
-   "project-upload-screening-get",
-   "organization-budget-remove",
    "project-person-add",
    "project-list",
    "project-document-list",
    "office-shelf-folder-list",
    "project-folder-list",
-   "organization-budget-get"
+   "organization-member-list",
+   "project-memory-list",
+   "project-upload-list"
   ],
   "list projects": [
    "project-list",
@@ -2194,8 +1879,8 @@
    "office-shelf-folder-list",
    "project-folder-list",
    "conversation-list",
-   "inbox-unread-anchor-list",
-   "proposal-list"
+   "proposal-list",
+   "session-document-list"
   ],
   "Projekte auflisten": [
    "project-list",
@@ -2234,28 +1919,25 @@
    "task-run-get"
   ],
   "inbox unread": [
-   "inbox-item-mark-unread",
-   "inbox-unread-anchor-list",
    "inbox-list",
    "inbox-item-archive",
-   "inbox-item-mark-read",
    "inbox-item-restore",
    "inbox-summary-get",
    "conversation-list",
    "conversation-message-add",
-   "conversation-read-mark"
+   "mention-request-release"
   ],
   "ungelesene Nachrichten im Eingang": [
-   "inbox-item-mark-unread",
-   "inbox-unread-anchor-list",
    "inbox-list",
    "inbox-item-archive",
-   "inbox-item-mark-read",
    "inbox-item-restore",
    "inbox-summary-get",
    "conversation-message-add",
    "conversation-message-list",
-   "mail-import-cancel"
+   "mail-import-cancel",
+   "mail-import-get",
+   "mail-import-list",
+   "mail-import-start"
   ],
   "rename document": [
    "document-rename",
@@ -2357,17 +2039,16 @@
    "mention-request-release",
    "document-quarantine-allow-request",
    "document-version-request-changes",
-   "skill-review",
    "document-preview-get",
    "document-version-reviewer-list",
    "document-version-submit",
    "task-run-review",
    "project-intake-complete",
-   "document-version-approve"
+   "document-version-approve",
+   "document-version-reject"
   ],
   "Freigabe anfordern": [
    "document-version-approve",
-   "skill-review",
    "document-preview-get",
    "document-version-reviewer-list",
    "task-run-review",
@@ -2375,7 +2056,8 @@
    "document-quarantine-allow-request",
    "document-version-publish",
    "document-version-reject",
-   "document-version-request-changes"
+   "document-version-request-changes",
+   "document-version-submit"
   ],
   "project memory": [
    "project-memory-list",
@@ -2411,7 +2093,7 @@
    "office-shelf-folder-list",
    "project-folder-list",
    "conversation-list",
-   "inbox-unread-anchor-list"
+   "session-document-list"
   ],
   "offene Vorschläge": [
    "proposal-get",
@@ -2471,10 +2153,10 @@
    "conversation-get",
    "conversation-message-add",
    "conversation-message-list",
-   "conversation-title-generate",
    "conversation-update",
    "conversation-awaiting-get",
-   "conversation-mention-candidate-list"
+   "conversation-mention-candidate-list",
+   "sharing-get"
   ],
   "Unterhaltung teilen": [
    "conversation-create",
@@ -2484,9 +2166,9 @@
    "conversation-list",
    "conversation-message-add",
    "conversation-message-list",
-   "conversation-title-generate",
    "conversation-update",
-   "conversation-awaiting-get"
+   "conversation-awaiting-get",
+   "conversation-mention-candidate-list"
   ],
   "": [
    "project-cleanup-confirm",

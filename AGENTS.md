@@ -154,7 +154,7 @@ ones that will fail your PR.
 | When you | You must | What fails you |
 |---|---|---|
 | Write a commit, or open **or rename** a PR | Conventional Commits — `feat` `fix` `docs` `refactor` `perf` `test` `ci` `build` `chore` `revert`. The **PR title** most of all: the repo squash-merges it, so the title is the commit that lands on `develop`. [`CONTRIBUTING.md`](CONTRIBUTING.md#commits-and-pr-titles) | The **Conventional PR title** job blocks the PR. A prose title is the one that keeps slipping through, because nothing local checks it |
-| Add or change something a person can do (a route, a button, a setting) | Give it an operation in `frontends/ui/src/lib/agent-api/catalog/` in the same change, or a reason in `NOT_AN_AGENT_CAPABILITY`. Headless first: the operation is the capability, the UI one client of it. [`docs/contributing/headless-first.md`](docs/contributing/headless-first.md) | `agent-reachability.spec.ts` |
+| Add or change something a person can do (a route, a button, a setting) | Give it an operation in `frontends/ui/src/lib/agent-api/catalog/` in the same change, or a reason in `NOT_AN_AGENT_CAPABILITY`. Headless first: the operation is the capability, the UI one client of it. Product configuration, a proxied service or screen state gets its operation `withheld`, with category and reason. [`docs/contributing/headless-first.md`](docs/contributing/headless-first.md) | `agent-reachability.spec.ts`, which lists the withheld set and fails an offered operation on a configuration path |
 | Name anything in code: a file, folder, identifier, type, enum token, test id, route, API or schema field | **English only, no exceptions for domain words.** `profile-review.ts`, never `steckbrief.ts`; `buildingClass`, never `gebaeudeklasse`. German lives in the i18n dictionaries and in domain data (document names, addresses, legal citations), nowhere else. A German name you meet is a rename in your change; a persisted German key (a profile key such as `standort_adresse`, a stored JSON field) is renamed with its migration and the agent's side in the same change, never by adding a second name beside it German domain term to English code name: [`docs/glossary.md`](docs/glossary.md#german-domain-term-english-code-name) | `tests/test_english_names.py` (Python) and `frontends/ui/src/english-names.spec.ts` (UI), a per-file ratchet on identifiers with German stems (`ci/german_stems.json`); review for file names, routes and string tokens |
 | Name a file, in code, copy or a prompt | Never call a file a plan: nothing knows a file is a drawing until its Dokumentart says so. Dokument, Datei, Fassung, Stand ([`CONTEXT.md`](CONTEXT.md), „Fassung“) | `forbidden-file-words.spec.ts` (UI copy), `tests/aiq_agent/test_product_framing.py` (agent prompts), `frontends/web/scripts/lint-claims.mjs` (the site); review elsewhere |
 | Describe what Piloti is, in a doc, a prompt or copy | Lead with the workspace for architects; building law is one capability, never the frame ([`VISION.md`](VISION.md)) | `tests/aiq_agent/test_product_framing.py` on the first-impression docs and every agent prompt; review elsewhere |
@@ -203,13 +203,22 @@ UI, the agent's tools, tasks and any later integration are equal clients of it;
 no service function is reached from a second path, and no contract is written
 twice. [`docs/adr/0055-api-first-workspace-primitives.md`](docs/adr/0055-api-first-workspace-primitives.md).
 
-**Everything a person can do, an agent can do** (ADR-0121). One MCP server at
-`/api/mcp` is the agent surface; Claude, Cursor and Piloti itself are clients of
-it, and the UI is another. Each tool is an operation in
+**The agent door offers what only Piloti has** (ADR-0121 and its amendment). One
+MCP server at `/api/mcp` is the agent surface; Claude, Cursor and Piloti itself
+are clients of it, and the UI is another. Each tool is an operation in
 `frontends/ui/src/lib/agent-api/catalog/` that names a route the UI already
 calls; the route stays the gate, so authz, rate limit and body schema apply
-unchanged. Writes need the person's yes. A new capability is a route plus an
-operation, not a Python tool. [`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md).
+unchanged. Writes need the person's yes. The door offers the office's workspace
+(its data and the actions on it), Piloti's domain knowledge (the legal corpus,
+BIM/IFC analysis of the office's models) and Piloti itself (`piloti-ask`). It
+does not offer what a calling agent already has or what is how Piloti itself
+works: a service we only proxy (web search, geocoding), product configuration
+(models, keys, budgets, screening and retention policies, settings), model work
+whose result is no office artifact, a person's own screen state. Such an
+operation stays catalogued with `withheld: { category, reason }`; deleting the
+line offers it again. The operator console is for a separate platform server,
+never the office door. A new capability is a route plus an operation, not a
+Python tool. [`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md).
 
 ## Scope
 

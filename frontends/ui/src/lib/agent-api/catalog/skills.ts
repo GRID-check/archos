@@ -47,7 +47,7 @@ export const skillsOperations: readonly AgentOperation[] = [
     description:
       'Create a skill for the organization: lowercase hyphenated `name`, `description`, markdown `body`, and ' +
       'optionally `metadata`, `enabled`, `categoryId` (skill-category-list) or `clonedFrom` (a platform skill ' +
-      'name). Needs org:skills:manage. Try skill-review on a draft first.',
+      'name). Needs org:skills:manage.',
     method: 'POST',
     path: '/api/skills',
     body: createSkillSchema,
@@ -59,7 +59,7 @@ export const skillsOperations: readonly AgentOperation[] = [
     summary: 'Change an organization skill',
     description:
       'Patch any of an org skill’s name, description, body, metadata, enabled flag or category (`categoryId: null` ' +
-      'removes it from its category). Platform skills have no id here; use skill-curated-set-enabled for those. ' +
+      'removes it from its category). Platform skills have no id here; a person switches those on or off. ' +
       'Needs org:skills:manage.',
     method: 'PATCH',
     path: '/api/skills/[skillId]',
@@ -83,6 +83,10 @@ export const skillsOperations: readonly AgentOperation[] = [
   {
     name: 'skill-curated-set-enabled',
     domain: 'skills',
+    withheld: {
+      category: 'product-config',
+      reason: 'switches a platform-curated skill of Piloti’s on or off; product configuration',
+    },
     summary: 'Switch a platform skill on or off',
     description:
       'Turn a platform-curated skill on or off for this organization. Addressed by NAME (from skill-list), because ' +
@@ -98,6 +102,10 @@ export const skillsOperations: readonly AgentOperation[] = [
   {
     name: 'skill-review',
     domain: 'skills',
+    withheld: {
+      category: 'model-compute',
+      reason: 'a model critiques a skill draft and stores nothing; the calling agent can review its own draft',
+    },
     summary: 'Have the reviewer critique a skill draft',
     description:
       'Ask the backend reviewer what is wrong with a skill draft. Send whatever of `name`, `description` and `body` ' +

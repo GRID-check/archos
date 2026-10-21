@@ -1,7 +1,9 @@
-# The agent surface: one MCP server for everything a person can do
+# The agent surface: one MCP server for what only Piloti has
 
-Everything a person can do in Piloti, an agent can do on that person's behalf,
-through one MCP server at `/api/mcp`. This page is the long form of
+Every capability a person has in Piloti is catalogued as an operation, and an
+agent can do on that person's behalf, through one MCP server at `/api/mcp`, what
+only Piloti has: the office's workspace, Piloti's domain knowledge and Piloti
+itself ([What the door offers](#what-the-door-offers)). This page is the long form of
 [ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md): how the
 server works, how to add an operation, how to connect a client, and how to set up
 WorkOS. The rule for contributors, in short, is
@@ -46,8 +48,10 @@ flowchart LR
    2025-06-18 revision) is refused with 400 before the caller is resolved, so
    one charge cannot cover a hundred calls. When WorkOS cannot answer who is
    calling, the door answers a JSON 503 the client can retry.
-3. **Policy.** `policy.ts` decides whether this call may run. The organization
-   needs the `agent-mcp` flag for an external agent. Piloti in-product has no
+3. **Policy.** `policy.ts` decides whether this call may run. An operation
+   that is not on the door (`isOnDoor`: withheld, or of a domain the door does
+   not offer) is an unknown name. The organization needs the `agent-mcp` flag
+   for an external agent. Piloti in-product has no
    such flag, but its writes never run directly, and its reads are held to the
    conversation's audience (see below).
 4. **Dispatch.** `dispatch.ts` builds a `Request` from the operation's method and
@@ -170,8 +174,8 @@ nothing". It emits `agent_operation_missing`, which carries the length of the
 description and never its words; the tool's own description says so.
 
 The meta-tools are written once, `metaToolsFor` in `discovery.ts`, per caller:
-in-product Piloti is never offered the `platform` domain, and its `call-operation`
-says a write comes back as a proposal. Piloti's client reads its variant from
+the domain list is the office door's (never `platform`), and Piloti's
+`call-operation` says a write comes back as a proposal. Piloti's client reads its variant from
 `src/aiq_agent/tools/workspace/meta_tools.json`, which `meta-tools.spec.ts`
 writes (`UPDATE_FIXTURES=1`) and holds current; Python keeps no copy and renames
 only the tool names to its own (`workspace__call`).
@@ -187,7 +191,7 @@ four characters a token):
 | Mode | Piloti | External agent |
 |---|---|---|
 | `search` | 4 tools, 3.5k characters | 4 tools, 3.5k characters |
-| `tools` | 241 tools, 203k characters (was 267k for 250) | 301 tools, 277k characters (was 354k for 310) |
+| `tools` | 203 tools, 179k characters (238 and 202k before the amendment) | 216 tools, 214k characters (304 and 281k before the amendment) |
 
 `tools` mode lists only what says something: `ifMatch` only where the route reads
 it, no `additionalProperties: true` (JSON Schema's default), each annotation hint
@@ -236,6 +240,63 @@ words are in [`../glossary.md`](../glossary.md#agent-surface-and-standard-terms)
   tools tell Piloti's model.
 - Not yet: the internal routes Piloti's native tools call still refuse in German
   (`AGENT_REFUSAL_LOCALE`); see ADR-0121, "Follow-ups".
+
+## What the door offers
+
+The rule ([ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md),
+"Amendment: the door offers what only Piloti has"): a calling agent comes to
+Piloti for what it cannot get elsewhere. The office door offers
+
+- **the office's workspace**: projects, documents, folders, reviews,
+  annotations, tasks, conversations, people, memory, the skills the office
+  writes, and access administration behind the `access` guard;
+- **Piloti's domain knowledge**: the legal corpus (`knowledge-search`,
+  `passage-read`, `law-lookup`), BIM/IFC analysis of the office's models
+  (`ifc-*`, `bim-*`), `files-list`, and the domain features that make an office
+  artifact (`project-summary-generate`, `project-consistency-check`,
+  `project-experience-extract`);
+- **Piloti itself**: `piloti-ask`.
+
+Everything else a person can do is still an operation, marked
+`withheld: { category, reason }`:
+
+| Category | What |
+|---|---|
+| `external-service` | A service we only proxy or switch; the calling agent has its own (web search and its switch, the geocoder, RIS texts, WorkOS widget tokens and portal links) |
+| `product-config` | How Piloti itself works: settings, standing instructions, models and versions, zero data retention, LLM keys and provider mode, budgets and usage, upload screening, retention policies, curated skills on or off |
+| `model-compute` | Model work the caller can do itself, whose result is no office artifact (titles, citation formatting, skill review) |
+| `ui-state` | This person's own screen or device (push devices and preferences, the preference bag, read and unread marks) |
+
+A withheld operation reads as an unknown name everywhere: `tools/list`,
+`search-operations` (and no hint that it exists), `describe-operation`,
+`call-operation`, the A2A door, Piloti's proposals and the applier of an old
+one. The UI keeps every one of these settings; their routes are unchanged.
+
+- **One rule.** `isOnDoor(op, door)` in `policy.ts`: not withheld, and of a
+  domain in `DOOR_DOMAINS[door]`. `canSee` starts with it, so every listing,
+  search, describe, call and proposal goes through it; the applier refuses with
+  it too, and `documentedOperations` keeps withheld operations out of the
+  OpenAPI document.
+- **To offer one again**, delete its `withheld` entry and its line in
+  `WITHHELD` (`agent-reachability.spec.ts`), and say why in the PR. Its
+  `sensitivity`, if it has one, applies from then on: the `secret` and `control`
+  classes and their flags are kept for that reason.
+- **The ratchet.** `agent-reachability.spec.ts` holds the withheld set to
+  `WITHHELD`, fails an offered operation on a product-configuration path
+  (`CONFIG_PATH_PREFIXES`: `/api/organization/settings`, `/model-config`,
+  `/llm-credentials`, `/web-search`, `/upload-screening`, `/budgets`, `/usage`,
+  `/instructions`, `/api/platform/…` and others) unless `OFFERED_ON_CONFIG_PATHS`
+  says why, and fails an offered operation whose text names a withheld one.
+
+### The platform door (planned)
+
+The operator console (`platform` domain, `/api/platform/…`) is GRID's, not an
+office's, and is on no office door, for platform staff neither. It is planned as
+a second MCP server for platform staff, `/api/platform/mcp`, offering exactly
+that domain. Doors are already a dimension of the rule (`AgentDoor`,
+`DOOR_DOMAINS`), so that server adds `platform: new Set(['platform'])` and a
+route; no operation changes. Not built yet. The OpenAPI document still
+describes the console's operations to platform staff.
 
 ## What deserves a tool
 
@@ -416,8 +477,7 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
 - **Piloti in-product never sees one** and `proposeOperation` refuses to file one
   (403): accepting a card the agent worded is not the confirmation such a change
-  needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`),
-  nor the person's own decisions: `proposal-apply`, `proposal-dismiss` and
+  needs. Nor does it see the person's own decisions: `proposal-apply`, `proposal-dismiss` and
   `piloti-change-undo` (`PILOTI_HIDDEN_OPERATIONS`), which the applier also
   refuses at the click, so a card Piloti worded never applies another.
 - **An external agent sees one only when its organization switched the class
@@ -443,7 +503,9 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
 The catalogued ones, and their class, are the `SENSITIVE` map of
 `agent-reachability.spec.ts`, which fails when an operation carries a sensitivity
-the map does not give it, or none where it does:
+the map does not give it, or none where it does. Since the amendment most of them
+are withheld or on the platform door; the ones still on the office door are the
+`access` class, `document-quarantine-allow` and `hold-release`:
 
 | Class | Operations |
 |---|---|
@@ -456,15 +518,18 @@ gets its line in `SENSITIVE` in the same change. Its description says that the
 organization switches it on and that the person confirms every call; a secret's
 says the key is write-only.
 
-Applying a proposal checks again: an operation that became sensitive, or moved
-to a domain Piloti does not see, after the proposal was filed fails instead of
+Applying a proposal checks again: an operation that became sensitive or hidden,
+or left the door (`isOnDoor`), after the proposal was filed fails instead of
 running (`operation-applier.ts`).
 
 ## Exemptions
 
 A route that is not something a person does goes in `NOT_AN_AGENT_CAPABILITY` in
 `agent-reachability.spec.ts`, keyed `METHOD /api/path` or `* /api/path`, with a
-reason that fits in a line. The accepted reasons are transport (SSE, the realtime
+category (`external-service | product-config | model-compute | ui-state | other`)
+and a reason that fits in a line. Something a person does that the door should
+not offer is not an exemption: it is an operation, `withheld`
+([above](#what-the-door-offers)). The accepted reasons are transport (SSE, the realtime
 channel, the proxies), browser sign-in plumbing (the AuthKit callback and
 redirect) and typing indicators. "Nobody would ask an agent to do that" is not a
 reason; an operation costs a few lines.
@@ -478,7 +543,11 @@ reason; an operation costs a few lines.
   shrinks);
 - an operation is malformed: a duplicate or badly formed name, a short
   description, a `load` that imports a different route than `path`, params that
-  disagree with the path, or a schema the JSON Schema export cannot describe.
+  disagree with the path, or a schema the JSON Schema export cannot describe;
+- the withheld set differs from `WITHHELD`, an offered operation sits on a
+  product-configuration path without a reason, an `/api/platform` operation is
+  not the `platform` domain (or the reverse), or an offered operation's text
+  names a withheld one.
 
 `agent-reachability-baseline.json` held the routes that predate the rule. It is
 empty now and never grows. `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/` rewrites it
@@ -617,7 +686,8 @@ Keys later.
 (`openapi.ts`), for anyone who reads HTTP contracts in the standard form. Its
 paths accept the app's signed-in session cookie (`securitySchemes.sessionCookie`),
 not a bearer token: an agent calls the operations at `/api/mcp`. The operator
-console's operations (`platform`) are in it for platform staff only.
+console's operations (`platform`) are in it for platform staff only; a withheld
+operation is in it for nobody.
 
 The person-facing version of this section, with the copyable address, lives in
 the profile (`features/agent-connect/`) and in the user guide

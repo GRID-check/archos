@@ -123,4 +123,10 @@ describe('agent API OpenAPI document', () => {
     expect(domains(false).has('platform')).toBe(false)
     expect(domains(true).has('platform')).toBe(true)
   })
+
+  it('never documents a withheld operation, for anyone', () => {
+    for (const platformStaff of [false, true]) {
+      expect(documentedOperations(AGENT_OPERATIONS, { platformStaff }).filter((op) => op.withheld)).toEqual([])
+    }
+  })
 })

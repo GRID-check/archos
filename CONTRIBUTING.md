@@ -110,10 +110,12 @@ just the commits.
 
 ## Headless first
 
-Everything a person can do in Piloti, an agent can do through Piloti's MCP
-server. A new route a person calls ships with its operation in
-`frontends/ui/src/lib/agent-api/catalog/` in the same change, or with a reason
-in `NOT_AN_AGENT_CAPABILITY`. Build the route, write the operation, then wire the
+Every capability a person has in Piloti is an operation, and Piloti's MCP server
+offers agents what only Piloti has: the office's workspace, Piloti's domain
+knowledge and Piloti itself. A new route a person calls ships with its operation
+in `frontends/ui/src/lib/agent-api/catalog/` in the same change (marked
+`withheld` when it is product configuration, a proxied service, model compute
+or screen state), or with a reason in `NOT_AN_AGENT_CAPABILITY`. Build the route, write the operation, then wire the
 UI. `agent-reachability.spec.ts` fails the PR otherwise. Checklist:
 [docs/contributing/headless-first.md](docs/contributing/headless-first.md).
 

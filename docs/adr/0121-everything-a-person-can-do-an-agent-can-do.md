@@ -219,7 +219,9 @@ the person says yes or no to each such call; the guards are how that holds:
   holds every result, refusal and telemetry event of the key operations free of
   the key.
 
-**Built.** Twenty-five route methods are catalogued with a sensitivity, and
+**Built.** (Since the amendment below, most of these are withheld: of the
+`control` class only `document-quarantine-allow` and `hold-release` are on the
+door, and no `secret` operation is.) Twenty-five route methods are catalogued with a sensitivity, and
 `agent-reachability.spec.ts` (`SENSITIVE`) holds each to exactly its class and
 nothing else to one: folder access, sharing visibility and grants (add, change,
 revoke), project roles (add, remove) and custom roles (create, change, delete)
@@ -269,10 +271,87 @@ Python tool. Python tools are for reasoning that has no route.
 ### What stays out
 
 Some routes are not something a person does. `NOT_AN_AGENT_CAPABILITY` in
-`agent-reachability.spec.ts` lists them with a reason each: transport (the SSE
-stream, the realtime channel, the proxies), browser sign-in plumbing (the AuthKit
-callback and redirect), and typing indicators. An entry needs a sentence a
-reviewer can disagree with.
+`agent-reachability.spec.ts` lists them with a category and a reason each:
+transport (the SSE stream, the realtime channel, the proxies), browser sign-in
+plumbing (the AuthKit callback and redirect), and typing indicators. An entry
+needs a sentence a reviewer can disagree with. What a person does but an agent
+is not offered is a different thing, and the amendment below decides it.
+
+### Amendment: the door offers what only Piloti has
+
+*2026-10-21, product owner.* "Web search is a core feature, not something we
+want to expose. Why would we want some other agent to use our web search? They
+already have a tool for it, and web search is an external service. And there is
+lots of stuff like this."
+
+"Everything a person can do" was the right rule for **finding** capabilities
+(every route has an operation, so nothing is forgotten) and the wrong rule for
+**offering** them. A calling agent comes to Piloti for what it cannot get
+elsewhere. So the office door (`/api/mcp`, the A2A door, and Piloti's own
+workspace door) offers:
+
+- **the office's workspace**: its projects, documents, folders, reviews,
+  annotations, tasks, conversations, people, memory and the skills the office
+  writes, and access administration behind the `access` guard;
+- **Piloti's domain knowledge**: the legal corpus (`knowledge-search`,
+  `passage-read`, `law-lookup`), BIM/IFC analysis of the office's models
+  (`ifc-*`, `bim-*`), the office's files (`files-list`);
+- **Piloti itself**: `piloti-ask`.
+
+Domain features that make an office artifact with Piloti's knowledge stay on the
+door: `project-summary-generate`, `project-consistency-check` and
+`project-experience-extract` each write or check the office's own record, which
+no other agent can do.
+
+It does not offer, in four categories:
+
+| Category | Why not | Operations |
+|---|---|---|
+| `external-service` | A service we only proxy or switch; the caller has its own tool, and we would be reselling another vendor | `organization-web-search-set`, `address-search`, `ris-document-get`, `widget-token-get`, `organization-audit-portal-link-create` |
+| `product-config` | How Piloti itself works for the office: set by a person in Settings, never by another agent | settings get/update, standing instructions get/set, model configuration (get, set, model search, versions, activate), zero data retention, LLM keys (list, connect, revoke, verify, provider mode), budgets (get, set, remove), usage and its notice, an answer's cost, upload screening (the office's and a project's, get and set), the deleted-folder content policy (get, set), download-log retention, curated skills on or off |
+| `model-compute` | Model work the caller can do itself, whose result is no office artifact | `conversation-title-generate`, `citation-format`, `skill-review` |
+| `ui-state` | This person's own screen or device | push devices (list, remove) and preferences (get, update), the preference bag (get, update), `conversation-read-mark`, inbox read and unread marks, unread anchors |
+
+Standing instructions are product configuration: they shape every answer Piloti
+gives, and Piloti already reads them; an outside agent setting them would be
+configuring the product for everyone. Budgets and usage are spend on our
+service; when a budget stops work, the refused call says so. The settings read
+goes with its write: no office operation depends on a product setting.
+
+**Withheld, not deleted.** The product owner may change his mind, so an excluded
+operation stays fully described in the catalog with one field,
+`withheld: { category, reason }`. A withheld operation is not listed,
+searchable, describable, callable or proposable on any door, and an old
+proposal of one is refused at apply, exactly as an unknown name is. One rule
+decides it, `isOnDoor` in `policy.ts`, and every path goes through it; the
+OpenAPI document leaves withheld operations out too. **Offering one again is
+deleting its `withheld` entry** (and its line in the spec's `WITHHELD` list);
+its `sensitivity`, if any, applies again from that moment, which is why the
+`secret` and `control` classes and their opt-in flags stay as they are.
+
+**The operator console has a door of its own.** The `platform` domain is GRID's,
+not an office's. It is off the office door for everyone, platform staff
+included, and is planned as a second MCP server for platform staff
+(`/api/platform/mcp`) that offers exactly that domain. The visibility rule is
+per door (`DOOR_DOMAINS`), so that server adds a door and changes no operation.
+
+The ratchet, in `agent-reachability.spec.ts`: every exemption carries a category
+(`external-service | product-config | model-compute | ui-state | other`); the
+withheld set must equal the spec's `WITHHELD` list, so withholding or offering
+one shows in review; an offered operation on a product-configuration path
+(`/api/organization/settings`, `/model-config`, `/llm-credentials`,
+`/web-search`, `/upload-screening`, `/budgets`, `/usage`, `/instructions`,
+`/api/platform/…` and the others in `CONFIG_PATH_PREFIXES`) fails unless
+`OFFERED_ON_CONFIG_PATHS` gives the reason; every `/api/platform` operation is
+the `platform` domain and only those; and no offered operation's text names a
+withheld one, so no description sends an agent to a door that reads as unknown.
+
+Consequences: an external agent is offered 216 tools in `tools` mode instead of
+304 (214k characters instead of 281k), Piloti 203 instead of 238. The UI keeps
+every one of these settings; only the agent door drops them. The `control`
+class now has two reachable operations, `document-quarantine-allow` and
+`hold-release`, which are the office's own compliance acts; every other
+`control` and every `secret` operation is withheld or on the platform door.
 
 ### The app is a client of the same routes
 

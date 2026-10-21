@@ -43,6 +43,7 @@ import {
   canSee,
   findVisibleBackendOperation,
   findVisibleOperation,
+  isOnDoor,
   visibleBackendOperations,
   visibleDomains,
   visibleOperations,
@@ -419,9 +420,9 @@ function rank(ctx: McpCallContext, query: string, domain: string | undefined): H
     .sort((a, b) => b.score - a.score)
 }
 
-/** The search input for `principal`: only the domains it can see may be named. */
-function searchInputFor(principal: AgentPrincipal) {
-  const domains = visibleDomains(principal) as [string, ...string[]]
+/** The search input: only the domains the door offers may be named. */
+function searchInput() {
+  const domains = visibleDomains() as [string, ...string[]]
   return z.object({
     query: z.string().max(MAX_SEARCH_QUERY_LENGTH),
     domain: z.enum(domains).optional(),
@@ -445,6 +446,8 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
   return AGENT_OPERATIONS.some(
     (op) =>
       op.sensitivity !== undefined &&
+      // Off the door is unknown to everyone, never a hint (`isOnDoor`).
+      isOnDoor(op) &&
       (!domain || op.domain === domain) &&
       !canSee(ctx.principal, op) &&
       score(op) > 0 &&
@@ -454,7 +457,7 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
 
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
-  const parsed = searchInputFor(ctx.principal).safeParse(args)
+  const parsed = searchInput().safeParse(args)
   if (!parsed.success) return failure(`search-operations: ${parsed.error.issues.map((i) => i.message).join('; ')}`)
   const { query, domain, limit = DEFAULT_SEARCH_LIMIT } = parsed.data
   const hits = rank(ctx, query, domain)
@@ -566,8 +569,7 @@ export type MetaToolName = 'search-operations' | 'describe-operation' | 'call-op
 
 /**
  * The four meta-tools of `search` mode, as `principal` sees them: the domain
- * list names only the areas it can see (in-product Piloti never sees
- * `platform`). The single source of their words: Piloti's own client reads the
+ * list names only the areas the door offers. The single source of their words: Piloti's own client reads the
  * in-product variant from `src/aiq_agent/tools/workspace/meta_tools.json`,
  * which `meta-tools.spec.ts` writes from here and holds current.
  */
@@ -584,7 +586,7 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<M
       title: 'Search operations',
       description:
         'Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, ' +
-        'tasks, settings) by plain words, ranked over each operation\'s name, summary and description. Start here. Answers ' +
+        'tasks, building-law knowledge, BIM models) by plain words, ranked over each operation\'s name, summary and description. Start here. Answers ' +
         'operation names with one line each and whether each reads, writes or destroys. Then call-operation.',
       inputSchema: {
         type: 'object',
@@ -594,7 +596,7 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<M
             maxLength: MAX_SEARCH_QUERY_LENGTH,
             description: 'The goal in a few plain words, e.g. "add project member". Empty lists everything, or a whole domain.',
           },
-          domain: { type: 'string', enum: [...visibleDomains(principal)], description: 'Only operations of this area.' },
+          domain: { type: 'string', enum: [...visibleDomains()], description: 'Only operations of this area.' },
           limit: { type: 'integer', minimum: 1, maximum: MAX_SEARCH_LIMIT, description: `At most this many (default ${DEFAULT_SEARCH_LIMIT}).` },
         },
         required: ['query'],

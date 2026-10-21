@@ -26,6 +26,7 @@ import { callOperation, validateOperationInput } from './dispatch'
 import {
   MAX_RESULT_CHARS,
   MAX_SEARCH_QUERY_LENGTH,
+  SENSITIVE_MATCH_NOTE,
   callOperationTool,
   describeOperation,
   inputSchemaOf,
@@ -141,12 +142,22 @@ describe('search-operations', () => {
     expect(result.isError).toBe(true)
   })
 
-  it('never offers in-product Piloti the platform domain, and refuses it when named', () => {
-    const domains = (metaToolsFor(piloti)['search-operations'].inputSchema as { properties: { domain: { enum: string[] } } })
-      .properties.domain.enum
-    expect(domains).not.toContain('platform')
-    expect(searchOperations(ctx(piloti), { query: '', domain: 'platform' }).isError).toBe(true)
-    expect(searchOperations(ctx(person), { query: '', domain: 'platform' }).isError).toBeUndefined()
+  it('never offers the platform domain on the office door, to anyone, and refuses it when named', () => {
+    for (const caller of [piloti, person]) {
+      const domains = (metaToolsFor(caller)['search-operations'].inputSchema as { properties: { domain: { enum: string[] } } })
+        .properties.domain.enum
+      expect(domains).not.toContain('platform')
+      expect(searchOperations(ctx(caller), { query: '', domain: 'platform' }).isError).toBe(true)
+    }
+  })
+
+  it('never finds a withheld operation, nor hints at one', () => {
+    const found = JSON.parse(text(searchOperations(ctx(person), { query: 'web search', limit: 50 }))) as {
+      operations: { name: string }[]
+      next: string
+    }
+    expect(found.operations.map((op) => op.name)).not.toContain('organization-web-search-set')
+    expect(found.next).not.toContain(SENSITIVE_MATCH_NOTE)
   })
 
   it('answers compact JSON: indentation is tokens the agent pays for', () => {

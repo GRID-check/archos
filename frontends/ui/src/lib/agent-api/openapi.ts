@@ -230,15 +230,16 @@ function pathsOf(operations: readonly AgentOperation[]): Record<string, Record<s
  * paths are relative to; the route passes the deployment's, a spec a fixed one.
  */
 /**
- * The operations the document shows a caller: the operator console (`platform`)
- * only to platform staff. Its routes refuse everyone else anyway; listing them
- * would only describe a console the reader cannot use.
+ * The operations the document shows a caller: never a withheld one (it is on no
+ * door), and the operator console (`platform`) only to platform staff. Its
+ * routes refuse everyone else anyway; listing them would only describe a
+ * console the reader cannot use.
  */
 export function documentedOperations(
   operations: readonly AgentOperation[],
   { platformStaff }: { platformStaff: boolean },
 ): readonly AgentOperation[] {
-  return platformStaff ? operations : operations.filter((op) => op.domain !== 'platform')
+  return operations.filter((op) => op.withheld === undefined && (platformStaff || op.domain !== 'platform'))
 }
 
 /** The cookie AuthKit keeps the app's session in (`WORKOS_COOKIE_NAME`, default `wos-session`). */

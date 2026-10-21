@@ -169,7 +169,8 @@ Three consequences worth knowing before adding a fifth operation:
 
 Piloti reaches the workspace through the BFF's MCP server (`/api/mcp`) like any
 agent (ADR-0121). Everything a person can do there is an operation in
-`frontends/ui/src/lib/agent-api/catalog/`, run as the person, and a write from
+`frontends/ui/src/lib/agent-api/catalog/`, run as the person (except the ones
+`withheld` from every agent: product configuration, proxied services, screen state), and a write from
 this tier becomes a proposal the person accepts. So a capability that has a UI
 route gets an operation, not a new Python tool. Python tools are for task-shaped
 reasoning that has no route: retrieval, IFC, canvas. The Python-only reads are

@@ -16,7 +16,5 @@ security:
     proposal, and only a reader who may open everything a proposed change
     names can decide it; a reader who may not leaves it open for someone who can.
   - >
-    Web search has its own switch for agents, marked a security control, so an
-    agent can only turn it on where the organization allows agents to change
-    controls and the person confirms. Tokens for either agent door are accepted
-    with or without a trailing slash, and name their real audience.
+    Tokens for either agent door are accepted with or without a trailing
+    slash, and name their real audience.
