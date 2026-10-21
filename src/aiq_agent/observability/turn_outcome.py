@@ -142,9 +142,24 @@ def _source_project_id(source: Any) -> str | None:
     return str(project_id) if project_id else None
 
 
+def _answer_kind(meta: Any) -> str | None:
+    kind = meta.get("kind") if isinstance(meta, dict) else None
+    return kind if isinstance(kind, str) and kind else None
+
+
 def _level_for(outcome: str) -> str:
     """Cancelled is the asker's Stop: worth seeing, not a fault. Everything else that finished is DEFAULT."""
     return "WARNING" if outcome == "cancelled" else "DEFAULT"
+
+
+def _work_counts(meta: Any) -> dict[str, int | None]:
+    """A work report's lines per section (ADR-0122); nothing for any other answer."""
+    work = meta.get("work") if isinstance(meta, dict) else None
+    if not isinstance(work, dict):
+        return {}
+    return {
+        f"work_{section}": len(work.get(section) or []) or None for section in ("done", "proposed", "blocked", "next")
+    }
 
 
 def outcome_metadata(*, outcome: str, result: Any) -> dict[str, Any]:
@@ -173,6 +188,9 @@ def outcome_metadata(*, outcome: str, result: Any) -> dict[str, Any]:
         "skills_activated": list(getattr(result, "skills_activated", None) or []) or None,
         "reasoning_effort": getattr(result, "reasoning_effort", None),
         "handed_off_to_run": True if getattr(result, "run", None) is not None else None,
+        # The answer's shape, `work` for an operations turn (ADR-0122), and its report's size.
+        "answer_kind": _answer_kind(getattr(result, "answer_meta", None)),
+        **_work_counts(getattr(result, "answer_meta", None)),
     }
     return {key: value for key, value in facts.items() if value is not None}
 
@@ -197,6 +215,8 @@ def outcome_tags(metadata: dict[str, Any]) -> list[str]:
         tags.append("handed-off")
     if metadata.get("answer_precedent_sources"):
         tags.append("cited-precedent")
+    if metadata.get("answer_kind") == "work":
+        tags.append("kind:work")
     return tags
 
 

@@ -180,6 +180,13 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("repaired", "dropped"),
     ),
     ScoreDefinition(
+        "work-report-matches",
+        "BOOLEAN",
+        "On a work turn (kind work, ADR-0122): true when the report lists as many proposals as the turn put "
+        "in front of the person as proposal cards. False is a turn that claimed a proposal it did not file, or "
+        "filed one it did not report.",
+    ),
+    ScoreDefinition(
         "thread-answered-in-place",
         "BOOLEAN",
         "On a turn asked to answer in an Anmerkung's thread: true when the model replied there itself, false "
@@ -309,7 +316,28 @@ def turn_outcome_scores(result: Any) -> list[RuntimeScore]:
     checked = [status for status in statuses if status in ("verbatim", "not_found")]
     if checked:
         scores.append(RuntimeScore("quotes-verbatim-rate", round(checked.count("verbatim") / len(checked), 4)))
+    scores.extend(work_report_scores(result))
     return scores
+
+
+def proposal_cards(cards: Iterable[Any]) -> int:
+    """How many of a turn's cards show a stored proposal (they carry its ``proposal_id``)."""
+    count = 0
+    for keyed in cards:
+        card = getattr(keyed, "card", keyed)
+        if isinstance(card, dict) and card.get("proposal_id"):
+            count += 1
+    return count
+
+
+def work_report_scores(result: Any) -> list[RuntimeScore]:
+    """A work turn's report against what the turn filed; nothing on any other turn."""
+    meta = getattr(result, "answer_meta", None) or {}
+    if not isinstance(meta, dict) or meta.get("kind") != "work":
+        return []
+    reported = len(((meta.get("work") or {}).get("proposed")) or [])
+    filed = proposal_cards(getattr(result, "cards", None) or [])
+    return [_boolean("work-report-matches", reported == filed, f"reported {reported}, filed {filed}")]
 
 
 def dialect_scores(repairs: list[dict[str, str]]) -> list[RuntimeScore]:

@@ -46,6 +46,7 @@ Trace metadata on the root:
 | `error_code` | on a failed turn |
 | `usage_llm_calls`, `usage_prompt_tokens`, `usage_completion_tokens`, `usage_total_tokens`, `usage_cost_usd`, `usage_cost_source`, `usage_error` | the turn's whole spend (`usage_rollup`) |
 | `answer_dialect` | block census and repairs by kind |
+| `answer_kind`, `work_done`, `work_proposed`, `work_blocked`, `work_next` | the answer's `kind` (`work` is an operations turn, ADR-0122), and on a work turn how many lines each section of its report holds |
 | `lessons_arm`, `lesson_ids` | the platform-lessons experiment (`turn/context.py`): `treated`, `holdout` or `off`, and the comma-joined ids of the lessons in the digest the turn carried (none on a holdout turn). The holdout is a breakdown on these, not a join to the vote table. Always recorded: neither names a person |
 | `ifc_op`, `ifc_outcome`, `ifc_model`, … | what a building-model tool did (`tools/bim/trace.py`) |
 | `answer_precedent_sources`, `answer_precedent_projects` | cited sources from another project (ADR-0094), and from how many projects: the office's experience reaching the answer |
@@ -66,7 +67,7 @@ Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
 tool ran), `surface:review-canvas` (the question was asked from a document's
 review canvas or one of its threads), `steered` (the asker typed a note the
 turn read mid-run), `trigger:<kind>` (an event woke the turn),
-`reference-prefetch`,
+`reference-prefetch`, `kind:work` (an operations turn's work report),
 `cited-precedent`,
 `feature:<auxiliary feature>`, `surface:auxiliary`, and `org:<id>` with
 identity attributes on. Tags are labels, never ids or text, with the one
@@ -184,6 +185,7 @@ a name is written but not declared, or declared but not listed here.
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
 | `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
+| `work-report-matches` | boolean | agent, at the terminal | on a work turn (`kind: work`, ADR-0122) only: true when the report's `proposed` list is as long as the proposal cards the turn showed. The comment says both counts (`reported N, filed M`). False is a turn that claimed a proposal it did not file, or filed one it did not report |
 | `thread-answered-in-place` | boolean | agent, when the turn leaves the canvas | on a turn asked to answer in an Anmerkung's thread: true when the model replied there itself (`canvas__reply`), false when it did not and the socket posts the answer for it. No score when the turn may not post there (`thread_reply` = `skipped_withheld`). The false rate is how often the prompt is ignored, which the fallback otherwise hides |
 | `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |
 | `review-sources` | categorical | reviewer, in the queue | `right_sources`, `missing_sources`, `wrong_sources` |
