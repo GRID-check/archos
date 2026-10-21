@@ -138,9 +138,21 @@ _ACTION_RE = re.compile(
 #: „…, Lea als Mitglied aufzunehmen", „…, die Dateien zu verschieben", „bitte
 #: bestätigen Sie". The normative detector reads a zu-infinitive as a
 #: prescription („ist einzuhalten"); in an action report it is the operation,
-#: so it is left out before the claim type is decided. Everything else in the
-#: sentence („weil OIB 4 1,00 m verlangt") is still read.
-_ACTION_INFINITIVE_RE = re.compile(r"\b\w*zu\w+en\b|\bzu\s+\w+en\b|\bbestätigen\b|\bbestaetigen\b", re.IGNORECASE)
+#: so it is left out of the ACTION CLAUSE before the claim type is decided
+#: (:func:`_action_typed_text`). A zu-infinitive is a separable prefix, „zu"
+#: and a verb, or „zu" and a verb as two words: „zulässigen", „zuständigen"
+#: and „unzulässigen" start with or hold „zu" and are none of them.
+_ACTION_INFINITIVE_RE = re.compile(
+    r"\b(?:ab|an|auf|aus|bei|bereit|dar|durch|ein|fest|fort|frei|her|heraus|herein|hin|hinzu|hoch|los|mit|nach|"
+    r"um|vor|voran|weg|weiter|wieder|zurück|zurueck|zusammen|zu)zu\w+en\b|\bzu\s+\w+en\b|\bbestätigen\b|\bbestaetigen\b",
+    re.IGNORECASE,
+)
+
+#: Where an action report's clause ends: „;", „:", and a causal „, da / , weil /
+#: , denn". What follows a cause connective is the REASON for the proposal
+#: („…, weil pro Wohnung ein Stellplatz herzustellen ist"), and that is a
+#: claim about the law in its own right.
+_CLAUSE_SPLIT_RE = re.compile(r"(;|:|,\s+(?:da|weil|denn)\b)", re.IGNORECASE)
 
 _NUMBER_RE = re.compile(r"(?<![\w-])\d+(?:[.,]\d+)?(?!\w)")
 #: Words a record match may rest on: four letters or more, so „und", „die" and
@@ -468,12 +480,52 @@ def _proposal_names(evidence: ClaimEvidence, operation: str | None) -> list[str]
     return sorted(names, key=len, reverse=True)
 
 
-def _action_typed_text(text: str, evidence: ClaimEvidence, operation: str | None) -> str:
-    """An action sentence without the proposed operation's infinitive and the names it was proposed with."""
-    typed = _ACTION_INFINITIVE_RE.sub("", text)
-    for name in _proposal_names(evidence, operation):
-        typed = re.sub(re.escape(name), "", typed, flags=re.IGNORECASE)
-    return typed
+def _action_clause_span(pieces: Sequence[str]) -> range:
+    """The indexes in ``pieces`` (clauses and their separators, as ``re.split`` keeps them) of the action clause.
+
+    The action clause is the one holding the first :data:`_ACTION_RE` match.
+    When it ends in a colon, the clause after the colon is what was proposed
+    („Vorgeschlagen: Ordner Brandschutz") and belongs to it. Empty when no
+    clause holds a match on its own (the match spans a separator).
+    """
+    for index in range(0, len(pieces), 2):
+        if not _ACTION_RE.search(pieces[index]):
+            continue
+        end = index + 1
+        if index + 2 < len(pieces) and pieces[index + 1] == ":":
+            end = index + 3
+        return range(index, end)
+    return range(0)
+
+
+def _without_names(clause: str, names: Sequence[str]) -> str:
+    """``clause`` without each name as a whole word: „Bau" never eats „Bauordnung", „OIB" never „OIB-RL"."""
+    for name in names:
+        clause = re.sub(rf"(?<![\w-]){re.escape(name)}(?![\w-])", "", clause, flags=re.IGNORECASE)
+    return clause
+
+
+def _action_claim_type(
+    text: str, evidence: ClaimEvidence, operation: str | None, normative: Callable[[str], bool]
+) -> ClaimType:
+    """An action sentence's claim type, read without the operation's infinitive and names in its action clause.
+
+    Only the clause that reports the proposal loses them: the rest of the
+    sentence (a reason after „, weil", a rule after „;") is read whole, and
+    a sentence whose rest is normative is normative whatever the action
+    clause says.
+    """
+    pieces = _CLAUSE_SPLIT_RE.split(text)
+    span = _action_clause_span(pieces)
+    rest = "".join(piece for index, piece in enumerate(pieces) if index not in span)
+    if rest.strip() and normative(_MARKER_RE.sub("", rest)):
+        return "normative"
+    names = _proposal_names(evidence, operation)
+    typed = "".join(
+        _without_names(_ACTION_INFINITIVE_RE.sub("", piece), names) if index in span and index % 2 == 0 else piece
+        for index, piece in enumerate(pieces)
+    )
+    return claim_type(typed, normative)
 
 
 def classify_claims(
@@ -486,8 +538,12 @@ def classify_claims(
     classified = []
     for unit in _units(prose):
         provenance, operation, unmatched = _classify(unit, evidence)
-        typed_text = _action_typed_text(unit.text, evidence, operation) if provenance == "action" else unit.text
-        classified.append((unit, claim_type(typed_text, normative), provenance, operation, unmatched))
+        ctype = (
+            _action_claim_type(unit.text, evidence, operation, normative)
+            if provenance == "action"
+            else claim_type(unit.text, normative)
+        )
+        classified.append((unit, ctype, provenance, operation, unmatched))
     supported = {unit.paragraph for unit, _, provenance, _, _ in classified if provenance in _PASSAGE_CLASSES}
     stamps = [
         ClaimStamp(

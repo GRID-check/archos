@@ -116,7 +116,13 @@ Changed alongside:
   the law inside it still needs a passage. The name a proposal was filed with
   („den Ordner Brandschutz") is the proposal's data and is left out before the
   claim type is decided, like the zu-infinitive; an input that is long or
-  prescriptive stays in (`claim_provenance._proposal_names`).
+  prescriptive stays in (`claim_provenance._proposal_names`). Both leave only
+  the ACTION CLAUSE, the one holding the report („vorgeschlagen"), cut at „;",
+  „:", „, da", „, weil" and „, denn" (a colon right after the report keeps the
+  clause it announces); a name goes as a whole word only, so „Bau" never eats
+  „Bauordnung"; and a zu-infinitive is a prefix plus „zu", so „zulässigen"
+  stays. A sentence whose text outside the action clause is normative is
+  normative (`claim_provenance._action_claim_type`).
 - **A workspace read is a step of the Herleitung.** `workspace__call` records
   each read that answered as a lane hit (`shelf: "workspace"`, the operation as
   its name); the Herleitung words it for the reader („Aus dem Arbeitsbereich

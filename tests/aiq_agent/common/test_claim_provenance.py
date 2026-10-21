@@ -98,6 +98,40 @@ class TestEachClassFromItsEvidence:
         prose = "Den Ordner Brandschutz habe ich vorgeschlagen; das Konzept muss nach § 5 vorliegen."
         assert _classes(prose, ClaimEvidence(records=[folder]))[0] == ("action", "normative")
 
+    @pytest.mark.parametrize(
+        ("prose", "name"),
+        [
+            # „;" ends the action clause: the rule after it is read whole, „herzustellen" included.
+            ("Vorgeschlagen: Ordner Stellplatz; pro Wohnung ist ein Stellplatz herzustellen.", "Stellplatz"),
+            # The reason after „, weil" is a claim of its own.
+            ("Ordner Stellplatz vorgeschlagen, weil pro Wohnung ein Stellplatz herzustellen ist.", "Stellplatz"),
+            ("Ordner Brandschutz vorgeschlagen, da die Brandschutzplanung erforderlich ist.", "Brandschutz"),
+            # „zulässigen" is no zu-infinitive, inside the action clause or out of it.
+            ("Ich habe vorgeschlagen, die zulässigen Abstände einzutragen.", "Abstand"),
+            ("Ich schlage vor, die zulässigen Höhen zu prüfen.", "Höhe"),
+            # A name is removed as a whole word: „Bau" leaves „Bauordnung", „OIB" leaves „OIB-RL".
+            ("Ich habe den Ordner Bau für die Bauordnung vorgeschlagen.", "Bau"),
+            ("Ich habe den Ordner OIB für die OIB-RL 2 vorgeschlagen.", "OIB"),
+        ],
+    )
+    def test_only_the_action_clause_loses_the_operation_and_its_names(self, prose, name):
+        folder = record_from_result(
+            "project-folder-create",
+            {"name": "project-folder-create", "input": {"body": {"name": name}}},
+            "Proposed — the person decides. Nothing was changed.",
+        )
+        assert _classes(prose, ClaimEvidence(records=[folder])) == [("action", "normative")]
+
+    def test_a_colon_after_the_report_announces_what_was_proposed(self):
+        folder = record_from_result(
+            "project-folder-create",
+            {"name": "project-folder-create", "input": {"body": {"name": "Brandschutz"}}},
+            "Proposed — the person decides. Nothing was changed.",
+        )
+        assert _classes("Vorgeschlagen: Ordner Brandschutz.", ClaimEvidence(records=[folder])) == [
+            ("action", "descriptive")
+        ]
+
     def test_a_prescriptive_proposal_input_is_no_name_and_stays_in(self):
         note = record_from_result(
             "project-memory-create",
