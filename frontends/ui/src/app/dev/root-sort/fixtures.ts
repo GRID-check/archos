@@ -10,6 +10,7 @@ import type {
   RootSortFolder,
   RootSortPlacement,
 } from '@/lib/filing/root-sort-types'
+import type { WorkingRootSortStatus } from '@/features/documents/lib/root-sort-phase'
 
 const FOLDERS: Array<[id: string, name: string, path: string, parentId: string | null]> = [
   ['f-entwurf', '01 Entwurf', '01 Entwurf', null],
@@ -108,3 +109,17 @@ export const fixtureNewFolders: NewFolderProposal[] = [
     confidences: { 'doc-23': 0.8 },
   },
 ]
+
+/** The working state: the judgement is part way through a root of 340 files. */
+export const fixtureProgress: { status: WorkingRootSortStatus; done: number; total: number } = {
+  status: 'judging',
+  done: 120,
+  total: 340,
+}
+
+/** The done state: 37 files moved, three did not. */
+export const fixtureOutcome = {
+  moved: 37,
+  failedCount: 3,
+  failedNames: ['Angebot_Elektro_Firma_Lichtwerk.pdf', 'Notiz_Bauherr_Wünsche.txt', 'Fotos_Baustelle_Mai.zip'],
+}

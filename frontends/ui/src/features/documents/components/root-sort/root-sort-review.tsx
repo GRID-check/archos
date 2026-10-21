@@ -31,6 +31,8 @@ export interface RootSortReviewProps {
   onStateChange: (next: PlacementState) => void
   onlyUnsure: boolean
   onOnlyUnsureChange: (next: boolean) => void
+  /** Piloti could not judge any file: every file stays in the root. */
+  judgedNothing: boolean
 }
 
 export function RootSortReview({
@@ -39,6 +41,7 @@ export function RootSortReview({
   onStateChange,
   onlyUnsure,
   onOnlyUnsureChange,
+  judgedNothing,
 }: RootSortReviewProps): JSX.Element {
   const t = useTranslations('files')
   const full = useMemo(() => buildPlacementTree(input, state), [input, state])
@@ -63,7 +66,7 @@ export function RootSortReview({
       <p className="text-muted-foreground text-sm">{t('rootSort.review.hint')}</p>
       {nothing ? (
         <p className="text-muted-foreground border-border rounded-lg border border-dashed px-4 py-8 text-center text-sm">
-          {t('rootSort.review.empty')}
+          {judgedNothing ? t('rootSort.review.allFailed') : t('rootSort.review.empty')}
         </p>
       ) : (
         <>

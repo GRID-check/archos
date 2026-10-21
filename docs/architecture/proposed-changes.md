@@ -513,45 +513,68 @@ direction: one run over the whole root. It is in the file browser's overflow
 menu, under the Advanced section, as „Alle Dateien in Ordner einsortieren…“,
 and it is rare by design.
 
-A run is not stored as a proposal row. The review lives in the dialog, because
-a thousand placements are one decision the person takes in one look, and a
-proposal is capped at eight items. Nothing moves until the person applies, so
-closing the dialog leaves the root as it was.
+**A run is the server's (ADR-0121).** It is a row in `root_sort_runs`
+(migration 0173), worked by the BFF job `root_sort` on `bff_job_queue`
+(ADR-0079), a bounded slice at a time. The browser starts the run, reads it,
+and asks for its next step; it loops over nothing. Nothing runs because a tab
+is open: closing the dialog leaves the run going, and reopening it reads the
+person's latest run on that shelf and shows where it is. A run is its
+requester's. Only they see it and act on it, and the job runs as them, with
+their rights read again at every slice. One run may be in work per shelf at a
+time; the partial unique index `root_sort_runs_one_in_work_per_shelf` refuses a
+second.
 
-**The steps.** The browser drives the run, one bounded request at a time
-(`lib/filing/root-sort.ts`, the wire contract in `root-sort-types.ts`):
+**The routes.** `POST /api/projects/[id]/root-sort` and
+`POST /api/office-shelf/root-sort` start a run over the root as it is now.
+`GET /api/root-sort-runs/[runId]` reads it, and `…/apply`, `…/undo` and
+`…/cancel` ask for the next step. The dialog polls the run every two seconds
+while it works. The service is `lib/filing/root-sort-run.ts`; the typed client
+is `lib/filing/root-sort-client.ts`.
 
-1. **Scan.** The shelf's open folders and the root documents the judgement may
-   read: screened, and read by ingestion. Others are counted as unreadable. At
-   most 5000 root documents per run.
-2. **Place.** Chunks of 60 go through the filing judgement
-   (`POST /v1/filing-fit` with `purpose: "sort"`). It places every document
-   that has a plausible home, in the deepest folder that fits, and may propose
-   a folder the office uses in its other projects but this shelf lacks.
-3. **Score.** The decision model (Jev, ADR-0064) scores each placement's
-   folder. At 0.6 or more a placement reads as sure, below it as unsure. The
-   threshold is not measured yet; the first eval over real roots sets it.
-4. **Group the leftovers.** Documents no folder fits, up to 1000, go to
-   `POST /v1/folder-proposals`. Chunks of 100 propose groups in parallel, one
-   merge call unifies the names across chunks into at most 12 new folders, and
-   Jev verifies each document against the final new folders. Names agree across
-   the whole run because the merge sees every group, not one chunk.
+**The statuses.** `judging` → `grouping` → `ready` → `applying` → `applied`,
+and after an undo `undoing` → `undone`. `cancelled` ends a run before anything
+moved (from `judging`, `grouping` or `ready`; a run that is `applying` finishes
+what it started). `failed` ends a run with its reason when a slice is refused
+(the person lost the shelf, the project closed). A transient error is not a
+refusal: the queue retries that slice.
 
-The person reviews the result as a tree: unchecks what they do not want,
-re-targets a placement, or shows only the unsure ones. Apply creates the new
-folders they kept (through the shelf's `…/folders/ensure`), then moves the
-documents in requests of at most 100, each through `moveDocumentToFolder` with
-all its checks, and reports each document's result. Undo moves the run's
-documents back to the root; the folders it created stay.
+**The slices.** Each one is bounded well inside the runner's 300 s ceiling
+(`GRID_BFF_JOBS_SLICE_TIMEOUT_MS`), and the cursor is saved after each one.
+
+1. **Scan** (the start request, not a slice). The shelf's open folders and the
+   root documents the judgement may read: screened, and read by ingestion.
+   Others are counted as unreadable. At most 5000 root documents per run.
+2. **Judge** (`judging`). A slice runs three chunks of 60 documents side by
+   side through the filing judgement (`POST /v1/filing-fit` with
+   `purpose: "sort"`). It places every document that has a plausible home, in
+   the deepest folder that fits, and may propose a folder the office uses in
+   its other projects but this shelf lacks. Jev (ADR-0064) scores each
+   placement's folder; at 0.6 or more a placement reads as sure, below it as
+   unsure. The threshold is not measured yet. A chunk that fails is recorded,
+   and its documents stay in the root.
+3. **Group** (`grouping`, one slice). The documents no folder fits, up to 1000,
+   go to `POST /v1/folder-proposals` in parallel chunks, and one merge call
+   unifies the names into at most 12 new folders, so names agree across the
+   whole run. The slice is capped at 240 s (`NEW_FOLDERS_TIMEOUT_MS`), an
+   estimate, unmeasured. A grouping that fails leaves those files in the root.
+   The run then waits in `ready`.
+4. **Review** (`ready`, no job). The person reviews the result as a tree:
+   unchecks what they do not want, re-targets a placement, or shows only the
+   unsure ones. Nothing has moved. The review is read only while the run waits
+   on the person.
+5. **Apply** (`applying`). The apply request records what the person kept on
+   the row. The first slice creates the kept new folders through the shelf's
+   folder ensure. Each slice then moves at most 100 documents, each through
+   `moveDocumentToFolder` with all its checks, and records each outcome; a move
+   that fails is recorded and the rest go on.
+6. **Undo** (`undoing`). Moves the documents the run moved back to the root, 100
+   per slice. The folders it created stay.
 
 **The reading rules are the upload filing's.** Only folders every member may
 read, only screened documents, nothing on a closed project. The gate is
 `requireShelfWrite` (`project:documents:write` or `project:edit`; for the
-Archiv, `canManageOfficeShelf`).
-
-**Known limitation.** The dialog stays open for the whole run, and a thousand
-files take a few minutes. A durable server job on `bff_job_queue` is the next
-step if that proves too slow. Not measured against a live model in this change.
+Archiv, `canManageOfficeShelf`), checked again by `requireSortable` at every
+slice.
 
 **Observability.** Each placement chunk is a `filing-fit` generation
 (`purpose: sort`), each new-folder call is `folder-proposals.map` or

@@ -38,6 +38,7 @@ import { runPilotiWake } from '@/lib/annotations/wake-job'
 import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
 import { runIntakeReadSlice } from '@/lib/project-intake/service'
 import { runFilingReviewSlice } from '@/lib/filing/job'
+import { runRootSortSlice } from '@/lib/filing/root-sort-run'
 import { runInboxPush } from '@/lib/push/inbox-push-job'
 import { runDueRemindersSlice } from '@/lib/annotations/due-reminders'
 import { isLastAttempt } from './attempts'
@@ -57,6 +58,7 @@ import {
   reindexProjectPayloadSchema,
   reingestFailedPayloadSchema,
   restoreFolderBinPayloadSchema,
+  rootSortPayloadSchema,
   type BffJobKind,
   type JobAttempt,
   type JobRequester,
@@ -166,6 +168,7 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
   project_intake_read: handler(projectIntakeReadPayloadSchema, runIntakeReadSlice),
   filing_review: handler(filingReviewPayloadSchema, runFilingReviewSlice),
+  root_sort: handler(rootSortPayloadSchema, runRootSortSlice),
   inbox_push: systemHandler(inboxPushPayloadSchema, async (organizationId, payload, attempt) => {
     await runInboxPush(organizationId, payload, attempt)
   }),

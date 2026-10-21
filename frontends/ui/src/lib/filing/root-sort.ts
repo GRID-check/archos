@@ -52,11 +52,12 @@ import {
 import { MAX_JUDGED_FOLDERS, type FilingFolderInput, type FilingMove } from './types'
 
 /**
- * A person waits on the grouping of every leftover document: parallel chunks,
- * one merge, then the decision model per document. A thousand leftovers is
- * estimated at one to three minutes; unmeasured.
+ * The grouping of every leftover document (parallel chunks, one merge, then the
+ * decision model per document) runs as one slice of the `root_sort` job, so it
+ * must end inside the runner's five-minute slice ceiling. A thousand leftovers
+ * is estimated at one to three minutes; unmeasured.
  */
-const NEW_FOLDERS_TIMEOUT_MS = 300_000
+const NEW_FOLDERS_TIMEOUT_MS = 240_000
 /** What of a summary the new-folder call reads: it groups by name and type first. */
 const NEW_FOLDER_SUMMARY_CHARS = 300
 
@@ -65,7 +66,7 @@ type EnrichedDocument = Document & { tags?: string[]; summary?: string }
 const isJudgeable = (row: Document) => hasPassedScreening(row) && surfaceStateOf(row.status) === 'citable'
 
 /** The shelf may be sorted by this person: they may move its documents, and a project is still running. */
-async function requireSortable(session: AuthorizedSession, shelf: DocumentShelf): Promise<void> {
+export async function requireSortable(session: AuthorizedSession, shelf: DocumentShelf): Promise<void> {
   await requireShelfWrite(session, shelf)
   if (shelf.kind !== 'project') return
   const project = await findProjectInOrg(shelf.projectId, session.organizationId)

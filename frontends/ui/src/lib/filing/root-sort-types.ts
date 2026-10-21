@@ -1,38 +1,39 @@
 /**
  * Sorting a shelf's root: the wire contract between the root-sort routes, their
- * typed client (`./root-sort-client`) and the dialog that drives them.
+ * typed client (`./root-sort-client`) and the dialog that shows a run.
  *
  * A person who built a folder tree for a root full of loose files asks Piloti
- * to place every one of them. The run is three steps, each its own request so
- * a thousand files never hang on one HTTP call:
+ * to place every one of them. The run is the SERVER'S (ADR-0121): a row in
+ * `root_sort_runs`, worked a bounded slice at a time by the BFF job
+ * `root_sort` (`./root-sort-run`). The browser starts it, reads it, and asks
+ * for the next step; it never drives the work, so closing the tab, a deploy or
+ * a dead worker loses nothing, and the person comes back to where it got to.
  *
- * 1. **scan**: `GET …/root-sort` lists the shelf's folders and the root
- *    documents the judgement may read.
- * 2. **plan**: `POST …/root-sort` judges one chunk of at most
- *    `ROOT_SORT_CHUNK` documents (the filing judgement's own bound) and answers
- *    a placement per document it could place, each with the decision model's
- *    confidence. Nothing moves.
- * 3. **new folders**: `POST …/root-sort/new-folders` takes the documents no
- *    folder fits and proposes a few new folders to group them, over all of
- *    them at once so the names agree across chunks. Nothing is created.
- * 4. **apply**: new folders the person kept are created through the shelf's
- *    `…/folders/ensure`, then `POST /api/documents/folder-moves` moves what the person kept,
- *    at most `MAX_FOLDER_MOVES` per request, through the same
- *    `moveDocumentToFolder` every other move uses. Undo is the same request
- *    with every folder set back to the root.
+ * 1. **judging**: `ROOT_SORT_CHUNK` root documents at a time through the
+ *    filing judgement with the sort purpose, each placement scored by the
+ *    decision model. Nothing moves.
+ * 2. **grouping**: the documents no folder fits (at most
+ *    `MAX_NEW_FOLDER_DOCUMENTS`) are grouped into proposed new folders, in one
+ *    call over all of them so the names agree. Nothing is created.
+ * 3. **ready**: the person reviews the run as a tree and sends what they kept.
+ * 4. **applying**: kept new folders are created, then the kept moves run
+ *    `MAX_MOVES_PER_SLICE` at a time through `moveDocumentToFolder`.
+ * 5. **undoing**, on request: what the run moved goes back to the root.
  *
- * No `server-only`: the browser, the specs and the preview import it.
+ * No `server-only`: the browser, the specs, the schema and the preview import it.
  */
 
 import { z } from 'zod'
 import { MAX_JUDGED_DOCUMENTS } from './types'
 
-/** Most documents one plan request judges: one filing judgement. */
+/** Most documents one judgement reads: one filing judgement. */
 export const ROOT_SORT_CHUNK = MAX_JUDGED_DOCUMENTS
-/** Most root documents one scan lists; the rest wait for the next run. */
+/** Judgements one job slice runs side by side; a slice must end well inside the runner's five minutes. */
+export const CHUNKS_PER_SLICE = 3
+/** Most root documents one run reads; the rest wait for the next run. */
 export const MAX_ROOT_SORT_DOCUMENTS = 5000
-/** Most moves one folder-moves request applies. */
-export const MAX_FOLDER_MOVES = 100
+/** Moves one job slice applies (or undoes). */
+export const MAX_MOVES_PER_SLICE = 100
 /**
  * The decision model's agreement at which a placement reads as sure. Below it
  * the placement is still proposed, marked for a look. Unmeasured: the first
@@ -69,11 +70,6 @@ export const rootSortScanSchema = z.object({
 })
 export type RootSortScan = z.infer<typeof rootSortScanSchema>
 
-export const rootSortPlanRequestSchema = z.object({
-  documentIds: z.array(z.string().uuid()).min(1).max(ROOT_SORT_CHUNK),
-})
-export type RootSortPlanRequest = z.infer<typeof rootSortPlanRequestSchema>
-
 export const rootSortPlacementSchema = z.object({
   documentId: z.string(),
   /** An existing folder; null when the placement is a new folder. */
@@ -86,13 +82,13 @@ export const rootSortPlacementSchema = z.object({
 })
 export type RootSortPlacement = z.infer<typeof rootSortPlacementSchema>
 
-export const rootSortPlanSchema = z.object({
-  placements: z.array(rootSortPlacementSchema),
+/** One judgement's answer, inside the job. */
+export interface RootSortPlan {
+  placements: RootSortPlacement[]
   /** Why this chunk was not judged (`llm_not_configured`, `backend_502`, …); null when it was. */
-  error: z.string().nullable(),
-  traceId: z.string().nullable(),
-})
-export type RootSortPlan = z.infer<typeof rootSortPlanSchema>
+  error: string | null
+  traceId: string | null
+}
 
 /**
  * Most documents one new-folder proposal reads: the leftovers of a whole run.
@@ -102,11 +98,6 @@ export type RootSortPlan = z.infer<typeof rootSortPlanSchema>
 export const MAX_NEW_FOLDER_DOCUMENTS = 1000
 /** Most new folders one proposal answers. */
 export const MAX_NEW_FOLDERS = 12
-
-export const newFoldersRequestSchema = z.object({
-  documentIds: z.array(z.string().uuid()).min(1).max(MAX_NEW_FOLDER_DOCUMENTS),
-})
-export type NewFoldersRequest = z.infer<typeof newFoldersRequestSchema>
 
 export const newFolderProposalSchema = z.object({
   /** The full path, under an existing folder or at the root; never one the shelf already has. */
@@ -118,43 +109,80 @@ export const newFolderProposalSchema = z.object({
 })
 export type NewFolderProposal = z.infer<typeof newFolderProposalSchema>
 
-export const newFoldersSchema = z.object({
-  proposals: z.array(newFolderProposalSchema),
-  error: z.string().nullable(),
-  traceId: z.string().nullable(),
-})
-export type NewFolders = z.infer<typeof newFoldersSchema>
+/** The grouping's answer, inside the job. */
+export interface NewFolders {
+  proposals: NewFolderProposal[]
+  error: string | null
+  traceId: string | null
+}
 
-/** The shelf's `…/folders/ensure` answer, as far as the run reads it. */
-export const ensuredFoldersSchema = z.object({
-  folderIdByPath: z.record(z.string(), z.string()),
+/** A placement the person kept: into an existing folder, a new one, or back to the root (`folderId` and `newFolderPath` null). */
+export const keptMoveSchema = z.object({
+  documentId: z.string().uuid(),
+  folderId: z.string().uuid().nullable(),
+  newFolderPath: z.string().min(1).max(1024).nullable(),
 })
+export type KeptMove = z.infer<typeof keptMoveSchema>
 
-export const folderMovesRequestSchema = z.object({
-  moves: z
-    .array(
-      z.object({
-        documentId: z.string().uuid(),
-        /** `null` is the shelf root: undo sends every document back there. */
-        folderId: z.string().uuid().nullable(),
-      })
-    )
-    .min(1)
-    .max(MAX_FOLDER_MOVES),
+export const applyRootSortRequestSchema = z.object({
+  keep: z.array(keptMoveSchema).min(1).max(MAX_ROOT_SORT_DOCUMENTS),
 })
-export type FolderMovesRequest = z.infer<typeof folderMovesRequestSchema>
-export type FolderMove = FolderMovesRequest['moves'][number]
+export type ApplyRootSortRequest = z.infer<typeof applyRootSortRequestSchema>
 
-export const folderMovesResponseSchema = z.object({
-  results: z.array(
-    z.object({
-      documentId: z.string(),
-      ok: z.boolean(),
-      error: z.string().nullable(),
+export const ROOT_SORT_RUN_STATUSES = [
+  'judging',
+  'grouping',
+  'ready',
+  'applying',
+  'applied',
+  'undoing',
+  'undone',
+  'cancelled',
+  'failed',
+] as const
+export type RootSortRunStatus = (typeof ROOT_SORT_RUN_STATUSES)[number]
+
+/** The statuses a job is working; the dialog follows a run in one of these. */
+export const ROOT_SORT_WORKING_STATUSES: readonly RootSortRunStatus[] = ['judging', 'grouping', 'applying', 'undoing']
+
+export const rootSortRunSchema = z.object({
+  id: z.string(),
+  status: z.enum(ROOT_SORT_RUN_STATUSES),
+  /** Of the current step: documents judged, moves applied or undone. */
+  progress: z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+  /** Root documents ingestion has not read yet; they stay where they are. */
+  unreadable: z.number().int().nonnegative(),
+  /** The root held more than `MAX_ROOT_SORT_DOCUMENTS`. */
+  truncated: z.boolean(),
+  /** What the person reviews; present once the run is ready, and after. */
+  review: z
+    .object({
+      folders: z.array(rootSortFolderSchema),
+      documents: z.array(rootSortDocumentSchema),
+      placements: z.array(rootSortPlacementSchema),
+      newFolders: z.array(newFolderProposalSchema),
+      /** Documents whose judgement failed; they stay in the root. */
+      failedDocumentIds: z.array(z.string()),
     })
-  ),
+    .nullable(),
+  moved: z.number().int().nonnegative(),
+  moveFailures: z.array(z.object({ documentId: z.string(), error: z.string() })),
+  error: z.string().nullable(),
+  /** Why no new folders were proposed for the leftovers; the run is still ready, those files stay in the root. */
+  groupingError: z.string().nullable(),
+  createdAt: z.string(),
 })
-export type FolderMovesResponse = z.infer<typeof folderMovesResponseSchema>
+export type RootSortRunView = z.infer<typeof rootSortRunSchema>
+
+/** What a shelf's root holds now, and the person's latest run on it (`GET …/root-sort`). */
+export const rootSortSummarySchema = z.object({
+  files: z.number().int().nonnegative(),
+  folders: z.number().int().nonnegative(),
+  unreadable: z.number().int().nonnegative(),
+  truncated: z.boolean(),
+  run: rootSortRunSchema.nullable(),
+})
+export type RootSortSummary = z.infer<typeof rootSortSummarySchema>
 
 export type PlacementCertainty = 'sure' | 'unsure'
 

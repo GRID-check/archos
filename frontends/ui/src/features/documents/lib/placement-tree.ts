@@ -13,6 +13,7 @@
 
 import {
   certaintyOf,
+  type KeptMove,
   type NewFolderProposal,
   type PlacementCertainty,
   type RootSortDocument,
@@ -110,15 +111,8 @@ export interface PlacementTree {
   summary: PlacementSummary
 }
 
-export interface KeptMove {
-  documentId: string
-  folderId: string | null
-  newFolderPath: string | null
-}
-
+/** What the person kept: the moves the server applies, in one request. */
 export interface KeptMoves {
-  /** Every new folder some kept move lands in, each to be created once. */
-  newFolderPaths: string[]
   moves: KeptMove[]
 }
 
@@ -158,24 +152,6 @@ export function isUnder(path: string, folder: string): boolean {
 function isSwitchedOff(excludedNewFolders: ReadonlySet<string>, path: string): boolean {
   for (const excluded of excludedNewFolders) if (isUnder(path, excluded)) return true
   return false
-}
-
-/**
- * The folder id the ensure route answered for a path. The route answers the
- * path as it sent it; a key that differs only in case or outer spaces is the
- * same folder, so the lookup falls back to that before it gives up.
- */
-export function folderIdFor(
-  path: string,
-  ensured: Readonly<Record<string, string>>
-): string | null {
-  const exact = ensured[path]
-  if (exact !== undefined) return exact
-  const wanted = normalizePath(path).toLocaleLowerCase()
-  for (const [key, id] of Object.entries(ensured)) {
-    if (normalizePath(key).toLocaleLowerCase() === wanted) return id
-  }
-  return null
 }
 
 function resolveAll(input: PlacementInput, state: PlacementState): Resolved[] {
@@ -479,10 +455,7 @@ export function keptMoves(input: PlacementInput, state: PlacementState): KeptMov
         : { documentId: row.documentId, folderId: null, newFolderPath: row.destination.newPath }
     )
   }
-  const newFolderPaths = [
-    ...new Set(moves.flatMap((move) => (move.newFolderPath ? [move.newFolderPath] : []))),
-  ]
-  return { newFolderPaths, moves }
+  return { moves }
 }
 
 /** The tree for a run that only asks about unsure placements: a folder stays if an unsure file sits below it. */

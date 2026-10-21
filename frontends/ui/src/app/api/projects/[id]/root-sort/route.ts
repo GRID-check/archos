@@ -1,24 +1,19 @@
 /**
- * Sorting a project's root (`@/lib/filing/root-sort`): `GET` lists the folders
- * and the root documents a sort may read, `POST` judges one chunk of them.
- * Nothing moves here.
+ * Sorting a project's root (ADR-0121): `GET` says what the root holds and the
+ * person's latest run, `POST` starts a run. The run is the server's; the
+ * `root_sort` job works it and `/api/root-sort-runs/[runId]` follows it.
  */
 
-import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { planRootChunk, scanRoot } from '@/lib/filing/root-sort'
-import { rootSortPlanRequestSchema } from '@/lib/filing/root-sort-types'
+import { apiRoute } from '@/lib/api/handler'
 import { projectShelf } from '@/lib/documents/shelf'
+import { describeRootSort, startRootSort } from '@/lib/filing/root-sort-run'
 
 type Params = { id: string }
 
-export const GET = apiRoute<Params>(async ({ session, params }) => scanRoot(session, projectShelf(params.id)), {
-  authz: { enforcedBy: 'requireShelfWrite (requireProjectAccess project:documents:write | project:edit)' },
+export const GET = apiRoute<Params>(async ({ session, params }) => describeRootSort(session, projectShelf(params.id)), {
+  authz: { enforcedBy: 'requireSortable (requireShelfWrite: project:documents:write | project:edit; a running project)' },
 })
 
-export const POST = apiRoute<Params>(
-  async ({ session, params, request }) => {
-    const { documentIds } = await parseJsonBody(request, rootSortPlanRequestSchema)
-    return planRootChunk(session, projectShelf(params.id), documentIds)
-  },
-  { authz: { enforcedBy: 'requireShelfWrite (requireProjectAccess project:documents:write | project:edit)' } }
-)
+export const POST = apiRoute<Params>(async ({ session, params }) => startRootSort(session, projectShelf(params.id)), {
+  authz: { enforcedBy: 'requireSortable (requireShelfWrite: project:documents:write | project:edit; a running project)' },
+})

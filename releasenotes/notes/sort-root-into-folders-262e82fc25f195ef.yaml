@@ -1,4 +1,4 @@
 ---
 features:
   - >
-    Piloti can now sort all the loose files at the top of a project's Dateien or the Archiv into folders in one go. It proposes a folder for each file and shows the whole result for you to review, nothing moves until you apply it, and you can undo the run afterwards.
+    Piloti can now sort all the loose files at the top of a project's Dateien or the Archiv into folders in one go. It proposes a folder for each file and shows the whole result for you to review, nothing moves until you apply it, and you can undo the run afterwards. The sort keeps running when you close the window, and you find it where it got to when you come back.

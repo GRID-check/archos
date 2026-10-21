@@ -7,7 +7,6 @@ import type {
 } from '@/lib/filing/root-sort-types'
 import {
   buildPlacementTree,
-  folderIdFor,
   folderKept,
   keptMoves,
   NO_CHANGES,
@@ -202,10 +201,10 @@ describe('exclusions', () => {
     expect(neu?.switchedOff).toBe(true)
     expect(neu?.heldBack).toBe(2)
     expect(neu?.placedBelow).toBe(0)
-    expect(keptMoves(data, state)).toEqual({ newFolderPaths: [], moves: [] })
+    expect(keptMoves(data, state)).toEqual({ moves: [] })
   })
 
-  it('creates a new folder once, for every kept move that lands in it', () => {
+  it('sends every kept file to the new folder path; the server creates the folder once', () => {
     const data = input({
       documents: [doc('d1'), doc('d2')],
       placements: [
@@ -220,7 +219,6 @@ describe('exclusions', () => {
       newFolders: [proposal('Office/Neu', ['d2'])],
     })
     const moves = keptMoves(data, NO_CHANGES)
-    expect(moves.newFolderPaths).toEqual(['Office/Neu'])
     expect(moves.moves).toEqual([
       { documentId: 'd1', folderId: null, newFolderPath: 'Office/Neu' },
       { documentId: 'd2', folderId: null, newFolderPath: 'Office/Neu' },
@@ -266,13 +264,5 @@ describe('unsure only', () => {
     expect(tree.folders.map((node) => node.path)).toEqual(['02 Genehmigung'])
     expect(tree.stays).toEqual([])
     expect(findFolder(tree.folders, '02 Genehmigung')?.files.map((file) => file.id)).toEqual(['d2'])
-  })
-})
-
-describe('folderIdFor', () => {
-  it('finds a folder the route answered under another spelling of its path', () => {
-    expect(folderIdFor(' Neu/Unter ', { 'Neu/Unter': 'x1' })).toBe('x1')
-    expect(folderIdFor('neu/unter', { 'Neu/Unter': 'x1' })).toBe('x1')
-    expect(folderIdFor('Fehlt', { 'Neu/Unter': 'x1' })).toBeNull()
   })
 })
