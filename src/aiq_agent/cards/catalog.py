@@ -55,6 +55,10 @@ SYSTEM_CARD_TYPES = frozenset(
         # `canvas_activity` from the canvas tools: the card names marks and
         # replies the BFF has already written, by their ids and numbers.
         "canvas_activity",
+        # `look` from `look`, `highlight` and `point` (ADR-0128): the card names
+        # places Piloti actually rendered or showed the room, built once the
+        # answer is final from the looks it relies on (`tools/look/cards.py`).
+        "look",
     }
 )
 

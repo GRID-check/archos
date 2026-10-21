@@ -36,6 +36,8 @@ from aiq_agent.common import load_prompt
 from aiq_agent.common import render_prompt_template
 from aiq_agent.common.applicability import render_project_block
 from aiq_agent.common.norm_registry import parcel_note
+from aiq_agent.common.page_region_words import percent
+from aiq_agent.common.page_region_words import where_on_the_page
 from aiq_agent.common.platform_lessons import render_lessons_block
 from aiq_agent.common.prompt_store import ResolvedPrompt
 from aiq_agent.common.prompt_store import git_blob_version
@@ -221,31 +223,15 @@ def shelf_label(shelf: str | None) -> str | None:
     return SHELF_QUALIFIERS.get(parsed) if parsed is not None else None
 
 
-def _where_on_the_page(region: Any) -> str:
-    """The box's place in words, by its centre: „oben links“, „in der Seitenmitte“, „unten rechts“."""
-    cx, cy = region.x + region.w / 2, region.y + region.h / 2
-    row = "oben" if cy < 1 / 3 else ("unten" if cy > 2 / 3 else "")
-    column = "links" if cx < 1 / 3 else ("rechts" if cx > 2 / 3 else "")
-    if row and column:
-        return f"{row} {column}"
-    if row:
-        return f"{row} in der Mitte"
-    return f"in der Mitte {column}" if column else "in der Seitenmitte"
-
-
-def _percent(share: float) -> str:
-    return f"{max(1, round(share * 100))} %"
-
-
 def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
     """The „Fokusbereich“ section: the box a person drew, and what to do with it. None without one.
 
     German like the blocks around it, and short: which document, page and box in
     words a person would use, then the order of work — look at exactly that crop
-    before answering (``canvas__look``, or ``view_knowledge_image`` where the
-    canvas tools are not bound), show what the answer refers to, propose
-    findings as marks, and answer in the thread when the question was asked
-    there. The model decides; nothing is posted for it.
+    before answering (``look``, bound in every context), and where the canvas
+    tools are bound show what the answer refers to, propose findings as marks,
+    and answer in the thread when the question was asked there. The model
+    decides; nothing is posted for it.
     """
     region = getattr(state, "focus_region", None)
     if region is None:
@@ -253,28 +239,23 @@ def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
     file_name = getattr(state, "focus_file_name", None)
     document = f"von **{file_name}**" if file_name else "des geöffneten Dokuments"
     box = f"[{region.x:.3f}, {region.y:.3f}, {region.w:.3f}, {region.h:.3f}]"
-    canvas = "canvas__look" in tool_names
+    canvas = "canvas__highlight" in tool_names
+    target = f'`document="{file_name}"`, ' if file_name else ""
     lines = [
         "## Fokusbereich",
-        f"Die Person hat auf Seite {region.page} {document} einen Rahmen gezogen: {_where_on_the_page(region)}, "
-        f"etwa {_percent(region.w)} der Seitenbreite und {_percent(region.h)} der Seitenhöhe (`region={box}`: "
+        f"Die Person hat auf Seite {region.page} {document} einen Rahmen gezogen: {where_on_the_page(region)}, "
+        f"etwa {percent(region.w)} der Seitenbreite und {percent(region.h)} der Seitenhöhe (`region={box}`: "
         "x, y, w, h als Anteile der Seite, Ursprung oben links). „Hier“, „das“ und „diese Stelle“ meinen diesen "
         "Ausschnitt.",
+        f"Sieh ihn an, bevor du antwortest: `look` mit {target}`page={region.page}` und `region={box}`. "
+        "Antworte über das, was im Rahmen liegt, und sag, wenn du dafür etwas außerhalb brauchst.",
     ]
     if canvas:
         lines.append(
-            f"Sieh ihn an, bevor du antwortest: `canvas__look` mit `page={region.page}` und `region={box}`. "
-            "Antworte über das, was im Rahmen liegt, und sag, wenn du dafür etwas außerhalb brauchst. Zeig mit "
-            "`canvas__highlight` oder `canvas__point`, worauf du dich beziehst; Befunde schlägst du mit "
+            "Zeig mit `canvas__highlight` oder `canvas__point`, worauf du dich beziehst; Befunde schlägst du mit "
             "`canvas__mark` als Anmerkungen vor, die Stelle abgelesen an dem, was du gesehen hast. Was die Person "
             "ausdrücklich verlangt, tust du in ihrem Namen: `canvas__mark` mit `open=true`, `canvas__update`, "
             "`canvas__delete`."
-        )
-    else:
-        target = f'`file_name="{file_name}"`, ' if file_name else ""
-        lines.append(
-            f"Sieh ihn an, bevor du antwortest: `view_knowledge_image` mit {target}`page_number={region.page}` "
-            f"und `region={box}`. Antworte über das, was im Rahmen liegt."
         )
     if getattr(state, "reply_in_thread", False) and region.annotation_id and canvas:
         lines.append(

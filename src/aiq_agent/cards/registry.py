@@ -13,9 +13,15 @@ uses (:mod:`aiq_agent.common.citation_verification`).
 from __future__ import annotations
 
 import contextvars
+import logging
 import threading
 from collections import OrderedDict
+from collections.abc import Callable
 from typing import Any
+
+from pydantic import ValidationError
+
+logger = logging.getLogger(__name__)
 
 
 class CardRegistry:
@@ -23,6 +29,7 @@ class CardRegistry:
 
     def __init__(self) -> None:
         self._cards: list[dict[str, Any]] = []
+        self._held: dict[str, list[Any]] = {}
 
     def add(self, card: dict[str, Any]) -> None:
         """Append one validated card dict."""
@@ -47,9 +54,66 @@ class CardRegistry:
         """Return a shallow copy of the accumulated cards."""
         return list(self._cards)
 
+    def hold(self, kind: str, entry: Any) -> int:
+        """Keep ``entry`` for a card the answer decides on; how many of ``kind`` are held now.
+
+        Some system cards can only be built once the answer is final, because
+        which entries belong on them depends on what the answer relies on (the
+        ``look`` card, ``tools/look/cards.py``). The tool that did the work
+        holds its entry here, on the turn's registry, because a ContextVar set
+        inside a tool call never reaches the node that finishes the answer.
+        """
+        held = self._held.setdefault(kind, [])
+        held.append(entry)
+        return len(held)
+
+    def take_held(self, kind: str) -> list[Any]:
+        """The entries held under ``kind``, in the order they were held; the hold is emptied."""
+        return self._held.pop(kind, [])
+
     def clear(self) -> None:
-        """Drop all accumulated cards (call at turn boundaries)."""
+        """Drop all accumulated cards and held entries (call at turn boundaries)."""
         self._cards.clear()
+        self._held.clear()
+
+
+def extend_or_add(
+    registry: CardRegistry,
+    item: dict[str, Any],
+    *,
+    owns: Callable[[dict[str, Any]], bool],
+    build: Callable[[list[dict[str, Any]]], dict[str, Any]],
+    max_items: int,
+) -> int | None:
+    """Put ``item`` on this turn's card that ``owns`` says is its own, or on a new one; the card's position.
+
+    One card per subject per turn (a document's ``canvas_activity``, its
+    ``look``), extended by every further entry, a full card opening the next.
+    ``build(items)`` returns the validated card for an item list and raises
+    :class:`ValidationError` on bad data, which costs the entry and never the
+    card. An extended card is rewritten IN PLACE: position is a card's identity
+    (``[[card:N]]``, ``cardKey``), so a card never moves. Returns the card's
+    1-based position, or None when the entry did not validate.
+    """
+    existing = next(
+        (
+            (index, card)
+            for index, card in enumerate(registry.snapshot())
+            if owns(card) and len(card.get("items") or []) < max_items
+        ),
+        None,
+    )
+    items = [*((existing[1].get("items") or []) if existing else []), item]
+    try:
+        card = build(items)
+    except ValidationError:
+        logger.exception("A card entry did not validate (card owner %s)", getattr(owns, "__name__", "?"))
+        return None
+    if existing is not None:
+        registry.replace(existing[0], card)
+        return existing[0] + 1
+    registry.add(card)
+    return len(registry)
 
 
 _session_card_registry: contextvars.ContextVar[CardRegistry | None] = contextvars.ContextVar(

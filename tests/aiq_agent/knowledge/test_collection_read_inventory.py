@@ -41,9 +41,10 @@ TOOLS: dict[str, tuple[str, str]] = {
         "reports",
         "tests/knowledge_layer_tests/test_restricted_reads.py::test_read_passage_reports_a_restricted_passage_and_it_is_admitted",
     ),
-    "view_knowledge_image": (
+    # `look` (ADR-0128) renders through knowledge_layer.view_image, which reports the collection it read.
+    "look": (
         "reports",
-        "tests/knowledge_layer_tests/test_restricted_reads.py::test_view_image_of_a_drawable_restricted_folder_is_reported_and_admitted",
+        "tests/aiq_agent/tools/look/test_register.py::test_a_look_reports_the_collection_it_read",
     ),
     # Other projects (ADR-0094): the BFF records what it hands out before it
     # answers, and the tool admits exactly that for the turn.
@@ -71,14 +72,13 @@ TOOLS: dict[str, tuple[str, str]] = {
     "describe_card": ("no_collection_content", "returns a card type's schema"),
     "file_draft": ("no_collection_content", "files the conversation's own draft; returns the filing outcome"),
     "create_task": ("no_collection_content", "queues work; returns the task it created"),
-    # The review canvas, a function group: `look` renders through
-    # view_knowledge_image's own body and reports the collection it read; the
-    # other six return Anmerkungen rows and room presence of a document the BFF
-    # admits against the conversation's audience and the turn's signed scope
-    # before it answers (lib/annotations/agent.ts, ADR-0093).
+    # The review canvas, a function group: Anmerkungen rows and room presence of
+    # a document the BFF admits against the conversation's audience and the
+    # turn's signed scope before it answers (lib/annotations/agent.ts,
+    # ADR-0093). Looking at the page is `look`, above.
     "document_canvas": (
-        "reports",
-        "tests/aiq_agent/tools/canvas/test_look.py::test_a_look_reports_the_collection_it_read",
+        "no_collection_content",
+        "returns Anmerkungen and room presence the BFF admitted for the turn; no page content of a collection",
     ),
     # Piloti's own MCP server (ADR-0122). Its operations return workspace records
     # (projects, members, document metadata, proposals), never passages: reading a

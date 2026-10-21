@@ -1,4 +1,4 @@
-"""The per-turn ceiling on ``view_knowledge_image`` calls.
+"""The per-turn ceiling on ``look`` calls, and its whole-page split (ADR-0128).
 
 What matters: a bound budget refuses the (N+1)-th view, a turn's budget is
 invisible to a sibling context, and an unbound call site is not capped —
@@ -12,9 +12,11 @@ import asyncio
 import contextvars
 
 from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
 from aiq_agent.common.image_view_budget import begin_image_view_budget
 from aiq_agent.common.image_view_budget import end_image_view_budget
 from aiq_agent.common.image_view_budget import get_image_view_budget
+from aiq_agent.common.image_view_budget import remaining_views_text
 from aiq_agent.common.image_view_budget import try_consume_image_view
 
 
@@ -64,3 +66,27 @@ def test_budgets_do_not_leak_between_contexts():
     finally:
         end_image_view_budget(token)
     assert get_image_view_budget() is None
+
+
+def test_at_most_two_of_the_six_are_whole_pages():
+    token = begin_image_view_budget()
+    try:
+        overviews = [try_consume_image_view("overview") for _ in range(MAX_OVERVIEW_VIEWS_PER_TURN + 1)]
+        assert overviews == [True] * MAX_OVERVIEW_VIEWS_PER_TURN + [False]
+        # A refused overview costs nothing: the regions still have the rest of the turn.
+        regions = [try_consume_image_view("region") for _ in range(MAX_IMAGE_VIEWS_PER_TURN)]
+        assert regions.count(True) == MAX_IMAGE_VIEWS_PER_TURN - MAX_OVERVIEW_VIEWS_PER_TURN
+        assert remaining_views_text() == "0 looks left this turn (0 of them whole pages)."
+    finally:
+        end_image_view_budget(token)
+    assert remaining_views_text() == ""  # outside a turn there is nothing to count down
+
+
+def test_the_whole_pages_left_never_exceed_the_looks_left():
+    token = begin_image_view_budget()
+    try:
+        for _ in range(MAX_IMAGE_VIEWS_PER_TURN - 1):
+            try_consume_image_view("region")
+        assert remaining_views_text() == "1 look left this turn (1 of them whole pages)."
+    finally:
+        end_image_view_budget(token)

@@ -303,7 +303,7 @@ def test_a_failed_restricted_collection_is_never_named_in_a_message():
 
 
 # ---------------------------------------------------------------------------
-# view_knowledge_image: the model's collection is checked against the turn
+# look's renderer (view_image): the collection is checked against the turn
 # ---------------------------------------------------------------------------
 
 
@@ -317,7 +317,7 @@ def _png() -> bytes:
 
 @pytest.fixture
 def image_tool(monkeypatch):
-    """``view_knowledge_image`` with storage faked: every lookup it makes is recorded."""
+    """``look``'s renderer with storage faked: every lookup it makes is recorded."""
     import sources.knowledge_layer.src.view_image as vi
 
     asked: list[tuple[str, str]] = []
@@ -329,11 +329,10 @@ def image_tool(monkeypatch):
     monkeypatch.setattr(vi, "_resolve_storage_location", _resolve)
     monkeypatch.setattr(vi, "_fetch_seaweed_bytes", lambda key, bucket=None: _png())
     monkeypatch.setattr("knowledge_layer.llamaindex.adapter._get_vlm_api_key", lambda: "k")
-    monkeypatch.setattr(vi, "try_consume_image_view", lambda: True)
+    monkeypatch.setattr(vi, "try_consume_image_view", lambda *_kind: True)
 
-    async def view(**kwargs):
-        async with vi.view_knowledge_image(vi.ViewKnowledgeImageToolConfig(), MagicMock()) as info:
-            return await info.single_fn(info.input_schema(**kwargs))
+    async def view(*, file_name: str, collection: str):
+        return await vi.view_image(file_name, 1, collection)
 
     view.asked = asked  # type: ignore[attr-defined]
     return view
@@ -350,10 +349,10 @@ async def test_view_image_refuses_a_restricted_collection_outside_the_turn_befor
     """The asker is cleared for nothing restricted: no use bound, R not in scope."""
     _scope_of(monkeypatch, PROJ)
 
-    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "view_knowledge_image")
+    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "look")
 
     assert image_tool.asked == []
-    assert isinstance(message.content, str) and "not one this turn may read" in message.content
+    assert isinstance(message.content, str) and "not in a collection this turn may read" in message.content
     assert R not in message.content
     assert admitted[0] is message
 
@@ -382,7 +381,7 @@ async def test_view_image_refuses_an_open_collection_outside_the_scope(monkeypat
 async def test_view_image_of_a_drawable_restricted_folder_is_reported_and_admitted(monkeypatch, image_tool, use):
     _scope_of(monkeypatch, PROJ, R)
 
-    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "view_knowledge_image")
+    message, admitted = await _round(lambda: image_tool(file_name="Gehalt.png", collection=R), "look")
 
     assert image_tool.asked == [(R, "Gehalt.png")]
     assert ru.collections_read(message) == {R}
@@ -393,7 +392,7 @@ async def test_view_image_of_a_drawable_restricted_folder_is_reported_and_admitt
 async def test_view_image_reaches_an_open_collection_in_scope_without_admitting_anything(monkeypatch, image_tool, use):
     _scope_of(monkeypatch, PROJ, R)
 
-    message, admitted = await _round(lambda: image_tool(file_name="plan.png", collection=PROJ), "view_knowledge_image")
+    message, admitted = await _round(lambda: image_tool(file_name="plan.png", collection=PROJ), "look")
 
     assert image_tool.asked == [(PROJ, "plan.png")]
     assert ru.collections_read(message) == {PROJ}

@@ -100,6 +100,7 @@ from contextvars import Token
 from typing import Any
 from typing import Literal
 from uuid import UUID
+from uuid import uuid4
 
 from langchain_core.callbacks import AsyncCallbackHandler
 from langgraph.config import get_stream_writer
@@ -107,6 +108,7 @@ from langgraph.config import get_stream_writer
 from aiq_agent.common.source_kinds import canonical_shelf_value
 from aiq_agent.common.wire_v2 import Channel
 from aiq_agent.common.wire_v2 import EventBody
+from aiq_agent.common.wire_v2 import LookStep
 from aiq_agent.common.wire_v2 import RetrievalStep
 from aiq_agent.common.wire_v2 import Scalar
 from aiq_agent.common.wire_v2 import Scope
@@ -409,6 +411,10 @@ KEY_ACTION_ANNOTATIONS_SET = "status.action.annotationsSet"
 KEY_ACTION_ANNOTATIONS_UPDATE = "status.action.annotationsUpdate"
 KEY_ACTION_ANNOTATIONS_DELETE = "status.action.annotationsDelete"
 KEY_ACTION_ANNOTATIONS_REPLY = "status.action.annotationsReply"
+#: Piloti is looking at a page or a box on it (``look``, ADR-0128). Value-less:
+#: which document and where is the look's own Herleitung step
+#: (:func:`emit_look_step`), not the live line.
+KEY_ACTION_LOOK = "status.action.look"
 #: A call to the workspace through Piloti's MCP server (``workspace__call``,
 #: ADR-0122): a read runs, a write comes back as a proposal. Keyed on the
 #: QUALIFIED name, because the basename ``call`` says nothing and another group
@@ -462,6 +468,7 @@ ALL_STATUS_KEYS: tuple[str, ...] = (
     "status.action.annotationsUpdate",
     "status.action.annotationsDelete",
     "status.action.annotationsReply",
+    "status.action.look",
     "status.action.workspaceCall",
     "status.citations",
     "status.repair",
@@ -529,6 +536,26 @@ def emit_status(
 def emit_technical(slot: str, **detail: Scalar | list[str] | None) -> None:
     """Emit one technical record: no key, no values, only detail an operator counts."""
     emit_status(slot, channel=CHANNEL_TECHNICAL, **detail)
+
+
+#: Slot prefix of the technical record a literal-mode ``knowledge_search`` (``match="exact"`` or
+#: ``"regex"``) leaves. A tool step carries the tool's name and never its arguments, so this record is
+#: how a reader of the turn (the ``file-tools-used`` score) tells a literal search, which the eval's
+#: ``navigate`` arm counts as navigation, from a ranked one (ADR-0127).
+LITERAL_SEARCH_SLOT = "literal-search"
+
+
+def emit_literal_search(mode: str) -> None:
+    """Record that one ``knowledge_search`` call ran in a literal mode; one record per call."""
+    emit_technical(f"{LITERAL_SEARCH_SLOT}:{uuid4().hex[:12]}", match=mode)
+
+
+def is_literal_search(step: Any) -> bool:
+    """Whether ``step`` is the record :func:`emit_literal_search` left."""
+    slot = getattr(step, "slot", None)
+    return (
+        getattr(step, "kind", None) == "status" and isinstance(slot, str) and slot.startswith(f"{LITERAL_SEARCH_SLOT}:")
+    )
 
 
 class ToolStepCallback(AsyncCallbackHandler):
@@ -619,14 +646,17 @@ _ACTION_KEYS = {
     "file_draft": KEY_ACTION_DRAFT_FILED,
     "create_task": KEY_ACTION_TASK_CREATED,
     # The canvas group's Anmerkungen tools (`canvas__marks` …), by basename.
-    # `look`, `room`, `point` and `highlight` get no line: the image, the room
-    # and the gesture show themselves, and a line would only name them.
+    # `room`, `point` and `highlight` get no line: the room and the gesture
+    # show themselves, and a line would only name them. `look` is no canvas
+    # member any more (its own tool, ADR-0128); it has a line below and a
+    # Herleitung step of its own (`emit_look_step`).
     "marks": KEY_ACTION_ANNOTATIONS_READ,
     # With `open=true` the line is KEY_ACTION_ANNOTATIONS_SET; see :func:`_action_key`.
     "mark": KEY_ACTION_ANNOTATIONS_PROPOSE,
     "update": KEY_ACTION_ANNOTATIONS_UPDATE,
     "delete": KEY_ACTION_ANNOTATIONS_DELETE,
     "reply": KEY_ACTION_ANNOTATIONS_REPLY,
+    "look": KEY_ACTION_LOOK,
 }
 
 
@@ -1278,6 +1308,52 @@ def emit_retrieval(
     slot = f"action:{key.rsplit('.', 1)[-1]}"
     emit_status(slot, key, values=values, tools=tools, reason=reason)
     return False
+
+
+#: Step id prefix of a look's Herleitung row; the turn's look number follows.
+LOOK_STEP_PREFIX = "look:"
+
+
+def emit_look_step(
+    number: int | str,
+    *,
+    document_name: str,
+    page: int,
+    document_id: str | None = None,
+    revision_id: str | None = None,
+    shelf: Literal["stored", "base"] = "stored",
+    region: list[float] | None = None,
+    image_index: int | None = None,
+    where: str | None = None,
+    question: str | None = None,
+    reading: str | None = None,
+) -> None:
+    """One Herleitung row per look that rendered (ADR-0128): „Angesehen: Grundriss EG.pdf, S. 2, oben rechts“.
+
+    ``number`` is the look's place in the turn, so two looks are two rows. The
+    words are the frontend's; this carries the address and the region's place
+    in words (``common/page_region_words``), which is domain text like a file
+    name. Fail-open: a step that does not validate is logged, never raised.
+    """
+    try:
+        step = LookStep(
+            id=f"{LOOK_STEP_PREFIX}{number}",
+            round=current_retrieval_round(),
+            document_name=clip(document_name, 300),
+            document_id=document_id,
+            revision_id=revision_id,
+            shelf=shelf,
+            page=page,
+            region=region,
+            image_index=image_index,
+            where=clip(where, 60) if where else None,
+            question=clip(question, 200) if question else None,
+            reading=clip(reading, 300) if reading else None,
+        )
+    except ValueError:
+        logger.warning("A look step did not validate (page=%s)", page, exc_info=True)
+        return
+    emit_step(step)
 
 
 #: Slot prefix for the Herleitung checkpoint record. The round is part of the

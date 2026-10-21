@@ -64,7 +64,7 @@ class TestTheSplice:
         return [
             SystemMessage(content="sys"),
             HumanMessage(content="Frage"),
-            AIMessage(content="", tool_calls=[{"name": "canvas__look", "args": {}, "id": "l"}]),
+            AIMessage(content="", tool_calls=[{"name": "look", "args": {}, "id": "l"}]),
             ToolMessage(content="Seite", tool_call_id="l"),
         ]
 
@@ -117,7 +117,7 @@ class TestWhatTheModelReads:
         assert is_write_call({"name": "canvas__reply"})
         assert is_write_call({"name": "file_draft"})
         assert is_write_call({"name": "propose_file_change"})
-        assert not is_write_call({"name": "canvas__look"})
+        assert not is_write_call({"name": "look"})
         assert not is_write_call({"name": "canvas__marks"})
         assert not is_write_call({"name": "knowledge_search"})
         assert not is_write_call({})

@@ -401,7 +401,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     // No AIQ_EXTRACT_* here: tables, images and charts are on in code and a
     // flag only switches one off. Setting them per deployment is how production
     // ran without tables and dropped every chart it had paid to analyse.
-    // Object storage for the `view_knowledge_image` tool (ADR-0039): the backend
+    // Object storage for the `look` tool (ADR-0039): the backend
     // fetches project/Archiv document bytes directly from SeaweedFS (it resolves
     // the storage key via the internal BFF lookup first). This OVERRIDES the
     // earlier "no SEAWEED_* on the backend" separation — that held while the

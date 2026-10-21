@@ -1,0 +1,207 @@
+"""``look``: a page of a document, a region of it, or an embedded image, as an image the model sees.
+
+One tool for one act in every context (ADR-0128): the chat, the review canvas,
+``piloti-ask`` and deep research bind it, and the external door serves it as
+``document-look``. It replaced two tools that were the same function under two
+names and two argument shapes, the canvas group's ``canvas__look`` and the
+knowledge layer's ``view_knowledge_image``.
+
+What ``look`` decides is WHICH file, and from which collection
+(``resolve.py``); the model never passes a collection. The render, the scope
+check, the per-turn budget, the vision gate and the restricted-folder report are
+the renderer's (``knowledge_layer.view_image.view_image``), unchanged. When the
+document is a workspace document, everyone who has it open sees the box glow
+while Piloti reads (``canvas/presence.show_reading``), whether the question came
+from the canvas or the chat; only a chat turn glows, because only its harness
+takes the glow down again.
+
+With a ``question`` the crop is also read by the office's vision model
+(``reading.py``) and the readings come back as short ``Gelesen:`` lines, labelled
+as a reading of the drawing and never a measurement. A chat model that takes no
+images gets those lines alone instead of "I cannot see".
+
+Its own entry point (``aiq_look`` in the root ``pyproject.toml``): a deployment
+without the canvas group keeps ``look``, and the reverse.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from typing import Any
+
+from pydantic import Field
+
+from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
+from aiq_agent.observability.retrieval_trace import emit_step_span
+from nat.plugin_api import Builder
+from nat.plugin_api import FunctionBaseConfig
+from nat.plugin_api import FunctionInfo
+from nat.plugin_api import register_function
+
+from ..canvas.calls import Refused
+from ..canvas.presence import current_canvas_presence
+from ..canvas.presence import show_reading
+from .cards import note_look
+from .resolve import Resolved
+from .resolve import resolve_document
+
+logger = logging.getLogger(__name__)
+
+#: The name the model calls, and the name every refusal carries.
+TOOL = "look"
+
+
+def _default_max_dim() -> int:
+    from knowledge_layer.view_image import default_max_dim
+
+    return default_max_dim()
+
+
+DESCRIPTION = (
+    "Shows you a page of a document as an image; with `region=[x, y, w, h]` only that box, sharper. "
+    "`document`: the file name from the inventory or from a hit's `Citation:` line, or a document id; empty means "
+    "the document open on the canvas, then this chat's document. `page` starts at 1. `region` is shares of the "
+    "page as shown: 0 to 1, origin top left, never pixels. `image_index` shows the embedded image a hit's "
+    "`Image:` line names, at its own resolution. A hit's `Region:` line is the place it sits: look there with "
+    "those numbers. Look before you state a value read off a drawing, point "
+    "at a place or set a mark: where something lies is read off the image, never off the text. On a large "
+    "sheet, look at the whole page once, then at one to three regions. At most "
+    f"{MAX_IMAGE_VIEWS_PER_TURN} looks per turn, at most {MAX_OVERVIEW_VIEWS_PER_TURN} of them whole pages; "
+    "every result says how many are left. Give `question` whenever you will state what you read off the image "
+    "(a dimension, a count, a Plankopf value, a legend entry): a second reader, the office's vision model, then "
+    "answers it from the same crop as short lines starting `Gelesen:`. Those lines are a reading of the drawing, "
+    "never a measurement; say so if you see otherwise. A reading does not cost a look. Fails open with a "
+    "sentence saying why."
+)
+
+
+class LookToolConfig(FunctionBaseConfig, name="look"):
+    """Configuration for ``look``."""
+
+    max_dim: int = Field(
+        default_factory=_default_max_dim,
+        description="Long edge (px) of what `look` renders; higher is sharper, larger payloads.",
+    )
+    timeout: float = Field(default=30.0, description="Render timeout of `look`, in seconds.")
+
+
+def _may_glow(resolved: Resolved) -> bool:
+    """Whether the room sees this look: a workspace document, on a turn whose harness takes the glow down.
+
+    Only a chat turn binds the canvas presence record and sends ``leave`` once
+    its answer is out (``canvas/presence.leave_canvas``). A look from the agent
+    door or a background run has no such end, so a glow it sent would stay.
+    """
+    return resolved.target is not None and resolved.signed is not None and current_canvas_presence() is not None
+
+
+def _observe(
+    document: str, page: int, region: Any, image_index: Any, result: Any, resolved: Any, *, asked: bool = False
+) -> None:
+    """One ``look`` observation: what was asked and whether an image came back. Never the bytes."""
+    emit_step_span(
+        TOOL,
+        {
+            "page": page,
+            "region": region is not None,
+            "image_index": image_index is not None,
+            "named": bool((document or "").strip()),
+            "question": asked,
+        },
+        {
+            "viewed": isinstance(result, list),
+            "workspace": isinstance(resolved, Resolved) and resolved.target is not None,
+        },
+    )
+
+
+async def _blocks_for(view: Any, question: str, sees: bool | None, region: Any) -> tuple[list[dict], str]:
+    """What the model gets for a rendered look, and the reading the card keeps.
+
+    The blocks are the region text, the readings it asked for, and the image if
+    it sees. A model that takes no images is never sent one (the next model call
+    of the turn would be refused): it gets the readings alone, answering
+    :data:`DEFAULT_QUESTION` when it asked nothing. The second value is the
+    reading's summary, or its first line, for the card item; empty without one.
+    """
+    from .reading import DEFAULT_QUESTION
+    from .reading import read_region
+    from .reading import render_readings
+
+    blind = sees is False
+    question = question.strip() or (DEFAULT_QUESTION if blind else "")
+    if not question:
+        return view.blocks(), ""
+    reading = await read_region(view.jpeg, question, region=region is not None)
+    text = f"{view.text}\n\n{render_readings(reading, blind=blind)}"
+    blocks = view.with_text(text).blocks()
+    kept = (reading.summary or (reading.lines[0].text if reading.lines else "")) if reading.usable else ""
+    return (blocks[:1] if blind else blocks), kept
+
+
+async def run_look(
+    document: str = "",
+    page: int = 1,
+    region: list[float] | None = None,
+    image_index: int | None = None,
+    question: str = "",
+    *,
+    limits: Any = None,
+) -> list[dict] | str:
+    """Look at a page of ``document``, at the box ``region`` on it, or at its embedded image ``image_index``.
+
+    With ``question`` the crop is also read by the office's vision model and the
+    readings come back with it. One look either way: the budget counts the render.
+    """
+    from knowledge_layer.view_image import View
+    from knowledge_layer.view_image import render_view
+    from knowledge_layer.view_image import turn_sees
+
+    resolved: Resolved | str | None = None
+    try:
+        resolved = await resolve_document(document)
+        if isinstance(resolved, str):
+            result: list[dict] | str = resolved
+        else:
+            render = render_view(
+                resolved.file_name, page, resolved.collection, image_index, region, limits=limits, tool=TOOL
+            )
+            if _may_glow(resolved):
+                # Telling the room and reading are independent: the glow costs the look no round trip.
+                _, rendered = await asyncio.gather(
+                    show_reading(resolved.target.body(), resolved.target.document_id, resolved.signed, page, region),
+                    render,
+                )
+            else:
+                rendered = await render
+            if isinstance(rendered, View):
+                result, reading = await _blocks_for(rendered, question or "", await turn_sees(), region)
+                # The Herleitung row now, the card item once the answer is final (`cards.py`).
+                note_look(resolved, page, rendered.region, image_index, question, reading=reading)
+            else:
+                result = rendered
+    except Refused as refused:
+        result = refused.message
+    _observe(document, page, region, image_index, result, resolved, asked=bool((question or "").strip()))
+    return result
+
+
+@register_function(config_type=LookToolConfig)
+async def look(config: LookToolConfig, _builder: Builder):
+    """NAT function: ``look``, bound to the chat agent and deep research."""
+    from knowledge_layer.view_image import ViewLimits
+
+    limits = ViewLimits(max_dim=config.max_dim, timeout=config.timeout)
+
+    async def _look(
+        document: str = "",
+        page: int = 1,
+        region: list[float] | None = None,
+        image_index: int | None = None,
+        question: str = "",
+    ) -> list[dict] | str:
+        return await run_look(document, page, region, image_index, question, limits=limits)
+
+    yield FunctionInfo.from_fn(_look, description=DESCRIPTION)

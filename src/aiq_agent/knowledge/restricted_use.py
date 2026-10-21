@@ -347,7 +347,7 @@ def note_collections_read(collections: Iterable[str | None]) -> None:
     Content is anything the model would learn from: a passage, a file name or
     summary, a count of matches, an image. Called by every producer that returns
     such content (the grounding-block renderer, the exact search's match table,
-    ``view_knowledge_image``). Outside a wrapped tool call it does nothing.
+    ``look``). Outside a wrapped tool call it does nothing.
     """
     reads = _call_reads.get()
     if reads is None:

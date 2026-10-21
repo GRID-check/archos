@@ -123,7 +123,7 @@ def post_canvas(
     return body
 
 
-#: The lookup a NAMED document goes through: the one ``view_knowledge_image``
+#: The lookup a NAMED document goes through: the one ``look``'s renderer
 #: already uses, which answers only inside the scope the echoed envelope signs.
 DOCUMENT_FILE_PATH = "/api/internal/document-file"
 

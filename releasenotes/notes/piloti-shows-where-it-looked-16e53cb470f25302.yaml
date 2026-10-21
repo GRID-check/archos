@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    When Piloti looks at a page of a drawing or a detail of it, the chat now
+    says so while it happens, and the answer shows where it looked: the
+    document, the page, the place on it, and what Piloti was looking for.
+    A box or pointer Piloti showed on the review canvas appears there too.

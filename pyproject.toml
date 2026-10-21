@@ -128,12 +128,15 @@ aiq_tasks = "aiq_agent.tools.tasks.register"
 # entry point: it imports the knowledge layer's lane fan-out lazily, and a
 # deployment without the lookups must keep every other tool.
 aiq_cross_project = "aiq_agent.tools.cross_project.register"
-# The review canvas (`canvas` function group, `tools/canvas`): look at a page or
-# a box on it, see who is in the document, point and highlight, read and propose
-# Anmerkungen, set, change or delete one when the person asks, answer in a
-# thread. Its own entry point: it calls its own BFF
-# route, and a deployment without it keeps every other tool.
+# The review canvas (`canvas` function group, `tools/canvas`): see who is in the
+# document, point and highlight, read and propose Anmerkungen, set, change or
+# delete one when the person asks, answer in a thread. Its own entry point: it
+# calls its own BFF route, and a deployment without it keeps every other tool.
 aiq_canvas = "aiq_agent.tools.canvas.register"
+# `look` (`tools/look`, ADR-0128): a page, a region of it or an embedded image,
+# as an image the model sees, in every context. Its own entry point, not a
+# member of the canvas group: a deployment without one keeps the other.
+aiq_look = "aiq_agent.tools.look.register"
 # Piloti as a client of its own MCP server (`workspace` function group,
 # `tools/workspace`, ADR-0122): search, describe and call the operations a person
 # can do in the product. Its own entry point: it calls the BFF's `/api/mcp`, and a

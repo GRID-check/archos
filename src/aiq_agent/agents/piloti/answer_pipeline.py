@@ -1155,7 +1155,14 @@ async def finalize_answer(
         turn_sources=_trailer_captures(turn_sources),
         filed_proposals=filed_proposal_ids(turn),
     )
+    # The looks the answer relies on become `look` cards (ADR-0128), taken before
+    # the suppression can clear them and placed after it: they are evidence, not trailer.
+    from aiq_agent.tools.look.cards import place_look_cards
+    from aiq_agent.tools.look.cards import take_looks
+
+    looks = take_looks()
     content, meta, _cards_suppressed = _suppress_cards(content, meta)
+    place_look_cards(looks, cited)
     content = resolve_callout_marker(content, has_callout=bool(meta and "callout" in meta))
     # Stamped on the text the reader gets, with the [N] it shows. Off the loop,
     # like the quote check it repeats: each line reads the registry's passages.

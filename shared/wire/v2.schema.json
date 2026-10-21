@@ -516,7 +516,7 @@
     },
     "FocusRegion": {
       "additionalProperties": false,
-      "description": "A box on one page of the conversation's document: what the question is about.\n\nNormalized to the page as it is shown (its own rotation applied), origin\ntop left, so ``x`` and ``w`` are shares of the page's width and ``y`` and\n``h`` of its height: the frame an Anmerkung's region uses\n(``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows\nthe model exactly that crop (``view_knowledge_image(region=...)``).",
+      "description": "A box on one page of the conversation's document: what the question is about.\n\nNormalized to the page as it is shown (its own rotation applied), origin\ntop left, so ``x`` and ``w`` are shares of the page's width and ``y`` and\n``h`` of its height: the frame an Anmerkung's region uses\n(``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows\nthe model exactly that crop (``look(region=[x, y, w, h])``).",
       "properties": {
         "annotation_id": {
           "anyOf": [
@@ -1010,6 +1010,175 @@
         "card"
       ],
       "title": "KeyedCard",
+      "type": "object"
+    },
+    "LookStep": {
+      "additionalProperties": false,
+      "description": "One look that rendered (``look``, ADR-0128): which document, which page, where on it.\n\nAn address, never pixels: the reader's thumbnail is drawn from the\ndocument's own preview route (``document_id``, ``revision_id``), so it is\nauthorized exactly like the document. A refused look leaves no step.",
+      "properties": {
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The workspace document's id; absent for Basiswissen.",
+          "title": "Document Id"
+        },
+        "document_name": {
+          "description": "The file name.",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Document Name",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "image_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The embedded image looked at, if any.",
+          "title": "Image Index"
+        },
+        "kind": {
+          "const": "look",
+          "default": "look",
+          "title": "Kind",
+          "type": "string"
+        },
+        "page": {
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Question"
+        },
+        "reading": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first reading, when one was made.",
+          "title": "Reading"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[x, y, w, h], shares of the page; absent: whole page.",
+          "title": "Region"
+        },
+        "revision_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The Fassung; absent means the current one.",
+          "title": "Revision Id"
+        },
+        "round": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The retrieval round the look ran in.",
+          "title": "Round"
+        },
+        "scope": {
+          "default": "chat",
+          "enum": [
+            "chat",
+            "deep"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "shelf": {
+          "default": "stored",
+          "enum": [
+            "stored",
+            "base"
+          ],
+          "title": "Shelf",
+          "type": "string"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The region in words, e.g. 'oben rechts'.",
+          "title": "Where"
+        }
+      },
+      "required": [
+        "id",
+        "document_name",
+        "page",
+        "kind"
+      ],
+      "title": "LookStep",
       "type": "object"
     },
     "Masthead": {
@@ -2266,6 +2435,7 @@
           "discriminator": {
             "mapping": {
               "clarification": "#/$defs/ClarificationStep",
+              "look": "#/$defs/LookStep",
               "retrieval": "#/$defs/RetrievalStep",
               "skill": "#/$defs/SkillStep",
               "sources": "#/$defs/SourcesStep",
@@ -2292,6 +2462,9 @@
             },
             {
               "$ref": "#/$defs/ClarificationStep"
+            },
+            {
+              "$ref": "#/$defs/LookStep"
             }
           ],
           "title": "Step"
@@ -2348,6 +2521,7 @@
           "discriminator": {
             "mapping": {
               "clarification": "#/$defs/ClarificationStep",
+              "look": "#/$defs/LookStep",
               "retrieval": "#/$defs/RetrievalStep",
               "skill": "#/$defs/SkillStep",
               "sources": "#/$defs/SourcesStep",
@@ -2374,6 +2548,9 @@
             },
             {
               "$ref": "#/$defs/ClarificationStep"
+            },
+            {
+              "$ref": "#/$defs/LookStep"
             }
           ],
           "title": "Step"

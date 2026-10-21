@@ -78,6 +78,10 @@ _EXAMPLE_EXEMPT = {
     # Python from the mark ids and numbers the BFF returned. An example would
     # teach the model to author proof that a mark or a reply exists.
     "canvas_activity",
+    # System-emitted (by `look`, `highlight` and `point`) from places that were
+    # actually rendered or shown. An example would teach the model to author
+    # evidence of a look it never took.
+    "look",
 }
 
 

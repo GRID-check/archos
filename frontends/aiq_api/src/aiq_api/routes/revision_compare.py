@@ -8,7 +8,7 @@ route gets two file names of ONE collection and a page number.
 
 **One vision call for the pair.** Both pages are rendered from the stored
 originals (``knowledge_layer.page_image``: nothing is kept per page, so a page
-is rendered on demand, as ``view_knowledge_image`` does it) and sent together,
+is rendered on demand, as ``look`` does it) and sent together,
 older first. The model returns boxes on the NEWER page in page-relative
 ``0..1`` coordinates plus a few German sentences; ``revision_compare`` parses it
 defensively (at most 12 boxes, a malformed or off-page one dropped).

@@ -254,8 +254,32 @@ class ClarificationStep(_StepBase):
     max_turns: int = Field(ge=1)
 
 
+class LookStep(_StepBase):
+    """One look that rendered (``look``, ADR-0128): which document, which page, where on it.
+
+    An address, never pixels: the reader's thumbnail is drawn from the
+    document's own preview route (``document_id``, ``revision_id``), so it is
+    authorized exactly like the document. A refused look leaves no step.
+    """
+
+    kind: Literal["look"] = "look"
+    round: int | None = Field(default=None, ge=0, description="The retrieval round the look ran in.")
+    document_name: str = Field(min_length=1, max_length=300, description="The file name.")
+    document_id: str | None = Field(default=None, description="The workspace document's id; absent for Basiswissen.")
+    revision_id: str | None = Field(default=None, description="The Fassung; absent means the current one.")
+    shelf: Literal["stored", "base"] = "stored"
+    page: int = Field(ge=1)
+    region: list[float] | None = Field(
+        default=None, min_length=4, max_length=4, description="[x, y, w, h], shares of the page; absent: whole page."
+    )
+    image_index: int | None = Field(default=None, ge=0, description="The embedded image looked at, if any.")
+    where: str | None = Field(default=None, max_length=60, description="The region in words, e.g. 'oben rechts'.")
+    question: str | None = Field(default=None, max_length=200)
+    reading: str | None = Field(default=None, max_length=300, description="The first reading, when one was made.")
+
+
 Step = Annotated[
-    StatusStep | RetrievalStep | SourcesStep | ToolStep | SkillStep | ClarificationStep,
+    StatusStep | RetrievalStep | SourcesStep | ToolStep | SkillStep | ClarificationStep | LookStep,
     Field(discriminator="kind"),
 ]
 
@@ -883,7 +907,7 @@ class FocusRegion(_Model):
     top left, so ``x`` and ``w`` are shares of the page's width and ``y`` and
     ``h`` of its height: the frame an Anmerkung's region uses
     (``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows
-    the model exactly that crop (``view_knowledge_image(region=...)``).
+    the model exactly that crop (``look(region=[x, y, w, h])``).
     """
 
     page: int = Field(ge=1, description="The page, from 1.")

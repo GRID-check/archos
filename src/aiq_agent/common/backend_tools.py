@@ -30,7 +30,7 @@ BACKEND_READ_TOOLS: Final[tuple[str, ...]] = (
     "knowledge_search",
     "read_passage",
     "list_files",
-    "view_knowledge_image",
+    "look",
     "ifc_query",
     "ifc_measure",
     "ris_lookup_tool",

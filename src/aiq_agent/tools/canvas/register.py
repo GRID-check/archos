@@ -1,11 +1,14 @@
 """``canvas``: Piloti's hands on a document, as a NAT function group.
 
-Nine tools, the way a person works a document on the review canvas: ``look``
-at a page or a box on it, see who is in the ``room`` and where, ``point`` and
-``highlight`` to show what is meant, read the ``marks``, set a ``mark`` (a
-proposal a person takes over, or open when the person asked for exactly that
-mark), ``update`` or ``delete`` one when the person asks, and ``reply`` in a
-mark's thread. The model calls them as ``canvas__look`` and so on; one group,
+Eight tools, the way a person works a document on the review canvas: see who
+is in the ``room`` and where, ``point`` and ``highlight`` to show what is meant,
+read the ``marks``, set a ``mark`` (a proposal a person takes over, or open when
+the person asked for exactly that mark), ``update`` or ``delete`` one when the
+person asks, and ``reply`` in a mark's thread. Looking at a page or a box on it
+is ``look``, a tool of its own bound in every context (``tools/look``,
+ADR-0128); it shares this group's target resolution and makes the box glow
+through ``presence.show_reading``. The model calls these as ``canvas__room`` and
+so on; one group,
 because they share the client,
 the target resolution and the restricted-folder rule, and because NAT can serve
 a function group over MCP as it stands, so a second client never means a second
@@ -30,7 +33,9 @@ it does not, the turn's answer goes into the thread once the turn has ended
 ``policy.shared_write_refusal`` first. ``point`` and ``highlight`` are
 ephemeral; the turn harness takes them down when the answer is out
 (``presence.py``). ``mark``, ``update``, ``delete`` and ``reply`` put what the
-BFF confirmed on the turn's ``canvas_activity`` card (``cards.py``).
+BFF confirmed on the turn's ``canvas_activity`` card (``cards.py``); ``point``
+and ``highlight`` add a ``reference`` item to the document's ``look`` card
+(``tools/look/cards.py``), so a chat reader sees what the answer points at.
 
 ## Parity, with light reporting
 
@@ -49,11 +54,8 @@ that the person makes the change themselves (``calls.refusal_for``).
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
-
-from pydantic import Field
 
 from aiq_agent.turn.annotation_reply import note_thread_post
 from nat.plugin_api import Builder
@@ -61,13 +63,13 @@ from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig
 from nat.plugin_api import register_function_group
 
+from ..look.cards import note_reference
 from .calls import Refused
 from .calls import call
 from .calls import document_of
 from .calls import envelope
 from .calls import observe
 from .cards import record_canvas_activity
-from .look import look_at
 from .marks import MAX_PROPOSALS_PER_CALL
 from .marks import AnnotationProposal
 from .marks import annotation_entry
@@ -90,7 +92,6 @@ from .marks import reply_body
 from .marks import update_payload
 from .policy import shared_write_refusal
 from .presence import note_presence
-from .presence import show_reading
 from .room import highlight_payload
 from .room import point_payload
 from .room import render_room
@@ -112,12 +113,6 @@ _DOCUMENT = (
 _FRAME = "Orte als Anteil der Seite, wie sie gezeigt wird: 0 bis 1, Ursprung oben links, keine Pixel."
 
 DESCRIPTIONS = {
-    "look": (
-        "Zeigt dir eine Seite eines Dokuments als Bild, mit `region=[x, y, w, h]` nur diesen Ausschnitt, schärfer. "
-        "Sieh hin, bevor du etwas über eine Zeichnung sagst, eine Stelle zeigst oder eine Anmerkung setzt: Wo "
-        "etwas liegt („beim Treppenhaus“), liest du am Bild ab, nie aus dem Text. "
-        f"{_FRAME} {_DOCUMENT}"
-    ),
     "room": (
         "Wer das Dokument gerade offen hat: Seite und Ausschnitt jeder Person, welche Anmerkung sie ausgewählt "
         "hat, welchen Rahmen sie gerade aufzieht, und wie viele Anmerkungen offen sind. Nimm es, wenn „hier“, "
@@ -178,10 +173,7 @@ DESCRIPTIONS = {
 
 
 class DocumentCanvasConfig(FunctionGroupBaseConfig, name="document_canvas"):
-    """Configuration for the ``canvas`` function group."""
-
-    max_dim: int = Field(default=2048, description="Long edge (px) of what `look` renders.")
-    timeout: float = Field(default=30.0, description="Render timeout of `look`, in seconds.")
+    """Configuration for the ``canvas`` function group. The render limits moved to ``look``'s own config."""
 
 
 async def _target(document: str) -> tuple[Target, Any]:
@@ -208,24 +200,6 @@ async def _refusing(step: str, run: Any) -> Any:
         return refused.message
 
 
-async def run_look(
-    page: int = 1, region: list[float] | None = None, document: str = "", *, limits: Any = None
-) -> list[dict] | str:
-    """Look at a page of the document, or at the box ``region`` on it."""
-
-    async def body() -> list[dict] | str:
-        target, signed = await _target(document)
-        # Telling the room and reading are independent: the glow costs the look no round trip.
-        _, result = await asyncio.gather(
-            show_reading(target.body(), target.document_id, signed, page, region),
-            look_at(target, signed, page=page, region=region, limits=limits),
-        )
-        observe("look", {"page": page, "region": region is not None}, {"viewed": isinstance(result, list)})
-        return result
-
-    return await _refusing("look", body)
-
-
 async def run_room(document: str = "") -> str:
     """Who has the document open, and where."""
 
@@ -246,8 +220,14 @@ async def run_point(page: int, x: float, y: float, label: str = "", document: st
         if "label" in payload:
             _shared_write_allowed("point")
         target, signed = await _target(document)
-        await call(payload, target, signed)
+        result = await call(payload, target, signed)
         note_presence(target.document_id)
+        note_reference(
+            document_of(result, target),
+            payload["page"],
+            point=[payload["x"], payload["y"]],
+            label=payload.get("label", ""),
+        )
         observe("point", {"page": payload["page"], "label": "label" in payload}, {"ok": True})
         return (
             f"Dein Zeiger steht auf S. {payload['page']}, für alle im Dokument sichtbar, bis deine Antwort fertig ist."
@@ -263,8 +243,10 @@ async def run_highlight(page: int, x: float, y: float, w: float, h: float, label
         payload = highlight_payload(page, x, y, w, h, label)
         _shared_write_allowed("highlight")
         target, signed = await _target(document)
-        await call(payload, target, signed)
+        result = await call(payload, target, signed)
         note_presence(target.document_id)
+        box = [payload["x"], payload["y"], payload["w"], payload["h"]]
+        note_reference(document_of(result, target), payload["page"], region=box, label=payload["label"])
         observe("highlight", {"page": payload["page"]}, {"ok": True})
         return (
             f"Der Rahmen „{payload['label']}“ auf S. {payload['page']} ist für alle im Dokument sichtbar, bis deine "
@@ -383,16 +365,8 @@ async def run_reply(annotation: str, body: str, document: str = "") -> str:
 @register_function_group(config_type=DocumentCanvasConfig)
 async def document_canvas(config: DocumentCanvasConfig, _builder: Builder):
     """The canvas tools, as one group."""
-    from knowledge_layer.view_image import ViewLimits
-
-    limits = ViewLimits(max_dim=config.max_dim, timeout=config.timeout)
-
-    async def look(page: int = 1, region: list[float] | None = None, document: str = "") -> list[dict] | str:
-        return await run_look(page, region, document, limits=limits)
-
     group = FunctionGroup(config=config)
     for name, fn in (
-        ("look", look),
         ("room", run_room),
         ("point", run_point),
         ("highlight", run_highlight),

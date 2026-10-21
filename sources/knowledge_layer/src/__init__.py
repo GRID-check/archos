@@ -20,8 +20,6 @@ try:
     from .read_passage import read_passage
     from .register import KnowledgeRetrievalConfig
     from .register import knowledge_retrieval
-    from .view_image import ViewKnowledgeImageToolConfig
-    from .view_image import view_knowledge_image
 
     __all__ = [
         "ListFilesConfig",
@@ -30,8 +28,6 @@ try:
         "knowledge_retrieval",
         "ReadPassageConfig",
         "read_passage",
-        "ViewKnowledgeImageToolConfig",
-        "view_knowledge_image",
     ]
 except ImportError:
     # NAT not installed - skip function registration

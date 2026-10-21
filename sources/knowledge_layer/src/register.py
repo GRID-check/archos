@@ -93,6 +93,12 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "and a line break, space or hyphen between words are matched for you "
     "('OIB Richtlinie' finds 'OIB-Richtlinie'). A term of two or three "
     "characters ('EG') matches as a whole word only. The reader's own files come first.\n"
+    '`match="regex"` is the same search with a regex in Python syntax, case-insensitive, for a '
+    "pattern (a Geschäftszahl `MA ?37/\\d{6}`, any `Tür T\\d+`); `|` is then regex alternation. "
+    "It needs one literal word it must contain, or a `folder=`, `file_name=` or `doc_class=` to read "
+    "in; a pattern that backtracks is refused. `context=` (0 to 3, exact and regex only) adds the "
+    "lines around every hit as an index under the passages. A search that stops at its limit says "
+    "so: its counts are lower bounds, with the passages per file that hold the words beside them.\n"
     "WHEN NOT TO CALL — to put a file on screen (the user asked to SEE or "
     "BROWSE files, no legal question): that is `surface_documents`. After "
     "you cite a project or Büroablage file, do not also call "
@@ -101,7 +107,8 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "already know WHICH document you need, that is `read_passage` — with the "
     "Punkt or page when you have one, with the document alone when you do not "
     "(it then returns that document's scope and its outline). A lookup, not a "
-    "second search.\n"
+    "second search. Which files there are, how many, or which Fassung is "
+    "current: that is `list_files`.\n"
     "HOW TO QUERY — rewrite the user question into a search query (topic + "
     "jurisdiction + implied year). Prefer one precise call over a broad dump. "
     "If a conclusion names a document and a Punkt or page you have not opened, "
@@ -130,6 +137,35 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "An empty result tells you how to retry (narrower query, `file_name`, "
     "`title_contains`); it is not permission to invent a citation."
 )
+
+#: The paragraphs of :data:`_KNOWLEDGE_SEARCH_DESCRIPTION` that offer a literal mode, each dropped when
+#: its mode is not configured.
+_EXACT_PARAGRAPH = _KNOWLEDGE_SEARCH_DESCRIPTION[
+    _KNOWLEDGE_SEARCH_DESCRIPTION.index('`match="exact"`') : _KNOWLEDGE_SEARCH_DESCRIPTION.index('`match="regex"`')
+]
+_REGEX_PARAGRAPH = _KNOWLEDGE_SEARCH_DESCRIPTION[
+    _KNOWLEDGE_SEARCH_DESCRIPTION.index('`match="regex"`') : _KNOWLEDGE_SEARCH_DESCRIPTION.index("WHEN NOT TO CALL")
+]
+
+
+def knowledge_search_description(match_modes: Sequence[str]) -> str:
+    """The description, offering only the ``match`` modes this configuration accepts.
+
+    ``match_modes`` is an eval knob (``KnowledgeRetrievalConfig.match_modes``). A description that
+    offered a mode the search then refuses would cost each arm a call to learn so, and bias the
+    comparison the knob exists for.
+    """
+    modes = set(match_modes)
+    text = _KNOWLEDGE_SEARCH_DESCRIPTION
+    if "exact" not in modes:
+        text = text.replace(_EXACT_PARAGRAPH, "")
+    if "regex" not in modes:
+        text = text.replace(_REGEX_PARAGRAPH, "")
+    if "meaning" not in modes:
+        offered = " or ".join(f'`match="{mode}"`' for mode in ("exact", "regex") if mode in modes)
+        text = f"In this configuration the search is literal only: pass {offered} on every call.\n{text}"
+    return text
+
 
 # The knowledge layer has one backend (ADR-0072). The name still keys the
 # adapter registry, where tests register fakes beside it.
@@ -1977,6 +2013,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         file_name: str | None = None,
         folder: str | None = None,
         match: str = "meaning",
+        context: int | str | None = None,
         conclusion: str = "",
     ) -> str:
         """Read and cite passages from the ingested knowledge base.
@@ -2014,7 +2051,13 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 hyphens between words matched; a term of up to three
                 characters as a whole word; several spellings separated by
                 "|"), with a per-file count of all matches — for a name, a
-                number, a code or a wording.
+                number, a code or a wording. "regex" is the same search for a
+                pattern in Python syntax (case-insensitive; "|" is regex
+                alternation): it needs one literal word it must contain, or
+                `folder`, `file_name` or `doc_class` to read in.
+            context (int | None): Exact and regex only: 0 to 3 lines shown
+                around every hit, as an index under the passages (0: the hit
+                lines alone, for every hit and not only the eight passages).
 
         Returns:
             str: Numbered excerpts with a Citation key to copy verbatim.
@@ -2090,9 +2133,14 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         if mode in {"meaning", "exact", "regex"} and mode not in config.match_modes:
             return f"`match={mode}` is not available in this configuration."
 
-        # The literal mode: same scope, same narrowing, no ranking at all.
-        if (match or "meaning").strip().lower() == "exact":
+        # The literal modes: same scope, same narrowing, no ranking at all.
+        if mode in {"exact", "regex"}:
+            from aiq_agent.common.turn_status import emit_literal_search
+
             from .browse import exact_search
+
+            # A literal search is a navigate move (ADR-0127); the tool step cannot say so, this record does.
+            emit_literal_search(mode)
 
             return await exact_search(
                 target_collections,
@@ -2104,9 +2152,19 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 doc_class=doc_class,
                 title_contains=title_contains,
                 filters=filters,
+                regex_mode=mode == "regex",
+                context=context,
             )
-        if (match or "meaning").strip().lower() != "meaning":
-            return '`match` must be "meaning" (ranked by what a passage says) or "exact" (every literal occurrence).'
+        if mode != "meaning":
+            return (
+                '`match` must be "meaning" (ranked by what a passage says), "exact" (every literal occurrence) '
+                'or "regex" (every match of a pattern).'
+            )
+        if context not in (None, ""):
+            return (
+                '`context` shows lines around a hit, and only `match="exact"` or `match="regex"` '
+                "has hits to show them around."
+            )
 
         # `folder=` narrows BEFORE ranking, as the exact mode does: the folder
         # becomes the files filed in it (or under it), and only those are
@@ -2736,7 +2794,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         yield FunctionInfo.from_fn(
             search,
             description=(
-                f"{_KNOWLEDGE_SEARCH_DESCRIPTION} "
+                f"{knowledge_search_description(config.match_modes)} "
                 f"Returns up to {top_k} excerpts (platform-configurable), {diversity_clause}"
             ),
         )

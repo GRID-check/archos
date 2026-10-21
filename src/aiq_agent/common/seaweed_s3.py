@@ -2,7 +2,7 @@
 
 The backend holds a READ-only object-store credential (ADR-0039): it only ever
 calls ``get_object``. Writes go through the BFF's presigned URLs. Two readers
-need that client, ``view_knowledge_image`` (project and Archiv files) and the
+need that client, ``look``'s renderer (project and Archiv files) and the
 base-corpus store (``aiq_agent.corpus_store``, ADR-0082), and they must build it
 the same way, so the endpoint, path-style addressing and credential names are
 settled here and nowhere else.

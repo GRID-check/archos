@@ -49,7 +49,7 @@ def test_every_tool_an_agent_lists_is_declared(config: dict, functions: dict, ag
 
 
 def test_the_chat_works_the_review_canvas_as_one_function_group(config: dict):
-    """The canvas tools reach the model as `canvas__look` …: the group is declared AND listed."""
+    """The canvas tools reach the model as `canvas__mark` …: the group is declared AND listed."""
     assert config["function_groups"]["canvas"]["_type"] == "document_canvas"
     assert "canvas" in _tools(config, "shallow_research_agent")
 
@@ -63,13 +63,18 @@ def test_the_agent_can_see_a_plan_and_not_only_its_caption(config: dict, agent: 
     index. What was missing was any way for the model to LOOK at one. This is
     an OIB product; a plan is the evidence.
     """
-    assert "view_knowledge_image" in _tools(config, agent)
+    assert "look" in _tools(config, agent)
 
 
-def test_the_image_tool_is_declared_with_its_own_type(functions: dict):
-    entry = functions.get("view_knowledge_image")
-    assert entry is not None, "view_knowledge_image must be declared under `functions:`"
-    assert entry["_type"] == "view_knowledge_image"
+def test_the_look_tool_is_declared_with_its_own_type(functions: dict):
+    entry = functions.get("look")
+    assert entry is not None, "look must be declared under `functions:`"
+    assert entry["_type"] == "look"
+
+
+def test_the_intake_agent_does_not_look(functions: dict):
+    """ADR-0128, plan risk R6: the intake run binds no look budget, so it binds no `look`."""
+    assert "look" not in functions["project_intake_agent"]["tools"]
 
 
 def test_both_agents_reach_the_same_knowledge_and_ris_tools(config: dict):
@@ -86,7 +91,7 @@ def test_both_agents_reach_the_same_knowledge_and_ris_tools(config: dict):
     """
     shallow = set(_tools(config, "shallow_research_agent"))
     deep = set(_tools(config, "deep_research_agent"))
-    shared = {"knowledge_search", "view_knowledge_image"}
+    shared = {"knowledge_search", "look"}
     assert shared <= shallow
     assert shared <= deep
     assert "ris_lookup_tool" in shallow

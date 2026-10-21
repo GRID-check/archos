@@ -7,37 +7,23 @@ A second write on the same document extends the card instead of adding one,
 because „markier die drei Mängel und antworte Anna“ is one piece of work on
 one document; a full card (``MAX_CANVAS_ACTIVITY_ITEMS``) or another document
 opens a new one. The extension is written back in place, validated, keeping the
-card's position in the array: position is a card's identity (``cardKey``), as
-``tools/files/cards.py`` explains.
+card's position in the array (``cards/registry.extend_or_add``): position is a
+card's identity (``cardKey``), as ``tools/files/cards.py`` explains.
 """
 
 from __future__ import annotations
 
-import logging
 from typing import Any
-
-from pydantic import ValidationError
 
 from aiq_agent.cards.models import MAX_CANVAS_ACTIVITY_ITEMS
 from aiq_agent.cards.models import grid_card_adapter
+from aiq_agent.cards.registry import extend_or_add
 from aiq_agent.cards.registry import get_card_registry
-
-logger = logging.getLogger(__name__)
 
 CARD_TYPE = "canvas_activity"
 
 #: How much of a reply the card quotes.
 EXCERPT_CHARS = 300
-
-
-def _open_card(registry: Any, document_id: str) -> dict[str, Any] | None:
-    """This turn's card for ``document_id``, when it can take another entry."""
-    for card in registry.snapshot():
-        if card.get("type") != CARD_TYPE or (card.get("document") or {}).get("id") != document_id:
-            continue
-        if len(card.get("items") or []) < MAX_CANVAS_ACTIVITY_ITEMS:
-            return card
-    return None
 
 
 def excerpt(text: str) -> str:
@@ -62,20 +48,12 @@ def record_canvas_activity(document: dict[str, str], items: list[dict[str, Any]]
 
 
 def _add(registry: Any, document: dict[str, str], item: dict[str, Any]) -> int:
-    existing = _open_card(registry, document.get("id", ""))
-    card = {
-        "type": CARD_TYPE,
-        "document": document,
-        "items": [*((existing or {}).get("items") or []), item],
-    }
-    try:
-        validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
-    except ValidationError:
-        logger.exception("A canvas_activity entry did not validate (action=%s)", item.get("action"))
-        return 0
-    if existing is not None:
-        existing.clear()
-        existing.update(validated)
-    else:
-        registry.add(validated)
-    return 1
+    def owns(card: dict[str, Any]) -> bool:
+        return card.get("type") == CARD_TYPE and (card.get("document") or {}).get("id") == document.get("id", "")
+
+    def build(items: list[dict[str, Any]]) -> dict[str, Any]:
+        card = {"type": CARD_TYPE, "document": document, "items": items}
+        return grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
+
+    position = extend_or_add(registry, item, owns=owns, build=build, max_items=MAX_CANVAS_ACTIVITY_ITEMS)
+    return 0 if position is None else 1

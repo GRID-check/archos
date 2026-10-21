@@ -817,7 +817,7 @@ export interface GridConfig {
     filerDatabasePassword: pulumi.Output<string>;
     /**
      * Dedicated READ-ONLY, bucket-scoped S3 identity for the aiq-agent tier
-     * (ADR-0039 `view_knowledge_image`): its SeaweedFS s3.json entry grants
+     * (ADR-0039 `look`): its SeaweedFS s3.json entry grants
      * `Read` on the documents bucket only — no Write/Admin — and the backend
      * never receives the root `grid` access key. The secret key MUST be
      * distinct from `seaweedfsSecretKey`: shared key material would let the

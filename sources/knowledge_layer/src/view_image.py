@@ -1,10 +1,12 @@
-"""NAT function for viewing knowledge images.
+"""The renderer behind ``look``: a page, a region of it, or an image, as content blocks.
 
 Agents retrieve caption-only chunks for image/drawing pages: the caption
-describes the image but the model never sees it. This tool returns the source
-visual as a multimodal content block (``image_url`` with a data URL), so
-vision-capable models can inspect plans, sections, elevations and charts
-directly at answer time.
+describes the image but the model never sees it. :func:`view_image` returns the
+source visual as a multimodal content block (``image_url`` with a data URL), so
+vision-capable models can inspect drawings, sections, elevations and charts
+directly at answer time. The tool the model calls is ``look``
+(``aiq_agent.tools.look``, ADR-0128), which resolves WHICH file and collection
+and hands them here; this module is no NAT function of its own any more.
 
 Three source shapes are covered, without re-ingest:
 
@@ -29,16 +31,18 @@ builds the derived key from the document's own row, so this tool never names
 an object key itself. Fail-open: every failure returns a text-only block
 explaining what went wrong — the tool never raises.
 
-The collection is the model's argument, so it is checked before anything is
-looked up (ADR-0088): it must be in the turn's scope, and a restricted folder's
-collection must also be one the turn may draw on. The lookup echoes the turn's
+The collection reaches here from ``look``'s resolution, never typed by the
+model, and it is still checked before anything is looked up (ADR-0088): it must
+be in the turn's scope, and a restricted folder's collection must also be one
+the turn may draw on. The lookup echoes the turn's
 signed envelope, and the BFF answers only inside the scope it signs. An image
 returned from a collection is reported (``note_collections_read``), so the tools
 node admits a restricted folder's image before the model sees it.
 
 Bounded per turn: :mod:`aiq_agent.common.image_view_budget` caps how many
-times one turn may call this tool; past the cap the tool answers with a short
-text block instead of an image.
+looks one turn may take, and how many of them may be whole pages; past either
+cap the tool answers with a short text block instead of an image, and every
+image it does return says how many looks are left.
 """
 
 import asyncio
@@ -48,21 +52,20 @@ import logging
 import math
 import os
 from dataclasses import dataclass
+from dataclasses import replace
 
 from knowledge_layer.llamaindex.pdfium_lock import detached_pil
 from knowledge_layer.llamaindex.pdfium_lock import pdfium_lock
-from pydantic import Field
 
 from aiq_agent.common import seaweed_s3
 from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
+from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
+from aiq_agent.common.image_view_budget import get_image_view_budget
 from aiq_agent.common.image_view_budget import note_region_viewed
+from aiq_agent.common.image_view_budget import remaining_views_text
 from aiq_agent.common.image_view_budget import try_consume_image_view
 from aiq_agent.common.source_kinds import office_shelf_organization_id
 from aiq_agent.knowledge.restricted_use import note_collections_read
-from nat.plugin_api import Builder
-from nat.plugin_api import FunctionBaseConfig
-from nat.plugin_api import FunctionInfo
-from nat.plugin_api import register_function
 
 logger = logging.getLogger(__name__)
 
@@ -92,22 +95,13 @@ _FRONTEND_INTERNAL_URL_ENV = "FRONTEND_INTERNAL_URL"
 _INTERNAL_TOKEN_ENV = "GRID_INTERNAL_API_TOKEN"
 
 
-def _default_max_dim() -> int:
+def default_max_dim() -> int:
+    """The long edge a page is rendered at: ``AIQ_PAGE_RENDER_MAX_DIM``, or 2048."""
     try:
         value = int(os.environ.get(_MAX_DIM_ENV, str(_DEFAULT_MAX_DIM)).strip())
     except ValueError:
         return _DEFAULT_MAX_DIM
     return value if value > 0 else _DEFAULT_MAX_DIM
-
-
-class ViewKnowledgeImageToolConfig(FunctionBaseConfig, name="view_knowledge_image"):
-    """Configuration for the knowledge image viewing tool."""
-
-    max_dim: int = Field(
-        default_factory=_default_max_dim,
-        description="Long edge (px) of the rendered page; higher is sharper, larger payloads.",
-    )
-    timeout: float = Field(default=30.0, description="Render timeout in seconds.")
 
 
 def _is_enabled() -> bool:
@@ -128,7 +122,7 @@ def _find_pdf(file_name: str) -> str | None:
 
         cached = corpus_store.ensure_local(file_name)
     except Exception:  # noqa: BLE001 - fail-open contract
-        logger.warning("view_knowledge_image: base-corpus lookup failed for %s", file_name, exc_info=True)
+        logger.warning("look: base-corpus lookup failed for %s", file_name, exc_info=True)
         return None
     return str(cached) if cached is not None else None
 
@@ -397,9 +391,7 @@ async def _resolve_storage_location(
             storage_bucket = None
         return storage_key, storage_bucket
     except Exception:  # noqa: BLE001 - fail-open contract
-        logger.warning(
-            "view_knowledge_image: storage-key lookup failed for %s/%s", collection, file_name, exc_info=True
-        )
+        logger.warning("look: storage-key lookup failed for %s/%s", collection, file_name, exc_info=True)
         return None
 
 
@@ -417,7 +409,7 @@ def _envelope_headers() -> dict[str, str]:
 
         header, signature = get_request_envelope_from_context()
     except Exception:  # noqa: BLE001 - no envelope is a legitimate state off a chat turn
-        logger.debug("view_knowledge_image: no request envelope to echo", exc_info=True)
+        logger.debug("look: no request envelope to echo", exc_info=True)
         return {}
     if not header or not signature:
         return {}
@@ -441,7 +433,7 @@ def _may_read(collection: str) -> bool:
     try:
         scope = get_collection_scope_from_context()
     except Exception:  # noqa: BLE001 - an unreadable scope reads nothing
-        logger.warning("view_knowledge_image: the turn's scope could not be read", exc_info=True)
+        logger.warning("look: the turn's scope could not be read", exc_info=True)
         return False
     if is_restricted_collection(collection):
         use = current_restricted_use()
@@ -452,8 +444,8 @@ def _may_read(collection: str) -> bool:
 def _out_of_scope(file_name: str) -> str:
     """The refusal for a collection this turn may not read. Names neither the collection nor whether the file exists."""
     return (
-        f"[view_knowledge_image] Cannot show '{file_name}': that collection is not one this turn may read. "
-        "Pass the `Collection:` exactly as a hit of this turn printed it."
+        f"[look] Cannot show '{file_name}': it is not in a collection this turn may read. "
+        "Name a document from the inventory or a hit of this turn."
     )
 
 
@@ -476,7 +468,7 @@ def _fetch_seaweed_bytes(storage_key: str, storage_bucket: str | None = None) ->
         response = client.get_object(Bucket=bucket, Key=storage_key)
         return response["Body"].read()
     except Exception:  # noqa: BLE001 - fail-open contract
-        logger.warning("view_knowledge_image: SeaweedFS fetch failed for %s/%s", bucket, storage_key, exc_info=True)
+        logger.warning("look: SeaweedFS fetch failed for %s/%s", bucket, storage_key, exc_info=True)
         return None
 
 
@@ -488,18 +480,38 @@ def _is_standalone_image(file_name: str) -> bool:
 
 @dataclass(frozen=True)
 class ViewLimits:
-    """How large and how long one view may be: the tool's config, shared with the canvas's ``look``."""
+    """How large and how long one view may be: ``look``'s config."""
 
     max_dim: int = _DEFAULT_MAX_DIM
     timeout: float = 30.0
 
 
-def _blocks(text: str, jpeg_bytes: bytes) -> list[dict]:
-    image_b64 = base64.b64encode(jpeg_bytes).decode("ascii")
-    return [
-        {"type": "text", "text": text},
-        {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
-    ]
+@dataclass(frozen=True)
+class View:
+    """One rendered look: the words that go with it and the JPEG itself.
+
+    ``region`` is the box that was asked for (shares of the page, origin top
+    left), ``None`` for a whole page or image. ``look`` (``tools/look``) shows
+    the model :meth:`blocks`, or, for a model that takes no images, only what a
+    second reader made of ``jpeg`` (``tools/look/reading.py``).
+    """
+
+    text: str
+    jpeg: bytes
+    width: int
+    height: int
+    region: Region | None = None
+
+    def with_text(self, text: str) -> "View":
+        return replace(self, text=text)
+
+    def blocks(self) -> list[dict]:
+        """The text block, then the image block (a data URL), as a vision model takes them."""
+        image_b64 = base64.b64encode(self.jpeg).decode("ascii")
+        return [
+            {"type": "text", "text": self.text},
+            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}},
+        ]
 
 
 def _region_text(what: str, region: Region, width: int, height: int, widened: bool) -> str:
@@ -513,17 +525,22 @@ def _region_text(what: str, region: Region, width: int, height: int, widened: bo
     )
 
 
-async def _vision_refusal(tool: str) -> str | None:
-    """A sentence for a turn whose chat model takes no images (``common/model_vision.py``); None otherwise."""
+async def turn_sees() -> bool | None:
+    """Whether the turn's chat model takes images (``common/model_vision.py``); ``None`` when that is unknown.
+
+    Unknown is not "no": the image is then sent, as before the check existed.
+    """
     try:
         from aiq_agent.common.model_vision import turn_model_accepts_images
 
-        accepts = await asyncio.to_thread(turn_model_accepts_images)
+        return await asyncio.to_thread(turn_model_accepts_images)
     except Exception:  # noqa: BLE001 - unknown means the image is sent, as before the check
-        logger.debug("%s: the model's image input could not be determined", tool, exc_info=True)
+        logger.debug("look: the model's image input could not be determined", exc_info=True)
         return None
-    if accepts is not False:
-        return None
+
+
+def _blind_sentence(tool: str) -> str:
+    """What a text-only model is told when nothing can show it the page and no reading was asked for."""
     return (
         f"[{tool}] The model this office answers with takes no images, so the page cannot be shown to it. "
         "Say plainly that you cannot see the page or the box, answer only from text you have, and do not guess "
@@ -539,13 +556,13 @@ async def _fetch(location: tuple[str, str | None], timeout: float, what: str) ->
     try:
         return await _off_loop(timeout, _fetch_seaweed_bytes, *location)
     except Exception as e:  # noqa: BLE001 - fail-open contract
-        logger.warning("view_knowledge_image: fetch failed for %s: %s", what, e)
+        logger.warning("look: fetch failed for %s: %s", what, e)
         return None
 
 
 async def _raster_view(
     image_bytes: bytes, region: Region | None, limits: ViewLimits, describe: str, what: str, tool: str
-) -> list[dict] | str:
+) -> View | str:
     """A stored or uploaded image, whole or cropped to ``region``, as content blocks."""
     try:
         if region is None:
@@ -557,12 +574,12 @@ async def _raster_view(
                 limits.timeout, _crop_image_region, image_bytes, region, limits.max_dim
             )
     except Exception as e:  # noqa: BLE001 - fail-open contract
-        logger.warning("view_knowledge_image: image decode failed for %s: %s", what, e)
+        logger.warning("look: image decode failed for %s: %s", what, e)
         return f"[{tool}] Could not decode {what}: {e}"
     if region is None:
-        return _blocks(describe.format(size=f"{width}x{height}px"), jpeg_bytes)
+        return View(describe.format(size=f"{width}x{height}px"), jpeg_bytes, width, height)
     note_region_viewed()
-    return _blocks(_region_text(what, region, width, height, widened), jpeg_bytes)
+    return View(_region_text(what, region, width, height, widened), jpeg_bytes, width, height, region)
 
 
 async def _pdf_view(
@@ -573,7 +590,7 @@ async def _pdf_view(
     file_name: str,
     origin: str,
     tool: str,
-) -> list[dict] | str:
+) -> View | str:
     """One page of a PDF on disk (a path) or in memory (bytes), whole or cropped to ``region``."""
     whole = _render_page if isinstance(source, str) else _render_page_from_bytes
     try:
@@ -584,18 +601,24 @@ async def _pdf_view(
                 limits.timeout, _render_pdf_region, source, page_number, region, limits.max_dim
             )
     except Exception as e:  # noqa: BLE001 - fail-open contract
-        logger.warning("view_knowledge_image: render failed for %s page %d: %s", file_name, page_number, e)
+        logger.warning("look: render failed for %s page %d: %s", file_name, page_number, e)
         return f"[{tool}] Could not render page {page_number} of '{file_name}': {e}"
     if region is not None:
         note_region_viewed()
-        return _blocks(
-            _region_text(f"page {page_number} of '{file_name}'{origin}", region, width, height, widened), jpeg_bytes
+        return View(
+            _region_text(f"page {page_number} of '{file_name}'{origin}", region, width, height, widened),
+            jpeg_bytes,
+            width,
+            height,
+            region,
         )
-    return _blocks(
+    return View(
         f"Rendered page {page_number} of '{file_name}'{origin} ({width}x{height}px). "
         "This is the actual page the retrieved chunk describes — inspect it "
         "for plans, drawings, scale, dimensions and relationships.",
         jpeg_bytes,
+        width,
+        height,
     )
 
 
@@ -607,13 +630,13 @@ async def _stored_raster(
     region: Region | None,
     limits: ViewLimits,
     tool: str,
-) -> list[dict] | str:
+) -> View | str:
     if image_index < 0:
         return f"[{tool}] Invalid image_index {image_index}: indices are 0-based."
     if not collection:
         return (
             f"[{tool}] image_index addresses a raster stored beside a project or Büroablage "
-            "document; pass the hit's collection so it can be located."
+            f"document, and '{file_name}' was found in none of this turn's collections."
         )
     location = await _resolve_storage_location(collection, file_name, image_index=image_index)
     if location is None:
@@ -643,11 +666,11 @@ async def _stored_raster(
 
 async def _uploaded_image(
     file_name: str, collection: str, region: Region | None, limits: ViewLimits, tool: str
-) -> list[dict] | str:
+) -> View | str:
     if not collection:
         return (
-            f"[{tool}] '{file_name}' is an uploaded image; pass the "
-            "collection it belongs to so the stored bytes can be located."
+            f"[{tool}] '{file_name}' is an uploaded image, and it was found in none of this "
+            "turn's collections. Name it exactly as the inventory or a hit lists it."
         )
     location = await _resolve_storage_location(collection, file_name)
     if location is None:
@@ -672,12 +695,12 @@ async def _uploaded_image(
 
 async def _stored_pdf(
     file_name: str, page_number: int, collection: str, region: Region | None, limits: ViewLimits, tool: str
-) -> list[dict] | str:
+) -> View | str:
     if not collection:
         return (
-            f"[{tool}] Could not find the source PDF for '{file_name}'. "
-            "Rendering is possible for base-corpus documents without a collection; "
-            "pass the collection for a project or Büroablage document."
+            f"[{tool}] Could not find the source PDF for '{file_name}': it is neither a "
+            "base-corpus document nor in one of this turn's collections. Name it exactly as "
+            "the inventory or a hit lists it."
         )
     location = await _resolve_storage_location(collection, file_name)
     if location is None:
@@ -694,12 +717,28 @@ async def _stored_pdf(
     result = await _pdf_view(
         pdf_bytes, page_number, region, limits, file_name, f" from collection '{collection}'", tool
     )
-    if isinstance(result, list):
+    if isinstance(result, View):
         note_collections_read([collection])
     return result
 
 
-async def _gate(collection: str, file_name: str, region: object, tool: str) -> tuple[Region | None, str | None]:
+def _spent(tool: str) -> str:
+    """Why the turn's budget refused a look: every look is spent, or only the whole pages are."""
+    budget = get_image_view_budget()
+    if budget is not None and budget.remaining > 0:
+        return (
+            f"[{tool}] Whole-page cap reached: at most {MAX_OVERVIEW_VIEWS_PER_TURN} whole pages per turn. "
+            f"Look at a region instead (region=[x, y, w, h]); {budget.remaining_text()}"
+        )
+    return (
+        f"[{tool}] Look cap reached: at most {MAX_IMAGE_VIEWS_PER_TURN} looks per turn. "
+        "Answer from the text and the images already seen."
+    )
+
+
+async def _gate(
+    collection: str, file_name: str, region: object, tool: str, *, overview: bool
+) -> tuple[Region | None, str | None]:
     """Every check that comes before any work, in the order that costs least: the region, then the turn's say."""
     if not _is_enabled():
         return None, f"[{tool}] Image viewing is disabled ({_VIEW_IMAGES_ENABLED_ENV} is off)."
@@ -711,16 +750,11 @@ async def _gate(collection: str, file_name: str, region: object, tool: str) -> t
     # and nothing outside the turn's scope is fetched, rendered or counted.
     if collection and not _may_read(collection):
         return None, _out_of_scope(file_name)
-    if (refusal := await _vision_refusal(tool)) is not None:
-        return None, refusal
     # The per-turn ceiling comes before any work: a spent budget costs no
     # lookup, no fetch and no render. Outside a turn nothing is bound and
     # the call proceeds.
-    if not try_consume_image_view():
-        return None, (
-            f"[{tool}] Image viewing cap reached: at most {MAX_IMAGE_VIEWS_PER_TURN} "
-            "images per turn. Answer from the captions and the images already seen."
-        )
+    if not try_consume_image_view("overview" if overview else "region"):
+        return None, _spent(tool)
     try:
         from knowledge_layer.llamaindex import adapter as _adapter
 
@@ -734,6 +768,39 @@ async def _gate(collection: str, file_name: str, region: object, tool: str) -> t
     return parsed, None
 
 
+async def render_view(
+    file_name: str,
+    page_number: int = 1,
+    collection: str = "",
+    image_index: int | None = None,
+    region: object = None,
+    *,
+    limits: ViewLimits | None = None,
+    tool: str = "look",
+) -> View | str:
+    """A page (or a region of it), an uploaded image or a stored raster, rendered. Never raises.
+
+    The whole of ``look`` once it knows the file and the collection, so every
+    look takes the same scope check, image budget, vision-key gate and
+    restricted-folder report. ``region`` is ``[x, y, w, h]`` in shares of the
+    page as shown, origin top left; ``tool`` names the caller in every refusal,
+    so the model reads the name of the tool it called. A page or image without
+    ``region`` and ``image_index`` is an overview, which the turn's budget
+    counts apart. A successful look ends its text with how many looks are left.
+    Whether the turn's model can be shown the image is not decided here
+    (:func:`turn_sees`): ``look`` decides what to hand a model that cannot see.
+    """
+    limits = limits or ViewLimits()
+    collection = (collection or "").strip()
+    overview = region is None and image_index is None
+    parsed, refusal = await _gate(collection, file_name, region, tool, overview=overview)
+    if refusal is not None:
+        return refusal
+    if page_number < 1:
+        return f"[{tool}] Invalid page number {page_number}: pages are 1-based."
+    return _with_remaining(await _view(file_name, page_number, collection, image_index, parsed, limits, tool))
+
+
 async def view_image(
     file_name: str,
     page_number: int = 1,
@@ -742,23 +809,37 @@ async def view_image(
     region: object = None,
     *,
     limits: ViewLimits | None = None,
-    tool: str = "view_knowledge_image",
+    tool: str = "look",
 ) -> list[dict] | str:
-    """A page (or a region of it), an uploaded image or a stored raster, as content blocks. Never raises.
+    """:func:`render_view` as content blocks, for a caller that only ever shows the image.
 
-    The whole tool, minus NAT: ``view_knowledge_image`` and the canvas's
-    ``look`` call it, so both keep the same scope check, image budget, vision
-    gate and restricted-folder report. ``region`` is ``[x, y, w, h]`` in shares
-    of the page as shown, origin top left; ``tool`` names the caller in every
-    refusal, so the model reads the name of the tool it called.
+    A turn whose chat model takes no images is answered with a sentence saying
+    so, before any look is spent.
     """
-    limits = limits or ViewLimits()
-    collection = (collection or "").strip()
-    parsed, refusal = await _gate(collection, file_name, region, tool)
-    if refusal is not None:
-        return refusal
-    if page_number < 1:
-        return f"[{tool}] Invalid page number {page_number}: pages are 1-based."
+    if await turn_sees() is False:
+        return _blind_sentence(tool)
+    result = await render_view(file_name, page_number, collection, image_index, region, limits=limits, tool=tool)
+    return result.blocks() if isinstance(result, View) else result
+
+
+def _with_remaining(result: View | str) -> View | str:
+    """The look's text, ending with how many looks the turn has left; unchanged outside a turn."""
+    left = remaining_views_text()
+    if not left or not isinstance(result, View):
+        return result
+    return result.with_text(f"{result.text} {left}")
+
+
+async def _view(
+    file_name: str,
+    page_number: int,
+    collection: str,
+    image_index: int | None,
+    parsed: Region | None,
+    limits: ViewLimits,
+    tool: str,
+) -> View | str:
+    """The source the arguments name, rendered: a stored raster, an uploaded image, or a PDF page."""
     # A stored embedded raster: the ingest pipeline kept the image the
     # caption chunk describes, so serve that instead of the page around it.
     if image_index is not None:
@@ -772,51 +853,3 @@ async def view_image(
     if pdf_path is not None:
         return await _pdf_view(pdf_path, page_number, parsed, limits, file_name, "", tool)
     return await _stored_pdf(file_name, page_number, collection, parsed, limits, tool)
-
-
-@register_function(config_type=ViewKnowledgeImageToolConfig)
-async def view_knowledge_image(config: ViewKnowledgeImageToolConfig, _builder: Builder):
-    """NAT function: let the agent SEE a retrieved knowledge image.
-
-    WHEN TO USE
-    -----------
-    A retrieved chunk's content type is IMAGE or DRAWING (a plan, section,
-    elevation, perspective or chart), or the citation suggests the answer
-    depends on what an image actually shows — the caption alone is not
-    enough. This tool returns the rendered page as an image the model can
-    inspect directly.
-
-    WHEN NOT TO USE
-    ---------------
-    Plain text content (TEXT/TABLE chunks carry the text already); you do not
-    need to see the image — a caption suffices. Costs one page render plus a
-    vision-model input per call, so use it only when seeing matters.
-    """
-    limits = ViewLimits(max_dim=config.max_dim, timeout=config.timeout)
-
-    async def lookup(
-        file_name: str,
-        page_number: int = 1,
-        collection: str = "",
-        image_index: int | None = None,
-        region: list[float] | None = None,
-    ) -> list[dict] | str:
-        return await view_image(file_name, page_number, collection, image_index, region, limits=limits)
-
-    yield FunctionInfo.from_fn(
-        lookup,
-        description=(
-            "View a knowledge image or PDF page as an image you can inspect. Use when a retrieved "
-            "chunk has Content Type image, drawing or chart, or the question is about what a plan, "
-            "section, photo or diagram shows. file_name is the name in the hit's `Citation:` line "
-            "(not the display title); page_number is its `Page:`. For a base-corpus document pass "
-            "just those two; for a project or Büroablage document (an uploaded PDF or image) also pass the "
-            "hit's `Collection:` so the stored bytes can be fetched. A PDF page is rendered whole, "
-            "so a figure arrives with the text around it. When the hit carries an `Image:` line, "
-            "pass its image_index (with file_name, page_number and collection) to get that embedded "
-            "image alone, at its own resolution — better for a photo or scanned drawing inside a "
-            "PDF. region=[x, y, w, h] (shares of the page, origin top left) shows only that box, "
-            f"sharper than the whole page. At most {MAX_IMAGE_VIEWS_PER_TURN} calls per turn. Returns an "
-            "image content block; fails open with a text explanation."
-        ),
-    )

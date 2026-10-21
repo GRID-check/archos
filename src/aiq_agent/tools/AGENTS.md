@@ -3,8 +3,13 @@
 Tools that act on the user's workspace rather than retrieve from a corpus.
 Evidence sources are packages under `sources/`; what lives here is the BIM
 surface (`bim/`), the conversation's working directory (`documents/`), the
-write-side workspace verbs (`files/`) and the review canvas (`canvas/`, the
-`canvas` function group: look at a page or a box on it, the room, pointing and
+write-side workspace verbs (`files/`), `look` (`look/`, its own tool bound in
+every context, ADR-0128: a page, a region of it or an embedded image as an
+image the model sees; it resolves the document the way the canvas tools do and
+makes the box glow on the canvas for a workspace document; every look leaves a
+`look` Herleitung step at once and, once the answer is final, an item on the
+document's `look` card if the answer relies on it, `look/cards.py`) and the review
+canvas (`canvas/`, the `canvas` function group: the room, pointing and
 highlighting, and Anmerkungen: Piloti's own findings are born proposals a
 person takes over or dismisses, and what the person asks for (set a mark,
 change one, delete one they set) Piloti does in their name, under their rights,

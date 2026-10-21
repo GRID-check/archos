@@ -94,3 +94,11 @@ def test_the_consultants_steps_hide_these_from_piloti_behind_its_own_tools(expos
 def test_the_tool_list_reader_sees_the_canvas_group() -> None:
     """The reader itself: a group's members come through under the bound name, or every canvas name looks unknown."""
     assert {"canvas__mark", "canvas__reply", "remember", "create_task"} <= piloti_tool_names()
+
+
+def test_the_door_looks_with_the_tool_piloti_looks_with(exposure: dict[str, dict]) -> None:
+    """ADR-0128: one name for one act. The door's ``document-look`` is Piloti's own ``look``, offered outside."""
+    assert exposure["document-look"]["piloti"] == "native:look"
+    assert exposure["document-look"]["external"] is True
+    assert "knowledge-image-view" not in exposure
+    assert "look" in piloti_tool_names()

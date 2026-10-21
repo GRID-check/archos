@@ -315,7 +315,7 @@ class TestRetrieval:
 
         Nothing else on screen tells them apart while the call runs, and only
         the first leaves the document as it was. The canvas group's other tools
-        (look, room, point, highlight) say nothing: they show themselves.
+        (room, point, highlight) say nothing: they show themselves.
         """
         calls = [
             ("marks", {}),
@@ -324,7 +324,6 @@ class TestRetrieval:
             ("update", {"annotation": "4", "status": "resolved"}),
             ("delete", {"annotation": "4"}),
             ("reply", {}),
-            ("look", {}),
             ("room", {}),
             ("point", {}),
             ("highlight", {}),
@@ -341,6 +340,15 @@ class TestRetrieval:
             "status.action.annotationsReply",
         ]
         assert all(payload.values == {} for payload in _live(steps))
+
+    def test_a_look_has_its_own_line_without_values(self, steps) -> None:
+        """Which document and where is the look's own Herleitung step (ADR-0128), not the live line."""
+        turn_status.emit_retrieval(
+            [{"name": "look", "args": {"document": "Grundriss EG.pdf", "page": 2}}], round_index=0
+        )
+
+        [payload] = _live(steps)
+        assert (payload.key, payload.values) == ("status.action.look", {})
 
     def test_a_file_proposal_is_an_action_and_never_a_retrieval(self, steps) -> None:
         """Nothing is being read: the file name is a name the reader gave, not a query."""
@@ -706,6 +714,7 @@ def _every_live_payload(steps) -> list:
     for index, (tool, args) in enumerate(canvas):
         turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=12 + index)
     turn_status.emit_retrieval([{"name": "workspace__call", "args": {"name": "tasks-list"}}], round_index=18)
+    turn_status.emit_retrieval([{"name": "look", "args": {"page": 1}}], round_index=19)
     turn_status.emit_retrieval_requery(query_count=2)
     turn_status.emit_citation_check(source_count=3)
     turn_status.emit_answer_repair(quotes=1)

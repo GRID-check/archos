@@ -2337,6 +2337,255 @@
       "title": "IfcViewerCard",
       "type": "object"
     },
+    "LookCard": {
+      "description": "Where Piloti looked on one document in this turn, and what it showed the room there.\n\nSystem-emitted (``tools/look/cards.py``) once the answer is final, from the\nlooks the answer relies on; the model cannot emit it (``SYSTEM_CARD_TYPES``).",
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/LookDocument"
+        },
+        "items": {
+          "description": "The places, in the order Piloti reached them",
+          "items": {
+            "$ref": "#/$defs/LookItem"
+          },
+          "maxItems": 12,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        },
+        "type": {
+          "const": "look",
+          "default": "look",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "items"
+      ],
+      "title": "LookCard",
+      "type": "object"
+    },
+    "LookDocument": {
+      "description": "The document looked at: its id when it is a workspace document, its file name, its shelf.",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The workspace document's id; absent for a base-corpus document or when it was not resolved",
+          "title": "Id"
+        },
+        "name": {
+          "description": "The file name",
+          "maxLength": 300,
+          "minLength": 1,
+          "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+          "title": "Name",
+          "type": "string"
+        },
+        "shelf": {
+          "default": "stored",
+          "description": "`stored`: a document of the office or the project; `base`: the platform corpus (Basiswissen)",
+          "enum": [
+            "stored",
+            "base"
+          ],
+          "title": "Shelf",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "LookDocument",
+      "type": "object"
+    },
+    "LookItem": {
+      "description": "One place on the document: a look Piloti took, or a box or pointer it showed the room (`reference`).",
+      "properties": {
+        "frame": {
+          "default": "page",
+          "description": "`page`: the region is on the page as shown; `image`: on the embedded image",
+          "enum": [
+            "page",
+            "image"
+          ],
+          "title": "Frame",
+          "type": "string"
+        },
+        "image_index": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The embedded image, for frame `image`",
+          "title": "Image Index"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "maxLength": 80,
+              "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A reference's label, as the room saw it",
+          "title": "Label"
+        },
+        "origin": {
+          "default": "look",
+          "description": "`look`: Piloti looked here; `reference`: Piloti pointed the room here",
+          "enum": [
+            "look",
+            "reference"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "page": {
+          "description": "The page, from 1",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "point": {
+          "anyOf": [
+            {
+              "items": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "maxItems": 2,
+              "minItems": 2,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[x, y] of a pointer, as shares of the page",
+          "title": "Point"
+        },
+        "question": {
+          "anyOf": [
+            {
+              "maxLength": 200,
+              "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What Piloti looked for",
+          "title": "Question"
+        },
+        "reading": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The first thing read there",
+          "title": "Reading"
+        },
+        "region": {
+          "anyOf": [
+            {
+              "items": {
+                "maximum": 1,
+                "minimum": 0,
+                "type": "number"
+              },
+              "maxItems": 4,
+              "minItems": 4,
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "[x, y, w, h] as shares of the frame, origin top left; x + w and y + h at most 1",
+          "title": "Region"
+        },
+        "revision_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "pattern": "^[A-Za-z0-9_.-]+$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The Fassung looked at; absent means the document's current Fassung",
+          "title": "Revision Id"
+        },
+        "scope": {
+          "description": "`overview`: the whole page or image; `region`: a box on it; `point`: a pointer",
+          "enum": [
+            "overview",
+            "region",
+            "point"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "where": {
+          "anyOf": [
+            {
+              "maxLength": 60,
+              "pattern": "^(?!\\s*[dD][aA][tT][aA]:)",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The region in words, e.g. \u201eoben rechts\u201c",
+          "title": "Where"
+        }
+      },
+      "required": [
+        "page",
+        "scope"
+      ],
+      "title": "LookItem",
+      "type": "object"
+    },
     "MemoryProposalCard": {
       "description": "A proposal to save a finding to long-term memory, confirmed by the user.\n\nSystem-emitted by the `remember` tool when an org-scoped write needs human\nauthorization. With `proposal_id` the note is a stored proposal (kind\n`memory`) the server files in the accepting person's session, org-wide or,\nif they choose, in the project; without one the browser writes it through the\nreader's own session.",
       "properties": {
@@ -3238,6 +3487,7 @@
       "ifc_model_picker": "#/$defs/IfcModelPickerCard",
       "ifc_schedule": "#/$defs/IfcScheduleCard",
       "ifc_viewer": "#/$defs/IfcViewerCard",
+      "look": "#/$defs/LookCard",
       "memory_proposal": "#/$defs/MemoryProposalCard",
       "operation_proposal": "#/$defs/OperationProposalCard",
       "project_profile_patch": "#/$defs/ProjectProfilePatchCard",
@@ -3299,6 +3549,9 @@
     },
     {
       "$ref": "#/$defs/CanvasActivityCard"
+    },
+    {
+      "$ref": "#/$defs/LookCard"
     },
     {
       "$ref": "#/$defs/IfcViewerCard"

@@ -357,8 +357,8 @@ llms:
     reasoning_effort: none
 
 # The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
-# works a document the way a person at the canvas does. `look` at a page or a
-# box on it, see who is in the `room`, `point` and `highlight` for everyone,
+# works a document the way a person at the canvas does. See who is in the
+# `room`, `point` and `highlight` for everyone,
 # read the `marks`, propose a `mark` (a person takes it over), and, when the
 # person asks, set one open, `update` or `delete` one in their name; `reply` in
 # a thread. The model calls them `canvas__<tool>`. Each acts on a document the
@@ -493,21 +493,19 @@ functions:
     _type: ris_catalog_lookup
     max_matches: 8
 
-  # LET THE MODEL SEE A PLAN, NOT ONLY ITS CAPTION.
+  # LET THE MODEL SEE A DRAWING, NOT ONLY ITS CAPTION.
   #
-  # Built, registered and documented as default-on since it was written, and
-  # declared in no config until 2026-09 — `git log -S view_knowledge_image --
-  # configs/` was empty, so it had never been bound to an agent at all. NAT can
-  # only bind a function that appears under `functions:`, so the tool existed
-  # and could not be called: retrieval returned VLM captions OF drawings and
-  # the model never saw a drawing. That is the honest half of "der Agent
-  # bezieht die visuellen Planunterlagen kaum ein" — the chunks are in the
-  # index and reachable, the picture was not.
+  # `look` (src/aiq_agent/tools/look, ADR-0128): a page, a region of it, or an
+  # embedded image, in every context. It replaced the knowledge layer's image
+  # viewer and the canvas group's own look, one function under two names. Until
+  # 2026-09 the viewer was declared in no config at all, so retrieval returned
+  # VLM captions OF drawings and the model never saw a drawing: NAT only binds a
+  # function that appears under `functions:`.
   #
   # It fails closed on its own: no vision key, or `AIQ_VIEW_IMAGES_ENABLED`
   # off, and it returns a sentence saying so rather than an image.
-  view_knowledge_image:
-    _type: view_knowledge_image
+  look:
+    _type: look
 
   knowledge_search:
     _type: knowledge_retrieval
@@ -771,7 +769,7 @@ functions:
       - knowledge_search
       - read_passage
       - list_files
-      - view_knowledge_image
+      - look
       # ONE RIS tool on the chat surface. Search → pick → fetch → find the
       # paragraph was three charged calls and a 40 000-character blob that
       # carried no Citation key, so nothing downstream could treat it as
@@ -791,7 +789,7 @@ functions:
       - file_draft
       - create_task
       - project_lookup
-      # The `canvas` function group (below): nine tools, `canvas__look` …
+      # The `canvas` function group (below): eight tools, `canvas__room` …
       - canvas
       # The `workspace` function group (above): four tools, `workspace__search` …
       - workspace
@@ -1085,7 +1083,7 @@ functions:
       # round the run does not get back.
       - read_passage
       - list_files
-      - view_knowledge_image
+      - look
       - ris_search_tool
       - ris_fetch_tool
       - ris_catalog_lookup_tool
