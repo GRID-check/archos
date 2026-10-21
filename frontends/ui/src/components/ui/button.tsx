@@ -21,12 +21,17 @@ const buttonVariants = cva(
   // What it does buy is the settle time: springPress has ωn = √(600/0.6) =
   // 31.6 rad/s, so it is within 2% of target in ~126ms — `duration-snap`.
   //
-  // The duration is a LIST matched to the property list: colour and shadow keep
-  // the 180ms default (`--motion-quick`), the transform gets the 120ms press
-  // curve (`--motion-snap`). One `duration-*` utility could not say that, and
-  // running the press at the colour's duration is what made the dip read as a
-  // lag rather than as the button giving way.
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,box-shadow,transform] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 outline-none pointer-coarse:min-w-11 aria-invalid:ring-destructive/20 aria-invalid:border-destructive " +
+  // The duration is a LIST matched to the property list: colour and opacity
+  // keep the 180ms default (`--motion-quick`), the transform gets the 120ms
+  // press curve (`--motion-snap`). One `duration-*` utility could not say that,
+  // and running the press at the colour's duration is what made the dip read
+  // as a lag rather than as the button giving way.
+  //
+  // `box-shadow` is deliberately NOT in the list: the keyboard ring
+  // (`FOCUS_RING`) is a box-shadow, and a ring that fades in is not there yet
+  // when the reader looks for it. Opacity is, so a button turning disabled (or
+  // a `BusyButton` dimming) eases instead of blinking.
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-[color,background-color,opacity,transform] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100 disabled:pointer-events-none disabled:opacity-50 aria-busy:cursor-progress [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 outline-none pointer-coarse:min-w-11 aria-invalid:ring-destructive/20 aria-invalid:border-destructive " +
     FOCUS_RING,
   {
     variants: {

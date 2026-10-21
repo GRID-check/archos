@@ -74,7 +74,7 @@ because `:root` and `.dark` have equal specificity there. Decorative overlays
 that paint the card's colour over content (the streaming caret's veil) are
 hidden under `contrast-more:` and `forced-colors:`.
 
-**Ink ramp (light):** #1f2023 (foreground/action) → #55565a secondary → #6f706c muted → #8a8a86 placeholder → #b3b3af ghost. Borders are **alpha ink hairlines** (`rgba(28,30,33,…)` equivalents at .08 base / .12 input / .16 strong / .22–.32 selected), so they composite on any surface. Focus ring is ink-based (`--ring`), never blue, and it is for the keyboard: the global `:focus-visible` outline lives in the base cascade layer so a control's own `FOCUS_RING` (with `outline-none`) wins, and an overlay's panel never draws one when it takes the focus itself on open.
+**Ink ramp (light):** #1f2023 (foreground/action) → #55565a secondary → #6f706c muted → #8a8a86 placeholder → #b3b3af ghost. Borders are **alpha ink hairlines** (`rgba(28,30,33,…)` equivalents at .08 base / .12 input / .16 strong / .22–.32 selected), so they composite on any surface. Focus ring is ink-based (`--ring`), never blue, and it is for the keyboard: the global `:focus-visible` outline is unlayered on purpose, so it survives every control's `outline-none` and gives the keyboard its 3:1 indicator on top of the softer `FOCUS_RING` halo (in a cascade layer, `outline-none` once dropped it app-wide); an overlay's panel never draws one when it takes the focus itself on open. **A focus ring snaps.** No transition list in a control names `box-shadow` (a Tailwind ring is a box-shadow) or, on a field, `border-color` (a field's focus is its border turning to `--ring`): a ring that fades in is a ring that is not there yet when the reader looks for it.
 
 **Provenance signal system** — each signal has a base color, a `-tint` surface (for chips/rows on cards), and a `-text` variant (AA-readable on the tint), both modes:
 
@@ -700,6 +700,10 @@ times stops being a physical cue and becomes texture.
   invisible** (a masthead gated out, the Herleitung's fold). Any other
   `height` in a motion target carries an
   `eslint-disable-next-line grid/motion-vocabulary -- <why>` above the element.
+- **Disabled eases.** A control turning disabled or dimmed (`opacity-50`,
+  a `BusyButton` blocked past its delay) tweens its opacity on
+  `--motion-quick`: the primitives name `opacity` in their transition lists,
+  so the state change reads as a change rather than a blink.
 - **One press.** A `Button` or `TabsTrigger` dips on its own. Every other
   pressable (a citation chip, a copy link, a card row) composes `PRESSABLE`
   (`components/ui/press.ts`): colour, background, border, filter on
