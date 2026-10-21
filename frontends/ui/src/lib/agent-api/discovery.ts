@@ -19,6 +19,7 @@ import type { CallToolResult } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/errors'
 import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
+import { operationScorer } from '@/lib/text/operation-search'
 import {
   type BinaryBody,
   MAX_INLINE_BYTES,
@@ -381,57 +382,9 @@ interface Hit {
   score: number
 }
 
-/** What ranking reads: a catalog operation and a backend operation both have it. */
-interface Searchable {
-  name: string
-  summary: string
-  description: string
-}
-
-/** A word of one letter matches nearly every operation (`(a+)+$` found all 248) and ranks nothing. */
-const MIN_WORD_LENGTH = 2
-
-function wordsOf(query: string): string[] {
-  return query
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter((word) => word.length >= MIN_WORD_LENGTH)
-}
-
-/**
- * Plain words only. A regular expression built from the caller's text would let
- * one catastrophic pattern hold the event loop for every tenant (ReDoS), and
- * kebab-case names already split into words: `document version list` finds
- * `document-version-list`.
- */
-function scorerFor(query: string): (op: Searchable) => number {
-  const words = wordsOf(query)
-  // A blank query lists everything; text with no usable word in it (`a`, `(+)$`) matches nothing.
-  const listsAll = query.trim() === ''
-  return (op) => {
-    if (words.length === 0) return listsAll ? 1 : 0
-    const name = op.name.toLowerCase()
-    const segments = name.split('-')
-    const summary = op.summary.toLowerCase()
-    const description = op.description.toLowerCase()
-    let total = 0
-    let matched = 0
-    for (const word of words) {
-      const score =
-        (name.includes(word) ? 3 : 0) +
-        (segments.includes(word) ? 1 : 0) +
-        (summary.includes(word) ? 2 : 0) +
-        (description.includes(word) ? 1 : 0)
-      if (score > 0) matched += 1
-      total += score
-    }
-    // An operation that answers every word beats one that answers a single word often.
-    return total + (matched === words.length ? 5 : 0)
-  }
-}
-
+/** Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0122). */
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {
-  const score = scorerFor(query.slice(0, MAX_SEARCH_QUERY_LENGTH))
+  const score = operationScorer(query.slice(0, MAX_SEARCH_QUERY_LENGTH))
   const catalog: Hit[] = visibleOperations(ctx.principal)
     .filter((op) => !domain || op.domain === domain)
     .map((op) => {

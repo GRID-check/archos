@@ -2,8 +2,8 @@
 
 `scripts/turn_census/suite.py --set workspace` needs a model key to RUN. What is
 testable offline: that the fixture door ranks a search exactly as the server
-does (both the ranking `discovery.ts` runs today and `lib/text/operation-search.ts`,
-held to the lists `workspace-eval.fixture.spec.ts` wrote from the TypeScript),
+does (`lib/text/operation-search.ts`, which `discovery.ts` ranks with, held to
+the lists `workspace-eval.fixture.spec.ts` wrote from the TypeScript),
 that a write comes back as the server's proposal and a read with the fixture's
 record, that the agent's own client reads the door's answers, that the question
 set names only operations and ids the fixture holds, and how the checks read a
@@ -34,22 +34,30 @@ OFFICE = json.loads((FIXTURES / "office.json").read_text(encoding="utf-8"))
 TOKEN = "eval-token"
 
 
-@pytest.mark.parametrize("ranking", ["production", "folded"])
-def test_the_fixture_ranks_every_recorded_query_as_the_server_does(ranking: str) -> None:
-    door = FixtureWorkspace(ranking=ranking)
-    for query, expected in CATALOG["search"][ranking].items():
+def test_the_fixture_ranks_every_recorded_query_as_the_server_does() -> None:
+    door = FixtureWorkspace()
+    for query, expected in CATALOG["search"].items():
         got = [hit["name"] for hit in door.rank(query)[: CATALOG["limit"]]]
         assert got == expected, query
 
 
-def test_german_requests_miss_on_the_server_today_and_hit_once_folded() -> None:
-    """The measurement behind the fix: the recorded German queries, top hit against the intended operation."""
-    production = CATALOG["search"]["production"]
-    folded = CATALOG["search"]["folded"]
-    german = [query for query in production if any(c.isupper() for c in query[:1])]
+def test_the_server_finds_for_a_german_request_what_the_english_one_finds() -> None:
+    """The measurement behind the fix: every recorded German query has a hit, and the pair's top hits agree."""
+    search = CATALOG["search"]
+    assert search["Mitglied zu Projekt hinzufügen"][0] == search["add member project"][0]
+    assert search["Projektmitglieder anzeigen"][0] == search["list project members"][0] == "project-member-list"
+    german = [query for query in search if query[:1].isupper()]
     assert len(german) >= 10
-    assert sum(1 for query in german if production[query][:1] == folded[query][:1]) <= 2
-    assert folded["Mitglied zu Projekt hinzufügen"][0] == "project-member-add"
+    assert all(search[query] for query in german), [query for query in german if not search[query]]
+
+
+def test_the_mirror_keeps_the_servers_word_rules() -> None:
+    """Blank lists every operation; a one-letter word is dropped; text with no usable word finds nothing."""
+    door = FixtureWorkspace()
+    assert len(door.rank("")) == len(CATALOG["operations"])
+    assert door.rank("a project list")[0]["name"] == door.rank("project list")[0]["name"]
+    assert door.rank("(a+)+$") == []
+    assert door.rank("a") == []
 
 
 def test_a_write_is_proposed_and_changes_nothing() -> None:
@@ -129,6 +137,8 @@ def test_turn_context_carries_the_rendered_workspace_block() -> None:
 
 def test_every_question_names_operations_and_ids_the_fixture_holds() -> None:
     names = {op["name"] for op in CATALOG["operations"]}
+    # A read the office answers under a name the catalog no longer has is a read that always fails.
+    assert set(OFFICE["reads"]) <= names, set(OFFICE["reads"]) - names
     office_text = json.dumps(OFFICE, ensure_ascii=False)
     for question in workspace_eval.load_questions():
         expect = question.get("expect") or {}

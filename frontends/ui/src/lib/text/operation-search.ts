@@ -4,11 +4,12 @@
  *
  * The catalog names and describes every operation in English
  * (`project-member-add`, "Add a person to a project"), and the people Piloti
- * works for ask in German. The ranking `discovery.ts` was written with splits a
- * query on `[^a-z0-9]`, so „hinzufügen" becomes the fragments `hinzuf` and
- * `gen`, and even a clean German word can never meet an English summary:
- * „Mitglied zu Projekt hinzufügen" ranks `project-summary-generate` first, and
- * the agent spends its rounds searching again (ADR-0122 has the numbers).
+ * works for ask in German. The ranking `discovery.ts` was first written with
+ * split a query on `[^a-z0-9]`, so „hinzufügen" became the fragments `hinzuf`
+ * and `gen`, and even a clean German word could never meet an English summary:
+ * „Mitglied zu Projekt hinzufügen" ranked `project-summary-generate` first, and
+ * the agent spent its rounds searching again (ADR-0122 has the numbers).
+ * `discovery.ts` ranks with this module now.
  *
  * Two causes, two fixes, both here:
  *
@@ -59,6 +60,9 @@ function meaningsOf(word: string): string[] {
 /** A word this long may be a compound of two vocabulary terms: `projektmitglieder`. */
 export const COMPOUND_MIN_LENGTH = 10
 
+/** A word of one letter matches nearly every operation (`(a+)+$` found all 248) and ranks nothing. */
+export const MIN_WORD_LENGTH = 2
+
 /**
  * The vocabulary terms a compound is made of, in order, when it holds two or
  * more that do not overlap (`projektmitglieder` → `projekt`, `mitglied`); empty
@@ -91,7 +95,9 @@ function compoundParts(word: string): string[] {
  * is two groups: `Projektmitglieder` → `[['projekt', 'project'], ['mitglied', 'member']]`.
  */
 export function searchWordGroups(query: string): string[][] {
-  const words = foldSearchText(query).split(/[^a-z0-9]+/).filter(Boolean)
+  const words = foldSearchText(query)
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= MIN_WORD_LENGTH)
   return words.flatMap((word) => {
     const parts = compoundParts(word)
     if (parts.length > 0) return parts.map((part) => [part, ...meaningsOf(part)])
@@ -99,11 +105,15 @@ export function searchWordGroups(query: string): string[][] {
   })
 }
 
-/** How well `op` answers the query; 0 when it answers no word. An empty query scores every operation 1. */
+/**
+ * How well `op` answers the query; 0 when it answers no word. A blank query scores every operation 1; text
+ * with no usable word in it (`a`, `(+)$`) scores every operation 0.
+ */
 export function operationScorer(query: string): (op: SearchableOperation) => number {
   const groups = searchWordGroups(query)
+  const listsAll = query.trim() === ''
   return (op) => {
-    if (groups.length === 0) return 1
+    if (groups.length === 0) return listsAll ? 1 : 0
     const name = foldSearchText(op.name)
     const segments = name.split('-')
     const summary = foldSearchText(op.summary)

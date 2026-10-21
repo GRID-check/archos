@@ -8,17 +8,16 @@ measured. ``fixture_bff.py`` mounts this on ``POST /api/mcp`` for
 - ``search-operations`` ranks the catalog production shows in-product Piloti
   (``frontends/ui/tests/fixtures/workspace/catalog.json``, written from the
   real catalog by ``workspace-eval.fixture.spec.ts``) with a mirror of the
-  server's ranking. ``production`` is ``discovery.ts`` as it ranks today;
-  ``folded`` is ``lib/text/operation-search.ts``. Both are held to the lists
-  the spec wrote from the TypeScript (``tests/scripts/test_fixture_workspace.py``),
-  so the mirror cannot drift unseen.
+  server's ranking, ``lib/text/operation-search.ts``, which ``discovery.ts``
+  ranks with. It is held to the lists the spec wrote from the TypeScript
+  (``tests/test_workspace_eval.py``), so the mirror cannot drift unseen.
 - ``describe-operation`` answers the production text, verbatim.
 - ``call-operation`` answers a read from ``office.json`` and turns a write into
   a proposal, as the server does for Piloti: nothing is changed, the model
   reads „Proposed — the person decides. Nothing was changed.", and the
   structured result carries the proposal id the card shows. The input is
   checked against the operation's schema for what it requires.
-- ``report-missing-capability`` is recorded.
+- ``report-missing-operation`` is recorded.
 
 Every call is logged by the fixture BFF beside the run, with its arguments and
 what it answered, so a check reads what the turn did on the door.
@@ -42,22 +41,19 @@ VOCABULARY = ROOT / "frontends" / "ui" / "src" / "lib" / "text" / "operation-sea
 #: As ``DEFAULT_SEARCH_LIMIT`` and ``MAX_SEARCH_LIMIT`` in ``discovery.ts``.
 DEFAULT_SEARCH_LIMIT = 10
 MAX_SEARCH_LIMIT = 50
-#: As ``PREFIX_MATCH_MIN_LENGTH`` and ``COMPOUND_MIN_LENGTH`` in ``lib/text/operation-search.ts``.
+#: As ``MAX_SEARCH_QUERY_LENGTH`` in ``discovery.ts``.
+MAX_SEARCH_QUERY_LENGTH = 200
+#: As ``PREFIX_MATCH_MIN_LENGTH``, ``COMPOUND_MIN_LENGTH`` and ``MIN_WORD_LENGTH`` in ``lib/text/operation-search.ts``.
 PREFIX_MATCH_MIN_LENGTH = 5
 COMPOUND_MIN_LENGTH = 10
+MIN_WORD_LENGTH = 2
 #: The text the server answers a proposed write with (``runOperation``).
 PROPOSED_TEXT = "Proposed — the person decides. Nothing was changed."
-RANKINGS = ("production", "folded")
 
 _NOT_ALNUM = re.compile(r"[^a-z0-9]+")
 
 
 # --- ranking ------------------------------------------------------------------
-
-
-def production_words(query: str) -> list[list[str]]:
-    """``wordsOf`` in ``discovery.ts``: lower case, split on anything not ``a-z0-9``. One word per group."""
-    return [[word] for word in _NOT_ALNUM.split(query.lower()) if word]
 
 
 class Vocabulary:
@@ -92,21 +88,24 @@ class Vocabulary:
 
     def groups(self, query: str) -> list[list[str]]:
         groups: list[list[str]] = []
-        for word in (word for word in _NOT_ALNUM.split(_fold(query)) if word):
+        for word in (word for word in _NOT_ALNUM.split(_fold(query)) if len(word) >= MIN_WORD_LENGTH):
             parts = self._compound(word)
             for part in parts or [word]:
                 groups.append([part, *self._meanings(part)])
         return groups
 
 
-def _scorer(groups: list[list[str]], fold: Any) -> Any:
+def _scorer(query: str, groups: list[list[str]]) -> Any:
+    """``operationScorer``: a blank query lists every operation, text with no usable word in it matches none."""
+    lists_all = query.strip() == ""
+
     def score(op: dict[str, Any]) -> int:
         if not groups:
-            return 1
-        name = fold(op["name"])
+            return 1 if lists_all else 0
+        name = _fold(op["name"])
         segments = name.split("-")
-        summary = fold(op["summary"])
-        description = fold(op["description"])
+        summary = _fold(op["summary"])
+        description = _fold(op["description"])
 
         def of(word: str) -> int:
             return (
@@ -158,12 +157,9 @@ def _missing(schema: dict[str, Any], value: Any, where: str) -> list[str]:
 
 
 class FixtureWorkspace:
-    """The fixture office behind the four meta-tools, ranking one way (``production`` or ``folded``)."""
+    """The fixture office behind the four meta-tools, ranking searches as the server does."""
 
-    def __init__(self, ranking: str = "production", directory: Path = FIXTURES) -> None:
-        if ranking not in RANKINGS:
-            raise ValueError(f"ranking is one of {RANKINGS}, not {ranking!r}")
-        self.ranking = ranking
+    def __init__(self, directory: Path = FIXTURES) -> None:
         catalog = json.loads((directory / "catalog.json").read_text(encoding="utf-8"))
         self.operations: list[dict[str, Any]] = catalog["operations"]
         self.by_name = {op["name"]: op for op in self.operations}
@@ -177,10 +173,8 @@ class FixtureWorkspace:
         self._lock = threading.Lock()
 
     def rank(self, query: str, domain: str | None = None) -> list[dict[str, Any]]:
-        if self.ranking == "production":
-            score = _scorer(production_words(query), str.lower)
-        else:
-            score = _scorer(self.vocabulary.groups(query), _fold)
+        query = query[:MAX_SEARCH_QUERY_LENGTH]
+        score = _scorer(query, self.vocabulary.groups(query))
         hits = [
             {
                 "name": op["name"],
@@ -211,7 +205,7 @@ class FixtureWorkspace:
                 "total": len(hits),
                 "operations": shown,
                 "next": (
-                    "Nothing matched. Try other words, drop the domain filter, or call report-missing-capability."
+                    "Nothing matched. Try other words, drop the domain filter, or call report-missing-operation."
                     if not shown
                     else "Call describe-operation for the input schema, then call-operation."
                 ),
@@ -297,7 +291,7 @@ class FixtureWorkspace:
             result = self.describe(arguments)
         elif tool == "call-operation":
             result = self.call(arguments, conversation)
-        elif tool == "report-missing-capability":
+        elif tool == "report-missing-operation":
             result = _success({"status": "recorded"})
         else:
             return {

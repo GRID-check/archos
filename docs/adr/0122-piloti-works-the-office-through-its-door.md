@@ -78,7 +78,7 @@ judged against a baseline that now exists.
 4. **German search** is fixed at its cause in `lib/text/operation-search.ts`:
    both sides folded (`latinize`), each query word read as a group with the
    catalog words the office's term means (`operation-search-vocabulary.json`),
-   compounds split. `discovery.ts` adopts it in its owner's change.
+   compounds split, one-letter words dropped. `discovery.ts` ranks with it.
 5. **The workspace set** of the answer suite measures all of this, with a door
    served from the catalog production shows and checks on what was filed.
 6. **Langfuse**: `answer_kind`, `work_*` counts, the tag `kind:work`, and the
@@ -92,8 +92,9 @@ judged against a baseline that now exists.
   score checks against what was filed.
 * Bad, because the block adds about 250 tokens to every turn that binds the
   workspace tools, and five reads to the turn-context route (each fails open).
-* Bad, because until `discovery.ts` adopts the folded ranking, a German query
-  the model sends anyway still misses; the prompt's English queries carry it.
+* Bad, because the vocabulary is a list someone keeps: a German word it lacks
+  still meets only the English words it happens to share. The prompt's English
+  queries carry that case.
 * Bad, because the proposal list is the newest eight of one conversation: work
   that spans conversations or runs is not in it (the ledger below).
 
@@ -118,19 +119,20 @@ operations, the WORKSPACE block in the request) and also the next defect it
 fixed in the prompt: a wrong `domain` hid `project-folder-create`, and a call
 went out with an empty `input`. Before this record is accepted, run
 `task be:eval:answer-suite -- --set workspace --baseline <before>/results.json`
-twice, `--ranking production` and `--ranking folded`, and write the numbers here.
+and write the numbers here. The fixture door ranks as the server does, so there
+is one ranking to measure (the `--ranking` switch went when `discovery.ts`
+adopted the folded scorer).
+
+**The set after the fix waves.** Project roles, sharing and folder access became
+`access` operations (ADR-0121), which in-product Piloti neither sees nor
+proposes. The rows that asked Piloti to add a project member now expect no write
+(`ws-member-add-de`), the two-write row pairs a folder with a rename, the
+pending follow-up asks about a folder, and the ambiguity row asks which folder.
+The before numbers above were taken on the old rows, so compare the after run
+row by row, not by total.
 
 **Deferred, each with what it needs:**
 
-* **The server adopts the folded ranking.** In `lib/agent-api/discovery.ts`,
-  `rank` uses `operationScorer(query)` from `lib/text/operation-search.ts` in
-  place of `scorerFor(query)`, and `wordsOf`/`scorerFor` go. Owner: the
-  agent-api builder. Measure: `--ranking folded` is what production then ranks.
-* **The workspace tools' agent-facing text** (`tools/workspace/register.py`):
-  English descriptions with an English example query; the proposal id and
-  summary in the text the model reads after a proposed write; a 429 answered
-  with „ask again next round" instead of „not again in this answer". Owner: the
-  workspace-tools builder.
 * **`workspace__call` in the steering write set** (`common/steering.WRITE_TOOL_BASENAMES`)
   and `call`/`search` in `turn_status._ACTION_KEYS`, so a steer holds a write
   and the reader sees the step. Small, but it touches the round accounting the

@@ -1,7 +1,7 @@
 ---
 features:
   - >
-    Ask Piloti to do office work in plain German, such as adding a colleague to a project or creating a folder,
+    Ask Piloti to do office work in plain German, such as creating a folder or renaming a document,
     and it proposes the change for you to accept and closes with a short report of what waits for you, what is
     blocked and what comes next.
 improvements:

@@ -645,10 +645,9 @@ signed envelope. `scripts/turn_census/fixture_workspace.py` serves the door from
 the catalog production shows Piloti (`catalog.json`, written by
 `workspace-eval.fixture.spec.ts`) and the turn context with the WORKSPACE block
 the production renderer writes (`rendered.json`); a follow-up turn's block lists
-what the run filed, as production would. `--ranking production` searches as
-`discovery.ts` does today, `--ranking folded` as `lib/text/operation-search.ts`;
-`tests/test_workspace_eval.py` holds the Python mirror of both to lists the
-TypeScript wrote. The questions are `tests/fixtures/workspace/workspace_questions.yaml`;
+what the run filed, as production would. A search ranks as `discovery.ts` does
+(`lib/text/operation-search.ts`); `tests/test_workspace_eval.py` holds the
+Python mirror to lists the TypeScript wrote. The questions are `tests/fixtures/workspace/workspace_questions.yaml`;
 the checks (`reads`, `proposes`, `no_write`, `no_workspace`, `no_repeat`, the
 judge's `pending` and `asks`) are explained in its header. The report's
 `## Workspace` section gives the share of runs where every check held, rounds,

@@ -647,8 +647,6 @@ def render(
         from workspace_eval import report_lines
 
         lines += ["", *report_lines(runs)]
-        if meta.get("ranking"):
-            lines.append(f"The fixture door ranked searches as `{meta['ranking']}`.")
     if skipped:
         lines += ["", f"Skipped, need a project: {', '.join(skipped)}."]
     if not_in_corpus:
@@ -982,7 +980,7 @@ def precedent_envelope(office: dict, conversation_id: str, secret: str, current:
     return header, signature
 
 
-def start_workspace_bff(out: Path, ranking: str) -> tuple[Any, Any]:
+def start_workspace_bff(out: Path) -> tuple[Any, Any]:
     """``--set workspace``: the fixture BFF serving the MCP door from the workspace office, and each run's env."""
     import secrets
 
@@ -990,7 +988,7 @@ def start_workspace_bff(out: Path, ranking: str) -> tuple[Any, Any]:
     from fixture_workspace import FixtureWorkspace
 
     token = secrets.token_hex(16)
-    workspace = FixtureWorkspace(ranking=ranking)
+    workspace = FixtureWorkspace()
     bff = FixtureBFF(token, out / "requests.jsonl", workspace=workspace).start()
     office = workspace.office
     project = next(p for p in office["projects"] if p["id"] == office["current"])
@@ -1200,12 +1198,6 @@ def main(argv: list[str] | None = None) -> int:
             "workspace: office work through the MCP door (fixture_workspace.py)"
         ),
     )
-    parser.add_argument(
-        "--ranking",
-        choices=("production", "folded"),
-        default="production",
-        help="workspace: how the fixture door ranks a search (discovery.ts today, or lib/text/operation-search.ts)",
-    )
     args = parser.parse_args(argv)
     if args.corpus is not None and not args.ingest:
         parser.error("--corpus is what --ingest reads; give both")
@@ -1238,14 +1230,13 @@ def main(argv: list[str] | None = None) -> int:
         "overrides": args.override or [],
         "stamp": stamp,
         "set": args.set,
-        **({"ranking": args.ranking} if args.set == "workspace" else {}),
     }
     print(f"{len(questions)} question(s) × {args.runs} run(s), {args.workers} at a time → {args.out}")
     args.out.mkdir(parents=True, exist_ok=True)
     bff, env_for = (
         start_fixture_bff(args.out)
         if args.set == "precedent"
-        else start_workspace_bff(args.out, args.ranking)
+        else start_workspace_bff(args.out)
         if args.set == "workspace"
         else (None, None)
     )

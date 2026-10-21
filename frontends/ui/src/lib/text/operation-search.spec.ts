@@ -60,4 +60,10 @@ describe('operationScorer', () => {
     expect(operationScorer('')(memberAdd)).toBe(1)
     expect(operationScorer('Bauklasse')(memberAdd)).toBe(0)
   })
+
+  it('drops one-letter words, and scores 0 for text that has no usable word left', () => {
+    expect(searchWordGroups('a member')).toEqual([['member']])
+    expect(operationScorer('a')(memberAdd)).toBe(0)
+    expect(operationScorer('(a+)+$')(memberAdd)).toBe(0)
+  })
 })

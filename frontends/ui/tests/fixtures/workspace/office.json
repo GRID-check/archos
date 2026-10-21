@@ -79,7 +79,7 @@
       ],
       "nextCursor": null
     },
-    "job-list": {
+    "task-list": {
       "3f0b1c2d-4e5f-4a6b-8c7d-9e0f1a2b3c4d": {
         "jobs": [
           { "id": "job_1", "name": "Wöchentlicher Fristencheck", "scheduleCron": "0 6 * * 1", "timezone": "Europe/Vienna", "enabled": true, "nextRunAt": "2026-10-26T05:00:00Z", "skillName": null }
