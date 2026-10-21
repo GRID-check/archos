@@ -5,7 +5,7 @@
  */
 
 import { z } from 'zod'
-import { RESOURCE_ROLES, RESOURCE_VISIBILITIES } from '@/lib/db/schema'
+import { RESOURCE_ROLES, RESOURCE_VISIBILITIES } from '@/lib/sharing/sharing-vocabulary'
 
 /** `PATCH /api/sharing/:resourceType/:resourceId`: who beyond the grants may see the resource. */
 export const visibilitySchema = z.object({
