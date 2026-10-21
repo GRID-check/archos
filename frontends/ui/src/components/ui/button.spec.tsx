@@ -86,3 +86,34 @@ describe('Button inline', () => {
     for (const sized of ['h-8', 'px-3.5', 'text-xs', 'pointer-coarse:h-11']) expect(classes).not.toContain(sized)
   })
 })
+
+/*
+ * A loading button never moves its label or changes its width. With a leading
+ * icon the spinner takes the icon's slot; without one there is no slot, so the
+ * spinner centres over a transparent label that still holds the width and the
+ * accessible name.
+ */
+describe('Button loading layout', () => {
+  it('keeps the label in one span that decides, in CSS, where the spinner goes', () => {
+    render(<Button loading>Speichern</Button>)
+    const button = screen.getByRole('button', { name: 'Speichern' })
+    const label = button.querySelector('[data-slot="button-label"]')
+    const spinner = button.querySelector('[data-slot="spinner"]')
+
+    expect(label).toHaveTextContent('Speichern')
+    expect(label?.className).toContain('[&>svg:first-of-type]:hidden')
+    expect(label?.className).toContain('[&:not(:has(>svg))]:opacity-0')
+    // Placed after the label in the DOM so the label can be its `peer`, drawn first.
+    expect(label?.nextElementSibling).toBe(spinner)
+    expect(spinner?.className).toContain('order-first')
+    expect(spinner?.className).toContain('peer-[:not(:has(>svg))]/label:absolute')
+    expect(button.className).toContain('relative')
+  })
+
+  it('renders its children untouched when it is not loading', () => {
+    render(<Button>Speichern</Button>)
+    const button = screen.getByRole('button', { name: 'Speichern' })
+    expect(button.querySelector('[data-slot="button-label"]')).toBeNull()
+    expect(button.className).toContain('select-none')
+  })
+})

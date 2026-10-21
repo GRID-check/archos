@@ -88,7 +88,10 @@ export function SearchField({
         className={cn(
           'h-9 pl-8 [&::-webkit-search-cancel-button]:hidden',
           // Reserve the clear gutter even when empty so typing does not shift text.
-          canClear && 'pr-8',
+          // Under a finger the clear grows to 44px (the Button's own
+          // `pointer-coarse:size-11`), so the gutter grows with it and the end
+          // of a long query never runs under the X.
+          canClear && 'pr-8 pointer-coarse:pr-11',
           inputClassName,
         )}
       />
@@ -100,8 +103,9 @@ export function SearchField({
           tabIndex={hasValue ? undefined : -1}
           aria-hidden={!hasValue}
           className={cn(
+            // No transition of its own: the Button's list already eases opacity
+            // on --motion-quick, and replacing it dropped the press dip.
             'absolute right-0.5 top-1/2 size-8 -translate-y-1/2 text-muted-foreground',
-            'transition-opacity duration-quick ease-out motion-reduce:transition-none',
             hasValue ? 'opacity-100' : 'pointer-events-none opacity-0',
             clearClassName,
           )}

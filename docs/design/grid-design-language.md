@@ -212,6 +212,12 @@ across the whole ancestor chain — so a library stylesheet can freeze a region
 none of our code mentions. Only a surface that genuinely owns its gestures (the
 3D model canvas) may keep one.
 
+**A control's label is not selectable.** `Button` carries `select-none` and
+`-webkit-touch-callout: none`: a long press on a phone selected the label or
+offered to share a link-button, where a native control does neither. Content
+(an address, an error message, an answer) stays selectable; only controls opt
+out.
+
 **Text fields are 16px on a coarse pointer** (`text-sm pointer-coarse:text-base`),
 or iOS Safari zooms the page on focus and does not zoom back out. On the pointer
 axis and never a breakpoint — `text-base md:text-sm` looks like a floor and is
@@ -749,6 +755,11 @@ times stops being a physical cue and becomes texture.
   `motionQuick`, both as `transform` strings on the compositor, and does
   neither under reduced motion. A checkbox tick and a radio dot land on
   `--motion-snap` (a fade and a 90% scale) as the box fills.
+- **A loading `Button` holds still.** With a leading icon the spinner takes
+  the icon's slot; with none it centres over the label, which turns
+  transparent and keeps the width and the accessible name. A spinner inserted
+  beside a bare label pushed the label sideways and widened the button.
+  `BusyButton` is the choice when the label must stay readable.
 - **Busy is not disabled.** A control that is working keeps its focus and its
   width: `aria-disabled` plus a guard in its handler, never `disabled`
   (Chrome blurs a focused button the moment it becomes disabled). Its labels
