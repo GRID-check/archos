@@ -1500,8 +1500,9 @@ split is stated explicitly).
 ## bff_job_queue / bff_job_lane_turns (migration 0104, ADR-0079)
 
 The BFF's durable background work: one row is one job a `bff-jobs` replica
-claims and runs (project reindex, failed-ingestion rescan, the re-read of the
-documents collection placement moved `placement_reingest`; and, one step each,
+claims and runs (project reindex, failed-ingestion rescan, the sort of a shelf's root
+`root_sort`, ADR-0121, the re-read of the documents collection placement moved
+`placement_reingest`; and, one step each,
 IFC extraction `bim_extract`, office conversion `office_rendition` and research
 report filing `file_research_report`). The claim is SQL in
 `frontends/ui/workers/job-queue.js`, in the order ADR-0076 proved for
@@ -1548,6 +1549,23 @@ after the migrations, not a migration: the role exists only where CloudNativePG
 declares it. `grid_tenant_isolation` is untouched.
 
 ---
+
+## root_sort_runs (migration 0173, ADR-0121)
+
+A person's run of sorting a shelf's root into its folders. The run is the
+state: the BFF job `root_sort` advances the row a bounded slice at a time, and
+the dialog only reads it and asks for the next step (apply, undo, cancel).
+`status` walks `judging`, `grouping`, `ready`, `applying`, `applied`, then
+`undoing` and `undone`; `cancelled` and `failed` end it. The lists the run keeps
+(`document_ids`, `placements`, `kept_moves`, `moved_documents`, and the rest)
+are JSONB and bounded by CHECK, at 5000 documents each. Ids and folder paths
+only, never document content.
+
+Unique partial index `root_sort_runs_one_in_work_per_shelf` on
+`(organization_id, scope, project)` `WHERE status IN ('judging', 'grouping',
+'applying', 'undoing')`: one run in work per shelf. A project run's
+organization is the project's (composite foreign key); an Archiv run has no
+project (CHECK). Tenant-secured by `grid_secure_table` on `organization_id`.
 
 ## message_restricted_use (migration 0124)
 

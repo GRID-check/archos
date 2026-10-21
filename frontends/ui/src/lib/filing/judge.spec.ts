@@ -31,7 +31,7 @@ afterEach(() => {
 describe('keepKnownMoves', () => {
   it('keeps a move into a folder of the input, in the input’s spelling', () => {
     expect(keepKnownMoves([{ id: 'd1', folder: ' bescheide ', reason: 'Ein Bescheid.' }], INPUT)).toEqual([
-      { documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid.', newFolder: null },
+      { documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid.', newFolder: null, confidence: null },
     ])
   })
 
@@ -58,7 +58,7 @@ describe('keepKnownMoves', () => {
         ],
         INPUT
       )
-    ).toEqual([{ documentId: 'd1', folder: 'Korrespondenz', reason: 'Ein Brief.', newFolder: { description: 'Briefe und Mails' } }])
+    ).toEqual([{ documentId: 'd1', folder: 'Korrespondenz', reason: 'Ein Brief.', newFolder: { description: 'Briefe und Mails' }, confidence: null }])
   })
 })
 
@@ -82,7 +82,7 @@ describe('judgeFiling', () => {
     expect(init?.headers).toMatchObject({ 'x-grid-organization-id': 'org_1' })
     expect(JSON.parse(String(init?.body))).toEqual(filingFitBody(INPUT))
     expect(judgement).toEqual({
-      moves: [{ documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid.', newFolder: null }],
+      moves: [{ documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid.', newFolder: null, confidence: null }],
       traceId: 'abcdef0123456789abcdef0123456789',
       error: null,
     })

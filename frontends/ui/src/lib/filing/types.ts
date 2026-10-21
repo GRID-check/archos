@@ -52,8 +52,13 @@ export interface FilingDocumentInput {
   summary: string | null
 }
 
+/** Why the judgement runs: an upload proposes only when sure; a sort places every document it can. */
+export type FilingPurpose = 'upload' | 'sort'
+
 export interface FilingJudgementInput {
   basis: FilingBasis
+  /** `upload` when omitted. */
+  purpose?: FilingPurpose
   locale: string
   folders: FilingFolderInput[]
   conventions: FilingConventionInput[]
@@ -71,6 +76,8 @@ export const filingFitResponseSchema = z.object({
         reason: z.string(),
         new: z.boolean().optional(),
         description: z.string().nullish(),
+        /** The decision model's agreement with the folder; asked on the sort purpose only. */
+        confidence: z.number().min(0).max(1).nullish(),
       })
     )
     .default([]),
@@ -87,6 +94,8 @@ export interface FilingMove {
   reason: string
   /** A convention the shelf does not have yet: applying the proposal creates it. */
   newFolder: { description: string | null } | null
+  /** The decision model's agreement with the folder; null when it was not asked or not reachable. */
+  confidence: number | null
 }
 
 export interface FilingJudgement {

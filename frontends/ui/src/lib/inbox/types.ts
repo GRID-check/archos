@@ -239,6 +239,8 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
   // The chat mention's glyph: one sign for „someone asked you", wherever it was.
   'annotation.mentioned': { icon: 'at-sign', i18nKey: 'annotationMentioned', tone: 'request', anchor: 'mark' },
+  'root_sort.ready': { icon: 'check-circle', i18nKey: 'rootSortReady', tone: 'info' },
+  'root_sort.failed': { icon: 'alert-triangle', i18nKey: 'rootSortFailed', tone: 'warning' },
 }
 
 /**

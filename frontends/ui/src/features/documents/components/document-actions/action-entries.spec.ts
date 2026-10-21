@@ -252,7 +252,7 @@ describe('documentActionEntries — picking several, and moving on a phone', () 
 
   it('keeps the move SUBMENU on a desk', () => {
     const entries = documentActionEntries({ document: DOCUMENT, labels: LABELS, ...handlers, folders })
-    expect(entries.find((e) => e.type !== 'separator' && e.type !== 'radio-group' && e.id === 'move')?.type).toBe('sub')
+    expect(entries.find((e) => (e.type === 'item' || e.type === 'sub') && e.id === 'move')?.type).toBe('sub')
   })
 
   it('makes „Verschieben" one item that opens the folder sheet where a submenu has no room', () => {
@@ -264,7 +264,7 @@ describe('documentActionEntries — picking several, and moving on a phone', () 
       folders,
       onPickMoveTarget,
     })
-    const move = entries.find((e) => e.type !== 'separator' && e.type !== 'radio-group' && e.id === 'move')
+    const move = entries.find((e) => (e.type === 'item' || e.type === 'sub') && e.id === 'move')
     expect(move?.type).toBe('item')
     if (move?.type === 'item') move.onSelect?.()
     expect(onPickMoveTarget).toHaveBeenCalledTimes(1)

@@ -873,6 +873,31 @@ export const collaboration = {
         titleRelatedNoSubject: '{actor} mentioned you in annotation {related}',
         body: 'Answer in the annotation’s thread.',
       },
+      // A sort of a shelf's root (ADR-0121) has proposed where its files go.
+      // {subject} is the project; the office filing names no place, so its
+      // variant says it. {count} is the files it proposes to move.
+      rootSortReady: {
+        titleOne: 'The sort of “{subject}” is ready to review: 1 file',
+        titleMany: 'The sort of “{subject}” is ready to review: {count} files',
+        titleNone: 'The sort of “{subject}” is ready to review',
+        title: 'The sort of “{subject}” is ready to review',
+        body: 'Look at where each file should go. Nothing moves until you apply it.',
+        variants: {
+          office: {
+            titleOne: 'The sort of the office filing is ready to review: 1 file',
+            titleMany: 'The sort of the office filing is ready to review: {count} files',
+            titleNone: 'The sort of the office filing is ready to review',
+            title: 'The sort of the office filing is ready to review',
+          },
+        },
+      },
+      rootSortFailed: {
+        title: 'The sort of “{subject}” stopped',
+        body: 'What was moved until then stays. Open the files to see the reason.',
+        variants: {
+          office: { title: 'The sort of the office filing stopped' },
+        },
+      },
       unknown: {
         title: 'Something happened',
         body: 'in {subject}',

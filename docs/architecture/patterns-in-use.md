@@ -162,6 +162,20 @@ person's act (transport, sign-in plumbing) is exempt with a reason. ADR-0122,
 **Enforced by:** `frontends/ui/src/lib/agent-api/agent-reachability.spec.ts`; the
 routes that predate it sit in a shrink-only baseline.
 
+## Bulk work is a server run, never a browser loop
+
+A move, a sort, an import or a reindex over many items, or longer than one
+request, is a row the person comes back to, worked by a `bff_job_queue` job in
+bounded slices (root sort is the first). The browser starts it, reads it and
+asks for the next step; it never loops over items or keeps a pool of item
+requests. The decision and its debt are ADR-0121.
+
+`frontends/ui/src/browser-work-loops.spec.ts` counts the pool signatures per
+browser file against `ci/browser_work_loops.json`, where each count has its
+reason. A count may not grow and a new file may not appear.
+**Enforced by:** that ratchet, for pools only. A sequential browser loop is not
+counted, so review is the gate for it.
+
 ## Already recorded elsewhere
 
 | Pattern | Where |

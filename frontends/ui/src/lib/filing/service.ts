@@ -65,7 +65,7 @@ const CONVENTION_PROJECTS = 20
 /** How many of those also lend their Dokumentart per folder (one collection listing each). */
 const CONVENTION_SAMPLE_PROJECTS = 3
 /** The language of the reasons a person reads. Product copy is German. */
-const REASON_LOCALE = 'de'
+export const REASON_LOCALE = 'de'
 
 /** What one review did, for the log line and the specs. */
 export interface FilingReviewOutcome {
@@ -80,13 +80,13 @@ export interface FilingReviewOutcome {
 const skipped = (reason: string): FilingReviewOutcome => ({ status: 'skipped', reason, proposed: 0, withdrawn: 0, sinceSealMs: null })
 
 /** A shelf's folders, as the uploader sees them, with which are open to every member. */
-interface ShelfFolders {
+export interface ShelfFolders {
   rows: FolderRow[]
   pathOf: (folderId: string | null) => string
   isRestricted: (folderId: string | null) => boolean
 }
 
-async function shelfFolders(session: AuthorizedSession, shelf: DocumentShelf): Promise<ShelfFolders> {
+export async function shelfFolders(session: AuthorizedSession, shelf: DocumentShelf): Promise<ShelfFolders> {
   const [rows, tree] = await Promise.all([
     shelf.kind === 'project' ? listProjectFolders(shelf.projectId, session) : listOfficeShelfFolders(session),
     shelf.kind === 'project'
@@ -103,7 +103,7 @@ async function shelfFolders(session: AuthorizedSession, shelf: DocumentShelf): P
 }
 
 /** Which Dokumentart lands in which folder of a shelf, from its screened, filed documents. */
-async function shelfDocTypes(organizationId: string, shelf: DocumentShelf, folders: ShelfFolders) {
+export async function shelfDocTypes(organizationId: string, shelf: DocumentShelf, folders: ShelfFolders) {
   const sample = await listFiledDocuments(organizationId, shelf, SCREENED_ONLY)
   const enriched = await reconcileDocumentStatuses(sample, organizationId)
   const samples: FiledSample[] = enriched
@@ -113,7 +113,7 @@ async function shelfDocTypes(organizationId: string, shelf: DocumentShelf, folde
 }
 
 /** The office's conventions for a project shelf, learned from the projects the uploader may open. */
-async function conventionsFor(
+export async function conventionsFor(
   session: AuthorizedSession,
   projectId: string,
   existingPaths: readonly string[],
@@ -160,7 +160,7 @@ async function batchDocuments(
   }
 }
 
-function documentInput(
+export function documentInput(
   row: Document & { tags?: string[]; summary?: string },
   folders: ShelfFolders,
   basis: FilingBasis

@@ -49,6 +49,7 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * and filing a report as the run's own pinned requester.
  */
 export const BFF_JOB_KINDS = [
+  'root_sort',
   'reindex_project',
   'reingest_failed',
   'placement_reingest',
@@ -204,6 +205,18 @@ export const restoreFolderBinPayloadSchema = z.object({
   counts: countsSchema,
 })
 export type RestoreFolderBinPayload = z.infer<typeof restoreFolderBinPayloadSchema>
+
+/**
+ * `root_sort`: work one run of sorting a shelf's root (ADR-0121), as the person
+ * who started it. Everything the run learns is on its `root_sort_runs` row;
+ * the payload only names it, so a slice reads where the run got to rather than
+ * trusting what the queue saved.
+ */
+export const rootSortPayloadSchema = z.object({
+  runId: z.string().uuid(),
+  requester: requesterSchema,
+})
+export type RootSortPayload = z.infer<typeof rootSortPayloadSchema>
 
 /**
  * `purge_binned_chunks`: finish the chunk purge of a folder delete whose

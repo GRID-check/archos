@@ -2112,6 +2112,10 @@
     "de": "Piloti findet jetzt jede Stelle, an der ein Wort, ein Name oder eine Zahl in den Dateien eines Projekts vorkommt, und listet jede Fundstelle mit Seitenzahl auf. Piloti geht außerdem alle Dateien eines Projekts durch, nicht nur die ersten rund 50 Namen. Word-, Excel- und PowerPoint-Dateien öffnen sich als PDF-Vorschau, Bilder in Word- und PowerPoint-Dateien lassen sich zitieren, und ein gescanntes PDF wird Wort für Wort bis zu 500 Seiten gelesen."
   },
   {
+    "en": "Piloti can now sort all the loose files at the top of a project's Dateien or the Archiv into folders in one go, proposing a folder for each file and moving nothing until you apply the reviewed result. The sort keeps running when you close the window, and you can undo it afterwards.",
+    "de": "Piloti kann jetzt alle losen Dateien auf oberster Ebene im Bereich „Dateien“ eines Projekts oder im Archiv auf einmal in Ordner einsortieren, schlägt für jede Datei einen Ordner vor und verschiebt nichts, bevor Sie das geprüfte Ergebnis anwenden. Die Sortierung läuft weiter, wenn Sie das Fenster schließen, und lässt sich anschließend rückgängig machen."
+  },
+  {
     "en": "Piloti can now view a photo or scanned drawing inside an uploaded PDF on its own and at full resolution, not only as part of the page.",
     "de": "Piloti kann ein Foto oder eine gescannte Zeichnung in einer hochgeladenen PDF jetzt auch für sich allein und in voller Auflösung ansehen, nicht nur als Teil der Seite."
   },

@@ -587,6 +587,121 @@ and in the inbox, pointing at the shelf. `GRID_FILING_SUGGESTIONS=off` switches 
 and description) above the rows and each item's `reason` under its row, so a
 proposal that carries them reads the same wherever it is shown.
 
+### Sorting the root
+
+Upload filing judges files as they arrive. A root that already holds a
+hundred loose files, from before the folders existed, needs the other
+direction: one run over the whole root. It is in the file browser's overflow
+menu, under the Advanced section, as „Alle Dateien in Ordner einsortieren…“,
+and it is rare by design.
+
+**A run is the server's (ADR-0121).** It is a row in `root_sort_runs`
+(migration 0173), worked by the BFF job `root_sort` on `bff_job_queue`
+(ADR-0079), a bounded slice at a time. The browser starts the run, reads it,
+and asks for its next step; it loops over nothing. Nothing runs because a tab
+is open: closing the dialog leaves the run going, and reopening it reads the
+person's latest run on that shelf and shows where it is. A run is its
+requester's. Only they see it and act on it, and the job runs as them, with
+their rights read again at every slice. One run may be in work per shelf at a
+time; the partial unique index `root_sort_runs_one_in_work_per_shelf` refuses a
+second.
+
+**The routes.** `POST /api/projects/[id]/root-sort` and
+`POST /api/office-shelf/root-sort` start a run over the root as it is now.
+`GET /api/root-sort-runs/[runId]` reads it, and `…/apply`, `…/undo` and
+`…/cancel` ask for the next step. The dialog polls the run every two seconds
+while it works. The service is `lib/filing/root-sort-run.ts`; the typed client
+is `lib/filing/root-sort-client.ts`.
+
+**The statuses.** `judging` → `grouping` → `ready` → `applying` → `applied`,
+and after an undo `undoing` → `undone`. `cancelled` ends a run before anything
+moved (from `judging`, `grouping` or `ready`; a run that is `applying` finishes
+what it started). `failed` ends a run with its reason when a slice is refused
+(the person lost the shelf, the project closed). A transient error is not a
+refusal: the queue retries that slice.
+
+**A run is never left working with nothing working on it.** The run names the
+job that works it (`job_id`). If that job cannot be queued, the step that moved
+the run is taken back (a new run ends `failed` with `not_queued`, an apply
+returns to `ready`, an undo to `applied`). If the job is gone (it finished
+without moving the run on, or died after its attempts), the run is ended
+`failed` with `stalled` whenever anyone opens the sort, starts one or reads a
+run of that shelf, so the one-in-work index frees the shelf. A run whose job is
+queued or claimed is never ended this way, however long a backlog keeps it
+waiting. A slice runs as its requester looked up strictly: an identity provider
+that does not answer is retried by the queue, and a requester who left ends
+the run (`requester_left`). A run that failed part of the way through applying
+can still be undone.
+
+**A slice is bounded in time and writes only over what it read.** An apply or
+undo slice starts moves for 180 s (`MOVE_SLICE_BUDGET_MS`) and carries on from
+the first move it did not reach; every write is conditioned on the status and
+the cursor the slice read, so a slice the runner gave up on that finishes late
+changes nothing. An apply moves a document only from the root, where the run
+found it, into a folder the review offered or a new folder the run proposed
+(checked on the server, not only in the dialog); it records each document it
+really moved with the folder it put it in, and an undo moves back only what is
+still there. Starting a run cancels the person's older runs still waiting for
+review.
+
+**The person is told.** When a run becomes `ready` or `failed`, its requester
+gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
+`lib/filing/root-sort-announce.ts`) that opens the shelf with the dialog
+(`?rootSort=<runId>`), so closing the dialog never means missing the result.
+
+**The slices.** Each one is bounded well inside the runner's 300 s ceiling
+(`GRID_BFF_JOBS_SLICE_TIMEOUT_MS`), and the cursor is saved after each one.
+
+1. **Scan** (the start request, not a slice). The shelf's open folders and the
+   root documents the judgement may read: screened, and read by ingestion.
+   Others are counted as unreadable. At most 5000 root documents per run.
+2. **Judge** (`judging`). A slice runs three chunks of 60 documents side by
+   side through the filing judgement (`POST /v1/filing-fit` with
+   `purpose: "sort"`). It places every document that has a plausible home, in
+   the deepest folder that fits, and may propose a folder the office uses in
+   its other projects but this shelf lacks. Jev (ADR-0064) scores each
+   placement's folder; at 0.8 or more a placement reads as sure, below it as
+   unsure. The threshold is measured (`task be:eval:root-sort`, two runs over
+   150 labelled documents): sure placements were right 0.972 of the time at
+   0.8, against 0.93 at 0.6; most misses were one level too high and score
+   below the cut. A chunk that fails is recorded,
+   and its documents stay in the root.
+3. **Group** (`grouping`, one slice). The documents no folder fits, up to 1000,
+   go to `POST /v1/folder-proposals` in parallel chunks, and one merge call
+   unifies the names into at most 12 new folders, so names agree across the
+   whole run. The slice is capped at 240 s (`NEW_FOLDERS_TIMEOUT_MS`), an
+   estimate, unmeasured. When interactive chats hold the model provider's
+   slots, the Python side can still be waiting at that cap; the BFF then
+   records `grouping_error` and the run carries on. A grouping that fails or
+   times out leaves those files in the root, and the review says so.
+   The run then waits in `ready`.
+4. **Review** (`ready`, no job). The person reviews the result as a tree:
+   unchecks what they do not want, re-targets a placement, or shows only the
+   unsure ones. Nothing has moved. The review is read only while the run waits
+   on the person.
+5. **Apply** (`applying`). The apply request records what the person kept on
+   the row. The first slice creates the kept new folders through the shelf's
+   folder ensure. Each slice then moves at most 100 documents, each through
+   `moveDocumentToFolder` with all its checks, and records each outcome; a move
+   that fails is recorded and the rest go on.
+6. **Undo** (`undoing`). Moves the documents the run moved back to the root, 100
+   per slice, from `applied` or from a `failed` run that had moved some, and
+   only where a document is still in the folder the run put it in: one a
+   colleague filed since stays where they put it. The folders it created stay.
+   What it could not move back is kept apart (`undo_failures`) and named in the
+   dialog.
+
+**The reading rules are the upload filing's.** Only folders every member may
+read, only screened documents, nothing on a closed project. The gate is
+`requireShelfWrite` (`project:documents:write` or `project:edit`; for the
+Archiv, `canManageOfficeShelf`), checked again by `requireSortable` at every
+slice.
+
+**Observability.** Each placement chunk is a `filing-fit` generation
+(`purpose: sort`), each new-folder call is `folder-proposals.map` or
+`folder-proposals.reduce`, and each Jev call is a `decide.*` generation
+([`langfuse.md`](../observability/langfuse.md)).
+
 ## What is not done yet
 
 - The agent's `propose_file_change` cannot yet move into a folder its inventory
