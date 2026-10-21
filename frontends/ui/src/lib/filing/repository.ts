@@ -10,7 +10,7 @@ import { getDb } from '@/lib/db'
 import { documents, projectFolders, type Document } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { DocumentReader } from '@/lib/documents/document-reader'
-import { shelfDocumentWhere, type DocumentShelf } from '@/lib/documents/shelf'
+import { shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from '@/lib/documents/shelf'
 import { documentVisibleTo } from '@/lib/documents/visibility'
 
 /** Most folder rows read across the office's other projects. */
@@ -172,4 +172,23 @@ export async function findRootDocuments(
       )
       .limit(ids.length)
   )
+}
+
+/** Most folder paths a shelf is checked against before a new folder is proposed. */
+export const MAX_SHELF_FOLDER_PATHS = 5000
+
+/**
+ * Every living folder path of a shelf, whoever may read it: what a proposed
+ * new folder must not collide with. Paths only, and never returned to a
+ * person; bounded by {@link MAX_SHELF_FOLDER_PATHS}.
+ */
+export async function listShelfFolderPaths(organizationId: string, shelf: DocumentShelf): Promise<string[]> {
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .select({ path: projectFolders.path })
+      .from(projectFolders)
+      .where(shelfFolderWhere(shelf, organizationId))
+      .limit(MAX_SHELF_FOLDER_PATHS)
+  )
+  return rows.map((row) => row.path)
 }

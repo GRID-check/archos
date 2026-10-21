@@ -18,7 +18,7 @@ export const POST = apiRoute(
   {
     authz: {
       enforcedBy:
-        'moveDocumentToFolder per move (org scope; requireProjectAccess project:documents:write for a project document, canManageOfficeShelf for an Archiv document)',
+        'moveDocumentToFolder per move (org scope; requireShelfWrite: project:documents:write or project:edit for a project document, canManageOfficeShelf for an Archiv document)',
     },
   }
 )

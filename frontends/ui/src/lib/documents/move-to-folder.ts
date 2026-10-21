@@ -21,6 +21,7 @@
  */
 
 import { eq } from 'drizzle-orm'
+import { ApiError } from '@/lib/api/errors'
 import { getDb } from '@/lib/db'
 import { documents } from '@/lib/db/schema'
 import { getProjectFolderAccess, requireFolderWrite } from '@/lib/authz/folder-access'
@@ -163,10 +164,12 @@ export async function moveDocumentsToFolders(
       const result = await moveDocumentToFolder(move, session)
       outcomes.push({ documentId: move.documentId, ok: result.ok, error: result.ok ? null : result.error })
     } catch (error) {
+      // A refusal says what it is; anything else is logged here and never reaches the body.
+      if (!(error instanceof ApiError)) console.error(`[documents] move of ${move.documentId} failed`, error)
       outcomes.push({
         documentId: move.documentId,
         ok: false,
-        error: error instanceof Error ? error.message : 'Move failed.',
+        error: error instanceof ApiError ? error.message : 'Move failed.',
       })
     }
   }

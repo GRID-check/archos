@@ -21,17 +21,17 @@ import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { Document } from '@/lib/db/schema'
-import { hasPassedScreening, SCREENED_ONLY } from '@/lib/documents/document-reader'
+import { hasPassedScreening, memberReader, SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { reconcileDocumentStatuses } from '@/lib/documents/reconcile-status'
 import type { DocumentShelf } from '@/lib/documents/shelf'
 import { requireShelfWrite } from '@/lib/documents/shelf-authz'
 import { surfaceStateOf } from '@/lib/documents/surface-state'
-import { folderPathKey } from '@/lib/projects/folders'
+import { folderPathKey, pathSegments, validateFolderName } from '@/lib/projects/folders'
 import { isProjectClosed } from '@/lib/projects/project-status'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { z } from 'zod'
 import { judgeFiling } from './judge'
-import { findRootDocuments, listRootDocuments } from './repository'
+import { findRootDocuments, listRootDocuments, listShelfFolderPaths } from './repository'
 import {
   MAX_NEW_FOLDERS,
   MAX_ROOT_SORT_DOCUMENTS,
@@ -51,8 +51,12 @@ import {
 } from './service'
 import { MAX_JUDGED_FOLDERS, type FilingFolderInput, type FilingMove } from './types'
 
-/** A person waits on the grouping of every leftover document: parallel chunks, then one merge. */
-const NEW_FOLDERS_TIMEOUT_MS = 150_000
+/**
+ * A person waits on the grouping of every leftover document: parallel chunks,
+ * one merge, then the decision model per document. A thousand leftovers is
+ * estimated at one to three minutes; unmeasured.
+ */
+const NEW_FOLDERS_TIMEOUT_MS = 300_000
 /** What of a summary the new-folder call reads: it groups by name and type first. */
 const NEW_FOLDER_SUMMARY_CHARS = 300
 
@@ -71,12 +75,21 @@ async function requireSortable(session: AuthorizedSession, shelf: DocumentShelf)
 
 const openFoldersOf = (folders: ShelfFolders) => folders.rows.filter((row) => !folders.isRestricted(row.id))
 
+async function folderSpace(session: AuthorizedSession, shelf: DocumentShelf, folders: ShelfFolders): Promise<FolderSpace> {
+  const paths = await listShelfFolderPaths(session.organizationId, shelf)
+  return {
+    takenKeys: new Set(paths.map(folderPathKey)),
+    openKeys: new Set(openFoldersOf(folders).map((row) => folderPathKey(row.path))),
+  }
+}
+
 /** The shelf's open folders and the root documents a sort may read. */
 export async function scanRoot(session: AuthorizedSession, shelf: DocumentShelf): Promise<RootSortScan> {
   await requireSortable(session, shelf)
   const [folders, rows] = await Promise.all([
     shelfFolders(session, shelf),
-    listRootDocuments(session.organizationId, shelf, SCREENED_ONLY, MAX_ROOT_SORT_DOCUMENTS + 1),
+    // As the person sees the root, so a file ingestion has not read yet is counted rather than missed.
+    listRootDocuments(session.organizationId, shelf, memberReader(session.userId), MAX_ROOT_SORT_DOCUMENTS + 1),
   ])
   const listed = rows.slice(0, MAX_ROOT_SORT_DOCUMENTS)
   const readable = listed.filter(isJudgeable)
@@ -112,17 +125,46 @@ async function folderInputs(session: AuthorizedSession, shelf: DocumentShelf, fo
     )
 }
 
+/**
+ * Where a folder could be created on this shelf: the path as `…/folders/ensure`
+ * will spell it, when every segment is a valid folder name, it names no folder
+ * the shelf has (hidden ones included: a collision would fail the whole apply
+ * and tell the person a folder exists they may not see), and it hangs from the
+ * root or a folder open to every member. `null` otherwise.
+ */
+export interface FolderSpace {
+  /** Every living folder path of the shelf, whoever may see it, as keys. */
+  takenKeys: ReadonlySet<string>
+  /** The folders a sort may file into, as keys. */
+  openKeys: ReadonlySet<string>
+}
+
+export function creatablePath(path: string, space: FolderSpace): string | null {
+  const segments = pathSegments(path)
+  if (segments.length === 0 || !segments.every((segment) => validateFolderName(segment).ok)) return null
+  const normalized = segments.join('/')
+  const key = folderPathKey(normalized)
+  if (space.takenKeys.has(key)) return null
+  const parent = folderPathKey(segments.slice(0, -1).join('/'))
+  return parent === '' || space.openKeys.has(parent) ? normalized : null
+}
+
 /** The judgement's moves as placements: an existing folder by id, a convention by the path that creates it. */
-export function placementsOf(moves: readonly FilingMove[], folders: ReadonlyArray<{ id: string; path: string }>): RootSortPlacement[] {
+export function placementsOf(
+  moves: readonly FilingMove[],
+  folders: ReadonlyArray<{ id: string; path: string }>,
+  space: FolderSpace
+): RootSortPlacement[] {
   const idByKey = new Map(folders.map((folder) => [folderPathKey(folder.path), folder.id]))
   return moves.flatMap((move): RootSortPlacement[] => {
     const folderId = idByKey.get(folderPathKey(move.folder)) ?? null
-    if (!folderId && !move.newFolder) return []
+    const newFolderPath = !folderId && move.newFolder ? creatablePath(move.folder, space) : null
+    if (!folderId && !newFolderPath) return []
     return [
       {
         documentId: move.documentId,
         folderId,
-        newFolderPath: folderId ? null : move.folder,
+        newFolderPath,
         reason: move.reason,
         confidence: move.confidence,
       },
@@ -142,8 +184,9 @@ export async function planRootChunk(
     judgeableRootDocuments(session, shelf, documentIds),
   ])
   if (documents.length === 0) return { placements: [], error: null, traceId: null }
-  const [inputs, conventions] = await Promise.all([
+  const [inputs, space, conventions] = await Promise.all([
     folderInputs(session, shelf, folders),
+    folderSpace(session, shelf, folders),
     shelf.kind === 'project'
       ? conventionsFor(session, shelf.projectId, folders.rows.map((row) => row.path), true)
       : Promise.resolve([]),
@@ -162,7 +205,11 @@ export async function planRootChunk(
     },
   })
   if (judgement.error) return { placements: [], error: judgement.error, traceId: judgement.traceId }
-  return { placements: placementsOf(judgement.moves, openFoldersOf(folders)), error: null, traceId: judgement.traceId }
+  return {
+    placements: placementsOf(judgement.moves, openFoldersOf(folders), space),
+    error: null,
+    traceId: judgement.traceId,
+  }
 }
 
 const folderProposalsResponseSchema = z.object({
@@ -183,31 +230,23 @@ const folderProposalsResponseSchema = z.object({
 type RawFolderProposal = z.infer<typeof folderProposalsResponseSchema>['proposals'][number]
 
 /**
- * The proposals the input grounds: a path the shelf does not have, under the
- * root or a folder open to every member, holding at least two documents the request sent
+ * The proposals the input grounds: a path that could be created
+ * ({@link creatablePath}), holding at least two documents the request sent
  * and no earlier proposal took. Pure, so the rule is specced without a
  * backend; the route checks the same and this tier trusts nothing it parses.
  */
 export function keepNewFolders(
   proposals: readonly RawFolderProposal[],
-  shelf: { existingPaths: readonly string[]; openPaths: readonly string[] },
+  space: FolderSpace,
   documentIds: readonly string[]
 ): NewFolderProposal[] {
-  const existing = new Set(shelf.existingPaths.map(folderPathKey))
-  const parents = new Set(shelf.openPaths.map(folderPathKey))
   const known = new Set(documentIds)
   const taken = new Set<string>()
   const kept: NewFolderProposal[] = []
   for (const proposal of proposals) {
-    const path = proposal.path
-      .split('/')
-      .map((segment) => segment.replace(/\s+/g, ' ').trim())
-      .filter(Boolean)
-      .join('/')
+    const path = creatablePath(proposal.path, space)
+    if (!path) continue
     const key = folderPathKey(path)
-    const parent = key.includes('/') ? key.slice(0, key.lastIndexOf('/')) : ''
-    const name = path.slice(path.lastIndexOf('/') + 1)
-    if (!key || existing.has(key) || (parent && !parents.has(parent)) || name.length > 255) continue
     if (kept.some((other) => folderPathKey(other.path) === key)) continue
     const ids = [...new Set(proposal.ids)].filter((id) => known.has(id) && !taken.has(id))
     if (ids.length < 2) continue
@@ -233,7 +272,7 @@ export async function proposeRootFolders(
     judgeableRootDocuments(session, shelf, documentIds),
   ])
   if (documents.length < 2) return { proposals: [], error: null, traceId: null }
-  const inputs = await folderInputs(session, shelf, folders)
+  const [inputs, space] = await Promise.all([folderInputs(session, shelf, folders), folderSpace(session, shelf, folders)])
   const body = {
     locale: REASON_LOCALE,
     folders: inputs.map((folder) => ({ path: folder.path, description: folder.description, doc_types: folder.docTypes })),
@@ -267,7 +306,7 @@ export async function proposeRootFolders(
     if (error) return { proposals: [], error, traceId: traceId ?? null }
     const kept = keepNewFolders(
       proposals,
-      { existingPaths: folders.rows.map((row) => row.path), openPaths: openFoldersOf(folders).map((row) => row.path) },
+      space,
       documents.map((row) => row.id)
     )
     return { proposals: kept, error: null, traceId: traceId ?? null }

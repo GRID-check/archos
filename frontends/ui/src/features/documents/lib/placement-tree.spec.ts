@@ -67,7 +67,7 @@ function input(overrides: Partial<PlacementInput> = {}): PlacementInput {
   return {
     folders,
     documents: [doc('d1'), doc('d2'), doc('d3'), doc('d4'), doc('d5')],
-    placements: [placed('d1', 'f3', 0.9), placed('d2', 'f4', 0.3), placed('d3', 'f2', null)],
+    placements: [placed('d1', 'f3', 0.9), placed('d2', 'f4', 0.3), placed('d3', 'f2', 0.7)],
     newFolders: [],
     ...overrides,
   }
@@ -117,6 +117,12 @@ describe('buildPlacementTree', () => {
     expect(genehmigung?.unsureBelow).toBe(1)
     const entwurf = findFolder(tree.folders, '01 Entwurf')
     expect(entwurf?.unsureBelow).toBe(0)
+  })
+
+  it('reads a placement the decision model did not score as unsure', () => {
+    const tree = buildPlacementTree(input({ placements: [placed('d1', 'f3', null)] }), NO_CHANGES)
+    expect(tree.summary.unsure).toBe(1)
+    expect(tree.summary.sure).toBe(0)
   })
 
   it('attaches a new folder under its nearest existing parent and marks it new', () => {

@@ -158,7 +158,11 @@ export type FolderMovesResponse = z.infer<typeof folderMovesResponseSchema>
 
 export type PlacementCertainty = 'sure' | 'unsure'
 
-/** How a placement reads: unscored placements are the filing judgement's own, which proposes only when confident. */
+/**
+ * How a placement reads. One the decision model did not score (too many
+ * folders to ask about, or it was not reachable) reads unsure: a sort places
+ * every document it can, so nothing else vouches for it.
+ */
 export function certaintyOf(confidence: number | null): PlacementCertainty {
-  return confidence === null || confidence >= SURE_CONFIDENCE ? 'sure' : 'unsure'
+  return confidence !== null && confidence >= SURE_CONFIDENCE ? 'sure' : 'unsure'
 }
