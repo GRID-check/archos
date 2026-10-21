@@ -20,6 +20,7 @@
 
 import type { FC } from 'react'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
+import { WorkingDots } from '@/components/ui/working-dots'
 import { useTranslations } from '@/i18n'
 import type { DirectoryPerson } from '@/lib/sharing/types'
 import { cn } from '@/lib/utils'
@@ -32,14 +33,6 @@ export interface TypingPresenceProps {
 
 /** Beyond this many names the line stops being readable and starts being a list. */
 const MAX_NAMED = 2
-
-/**
- * The typing wave's timing, named rather than inlined. 150ms staggers the
- * three dots into a wave rather than a pulse; 1s is the full dot cycle.
- * Paint-only (opacity/transform via `animate-bounce`), so no layout shift.
- */
-const TYPING_DOT_STAGGER_MS = 150
-const TYPING_DOT_CYCLE_MS = 1000
 
 export const TypingPresence: FC<TypingPresenceProps> = ({ typists, className }) => {
   const t = useTranslations('collaboration')
@@ -80,19 +73,11 @@ export const TypingPresence: FC<TypingPresenceProps> = ({ typists, className }) 
       <span className="text-muted-foreground text-xs" aria-hidden="true">
         {label}
       </span>
-      <span className="flex items-center gap-0.5" aria-hidden="true">
-        {[0, 1, 2].map((index) => (
-          <span
-            key={index}
-            className="bg-muted-foreground/60 size-1 animate-bounce rounded-full"
-            // Staggered so the three dots read as a wave rather than a pulse.
-            style={{
-              animationDelay: `${index * TYPING_DOT_STAGGER_MS}ms`,
-              animationDuration: `${TYPING_DOT_CYCLE_MS}ms`,
-            }}
-          />
-        ))}
-      </span>
+      {/* The house wave (`animate-typing-dot` on --motion-ambient and
+          --ease-cycle, its stagger inside the utility), not Tailwind's
+          `animate-bounce`, whose ease-in keyframes and inline timings were a
+          second dialect of the same three dots. */}
+      <WorkingDots className="text-muted-foreground/60" />
       <span className="sr-only" role="status" aria-live="polite">
         {label}
       </span>

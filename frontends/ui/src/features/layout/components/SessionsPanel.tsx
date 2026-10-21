@@ -1266,7 +1266,7 @@ const RunStatusIcon: FC<{ status: string }> = ({ status }) => {
   if (status === 'failed' || status === 'cancelled') {
     return <AlertCircle className="size-4 shrink-0" aria-hidden="true" />
   }
-  return <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden="true" />
+  return <Loader2 className="size-4 shrink-0 animate-spin motion-reduce:animate-none" aria-hidden="true" />
 }
 
 /**
@@ -1284,7 +1284,7 @@ const SessionStatusIcon: FC<{
   const isActive = isSessionActive || session.hasActiveDeepResearch
 
   if (isActive) {
-    return <Loader2 className={cn(base, 'text-accent-primary animate-spin')} aria-hidden="true" />
+    return <Loader2 className={cn(base, 'text-accent-primary animate-spin motion-reduce:animate-none')} aria-hidden="true" />
   }
 
   if (session.hasCompletedReport) {
