@@ -705,6 +705,7 @@ def _every_live_payload(steps) -> list:
     canvas = (("marks", {}), ("mark", {}), ("mark", {"open": True}), ("update", {}), ("delete", {}), ("reply", {}))
     for index, (tool, args) in enumerate(canvas):
         turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=12 + index)
+    turn_status.emit_retrieval([{"name": "workspace__call", "args": {"name": "tasks-list"}}], round_index=18)
     turn_status.emit_retrieval_requery(query_count=2)
     turn_status.emit_citation_check(source_count=3)
     turn_status.emit_answer_repair(quotes=1)

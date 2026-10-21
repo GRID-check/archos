@@ -462,6 +462,7 @@ ALL_STATUS_KEYS: tuple[str, ...] = (
     "status.action.annotationsUpdate",
     "status.action.annotationsDelete",
     "status.action.annotationsReply",
+    "status.action.workspaceCall",
     "status.citations",
     "status.repair",
     "status.escalation",
