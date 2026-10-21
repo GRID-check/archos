@@ -29,12 +29,17 @@ describe('stepNameLabel', () => {
     ['file_draft', 'thinking.stepName.filing'],
     ['document_annotations', 'thinking.stepName.annotations'],
     ['set_doc_class', 'thinking.stepName.fileProposal'],
+    // ADR-0122: a workspace read or proposal is work the Herleitung names.
+    ['call', 'thinking.stepName.workspace'],
   ])('%s → %s', (name, key) => {
     expect(stepNameLabel(name, t)).toBe(key)
   })
 
   test('a basename without an entry has no label; nothing is pattern-matched', () => {
     expect(stepNameLabel('ask_user', t)).toBeNull()
+    // The workspace's bookkeeping calls name nothing the reader asked for.
+    expect(stepNameLabel('search', t)).toBeNull()
+    expect(stepNameLabel('describe', t)).toBeNull()
     expect(stepNameLabel('my_knowledge_thing', t)).toBeNull()
   })
 })

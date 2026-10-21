@@ -17,6 +17,7 @@ import type { AnswerMeta } from '@/lib/conversations/message-answer-meta'
 import type { Findings } from '@/lib/conversations/message-findings'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import type { QuoteStamp } from '@/lib/conversations/message-quote-stamps'
+import type { ClaimStamp } from '@/lib/conversations/message-claim-stamps'
 import type { RunLedger } from '@/lib/runs/run-ledger-types'
 import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { StoredPromptOption } from '@/lib/conversations/message-prompt'
@@ -373,6 +374,19 @@ export interface ChatMessage {
    * belegt [N]" from it; same sanitize contract as `retrievalLedger`.
    */
   quoteStamps?: QuoteStamp[]
+  /**
+   * Where each sentence comes from (`TurnResult.claim_stamps`, ADR-0122). The
+   * confidence chip explains its level as their mix.
+   */
+  claimStamps?: ClaimStamp[]
+  /**
+   * Which rule computed `answerConfidence`: 2 the per-sentence formula
+   * (ADR-0122). Absent on an answer stored before it, which keeps the
+   * explanation of the answer-level floors it was computed with.
+   */
+  answerConfidenceVersion?: 1 | 2
+  /** A search ran and found nothing; the answer is the model's own knowledge. Present or absent. */
+  lookupFoundNothing?: true
   /**
    * The account of the RUN this message is (ADR-0062): the phases it walked,
    * the steps it took and what it left behind.

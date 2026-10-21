@@ -291,6 +291,10 @@ export const chat: typeof en.chat = {
     // Derselbe Sachverhalt, wenn die Antwort gar keine Quellen nennt: der Satz
     // oben verspräche „die bis dahin gefundenen Belege“, die es nicht gibt.
     researchTruncatedWithoutSources: 'Recherche vorzeitig beendet, bevor Belege gefunden wurden',
+    // Die Suche lief und fand nichts; die Antwort steht trotzdem da (ADR-0122),
+    // und dieser Satz sagt, worauf sie dann beruht.
+    lookupFoundNothing:
+      'Die Suche hat keine Quellen gefunden. Diese Antwort beruht auf allgemeinem Wissen und ist nicht belegt.',
     // WOMIT sie endete — als kurzer Zusatz in Klammern hinter dem jeweils
     // zutreffenden Satz oben. Dass vorzeitig Schluss war, ist der Sachverhalt;
     // woran es lag, entscheidet, ob eine erneute Anfrage etwas bringt.
@@ -1034,6 +1038,9 @@ export const chat: typeof en.chat = {
           annotationsUpdate: 'Anmerkung wird geändert …',
           annotationsDelete: 'Anmerkung wird gelöscht …',
           annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
+          // Ein Aufruf im Arbeitsbereich über Piloti selbst: Lesen läuft,
+          // Schreiben kommt als Vorschlag zurück.
+          workspaceCall: 'Arbeitet im Arbeitsbereich …',
         },
         // Die Werkzeuge sind durch, die Antwort wird geschrieben. Dieselben
         // Worte wie `activity.composing` darüber: ein Vokabular für dieselbe
@@ -1090,6 +1097,8 @@ export const chat: typeof en.chat = {
       annotations: 'Anmerkungen',
       // Die Dateiaktionen SCHLAGEN vor und schreiben nichts (ADR-0003).
       fileProposal: 'Ablagevorschlag',
+      // Gelesen oder vorgeschlagen im Arbeitsbereich (Mitglieder, Freigaben, Aufträge).
+      workspace: 'Arbeitsbereich',
       // Ein Chip pro Skill, den dieser Turn tatsächlich angewendet hat.
       // `{name}` liefert die einzige Label-Instanz
       // (features/skills/lib/skill-activity).
@@ -1435,6 +1444,39 @@ export const chat: typeof en.chat = {
       // belegt daher nur so viel wie eine Messung.
       citationFallback:
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
+    },
+    // Die Einschätzung seit ADR-0122: pro Aussage gerechnet, nicht pro Antwort.
+    // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.
+    byClaim: {
+      tooltip:
+        'Die eigene Einschätzung des Assistenten, begrenzt durch die schwächste tragende Aussage der Antwort. Sie kann falsch sein.',
+      levelMeanings: {
+        high: 'Hoch: jede tragende Aussage ist belegt, durch eine zitierte Quelle, einen Eintrag im Arbeitsbereich oder eine Messung.',
+        medium:
+          'Mittel: eine tragende Aussage ist eine Einschätzung oder allgemeines Wissen, oder ein gelesener Eintrag deckt eine Zahl nicht.',
+        low: 'Niedrig: eine Aussage zu Recht, Zahl oder Frist ist nicht belegt, oder eine Quellenangabe hielt der Prüfung nicht stand.',
+      },
+      // Woraus die Sätze der Antwort bestehen, in Lesereihenfolge: was hält zuerst.
+      mix: {
+        supported: '{count, plural, one {# Aussage belegt} other {# Aussagen belegt}}',
+        reasoning: '{count, plural, one {# Einschätzung} other {# Einschätzungen}}',
+        modelKnowledge: '{count, plural, one {# Aussage aus allgemeinem Wissen} other {# Aussagen aus allgemeinem Wissen}}',
+        normativeUncited: '{count, plural, one {# Rechtsaussage ohne Beleg} other {# Rechtsaussagen ohne Beleg}}',
+        dropped: '{count, plural, one {# Beleg nicht verifiziert} other {# Belege nicht verifiziert}}',
+      },
+      cappedReasons: {
+        ungrounded: 'Begrenzt durch eine tragende Aussage, hinter der kein Beleg steht.',
+        quoteUnverified:
+          'Ein Zitat konnte nicht wörtlich in der Quelle bestätigt werden; die Einschätzung ist entsprechend begrenzt.',
+        // Ein Eintrag im Arbeitsbereich oder eine Messung belegt Fakten über
+        // das Büro und das Gebäude, nie eine Aussage über das Recht.
+        normativeClaimUncited:
+          'Begrenzt durch eine Rechtsaussage ohne zitierte Quelle. Ein Eintrag im Arbeitsbereich oder eine Messung belegt keine Rechtsaussage.',
+        measurementOnly:
+          'Mittlere Sicherheit: die Angabe ist am Modell gemessen (mit Toleranz und Methode), aber nicht durch eine Quelle belegt.',
+        citationFallback:
+          'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
+      },
     },
   },
   // Antwort-Feedback per Daumen (WS-7).

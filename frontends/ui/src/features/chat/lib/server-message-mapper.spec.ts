@@ -453,6 +453,26 @@ describe('mapServerMessageToChatMessage — the answer’s provenance', () => {
     expect(bad!.quoteStamps).toBeUndefined()
   })
 
+  it('restores the claim stamps, the rule version and the found-nothing flag (ADR-0122)', () => {
+    const claim = { text: 'Anna hat drei offene Freigaben.', provenance: 'record', claimType: 'value', loadBearing: true }
+    const mapped = mapServerMessageToChatMessage(
+      serverMessage({
+        role: 'assistant',
+        metadata: {
+          provenance: { ...provenance, claimStamps: [claim], answerConfidenceVersion: 2, lookupFoundNothing: true },
+        },
+      }),
+    )
+    expect(mapped!.claimStamps).toEqual([claim])
+    expect(mapped!.answerConfidenceVersion).toBe(2)
+    expect(mapped!.lookupFoundNothing).toBe(true)
+
+    // A row stored before ADR-0122 restores no version: it renders under the rule it was computed with.
+    const old = mapServerMessageToChatMessage(serverMessage({ role: 'assistant', metadata: { provenance } }))
+    expect(old!.answerConfidenceVersion).toBeUndefined()
+    expect(old!.claimStamps).toBeUndefined()
+  })
+
   it('restores the run ledger on a run’s own message, bounded again on the way out', () => {
     // The one payload on a message that this tier did not write: the Python
     // fold produces it, so „written by another build" is the ordinary case

@@ -116,3 +116,43 @@ describe('ConfidenceChip', () => {
     expect(screen.queryByText(/Assistant's reason/)).not.toBeInTheDocument()
   })
 })
+
+/**
+ * Rule 2 (ADR-0122): the level is held to the weakest sentence the answer rests
+ * on, and the tooltip says what the sentences rest on. A turn stored before it
+ * carries no version and keeps the copy it was computed under.
+ */
+describe('ConfidenceChip under the per-sentence rule', () => {
+  const stamps = [
+    { text: 'Anna has three open approvals.', provenance: 'record', claimType: 'value', loadBearing: true },
+    { text: 'The height is 2.50 m [1].', provenance: 'cited', claimType: 'normative', loadBearing: true },
+    { text: 'That also holds for the attic.', provenance: 'reasoning', claimType: 'descriptive', loadBearing: false },
+    { text: 'Section 5 allows it.', provenance: 'model_knowledge', claimType: 'normative', loadBearing: true },
+  ] as const
+
+  test('shows the mix of what the sentences rest on', async () => {
+    const user = userEvent.setup()
+    render(
+      <ConfidenceChip confidence="low" cappedReason="normative_claim_uncited" version={2} claimStamps={[...stamps]} />
+    )
+
+    await user.hover(screen.getByRole('button'))
+
+    const mix = await screen.findAllByTestId('confidence-claim-mix')
+    expect(mix[0]).toHaveTextContent('2 statements backed · 1 inference · 1 legal statement without a source')
+    expect(
+      (await screen.findAllByText(/A workspace record or a measurement does not back a legal statement\./)).length
+    ).toBeGreaterThan(0)
+    expect((await screen.findAllByText(/held to the weakest statement/)).length).toBeGreaterThan(0)
+  })
+
+  test('a stored turn without a version keeps the answer-level copy and shows no mix', async () => {
+    const user = userEvent.setup()
+    render(<ConfidenceChip confidence="low" cappedReason="ungrounded" claimStamps={[...stamps]} />)
+
+    await user.hover(screen.getByRole('button'))
+
+    expect((await screen.findAllByText(/Low confidence: answer not backed by sources\./)).length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('confidence-claim-mix')).not.toBeInTheDocument()
+  })
+})
