@@ -112,6 +112,31 @@ describe('ChatUsageNotice', () => {
     expect(await screen.findByRole('alert')).toBeInTheDocument()
   })
 
+  test('re-reads once the named window renews, however far out that is', async () => {
+    // A spent day with 20 h left: further than one timer step (6 h). The read
+    // waits for renewal, and a step in between must not end the countdown.
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-10-21T04:00:00Z'))
+    fetchMock.mockImplementation(async () =>
+      new Response(
+        JSON.stringify({ notice: notice({ level: 'exhausted', percent: 100, resetsAt: '2026-10-22T00:00:00.000Z' }) }),
+        { status: 200 }
+      )
+    )
+    render(<ChatUsageNotice isAuthenticated />)
+    await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(12 * 60 * 60_000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(8 * 60 * 60_000 + 5_000)
+    })
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+  })
+
   test('drops the old project’s notice at once on a switch', async () => {
     useChatStore.setState({ projectId: 'proj-1' })
     answer(notice({ scope: 'project' }))

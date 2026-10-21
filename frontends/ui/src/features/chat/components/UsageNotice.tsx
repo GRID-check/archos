@@ -120,14 +120,16 @@ export const UsageNotice: FC<UsageNoticeProps> = ({ notice, onDismiss }) => {
         )}
       </AlertDescription>
       {onDismiss && !exhausted && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="icon"
           onClick={onDismiss}
           aria-label={t('actions.dismiss')}
-          className="text-muted-foreground hover:text-foreground absolute right-3 top-3 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          className="absolute right-2 top-2"
         >
-          <X className="size-4" aria-hidden="true" />
-        </button>
+          <X aria-hidden="true" />
+        </Button>
       )}
     </Alert>
   )

@@ -27,7 +27,7 @@ export const AFTER_TURN_REFRESH_MS = 3_000
 /** A returning tab re-reads only when the last read is at least this old. */
 export const STALE_AFTER_MS = 60_000
 /** `setTimeout` overflows past ~24.8 days; a month window renews further out, so re-check in steps. */
-const MAX_TIMER_MS = 6 * 60 * 60_000
+export const MAX_TIMER_MS = 6 * 60 * 60_000
 
 export function useUsageNotice(options: {
   enabled: boolean
@@ -84,12 +84,23 @@ export function useUsageNotice(options: {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [enabled, refresh])
 
-  // The named window renewing.
+  // The named window renewing. A month is further out than one timer reaches,
+  // so the timer re-arms itself in steps and reads only once renewal is due:
+  // a read in between returns the same `resetsAt` and would not re-run this.
   const resetsAt = notice?.resetsAt
   useEffect(() => {
     if (!resetsAt) return
-    const due = Date.parse(resetsAt) - Date.now() + 5_000
-    const timer = setTimeout(() => void refresh(), Math.max(1_000, Math.min(due, MAX_TIMER_MS)))
+    const due = Date.parse(resetsAt) + 5_000
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const arm = (): void => {
+      const remaining = due - Date.now()
+      if (remaining <= 0) {
+        void refresh()
+        return
+      }
+      timer = setTimeout(arm, Math.max(1_000, Math.min(remaining, MAX_TIMER_MS)))
+    }
+    arm()
     return () => clearTimeout(timer)
   }, [resetsAt, refresh])
 
