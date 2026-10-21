@@ -59,6 +59,8 @@ const Preview: FC = () => (
       <RevisionCompareCard
         olderId={OLDER_ID}
         newerId={NEWER_ID}
+        olderName="EG_Grundriss_Index_C.pdf"
+        newerName="EG_Grundriss_Index_D.pdf"
         page={1}
         changes={CHANGES}
         summary={CHANGES.map((change) => change.label)}

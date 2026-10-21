@@ -18,6 +18,7 @@ import type { FC } from 'react'
 import { GitCompareArrows } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { SectionLabel } from '@/components/ui/section-label'
+import { MARK_INK, rgbCss } from '@/features/documents/components/revision-compare/lib/tint'
 import { PagePlaceButton } from '@/features/knowledge/components/page-place-button'
 import type { PagePlace } from '@/features/knowledge/lib/page-place'
 import type { PageRegion } from '@/features/knowledge/lib/page-region'
@@ -44,8 +45,11 @@ interface RevisionCompareCardProps {
 /** The tallest a page is drawn, in CSS pixels: two pages in a card stay thumbnails. */
 const THUMBNAIL_MAX_HEIGHT = 260
 
-/** Piloti's ink, the colour of what it shows the room (as a look card's reference). */
-const MARK_COLOR = 'var(--paper-ink)'
+/**
+ * The compare view's mark gold (`MARK_INK`), so a change reads the same on the
+ * card as in the compare view. Piloti's paper ink vanished on a black stair core.
+ */
+const MARK_COLOR = rgbCss(MARK_INK)
 
 /** The boxes as the viewer's regions: `[x, y, w, h]` to `[x0, y0, x1, y1]`. */
 export const changeRegions = (changes: RevisionCompareData['changes']): PageRegion[] =>
