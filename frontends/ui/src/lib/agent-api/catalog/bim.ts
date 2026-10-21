@@ -11,7 +11,7 @@ const modelParams = z.object({
   modelId: z.string().describe('The BIM model (revision) id, from bim-model-list.'),
 })
 
-export const bimOperations: readonly AgentOperation[] = [
+export const bimOperations = [
   {
     name: 'bim-model-list',
     domain: 'bim',
@@ -144,4 +144,4 @@ export const bimOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/projects/[id]/bim/checks/export/route'),
   },
 
-]
+] as const satisfies readonly AgentOperation[]

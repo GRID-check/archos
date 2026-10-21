@@ -27,6 +27,11 @@ vi.mock('@/lib/agent-api/catalog', async () => {
     findOperation: (name: string) => FAKE_OPERATIONS.find((op) => op.name === name),
   }
 })
+vi.mock('@/lib/agent-api/exposure.config', async (importOriginal) =>
+  (await import('@/lib/agent-api/test-operations')).withFakeExposure(
+    await importOriginal<typeof import('@/lib/agent-api/exposure.config')>(),
+  ),
+)
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 vi.mock('@/lib/agent-api/telemetry', () => ({

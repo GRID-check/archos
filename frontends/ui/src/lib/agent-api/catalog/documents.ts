@@ -56,7 +56,7 @@ const sessionUploadBody = uploadBodySchemaWith({
   ...documentUploadFields,
 })
 
-export const documentsOperations: readonly AgentOperation[] = [
+export const documentsOperations = [
   {
     name: 'document-get',
     domain: 'documents',
@@ -376,4 +376,4 @@ export const documentsOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/session/documents/upload/route'),
   },
 
-]
+] as const satisfies readonly AgentOperation[]

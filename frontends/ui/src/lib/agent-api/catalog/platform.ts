@@ -86,7 +86,7 @@ const ratingsQuery = qualityScopeQuery.extend({
   q: z.string().max(120).optional().describe('Free-text search over the vote.'),
 })
 
-export const platformOperations: readonly AgentOperation[] = [
+export const platformOperations = [
   // Overview, storage, audit
   {
     name: 'platform-overview-get',
@@ -796,4 +796,4 @@ export const platformOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/platform/knowledge/documents/route'),
   },
 
-]
+] as const satisfies readonly AgentOperation[]

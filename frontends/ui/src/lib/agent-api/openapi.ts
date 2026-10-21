@@ -17,6 +17,7 @@
 import type { z, ZodTypeAny } from 'zod'
 import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
 // The backend operations (backend-operations.ts) are left out on purpose: they are not BFF routes, so there is no path to document.
+import { isExposedTo } from './exposure'
 import { MCP_PATH } from './mcp-config'
 import { type AgentOperation, annotationsOf, pathParams } from './operation'
 
@@ -230,16 +231,16 @@ function pathsOf(operations: readonly AgentOperation[]): Record<string, Record<s
  * paths are relative to; the route passes the deployment's, a spec a fixed one.
  */
 /**
- * The operations the document shows a caller: never a withheld one (it is on no
- * door), and the operator console (`platform`) only to platform staff. Its
- * routes refuse everyone else anyway; listing them would only describe a
- * console the reader cannot use.
+ * The operations the document shows a caller: what `exposure.config.ts` offers
+ * an outside agent (never a withheld one), and the operator console (`platform`)
+ * only to platform staff. Its routes refuse everyone else anyway; listing them
+ * would only describe a console the reader cannot use.
  */
 export function documentedOperations(
   operations: readonly AgentOperation[],
   { platformStaff }: { platformStaff: boolean },
 ): readonly AgentOperation[] {
-  return operations.filter((op) => op.withheld === undefined && (platformStaff || op.domain !== 'platform'))
+  return operations.filter((op) => isExposedTo('external', op.name) || (platformStaff && isExposedTo('platform', op.name)))
 }
 
 /** The cookie AuthKit keeps the app's session in (`WORKOS_COOKIE_NAME`, default `wos-session`). */

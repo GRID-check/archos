@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import type { Exposure } from './exposure.config'
 import type { AgentOperation } from './operation'
 
 const load = async () => ({})
@@ -52,7 +53,7 @@ export const FAKE_OPERATIONS: readonly AgentOperation[] = [
     load,
   },
   {
-    name: 'folder-access-grant',
+    name: 'project-folder-access-set',
     domain: 'folders',
     summary: 'Widen access to a folder',
     description: 'Grants a role access to a restricted folder. Changes who may read its documents.',
@@ -109,3 +110,27 @@ export const PLATFORM_FAKE_OPERATIONS: readonly AgentOperation[] = [
     load,
   },
 ]
+
+/**
+ * Who the fakes are offered to. A fake stands for a kind of operation (a write
+ * Piloti proposes, a POST that only reads), not for the real operation of its
+ * name, so a spec that mocks the catalog with the fakes mocks their entries too:
+ *
+ *   vi.mock('@/lib/agent-api/exposure.config', async (importOriginal) =>
+ *     (await import('@/lib/agent-api/test-operations')).withFakeExposure(await importOriginal()))
+ */
+export const FAKE_EXPOSURE: Readonly<Record<string, Exposure>> = {
+  'project-list': { external: true, piloti: true },
+  'project-member-add': { external: true, piloti: true },
+  'project-delete': { external: true, piloti: true },
+  'document-search': { external: true, piloti: true },
+  'project-folder-access-set': { external: true, piloti: false, reason: 'sensitive: Piloti never proposes it' },
+  'platform-overview-get': { external: false, piloti: false, platform: true },
+  'platform-kill-runs': { external: false, piloti: false, platform: true },
+  'platform-audit-portal-link': { external: false, piloti: false, platform: true },
+}
+
+/** The real config module with the fakes' entries laid over it (the read tools keep their real ones). */
+export function withFakeExposure<T extends { EXPOSURE: Readonly<Record<string, Exposure>> }>(real: T): T {
+  return { ...real, EXPOSURE: { ...real.EXPOSURE, ...FAKE_EXPOSURE } }
+}

@@ -44,7 +44,7 @@ const messageParams = z.object({
   messageId: z.string().describe('The message id (a UUID), from conversation-message-list.'),
 })
 
-export const conversationsOperations: readonly AgentOperation[] = [
+export const conversationsOperations = [
   {
     name: 'conversation-list',
     domain: 'conversations',
@@ -167,7 +167,6 @@ export const conversationsOperations: readonly AgentOperation[] = [
   {
     name: 'conversation-message-usage',
     domain: 'conversations',
-    withheld: { category: 'product-config', reason: 'what one Piloti answer cost; billing, not office work' },
     summary: 'Read what one answer cost',
     description:
       'The credits billed for one answer (or tokens, on the organization’s own key) with the token split. ' +
@@ -180,7 +179,6 @@ export const conversationsOperations: readonly AgentOperation[] = [
   {
     name: 'conversation-read-mark',
     domain: 'conversations',
-    withheld: { category: 'ui-state', reason: 'what the person has seen; an agent marking it read hides news from them' },
     summary: 'Mark a conversation read',
     description:
       'Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. ' +
@@ -195,10 +193,6 @@ export const conversationsOperations: readonly AgentOperation[] = [
   {
     name: 'conversation-title-generate',
     domain: 'conversations',
-    withheld: {
-      category: 'model-compute',
-      reason: 'a model names the conversation; the caller can name it and save it with conversation-update',
-    },
     summary: 'Let Piloti name a conversation',
     description:
       'Generates a short title and topic tags from the opening exchange (up to 20 messages with role and content) ' +
@@ -291,10 +285,6 @@ export const conversationsOperations: readonly AgentOperation[] = [
   {
     name: 'citation-format',
     domain: 'conversations',
-    withheld: {
-      category: 'model-compute',
-      reason: 'formats the sources it is sent as APA, BibTeX or RIS; any agent can do that itself',
-    },
     summary: 'Format sources as APA, BibTeX or RIS',
     description:
       'Renders CSL-JSON `items` (the sources of an answer, up to 64) as an APA bibliography, BibTeX or RIS text. ' +
@@ -335,4 +325,4 @@ export const conversationsOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/conversations/[id]/messages/[messageId]/export/route'),
   },
 
-]
+] as const satisfies readonly AgentOperation[]

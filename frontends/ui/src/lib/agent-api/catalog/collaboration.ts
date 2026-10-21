@@ -55,7 +55,7 @@ const proposalParams = z.object({
   id: z.string().describe('The proposed change id, from proposal-list or the answer’s card.'),
 })
 
-export const collaborationOperations: readonly AgentOperation[] = [
+export const collaborationOperations = [
   // Inbox
   {
     name: 'inbox-list',
@@ -83,7 +83,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'inbox-unread-anchor-list',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'the unread markers the document viewer draws; screen state' },
     summary: 'List unread annotations inside a document',
     description:
       'The ids of the annotations (anchors) in one document whose news the person has not read, as `{ anchorIds }`. ' +
@@ -96,7 +95,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'inbox-item-mark-read',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'what the person has seen; an agent marking it read hides news from them' },
     summary: 'Mark inbox items read',
     description:
       'Marks read by `itemIds` (from inbox-list), or everything with `{ all: true }`, or the news on one document ' +
@@ -111,7 +109,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'inbox-item-mark-unread',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'what the person has seen; theirs to mark' },
     summary: 'Mark inbox items unread again',
     description: 'The inverse of inbox-item-mark-read for `itemIds` from inbox-list. Returns the recomputed badge count.',
     method: 'POST',
@@ -149,7 +146,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'push-device-list',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'the person’s own browsers registered for push; device state' },
     summary: 'List the devices that receive push notifications',
     description: 'The person’s own registered browsers and devices. Ids feed push-device-remove.',
     method: 'GET',
@@ -159,7 +155,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'push-device-remove',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'the person’s own browsers registered for push; device state' },
     summary: 'Stop push notifications to one device',
     description: 'Removes one of the person’s own devices (id from push-device-list). It receives no more pushes.',
     method: 'DELETE',
@@ -170,7 +165,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'push-preference-get',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'which notifications reach the person’s devices; theirs to set' },
     summary: 'Read the push notification preferences',
     description:
       'What the person wants pushed (the categories requests, results, access, activity, office) and whether the ' +
@@ -182,7 +176,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'push-preference-update',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'which notifications reach the person’s devices; theirs to set' },
     summary: 'Change the push notification preferences',
     description:
       'Sets `showContent` and/or any of the `categories` booleans; fields left out stay as they are. Returns the ' +
@@ -444,7 +437,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'user-preference-get',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'the person’s interface preferences (language, active project); screen state' },
     summary: 'Read the person’s preferences',
     description: 'The person’s own preference bag (language, active project and other UI settings) as `{ prefs }`.',
     method: 'GET',
@@ -454,7 +446,6 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'user-preference-update',
     domain: 'collaboration',
-    withheld: { category: 'ui-state', reason: 'the person’s interface preferences (language, active project); screen state' },
     summary: 'Change the person’s preferences',
     description:
       'Merges `prefs` into the person’s preference bag; keys not named stay. Setting `locale` also switches the ' +
@@ -491,4 +482,4 @@ export const collaborationOperations: readonly AgentOperation[] = [
     params: z.object({ id: z.string().describe('The attachment’s document id, from session-document-list.') }),
     load: () => import('@/app/api/session/documents/[id]/route'),
   },
-]
+] as const satisfies readonly AgentOperation[]

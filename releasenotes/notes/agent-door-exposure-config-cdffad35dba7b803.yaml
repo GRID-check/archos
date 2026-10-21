@@ -1,0 +1,13 @@
+---
+features:
+  - >
+    Piloti now always uses its own tools to keep notes, search your documents,
+    set up tasks, mark documents and answer in their threads, and count in your
+    BIM model, so each of these works the same way every time. Assistants you
+    connect to Piloti can still do all of them.
+operators:
+  - >
+    One exposure config now decides which agent sees which capability on the
+    agent door (ADR-0122, amendment of 2026-10-21). Nothing new is offered to or
+    withheld from outside agents; Piloti no longer sees the door's operations it
+    has a native tool for.

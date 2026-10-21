@@ -34,7 +34,7 @@ import { beforeAll, describe, expect, it } from 'vitest'
 import { germanProseWords } from '@/test-utils/german-words'
 import { AGENT_OPERATIONS } from './catalog'
 import { buildMcpServer } from './mcp-server'
-import { isOnDoor } from './policy'
+import { isExposedTo } from './exposure'
 import { buildOpenApiDocument } from './openapi'
 import { sensitiveProposalRefusal } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
@@ -177,7 +177,7 @@ describe('everything an agent reads is English', () => {
     const listed = (await rpc('tools', 'tools/list', {})) as { tools: { name: string }[] }
     // Every operation on the office door but the sensitive ones (hidden until WorkOS enforces their scope; the
     // OpenAPI case reads them, and the withheld and platform ones) and every backend operation is listed.
-    const offered = AGENT_OPERATIONS.filter((op) => isOnDoor(op) && !op.sensitivity).length
+    const offered = AGENT_OPERATIONS.filter((op) => isExposedTo('external', op.name) && !op.sensitivity).length
     expect(listed.tools.length).toBeGreaterThan(offered)
     expect(germanIn(strings(listed, 'tools', []))).toEqual([])
   })

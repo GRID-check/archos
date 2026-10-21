@@ -52,7 +52,7 @@ import { INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { type DoorResource, acceptedAudiences, authkitDomain, authkitIssuer, doorOf, doorResourceUrl } from './mcp-config'
 import { SENSITIVITIES, type Sensitivity } from './operation'
-import type { AgentDoor } from './policy'
+import type { AgentDoor } from './exposure'
 
 /**
  * Who acts, in the words of OAuth token exchange (RFC 8693): the SUBJECT is the
@@ -89,7 +89,7 @@ export interface AgentPrincipal {
    */
   sensitiveOptIns?: readonly Sensitivity[]
   /**
-   * The catalog door the principal was resolved on (`policy.ts`, `DOOR_DOMAINS`):
+   * The catalog door the principal was resolved on (`exposure.ts`, `AgentDoor`):
    * `platform` on the platform door, absent on an office door. Set here from the
    * endpoint the verified token's audience binds, never from anything a request says.
    */

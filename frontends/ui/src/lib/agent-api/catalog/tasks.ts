@@ -24,7 +24,7 @@ const runParams = projectParams.extend({
     ),
 })
 
-export const tasksOperations: readonly AgentOperation[] = [
+export const tasksOperations = [
   {
     name: 'task-list',
     domain: 'tasks',
@@ -210,4 +210,4 @@ export const tasksOperations: readonly AgentOperation[] = [
     params: runParams,
     load: () => import('@/app/api/projects/[id]/runs/[runId]/write-now/route'),
   },
-]
+] as const satisfies readonly AgentOperation[]

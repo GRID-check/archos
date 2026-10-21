@@ -20,9 +20,9 @@ import { UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { callOperation } from '@/lib/agent-api/dispatch'
-import { findVisibleOperation, PILOTI_HIDDEN_OPERATIONS, visibleOperations } from '@/lib/agent-api/policy'
+import { findVisibleOperation, visibleOperations } from '@/lib/agent-api/policy'
 import type { AgentPrincipal } from '@/lib/agent-api/principal'
-import { applyOperation, PROPOSAL_DECISION_REFUSAL, requireProposableOperation } from './operation-applier'
+import { applyOperation, PROPOSAL_DECISION_OPERATIONS, PROPOSAL_DECISION_REFUSAL, requireProposableOperation } from './operation-applier'
 import type { OperationPayload } from './types'
 
 const SESSION = { userId: 'user_anna', organizationId: 'org_1' } as AuthorizedSession
@@ -38,7 +38,7 @@ beforeEach(() => vi.clearAllMocks())
 
 describe('proposal decisions', () => {
   it('names real operations', () => {
-    expect([...PILOTI_HIDDEN_OPERATIONS].sort()).toEqual([...DECISIONS].sort())
+    expect([...PROPOSAL_DECISION_OPERATIONS].sort()).toEqual([...DECISIONS].sort())
     for (const name of DECISIONS) expect(findOperation(name), `${name} left the catalog`).toBeDefined()
   })
 
@@ -74,4 +74,23 @@ describe('an operation off the office door (ADR-0122, amendment of 2026-10-21)',
       expect(callOperation).not.toHaveBeenCalled()
     },
   )
+})
+
+describe('an operation Piloti does with a native tool (exposure.config.ts, `native:<tool>`)', () => {
+  // Hiding it from Piloti's door is visibility only: a card filed before the change still applies.
+  const memory: OperationPayload = {
+    operation: 'project-memory-create',
+    input: { params: { id: '6f1c2b8e-3d4a-4b6c-8d7e-9f0a1b2c3d4e' }, body: { kind: 'decision', content: 'Die Bauherrin will alle Pläne als PDF.' } },
+    summary: 'Keep a note',
+  }
+
+  it('is hidden from Piloti and still applies when the person accepts an old card', async () => {
+    const piloti: AgentPrincipal = { actor: 'piloti', session: SESSION, clientId: null, scopes: [] }
+    expect(findVisibleOperation(piloti, memory.operation)).toBeUndefined()
+    expect(() => requireProposableOperation(memory)).not.toThrow()
+    vi.mocked(callOperation).mockResolvedValue({ status: 201, ok: true, body: { id: 'note_1' } })
+    const results = await applyOperation(memory, { session: SESSION })
+    expect(results).toEqual([expect.objectContaining({ ok: true })])
+    expect(callOperation).toHaveBeenCalledTimes(1)
+  })
 })

@@ -6,24 +6,26 @@
  * they depend on WHO is calling rather than who they act for.
  *
  *  - What `tools/list` shows. The specification allows the list to vary by
- *    credentials. Only what is on the door is shown at all ({@link isOnDoor}):
- *    a withheld operation, or one of a domain the door does not offer, reads as
- *    an unknown name to everyone. An operation with a `sensitivity` (it widens who may do what,
- *    or touches the organization's secrets) is shown to an external agent only
- *    when the organization switched its class on (`agent-mcp-access`,
- *    `agent-mcp-secrets`), its client was granted the step-up scope AND that
- *    scope is enforced by WorkOS ({@link SENSITIVE_SCOPE_ENFORCED_BY_WORKOS},
- *    off), and never to in-product Piloti, which also never sees the
- *    `platform` domain.
+ *    credentials. Who is offered what is `exposure.config.ts`, read by one
+ *    function ({@link isExposedTo}) for every listing, search, describe and
+ *    call on every door; what is offered to nobody on a door reads as an
+ *    unknown name there ({@link isOnDoor}). An operation with a `sensitivity`
+ *    (it widens who may do what, touches the organization's secrets or turns a
+ *    control down) is then shown to an external agent only when the
+ *    organization switched its class on (`agent-mcp-access`,
+ *    `agent-mcp-secrets`, `agent-mcp-controls`), its client was granted the
+ *    step-up scope AND that scope is enforced by WorkOS
+ *    ({@link SENSITIVE_SCOPE_ENFORCED_BY_WORKOS}, off), and never to
+ *    in-product Piloti.
  *  - Whether a call runs or is proposed. In-product Piloti never applies a write
  *    itself; the person accepts or dismisses it (ADR-0105).
  */
 
 import { BACKEND_OPERATIONS, type BackendOperation, findBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS, findOperation } from './catalog'
+import { type AgentDoor, audienceOf, isExposedTo, isOnDoor } from './exposure'
 import { AGENT_DOMAINS, type AgentDomain, type AgentOperation, type Sensitivity, annotationsOf } from './operation'
 import type { AgentPrincipal } from './principal'
-import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 
 /** The scope an external client needs for operations with a `sensitivity`. */
 export const SENSITIVE_SCOPE = 'piloti:sensitive'
@@ -39,68 +41,19 @@ export const SENSITIVE_SCOPE = 'piloti:sensitive'
  */
 export const SENSITIVE_SCOPE_ENFORCED_BY_WORKOS = false
 
-/**
- * The doors agents reach the catalog through. `office` is every door an office's
- * agents use: `/api/mcp`, the A2A door (`/api/a2a`) and Piloti's own workspace
- * door. The operator console (`platform`) is GRID's, not an office's: every
- * write there (defaults, prices, keys) reaches every tenant. Its door is a
- * second MCP server for platform staff, `/api/platform/mcp` (ADR-0126), that
- * offers exactly that domain and nothing else.
- */
-export type AgentDoor = 'office' | 'platform'
-
-/** The domains each door offers. */
-export const DOOR_DOMAINS: Readonly<Record<AgentDoor, ReadonlySet<AgentDomain>>> = {
-  office: new Set(AGENT_DOMAINS.filter((domain) => domain !== 'platform')),
-  platform: new Set<AgentDomain>(['platform']),
-}
-
-/** The door `principal` was resolved on: the platform door's own, else an office door. */
-export function doorOfPrincipal(principal: Pick<AgentPrincipal, 'door'>): AgentDoor {
-  return principal.door ?? 'office'
-}
-
-/**
- * Whether `op` is offered on `door` at all, to anyone: not withheld
- * (ADR-0122, "Amendment: the door offers what only Piloti has") and of a
- * domain the door offers. The one rule every listing, search, describe, call,
- * proposal and apply goes through; an operation off the door reads as an
- * unknown name.
- */
-export function isOnDoor(op: AgentOperation, door: AgentDoor = 'office'): boolean {
-  return op.withheld === undefined && DOOR_DOMAINS[door].has(op.domain)
-}
-
-/**
- * Operations in-product Piloti never sees nor files: deciding a proposal and
- * undoing a change Piloti made. A proposal is how the person says yes or no to
- * Piloti (ADR-0105); a card that applies or dismisses another proposal would
- * turn one click on a card the agent worded into a yes to a change the person
- * never read, and an undo the agent proposes is the same decision made for them.
- * `lib/proposals/operation-applier.ts` refuses them at the click as well.
- */
-export const PILOTI_HIDDEN_OPERATIONS: ReadonlySet<string> = new Set([
-  'proposal-apply',
-  'proposal-dismiss',
-  'piloti-change-undo',
-])
+export type { AgentDoor, Audience } from './exposure'
+export { doorOfPrincipal, isOnDoor, nativeToolOf } from './exposure'
 
 export type CallDecision = 'run' | 'propose'
 
-/** May `principal` see (and so name) `op`? */
-export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
-  if (!isOnDoor(op, doorOfPrincipal(principal))) return false
-  if (principal.actor === 'piloti') {
-    // Piloti may not propose a sensitive operation (`proposeOperation` refuses it too),
-    // so showing one would only teach the model a call that cannot succeed. An ask is
-    // how another agent consults Piloti: Piloti never asks Piloti (ADR-0124, the
-    // recursion lock), and `piloti-ask-get` is a read it would otherwise simply run.
-    return (
-      !op.sensitivity &&
-      !PILOTI_HIDDEN_OPERATIONS.has(op.name) &&
-      !isPilotiAskOperation(op.name)
-    )
-  }
+/**
+ * May `principal` see (and so name) `op`? The config decides who it is offered
+ * to ({@link isExposedTo}); a sensitive operation is then also gated per call,
+ * by the organization's opt-in and the token's scope ({@link maySeeSensitive}),
+ * which never holds for Piloti.
+ */
+export function canSee(principal: AgentPrincipal, op: { readonly name: string; readonly sensitivity?: Sensitivity }): boolean {
+  if (!isExposedTo(audienceOf(principal), op.name)) return false
   return !op.sensitivity || maySeeSensitive(principal, op.sensitivity)
 }
 
@@ -121,9 +74,13 @@ export function maySeeSensitive(
   )
 }
 
-/** The domains a caller of `door` may search and be told about, in catalog order. */
+/** The domains a caller of `door` may search and be told about, in catalog order: those with an operation on it. */
 export function visibleDomains(door: AgentDoor = 'office'): readonly AgentDomain[] {
-  return AGENT_DOMAINS.filter((domain) => DOOR_DOMAINS[door].has(domain))
+  const onDoor = new Set<AgentDomain>([
+    ...AGENT_OPERATIONS.filter((op) => isOnDoor(op.name, door)).map((op) => op.domain),
+    ...BACKEND_OPERATIONS.filter((op) => isOnDoor(op.name, door)).map((op) => op.domain),
+  ])
+  return AGENT_DOMAINS.filter((domain) => onDoor.has(domain))
 }
 
 export function visibleOperations(principal: AgentPrincipal): readonly AgentOperation[] {
@@ -137,22 +94,17 @@ export function findVisibleOperation(principal: AgentPrincipal, name: string): A
 }
 
 /**
- * The Python agent's read tools (`backend-operations.ts`). An outside agent on
- * an office door sees them; in-product Piloti does not, because it already has
- * every one as a native tool and a second copy would bloat its context and blur
- * its tool choice. The platform door offers the operator console only, and these
- * read an office's workspace.
+ * The Python agent's read tools (`backend-operations.ts`), by the same rule:
+ * an outside agent on an office door sees them; Piloti has each as a native
+ * tool (`native:<tool>` in the config); the platform door offers none.
  */
-function seesBackendOperations(principal: AgentPrincipal): boolean {
-  return principal.actor !== 'piloti' && doorOfPrincipal(principal) === 'office'
-}
-
 export function visibleBackendOperations(principal: AgentPrincipal): readonly BackendOperation[] {
-  return seesBackendOperations(principal) ? BACKEND_OPERATIONS : []
+  return BACKEND_OPERATIONS.filter((op) => canSee(principal, op))
 }
 
 export function findVisibleBackendOperation(principal: AgentPrincipal, name: string): BackendOperation | undefined {
-  return seesBackendOperations(principal) ? findBackendOperation(name) : undefined
+  const op = findBackendOperation(name)
+  return op && canSee(principal, op) ? op : undefined
 }
 
 export function callDecision(principal: AgentPrincipal, op: AgentOperation): CallDecision {

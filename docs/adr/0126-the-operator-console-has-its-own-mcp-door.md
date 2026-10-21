@@ -92,7 +92,9 @@ The principal carries `door: 'platform'`. That is the only thing the policy read
 `isOnDoor(op, door)` with `DOOR_DOMAINS.platform = {platform}`, so the door lists,
 searches, describes and calls exactly the platform domain, never a withheld
 operation and never the Python agent's read tools. An office operation named on
-the platform door reads as unknown, and the reverse.
+the platform door reads as unknown, and the reverse. (Since ADR-0122's amendment
+of 2026-10-21 the same rule reads `platform: true` in `exposure.config.ts`, and
+`DOOR_DOMAINS` is gone.)
 
 **Writes.** A platform write runs directly for the operator, as the console's
 button does; there is no proposal step, because the caller is the person, not
@@ -147,7 +149,8 @@ metadata and tags.
   unknown here, and the office door lists no platform operation for the same
   operator.
 * `lib/agent-api/principal.spec.ts`: the verifier per door, both directions.
-* `lib/agent-api/policy.spec.ts`: `DOOR_DOMAINS.platform` and `canSee` on that door.
+* `lib/agent-api/policy.spec.ts`: `canSee` on that door (`DOOR_DOMAINS.platform`
+  until 2026-10-21; now `exposure.config.spec.ts` holds `platform: true` to the domain).
 * `agent-reachability.spec.ts`: every `/api/platform` operation is the `platform`
   domain, and the office door does not offer it.
 * `authz-coverage.spec.ts` and `platform-permission-coverage.spec.ts`: the door is

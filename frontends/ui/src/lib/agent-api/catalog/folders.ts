@@ -60,7 +60,7 @@ const rootSortRunParams = z.object({
 })
 const holdParams = z.object({ id: z.string().describe('The legal hold id, from hold-list.') })
 
-export const foldersOperations: readonly AgentOperation[] = [
+export const foldersOperations = [
   {
     name: 'project-folder-list',
     domain: 'folders',
@@ -761,4 +761,4 @@ export const foldersOperations: readonly AgentOperation[] = [
     params: rootSortRunParams,
     load: () => import('@/app/api/root-sort-runs/[runId]/undo/route'),
   },
-]
+] as const satisfies readonly AgentOperation[]

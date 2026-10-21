@@ -13,8 +13,9 @@ office's models) and Piloti itself (`piloti-ask`), with the person saying yes
 or no to every write.
 
 **What the door does not offer** (ADR-0122, "Amendment: the door offers what
-only Piloti has"). Such an operation is still written, then marked
-`withheld: { category, reason }`, and reads as an unknown name on every door:
+only Piloti has"). Such an operation is still written, then withheld in
+[`exposure.config.ts`](../../frontends/ui/src/lib/agent-api/exposure.config.ts)
+(`withheld: { category, reason }`), and reads as an unknown name on every door:
 
 | Category | What | Examples |
 |---|---|---|
@@ -46,8 +47,10 @@ see.
 |---|---|
 | Add an `app/api` route method a person calls | Add an operation for it in the same change |
 | Add a route that is not something a person does (transport, sign-in plumbing, typing) | Add it to `NOT_AN_AGENT_CAPABILITY` in `agent-reachability.spec.ts`, with a category and a reason |
-| Add a route that is product configuration, a proxied service, model compute or screen state | Write its operation and mark it `withheld: { category, reason }`; add its line to `WITHHELD` in `agent-reachability.spec.ts` |
-| Offer a withheld operation again | Delete its `withheld` entry and its `WITHHELD` line, and say why in the PR |
+| Add an operation | Give it its entry in `frontends/ui/src/lib/agent-api/exposure.config.ts`: who sees it (`external`, `piloti`, `platform`), with a `reason` unless it is `OFFERED`. Regenerate `tests/fixtures/exposure.json` ([how](../architecture/agent-surface.md#the-exposure-config)) |
+| Add a route that is product configuration, a proxied service, model compute or screen state | Write its operation; its exposure entry is `withheld: { category, reason }` |
+| Offer a withheld operation again | Replace its exposure entry, and say why in the PR |
+| Give Piloti a native tool that does what an operation does | Set the operation's entry to `piloti: 'native:<tool>'`, and run the answer suite's workspace set before and after |
 | Change a route's body, query or meaning | Update the operation's schema and description. The schema is shared, so the type checker tells you; the description only review does |
 | Move a route-local zod schema | Into `lib/<area>/<x>-wire.ts`, imported by the route and the catalog |
 | Cover a route that sits in `agent-reachability-baseline.json` | Remove it from the baseline (`UPDATE_FIXTURES=1`) |
@@ -57,7 +60,7 @@ see.
 ## Checklist
 
 - [ ] The route method has an operation, or an exemption with a category and a reason.
-- [ ] The operation is office work, domain knowledge or Piloti itself; otherwise it is `withheld`.
+- [ ] The operation has its entry in `exposure.config.ts`: office work, domain knowledge or Piloti itself is offered; anything else is `withheld`.
 - [ ] `name` is `<entity>-<verb>`, at most 52 characters, one operation per route method.
 - [ ] The description says when to call it, what comes back, where ids come from, what to call next.
 - [ ] `body` and `query` are the route's own schemas, not copies.
@@ -70,11 +73,18 @@ see.
 `frontends/ui/src/lib/agent-api/agent-reachability.spec.ts`. It fails a new
 person-facing route with no operation and no exemption, a baseline entry that is
 now covered, and a malformed operation. The baseline only shrinks. It also fails
-when the withheld set differs from its `WITHHELD` list, when an offered
-operation sits on a product-configuration path (`/api/organization/settings`,
-`/model-config`, `/llm-credentials`, `/web-search`, `/upload-screening`,
-`/api/platform/…` and the rest of `CONFIG_PATH_PREFIXES`) without a reason in
-`OFFERED_ON_CONFIG_PATHS`, and when an offered operation's text names a withheld one.
+when an offered operation sits on a product-configuration path
+(`/api/organization/settings`, `/model-config`, `/llm-credentials`,
+`/web-search`, `/upload-screening`, `/api/platform/…` and the rest of
+`CONFIG_PATH_PREFIXES`) without a `reason` in its exposure entry, and when an
+offered operation's text names a withheld one.
+
+`exposure.config.ts` does not compile without an entry for every operation, and
+`exposure.config.spec.ts` fails an entry with no reason where one is due, a
+`platform` entry off the `platform` domain, an entry that offers Piloti a
+sensitive operation, an ask or a proposal decision, and a stale
+`tests/fixtures/exposure.json`. `tests/aiq_agent/tools/test_exposure_config.py`
+fails a `native:<tool>` Piloti does not have.
 
 ## Not sure it deserves a tool
 

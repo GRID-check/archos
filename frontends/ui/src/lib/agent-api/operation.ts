@@ -134,31 +134,6 @@ export interface AgentOperation {
    * solo conversation of a project: the record there covers that project only.
    */
   readonly spansProjects?: SpansProjects
-  /**
-   * Kept in the catalog, offered on no door (ADR-0122, "Amendment: the door
-   * offers what only Piloti has"): the operation is described and its route
-   * stays the UI's, but to every agent it reads as an unknown name. Absent:
-   * offered. To offer it again, delete the line; `agent-reachability.spec.ts`
-   * lists the withheld set, so either change shows in review.
-   */
-  readonly withheld?: Withholding
-}
-
-/**
- * Why an operation is withheld from agents. `external-service`: a service we
- * only proxy or switch, which a calling agent already has its own tool for.
- * `product-config`: how Piloti itself works for the office (models, keys,
- * budgets, policies, settings). `model-compute`: model work the caller can do
- * itself whose result is no office artifact. `ui-state`: this person's own
- * screen or device state.
- */
-export const WITHHELD_CATEGORIES = ['external-service', 'product-config', 'model-compute', 'ui-state'] as const
-export type WithheldCategory = (typeof WITHHELD_CATEGORIES)[number]
-
-export interface Withholding {
-  readonly category: WithheldCategory
-  /** One line a reviewer can disagree with. */
-  readonly reason: string
 }
 
 export type SpansProjects = 'always' | 'unlessScoped'

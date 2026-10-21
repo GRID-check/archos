@@ -25,7 +25,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { callOperation, OperationInputError, validateOperationInput } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
-import { isOnDoor, PILOTI_HIDDEN_OPERATIONS } from '@/lib/agent-api/policy'
+import { isOnDoor } from '@/lib/agent-api/exposure'
 import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
@@ -37,7 +37,22 @@ import type { OperationPayload, ProposedChangeResult } from './types'
 export const PILOTI_ASK_REFUSAL =
   'Piloti cannot ask Piloti: an ask is how another agent consults Piloti, and a turn may not start another.'
 
-/** Why Piloti never files a decision on a proposal, nor an undo: the person makes those (`PILOTI_HIDDEN_OPERATIONS`). */
+/**
+ * The person's own decisions: deciding a proposal and undoing a change Piloti
+ * made. A proposal is how the person says yes or no to Piloti (ADR-0105); a
+ * card that applies or dismisses another proposal would turn one click on a
+ * card the agent worded into a yes to a change the person never read, and an
+ * undo the agent proposes is the same decision made for them. Piloti does not
+ * see them either (`exposure.config.ts`, `piloti: false`); this is the
+ * applier's own reason, kept whatever the config says.
+ */
+export const PROPOSAL_DECISION_OPERATIONS: ReadonlySet<string> = new Set([
+  'proposal-apply',
+  'proposal-dismiss',
+  'piloti-change-undo',
+])
+
+/** Why Piloti never files a decision on a proposal, nor an undo: the person makes those ({@link PROPOSAL_DECISION_OPERATIONS}). */
 export const PROPOSAL_DECISION_REFUSAL =
   'Piloti cannot apply, dismiss or undo a change for the person: they decide that themselves, on its own card.'
 
@@ -52,11 +67,12 @@ export const PROPOSAL_DECISION_REFUSAL =
  */
 function unusableReason(op: AgentOperation | undefined, name: string): string | null {
   if (isPilotiAskOperation(name)) return PILOTI_ASK_REFUSAL
-  // Withheld or off the office door reads as unknown, here as on every door (`isOnDoor`).
-  if (!op || !isOnDoor(op)) return `The operation ${name} no longer exists`
+  // Withheld or off the office door reads as unknown, here as on every door (`isOnDoor`). Hidden from
+  // Piloti behind a native tool (`exposure.config.ts`) is still on the door: a card filed before applies.
+  if (!op || !isOnDoor(op.name)) return `The operation ${name} no longer exists`
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
   if (op.sensitivity) return `The operation ${name} is not one Piloti may propose; make the change in Piloti yourself`
-  if (PILOTI_HIDDEN_OPERATIONS.has(name)) return PROPOSAL_DECISION_REFUSAL
+  if (PROPOSAL_DECISION_OPERATIONS.has(op.name)) return PROPOSAL_DECISION_REFUSAL
   return null
 }
 

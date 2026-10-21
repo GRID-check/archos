@@ -46,6 +46,7 @@ import {
   findVisibleBackendOperation,
   findVisibleOperation,
   isOnDoor,
+  nativeToolOf,
   visibleBackendOperations,
   visibleDomains,
   visibleOperations,
@@ -295,7 +296,17 @@ export async function runBackendOperation(
   }
 }
 
+/**
+ * What Piloti reads when it names an operation it does with a native tool
+ * (`piloti: 'native:<tool>'` in `exposure.config.ts`): the tool, not a search.
+ */
+export function nativeToolRefusal(name: string, tool: string): string {
+  return `${name} is not offered to you: you do this with your own tool ${tool}. Call that instead.`
+}
+
 function unknownOperation(ctx: McpCallContext, name: string): CallToolResult {
+  const native = ctx.principal.actor === 'piloti' ? nativeToolOf(name) : undefined
+  if (native) return failure(nativeToolRefusal(name, native))
   // The search schema bounds a query; a name the agent typed is bounded here, the one unchecked text ranked.
   const near = rank(ctx, name.slice(0, MAX_SEARCH_QUERY_LENGTH), undefined)
     .slice(0, 5)
@@ -449,7 +460,7 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
     (op) =>
       op.sensitivity !== undefined &&
       // Off the door is unknown to everyone, never a hint (`isOnDoor`).
-      isOnDoor(op, doorOfPrincipal(ctx.principal)) &&
+      isOnDoor(op.name, doorOfPrincipal(ctx.principal)) &&
       (!domain || op.domain === domain) &&
       !canSee(ctx.principal, op) &&
       score(op) > 0 &&

@@ -129,15 +129,6 @@
    "describe": "{\"name\":\"project-member-list\",\"domain\":\"projects\",\"summary\":\"List a project’s members\",\"description\":\"The project roster: each member with their role and the role assignment id (members[].id), plus `viewerUserId`, the caller’s own user id. Needs project:members:manage. Use the assignment id with project-member-remove.\",\"annotations\":{\"title\":\"List a project’s members\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "project-memory-create",
-   "domain": "projects",
-   "summary": "Add a memory item",
-   "description": "Writes one memory item by hand: a `kind`, the `content` (up to 2000 characters), and optionally `confidence` and `pinned`. Answers `{ item }` with its id. Needs project:memory:write. Check project-memory-list first so you do not repeat an item.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"project-memory-create\",\"domain\":\"projects\",\"summary\":\"Add a memory item\",\"description\":\"Writes one memory item by hand: a `kind`, the `content` (up to 2000 characters), and optionally `confidence` and `pinned`. Answers `{ item }` with its id. Needs project:memory:write. Check project-memory-list first so you do not repeat an item.\",\"annotations\":{\"title\":\"Add a memory item\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"decision\",\"constraint\",\"open_question\",\"derived_fact\",\"preference\"]},\"content\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"confidence\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\"]},\"pinned\":{\"type\":\"boolean\"}},\"required\":[\"kind\",\"content\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
    "name": "project-memory-delete",
    "domain": "projects",
    "summary": "Delete a memory item",
@@ -453,15 +444,6 @@
    "describe": "{\"name\":\"document-role-list\",\"domain\":\"documents\",\"summary\":\"List a project’s document roles\",\"description\":\"The role bindings of the project (which document is the Baugenehmigung, the Lageplan and so on) in `roles`, plus `missing`: the roles Piloti expects the project to hold and does not. Binding ids feed document-role-clear.\",\"annotations\":{\"title\":\"List a project’s document roles\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "document-search",
-   "domain": "documents",
-   "summary": "Search a project’s documents by meaning",
-   "description": "Semantic search over the documents of one project (`projectId`, from project-list) for a question or phrase `q`. Returns the best matching passages with their documents, up to `topK` (default set by the server). Read-only.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"document-search\",\"domain\":\"documents\",\"summary\":\"Search a project’s documents by meaning\",\"description\":\"Semantic search over the documents of one project (`projectId`, from project-list) for a question or phrase `q`. Returns the best matching passages with their documents, up to `topK` (default set by the server). Read-only.\",\"annotations\":{\"title\":\"Search a project’s documents by meaning\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1},\"q\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1000},\"topK\":{\"type\":\"integer\"}},\"required\":[\"projectId\",\"q\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
    "name": "document-status",
    "domain": "documents",
    "summary": "Read a document’s ingestion status",
@@ -649,15 +631,6 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"office-shelf-document-revision-probe\",\"domain\":\"documents\",\"summary\":\"Find documents a file name would revise\",\"description\":\"Given dropped file names, returns the office shelf documents each would be the next revision of, so the upload can file it as a new revision instead of a second document. Changes nothing.\",\"annotations\":{\"title\":\"Find documents a file name would revise\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "office-shelf-document-search",
-   "domain": "documents",
-   "summary": "Search the office shelf by meaning",
-   "description": "Document-centric semantic search over the office shelf. `q` is a natural-language query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's own documents use the knowledge operations.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-search\",\"domain\":\"documents\",\"summary\":\"Search the office shelf by meaning\",\"description\":\"Document-centric semantic search over the office shelf. `q` is a natural-language query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's own documents use the knowledge operations.\",\"annotations\":{\"title\":\"Search the office shelf by meaning\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"q\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1000},\"topK\":{\"type\":\"integer\"}},\"required\":[\"q\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "office-shelf-document-summary",
@@ -939,24 +912,6 @@
    "describe": "{\"name\":\"root-sort-run-undo\",\"domain\":\"folders\",\"summary\":\"Send what a root-sort run moved back to the root\",\"description\":\"Moves every file an applied (or partly applied, then failed) run moved back to the shelf root; folders it created stay. Answers at once with the run in `undoing`; follow it with root-sort-run-get. Refused when the run moved nothing.\",\"annotations\":{\"title\":\"Send what a root-sort run moved back to the root\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"runId\":{\"type\":\"string\",\"description\":\"The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get.\"}},\"required\":[\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "annotation-create",
-   "domain": "review",
-   "summary": "Place an annotation on a document",
-   "description": "Sets a new annotation at a place on the document (page position or text range, as the schema describes) with a kind and a body. Returns the annotation with its number. Colleagues named in `mentions` are told.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"annotation-create\",\"domain\":\"review\",\"summary\":\"Place an annotation on a document\",\"description\":\"Sets a new annotation at a place on the document (page position or text range, as the schema describes) with a kind and a body. Returns the annotation with its number. Colleagues named in `mentions` are told.\",\"annotations\":{\"title\":\"Place an annotation on a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"page\":{\"type\":\"integer\"},\"shape\":{\"type\":\"string\",\"enum\":[\"point\",\"region\"]},\"x\":{\"type\":\"number\"},\"y\":{\"type\":\"number\"},\"w\":{\"anyOf\":[{\"type\":\"number\"},{\"type\":\"null\"}]},\"h\":{\"anyOf\":[{\"type\":\"number\"},{\"type\":\"null\"}]},\"kind\":{\"type\":\"string\",\"enum\":[\"hint\",\"question\",\"defect\"]},\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"basis\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},{\"type\":\"null\"}]},\"assigneeUserId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},{\"type\":\"null\"}]},\"dueOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"mentions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"targetId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"display\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"targetId\",\"display\"],\"additionalProperties\":false},\"maxItems\":10}},\"required\":[\"page\",\"shape\",\"x\",\"y\",\"kind\",\"body\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"],\"examples\":[{\"params\":{\"id\":\"5b1e7c2a-9d4f-4c3b-8a6e-2f1d0c9b8a7e\"},\"body\":{\"page\":2,\"shape\":\"region\",\"x\":0.42,\"y\":0.31,\"w\":0.18,\"h\":0.12,\"kind\":\"question\",\"body\":\"Is this door 90 cm clear?\"}}]}}"
-  },
-  {
-   "name": "annotation-delete",
-   "domain": "review",
-   "summary": "Delete one of your own annotations",
-   "description": "Removes an annotation its author set. One that has been discussed or carried to another revision is refused with a 409; resolve it instead (annotation-update). Deleting cannot be undone.",
-   "readOnly": false,
-   "destructive": true,
-   "describe": "{\"name\":\"annotation-delete\",\"domain\":\"review\",\"summary\":\"Delete one of your own annotations\",\"description\":\"Removes an annotation its author set. One that has been discussed or carried to another revision is refused with a 409; resolve it instead (annotation-update). Deleting cannot be undone.\",\"annotations\":{\"title\":\"Delete one of your own annotations\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"},\"annotationId\":{\"type\":\"string\",\"description\":\"The annotation id, from annotation-list.\"}},\"required\":[\"id\",\"annotationId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
    "name": "annotation-get",
    "domain": "review",
    "summary": "Read one annotation with its thread",
@@ -975,15 +930,6 @@
    "describe": "{\"name\":\"annotation-list\",\"domain\":\"review\",\"summary\":\"List the annotations on a document\",\"description\":\"Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get, annotation-update and annotation-reply-create.\",\"annotations\":{\"title\":\"List the annotations on a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "annotation-reply-create",
-   "domain": "review",
-   "summary": "Reply in an annotation’s thread",
-   "description": "Adds a reply to an annotation. Set `addressesPiloti` or mention Piloti to ask it to answer. Returns the annotation with its thread.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"annotation-reply-create\",\"domain\":\"review\",\"summary\":\"Reply in an annotation’s thread\",\"description\":\"Adds a reply to an annotation. Set `addressesPiloti` or mention Piloti to ask it to answer. Returns the annotation with its thread.\",\"annotations\":{\"title\":\"Reply in an annotation’s thread\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"},\"annotationId\":{\"type\":\"string\",\"description\":\"The annotation id, from annotation-list.\"}},\"required\":[\"id\",\"annotationId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"addressesPiloti\":{\"type\":\"boolean\"},\"mentions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"targetId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"display\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"targetId\",\"display\"],\"additionalProperties\":false},\"maxItems\":10}},\"required\":[\"body\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
    "name": "annotation-reply-delete",
    "domain": "review",
    "summary": "Take back one of your own replies",
@@ -1000,15 +946,6 @@
    "readOnly": false,
    "destructive": false,
    "describe": "{\"name\":\"annotation-reply-update\",\"domain\":\"review\",\"summary\":\"Reword one of your own replies\",\"description\":\"Rewords a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.\",\"annotations\":{\"title\":\"Reword one of your own replies\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"},\"annotationId\":{\"type\":\"string\",\"description\":\"The annotation id, from annotation-list.\"},\"replyId\":{\"type\":\"string\",\"description\":\"The reply id, from the annotation’s `replies` in annotation-get.\"}},\"required\":[\"id\",\"annotationId\",\"replyId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"mentions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"targetId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"display\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"targetId\",\"display\"],\"additionalProperties\":false},\"maxItems\":10}},\"required\":[\"body\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
-   "name": "annotation-update",
-   "domain": "review",
-   "summary": "Change, resolve or reassign an annotation",
-   "description": "Edits an annotation: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. `expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open annotation onto the current revision.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"annotation-update\",\"domain\":\"review\",\"summary\":\"Change, resolve or reassign an annotation\",\"description\":\"Edits an annotation: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. `expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open annotation onto the current revision.\",\"annotations\":{\"title\":\"Change, resolve or reassign an annotation\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"},\"annotationId\":{\"type\":\"string\",\"description\":\"The annotation id, from annotation-list.\"}},\"required\":[\"id\",\"annotationId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"hint\",\"question\",\"defect\"]},\"body\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"mentions\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"targetId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"display\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}},\"required\":[\"targetId\",\"display\"],\"additionalProperties\":false},\"maxItems\":10},\"basis\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":300},{\"type\":\"null\"}]},\"status\":{\"type\":\"string\",\"enum\":[\"open\",\"resolved\",\"dismissed\"]},\"assigneeUserId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},{\"type\":\"null\"}]},\"dueOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"expectedStatus\":{\"type\":\"string\",\"enum\":[\"proposed\",\"open\",\"resolved\",\"dismissed\"]},\"delegateToPiloti\":{\"type\":\"boolean\"},\"carryToCurrent\":{\"const\":true}},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "document-annotations-export",
@@ -1515,15 +1452,6 @@
    "describe": "{\"name\":\"project-task-run-list\",\"domain\":\"tasks\",\"summary\":\"List every task run of a project\",\"description\":\"The project’s delegated work, newest first: each task run with its status, the task it came from and its review state. Needs the skills and task-automation features on. A finished run awaits task-run-review.\",\"annotations\":{\"title\":\"List every task run of a project\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "task-create",
-   "domain": "tasks",
-   "summary": "Create a standing or one-off task",
-   "description": "Create a task in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: the task, with its id.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"task-create\",\"domain\":\"tasks\",\"summary\":\"Create a standing or one-off task\",\"description\":\"Create a task in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: the task, with its id.\",\"annotations\":{\"title\":\"Create a standing or one-off task\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"prompt\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":8000},\"skillName\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]},\"dataSources\":{\"anyOf\":[{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1},\"maxItems\":50},{\"type\":\"null\"}]},\"enabled\":{\"type\":\"boolean\"},\"scheduleCron\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1},{\"type\":\"null\"}]},\"scheduleTimezone\":{\"type\":\"string\",\"minLength\":1},\"dueAt\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"date-time\"},{\"type\":\"null\"}]}},\"required\":[\"name\",\"prompt\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
    "name": "task-delete",
    "domain": "tasks",
    "summary": "Delete a task",
@@ -1558,15 +1486,6 @@
    "readOnly": false,
    "destructive": true,
    "describe": "{\"name\":\"task-run-cancel\",\"domain\":\"tasks\",\"summary\":\"Stop a running task run\",\"description\":\"Ask the backend to stop one run. Refuses with 409 when the run can no longer be stopped. Returns the run view as it stands; the ledger turns `cancelled` afterwards, so read it again with task-run-get.\",\"annotations\":{\"title\":\"Stop a running task run\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "task-run-commission",
-   "domain": "tasks",
-   "summary": "Commission a research run",
-   "description": "Start a deep research run for a question inside an existing conversation of the project: `conversationId` (from conversation-list), `question`, optional `context` and optional `documents` ({ basis, excluded } lists of document names) to carry forward. Needs the deep-research feature and collaborator access to the conversation. Returns `{ runId, runMessageId, conversationId, status }`; follow it with task-run-get.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"task-run-commission\",\"domain\":\"tasks\",\"summary\":\"Commission a research run\",\"description\":\"Start a deep research run for a question inside an existing conversation of the project: `conversationId` (from conversation-list), `question`, optional `context` and optional `documents` ({ basis, excluded } lists of document names) to carry forward. Needs the deep-research feature and collaborator access to the conversation. Returns `{ runId, runMessageId, conversationId, status }`; follow it with task-run-get.\",\"annotations\":{\"title\":\"Commission a research run\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"conversationId\":{\"type\":\"string\",\"minLength\":1},\"question\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":500},\"context\":{\"type\":\"string\",\"maxLength\":20000},\"documents\":{\"type\":\"object\",\"properties\":{\"basis\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"shelf\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64}},\"required\":[\"name\"],\"additionalProperties\":false},\"maxItems\":20},\"excluded\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"shelf\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64}},\"required\":[\"name\"],\"additionalProperties\":false},\"maxItems\":20}},\"additionalProperties\":false}},\"required\":[\"conversationId\",\"question\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "task-run-document-add",
@@ -1785,15 +1704,6 @@
    "describe": "{\"name\":\"bim-model-list\",\"domain\":\"bim\",\"summary\":\"List the BIM models in scope for a project\",\"description\":\"The IFC models a project can use: its own uploads plus the office shelf’s, each with its id, name and revision. Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and bim-check-confirm.\",\"annotations\":{\"title\":\"List the BIM models in scope for a project\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
-   "name": "bim-model-query",
-   "domain": "bim",
-   "summary": "Ask a structured question of a BIM model",
-   "description": "Run one deterministic query against one model, as numbers and rows rather than prose: the body is a closed vocabulary selected by `op` (overview, health, schedule, compliance, compliance-diff, profile, takeoff, compare, types, elements, element, properties, aggregate). Use it for every count, sum and filter (\"how many external walls on the ground floor\"); never estimate such answers. Changes nothing. Get the model id from bim-model-list.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"bim-model-query\",\"domain\":\"bim\",\"summary\":\"Ask a structured question of a BIM model\",\"description\":\"Run one deterministic query against one model, as numbers and rows rather than prose: the body is a closed vocabulary selected by `op` (overview, health, schedule, compliance, compliance-diff, profile, takeoff, compare, types, elements, element, properties, aggregate). Use it for every count, sum and filter (\\\"how many external walls on the ground floor\\\"); never estimate such answers. Changes nothing. Get the model id from bim-model-list.\",\"annotations\":{\"title\":\"Ask a structured question of a BIM model\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"modelId\":{\"type\":\"string\",\"description\":\"The BIM model (revision) id, from bim-model-list.\"}},\"required\":[\"modelId\"]},\"body\":{\"oneOf\":[{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"overview\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"health\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"schedule\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"compliance\"},\"buildingClass\":{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"null\"}]},\"mainUse\":{\"anyOf\":[{\"type\":\"string\",\"enum\":[\"residential\",\"office\",\"lodging\",\"assembly\",\"healthcare\",\"agriculture\",\"manufacturing\",\"storage\",\"other\"]},{\"type\":\"null\"}]}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"compliance-diff\"},\"baseModelId\":{\"type\":\"string\",\"format\":\"uuid\"},\"buildingClass\":{\"anyOf\":[{\"type\":\"integer\"},{\"type\":\"null\"}]},\"mainUse\":{\"anyOf\":[{\"type\":\"string\",\"enum\":[\"residential\",\"office\",\"lodging\",\"assembly\",\"healthcare\",\"agriculture\",\"manufacturing\",\"storage\",\"other\"]},{\"type\":\"null\"}]}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"profile\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"takeoff\"},\"quantity\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"byMaterial\":{\"type\":\"boolean\"},\"filter\":{\"type\":\"object\",\"properties\":{\"ifcTypes\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":80},\"maxItems\":40},\"storeys\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"maxItems\":40},\"nameContains\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"material\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"classification\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"globalIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"maxItems\":500},\"properties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"set\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"operator\":{\"type\":\"string\",\"enum\":[\"eq\",\"neq\",\"contains\",\"gt\",\"gte\",\"lt\",\"lte\",\"exists\",\"missing\"]},\"value\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":400},{\"type\":\"number\"},{\"type\":\"boolean\"}]},\"source\":{\"type\":\"string\",\"enum\":[\"property\",\"quantity\"]}},\"required\":[\"name\"],\"additionalProperties\":false},\"maxItems\":10}},\"additionalProperties\":false}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"compare\"},\"baseModelId\":{\"type\":\"string\",\"format\":\"uuid\"},\"limit\":{\"type\":\"integer\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"types\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"elements\"},\"filter\":{\"type\":\"object\",\"properties\":{\"ifcTypes\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":80},\"maxItems\":40},\"storeys\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"maxItems\":40},\"nameContains\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"material\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"classification\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"globalIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"maxItems\":500},\"properties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"set\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"operator\":{\"type\":\"string\",\"enum\":[\"eq\",\"neq\",\"contains\",\"gt\",\"gte\",\"lt\",\"lte\",\"exists\",\"missing\"]},\"value\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":400},{\"type\":\"number\"},{\"type\":\"boolean\"}]},\"source\":{\"type\":\"string\",\"enum\":[\"property\",\"quantity\"]}},\"required\":[\"name\"],\"additionalProperties\":false},\"maxItems\":10}},\"additionalProperties\":false},\"limit\":{\"type\":\"integer\"},\"offset\":{\"type\":\"integer\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"element\"},\"globalId\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64}},\"required\":[\"op\",\"globalId\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"properties\"},\"ifcType\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":80},\"maxValues\":{\"type\":\"integer\"}},\"required\":[\"op\"],\"additionalProperties\":false},{\"type\":\"object\",\"properties\":{\"op\":{\"const\":\"aggregate\"},\"filter\":{\"type\":\"object\",\"properties\":{\"ifcTypes\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":80},\"maxItems\":40},\"storeys\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"maxItems\":40},\"nameContains\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"material\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"classification\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"globalIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},\"maxItems\":500},\"properties\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"set\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"operator\":{\"type\":\"string\",\"enum\":[\"eq\",\"neq\",\"contains\",\"gt\",\"gte\",\"lt\",\"lte\",\"exists\",\"missing\"]},\"value\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":400},{\"type\":\"number\"},{\"type\":\"boolean\"}]},\"source\":{\"type\":\"string\",\"enum\":[\"property\",\"quantity\"]}},\"required\":[\"name\"],\"additionalProperties\":false},\"maxItems\":10}},\"additionalProperties\":false},\"metric\":{\"type\":\"string\",\"enum\":[\"count\",\"sum\",\"avg\",\"min\",\"max\"]},\"quantity\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"quantitySet\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"groupBy\":{\"type\":\"string\",\"enum\":[\"ifcType\",\"storey\",\"predefinedType\",\"typeName\",\"material\",\"property\"]},\"groupProperty\":{\"type\":\"object\",\"properties\":{\"set\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":120}},\"required\":[\"set\",\"name\"]},\"limit\":{\"type\":\"integer\"}},\"required\":[\"op\"],\"additionalProperties\":false}],\"discriminator\":{\"propertyName\":\"op\"}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
    "name": "bim-model-source-get",
    "domain": "bim",
    "summary": "Get a time-limited link to a model’s IFC file",
@@ -1837,15 +1747,6 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"organization-member-list\",\"domain\":\"organization\",\"summary\":\"List the organization’s members\",\"description\":\"Every active member of the organization with user id, email and display name, read from the identity provider. Organization admins only. Use the user ids for the userId filter of organization-download-log-list.\",\"annotations\":{\"title\":\"List the organization’s members\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
-  },
-  {
-   "name": "organization-memory-create",
-   "domain": "organization",
-   "summary": "Add an organization memory item",
-   "description": "Records one item of organization-wide knowledge that every project then carries. Any member may add one. Returns the created item with its id. Check organization-memory-list first to avoid a duplicate.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"organization-memory-create\",\"domain\":\"organization\",\"summary\":\"Add an organization memory item\",\"description\":\"Records one item of organization-wide knowledge that every project then carries. Any member may add one. Returns the created item with its id. Check organization-memory-list first to avoid a duplicate.\",\"annotations\":{\"title\":\"Add an organization memory item\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"decision\",\"constraint\",\"open_question\",\"derived_fact\",\"preference\"]},\"content\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":2000},\"confidence\":{\"type\":\"string\",\"enum\":[\"low\",\"medium\",\"high\"]},\"pinned\":{\"type\":\"boolean\"}},\"required\":[\"kind\",\"content\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "organization-memory-delete",
@@ -1898,13 +1799,13 @@
    "project-person-add",
    "project-member-list",
    "project-same-address-list",
-   "organization-memory-create",
    "project-create",
    "project-record-get",
    "assignment-candidate-list",
    "project-delete",
    "project-experience-extract",
-   "project-get"
+   "project-get",
+   "project-intake-get"
   ],
   "Mitglied zu Projekt hinzufügen": [
    "project-person-add",
@@ -1967,7 +1868,6 @@
    "project-same-address-list"
   ],
   "create task": [
-   "task-create",
    "project-create",
    "office-shelf-folder-create",
    "project-folder-create",
@@ -1976,10 +1876,10 @@
    "task-get",
    "task-list",
    "task-run-cancel",
-   "task-run-get"
+   "task-run-get",
+   "task-run-list"
   ],
   "Aufgabe erstellen": [
-   "task-create",
    "project-create",
    "office-shelf-folder-create",
    "project-folder-create",
@@ -1988,7 +1888,8 @@
    "task-get",
    "task-list",
    "task-run-cancel",
-   "task-run-get"
+   "task-run-get",
+   "task-run-list"
   ],
   "inbox unread": [
    "inbox-list",
@@ -2134,27 +2035,27 @@
   ],
   "project memory": [
    "project-memory-list",
-   "project-memory-create",
    "project-memory-delete",
    "project-memory-update",
    "project-experience-extract",
-   "organization-memory-create",
    "organization-memory-list",
    "project-intake-start",
    "project-create",
-   "project-delete"
+   "project-delete",
+   "project-get",
+   "project-intake-get"
   ],
   "Projektgedächtnis merken": [
    "project-memory-list",
-   "project-memory-create",
    "project-memory-delete",
    "project-memory-update",
-   "organization-memory-create",
    "organization-memory-list",
    "project-experience-extract",
    "organization-memory-delete",
    "organization-memory-update",
-   "project-intake-start"
+   "project-intake-start",
+   "project-create",
+   "project-delete"
   ],
   "list proposals": [
    "proposal-list",
@@ -2196,28 +2097,24 @@
    "project-member-list"
   ],
   "annotation reply": [
-   "annotation-reply-create",
    "annotation-reply-delete",
    "annotation-reply-update",
    "annotation-get",
    "annotation-list",
-   "annotation-create",
-   "annotation-delete",
-   "annotation-update",
    "document-annotations-export",
-   "project-annotation-list"
+   "project-annotation-list",
+   "project-annotations-export",
+   "assignment-candidate-list"
   ],
   "Anmerkung beantworten": [
-   "annotation-create",
-   "annotation-delete",
    "annotation-get",
    "annotation-list",
-   "annotation-reply-create",
-   "annotation-update",
    "document-annotations-export",
    "annotation-reply-delete",
    "annotation-reply-update",
-   "project-annotation-list"
+   "project-annotation-list",
+   "project-annotations-export",
+   "assignment-candidate-list"
   ],
   "conversation share": [
    "conversation-create",

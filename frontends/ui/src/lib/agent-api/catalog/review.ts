@@ -54,7 +54,7 @@ const versionDiffQuery = z.object({
   to: z.string().describe('The version id to compare to, from document-version-list.'),
 })
 
-export const reviewOperations: readonly AgentOperation[] = [
+export const reviewOperations = [
   // ---- Versions: the document lifecycle (draft, in review, approved, published) ----
   {
     name: 'document-version-list',
@@ -442,4 +442,4 @@ export const reviewOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/projects/[id]/annotations/export/route'),
   },
 
-]
+] as const satisfies readonly AgentOperation[]

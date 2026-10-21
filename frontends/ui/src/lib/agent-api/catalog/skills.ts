@@ -16,7 +16,7 @@ const categoryParams = z.object({
   categoryId: z.string().describe('The org skill category id, from skill-category-list.'),
 })
 
-export const skillsOperations: readonly AgentOperation[] = [
+export const skillsOperations = [
   {
     name: 'skill-list',
     domain: 'skills',
@@ -83,10 +83,6 @@ export const skillsOperations: readonly AgentOperation[] = [
   {
     name: 'skill-curated-set-enabled',
     domain: 'skills',
-    withheld: {
-      category: 'product-config',
-      reason: 'switches a platform-curated skill of Piloti’s on or off; product configuration',
-    },
     summary: 'Switch a platform skill on or off',
     description:
       'Turn a platform-curated skill on or off for this organization. Addressed by NAME (from skill-list), because ' +
@@ -102,10 +98,6 @@ export const skillsOperations: readonly AgentOperation[] = [
   {
     name: 'skill-review',
     domain: 'skills',
-    withheld: {
-      category: 'model-compute',
-      reason: 'a model critiques a skill draft and stores nothing; the calling agent can review its own draft',
-    },
     summary: 'Have the reviewer critique a skill draft',
     description:
       'Ask the backend reviewer what is wrong with a skill draft. Send whatever of `name`, `description` and `body` ' +
@@ -165,4 +157,4 @@ export const skillsOperations: readonly AgentOperation[] = [
     params: categoryParams,
     load: () => import('@/app/api/skill-categories/[categoryId]/route'),
   },
-]
+] as const satisfies readonly AgentOperation[]

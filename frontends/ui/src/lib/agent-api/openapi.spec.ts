@@ -13,6 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AGENT_OPERATIONS } from './catalog'
+import { isOnDoor } from './exposure'
 import { buildOpenApiDocument, documentedOperations, openApiPath } from './openapi'
 import { pathParams } from './operation'
 
@@ -126,7 +127,7 @@ describe('agent API OpenAPI document', () => {
 
   it('never documents a withheld operation, for anyone', () => {
     for (const platformStaff of [false, true]) {
-      expect(documentedOperations(AGENT_OPERATIONS, { platformStaff }).filter((op) => op.withheld)).toEqual([])
+      expect(documentedOperations(AGENT_OPERATIONS, { platformStaff }).filter((op) => !isOnDoor(op.name) && !isOnDoor(op.name, 'platform'))).toEqual([])
     }
   })
 })

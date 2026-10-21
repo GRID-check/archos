@@ -13,7 +13,6 @@ vi.mock('./catalog', async () => {
 
 import { FAKE_OPERATIONS } from './test-operations'
 import {
-  DOOR_DOMAINS,
   SENSITIVE_SCOPE,
   SENSITIVE_SCOPE_ENFORCED_BY_WORKOS,
   callDecision,
@@ -23,6 +22,7 @@ import {
   findVisibleOperation,
   isOnDoor,
   maySeeSensitive,
+  nativeToolOf,
   visibleBackendOperations,
   visibleOperations,
 } from './policy'
@@ -58,7 +58,7 @@ describe('callDecision', () => {
   it('turns every write by in-product Piloti into a proposal', () => {
     expect(callDecision(piloti, op('project-member-add'))).toBe('propose')
     expect(callDecision(piloti, op('project-delete'))).toBe('propose')
-    expect(callDecision(piloti, op('folder-access-grant'))).toBe('propose')
+    expect(callDecision(piloti, op('project-folder-access-set'))).toBe('propose')
   })
 })
 
@@ -66,52 +66,65 @@ describe('visibleOperations', () => {
   const names = (principal: AgentPrincipal) => visibleOperations(principal).map((candidate) => candidate.name)
 
   it('hides a sensitive operation from an external agent without the step-up scope', () => {
-    expect(names(person())).not.toContain('folder-access-grant')
+    expect(names(person())).not.toContain('project-folder-access-set')
     expect(names(person())).toContain('project-member-add')
   })
 
   it('ignores piloti:sensitive while WorkOS does not define and enforce it (M5)', () => {
     // A token carrying the string proves nothing until the authorization server grants it on step-up.
     expect(SENSITIVE_SCOPE_ENFORCED_BY_WORKOS).toBe(false)
-    expect(names(person([SENSITIVE_SCOPE]))).not.toContain('folder-access-grant')
-    expect(findVisibleOperation(person([SENSITIVE_SCOPE]), 'folder-access-grant')).toBeUndefined()
+    expect(names(person([SENSITIVE_SCOPE]))).not.toContain('project-folder-access-set')
+    expect(findVisibleOperation(person([SENSITIVE_SCOPE]), 'project-folder-access-set')).toBeUndefined()
   })
 
   it('hides it from Piloti, which may not even propose it (M4)', () => {
-    expect(names(piloti)).not.toContain('folder-access-grant')
-    expect(findVisibleOperation(piloti, 'folder-access-grant')).toBeUndefined()
+    expect(names(piloti)).not.toContain('project-folder-access-set')
+    expect(findVisibleOperation(piloti, 'project-folder-access-set')).toBeUndefined()
   })
 
   it('keeps every platform operation off the office door, for everyone (H3): it has a door of its own', () => {
     const platformRead = { ...op('project-list'), name: 'platform-overview-get', domain: 'platform' as const }
-    expect(isOnDoor(platformRead)).toBe(false)
+    expect(isOnDoor(platformRead.name)).toBe(false)
     expect(canSee(piloti, platformRead)).toBe(false)
     expect(canSee(person(), platformRead)).toBe(false)
   })
 
-  it('offers the platform door the platform domain and nothing else (ADR-0126)', () => {
+  it('offers the platform door what the config marks `platform`, and nothing else (ADR-0126)', () => {
     const platformRead = { ...op('project-list'), name: 'platform-overview-get', domain: 'platform' as const }
-    const withheld = { ...platformRead, withheld: { category: 'product-config' as const, reason: 'a reason long enough for the ratchet' } }
+    const withheld = { ...platformRead, name: 'organization-model-config-get' }
     const operator = { ...person(), door: 'platform' as const }
-    expect(isOnDoor(platformRead, 'platform')).toBe(true)
+    expect(isOnDoor(platformRead.name, 'platform')).toBe(true)
     expect(canSee(operator, platformRead)).toBe(true)
     expect(canSee(operator, withheld)).toBe(false)
     for (const operation of FAKE_OPERATIONS) expect(canSee(operator, operation), operation.name).toBe(false)
-    expect(DOOR_DOMAINS.platform).toEqual(new Set(['platform']))
     expect(doorOfPrincipal(person())).toBe('office')
   })
 
   it('offers a withheld operation to nobody, as if it did not exist', () => {
-    const withheld = {
-      ...op('project-list'),
-      name: 'organization-model-config-get',
-      withheld: { category: 'product-config' as const, reason: 'which models Piloti runs on; product configuration' },
-    }
-    expect(isOnDoor(withheld)).toBe(false)
+    const withheld = { ...op('project-list'), name: 'organization-model-config-get' }
+    expect(isOnDoor(withheld.name)).toBe(false)
+    expect(isOnDoor(withheld.name, 'platform')).toBe(false)
     expect(canSee(piloti, withheld)).toBe(false)
     expect(canSee(person(), withheld)).toBe(false)
     expect(findVisibleOperation(person(), 'organization-model-config-get')).toBeUndefined()
     expect(findVisibleOperation(person(), 'citation-format')).toBeUndefined()
+  })
+
+  it('offers a name the config does not know to nobody: no silent default', () => {
+    const unknown = { ...op('project-list'), name: 'project-unlisted-thing' }
+    expect(canSee(person(), unknown)).toBe(false)
+    expect(canSee(piloti, unknown)).toBe(false)
+    expect(isOnDoor(unknown.name)).toBe(false)
+  })
+
+  it('hides from Piloti, and only from Piloti, what Piloti does with a native tool; it stays on the door', () => {
+    const search = op('document-search')
+    expect(nativeToolOf('document-search')).toBe('knowledge_search')
+    expect(canSee(piloti, search)).toBe(false)
+    expect(canSee(person(), search)).toBe(true)
+    // Visibility only: the operation is on the office door, so a proposal filed before still applies.
+    expect(isOnDoor('document-search')).toBe(true)
+    expect(nativeToolOf('project-list')).toBeUndefined()
   })
 
   it('hides the asks from Piloti, and only from Piloti: Piloti never asks Piloti (ADR-0124)', () => {
@@ -123,7 +136,7 @@ describe('visibleOperations', () => {
   })
 
   it('treats a hidden operation as absent', () => {
-    expect(findVisibleOperation(person(), 'folder-access-grant')).toBeUndefined()
+    expect(findVisibleOperation(person(), 'project-folder-access-set')).toBeUndefined()
     expect(findVisibleOperation(person(), 'project-list')?.name).toBe('project-list')
   })
 })
@@ -146,13 +159,13 @@ describe('the guards on a sensitive operation (ADR-0122)', () => {
   })
 
   it('is off by default: an opted-in organization’s agent with the scope sees nothing until WorkOS enforces it', () => {
-    expect(canSee(optedIn(['access', 'secret']), op('folder-access-grant'))).toBe(false)
+    expect(canSee(optedIn(['access', 'secret']), op('project-folder-access-set'))).toBe(false)
   })
 
   it('never lets Piloti see one, whatever its principal claims', () => {
     const claiming: AgentPrincipal = { ...piloti, scopes: [SENSITIVE_SCOPE], sensitiveOptIns: ['access', 'secret'] }
     expect(maySeeSensitive(claiming, 'access', true)).toBe(false)
-    expect(canSee(claiming, op('folder-access-grant'))).toBe(false)
+    expect(canSee(claiming, op('project-folder-access-set'))).toBe(false)
   })
 })
 

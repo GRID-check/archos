@@ -48,7 +48,7 @@ const memoryListQuery = z.object({
   includeArchived: z.enum(['true', 'false']).optional().describe('"true" also returns archived items.'),
 })
 
-export const organizationOperations: readonly AgentOperation[] = [
+export const organizationOperations = [
   // --- members and roles ---------------------------------------------------
   {
     name: 'organization-member-list',
@@ -122,10 +122,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-settings-get',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'how Piloti works for the office (language, effort and other defaults); a person sets it in Settings',
-    },
     summary: 'Read the organization’s settings',
     description:
       'Display name, default language and the settings bag of the caller’s organization. Any member may read. ' +
@@ -137,10 +133,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-settings-update',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'how Piloti works for the office (language, effort and other defaults); a person sets it in Settings',
-    },
     summary: 'Update the organization’s settings',
     description:
       'Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. ' +
@@ -156,10 +148,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-web-search-set',
     domain: 'organization',
-    withheld: {
-      category: 'external-service',
-      reason: 'switches the web search provider Piloti answers with; a calling agent has its own web search',
-    },
     summary: 'Switch web search on or off',
     description:
       'Switches whether Piloti may search the web when it answers the organization’s members. Needs ' +
@@ -175,10 +163,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-instructions-get',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the standing instructions shape every Piloti answer; they configure the product, and Piloti already reads them',
-    },
     summary: 'Read the standing instructions',
     description:
       'The organization’s standing instruction block that shapes every answer its members get. Any member may read. ' +
@@ -190,10 +174,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-instructions-set',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the standing instructions shape every Piloti answer; configuring the product is a person’s act',
-    },
     summary: 'Replace the standing instructions',
     description:
       'Replaces the organization’s standing instruction block with the given text; an empty or blank text clears it. ' +
@@ -262,7 +242,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-model-config-get',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'which models Piloti runs on; product configuration' },
     summary: 'Read the model configuration',
     description:
       'The agent groups, the active model configuration version, whether zero data retention is on and applicable, and ' +
@@ -275,7 +254,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-model-config-set',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'which models Piloti runs on; product configuration' },
     summary: 'Save a new model configuration',
     description:
       'Validates the chosen model per agent group against the live catalog (and ZDR, while it is on), then writes a new ' +
@@ -291,10 +269,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-model-search',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the model catalog the model configuration picks from; product configuration',
-    },
     summary: 'Search models for an agent group',
     description:
       'Models that satisfy one agent group’s requirements, filtered by a search text, with context length, a ZDR mark and ' +
@@ -308,7 +282,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-model-config-version-list',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'the history of which models Piloti ran on; product configuration' },
     summary: 'List model configuration versions',
     description:
       'The history of the organization’s model configurations, newest first, with the id of the active one. ' +
@@ -320,7 +293,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-model-config-version-activate',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'which models Piloti runs on; product configuration' },
     summary: 'Roll back to a model configuration version',
     description:
       'Makes an earlier configuration version the active one for the whole organization, or pass the id "none" to drop ' +
@@ -335,10 +307,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-zdr-set',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'whether model providers may keep data; a product privacy setting a person decides',
-    },
     summary: 'Turn zero data retention on or off',
     description:
       'Switches the organization’s zero-data-retention privacy control. On (the default) only models with a ZDR endpoint ' +
@@ -356,10 +324,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-llm-credential-list',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the LLM provider keys Piloti runs on; product configuration and a credential',
-    },
     summary: 'List the organization’s LLM provider keys',
     description:
       'The organization’s own LLM provider keys as metadata: provider, label, base URL, status, dates, a masked `keyHint` ' +
@@ -374,10 +338,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-llm-credential-create',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the LLM provider keys Piloti runs on; product configuration and a credential',
-    },
     summary: 'Connect an LLM provider key',
     description:
       'Checks `apiKey` against the provider, stores it encrypted and makes it the active key. `provider` is one of the presets; ' +
@@ -394,10 +354,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-llm-credential-revoke',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the LLM provider keys Piloti runs on; product configuration and a credential',
-    },
     summary: 'Revoke an LLM provider key',
     description:
       'Revokes the key; the organization’s traffic falls back to the platform service within a minute. The key is never ' +
@@ -411,10 +367,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-llm-credential-verify',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the LLM provider keys Piloti runs on; product configuration and a credential',
-    },
     summary: 'Check an LLM provider key against the provider',
     description:
       'Asks the provider whether the active key still works and records when. Returns `{ credential, modelCount }`; the key ' +
@@ -429,10 +381,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-llm-provider-mode-set',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'whether Piloti runs on the platform’s or the office’s provider key; product configuration',
-    },
     summary: 'Choose between the organization’s key and the platform',
     description:
       'Sets `mode`: `byok` sends the organization’s traffic through its own key, `platform` through the platform service, ' +
@@ -449,7 +397,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-budget-get',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'spend limits on Piloti itself; a refused call says when one stops work' },
     summary: 'Read the LLM budgets',
     description:
       'Daily and monthly limits (credits, or tokens for an organization on its own key) for the organization and the ' +
@@ -462,7 +409,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-budget-set',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'spend limits on Piloti itself; product configuration' },
     summary: 'Set a budget limit',
     description:
       'Sets the daily and monthly limit (null means unlimited) for the organization, one member or one project. ' +
@@ -477,7 +423,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-budget-remove',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'spend limits on Piloti itself; product configuration' },
     summary: 'Remove a member or project budget limit',
     description:
       'Deletes the limit of one member or one project so that the organization limits alone apply. The organization ' +
@@ -492,10 +437,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-usage-get',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'what the office spent on Piloti itself, by model and day; billing, not office work',
-    },
     summary: 'Read LLM usage in credits',
     description:
       'Per-model usage by day and month in credits. Budget admins see the whole organization and may narrow it by ' +
@@ -508,10 +449,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-usage-notice-get',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the budget window close to stopping the person; a refused call says so itself',
-    },
     summary: 'Read the budget warning for the asking person',
     description:
       'The one budget window close enough to stop this person, or null when none is. Pass projectId to include that ' +
@@ -537,10 +474,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-upload-screening-get',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the office’s upload screening policy; how Piloti treats uploads, set by a person',
-    },
     summary: 'Read the upload screening policy',
     description:
       'The policy that screens file names before an upload, whether it is still Piloti’s suggested list, and that ' +
@@ -552,10 +485,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-upload-screening-set',
     domain: 'organization',
-    withheld: {
-      category: 'product-config',
-      reason: 'the office’s upload screening policy; how Piloti treats uploads, set by a person',
-    },
     summary: 'Save the upload screening policy',
     description:
       'Replaces the organization’s upload screening policy. Needs org:settings:manage. Read the current policy and ' +
@@ -569,7 +498,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-deleted-folder-content-get',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'what Piloti keeps of a purged folder; a retention policy a person sets' },
     summary: 'Read the deleted-folder content policy',
     description:
       'Who may still see conversations, answers and notes drawn from a folder once the folder is purged. Any member may read. ' +
@@ -581,7 +509,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-deleted-folder-content-set',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'what Piloti keeps of a purged folder; a retention policy a person sets' },
     summary: 'Set the deleted-folder content policy',
     description:
       'Chooses what happens to content derived from a folder when the folder is purged. Needs org:settings:manage. ' +
@@ -611,7 +538,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-download-log-retention-set',
     domain: 'organization',
-    withheld: { category: 'product-config', reason: 'how long Piloti keeps the download log; a retention policy a person sets' },
     summary: 'Set download log retention',
     description:
       'Sets how many whole days (30 to 365) the download log is kept. Needs org:settings:manage. A shorter time takes ' +
@@ -625,10 +551,6 @@ export const organizationOperations: readonly AgentOperation[] = [
   {
     name: 'organization-audit-portal-link-create',
     domain: 'organization',
-    withheld: {
-      category: 'external-service',
-      reason: 'a link into the identity provider’s audit-log portal, not the office’s workspace',
-    },
     summary: 'Get a link to the audit log viewer',
     description:
       'Mints a short-lived, single-use link to the identity provider’s audit log portal for this organization only. ' +
@@ -652,4 +574,4 @@ export const organizationOperations: readonly AgentOperation[] = [
     idempotent: true,
     load: () => import('@/app/api/organization/documents/reingest-failed/route'),
   },
-]
+] as const satisfies readonly AgentOperation[]

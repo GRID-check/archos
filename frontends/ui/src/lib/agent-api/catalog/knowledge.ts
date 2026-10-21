@@ -5,7 +5,7 @@ import { geocodeQuerySchema } from '@/lib/geocoding/types'
 import { risDocumentQuerySchema } from '@/lib/ris/document-wire'
 import type { AgentOperation } from '../operation'
 
-export const knowledgeOperations: readonly AgentOperation[] = [
+export const knowledgeOperations = [
   {
     name: 'knowledge-base-get',
     domain: 'knowledge',
@@ -21,10 +21,6 @@ export const knowledgeOperations: readonly AgentOperation[] = [
   {
     name: 'ris-document-get',
     domain: 'knowledge',
-    withheld: {
-      category: 'external-service',
-      reason: 'proxies the public RIS legal text service, which any agent can fetch itself',
-    },
     summary: 'Read the text of a RIS legal document',
     description:
       'Fetch the text of an Austrian RIS document from a citation: `reference` is a document number ' +
@@ -39,10 +35,6 @@ export const knowledgeOperations: readonly AgentOperation[] = [
   {
     name: 'address-search',
     domain: 'knowledge',
-    withheld: {
-      category: 'external-service',
-      reason: 'proxies a public geocoder; a calling agent has its own map and web tools',
-    },
     summary: 'Look up an address',
     description:
       'Search public map data for an address (`q`, at least 3 characters; `limit` caps results). Answers ' +
@@ -56,10 +48,6 @@ export const knowledgeOperations: readonly AgentOperation[] = [
   {
     name: 'widget-token-get',
     domain: 'knowledge',
-    withheld: {
-      category: 'external-service',
-      reason: 'mints a token for the WorkOS widgets the browser renders; the identity provider’s UI, not office work',
-    },
     summary: 'Mint a short-lived WorkOS widget token',
     description:
       'A user-specific, short-lived WorkOS widget authorization token (never cache it) for the requested ' +
@@ -89,4 +77,4 @@ export const knowledgeOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/knowledge-base/documents/[fileName]/route'),
   },
 
-]
+] as const satisfies readonly AgentOperation[]

@@ -17,7 +17,7 @@ import {
 } from '@/lib/piloti-asks/ask-wire'
 import type { AgentOperation } from '../operation'
 
-export const consultOperations: readonly AgentOperation[] = [
+export const consultOperations = [
   {
     name: 'piloti-ask-create',
     domain: 'conversations',
@@ -63,4 +63,4 @@ export const consultOperations: readonly AgentOperation[] = [
     idempotent: true,
     load: () => import('@/app/api/piloti-asks/[id]/cancel/route'),
   },
-]
+] as const satisfies readonly AgentOperation[]

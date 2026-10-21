@@ -21,6 +21,26 @@ import { reviewOperations } from './review'
 import { skillsOperations } from './skills'
 import { tasksOperations } from './tasks'
 
+/**
+ * Every operation's name, as a type: `exposure.config.ts` is keyed by it, so an
+ * entry for a name no operation has, or an operation without an entry, does not compile.
+ */
+export type OperationName = (
+  | typeof projectsOperations
+  | typeof documentsOperations
+  | typeof foldersOperations
+  | typeof reviewOperations
+  | typeof conversationsOperations
+  | typeof consultOperations
+  | typeof collaborationOperations
+  | typeof tasksOperations
+  | typeof skillsOperations
+  | typeof knowledgeOperations
+  | typeof bimOperations
+  | typeof organizationOperations
+  | typeof platformOperations
+)[number]['name']
+
 const unordered: readonly AgentOperation[] = [
   ...projectsOperations,
   ...documentsOperations,

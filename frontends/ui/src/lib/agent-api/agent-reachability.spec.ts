@@ -27,8 +27,9 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { toJsonSchema } from '@/lib/api/zod-json-schema'
 import { AGENT_OPERATIONS, RENAMED_OPERATIONS, findOperation } from './catalog'
-import { type Sensitivity, type WithheldCategory, pathParams } from './operation'
-import { DOOR_DOMAINS } from './policy'
+import { isOnDoor } from './exposure'
+import { EXPOSURE, type Exposure, type WithheldCategory } from './exposure.config'
+import { type Sensitivity, pathParams } from './operation'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const API_DIR = join(HERE, '../../app/api')
@@ -54,7 +55,7 @@ interface Exemption {
  * and reason. Keyed `METHOD /api/path`, or `* /api/path` for every method of a
  * route. Growing this map needs the same kind of sentence its entries carry. A
  * capability a person has but an agent should not be offered is not exempt
- * here: it is catalogued and `withheld` (see {@link WITHHELD}).
+ * here: it is catalogued and withheld in `exposure.config.ts`.
  */
 const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
   '* /api/auth/callback': {
@@ -178,67 +179,11 @@ const SENSITIVE: Record<string, Sensitivity> = {
 }
 
 /**
- * Every withheld operation (ADR-0122, "Amendment: the door offers what only
- * Piloti has"), with its category: catalogued, its route still the UI's, and on
- * no door. Withholding one more, or offering one again (delete its `withheld`
- * line), changes this list in the same diff, so the decision is in review.
- */
-const WITHHELD: Record<string, WithheldCategory> = {
-  'organization-web-search-set': 'external-service',
-  'address-search': 'external-service',
-  'ris-document-get': 'external-service',
-  'widget-token-get': 'external-service',
-  'organization-audit-portal-link-create': 'external-service',
-  'organization-settings-get': 'product-config',
-  'organization-settings-update': 'product-config',
-  'organization-instructions-get': 'product-config',
-  'organization-instructions-set': 'product-config',
-  'organization-model-config-get': 'product-config',
-  'organization-model-config-set': 'product-config',
-  'organization-model-search': 'product-config',
-  'organization-model-config-version-list': 'product-config',
-  'organization-model-config-version-activate': 'product-config',
-  'organization-zdr-set': 'product-config',
-  'organization-llm-credential-list': 'product-config',
-  'organization-llm-credential-create': 'product-config',
-  'organization-llm-credential-revoke': 'product-config',
-  'organization-llm-credential-verify': 'product-config',
-  'organization-llm-provider-mode-set': 'product-config',
-  'organization-budget-get': 'product-config',
-  'organization-budget-set': 'product-config',
-  'organization-budget-remove': 'product-config',
-  'organization-usage-get': 'product-config',
-  'organization-usage-notice-get': 'product-config',
-  'conversation-message-usage': 'product-config',
-  'organization-upload-screening-get': 'product-config',
-  'organization-upload-screening-set': 'product-config',
-  'project-upload-screening-get': 'product-config',
-  'project-upload-screening-set': 'product-config',
-  'organization-deleted-folder-content-get': 'product-config',
-  'organization-deleted-folder-content-set': 'product-config',
-  'organization-download-log-retention-set': 'product-config',
-  'skill-curated-set-enabled': 'product-config',
-  'conversation-title-generate': 'model-compute',
-  'citation-format': 'model-compute',
-  'skill-review': 'model-compute',
-  'push-device-list': 'ui-state',
-  'push-device-remove': 'ui-state',
-  'push-preference-get': 'ui-state',
-  'push-preference-update': 'ui-state',
-  'user-preference-get': 'ui-state',
-  'user-preference-update': 'ui-state',
-  'conversation-read-mark': 'ui-state',
-  'inbox-item-mark-read': 'ui-state',
-  'inbox-item-mark-unread': 'ui-state',
-  'inbox-unread-anchor-list': 'ui-state',
-}
-
-/**
  * Where product configuration and a person's own screen state live. An
- * operation on one of these paths that an office door offers fails, unless it
- * is listed in {@link OFFERED_ON_CONFIG_PATHS} with the reason: how Piloti
- * itself works for the office is not a thing the door hands to another agent,
- * and it must not drift back in with a new operation nobody marked.
+ * operation on one of these paths that an office door offers fails, unless its
+ * entry in `exposure.config.ts` gives the `reason`: how Piloti itself works for
+ * the office is not a thing the door hands to another agent, and it must not
+ * drift back in with a new operation nobody marked.
  */
 const CONFIG_PATH_PREFIXES = [
   '/api/organization/settings',
@@ -258,9 +203,6 @@ const CONFIG_PATH_PREFIXES = [
   '/api/user/preferences',
   '/api/platform',
 ] as const
-
-/** Offered operations on a {@link CONFIG_PATH_PREFIXES} path, each with why it is office work after all. */
-const OFFERED_ON_CONFIG_PATHS: Record<string, string> = {}
 
 const underPrefix = (path: string, prefix: string): boolean => path === prefix || path.startsWith(`${prefix}/`)
 
@@ -374,31 +316,25 @@ describe('every person-facing route is agent-reachable (ADR-0122)', () => {
   })
 })
 
-describe('what the door offers (ADR-0122, amendment of 2026-10-21)', () => {
-  const offered = AGENT_OPERATIONS.filter((op) => op.withheld === undefined)
+describe('what the door offers (ADR-0122, amendments of 2026-10-21)', () => {
+  const entry = (name: string): Exposure => (EXPOSURE as Readonly<Record<string, Exposure>>)[name] as Exposure
+  const offered = AGENT_OPERATIONS.filter((op) => isOnDoor(op.name))
 
-  it('withholds exactly the listed operations, each with its category', () => {
-    const withheld = Object.fromEntries(
-      AGENT_OPERATIONS.filter((op) => op.withheld).map((op) => [op.name, op.withheld?.category]),
-    )
-    expect(withheld).toEqual(WITHHELD)
-  })
-
-  it('gives every withheld operation a reason of its own', () => {
+  it('withholds an operation only with a category and a reason of its own', () => {
     for (const op of AGENT_OPERATIONS) {
-      if (op.withheld) expect(op.withheld.reason.length, op.name).toBeGreaterThan(30)
+      const withheld = entry(op.name).withheld
+      if (withheld) expect(withheld.reason.length, op.name).toBeGreaterThan(30)
     }
   })
 
   it('offers no product configuration or screen state on an office door without a stated reason', () => {
-    const onOfficeDoor = offered.filter((op) => DOOR_DOMAINS.office.has(op.domain))
-    const config = onOfficeDoor
+    const config = offered
       .filter((op) => CONFIG_PATH_PREFIXES.some((prefix) => underPrefix(op.path, prefix)))
+      .filter((op) => !entry(op.name).reason)
       .map((op) => op.name)
-      .filter((name) => !(name in OFFERED_ON_CONFIG_PATHS))
     expect(
       config,
-      'Withhold it (`withheld: { category, reason }`), or list it in OFFERED_ON_CONFIG_PATHS with why it is office work.',
+      'Withhold it in exposure.config.ts (`withheld: { category, reason }`), or give its entry the `reason` it is office work.',
     ).toEqual([])
   })
 
@@ -406,21 +342,16 @@ describe('what the door offers (ADR-0122, amendment of 2026-10-21)', () => {
     for (const op of AGENT_OPERATIONS) {
       expect(op.domain === 'platform', op.name).toBe(underPrefix(op.path, '/api/platform'))
     }
-    expect(DOOR_DOMAINS.office.has('platform')).toBe(false)
+    // The config's side of the same rule (`platform: true` exactly for that domain) is exposure.config.spec.ts's.
+    expect(AGENT_OPERATIONS.filter((op) => op.domain === 'platform' && isOnDoor(op.name, 'office')).map((op) => op.name)).toEqual([])
   })
 
   it('never sends an agent to a withheld operation: no offered text names one', () => {
-    const withheld = AGENT_OPERATIONS.filter((op) => op.withheld).map((op) => op.name)
+    const withheld = AGENT_OPERATIONS.filter((op) => entry(op.name).withheld).map((op) => op.name)
     for (const op of offered) {
       const text = [op.summary, op.description, ...[op.params, op.query, op.body].map((schema) => (schema ? JSON.stringify(toJsonSchema(schema)) : ''))].join(' ')
       const named = withheld.filter((name) => new RegExp(`(^|[^a-z-])${name}($|[^a-z-])`).test(text))
       expect(named, op.name).toEqual([])
-    }
-  })
-
-  it('lists only reasons for operations that are offered on a config path', () => {
-    for (const name of Object.keys(OFFERED_ON_CONFIG_PATHS)) {
-      expect(offered.some((op) => op.name === name), name).toBe(true)
     }
   })
 })

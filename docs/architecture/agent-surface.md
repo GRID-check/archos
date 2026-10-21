@@ -49,8 +49,9 @@ flowchart LR
    one charge cannot cover a hundred calls. When WorkOS cannot answer who is
    calling, the door answers a JSON 503 the client can retry.
 3. **Policy.** `policy.ts` decides whether this call may run. An operation
-   that is not on the door (`isOnDoor`: withheld, or of a domain the door does
-   not offer) is an unknown name. The organization needs the `agent-mcp` flag
+   that the exposure config ([below](#the-exposure-config)) offers nobody on
+   this door is an unknown name (`isOnDoor`), and one it does not offer this
+   caller is hidden from it (`canSee`). The organization needs the `agent-mcp` flag
    for an external agent. Piloti in-product has no
    such flag, but its writes never run directly, and its reads are held to the
    conversation's audience (see below).
@@ -279,8 +280,8 @@ Piloti for what it cannot get elsewhere. The office door offers
   `project-experience-extract`);
 - **Piloti itself**: `piloti-ask`.
 
-Everything else a person can do is still an operation, marked
-`withheld: { category, reason }`:
+Everything else a person can do is still an operation, withheld in the
+exposure config (`withheld: { category, reason }`, [below](#the-exposure-config)):
 
 | Category | What |
 |---|---|
@@ -294,21 +295,23 @@ A withheld operation reads as an unknown name everywhere: `tools/list`,
 `call-operation`, the A2A door, Piloti's proposals and the applier of an old
 one. The UI keeps every one of these settings; their routes are unchanged.
 
-- **One rule.** `isOnDoor(op, door)` in `policy.ts`: not withheld, and of a
-  domain in `DOOR_DOMAINS[door]`. `canSee` starts with it, so every listing,
-  search, describe, call and proposal goes through it; the applier refuses with
-  it too, and `documentedOperations` keeps withheld operations out of the
-  OpenAPI document.
-- **To offer one again**, delete its `withheld` entry and its line in
-  `WITHHELD` (`agent-reachability.spec.ts`), and say why in the PR. Its
-  `sensitivity`, if it has one, applies from then on: the `secret` and `control`
-  classes and their flags are kept for that reason.
-- **The ratchet.** `agent-reachability.spec.ts` holds the withheld set to
-  `WITHHELD`, fails an offered operation on a product-configuration path
-  (`CONFIG_PATH_PREFIXES`: `/api/organization/settings`, `/model-config`,
-  `/llm-credentials`, `/web-search`, `/upload-screening`, `/budgets`, `/usage`,
-  `/instructions`, `/api/platform/…` and others) unless `OFFERED_ON_CONFIG_PATHS`
-  says why, and fails an offered operation whose text names a withheld one.
+- **One rule.** `isExposedTo(audience, name)` in `exposure.ts` reads the
+  config; `canSee` (`policy.ts`) starts with it, so every listing, search,
+  describe and call goes through it, `isOnDoor(name, door)` makes a name offered
+  to nobody on a door an unknown one there (the applier refuses an old proposal
+  of one with it), and `documentedOperations` keeps everything an outside agent
+  is not offered out of the OpenAPI document.
+- **To offer one again**, replace its entry in `exposure.config.ts` and say why
+  in the PR. Its `sensitivity`, if it has one, applies from then on: the
+  `secret` and `control` classes and their flags are kept for that reason.
+- **The ratchet.** `exposure.config.spec.ts` gives every withheld entry a
+  category and a reason, and the config's diff (and `tests/fixtures/exposure.json`'s)
+  is the review. `agent-reachability.spec.ts` fails an offered operation on a
+  product-configuration path (`CONFIG_PATH_PREFIXES`: `/api/organization/settings`,
+  `/model-config`, `/llm-credentials`, `/web-search`, `/upload-screening`,
+  `/budgets`, `/usage`, `/instructions`, `/api/platform/…` and others) unless
+  its entry gives the `reason`, and fails an offered operation whose text names a
+  withheld one.
 
 ### The platform door: a second server
 
@@ -318,7 +321,7 @@ MCP server of its own, `POST /api/platform/mcp` (ADR-0126), for platform staff.
 
 | | Office doors (`/api/mcp`, `/api/a2a`) | Platform door (`/api/platform/mcp`) |
 |---|---|---|
-| Offers | every domain but `platform`, the agent read tools | the `platform` domain only (`DOOR_DOMAINS.platform`) |
+| Offers | every domain but `platform`, the agent read tools | the `platform` domain only (`platform: true` in the exposure config) |
 | Token audience | either office door's resource | its own resource only; neither side accepts the other's |
 | Organization | any, with `agent-mcp` on | the GRID Platform organization only, with `platform-agent-mcp` on |
 | Person | a live member | a live member who is platform staff (`isPlatformStaff`) |
@@ -331,9 +334,10 @@ It is the same server, not a copy. Both routes are `mcpDoorPost(door, label)`
 with its JSON 503, one charge of the person's `mcp-request` budget, then
 `createAgentDoorHandler` over the same catalog and dispatcher. The principal
 carries `door: 'platform'` (`principal.ts`, `platformPrincipal`), and the
-policy reads it: `canSee`, search, describe and call all go through
-`isOnDoor(op, doorOfPrincipal(principal))`, so an office operation named on the
-platform door is unknown, and the reverse. The server names itself
+policy reads it: the principal's audience is `platform` there (`audienceOf`),
+so `canSee`, search, describe and call offer what the config marks `platform`
+and nothing else; an office operation named on the platform door is unknown,
+and the reverse. The server names itself
 `piloti-platform` and gives the console's own instructions
 (`PLATFORM_MCP_INSTRUCTIONS`).
 
@@ -349,6 +353,83 @@ Connecting: the server's URL is `https://<app-host>/api/platform/mcp`, and the
 client must sign in **in the GRID Platform organization**. The client steps are
 the office door's (below), with that URL; a short guide for operators is
 [`../deployment/platform-agent-door-runbook.md`](../deployment/platform-agent-door-runbook.md).
+
+## The exposure config
+
+`frontends/ui/src/lib/agent-api/exposure.config.ts` is the one place that
+decides who sees each capability (ADR-0122, amendment of 2026-10-21). Every
+catalog operation and every agent read tool has exactly one entry; a name that
+is no operation, or an operation without an entry, does not compile (the object
+`satisfies Record<OperationName | BackendOperationName, Exposure>`), and
+`exposure.config.spec.ts` fails as well.
+
+**Reading an entry.**
+
+| Field | Audience | Values |
+|---|---|---|
+| `external` | an outside agent on an office door (`/api/mcp`, `/api/a2a`), and the OpenAPI document | `true` / `false` |
+| `piloti` | in-product Piloti on its workspace door | `true`; `false`; `'native:<tool>'`: Piloti does it with that native tool, so the door hides the operation from it |
+| `platform` | platform staff on the platform door (ADR-0126) | `true` for the `platform` domain, absent elsewhere |
+| `withheld` | nobody | `{ category, reason }`: `external-service`, `product-config`, `model-compute`, `ui-state` |
+| `reason` | the reviewer | why the entry is not simply offered to both office audiences |
+
+The constants at the top name the common rows: `OFFERED` (both office
+audiences), `PLATFORM`, `SENSITIVE` (outside agents behind the guards, never
+Piloti), `DECISION` (a proposal's own decision, never Piloti) and `ASK` (the
+recursion lock). A `native:<tool>` is the name the model binds: a function of
+`shallow_research_agent.tools` in `configs/config_oib_openrouter.yml`, or a
+group's function as `<group>__<function>` (`canvas__mark`).
+
+**What it decides, and what it does not.** Visibility only: what `tools/list`,
+`search-operations`, `describe-operation`, `call-operation`, the A2A door, the
+OpenAPI document and the platform door offer, all through `isExposedTo` in
+`exposure.ts`. It does not decide whether a proposal Piloti filed may apply: the
+applier keeps its own reasons (an ask, a decision on a proposal, a sensitive
+operation, an operation off the door), so moving an operation to
+`native:<tool>` never fails a card the person is about to accept. A
+`sensitivity` stays on the operation: whether a caller may see a sensitive one
+is decided per call from the organization's opt-in flags and the token's
+step-up scope (`maySeeSensitive`), which no file can know; its entry states the
+ceiling.
+
+**Changing an entry.**
+
+1. Edit the entry, with a `reason` unless it becomes `OFFERED`.
+2. `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/exposure.config.spec.ts src/app/api/mcp/workspace-eval.fixture.spec.ts`
+   rewrites `tests/fixtures/exposure.json` (the docs' and Python's copy) and the
+   workspace eval's catalog (what Piloti sees).
+3. `.venv/bin/pytest tests/aiq_agent/tools/test_exposure_config.py` checks that
+   every `native:<tool>` is a tool Piloti has.
+4. A change to a `piloti` entry changes what Piloti does: run the workspace set
+   of the answer suite before and after
+   ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set));
+   its `uses` rows check the job got done with the native tool.
+
+**What it holds today** (336 entries: 329 operations, 7 read tools):
+
+| Column | Count |
+|---|---|
+| `external: true` | 235 |
+| `piloti: true` | 199 |
+| `piloti: 'native:…'` | 18 |
+| `piloti: false` | 119 (47 withheld, 54 platform, 12 sensitive, 3 asks, 3 decisions) |
+| `platform: true` | 54 |
+| `withheld` | 47 (29 `product-config`, 10 `ui-state`, 5 `external-service`, 3 `model-compute`) |
+
+| Piloti uses | Instead of |
+|---|---|
+| `remember` | `project-memory-create`, `organization-memory-create` |
+| `knowledge_search` | `document-search`, `office-shelf-document-search`, `knowledge-search` |
+| `create_task` | `task-create`, `task-run-commission` |
+| `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | `annotation-create`, `annotation-update`, `annotation-delete`, `annotation-reply-create` |
+| `ifc_query`, `ifc_measure` | `bim-model-query`, `ifc-query`, `ifc-measure` |
+| `read_passage`, `list_files`, `view_knowledge_image`, `ris_lookup_tool` | `passage-read`, `files-list`, `knowledge-image-view`, `law-lookup` |
+
+Both paths stay open for the file operations Piloti also has `propose_file_change`
+for (move, rename, folders, assignments: the native tool refuses a chat in no
+project, where the door is the only path) and for the version operations beside
+`file_draft`; that second pair is an open question to the product owner
+(ADR-0122, amendment of 2026-10-21).
 
 ## What deserves a tool
 
@@ -373,8 +454,10 @@ Do this in the same change that adds or changes the route. The exemplar is
 
 1. **Find the domain file** in `catalog/` (`projects`, `documents`, `folders`,
    `review`, `conversations`, `collaboration`, `tasks`, `skills`, `knowledge`,
-   `bim`, `organization`, `platform`). A new domain is a new file, an entry in
-   `AGENT_DOMAINS` (`operation.ts`) and a spread in `catalog/index.ts`.
+   `bim`, `organization`, `platform`). A new domain is a new file (its array
+   `as const satisfies readonly AgentOperation[]`, so its names are a type), an
+   entry in `AGENT_DOMAINS` (`operation.ts`), a spread in `catalog/index.ts` and a
+   line in its `OperationName`.
 2. **Share the schema.** The operation's `body` is the route's own zod schema,
    imported. If the schema is declared inside the route file, move it to a
    `lib/<area>/<x>-wire.ts` module (no `server-only`, no drizzle) and import it in
@@ -408,9 +491,12 @@ Do this in the same change that adds or changes the route. The exemplar is
    alone (a patch, a placement, an upload): `examples`, one to three realistic
    inputs. They reach the agent as the input schema's JSON Schema `examples`, and
    `operation-examples.spec.ts` parses each against the operation's schemas.
-7. **Run the gate**: `cd frontends/ui && bunx vitest run src/lib/agent-api/`. If
+7. **Say who sees it**: its entry in `exposure.config.ts`, `OFFERED` for office
+   work, else the columns and a `reason` ([above](#the-exposure-config)). The
+   catalog does not compile without it.
+8. **Run the gate**: `cd frontends/ui && bunx vitest run src/lib/agent-api/`. If
    your route was in the baseline, the "baseline only shrinks" test lists it;
-   rewrite the file with `UPDATE_FIXTURES=1` and commit the diff.
+   `UPDATE_FIXTURES=1` rewrites it and `tests/fixtures/exposure.json`; commit the diff.
 
 ### Naming
 
@@ -529,9 +615,11 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
 - **Piloti in-product never sees one** and `proposeOperation` refuses to file one
   (403): accepting a card the agent worded is not the confirmation such a change
-  needs. Nor does it see the person's own decisions: `proposal-apply`, `proposal-dismiss` and
-  `piloti-change-undo` (`PILOTI_HIDDEN_OPERATIONS`), which the applier also
-  refuses at the click, so a card Piloti worded never applies another.
+  needs (its entry says `piloti: false`, and `exposure.config.spec.ts` holds
+  that). Nor does it see the person's own decisions: `proposal-apply`,
+  `proposal-dismiss` and `piloti-change-undo`, which the applier also refuses at
+  the click (`PROPOSAL_DECISION_OPERATIONS` in `operation-applier.ts`, its own
+  reason), so a card Piloti worded never applies another.
 - **An external agent sees one only when its organization switched the class
   on**: the entitlements `agent-mcp-access`, `agent-mcp-secrets` and
   `agent-mcp-controls`, off by
@@ -596,10 +684,12 @@ reason; an operation costs a few lines.
 - an operation is malformed: a duplicate or badly formed name, a short
   description, a `load` that imports a different route than `path`, params that
   disagree with the path, or a schema the JSON Schema export cannot describe;
-- the withheld set differs from `WITHHELD`, an offered operation sits on a
-  product-configuration path without a reason, an `/api/platform` operation is
-  not the `platform` domain (or the reverse), or an offered operation's text
-  names a withheld one.
+- an offered operation sits on a product-configuration path without a reason
+  in its exposure entry, an `/api/platform` operation is not the `platform`
+  domain (or the reverse), or an offered operation's text names a withheld one.
+
+`exposure.config.spec.ts` holds the exposure config itself
+([below](#the-exposure-config)).
 
 `agent-reachability-baseline.json` held the routes that predate the rule. It is
 empty now and never grows. `UPDATE_FIXTURES=1 bunx vitest run src/lib/agent-api/` rewrites it
@@ -654,6 +744,11 @@ What Piloti knows before its first call, and how it reports
 - **The prompt's `<workspace>` facts** (`piloti_static.md`): queries in English,
   in the catalog's words; search and describe in one round, call in the next;
   a record is named, never cited; files and memory have their own native doors.
+- **Native tools first.** What Piloti does with a tool of its own (memory,
+  searching documents, querying the model, tasks, canvas marks, the read tools)
+  is hidden from its door by the exposure config (`native:<tool>`), so the model
+  never weighs two tools for one job. Naming such an operation anyway answers
+  „do this with your own tool `<tool>`“ (`nativeToolRefusal`).
 - **The work report** (`kind: work`): an operations turn ends with what it
   proposed (with the proposal ids), what is blocked and on whom, and what is
   next, drawn after the prose.
@@ -689,7 +784,7 @@ gates it, and the turn's budget pays for it.
 **The recursion lock.** In-product Piloti only proposes writes, and
 `lib/proposals/operation-applier.ts` neither files nor applies an ask, so no
 turn asks Piloti again. Piloti does not see the three operations either
-(`canSee` in `policy.ts`), so it cannot name one or run `piloti-ask-get`.
+(`piloti: false` in the exposure config), so it cannot name one or run `piloti-ask-get`.
 
 **The A2A door.** `POST /api/a2a` serves the same asks to agents that speak A2A
 (1.0, and 0.3 without an `A2A-Version` header), through the official SDK

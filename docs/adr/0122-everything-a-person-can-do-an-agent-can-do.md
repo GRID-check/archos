@@ -131,7 +131,8 @@ The agent acts for a person, and the person decides what changes.
   project the member cannot see in front of an admin, whose click would apply
   it. Piloti never files the person's own decisions: applying or dismissing
   a proposal and undoing a change it made are hidden from it and refused at
-  the click (`PILOTI_HIDDEN_OPERATIONS`), so one card can never accept
+  the click (`PILOTI_HIDDEN_OPERATIONS`; since 2026-10-21 `piloti: false` in
+  the exposure config and the applier's `PROPOSAL_DECISION_OPERATIONS`), so one card can never accept
   another. Only a reader who may read every target may decide the card:
   another's `canDecide` is false and their apply is refused with the card left
   open. The card names each target for its reader and shows every input whole;
@@ -350,6 +351,59 @@ class now has two reachable operations, `document-quarantine-allow` and
 `hold-release`, which are the office's own compliance acts; every other
 `control` and every `secret` operation is withheld or on the platform door.
 
+### Amendment: one file decides who sees each capability
+
+*2026-10-21, product owner, approved design.* The decision "who sees this"
+had grown five homes: a `withheld` field on the operation, the policy's
+`PILOTI_HIDDEN_OPERATIONS`, `DOOR_DOMAINS`, the `sensitivity` checks and the
+read tools' own visibility. A reviewer could not answer "what does Piloti see,
+what does an outside agent see" from one place, and hiding a door operation from
+Piloti because it has a native tool for the job had no home at all.
+
+**One config.** `frontends/ui/src/lib/agent-api/exposure.config.ts` has one
+entry per catalog operation and per read tool:
+`{ external, piloti: true | false | 'native:<tool>', platform?, withheld?, reason? }`.
+It `satisfies Record<OperationName | BackendOperationName, Exposure>`, so a
+misspelled name or a missing entry does not compile, and its spec fails an
+operation without an entry: there is no default. One function reads it,
+`isExposedTo(audience, name)` (`exposure.ts`), and `canSee`, search, describe,
+call, OpenAPI, the A2A door and the platform door all go through it. The
+`withheld` field, `PILOTI_HIDDEN_OPERATIONS` and `DOOR_DOMAINS` are deleted;
+each value moved into the config verbatim, and nothing left the catalog, so
+re-exposing stays a one-line change. The config is exported as
+`frontends/ui/tests/fixtures/exposure.json` for the docs and for Python.
+
+**`native:<tool>` is visibility only.** It hides the operation from Piloti's
+door (listing, search, describe, call) because Piloti does the job with that
+native tool, so the model no longer weighs two tools for one act. It does not
+make a proposal Piloti already filed fail to apply: the applier keeps its own
+reasons (an ask, a decision on a proposal, a sensitive operation, an operation
+off the door). A Python test checks every `native:<tool>` against Piloti's tool
+list in `configs/config_oib_openrouter.yml`.
+
+**`sensitivity` stays on the operation.** It is a property of the act, and
+whether a caller may see a sensitive operation is decided per call from the
+organization's opt-in flags and the token's step-up scope, which a static file
+cannot know. The config records the ceiling (`external: true` behind those
+guards, `piloti: false`), and its spec fails an entry that offers Piloti a
+sensitive operation.
+
+**Initial values: today's behaviour,** except the consultant's steps 1 to 5
+(native tools against the door, 2026-10-21), approved as direction: the memory
+writes go to `remember`, `bim-model-query` to `ifc_query`, `document-search` and
+`office-shelf-document-search` to `knowledge_search`, `task-create` and
+`task-run-commission` to `create_task`, and the four annotation writes to the
+canvas tools (`canvas__mark`, `canvas__update`, `canvas__delete`,
+`canvas__reply`). Outside agents keep every one. The workspace set of the answer
+suite gained rows that check each job is done with the native tool.
+
+**Open question to the product owner.** The file operations keep both paths:
+`propose_file_change` refuses a chat in no project, where the door is the only
+way to move, rename or file. `file_draft` and the version operations
+(`document-version-content-replace`, `…-submit`, `…-fork`) also keep both, but
+not for a technical reason: the native draft submits at once where the door
+proposes, and which of the two the person should get is the owner's call.
+
 ### The app is a client of the same routes
 
 "One way of working" is held on the server: a capability has one route, one
@@ -444,6 +498,12 @@ the way the three consumers of ADR-0055 did.
 - Langfuse (ADR-0089): every MCP tool call is an `agent-tool-call` trace with
   one `TOOL` observation (`lib/langfuse/tool-call-trace.ts`), so the agent
   door is observable where the rest of the product is.
+- `exposure.config.ts` does not compile without an entry for every operation;
+  `exposure.config.spec.ts` fails a missing reason, a `platform` entry off the
+  `platform` domain, an entry offering Piloti a sensitive operation, an ask or a
+  proposal decision, and a stale `tests/fixtures/exposure.json`;
+  `tests/aiq_agent/tools/test_exposure_config.py` fails a `native:<tool>` that is
+  not in Piloti's tool list (amendment of 2026-10-21).
 - Nothing enforces that a description is true. Review is the gate.
 
 ## Follow-ups

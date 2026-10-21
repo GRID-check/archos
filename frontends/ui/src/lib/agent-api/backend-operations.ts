@@ -95,7 +95,7 @@ interface Entry {
   readonly openWorld?: boolean
 }
 
-const ENTRIES: readonly Entry[] = [
+const ENTRIES = [
   {
     name: 'knowledge-search',
     tool: 'knowledge_search',
@@ -238,7 +238,10 @@ const ENTRIES: readonly Entry[] = [
     // Reaches the public RIS, not only the office's own workspace.
     openWorld: true,
   },
-]
+] as const satisfies readonly Entry[]
+
+/** The read tools' names, as a type (`exposure.config.ts` is keyed by it). */
+export type BackendOperationName = (typeof ENTRIES)[number]['name']
 
 /**
  * English for the German terms the fixture's input-schema descriptions carry, applied to every

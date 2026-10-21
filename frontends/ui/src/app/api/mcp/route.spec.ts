@@ -17,6 +17,11 @@ vi.mock('@/lib/agent-api/catalog', async () => {
     findOperation: (name: string) => FAKE_OPERATIONS.find((op) => op.name === name),
   }
 })
+vi.mock('@/lib/agent-api/exposure.config', async (importOriginal) =>
+  (await import('@/lib/agent-api/test-operations')).withFakeExposure(
+    await importOriginal<typeof import('@/lib/agent-api/exposure.config')>(),
+  ),
+)
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 vi.mock('@/lib/agent-api/telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationMissing: vi.fn() }))
@@ -246,7 +251,7 @@ describe('MCP round trip as Piloti', () => {
   })
 
   it('lists one tool per operation in tools mode, chosen by query or header', async () => {
-    // folder-access-grant is sensitive: Piloti may not propose it, so it never sees it (M4).
+    // project-folder-access-set is sensitive: Piloti may not propose it, so it never sees it (M4).
     const expected = ['project-list', 'project-member-add', 'project-delete', 'document-search', 'report-missing-operation']
     expect(await toolNames(`${URL_}?mode=tools`)).toEqual(expected)
     expect(await toolNames(URL_, { 'x-piloti-mcp-mode': 'tools' })).toEqual(expected)

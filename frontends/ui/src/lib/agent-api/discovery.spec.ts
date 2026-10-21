@@ -10,6 +10,9 @@ vi.mock('./catalog', async () => {
     findOperation: (name: string) => FAKE_OPERATIONS.find((op) => op.name === name),
   }
 })
+vi.mock('./exposure.config', async (importOriginal) =>
+  (await import('./test-operations')).withFakeExposure(await importOriginal<typeof import('./exposure.config')>()),
+)
 vi.mock('./dispatch', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./dispatch')>()),
   callOperation: vi.fn(),
@@ -31,6 +34,7 @@ import {
   describeOperation,
   inputSchemaOf,
   metaToolsFor,
+  nativeToolRefusal,
   reportMissingOperation,
   searchOperations,
 } from './discovery'
@@ -84,7 +88,7 @@ describe('search-operations', () => {
   })
 
   it('weighs the name above the summary above the description', () => {
-    // "folder" is in folder-access-grant's name only for a sensitive op the person cannot see;
+    // "folder" is in project-folder-access-set's name only for a sensitive op the person cannot see;
     // "delete" is in project-delete's name and nowhere else's name.
     const result = searchOperations(ctx(person), { query: 'delete' })
     expect(names(result)[0]).toBe('project-delete')
@@ -109,14 +113,14 @@ describe('search-operations', () => {
   })
 
   it('does not offer an operation the principal may not see', () => {
-    expect(names(searchOperations(ctx(person), { query: 'folder access' }))).not.toContain('folder-access-grant')
+    expect(names(searchOperations(ctx(person), { query: 'folder access' }))).not.toContain('project-folder-access-set')
   })
 
   it('says a hidden operation would have answered, without naming it, when it outranks every hit', () => {
     const result = searchOperations(ctx(piloti), { query: 'widen folder access' })
-    expect(names(result)).not.toContain('folder-access-grant')
+    expect(names(result)).not.toContain('project-folder-access-set')
     expect(structured(result).next).toMatch(/^An operation that changes who may do what/)
-    expect(JSON.stringify(result)).not.toContain('folder-access-grant')
+    expect(JSON.stringify(result)).not.toContain('project-folder-access-set')
     // A search the visible operations answer best carries no such note.
     expect(structured(searchOperations(ctx(piloti), { query: 'list projects' })).next).not.toMatch(/who may do what/)
   })
@@ -202,7 +206,7 @@ describe('describe-operation', () => {
   })
 
   it('treats a hidden operation as unknown', () => {
-    expect(describeOperation(ctx(person), { name: 'folder-access-grant' }).isError).toBe(true)
+    expect(describeOperation(ctx(person), { name: 'project-folder-access-set' }).isError).toBe(true)
   })
 })
 
@@ -285,7 +289,7 @@ describe('call-operation', () => {
   })
 
   it('refuses a hidden operation as unknown and records the refusal', async () => {
-    const result = await callOperationTool(ctx(person), { name: 'folder-access-grant', input: { params: { id: 'f' }, body: { role: 'x' } } })
+    const result = await callOperationTool(ctx(person), { name: 'project-folder-access-set', input: { params: { id: 'f' }, body: { role: 'x' } } })
     expect(result.isError).toBe(true)
     expect(callOperation).not.toHaveBeenCalled()
     expect(recordOperationCalled).toHaveBeenCalledWith(
@@ -508,8 +512,9 @@ describe('the Python agent’s read tools', () => {
     // Flat, as its native tool takes it: `query` a string, where call-operation's input wants an object.
     const result = await callOperationTool(ctx(piloti), { name: 'knowledge-search', input: { query: 'Stellplatz', projectId: PROJECT } })
     expect(result.isError).toBe(true)
-    // Unknown to Piloti, so it is told the name is unknown, not how to shape an input it cannot use.
-    expect((result.content[0] as { text: string }).text).toMatch(/^Unknown operation "knowledge-search"/)
+    // Hidden from Piloti because it is Piloti's own tool (`native:knowledge_search`): it is sent to that tool,
+    // not told how to shape an input it cannot use.
+    expect((result.content[0] as { text: string }).text).toBe(nativeToolRefusal('knowledge-search', 'knowledge_search'))
     expect(callBackendOperation).not.toHaveBeenCalled()
   })
 })

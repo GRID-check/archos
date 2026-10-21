@@ -120,6 +120,12 @@ const ORG_MEMORY_CREATE: AgentOperation = {
 }
 const CATALOG = [FOLDER_RENAME, FOLDER_LIST, SEARCH_POST, ORG_MEMORY_CREATE]
 let catalog = CATALOG
+vi.mock('./exposure.config', async (importOriginal) => {
+  const real = await importOriginal<typeof import('./exposure.config')>()
+  // The fakes are kinds of operation; organization-memory-create keeps its real entry (Piloti does it natively).
+  const offered = { external: true, piloti: true }
+  return { ...real, EXPOSURE: { ...real.EXPOSURE, 'folder-rename': offered, 'folder-list': offered, 'folder-search': offered } }
+})
 vi.mock('./catalog', () => ({
   AGENT_OPERATIONS: [],
   findOperation: (name: string) => catalog.find((op) => op.name === name),
@@ -127,6 +133,7 @@ vi.mock('./catalog', () => ({
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { EXPOSURE, type Exposure } from './exposure.config'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
@@ -282,7 +289,7 @@ describe('proposeOperation', () => {
   })
 
   it('refuses to file a sensitive operation, whatever the proposer may do (M4)', async () => {
-    const sensitive = { ...FOLDER_RENAME, name: 'folder-access-grant', sensitivity: 'access' as const }
+    const sensitive = { ...FOLDER_RENAME, name: 'project-folder-access-set', sensitivity: 'access' as const }
     await expect(propose(sensitive)).rejects.toMatchObject({ status: 403 })
     await expect(propose({ ...sensitive, sensitivity: 'secret' as const })).rejects.toBeInstanceOf(ForbiddenError)
     expect(insertProposedChange).not.toHaveBeenCalled()
@@ -547,7 +554,7 @@ describe('applying an operation proposal', () => {
     expect(dispatch.callOperation).not.toHaveBeenCalled()
   })
 
-  it('refuses an operation that turned sensitive or moved to a domain Piloti does not see since it was proposed', async () => {
+  it('refuses an operation that turned sensitive or left the office door since it was proposed', async () => {
     const { proposalId } = await propose()
     const second = await proposeOperation({
       principal: { session: ASKER, conversationId: 'conv_1', projectId: PROJECT },
@@ -559,9 +566,17 @@ describe('applying an operation proposal', () => {
     expect(sensitive.status).toBe('failed')
     expect(sensitive.results?.[0]?.reason).toMatch(/not one Piloti may propose/)
 
-    catalog = [{ ...FOLDER_RENAME, domain: 'platform' }]
-    const hidden = await applyProposal(ACCEPTER, second.proposalId, new Request('https://grid.test'))
-    expect(hidden.status).toBe('failed')
+    catalog = [FOLDER_RENAME]
+    const entries = EXPOSURE as Record<string, Exposure>
+    const before = entries['folder-rename']
+    entries['folder-rename'] = { external: false, piloti: false, platform: true }
+    try {
+      const hidden = await applyProposal(ACCEPTER, second.proposalId, new Request('https://grid.test'))
+      expect(hidden.status).toBe('failed')
+      expect(hidden.results?.[0]?.reason).toBe('The operation folder-rename no longer exists')
+    } finally {
+      if (before) entries['folder-rename'] = before
+    }
     expect(dispatch.callOperation).not.toHaveBeenCalled()
   })
 

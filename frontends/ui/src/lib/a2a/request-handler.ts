@@ -52,6 +52,7 @@ import {
 } from '@a2a-js/sdk/errors'
 import type { A2ARequestHandler } from '@a2a-js/sdk/server'
 import { findOperation } from '@/lib/agent-api/catalog'
+import { isExposedTo } from '@/lib/agent-api/exposure'
 import { callOperation, type OperationInput, type OperationResult } from '@/lib/agent-api/dispatch'
 import type { AgentPrincipal } from '@/lib/agent-api/principal'
 import { recordOperationCalled } from '@/lib/agent-api/telemetry'
@@ -72,10 +73,13 @@ export type AskCaller = (name: string, input: OperationInput, session: Authorize
 /**
  * The dispatcher, with the answer read by an agent (`reader: 'agent'`): a
  * route's refusal reaches the A2A client in English, as it does on the MCP door.
+ * The A2A caller is an outside agent, so it reaches what `exposure.config.ts`
+ * offers one, as on `/api/mcp`.
  */
 export const callAskOperation: AskCaller = (name, input, session) => {
   const op = findOperation(name)
   if (!op) throw new Error(`the operation ${name} is not in the catalog`)
+  if (!isExposedTo('external', op.name)) throw new Error(`the operation ${name} is not offered to an outside agent`)
   return callOperation(op, input, session, 'agent')
 }
 
