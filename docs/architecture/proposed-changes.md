@@ -505,6 +505,59 @@ and in the inbox, pointing at the shelf. `GRID_FILING_SUGGESTIONS=off` switches 
 and description) above the rows and each item's `reason` under its row, so a
 proposal that carries them reads the same wherever it is shown.
 
+### Sorting the root
+
+Upload filing judges files as they arrive. A root that already holds a
+hundred loose files, from before the folders existed, needs the other
+direction: one run over the whole root. It is in the file browser's overflow
+menu, under the Advanced section, as „Alle Dateien in Ordner einsortieren…“,
+and it is rare by design.
+
+A run is not stored as a proposal row. The review lives in the dialog, because
+a thousand placements are one decision the person takes in one look, and a
+proposal is capped at eight items. Nothing moves until the person applies, so
+closing the dialog leaves the root as it was.
+
+**The steps.** The browser drives the run, one bounded request at a time
+(`lib/filing/root-sort.ts`, the wire contract in `root-sort-types.ts`):
+
+1. **Scan.** The shelf's open folders and the root documents the judgement may
+   read: screened, and read by ingestion. Others are counted as unreadable. At
+   most 5000 root documents per run.
+2. **Place.** Chunks of 60 go through the filing judgement
+   (`POST /v1/filing-fit` with `purpose: "sort"`). It places every document
+   that has a plausible home, in the deepest folder that fits, and may propose
+   a folder the office uses in its other projects but this shelf lacks.
+3. **Score.** The decision model (Jev, ADR-0064) scores each placement's
+   folder. At 0.6 or more a placement reads as sure, below it as unsure. The
+   threshold is not measured yet; the first eval over real roots sets it.
+4. **Group the leftovers.** Documents no folder fits, up to 1000, go to
+   `POST /v1/folder-proposals`. Chunks of 100 propose groups in parallel, one
+   merge call unifies the names across chunks into at most 12 new folders, and
+   Jev verifies each document against the final new folders. Names agree across
+   the whole run because the merge sees every group, not one chunk.
+
+The person reviews the result as a tree: unchecks what they do not want,
+re-targets a placement, or shows only the unsure ones. Apply creates the new
+folders they kept (through the shelf's `…/folders/ensure`), then moves the
+documents in requests of at most 100, each through `moveDocumentToFolder` with
+all its checks, and reports each document's result. Undo moves the run's
+documents back to the root; the folders it created stay.
+
+**The reading rules are the upload filing's.** Only folders every member may
+read, only screened documents, nothing on a closed project. The gate is
+`requireShelfWrite` (`project:documents:write` or `project:edit`; for the
+Archiv, `canManageOfficeShelf`).
+
+**Known limitation.** The dialog stays open for the whole run, and a thousand
+files take a few minutes. A durable server job on `bff_job_queue` is the next
+step if that proves too slow. Not measured against a live model in this change.
+
+**Observability.** Each placement chunk is a `filing-fit` generation
+(`purpose: sort`), each new-folder call is `folder-proposals.map` or
+`folder-proposals.reduce`, and each Jev call is a `decide.*` generation
+([`langfuse.md`](../observability/langfuse.md)).
+
 ## What is not done yet
 
 - The agent's `propose_file_change` cannot yet move into a folder its inventory
