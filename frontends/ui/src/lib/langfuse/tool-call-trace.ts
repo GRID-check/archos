@@ -35,8 +35,8 @@ export interface ToolCallRecord {
   /** A catalog or meta-tool name, or null for a name no operation has. */
   operation: string | null
   domain: string | null
-  /** `mcp` for an external agent, `piloti` for Piloti in-product, `a2a` for the A2A door. */
-  door: 'mcp' | 'piloti' | 'a2a'
+  /** `mcp` for an external agent, `piloti` for Piloti in-product, `a2a` for the A2A door, `platform` for the platform door. */
+  door: 'mcp' | 'piloti' | 'a2a' | 'platform'
   /** The MCP server's mode; null on the A2A door. */
   mode: 'search' | 'tools' | null
   decision: 'run' | 'propose' | 'refused'

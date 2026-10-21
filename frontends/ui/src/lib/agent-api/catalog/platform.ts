@@ -226,6 +226,8 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/platform/model-defaults',
     body: modelDefaultsPutSchema,
+    // Fleet-wide: one call reaches every organization, so the client confirms it with the person (ADR-0126).
+    destructive: true,
     load: () => import('@/app/api/platform/model-defaults/route'),
   },
   {
@@ -264,6 +266,8 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/platform/reasoning-efforts',
     body: reasoningEffortsPutSchema,
+    // Fleet-wide: one call reaches every organization, so the client confirms it with the person (ADR-0126).
+    destructive: true,
     load: () => import('@/app/api/platform/reasoning-efforts/route'),
   },
   {
@@ -287,6 +291,8 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/platform/retrieval-settings',
     body: retrievalSettingsPutSchema,
+    // Fleet-wide: one call reaches every organization, so the client confirms it with the person (ADR-0126).
+    destructive: true,
     load: () => import('@/app/api/platform/retrieval-settings/route'),
   },
   {
@@ -310,6 +316,10 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/platform/pricing',
     body: pricingPutSchema,
+    // Fleet-wide: one call reaches every organization, so the client confirms it with the person (ADR-0126).
+    destructive: true,
+    // Each call saves a new pricing version; the same input twice is two versions.
+    idempotent: false,
     load: () => import('@/app/api/platform/pricing/route'),
   },
 
@@ -335,6 +345,8 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/platform/norms',
     body: putNormRegistryBodySchema,
+    // Fleet-wide: one call reaches every organization, so the client confirms it with the person (ADR-0126).
+    destructive: true,
     load: () => import('@/app/api/platform/norms/route'),
   },
   {
@@ -707,6 +719,8 @@ export const platformOperations: readonly AgentOperation[] = [
     path: '/api/platform/knowledge/reingest',
     body: reingestKnowledgeSchema,
     idempotent: true,
+    // Fleet-wide: one call reaches every organization, so the client confirms it with the person (ADR-0126).
+    destructive: true,
     load: () => import('@/app/api/platform/knowledge/reingest/route'),
   },
   {

@@ -52,6 +52,11 @@ const middleware = authkitMiddleware({
       // The A2A door (ADR-0124): authenticates itself with the same bearer
       // token as `/api/mcp`; the agent card is under `.well-known`.
       '/api/a2a',
+      // The platform door (ADR-0126): the operator console's MCP server.
+      // Authenticates itself with a bearer token for its own audience, issued
+      // in the GRID Platform organization; every operation's route still
+      // checks its `platform:*` permission.
+      '/api/platform/mcp',
       '/.well-known/(.*)',
       // Signed document images. `_next/image` is excluded from the matcher
       // below, but the optimizer does not fetch the underlying route over the

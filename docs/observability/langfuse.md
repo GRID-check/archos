@@ -132,8 +132,10 @@ is recorded under the operation it ran, `unknown` for a name no operation has:
 that is the agent's own text). Each A2A method at `/api/a2a` (ADR-0124) is one
 too, its observation `a2a.<operation>` (`piloti-ask-create`, `piloti-ask-get`,
 `piloti-ask-cancel`); the polls a blocking call or a stream makes while it
-waits are not. Metadata on both: `operation`, `domain`, `door`
-(`mcp`, `piloti` or `a2a`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`
+waits are not. A tool call on the platform door at `/api/platform/mcp`
+(ADR-0126) is the same trace, observation `mcp.<operation>`, door `platform`.
+Metadata on all: `operation`, `domain`, `door`
+(`mcp`, `piloti`, `a2a` or `platform`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`
 or `refused`), `status` (the route's HTTP status), `duration_ms`, `client_id`.
 Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and

@@ -310,15 +310,45 @@ one. The UI keeps every one of these settings; their routes are unchanged.
   `/instructions`, `/api/platform/…` and others) unless `OFFERED_ON_CONFIG_PATHS`
   says why, and fails an offered operation whose text names a withheld one.
 
-### The platform door (planned)
+### The platform door: a second server
 
 The operator console (`platform` domain, `/api/platform/…`) is GRID's, not an
-office's, and is on no office door, for platform staff neither. It is planned as
-a second MCP server for platform staff, `/api/platform/mcp`, offering exactly
-that domain. Doors are already a dimension of the rule (`AgentDoor`,
-`DOOR_DOMAINS`), so that server adds `platform: new Set(['platform'])` and a
-route; no operation changes. Not built yet. The OpenAPI document still
-describes the console's operations to platform staff.
+office's, and is on no office door, for platform staff neither. It has a second
+MCP server of its own, `POST /api/platform/mcp` (ADR-0126), for platform staff.
+
+| | Office doors (`/api/mcp`, `/api/a2a`) | Platform door (`/api/platform/mcp`) |
+|---|---|---|
+| Offers | every domain but `platform`, the agent read tools | the `platform` domain only (`DOOR_DOMAINS.platform`) |
+| Token audience | either office door's resource | its own resource only; neither side accepts the other's |
+| Organization | any, with `agent-mcp` on | the GRID Platform organization only, with `platform-agent-mcp` on |
+| Person | a live member | a live member who is platform staff (`isPlatformStaff`) |
+| Piloti's credential | `/api/mcp` only | refused (403) |
+| Writes | run for the person; Piloti proposes | run for the operator; the route's `platform:*` permission decides |
+| Telemetry `door` | `mcp`, `piloti`, `a2a` | `platform` |
+
+It is the same server, not a copy. Both routes are `mcpDoorPost(door, label)`
+(`lib/agent-api/mcp-door-route.ts`): origin check, batch refusal, the principal
+with its JSON 503, one charge of the person's `mcp-request` budget, then
+`createAgentDoorHandler` over the same catalog and dispatcher. The principal
+carries `door: 'platform'` (`principal.ts`, `platformPrincipal`), and the
+policy reads it: `canSee`, search, describe and call all go through
+`isOnDoor(op, doorOfPrincipal(principal))`, so an office operation named on the
+platform door is unknown, and the reverse. The server names itself
+`piloti-platform` and gives the console's own instructions
+(`PLATFORM_MCP_INSTRUCTIONS`).
+
+Fleet-wide writes carry `destructive: true` so the client asks the operator
+before each: default models, reasoning efforts, retrieval settings, the price
+list (also `idempotent: false`), the norm registry, a forced re-ingest, the kill
+switch, the vector reconcile and the deletes. None gained a `sensitivity`;
+`platform-audit-portal-link` keeps its `secret` and stays hidden while the
+step-up scope is not enforced. The OpenAPI document still describes the
+console's operations to platform staff.
+
+Connecting: the server's URL is `https://<app-host>/api/platform/mcp`, and the
+client must sign in **in the GRID Platform organization**. The client steps are
+the office door's (below), with that URL; a short guide for operators is
+[`../deployment/platform-agent-door-runbook.md`](../deployment/platform-agent-door-runbook.md).
 
 ## What deserves a tool
 
@@ -726,19 +756,24 @@ applied by the deploy.
    clients register. Prefer it.
 3. **Enable Dynamic Client Registration (DCR)** for older clients that predate
    CIMD.
-4. **Register the MCP URL and the A2A URL as Resource Indicators** (RFC 8707):
-   `https://<app-host>/api/mcp` and `https://<app-host>/api/a2a`. Tokens are
-   audience-bound to one of them; either door takes a token for either, and
-   rejects a token that names another audience.
-5. **Create the feature flag `agent-mcp`**, off by default, in the same
-   environment. Turn it on per organization.
+4. **Register the MCP URL, the A2A URL and the platform door's URL as Resource
+   Indicators** (RFC 8707): `https://<app-host>/api/mcp`,
+   `https://<app-host>/api/a2a` and `https://<app-host>/api/platform/mcp`.
+   Tokens are audience-bound to one of them. Either office door takes a token
+   for either office door; the platform door takes only its own, and neither
+   office door takes it. Any other audience is refused.
+5. **Create the feature flags `agent-mcp` and `platform-agent-mcp`**, off by
+   default, in the same environment. Turn `agent-mcp` on per organization, and
+   `platform-agent-mcp` on for the GRID Platform organization only, when
+   operators ask for it.
 6. **Set the environment variables** on the frontend service, and add their rows
    to the deployment (they are in
    [`../deployment/environment-variables.md`](../deployment/environment-variables.md)):
    - `WORKOS_AUTHKIT_DOMAIN`: the AuthKit domain, without scheme. Unset, the
      external door answers 503 and Piloti in-product still works.
    - `GRID_MCP_RESOURCE_URL`: the MCP URL, when it differs from the origin of
-     `WORKOS_REDIRECT_URI` plus `/api/mcp`.
+     `WORKOS_REDIRECT_URI` plus `/api/mcp`. The A2A and platform doors take their
+     resources from its origin.
 
 The protected-resource metadata (RFC 9728) is served by the app and names the
 authorization server; a client reads it from the `WWW-Authenticate` challenge on

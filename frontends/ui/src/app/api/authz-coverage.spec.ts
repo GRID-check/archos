@@ -61,6 +61,8 @@ const HAND_ROLLED: Record<string, string> = {
     'the A2A door (ADR-0124): authenticates itself exactly as mcp/route.ts does, through resolvePrincipal (a WorkOS AuthKit bearer token for the agent door’s audience, the agent-mcp flag, the live membership), refuses Piloti’s own credential, and speaks JSON-RPC and server-sent events through the A2A SDK, so it cannot use the cookie-session factory. Every method calls the piloti-ask routes through the dispatcher as that person, whose authz, rate limit and piloti-ask flag still decide.',
   'mcp/route.ts':
     'the agent door (ADR-0122): authenticates itself, a WorkOS AuthKit bearer token verified against the JWKS with issuer and this server’s audience (organization flag agent-mcp, live membership via resolvePinnedRequesterSession) or the internal token plus the signed request-context envelope for Piloti. Answers with the MCP SDK’s response and a WWW-Authenticate challenge, so it cannot use the cookie-session factory; every operation then runs the browser’s own route handler as that person, whose authz still decides.',
+  'platform/mcp/route.ts':
+    'the platform door (ADR-0126): the same MCP edge as mcp/route.ts (mcpDoorPost), authenticated by a WorkOS AuthKit bearer token for the platform door’s own audience, issued in the GRID Platform organization (flag platform-agent-mcp), for a person isPlatformStaff accepts; Piloti’s credential is refused. Every operation runs its platformApiRoute handler as that person, whose platform:* permission still decides.',
   'auth/websocket-scope/route.ts':
     'mints the WebSocket scope headers; gates with requireProjectAccess per project id before emitting any scope, and returns a bespoke header envelope rather than JSON.',
   'auth/callback/route.ts':

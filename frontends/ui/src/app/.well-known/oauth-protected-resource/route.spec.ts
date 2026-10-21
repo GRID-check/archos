@@ -10,6 +10,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { GET as a2a } from './api/a2a/route'
 import { GET as pathInserted } from './api/mcp/route'
+import { GET as platform } from './api/platform/mcp/route'
 import { GET } from './route'
 
 beforeEach(() => {
@@ -43,6 +44,24 @@ describe('oauth-protected-resource', () => {
       resource_name: 'Piloti',
       bearer_methods_supported: ['header'],
     })
+  })
+
+  it('serves the platform door its own document, naming its own resource (ADR-0126)', async () => {
+    const response = platform()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      resource: 'https://app.piloti.test/api/platform/mcp',
+      authorization_servers: ['https://auth.piloti.test'],
+      scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
+      resource_name: 'Piloti platform console',
+      bearer_methods_supported: ['header'],
+    })
+  })
+
+  it('derives the platform door from the same setting, so one change moves all three resources', async () => {
+    process.env.GRID_MCP_RESOURCE_URL = 'https://piloti.example/api/mcp'
+    const body = (await platform().json()) as { resource: string }
+    expect(body.resource).toBe('https://piloti.example/api/platform/mcp')
   })
 
   it('takes the resource from the pinned app origin when none is set', async () => {

@@ -39,8 +39,10 @@ import { AGENT_OPERATIONS } from './catalog'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
 import {
+  type AgentDoor,
   callDecision,
   canSee,
+  doorOfPrincipal,
   findVisibleBackendOperation,
   findVisibleOperation,
   isOnDoor,
@@ -420,9 +422,9 @@ function rank(ctx: McpCallContext, query: string, domain: string | undefined): H
     .sort((a, b) => b.score - a.score)
 }
 
-/** The search input: only the domains the door offers may be named. */
-function searchInput() {
-  const domains = visibleDomains() as [string, ...string[]]
+/** The search input on `principal`'s door: only the domains the door offers may be named. */
+function searchInput(principal: AgentPrincipal) {
+  const domains = visibleDomains(doorOfPrincipal(principal)) as [string, ...string[]]
   return z.object({
     query: z.string().max(MAX_SEARCH_QUERY_LENGTH),
     domain: z.enum(domains).optional(),
@@ -447,7 +449,7 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
     (op) =>
       op.sensitivity !== undefined &&
       // Off the door is unknown to everyone, never a hint (`isOnDoor`).
-      isOnDoor(op) &&
+      isOnDoor(op, doorOfPrincipal(ctx.principal)) &&
       (!domain || op.domain === domain) &&
       !canSee(ctx.principal, op) &&
       score(op) > 0 &&
@@ -457,7 +459,7 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
 
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
-  const parsed = searchInput().safeParse(args)
+  const parsed = searchInput(ctx.principal).safeParse(args)
   if (!parsed.success) return failure(`search-operations: ${parsed.error.issues.map((i) => i.message).join('; ')}`)
   const { query, domain, limit = DEFAULT_SEARCH_LIMIT } = parsed.data
   const hits = rank(ctx, query, domain)
@@ -567,16 +569,37 @@ export interface MetaTool {
 
 export type MetaToolName = 'search-operations' | 'describe-operation' | 'call-operation' | 'report-missing-operation'
 
+/** What `search-operations` says it searches, per door, and the example query it gives. */
+const SEARCH_SCOPE: Readonly<Record<AgentDoor, { area: string; example: string; operation: string }>> = {
+  office: {
+    area:
+      'the Piloti workspace (projects, members, documents and their versions, review, the inbox, tasks, building-law ' +
+      'knowledge, BIM models)',
+    example: 'add project member',
+    operation: 'project-list',
+  },
+  platform: {
+    area:
+      'the Piloti platform console (organizations and their limits, fleet-wide models, reasoning, retrieval and pricing, ' +
+      'the base knowledge corpus, platform skills, lessons, feedback and quality views, maintenance)',
+    example: 'set default models',
+    operation: 'platform-overview-get',
+  },
+}
+
 /**
  * The four meta-tools of `search` mode, as `principal` sees them: the domain
  * list names only the areas the door offers. The single source of their words: Piloti's own client reads the
  * in-product variant from `src/aiq_agent/tools/workspace/meta_tools.json`,
  * which `meta-tools.spec.ts` writes from here and holds current.
  */
-export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<MetaToolName, MetaTool> {
+export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor' | 'door'>): Record<MetaToolName, MetaTool> {
   const piloti = principal.actor === 'piloti'
-  // Piloti has the agent read tools natively and never sees them here; an external agent runs its writes.
-  const flatTools = piloti ? '' : '; the agent read tools such as knowledge-search take their own arguments flat in `input` instead'
+  const door = doorOfPrincipal(principal)
+  const scope = SEARCH_SCOPE[door]
+  // Piloti has the agent read tools natively and never sees them here; the platform door does not offer them.
+  const flatTools =
+    piloti || door !== 'office' ? '' : '; the agent read tools such as knowledge-search take their own arguments flat in `input` instead'
   const writes = piloti
     ? 'A write is never run: the result says "Proposed" and nothing changed, because the person decides on a card. Say in one ' +
       'sentence what is proposed, and never claim it is done.'
@@ -585,8 +608,7 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<M
     'search-operations': {
       title: 'Search operations',
       description:
-        'Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, ' +
-        'tasks, building-law knowledge, BIM models) by plain words, ranked over each operation\'s name, summary and description. Start here. Answers ' +
+        `Find what can be done in ${scope.area} by plain words, ranked over each operation's name, summary and description. Start here. Answers ` +
         'operation names with one line each and whether each reads, writes or destroys. Then call-operation.',
       inputSchema: {
         type: 'object',
@@ -594,9 +616,9 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<M
           query: {
             type: 'string',
             maxLength: MAX_SEARCH_QUERY_LENGTH,
-            description: 'The goal in a few plain words, e.g. "add project member". Empty lists everything, or a whole domain.',
+            description: `The goal in a few plain words, e.g. "${scope.example}". Empty lists everything, or a whole domain.`,
           },
-          domain: { type: 'string', enum: [...visibleDomains()], description: 'Only operations of this area.' },
+          domain: { type: 'string', enum: [...visibleDomains(door)], description: 'Only operations of this area.' },
           limit: { type: 'integer', minimum: 1, maximum: MAX_SEARCH_LIMIT, description: `At most this many (default ${DEFAULT_SEARCH_LIMIT}).` },
         },
         required: ['query'],
@@ -612,7 +634,7 @@ export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<M
         'name comes back with similar names.',
       inputSchema: {
         type: 'object',
-        properties: { name: { type: 'string', description: 'An operation name, e.g. project-list.' } },
+        properties: { name: { type: 'string', description: `An operation name, e.g. ${scope.operation}.` } },
         required: ['name'],
         additionalProperties: false,
       },

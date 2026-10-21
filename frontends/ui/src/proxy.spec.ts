@@ -36,6 +36,8 @@ describe('AuthKit v4 proxy', () => {
             '/api/mcp',
             // The A2A server checks the same bearer token (ADR-0124).
             '/api/a2a',
+            // The platform door checks a bearer token for its own audience (ADR-0126).
+            '/api/platform/mcp',
             '/.well-known/(.*)',
             // The image optimizer re-enters the router in-process, so
             // middleware runs on this route with a cookie-less mocked request.

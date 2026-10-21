@@ -64,3 +64,48 @@ export const FAKE_OPERATIONS: readonly AgentOperation[] = [
     load,
   },
 ]
+
+/** The calls the fake platform overview route answered, for the platform door's spec. */
+export const platformOverviewCalls: Request[] = []
+
+/**
+ * A tiny fake operator console for the platform door's spec (ADR-0126): a
+ * read whose route answers, a fleet-wide destructive write, and a `secret` one.
+ */
+export const PLATFORM_FAKE_OPERATIONS: readonly AgentOperation[] = [
+  {
+    name: 'platform-overview-get',
+    domain: 'platform',
+    summary: 'Platform overview across all organizations',
+    description: 'Every organization with its headline figures. Start here for organization ids.',
+    method: 'GET',
+    path: '/api/platform/overview',
+    load: async () => ({
+      GET: async (request: Request) => {
+        platformOverviewCalls.push(request)
+        return Response.json({ organizations: [] })
+      },
+    }),
+  },
+  {
+    name: 'platform-kill-runs',
+    domain: 'platform',
+    summary: 'Kill switch: stop every running deep research',
+    description: 'Interrupts every running deep research in every organization. It cannot be undone.',
+    method: 'POST',
+    path: '/api/platform/maintenance/kill-runs',
+    destructive: true,
+    load,
+  },
+  {
+    name: 'platform-audit-portal-link',
+    domain: 'platform',
+    summary: 'Get an Admin Portal link to the platform audit log',
+    description: 'Generates a short-lived Admin Portal link to the platform audit log; a credential.',
+    method: 'POST',
+    path: '/api/platform/audit-portal',
+    idempotent: false,
+    sensitivity: 'secret',
+    load,
+  },
+]

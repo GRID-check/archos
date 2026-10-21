@@ -13,9 +13,11 @@ vi.mock('./catalog', async () => {
 
 import { FAKE_OPERATIONS } from './test-operations'
 import {
+  DOOR_DOMAINS,
   SENSITIVE_SCOPE,
   SENSITIVE_SCOPE_ENFORCED_BY_WORKOS,
   callDecision,
+  doorOfPrincipal,
   canSee,
   findVisibleBackendOperation,
   findVisibleOperation,
@@ -80,11 +82,23 @@ describe('visibleOperations', () => {
     expect(findVisibleOperation(piloti, 'folder-access-grant')).toBeUndefined()
   })
 
-  it('keeps every platform operation off the office door, for everyone (H3): it waits for a door of its own', () => {
+  it('keeps every platform operation off the office door, for everyone (H3): it has a door of its own', () => {
     const platformRead = { ...op('project-list'), name: 'platform-overview-get', domain: 'platform' as const }
     expect(isOnDoor(platformRead)).toBe(false)
     expect(canSee(piloti, platformRead)).toBe(false)
     expect(canSee(person(), platformRead)).toBe(false)
+  })
+
+  it('offers the platform door the platform domain and nothing else (ADR-0126)', () => {
+    const platformRead = { ...op('project-list'), name: 'platform-overview-get', domain: 'platform' as const }
+    const withheld = { ...platformRead, withheld: { category: 'product-config' as const, reason: 'a reason long enough for the ratchet' } }
+    const operator = { ...person(), door: 'platform' as const }
+    expect(isOnDoor(platformRead, 'platform')).toBe(true)
+    expect(canSee(operator, platformRead)).toBe(true)
+    expect(canSee(operator, withheld)).toBe(false)
+    for (const operation of FAKE_OPERATIONS) expect(canSee(operator, operation), operation.name).toBe(false)
+    expect(DOOR_DOMAINS.platform).toEqual(new Set(['platform']))
+    expect(doorOfPrincipal(person())).toBe('office')
   })
 
   it('offers a withheld operation to nobody, as if it did not exist', () => {
@@ -148,5 +162,11 @@ describe('backend operations', () => {
     expect(findVisibleBackendOperation(person(), 'knowledge-search')?.name).toBe('knowledge-search')
     expect(visibleBackendOperations(piloti)).toEqual([])
     expect(findVisibleBackendOperation(piloti, 'knowledge-search')).toBeUndefined()
+  })
+
+  it('are not on the platform door: they read an office’s workspace', () => {
+    const operator = { ...person(), door: 'platform' as const }
+    expect(visibleBackendOperations(operator)).toEqual([])
+    expect(findVisibleBackendOperation(operator, 'knowledge-search')).toBeUndefined()
   })
 })

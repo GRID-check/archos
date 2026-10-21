@@ -330,6 +330,7 @@ not an office's. It is off the office door for everyone, platform staff
 included, and is planned as a second MCP server for platform staff
 (`/api/platform/mcp`) that offers exactly that domain. The visibility rule is
 per door (`DOOR_DOMAINS`), so that server adds a door and changes no operation.
+(Built the same day: ADR-0126.)
 
 The ratchet, in `agent-reachability.spec.ts`: every exemption carries a category
 (`external-service | product-config | model-compute | ui-state | other`); the
