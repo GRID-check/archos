@@ -588,7 +588,10 @@ gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
    go to `POST /v1/folder-proposals` in parallel chunks, and one merge call
    unifies the names into at most 12 new folders, so names agree across the
    whole run. The slice is capped at 240 s (`NEW_FOLDERS_TIMEOUT_MS`), an
-   estimate, unmeasured. A grouping that fails leaves those files in the root.
+   estimate, unmeasured. When interactive chats hold the model provider's
+   slots, the Python side can still be waiting at that cap; the BFF then
+   records `grouping_error` and the run carries on. A grouping that fails or
+   times out leaves those files in the root, and the review says so.
    The run then waits in `ready`.
 4. **Review** (`ready`, no job). The person reviews the result as a tree:
    unchecks what they do not want, re-targets a placement, or shows only the
