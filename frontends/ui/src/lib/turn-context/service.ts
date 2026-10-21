@@ -21,7 +21,7 @@ import { readConversationAudience } from '@/lib/conversations/restricted-use-rep
 import { countPendingInboxItems, EVERY_INBOX_TYPE } from '@/lib/inbox/repository'
 import { listConversationProposals } from '@/lib/proposals/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { listRunsInProject } from '@/lib/tasks/repository'
+import { countActiveRunsInProject } from '@/lib/tasks/repository'
 import type { ProjectAccess } from '@/lib/authz/projects'
 import type { TurnContextRequest, TurnContextResponse } from './wire'
 import {
@@ -41,9 +41,6 @@ async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | nu
   }
 }
 
-/** Task runs that still hold the project's attention. */
-const ACTIVE_RUN_STATUSES = new Set(['queued', 'running'])
-
 /**
  * The WORKSPACE block (ADR-0122): the asker's roles, the project, the
  * conversation's audience, what waits in their inbox, the project's runs in
@@ -57,7 +54,7 @@ async function loadWorkspaceBlock(
   projectAccess: ProjectAccess | null,
 ): Promise<string> {
   const { organizationId, projectId, conversationId, userId } = context
-  const [project, audience, inboxWaiting, runs, proposals] = await Promise.all([
+  const [project, audience, inboxWaiting, activeRuns, proposals] = await Promise.all([
     projectId ? advisory('load the project', () => findProjectInOrg(projectId, organizationId)) : Promise.resolve(null),
     conversationId
       ? advisory('load the conversation audience', async () =>
@@ -67,7 +64,9 @@ async function loadWorkspaceBlock(
         )
       : Promise.resolve(null),
     advisory('count the inbox', () => countPendingInboxItems(organizationId, userId, EVERY_INBOX_TYPE)),
-    projectId ? advisory('list the project runs', () => listRunsInProject(projectId, organizationId)) : Promise.resolve(null),
+    projectId
+      ? advisory('count the project runs', () => countActiveRunsInProject(projectId, organizationId))
+      : Promise.resolve(null),
     conversationId
       ? advisory('list the conversation proposals', () =>
           listConversationProposals(organizationId, conversationId, MAX_WORKSPACE_PROPOSALS + 1),
@@ -80,7 +79,7 @@ async function loadWorkspaceBlock(
     project: projectId && project ? { id: projectId, name: project.name, status: project.status } : null,
     conversation: conversationId ? { id: conversationId, audience: audience ?? 'unknown' } : null,
     inboxWaiting,
-    activeRuns: runs ? runs.filter((run) => ACTIVE_RUN_STATUSES.has(run.status)).length : null,
+    activeRuns,
     proposals: (proposals ?? []).slice(0, MAX_WORKSPACE_PROPOSALS).map((row) => ({
       id: row.id,
       kind: row.kind,

@@ -148,6 +148,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/conversations/restricted-use.integration.spec.ts \
     src/lib/feedback/restricted-feedback.integration.spec.ts \
     src/lib/tasks/subject-access.integration.spec.ts \
+    src/lib/tasks/active-runs.integration.spec.ts \
     src/lib/conversations/cross-project-use.integration.spec.ts \
     src/lib/cross-project/decisions-repository.integration.spec.ts \
     src/lib/similar-passages/service.integration.spec.ts \
