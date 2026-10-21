@@ -9,6 +9,9 @@ features:
     When a search finds no sources, Piloti now shows its answer with a note
     that it rests on general knowledge, instead of only saying that nothing
     was found. A ruling without a source is still not shown.
+  - >
+    The Herleitung now shows what Piloti read from your workspace, such as a
+    project's member list, as its own step beside the documents it read.
 fixes:
   - >
     A citation Piloti could not verify is now marked „Beleg nicht verifiziert"
