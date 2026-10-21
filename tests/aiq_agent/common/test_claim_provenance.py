@@ -85,6 +85,28 @@ class TestEachClassFromItsEvidence:
         prose = "Ich habe vorgeschlagen, die Brüstung anzuheben, weil die OIB-RL 4 das verlangt."
         assert _classes(prose, ClaimEvidence(records=[PROPOSAL])) == [("action", "normative")]
 
+    def test_the_name_a_proposal_was_filed_with_is_not_read_as_building_law(self):
+        # A work turn (ADR-0122) names what it proposed: „den Ordner Brandschutz". The name is the
+        # proposal's own data; the detector reads „Brandschutz" as law, so it is left out first.
+        folder = record_from_result(
+            "project-folder-create",
+            {"name": "project-folder-create", "input": {"body": {"name": "Brandschutz"}}},
+            "Proposed — the person decides. Nothing was changed.",
+        )
+        prose = "Den Ordner Brandschutz habe ich vorgeschlagen."
+        assert _classes(prose, ClaimEvidence(records=[folder])) == [("action", "descriptive")]
+        prose = "Den Ordner Brandschutz habe ich vorgeschlagen; das Konzept muss nach § 5 vorliegen."
+        assert _classes(prose, ClaimEvidence(records=[folder]))[0] == ("action", "normative")
+
+    def test_a_prescriptive_proposal_input_is_no_name_and_stays_in(self):
+        note = record_from_result(
+            "project-memory-create",
+            {"name": "project-memory-create", "input": {"body": {"content": "Fluchtweg muss breit sein"}}},
+            "Proposed — the person decides. Nothing was changed.",
+        )
+        prose = "Ich habe vorgeschlagen zu notieren: Fluchtweg muss breit sein."
+        assert _classes(prose, ClaimEvidence(records=[note]))[-1][1] == "normative"
+
     def test_a_sentence_stating_a_measured_value_at_its_own_precision_is_measured(self):
         assert _classes("Der Keller ist 2,70 m hoch.", ClaimEvidence(measured_values=["2.703 m"])) == [
             ("measured", "value")

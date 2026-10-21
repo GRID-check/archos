@@ -437,6 +437,45 @@ def _classify(unit: _Unit, evidence: ClaimEvidence) -> tuple[ProvenanceClass, st
     return "model_knowledge", None, ()
 
 
+#: A proposal input that says what the law requires is not a name, however short.
+_PRESCRIPTIVE_WORD_RE = re.compile(
+    r"\b(?:muss|müssen|muessen|darf|dürfen|duerfen|soll|sollen|erforderlich|zulässig|zulaessig|unzulässig|"
+    r"unzulaessig|mindestens|höchstens|hoechstens|vorgeschrieben|must|shall|required)\b",
+    re.IGNORECASE,
+)
+#: The most words a proposal input may have and still be a name (a folder, a file, a person).
+_NAME_MAX_WORDS = 4
+
+
+def _proposal_names(evidence: ClaimEvidence, operation: str | None) -> list[str]:
+    """The short, non-prescriptive inputs of the proposal ``operation`` filed this turn, longest first.
+
+    A work turn names what it proposed: „den Ordner Brandschutz". That name is
+    the proposal's own data, and the normative detector reads „Brandschutz" as
+    building law, so it is left out before the claim type is decided, the way
+    the zu-infinitive is. Only a name: an input that is long or prescriptive
+    („Fluchtweg muss 1,2 m breit sein") stays in, so a proposal can never carry
+    a legal claim past the detector.
+    """
+    names: set[str] = set()
+    for record in evidence.records:
+        if record.outcome != "proposed" or record.operation != operation:
+            continue
+        for value in record.haystack.split("\n"):
+            value = value.strip()
+            if len(value) >= 3 and len(value.split()) <= _NAME_MAX_WORDS and not _PRESCRIPTIVE_WORD_RE.search(value):
+                names.add(value)
+    return sorted(names, key=len, reverse=True)
+
+
+def _action_typed_text(text: str, evidence: ClaimEvidence, operation: str | None) -> str:
+    """An action sentence without the proposed operation's infinitive and the names it was proposed with."""
+    typed = _ACTION_INFINITIVE_RE.sub("", text)
+    for name in _proposal_names(evidence, operation):
+        typed = re.sub(re.escape(name), "", typed, flags=re.IGNORECASE)
+    return typed
+
+
 def classify_claims(
     prose: str,
     evidence: ClaimEvidence,
@@ -447,7 +486,7 @@ def classify_claims(
     classified = []
     for unit in _units(prose):
         provenance, operation, unmatched = _classify(unit, evidence)
-        typed_text = _ACTION_INFINITIVE_RE.sub("", unit.text) if provenance == "action" else unit.text
+        typed_text = _action_typed_text(unit.text, evidence, operation) if provenance == "action" else unit.text
         classified.append((unit, claim_type(typed_text, normative), provenance, operation, unmatched))
     supported = {unit.paragraph for unit, _, provenance, _, _ in classified if provenance in _PASSAGE_CLASSES}
     stamps = [

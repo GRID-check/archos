@@ -132,3 +132,71 @@ async def test_the_three_scores_are_written(monkeypatch):
     assert by_name[("claims-by-class", "cited_dropped")] == "cited_dropped"
     assert by_name[("claims-normative-uncited", None)] == 1.0
     assert by_name[("citations-dropped-labelled", None)] == 1.0
+
+
+# --- a work turn (kind work, ADR-0122) under per-sentence provenance (ADR-0124) ---
+#
+# A work turn reports what it read and proposed in the office; it is not a legal
+# answer. Its sentences are grounded by the records and proposals this turn left
+# on the door, so it reaches the model's own level, and a sentence about the law
+# inside it still needs a passage, exactly as in any other answer.
+
+WORK_ENVELOPE = (
+    '```answer_json\n{{"kind": "work", "confidence": {{"level": "high"}}, "answer": "{prose}", '
+    '"work": {{"proposed": [{{"text": "Ordner Brandschutz anlegen"}}]}}}}\n```'
+)
+PROPOSED = (
+    "Proposed — the person decides. Nothing was changed. "
+    "Proposal 6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c: Create a folder in a project (name: Brandschutz)."
+)
+
+
+def _workspace_proposal(call_id: str = "w2") -> list:
+    return [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {
+                    "id": call_id,
+                    "name": "workspace__call",
+                    "args": {
+                        "name": "project-folder-create",
+                        "input": {"params": {"id": "p1"}, "body": {"name": "Brandschutz"}},
+                    },
+                }
+            ],
+        ),
+        ToolMessage(content=PROPOSED, tool_call_id=call_id, name="workspace__call"),
+    ]
+
+
+async def test_a_work_turn_is_grounded_by_what_it_read_and_proposed():
+    prose = "Anna Berger hat 3 Freigaben, davon 2 offen. Den Ordner Brandschutz habe ich vorgeschlagen; er wartet auf Sie."
+    messages = [
+        HumanMessage("Was liegt bei Anna, und leg einen Ordner Brandschutz an."),
+        *_workspace_read(),
+        *_workspace_proposal(),
+        AIMessage(WORK_ENVELOPE.format(prose=prose)),
+    ]
+
+    final, state = await _finalize(messages)
+
+    assert [(stamp["provenance"], stamp["operation"]) for stamp in final.claim_stamps] == [
+        ("record", "project-approvals-list"),
+        ("action", "project-folder-create"),
+    ]
+    assert state.answer_confidence == "high" and state.answer_confidence_version == 2
+
+
+async def test_a_work_turn_still_floors_on_a_legal_sentence_without_a_passage():
+    prose = "Den Ordner Brandschutz habe ich vorgeschlagen. Das Brandschutzkonzept muss nach § 5 vorgelegt werden."
+    messages = [
+        HumanMessage("Leg einen Ordner Brandschutz an."),
+        *_workspace_proposal(),
+        AIMessage(WORK_ENVELOPE.format(prose=prose)),
+    ]
+
+    _, state = await _finalize(messages)
+
+    assert state.answer_confidence == "low"
+    assert state.answer_confidence_capped_reason == "normative_claim_uncited"
