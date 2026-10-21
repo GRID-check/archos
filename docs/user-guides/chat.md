@@ -53,6 +53,14 @@ The composer is a white card with the message field on top and a control row bel
 
 On a phone the control row stays one line. The `@` list keeps the keyboard open when you pick a name.
 
+**Above the composer, a usage notice** appears when a budget that applies to you is close to stopping chat: the office's, your own limit, or the project's, daily or monthly. It shows one budget, the one that matters most:
+
+- **On pace to run out** (blue): a monthly budget is at least half used and, at this month's pace, would run out a day or more before it renews. It names the date.
+- **80 %** (amber) and **95 %** (amber, red meter): how much is used and when it renews. At 95 % it adds that a long research run may stop before it finishes.
+- **Used up** (red): no new message goes out until the budget renews (a day at 00:00 UTC, a month on the 1st, shown in your local time).
+
+Whoever can raise the limit (an organization budget admin, or for a project budget a project admin) gets **Limit erhöhen**, straight to where it is set; everyone else is told an admin can, and gets a link to their usage. Amounts appear only to people who may already read them: whoever can change the limit, and you for your own limit. Everyone else sees the percentage. Each level can be closed with **×** and stays closed for that budget window; the next level, or the next window, shows again. **Used up** cannot be closed.
+
 Under the composer a **Shortcuts** row offers three source presets — *Baurecht & Richtlinien* (base corpus + RIS), *Projektunterlagen* (this project's files, not the Büroablage), and *Büroablage* (the office's own files, not project files). They stay available after the first message. A pressed preset also tells retrieval which knowledge shelves to keep; it is not only an external-source toggle. Any manual change in the Data Sources panel takes you off the preset again. Uploading a file into the chat binds the next send to that file — "Fass den Inhalt zusammen" does not walk the rest of the project or the Büroablage.
 
 Documents sit on four nested shelves. Asking **which files** sit where is answered from that shelf only:

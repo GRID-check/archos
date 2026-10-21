@@ -24,6 +24,10 @@ export type { ErrorBannerProps, ErrorCode } from './ErrorBanner'
 
 export { NoSourcesBanner } from './NoSourcesBanner'
 
+// The budget notice above the composer (lib/budgets/usage-notice.ts)
+export { ChatUsageNotice } from './ChatUsageNotice'
+export { UsageNotice } from './UsageNotice'
+
 // Thinking/status components
 export { ChatThinking } from './ChatThinking'
 export type { ChatThinkingProps } from './ChatThinking'

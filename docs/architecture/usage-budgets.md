@@ -256,6 +256,7 @@ Enforcement points:
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
 | GET | `/api/organization/usage` | member (own) / admin (org-wide, `?userId`/`?projectId`) | `unit` plus day+month totals, per-model breakdown, budget status as `{amount, events}` **in that unit only** — cost, price and the other unit never leave the tenant projection |
+| GET | `/api/organization/usage/notice` | member (`project:view` for `?projectId`) | `{ notice }`: the one window worth a notice in the composer, or `null` (see the chat UI section) |
 | GET | `/api/organization/budgets` | member (org limits + own); admin (+ all active policies) | `unit` and the limits in it |
 | PUT | `/api/organization/budgets` | org admin; project scope also project admin | set a policy (supersede), bare `dailyLimit` / `monthlyLimit`; the unit follows the key mode, never the caller |
 | GET | `/api/organization/model-config/models` | org models admin | model search; `creditsPerRequest` (the reference request priced at the active list) for a credit organization, `null` on an own key; never per-token USD |
@@ -288,6 +289,41 @@ saying its usage is on its own bill and Piloti charges no credits.
   (set / remove). Project limits are managed the same way from a project
   picker. Mobile-first: rows and forms stack under the `sm` breakpoint and
   stats carry their own micro-labels.
+
+## UI (chat → the usage notice)
+
+The composer carries one notice about the budget before it stops the person
+typing (`features/chat/components/UsageNotice.tsx`, decided in
+`lib/budgets/usage-notice.ts`, served by `GET /api/organization/usage/notice`).
+It reads the same cached limits and rollup as enforcement
+(`getBudgetUtilisation`), so it cannot disagree with what blocks a turn.
+
+- **Levels**: `forecast` (a monthly window ≥ 50 % used whose month-to-date pace
+  runs it out ≥ 24 h before it renews; days are never forecast, one long run is
+  not a pace), `warning` ≥ 80 %, `critical` ≥ 95 % (adds that a long research
+  run may stop, ADR-0015's call-granular stop), `exhausted` ≥ 100 % (an alert,
+  not dismissible).
+- **One window**: the highest level wins; among exhausted windows the one that
+  renews last (it decides when chat works again); among forecasts the one that
+  runs out first; otherwise the fullest.
+- **The viewer's rights**: a project counts only with `project:view` on it, and
+  is dropped (not refused) otherwise. `canChange` = `canManageBudgets`, or
+  `project:manage` for a project window, and decides between "Raise the limit"
+  (to the project's usage settings, or Organization → budgets) and "an admin
+  can raise it". `used`/`limit` travel only to `canChange` viewers and to a
+  member for their own limit; everyone else gets the percentage.
+- **Freshness**: nothing pushes spend to the browser, so the client re-reads
+  on open and project switch, 3 s after a turn ends (the tracker's final
+  flush), when a tab returns after ≥ 60 s, and when the window renews.
+- **Dismissal**: per `key` = scope, project, window id and level, in
+  `localStorage` (`piloti.usage-notice.dismissed`, the last 20). The next level
+  or window shows again.
+- **PostHog**: `usage_notice_shown` (once per key per page view) and
+  `usage_notice_dismissed`.
+
+The socket refusal and its banner (`budget.exhausted`, via
+`/api/auth/connection-diagnostics`) stay: the notice is advice read ahead of
+time, the refusal is what actually stops a turn.
 
 ## UI (Platform → Overview)
 
