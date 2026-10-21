@@ -23,6 +23,7 @@ import {
 } from '@/lib/documents/list-query'
 import { officeShelfNameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { searchOfficeShelfSchema } from '@/lib/office-shelf/search-wire'
+import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-types'
 import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
 import {
   openUploadBatchSchema,
@@ -53,6 +54,9 @@ const mailImportParams = projectParams.extend({
 })
 const batchParams = z.object({
   id: z.string().describe('The upload batch id, the uuid given to upload-batch-open.'),
+})
+const rootSortRunParams = z.object({
+  runId: z.string().describe('The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get.'),
 })
 const holdParams = z.object({ id: z.string().describe('The legal hold id, from hold-list.') })
 
@@ -626,5 +630,135 @@ export const foldersOperations: readonly AgentOperation[] = [
     body: folderAccessSchema,
     sensitivity: 'access',
     load: () => import('@/app/api/projects/[id]/folders/[folderId]/access/route'),
+  },
+  {
+    name: 'project-root-sort-get',
+    domain: 'folders',
+    summary: 'Read what a project root holds, and the latest sort',
+    description:
+      "How many files and folders the project's root holds, how many files ingestion has not read yet " +
+      '(`unreadable`, they are left where they are), and the person’s latest root-sort run (`run`, null ' +
+      'when there is none). Call it before project-root-sort-start, and to find a run to follow with ' +
+      'root-sort-run-get.',
+    method: 'GET',
+    path: '/api/projects/[id]/root-sort',
+    params: projectParams,
+    load: () => import('@/app/api/projects/[id]/root-sort/route'),
+  },
+  {
+    name: 'project-root-sort-start',
+    domain: 'folders',
+    summary: 'Sort a project root’s loose files into its folders',
+    description:
+      "Starts a server run that proposes a folder for every loose file in the project's root, from the " +
+      'folders the project already has, plus new folders for the files none fits. Nothing moves yet. ' +
+      'Returns the run (`status: judging`); follow it with root-sort-run-get until `status` is `ready`, ' +
+      'then send what to keep with root-sort-run-apply. Refused when the project has no folder, the root ' +
+      'holds no file, or a sort of the same root is already running. A new run cancels the person’s ' +
+      'earlier runs that still wait for review.',
+    method: 'POST',
+    path: '/api/projects/[id]/root-sort',
+    params: projectParams,
+    load: () => import('@/app/api/projects/[id]/root-sort/route'),
+  },
+  {
+    name: 'office-shelf-root-sort-get',
+    domain: 'folders',
+    summary: 'Read what the office shelf root holds, and the latest sort',
+    description:
+      'How many files and folders the office shelf root holds, how many files ingestion has not read yet, ' +
+      'and the person’s latest root-sort run there (`run`, null when there is none). Needs ' +
+      'org:office_shelf:manage. Call it before office-shelf-root-sort-start.',
+    method: 'GET',
+    path: '/api/office-shelf/root-sort',
+    load: () => import('@/app/api/office-shelf/root-sort/route'),
+  },
+  {
+    name: 'office-shelf-root-sort-start',
+    domain: 'folders',
+    summary: 'Sort the office shelf root’s loose files into its folders',
+    description:
+      'Starts a server run that proposes a folder for every loose file in the office shelf root, as ' +
+      'project-root-sort-start does for a project. Nothing moves yet. Returns the run; follow it with ' +
+      'root-sort-run-get and apply what the person keeps with root-sort-run-apply. Needs ' +
+      'org:office_shelf:manage.',
+    method: 'POST',
+    path: '/api/office-shelf/root-sort',
+    load: () => import('@/app/api/office-shelf/root-sort/route'),
+  },
+  {
+    name: 'root-sort-run-get',
+    domain: 'folders',
+    summary: 'Read one root-sort run',
+    description:
+      'The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, ' +
+      'failed) and `progress`. Once `ready` it carries `review`: the shelf’s folders, the files, one ' +
+      'placement per file (`folderId`, or `newFolderPath` for a folder the run proposes, with its ' +
+      '`reason` and `confidence`) and the proposed new folders. Only the person who started the run ' +
+      'can read it. Next: root-sort-run-apply, or root-sort-run-cancel. In a project’s own conversation ' +
+      'read the run through project-root-sort-get, which names the project.',
+    method: 'GET',
+    path: '/api/root-sort-runs/[runId]',
+    params: rootSortRunParams,
+    // The run id names no project, and a run may sort any project's root or the office shelf.
+    spansProjects: 'always',
+    load: () => import('@/app/api/root-sort-runs/[runId]/route'),
+  },
+  {
+    name: 'root-sort-run-apply',
+    domain: 'folders',
+    summary: 'Apply the placements kept from a ready root-sort run',
+    description:
+      'Takes the placements to keep, each `{ documentId, folderId, newFolderPath }` from the run’s ' +
+      'review (both null keeps a file in the root), and moves the files on the server: kept new folders ' +
+      'are created first. Only a `ready` run applies. Answers at once with the run in `applying`; follow ' +
+      'it with root-sort-run-get. root-sort-run-undo sends the moved files back.',
+    method: 'POST',
+    path: '/api/root-sort-runs/[runId]/apply',
+    params: rootSortRunParams,
+    body: applyRootSortRequestSchema,
+    examples: [
+      {
+        params: { runId: '6f1c2b8e-3d4a-4e5f-9a7b-1c2d3e4f5a6b' },
+        body: {
+          keep: [
+            {
+              documentId: '0b9a8c7d-6e5f-4a3b-8c2d-1e0f9a8b7c6d',
+              folderId: '3e4f5a6b-7c8d-4e9f-a0b1-c2d3e4f5a6b7',
+              newFolderPath: null,
+            },
+            { documentId: '1c0b9a8d-7e6f-4b5a-9c3d-2e1f0a9b8c7d', folderId: null, newFolderPath: 'Statik/Berechnungen' },
+          ],
+        },
+      },
+    ],
+    load: () => import('@/app/api/root-sort-runs/[runId]/apply/route'),
+  },
+  {
+    name: 'root-sort-run-cancel',
+    domain: 'folders',
+    summary: 'Stop a root-sort run before anything moved',
+    description:
+      'Cancels a run that is judging, grouping or waiting for review; nothing was moved, so nothing ' +
+      'changes on the shelf. A run already applying finishes what it started; undo it afterwards with ' +
+      'root-sort-run-undo. Returns the run.',
+    method: 'POST',
+    path: '/api/root-sort-runs/[runId]/cancel',
+    params: rootSortRunParams,
+    idempotent: true,
+    load: () => import('@/app/api/root-sort-runs/[runId]/cancel/route'),
+  },
+  {
+    name: 'root-sort-run-undo',
+    domain: 'folders',
+    summary: 'Send what a root-sort run moved back to the root',
+    description:
+      'Moves every file an applied (or partly applied, then failed) run moved back to the shelf root; ' +
+      'folders it created stay. Answers at once with the run in `undoing`; follow it with ' +
+      'root-sort-run-get. Refused when the run moved nothing.',
+    method: 'POST',
+    path: '/api/root-sort-runs/[runId]/undo',
+    params: rootSortRunParams,
+    load: () => import('@/app/api/root-sort-runs/[runId]/undo/route'),
   },
 ]

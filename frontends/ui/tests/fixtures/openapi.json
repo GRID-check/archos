@@ -7782,6 +7782,88 @@
         }
       }
     },
+    "/api/office-shelf/root-sort": {
+      "get": {
+        "operationId": "office-shelf-root-sort-get",
+        "summary": "Read what the office shelf root holds, and the latest sort",
+        "description": "How many files and folders the office shelf root holds, how many files ingestion has not read yet, and the person’s latest root-sort run there (`run`, null when there is none). Needs org:office_shelf:manage. Call it before office-shelf-root-sort-start.",
+        "tags": [
+          "folders"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read what the office shelf root holds, and the latest sort",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "post": {
+        "operationId": "office-shelf-root-sort-start",
+        "summary": "Sort the office shelf root’s loose files into its folders",
+        "description": "Starts a server run that proposes a folder for every loose file in the office shelf root, as project-root-sort-start does for a project. Nothing moves yet. Returns the run; follow it with root-sort-run-get and apply what the person keeps with root-sort-run-apply. Needs org:office_shelf:manage.",
+        "tags": [
+          "folders"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Sort the office shelf root’s loose files into its folders",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/projects/{id}/folders/{folderId}/access": {
       "get": {
         "operationId": "project-folder-access-get",
@@ -8547,6 +8629,386 @@
         },
         "x-mcp-annotations": {
           "title": "Restore a folder from the bin",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/projects/{id}/root-sort": {
+      "get": {
+        "operationId": "project-root-sort-get",
+        "summary": "Read what a project root holds, and the latest sort",
+        "description": "How many files and folders the project's root holds, how many files ingestion has not read yet (`unreadable`, they are left where they are), and the person’s latest root-sort run (`run`, null when there is none). Call it before project-root-sort-start, and to find a run to follow with root-sort-run-get.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read what a project root holds, and the latest sort",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "post": {
+        "operationId": "project-root-sort-start",
+        "summary": "Sort a project root’s loose files into its folders",
+        "description": "Starts a server run that proposes a folder for every loose file in the project's root, from the folders the project already has, plus new folders for the files none fits. Nothing moves yet. Returns the run (`status: judging`); follow it with root-sort-run-get until `status` is `ready`, then send what to keep with root-sort-run-apply. Refused when the project has no folder, the root holds no file, or a sort of the same root is already running. A new run cancels the person’s earlier runs that still wait for review.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Sort a project root’s loose files into its folders",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/root-sort-runs/{runId}/apply": {
+      "post": {
+        "operationId": "root-sort-run-apply",
+        "summary": "Apply the placements kept from a ready root-sort run",
+        "description": "Takes the placements to keep, each `{ documentId, folderId, newFolderPath }` from the run’s review (both null keeps a file in the root), and moves the files on the server: kept new folders are created first. Only a `ready` run applies. Answers at once with the run in `applying`; follow it with root-sort-run-get. root-sort-run-undo sends the moved files back.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+            },
+            "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "keep": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "documentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "folderId": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "uuid"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "newFolderPath": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 1024
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "documentId",
+                        "folderId",
+                        "newFolderPath"
+                      ],
+                      "additionalProperties": true
+                    },
+                    "maxItems": 5000
+                  }
+                },
+                "required": [
+                  "keep"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Apply the placements kept from a ready root-sort run",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/root-sort-runs/{runId}/cancel": {
+      "post": {
+        "operationId": "root-sort-run-cancel",
+        "summary": "Stop a root-sort run before anything moved",
+        "description": "Cancels a run that is judging, grouping or waiting for review; nothing was moved, so nothing changes on the shelf. A run already applying finishes what it started; undo it afterwards with root-sort-run-undo. Returns the run.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+            },
+            "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Stop a root-sort run before anything moved",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/root-sort-runs/{runId}": {
+      "get": {
+        "operationId": "root-sort-run-get",
+        "summary": "Read one root-sort run",
+        "description": "The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready` it carries `review`: the shelf’s folders, the files, one placement per file (`folderId`, or `newFolderPath` for a folder the run proposes, with its `reason` and `confidence`) and the proposed new folders. Only the person who started the run can read it. Next: root-sort-run-apply, or root-sort-run-cancel. In a project’s own conversation read the run through project-root-sort-get, which names the project.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+            },
+            "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read one root-sort run",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/root-sort-runs/{runId}/undo": {
+      "post": {
+        "operationId": "root-sort-run-undo",
+        "summary": "Send what a root-sort run moved back to the root",
+        "description": "Moves every file an applied (or partly applied, then failed) run moved back to the shelf root; folders it created stay. Answers at once with the run in `undoing`; follow it with root-sort-run-get. Refused when the run moved nothing.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+            },
+            "description": "The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Send what a root-sort run moved back to the root",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,

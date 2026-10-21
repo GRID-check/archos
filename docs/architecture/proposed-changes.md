@@ -611,7 +611,13 @@ second.
 `GET /api/root-sort-runs/[runId]` reads it, and `…/apply`, `…/undo` and
 `…/cancel` ask for the next step. The dialog polls the run every two seconds
 while it works. The service is `lib/filing/root-sort-run.ts`; the typed client
-is `lib/filing/root-sort-client.ts`.
+is `lib/filing/root-sort-client.ts`. Each route is also an operation on the
+agent door (ADR-0122, `lib/agent-api/catalog/folders.ts`):
+`project-root-sort-get` / `-start`, `office-shelf-root-sort-get` / `-start`,
+and `root-sort-run-get`, `-apply`, `-cancel`, `-undo`. Piloti in-product
+proposes the writes like any other. `root-sort-run-get` spans projects (a run
+id names no project), so in a project's conversation Piloti reads the run
+through `project-root-sort-get`.
 
 **The statuses.** `judging` → `grouping` → `ready` → `applying` → `applied`,
 and after an undo `undoing` → `undone`. `cancelled` ends a run before anything
