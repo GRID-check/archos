@@ -57,6 +57,13 @@ export interface MoveDocumentInput {
   documentId: string
   /** The destination. `null` files the document at the shelf root. */
   folderId: string | null
+  /**
+   * Move only if the document is still in this folder (`null`: the root);
+   * omitted, from wherever it is. A bulk move that decided on what it read
+   * earlier (a root sort's apply, its undo) says where it expects the
+   * document, so it never moves one somebody has filed since.
+   */
+  expectedFolderId?: string | null
 }
 
 export interface MoveDocumentResult {
@@ -76,6 +83,8 @@ export type MoveDocumentOutcomeResult =
       document: MoveDocumentResult
       /** Moved, but not yet in the collection its folder calls for: only a crossing move can be. */
       pending?: boolean
+      /** False when the document was already in the destination and nothing was written. */
+      changed?: boolean
       /** Set only by a deferred crossing move: the caller runs placement for this project. */
       placementDue?: PlacementDue | null
     }
@@ -85,6 +94,9 @@ export interface MoveDocumentOptions {
   /** Internal to {@link moveDocumentsToFolders}, which runs one placement pass per project after its moves. */
   deferPlacement?: boolean
 }
+
+/** The document is no longer where the caller expected it; it is left where it is. */
+export const MOVED_SINCE_MESSAGE = 'The document was moved since; it was left where it is.'
 
 const IN_FLIGHT_MESSAGE =
   'This document is still being processed. Move it across a restriction once processing has finished.'
@@ -105,6 +117,9 @@ export async function moveDocumentToFolder(
   const document = await findDocumentForSession(session, input.documentId)
 
   if (!document) return { ok: false, error: 'Document not found.' }
+  if (input.expectedFolderId !== undefined && document.folderId !== input.expectedFolderId) {
+    return { ok: false, error: MOVED_SINCE_MESSAGE }
+  }
   const shelf = documentShelf(document)
   if (!shelf) {
     // A session attachment. It is filed nowhere, and the database agrees.
@@ -144,7 +159,13 @@ export async function moveDocumentToFolder(
   }
 
   if (document.folderId === input.folderId) {
-    return { ok: true, document: { id: document.id, folderId: document.folderId }, pending: false, placementDue: null }
+    return {
+      ok: true,
+      document: { id: document.id, folderId: document.folderId },
+      pending: false,
+      placementDue: null,
+      changed: false,
+    }
   }
 
   // Across a restriction boundary the chunks leave the collection they are in
@@ -188,10 +209,10 @@ export async function moveDocumentToFolder(
   // no collection at all, which is safe; the placement sweep finishes it.
   if (crossing) {
     const placementDue = { projectId: shelf.projectId, collectionName: targetCollection }
-    if (deferPlacement) return { ok: true, document: moved, pending: true, placementDue }
+    if (deferPlacement) return { ok: true, document: moved, pending: true, placementDue, changed: true }
     await placeProjects(session.organizationId, [shelf.projectId])
     const placed = await isInCollection(session, document.id, targetCollection)
-    return { ok: true, document: moved, pending: !placed, placementDue: null }
+    return { ok: true, document: moved, pending: !placed, placementDue: null, changed: true }
   }
 
   const backendRef = collectionFileRef({
@@ -204,7 +225,7 @@ export async function moveDocumentToFolder(
     await mirrorDocumentFolderPath(backendRef, destinationPath)
   }
 
-  return { ok: true, document: moved, pending: false, placementDue: null }
+  return { ok: true, document: moved, pending: false, placementDue: null, changed: true }
 }
 
 /**
@@ -234,6 +255,17 @@ export interface DocumentMoveOutcome {
   error: string | null
   /** Moved, but not yet in the collection its folder calls for; placement finishes it. Absent when it is placed. */
   pending?: boolean
+  /** Whether the move wrote anything: false for a document already in its destination. */
+  changed?: boolean
+}
+
+export interface MoveDocumentsOptions {
+  /**
+   * Epoch milliseconds after which no further move is started. The moves not
+   * reached are simply absent from the answer, so a job slice stops inside its
+   * time and carries on from the first one missing.
+   */
+  deadline?: number
 }
 
 /**
@@ -251,17 +283,25 @@ export interface DocumentMoveOutcome {
 export async function moveDocumentsToFolders(
   moves: readonly MoveDocumentInput[],
   session: AuthorizedSession,
+  { deadline }: MoveDocumentsOptions = {},
 ): Promise<DocumentMoveOutcome[]> {
   const outcomes: DocumentMoveOutcome[] = []
   const crossed: Array<{ outcome: DocumentMoveOutcome; documentId: string; placementDue: PlacementDue }> = []
   for (const move of moves) {
+    if (deadline !== undefined && Date.now() >= deadline) break
     try {
       const result = await moveDocumentToFolder(move, session, { deferPlacement: true })
       if (!result.ok) {
         outcomes.push({ documentId: move.documentId, ok: false, error: result.error, pending: false })
         continue
       }
-      const outcome: DocumentMoveOutcome = { documentId: move.documentId, ok: true, error: null, pending: result.pending }
+      const outcome: DocumentMoveOutcome = {
+        documentId: move.documentId,
+        ok: true,
+        error: null,
+        pending: result.pending,
+        changed: result.changed ?? true,
+      }
       outcomes.push(outcome)
       if (result.placementDue) crossed.push({ outcome, documentId: move.documentId, placementDue: result.placementDue })
     } catch (error) {

@@ -15,8 +15,14 @@
 -- The JSON columns hold the run's own lists, bounded by the CHECKs: the root
 -- documents read (at most 5000 ids), what Piloti placed, the new folders it
 -- proposed, what the person kept, and what was moved, so undo moves exactly
--- those back, and what an apply or an undo could not move, kept apart so the
--- undo reports its own. Ids and paths only, never document content.
+-- those back: each moved document with the folder the run put it in, so an
+-- undo moves back only what is still there. What an apply or an undo could
+-- not move is kept apart, so the undo reports its own. Ids and paths only,
+-- never document content.
+--
+-- `job_id` names the `bff_job_queue` job working the run. A working run whose
+-- job is gone (finished without moving it on, or dead after its attempts) is
+-- stalled, and the next read of its shelf ends it (`failStalledRootSortRuns`).
 --
 -- `error` ends a run (`failed`); `grouping_error` does not: a grouping that
 -- failed leaves its files in the root and the run still reaches `ready`, and
@@ -39,10 +45,11 @@ CREATE TABLE IF NOT EXISTS "root_sort_runs" (
   "failed_document_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "new_folders" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "kept_moves" jsonb DEFAULT '[]'::jsonb NOT NULL,
-  "moved_document_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
+  "moved_documents" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "move_failures" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "undo_failures" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "error" text,
+  "job_id" uuid,
   "grouping_error" text,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -63,7 +70,7 @@ CREATE TABLE IF NOT EXISTS "root_sort_runs" (
       AND jsonb_array_length("failed_document_ids") <= 5000
       AND jsonb_array_length("new_folders") <= 12
       AND jsonb_array_length("kept_moves") <= 5000
-      AND jsonb_array_length("moved_document_ids") <= 5000
+      AND jsonb_array_length("moved_documents") <= 5000
       AND jsonb_array_length("move_failures") <= 5000
       AND jsonb_array_length("undo_failures") <= 5000
     )

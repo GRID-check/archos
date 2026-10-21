@@ -311,7 +311,9 @@ export function RootSortDialog({
                     ? t('rootSort.failedReason.stalled')
                     : current.error === 'not_queued'
                       ? t('rootSort.failedReason.notQueued')
-                      : current.error}
+                      : current.error === 'requester_left'
+                        ? t('rootSort.failedReason.requesterLeft')
+                        : current.error}
                 </p>
               )}
               {current.moved > 0 && <p>{t('rootSort.failedReason.partlyMoved', { count: current.moved })}</p>}

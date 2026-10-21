@@ -13,6 +13,7 @@
  */
 
 import 'server-only'
+import { randomUUID } from 'node:crypto'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { RootSortRun } from '@/lib/db/schema'
@@ -29,6 +30,7 @@ import { findRootDocuments } from './repository'
 import { announceRootSortRun } from './root-sort-announce'
 import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor } from './root-sort'
 import {
+  cancelReadyRootSortRuns,
   failStalledRootSortRuns,
   findLatestRootSortRun,
   findRootSortRun,
@@ -49,15 +51,16 @@ import {
 const ONE_IN_WORK_INDEX = 'root_sort_runs_one_in_work_per_shelf'
 
 /**
- * A working run that has not moved for this long has no job left: a slice
- * writes its run at least every five minutes (the runner's slice ceiling), and
- * the queue's retries with their backoff end well inside it.
+ * How long an apply or undo slice starts moves: well inside the runner's five
+ * minutes, so the slow tail of the last move (a backend mirror, a purge) still
+ * lands before the runner gives the slice up. The moves not reached are the
+ * next slice's.
  */
-export const STALLED_AFTER_MS = 30 * 60 * 1000
+export const MOVE_SLICE_BUDGET_MS = 180_000
 
-/** End the shelf's runs whose job died, and tell their requesters. Run before anything reads or starts a run. */
+/** End the shelf's runs no job is working any more, and tell their requesters. Run before anything reads or starts a run. */
 async function settleStalledRuns(organizationId: string, shelf: DocumentShelf): Promise<void> {
-  const ended = await failStalledRootSortRuns(organizationId, shelf, new Date(Date.now() - STALLED_AFTER_MS))
+  const ended = await failStalledRootSortRuns(organizationId, shelf)
   for (const run of ended) await announceRootSortRun(run)
 }
 
@@ -79,15 +82,6 @@ export async function describeRootSort(session: AuthorizedSession, shelf: Docume
   }
 }
 
-async function enqueueSlice(session: AuthorizedSession, runId: string): Promise<void> {
-  const payload: RootSortPayload = { runId, requester: requesterOf(session) }
-  await enqueueJob({
-    kind: 'root_sort',
-    organizationId: session.organizationId,
-    payload,
-    priority: BFF_JOB_PRIORITY.interactive,
-  })
-}
 
 /** Start a run over the root as it is now. One run in work per shelf. */
 export async function startRootSort(session: AuthorizedSession, shelf: DocumentShelf): Promise<RootSortRunView> {
@@ -95,6 +89,8 @@ export async function startRootSort(session: AuthorizedSession, shelf: DocumentS
   if (scan.folders.length === 0) throw new BadRequestError('The shelf has no folder to sort into.')
   if (scan.documents.length === 0) throw new BadRequestError('The root holds no file to sort.')
   await settleStalledRuns(session.organizationId, shelf)
+  // A new run replaces this person's runs still waiting for review: an older review must not be applied over it.
+  await cancelReadyRootSortRuns(session.organizationId, shelf, session.userId)
   let run: RootSortRun
   try {
     run = await insertRootSortRun({
@@ -111,27 +107,43 @@ export async function startRootSort(session: AuthorizedSession, shelf: DocumentS
     if (isUniqueViolation(error, ONE_IN_WORK_INDEX)) throw new ConflictError('A sort of this shelf is already running.')
     throw error
   }
-  await enqueueOrRevert(session, run, ['judging'], { status: 'failed', error: 'not_queued', finishedAt: new Date() })
-  return viewOf(session, run)
+  const queued = await enqueueOrRevert(session, run, ['judging'], {
+    status: 'failed',
+    error: 'not_queued',
+    finishedAt: new Date(),
+  })
+  return viewOf(session, queued)
 }
 
 /**
- * Queue the run's next slice. A run whose job could not be queued would say it
- * is working with nothing working on it, so the step that moved it is taken
- * back (or a new run ended) before the failure surfaces.
+ * Queue the job that works the run, after naming it on the run (`job_id`), so
+ * a run whose job is gone is told from one whose job is waiting
+ * (`failStalledRootSortRuns`). A run whose job could not be queued would say
+ * it is working with nothing working on it, so the step that moved it is
+ * taken back (or a new run ended) before the failure surfaces.
  */
 async function enqueueOrRevert(
   session: AuthorizedSession,
   run: RootSortRun,
   from: readonly RootSortRunStatus[],
   revert: RootSortRunPatch
-): Promise<void> {
+): Promise<RootSortRun> {
+  const jobId = randomUUID()
+  const named = (await updateRootSortRun(session.organizationId, run.id, from, { jobId })) ?? run
+  const payload: RootSortPayload = { runId: run.id, requester: requesterOf(session) }
   try {
-    await enqueueSlice(session, run.id)
+    await enqueueJob({
+      kind: 'root_sort',
+      organizationId: session.organizationId,
+      payload,
+      priority: BFF_JOB_PRIORITY.interactive,
+      jobId,
+    })
   } catch (error) {
-    await updateRootSortRun(session.organizationId, run.id, from, revert)
+    await updateRootSortRun(session.organizationId, run.id, from, { ...revert, jobId: null })
     throw error
   }
+  return named
 }
 
 /** The run, when it is this person's and they may still sort its shelf. */
@@ -160,11 +172,17 @@ async function transition(
 }
 
 /**
- * What the person kept, checked against the run: a document the run read, into
- * a folder (the move re-checks it) or a new folder the run proposed. A
- * placement back to the root is not a move and is dropped.
+ * What the person kept, checked against the run and the shelf as it is now: a
+ * document the run read, into a folder the review offered (open to every
+ * member) or into a new folder the run proposed, never both. A placement back
+ * to the root is not a move and is dropped. Each move is checked again when it
+ * runs, and only moves a document still at the root.
  */
-export function keptMovesOf(run: Pick<RootSortRun, 'documentIds' | 'placements' | 'newFolders'>, keep: readonly KeptMove[]): KeptMove[] {
+export function keptMovesOf(
+  run: Pick<RootSortRun, 'documentIds' | 'placements' | 'newFolders'>,
+  keep: readonly KeptMove[],
+  openFolderIds: ReadonlySet<string>
+): KeptMove[] {
   const known = new Set(run.documentIds)
   const proposed = new Set(
     [
@@ -175,8 +193,9 @@ export function keptMovesOf(run: Pick<RootSortRun, 'documentIds' | 'placements' 
   const seen = new Set<string>()
   return keep.filter((move) => {
     if (!known.has(move.documentId) || seen.has(move.documentId)) return false
-    if (!move.folderId && !move.newFolderPath) return false
-    if (!move.folderId && move.newFolderPath && !proposed.has(folderPathKey(move.newFolderPath))) return false
+    if (Boolean(move.folderId) === Boolean(move.newFolderPath)) return false
+    if (move.folderId && !openFolderIds.has(move.folderId)) return false
+    if (move.newFolderPath && !proposed.has(folderPathKey(move.newFolderPath))) return false
     seen.add(move.documentId)
     return true
   })
@@ -184,20 +203,21 @@ export function keptMovesOf(run: Pick<RootSortRun, 'documentIds' | 'placements' 
 
 export async function applyRootSort(session: AuthorizedSession, runId: string, keep: readonly KeptMove[]): Promise<RootSortRunView> {
   const run = await ownRun(session, runId)
-  const keptMoves = keptMovesOf(run, keep)
+  const scan = await scanRoot(session, shelfOfRun(run))
+  const keptMoves = keptMovesOf(run, keep, new Set(scan.folders.map((folder) => folder.id)))
   if (keptMoves.length === 0) throw new BadRequestError('Nothing to move.')
   const updated = await transition(session, run, ['ready'], { status: 'applying', keptMoves, cursor: 0 })
-  await enqueueOrRevert(session, updated, ['applying'], { status: 'ready', keptMoves: [], cursor: 0 })
-  return viewOf(session, updated)
+  const queued = await enqueueOrRevert(session, updated, ['applying'], { status: 'ready', keptMoves: [], cursor: 0 })
+  return viewOf(session, queued)
 }
 
 /** Send back what the run moved: after it applied, or after it failed part of the way through applying. */
 export async function undoRootSort(session: AuthorizedSession, runId: string): Promise<RootSortRunView> {
   const run = await ownRun(session, runId)
-  if (run.movedDocumentIds.length === 0) throw new BadRequestError('The run moved nothing to undo.')
+  if (run.movedDocuments.length === 0) throw new BadRequestError('The run moved nothing to undo.')
   const updated = await transition(session, run, ['applied', 'failed'], { status: 'undoing', cursor: 0 })
-  await enqueueOrRevert(session, updated, ['undoing'], { status: run.status, cursor: 0 })
-  return viewOf(session, updated)
+  const queued = await enqueueOrRevert(session, updated, ['undoing'], { status: run.status, cursor: 0 })
+  return viewOf(session, queued)
 }
 
 /** Stop a run before anything moved. A run that is applying finishes what it started. */
@@ -220,7 +240,7 @@ function progressOf(run: RootSortRun): RootSortRunView['progress'] {
     case 'applying':
       return { done: run.cursor, total: run.keptMoves.length }
     case 'undoing':
-      return { done: run.cursor, total: run.movedDocumentIds.length }
+      return { done: run.cursor, total: run.movedDocuments.length }
     default:
       return { done: 0, total: 0 }
   }
@@ -251,7 +271,7 @@ export async function viewOf(session: AuthorizedSession, run: RootSortRun): Prom
     unreadable: run.unreadable,
     truncated: run.truncated,
     review,
-    moved: run.movedDocumentIds.length,
+    moved: run.movedDocuments.length,
     moveFailures: run.moveFailures.slice(0, 50),
     undoFailures: run.undoFailures.slice(0, 50),
     error: run.error,
@@ -312,48 +332,88 @@ async function createKeptFolders(session: AuthorizedSession, run: RootSortRun): 
   )
 }
 
-/** Apply the next moves the person kept. A move into a folder that could not be created fails, and the rest go on. */
+/**
+ * How many of `step` a slice got through: the moves before the first one the
+ * deadline kept from starting. A move with no folder (its new folder could not
+ * be created) needs no time and is always got through.
+ */
+function reached(step: readonly KeptMove[], started: number): number {
+  let sent = 0
+  let count = 0
+  for (const move of step) {
+    if (move.folderId && sent === started) break
+    if (move.folderId) sent += 1
+    count += 1
+  }
+  return count
+}
+
+/**
+ * Apply the next moves the person kept, for as long as the slice's budget
+ * lasts. Each moves a document only from the root, where the run found it; one
+ * filed since stays where it is. A move into a folder that could not be
+ * created fails, and the rest go on. Only a move that wrote something is
+ * recorded, with its folder, for an undo.
+ */
 async function applySlice(session: AuthorizedSession, run: RootSortRun): Promise<RootSortRunPatch> {
   const keptMoves = run.cursor === 0 ? await createKeptFolders(session, run) : run.keptMoves
   const step = keptMoves.slice(run.cursor, run.cursor + MAX_MOVES_PER_SLICE)
-  const unplaceable = step.filter((move) => !move.folderId)
   const outcomes = await moveDocumentsToFolders(
-    step.flatMap((move) => (move.folderId ? [{ documentId: move.documentId, folderId: move.folderId }] : [])),
-    session
+    step.flatMap((move) =>
+      move.folderId ? [{ documentId: move.documentId, folderId: move.folderId, expectedFolderId: null }] : []
+    ),
+    session,
+    { deadline: Date.now() + MOVE_SLICE_BUDGET_MS }
   )
-  const cursor = run.cursor + step.length
-  const done = cursor >= keptMoves.length
+  const done = reached(step, outcomes.length)
+  const handled = step.slice(0, done)
+  const folderOf = new Map(handled.map((move) => [move.documentId, move.folderId]))
+  const cursor = run.cursor + done
+  const finished = cursor >= keptMoves.length
   return {
     keptMoves,
     cursor,
-    movedDocumentIds: [...run.movedDocumentIds, ...outcomes.filter((o) => o.ok).map((o) => o.documentId)],
+    movedDocuments: [
+      ...run.movedDocuments,
+      ...outcomes.flatMap((o) => {
+        const folderId = folderOf.get(o.documentId)
+        return o.ok && o.changed !== false && folderId ? [{ documentId: o.documentId, folderId }] : []
+      }),
+    ],
     moveFailures: [
       ...run.moveFailures,
-      ...unplaceable.map((move) => ({ documentId: move.documentId, error: 'The new folder could not be created.' })),
+      ...handled.flatMap((move) =>
+        move.folderId ? [] : [{ documentId: move.documentId, error: 'The new folder could not be created.' }]
+      ),
       ...outcomes.flatMap((o) => (o.ok ? [] : [{ documentId: o.documentId, error: o.error ?? 'Move failed.' }])),
     ],
-    status: done ? 'applied' : 'applying',
-    finishedAt: done ? new Date() : null,
+    status: finished ? 'applied' : 'applying',
+    finishedAt: finished ? new Date() : null,
   }
 }
 
-/** Move the next of what the run moved back to the root. */
+/**
+ * Move the next of what the run moved back to the root, for as long as the
+ * slice's budget lasts, and only where it is still in the folder the run put
+ * it in: a document somebody filed since stays where they put it.
+ */
 async function undoSlice(session: AuthorizedSession, run: RootSortRun): Promise<RootSortRunPatch> {
-  const step = run.movedDocumentIds.slice(run.cursor, run.cursor + MAX_MOVES_PER_SLICE)
+  const step = run.movedDocuments.slice(run.cursor, run.cursor + MAX_MOVES_PER_SLICE)
   const outcomes = await moveDocumentsToFolders(
-    step.map((documentId) => ({ documentId, folderId: null })),
-    session
+    step.map((moved) => ({ documentId: moved.documentId, folderId: null, expectedFolderId: moved.folderId })),
+    session,
+    { deadline: Date.now() + MOVE_SLICE_BUDGET_MS }
   )
-  const cursor = run.cursor + step.length
-  const done = cursor >= run.movedDocumentIds.length
+  const cursor = run.cursor + outcomes.length
+  const finished = cursor >= run.movedDocuments.length
   return {
     cursor,
     undoFailures: [
       ...run.undoFailures,
       ...outcomes.flatMap((o) => (o.ok ? [] : [{ documentId: o.documentId, error: o.error ?? 'Undo failed.' }])),
     ],
-    status: done ? 'undone' : 'undoing',
-    finishedAt: done ? new Date() : null,
+    status: finished ? 'undone' : 'undoing',
+    finishedAt: finished ? new Date() : null,
   }
 }
 
@@ -381,17 +441,33 @@ export async function runRootSortSlice(session: AuthorizedSession, payload: Root
   } catch (error) {
     // A refusal (the person lost the shelf, the project closed) ends the run with its reason; anything else is retried.
     if (!(error instanceof BadRequestError || error instanceof NotFoundError || error instanceof ForbiddenError)) throw error
-    const failed = await updateRootSortRun(session.organizationId, run.id, [run.status], {
-      status: 'failed',
-      error: error.message,
-      finishedAt: new Date(),
-    })
+    const failed = await updateRootSortRun(
+      session.organizationId,
+      run.id,
+      [run.status],
+      { status: 'failed', error: error.message, finishedAt: new Date() },
+      { cursor: run.cursor }
+    )
     if (failed) await announceRootSortRun(failed)
     return { done: true, payload }
   }
-  const updated = await updateRootSortRun(session.organizationId, run.id, [run.status], patch)
+  // Conditioned on the cursor too: a slice the runner gave up on that finished late must not overwrite the one after it.
+  const updated = await updateRootSortRun(session.organizationId, run.id, [run.status], patch, { cursor: run.cursor })
   // The person may have closed the dialog: a run that now waits on them, or ended badly, tells them in the Eingang.
   if (updated && updated.status !== run.status) await announceRootSortRun(updated)
   const working = updated !== null && STEPS[updated.status] !== undefined
   return { done: !working, payload }
+}
+
+/**
+ * End the run of a requester who is no longer a member of the organization:
+ * nothing more can be done in their name, and the shelf must not stay locked
+ * behind their run. Called by the job's handler, which has no session for them.
+ */
+export async function endRunOfDepartedRequester(organizationId: string, runId: string): Promise<void> {
+  await updateRootSortRun(organizationId, runId, ['judging', 'grouping', 'applying', 'undoing'], {
+    status: 'failed',
+    error: 'requester_left',
+    finishedAt: new Date(),
+  })
 }

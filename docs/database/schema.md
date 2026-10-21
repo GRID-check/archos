@@ -1557,7 +1557,7 @@ state: the BFF job `root_sort` advances the row a bounded slice at a time, and
 the dialog only reads it and asks for the next step (apply, undo, cancel).
 `status` walks `judging`, `grouping`, `ready`, `applying`, `applied`, then
 `undoing` and `undone`; `cancelled` and `failed` end it. The lists the run keeps
-(`document_ids`, `placements`, `kept_moves`, `moved_document_ids`, and the rest)
+(`document_ids`, `placements`, `kept_moves`, `moved_documents`, and the rest)
 are JSONB and bounded by CHECK, at 5000 documents each. Ids and folder paths
 only, never document content.
 

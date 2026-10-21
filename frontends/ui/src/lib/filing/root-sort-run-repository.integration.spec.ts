@@ -76,16 +76,18 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
   let db: ReturnType<typeof import('@/lib/db').getDb>
 
   // One project per case, so the cases cannot see each other's in-work runs.
-  const projects: Record<'roundTrip' | 'unique' | 'conditional' | 'checks' | 'rls' | 'cascade' | 'archiv' | 'stalled' | 'fresh', string> = {
+  const projects: Record<'roundTrip' | 'unique' | 'conditional' | 'checks' | 'rls' | 'cascade' | 'officeShelf' | 'stalled' | 'fresh' | 'young' | 'cursor', string> = {
     stalled: '',
     fresh: '',
+    young: '',
+    cursor: '',
     roundTrip: '',
     unique: '',
     conditional: '',
     checks: '',
     rls: '',
     cascade: '',
-    archiv: '',
+    officeShelf: '',
   }
 
   async function seedProject(org: string, name: string): Promise<string> {
@@ -122,6 +124,7 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
     if (!db) return
     await withPlatformAccess('root sort spec cleanup', async () => {
       await db.execute(sql`delete from root_sort_runs where organization_id in (${ORG_A}, ${ORG_B})`)
+      await db.execute(sql`delete from bff_job_queue where lane in (${ORG_A}, ${ORG_B})`)
       await db.execute(sql`delete from projects where organization_id in (${ORG_A}, ${ORG_B})`)
       await db.execute(sql`delete from organizations where workos_organization_id in (${ORG_A}, ${ORG_B})`)
     })
@@ -159,7 +162,7 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
       newFolders,
       keptMoves,
       failedDocumentIds: [d3],
-      movedDocumentIds: [d1],
+      movedDocuments: [{ documentId: d1, folderId: 'f-1' }],
       moveFailures,
       groupingError: 'backend_502',
     })
@@ -186,7 +189,7 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
     expect(found?.newFolders).toEqual(newFolders)
     expect(found?.keptMoves).toEqual(keptMoves)
     expect(found?.failedDocumentIds).toEqual([d3])
-    expect(found?.movedDocumentIds).toEqual([d1])
+    expect(found?.movedDocuments).toEqual([{ documentId: d1, folderId: 'f-1' }])
     expect(found?.moveFailures).toEqual(moveFailures)
   })
 
@@ -241,18 +244,18 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
   })
 
   it('limits the Archiv shelf (project_id NULL) to one in work per org, and no project run is blocked by it', async () => {
-    const archiv = (org: string, status: RootSortRunStatus) =>
+    const officeRun = (org: string, status: RootSortRunStatus) =>
       repo.insertRootSortRun({ organizationId: org, scope: 'office_shelf', projectId: null, requestedBy: ME, status, documentIds: [] })
 
-    const officeA = await archiv(ORG_A, 'judging')
-    const refused = await refusal(() => archiv(ORG_A, 'grouping'))
+    const officeA = await officeRun(ORG_A, 'judging')
+    const refused = await refusal(() => officeRun(ORG_A, 'grouping'))
     expect(isUniqueViolation(refused, IN_WORK_INDEX)).toBe(true)
 
     // A project shelf is a different scope; the Archiv run does not block it.
     const project = await repo.insertRootSortRun({
       organizationId: ORG_A,
       scope: 'project',
-      projectId: projects.archiv,
+      projectId: projects.officeShelf,
       requestedBy: ME,
       status: 'judging',
       documentIds: [],
@@ -260,12 +263,12 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
     expect(project.status).toBe('judging')
 
     // The index is per organization: another org's Archiv is not blocked.
-    const officeB = await archiv(ORG_B, 'judging')
+    const officeB = await officeRun(ORG_B, 'judging')
     expect(officeB.status).toBe('judging')
 
     // Once the first Archiv run leaves work, a new one is admitted.
     await repo.updateRootSortRun(ORG_A, officeA.id, ['judging'], { status: 'applied' })
-    const officeAgain = await archiv(ORG_A, 'undoing')
+    const officeAgain = await officeRun(ORG_A, 'undoing')
     expect(officeAgain.status).toBe('undoing')
   })
 
@@ -305,10 +308,10 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
     )
     expect(pgError(projectWithoutProject)).toMatchObject({ code: '23514', constraint_name: 'root_sort_runs_scope_owner_check' })
 
-    const archivWithProject = await refusal(() =>
+    const officeWithProject = await refusal(() =>
       repo.insertRootSortRun({ ...base, scope: 'office_shelf', projectId: projects.checks, status: 'ready' })
     )
-    expect(pgError(archivWithProject)).toMatchObject({ code: '23514', constraint_name: 'root_sort_runs_scope_owner_check' })
+    expect(pgError(officeWithProject)).toMatchObject({ code: '23514', constraint_name: 'root_sort_runs_scope_owner_check' })
 
     const unknownStatus = await refusal(() =>
       repo.insertRootSortRun({ ...base, scope: 'office_shelf', projectId: null, status: 'bogus' as RootSortRunStatus })
@@ -361,27 +364,88 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
     expect((await repo.findRootSortRun(ORG_A, run.id))?.status).toBe('judging')
   })
 
-  it('ends a working run that stopped moving, frees the shelf, and leaves a fresh one alone', async () => {
+  it('ends a working run no job works any more, frees the shelf, and leaves one whose job waits alone', async () => {
     const insert = (projectId: string, status: RootSortRunStatus) =>
       repo.insertRootSortRun({ organizationId: ORG_A, scope: 'project', projectId, requestedBy: ME, status, documentIds: [] })
+    const age = (runId: string) =>
+      withTenant({ organizationId: ORG_A, userId: ME }, () =>
+        db.execute(sql`update root_sort_runs set updated_at = now() - interval '2 hours' where id = ${runId}`)
+      )
+    const stalledShelf = { kind: 'project' as const, projectId: projects.stalled }
+    const waitingShelf = { kind: 'project' as const, projectId: projects.fresh }
+
+    // A run whose job is gone (finished or never queued), quiet for two hours.
     const stalled = await insert(projects.stalled, 'applying')
+    await age(stalled.id)
+    // A run as quiet, whose job is queued behind a backlog: it is not stalled.
+    const jobId = randomUUID()
+    const waiting = await insert(projects.fresh, 'judging')
+    await repo.updateRootSortRun(ORG_A, waiting.id, ['judging'], { jobId })
     await withTenant({ organizationId: ORG_A, userId: ME }, () =>
-      db.execute(sql`update root_sort_runs set updated_at = now() - interval '2 hours' where id = ${stalled.id}`)
+      db.execute(sql`insert into bff_job_queue (job_id, kind, lane) values (${jobId}, 'root_sort', ${ORG_A})`)
     )
-    const fresh = await insert(projects.fresh, 'judging')
-    const before = new Date(Date.now() - 30 * 60 * 1000)
+    await age(waiting.id)
+    // A run just started, whose job is being queued: inside the grace.
+    const young = await insert(projects.young, 'judging')
 
     // Another organization's sweep reaches nothing of this one.
-    expect(await repo.failStalledRootSortRuns(ORG_B, { kind: 'project', projectId: projects.stalled }, before)).toEqual([])
+    expect(await repo.failStalledRootSortRuns(ORG_B, stalledShelf)).toEqual([])
 
-    const ended = await repo.failStalledRootSortRuns(ORG_A, { kind: 'project', projectId: projects.stalled }, before)
+    const ended = await repo.failStalledRootSortRuns(ORG_A, stalledShelf)
     expect(ended.map((run) => [run.id, run.status, run.error])).toEqual([[stalled.id, 'failed', 'stalled']])
     expect(ended[0].finishedAt).not.toBeNull()
-
-    // The shelf takes a new run again, and the other shelf's fresh run kept working.
     expect((await insert(projects.stalled, 'judging')).status).toBe('judging')
-    expect(await repo.failStalledRootSortRuns(ORG_A, { kind: 'project', projectId: projects.fresh }, before)).toEqual([])
-    expect((await repo.findRootSortRun(ORG_A, fresh.id))?.status).toBe('judging')
+
+    expect(await repo.failStalledRootSortRuns(ORG_A, waitingShelf)).toEqual([])
+    expect((await repo.findRootSortRun(ORG_A, waiting.id))?.status).toBe('judging')
+
+    // Once its job is dead, the waiting run is stalled too.
+    await withTenant({ organizationId: ORG_A, userId: ME }, () =>
+      db.execute(sql`update bff_job_queue set status = 'dead', dead_at = now() where job_id = ${jobId}`)
+    )
+    expect((await repo.failStalledRootSortRuns(ORG_A, waitingShelf)).map((run) => run.id)).toEqual([waiting.id])
+
+    expect(await repo.failStalledRootSortRuns(ORG_A, { kind: 'project', projectId: projects.young })).toEqual([])
+    expect((await repo.findRootSortRun(ORG_A, young.id))?.status).toBe('judging')
+    await repo.updateRootSortRun(ORG_A, young.id, ['judging'], { status: 'cancelled' })
+  })
+
+  it('writes a slice only over the cursor it read', async () => {
+    const run = await repo.insertRootSortRun({
+      organizationId: ORG_A,
+      scope: 'project',
+      projectId: projects.cursor,
+      requestedBy: ME,
+      status: 'applying',
+      documentIds: [],
+    })
+    expect(await repo.updateRootSortRun(ORG_A, run.id, ['applying'], { cursor: 100 }, { cursor: 0 })).not.toBeNull()
+    // A slice that read cursor 0 and finished late writes nothing over the one after it.
+    expect(await repo.updateRootSortRun(ORG_A, run.id, ['applying'], { cursor: 100 }, { cursor: 0 })).toBeNull()
+    expect((await repo.findRootSortRun(ORG_A, run.id))?.cursor).toBe(100)
+    await repo.updateRootSortRun(ORG_A, run.id, ['applying'], { status: 'applied' })
+  })
+
+  it('cancels only this person\'s runs of the shelf that wait for review', async () => {
+    const ready = await repo.insertRootSortRun({
+      organizationId: ORG_A,
+      scope: 'project',
+      projectId: projects.checks,
+      requestedBy: ME,
+      status: 'ready',
+      documentIds: [],
+    })
+    const someoneElses = await repo.insertRootSortRun({
+      organizationId: ORG_A,
+      scope: 'project',
+      projectId: projects.checks,
+      requestedBy: 'someone-else',
+      status: 'ready',
+      documentIds: [],
+    })
+    await repo.cancelReadyRootSortRuns(ORG_A, { kind: 'project', projectId: projects.checks }, ME)
+    expect((await repo.findRootSortRun(ORG_A, ready.id))?.status).toBe('cancelled')
+    expect((await repo.findRootSortRun(ORG_A, someoneElses.id))?.status).toBe('ready')
   })
 
   it('deletes a project\'s runs with it, and leaves the Archiv runs alone', async () => {
@@ -402,7 +466,7 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
       status: 'applied',
       documentIds: [],
     })
-    const archiv = await repo.insertRootSortRun({
+    const officeRow = await repo.insertRootSortRun({
       organizationId: ORG_A,
       scope: 'office_shelf',
       projectId: null,
@@ -417,6 +481,6 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
 
     expect(await repo.findRootSortRun(ORG_A, working.id)).toBeNull()
     expect(await repo.findRootSortRun(ORG_A, finished.id)).toBeNull()
-    expect((await repo.findRootSortRun(ORG_A, archiv.id))?.id).toBe(archiv.id)
+    expect((await repo.findRootSortRun(ORG_A, officeRow.id))?.id).toBe(officeRow.id)
   })
 })

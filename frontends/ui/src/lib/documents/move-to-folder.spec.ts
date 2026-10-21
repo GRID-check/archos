@@ -106,7 +106,7 @@ import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
 import { reingestDocument } from './service'
-import { moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
+import { MOVED_SINCE_MESSAGE, moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
 
 const SESSION = { organizationId: 'org-1', userId: 'user-1' } as never
 
@@ -148,6 +148,41 @@ describe('moveDocumentToFolder', () => {
       'http://backend:8000/v1/collections/proj_1/documents/Fluchtwegplan.pdf/folder-path',
     )
     expect(mirrorBody()).toEqual({ folder_path: 'Brandschutz/Fluchtwege' })
+  })
+
+  it('leaves a document where it is when it is no longer in the folder the caller expected', async () => {
+    db.selects = [[{ ...DOCUMENT, folderId: 'folder-colleague' }]]
+
+    const result = await moveDocumentToFolder(
+      { documentId: 'doc-1', folderId: null, expectedFolderId: 'folder-1' },
+      SESSION,
+    )
+
+    expect(result).toEqual({ ok: false, error: MOVED_SINCE_MESSAGE })
+    expect(db.updates).toHaveLength(0)
+  })
+
+  it('says nothing changed for a document already in its destination', async () => {
+    db.selects = [[{ ...DOCUMENT, folderId: 'folder-1' }], [{ id: 'folder-1', path: 'A' }]]
+
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'folder-1' }, SESSION)
+
+    expect(result).toMatchObject({ ok: true, changed: false })
+    expect(db.updates).toHaveLength(0)
+  })
+
+  it('starts no move of a batch after its deadline', async () => {
+    const outcomes = await moveDocumentsToFolders(
+      [
+        { documentId: 'doc-1', folderId: 'folder-1' },
+        { documentId: 'doc-2', folderId: 'folder-1' },
+      ],
+      SESSION,
+      { deadline: Date.now() - 1 },
+    )
+
+    expect(outcomes).toEqual([])
+    expect(db.updates).toHaveLength(0)
   })
 
   it('clears the backend path when the document goes back to the project root', async () => {
@@ -362,6 +397,7 @@ describe('moveDocumentToFolder across a restriction: purge first, placement chec
       document: { id: 'doc-1', folderId: 'f-locked' },
       pending: false,
       placementDue: null,
+      changed: true,
     })
   })
 
@@ -425,8 +461,8 @@ describe('moveDocumentToFolder across a restriction: purge first, placement chec
     )
 
     expect(outcomes).toEqual([
-      { documentId: 'doc-1', ok: true, error: null, pending: false },
-      { documentId: 'doc-2', ok: true, error: null, pending: false },
+      { documentId: 'doc-1', ok: true, error: null, pending: false, changed: true },
+      { documentId: 'doc-2', ok: true, error: null, pending: false, changed: true },
     ])
     expect(placeProjectDocuments).toHaveBeenCalledTimes(1)
     expect(placeProjectDocuments).toHaveBeenCalledWith('org-1', 'proj-1')
@@ -453,8 +489,8 @@ describe('moveDocumentToFolder across a restriction: purge first, placement chec
     )
 
     expect(outcomes).toEqual([
-      { documentId: 'doc-1', ok: true, error: null, pending: false },
-      { documentId: 'doc-2', ok: true, error: null, pending: true },
+      { documentId: 'doc-1', ok: true, error: null, pending: false, changed: true },
+      { documentId: 'doc-2', ok: true, error: null, pending: true, changed: true },
     ])
   })
 
@@ -477,7 +513,7 @@ describe('moveDocumentToFolder across a restriction: purge first, placement chec
 
     expect(outcomes[0]).toMatchObject({ documentId: 'doc-1', ok: false, pending: false })
     expect(outcomes[0].error).toContain('was not moved')
-    expect(outcomes[1]).toEqual({ documentId: 'doc-2', ok: true, error: null, pending: false })
+    expect(outcomes[1]).toEqual({ documentId: 'doc-2', ok: true, error: null, pending: false, changed: true })
     expect(db.updates.map((values) => values.folderId)).toEqual(['f-locked'])
     expect(placeProjectDocuments).toHaveBeenCalledTimes(1)
   })

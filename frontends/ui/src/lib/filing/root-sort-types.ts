@@ -43,7 +43,10 @@ export const MAX_MOVES_PER_SLICE = 100
  * at 0.8 the sure placements were right 0.972 and 0.972 of the time (106 and
  * 108 sure), at 0.6 only 0.930 and 0.939. Most wrong ones were filed one level
  * too high, in the parent of the right folder, and scored at most 0.8, so they
- * land in the look. Re-run the eval before moving it.
+ * land in the look. The rule is the lowest cut whose sure placements are right
+ * at least 0.95 of the time in every run: 0.75 cleared it in one run (0.955)
+ * and missed in the other (0.946), 0.8 cleared both. Re-run the eval before
+ * moving it.
  */
 export const SURE_CONFIDENCE = 0.8
 

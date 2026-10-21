@@ -2051,6 +2051,7 @@ export const files = {
     failedReason: {
       stalled: 'The sort stopped making progress and was ended. You can start it again.',
       notQueued: 'The sort could not be started. Please try again.',
+      requesterLeft: 'The person who started the sort is no longer part of the office. The sort was ended.',
       partlyMoved: '{count, plural, one {# file was already moved; Undo puts it back.} other {# files were already moved; Undo puts them back.}}',
     },
     review: {

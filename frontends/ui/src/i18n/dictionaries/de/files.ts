@@ -2034,6 +2034,7 @@ export const files: typeof en.files = {
     failedReason: {
       stalled: 'Die Sortierung ist stehen geblieben und wurde beendet. Sie können sie neu starten.',
       notQueued: 'Die Sortierung konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
+      requesterLeft: 'Die Person, die die Sortierung gestartet hat, gehört nicht mehr zum Büro. Die Sortierung wurde beendet.',
       partlyMoved: '{count, plural, one {# Datei wurde schon verschoben; Rückgängig legt sie zurück.} other {# Dateien wurden schon verschoben; Rückgängig legt sie zurück.}}',
     },
     review: {

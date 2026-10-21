@@ -2,6 +2,12 @@ import { sql } from 'drizzle-orm'
 import { boolean, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import type { KeptMove, NewFolderProposal, RootSortPlacement, RootSortRunStatus } from '@/lib/filing/root-sort-types'
 
+/** A document the run moved, and the folder it put it in: what an undo checks before it moves it back. */
+export interface RootSortMovedDocument {
+  documentId: string
+  folderId: string
+}
+
 /** A move the person kept that could not be applied, and why. */
 export interface RootSortMoveFailure {
   documentId: string
@@ -30,10 +36,11 @@ export const rootSortRuns = pgTable(
     failedDocumentIds: jsonb('failed_document_ids').$type<string[]>().notNull().default([]),
     newFolders: jsonb('new_folders').$type<NewFolderProposal[]>().notNull().default([]),
     keptMoves: jsonb('kept_moves').$type<KeptMove[]>().notNull().default([]),
-    movedDocumentIds: jsonb('moved_document_ids').$type<string[]>().notNull().default([]),
+    movedDocuments: jsonb('moved_documents').$type<RootSortMovedDocument[]>().notNull().default([]),
     moveFailures: jsonb('move_failures').$type<RootSortMoveFailure[]>().notNull().default([]),
     undoFailures: jsonb('undo_failures').$type<RootSortMoveFailure[]>().notNull().default([]),
     error: text('error'),
+    jobId: uuid('job_id'),
     groupingError: text('grouping_error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

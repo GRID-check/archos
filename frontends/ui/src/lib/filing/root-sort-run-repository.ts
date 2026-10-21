@@ -8,7 +8,7 @@
 import 'server-only'
 import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import { rootSortRuns, type RootSortRun } from '@/lib/db/schema'
+import { bffJobQueue, rootSortRuns, type RootSortRun } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { DocumentShelf } from '@/lib/documents/shelf'
 import { ROOT_SORT_WORKING_STATUSES, type RootSortRunStatus } from './root-sort-types'
@@ -27,7 +27,8 @@ export type RootSortRunPatch = Partial<
     | 'failedDocumentIds'
     | 'newFolders'
     | 'keptMoves'
-    | 'movedDocumentIds'
+    | 'movedDocuments'
+    | 'jobId'
     | 'moveFailures'
     | 'undoFailures'
     | 'error'
@@ -78,12 +79,17 @@ export async function findLatestRootSortRun(
   return row ?? null
 }
 
-/** Write `patch` when the run is still in one of `from`; null when it was not (another step moved it on). */
+/**
+ * Write `patch` when the run is still in one of `from` (and, given `cursor`,
+ * still at it); null when it was not: another step moved it on, or a slice
+ * the runner gave up on finished late and must not overwrite the one after it.
+ */
 export async function updateRootSortRun(
   organizationId: string,
   runId: string,
   from: readonly RootSortRunStatus[],
-  patch: RootSortRunPatch
+  patch: RootSortRunPatch,
+  expected: { cursor?: number } = {}
 ): Promise<RootSortRun | null> {
   const [row] = await withTenant({ organizationId }, () =>
     getDb()
@@ -93,7 +99,8 @@ export async function updateRootSortRun(
         and(
           eq(rootSortRuns.organizationId, organizationId),
           eq(rootSortRuns.id, runId),
-          inArray(rootSortRuns.status, [...from])
+          inArray(rootSortRuns.status, [...from]),
+          expected.cursor === undefined ? undefined : eq(rootSortRuns.cursor, expected.cursor)
         )
       )
       .returning()
@@ -101,17 +108,18 @@ export async function updateRootSortRun(
   return row ?? null
 }
 
+/** How long a run may say it is working before its job row exists: the step that moved it queues the job just after. */
+export const STALL_GRACE_MS = 2 * 60 * 1000
+
 /**
- * End every run of the shelf that says it is working but has not moved since
- * `before`: its job died (out of attempts, or never queued), and nothing else
- * will ever finish it. Without this the shelf's one-in-work index would refuse
- * every later run. Answers the runs it ended.
+ * End every run of the shelf that says it is working while no job works it:
+ * its `bff_job_queue` row is gone (the job finished without moving the run on)
+ * or dead (out of attempts), or it never got one. Without this the shelf's
+ * one-in-work index would refuse every later run. A run younger than
+ * {@link STALL_GRACE_MS} is left alone: its job is being queued. Answers the
+ * runs it ended.
  */
-export async function failStalledRootSortRuns(
-  organizationId: string,
-  shelf: DocumentShelf,
-  before: Date
-): Promise<RootSortRun[]> {
+export async function failStalledRootSortRuns(organizationId: string, shelf: DocumentShelf): Promise<RootSortRun[]> {
   return withTenant({ organizationId }, () =>
     getDb()
       .update(rootSortRuns)
@@ -122,9 +130,37 @@ export async function failStalledRootSortRuns(
           eq(rootSortRuns.scope, shelf.kind),
           shelf.kind === 'project' ? eq(rootSortRuns.projectId, shelf.projectId) : isNull(rootSortRuns.projectId),
           inArray(rootSortRuns.status, [...ROOT_SORT_WORKING_STATUSES]),
-          lt(rootSortRuns.updatedAt, before)
+          lt(rootSortRuns.updatedAt, sql`now() - make_interval(secs => ${STALL_GRACE_MS / 1000})`),
+          sql`NOT EXISTS (
+            SELECT 1 FROM ${bffJobQueue}
+            WHERE ${bffJobQueue.jobId} = ${rootSortRuns.jobId}
+              AND ${bffJobQueue.lane} = ${organizationId}
+              AND ${bffJobQueue.status} IN ('queued', 'claimed')
+          )`
         )
       )
       .returning()
+  )
+}
+
+/** Cancel this person's runs of the shelf that still wait for review: a new run replaces them. */
+export async function cancelReadyRootSortRuns(
+  organizationId: string,
+  shelf: DocumentShelf,
+  requestedBy: string
+): Promise<void> {
+  await withTenant({ organizationId }, () =>
+    getDb()
+      .update(rootSortRuns)
+      .set({ status: 'cancelled', finishedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(rootSortRuns.organizationId, organizationId),
+          eq(rootSortRuns.scope, shelf.kind),
+          shelf.kind === 'project' ? eq(rootSortRuns.projectId, shelf.projectId) : isNull(rootSortRuns.projectId),
+          eq(rootSortRuns.requestedBy, requestedBy),
+          eq(rootSortRuns.status, 'ready')
+        )
+      )
   )
 }
