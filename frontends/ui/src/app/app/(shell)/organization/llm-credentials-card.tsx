@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { Switch } from '@/components/ui/switch'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 
 interface CredentialView {
@@ -63,6 +63,7 @@ const NEEDS_BASE_URL = new Set(['azure-openai', 'custom'])
 
 export const LlmCredentialsCard: FC = () => {
   const t = useTranslations('organization')
+  const { locale } = useLocale()
   const tc = useTranslations('common')
 
   const [revokeOpen, setRevokeOpen] = useState(false)
@@ -294,14 +295,14 @@ export const LlmCredentialsCard: FC = () => {
                 <SectionLabel>{t('byok.lastVerified')}</SectionLabel>
               </dt>
               <dd className="mt-0.5">
-                {active.lastVerifiedAt ? new Date(active.lastVerifiedAt).toLocaleString() : '—'}
+                {active.lastVerifiedAt ? new Date(active.lastVerifiedAt).toLocaleString(locale) : '—'}
               </dd>
             </div>
             <div>
               <dt>
                 <SectionLabel>{t('byok.lastUsed')}</SectionLabel>
               </dt>
-              <dd className="mt-0.5">{active.lastUsedAt ? new Date(active.lastUsedAt).toLocaleString() : '—'}</dd>
+              <dd className="mt-0.5">{active.lastUsedAt ? new Date(active.lastUsedAt).toLocaleString(locale) : '—'}</dd>
             </div>
           </dl>
         </div>
