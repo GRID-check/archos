@@ -9,4 +9,4 @@ operators:
   - >
     Asking Piloti from another agent is off until the piloti-ask feature flag
     is created in WorkOS and switched on for an organization; it also needs
-    agent-mcp. Migration 0175 adds the asks table.
+    agent-mcp. Migration 0177 adds the asks table.
