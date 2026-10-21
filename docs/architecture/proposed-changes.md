@@ -538,14 +538,29 @@ what it started). `failed` ends a run with its reason when a slice is refused
 (the person lost the shelf, the project closed). A transient error is not a
 refusal: the queue retries that slice.
 
-**A run is never left working with nothing working on it.** If its job cannot
-be queued, the step that moved it is taken back (a new run ends `failed` with
-`not_queued`, an apply returns to `ready`, an undo to `applied`). If its job
-dies (out of attempts), the run stops moving: a working run untouched for 30
-minutes (`STALLED_AFTER_MS`, far beyond a slice and the queue's backoff) is
-ended `failed` with `stalled` whenever anyone opens the sort, starts one or
-reads a run of that shelf, so the one-in-work index frees the shelf. A run that
-failed part of the way through applying can still be undone.
+**A run is never left working with nothing working on it.** The run names the
+job that works it (`job_id`). If that job cannot be queued, the step that moved
+the run is taken back (a new run ends `failed` with `not_queued`, an apply
+returns to `ready`, an undo to `applied`). If the job is gone (it finished
+without moving the run on, or died after its attempts), the run is ended
+`failed` with `stalled` whenever anyone opens the sort, starts one or reads a
+run of that shelf, so the one-in-work index frees the shelf. A run whose job is
+queued or claimed is never ended this way, however long a backlog keeps it
+waiting. A slice runs as its requester looked up strictly: an identity provider
+that does not answer is retried by the queue, and a requester who left ends
+the run (`requester_left`). A run that failed part of the way through applying
+can still be undone.
+
+**A slice is bounded in time and writes only over what it read.** An apply or
+undo slice starts moves for 180 s (`MOVE_SLICE_BUDGET_MS`) and carries on from
+the first move it did not reach; every write is conditioned on the status and
+the cursor the slice read, so a slice the runner gave up on that finishes late
+changes nothing. An apply moves a document only from the root, where the run
+found it, into a folder the review offered or a new folder the run proposed
+(checked on the server, not only in the dialog); it records each document it
+really moved with the folder it put it in, and an undo moves back only what is
+still there. Starting a run cancels the person's older runs still waiting for
+review.
 
 **The person is told.** When a run becomes `ready` or `failed`, its requester
 gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
@@ -585,9 +600,11 @@ gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
    `moveDocumentToFolder` with all its checks, and records each outcome; a move
    that fails is recorded and the rest go on.
 6. **Undo** (`undoing`). Moves the documents the run moved back to the root, 100
-   per slice, from `applied` or from a `failed` run that had moved some. The
-   folders it created stay. What it could not move back is kept apart
-   (`undo_failures`) and named in the dialog.
+   per slice, from `applied` or from a `failed` run that had moved some, and
+   only where a document is still in the folder the run put it in: one a
+   colleague filed since stays where they put it. The folders it created stay.
+   What it could not move back is kept apart (`undo_failures`) and named in the
+   dialog.
 
 **The reading rules are the upload filing's.** Only folders every member may
 read, only screened documents, nothing on a closed project. The gate is
