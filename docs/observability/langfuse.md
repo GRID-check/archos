@@ -17,7 +17,7 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 
 | Field in Langfuse | Where it comes from | Values |
 |---|---|---|
-| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `similar-passages` (a retriever, not a generation: `observed_retrieval`) |
+| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>`; metadata and tags below) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
 | Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
@@ -121,6 +121,23 @@ into the request. Never the note's words: those are in the generation's input,
 masked like the question. A write the model chose before the note arrived and
 the turn held back is the technical step `status:steered:<round>` beside
 `repeat`, `refused` and `width`.
+
+### A tool call on the agent door
+
+Each MCP tool call at `/api/mcp` (ADR-0121), from an external agent or from
+Piloti's own `workspace__*` tools, is a root trace `agent-tool-call` holding one
+`TOOL` observation named `mcp.<operation>` (`search-operations`, `call-operation`
+is recorded under the operation it ran, `unknown` for a name no operation has:
+that is the agent's own text). Metadata on both: `operation`, `domain`, `door`
+(`mcp` or `piloti`), `mode` (`search` or `tools`), `decision` (`run`, `propose`
+or `refused`), `status` (the route's HTTP status), `duration_ms`, `client_id`.
+Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
+`door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and
+`org:<id>` with identity attributes on. The session is the conversation when
+Piloti made the call, so the call sits beside the turn that asked for it; the
+user only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`. Never the input or the
+answer. Posted best-effort through the ingestion API, never awaited by the call
+(`lib/langfuse/tool-call-trace.ts`, from `lib/agent-api/telemetry.ts`). No score.
 
 ### The project intake run
 
@@ -361,6 +378,7 @@ Gotenberg has an egress policy, so no rule is needed. A spec
 | Langfuse configuration as code | `src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
 | Votes, reasons, review queue | `frontends/ui/src/lib/langfuse/feedback-score.ts` |
 | Decisions on Piloti's proposals, marks and changes | `frontends/ui/src/lib/langfuse/decision-score.ts` |
+| Tool calls on the agent door (MCP) | `frontends/ui/src/lib/langfuse/tool-call-trace.ts`, called from `lib/agent-api/telemetry.ts` |
 | PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `frontends/ui/src/lib/analytics/posthog.ts` |
 | Retention and erasure | `frontends/ui/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
 | Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |
