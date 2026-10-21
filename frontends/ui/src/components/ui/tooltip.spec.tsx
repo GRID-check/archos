@@ -130,3 +130,58 @@ describe('Toggletip', () => {
     expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
   })
 })
+
+/*
+ * One timing chain for the whole app. The first tooltip waits the delay and
+ * scales in from its trigger; the next one within the skip window opens at
+ * once and with no entrance. A provider per tooltip broke the chain, so every
+ * hover waited and animated.
+ */
+describe('Tooltip timing', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+  })
+
+  function hover(element: Element) {
+    fireEvent.pointerMove(element, { pointerType: 'mouse' })
+  }
+
+  function unhover(element: Element) {
+    fireEvent.pointerLeave(element, { pointerType: 'mouse' })
+  }
+
+  it('animates only the first tooltip; its neighbour opens instantly, with no entrance', () => {
+    vi.useFakeTimers()
+    render(
+      <>
+        <Tooltip>
+          <TooltipTrigger>Kopieren</TooltipTrigger>
+          <TooltipContent>Antwort kopieren</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger>Teilen</TooltipTrigger>
+          <TooltipContent>Antwort teilen</TooltipContent>
+        </Tooltip>
+      </>
+    )
+    const copy = screen.getByRole('button', { name: 'Kopieren' })
+    const share = screen.getByRole('button', { name: 'Teilen' })
+
+    hover(copy)
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument()
+    act(() => vi.advanceTimersByTime(1000))
+    const first = document.querySelector('[data-slot="tooltip-content"]')
+    expect(first).toHaveAttribute('data-state', 'delayed-open')
+    // The entrance is gated on that state, never unconditional.
+    expect(first?.className).toContain('data-[state=delayed-open]:animate-in')
+    expect(first?.className.split(' ')).not.toContain('animate-in')
+
+    unhover(copy)
+    // Out of the grace area Radix keeps between a trigger and its bubble.
+    fireEvent.pointerMove(document, { clientX: 5000, clientY: 5000 })
+    hover(share)
+    const second = document.querySelector('[data-slot="tooltip-content"][data-state="instant-open"]')
+    expect(second).toHaveTextContent('Antwort teilen')
+  })
+})

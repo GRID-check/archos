@@ -905,15 +905,14 @@ export function FileWorkspace({
       folderPathOf={folderPathOf}
     >
     <div className="relative flex h-full flex-col" {...(canManage ? surfaceDragHandlers : {})} data-testid="workspace-dropzone">
-      {canManage && isDragging && (
-        <FileDropOverlay
-          isUnsupported={isUnsupportedDrag}
-          uploadLabel={dropTargetLabel}
-          unsupportedLabel={t('workspace.dropUnsupported')}
-          refusal={fileAim ? fileAim.refusal : dropRefusal}
-          testId="workspace-drop-overlay"
-        />
-      )}
+      <FileDropOverlay
+        show={canManage && isDragging}
+        isUnsupported={isUnsupportedDrag}
+        uploadLabel={dropTargetLabel}
+        unsupportedLabel={t('workspace.dropUnsupported')}
+        refusal={fileAim ? fileAim.refusal : dropRefusal}
+        testId="workspace-drop-overlay"
+      />
 
       {/* The count is a claim about the whole shelf: the summary's on a paged
           level, the drained listing's once its last page is in. */}

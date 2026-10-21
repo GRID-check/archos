@@ -74,7 +74,7 @@ because `:root` and `.dark` have equal specificity there. Decorative overlays
 that paint the card's colour over content (the streaming caret's veil) are
 hidden under `contrast-more:` and `forced-colors:`.
 
-**Ink ramp (light):** #1f2023 (foreground/action) → #55565a secondary → #6f706c muted → #8a8a86 placeholder → #b3b3af ghost. Borders are **alpha ink hairlines** (`rgba(28,30,33,…)` equivalents at .08 base / .12 input / .16 strong / .22–.32 selected), so they composite on any surface. Focus ring is ink-based (`--ring`), never blue, and it is for the keyboard: the global `:focus-visible` outline lives in the base cascade layer so a control's own `FOCUS_RING` (with `outline-none`) wins, and an overlay's panel never draws one when it takes the focus itself on open.
+**Ink ramp (light):** #1f2023 (foreground/action) → #55565a secondary → #6f706c muted → #8a8a86 placeholder → #b3b3af ghost. Borders are **alpha ink hairlines** (`rgba(28,30,33,…)` equivalents at .08 base / .12 input / .16 strong / .22–.32 selected), so they composite on any surface. Focus ring is ink-based (`--ring`), never blue, and it is for the keyboard: the global `:focus-visible` outline is unlayered on purpose, so it survives every control's `outline-none` and gives the keyboard its 3:1 indicator on top of the softer `FOCUS_RING` halo (in a cascade layer, `outline-none` once dropped it app-wide); an overlay's panel never draws one when it takes the focus itself on open. **A focus ring snaps.** No transition list in a control names `box-shadow` (a Tailwind ring is a box-shadow) or, on a field, `border-color` (a field's focus is its border turning to `--ring`): a ring that fades in is a ring that is not there yet when the reader looks for it.
 
 **Provenance signal system** — each signal has a base color, a `-tint` surface (for chips/rows on cards), and a `-text` variant (AA-readable on the tint), both modes:
 
@@ -140,7 +140,7 @@ The ramp targets the dummy's 9.5–24px scale: **20px page titles**, **23px hero
 | Page title (≈20px) | `text-xl font-semibold tracking-tight` |
 | Section heading | `text-lg font-semibold tracking-tight` |
 | Card/subsection title | `text-sm font-semibold` |
-| Eyebrow / label (uppercase ≈10.5px) | `text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground` (existing `text-xs` eyebrows are acceptable until a screen is restyled) |
+| Eyebrow / label (uppercase ≈10.5px) | `text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground`, written once as `.card-eyebrow` (`tracking-wider` is its 0.05em) and reached through `SectionLabel`; `TableHead` takes it too (existing `text-xs` eyebrows are acceptable until a screen is restyled) |
 | Body | `text-sm` (leading-relaxed for prose) |
 | Body secondary | `text-sm text-muted-foreground` |
 | Caption / meta | `text-xs text-muted-foreground` |
@@ -164,7 +164,7 @@ only if it arrives whole.
 - **Card padding:** `p-6` for feature cards, `p-5` for stat cards, `px-4 py-3` for list rows.
 - **Radius ladder:** controls `rounded-md` (8px — buttons, fields, badges, chips, tooltips, inner panels, selection bars), cards `rounded-lg` (12px, `--radius`), floating panels `rounded-xl` (16px — dialogs, popovers, select content). Radius is paint: a radius-only change moves no layout box.
 - **Glyph sizes:** the glyph sits two steps below its well — `size-3.5` in badges/chips, `size-4` free-floating UI glyphs (pagination chevrons, dialog close, `size-9` wells), `size-3.5` in `size-7` wells, `size-5` in the empty-state/confirm discs. A new well picks the glyph its size already owns; it does not invent one.
-- **Borders:** hairline `border` (border-border — alpha ink, composites on any surface). Prefer a single border + `bg-card` over nested boxes. Use `divide-y` for list groups inside one bordered container. Depth = surface step + layered soft shadow (`shadow-xs/sm/md/lg` are bound to `--elevation-*`), never a heavy border.
+- **Borders:** hairline `border` (border-border — alpha ink, composites on any surface). Prefer a single border + `bg-card` over nested boxes. Use `divide-y` for list groups inside one bordered container. Depth = surface step + layered soft shadow (`shadow-xs/sm/md/lg` are bound to `--elevation-*`, and a bare `shadow` is the `sm` step rather than Tailwind's cold black default), never a heavy border.
 
 ## Touch
 
@@ -211,6 +211,12 @@ strands every finger that lands on it, and the browser intersects that value
 across the whole ancestor chain — so a library stylesheet can freeze a region
 none of our code mentions. Only a surface that genuinely owns its gestures (the
 3D model canvas) may keep one.
+
+**A control's label is not selectable.** `Button` carries `select-none` and
+`-webkit-touch-callout: none`: a long press on a phone selected the label or
+offered to share a link-button, where a native control does neither. Content
+(an address, an error message, an answer) stays selectable; only controls opt
+out.
 
 **Text fields are 16px on a coarse pointer** (`text-sm pointer-coarse:text-base`),
 or iOS Safari zooms the page on focus and does not zoom back out. On the pointer
@@ -468,7 +474,7 @@ its own toolbar, not a content page. Evidence: `/dev/project-chrome`.
 </section>
 ```
 
-**Back navigation** — pages outside the project shell that still render as a full page rather than a sheet (Organisation, Platform, Profil) drop the rail for the org-scope header, so their back control is the whole way out. It is `BackLink` (`components/shell/back-link.tsx`), never a hand-rolled `<Link>`: an arrow in a raised disc plus a label that **names where the reader actually came from**, read from the tab's return trail (`lib/navigation/return-trail`, recorded by `NavigationTrail` in the root layout). Out of a project the name is the PROJECT'S — "Zurück zu Stadthaus Wien" — written into the trail by `NavigationTrailLabel` in the project shell while the reader was there, because a path holds an id and an id is not a name, and leaving that project is what the reader is undoing. Everywhere else the label comes from the destination's own `nav.sections.*` entry, so the wording cannot drift from the rail's. Navigation goes through `history.back()`, which restores the page as it was left — scroll position and open panels included — where a push to the same URL would not. Each page still passes a server-resolved `fallbackHref`/`fallbackLabel` for the case with no trail (new tab, direct link). A back control that guesses a destination is worse than none: it teaches the reader that back does not work.
+**Back navigation** — pages outside the project shell that still render as a full page rather than a sheet (Organisation, Platform, Profil) drop the rail for the org-scope header, so their back control is the whole way out. It is `BackLink` (`components/shell/back-link.tsx`), never a hand-rolled `<Link>`: an arrow in a raised disc plus a label that **names where the reader actually came from**, read from the tab's return trail (`lib/navigation/return-trail`, recorded by `NavigationTrail` in the root layout). Out of a project the name is the PROJECT'S — "Zurück zu Stadthaus Wien" — written into the trail by `NavigationTrailLabel` in the project shell while the reader was there, because a path holds an id and an id is not a name, and leaving that project is what the reader is undoing. Everywhere else the label comes from the destination's own `nav.sections.*` entry, so the wording cannot drift from the rail's. Navigation goes through `history.back()`, which restores the page as it was left — scroll position and open panels included — where a push to the same URL would not. The scroll half of that promise is not the browser's: the shell scrolls `<main>`, and the browser restores only the window, so `MainScrollMemory` (`components/shell/main-scroll-memory.tsx`) remembers `<main>`'s offset per URL and puts it back on Back and Forward. Each page still passes a server-resolved `fallbackHref`/`fallbackLabel` for the case with no trail (new tab, direct link). A back control that guesses a destination is worse than none: it teaches the reader that back does not work.
 
 The Archiv and the Postfach are NOT this case since the org-nav redesign: they rise as `PageSheet`s (`components/ui/page-sheet.tsx`) over whatever the reader was looking at — a project's rail included — so "back" is the sheet's own close control (`router.back()` for the intercepted route, a push to `/app/projects` for a hard load), never `BackLink`. A sheet's whole visual claim is that the page underneath is still there; a `BackLink` would say the opposite.
 
@@ -545,12 +551,35 @@ thing they just dismissed.
 
 | Token / class | cubic-bezier | For |
 |---|---|---|
-| `--ease-out` / `ease-out` | `0, 0, 0.2, 1` | Colour, opacity, hover, press |
+| `--ease-out` / `ease-out` | `0.23, 1, 0.32, 1` | Colour, opacity, hover, press. Also the default for any transition utility that names no curve |
 | `--ease-entrance` / `ease-entrance` | `0.16, 1, 0.3, 1` | Anything that **moves** on arrival |
-| `--ease-exit` / `ease-exit` | `0.4, 0, 1, 1` | Anything **leaving** — departure accelerates away |
+| `--ease-exit` / `ease-exit` | `0.23, 1, 0.32, 1` | Anything **leaving**: it starts at once |
 | `--ease-cycle` / `ease-cycle` | `0.65, 0, 0.35, 1` | **Only** looping / indeterminate motion |
 
-No `linear`, no `ease-in-out`, no `ease-in`, no bare `ease`. A lint rule
+**Why `--ease-out` is strong.** It was Tailwind's stock `0, 0, 0.2, 1`, which
+spends its first third barely moving. A press or a hover is feedback, and
+feedback is read in the first frames, so the curve front-loads the change
+(Emil Kowalski's strong ease-out). A transition utility with no `duration-*`
+or `ease-*` of its own runs on `--motion-quick` and this curve
+(`--default-transition-*` in `tokens.css`), not on Tailwind's 150ms.
+
+**Why exits no longer accelerate away.** `--ease-exit` was `0.4, 0, 1, 1`, an
+ease-in, on the argument that a dismissal that decelerates looks reluctant.
+In practice the ease-in was the reluctant one: after an Escape or a scrim click
+the surface barely moved for the first third of its run, which is exactly when
+the reader is watching to see the dismissal land, and a flicked sheet stalled
+before it left. Exits now start at once on the same strong ease-out, and stay
+one step shorter than their entrance; the tail runs while the surface is
+already nearly gone. The token keeps its own name so exits can be retuned
+without touching every hover.
+
+No `ease-in-out`, no `ease-in`, no bare `ease`, and no `linear` on a
+transition. `linear` is allowed in exactly one place: inside a loop's own
+`@keyframes` / `animation` shorthand where the motion is a constant velocity
+with no arrival in it, a spinner's rotation (`animate-spin`) or a band sweeping
+across a label (`animate-shimmer-*`). A wheel turning at a steady speed is the
+physical case; easing it would make the spinner lurch once per turn. A loop
+that breathes or shuttles still takes `--ease-cycle`. A lint rule
 (`grid/motion-vocabulary`) flags `transition-all`, `ease-linear`, `ease-in`,
 `ease-in-out`, `animate-pulse`, literal durations, hand-written
 `[animation-delay:…]` / `[animation-duration:…]`, transitions on
@@ -629,6 +658,28 @@ times stops being a physical cue and becomes texture.
 
 ### Fixed choreography
 
+- **A keyboard-summoned overlay does not animate.** The ⌘K palette and the
+  `?` cheatsheet open and close in one frame, panel and scrim alike
+  (`DialogContent instant`; `CommandDialog` is instant by default). They are
+  opened from the keyboard many times a day, and an entrance there is latency
+  between the keystroke and the thing asked for. A dialog opened with a click
+  on an occasional task keeps its entrance.
+- **Toasts move on Sonner's paths and our clock.** A toast drops in from the
+  edge it sits on and leaves through it, and the stack lifts and expands, all
+  through Sonner's own CSS transitions, which `globals.css` retimes onto
+  `--motion-base` / `--ease-entrance` (leaving: `--motion-quick` /
+  `--ease-exit`). Transitions, not keyframes: a toast dismissed while it is
+  still arriving turns around from where it is.
+- **Tooltips: one delay, then instant.** One `TooltipProvider` at the root
+  (`components/ui/tooltip.tsx`; a `Tooltip` joins the one above it and only
+  mounts its own where none exists). The first tooltip waits 300ms
+  (`TOOLTIP_OPEN_DELAY_MS`), then fades and scales from its trigger on
+  `--motion-quick`; within 300ms of one closing the next opens at once with no
+  entrance at all (Radix's `instant-open`), so reading along a toolbar keeps up
+  with the pointer. No slide: the scale from the trigger already says where it
+  came from. Keyboard focus opens it instantly too. A provider of its own
+  breaks the chain, so a surface adds one only to change the delay on purpose
+  (the usage charts do).
 - Content entrance: `animate-in fade-in-0` (+ `slide-in-from-bottom-1` for
   cards) via tw-animate-css.
 - **Chat turn entrance: the thread row owns it.** Every block arriving in the
@@ -677,13 +728,38 @@ times stops being a physical cue and becomes texture.
   invisible** (a masthead gated out, the Herleitung's fold). Any other
   `height` in a motion target carries an
   `eslint-disable-next-line grid/motion-vocabulary -- <why>` above the element.
+- **Disabled eases.** A control turning disabled or dimmed (`opacity-50`,
+  a `BusyButton` blocked past its delay) tweens its opacity on
+  `--motion-quick`: the primitives name `opacity` in their transition lists,
+  so the state change reads as a change rather than a blink.
 - **One press.** A `Button` or `TabsTrigger` dips on its own. Every other
   pressable (a citation chip, a copy link, a card row) composes `PRESSABLE`
   (`components/ui/press.ts`): colour, background, border, filter on
   `--motion-quick`, `active:scale-[0.98]` on `--motion-snap`, flat under
-  reduced motion. Its keyboard ring is `FOCUS_RING`
+  reduced motion. **A transition list names `scale`, not `transform`.**
+  Tailwind v4's `scale-*`, `translate-*` and `rotate-*` set the independent
+  `scale` / `translate` / `rotate` properties, which a transition on
+  `transform` does not cover: until 2026-10 every press in the app snapped
+  while its comment said it eased. `grid/motion-vocabulary` flags a list that
+  names `transform` beside one of those utilities; `transition-transform` lists
+  all four. Its keyboard ring is `FOCUS_RING`
   (`components/ui/focus-ring`) with `outline-none`. The hand-rolled controls
-  around an answer had drifted to four scales on two durations.
+  around an answer had drifted to four scales on two durations. Two
+  exceptions, both from size, never from taste. A control under ~24px (a
+  `Checkbox`, a `Radio`) takes `PRESSABLE_SMALL`: 0.95 on `--motion-snap`,
+  because the press is budgeted in pixels like the springs, and 0.98 of a
+  16px box is a third of a pixel. A row in an `ItemList` that is a link or a
+  button presses by a tint one step past its hover, not by a scale: a
+  full-width row that shrinks pulls its edges off the hairlines it shares. The
+  `RaisedCard` dips to the same 0.98 on `springPress` and lifts 2px on
+  `motionQuick`, both as `transform` strings on the compositor, and does
+  neither under reduced motion. A checkbox tick and a radio dot land on
+  `--motion-snap` (a fade and a 90% scale) as the box fills.
+- **A loading `Button` holds still.** With a leading icon the spinner takes
+  the icon's slot; with none it centres over the label, which turns
+  transparent and keeps the width and the accessible name. A spinner inserted
+  beside a bare label pushed the label sideways and widened the button.
+  `BusyButton` is the choice when the label must stay readable.
 - **Busy is not disabled.** A control that is working keeps its focus and its
   width: `aria-disabled` plus a guard in its handler, never `disabled`
   (Chrome blurs a focused button the moment it becomes disabled). Its labels
@@ -742,6 +818,10 @@ times stops being a physical cue and becomes texture.
   `padding`, `top/left/right/bottom`, `gap` or `grid-template-*`, and
   `height` only as the arrival/fold described under *Height* above. A panel
   that changes size sets its size in one pass and **translates** its content.
+  A proportion that changes is a `scaleX` from its start edge, not a width or
+  a `flex-grow` (`SegmentMeter`), and a band that sweeps across a surface is a
+  translated layer, never an animated `background-position`, which repaints
+  every frame (the skeleton shimmer, `ShimmerText`).
 - **`prefers-reduced-motion` flattens everything.** `<MotionConfig
   reducedMotion="user">` covers only motion/react's transform and layout
   animations: opacity, colour and height still tween, and delays still hold.

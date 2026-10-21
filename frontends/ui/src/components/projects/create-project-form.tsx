@@ -233,14 +233,13 @@ export function CreateProjectForm({
 
   return (
     <div className="relative" {...dragHandlers} data-testid="create-project-drop">
-      {isDragging && (
-        <FileDropOverlay
-          isUnsupported={isUnsupportedDrag}
-          uploadLabel={t('form.drop.overlay')}
-          unsupportedLabel={tFiles('workspace.dropUnsupported')}
-          testId="create-project-drop-overlay"
-        />
-      )}
+      <FileDropOverlay
+        show={isDragging}
+        isUnsupported={isUnsupportedDrag}
+        uploadLabel={t('form.drop.overlay')}
+        unsupportedLabel={tFiles('workspace.dropUnsupported')}
+        testId="create-project-drop-overlay"
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault()

@@ -32,7 +32,7 @@ import { toast } from 'sonner'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { SaveButton } from '@/components/form/save-button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -198,6 +198,7 @@ export const PlatformPricingCard: FC<{ onSaved?: () => void }> = ({ onSaved }) =
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savedHere, setSavedHere] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({
     marginMultiplier: '',
@@ -282,7 +283,9 @@ export const PlatformPricingCard: FC<{ onSaved?: () => void }> = ({ onSaved }) =
       setPayload((current) => (current ? { ...current, pricing: body.pricing } : current))
       setInputs(inputsFrom(body.pricing, locale))
       setNote('')
-      toast.success(t('pricing.saved'))
+      // Reported on the Save itself („Gespeichert"), and by the fields now
+      // holding the stored values; a toast in the corner said it twice.
+      setSavedHere(true)
       onSaved?.()
     } catch {
       toast.error(t('pricing.saveError'))
@@ -454,13 +457,17 @@ export const PlatformPricingCard: FC<{ onSaved?: () => void }> = ({ onSaved }) =
                 disabled={saving}
               />
             </Field>
-            <Button
+            <SaveButton
               className="w-full sm:w-auto"
               onClick={() => setConfirmOpen(true)}
-              disabled={saving || !dirty || !valid}
+              busy={saving}
+              saved={savedHere && !dirty}
+              disabled={!dirty || !valid}
+              busyLabel={tc('states.saving')}
+              savedLabel={tc('states.saved')}
             >
-              {saving ? tc('states.saving') : t('pricing.save')}
-            </Button>
+              {t('pricing.save')}
+            </SaveButton>
           </div>
         ) : (
           <p className="text-muted-foreground text-sm" data-testid="pricing-read-only">

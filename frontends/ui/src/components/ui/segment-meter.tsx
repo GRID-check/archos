@@ -52,30 +52,74 @@ export interface SegmentMeterProps extends Omit<React.HTMLAttributes<HTMLDivElem
 }
 
 /**
+ * The narrowest a drawn segment may be, as a share of the track: a state with
+ * one file in a thousand still shows as a sliver rather than vanishing (3% is
+ * about 4px on the folder brief's track).
+ */
+const MIN_SHARE = 0.03
+
+/**
+ * Where each drawn segment ENDS along the track, as a share of it: cumulative,
+ * with every segment held to at least `MIN_SHARE` and the last one ending at
+ * exactly 1, so rounding can never leave a gap at the end or push past it.
+ */
+export function segmentEnds(values: readonly number[]): number[] {
+  const total = values.reduce((sum, value) => sum + value, 0)
+  if (total <= 0 || values.length === 0) return []
+  const raw = values.map((value) => Math.max(value / total, MIN_SHARE))
+  const scale = raw.reduce((sum, share) => sum + share, 0)
+  let end = 0
+  return raw.map((share, index) => {
+    end = index === raw.length - 1 ? 1 : end + share / scale
+    return end
+  })
+}
+
+/**
  * A single bar split into proportional segments: how a whole divides into
  * states (read / being read / failed). Zero-valued segments are not drawn; an
  * all-zero meter is an empty track, never a full one.
  *
- * Widths are flex-grow weights rather than percentages, so rounding can never
- * leave a gap at the end or push the last segment past the track.
+ * Every segment is a full-width layer scaled from the left edge to where it
+ * ends (`scaleX`), drawn first-on-top, so each one shows only between its
+ * neighbour's end and its own. A change of counts is therefore a TRANSFORM
+ * transition, which the compositor runs; it was a `flex-grow` transition,
+ * which re-ran layout every frame. The hairline between two segments rides on
+ * its own layer, translated to the boundary (a scaled element would scale its
+ * hairline too).
  */
 export function SegmentMeter({ segments, label, className, ...props }: SegmentMeterProps): JSX.Element {
   const drawn = segments.filter((segment) => segment.value > 0)
+  const ends = segmentEnds(drawn.map((segment) => segment.value))
   return (
     <div
       role="img"
       aria-label={label}
       data-slot="segment-meter"
-      className={cn('bg-muted flex h-2 w-full gap-px overflow-hidden rounded-full', className)}
+      className={cn('bg-muted relative isolate h-2 w-full overflow-hidden rounded-full', className)}
       {...props}
     >
-      {drawn.map((segment) => (
+      {drawn.map((segment, index) => (
         <span
           key={segment.key}
           data-segment={segment.key}
-          className={cn('h-full min-w-1 bg-current transition-[flex-grow] duration-base ease-out motion-reduce:transition-none', TONE_INK[segment.tone])}
-          style={{ flexGrow: segment.value, flexBasis: 0 }}
+          className={cn(
+            'absolute inset-0 origin-left bg-current transition-transform duration-base ease-out motion-reduce:transition-none',
+            TONE_INK[segment.tone]
+          )}
+          style={{ transform: `scaleX(${ends[index]})`, zIndex: drawn.length - index }}
         />
+      ))}
+      {ends.slice(0, -1).map((end, index) => (
+        <span
+          key={`gap-${drawn[index].key}`}
+          aria-hidden
+          data-segment-gap
+          className="absolute inset-0 transition-transform duration-base ease-out motion-reduce:transition-none"
+          style={{ transform: `translateX(${end * 100}%)`, zIndex: drawn.length + 1 }}
+        >
+          <span className="bg-muted absolute inset-y-0 -left-px w-px" />
+        </span>
       ))}
     </div>
   )

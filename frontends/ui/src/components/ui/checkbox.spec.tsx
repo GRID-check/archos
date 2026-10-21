@@ -32,7 +32,20 @@ describe('Checkbox', () => {
     )
 
     rerender(<Checkbox checked={false} aria-label="Eine" />)
-    // Radix unmounts the indicator when unchecked: no glyph at all.
-    expect(screen.getByRole('checkbox').querySelector('[data-slot="checkbox-indicator"]')).toBeNull()
+    // The indicator stays mounted and hides on its own state, so the un-tick
+    // and the tick are one transition rather than a mount and an unmount.
+    const indicator = screen.getByRole('checkbox').querySelector('[data-slot="checkbox-indicator"]')
+    expect(indicator).toHaveAttribute('data-state', 'unchecked')
+    expect(indicator?.getAttribute('class')).toContain('data-[state=unchecked]:opacity-0')
+  })
+
+  it('does not replay an entrance when it mounts already checked', () => {
+    // A list of pre-checked boxes used to pop every tick in on load: Radix
+    // mounted the indicator only while checked, and the tick was an
+    // `animate-in`. A transition has no first frame to play from.
+    render(<Checkbox defaultChecked aria-label="Eine" />)
+    const indicator = screen.getByRole('checkbox').querySelector('[data-slot="checkbox-indicator"]')
+    expect(indicator?.getAttribute('class')).not.toContain('animate-in')
+    expect(indicator?.getAttribute('class')).toContain('transition-[opacity,scale]')
   })
 })

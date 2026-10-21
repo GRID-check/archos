@@ -19,6 +19,8 @@
 import { type FC, useState, useEffect, useRef } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { AnimatePresence } from '@/components/motion'
+import { HeightArrival } from '@/components/motion/height-arrival'
 import { useTranslations } from '@/i18n'
 import { useLayoutStore } from '@/features/layout/store'
 import { useDocumentsStore } from '@/features/documents'
@@ -68,22 +70,30 @@ export const NoSourcesBanner: FC<NoSourcesBannerProps> = ({ isAuthenticated = fa
     setIsDismissedByUser(true)
   }
 
-  if (!isAuthenticated || !shouldShow || isDismissedByUser) return null
+  const visible = isAuthenticated && shouldShow && !isDismissedByUser
 
+  // No CSS entrance on the root: it replayed on every mount of the composer
+  // stack (each page load, each project). A banner standing when the composer
+  // mounts stands; one that turns up later, or is dismissed, takes its height
+  // smoothly so the stack above the input does not jump.
   return (
-    <div className="animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-5xl px-4 sm:px-6 duration-base ease-entrance motion-reduce:animate-none">
-      <Alert variant="warning" className="relative">
-        <AlertTriangle />
-        <AlertDescription className="pr-6">{t('noSources.warning')}</AlertDescription>
-        <button
-          type="button"
-          onClick={handleDismiss}
-          aria-label={t('actions.dismiss')}
-          className="text-muted-foreground hover:text-foreground absolute right-3 top-3 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
-        >
-          <X className="size-4" aria-hidden="true" />
-        </button>
-      </Alert>
-    </div>
+    <AnimatePresence initial={false}>
+      {visible && (
+        <HeightArrival key="no-sources" className="mx-auto w-full max-w-5xl px-4 sm:px-6">
+          <Alert variant="warning" className="relative">
+            <AlertTriangle />
+            <AlertDescription className="pr-6">{t('noSources.warning')}</AlertDescription>
+            <button
+              type="button"
+              onClick={handleDismiss}
+              aria-label={t('actions.dismiss')}
+              className="text-muted-foreground hover:text-foreground duration-quick absolute right-3 top-3 rounded-xs transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            >
+              <X className="size-4" aria-hidden="true" />
+            </button>
+          </Alert>
+        </HeightArrival>
+      )}
+    </AnimatePresence>
   )
 }

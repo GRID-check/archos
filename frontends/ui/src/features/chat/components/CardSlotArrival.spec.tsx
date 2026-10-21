@@ -5,7 +5,7 @@
  */
 import { render, screen, waitFor } from '@/test-utils'
 import { useLayoutEffect, useState, type ReactNode } from 'react'
-import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
+import { vi, describe, test, expect, afterEach } from 'vitest'
 import { AgentResponse } from './AgentResponse'
 import { CardSlot, CardSlotLiveProvider, forgetArrivals, resetArrivalsForTests } from './CardSlotArrival'
 import { useDrawnReporter } from '@/features/a2ui/catalog'
@@ -22,12 +22,6 @@ vi.mock('../store', () => ({
     }
     return selector ? selector(asStoreState<ChatStoreWithHydration>(state)) : state
   }),
-}))
-
-let reducedMotion = false
-vi.mock('motion/react', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('motion/react')>()),
-  useReducedMotion: () => reducedMotion,
 }))
 
 vi.mock('@/adapters/api', () => ({
@@ -80,9 +74,6 @@ describe('CardSlot', () => {
   let key = 0
   // Every test is a card of its own: an arrival plays once per key and page.
   const nextKey = () => `m1:${(key += 1)}`
-  beforeEach(() => {
-    reducedMotion = false
-  })
   afterEach(() => resetArrivalsForTests())
 
   const live = (node: ReactNode) => <CardSlotLiveProvider value>{node}</CardSlotLiveProvider>
@@ -217,16 +208,33 @@ describe('CardSlot', () => {
   })
 
   test('with reduced motion, a card that arrives live is shown at once', () => {
-    reducedMotion = true
-    render(
-      live(
-        <CardSlot arrivalKey={nextKey()}>
-          <Card drawn={false} />
-        </CardSlot>
+    // The slot reads the setting through the kit (`useMotionToken`), which
+    // asks `matchMedia`; motion's own cached `useReducedMotion` is not used.
+    const original = window.matchMedia
+    window.matchMedia = (query: string) =>
+      ({
+        matches: query.includes('reduce'),
+        media: query,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => false,
+      }) satisfies MediaQueryList
+    try {
+      render(
+        live(
+          <CardSlot arrivalKey={nextKey()}>
+            <Card drawn={false} />
+          </CardSlot>
+        )
       )
-    )
-    expect(placeholder()).toBeNull()
-    expect(cardShown()).toBe(true)
+      expect(placeholder()).toBeNull()
+      expect(cardShown()).toBe(true)
+    } finally {
+      window.matchMedia = original
+    }
   })
 
   test('a finished answer holds no place for a card that never came', () => {

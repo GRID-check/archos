@@ -215,13 +215,14 @@ describe('tween scale', () => {
     expect(motionDeliberate.duration).toBe(0.32)
   })
 
-  it('runs an exit one step shorter than its entrance, on the exit curve', () => {
+  it('runs an exit one step shorter than its entrance, on a curve that starts at once', () => {
     expect(motionQuickExit.duration).toBe(motionQuick.duration)
     expect(motionQuickExit.duration).toBeLessThan(motionBase.duration as number)
-    // cubic-bezier(0.4, 0, 1, 1): the first control point sits on the axis, so
-    // the departure accelerates away rather than decelerating into nothing.
+    // An ease-in exit (the old 0.4, 0, 1, 1) barely moved for the first third
+    // of its run, the moment the reader watches to see the dismissal land. The
+    // first control point must sit above the diagonal: fast off the mark.
     const [x1, y1] = motionQuickExit.ease as [number, number, number, number]
-    expect(y1).toBeLessThan(x1)
+    expect(y1).toBeGreaterThan(x1)
   })
 
   it('reduces to nothing at all — no duration and, as importantly, no delay', () => {

@@ -112,8 +112,9 @@ export const LimitEditor: FC<{
         }),
       })
       if (res.status === 422) {
-        const body = (await res.json()) as { error?: string }
-        toast.error(body.error ?? t('budgets.policySaveError'))
+        // The server's validation text is English and technical; the reader
+        // gets the sentence in their language, as the organization limits do.
+        toast.error(t('budgets.limitsRejected'))
         return
       }
       if (!res.ok) throw new Error(String(res.status))

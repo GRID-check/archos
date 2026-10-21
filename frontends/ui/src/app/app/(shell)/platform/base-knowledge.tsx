@@ -257,7 +257,12 @@ export function BaseKnowledge(): JSX.Element {
           error?: string
         }
         if (!r.ok || (body.status !== 'pending' && body.status !== 'success')) {
-          toast.error(body.error ?? t('knowledge.uploadFailed', { name: file.name }))
+          // The file's name and the failure in the reader's language lead;
+          // the server's reason, when it gave one, is the detail line.
+          toast.error(
+            t('knowledge.uploadFailed', { name: file.name }),
+            body.error ? { description: body.error } : undefined
+          )
           return null
         }
         if (body.kind === 'zip') {

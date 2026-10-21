@@ -61,6 +61,8 @@ import {
 } from '@/features/runs/lib/carry-forward'
 import { AGENT_MENTION_ID } from '@/lib/mentions/types'
 import { cn } from '@/lib/utils'
+import { PRESSABLE } from '@/components/ui/press'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { AwaitingBanner } from '@/features/collaboration/components/AwaitingBanner'
 import { EngagementNotice } from '@/features/collaboration/components/EngagementNotice'
 import { useMessageAnchor } from '@/features/collaboration/hooks/use-message-anchor'
@@ -80,6 +82,7 @@ import {
   motionQuickExit,
   motionSheetEnter,
   motionSheetExit,
+  motionSnap,
 } from '@/components/motion'
 import type { Variants } from 'motion/react'
 import { glideScrollTo, type GlideHandle } from '../lib/glide-scroll'
@@ -2050,14 +2053,20 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
               }}
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 6 }}
+              // Leaving one step shorter than it came: the reader pressed it
+              // and is already watching the thread move, not the button.
+              exit={{ opacity: 0, y: 6, transition: prefersReducedMotion ? motionInstant : motionSnap }}
               transition={prefersReducedMotion ? motionInstant : motionQuick}
             >
               <button
                 type="button"
                 onClick={handleScrollToLatest}
                 aria-label={t('chatArea.scrollToLatest')}
-                className="bg-card text-muted-foreground hover:text-foreground duration-snap pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md pointer-coarse:size-11 transition-colors ease-out motion-reduce:transition-none"
+                className={cn(
+                  PRESSABLE,
+                  FOCUS_RING,
+                  'bg-card text-muted-foreground hover:text-foreground pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md outline-none pointer-coarse:size-11'
+                )}
               >
                 <ArrowDown className="size-4" aria-hidden="true" />
               </button>

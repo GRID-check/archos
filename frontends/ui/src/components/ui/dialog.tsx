@@ -20,18 +20,28 @@ const DialogPortal = DialogPrimitive.Portal
 
 const DialogClose = DialogPrimitive.Close
 
+/** The scrim's arrive/leave: a fade, on the overlay pair. */
+const SCRIM_MOTION =
+  'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 ' +
+  OVERLAY_MOTION
+
+/** The centred card's arrive/leave: a fade with a 95% scale, on the overlay pair. */
+const CARD_MOTION =
+  'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 ' +
+  OVERLAY_MOTION
+
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
->(({ className, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & {
+    /** No fade in or out: see `DialogContent`'s `instant`. */
+    instant?: boolean
+  }
+>(({ className, instant = false, ...props }, ref) => (
   <DialogPrimitive.Overlay
     ref={ref}
     data-slot="dialog-overlay"
-    className={cn(
-      'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 bg-overlay fixed inset-0 z-50 backdrop-blur-sm ' +
-        OVERLAY_MOTION,
-      className
-    )}
+    data-instant={instant || undefined}
+    className={cn('bg-overlay fixed inset-0 z-50 backdrop-blur-sm', !instant && SCRIM_MOTION, className)}
     {...props}
   />
 ))
@@ -231,7 +241,11 @@ interface PhonePresentation {
 }
 
 /** Resolve the presentation against the caller's own class list. */
-function phonePresentation(requested: DialogMobilePresentation, className: string | undefined): PhonePresentation {
+function phonePresentation(
+  requested: DialogMobilePresentation,
+  className: string | undefined,
+  instant: boolean
+): PhonePresentation {
   const reach = phoneReach(className)
   const presentation =
     requested === 'sheet' && GEOMETRY_PROBES.some((probe) => callerSets(probe, reach)) ? 'none' : requested
@@ -243,10 +257,11 @@ function phonePresentation(requested: DialogMobilePresentation, className: strin
     !callerSets('pt-0', reach) &&
     (presentation === 'sheet' || (!callerSets('pl-0', reach) && !callerSets('pr-0', reach)))
   const top = presentation === 'sheet' ? STICKY_TOP_SHEET : STICKY_TOP_FULLSCREEN
+  const motion = instant ? '' : PHONE_SHEET_MOTION
   const classes =
     presentation === 'sheet'
-      ? [SHEET_GEOMETRY, unlessCallerSets(SHEET_CHROME, reach), pinned, PHONE_SHEET_MOTION]
-      : [FULLSCREEN_GEOMETRY, unlessCallerSets(FULLSCREEN_CHROME, reach), pinned, PHONE_SHEET_MOTION]
+      ? [SHEET_GEOMETRY, unlessCallerSets(SHEET_CHROME, reach), pinned, motion]
+      : [FULLSCREEN_GEOMETRY, unlessCallerSets(FULLSCREEN_CHROME, reach), pinned, motion]
   if (ownTop) classes.push(top.content)
   return { presentation, classes: classes.join(' '), chrome: ownTop ? top.chrome : '' }
 }
@@ -261,6 +276,15 @@ const DialogContent = React.forwardRef<
     fullScreenOnMobile?: boolean
     /** The close button's accessible name, in the reader's language. */
     closeLabel?: string
+    /**
+     * Open and close with no motion at all, panel and scrim alike. For an
+     * overlay summoned from the keyboard and used many times a day (the ⌘K
+     * palette, the `?` cheatsheet): an animation there is latency between the
+     * keystroke and the thing the reader asked for, paid hundreds of times. A
+     * dialog the reader opens with a click on an occasional task keeps its
+     * entrance, which says where it came from.
+     */
+    instant?: boolean
   }
 >(
   (
@@ -271,6 +295,7 @@ const DialogContent = React.forwardRef<
       mobilePresentation,
       fullScreenOnMobile = false,
       closeLabel = 'Close',
+      instant = false,
       onOpenAutoFocus,
       ...props
     },
@@ -285,7 +310,8 @@ const DialogContent = React.forwardRef<
       chrome,
     } = phonePresentation(
       mobilePresentation ?? (fullScreenOnMobile ? 'fullscreen' : 'sheet'),
-      className
+      className,
+      instant
     )
     // The grabber promises a pull, so it appears only where one works: a sheet
     // the reader may close (a dialog that hides its X has a reason to).
@@ -293,11 +319,12 @@ const DialogContent = React.forwardRef<
 
     return (
       <DialogPortal data-slot="dialog-portal">
-        <DialogOverlay />
+        <DialogOverlay instant={instant} />
         <DialogPrimitive.Content
           ref={ref}
           data-slot="dialog-content"
           data-mobile-presentation={presentation}
+          data-instant={instant || undefined}
           // `grid-cols-1` is `minmax(0, 1fr)`. Without it the content grid's
           // implicit `auto` column cannot shrink below its widest `truncate` line,
           // so one long file name pushed the whole dialog past its own edge and cut
@@ -310,8 +337,8 @@ const DialogContent = React.forwardRef<
             focusPanelUnderFinger(event)
           }}
           className={cn(
-            'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-xl border p-6 shadow-lg sm:max-w-lg ' +
-              OVERLAY_MOTION,
+            'bg-popover text-popover-foreground fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-xl border p-6 shadow-lg sm:max-w-lg',
+            !instant && CARD_MOTION,
             phoneClasses,
             className
           )}

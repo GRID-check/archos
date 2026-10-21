@@ -30,6 +30,7 @@ import * as React from 'react'
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form'
 
 import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
@@ -42,6 +43,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
+import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
 
@@ -290,18 +292,68 @@ interface SubmitButtonProps extends React.ComponentProps<typeof Button> {
   children: React.ReactNode
 }
 
-function SubmitButton({ children, disabled, ...buttonProps }: SubmitButtonProps) {
+/**
+ * The form's submit. Busy is not disabled (docs/design/grid-design-language.md):
+ * while the submit runs the button keeps its focus (`aria-disabled`, and the
+ * press is swallowed here, because Chrome blurs a button the moment it becomes
+ * `disabled`) and its width (the label stays in the layout, transparent but
+ * still the button's accessible name, under the spinner), and the spinner appears only once the wait has lasted 150 ms:
+ * below that the press is the feedback. `disabled` stays for what cannot be
+ * submitted at all, an invalid form.
+ */
+function SubmitButton({ children, disabled, className, onClick, ...buttonProps }: SubmitButtonProps) {
   const form = useFormContext()
 
   return (
     <form.Subscribe selector={(state) => [state.canSubmit, state.isSubmitting] as const}>
       {([canSubmit, isSubmitting]) => (
-        <Button type="submit" disabled={disabled || !canSubmit || isSubmitting} {...buttonProps}>
-          {isSubmitting && <Spinner size="sm" />}
+        <SubmitButtonFace
+          {...buttonProps}
+          className={className}
+          onClick={onClick}
+          // TanStack's `canSubmit` is false WHILE submitting too; only an
+          // invalid form disables, a running submit is busy.
+          disabled={disabled || (!canSubmit && !isSubmitting)}
+          busy={isSubmitting}
+        >
           {children}
-        </Button>
+        </SubmitButtonFace>
       )}
     </form.Subscribe>
+  )
+}
+
+function SubmitButtonFace({
+  busy,
+  children,
+  className,
+  onClick,
+  ...buttonProps
+}: SubmitButtonProps & { busy: boolean }) {
+  const showBusy = useDelayedFlag(busy)
+  return (
+    <Button
+      type="submit"
+      {...buttonProps}
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
+      data-busy={showBusy || undefined}
+      className={cn('relative aria-disabled:cursor-default', className)}
+      onClick={(event) => {
+        if (busy) {
+          event.preventDefault()
+          return
+        }
+        onClick?.(event)
+      }}
+    >
+      <span className={cn('inline-flex items-center gap-[inherit]', showBusy && 'opacity-0')}>{children}</span>
+      {showBusy && (
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <Spinner size="sm" />
+        </span>
+      )}
+    </Button>
   )
 }
 

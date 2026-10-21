@@ -14,7 +14,7 @@
  * Use it inside `<AnimatePresence initial={false}>`: a block that was already
  * there when the surface mounted (a stored answer, a reload) stands at once,
  * and only one the reader watches arrive animates. Removing it runs the exit
- * (`motionQuickExit`, accelerating away) before it unmounts.
+ * (`motionQuickExit`, one step shorter) before it unmounts.
  *
  * It is clipped only while it animates. Clipped for good, a popover or focus
  * ring inside it would be cut off; never clipped, the content would spill out

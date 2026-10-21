@@ -9,6 +9,7 @@
 import { type FC, useState } from 'react'
 import { ExternalLink, ScrollText } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
+import { useDelayedFlag } from '@/hooks/use-transient-flag'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 
@@ -20,6 +21,7 @@ interface AuditLogButtonProps {
 
 export const AuditLogButton: FC<AuditLogButtonProps> = ({ endpoint, label, errorMessage }) => {
   const [loading, setLoading] = useState(false)
+  const showBusy = useDelayedFlag(loading)
 
   const open = async (): Promise<void> => {
     setLoading(true)
@@ -45,8 +47,20 @@ export const AuditLogButton: FC<AuditLogButtonProps> = ({ endpoint, label, error
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={open} disabled={loading}>
-      {loading ? (
+    // Busy is not disabled: it keeps the focus the press gave it, swallows a
+    // second press, and swaps its glyph for the spinner only once the wait
+    // has lasted 150 ms (same slot, so the label does not move).
+    <Button
+      variant="outline"
+      size="sm"
+      onClick={() => {
+        if (!loading) void open()
+      }}
+      aria-disabled={loading || undefined}
+      aria-busy={loading || undefined}
+      className="aria-disabled:cursor-default"
+    >
+      {showBusy ? (
         <Spinner size="xs" className="mr-1.5" />
       ) : (
         <ScrollText className="mr-1.5 size-3.5" aria-hidden />

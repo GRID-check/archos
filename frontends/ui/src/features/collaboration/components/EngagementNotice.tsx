@@ -32,7 +32,7 @@ import { useState } from 'react'
 import { AtSign } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 
-import { motion } from '@/components/motion'
+import { motion, motionQuick, useMotionToken } from '@/components/motion'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
 import type { ConversationEngagement } from '@/lib/db/schema'
@@ -65,6 +65,7 @@ export function EngagementNotice({
   className,
 }: EngagementNoticeProps): JSX.Element | null {
   const t = useTranslations('collaboration')
+  const enter = useMotionToken(motionQuick)
   const [saving, setSaving] = useState(false)
   const [failed, setFailed] = useState(false)
 
@@ -95,7 +96,7 @@ export function EngagementNotice({
     <motion.div
       initial={{ opacity: 0, y: 2 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.18, ease: 'easeOut' }}
+      transition={enter}
       data-testid="engagement-notice"
       data-engagement={mode}
       // `items-start`, and the icon is a sibling of a text COLUMN rather than one

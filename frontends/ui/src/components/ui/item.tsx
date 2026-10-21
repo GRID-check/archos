@@ -28,6 +28,14 @@ function Item({
         // A row is routinely `asChild` an anchor, and an anchor cannot take
         // `disabled` — so the aria mirror carries the same treatment.
         'disabled:pointer-events-none disabled:opacity-50 aria-disabled:pointer-events-none aria-disabled:opacity-50',
+        // THE PRESS, for a row that is a control (`asChild` a link or a
+        // button). A tint one step past the hover, on the same snap, and NOT
+        // the `PRESSABLE` scale: a row is connected to its neighbours, and a
+        // full-width row shrinking 2% pulls its edges off the hairlines above
+        // and below it, the detachment the hover-without-lift rule exists to
+        // prevent. A plain `div` row is gated out, since `:active` fires on
+        // any element under a held pointer.
+        '[&:is(a,button)]:active:bg-accent/70',
         className,
       )}
       {...props}

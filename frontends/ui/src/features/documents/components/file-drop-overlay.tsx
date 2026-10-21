@@ -3,6 +3,7 @@
 import { useEffect, type ReactNode } from 'react'
 import { Ban, Upload } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { AnimatePresence, motion, motionQuick, motionSnap, useMotionToken } from '@/components/motion'
 import { isExternalFileDrag } from '../hooks/use-document-drag'
 
 /**
@@ -37,6 +38,8 @@ export function useWindowDragGuard(): void {
 }
 
 interface FileDropOverlayProps {
+  /** Whether a file is being dragged over the surface (and it may take one). */
+  show: boolean
   /** True when the dragged payload is a type the surface can't accept. */
   isUnsupported: boolean
   uploadLabel: string
@@ -51,10 +54,17 @@ interface FileDropOverlayProps {
 /**
  * The dashed full-surface overlay shown while a file is dragged over a
  * workspace. Identical across the Files and Archiv workspaces (they differ only
- * in the test id), so it lives here once. Callers gate rendering on their own
- * drag + permission state.
+ * in the test id), so it lives here once. Callers pass their own drag +
+ * permission state as `show`; the overlay owns its presence so it can leave.
+ *
+ * It fades, in on `motionQuick` and out one step shorter. Popped in and out,
+ * the blurred veil flashed over the whole surface every time a drag crossed
+ * its edge, which a reader dragging past the chat on the way to a folder saw
+ * twice per drag. Opacity only, on the veil itself, so its `backdrop-blur` fades with it.
+ * Under reduced motion both are instant (`useMotionToken`).
  */
 export function FileDropOverlay({
+  show,
   isUnsupported,
   uploadLabel,
   unsupportedLabel,
@@ -62,27 +72,40 @@ export function FileDropOverlay({
   hint,
   testId,
 }: FileDropOverlayProps) {
+  const enter = useMotionToken(motionQuick)
+  const exit = useMotionToken(motionSnap)
   const refused = Boolean(refusal)
   const negative = refused || isUnsupported
   const Icon = refused ? Ban : Upload
   return (
-    <div
-      className={cn(
-        'pointer-events-none absolute inset-2 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-center',
-        negative ? 'border-destructive bg-destructive/5' : 'border-ring bg-primary/5 backdrop-blur-sm'
+    <AnimatePresence initial={false}>
+      {show && (
+        // The fade sits on the element that carries the blur: an ancestor
+        // below full opacity is a backdrop root, which would blur nothing
+        // during the fade and then snap the blur on at its end.
+        <motion.div
+          key="file-drop-overlay"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: enter }}
+          exit={{ opacity: 0, transition: exit }}
+          className={cn(
+            'pointer-events-none absolute inset-2 z-50 flex flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed text-center',
+            negative ? 'border-destructive bg-destructive/5' : 'border-ring bg-primary/5 backdrop-blur-sm'
+          )}
+          data-testid={testId}
+          data-refused={refused ? '' : undefined}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="flex flex-col items-center gap-2 px-4">
+            <Icon className={cn('size-6', negative ? 'text-destructive' : 'text-primary')} aria-hidden />
+            <p className={cn('text-sm font-medium', negative ? 'text-destructive' : 'text-primary')}>
+              {refusal ?? (isUnsupported ? unsupportedLabel : uploadLabel)}
+            </p>
+            {!refused && hint}
+          </div>
+        </motion.div>
       )}
-      data-testid={testId}
-      data-refused={refused ? '' : undefined}
-      role="status"
-      aria-live="polite"
-    >
-      <div className="flex flex-col items-center gap-2 px-4">
-        <Icon className={cn('size-6', negative ? 'text-destructive' : 'text-primary')} aria-hidden />
-        <p className={cn('text-sm font-medium', negative ? 'text-destructive' : 'text-primary')}>
-          {refusal ?? (isUnsupported ? unsupportedLabel : uploadLabel)}
-        </p>
-        {!refused && hint}
-      </div>
-    </div>
+    </AnimatePresence>
   )
 }

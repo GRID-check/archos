@@ -146,7 +146,7 @@ export function BackControl({
   // it to fall back on, that matters more than anywhere else.
   const shell = cn(
     'text-muted-foreground hover:bg-accent/60 hover:text-foreground group inline-flex w-fit items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5 text-sm pointer-coarse:py-2.5 pointer-coarse:pl-2.5 pointer-coarse:pr-4',
-    'transition-[color,background-color,transform] duration-quick ease-out active:scale-[0.98] motion-reduce:transition-none',
+    'transition-[color,background-color,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out active:scale-[0.98] motion-reduce:transition-none',
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
     className
   )

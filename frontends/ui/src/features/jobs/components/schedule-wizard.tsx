@@ -881,7 +881,7 @@ function ScheduleStep({
             onClick={() => onCadenceChange(option)}
             data-testid={`cadence-${option}`}
             className={cn(
-              'border-border rounded-lg border px-3 py-2.5 text-left transition-colors duration-fast',
+              'border-border rounded-lg border px-3 py-2.5 text-left transition-colors duration-quick ease-out',
               'focus-visible:ring-ring focus-visible:ring-2 focus-visible:outline-none',
               cadence === option
                 ? 'border-primary bg-primary-subtle'

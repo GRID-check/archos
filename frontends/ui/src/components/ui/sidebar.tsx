@@ -27,7 +27,7 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
 const SIDEBAR_STORAGE_KEY = 'grid.sidebar.collapsed'
 const SIDEBAR_WIDTH_STORAGE_KEY = 'grid.sidebar.width'
@@ -221,16 +221,17 @@ function SidebarProvider({
 
   return (
     <SidebarContext.Provider value={contextValue}>
-      <TooltipProvider delayDuration={0}>
-        <div
-          data-slot="sidebar-wrapper"
-          style={wrapperStyle}
-          className={cn('group/sidebar-wrapper flex min-h-0 w-full has-data-[variant=inset]:bg-sidebar', className)}
-          {...props}
-        >
-          {children}
-        </div>
-      </TooltipProvider>
+      {/* No tooltip provider of its own: the rail's labels share the app's
+          one timing chain, so moving from a rail icon to a toolbar button
+          keeps the instant follow-up (`components/ui/tooltip.tsx`). */}
+      <div
+        data-slot="sidebar-wrapper"
+        style={wrapperStyle}
+        className={cn('group/sidebar-wrapper flex min-h-0 w-full has-data-[variant=inset]:bg-sidebar', className)}
+        {...props}
+      >
+        {children}
+      </div>
     </SidebarContext.Provider>
   )
 }
@@ -366,8 +367,8 @@ function Sidebar({
           // NOT in the transition list: see the gap above.
           // Both legs get their own curve: `data-collapsible` is only present
           // while collapsed, so the rail leaves on `ease-exit` and returns on
-          // `ease-entrance` — a departure accelerates away, an arrival decides
-          // early and settles.
+          // `ease-entrance`: both decide early and settle, and the exit's
+          // curve can be retuned on its own.
           'fixed inset-y-0 z-10 hidden h-[var(--visual-viewport-height,100dvh)] w-(--sidebar-width) transition-transform duration-deliberate ease-entrance group-data-[collapsible=offcanvas]:ease-exit motion-reduce:transition-none md:flex',
           side === 'left'
             ? 'left-0 group-data-[collapsible=offcanvas]:-translate-x-full'

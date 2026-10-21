@@ -37,6 +37,7 @@ import type { JSX } from 'react'
 import { type ReactNode } from 'react'
 import { AppShellChrome } from '@/components/shell/app-shell-chrome'
 import { RouteFocus } from '@/shared/components/route-focus'
+import { MainScrollMemory } from '@/components/shell/main-scroll-memory'
 import { resolveShellChrome } from '@/lib/shell/chrome'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 
@@ -80,6 +81,7 @@ export default async function AppShellLayout({
         className="bg-background relative flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto outline-none"
       >
         <RouteFocus />
+        <MainScrollMemory />
         {children}
       </main>
     </AppShellChrome>

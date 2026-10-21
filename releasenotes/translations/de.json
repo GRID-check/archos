@@ -1056,6 +1056,10 @@
     "de": "Schaltflächen an Codeblöcken und Zeitangaben bei Chat-Fehlern folgen jetzt der eingestellten Sprache. Wenn Sie auf Chinesisch, Japanisch oder Koreanisch schreiben, schickt Enter zur Bestätigung eines Zeichens die Nachricht nicht mehr ab."
   },
   {
+    "en": "Buttons, chips and tabs now give way softly when you press them, and dialogs and menus get out of the way the moment you dismiss them. The whole workspace answers your hand a little faster.",
+    "de": "Buttons, Chips und Tabs geben jetzt sanft nach, wenn Sie darauf drücken, und Dialoge und Menüs verschwinden sofort, sobald Sie sie schließen. Der gesamte Arbeitsbereich reagiert etwas schneller auf Ihre Eingaben."
+  },
+  {
     "en": "Card headers with buttons in them no longer run past the edge of a narrow screen. Where there is not room for the title and the buttons on one line, the buttons move underneath.",
     "de": "Kartenüberschriften mit Schaltflächen ragen nicht mehr über den Rand schmaler Bildschirme hinaus. Wenn Titel und Schaltflächen nicht in eine Zeile passen, werden die Schaltflächen darunter angezeigt."
   },
@@ -1556,6 +1560,10 @@
     "de": "Beim Abschließen einer neuen Aufgabe gibt es jetzt die Option „Jetzt erstellen und ausführen“. So sehen Sie sofort das erste Ergebnis, statt bis zum nächsten geplanten Zeitpunkt zu warten und erst dann zu prüfen, ob die Anfrage Ihrer Vorstellung entspricht."
   },
   {
+    "en": "Finishing the project intake now ends on a check that lands on the save button before the project opens, and moving between intake steps no longer pauses on an empty form.",
+    "de": "Beim Abschließen der Projektaufnahme endet der Ablauf jetzt mit einer Prüfung, bei der der Fokus auf der Schaltfläche „Speichern“ liegt, bevor das Projekt geöffnet wird; beim Wechsel zwischen den Schritten bleibt der Ablauf nicht mehr bei einem leeren Formular stehen."
+  },
+  {
     "en": "Folder names of a folder dropped into a chat, and folder names far down a long path, are now checked against your office's list on the server too.",
     "de": "Ordnernamen eines in einen Chat gezogenen Ordners und von Ordnern weit unten in einem langen Pfad werden jetzt ebenfalls mit der Liste Ihres Büros auf dem Server abgeglichen."
   },
@@ -1622,6 +1630,10 @@
   {
     "en": "Freigeben now names the Anmerkungen still open on the document before you sign, such as „4 offene Anmerkungen – trotzdem freigeben?“, with a link to the Prüfansicht. It does not stop the Freigabe.",
     "de": "Beim Freigeben werden jetzt die noch offenen Anmerkungen zum Dokument angezeigt, bevor Sie unterschreiben, z. B. „4 offene Anmerkungen – trotzdem freigeben?“, mit einem Link zur Prüfansicht. Die Freigabe wird dadurch nicht verhindert."
+  },
+  {
+    "en": "Going back in the browser returns a page to where you had scrolled it, instead of keeping the scroll position of the page you just left.",
+    "de": "Wenn Sie im Browser zurückgehen, springt die Seite zu ihrer vorherigen Scrollposition zurück, statt die Scrollposition der gerade verlassenen Seite beizubehalten."
   },
   {
     "en": "Hold a file or folder you are dragging over a folder for a moment and it opens, so you can move things into folders that are not on screen. Every move now offers to undo it.",
@@ -2420,6 +2432,10 @@
     "de": "Der Rechtsklick im Bereich Dateien eines Projekts funktioniert wie im Finder und im Explorer: Eine Datei, ein Ordner und die leere Liste öffnen jeweils ein eigenes Menü. Die Schaltfläche ⋯ an einer Datei oder einem Ordner bietet dieselben Aktionen, sodass das Menü auch dann erreichbar bleibt, wenn Sie nie mit der rechten Maustaste klicken."
   },
   {
+    "en": "Saving organization settings, standing instructions or the price list now shows Saved on the button itself rather than in a separate message, and a usage or storage panel that fails to load offers a retry in place.",
+    "de": "Beim Speichern von Organisationseinstellungen, dauerhaften Anweisungen oder der Preisliste wird „Gespeichert“ jetzt direkt auf der Schaltfläche statt in einer separaten Meldung angezeigt. Ein Nutzungs- oder Speicher-Panel, das nicht geladen werden kann, bietet direkt dort die Möglichkeit, es erneut zu versuchen."
+  },
+  {
     "en": "Scanned pages are now checked once the vision model has read them, before anything else uses their text. A file held back for what was found there says that the vision model read those pages.",
     "de": "Gescannte Seiten werden jetzt geprüft, sobald das Vision-Modell sie gelesen hat und bevor etwas anderes ihren Text verwendet. Bei einer Datei, die aufgrund der darin gefundenen Inhalte zurückgehalten wird, steht nun, dass das Vision-Modell diese Seiten gelesen hat."
   },
@@ -2786,6 +2802,10 @@
   {
     "en": "The cited passage is highlighted in the document again, and it stays highlighted after a reload. „Zitat kopieren“ now copies the quote, not only the bibliographic reference.",
     "de": "Die zitierte Stelle ist im Dokument wieder markiert und bleibt auch nach einem Neuladen markiert. „Zitat kopieren“ kopiert jetzt das Zitat selbst und nicht nur die Quellenangabe."
+  },
+  {
+    "en": "The command palette opens instantly on Cmd+K, and once one tooltip is showing, the next one appears as soon as you point at it.",
+    "de": "Die Command-Palette öffnet sich sofort mit Cmd+K. Sobald ein Tooltip angezeigt wird, erscheint der nächste, sobald Sie mit dem Mauszeiger darüberfahren."
   },
   {
     "en": "The compliance check now takes requirements only from the Richtlinien and evidence only from your own documents, including the office archive. A requirement can no longer count as documented just because the Richtlinie states it.",

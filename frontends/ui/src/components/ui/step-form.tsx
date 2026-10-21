@@ -16,6 +16,8 @@ import type { JSX } from 'react'
 import { useState, type ReactNode } from 'react'
 import { ChevronDown } from 'lucide-react'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { PRESSABLE } from '@/components/ui/press'
 import { cn } from '@/lib/utils'
 
 /** The heading every step wears: one question, one sentence under it. */
@@ -55,7 +57,14 @@ export function Advanced({
       <CollapsibleTrigger asChild>
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 flex w-full items-center gap-2 rounded-md text-sm focus-visible:outline-none focus-visible:ring-2"
+          // The house press and ring. `origin-left`: the trigger is a full-width
+          // row whose content sits at its start, so the dip gathers toward the
+          // chevron instead of pulling the label in from both ends.
+          className={cn(
+            'text-muted-foreground hover:text-foreground flex w-full origin-left items-center gap-2 rounded-md text-sm outline-none',
+            PRESSABLE,
+            FOCUS_RING
+          )}
           data-testid={testId}
         >
           <ChevronDown

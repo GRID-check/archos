@@ -27,9 +27,10 @@ const chipVariants = cva(
   // it is wrapped in `ChipLabel`, which truncates; the count and icon stay whole.
   'inline-flex items-center gap-1 rounded-md border font-medium w-fit max-w-full whitespace-nowrap shrink-0 ' +
     // background/border ride along so the interactive hover fills below
-    // transition instead of snapping; transform keeps the press dip smooth.
+    // transition instead of snapping; `scale` keeps the press dip smooth (the
+    // property Tailwind v4's `active:scale-*` sets, not `transform`).
     // Paint only — no layout property is ever transitioned here.
-    'align-middle outline-none transition-[transform,opacity,background-color,border-color] duration-quick ease-out ' +
+    'align-middle outline-none transition-[scale,opacity,background-color,border-color] duration-quick ease-out ' +
     'motion-reduce:transition-none [&>svg]:pointer-events-none [&>svg]:shrink-0 ' +
     FOCUS_RING,
   {

@@ -863,7 +863,6 @@ export const platform = {
     emptyTitle: 'No lessons yet',
     emptyBody:
       'When users mark answers as not helpful, the reports are distilled into lessons here — automatically, and each one traceable back to the feedback behind it.',
-    updated: 'Lesson updated.',
     updateError: 'Could not update the lesson.',
     groups: {
       candidate: 'Held for review',
@@ -1093,7 +1092,6 @@ export const platform = {
     note: 'Change note',
     notePlaceholder: 'Why this price list (optional)',
     save: 'Save price list',
-    saved: 'Price list saved. It applies from the next request.',
     saveError: 'The price list could not be saved.',
     loadError: 'The price list could not be loaded.',
     confirmTitle: 'Change the price list for every organization?',

@@ -296,7 +296,9 @@ export const Providers = ({ children, config, locale }: ProvidersProps): ReactNo
           {/* reducedMotion="user" disables transform/layout animations for users
               with prefers-reduced-motion, app-wide. */}
           <MotionConfig reducedMotion="user">
-            <TooltipProvider delayDuration={200}>
+            {/* The primitive's delay (first tooltip waits, the next ones in a
+                chain open at once); no app-wide override. */}
+            <TooltipProvider>
               <PostHogIdentitySync />
               {content}
             </TooltipProvider>

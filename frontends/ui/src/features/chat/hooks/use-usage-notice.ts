@@ -35,7 +35,15 @@ export function useUsageNotice(options: {
   isStreaming: boolean
 }): ChatUsageNotice | null {
   const { enabled, projectId, isStreaming } = options
-  const [notice, setNotice] = useState<ChatUsageNotice | null>(null)
+  // Held with the project it was read for, so a switch drops the old
+  // project's notice in the render that switches, not one effect later: a
+  // notice that stood for one more frame could start leaving under the new
+  // project's composer.
+  const [held, setHeld] = useState<{ projectId: string | null; notice: ChatUsageNotice | null }>({
+    projectId,
+    notice: null,
+  })
+  const notice = held.projectId === projectId ? held.notice : null
   const lastReadAt = useRef(0)
   const generation = useRef(0)
 
@@ -52,7 +60,7 @@ export function useUsageNotice(options: {
       if (!res.ok) return
       const body = (await res.json()) as { notice?: ChatUsageNotice | null }
       // A slower read for the project the chat just left must not win.
-      if (mine === generation.current) setNotice(body.notice ?? null)
+      if (mine === generation.current) setHeld({ projectId, notice: body.notice ?? null })
     } catch {
       // Keep what is shown.
     }
@@ -60,9 +68,9 @@ export function useUsageNotice(options: {
 
   // Open, and every project switch. The old project's notice goes at once.
   useEffect(() => {
-    setNotice(null)
+    setHeld({ projectId, notice: null })
     void refresh()
-  }, [refresh])
+  }, [refresh, projectId])
 
   // A turn ending: its spend is in the ledger a moment later.
   const wasStreaming = useRef(isStreaming)

@@ -6,7 +6,6 @@ import { Card } from '@/components/ui/card'
 import {
   AnimatePresence,
   motion,
-  motionEntrance,
   motionQuick,
   motionQuickExit,
   useMotionToken,
@@ -134,28 +133,27 @@ export function ProposalShell({
   }, [tone])
 
   return (
-    // A fade, no scale: the card arrives in the transcript where it will stay,
-    // and a zoom from 98% made its edges and text swim for the length of the
-    // entrance in a column of otherwise still prose.
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={motionEntrance}>
-      <Card
-        className={cn(
-          CARD_SHELL,
-          'border-l-2 p-5 transition-colors duration-base ease-out motion-reduce:transition-none',
-          TONE_ACCENT[tone],
-          className
-        )}
-      >
-        {/* The frame the height glides on. `relative` is for `popLayout`,
-            which positions the outgoing body absolutely against it. */}
-        <div ref={frameRef} className="relative">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <ProposalBody key={tone} ref={bodyRef} tone={tone} enter={enter} exit={exit}>
-              {children}
-            </ProposalBody>
-          </AnimatePresence>
-        </div>
-      </Card>
-    </motion.div>
+    // No entrance of its own. A card the reader watches arrive is faded in by
+    // its slot (`CardSlot`) and a new turn by its thread row; a root fade here
+    // replayed on every remount (a restored thread, a re-render by position)
+    // and doubled the slot's fade on a live one.
+    <Card
+      className={cn(
+        CARD_SHELL,
+        'border-l-2 p-5 transition-colors duration-base ease-out motion-reduce:transition-none',
+        TONE_ACCENT[tone],
+        className
+      )}
+    >
+      {/* The frame the height glides on. `relative` is for `popLayout`,
+          which positions the outgoing body absolutely against it. */}
+      <div ref={frameRef} className="relative">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <ProposalBody key={tone} ref={bodyRef} tone={tone} enter={enter} exit={exit}>
+            {children}
+          </ProposalBody>
+        </AnimatePresence>
+      </div>
+    </Card>
   )
 }

@@ -13,7 +13,7 @@
 import { type FC, useState, useCallback } from 'react'
 import { toast } from 'sonner'
 
-import { Button } from '@/components/ui/button'
+import { SaveButton } from '@/components/form/save-button'
 import { Field, FieldDescription, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import {
@@ -47,12 +47,14 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
 }) => {
   const t = useTranslations('organization')
   const tChat = useTranslations('chat')
+  const tCommon = useTranslations('common')
 
   const [displayName, setDisplayName] = useState(initialDisplayName ?? '')
   const [defaultLocaleValue, setDefaultLocaleValue] = useState<Locale | null>(initialDefaultLocale)
   const [webSearchEnabled, setWebSearchEnabled] = useState(initialWebSearchEnabled)
   const [chatEffort, setChatEffort] = useState<ChatEffort>(initialChatEffort)
   const [saving, setSaving] = useState(false)
+  const [savedHere, setSavedHere] = useState(false)
   // The saved baseline — Save stays disabled until a field actually differs, and
   // resets here after a successful save so the button re-disables (no needless
   // PUT + false "saved" toast when nothing changed).
@@ -97,7 +99,8 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
         webSearchEnabled,
         chatEffort,
       })
-      toast.success(t('settings.saved'))
+      // Reported on the Save itself („Gespeichert"), where the press was.
+      setSavedHere(true)
     } catch {
       toast.error(t('settings.saveError'))
     } finally {
@@ -173,9 +176,16 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
       </Field>
 
       <div>
-        <Button onClick={handleSave} disabled={saving || !isDirty}>
-          {saving ? t('settings.saving') : t('settings.save')}
-        </Button>
+        <SaveButton
+          onClick={handleSave}
+          busy={saving}
+          saved={savedHere && !isDirty}
+          disabled={!isDirty}
+          busyLabel={t('settings.saving')}
+          savedLabel={tCommon('states.saved')}
+        >
+          {t('settings.save')}
+        </SaveButton>
       </div>
     </FieldGroup>
   )
