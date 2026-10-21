@@ -55,8 +55,12 @@ import {
   AnimatePresence,
   motion,
   motionEntrance,
+  motionQuick,
+  motionQuickExit,
   useIconSwapTransition,
+  useMotionToken,
 } from '@/components/motion'
+import { HeightArrival } from '@/components/motion/height-arrival'
 import { useWebSocketChat, useChatStore, useIsCurrentSessionBusy } from '@/features/chat'
 import { ChatScreeningNotice } from '@/features/chat/components/ChatScreeningNotice'
 import { OtherProjectsNotice } from '@/features/chat/components/OtherProjectsNotice'
@@ -336,6 +340,12 @@ const FileChip: FC<{
   // Kept and never read: the chat cannot answer from it, so no green check.
   const isStored = file.status === 'stored'
   const isSuccess = file.status === 'success'
+  // Whether the reader watched this chip work: only then does its check land
+  // (on the icon-swap spring) when the file turns readable. A chip that was
+  // already ready when the thread opened shows its check standing.
+  const [sawPending, setSawPending] = useState(isPending)
+  if (isPending && !sawPending) setSawPending(true)
+  const glyph = useIconSwapTransition()
   const thumbnail = usePhotoThumbnail(file.file)
   // A file refused because the document it replaces is held carries a
   // sentence, not a verdict (ADR-0086): it is said as it is.
@@ -380,7 +390,13 @@ const FileChip: FC<{
       <span className="sr-only">{t('inputArea.fileFailedStatus')}</span>
     </>
   ) : (
-    <Check className="text-status-active size-3 shrink-0" aria-hidden="true" />
+    <motion.span
+      className="inline-flex shrink-0"
+      initial={sawPending ? { opacity: 0, scale: 0.6 } : false}
+      animate={{ opacity: 1, scale: 1, transition: glyph.enter }}
+    >
+      <Check className="text-status-active size-3 shrink-0" aria-hidden="true" />
+    </motion.span>
   )
 
   return (
@@ -822,6 +838,10 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   // An icon swap: scale on `springSnap`, opacity on a tween (opacity never
   // springs), both instant under reduced motion.
   const { enter: glyphEnter, exit: glyphExit } = useIconSwapTransition()
+  // The hold line fades rather than teleports; opacity is not covered by
+  // `<MotionConfig reducedMotion="user">`, so both go through the token hook.
+  const holdEnter = useMotionToken(motionQuick)
+  const holdExit = useMotionToken(motionQuickExit)
 
   // DISABLE LOGIC
   // Disable input when:
@@ -1997,7 +2017,14 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
 
             {/* Inline file chips — one per attached file, above the textarea.
             Live status dot/spinner, retry on failure, ✕ to remove. */}
+            {/* The strip and its destination arrive as one block: attaching the
+            first file grew the composer by both in a single frame, so the
+            textarea the reader was looking at jumped up. `HeightArrival`
+            takes the height on the entrance curve while the chips fade in;
+            a thread opened with files already attached stands at once. */}
+            <AnimatePresence initial={false}>
             {sessionFiles.length > 0 && (
+              <HeightArrival key="session-files" testId="composer-session-files">
               <div
                 // Horizontal scroll strip with a soft right-edge fade so an
                 // overflowing chip dissolves instead of hard-clipping — and the fade
@@ -2032,14 +2059,16 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   />
                 ))}
               </div>
+              <UploadDestinationNote target="session" className="mb-2" />
+              </HeightArrival>
             )}
+            </AnimatePresence>
 
             {/* The destination of the chips above — the composer attaches to the
             PRIVATE SESSION and cannot be told otherwise, unlike the sources
             panel, which offers the project corpus as well. Stated in the same
             words the panel uses (shared primitive), so a user who has seen both
             surfaces reads one vocabulary rather than two. */}
-            {sessionFiles.length > 0 && <UploadDestinationNote target="session" className="mb-2" />}
 
             {/* Mobile-only entry to the full manage-files sheet. The desktop
             manage-files button is hidden on phones (the action row stays one
@@ -2184,7 +2213,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   key={`invoked-skill-${slash.invokedSkill.name}`}
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 2 }}
+                  exit={{ opacity: 0, y: 2, transition: motionQuickExit }}
                   transition={motionEntrance}
                 >
                   <InvokedSkillChip
@@ -2203,7 +2232,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   key="upload-error"
                   initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 4 }}
+                  exit={{ opacity: 0, y: 4, transition: motionQuickExit }}
                   transition={motionEntrance}
                 >
                   <Alert variant="destructive" className="mt-2">
@@ -2238,7 +2267,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   data-testid="composer-note"
                   initial={{ opacity: 0, y: 4 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 2 }}
+                  exit={{ opacity: 0, y: 2, transition: motionQuickExit }}
                   transition={motionEntrance}
                   className={cn(
                     'mt-2 flex items-center gap-1 text-xs leading-snug',
@@ -2274,8 +2303,13 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   give. The way out is offered beside it: a reader who does not
                   want to wait for the file can ask now and get the answer they
                   would have got before this existed. */}
+              <AnimatePresence initial={false}>
               {heldForUpload !== null && (
-                <span
+                <motion.span
+                  key="held-for-upload"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1, transition: holdEnter }}
+                  exit={{ opacity: 0, transition: holdExit }}
                   className="text-muted-foreground flex items-center gap-1.5 text-xs sm:order-2"
                   data-testid="composer-held-for-upload"
                   role="status"
@@ -2292,8 +2326,9 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                   >
                     {t('inputArea.heldForUploadSendNow')}
                   </button>
-                </span>
+                </motion.span>
               )}
+              </AnimatePresence>
 
               <div className="flex min-w-0 items-center gap-1.5 sm:contents">
                 {/* Scope chip — current project; cross-project is honestly disabled.
@@ -2539,7 +2574,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                         // An icon swap: ≤ 16px of scale travel, so springSnap's
                         // tick of overshoot lands inside the pixel budget. The
                         // opacity is a tween (opacity never springs), and the
-                        // leaving glyph accelerates away on motionQuickExit.
+                        // leaving glyph goes at once on motionQuickExit.
                         // Under reduced motion both are motionInstant: the
                         // glyph simply changes.
                         initial={{ opacity: 0, scale: 0.6 }}

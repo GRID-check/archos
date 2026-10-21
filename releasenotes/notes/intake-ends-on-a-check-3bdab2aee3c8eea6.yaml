@@ -1,0 +1,22 @@
+---
+features:
+  - >
+    Finishing the project intake now ends on a check that lands on the save
+    button before the project opens, and moving between intake steps no
+    longer pauses on an empty form.
+improvements:
+  - >
+    Buttons, chips and tabs now give way softly when you press them, and
+    dialogs and menus get out of the way the moment you dismiss them. The
+    whole workspace answers your hand a little faster.
+  - >
+    The command palette opens instantly on Cmd+K, and once one tooltip is
+    showing, the next one appears as soon as you point at it.
+fixes:
+  - >
+    Going back in the browser returns a page to where you had scrolled it,
+    instead of keeping the scroll position of the page you just left.
+  - >
+    Saving organization settings, standing instructions or the price list now
+    shows Saved on the button itself rather than in a separate message, and a
+    usage or storage panel that fails to load offers a retry in place.

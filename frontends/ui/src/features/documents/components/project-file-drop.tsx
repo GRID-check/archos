@@ -81,15 +81,14 @@ export function ProjectFileDrop({
   // overlay is placed against the project's panel, which is positioned.
   return (
     <div className="contents" {...(active ? dragHandlers : {})} data-testid="project-file-drop">
-      {active && isDragging && (
-        <FileDropOverlay
-          isUnsupported={isUnsupportedDrag}
-          uploadLabel={t('workspace.dropToUpload')}
-          unsupportedLabel={t('workspace.dropUnsupported')}
-          refusal={refusal}
-          testId="project-drop-overlay"
-        />
-      )}
+      <FileDropOverlay
+        show={active && isDragging}
+        isUnsupported={isUnsupportedDrag}
+        uploadLabel={t('workspace.dropToUpload')}
+        unsupportedLabel={t('workspace.dropUnsupported')}
+        refusal={refusal}
+        testId="project-drop-overlay"
+      />
       {children}
     </div>
   )

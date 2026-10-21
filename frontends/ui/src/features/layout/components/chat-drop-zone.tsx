@@ -91,26 +91,25 @@ export function ChatDropZone({
     <ChatDropContext.Provider value={setTarget}>
       <div className={cn('relative', className)} style={style} {...dragHandlers} data-testid="chat-drop-zone">
         {children}
-        {isDragging && (
-          <FileDropOverlay
-            isUnsupported={isUnsupportedDrag}
-            uploadLabel={t('inputArea.dropToUpload')}
-            unsupportedLabel={t('inputArea.unsupportedFileType')}
-            refusal={refusal}
-            hint={
-              isUnsupportedDrag ? (
-                <span className="text-muted-foreground text-xs">
-                  {t('inputArea.accepts', { types: fileUpload.acceptedTypes })}
-                </span>
-              ) : (
-                // WHERE the drop lands, in the sources panel's own words: the
-                // moment of the drop is the one where the reader decides.
-                <UploadDestinationNote target="session" />
-              )
-            }
-            testId="chat-drop-overlay"
-          />
-        )}
+        <FileDropOverlay
+          show={isDragging}
+          isUnsupported={isUnsupportedDrag}
+          uploadLabel={t('inputArea.dropToUpload')}
+          unsupportedLabel={t('inputArea.unsupportedFileType')}
+          refusal={refusal}
+          hint={
+            isUnsupportedDrag ? (
+              <span className="text-muted-foreground text-xs">
+                {t('inputArea.accepts', { types: fileUpload.acceptedTypes })}
+              </span>
+            ) : (
+              // WHERE the drop lands, in the sources panel's own words: the
+              // moment of the drop is the one where the reader decides.
+              <UploadDestinationNote target="session" />
+            )
+          }
+          testId="chat-drop-overlay"
+        />
       </div>
     </ChatDropContext.Provider>
   )

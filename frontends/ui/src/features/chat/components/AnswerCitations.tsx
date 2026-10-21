@@ -106,7 +106,7 @@ export const AnswerCitations: FC<{
               <FileReferenceLink
                 href={href}
                 fallback={
-                  <a href={href} className="text-brand underline underline-offset-2 hover:opacity-80">
+                  <a href={href} className="text-brand duration-quick underline underline-offset-2 transition-opacity ease-out hover:opacity-80">
                     {label}
                   </a>
                 }
@@ -141,14 +141,14 @@ export const AnswerCitations: FC<{
                 <a
                   href={href}
                   download
-                  className="text-brand underline underline-offset-2 hover:opacity-80"
+                  className="text-brand duration-quick underline underline-offset-2 transition-opacity ease-out hover:opacity-80"
                 >
                   {label}
                 </a>
               )
             }
             return (
-              <Link href={href} className="text-brand underline underline-offset-2 hover:opacity-80">
+              <Link href={href} className="text-brand duration-quick underline underline-offset-2 transition-opacity ease-out hover:opacity-80">
                 {label}
               </Link>
             )

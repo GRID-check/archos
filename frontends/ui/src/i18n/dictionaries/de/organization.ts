@@ -313,7 +313,6 @@ export const organization: typeof en.organization = {
       'Erlaubt den Agenten, das öffentliche Web zu durchsuchen. Wenn deaktiviert, verschwinden Websuche-Tools aus der Auswahl und werden serverseitig für alle Mitglieder blockiert.',
     save: 'Änderungen speichern',
     saving: 'Wird gespeichert…',
-    saved: 'Organisationseinstellungen gespeichert',
     saveError: 'Die Organisationseinstellungen konnten nicht gespeichert werden. Bitte versuchen Sie es erneut.',
     loadError: 'Die Organisationseinstellungen konnten gerade nicht geladen werden. Bitte laden Sie die Seite neu.',
   },
@@ -335,9 +334,7 @@ export const organization: typeof en.organization = {
     overCap: '{over} Zeichen zu viel. Bitte kürzen Sie den Text, bevor Sie speichern.',
     save: 'Anweisungen speichern',
     saving: 'Wird gespeichert…',
-    saved: 'Anweisungen gespeichert',
     clear: 'Löschen',
-    cleared: 'Anweisungen gelöscht',
     clearConfirmTitle: 'Anweisungen löschen?',
     clearConfirmBody:
       'Piloti beachtet dann keine stehenden Anweisungen Ihrer Organisation mehr. Den Text können Sie nicht wiederherstellen.',
@@ -400,7 +397,6 @@ export const organization: typeof en.organization = {
     version: 'Version',
     activeBadge: 'Aktiv',
     activate: 'Aktivieren',
-    activated: 'Version aktiviert',
     activateError: 'Diese Version konnte nicht aktiviert werden.',
     activateTitle: 'Für die gesamte Organisation aktivieren?',
     activateDescription:
@@ -422,8 +418,6 @@ export const organization: typeof en.organization = {
       'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Unterhaltungen, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
     zdrNotApplicable:
       'Der eigene {provider}-Schlüssel Ihrer Organisation ist aktiv; Anfragen gehen daher direkt an diesen Anbieter und nicht über OpenRouter. Ob dort Daten gespeichert werden, regelt Ihr Vertrag mit {provider}; Piloti kann das nicht durchsetzen. Ihre gespeicherte Einstellung bleibt erhalten und gilt wieder, sobald Sie zum Plattformschlüssel oder zu einem OpenRouter-Schlüssel wechseln.',
-    zdrEnabled: 'Zero Data Retention ist aktiviert',
-    zdrDisabled: 'Zero Data Retention ist deaktiviert',
     zdrError: 'Zero Data Retention konnte nicht geändert werden. Bitte versuchen Sie es erneut.',
     zdrErrorForbidden:
       'Sie können Zero Data Retention nicht ändern: Dafür brauchen Sie die Berechtigung „KI-Modelle verwalten“, und die Modellkonfiguration muss für Ihre Organisation freigeschaltet sein.',
@@ -585,6 +579,7 @@ export const organization: typeof en.organization = {
     limitInvalid: 'Eine Zahl ab 0 eingeben oder leer lassen für kein Limit.',
     saveLimits: 'Limits speichern',
     limitsSaved: 'Budgetlimits gespeichert',
+    limitsRejected: 'Die Limits wurden nicht gespeichert: Ein Betrag liegt außerhalb dessen, was erlaubt ist.',
     limitsSaveError: 'Die Budgetlimits konnten nicht gespeichert werden.',
     membersTitle: 'Mitglieder — Verbrauch & Limits',
     membersDescription:

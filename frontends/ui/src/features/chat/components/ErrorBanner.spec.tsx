@@ -1,4 +1,4 @@
-import { render, screen } from '@/test-utils'
+import { render, screen, waitForElementToBeRemoved } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { ErrorBanner } from './ErrorBanner'
@@ -186,9 +186,9 @@ describe('ErrorBanner', () => {
       await user.click(screen.getByText('Show details'))
       expect(screen.getByText('Error details')).toBeInTheDocument()
 
-      // Collapse
+      // Collapse: the details fold away before they unmount.
       await user.click(screen.getByText('Hide details'))
-      expect(screen.queryByText('Error details')).not.toBeInTheDocument()
+      await waitForElementToBeRemoved(() => screen.queryByText('Error details'))
     })
 
     test('does not show details button when no details provided', () => {

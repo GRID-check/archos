@@ -96,6 +96,16 @@
  *                         literals and the kit's spring names are read; a
  *                         transition held in a local variable is not followed.
  *
+ *   `transition-[…,      — an arbitrary transition list that names `transform`
+ *   transform]` beside    in a class string whose utilities move by `scale-*`,
+ *   `scale-*`             `translate-*` or `rotate-*`. In Tailwind v4 those set
+ *                         the independent `scale` / `translate` / `rotate`
+ *                         properties, which a transition on `transform` does
+ *                         not cover, so the move snaps while the list says it
+ *                         eases. Every press in the app did exactly that until
+ *                         2026-10. Name the property that moves (`scale`), or
+ *                         use `transition-transform`, which lists all four.
+ *
  * Reported as warnings, not errors, on the same reasoning as `no-console`: the
  * rule exists to stop new instances, and the handful already in the tree
  * (vendored shadcn sidebar chrome, one progress bar) should be visible without
@@ -120,6 +130,15 @@ const LITERAL_DURATION = /^duration-(?:\d+(?:\.\d+)?|\[[^\]]*\])$/
 
 /** An arbitrary-property animation timing: `[animation-delay:160ms]`. */
 const ARBITRARY_ANIMATION_TIMING = /^\[animation-(?:delay|duration):[^\]]*\]$/
+
+/**
+ * An arbitrary transition list naming `transform` but none of the individual
+ * transform properties Tailwind v4's utilities actually set.
+ */
+const TRANSFORM_ONLY_LIST = /^transition-\[(?![^\]]*\b(?:scale|translate|rotate)\b)[^\]]*\btransform\b[^\]]*\]$/
+
+/** A utility that sets `scale` / `translate` / `rotate`, behind any variants. */
+const INDIVIDUAL_TRANSFORM = /(?:^|:)-?(?:scale|translate|rotate)-/
 
 /** Off-vocabulary easings: the loop curve spelled wrong, and the in-ramp. */
 const OFF_VOCABULARY_EASING = new Set(['ease-in-out', 'ease-in'])
@@ -183,10 +202,14 @@ function classify(token) {
  * mentions the word.
  */
 function checkText(context, node, text) {
-  for (const token of text.split(/\s+/)) {
-    if (!token) continue
+  const tokens = text.split(/\s+/).filter(Boolean)
+  const movesIndividually = tokens.some((token) => INDIVIDUAL_TRANSFORM.test(token))
+  for (const token of tokens) {
     const messageId = classify(token)
     if (messageId) context.report({ node, messageId, data: { utility: token } })
+    if (movesIndividually && TRANSFORM_ONLY_LIST.test(baseUtility(token))) {
+      context.report({ node, messageId: 'transformList', data: { utility: token } })
+    }
   }
 }
 
@@ -332,6 +355,8 @@ export default {
         '`{{utility}}` is outside the easing vocabulary. Use `ease-out` for responses, `ease-entrance` for arrivals, `ease-exit` for dismissals, or `ease-cycle` for a loop.',
       motionLayoutKey:
         '{{keys}} in a motion `initial`/`animate`/`exit` animates a LAYOUT property from JS, re-running layout every frame. Animate opacity/transform. A height arrival or fold at or below the reading point, through the shared arrival primitive, is the one sanctioned case: mark the element with `// eslint-disable-next-line grid/motion-vocabulary -- <why>` above its opening tag.',
+      transformList:
+        "`{{utility}}` names `transform`, but this class list moves with Tailwind v4's `scale-*` / `translate-*` / `rotate-*`, which set the independent `scale` / `translate` / `rotate` properties. A transition on `transform` does not cover them, so the move snaps. Name the property that moves (`scale` for a press), or use `transition-transform`.",
       springOpacity:
         '`{{spring}}` drives `opacity` here, and opacity never springs: the fade lasts as long as the spring takes to settle (~500ms on springSnap) and survives reduced motion, which drops only transforms. Spring the transform and tween the opacity — `useIconSwapTransition()` / `iconSwapTransition` from the motion kit, or the spring spread with `opacity: motionQuick` through `useMotionToken`.',
     },

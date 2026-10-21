@@ -196,7 +196,11 @@ export function TaskCard({ projectId, task, onSelect }: TaskCardProps): JSX.Elem
                     STATUS_SWATCH[task.status],
                   )}
                 />
-                <h3 className="text-foreground min-w-0 flex-1 text-sm font-semibold leading-snug">
+                {/* Two lines at most, and a long unbroken word (a pasted path,
+                    a file name) wraps instead of pushing the card wider: a
+                    title is the card's subject, not the whole of it. The
+                    detail sheet shows it in full. */}
+                <h3 className="text-foreground line-clamp-2 min-w-0 flex-1 text-sm font-semibold leading-snug [overflow-wrap:anywhere]">
                   {task.title}
                 </h3>
                 {unreviewed && (

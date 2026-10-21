@@ -42,9 +42,6 @@ const ERROR_MESSAGE_CHILD_ALLOWED: Record<string, string> = {
 }
 
 const TOAST_OF_BODY_ALLOWED: Record<string, string> = {
-  'app/app/(shell)/platform/base-knowledge.tsx': 'platform staff surface, off the project path: known debt',
-  'app/app/(shell)/organization/budget-usage-card.tsx': 'org admin budgets, off the project path: known debt',
-  'features/budgets/components/limit-editor.tsx': 'org admin budgets, off the project path: known debt',
   'features/platform/components/norm-registry.tsx': 'platform staff surface, off the project path: known debt',
   'features/projects/components/recently-deleted.tsx': 'restoring a deleted project, off the create path: known debt',
 }

@@ -58,10 +58,11 @@ import { motion, type HTMLMotionProps, type Transition, type Variants } from 'mo
 type Bezier = [number, number, number, number]
 
 /**
- * The workhorse curve: decided at the start, settling at the end.
- * Mirrors `--ease-out` (and Tailwind's `ease-out`).
+ * The workhorse curve: decided at the start, settling at the end. A strong
+ * ease-out, so a press or a fade is most of the way there in the first frames.
+ * Mirrors `--ease-out` (which the `ease-out` utility also resolves to).
  */
-const EASE_OUT: Bezier = [0, 0, 0.2, 1]
+const EASE_OUT: Bezier = [0.23, 1, 0.32, 1]
 
 /**
  * For things ARRIVING — a longer, softer tail than EASE_OUT.
@@ -75,10 +76,14 @@ const EASE_OUT: Bezier = [0, 0, 0.2, 1]
 const EASE_ENTRANCE: Bezier = [0.16, 1, 0.3, 1]
 
 /**
- * For things LEAVING — departure accelerates away. Mirrors `--ease-exit`.
- * An exit that decelerates reads as the app not believing the dismissal.
+ * For things LEAVING. Mirrors `--ease-exit`: the same strong ease-out as
+ * EASE_OUT, on purpose. It was [0.4, 0, 1, 1], an ease-in, and a dismissal on
+ * an ease-in barely moves for the first third of its run, which is exactly
+ * when the reader is watching to see the Escape land. Starting fast is also
+ * what a flick-to-dismiss needs: the sheet leaves at the speed the finger let
+ * go of it instead of stalling and then accelerating.
  */
-const EASE_EXIT: Bezier = [0.4, 0, 1, 1]
+const EASE_EXIT: Bezier = [0.23, 1, 0.32, 1]
 
 /**
  * A spring, described structurally so its parameters stay readable (and
@@ -247,7 +252,7 @@ export const motionEntrance: Transition = { duration: 0.24, ease: EASE_ENTRANCE 
 
 /**
  * 180ms on the exit curve — a row's live content folding, a chip leaving. The
- * exit half of a `motionBase` entrance: one step shorter, accelerating away.
+ * exit half of a `motionBase` entrance: one step shorter, starting at once.
  */
 export const motionQuickExit: Transition = { duration: 0.18, ease: EASE_EXIT }
 
@@ -292,9 +297,18 @@ export const motionInstant: Transition = { duration: 0, delay: 0 }
 export function useMotionToken<T extends Transition | SpringTransition>(
   token: T
 ): T | typeof motionInstant {
+  return usePrefersReducedMotion() ? motionInstant : token
+}
+
+/**
+ * Whether the reader asked for reduced motion, read the way `useMotionToken`
+ * reads it (synchronously on the client). For a gesture target that should not
+ * move at all under the setting, rather than move in one frame: a transform
+ * written as a `transform` string is not one `<MotionConfig
+ * reducedMotion="user">` recognises, so it is dropped here instead.
+ */
+export function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, readReducedMotion, () => false)
-    ? motionInstant
-    : token
 }
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'
@@ -339,7 +353,7 @@ function subscribeReducedMotion(onChange: () => void): () => void {
  */
 export const iconSwapTransition: Transition = { ...springSnap, opacity: motionQuick }
 
-/** The leaving glyph: no spring, accelerating away one step short. */
+/** The leaving glyph: no spring, one step short, on the exit curve. */
 export const iconSwapExitTransition: Transition = motionQuickExit
 
 /**
@@ -374,7 +388,7 @@ export const motionDeliberateEntrance: Transition = { duration: 0.32, ease: EASE
  */
 export const motionSheetEnter: Transition = motionDeliberateEntrance
 
-/** The sheet's exit — shorter, accelerating away (`--ease-exit`). */
+/** The sheet's exit — one step shorter, on `--ease-exit`. */
 export const motionSheetExit: Transition = { duration: 0.24, ease: EASE_EXIT }
 
 /**

@@ -21,6 +21,7 @@
 'use client'
 
 import { type FC, type ReactNode, useRef, useState } from 'react'
+import { PRESSABLE } from '@/components/ui/press'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
 import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
@@ -147,12 +148,11 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
           // Everything the desktop pill was tuned for (see the width note
           // below) is untouched: none of this applies to a mouse.
           'pointer-coarse:min-h-[26px] pointer-coarse:justify-center pointer-coarse:px-[7px] pointer-coarse:text-[0.78em]',
-          // `transform` joins the transition list and `active:scale-95` matches
-          // the Button primitive exactly. A citation marker is one of the most
-          // pressed things in a read answer, and it was one of the raw
-          // `<button>`s that gave no press response at all — so half the chat's
-          // controls acknowledged a tap and half sat inert.
-          'transition-[filter,box-shadow,transform] duration-quick ease-out active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100',
+          // The house press (`PRESSABLE`): 0.98 on --motion-snap, the hover's
+          // brightness step on --motion-quick. A citation marker is one of the
+          // most pressed things in a read answer; it had drifted to 0.95 on
+          // the slower duration while the chips beside it dipped to 0.98.
+          PRESSABLE,
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
           'hover:brightness-95 dark:hover:brightness-125'
         )}

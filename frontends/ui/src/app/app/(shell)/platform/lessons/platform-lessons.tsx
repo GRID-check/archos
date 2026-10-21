@@ -218,7 +218,8 @@ export const PlatformLessons: FC = () => {
         const next = body.lesson?.id === lesson.id ? body.lesson : { ...lesson, ...patch }
         setOverview((current) => (current ? applyLessonUpdate(current, next) : current))
         if (next.status !== lesson.status) setFocusLessonId(lesson.id)
-        toast.success(t('lessons.updated'))
+        // No success toast: the row already shows the answer (its new group,
+        // its switch), and focus follows it there.
         return true
       } catch {
         toast.error(t('lessons.updateError'))

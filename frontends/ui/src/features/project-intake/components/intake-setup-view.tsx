@@ -242,14 +242,13 @@ export function IntakeSetupView({
           data-step={step}
           {...dragHandlers}
         >
-          {isDragging && (
-            <FileDropOverlay
-              isUnsupported={isUnsupportedDrag}
-              uploadLabel={t('upload.dropOverlay')}
-              unsupportedLabel={t('upload.unsupportedOverlay')}
-              testId="intake-drop-overlay"
-            />
-          )}
+          <FileDropOverlay
+            show={isDragging}
+            isUnsupported={isUnsupportedDrag}
+            uploadLabel={t('upload.dropOverlay')}
+            unsupportedLabel={t('upload.unsupportedOverlay')}
+            testId="intake-drop-overlay"
+          />
 
           <SetupBar
             projectId={projectId}

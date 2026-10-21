@@ -36,12 +36,29 @@ function useJson<T>(url: string, pick: (body: unknown) => T): Load<T> {
   return load
 }
 
-function TileSkeleton(): JSX.Element {
+/**
+ * The loading tile, drawn in the loaded tile's shape so the overview does not
+ * jump when the numbers land: the figure's line boxes (`text-3xl` over a
+ * `text-sm` caption, as `BentoFigure` sets them) and then what sits under it,
+ * two clamped note lines or the avatar stack. The old two-bar skeleton was
+ * about half the height of either body, so every tile grew on arrival.
+ */
+function TileSkeleton({ under }: { under: 'lines' | 'avatars' }): JSX.Element {
   return (
-    <div className="space-y-2" aria-hidden>
-      <Skeleton className="h-8 w-16" />
-      <Skeleton className="h-4 w-32" />
-    </div>
+    <>
+      <div aria-hidden>
+        <Skeleton className="h-9 w-16" />
+        <Skeleton className="mt-1 h-5 w-32" />
+      </div>
+      {under === 'lines' ? (
+        <div className="flex flex-col gap-1.5" aria-hidden>
+          <Skeleton className="h-5 w-full" />
+          <Skeleton className="h-5 w-4/5" />
+        </div>
+      ) : (
+        <Skeleton className="h-8 w-28 rounded-full" aria-hidden />
+      )}
+    </>
   )
 }
 
@@ -77,7 +94,7 @@ export function MemoryTile({
       linkLabel={t('project.overview.memory.open')}
       data-testid="overview-memory"
     >
-      {load.state === 'loading' && <TileSkeleton />}
+      {load.state === 'loading' && <TileSkeleton under="lines" />}
       {load.state === 'error' && (
         <p className="text-muted-foreground text-sm">{t('project.overview.memory.error')}</p>
       )}
@@ -154,7 +171,7 @@ export function MembersTile({
       linkLabel={t('project.overview.members.open')}
       data-testid="overview-members"
     >
-      {load.state === 'loading' && <TileSkeleton />}
+      {load.state === 'loading' && <TileSkeleton under="avatars" />}
       {load.state === 'error' && (
         <p className="text-muted-foreground text-sm">{t('project.overview.members.error')}</p>
       )}

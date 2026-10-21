@@ -33,14 +33,13 @@ export function FolderDropTarget({
   })
   return (
     <div className={cn('relative', className)} {...dragHandlers}>
-      {isDragging && (
-        <FileDropOverlay
-          isUnsupported={isUnsupportedDrag}
-          uploadLabel={t('choose.dropOverlay')}
-          unsupportedLabel={t('choose.unsupportedOverlay')}
-          testId="filing-drop-overlay"
-        />
-      )}
+      <FileDropOverlay
+        show={isDragging}
+        isUnsupported={isUnsupportedDrag}
+        uploadLabel={t('choose.dropOverlay')}
+        unsupportedLabel={t('choose.unsupportedOverlay')}
+        testId="filing-drop-overlay"
+      />
       {children}
     </div>
   )

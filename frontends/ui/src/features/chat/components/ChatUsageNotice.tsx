@@ -9,6 +9,8 @@
 
 import { type FC, useEffect, useRef, useState } from 'react'
 import { capturePosthog } from '@/lib/analytics/posthog'
+import { AnimatePresence } from '@/components/motion'
+import { HeightArrival } from '@/components/motion/height-arrival'
 import { useChatStore } from '../store'
 import { readDismissedNotices, rememberDismissedNotice, useUsageNotice } from '../hooks/use-usage-notice'
 import { UsageNotice } from './UsageNotice'
@@ -37,17 +39,25 @@ export const ChatUsageNotice: FC<{ isAuthenticated?: boolean }> = ({ isAuthentic
     })
   }, [visible])
 
-  if (!visible) return null
-
   const dismiss = (): void => {
+    if (!visible) return
     rememberDismissedNotice(visible.key)
     setDismissed((current) => [...current, visible.key])
     capturePosthog('usage_notice_dismissed', { level: visible.level, scope: visible.scope, window: visible.window })
   }
 
+  // Same arrival as the no-sources banner beside it: no root entrance that
+  // replays with the composer, a notice that turns up later (the usage read
+  // lands after mount) or is dismissed takes its height smoothly. Keyed by
+  // project: the old project's notice is gone at once on a switch, never
+  // folding away under the new project's composer.
   return (
-    <div className="not-first:pt-2 animate-in fade-in-0 slide-in-from-bottom-1 mx-auto w-full max-w-5xl px-4 sm:px-6 duration-base ease-entrance motion-reduce:animate-none">
-      <UsageNotice notice={visible} onDismiss={visible.level === 'exhausted' ? undefined : dismiss} />
-    </div>
+    <AnimatePresence initial={false} key={projectId ?? 'organization'}>
+      {visible && (
+        <HeightArrival key="usage-notice" className="not-first:pt-2 mx-auto w-full max-w-5xl px-4 sm:px-6">
+          <UsageNotice notice={visible} onDismiss={visible.level === 'exhausted' ? undefined : dismiss} />
+        </HeightArrival>
+      )}
+    </AnimatePresence>
   )
 }

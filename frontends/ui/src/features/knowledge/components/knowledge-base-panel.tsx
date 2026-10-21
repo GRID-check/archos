@@ -184,6 +184,7 @@ function LoadingSkeleton() {
 
 export function KnowledgeBasePanel({ projectId }: KnowledgeBasePanelProps) {
   const t = useTranslations('knowledge')
+  const { locale } = useLocale()
   const formatDate = useDateFormatter()
 
   const [status, setStatus] = useState<KnowledgeBaseStatus | null>(null)
@@ -258,12 +259,12 @@ export function KnowledgeBasePanel({ projectId }: KnowledgeBasePanelProps) {
       {!isLoading && !hasError && status && (
         <>
           <section className="grid grid-cols-2 gap-3 sm:grid-cols-4" aria-label={t('title')}>
-            <StatCard label={t('summary.documents')} value={(status.summary.totalFiles + documents.length).toLocaleString()} />
-            <StatCard label={t('summary.indexed')} value={indexed.toLocaleString()} />
-            <StatCard label={t('summary.chunks')} value={status.summary.totalChunks.toLocaleString()} />
+            <StatCard label={t('summary.documents')} value={(status.summary.totalFiles + documents.length).toLocaleString(locale)} />
+            <StatCard label={t('summary.indexed')} value={indexed.toLocaleString(locale)} />
+            <StatCard label={t('summary.chunks')} value={status.summary.totalChunks.toLocaleString(locale)} />
             <StatCard
               label={t('summary.attention')}
-              value={attention.toLocaleString()}
+              value={attention.toLocaleString(locale)}
               className={attention > 0 ? 'text-warning' : undefined}
             />
           </section>

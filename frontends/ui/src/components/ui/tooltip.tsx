@@ -4,13 +4,57 @@ import * as React from 'react'
 import * as TooltipPrimitive from '@radix-ui/react-tooltip'
 
 import { cn } from '@/lib/utils'
-import { OVERLAY_EXIT, OVERLAY_REDUCED } from '@/components/ui/overlay-motion'
+import { OVERLAY_REDUCED } from '@/components/ui/overlay-motion'
 
+/**
+ * How long a pointer rests on a trigger before its first tooltip opens. Long
+ * enough that sweeping the pointer across a toolbar on the way somewhere else
+ * opens nothing, short enough that a reader who stopped to ask gets an answer.
+ */
+export const TOOLTIP_OPEN_DELAY_MS = 300
+
+/**
+ * After a tooltip closes, how long the next one opens at once. Moving along a
+ * row of icon buttons reads each label without waiting the delay again, and
+ * with no entrance (Radix marks it `data-state="instant-open"`): the reader
+ * already said they want labels, so the toolbar answers as fast as they move.
+ */
+export const TOOLTIP_SKIP_DELAY_MS = 300
+
+/**
+ * Whether a `TooltipProvider` is already above. Radix's own provider context is
+ * private, so the scope is mirrored here: a tooltip inside it joins that one
+ * timing chain instead of starting its own.
+ */
+const TooltipProviderScope = React.createContext(false)
+
+/**
+ * The tooltip timing for everything below it. Mount ONE near the root (the
+ * app's providers do): skip-delay only chains between tooltips that share a
+ * provider, so a provider per tooltip makes every hover wait the full delay
+ * and play the full entrance.
+ */
 function TooltipProvider({
-  delayDuration = 0,
+  delayDuration = TOOLTIP_OPEN_DELAY_MS,
+  skipDelayDuration = TOOLTIP_SKIP_DELAY_MS,
   ...props
 }: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Provider>) {
-  return <TooltipPrimitive.Provider data-slot="tooltip-provider" delayDuration={delayDuration} {...props} />
+  return (
+    <TooltipProviderScope.Provider value>
+      <TooltipPrimitive.Provider
+        data-slot="tooltip-provider"
+        delayDuration={delayDuration}
+        skipDelayDuration={skipDelayDuration}
+        {...props}
+      />
+    </TooltipProviderScope.Provider>
+  )
+}
+
+/** The provider above, or a fallback one where none is mounted (an isolated render). */
+function InheritedTooltipProvider({ children }: { children: React.ReactNode }) {
+  const scoped = React.useContext(TooltipProviderScope)
+  return scoped ? children : <TooltipProvider>{children}</TooltipProvider>
 }
 
 /**
@@ -21,9 +65,9 @@ function TooltipProvider({
  * lives in visible text, or in a {@link Toggletip}.
  */
 const Tooltip = ({ ...props }: React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Root>) => (
-  <TooltipProvider>
+  <InheritedTooltipProvider>
     <TooltipPrimitive.Root data-slot="tooltip" {...props} />
-  </TooltipProvider>
+  </InheritedTooltipProvider>
 )
 
 interface ToggletipControl {
@@ -61,11 +105,11 @@ function Toggletip({
   const openAtPress = React.useRef(false)
   const control = React.useMemo<ToggletipControl>(() => ({ open, setOpen, openAtPress }), [open])
   return (
-    <TooltipProvider>
+    <InheritedTooltipProvider>
       <TooltipPrimitive.Root data-slot="toggletip" open={open} onOpenChange={setOpen} {...props}>
         <ToggletipContext.Provider value={control}>{children}</ToggletipContext.Provider>
       </TooltipPrimitive.Root>
-    </TooltipProvider>
+    </InheritedTooltipProvider>
   )
 }
 
@@ -132,6 +176,21 @@ function isFocusVisible(element: Element): boolean {
   }
 }
 
+/**
+ * The bubble's motion. The FIRST tooltip (Radix: `delayed-open`) scales up
+ * from its trigger (`--radix-tooltip-content-transform-origin`) with a fade on
+ * `--motion-quick`; there is no slide, because the scale from the trigger
+ * already says where it came from and a tooltip is seen tens of times a day.
+ * Every tooltip after it inside the skip window (`instant-open`) appears with
+ * no entrance at all. Leaving is one step shorter, on `--motion-snap`.
+ */
+const TOOLTIP_MOTION =
+  'data-[state=delayed-open]:animate-in data-[state=delayed-open]:fade-in-0 data-[state=delayed-open]:zoom-in-95 ' +
+  'data-[state=delayed-open]:duration-quick data-[state=delayed-open]:ease-entrance ' +
+  'data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 ' +
+  'data-[state=closed]:duration-snap data-[state=closed]:ease-exit ' +
+  OVERLAY_REDUCED
+
 const TooltipContent = React.forwardRef<
   React.ElementRef<typeof TooltipPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TooltipPrimitive.Content>
@@ -142,8 +201,8 @@ const TooltipContent = React.forwardRef<
       data-slot="tooltip-content"
       sideOffset={sideOffset}
       className={cn(
-        'bg-foreground text-background animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-fit max-w-(--radix-tooltip-content-available-width) origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs font-medium text-balance shadow-xs '
-        + `duration-base ease-entrance ${OVERLAY_EXIT} ${OVERLAY_REDUCED}`,
+        'bg-foreground text-background z-50 w-fit max-w-(--radix-tooltip-content-available-width) origin-(--radix-tooltip-content-transform-origin) rounded-md px-3 py-1.5 text-xs font-medium text-balance shadow-xs',
+        TOOLTIP_MOTION,
         className
       )}
       {...props}

@@ -25,6 +25,7 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { ChevronDown, History, RotateCcw, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -213,6 +214,8 @@ export const ModelConfigCard: FC = () => {
   const [saved, setSaved] = useState<Record<string, string>>({})
   const [draft, setDraft] = useState<Record<string, string>>({})
   const [pickerGroup, setPickerGroup] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [versionsFailed, setVersionsFailed] = useState(false)
   const [comment, setComment] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -262,8 +265,13 @@ export const ModelConfigCard: FC = () => {
       setSaved(flat)
       setDraft(flat)
       setActiveVersionId(body.activeVersion?.id ?? null)
+      setLoadFailed(false)
     } catch {
-      toast.error(t('models.loadError'))
+      // A first load that fails is a state of the card, said in place with a
+      // retry; a quiet re-read (after a ZDR toggle) leaves the card standing
+      // and only reports the transient failure.
+      if (options?.quiet) toast.error(t('models.loadError'))
+      else setLoadFailed(true)
     } finally {
       setLoading(false)
     }
@@ -280,10 +288,12 @@ export const ModelConfigCard: FC = () => {
       const body = (await res.json()) as { versions: VersionDto[]; activeVersionId: string | null }
       setVersions(body.versions)
       setActiveVersionId(body.activeVersionId)
+      setVersionsFailed(false)
     } catch {
-      toast.error(t('models.loadError'))
+      // Said in the history itself: a toast left the spinner turning there.
+      setVersionsFailed(true)
     }
-  }, [t])
+  }, [])
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(saved), [draft, saved])
 
@@ -315,6 +325,8 @@ export const ModelConfigCard: FC = () => {
         toast.error(await refusalMessage(res, t('models.saveError')))
         return
       }
+      // Kept: saving folds the unsaved-changes panel away, so nothing on the
+      // card says the org-wide swap took except this.
       toast.success(t('models.saved'))
       setComment('')
       await load()
@@ -334,7 +346,7 @@ export const ModelConfigCard: FC = () => {
           toast.error(await refusalMessage(res, t('models.activateError')))
           return
         }
-        toast.success(t('models.activated'))
+        // The „Aktiv" badge moving to the chosen version is the receipt.
         await load()
         await loadVersions()
       } catch {
@@ -364,6 +376,19 @@ export const ModelConfigCard: FC = () => {
           </div>
         ))}
       </div>
+    )
+  }
+
+  if (loadFailed) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription className="flex flex-col items-start gap-3">
+          {t('models.loadError')}
+          <Button variant="outline" size="sm" onClick={() => void load()}>
+            {tc('actions.retry')}
+          </Button>
+        </AlertDescription>
+      </Alert>
     )
   }
 
@@ -517,7 +542,17 @@ export const ModelConfigCard: FC = () => {
         </CollapsibleTrigger>
         <CollapsibleContent>
           <div className="mt-3 flex flex-col gap-2">
-            {versions === null && <Spinner className="mx-auto my-4" />}
+            {versions === null && !versionsFailed && <Spinner className="mx-auto my-4" />}
+            {versions === null && versionsFailed && (
+              <Alert variant="destructive">
+                <AlertDescription className="flex flex-col items-start gap-3">
+                  {t('models.loadError')}
+                  <Button variant="outline" size="sm" onClick={() => void loadVersions()}>
+                    {tc('actions.retry')}
+                  </Button>
+                </AlertDescription>
+              </Alert>
+            )}
             {versions !== null && versions.length === 0 && (
               <EmptyState variant="bare" title={t('models.historyEmpty')} />
             )}

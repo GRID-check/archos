@@ -436,25 +436,34 @@
    some utility happens to pull them in, which is not a dependency a keyframe
    should have.
 
-   --ease-out restates Tailwind's own default with the identical value, for that
-   same reason: the token is then guaranteed present for raw CSS.
+   --ease-out overrides Tailwind's own `ease-out` (which was 0, 0, 0.2, 1), so
+   the `ease-out` utility and raw CSS both get the house curve.
 
    out       the workhorse. Fast off the mark, settling into place. Anything
-             responding to a pointer.
+             responding to a pointer. A strong ease-out (Emil Kowalski's
+             0.23, 1, 0.32, 1): a press or a hover is most of the way there in
+             the first frames, which is what reads as "it heard me". The old
+             value was Tailwind's stock curve, which spends its first third
+             barely moving.
    entrance  for things ARRIVING. Note the ease-OUT shape: the previous
              `easeQuiet` was cubic-bezier(0.25, 0.1, 0.25, 1), which is CSS's
              default `ease` — it ramps IN, so entrances started slowly and the
              element appeared to hesitate before committing. An arrival should
              be decided at the start and gentle at the end, never the reverse.
-   exit      for things LEAVING. The mirror: gentle start, accelerating away.
-             A dismissal that decelerates looks reluctant.
+   exit      for things LEAVING. The same strong ease-out as `out`, on purpose.
+             It was 0.4, 0, 1, 1 ("accelerating away"), an ease-in: after an
+             Escape or a click on the scrim the surface barely moved for the
+             first third of its exit, which is the moment the reader is
+             watching. A dismissal answers the reader, so it starts at once and
+             its tail runs while the surface is already nearly gone. It keeps
+             its own name so exits can be retuned without touching every hover.
    cycle     symmetric in/out, for loops and shuttles where neither end is an
              arrival (shimmer sweeps, indeterminate progress).
    ============================================================================= */
 @theme static {
-  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-entrance: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-exit: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-cycle: cubic-bezier(0.65, 0, 0.35, 1);
 }
 
@@ -534,6 +543,10 @@
   --radius-2xl: calc(var(--radius) + 8px);
   --radius-3xl: calc(var(--radius) + 12px);
 
+  /* Bare `shadow` (Tailwind v3's name for today's `shadow-sm`) resolved to
+     Tailwind's own deprecated `--shadow`, a cold black drop shadow on no
+     elevation step and the same in both themes. It is the `sm` step here. */
+  --shadow: var(--elevation-sm);
   --shadow-2xs: var(--shadow-hairline);
   --shadow-xs: var(--elevation-xs);
   --shadow-sm: var(--elevation-sm);
@@ -554,6 +567,12 @@
   --transition-duration-deliberate: var(--motion-deliberate);
   --transition-duration-ambient: var(--motion-ambient);
   --transition-duration-ambient-slow: var(--motion-ambient-slow);
+
+  /* A bare `transition-colors` (or any transition utility without its own
+     `duration-*` / `ease-*`) lands on the house default rather than Tailwind's
+     150ms on 0.4, 0, 0.2, 1: two numbers that are on no scale here. */
+  --default-transition-duration: var(--motion-quick);
+  --default-transition-timing-function: var(--ease-out);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, 'SF Mono', 'Cascadia Code', monospace;

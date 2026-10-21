@@ -116,7 +116,7 @@ export function TagInput({
       }}
       className={cn(
         'flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1.5 rounded-lg border px-2 py-1.5 text-sm',
-        'transition-[color,box-shadow,border-color] duration-quick ease-out motion-reduce:transition-none',
+        'transition-[color,opacity] duration-quick ease-out motion-reduce:transition-none',
         readOnly ? 'border-dashed bg-transparent' : 'border-input bg-input-background',
         !readOnly && FIELD_FOCUS_WITHIN_RING,
         className

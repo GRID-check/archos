@@ -64,7 +64,7 @@ export function ProjectReindexCard({ projectId }: ProjectReindexCardProps): JSX.
             disabled={isReindexing}
           >
             <RefreshCw
-              className={isReindexing ? 'size-4 animate-spin' : 'size-4'}
+              className={isReindexing ? 'size-4 animate-spin motion-reduce:animate-none' : 'size-4'}
               aria-hidden="true"
             />
             {isReindexing

@@ -375,7 +375,7 @@ const NamedRow: FC<{
               type="button"
               onClick={() => onRemove(name)}
               aria-label={removeLabel(labelOf(name))}
-              className="rounded-xs ml-0.5 inline-flex items-center justify-center opacity-70 hover:opacity-100 focus-visible:outline-none pointer-coarse:ml-0 pointer-coarse:size-11"
+              className="rounded-xs duration-quick ml-0.5 inline-flex items-center justify-center opacity-70 transition-opacity ease-out hover:opacity-100 focus-visible:outline-none pointer-coarse:ml-0 pointer-coarse:size-11"
             >
               <X className="size-3" aria-hidden />
             </button>

@@ -17,8 +17,8 @@
  */
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react'
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
-import { motionDeliberateEntrance, motionInstant, motionQuickExit } from '@/components/motion'
+import { AnimatePresence, motion } from 'motion/react'
+import { motionDeliberateEntrance, motionInstant, motionQuickExit, useMotionToken } from '@/components/motion'
 import { CARD_PLACEHOLDER_HEIGHT, CardPlaceholder } from '@/features/grid-cards/components/CardPlaceholder'
 import { DrawnProvider } from '@/features/a2ui/catalog'
 import { cn } from '@/lib/utils'
@@ -79,7 +79,9 @@ export const CardSlot = ({
   arriving?: boolean
 }) => {
   const live = useContext(LiveContext)
-  const reducedMotion = useReducedMotion()
+  // The kit's reading of the setting, not motion's `useReducedMotion`, which
+  // caches its first answer module-wide and never follows a change.
+  const reducedMotion = useMotionToken(motionDeliberateEntrance) === motionInstant
   const [arrives] = useState(() => (arriving ?? live) && !reducedMotion && !arrived.has(arrivalKey))
   // Whether the reader saw this slot hold a place. Only such a slot animates
   // away when its card turns out never to be coming: a 120px placeholder that
@@ -128,8 +130,8 @@ export const CardSlot = ({
           <motion.div
             key="placeholder"
             className="pointer-events-none absolute inset-0"
-            exit={{ opacity: 0 }}
-            transition={transition}
+            // Leaving, so the exit curve one step short, not the arrival's.
+            exit={{ opacity: 0, transition: arrives ? motionQuickExit : motionInstant }}
           >
             <CardPlaceholder height="100%" />
           </motion.div>

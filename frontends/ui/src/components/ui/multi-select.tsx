@@ -142,7 +142,7 @@ function MultiSelect({
             // The field's material: the same well, border and radius as `Input`,
             // growing in height when the chips wrap rather than scrolling them.
             'border-input bg-input-background flex min-h-10 w-full min-w-0 flex-wrap items-center gap-1 rounded-lg border py-1 pr-1 pl-1.5 text-sm pointer-coarse:min-h-11',
-            'transition-[border-color,box-shadow] duration-quick ease-out motion-reduce:transition-none',
+            'transition-opacity duration-quick ease-out motion-reduce:transition-none',
             'has-[[data-slot=multi-select-trigger]:focus-visible]:border-ring has-[[data-slot=multi-select-trigger]:focus-visible]:ring-2 has-[[data-slot=multi-select-trigger]:focus-visible]:ring-ring/20',
             disabled && 'cursor-not-allowed opacity-50',
             className

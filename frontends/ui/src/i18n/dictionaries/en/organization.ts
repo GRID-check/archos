@@ -308,7 +308,6 @@ export const organization = {
       'Allow agents to search the public web. When off, web-search tools disappear from the picker and are blocked server-side for every member.',
     save: 'Save changes',
     saving: 'Saving…',
-    saved: 'Organization settings saved',
     saveError: 'Could not save organization settings. Please try again.',
     loadError: 'Could not load organization settings right now. Please refresh to try again.',
   },
@@ -330,9 +329,7 @@ export const organization = {
     overCap: '{over} characters over. Shorten the text before saving.',
     save: 'Save instructions',
     saving: 'Saving…',
-    saved: 'Instructions saved',
     clear: 'Clear',
-    cleared: 'Instructions cleared',
     clearConfirmTitle: 'Clear the instructions?',
     clearConfirmBody:
       'Piloti will then follow no standing instructions for your organization. You cannot restore the text.',
@@ -396,7 +393,6 @@ export const organization = {
     version: 'Version',
     activeBadge: 'Active',
     activate: 'Activate',
-    activated: 'Version activated',
     activateError: 'Could not activate this version.',
     activateTitle: 'Activate for the whole organization?',
     activateDescription:
@@ -418,8 +414,6 @@ export const organization = {
       'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
     zdrNotApplicable:
       'Your organization’s own {provider} key is active, so requests go directly to that provider, not through OpenRouter. Retention for those requests is governed by your contract with {provider}; Piloti cannot enforce it. Your saved setting is kept and applies again once you switch back to the platform key or an OpenRouter key.',
-    zdrEnabled: 'Zero data retention is on',
-    zdrDisabled: 'Zero data retention is off',
     zdrError: 'Could not change zero data retention. Try again.',
     zdrErrorForbidden:
       'You cannot change zero data retention: it needs the “Manage AI models” permission, and model configuration must be enabled for your organization.',
@@ -577,6 +571,7 @@ export const organization = {
     limitInvalid: 'Enter a number of 0 or more, or leave blank for no limit.',
     saveLimits: 'Save limits',
     limitsSaved: 'Budget limits saved',
+    limitsRejected: 'The limits were not saved: an amount is outside what is allowed.',
     limitsSaveError: 'Could not save the budget limits.',
     membersTitle: 'Members — usage & limits',
     membersDescription:
