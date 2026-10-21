@@ -291,6 +291,7 @@ _TRIGGER_EVENTS = {
     "thread_mention": "hat dich im Verlauf einer Anmerkung erwähnt",
     "thread_reply": "hat im Verlauf einer Anmerkung geantwortet, die du begonnen hast",
     "assigned": "hat dir eine Anmerkung zugewiesen",
+    "agent_consult": "hat dich über einen verbundenen Agenten (etwa Claude oder Cursor) gefragt",
 }
 
 

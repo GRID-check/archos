@@ -111,3 +111,14 @@ def test_without_any_name_the_block_still_says_eine_person(monkeypatch):
     )
 
     assert "Eine Person hat dich im Verlauf einer Anmerkung erwähnt" in block
+
+
+def test_a_question_from_a_connected_agent_names_the_door_and_answers_in_the_reply():
+    trigger = TurnTrigger(kind="agent_consult", event_id="ask-1")
+    block = trigger_block(_state(trigger=trigger), [tool["name"] for tool in CANVAS])
+
+    assert "Anna Weber hat dich über einen verbundenen Agenten" in block
+    assert "`ask-1`" in block
+    # No Anmerkung: the answer is the reply itself, even with the canvas at hand.
+    assert "canvas__reply" not in block
+    assert "warte nicht" in block
