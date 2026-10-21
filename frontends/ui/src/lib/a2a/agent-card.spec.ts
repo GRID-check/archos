@@ -8,6 +8,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { findOperation } from '@/lib/agent-api/catalog'
 import { a2aEndpointUrl, agentCardResponse, buildAgentCard, A2A_SECURITY_SCHEME } from './agent-card'
 
 const ENV = {
@@ -62,6 +63,16 @@ describe('agentCardResponse', () => {
   beforeEach(() => Object.assign(process.env, ENV))
   afterEach(() => {
     process.env = { ...saved }
+  })
+
+  it('says a project is read only when the message names its id, and no example asks one without it', () => {
+    const skill = buildAgentCard(ENV)?.skills[0]
+    expect(skill?.description).toMatch(/projectId/)
+    expect(skill?.description).toMatch(/reads no project's files/)
+    for (const example of skill?.examples ?? []) {
+      if (/project/i.test(example)) expect(example, example).toMatch(/projectId/)
+    }
+    expect(findOperation('piloti-ask-create')?.description).toMatch(/without it Piloti answers for the office/)
   })
 
   it('answers the card in the 1.0 JSON serialization, public and cacheable', async () => {

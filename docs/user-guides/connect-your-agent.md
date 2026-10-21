@@ -101,7 +101,9 @@ answers as you, with your rights, and may file a document while it answers
   switch the agent is told „Asking Piloti from another agent is not enabled for
   this organization“.
 - **How the agent asks.** Over MCP it calls `piloti-ask-create` with the
-  question and, if it is about one project, the project. Piloti answers within
+  question and, if it is about one project, the project's id. Without the
+  project Piloti answers for the office as a whole and does not read any
+  project's files, so name it whenever the question is about one. Piloti answers within
   about 40 seconds; a longer answer comes back as „working“ and the agent reads
   it a little later with `piloti-ask-get`. To follow up, the agent passes the
   conversation of the first question.

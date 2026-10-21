@@ -90,15 +90,16 @@ export function buildAgentCard(env: Env = process.env): AgentCard | null {
         name: 'Ask Piloti',
         description:
           'A question or request for Piloti, in German or English. Piloti answers from the office’s documents, ' +
-          'the project’s files and building law, as the signed-in person. Put a project id in the message ' +
-          `metadata as "projectId" to ask about one project; send the task's contextId to follow up. A blocking ` +
+          'the project’s files and building law, as the signed-in person. To ask about a project, put its id in ' +
+          'the message metadata as "projectId" (project-list on the MCP door names the ids): without it Piloti ' +
+          `answers for the office as a whole and reads no project's files. Send the task's contextId to follow up. A blocking ` +
           `call waits for the answer; with returnImmediately the task is "working" after at most ${ASK_WAIT_SECONDS} ` +
           'seconds and GetTask reads it later. An answer is an artifact of text; a document Piloti filed is an ' +
           'artifact naming it.',
         tags: ['architecture', 'building law', 'project documents', 'planning office'],
         examples: [
-          'Welche Brandschutzanforderungen gelten für das Stiegenhaus im Projekt Hauptstraße 12?',
-          'Summarize the open review comments in project Hauptstraße 12.',
+          'Welche Brandschutzanforderungen stellt die OIB-Richtlinie 2 an ein Stiegenhaus der Gebäudeklasse 4?',
+          'Summarize the open review comments in this project. (with metadata.projectId set to the project’s id)',
         ],
         inputModes: ['text/plain'],
         outputModes: ['text/plain', 'application/json'],
