@@ -154,12 +154,13 @@ vi.mock('@nv-brand-assets/react-marketing-icons', () => ({
 // @ts-expect-error - Setting NODE_ENV for tests
 process.env.NODE_ENV = 'test'
 
-// Crypto polyfill
-Object.defineProperty(global, 'crypto', {
-  value: {
-    getRandomValues: (arr: unknown[]) => crypto.randomBytes(arr.length),
-  },
-})
+// Web Crypto, whole. Node and happy-dom both provide `globalThis.crypto`; a stub
+// here once replaced it with `getRandomValues` alone, so every spec that reached
+// `crypto.subtle` (jose signing a test token in `principal.spec.ts`) or
+// `crypto.randomUUID` failed before its first case. Fill it in only where absent.
+if (!globalThis.crypto?.subtle) {
+  Object.defineProperty(globalThis, 'crypto', { value: crypto.webcrypto, configurable: true })
+}
 
 // Storage mocks — Node.js 22+ exposes a broken built-in localStorage when
 // `--localstorage-file` is passed without a valid path, overriding happy-dom's
