@@ -43,14 +43,23 @@ import {
   type PlacementInput,
   type PlacementState,
 } from '../../lib/placement-tree'
+import { useElapsedSeconds, useTransferRate } from '../../hooks/use-transfer-rate'
 import { isSortConflict, isWorking, phaseOf } from '../../lib/root-sort-phase'
 import { RootSortReview } from './root-sort-review'
-import { RootSortOutcome, RootSortProgress } from './root-sort-status'
+import { RootSortOutcome, RootSortProgress, RootSortStages } from './root-sort-status'
 
 /** How often a working run is read again. */
 const POLL_MS = 2000
 /** Failed moves named in the outcome; the rest are counted. */
 const NAMED_FAILURES = 5
+/**
+ * The window the time left is read over. Progress arrives in steps (a call of
+ * thirty files finishing, a few moves), several at once and then a pause, so
+ * the rate is read over two minutes rather than the upload tray's few seconds.
+ */
+const RATE_WINDOW_MS = 120_000
+/** Reads in a row that must find the run's job queued before the dialog says it waits: between two slices it is queued for a moment. */
+const WAITING_READS = 2
 
 export interface RootSortDialogProps {
   shelf: RootSortShelf
@@ -84,6 +93,7 @@ export function RootSortDialog({
   const [choices, setChoices] = useState<PlacementState>(NO_CHANGES)
   const [onlyUnsure, setOnlyUnsure] = useState(false)
   const [attempt, setAttempt] = useState(0)
+  const [waitingReads, setWaitingReads] = useState(0)
   // Every request answers for the open it was sent in: a reply that comes back after a close is dropped.
   const session = useRef(0)
   const onAppliedRef = useRef(onApplied)
@@ -94,6 +104,13 @@ export function RootSortDialog({
   const phase = phaseOf(summary, run, loadFailed)
   const followedId = current?.id ?? null
   const followedStatus = current?.status ?? null
+  const workingStatus = current !== null && isWorking(current.status) ? current.status : null
+  const counting = workingStatus !== null && workingStatus !== 'grouping'
+  const progressDone = current?.progress.done ?? 0
+  const progressTotal = current?.progress.total ?? 0
+  const rate = useTransferRate(progressDone, Math.max(0, progressTotal - progressDone), open && counting, RATE_WINDOW_MS)
+  const groupingSince = workingStatus === 'grouping' && current ? Date.parse(current.updatedAt) : null
+  const groupingElapsed = useElapsedSeconds(groupingSince, open && workingStatus === 'grouping')
 
   useEffect(() => {
     if (!open) return
@@ -135,6 +152,7 @@ export function RootSortDialog({
           (next) => {
             if (id !== session.current) return
             setRun(next)
+            setWaitingReads((reads) => (next.waiting ? reads + 1 : 0))
             setActionError(null)
             if (next.review) setReviewed(next.review)
             if (changedListing(next.status)) onAppliedRef.current?.()
@@ -231,8 +249,12 @@ export function RootSortDialog({
             <Alert variant="destructive">{t('rootSort.intro.loadFailed')}</Alert>
           )}
 
+          {(phase === 'intro' || phase === 'working' || phase === 'review' || phase === 'done') && (
+            <RootSortStages status={phase === 'intro' ? null : (current?.status ?? null)} />
+          )}
+
           {phase === 'intro' && summary && (
-            <div className="flex flex-col gap-3 text-sm">
+            <div className="mt-4 flex flex-col gap-3 text-sm">
               <p className="font-medium">
                 {t('rootSort.intro.files', { count: summary.files })} ·{' '}
                 {t('rootSort.intro.folders', { count: summary.folders })}
@@ -251,19 +273,28 @@ export function RootSortDialog({
               {summary.files > 0 && summary.folders === 0 && (
                 <p className="text-muted-foreground">{t('rootSort.intro.noFolders')}</p>
               )}
+              {summary.files > 0 && summary.folders > 0 && (
+                <p className="text-muted-foreground">{t('rootSort.intro.steps')}</p>
+              )}
             </div>
           )}
 
           {current !== null && isWorking(current.status) && (
-            <RootSortProgress
-              status={current.status}
-              done={current.progress.done}
-              total={current.progress.total}
-            />
+            <div className="mt-4">
+              <RootSortProgress
+                status={current.status}
+                done={current.progress.done}
+                total={current.progress.total}
+                waiting={current.waiting && waitingReads >= WAITING_READS}
+                recent={current.recent}
+                remainingSeconds={rate.etaSeconds}
+                elapsedSeconds={groupingElapsed}
+              />
+            </div>
           )}
 
           {phase === 'review' && input && (
-            <div className="flex flex-col gap-3">
+            <div className="mt-4 flex flex-col gap-3">
               {current?.groupingError && (
                 <Alert>{t('rootSort.review.groupingFailed')}</Alert>
               )}
@@ -284,11 +315,13 @@ export function RootSortDialog({
           )}
 
           {phase === 'done' && current && (
-            <RootSortOutcome
-              moved={current.moved}
-              failedCount={current.moveFailures.length}
-              failedNames={failedNames.slice(0, NAMED_FAILURES)}
-            />
+            <div className="mt-4">
+              <RootSortOutcome
+                moved={current.moved}
+                failedCount={current.moveFailures.length}
+                failedNames={failedNames.slice(0, NAMED_FAILURES)}
+              />
+            </div>
           )}
 
           {phase === 'undone' && (

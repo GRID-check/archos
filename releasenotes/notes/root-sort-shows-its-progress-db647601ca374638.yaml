@@ -1,0 +1,4 @@
+---
+improvements:
+  - >
+    Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.
