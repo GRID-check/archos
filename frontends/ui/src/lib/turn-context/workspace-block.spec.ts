@@ -51,6 +51,16 @@ describe('renderWorkspaceBlock', () => {
     expect(block).toContain('- c · applied · memory: remember: Statik macht Büro Leitner')
   })
 
+  it('puts the office conventions last, and is unchanged without them', () => {
+    const conventions = ['office conventions (counted from 5 …):', '- Gutachten usually filed under Gutachten (4 of 5 projects that file one in a folder)']
+    const block = renderWorkspaceBlock(
+      facts({ proposals: [{ id: 'a', kind: 'operation', status: 'proposed', summary: 'Move a file' }], officeConventions: conventions })
+    )
+    expect(block.split('\n').slice(-2)).toEqual(conventions)
+    expect(renderWorkspaceBlock(facts({ officeConventions: [] }))).toBe(renderWorkspaceBlock(facts()))
+    expect(renderWorkspaceBlock(facts({ officeConventions: null }))).toBe(renderWorkspaceBlock(facts()))
+  })
+
   it('leaves out what it could not read instead of guessing it, and tells the agent a shared audience', () => {
     const block = renderWorkspaceBlock(
       facts({ inboxWaiting: null, activeRuns: null, conversation: { id: 'c1', audience: 'shared' } })

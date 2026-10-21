@@ -25,6 +25,7 @@ from aiq_agent.knowledge.restricted_use import current_cross_project_turn
 from aiq_agent.knowledge.restricted_use import current_restricted_use
 from aiq_agent.knowledge.restricted_use import drew_on_other_projects
 from aiq_agent.observability.langfuse_trace_attributes import record_lessons
+from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 from aiq_agent.project_context import GridRequestContext
 from aiq_agent.project_context import compose_project_context
 from aiq_agent.project_context import get_user_message_id_from_context
@@ -33,6 +34,7 @@ from aiq_agent.stages.flags import TurnFlags
 from aiq_agent.stages.flags import resolve_turn_flags
 from aiq_agent.turn.context_client import ContextBlocks
 from aiq_agent.turn.context_client import fetch_turn_context
+from aiq_agent.turn.context_client import office_convention_lines
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +324,10 @@ async def _load_turn_context(
     # Here, not in `_platform_lessons`: gather runs that in a child task, whose
     # context (and so whose trace contributions) the turn never sees again.
     record_lessons(lessons.arm, lessons.lesson_ids)
+    if blocks.workspace is not None:
+        # The office's conventions the turn was shown (ADR-0129): 0 on a turn
+        # without them, so Langfuse can compare filing answers with and without.
+        record_trace_metadata(office_conventions_lines=office_convention_lines(blocks.workspace))
     if blocks.drew_on_other_projects and (cross := current_cross_project_turn()) is not None:
         # An earlier turn drew on another project (ADR-0094): this one starts
         # with every door a whole project reads shut (`settle_restriction`).

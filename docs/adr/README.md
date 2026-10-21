@@ -190,6 +190,8 @@ Consequences, where a reader looks for them.
 | [0126](0126-the-operator-console-has-its-own-mcp-door.md) | The operator console has its own MCP door: a second server for platform staff, its own audience | Accepted |
 | [0127](0127-search-finds-list-orients-read-reads.md) | Search finds, list orients, read reads: the office's files become navigable beside RAG, and a folder is a card | Proposed |
 | [0128](0128-one-look-in-every-turn-shown-where-it-looked.md) | One look in every turn: Piloti looks at a region of a page in chat, canvas and door alike, and the reader sees where | Proposed |
+| [0129](0129-piloti-learns-the-office-conventions.md) | Piloti learns the office's conventions: folder skeleton, where each Dokumentart is filed, Plannummer, Index and date patterns, counted from the office's projects and stated as "usually" | Proposed |
+| [0130](0130-piloti-notices-a-new-fassung.md) | Piloti notices a new Fassung: it compares it unasked and leaves proposed marks where it changed | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

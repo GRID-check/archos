@@ -59,6 +59,12 @@ export interface WorkspaceFacts {
   proposals: WorkspaceProposalFact[]
   /** More proposals exist than {@link WorkspaceFacts.proposals} holds. */
   proposalsTruncated: boolean
+  /**
+   * The office's conventions, header first (`lib/office-conventions`,
+   * ADR-0129), on a question about filing or finding with the switch on.
+   * Rendered last, so a bound on the block cuts them before the proposals.
+   */
+  officeConventions?: readonly string[] | null
 }
 
 const STATUS_WORDS: Record<ProposedChangeStatus, string> = {
@@ -113,6 +119,7 @@ export function renderWorkspaceBlock(facts: WorkspaceFacts): string {
       )
     }
   }
+  if (facts.officeConventions && facts.officeConventions.length > 0) lines.push(...facts.officeConventions)
   return lines.join('\n')
 }
 

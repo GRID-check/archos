@@ -45,9 +45,27 @@ class ContextBlocks:
 #: The catalog is a dozen short lines; anything longer is cut at a line.
 REFERENCE_PROJECTS_MAX_CHARS = 4000
 
-#: The block is a few header lines and at most eight proposals of ~200 chars
-#: (``MAX_WORKSPACE_PROPOSALS`` in ``lib/turn-context/workspace-block.ts``).
-WORKSPACE_MAX_CHARS = 3000
+#: The block is a few header lines, at most eight proposals of a summary and an
+#: outcome of ~200 chars each (``MAX_WORKSPACE_PROPOSALS`` in
+#: ``lib/turn-context/workspace-block.ts``), and, last, at most seven lines of
+#: the office's conventions (``lib/office-conventions/render.ts``, ADR-0129),
+#: which a cut at a line drops first.
+WORKSPACE_MAX_CHARS = 6500
+
+#: The line that opens the office's conventions in the WORKSPACE block
+#: (``officeConventionsHeader`` in ``lib/office-conventions/render.ts``).
+OFFICE_CONVENTIONS_HEADER = "office conventions ("
+
+
+def office_convention_lines(workspace: str | None) -> int:
+    """How many convention lines the WORKSPACE block carries under its header; 0 without one. Pure."""
+    if not workspace:
+        return 0
+    lines = workspace.splitlines()
+    starts = [index for index, line in enumerate(lines) if line.startswith(OFFICE_CONVENTIONS_HEADER)]
+    if not starts:
+        return 0
+    return sum(1 for line in lines[starts[0] + 1 :] if line.startswith("- "))
 
 
 def _bounded_lines(value: str | None, max_chars: int) -> str | None:

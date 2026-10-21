@@ -2829,6 +2829,47 @@ check_in grid_foldercards "SELECT count(*) FROM pg_tables WHERE tablename = 'fol
 echo "==> 0180 folder cards and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0181: the office's conventions as Piloti counted them (ADR-0129),
+# and the DOWN.
+#
+# On a database of its own, migrated through 0181, with one row per
+# organization: the runtime role reads and updates only its own, a row is
+# computed whole or not at all, and the down drops only the derived table.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0181 office conventions and their down migration on grid_officeconv"
+migrate_until grid_officeconv 0181_office_conventions
+sql_in grid_officeconv <<'SQL'
+INSERT INTO office_conventions (organization_id, conventions, extractor_version, source_fingerprint, computed_at) VALUES
+  ('org_0181_a', '{"version":1,"projects":3}'::jsonb, 1, 'fp_a', now()),
+  ('org_0181_b', '{"version":1,"projects":4}'::jsonb, 1, 'fp_b', now());
+INSERT INTO office_conventions (organization_id, refresh_requested_at) VALUES ('org_0181_c', now());
+SQL
+check_in grid_officeconv "SELECT count(*) FROM office_conventions WHERE conventions IS NULL" "1" "0181: a row may wait for its first refresh"
+refused_in grid_officeconv "UPDATE office_conventions SET source_fingerprint = NULL WHERE organization_id = 'org_0181_a'" "office_conventions_computed_together" "conventions without their fingerprint"
+refused_in grid_officeconv "UPDATE office_conventions SET conventions = '{}'::jsonb WHERE organization_id = 'org_0181_c'" "office_conventions_computed_together" "conventions without when they were computed"
+RW181=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_officeconv -qtA \
+  -c "SET grid.organization_id = 'org_0181_a'" \
+  -c "SELECT string_agg(organization_id, ',') FROM office_conventions")
+if [ "$RW181" != "org_0181_a" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_officeconv: the runtime role saw conventions that are not its organization's (got: $RW181)" >&2
+  exit 1
+fi
+RWUP181=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_officeconv -qtA \
+  -c "SET grid.organization_id = 'org_0181_a'" \
+  -c "WITH u AS (UPDATE office_conventions SET refresh_requested_at = now() WHERE organization_id = 'org_0181_b' RETURNING 1) SELECT count(*) FROM u")
+if [ "$RWUP181" != "0" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_officeconv: the runtime role updated another organization's conventions (got: $RWUP181)" >&2
+  exit 1
+fi
+apply_in grid_officeconv 0181_office_conventions.sql
+check_in grid_officeconv "SELECT count(*) FROM office_conventions" "3" "0181 re-applies and keeps the rows"
+apply_in grid_officeconv 0181_office_conventions.down.sql
+check_in grid_officeconv "SELECT count(*) FROM pg_tables WHERE tablename = 'office_conventions'" "0" "0181 down drops the table"
+apply_in grid_officeconv 0181_office_conventions.sql
+check_in grid_officeconv "SELECT count(*) FROM pg_tables WHERE tablename = 'office_conventions'" "1" "0181 applies again after its down"
+echo "==> 0181 office conventions and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose

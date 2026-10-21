@@ -188,6 +188,9 @@ const BOUNDARY_MIGRATIONS = [
   // (ADR-0127). Keyed by its organization; the composite foreign key ties it
   // to its folder's organization and shelf.
   '0180_folder_cards.sql',
+  // Adds office_conventions — the office's conventions as Piloti counted them
+  // (ADR-0129), one derived row per organization. Keyed directly by it.
+  '0181_office_conventions.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

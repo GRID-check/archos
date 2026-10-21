@@ -22,6 +22,7 @@ import { countPendingInboxItems, EVERY_INBOX_TYPE } from '@/lib/inbox/repository
 import { listConversationProposals } from '@/lib/proposals/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { countActiveRunsInProject } from '@/lib/tasks/repository'
+import { officeConventionsForTurn } from '@/lib/office-conventions/service'
 import type { ProjectAccess } from '@/lib/authz/projects'
 import type { TurnContextRequest, TurnContextResponse } from './wire'
 import {
@@ -47,14 +48,17 @@ async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | nu
  * flight and this conversation's proposals with every status. Read after the
  * access checks above, under the turn's tenant; each part fails open to
  * "unknown" on its own, so one slow table never costs the turn its context.
+ * On a question about filing or finding, the office's conventions close it
+ * (ADR-0129, off unless `GRID_OFFICE_CONVENTIONS=on`).
  */
 async function loadWorkspaceBlock(
   session: AuthorizedSession,
   context: VerifiedGridRequestContext,
   projectAccess: ProjectAccess | null,
+  query: string | undefined,
 ): Promise<string> {
   const { organizationId, projectId, conversationId, userId } = context
-  const [project, audience, inboxWaiting, activeRuns, proposals] = await Promise.all([
+  const [project, audience, inboxWaiting, activeRuns, proposals, officeConventions] = await Promise.all([
     projectId ? advisory('load the project', () => findProjectInOrg(projectId, organizationId)) : Promise.resolve(null),
     conversationId
       ? advisory('load the conversation audience', async () =>
@@ -72,6 +76,7 @@ async function loadWorkspaceBlock(
           listConversationProposals(organizationId, conversationId, MAX_WORKSPACE_PROPOSALS + 1),
         )
       : Promise.resolve(null),
+    advisory('load the office conventions', () => officeConventionsForTurn(organizationId, query)),
   ])
   const facts: WorkspaceFacts = {
     organizationRole: session.role || null,
@@ -88,6 +93,7 @@ async function loadWorkspaceBlock(
       outcome: proposalOutcomeOf(row.results),
     })),
     proposalsTruncated: (proposals?.length ?? 0) > MAX_WORKSPACE_PROPOSALS,
+    officeConventions,
   }
   return renderWorkspaceBlock(facts)
 }
@@ -132,7 +138,7 @@ export async function loadTurnContext(
     // What a person wrote each folder holds, beside the tree the inventory shows.
     advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null)),
     // Who asks, where, and what is open now: the state office work starts from (ADR-0123).
-    advisory('load the workspace block', () => loadWorkspaceBlock(session, context, projectAccess)),
+    advisory('load the workspace block', () => loadWorkspaceBlock(session, context, projectAccess, input.query || undefined)),
   ])
   return {
     projectContext,
