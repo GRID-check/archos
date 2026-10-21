@@ -221,12 +221,11 @@ describe('the catalog is well formed', () => {
 
   it('load imports the route its path names', () => {
     for (const op of AGENT_OPERATIONS) {
-      const entry = new RegExp(
-        `name: '${op.name}',[\\s\\S]*?load: \\(\\) => import\\('@/app${op.path.replace(/[[\]]/g, '\\$&')}/route'\\)`,
-      )
+      // The operation's own entry: from its name to the next entry's name.
       const block = catalogSource.slice(catalogSource.indexOf(`name: '${op.name}',`))
       const next = block.indexOf("name: '", 10)
-      expect(entry.test(next > 0 ? block.slice(0, next) : block), op.name).toBe(true)
+      const entry = next > 0 ? block.slice(0, next) : block
+      expect(entry.includes(`load: () => import('@/app${op.path}/route')`), op.name).toBe(true)
     }
   })
 
