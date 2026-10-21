@@ -214,7 +214,7 @@ class TestTheExemplarPassesItsRow:
         ]
         assert all(_run(row, "**Fünf Türen** im Grundriss Erdgeschoß, Index B [1].", looks, 3).values())
 
-    def test_fassung_compare_same_region_on_both(self):
+    def test_revision_compare_same_region_on_both(self):
         row = BY_ID["ns-fassung-compare"]
         region = [0.03, 0.44, 0.40, 0.30]
         looks = [
@@ -229,7 +229,7 @@ class TestTheExemplarPassesItsRow:
     def test_plankopf_in_one_look(self):
         row = BY_ID["ns-plankopf"]
         look = [call("look", document="EP-02_Schnitt_A-A.pdf", page=1, region=[0.70, 0.66, 0.30, 0.30])]
-        assert all(_run(row, "Maßstab **1:50**, Datum **14.03.2026**, Index B [1].", look, 2).values())
+        assert all(_run(row, "Maßstab **1:50**, Datum **03.02.2026**, Index B [1].", look, 2).values())
 
     def test_geschaeftszahlen_by_regex(self):
         row = BY_ID["ns-geschaeftszahlen"]
@@ -239,7 +239,7 @@ class TestTheExemplarPassesItsRow:
         ranked = _run(row, answer, [call("knowledge_search", query="Geschäftszahl MA 37")], 2)
         assert not ranked["must:knowledge_search(match=['regex', 'exact'])"]
 
-    def test_current_fassung_from_the_folder_card_alone(self):
+    def test_current_revision_from_the_folder_card_alone(self):
         row = BY_ID["ns-current-fassung"]
         tree = [call("list_files", view="tree", folder="Einreichung")]
         answer = "Sechs: drei direkt in der Einreichung … Bei den Grundrissen gilt Index B vom 03.02.2026."

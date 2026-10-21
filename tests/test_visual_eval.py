@@ -47,7 +47,7 @@ class TestTheSpec:
             area = next(e for e in page["elements"] if e["kind"] == "plan_area")
             assert area.get("value", 0) == len(doors)
 
-    def test_the_two_fassungen_differ_in_one_door_and_one_dimension(self):
+    def test_the_two_revisions_differ_in_one_door_and_one_dimension(self):
         a, b = PAGES[("EP-01_Grundrisse_Index-A.pdf", 1)], PAGES[("EP-01_Grundrisse_Index-B.pdf", 1)]
         body = lambda page: {  # noqa: E731
             e["id"]: (e["kind"], e.get("text"), tuple(e["box"]))
@@ -145,13 +145,13 @@ class TestTheRows:
             mentioned = {m for item in row["expect"]["mentions"] for m in item if m.endswith(".pdf")}
             assert mentioned <= names
 
-    def test_a_given_box_is_refused_until_the_set_can_send_one(self, tmp_path):
+    def test_a_given_box_is_refused_in_the_set_that_does_not_send_one(self, tmp_path):
         path = tmp_path / "q.yaml"
         path.write_text(
             "questions:\n  - id: pv-x\n    question: q\n    box: given\n    expect: {tools: {must_not: [look]}}\n",
             encoding="utf-8",
         )
-        with pytest.raises(ValueError, match="cannot send"):
+        with pytest.raises(ValueError, match="only the north-star set"):
             visual_eval.load_questions(path)
 
     def test_a_gold_that_is_not_an_element_is_refused(self, tmp_path):
@@ -280,7 +280,7 @@ class TestTheChecks:
         calls = [call("look", document="EP-01_Grundrisse_Index-B.pdf", page=2)]
         assert self.check("pv-dim-wohnen", calls) == {"must:look": True, "gold_covered": False}
 
-    def test_a_fassung_row_needs_every_gold_covered(self):
+    def test_a_revision_row_needs_every_gold_covered(self):
         a = call("look", document="EP-01_Grundrisse_Index-A.pdf", page=1)
         b = call("look", document="EP-01_Grundrisse_Index-B.pdf", page=1)
         assert self.check("pv-fassung-overall", [a])["gold_covered"] is False
