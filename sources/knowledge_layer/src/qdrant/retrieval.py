@@ -7,12 +7,14 @@ carries a ``qdrant_client`` type.
 
 from __future__ import annotations
 
+import logging
 import re
 from collections.abc import Mapping
 from collections.abc import MutableMapping
 from collections.abc import Sequence
 from typing import Any
 
+import regex
 from qdrant_client import models
 
 from .boost import parse_boost
@@ -274,9 +276,136 @@ def literal_tokens(pattern: str) -> list[list[str]] | None:
     return alternatives
 
 
-def _text_prefilter(scope: str, pattern: str) -> list[models.Filter]:
+#: Seconds one chunk may take a person's regex. A chunk is a few thousand characters, so a
+#: pattern that needs longer is backtracking catastrophically, and the whole search stops.
+USER_REGEX_TIMEOUT = 0.2
+
+logger = logging.getLogger(__name__)
+
+
+class PatternTooCostly(ValueError):
+    """A person's regex ran past :data:`USER_REGEX_TIMEOUT` on one chunk: it would stall the scan."""
+
+
+def compile_user_regex(pattern: str) -> regex.Pattern[str]:
+    """A person's pattern in Python syntax, case-insensitive, with the ``regex`` module's match timeout."""
+    return regex.compile(pattern, regex.IGNORECASE)
+
+
+def _user_pieces(alternative: str) -> list[tuple[str, str]] | None:
+    """One top-level alternative of a person's regex as ``(kind, text)`` pieces (the kinds of :func:`_pieces`).
+
+    Conservative: anything that is not a plain literal, an escaped punctuation mark, ``\\b``, ``^``
+    or ``$`` becomes a ``group`` (a character of unknown spelling, which spoils the word beside
+    it), and so does any piece a quantifier follows (it may repeat or vanish). None when the
+    alternative sets inline flags this reader does not model (``(?x)`` reads the text differently).
+    """
+    pieces: list[tuple[str, str]] = []
+    index, size = 0, len(alternative)
+    while index < size:
+        char = alternative[index]
+        end = index + 1
+        kind, text = "char", char.lower()
+        if char == "\\":
+            end = index + 2
+            escaped = alternative[index + 1 : index + 2]
+            if escaped == "b":
+                kind, text = "sep", ""
+            elif not escaped or escaped.isalnum() or escaped == "_":
+                kind, text = "group", ""
+            else:
+                text = escaped
+        elif char == "[":
+            end = _class_end(alternative, index)
+            kind, text = "group", ""
+        elif char == "(":
+            end = _group_end(alternative, index)
+            if alternative.startswith("(?i)", index):
+                index = end
+                continue
+            if alternative.startswith("(?", index) and re.match(r"\(\?[a-zA-Z-]+[:)]", alternative[index:]):
+                return None
+            kind, text = "group", ""
+        elif char in "^$":
+            kind, text = "sep", ""
+        elif char in ".)":
+            kind, text = "group", ""
+        elif not char.isascii() and char.isalnum():
+            kind, text = "group", ""
+        if end < size and alternative[end] in "*+?{":
+            kind, text = "group", ""
+            end = _after_quantifier(alternative, end)
+        pieces.append((kind, text))
+        index = end
+    return pieces
+
+
+def _class_end(body: str, start: int) -> int:
+    """Index after the ``]`` that closes the character class opened at ``start``."""
+    index = start + 1
+    if body[index : index + 1] == "^":
+        index += 1
+    if body[index : index + 1] == "]":
+        index += 1
+    while index < len(body):
+        if body[index] == "\\":
+            index += 2
+            continue
+        if body[index] == "]":
+            return index + 1
+        index += 1
+    return len(body)
+
+
+def _group_end(body: str, start: int) -> int:
+    """Index after the ``)`` that closes the group opened at ``start``."""
+    depth, index = 0, start
+    while index < len(body):
+        char = body[index]
+        if char == "\\":
+            index += 2
+            continue
+        if char == "[":
+            index = _class_end(body, index)
+            continue
+        depth += {"(": 1, ")": -1}.get(char, 0)
+        index += 1
+        if depth == 0:
+            return index
+    return len(body)
+
+
+def _after_quantifier(body: str, start: int) -> int:
+    """Index after the quantifier at ``start`` (``*``, ``+``, ``?`` or ``{m,n}``) and its lazy or possessive mark."""
+    if body[start] == "{":
+        close = body.find("}", start)
+        index = close + 1 if close >= 0 else start + 1
+    else:
+        index = start + 1
+    return index + 1 if body[index : index + 1] in ("?", "+") else index
+
+
+def user_literal_tokens(pattern: str) -> list[list[str]] | None:
+    """Per top-level alternative of a person's regex, the words every match holds as whole tokens; None if one has none.
+
+    The same contract as :func:`literal_tokens` (a full-text condition over these words can only
+    drop chunks the regex would drop too), read from a pattern nobody wrote for this reader.
+    When in doubt there is no word: ``MA ?37/\\d{6}`` has none (``37`` may follow ``MA``
+    directly), ``Brandabschnitt BA-03\\b`` has ``brandabschnitt`` and ``ba``.
+    """
+    alternatives: list[list[str]] = []
+    for alternative in _alternatives(pattern):
+        pieces = _user_pieces(alternative)
+        words = _bounded_words(pieces) if pieces is not None else []
+        if not words:
+            return None
+        alternatives.append(list(dict.fromkeys(words)))
+    return alternatives
+
+
+def _text_prefilter(scope: str, pattern: str, *, user_regex: bool = False) -> list[models.Filter]:
     """The server-side narrowing for :func:`find_text`, or nothing when no safe one exists."""
-    tokens = literal_tokens(pattern)
+    tokens = user_literal_tokens(pattern) if user_regex else literal_tokens(pattern)
     if not tokens or not get_store().text_index_sound(scope):
         return []
     return [
@@ -288,7 +417,9 @@ def _text_prefilter(scope: str, pattern: str) -> list[models.Filter]:
     ]
 
 
-def find_text(scope: str, pattern: str, filters: dict[str, Any] | None, limit: int) -> list[Hit]:
+def find_text(
+    scope: str, pattern: str, filters: dict[str, Any] | None, limit: int, *, user_regex: bool = False
+) -> list[Hit]:
     """Every chunk of ``scope`` whose text matches the regex ``pattern``, up to ``limit``.
 
     Qdrant has no regex filter. The pattern ``browse.phrase_pattern`` builds is
@@ -298,17 +429,42 @@ def find_text(scope: str, pattern: str, filters: dict[str, Any] | None, limit: i
     match must hold as tokens (:func:`literal_tokens`), and reads the whole
     scope only when the pattern names no such word. Both scrolls run in
     point-id order, so the first ``limit`` matches are the same either way.
+
+    ``user_regex`` is a person's own pattern (``match="regex"``): compiled by
+    :func:`compile_user_regex`, narrowed by :func:`user_literal_tokens`, and
+    stopped with :class:`PatternTooCostly` when one chunk outruns the timeout.
     """
-    compiled = re.compile(pattern)
+    compiled = compile_user_regex(pattern) if user_regex else re.compile(pattern)
     hits: list[Hit] = []
-    for record in get_store().scroll(scope, filters, *_text_prefilter(scope, pattern)):
+    for record in get_store().scroll(scope, filters, *_text_prefilter(scope, pattern, user_regex=user_regex)):
         payload = dict(record.payload or {})
         text = str(payload.get("text") or "")
-        if compiled.search(text):
+        try:
+            found = compiled.search(text, timeout=USER_REGEX_TIMEOUT) if user_regex else compiled.search(text)
+        except TimeoutError:
+            logger.warning("regex search in %s stopped: a chunk took longer than %ss", scope, USER_REGEX_TIMEOUT)
+            raise PatternTooCostly(pattern) from None
+        if found:
             hits.append(Hit(str(payload.get("chunk_id") or record.id), text, payload, 0.0, 1.0))
             if len(hits) >= limit:
                 break
     return hits
+
+
+def candidate_counts(
+    scope: str, pattern: str, filters: dict[str, Any] | None, *, user_regex: bool = False
+) -> dict[str, int] | None:
+    """``file_name -> chunks that hold the pattern's words``, one facet; None when the pattern names no word.
+
+    The scroll of :func:`find_text` stops at its limit; this is what is left to say then. A chunk
+    that holds the words may still not match the regex, so each count is an upper bound for that
+    file, and the matches the scroll did count are the lower one.
+    """
+    tokens = user_literal_tokens(pattern) if user_regex else literal_tokens(pattern)
+    prefilter = _text_prefilter(scope, pattern, user_regex=user_regex)
+    if not tokens or not prefilter:
+        return None
+    return get_store().facet_counts(scope, "file_name", filters, *prefilter)
 
 
 def healthy() -> bool:

@@ -1829,6 +1829,7 @@ dependencies = [
     { name = "httpx" },
     { name = "pydantic" },
     { name = "python-dotenv" },
+    { name = "regex" },
 ]
 
 [package.optional-dependencies]
@@ -1871,6 +1872,7 @@ requires-dist = [
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "python-pptx", marker = "extra == 'llamaindex'", specifier = ">=0.6.21" },
     { name = "qdrant-client", marker = "extra == 'llamaindex'", specifier = ">=1.19.1,<2" },
+    { name = "regex", specifier = ">=2026.5.9" },
 ]
 provides-extras = ["llamaindex", "all"]
 

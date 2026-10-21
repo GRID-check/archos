@@ -1,0 +1,13 @@
+---
+features:
+  - >
+    Piloti can search the office's documents, or one folder of them, for a
+    pattern such as every Geschäftszahl of a given form, and shows each hit
+    with the lines around it. When there are more hits than it can count, it
+    says "at least" instead of giving a number that only looks exact.
+operators:
+  - >
+    Search results now carry each document's date and upload date. After
+    deploying, run the document-facts refresh once per environment so that
+    documents uploaded earlier carry them too; until then a date filter does
+    not match those documents.

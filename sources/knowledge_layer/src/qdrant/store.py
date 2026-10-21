@@ -463,6 +463,17 @@ class QdrantStore:
         )
         return True
 
+    def facet_counts(
+        self, scope: str, key: str, filters: dict[str, Any] | None = None, *extra: models.Condition | models.Filter
+    ) -> dict[str, int]:
+        """``key value -> chunks`` in ``scope`` under ``filters`` and ``extra``, one exact facet.
+
+        The tenancy condition comes from :func:`scope_filter`, as for every read.
+        """
+        if not self.exists(scope):
+            return {}
+        return self._facet_counts(self.alias(scope), key, scope_filter([scope], filters, *extra))
+
     # ------------------------------------------------------------------ plain reads
 
     def count(self, scope: str, filters: dict[str, Any] | None = None, *extra: models.Condition) -> int:
