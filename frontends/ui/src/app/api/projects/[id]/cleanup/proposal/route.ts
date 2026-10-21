@@ -5,17 +5,15 @@
  * `cleanup-service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { proposeCleanup } from '@/lib/projects/cleanup-service'
+import { proposeCleanupSchema } from '@/lib/projects/cleanup-wire'
 
 type Params = { id: string }
 
-const proposalSchema = z.object({ locale: z.enum(['de', 'en']) }).strict()
-
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const { locale } = await parseJsonBody(request, proposalSchema)
+    const { locale } = await parseJsonBody(request, proposeCleanupSchema)
     return proposeCleanup(session, params.id, locale)
   },
   { authz: { enforcedBy: 'proposeCleanup (requireProjectAccess project:documents:write; read and write per folder)' } }

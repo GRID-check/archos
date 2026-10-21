@@ -62,12 +62,12 @@ import { deleteEmptyCreatedFolder } from './cleanup-repository'
 import { hasPassedScreening, keepReadable, type ShelfReader } from '@/lib/documents/document-reader'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { CLEANUP_CATEGORIES, ruleCandidates, type CleanupCategory, type CleanupDocumentFacts } from './cleanup-rules'
+import { CLEANUP_MAX_DOCUMENTS } from './cleanup-wire'
 import { CLEANUP_PARTIALLY_UNDONE_REASON, type CleanupProposal, type CleanupProposalItem } from './cleanup-types'
 
 export type { CleanupProposal, CleanupProposalItem } from './cleanup-types'
 
-/** Most documents one proposal considers. A project larger than this is proposed over its newest. */
-export const CLEANUP_MAX_DOCUMENTS = 2000
+/** Most documents one proposal considers (defined in `cleanup-wire`, which the route's body schema shares). A project larger than this is proposed over its newest. */
 const PROPOSAL_TIMEOUT_MS = 60_000
 /** Longest summary sent to the model; the index already holds it, the model needs the gist. */
 const SUMMARY_CHARS = 300

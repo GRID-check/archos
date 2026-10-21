@@ -33,6 +33,7 @@ bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
 | Decide access | Check a permission through `lib/authz/decide.ts`, the single decision point. Adoption is incremental, so gates still call `hasPermission` / `requireProjectAccess` / `requirePlatformPermission` (ADR-0038 §6) | A role-name check breaks every custom role |
 | Create a table | `SELECT grid_secure_table('<table>','<predicate>');` in the same migration | `rls-coverage.spec.ts`, by name |
 | Read tenant rows | Context from `getGridSession()`, or state it (`withTenant`, `withPlatformAccess`, `withOptionalTenant`) | `internalApiRoute` does not compile |
+| Add an `app/api` route a person calls | Add its operation in `src/lib/agent-api/catalog/` in the same change, sharing the route's zod schema from a `lib/` wire module, or exempt it in `NOT_AN_AGENT_CAPABILITY` with a reason. [`headless-first.md`](../../docs/contributing/headless-first.md) | `lib/agent-api/agent-reachability.spec.ts` |
 | Write an endpoint | Route is a thin adapter, service owns logic and authorization, repository owns the SQL and bounds every list | Review. `publicApiRoute` needs an ADR |
 | Query the `documents` table, or a table carrying one document's facts (versions, roles, IFC models and elements, Prüfbuch confirmations, assignments) | Take a `DocumentReader` and AND `documentVisibleTo(reader)` (`lib/documents/visibility.ts`) into THAT query's WHERE; a session's item path loads the row with `findDocumentForSession`. A person's upload is held from everyone but its uploader and reviewers until its screening of the bytes it holds passes (ADR-0086). Make an `internalRead(why)` or the reviewer's reader only where the spec lists it; a person-facing path takes `shelfReaderFor` | `documents/document-visibility.spec.ts`, unless one of its allowlists says why |
 | Read a raw `sql<T>` result | Coerce at the repository boundary (`new Date(row.x)`, `Number(row.x)`) | Nothing. `tsc` believes the annotation and you get `toISOString is not a function` at runtime |
@@ -84,6 +85,13 @@ guided flow rather than a second form. The Projekterfassung (ADR-0111) is not a
 second form: it confirms or dismisses what Piloti read, and answers a single
 open question with the wizard's own control (`intake-question-field.tsx`),
 writing through `patchProjectProfile`, the profile's one door.
+
+**Only `lib/agent-api/dispatch.ts` enters the acting session.** An agent has no
+AuthKit cookie, so `getGridSession()` has a second answer: the session
+`runAsActingSession` (`lib/agent-api/acting-session.ts`) binds to one MCP call,
+built by `resolvePinnedRequesterSession`. Never call `runAsActingSession`
+anywhere else, and never pass it a session a request supplied: that is a way past
+every route's `authz`. [`agent-surface.md`](../../docs/architecture/agent-surface.md#the-acting-session).
 
 **Piloti is the product, GRID is the repo.** User-facing strings say Piloti;
 env vars (`GRID_*`), headers (`x-grid-*`) and CSS variables stay GRID.

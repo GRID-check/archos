@@ -1,0 +1,92 @@
+/**
+ * @vitest-environment node
+ */
+/**
+ * The real catalog through the real SDK: every operation must survive being
+ * published as an MCP tool (its input schema compiles, its name is accepted),
+ * or `tools` mode would fail for a client the day somebody adds an operation
+ * whose schema the validator rejects.
+ */
+
+import { webcrypto } from 'node:crypto'
+import { createMcpHandler } from '@modelcontextprotocol/server'
+import { beforeAll, describe, expect, it } from 'vitest'
+import { AGENT_OPERATIONS } from './catalog'
+import { MCP_INSTRUCTIONS, buildMcpServer, resolveMode } from './mcp-server'
+import { visibleOperations } from './policy'
+import type { AgentPrincipal } from './principal'
+
+const principal: AgentPrincipal = {
+  kind: 'person',
+  clientId: 'c',
+  scopes: ['piloti:sensitive'],
+  session: {
+    userId: 'user_1',
+    email: 'a@piloti.test',
+    name: null,
+    accessToken: '',
+    organizationId: 'org_1',
+    organizationMembershipId: 'om_1',
+    role: 'admin',
+    permissions: [],
+    featureFlags: null,
+  },
+}
+
+beforeAll(() => {
+  // The shared setup file swaps `crypto` for a stub with no randomUUID.
+  Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true })
+})
+
+async function listTools(mode: 'discovery' | 'tools'): Promise<{ name: string; inputSchema: unknown }[]> {
+  const handler = createMcpHandler(() => buildMcpServer(principal, mode), { responseMode: 'json' })
+  const response = await handler.fetch(
+    new Request('https://app.piloti.test/api/mcp', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+    }),
+  )
+  const raw = await response.text()
+  const data = raw.split('\n').find((line) => line.startsWith('data:'))
+  return (JSON.parse(data ? data.slice(5) : raw) as { result: { tools: { name: string; inputSchema: unknown }[] } }).result.tools
+}
+
+describe('tools mode over the real catalog', () => {
+  it('publishes one tool per visible operation, plus report-missing-capability', async () => {
+    const tools = await listTools('tools')
+    const names = tools.map((tool) => tool.name)
+    expect(names).toEqual([...visibleOperations(principal).map((op) => op.name), 'report-missing-capability'])
+    expect(new Set(names).size).toBe(names.length)
+    expect(AGENT_OPERATIONS.length).toBeGreaterThan(0)
+  })
+})
+
+describe('discovery mode', () => {
+  it('stays four tools however large the catalog grows', async () => {
+    expect((await listTools('discovery')).map((tool) => tool.name)).toEqual([
+      'search-operations',
+      'describe-operation',
+      'call-operation',
+      'report-missing-capability',
+    ])
+  })
+})
+
+describe('mode and instructions', () => {
+  const at = (url: string, headers: Record<string, string> = {}) => new Request(url, { headers })
+
+  it('defaults to discovery and honours the header and the query', () => {
+    expect(resolveMode(at('https://x.test/api/mcp'))).toBe('discovery')
+    expect(resolveMode(at('https://x.test/api/mcp?mode=tools'))).toBe('tools')
+    expect(resolveMode(at('https://x.test/api/mcp', { 'x-piloti-mcp-mode': 'tools' }))).toBe('tools')
+    expect(resolveMode(at('https://x.test/api/mcp?mode=nonsense'))).toBe('discovery')
+  })
+
+  it('introduces Piloti as the architects\' workspace and says where to start', () => {
+    expect(MCP_INSTRUCTIONS).toMatch(/workspace for architects/)
+    expect(MCP_INSTRUCTIONS).toMatch(/project-list/)
+    expect(MCP_INSTRUCTIONS).toMatch(/search-operations/)
+    expect(MCP_INSTRUCTIONS).not.toMatch(/compliance/i)
+  })
+})

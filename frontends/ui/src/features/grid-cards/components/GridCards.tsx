@@ -3,6 +3,7 @@ import type { GridCard } from '@/shared/cards/schemas'
 import { cardKey } from '../card-decision'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
+import { OperationReceipt } from './ProposalReceipts'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
 import { CanvasActivityCard } from './CanvasActivityCard'
 import { CalculationCard } from './CalculationCard'
@@ -429,6 +430,19 @@ export const GridCardView: FC<GridCardViewProps> = ({
           messageId={messageId}
           cardKey={key}
           decisionsMustPersist={decisionsMustPersist}
+        />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'operation_proposal') {
+    return (
+      <FadeIn distance={6}>
+        <OperationReceipt
+          proposalId={card.proposal_id}
+          title={card.title}
+          operation={card.operation}
+          input={card.input ?? {}}
         />
       </FadeIn>
     )

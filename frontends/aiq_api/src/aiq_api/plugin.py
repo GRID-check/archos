@@ -84,6 +84,7 @@ from .routes.filing_fit import add_filing_fit_routes
 from .routes.generate_conversation_title import add_generate_conversation_title_routes
 from .routes.generate_summary import add_generate_summary_routes
 from .routes.ingest import add_ingest_routes
+from .routes.internal_tools import add_internal_tool_routes
 from .routes.jobs import register_job_routes
 from .routes.lesson_distill import add_lesson_distill_routes
 from .routes.mail_archive import add_mail_archive_routes
@@ -348,6 +349,10 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
         # the close dialog's suggestions (ADR-0096). Internal-token only.
         add_project_experience_routes,
         add_ingest_routes,
+        # The agent's read tools (knowledge, passages, files, page images, BIM, RIS) for the
+        # BFF's MCP server, run for the person a signed envelope names (ADR-0121).
+        # Internal-token only, off the external allowlist.
+        add_internal_tool_routes,
         # Reads an Outlook archive the BFF staged, for its mail import (ADR-0085).
         # Internal-token only, off the external allowlist.
         add_mail_archive_routes,

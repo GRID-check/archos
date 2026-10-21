@@ -16,21 +16,19 @@
  * provider until an admin picks a ZDR model.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
 import { isZdrApplicableForOrg } from '@/lib/model-config/org-catalog'
 import { getZdrCoverage, UNKNOWN_COVERAGE, type ZdrCoverage } from '@/lib/model-config/zdr-coverage'
+import { zdrPutSchema } from '@/lib/organizations/organization-wire'
 import { setOrgZdrOnly } from '@/lib/organizations/service'
-
-const putSchema = z.object({ enabled: z.boolean() })
 
 export const PUT = apiRoute(
   async ({ session, request }) => {
     const gated = requireFeature(session, FEATURE_FLAGS.modelConfiguration)
     if (gated) return gated
-    const { enabled } = await parseJsonBody(request, putSchema)
+    const { enabled } = await parseJsonBody(request, zdrPutSchema)
     const { zdrOnly } = await setOrgZdrOnly(session, enabled, request)
     // The switch has moved. Nothing after this line may turn the response into
     // an error: a 500 here would leave the card showing the old state while

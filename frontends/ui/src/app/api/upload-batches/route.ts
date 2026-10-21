@@ -7,26 +7,13 @@
  * machine as terms and counts only — never file names.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { openUploadBatch, UPLOAD_BATCH_MAX_FILES, UPLOAD_BATCH_SCOPES } from '@/lib/upload-batches/service'
-import { uploadBatchExclusionsSchema } from './exclusions-schema'
-
-const bodySchema = z
-  .object({
-    id: z.string().uuid(),
-    // `archiv` is what an open tab still sends. Remove after one release.
-    scope: z.preprocess((value) => (value === 'archiv' ? 'office_shelf' : value), z.enum(UPLOAD_BATCH_SCOPES)),
-    projectId: z.string().uuid().nullable().default(null),
-    conversationId: z.string().min(1).max(200).nullable().default(null),
-    expectedCount: z.number().int().min(0).max(UPLOAD_BATCH_MAX_FILES),
-    excluded: uploadBatchExclusionsSchema,
-  })
-  .strict()
+import { openUploadBatchSchema } from '@/lib/upload-batches/batch-wire'
+import { openUploadBatch } from '@/lib/upload-batches/service'
 
 export const POST = apiRoute(
   async ({ session, request }) => {
-    const input = await parseJsonBody(request, bodySchema)
+    const input = await parseJsonBody(request, openUploadBatchSchema)
     await openUploadBatch(session, input)
     return { id: input.id }
   },

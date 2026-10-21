@@ -13,7 +13,7 @@
  */
 
 import { useMemo, type ReactNode } from 'react'
-import { FolderTree } from 'lucide-react'
+import { FolderTree, Zap } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
@@ -24,6 +24,7 @@ import type { MemoryPayload, ProposedChangeResult } from '@/lib/proposals/types'
 import { useCurrentProfile } from '../hooks/use-current-profile'
 import { useServerProposal } from '../hooks/use-server-proposal'
 import { notifyIfAnyApplied, type FileOperationItem, type FileOperationKind } from '../lib/file-operations'
+import { MAX_INPUT_ROWS, operationInputRows } from '../lib/operation-input'
 import { OperationList } from './FileOperationRows'
 import { ProfilePatchTable } from './ProfilePatchTable'
 import { ProposalReceipt } from './ProposalReceipt'
@@ -104,6 +105,78 @@ export function FileOperationReceipt({
           />
         )
       }
+    />
+  )
+}
+
+// ── Operation ────────────────────────────────────────────────────────────
+
+/** The action's inputs as a compact list: what it will be called with. */
+function OperationInput({ input }: { input: Record<string, unknown> }) {
+  const t = useTranslations('chat')
+  const rows = operationInputRows(input)
+  if (rows.length === 0) return null
+  const shown = rows.slice(0, MAX_INPUT_ROWS)
+  return (
+    <dl
+      className="card-caption text-muted-foreground flex flex-col gap-0.5"
+      aria-label={t('cards.operationProposal.inputLabel')}
+      data-testid="operation-input"
+    >
+      {shown.map((row) => (
+        <div key={row.key} className="flex gap-x-1.5">
+          <dt className="shrink-0 font-medium">{row.key}</dt>
+          <dd className="min-w-0 break-words">{row.value}</dd>
+        </div>
+      ))}
+      {rows.length > shown.length && <div>+{rows.length - shown.length}</div>}
+    </dl>
+  )
+}
+
+export function OperationReceipt({
+  proposalId,
+  title,
+  operation,
+  input,
+}: {
+  proposalId: string
+  title: string
+  operation: string
+  input: Record<string, unknown>
+}) {
+  const t = useTranslations('chat')
+  const server = useServerProposal(proposalId, 'operation')
+  const { proposal } = server
+  const shownOperation = proposal?.payload.operation ?? operation
+  const shownInput = proposal?.payload.input ?? input
+
+  return (
+    <ProposalReceipt
+      server={server}
+      eyebrow={<SectionLabel icon={Zap}>{t('cards.operationProposal.eyebrow')}</SectionLabel>}
+      title={proposal?.payload.summary ?? title}
+      open={
+        <>
+          <p className="card-caption text-muted-foreground" data-testid="operation-name">
+            {t('cards.operationProposal.operation', { operation: shownOperation })}
+          </p>
+          <OperationInput input={shownInput} />
+        </>
+      }
+      headline={(decided) => {
+        switch (decided.status) {
+          case 'applied':
+          case 'partially_applied':
+            return t('cards.operationProposal.applied')
+          case 'failed':
+            return t('cards.proposalReceipt.failed')
+          default:
+            return t('cards.operationProposal.dismissed')
+        }
+      }}
+      // A failed apply says why in the route's own words (`FailureReasons`).
+      decidedBody={(decided) => <FailureReasons results={decided.results} />}
     />
   )
 }

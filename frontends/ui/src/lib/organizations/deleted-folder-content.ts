@@ -26,9 +26,7 @@ export const DELETED_FOLDER_CONTENT_SETTING = 'deletedFolderContent'
 /** The default: the same people who could read the folder keep seeing what was drawn from it. */
 export const DEFAULT_DELETED_FOLDER_CONTENT: DeletedFolderContentPolicy = 'unchanged'
 
-export const deletedFolderContentSchema = z.object({
-  policy: z.enum(DELETED_FOLDER_CONTENT_POLICIES),
-})
+export { deletedFolderContentSchema } from './organization-wire'
 
 const CACHE_TTL_MS = 30_000
 const cacheKey = (organizationId: string): string => `deleted-folder-content:${organizationId}`

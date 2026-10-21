@@ -18,19 +18,13 @@
  * type instead of per route.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { listInbox } from '@/lib/inbox/service'
-import { INBOX_LIST_FILTERS } from '@/lib/inbox/types'
-
-const listQuerySchema = z.object({
-  filter: z.enum(INBOX_LIST_FILTERS).optional(),
-  cursor: z.string().min(1).max(200).optional(),
-})
+import { inboxListQuerySchema } from '@/lib/inbox/inbox-wire'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const { filter, cursor } = parseQuery(request, listQuerySchema)
+    const { filter, cursor } = parseQuery(request, inboxListQuerySchema)
     return listInbox(session, { filter: filter ?? 'all', cursor })
   },
   { authz: { enforcedBy: 'listInbox (rows are keyed to session.userId)' } }

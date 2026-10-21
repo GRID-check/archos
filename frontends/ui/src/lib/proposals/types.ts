@@ -20,8 +20,11 @@ import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/projects
  * `memory`: a note for the project's or the office's memory (0143).
  * `project_profile`: a change to the project's facts, goals, unknowns or
  * assumptions, as a JSON patch on the profile (0143).
+ * `operation`: any WRITE operation of the agent catalog (`lib/agent-api`),
+ * proposed by Piloti through the MCP surface and run, when a person accepts,
+ * as that person (0173, ADR-0121).
  */
-export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile'] as const
+export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile', 'operation'] as const
 export type ProposedChangeKind = (typeof PROPOSED_CHANGE_KINDS)[number]
 
 /**
@@ -48,7 +51,7 @@ export type FileOperation = (typeof FILE_OPERATIONS)[number]
  * file operation by its verb, every other kind by its kind. Stored on the
  * `piloti.proposal_waiting` item as its `variant` (`./attention.ts`).
  */
-export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile'] as const
+export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile', 'operation'] as const
 export type ProposalNoticeVariant = (typeof PROPOSAL_NOTICE_VARIANTS)[number]
 
 /** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `src/aiq_agent/cards/models.py`. */
@@ -152,6 +155,41 @@ export const projectProfilePayloadSchema = z
   .strict()
 export type ProjectProfilePayload = z.infer<typeof projectProfilePayloadSchema>
 
+/** Most characters of the one-line summary an operation proposal carries. */
+export const MAX_OPERATION_SUMMARY_LENGTH = 300
+
+/**
+ * What an operation proposal runs: the call's own input, in the shape
+ * `callOperation` takes (`lib/agent-api/dispatch.ts`). The body is the
+ * operation's own, validated against the catalog's schema when the proposal is
+ * applied, not here: the catalog may change between the proposal and the click.
+ */
+export const operationInputSchema = z
+  .object({
+    params: z.record(z.string()).optional(),
+    query: z.record(z.unknown()).optional(),
+    body: z.unknown().optional(),
+  })
+  .strict()
+export type OperationProposalInput = z.infer<typeof operationInputSchema>
+
+/**
+ * Any write operation of the agent catalog (ADR-0121), proposed instead of
+ * applied. Accepting runs it as the DECIDING person through `callOperation`, so
+ * the route's own authorization decides; `summary` is the line the person reads.
+ * Created only by `proposeOperation` (`lib/agent-api/operation-proposals.ts`),
+ * which checks the operation exists and writes: there is no agent-facing
+ * create for this kind in `internalProposalRequestSchema`.
+ */
+export const operationPayloadSchema = z
+  .object({
+    operation: text(80),
+    input: operationInputSchema,
+    summary: text(MAX_OPERATION_SUMMARY_LENGTH),
+  })
+  .strict()
+export type OperationPayload = z.infer<typeof operationPayloadSchema>
+
 /** What applying one item did, in words a person reads in the card. */
 export const proposedChangeResultSchema = z.object({
   label: z.string(),
@@ -204,6 +242,7 @@ export const proposedChangeViewSchema = z.discriminatedUnion('kind', [
   proposedChangeBaseSchema.extend({ kind: z.literal('file_operation'), payload: fileOperationPayloadSchema }),
   proposedChangeBaseSchema.extend({ kind: z.literal('memory'), payload: memoryPayloadSchema }),
   proposedChangeBaseSchema.extend({ kind: z.literal('project_profile'), payload: projectProfilePayloadSchema }),
+  proposedChangeBaseSchema.extend({ kind: z.literal('operation'), payload: operationPayloadSchema }),
 ])
 export type ProposedChangeView = z.infer<typeof proposedChangeViewSchema>
 

@@ -83,7 +83,19 @@ export interface AgentOperation {
   readonly destructive?: boolean
   /** Calling it twice with the same input leaves the same state. Defaults to GET, PUT and DELETE. */
   readonly idempotent?: boolean
+  /**
+   * An operation that widens who may do what (`access`: sharing, folder
+   * access, role definitions) or touches the organization's secrets
+   * (`secret`: LLM provider keys). An agent may call it for a person who holds
+   * the right, under the extra guards ADR-0121 names: the organization opted
+   * in, the client was granted the step-up scope, the person confirms, and
+   * Piloti in-product only ever proposes it.
+   */
+  readonly sensitivity?: Sensitivity
 }
+
+export const SENSITIVITIES = ['access', 'secret'] as const
+export type Sensitivity = (typeof SENSITIVITIES)[number]
 
 /**
  * The MCP tool annotations for `op` (specification, `ToolAnnotations`), every
@@ -105,7 +117,8 @@ export function annotationsOf(op: AgentOperation): ToolAnnotations {
   return {
     title: op.summary,
     readOnlyHint,
-    destructiveHint: !readOnlyHint && (op.destructive ?? op.method === 'DELETE'),
+    // A sensitive write is always one the client confirms with the person.
+    destructiveHint: !readOnlyHint && (op.sensitivity !== undefined || (op.destructive ?? op.method === 'DELETE')),
     idempotentHint: readOnlyHint || (op.idempotent ?? (op.method === 'PUT' || op.method === 'DELETE')),
     openWorldHint: false,
   }

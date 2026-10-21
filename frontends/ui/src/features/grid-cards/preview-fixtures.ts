@@ -174,6 +174,15 @@ const RAW_FIXTURES: CardInput[] = [
     note: 'Vorschlag — es wurde noch nichts verschoben.',
   },
   {
+    // An action Piloti proposed through the MCP surface (ADR-0121): the
+    // summary as the title, the action's name, and its inputs.
+    type: 'operation_proposal',
+    title: 'Rename a folder (name: Pläne, folderId: f_1)',
+    operation: 'folder-rename',
+    input: { params: { id: '00000000-0000-4000-8000-0000000000a1', folderId: 'f_1' }, body: { name: 'Pläne' } },
+    proposal_id: '00000000-0000-4000-8000-0000000000b1',
+  },
+  {
     // Both kinds of row: two marks to take over or discard, a box and a
     // point, and an answer in an existing thread.
     type: 'canvas_activity',

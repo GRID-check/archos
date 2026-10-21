@@ -79,6 +79,7 @@ export const answerExport: typeof en.answerExport = {
   cardTypes: {
     project_profile_patch: 'Vorgeschlagene Änderung am Projektkontext',
     memory_proposal: 'Vorgeschlagener Merkposten',
+    operation_proposal: 'Vorgeschlagene Aktion',
     building_section: 'Gebäudeschnitt',
     stair_diagram: 'Treppe',
     dimension_diagram: 'Maße',

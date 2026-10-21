@@ -9,13 +9,11 @@ import { geocodeResultSchema } from '@/lib/geocoding/types'
 import { isValidFederalStateToken } from '@/lib/project-profile/intake-definition'
 import { normalizeProfileToken } from '@/lib/project-profile/legacy-names'
 import { MAX_INTAKE_DESCRIPTION_LENGTH } from '@/lib/project-intake/types'
-import { isMonth, type Month } from './month'
+import { monthSchema } from './month'
 import { PROJECT_OUTCOMES } from './project-status'
 
 /** Longest address line a person may type. */
 export const MAX_ADDRESS_LENGTH = 200
-
-const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMonth(value), 'A month, YYYY-MM.')
 
 /** How a new project is set up. `piloti` reads the documents; `self` is the wizard. */
 export const PROJECT_SETUPS = ['piloti', 'self'] as const

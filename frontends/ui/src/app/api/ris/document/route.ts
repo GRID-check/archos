@@ -20,28 +20,11 @@
  * network call — see `RIS_DOCUMENT_LIMIT` for what one unbounded request costs.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { RIS_DOCUMENT_LIMIT } from '@/lib/limits/catalog'
 import { NotFoundError, UpstreamError } from '@/lib/api/errors'
+import { risDocumentQuerySchema } from '@/lib/ris/document-wire'
 import { fetchRisDocument, RisDocumentUnavailableError } from '@/lib/ris/document'
-
-const risDocumentQuerySchema = z.object({
-  /**
-   * A RIS document number (`NOR40217157`) or a `https://www.ris.bka.gv.at/…`
-   * URL. Both are accepted because both are what a citation can carry: the
-   * norm registry stores document numbers, and a retrieved hit carries the URL.
-   */
-  reference: z.string().min(1).max(2048),
-  /** RIS application code, when a bare document number needs disambiguating. */
-  application: z.string().max(32).optional(),
-  /**
-   * The cited passage, so an over-long document is windowed AROUND it rather
-   * than clipped at its head. Published law either way — this is the same text
-   * the answer already shows the reader.
-   */
-  passage: z.string().max(2000).optional(),
-})
 
 export const GET = apiRoute(
   async ({ request }) => {

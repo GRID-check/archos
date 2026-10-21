@@ -14,24 +14,9 @@
  * `@/lib/budgets/service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { budgetDeleteSchema, budgetPutSchema } from '@/lib/organizations/organization-wire'
 import { getBudgetOverview, removeBudgetPolicy, saveBudgetPolicy } from '@/lib/budgets/service'
-
-const limitSchema = z.number().min(0).finite().nullable()
-
-const putSchema = z.object({
-  scope: z.enum(['organization', 'member', 'project']),
-  subjectId: z.string().min(1).max(120).nullable().optional(),
-  dailyLimit: limitSchema,
-  monthlyLimit: limitSchema,
-  note: z.string().trim().max(500).nullable().optional(),
-})
-
-const deleteSchema = z.object({
-  scope: z.enum(['member', 'project']),
-  subjectId: z.string().min(1).max(120),
-})
 
 export const GET = apiRoute(async ({ session }) => getBudgetOverview(session), {
   authz: { enforcedBy: 'getBudgetOverview (canManageBudgets, else own-limits only)' },
@@ -39,7 +24,7 @@ export const GET = apiRoute(async ({ session }) => getBudgetOverview(session), {
 
 export const PUT = apiRoute(
   async ({ session, request }) => {
-    const input = await parseJsonBody(request, putSchema)
+    const input = await parseJsonBody(request, budgetPutSchema)
     return { policy: await saveBudgetPolicy(session, input, request) }
   },
   {
@@ -52,7 +37,7 @@ export const PUT = apiRoute(
 
 export const DELETE = apiRoute(
   async ({ session, request }) => {
-    const input = await parseJsonBody(request, deleteSchema)
+    const input = await parseJsonBody(request, budgetDeleteSchema)
     return { removed: await removeBudgetPolicy(session, input, request) }
   },
   {

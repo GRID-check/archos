@@ -190,6 +190,9 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
   // would tell a Behörde that files are filed where this card only SUGGESTED
   // putting them. The same reasoning as the two proposals above it.
   file_operation_proposal: 'chrome',
+  // An action Piloti proposed through the MCP surface, awaiting a decision the
+  // export cannot report: printed, it would state a change that may never have run.
+  operation_proposal: 'chrome',
   // Piloti's marks and thread answers on a document. A proposed mark is a
   // question to the office until somebody takes it over, and the answer lives in
   // `metadata.cardInteractions` and on the canvas, neither of which the export

@@ -2500,6 +2500,48 @@
       "title": "Obstruction",
       "type": "object"
     },
+    "OperationProposalCard": {
+      "description": "A workspace operation the agent PROPOSES through the MCP surface and a person runs.\n\nSystem-emitted for a write operation Piloti called on the product's own MCP\nserver (ADR-0121): the call changed nothing, it stored an ``operation``\nproposal (ADR-0105) and this card shows it. Accepting runs the operation\nas the ACCEPTING person through the operation's own route, so that route's\nauthorization decides; dismissing runs nothing. ``proposal_id`` is\nrequired: a call that stored no proposal has no card, and says so in its\nown result text.",
+      "properties": {
+        "input": {
+          "additionalProperties": true,
+          "description": "What the operation is called with: params, query and body, shown to the person",
+          "title": "Input",
+          "type": "object"
+        },
+        "operation": {
+          "description": "The catalog operation's name, e.g. 'folder-rename'",
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "proposal_id": {
+          "description": "The server proposal this card shows (kind 'operation'); the person accepts or dismisses it there",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "Proposal Id",
+          "type": "string"
+        },
+        "title": {
+          "description": "The one-line English description of what accepting would do",
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "type": {
+          "const": "operation_proposal",
+          "default": "operation_proposal",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
+        "operation",
+        "proposal_id"
+      ],
+      "title": "OperationProposalCard",
+      "type": "object"
+    },
     "ProjectProfilePatchCard": {
       "description": "Propose an update to the project brief (hard project facts) \u2014 applied only if the user accepts.",
       "properties": {
@@ -3197,6 +3239,7 @@
       "ifc_schedule": "#/$defs/IfcScheduleCard",
       "ifc_viewer": "#/$defs/IfcViewerCard",
       "memory_proposal": "#/$defs/MemoryProposalCard",
+      "operation_proposal": "#/$defs/OperationProposalCard",
       "project_profile_patch": "#/$defs/ProjectProfilePatchCard",
       "setback_plan": "#/$defs/SetbackPlanCard",
       "stair_diagram": "#/$defs/StairDiagramCard",
@@ -3238,6 +3281,9 @@
     },
     {
       "$ref": "#/$defs/MemoryProposalCard"
+    },
+    {
+      "$ref": "#/$defs/OperationProposalCard"
     },
     {
       "$ref": "#/$defs/DocumentGridCard"

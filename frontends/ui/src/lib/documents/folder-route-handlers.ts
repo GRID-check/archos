@@ -14,54 +14,14 @@
  * what a reviewer sees next to the verb.
  */
 
-import { z } from 'zod'
 import { parseJsonBody, type ApiContext } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { createFolderSchema, ensureFoldersSchema, updateFolderSchema } from './folder-wire'
 import { FOLDER_NAME_TAKEN_REASON } from '@/lib/projects/folder-bin-codes'
 import { FOLDER_NAME_TAKEN, type DeleteFolderResult, type FolderRow } from './shelf-folders'
 
 type Outcome<T> = ({ ok: true } & T) | { ok: false; error: string }
-
-const createFolderSchema = z.object({
-  name: z.string().min(1).max(255),
-  parentId: z.string().uuid().nullable().optional(),
-})
-
-const updateFolderSchema = z
-  .object({
-    name: z.string().min(1).max(255).optional(),
-    // Explicit `null` moves the folder to the shelf root, which is why this is
-    // `.nullable().optional()` and not merely optional: absent and null mean
-    // different things here.
-    parentId: z.string().uuid().nullable().optional(),
-    /**
-     * What belongs in the folder (migration 0145). `null` or blank clears it.
-     * Bounded above the column's 500 so the service, which folds whitespace
-     * first, gives the refusal in words; this is only the untrusted edge.
-     */
-    description: z.string().max(2000).nullable().optional(),
-  })
-  .refine((body) => body.name !== undefined || body.parentId !== undefined || body.description !== undefined, {
-    message: 'Nothing to update.',
-  })
-
-const ensureFoldersSchema = z.object({
-  /**
-   * The level the paths are relative to — the folder the reader was standing in
-   * when they dropped the tree. `null` is the shelf root.
-   */
-  parentId: z.string().uuid().nullable().optional(),
-  /**
-   * Distinct directory paths out of the dropped tree.
-   *
-   * Bounded here as well as in the service: this is the untrusted edge, and the
-   * service's own ceiling exists for a caller that is not a route. 4096
-   * characters per path is four times the `project_folders.path` column, which
-   * is the real limit a segment walk runs into.
-   */
-  paths: z.array(z.string().min(1).max(4096)).max(300),
-})
 
 /** A service answer that is either its value or a message the caller's request earned. */
 function unwrap<T extends object>(outcome: Outcome<T>): T {

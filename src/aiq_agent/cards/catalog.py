@@ -41,6 +41,9 @@ from pydantic_core import PydanticUndefined
 SYSTEM_CARD_TYPES = frozenset(
     {
         "memory_proposal",
+        # `operation_proposal` from the product's own MCP server: the card names
+        # a stored `operation` proposal a person decides (ADR-0121).
+        "operation_proposal",
         "document_grid",
         "document_draft",
         # `task_created` from `create_task`: the card is proof that a task ROW
@@ -232,7 +235,14 @@ def retired_card_markdown(payload: object) -> str | None:
 # `'live'`: the mark is the record, not the message. "Interactive" here means
 # "asks the user", which a live card still does.)
 INTERACTIVE_CARD_TYPES = frozenset(
-    {"project_profile_patch", "memory_proposal", "file_operation_proposal", "document_draft", "canvas_activity"}
+    {
+        "project_profile_patch",
+        "memory_proposal",
+        "file_operation_proposal",
+        "operation_proposal",
+        "document_draft",
+        "canvas_activity",
+    }
 )
 
 # Card types offered on the chat envelope only. A `surface` is taught by the

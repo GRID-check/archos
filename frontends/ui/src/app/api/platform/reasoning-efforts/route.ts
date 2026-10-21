@@ -13,25 +13,18 @@
  * A save takes effect on the next turn for every organization — no redeploy.
  */
 
-import { z } from 'zod'
 import { parseJsonBody } from '@/lib/api/handler'
 import { platformApiRoute } from '@/lib/api/platform-handler'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { getPlatformOrganizationId } from '@/lib/authz/platform'
 import { recordAuditEvent } from '@/lib/audit/service'
-import { AGENT_GROUPS, AGENT_GROUP_IDS, isAgentGroupId } from '@/lib/model-config/agent-groups'
+import { AGENT_GROUPS, isAgentGroupId } from '@/lib/model-config/agent-groups'
 import { getWorkflowGroupReasoningEfforts } from '@/lib/model-config/backend-defaults'
-import { REASONING_EFFORTS } from '@/lib/reasoning-settings/catalog'
+import { reasoningEffortsPutSchema } from '@/lib/platform/platform-wire'
 import {
   listPlatformReasoningEfforts,
   savePlatformReasoningEfforts,
 } from '@/lib/reasoning-settings/service'
-
-const putSchema = z.object({
-  /** The complete effort set; groups omitted are cleared back to the YAML. */
-  efforts: z.record(z.enum(AGENT_GROUP_IDS as [string, ...string[]]), z.enum(REASONING_EFFORTS)),
-  note: z.string().trim().max(500).nullable().optional(),
-})
 
 export const GET = platformApiRoute(
   async () => {
@@ -67,7 +60,7 @@ export const PUT = platformApiRoute(
     // `parseJsonBody`, not a bare `schema.parse`: it turns a schema violation into
     // a 400 with the field details. A raw ZodError falls through `errorResponse`
     // as an unhandled 500, which reports a malformed payload as our fault.
-    const input = await parseJsonBody(request, putSchema)
+    const input = await parseJsonBody(request, reasoningEffortsPutSchema)
 
     // No catalog round-trip, unlike the model defaults: the accepted values are a
     // closed vocabulary we own, and whether a given MODEL honours a level is

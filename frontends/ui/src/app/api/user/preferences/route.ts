@@ -4,15 +4,11 @@
  * `@/lib/user-preferences/service`.
  */
 
-import { z } from 'zod'
 import { cookies } from 'next/headers'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { LOCALE_COOKIE, LOCALE_COOKIE_MAX_AGE_SECONDS, isLocale } from '@/i18n/config'
+import { updatePreferencesSchema } from '@/lib/user-preferences/preferences-wire'
 import { getUserPreferences, mergeUserPreferences } from '@/lib/user-preferences/service'
-
-const updatePreferencesSchema = z.object({
-  prefs: z.record(z.unknown()),
-})
 
 export const GET = apiRoute(async ({ session }) => ({ prefs: await getUserPreferences(session) }), {
   authz: { sessionOnly: true, why: 'the caller’s own preferences, keyed to session.userId' },

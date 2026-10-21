@@ -80,6 +80,16 @@ TOOLS: dict[str, tuple[str, str]] = {
         "reports",
         "tests/aiq_agent/tools/canvas/test_look.py::test_a_look_reports_the_collection_it_read",
     ),
+    # Piloti's own MCP server (ADR-0121). Its operations return workspace records
+    # (projects, members, document metadata, proposals), never passages: reading a
+    # passage stays with knowledge_search and read_passage, which report. OPEN
+    # CONDITION, not yet pinned by a test here: the server's catalog must not expose
+    # a route that returns a restricted folder's file content to a turn that has not
+    # been admitted for it (ADR-0088); the BFF owns that gate, as for project_lookup.
+    "piloti_workspace": (
+        "no_collection_content",
+        "returns workspace records and proposals, not passages; the BFF catalog owns the restricted-folder gate",
+    ),
     "project_memory_remember": (
         "no_collection_content",
         "writes a note; restricted memory is served into a prompt only after the BFF admits its folders",

@@ -9,8 +9,8 @@
  * signature a caller could address to somebody else is not a signature.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { confirmCheckSchema, withdrawCheckSchema } from '@/lib/bim/checks-wire'
 import {
   confirmAccessibleCheck,
   listAccessibleCheckConfirmations,
@@ -18,20 +18,6 @@ import {
 } from '@/lib/bim/model-service'
 
 type Params = { id: string }
-
-const RULE_ID = z.string().trim().min(1).max(120)
-
-const confirmSchema = z.object({
-  ruleId: RULE_ID,
-  /** The revision the person looked at; re-resolved against the tenant. */
-  modelId: z.string().uuid(),
-  note: z.string().trim().max(2000).nullish(),
-})
-
-// `modelId` is required, because a confirmation is keyed per revision (0045):
-// a project holds several buildings, and "withdraw rule X" with no building
-// named would take back the wrong signature — or every one of them.
-const withdrawSchema = z.object({ ruleId: RULE_ID, modelId: z.string().uuid() })
 
 export const GET = apiRoute<Params>(
   async ({ session, params }) => ({
@@ -46,7 +32,7 @@ export const GET = apiRoute<Params>(
 
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const body = await parseJsonBody(request, confirmSchema)
+    const body = await parseJsonBody(request, confirmCheckSchema)
     await confirmAccessibleCheck(session, params.id, {
       ruleId: body.ruleId,
       modelId: body.modelId,
@@ -63,7 +49,7 @@ export const POST = apiRoute<Params>(
 
 export const DELETE = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const body = await parseJsonBody(request, withdrawSchema)
+    const body = await parseJsonBody(request, withdrawCheckSchema)
     await withdrawAccessibleCheck(session, params.id, body.ruleId, body.modelId)
     return { ok: true }
   },

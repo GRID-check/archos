@@ -23,11 +23,10 @@ import {
   type NewInboxItem,
   type ShareableResourceType,
 } from '@/lib/db/schema'
-import { legacyInboxTypeAliases, type InboxListFilter } from './types'
+import { INBOX_LIST_LIMIT, legacyInboxTypeAliases, type InboxListFilter } from './types'
 import { MARKS_SET_GROUP_ANCHOR } from './registry'
 
-/** Hard cap for an inbox page. Read-time re-authorization cost scales with this. */
-export const INBOX_LIST_LIMIT = 50
+export { INBOX_LIST_LIMIT }
 
 /**
  * Create or fold an item into its group.

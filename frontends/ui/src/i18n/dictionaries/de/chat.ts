@@ -634,6 +634,17 @@ export const chat: typeof en.chat = {
         dismissed: 'Verworfen. Der Projektkontext blieb unverändert.',
       },
     },
+    // Eine Aktion, die Piloti über die MCP-Schnittstelle VORGESCHLAGEN hat
+    // (ADR-0121). Bis zum Annehmen ist nichts geschehen; das Annehmen führt sie
+    // in der Sitzung der Lesenden aus, die Route prüft die Berechtigung.
+    operationProposal: {
+      eyebrow: 'Aktion',
+      // „{operation}“ ist der technische Name der Aktion, er bleibt unübersetzt.
+      operation: 'Aktion: {operation}',
+      inputLabel: 'Eingaben',
+      applied: 'Die Aktion wurde ausgeführt.',
+      dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
+    },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
     // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
     // der Weg in die Prüfansicht an genau diese Stelle. Eine Datei heißt hier

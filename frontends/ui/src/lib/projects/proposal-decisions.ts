@@ -249,6 +249,11 @@ function describePayload(kind: string, payload: unknown): { kind: string; conten
     const content = describeFileOperation(payload)
     return content ? { kind: 'Ablage', content } : null
   }
+  if (kind === 'operation') {
+    // The one line the person read when they decided (`OperationPayload.summary`).
+    const content = asString(payload.summary)
+    return content ? { kind: 'Aktion', content } : null
+  }
   return null
 }
 

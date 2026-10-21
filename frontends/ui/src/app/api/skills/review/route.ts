@@ -7,23 +7,10 @@
  * a save on it.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { reviewSkill } from '@/lib/skills/review'
-import { MAX_SKILL_BODY_LENGTH, MAX_SKILL_DESCRIPTION_LENGTH, MAX_SKILL_NAME_LENGTH } from '@/lib/skills/types'
-
-/**
- * Deliberately looser than `createSkillSchema`: the whole point is to review a
- * DRAFT, and a draft is usually not yet valid. Only the outer bounds are
- * enforced, so the reviewer can be asked about an empty description — which is
- * exactly the case where its answer matters most.
- */
-const reviewSkillSchema = z.object({
-  name: z.string().max(MAX_SKILL_NAME_LENGTH).default(''),
-  description: z.string().max(MAX_SKILL_DESCRIPTION_LENGTH).default(''),
-  body: z.string().max(MAX_SKILL_BODY_LENGTH).default(''),
-})
+import { reviewSkillSchema } from '@/lib/skills/types'
 
 export const POST = apiRoute(
   async ({ session, request }) => {

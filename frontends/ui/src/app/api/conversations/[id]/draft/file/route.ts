@@ -13,26 +13,12 @@
  * onto an unrelated document.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { fileDraftBodySchema } from '@/lib/conversations/conversation-wire'
 import { fileConversationDraft } from '@/lib/conversations/draft-filing'
 import { getLocale } from '@/i18n/server'
 
 type Params = { id: string }
-
-const fileDraftBodySchema = z
-  .object({
-    // The working-directory path as the card carries it (`/entwuerfe/….md`).
-    // Length-capped like the preview door; legitimacy is decided by the
-    // service and the backend's own path refusal, not here.
-    path: z.string().min(1).max(500),
-    // The card's title. Optional so an older client still files — the service
-    // falls back to the path's file name.
-    title: z.string().max(500).optional(),
-    // Set after the card showed the same-name 409 and the reader confirmed.
-    force: z.boolean().optional().default(false),
-  })
-  .strict()
 
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {

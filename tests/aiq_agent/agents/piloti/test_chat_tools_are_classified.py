@@ -38,6 +38,10 @@ NOT_SOURCES = {
         "the review canvas (a function group): looks at a page, reads and proposes marks, points; a mark is a "
         "person's note and a page image shows a document already searchable, never a passage a reader cites"
     ),
+    "workspace": (
+        "Piloti's own MCP server (a function group): finds and runs workspace operations as the asker, a write "
+        "comes back as a proposal; its results are records of the office's own state, not passages a reader cites"
+    ),
     "ask_user": "asks the reader a question",
     "ifc_query": "answers from the building model through cards, not passages",
     "ifc_measure": "measures in the building model; its numbers arrive through cards",

@@ -163,6 +163,18 @@ const PROFILE_NOW: ProjectProfile = {
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
+/** The one result line of a memory note, a profile change or an operation. */
+function labelOf(proposal: Exclude<ProposedChangeView, { kind: 'file_operation' }>): string {
+  switch (proposal.kind) {
+    case 'memory':
+      return proposal.payload.content
+    case 'operation':
+      return proposal.payload.summary
+    case 'project_profile':
+      return proposal.payload.title
+  }
+}
+
 /**
  * Replace `fetch` with the faked API; the returned function puts the real one
  * back. `listed` are proposals a preview brings of its own, with the documents
@@ -181,7 +193,7 @@ export function installFakeProposalClient(listed: readonly ListedProposal[] = []
         ? null
         : current.kind === 'file_operation'
           ? current.payload.operations.map((item) => ({ label: item.document ?? item.folder_name ?? '', ok: true }))
-          : [{ label: current.kind === 'memory' ? current.payload.content : current.payload.title, ok: true }]
+          : [{ label: labelOf(current), ok: true }]
     return {
       ...current,
       status,

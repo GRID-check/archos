@@ -4,8 +4,12 @@ import { projects } from './projects'
 import {
   PROJECT_MEMORY_CONFIDENCES,
   PROJECT_MEMORY_KINDS,
+  PROJECT_MEMORY_STATUSES,
+  PROJECT_MEMORY_VERIFICATIONS,
   type ProjectMemoryConfidence,
   type ProjectMemoryKind,
+  type ProjectMemoryStatus,
+  type ProjectMemoryVerification,
 } from '@/lib/projects/memory-vocabulary'
 
 /**
@@ -19,17 +23,11 @@ import {
 
 export { PROJECT_MEMORY_KINDS, type ProjectMemoryKind }
 
-export const PROJECT_MEMORY_STATUSES = ['proposed', 'active', 'superseded', 'dismissed'] as const
-export type ProjectMemoryStatus = (typeof PROJECT_MEMORY_STATUSES)[number]
+export { PROJECT_MEMORY_STATUSES, type ProjectMemoryStatus }
 
 export { PROJECT_MEMORY_CONFIDENCES, type ProjectMemoryConfidence }
 
-export const PROJECT_MEMORY_VERIFICATIONS = [
-  'unverified',
-  'source_grounded',
-  'user_confirmed',
-] as const
-export type ProjectMemoryVerification = (typeof PROJECT_MEMORY_VERIFICATIONS)[number]
+export { PROJECT_MEMORY_VERIFICATIONS, type ProjectMemoryVerification }
 
 export const PROJECT_MEMORY_PROVENANCES = [
   'agent',

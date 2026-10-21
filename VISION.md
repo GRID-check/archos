@@ -56,6 +56,10 @@ places, not the frame around them.
 
 These are directions with a document behind them, not promises:
 
+- **The office's own agents.** The workspace is open to them. Anything a person
+  can do in Piloti, their agent (Claude, Cursor, their own) can do through
+  Piloti's MCP server, with the person saying yes or no
+  ([`docs/architecture/agent-surface.md`](docs/architecture/agent-surface.md)).
 - **The office's past as knowledge.** An importer that reads an office's
   archive for facts and decisions, and Referenzblätter for tenders
   ([`docs/roadmap/office-experience.md`](docs/roadmap/office-experience.md)).

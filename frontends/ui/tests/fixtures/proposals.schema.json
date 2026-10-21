@@ -1505,6 +1505,210 @@
             "payload"
           ],
           "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "projectId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "applied",
+                "partially_applied",
+                "failed",
+                "dismissed"
+              ]
+            },
+            "proposedByKind": {
+              "type": "string",
+              "enum": [
+                "piloti",
+                "person"
+              ]
+            },
+            "onBehalfOf": {
+              "type": "string"
+            },
+            "onBehalfOfName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "originConversationId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "originMessageId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "decidedBy": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "decidedByName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "decidedAt": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "results": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "itemId": {
+                        "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "project",
+                          "organization"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "ok"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "canDecide": {
+              "type": "boolean"
+            },
+            "kind": {
+              "const": "operation"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "input": {
+                  "type": "object",
+                  "properties": {
+                    "params": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "string"
+                      }
+                    },
+                    "query": {
+                      "type": "object",
+                      "additionalProperties": {}
+                    },
+                    "body": {}
+                  },
+                  "additionalProperties": false
+                },
+                "summary": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 300
+                }
+              },
+              "required": [
+                "operation",
+                "input",
+                "summary"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "projectId",
+            "status",
+            "proposedByKind",
+            "onBehalfOf",
+            "onBehalfOfName",
+            "originConversationId",
+            "originMessageId",
+            "createdAt",
+            "decidedBy",
+            "decidedByName",
+            "decidedAt",
+            "results",
+            "canDecide",
+            "kind",
+            "payload"
+          ],
+          "additionalProperties": true
         }
       ],
       "discriminator": {
@@ -2287,6 +2491,210 @@
                   "required": [
                     "title",
                     "patch"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "projectId",
+                "status",
+                "proposedByKind",
+                "onBehalfOf",
+                "onBehalfOfName",
+                "originConversationId",
+                "originMessageId",
+                "createdAt",
+                "decidedBy",
+                "decidedByName",
+                "decidedAt",
+                "results",
+                "canDecide",
+                "kind",
+                "payload"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "projectId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "proposed",
+                    "applied",
+                    "partially_applied",
+                    "failed",
+                    "dismissed"
+                  ]
+                },
+                "proposedByKind": {
+                  "type": "string",
+                  "enum": [
+                    "piloti",
+                    "person"
+                  ]
+                },
+                "onBehalfOf": {
+                  "type": "string"
+                },
+                "onBehalfOfName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originConversationId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originMessageId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "decidedBy": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedByName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "results": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "itemId": {
+                            "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "project",
+                              "organization"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "ok"
+                        ],
+                        "additionalProperties": true
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "canDecide": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "operation"
+                },
+                "payload": {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 80
+                    },
+                    "input": {
+                      "type": "object",
+                      "properties": {
+                        "params": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "query": {
+                          "type": "object",
+                          "additionalProperties": {}
+                        },
+                        "body": {}
+                      },
+                      "additionalProperties": false
+                    },
+                    "summary": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 300
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "input",
+                    "summary"
                   ],
                   "additionalProperties": false
                 }

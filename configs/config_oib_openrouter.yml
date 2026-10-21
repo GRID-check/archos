@@ -369,6 +369,15 @@ function_groups:
   canvas:
     _type: document_canvas
 
+  # Everything a person can do in Piloti, through Piloti's own MCP server
+  # (src/aiq_agent/tools/workspace, ADR-0121): `workspace__search`,
+  # `workspace__describe`, `workspace__call`, `workspace__report_missing`. The
+  # model finds an operation, reads its schema, calls it; a write comes back as a
+  # proposal the person accepts. Each call echoes the turn's signed envelope, so
+  # it acts as the asker. Chat only, because only a turn carries an envelope.
+  workspace:
+    _type: piloti_workspace
+
 functions:
   data_sources:
     _type: data_source_registry
@@ -784,6 +793,8 @@ functions:
       - project_lookup
       # The `canvas` function group (below): nine tools, `canvas__look` …
       - canvas
+      # The `workspace` function group (above): four tools, `workspace__search` …
+      - workspace
       - ifc_query
       - ifc_measure
       - ask_user

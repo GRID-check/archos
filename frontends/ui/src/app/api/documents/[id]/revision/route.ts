@@ -5,18 +5,11 @@
  * `@/lib/documents/revision-service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { revisionLinkSchema } from '@/lib/documents/document-wire'
 import { setRevisionLink } from '@/lib/documents/revision-service'
 
 type Params = { id: string }
-
-const revisionLinkSchema = z.object({
-  /** The document being replaced. */
-  older: z.string().uuid(),
-  /** `true` confirms the link, `false` takes it back. */
-  linked: z.boolean(),
-})
 
 export const PUT = apiRoute<Params>(
   async ({ session, request, params }) => {

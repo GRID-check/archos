@@ -155,6 +155,37 @@ Three consequences worth knowing before adding a fifth operation:
   project-scoped route rather than shipping ahead of it. Inventing a route on this side would put the
   write back behind the door the whole module exists to keep shut.
 
+## A new workspace capability is a route and an operation, not a tool
+
+Piloti reaches the workspace through the BFF's MCP server (`/api/mcp`) like any
+agent (ADR-0121). Everything a person can do there is an operation in
+`frontends/ui/src/lib/agent-api/catalog/`, run as the person, and a write from
+this tier becomes a proposal the person accepts. So a capability that has a UI
+route gets an operation, not a new Python tool. Python tools are for task-shaped
+reasoning that has no route: retrieval, IFC, canvas. The Python-only reads are
+served to other agents through the same server
+([`agent-surface.md`](../../../docs/architecture/agent-surface.md)).
+
+## The workspace tools are Piloti as a client of its own MCP server
+
+`workspace` (`workspace/`, the `piloti_workspace` function group, ADR-0121) is
+four tools, `workspace__search`, `workspace__describe`, `workspace__call` and
+`workspace__report_missing`: the meta-tools an external agent gets from
+`POST /api/mcp` in `discovery` mode. Each call is one stateless JSON-RPC
+`tools/call` that echoes the turn's envelope beside `GRID_INTERNAL_API_TOKEN`
+(echo, never sign, as above). A write comes back as a proposal the person
+accepts; this tier applies nothing.
+
+**Do not swap it for NAT's `mcp_client` group.** That client connects once, in a
+lifecycle task created at build time, and sends every request from tasks spawned
+inside it, which inherit the CONNECT-time contextvars. An auth provider reading
+the envelope from a contextvar would send no identity, or another turn's, on a
+later turn's call. Here the envelope is read inside the tool, in the turn's own
+context, and nothing is connected or cached between calls; the two tests in
+`tests/aiq_agent/tools/workspace/` (`..._of_its_own_turn`, `..._never_swap_identities`)
+pin it. Nothing is added per operation on this side: a new operation is a catalog
+entry on the BFF and appears through `workspace__search`.
+
 ## Content from another project is recorded by the BFF before it arrives
 
 `project_lookup` (`cross_project/`, ADR-0094) reads OTHER projects, from any

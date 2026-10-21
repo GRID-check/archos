@@ -287,3 +287,6 @@ export const UNKNOWN_TYPE_PRESENTATION: InboxTypePresentation = {
 export function isMarkAnchored(type: InboxItemType): boolean {
   return INBOX_TYPE_PRESENTATION[type]?.anchor === 'mark'
 }
+
+/** Hard cap for an inbox page. Read-time re-authorization cost scales with this. */
+export const INBOX_LIST_LIMIT = 50

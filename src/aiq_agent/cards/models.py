@@ -252,6 +252,31 @@ class MemoryProposalCard(CardModel):
     )
 
 
+class OperationProposalCard(CardModel):
+    """A workspace operation the agent PROPOSES through the MCP surface and a person runs.
+
+    System-emitted for a write operation Piloti called on the product's own MCP
+    server (ADR-0121): the call changed nothing, it stored an ``operation``
+    proposal (ADR-0105) and this card shows it. Accepting runs the operation
+    as the ACCEPTING person through the operation's own route, so that route's
+    authorization decides; dismissing runs nothing. ``proposal_id`` is
+    required: a call that stored no proposal has no card, and says so in its
+    own result text.
+    """
+
+    type: Literal["operation_proposal"] = "operation_proposal"
+    title: str = Field(min_length=1, description="The one-line English description of what accepting would do")
+    operation: str = Field(min_length=1, description="The catalog operation's name, e.g. 'folder-rename'")
+    input: dict[str, Any] = Field(
+        default_factory=dict,
+        description="What the operation is called with: params, query and body, shown to the person",
+    )
+    proposal_id: str = Field(
+        pattern=PROPOSAL_ID_PATTERN,
+        description="The server proposal this card shows (kind 'operation'); the person accepts or dismisses it there",
+    )
+
+
 # ── Schematic cards: shared sub-structures ───────────────────────────────────
 # These cards are programmatically-drawn technical schematics (SVG). The model
 # emits PARAMETERS ONLY — never a rendered image and never a number it can't
@@ -1847,6 +1872,7 @@ GridCard = (
     | GuardrailCheckCard
     | FireAccessPlanCard
     | MemoryProposalCard
+    | OperationProposalCard
     | DocumentGridCard
     | DocumentDraftCard
     | TaskCreatedCard
@@ -1882,6 +1908,7 @@ __all__ = [
     "IfcDiffCard",
     "IfcModelPickerCard",
     "MemoryProposalCard",
+    "OperationProposalCard",
     "SurfacedDocument",
     "ProjectProfilePatchCard",
     "ProjectProfilePatchOperation",

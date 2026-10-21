@@ -50,10 +50,38 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, string> = {
   '* /api/realtime': 'the browser’s live channel (presence, typing); transport, not an act',
   '* /api/realtime/send': 'the browser’s live channel (presence, typing); transport, not an act',
   '* /api/conversations/[id]/typing': 'a typing indicator for the person at the keyboard; an agent has no keyboard',
+  '* /api/conversations/[id]/live': 'the browser’s server-sent event stream of a turn; an agent reads messages instead',
+  '* /api/conversations/[id]/frames': 'lets the browser resume its chat socket where it dropped; transport, not an act',
+  '* /api/conversations/[id]/messages/[messageId]/stopped':
+    'cuts an answer to the text the Stop button had on screen; only the browser knows what it showed',
+  'POST /api/notifications/push/devices': 'registers this browser’s Web Push subscription; an agent has no browser to notify',
+  '* /api/notifications/push/config': 'the VAPID public key a browser subscribes with; transport, not an act',
   '* /api/mcp': 'the MCP endpoint itself: it is the door every operation here goes through',
   '* /api/v1/[...path]': 'transport proxy to the backend; the capabilities behind it are catalogued at their own routes',
   '* /api/jobs/async/[...path]': 'transport proxy to the job API; starting and steering runs is catalogued at the task routes',
   '* /api/dictation': 'speech-to-text for the person’s microphone; an agent sends text',
+  '* /api/openapi': 'the machine-readable description of these operations; an agent reads it through describe-operation instead',
+}
+
+/**
+ * Sensitive capabilities not yet reachable (ADR-0121, "Sensitive operations"):
+ * changing who may see or do what, and the organization's secrets. They are
+ * meant to become operations with `sensitivity` set, behind the extra guards
+ * the ADR names (organization opt-in, step-up scope, the person confirms,
+ * Piloti only proposes). Until those guards ship they are listed here, so
+ * nothing catalogues them by accident. Same key format as above.
+ */
+const PERSON_ONLY: Record<string, string> = {
+  'PUT /api/projects/[id]/folders/[folderId]/access': 'sets which roles may open a folder: a grant of access',
+  'PATCH /api/sharing/[resourceType]/[resourceId]': 'changes who may see a shared resource: a grant of access',
+  '* /api/sharing/[resourceType]/[resourceId]/grants': 'grants a person access to a resource: a grant of access',
+  '* /api/sharing/[resourceType]/[resourceId]/grants/[subjectUserId]': 'changes or revokes a person’s access grant',
+  'POST /api/organization/roles': 'defines a custom role, i.e. what its holders may do: a grant of permissions',
+  '* /api/organization/roles/[slug]': 'changes or deletes a custom role’s permissions: a grant of permissions',
+  '* /api/organization/llm-credentials': 'the organization’s LLM provider keys: secrets an agent never writes or reads',
+  '* /api/organization/llm-credentials/[id]': 'revokes an LLM provider key: the organization’s secrets',
+  '* /api/organization/llm-credentials/[id]/verify': 'tests an LLM provider key against the provider: the organization’s secrets',
+  '* /api/organization/llm-credentials/mode': 'switches the organization between its own keys and the platform’s',
 }
 
 interface RouteMethod {
@@ -98,8 +126,12 @@ function personFacingRouteMethods(): RouteMethod[] {
   return found.sort((a, b) => a.key.localeCompare(b.key))
 }
 
+function listedIn(map: Record<string, string>, route: RouteMethod): boolean {
+  return route.key in map || `* ${route.path}` in map
+}
+
 function isExempt(route: RouteMethod): boolean {
-  return `${route.key}` in NOT_AN_AGENT_CAPABILITY || `* ${route.path}` in NOT_AN_AGENT_CAPABILITY
+  return listedIn(NOT_AN_AGENT_CAPABILITY, route) || listedIn(PERSON_ONLY, route)
 }
 
 const ROUTES = personFacingRouteMethods()
@@ -140,10 +172,15 @@ describe('every person-facing route is agent-reachable (ADR-0121)', () => {
     expect(stale, 'Remove these from agent-reachability-baseline.json (UPDATE_FIXTURES=1 rewrites it).').toEqual([])
   })
 
+  it('a person-only capability is never catalogued', () => {
+    const catalogued = ROUTES.filter((route) => COVERED.has(route.key) && listedIn(PERSON_ONLY, route))
+    expect(catalogued.map((route) => route.key)).toEqual([])
+  })
+
   it('every exemption names a route that exists, with a reason', () => {
     const paths = new Set(ROUTES.map((route) => route.path))
     const keys = new Set(ROUTES.map((route) => route.key))
-    for (const [key, reason] of Object.entries(NOT_AN_AGENT_CAPABILITY)) {
+    for (const [key, reason] of Object.entries({ ...NOT_AN_AGENT_CAPABILITY, ...PERSON_ONLY })) {
       expect(reason.length, key).toBeGreaterThan(30)
       const [method, path] = key.split(' ') as [string, string]
       // The MCP route answers with its own factory-less handler, so it may not

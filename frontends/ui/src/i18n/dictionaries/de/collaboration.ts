@@ -518,6 +518,7 @@ export const collaboration: typeof en.collaboration = {
           assign: { title: 'Piloti schlägt eine Zuweisung vor' },
           memory: { title: 'Piloti möchte sich eine Notiz merken' },
           project_profile: { title: 'Piloti schlägt eine Änderung am Projektkontext vor' },
+          operation: { title: 'Piloti schlägt eine Aktion vor' },
         },
       },
       // Piloti hat die Dokumente eines Projekts gelesen und Werte für das

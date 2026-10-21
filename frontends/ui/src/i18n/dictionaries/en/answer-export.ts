@@ -148,6 +148,7 @@ export const answerExport = {
   cardTypes: {
     project_profile_patch: 'Proposed change to the project brief',
     memory_proposal: 'Proposed memory entry',
+    operation_proposal: 'Proposed action',
     building_section: 'Building section',
     stair_diagram: 'Stair',
     dimension_diagram: 'Dimensions',

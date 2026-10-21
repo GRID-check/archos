@@ -10,7 +10,8 @@
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
-import { deletedFolderContentSchema, getDeletedFolderContentPolicy } from '@/lib/organizations/deleted-folder-content'
+import { getDeletedFolderContentPolicy } from '@/lib/organizations/deleted-folder-content'
+import { deletedFolderContentSchema } from '@/lib/organizations/organization-wire'
 import { saveDeletedFolderContentPolicy } from '@/lib/organizations/deleted-folder-content-service'
 
 export const GET = apiRoute(

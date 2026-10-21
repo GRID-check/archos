@@ -674,6 +674,7 @@ export const collaboration = {
           assign: { title: 'Piloti suggests an assignment' },
           memory: { title: 'Piloti would like to remember a note' },
           project_profile: { title: 'Piloti suggests a change to the project context' },
+          operation: { title: 'Piloti suggests an action' },
         },
       },
       // Piloti read a project's documents and suggested values for its profile

@@ -5,24 +5,15 @@
  * file names.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { sealOwnUploadBatch, UPLOAD_BATCH_MAX_FILES } from '@/lib/upload-batches/service'
-import { uploadBatchExclusionsSchema } from '../../exclusions-schema'
+import { sealUploadBatchSchema } from '@/lib/upload-batches/batch-wire'
+import { sealOwnUploadBatch } from '@/lib/upload-batches/service'
 
 type Params = { id: string }
 
-const bodySchema = z
-  .object({
-    unchanged: z.number().int().min(0).max(UPLOAD_BATCH_MAX_FILES),
-    failed: z.number().int().min(0).max(UPLOAD_BATCH_MAX_FILES),
-    excluded: uploadBatchExclusionsSchema,
-  })
-  .strict()
-
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const counts = await parseJsonBody(request, bodySchema)
+    const counts = await parseJsonBody(request, sealUploadBatchSchema)
     await sealOwnUploadBatch(session, params.id, counts)
     return { id: params.id }
   },

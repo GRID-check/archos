@@ -5,6 +5,8 @@
  * (migration 0117 CHECKs the day). Pure, shared by the service and the form.
  */
 
+import { z } from 'zod'
+
 /** `YYYY-MM`, the month on the wire and in the form's `<input type="month">`. */
 export type Month = `${number}-${number}`
 
@@ -13,6 +15,9 @@ const MONTH = /^(\d{4})-(0[1-9]|1[0-2])$/
 export function isMonth(value: string): value is Month {
   return MONTH.test(value)
 }
+
+/** A month on the wire: a `YYYY-MM` string. Shared by the status and create bodies (and the agent catalog). */
+export const monthSchema = z.string().refine((value): value is Month => isMonth(value), 'A month, YYYY-MM.')
 
 /** The `date` a month is stored as: its first day. */
 export function monthToDate(month: Month): string {

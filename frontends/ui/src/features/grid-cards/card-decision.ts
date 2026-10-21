@@ -88,6 +88,12 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // describe all three better; see `DECIDED_ON_THE_SERVER` in
   // `card-interactivity.spec.tsx`, which it would retire.
   file_operation_proposal: 'interactive',
+  // Asks the user to run an operation of the product's MCP surface that Piloti
+  // only PROPOSED (ADR-0121). Decided on the server like `file_operation_proposal`
+  // above: Accept and Discard go to `/api/proposals/[id]`, the object records who
+  // decided, and nothing is written to `cardInteractions`. The card always carries
+  // its `proposal_id`: a call that stored no proposal has no card.
+  operation_proposal: 'interactive',
   // Reports the marks Piloti set on a document and the threads it answered in,
   // and asks, per proposed mark, „übernehmen oder verwerfen?" (or all at once).
   // A window onto objects, not a copy of them: the card reads the marks live

@@ -18,7 +18,6 @@
  * OpenRouter's ZDR does not reach).
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
@@ -34,18 +33,14 @@ import {
 import { getCatalogForOrg } from '@/lib/model-config/org-catalog'
 import { isZdrOnlyForOrg } from '@/lib/organizations/service'
 import { estimateCreditsPerRequest, getEffectivePricing } from '@/lib/pricing/service'
+import { modelSearchQuerySchema } from '@/lib/organizations/organization-wire'
 import { getOrgBudgetUnit } from '@/lib/budgets/service'
-
-const querySchema = z.object({
-  group: z.string().default(''),
-  q: z.string().default(''),
-})
 
 export const GET = apiRoute(
   async ({ session, request }) => {
     const gated = requireFeature(session, FEATURE_FLAGS.modelConfiguration)
     if (gated) return gated
-    const { group: groupId, q: query } = parseQuery(request, querySchema)
+    const { group: groupId, q: query } = parseQuery(request, modelSearchQuerySchema)
     const group = getAgentGroup(groupId)
     if (!group) {
       throw new BadRequestError('Unknown agent group')

@@ -197,6 +197,16 @@ export const FEATURE_FLAGS = {
    * untouched.
    */
   pilotiActs: 'piloti-acts',
+  /**
+   * The agent door (ADR-0121): external agents (Claude, Cursor, ChatGPT)
+   * reach the workspace as a person through the MCP server at `/api/mcp`.
+   * An entitlement, because it lets software outside the browser act with a
+   * person's rights; nobody has it until an operator targets the organization.
+   * Read per organization (`isOrgFeatureEnabled`) from the verified token's
+   * organization, since a bearer token carries no feature-flag claim. Piloti's
+   * own in-product calls to the same server are not gated by it.
+   */
+  agentMcp: 'agent-mcp',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -217,6 +227,7 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'mail-import': 'entitlement',
   'piloti-wakes': 'entitlement',
   'piloti-acts': 'entitlement',
+  'agent-mcp': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',

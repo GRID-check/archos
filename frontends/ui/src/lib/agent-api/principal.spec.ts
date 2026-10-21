@@ -1,0 +1,233 @@
+/**
+ * @vitest-environment node
+ */
+/**
+ * Who may knock on the agent door (ADR-0121).
+ *
+ * The external door's whole security argument is in these cases: a token for
+ * another audience, an expired one, one without an organization, or one from an
+ * organization that has not opted in gets nothing, and the 401 carries the
+ * challenge an MCP client needs to start OAuth. Piloti's door is the internal
+ * envelope's, unchanged.
+ */
+
+import { SignJWT, createLocalJWKSet, exportJWK, generateKeyPair } from 'jose'
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+
+vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
+vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
+
+import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import type { AuthorizedSession } from '@/lib/auth/types'
+import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { type AgentPrincipal, type AuthChallenge, isChallenge, resolvePrincipal } from './principal'
+
+const DOMAIN = 'auth.piloti.test'
+const ISSUER = `https://${DOMAIN}`
+const RESOURCE = 'https://app.piloti.test/api/mcp'
+const SECRET = 'internal-token-for-tests' // pragma: allowlist secret
+const KID = 'test-key'
+
+const session: AuthorizedSession = {
+  userId: 'user_1',
+  email: 'a@piloti.test',
+  name: null,
+  accessToken: '',
+  organizationId: 'org_1',
+  organizationMembershipId: 'om_1',
+  role: 'admin',
+  permissions: [],
+  featureFlags: null,
+}
+
+let privateKey: CryptoKey
+let jwks: ReturnType<typeof createLocalJWKSet>
+
+beforeAll(async () => {
+  const pair = await generateKeyPair('RS256')
+  privateKey = pair.privateKey as CryptoKey
+  jwks = createLocalJWKSet({ keys: [{ ...(await exportJWK(pair.publicKey)), kid: KID, alg: 'RS256', use: 'sig' }] })
+})
+
+async function token(claims: Record<string, unknown> = {}, options: { aud?: string; exp?: number | string; iss?: string } = {}) {
+  const jwt = new SignJWT({ client_id: 'client_claude', scope: 'openid profile', org_id: 'org_1', ...claims })
+    .setProtectedHeader({ alg: 'RS256', kid: KID })
+    .setSubject('user_1')
+    .setIssuer(options.iss ?? ISSUER)
+    .setAudience(options.aud ?? RESOURCE)
+    .setIssuedAt(Math.floor(Date.now() / 1000) - 3600)
+    .setExpirationTime(options.exp ?? '10m')
+  return jwt.sign(privateKey)
+}
+
+const bearer = (jwt: string) =>
+  new Request(RESOURCE, { method: 'POST', headers: { authorization: `Bearer ${jwt}` } })
+
+function challengeOf(result: AgentPrincipal | AuthChallenge): AuthChallenge {
+  if (!isChallenge(result)) throw new Error('expected a challenge')
+  return result
+}
+
+beforeEach(() => {
+  vi.clearAllMocks()
+  process.env.WORKOS_AUTHKIT_DOMAIN = DOMAIN
+  process.env.GRID_MCP_RESOURCE_URL = RESOURCE
+  process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
+  vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
+})
+
+describe('external agent (bearer token)', () => {
+  it('resolves a valid AuthKit token to the person, from live membership', async () => {
+    const result = await resolvePrincipal(bearer(await token()), { jwks })
+
+    expect(result).toEqual({
+      kind: 'person',
+      session,
+      clientId: 'client_claude',
+      scopes: ['openid', 'profile'],
+    })
+    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({
+      userId: 'user_1',
+      email: null,
+      organizationId: 'org_1',
+    })
+    expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp', 'org_1')
+  })
+
+  it('never carries the token into the session', async () => {
+    const result = await resolvePrincipal(bearer(await token()), { jwks })
+    expect(isChallenge(result) ? null : result.session.accessToken).toBe('')
+  })
+
+  it('refuses a request with no bearer token and tells the client where to start OAuth', async () => {
+    const { response } = challengeOf(await resolvePrincipal(new Request(RESOURCE, { method: 'POST' }), { jwks }))
+    expect(response.status).toBe(401)
+    expect(response.headers.get('www-authenticate')).toMatch(/^Bearer /)
+    expect(response.headers.get('www-authenticate')).toContain(
+      'resource_metadata="https://app.piloti.test/.well-known/oauth-protected-resource/api/mcp"',
+    )
+  })
+
+  it('refuses a token minted for another audience', async () => {
+    const { response } = challengeOf(
+      await resolvePrincipal(bearer(await token({}, { aud: 'https://other.example/api/mcp' })), { jwks }),
+    )
+    expect(response.status).toBe(401)
+    expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
+  })
+
+  it('refuses an expired token', async () => {
+    const expired = await token({}, { exp: Math.floor(Date.now() / 1000) - 60 })
+    const { response } = challengeOf(await resolvePrincipal(bearer(expired), { jwks }))
+    expect(response.status).toBe(401)
+  })
+
+  it('refuses a token from another issuer', async () => {
+    const { response } = challengeOf(
+      await resolvePrincipal(bearer(await token({}, { iss: 'https://evil.example' })), { jwks }),
+    )
+    expect(response.status).toBe(401)
+  })
+
+  it('refuses a token signed by an unknown key', async () => {
+    const other = await generateKeyPair('RS256')
+    const forged = await new SignJWT({ org_id: 'org_1' })
+      .setProtectedHeader({ alg: 'RS256', kid: KID })
+      .setSubject('user_1')
+      .setIssuer(ISSUER)
+      .setAudience(RESOURCE)
+      .setExpirationTime('10m')
+      .sign(other.privateKey)
+    const { response } = challengeOf(await resolvePrincipal(bearer(forged), { jwks }))
+    expect(response.status).toBe(401)
+  })
+
+  it('answers 403 with a clear message when the token has no organization', async () => {
+    const { response } = challengeOf(await resolvePrincipal(bearer(await token({ org_id: undefined })), { jwks }))
+    expect(response.status).toBe(403)
+    expect(((await response.json()) as { error: string }).error).toMatch(/not bound to an organization/)
+  })
+
+  it('answers 403 when the organization has not enabled agent access', async () => {
+    vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
+    const { response } = challengeOf(await resolvePrincipal(bearer(await token()), { jwks }))
+    expect(response.status).toBe(403)
+    expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
+  })
+
+  it('answers 403 when the person is no longer a member', async () => {
+    vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(null)
+    const { response } = challengeOf(await resolvePrincipal(bearer(await token()), { jwks }))
+    expect(response.status).toBe(403)
+  })
+
+  it('answers 503 while the deployment has no AuthKit domain', async () => {
+    delete process.env.WORKOS_AUTHKIT_DOMAIN
+    const { response } = challengeOf(await resolvePrincipal(bearer(await token()), { jwks }))
+    expect(response.status).toBe(503)
+  })
+})
+
+describe('Piloti in-product (internal token and envelope)', () => {
+  function envelope(overrides: { issuedAt?: number } = {}) {
+    const { header, signature } = buildGridRequestContextEnvelope(
+      {
+        organizationId: 'org_1',
+        userId: 'user_1',
+        projectId: 'proj_1',
+        conversationId: 'conv_1',
+        issuedAt: overrides.issuedAt ?? Date.now(),
+      },
+      SECRET,
+    )
+    return {
+      [GRID_HEADER_NAMES.REQUEST_CONTEXT]: header,
+      [GRID_HEADER_NAMES.REQUEST_CONTEXT_SIG]: signature ?? '',
+    }
+  }
+
+  const piloti = (headers: Record<string, string>) =>
+    new Request(RESOURCE, { method: 'POST', headers: { 'x-grid-internal-token': SECRET, ...headers } })
+
+  it('resolves a verified envelope to Piloti, with its conversation and project', async () => {
+    const result = await resolvePrincipal(piloti(envelope()), { jwks })
+    expect(result).toEqual({
+      kind: 'piloti',
+      session,
+      clientId: null,
+      scopes: [],
+      conversationId: 'conv_1',
+      projectId: 'proj_1',
+    })
+    // The product itself is not an opt-in feature.
+    expect(isOrgFeatureEnabled).not.toHaveBeenCalled()
+  })
+
+  it('refuses the service token alone', async () => {
+    const { response } = challengeOf(await resolvePrincipal(piloti({}), { jwks }))
+    expect(response.status).toBe(401)
+  })
+
+  it('refuses a wrong service token', async () => {
+    const request = new Request(RESOURCE, {
+      method: 'POST',
+      headers: { 'x-grid-internal-token': 'nope', ...envelope() },
+    })
+    const { response } = challengeOf(await resolvePrincipal(request, { jwks }))
+    expect(response.status).toBe(403)
+  })
+
+  it('refuses an envelope outside its window', async () => {
+    const stale = envelope({ issuedAt: Date.now() - 7 * 60 * 60 * 1000 })
+    const { response } = challengeOf(await resolvePrincipal(piloti(stale), { jwks }))
+    expect(response.status).toBe(401)
+  })
+
+  it('refuses an envelope whose person has left', async () => {
+    vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(null)
+    const { response } = challengeOf(await resolvePrincipal(piloti(envelope()), { jwks }))
+    expect(response.status).toBe(403)
+  })
+})

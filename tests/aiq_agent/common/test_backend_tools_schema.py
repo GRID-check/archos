@@ -1,0 +1,38 @@
+"""The contract of the read tools other agents reach over MCP is the one the tools generate (ADR-0121).
+
+``frontends/ui/tests/fixtures/backend-tools.schema.json`` is what the BFF's MCP
+server shows an outside agent: each tool's name, the description the chat model
+reads, its input JSON Schema and its annotations. It is written from the
+functions themselves, so a changed description or argument that leaves it
+unregenerated would show the outside agent a tool that no longer exists.
+"""
+
+from __future__ import annotations
+
+import json
+
+from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
+from scripts.generate_backend_tools_schema import SCHEMA_PATH
+from scripts.generate_backend_tools_schema import render
+
+
+def test_the_committed_contract_is_the_one_the_tools_generate() -> None:
+    assert SCHEMA_PATH.read_text(encoding="utf-8") == render(), (
+        "frontends/ui/tests/fixtures/backend-tools.schema.json is stale: run "
+        "`uv run python scripts/generate_backend_tools_schema.py` and commit it."
+    )
+
+
+def test_every_allowed_tool_is_in_the_contract_as_a_read() -> None:
+    tools = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))["tools"]
+
+    assert [tool["name"] for tool in tools] == list(BACKEND_READ_TOOLS)
+    for tool in tools:
+        assert len(tool["description"]) >= 40, tool["name"]
+        assert tool["inputSchema"]["type"] == "object", tool["name"]
+        assert tool["annotations"] == {
+            "readOnlyHint": True,
+            "destructiveHint": False,
+            "idempotentHint": True,
+            "openWorldHint": False,
+        }

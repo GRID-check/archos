@@ -9,22 +9,16 @@
  * which shelf it is on, and that shelf says who may move it.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
+import { moveDocumentSchema } from '@/lib/documents/document-wire'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
 
 type Params = { id: string }
 
-const moveSchema = z.object({
-  // Explicit `null` files the document at its shelf's root, which is a real
-  // destination — so this is nullable, not optional.
-  folderId: z.string().uuid().nullable(),
-})
-
 export const PATCH = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const { folderId } = await parseJsonBody(request, moveSchema)
+    const { folderId } = await parseJsonBody(request, moveDocumentSchema)
     const result = await moveDocumentToFolder({ documentId: params.id, folderId }, session)
     if (!result.ok) throw new BadRequestError(result.error)
     return result.document

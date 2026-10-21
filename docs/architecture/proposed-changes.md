@@ -2,15 +2,16 @@
 
 A **proposed change** is a change to the office's workspace that Piloti
 proposes and a person applies. It is a server object with its own lifecycle,
-not a card that executes itself (ADR-0105). Three kinds exist:
+not a card that executes itself (ADR-0105). Four kinds exist:
 
 | Kind | What it proposes | The card |
 |---|---|---|
 | `file_operation` | move documents into a folder, rename them, create a folder, or assign a document to a colleague | `file_operation_proposal` |
 | `memory` | a note for the office's memory, or for the project's | `memory_proposal` |
 | `project_profile` | a change to the project's facts, goals, unknowns or assumptions, as a JSON patch on the profile | `project_profile_patch` |
+| `operation` | any write operation of the agent catalog that Piloti called through the MCP surface (ADR-0121) | `operation_proposal` |
 
-All three share one lifecycle, one table, one set of routes and one receipt
+All four share one lifecycle, one table, one set of routes and one receipt
 card. A file operation may also be on the Büroablage, which has no project
 (0146), and Piloti files one of its own whenever an upload lands in the wrong
 folder ([Filing suggestions](#filing-suggestions)). What differs between them is held in one file,
@@ -81,7 +82,8 @@ The CHECKs hold the lifecycle, so no code path can break it:
   `failed`), and `results` is an array.
 - The claim has both columns or neither, and exists only while the proposal is
   `proposed`.
-- `kind` is `file_operation`, `memory` or `project_profile`; `status` and
+- `kind` is `file_operation`, `memory`, `project_profile` or `operation` (0173);
+  `status` and
   `proposed_by_kind` are known values; `payload` is an object.
 - `origin_card_index` is null or not negative, and needs an `origin_message_id`
   (a card index names a card of one answer).
@@ -184,6 +186,27 @@ a version conflict; or a value the vocabulary refuses) is a failed result with
 the service's reason, and the status is `failed`. One result for the whole
 patch.
 
+### `operation`
+
+Payload (`operationPayloadSchema`): `operation` (a catalog name, `lib/agent-api/catalog`),
+`input` (`{ params?, query?, body? }`, the shape `callOperation` takes) and
+`summary` (one English line: the operation's summary and its key inputs).
+
+Piloti's writes through the MCP server are never applied: `proposeOperation`
+(`lib/agent-api/operation-proposals.ts`) files this kind through `createProposal`,
+the service the internal route uses, in the turn's project and conversation. It is
+refused (422) when the operation only reads or is unknown, when the input does not
+fit the operation's schemas, and when the turn is in no project (a Büroablage
+proposal can only move files). The kind has no create in
+`internalProposalRequestSchema`: nothing but `proposeOperation` makes one.
+
+Gate: `project:view`. The accepting person's own authorization is the
+operation's route, which runs in their session. Applier: `applyOperation`
+(`operation-applier.ts`) re-checks that the operation still exists and writes,
+then calls `callOperation(op, input, acceptingSession)`. One result; a route
+refusal (any non-2xx) is a failed result carrying the route's own `error`
+message, so the status is `failed` and the card says why. Dismissing runs nothing.
+
 ### Who may decide, per kind
 
 | Kind | Right to decide (any of) | Written through |
@@ -191,6 +214,7 @@ patch.
 | `file_operation` | `project:documents:write`, `project:edit` | the Files pane's services, per item |
 | `memory` | `project:memory:write`, `project:edit` | `addProjectMemoryItem` or `createOrganizationMemoryItem` |
 | `project_profile` | `project:memory:write`, `project:edit` | `patchProjectProfile` |
+| `operation` | `project:view`; the operation's route then decides | `callOperation`, as the decider |
 
 `DECIDE_PERMISSIONS` in `kinds.ts` holds the table. It is the applier's own
 gate: a decider who passes it is not then refused by the service that writes.

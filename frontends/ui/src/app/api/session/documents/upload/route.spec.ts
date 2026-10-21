@@ -10,7 +10,7 @@
  *
  * Deliberately not validated as a UUID: an id is `s_<uuid-with-underscores>`,
  * both columns are `text` on purpose, and a `uuid()` rule would refuse every
- * real upload. See `../conversation-id`.
+ * real upload. See `lib/session-documents/conversation-id`.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'

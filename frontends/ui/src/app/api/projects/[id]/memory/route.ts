@@ -3,25 +3,11 @@
  * Thin handlers; authz and logic live in `@/lib/projects/service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { addProjectMemoryItem, getProjectMemory } from '@/lib/projects/service'
-import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/db/schema'
+import { createMemorySchema, listMemoryQuerySchema } from '@/lib/projects/project-memory-wire'
 
 type Params = { id: string }
-
-const listMemoryQuerySchema = z.object({
-  includeArchived: z.string().optional(),
-  // Optional: scope to a single conversation (the chat "Piloti noted N" chip).
-  conversationId: z.string().optional(),
-})
-
-const createMemorySchema = z.object({
-  kind: z.enum(PROJECT_MEMORY_KINDS),
-  content: z.string().trim().min(1).max(2000),
-  confidence: z.enum(PROJECT_MEMORY_CONFIDENCES).optional(),
-  pinned: z.boolean().optional(),
-})
 
 export const GET = apiRoute<Params>(
   async ({ session, params, request }) => {

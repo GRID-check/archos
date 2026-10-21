@@ -13,7 +13,7 @@ import { apiRoute, parseFormData } from '@/lib/api/handler'
 import { DOCUMENT_UPLOAD_LIMIT } from '@/lib/limits'
 import { BadRequestError } from '@/lib/api/errors'
 import { uploadSessionDocument } from '@/lib/session-documents/service'
-import { parseConversationId } from '../conversation-id'
+import { parseConversationId } from '@/lib/session-documents/conversation-id'
 import { readScreeningRelease } from '@/lib/upload-screening/service'
 import { readUploadBatchId } from '@/lib/upload-batches/service'
 
@@ -28,7 +28,7 @@ export const POST = apiRoute(
     // The id decides which conversation is created or resolved, which rows the
     // document is filed against, and which retrieval collection the bytes are
     // ingested into — so its shape is checked here, at the edge, before any of
-    // that. Deliberately NOT `uuid()`: see `../conversation-id`.
+    // that. Deliberately NOT `uuid()`: see `lib/session-documents/conversation-id`.
     const conversationId = parseConversationId(formData.get('conversationId'))
 
     if (!(file instanceof File)) {

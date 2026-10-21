@@ -65,6 +65,10 @@ _EXAMPLE_EXEMPT = {
     # example would teach a shape the model must not produce — and this is the
     # card where authoring one would mean naming a file it never looked up.
     "file_operation_proposal",
+    # System-emitted for a write the agent proposed through the MCP surface
+    # (ADR-0121); it names a stored proposal, so an example would teach the
+    # model to author one that does not exist.
+    "operation_proposal",
     # System-emitted (by `create_task`) and built in Python from the id and the
     # title the BFF returned. An example would teach the model to author proof
     # that a task row exists — which is the one claim this card was added to

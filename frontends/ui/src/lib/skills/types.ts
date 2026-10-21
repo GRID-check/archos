@@ -447,3 +447,17 @@ export const resolveQuerySchema = z.object({
 })
 
 export type ResolveQuery = z.infer<typeof resolveQuerySchema>
+
+/**
+ * Body of `POST /api/skills/review`.
+ *
+ * Deliberately looser than `createSkillSchema`: the whole point is to review a
+ * DRAFT, and a draft is usually not yet valid. Only the outer bounds are
+ * enforced, so the reviewer can be asked about an empty description — which is
+ * exactly the case where its answer matters most.
+ */
+export const reviewSkillSchema = z.object({
+  name: z.string().max(MAX_SKILL_NAME_LENGTH).default(''),
+  description: z.string().max(MAX_SKILL_DESCRIPTION_LENGTH).default(''),
+  body: z.string().max(MAX_SKILL_BODY_LENGTH).default(''),
+})

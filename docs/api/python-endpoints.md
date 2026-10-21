@@ -219,6 +219,14 @@ What NAT's front-end plugin still mounts on the `chat` role, none of which runs 
 - `db_url`: Job store database URL (default `sqlite+aiosqlite:///./jobs.db`)
 - `expiry_seconds`: Job TTL (default 86400, min 600, max 604800)
 
+## Read tools for other agents (internal; ADR-0121)
+
+On the `api` role, internal-token only and off the external allowlist. The BFF's MCP server is the only caller ([`agent-tool-surface.md`](../architecture/agent-tool-surface.md#these-read-tools-are-also-served-over-mcp)).
+
+| Method | Path | Auth | Description | Request | Response | Handler |
+|---|---|---|---|---|---|---|
+| `POST` | `/v1/internal/tools/{name}` | Internal token (`X-Grid-Internal-Token`) **and** a signed, current `X-Grid-Request-Context` envelope naming a user and an organization. The BFF signs it; this route only verifies | Runs one of `BACKEND_READ_TOOLS` (`knowledge_search`, `read_passage`, `list_files`, `view_knowledge_image`, `ifc_query`, `ifc_measure`, `ris_lookup_tool`) from the built workflow, as the person the envelope names: the turn context the tools read is laid from the VERIFIED envelope, never from headers beside it. No conversation, so no session shelf. `404` for a name off the allowlist (or one the config does not bind), `403` for a missing, mis-signed, stale or anonymous envelope, `422` for arguments the tool's input schema refuses, `502` when the tool raises, `503` before the workflow is built | `{ arguments: { … } }` | `{ tool, result }`, `result` text or, for `view_knowledge_image`, content blocks (`text`, `image_url` data URL) | `add_internal_tool_routes` in `aiq_api.routes.internal_tools` |
+
 ## Agent Skills / Jobs (internal; replaces the removed ADR-0023 workflow submit route)
 
 | Method | Path | Auth | Description | Request | Response | Handler |

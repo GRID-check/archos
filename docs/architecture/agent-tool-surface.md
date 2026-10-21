@@ -29,7 +29,7 @@ We apply the published guidance:
 
 Tool retrieval pays off on catalogs of
 hundreds or thousands of tools ([RAG-MCP][rag-mcp], [Less is More][less-more],
-[Gorilla/BFCL][bfcl]). Piloti binds 28, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
+[Gorilla/BFCL][bfcl]). Piloti binds 32, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
 26.1k are a cached prefix, and tool execution is 1.3 s of a 31.3 s median turn
 ([turns audit](turns-per-answer-audit-2026-09.md),
 [turn latency](turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
@@ -40,7 +40,7 @@ model to do next.
 
 ## 2. The surface today
 
-A project turn binds 28 tools, about 17.3k tokens (the canvas group replaced
+A project turn binds 32 tools, about 17.9k tokens (the workspace group added four, 635; the canvas group replaced
 the one `document_annotations` tool, 940 tokens, with seven, 1,625; parity with
 a person, 2026-10-13, added `canvas__update` and `canvas__delete` and `mark`'s
 `open`, +502, to nine and 2,127). Tool schemas were 38 % of a
@@ -60,6 +60,7 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
 | `canvas__look`, `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group: look at a page or a box on it, who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
+| `workspace__search`, `workspace__describe`, `workspace__call`, `workspace__report_missing` | Piloti as a client of its own MCP server (ADR-0121), the same four meta-tools an external agent gets in `discovery` mode: find an operation, read its schema, call it as the asker (a write comes back as a proposal), or report a missing capability. Four tools instead of the hundreds of operations behind them. Each call echoes the turn's envelope | 211 / 128 / 179 / 117 (635) | `src/aiq_agent/tools/workspace/register.py` |
 | `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |
@@ -257,6 +258,53 @@ External:
 - AEC: [Autodesk AI][adsk], [AU2026](https://architosh.com/2026/09/au2026-autodesk-expands-forma-and-leverages-ai/), [Bluebeam Smart Overlay][bluebeam], [Procore](https://www.enr.com/articles/63042-procore-releases-new-ai-agients-after-datagrid-integration), [Procore Agent Builder](https://v2.support.procore.com/product-manuals/agent-builder-project), [Trunk Tools](https://trunktools.com/product/), [Document Crunch](https://www.documentcrunch.com/crunch-ai)
 - Research: [RAG-MCP][rag-mcp], [Less is More][less-more], [Trace-Free+](https://arxiv.org/abs/2602.20426), [CE-MCP security][ce-mcp], [BFCL][bfcl], [Li et al. 2024, RAG vs. long context][li-2024], [AEC layout benchmark][aec-layout], [ColPali](https://arxiv.org/abs/2407.01449), [Braschler & Ripplinger 2004][braschler], [Postgres dictionaries][pg-dict]
 - OpenRouter: [changelog](https://openrouter.ai/docs/changelog), [Responses](https://openrouter.ai/docs/api_reference/responses/overview), [reasoning](https://openrouter.ai/docs/guides/best-practices/reasoning-tokens), [tool calling](https://openrouter.ai/docs/guides/features/tool-calling), [tool search][or-ts], [server tools](https://openrouter.ai/docs/guides/features/server-tools), [Responses tool calling][or-resp-tools], [PDF inputs][or-pdf], [ZDR][or-zdr], [in-region routing][or-irr], [prompt caching][or-cache], [router metadata][or-meta], [Auto Exacto](https://openrouter.ai/docs/guides/routing/auto-exacto), [Exacto](https://openrouter.ai/docs/guides/routing/model-variants/exacto), [embeddings](https://openrouter.ai/docs/api_reference/embeddings), [web search](https://openrouter.ai/docs/guides/features/server-tools/web-search), [response healing](https://openrouter.ai/docs/guides/features/plugins/response-healing)
+
+## These read tools are also served over MCP
+
+Added 2026-10-21 (ADR-0121, everything a person can do an agent can do). Piloti's
+MCP server (`/api/mcp`) offers the BFF's operations, and these seven reads of
+the agent beside them, so Claude, Cursor or ChatGPT search the office's
+documents with the tool Piloti searches with.
+
+| MCP operation | Tool the chat model sees | Needs |
+|---|---|---|
+| `knowledge-search` | `knowledge_search` | `projectId` |
+| `passage-read` | `read_passage` | `projectId` |
+| `files-list` | `list_files` | `projectId` |
+| `knowledge-image-view` | `view_knowledge_image` | `projectId` |
+| `ifc-query` | `ifc_query` | `projectId` |
+| `ifc-measure` | `ifc_measure` | `projectId` |
+| `law-lookup` | `ris_lookup_tool` | nothing |
+
+- **One description.** The MCP description and input schema are the ones in this
+  document, generated from the functions into
+  `frontends/ui/tests/fixtures/backend-tools.schema.json`
+  (`uv run python scripts/generate_backend_tools_schema.py`).
+  `tests/aiq_agent/common/test_backend_tools_schema.py` fails when it is stale,
+  so changing a description here and not regenerating shows an outside agent a
+  tool that no longer exists. An MCP client reads the same words the model does,
+  and the token costs in §2 are its costs too.
+- **The path.** `lib/agent-api/backend-operations.ts` builds the call: it checks
+  the person may chat in the project, resolves the turn context and collection
+  scope exactly as a chat turn does (`resolveTurnContext`), signs the request-
+  context envelope, and posts `{ arguments }` to the `api` role's
+  `POST /v1/internal/tools/{name}` with the internal token. The route verifies
+  the envelope (signed, naming a user and an organization, current), lays it
+  where the tools read a turn's headers, and runs the named function from the
+  built workflow. It never signs (ADR-0108). The BFF is the signer, the backend
+  the echo.
+- **Reads only.** The allowlist is `BACKEND_READ_TOOLS`
+  (`src/aiq_agent/common/backend_tools.py`); any other name is a 404 before the
+  workflow is asked. A write stays a BFF route, and Piloti's own writes stay
+  proposals. A tool added to the allowlist promises that it only reads and that
+  everything it reads is scoped by the envelope.
+- **No conversation.** A call has none, so the session shelf and the
+  restricted-folder collections (ADR-0087, interactive chat only) are not in
+  scope; what an outside agent searches is the project, the office shelf and the
+  base corpus the person is cleared for.
+- **Not traced as a turn.** The call runs outside a NAT session, so it has no
+  turn span. The model calls inside a tool (embeddings, the summary model) are
+  still generations as everywhere else.
 
 ## What the agent knows about files it cannot read, and about folders
 

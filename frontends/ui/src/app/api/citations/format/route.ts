@@ -8,21 +8,13 @@
  * this is a pure formatting endpoint behind the normal session guard.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { formatCitationsSchema } from '@/lib/citations/citation-wire'
 import { renderCitations } from '@/lib/citations/render'
-
-/** Guard rails: an answer cites a handful of sources, never hundreds. */
-const MAX_ITEMS = 64
-
-const formatRequestSchema = z.object({
-  format: z.enum(['apa', 'bibtex', 'ris']),
-  items: z.array(z.record(z.unknown())).max(MAX_ITEMS),
-})
 
 export const POST = apiRoute(
   async ({ request }) => {
-    const { format, items } = await parseJsonBody(request, formatRequestSchema)
+    const { format, items } = await parseJsonBody(request, formatCitationsSchema)
     return { text: await renderCitations(items, format) }
   },
   {

@@ -12,18 +12,18 @@
  *       activates it.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { UnprocessableError } from '@/lib/api/errors'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
-import { AGENT_GROUPS, AGENT_GROUP_IDS, MODEL_ID_PATTERN, isAgentGroupId } from '@/lib/model-config/agent-groups'
+import { AGENT_GROUPS, isAgentGroupId } from '@/lib/model-config/agent-groups'
 import { getGroupDefaults } from '@/lib/model-config/backend-defaults'
 import { catalogUnavailableError, validateOverrides } from '@/lib/model-config/openrouter'
 import { getCatalogForOrg, isZdrApplicableForOrg } from '@/lib/model-config/org-catalog'
 import { getZdrCoverage, UNKNOWN_COVERAGE } from '@/lib/model-config/zdr-coverage'
 import { createAndActivateVersion, getOrgModelConfig } from '@/lib/model-config/service'
 import { isZdrOnlyForOrg } from '@/lib/organizations/service'
+import { modelConfigPutSchema } from '@/lib/organizations/organization-wire'
 import { recordAuditEvent } from '@/lib/audit/service'
 
 export const GET = apiRoute(
@@ -79,22 +79,12 @@ export const GET = apiRoute(
   { authz: { permission: ORG_PERMISSIONS.modelsManage } }
 )
 
-const putSchema = z.object({
-  overrides: z.record(
-    z.enum(AGENT_GROUP_IDS as [string, ...string[]]),
-    // BYOK-aware shape (`author/slug` OR provider-native id, ADR-0022);
-    // catalog membership below is the real gate.
-    z.object({ model: z.string().regex(MODEL_ID_PATTERN, 'not a plausible model id') })
-  ),
-  comment: z.string().trim().max(500).nullable().optional(),
-})
-
 export const PUT = apiRoute(
   async ({ session, request }) => {
     const gated = requireFeature(session, FEATURE_FLAGS.modelConfiguration)
     if (gated) return gated
 
-    const input = await parseJsonBody(request, putSchema)
+    const input = await parseJsonBody(request, modelConfigPutSchema)
 
     // Server-side revalidation against the live catalog — the picker UI is
     // never trusted. A catalog outage rejects the save (503) rather than

@@ -16,13 +16,16 @@ import { validateProfilePatchVocabulary } from '@/lib/project-profile/intake-def
 import { folderPathKey } from '@/lib/projects/folders'
 import { MEMORY_WRITE_PERMISSIONS } from '@/lib/projects/service'
 import { applyMemory, applyProjectProfile, noteLabel, type ApplyContext } from './appliers'
+import { applyOperation, requireProposableOperation } from './operation-applier'
 import { applyFileOperations, operationLabel, REQUIRED_FIELDS } from './executors'
 import {
   fileOperationPayloadSchema,
   memoryPayloadSchema,
+  operationPayloadSchema,
   projectProfilePayloadSchema,
   type FileOperationPayload,
   type MemoryPayload,
+  type OperationPayload,
   type ProjectProfilePayload,
   type ProposalScope,
   type ProposalNoticeVariant,
@@ -35,6 +38,7 @@ export type KindPayload =
   | { kind: 'file_operation'; payload: FileOperationPayload }
   | { kind: 'memory'; payload: MemoryPayload }
   | { kind: 'project_profile'; payload: ProjectProfilePayload }
+  | { kind: 'operation'; payload: OperationPayload }
 
 /** Parse a stored or requested payload by its kind; throws on one that does not parse. */
 export function parseKindPayload(kind: ProposedChangeKind, payload: unknown): KindPayload {
@@ -45,6 +49,8 @@ export function parseKindPayload(kind: ProposedChangeKind, payload: unknown): Ki
       return { kind, payload: memoryPayloadSchema.parse(payload) }
     case 'project_profile':
       return { kind, payload: projectProfilePayloadSchema.parse(payload) }
+    case 'operation':
+      return { kind, payload: operationPayloadSchema.parse(payload) }
   }
 }
 
@@ -55,11 +61,15 @@ export function parseKindPayload(kind: ProposedChangeKind, payload: unknown): Ki
  *   (any member writes the office's memory), so the project's gate is the one.
  * - `project_profile`: `PROFILE_WRITE` in `lib/project-profile/profile-service.ts`,
  *   the same two rights.
+ * - `operation`: the right to see the project. The operation's own route is the
+ *   gate and runs in the decider's session when it is applied (ADR-0121), so a
+ *   second, narrower list here would only disagree with it.
  */
 export const DECIDE_PERMISSIONS: Record<ProposedChangeKind, readonly ProjectPermission[]> = {
   file_operation: DOCUMENT_WRITE_PERMISSIONS,
   memory: MEMORY_WRITE_PERMISSIONS,
   project_profile: MEMORY_WRITE_PERMISSIONS,
+  operation: ['project:view'],
 }
 
 /** Every file item carries the fields its verb needs, or the proposal is refused (422). */
@@ -131,6 +141,14 @@ function requireProfileVocabulary(payload: ProjectProfilePayload): void {
 
 /** Refuse, when it is proposed, what could only fail when it is applied. */
 export function requireProposable(typed: KindPayload, scope: ProposalScope = 'project'): void {
+  if (typed.kind === 'operation') {
+    if (scope !== 'project') {
+      throw new UnprocessableError('This conversation is not in a project. An operation is proposed in one.', {
+        reason: 'proposal-operation-needs-project',
+      })
+    }
+    requireProposableOperation(typed.payload)
+  }
   if (scope === 'office_shelf') requireOfficeShelfMove(typed)
   if (typed.kind === 'file_operation') {
     requireItemFields(typed.payload)
@@ -162,6 +180,8 @@ export function summaryOf(typed: KindPayload): string {
       return noteLabel(typed.payload.content)
     case 'project_profile':
       return typed.payload.title
+    case 'operation':
+      return typed.payload.summary
   }
 }
 
@@ -188,5 +208,7 @@ export function applyKind(typed: KindPayload, context: KindApplyContext): Promis
       return applyMemory(typed.payload, inProject(context))
     case 'project_profile':
       return applyProjectProfile(typed.payload, inProject(context))
+    case 'operation':
+      return applyOperation(typed.payload, inProject(context))
   }
 }

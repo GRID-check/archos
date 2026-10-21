@@ -632,6 +632,17 @@ export const chat = {
         dismissed: 'Discarded. The project context is unchanged.',
       },
     },
+    // An action Piloti PROPOSED through the MCP surface (ADR-0121). Nothing has
+    // happened until the reader accepts; accepting runs it in the reader's own
+    // session, and the action's route checks the permission.
+    operationProposal: {
+      eyebrow: 'Action',
+      // `{operation}` is the action's technical name; it is not translated.
+      operation: 'Action: {operation}',
+      inputLabel: 'Inputs',
+      applied: 'The action was carried out.',
+      dismissed: 'Discarded. The action was not carried out.',
+    },
     // What Piloti did on a document: marks it set, threads it answered in.
     // One „take over" or „discard" per mark, and the way into the review at
     // exactly that place.

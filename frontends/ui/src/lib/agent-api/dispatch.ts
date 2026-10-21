@@ -27,6 +27,13 @@ export interface OperationInput {
   readonly params?: Record<string, string>
   readonly query?: Record<string, unknown>
   readonly body?: unknown
+  /**
+   * Sent as `If-Match`: the version the caller read, for the routes that
+   * refuse a write over a newer one (the project profile, a version's content).
+   * The only header an operation carries; everything else a route reads from
+   * the session or the body.
+   */
+  readonly ifMatch?: string
 }
 
 export interface OperationResult {
@@ -89,6 +96,7 @@ export function parseOperationInput(op: AgentOperation, input: OperationInput): 
     params: parse(op.params, input.params, 'params') as Record<string, string> | undefined,
     query: parse(op.query, input.query, 'query') as Record<string, unknown> | undefined,
     body: op.body ? parse(op.body, input.body, 'body') : input.body,
+    ifMatch: typeof input.ifMatch === 'string' ? input.ifMatch : undefined,
   }
 }
 
@@ -107,14 +115,17 @@ export async function callOperation(
   url.search = searchParamsOf(parsed.query).toString()
 
   const hasBody = op.method !== 'GET' && parsed.body !== undefined
+  const headers: Record<string, string> = {}
+  if (hasBody) headers['content-type'] = 'application/json'
+  if (parsed.ifMatch) headers['if-match'] = parsed.ifMatch
   const request = new Request(url, {
     method: op.method,
-    headers: hasBody ? { 'content-type': 'application/json' } : {},
+    headers,
     body: hasBody ? JSON.stringify(parsed.body) : undefined,
   })
 
-  const module = await op.load()
-  const handler = module[op.method]
+  const routeModule = await op.load()
+  const handler = routeModule[op.method]
   if (!handler) throw new Error(`${op.path} exports no ${op.method} handler`)
 
   const response = await runAsActingSession(session, () =>

@@ -10,24 +10,10 @@
  * Thin handlers; all logic lives in `@/lib/organizations/service`.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { getOrgSettings, saveOrgSettings } from '@/lib/organizations/service'
-import { locales } from '@/i18n/config'
-import { CHAT_EFFORT_SETTING, CHAT_EFFORTS, isChatEffort } from '@/lib/reasoning-settings/catalog'
-
-const putSchema = z.object({
-  displayName: z.string().trim().max(200).nullable().optional(),
-  defaultLocale: z.enum(locales).nullable().optional(),
-  settings: z
-    .record(z.unknown())
-    .refine((bag) => !(CHAT_EFFORT_SETTING in bag) || isChatEffort(bag[CHAT_EFFORT_SETTING]), {
-      message: `${CHAT_EFFORT_SETTING} must be one of: ${CHAT_EFFORTS.join(', ')}`,
-      path: [CHAT_EFFORT_SETTING],
-    })
-    .optional(),
-})
+import { orgSettingsPutSchema } from '@/lib/organizations/organization-wire'
 
 export const GET = apiRoute(
   async ({ session }) => ({ settings: await getOrgSettings(session.organizationId) }),
@@ -41,7 +27,7 @@ export const GET = apiRoute(
 
 export const PUT = apiRoute(
   async ({ session, request }) => {
-    const patch = await parseJsonBody(request, putSchema)
+    const patch = await parseJsonBody(request, orgSettingsPutSchema)
     return { settings: await saveOrgSettings(session, patch, request) }
   },
   { authz: { permission: ORG_PERMISSIONS.settingsManage } }

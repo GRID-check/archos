@@ -68,6 +68,8 @@ export type ServerEvent =
   | 'annotation_carried'
   | 'llm_usage_hourly'
   | 'organization_budget_snapshot'
+  | 'agent_operation_called'
+  | 'agent_capability_missing'
 
 let client: PostHog | null = null
 let resolved = false
