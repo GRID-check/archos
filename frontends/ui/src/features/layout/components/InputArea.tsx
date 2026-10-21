@@ -2574,7 +2574,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
                         // An icon swap: ≤ 16px of scale travel, so springSnap's
                         // tick of overshoot lands inside the pixel budget. The
                         // opacity is a tween (opacity never springs), and the
-                        // leaving glyph accelerates away on motionQuickExit.
+                        // leaving glyph goes at once on motionQuickExit.
                         // Under reduced motion both are motionInstant: the
                         // glyph simply changes.
                         initial={{ opacity: 0, scale: 0.6 }}
