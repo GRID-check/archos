@@ -1,0 +1,19 @@
+---
+features:
+  - >
+    An answer read from your workspace, such as who is on a project or which
+    approvals are open, no longer shows as low confidence. The confidence
+    tooltip now says what the answer rests on, for example „3 Aussagen belegt ·
+    1 Rechtsaussage ohne Beleg".
+  - >
+    When a search finds no sources, Piloti now shows its answer with a note
+    that it rests on general knowledge, instead of only saying that nothing
+    was found. A ruling without a source is still not shown.
+fixes:
+  - >
+    A citation Piloti could not verify is now marked „Beleg nicht verifiziert"
+    where it stood, instead of disappearing unnoticed. Piloti no longer
+    attaches a source the answer did not cite.
+  - >
+    A quotation that drops a „nicht", „kein" or „un-" from the source, or a
+    paragraph number that is not in the cited passage, is now flagged.

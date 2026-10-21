@@ -127,7 +127,6 @@ from .answer_pipeline import LiveAnswer
 from .answer_pipeline import RepairFn
 from .answer_pipeline import finalize_answer
 from .answer_pipeline import handed_this_turn
-from .answer_pipeline import looked_up_this_turn
 from .envelope_call import ainvoke
 from .envelope_call import ainvoke_with_envelope_json_mode
 from .grounding import tool_result_is_measurement
@@ -877,7 +876,6 @@ def _live_answer(state: ResearchAgentState) -> LiveAnswer | None:
         return None
     return LiveAnswer(
         registry,
-        lookup_attempted=looked_up_this_turn(state.messages),
         handed=handed_this_turn(state.messages),
     )
 
@@ -1682,6 +1680,7 @@ class PilotiAgent:
             repair=self._repairer(),
             turn_sources=turn_sources,
             card_repair=self._card_repairer(),
+            measured_values=[measurement.value_text for measurement in turn_measurements],
         )
         self._emit_final_report(final)
         # The "already read" digest, appended at turn end: this turn's captures

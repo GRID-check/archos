@@ -48,6 +48,7 @@ from aiq_agent.common.grounding_block import PROJECT_STATUS_LABELS
 from aiq_agent.common.grounding_block import GroundingHit
 from aiq_agent.common.grounding_block import SourceRegion
 from aiq_agent.common.grounding_block import get_grounding_block
+from aiq_agent.common.quote_polarity import polarity_agrees
 from aiq_agent.common.source_kinds import READABLE_QUALIFIERS
 from aiq_agent.common.source_kinds import TOOL_RESULT_SOURCE_TYPE
 from aiq_agent.common.source_kinds import Shelf
@@ -2833,6 +2834,65 @@ def _strip_inline_citations_not_in(text: str, valid_numbers: set[int]) -> str:
     )
 
 
+def _label_inline_citations_not_in(text: str, valid_numbers: set[int]) -> str:
+    """Put :data:`DROPPED_CITATION_MARKER` where each inline citation outside ``valid_numbers`` stood.
+
+    Adjacent dropped markers (``[3][4]``, ``[3], [4]``) become one label: the
+    reader is told once that this claim's pointer did not hold.
+    """
+    labelled = _INLINE_CITATION_RE.sub(
+        lambda match: match.group(0) if int(match.group(1)) in valid_numbers else DROPPED_CITATION_MARKER,
+        text,
+    )
+    repeated = re.escape(DROPPED_CITATION_MARKER)
+    return re.sub(rf"{repeated}(?:\s*,?\s*{repeated})+", DROPPED_CITATION_MARKER, labelled)
+
+
+def _drop_inline_citations_not_in(text: str, valid_numbers: set[int], *, label: bool) -> str:
+    """Remove (``label=False``) or label (``label=True``) every inline citation outside ``valid_numbers``."""
+    if label:
+        return _label_inline_citations_not_in(text, valid_numbers)
+    return _strip_inline_citations_not_in(text, valid_numbers)
+
+
+def _label_locus_mismatches(
+    body: str, valid_citations: list[dict], registry: SourceRegistry
+) -> tuple[str, list[dict], set[int]]:
+    """Label each marker whose § / Punkt the resolved passage does not hold (``common/citation_locus``).
+
+    Returns the body, one removal record per labelled occurrence, and the
+    numbers that have no occurrence left: those lose their source line too.
+    """
+    from aiq_agent.common.citation_locus import locus_mismatches
+
+    entries = {
+        citation["number"]: entry
+        for citation in valid_citations
+        if (
+            entry := (
+                registry.entry_for_citation_key(citation["citation_key"])
+                if citation.get("citation_key")
+                else registry.entry_for_url(citation["url"])
+                if citation.get("url")
+                else None
+            )
+        )
+        is not None
+    }
+    mismatches = locus_mismatches(body, entries)
+    if not mismatches:
+        return body, [], set()
+    removed = [
+        {"number": miss.number, "reason": LOCUS_MISMATCH_REASON, "locus": str(miss.locus), "line": ""}
+        for miss in mismatches
+    ]
+    for miss in sorted(mismatches, key=lambda item: item.start, reverse=True):
+        body = body[: miss.start] + DROPPED_CITATION_MARKER + body[miss.end :]
+    left = {int(number) for number in _INLINE_CITATION_RE.findall(body)}
+    gone = {miss.number for miss in mismatches if miss.number not in left}
+    return body, removed, gone
+
+
 def _renumber_citations(body: str, ref_section: str) -> tuple[str, str, dict[int, int]]:
     """Renumber [N] citations sequentially, closing any gaps.
 
@@ -2954,6 +3014,20 @@ def _skips_a_word(text: str) -> bool:
 # verified against any retrieved passage. Fail-open: the sentence is NEVER
 # stripped or altered; only this marker is inserted after the closing quote.
 UNVERIFIED_QUOTE_MARKER = "[nicht wörtlich in der Quelle belegt]"
+
+#: What stands where the answer cited something that did not resolve
+#: (``verify_citations(label_dropped=True)``): no retrieved source behind the
+#: number, or a § / Punkt beside it the cited passage does not hold. The claim
+#: stays, as it always did; what changed is that it no longer reads like every
+#: other unmarked sentence (the per-sentence class ``cited_dropped``,
+#: ``common/claim_provenance.py``). Reader-facing German, like the quote marker.
+DROPPED_CITATION_MARKER = "[Beleg nicht verifiziert]"
+
+#: Why a cited occurrence lost its number although its source line resolved.
+LOCUS_MISMATCH_REASON = "locus_not_in_source"
+
+#: Why a cited number had nothing to resolve against at all.
+NO_SOURCE_REASON = "no_source_retrieved"
 
 # Quoted-span matcher: German „…“ (also lenient „…”), guillemets »…«, curly
 # “…”, and plain ASCII "…". Each alternative captures the inner text in its own
@@ -3206,6 +3280,8 @@ def _quote_coverage(norm_quote: str, norm_chunk: str) -> float:
         elided = 0
         prev_a_end: int | None = None
         prev_b_end: int | None = None
+        run_start = (0, 0)
+        best_span = (0, 0, 0, 0)
         for block in matcher.get_matching_blocks():
             if not block.size:
                 continue
@@ -3220,12 +3296,45 @@ def _quote_coverage(norm_quote: str, norm_chunk: str) -> float:
                 if elided > _QUOTE_MAX_ELIDED_GAP or edited:
                     run = 0
                     elided = 0
+            if run == 0:
+                run_start = (block.a, block.b)
             run += block.size
-            best_run = max(best_run, run)
+            if run > best_run:
+                best_run = run
+                best_span = (*run_start, block.a + block.size, block.b + block.size)
             prev_a_end = block.a + block.size
             prev_b_end = block.b + block.size
-        best = max(best, best_run / quote_len)
+        score = best_run / quote_len
+        # An edit inside a word that flips or narrows the sentence („keine" →
+        # „eine", „unzulässig" → „zulässig") is below the word-skip floor above.
+        # The aligned stretches must carry the same negations (``quote_polarity``).
+        if score >= QUOTE_MATCH_THRESHOLD and not _aligned_polarity_agrees(norm_quote, window, best_span):
+            score = 0.0
+        best = max(best, score)
     return best
+
+
+def _aligned_polarity_agrees(norm_quote: str, window: str, span: tuple[int, int, int, int]) -> bool:
+    """Whether the whole quote and the passage stretch it aligns to negate the same things.
+
+    ``span`` is ``(quote start, window start, quote end, window end)`` of the
+    best run. The passage side is the run widened by whatever of the quote the
+    run left unmatched at either end, then to whole words, so a run that stops
+    inside „keine" compares the whole word.
+    """
+    a_start, b_start, a_end, b_end = span
+    start = max(0, b_start - a_start)
+    end = min(len(window), b_end + (len(norm_quote) - a_end))
+    return polarity_agrees(norm_quote, _whole_words(window, start, end))
+
+
+def _whole_words(text: str, start: int, end: int) -> str:
+    """``text[start:end]`` widened left and right to the nearest word boundary."""
+    while start > 0 and text[start - 1].isalpha():
+        start -= 1
+    while end < len(text) and text[end].isalpha():
+        end += 1
+    return text[start:end]
 
 
 def quote_coverage(quote: str, passage: str) -> float:
@@ -3613,11 +3722,33 @@ def _resolve_source_line(match_text: str, registry: SourceRegistry) -> _LineSour
     return _LineSource(citation_key=citation_key)
 
 
+def _rewrite_numbers(body: str, rewrites: dict[int, int]) -> str:
+    """Each inline ``[old]`` rewritten to ``[new]``: a duplicate source line's marker to the line it duplicates."""
+    for old_num, canonical_num in rewrites.items():
+        body = re.sub(rf"\[{old_num}\]", f"[{canonical_num}]", body)
+    return body
+
+
+def _label_without_sources(report_text: str) -> CitationVerificationResult:
+    """Nothing was retrieved: every inline number is unresolvable, and the model's source list names nothing real."""
+    ref_match = _REFERENCE_SECTION_RE.search(report_text)
+    body = report_text[: ref_match.start()].rstrip() if ref_match else report_text
+    numbers = sorted({int(number) for number in _INLINE_CITATION_RE.findall(body)})
+    if not numbers and ref_match is None:
+        return CitationVerificationResult(verified_report=report_text)
+    removed = [{"number": number, "line": "", "reason": NO_SOURCE_REASON} for number in numbers]
+    return CitationVerificationResult(
+        verified_report=_label_inline_citations_not_in(body, set()), removed_citations=removed
+    )
+
+
 def verify_citations(
     report_text: str,
     registry: SourceRegistry,
     *,
     reference_sources: Sequence[SourceEntry] | None = None,
+    label_dropped: bool = False,
+    check_locus: bool = False,
 ) -> CitationVerificationResult:
     """Verify cited source identities against the captured source registry.
 
@@ -3641,6 +3772,15 @@ def verify_citations(
         reference_sources: Optional writer-facing source list, in the same
             numbering order the writer saw. Used only to synthesize a missing
             source section.
+        label_dropped: Put :data:`DROPPED_CITATION_MARKER` where an
+            unresolvable inline citation stood instead of deleting it silently
+            (chat, ADR-0124). Also applies to an empty registry: every number
+            the answer wrote is then unresolvable, and the model's own source
+            list goes with them.
+        check_locus: Hold a § or Punkt written beside a resolved ``[N]`` to
+            the passage it resolves to (``common/citation_locus``); an
+            occurrence whose locus is not there is labelled like an
+            unresolvable one.
 
     Returns:
         CitationVerificationResult with cleaned report and audit trail.
@@ -3652,6 +3792,8 @@ def verify_citations(
     all_sources = registry.all_sources()
     if not all_sources:
         logger.debug("[CitationVerify] Skipping — registry is empty (no tool calls captured)")
+        if label_dropped:
+            return _label_without_sources(report_text)
         return CitationVerificationResult(verified_report=report_text)
 
     logger.info(
@@ -3687,7 +3829,9 @@ def verify_citations(
         ]
         if not reference_lines:
             logger.warning("[CitationVerify] No source section found and no renderable writer-facing sources")
-            return CitationVerificationResult(verified_report=_strip_inline_citations_not_in(report_text, set()))
+            return CitationVerificationResult(
+                verified_report=_drop_inline_citations_not_in(report_text, set(), label=label_dropped)
+            )
 
         logger.warning(
             "[CitationVerify] No source section found; appending %d inline-cited registered source(s)",
@@ -3784,6 +3928,20 @@ def verify_citations(
         )
     valid_citations = deduped_valid
 
+    # Duplicates are rewritten to the canonical number first, so the locus
+    # check below reads every marker under the number its source line keeps.
+    body = _rewrite_numbers(body, duplicate_rewrites)
+    if check_locus:
+        body, locus_removed, locus_gone = _label_locus_mismatches(body, valid_citations, registry)
+        removed_citations.extend(
+            {**record, "line": next((c["line"] for c in valid_citations if c["number"] == record["number"]), "")}
+            for record in locus_removed
+        )
+        valid_citations = [c for c in valid_citations if c["number"] not in locus_gone]
+        removed_numbers_for_locus = locus_gone
+    else:
+        removed_numbers_for_locus = set()
+
     # Apply URL replacements (garbled -> canonical) in the source section.
     # Bounded match: a plain str.replace would also rewrite a *different*
     # reference whose URL merely starts with the garbled one (e.g. ?id=1
@@ -3796,7 +3954,11 @@ def verify_citations(
                 ref_section,
             )
 
-    removed_numbers = {c["number"] for c in removed_citations}
+    # A locus record names an occurrence, not a line: only a number with no
+    # occurrence left loses its source line.
+    removed_numbers = {
+        c["number"] for c in removed_citations if c.get("reason") != LOCUS_MISMATCH_REASON
+    } | removed_numbers_for_locus
 
     # Remove invalid (and duplicate) source lines from the source section, and
     # inject the origin token (``[KB]``/``[RIS]``/``[Web]``) after the ``[N]``
@@ -3816,17 +3978,19 @@ def verify_citations(
                 line = _inject_origin_token(line, token)
         cleaned_ref_lines.append(line)
     cleaned_ref_section = "\n".join(cleaned_ref_lines)
+    if label_dropped and not _CITATION_LINE_RE.search(cleaned_ref_section):
+        # Every line went: a „## Quellen" with nothing under it reads as a
+        # rendering fault, and the labels in the prose already say why.
+        cleaned_ref_section = ""
+        body = body.rstrip()
 
     # Body fixups:
     #  * Duplicate citations get rewritten to the canonical number — the
     #    cited source is real, only the [N] label is wrong.
     #  * Genuinely invalid citations get stripped — the source is fabricated
     #    or unverifiable.
-    cleaned_body = body
-    for old_num, canonical_num in duplicate_rewrites.items():
-        cleaned_body = re.sub(rf"\[{old_num}\]", f"[{canonical_num}]", cleaned_body)
     valid_numbers = {c["number"] for c in valid_citations}
-    cleaned_body = _strip_inline_citations_not_in(cleaned_body, valid_numbers)
+    cleaned_body = _drop_inline_citations_not_in(body, valid_numbers, label=label_dropped)
 
     # Note: renumbering is deferred to sanitize_report() which always runs after
     # this function and handles renumbering in a single pass.

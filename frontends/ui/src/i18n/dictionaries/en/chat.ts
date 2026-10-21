@@ -296,6 +296,9 @@ export const chat = {
     // promise evidence that is not there.
     researchTruncatedWithoutSources:
       'The search stopped before it was finished, and before it had found anything',
+    // The search ran and found nothing; the answer is shown anyway (ADR-0124),
+    // and this sentence says what it then rests on.
+    lookupFoundNothing: 'The search found no sources. This answer rests on general knowledge and is not backed.',
     // WHY it stopped, appended to whichever sentence above applies as a short
     // parenthetical — "it stopped early" is the fact, "it ran out of time" is
     // what tells the reader whether asking again is worth anything.
@@ -1078,6 +1081,9 @@ export const chat = {
           annotationsUpdate: 'Changing an annotation …',
           annotationsDelete: 'Deleting an annotation …',
           annotationsReply: 'Replying to an annotation …',
+          // A call into the workspace through Piloti itself: a read runs, a
+          // write comes back as a proposal.
+          workspaceCall: 'Working in the workspace …',
         },
         // The tools are done, the answer is being written. The same words as
         // `activity.composing` above: one vocabulary for one thing — whether
@@ -1128,6 +1134,8 @@ export const chat = {
       annotations: 'Annotations',
       /** The file actions PROPOSE and write nothing (ADR-0003). */
       fileProposal: 'File proposal',
+      // Read or proposed in the workspace (members, approvals, tasks).
+      workspace: 'Workspace',
       // One chip per skill the turn actually applied. `{name}` is resolved by
       // the single label authority (features/skills/lib/skill-activity).
       skill: 'Skill: {name}',
@@ -1470,6 +1478,37 @@ export const chat = {
       // backs no more than a measurement does.
       citationFallback:
         'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
+    },
+    // The assessment since ADR-0124: computed per statement, not per answer.
+    // Older answers keep the copy above, under which they were computed.
+    byClaim: {
+      tooltip:
+        "The assistant's own assessment, held to the weakest statement the answer rests on. It can be wrong.",
+      levelMeanings: {
+        high: 'High: every statement the answer rests on is backed by a cited source, a workspace record or a measurement.',
+        medium:
+          'Medium: a statement the answer rests on is an inference or general knowledge, or a record read does not cover a figure.',
+        low: 'Low: a statement about the law, a figure or a deadline is not backed, or a citation did not hold up.',
+      },
+      // What the answer's sentences rest on, in reading order: what holds first.
+      mix: {
+        supported: '{count, plural, one {# statement backed} other {# statements backed}}',
+        reasoning: '{count, plural, one {# inference} other {# inferences}}',
+        modelKnowledge: '{count, plural, one {# from general knowledge} other {# from general knowledge}}',
+        normativeUncited: '{count, plural, one {# legal statement without a source} other {# legal statements without a source}}',
+        dropped: '{count, plural, one {# citation not verified} other {# citations not verified}}',
+      },
+      cappedReasons: {
+        ungrounded: 'Capped by a statement the answer rests on that nothing backs.',
+        quoteUnverified:
+          'A quote could not be verified verbatim against the source; the assessment is capped accordingly.',
+        normativeClaimUncited:
+          'Capped by a legal statement without a cited source. A workspace record or a measurement does not back a legal statement.',
+        measurementOnly:
+          'Medium confidence: the figure was measured on the model (with tolerance and method), but is not backed by a source.',
+        citationFallback:
+          'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
+      },
     },
   },
   // Per-answer thumbs feedback (WS-7).

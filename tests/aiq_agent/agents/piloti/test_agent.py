@@ -10,11 +10,11 @@ from langchain_core.messages import HumanMessage
 from langchain_core.tools import tool
 
 from aiq_agent.agents.piloti.agent import PilotiAgent
-from aiq_agent.agents.piloti.answer_pipeline import append_minimal_citation
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import LLMRole
 from aiq_agent.common.answer_envelope import render_envelope_response_format
+from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
 from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.citation_verification import SourceEntry
 from aiq_agent.common.citation_verification import SourceRegistry
@@ -143,7 +143,7 @@ class TestPilotiAgent:
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
-            mock_verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             mock_sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -831,8 +831,9 @@ class TestPilotiAgent:
         rendered = self._render_default_prompt(mock_llm_provider, real_tool)
 
         # Grounding is evidence, not sources alone — a measurement counts.
-        assert "the sources you retrieved AND the measurements you took" in rendered
-        assert "a measurement made this turn" in rendered
+        assert "the workspace records you read AND the measurements you took" in rendered
+        assert "a measurement taken this turn" in rendered
+        assert "a record or a measurement never stands in for one" in rendered
         # And WHY it matters, which is what the model was never told.
         assert "An answer that cites nothing still carries it" in rendered
         assert "there is no confidence chip" in rendered
@@ -1281,10 +1282,13 @@ class TestPilotiSourceRegistryGating:
         assert mock_llm.bind_tools.call_count == 0
 
     @pytest.mark.asyncio
-    async def test_research_turn_with_failed_source_lookup_still_raises(self, mock_llm_provider, mock_llm):
-        """Guard the genuine-failure cell: a research turn that DID query a
-        registered data-source tool but captured no sources (empty result)
-        raises EmptySourceRegistryError — retrieval was attempted and failed.
+    async def test_a_failed_lookup_ships_the_answer_labelled_as_model_knowledge(self, mock_llm_provider, mock_llm):
+        """A research turn that DID query a data source and captured nothing ships its answer, labelled.
+
+        It used to raise EmptySourceRegistryError, and the reader got a canned
+        „nothing retrieved" message instead of the answer (ADR-0124). The
+        answer now carries the banner flag, and every sentence is the model's
+        own knowledge; an [N] it wrote anyway is labelled, not shown as a source.
         """
         populate_from_config(
             [
@@ -1300,7 +1304,7 @@ class TestPilotiSourceRegistryGating:
             content="",
             tool_calls=[{"name": "empty_web_search_tool", "args": {"query": "OIB 2.2"}, "id": "1"}],
         )
-        final_response = AIMessage(content="Here is an answer that cites nothing.")
+        final_response = AIMessage(content="Hochhäuser regelt die OIB-RL 2.3 [1].\n\n## Quellen\n- [1] oib-rl_2.3.pdf")
         mock_llm.ainvoke = AsyncMock(side_effect=[tool_call_response, final_response])
 
         agent = PilotiAgent(
@@ -1311,8 +1315,33 @@ class TestPilotiSourceRegistryGating:
         state = ResearchAgentState(
             messages=[HumanMessage(content="Which OIB Richtlinie applies to high-rise buildings?")],
         )
+        result = await agent.run(state)
+
+        assert result.answer_lookup_found_nothing is True
+        assert result.messages[-1].content == f"Hochhäuser regelt die OIB-RL 2.3 {DROPPED_CITATION_MARKER}."
+        assert [stamp["provenance"] for stamp in result.claim_stamps] == ["cited_dropped"]
+        assert result.verified_sources is None
+
+    @pytest.mark.asyncio
+    async def test_a_ruling_whose_lookup_found_nothing_is_still_refused(self, mock_llm_provider, mock_llm):
+        """A ruling exists to carry a copyable legal value; without a source it has nothing to show."""
+        populate_from_config(
+            [{"id": "web_search", "name": "Web Search", "description": "Web.", "tools": ["empty_web_search_tool"]}],
+        )
+        ruling = '```answer_json\n{"kind": "ruling", "answer": "Die Fluchtweglänge beträgt 40 m."}\n```'
+        mock_llm.ainvoke = AsyncMock(
+            side_effect=[
+                AIMessage(
+                    content="",
+                    tool_calls=[{"name": "empty_web_search_tool", "args": {"query": "Fluchtweg GK 4"}, "id": "1"}],
+                ),
+                AIMessage(content=ruling),
+            ]
+        )
+        agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[empty_web_search_tool])
+
         with pytest.raises(EmptySourceRegistryError):
-            await agent.run(state)
+            await agent.run(ResearchAgentState(messages=[HumanMessage(content="Wie lang darf der Fluchtweg sein?")]))
 
     @pytest.mark.asyncio
     async def test_a_lookup_in_other_projects_that_found_nothing_keeps_its_honest_answer(
@@ -1351,8 +1380,8 @@ class TestPilotiSourceRegistryGating:
         assert honest in result.messages[-1].content
 
     @pytest.mark.asyncio
-    async def test_an_empty_passage_search_beside_a_record_lookup_still_raises(self, mock_llm_provider, mock_llm):
-        """Only the record lookup is exempt: a norm search that came back empty is still the hard failure."""
+    async def test_an_empty_passage_search_beside_a_record_lookup_is_flagged(self, mock_llm_provider, mock_llm):
+        """Only the record lookup is exempt: a norm search that came back empty still raises the banner."""
         populate_from_config(
             [
                 {"id": "knowledge_layer", "name": "Knowledge", "description": "Projects.", "tools": ["project_lookup"]},
@@ -1373,8 +1402,11 @@ class TestPilotiSourceRegistryGating:
         )
         agent = PilotiAgent(llm_provider=mock_llm_provider, tools=[project_lookup, empty_web_search_tool])
 
-        with pytest.raises(EmptySourceRegistryError):
-            await agent.run(ResearchAgentState(messages=[HumanMessage(content="Was verlangt die OIB für Garagen?")]))
+        result = await agent.run(
+            ResearchAgentState(messages=[HumanMessage(content="Was verlangt die OIB für Garagen?")])
+        )
+
+        assert result.answer_lookup_found_nothing is True
 
     @pytest.mark.asyncio
     async def test_research_turn_answered_from_context_returns_answer(self, mock_llm_provider, mock_llm):
@@ -1439,8 +1471,8 @@ class TestPilotiSourceRegistryGating:
         assert result.messages[-1].content.rstrip().endswith("[1] mcp_time__get_current_time")
 
     @pytest.mark.asyncio
-    async def test_missing_tool_result_citation_is_appended(self, mock_llm_provider, mock_llm):
-        """Captured non-URL tool sources are appended when the model omits references."""
+    async def test_a_source_the_model_did_not_cite_is_never_appended(self, mock_llm_provider, mock_llm):
+        """The single-source fallback is gone (ADR-0124): an uncited answer stays uncited, with no chip invented."""
         populate_from_config(
             [
                 {
@@ -1467,9 +1499,9 @@ class TestPilotiSourceRegistryGating:
         state = ResearchAgentState(messages=[HumanMessage(content="What time is it in Tokyo?")])
         result = await agent.run(state)
 
-        assert result.messages[-1].content.rstrip() == (
-            "It's currently 4:54 AM in Tokyo [1].\n\n## Sources\n- [1] mcp_time__get_current_time"
-        )
+        assert result.messages[-1].content.rstrip() == "It's currently 4:54 AM in Tokyo."
+        assert result.verified_sources is None
+        assert result.answer_citation_grounded is False
 
     @pytest.mark.asyncio
     async def test_missing_citation_fallback_skips_ambiguous_multi_source_registry(self, mock_llm_provider, mock_llm):
@@ -1778,93 +1810,6 @@ class TestPilotiSessionRegistry:
             set_session_registry(None)
 
 
-class TestAppendMinimalCitation:
-    """Unit tests for the `_append_minimal_citation` fallback."""
-
-    def _tool_source(self) -> SourceEntry:
-        return SourceEntry(
-            source_type="tool_result",
-            citation_key="mcp_time__get_current_time",
-            tool_name="mcp_time__get_current_time",
-        )
-
-    def test_strips_leftover_bold_references_header(self):
-        # Simulates verify_citations stripping every fabricated citation under
-        # a **References:** section but leaving the bare header behind.
-        report = "Body sentence.\n\n**References:**\n"
-
-        result = append_minimal_citation(report, self._tool_source())
-
-        assert result.count("**References:**") == 1
-        assert result == "Body sentence [1].\n\n**References:**\n- [1] mcp_time__get_current_time"
-
-    def test_strips_leftover_references_heading(self):
-        report = "Body sentence.\n\n## References\n"
-
-        result = append_minimal_citation(report, self._tool_source())
-
-        assert "## References" not in result
-        assert result.count("**References:**") == 1
-
-    def test_strips_leftover_sources_heading(self):
-        report = "Body sentence.\n\n### Sources\n"
-
-        result = append_minimal_citation(report, self._tool_source())
-
-        assert "### Sources" not in result
-        assert result.count("**References:**") == 1
-
-    def test_strips_leftover_german_heading_and_cites_the_body(self):
-        # The only line under „## Quellen" was an invented source: the emptied
-        # heading used to stay, the [1] glued to it, and a second section followed.
-        report = "Treppen brauchen 2,10 m.\n\n## Quellen"
-
-        result = append_minimal_citation(report, self._tool_source())
-
-        assert result == "Treppen brauchen 2,10 m [1].\n\n**Quellen:**\n- [1] mcp_time__get_current_time"
-
-    def test_no_leftover_header_passes_through(self):
-        report = "Body sentence."
-
-        result = append_minimal_citation(report, self._tool_source())
-
-        assert result == "Body sentence [1].\n\n**References:**\n- [1] mcp_time__get_current_time"
-
-    def test_knowledge_base_source_carries_kb_token(self):
-        source = SourceEntry(
-            source_type="knowledge_layer",
-            citation_key="OIB-Richtlinie-2.pdf, p.3",
-            tool_name="knowledge_search",
-        )
-        result = append_minimal_citation("Body sentence.", source)
-
-        assert result == ("Body sentence [1].\n\n**References:**\n- [1] [KB] OIB-Richtlinie-2.pdf, p.3")
-
-    def test_web_source_carries_web_token(self):
-        source = SourceEntry(
-            source_type="generic",
-            url="https://example.com/a",
-            title="Article A",
-            tool_name="web_search_tool",
-        )
-        result = append_minimal_citation("Body sentence.", source)
-
-        assert result == ("Body sentence [1].\n\n**References:**\n- [1] [Web] Article A - https://example.com/a")
-
-    def test_ris_source_carries_ris_token(self):
-        source = SourceEntry(
-            source_type="generic",
-            url="https://www.ris.bka.gv.at/eli/bgbl/1985/446",
-            title="BauO",
-            tool_name="ris_search_tool",
-        )
-        result = append_minimal_citation("Body sentence.", source)
-
-        assert result == (
-            "Body sentence [1].\n\n**References:**\n- [1] [RIS] BauO - https://www.ris.bka.gv.at/eli/bgbl/1985/446"
-        )
-
-
 class TestPilotiAnswerGrounding:
     """The ``answer_citation_grounded`` overconfidence-guard signal set by run().
 
@@ -1938,9 +1883,10 @@ class TestPilotiAnswerGrounding:
         assert result.answer_citation_grounded is True
 
     @pytest.mark.asyncio
-    async def test_grounded_when_single_source_appended_as_minimal_citation(self, mock_llm_provider, mock_llm):
-        # No model citation survives, but exactly one registry source exists →
-        # appended as the one minimal citation, which grounds the answer.
+    async def test_not_grounded_when_no_citation_survives_beside_a_lone_source(self, mock_llm_provider, mock_llm):
+        # No model citation survives and exactly one registry source exists:
+        # the fallback appended it and called the answer grounded. Nothing is
+        # appended any more, so nothing grounds it (ADR-0124).
         self._after_a_lookup(mock_llm, "Answer without any citation.")
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
@@ -1954,7 +1900,7 @@ class TestPilotiAnswerGrounding:
             )
             state = ResearchAgentState(messages=[HumanMessage(content="Q?")])
             result, _ = await _run_with_captured_registry(self._agent(mock_llm_provider, repair_pass=False), state)
-        assert result.answer_citation_grounded is True
+        assert result.answer_citation_grounded is False
 
     @pytest.mark.asyncio
     async def test_not_grounded_when_all_citations_removed_and_many_sources(self, mock_llm_provider, mock_llm):
@@ -1988,13 +1934,13 @@ class TestPilotiAnswerGrounding:
         assert result.answer_citation_grounded is False
 
     @pytest.mark.asyncio
-    async def test_an_unresolvable_citation_falls_back_to_the_turns_one_source(self, mock_llm_provider, mock_llm):
+    async def test_an_unresolvable_citation_is_labelled_not_replaced(self, mock_llm_provider, mock_llm):
         # Inline [1] citation, NO Sources section written by the model, and a
         # registry whose one source the REAL verifier cannot resolve the [1]
-        # to (``all_sources`` is patched; the URL index is not): the citation
-        # is removed, and the single-source fallback grounds the answer in the
-        # one source this turn retrieved. Uses the REAL verification/
-        # sanitization pipeline.
+        # to (``all_sources`` is patched; the URL index is not). The single-
+        # source fallback used to attach that source in the [1]'s place; the
+        # marker is now labelled where it stood and no source is attached
+        # (ADR-0124). Uses the REAL verification/sanitization pipeline.
         self._after_a_lookup(mock_llm, "The building height limit is 12 m [1].")
         source = SourceEntry(url="https://example.gv.at/oib", title="OIB Richtlinie", tool_name="web_search_tool")
         with patch.object(SourceRegistry, "all_sources", return_value=[source]):
@@ -2002,9 +1948,10 @@ class TestPilotiAnswerGrounding:
             result, _ = await _run_with_captured_registry(self._agent(mock_llm_provider, repair_pass=False), state)
 
         answer = next(m for m in reversed(result.messages) if isinstance(m, AIMessage) and not m.tool_calls)
-        assert "Sources" in answer.content
-        assert "OIB Richtlinie" in answer.content
-        assert result.answer_citation_grounded is True
+        assert answer.content == f"The building height limit is 12 m {DROPPED_CITATION_MARKER}."
+        assert "OIB Richtlinie" not in answer.content
+        assert result.answer_citation_grounded is False
+        assert [stamp["provenance"] for stamp in result.claim_stamps] == ["cited_dropped"]
 
     # --- verified_sources emission: only THIS turn's cited sources become chips ---
 
@@ -2089,10 +2036,10 @@ class TestPilotiAnswerGrounding:
         assert [s["citation_key"] for s in result.verified_sources] == ["oib-richtlinie-2.pdf#p3"]
 
     @pytest.mark.asyncio
-    async def test_verified_sources_single_source_minimal_citation_path(self, mock_llm_provider, mock_llm):
-        # Exactly one registry source and no surviving model citation → the
-        # single minimal-citation path fires and that one source IS emitted.
-        # The search result names the same URL, so the registry keeps ONE source.
+    async def test_a_lone_registry_source_is_not_emitted_when_nothing_was_cited(self, mock_llm_provider, mock_llm):
+        # Exactly one registry source and no surviving model citation: the
+        # single-source fallback emitted that source as the answer's chip. It
+        # is gone (ADR-0124), so no chip is invented.
         self._after_a_lookup(mock_llm, "Answer without any citation.", query="https://example.com/only")
         registry = SourceRegistry()
         only = SourceEntry(url="https://example.com/only", title="Only", tool_name="web_search_tool")
@@ -2105,8 +2052,7 @@ class TestPilotiAnswerGrounding:
             )
             state = ResearchAgentState(messages=[HumanMessage(content="Q?")])
             result = await _run_with_bound_registry(self._agent(mock_llm_provider, repair_pass=False), state, registry)
-        assert result.verified_sources is not None
-        assert [s["url"] for s in result.verified_sources] == ["https://example.com/only"]
+        assert result.verified_sources is None
 
     @pytest.mark.asyncio
     async def test_verified_sources_empty_when_a_greeting_cites_nothing_from_a_populated_registry(
@@ -2148,23 +2094,6 @@ class TestPilotiAnswerGrounding:
             state = ResearchAgentState(messages=[HumanMessage(content="Frage?")])
             result = await _run_with_bound_registry(self._agent(mock_llm_provider), state, registry)
         assert [s["number"] for s in result.verified_sources] == [1, 2]
-
-    @pytest.mark.asyncio
-    async def test_minimal_citation_source_is_numbered_one(self, mock_llm_provider, mock_llm):
-        # ``_append_minimal_citation`` writes "[1]" into the answer, so the one
-        # emitted source must claim that number.
-        self._after_a_lookup(mock_llm, "Answer without any citation.", query="https://example.com/only")
-        registry = SourceRegistry()
-        registry.add(SourceEntry(url="https://example.com/only", title="Only", tool_name="web_search_tool"))
-        with patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify:
-            mock_verify.return_value = MagicMock(
-                verified_report="Answer without any citation.",
-                valid_citations=[],
-                removed_citations=[],
-            )
-            state = ResearchAgentState(messages=[HumanMessage(content="Q?")])
-            result = await _run_with_bound_registry(self._agent(mock_llm_provider, repair_pass=False), state, registry)
-        assert [s["number"] for s in result.verified_sources] == [1]
 
     @pytest.mark.asyncio
     async def test_citation_numbers_survive_the_sanitize_renumber(self, mock_llm_provider, mock_llm):
@@ -3058,8 +2987,8 @@ class TestMeasurementSourcesDoNotGroundCitations:
         measurement IS in the derivation trail, and the answer is STILL "low"
         for ``normative_claim_uncited``.
         """
-        from aiq_agent.agents.piloti.markers import answer_confidence_capped_reason
-        from aiq_agent.agents.piloti.markers import surface_answer_confidence
+        from aiq_agent.agents.piloti.markers import claim_confidence_capped_reason
+        from aiq_agent.agents.piloti.markers import surface_claim_confidence
 
         tools = self._measuring_turn(
             mock_llm,
@@ -3080,38 +3009,23 @@ class TestMeasurementSourcesDoNotGroundCitations:
         assert result.answer_citation_grounded is False
         assert result.answer_normative_claim_uncited is True
 
-        # The composition the chat node performs, on this turn's own signals.
+        # The composition the guard performs, on this turn's own stamps (rule 2,
+        # ADR-0124): the verdict sentence is normative with no passage behind it.
+        assert [stamp["claim_type"] for stamp in result.claim_stamps] == ["normative"]
+        assert result.answer_claims_ceiling == "low"
+        assert surface_claim_confidence("high", result.answer_claims_ceiling) == "low"
         assert (
-            surface_answer_confidence(
-                "high",
-                result.answer_citation_grounded,
-                True,
-                measurement_grounded=result.answer_measurement_grounded,
-                normative_claim_uncited=result.answer_normative_claim_uncited,
-                citation_fallback_used=result.answer_citation_fallback_used,
-            )
-            == "low"
-        )
-        assert (
-            answer_confidence_capped_reason(
-                "high",
-                result.answer_citation_grounded,
-                True,
-                measurement_grounded=result.answer_measurement_grounded,
-                normative_claim_uncited=result.answer_normative_claim_uncited,
-                citation_fallback_used=result.answer_citation_fallback_used,
-            )
+            claim_confidence_capped_reason("high", result.answer_claims_ceiling, tuple(result.answer_weakest_claim))
             == "normative_claim_uncited"
         )
 
     @pytest.mark.asyncio
-    async def test_a_lone_measurement_is_never_a_minimal_citation(self, mock_llm_provider, mock_llm):
-        """The single-source fallback must not find a measurement to attach.
+    async def test_a_lone_measurement_is_never_a_citation(self, mock_llm_provider, mock_llm):
+        """A measurement never reaches the registry, so nothing can hand it out as „[1]".
 
-        ``len(sources) == 1`` appends that source as „[1]" and sets
-        ``citation_grounded``. A measurement in the registry would BE that one
-        source on a purely measured turn — the shortest path from a card in the
-        Herleitung to a laundered verdict.
+        The single-source fallback that once appended a lone registry source is
+        gone (ADR-0124); the measurement stays out of the registry regardless,
+        because the registry is what ``[N]`` resolves through.
         """
         tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
         agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
@@ -3123,19 +3037,17 @@ class TestMeasurementSourcesDoNotGroundCitations:
         assert self._measurement_sources(result)
         assert registry.all_sources() == []
         assert result.answer_citation_grounded is False
-        assert result.answer_citation_fallback_used is False
         answer = next(m for m in reversed(result.messages) if isinstance(m, AIMessage) and not m.tool_calls)
         assert "[1]" not in answer.content
 
     @pytest.mark.asyncio
-    async def test_measured_descriptive_answer_still_reaches_medium(self, mock_llm_provider, mock_llm):
-        """The signal this work must not weaken: measured + descriptive → medium.
+    async def test_measured_descriptive_answer_reaches_the_models_own_level(self, mock_llm_provider, mock_llm):
+        """Same turn as above minus the legal claim: the sentence states the measured value.
 
-        Same turn as above minus the legal claim. ``measurement_only`` is the
-        reason, exactly as before measurements had a Herleitung.
+        Rule 1 held it at "medium" for want of a per-sentence split; rule 2 has
+        one (ADR-0124), so a measured sentence that states no law allows "high".
         """
-        from aiq_agent.agents.piloti.markers import answer_confidence_capped_reason
-        from aiq_agent.agents.piloti.markers import surface_answer_confidence
+        from aiq_agent.agents.piloti.markers import surface_claim_confidence
 
         tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
         agent = PilotiAgent(llm_provider=mock_llm_provider, tools=tools)
@@ -3146,38 +3058,17 @@ class TestMeasurementSourcesDoNotGroundCitations:
 
         assert result.answer_measurement_grounded is True
         assert result.answer_normative_claim_uncited is False
-        assert (
-            surface_answer_confidence(
-                "high",
-                result.answer_citation_grounded,
-                True,
-                measurement_grounded=True,
-                normative_claim_uncited=False,
-                citation_fallback_used=result.answer_citation_fallback_used,
-            )
-            == "medium"
-        )
-        assert (
-            answer_confidence_capped_reason(
-                "high",
-                result.answer_citation_grounded,
-                True,
-                measurement_grounded=True,
-                normative_claim_uncited=False,
-                citation_fallback_used=result.answer_citation_fallback_used,
-            )
-            == "measurement_only"
-        )
+        assert [stamp["provenance"] for stamp in result.claim_stamps] == ["measured"]
+        assert surface_claim_confidence("high", result.answer_claims_ceiling) == "high"
 
     @pytest.mark.asyncio
-    async def test_failed_retrieval_still_raises_even_when_the_turn_measured(self, mock_llm_provider, mock_llm):
-        """``EmptySourceRegistryError`` keeps its meaning.
+    async def test_failed_retrieval_is_still_reported_even_when_the_turn_measured(self, mock_llm_provider, mock_llm):
+        """An empty retrieval keeps its meaning.
 
-        The error asks "did retrieval capture anything to cite?", and it is
-        raised from the branch guarded by ``if registry.all_sources()``. A
-        measurement in the registry would answer that question with a value that
-        was never retrieved, so a turn whose web search came back empty would
-        quietly stop reporting the failure it exists to report.
+        The question is "did retrieval capture anything to cite?", asked of the
+        registry. A measurement in it would answer with a value that was never
+        retrieved, so a turn whose web search came back empty would quietly stop
+        reporting the failure: no banner, no ``sources-empty``.
         """
         populate_from_config(
             [
@@ -3208,8 +3099,10 @@ class TestMeasurementSourcesDoNotGroundCitations:
         state = ResearchAgentState(
             messages=[HumanMessage(content="Wie hoch ist der Keller?")],
         )
-        with pytest.raises(EmptySourceRegistryError):
-            await _run_with_captured_registry(agent, state)
+        result, registry = await _run_with_captured_registry(agent, state)
+
+        assert registry.all_sources() == []
+        assert result.answer_lookup_found_nothing is True
 
     # -- what the card actually carries ---------------------------------------
 
@@ -3316,7 +3209,7 @@ class TestTruncationIsObservable:
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
         ):
-            verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -3817,7 +3710,7 @@ class TestATurnThatWritesADraft:
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
-            mock_verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             mock_sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -4071,7 +3964,7 @@ class TestTheThreeDraftingTurnShapes:
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
-            mock_verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             mock_sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)

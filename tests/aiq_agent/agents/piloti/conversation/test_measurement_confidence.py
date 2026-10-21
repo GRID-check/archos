@@ -263,97 +263,49 @@ class TestMeasurementConfidenceEndToEnd:
         assert result.answer_confidence_capped_reason == "normative_claim_uncited"
 
 
-class TestTheSingleSourceFallbackDoesNotLaunder:
-    """The third kind of grounding, and why it is not the first.
+class TestRuleTwoKeepsTheLaunderingPathShut:
+    """The same two answers, stamped per sentence (ADR-0124): what a measurement grounds, and what it never does.
 
-    Piloti appends ONE registry source when nothing the model cited
-    survived verification. The registry is cumulative across the conversation,
-    so that source can be a Bauordnung link captured two turns ago for a
-    different question — and treating it as citation grounding switched off the
-    normative brake (which only runs when citation grounding is absent) AND
-    handed the answer the model's own self-report. A measured answer with
-    „…erfüllt damit OIB 4 Punkt 2.1" bolted on came out at "high", with the
-    unrelated link attached to the verdict.
+    Under rule 2 the measured sentence is ``measured`` and may reach "high"; a
+    sentence about the law next to it is still floored, because a measurement
+    never grounds a normative claim, whatever else the answer measured.
     """
 
-    def test_a_fallback_citation_does_not_reach_high(self):
-        assert (
-            surface_answer_confidence("high", citation_grounded=True, citation_fallback_used=True)
-            == MEASUREMENT_CONFIDENCE_CEILING
-        )
-        assert (
-            answer_confidence_capped_reason("high", citation_grounded=True, citation_fallback_used=True)
-            == "citation_fallback"
-        )
+    @staticmethod
+    def _stamped(*stamps: tuple[str, str, str]) -> ResearchAgentState:
+        from aiq_agent.common.claim_provenance import ClaimStamp
+        from aiq_agent.common.claim_provenance import claims_ceiling
+        from aiq_agent.common.claim_provenance import mark_load_bearing
+        from aiq_agent.common.claim_provenance import weakest_claim
 
-    def test_a_citation_the_model_actually_wrote_still_reaches_high(self):
-        """The feature stays intact: only the FALLBACK is capped."""
-        assert surface_answer_confidence("high", citation_grounded=True, citation_fallback_used=False) == "high"
-        assert answer_confidence_capped_reason("high", citation_grounded=True, citation_fallback_used=False) is None
-
-    def test_a_measured_mixed_answer_on_a_fallback_citation_stays_at_low(self):
-        """The reported defect, at the guard: measured number + legal verdict."""
-        assert (
-            surface_answer_confidence(
-                "high",
-                citation_grounded=True,
-                measurement_grounded=True,
-                normative_claim_uncited=True,
-                citation_fallback_used=True,
-            )
-            == "low"
-        )
-        assert (
-            answer_confidence_capped_reason(
-                "high",
-                citation_grounded=True,
-                measurement_grounded=True,
-                normative_claim_uncited=True,
-                citation_fallback_used=True,
-            )
-            == "normative_claim_uncited"
+        claims = mark_load_bearing([ClaimStamp(text, provenance, ctype) for text, provenance, ctype in stamps])
+        weakest = weakest_claim(claims)
+        return ResearchAgentState(
+            messages=[AIMessage(content=" ".join(text for text, _, _ in stamps))],
+            answer_confidence_marker="high",
+            answer_measurement_grounded=True,
+            claim_stamps=[claim.to_wire() for claim in claims],
+            answer_claims_ceiling=claims_ceiling(claims),
+            answer_weakest_claim=[weakest.provenance, weakest.claim_type] if weakest else None,
         )
 
-    def test_the_flag_alone_describes_nothing(self):
-        """A fallback without grounding is incoherent — the fallback IS the grounding.
+    def test_a_measured_descriptive_answer_reaches_the_models_own_level(self):
+        state = self._stamped((KELLER_MEASURED, "measured", "value"))
+        assert state.answer_confidence == "high"
+        assert state.answer_confidence_capped_reason is None
+        assert state.answer_confidence_version == 2
 
-        Normalised rather than left to the caller, so a partially-set pair
-        cannot produce a cap with no explanation behind it.
-        """
-        assert surface_answer_confidence("high", citation_grounded=False, citation_fallback_used=True) == "low"
-        assert (
-            answer_confidence_capped_reason("high", citation_grounded=False, citation_fallback_used=True)
-            == "ungrounded"
+    def test_a_verdict_beside_the_measurement_floors_the_answer(self):
+        state = self._stamped(
+            ("Der Keller ist 2,70 m hoch.", "measured", "value"),
+            ("Er erfüllt damit OIB 4 Punkt 2.1.", "model_knowledge", "normative"),
         )
+        assert state.answer_confidence == "low"
+        assert state.answer_confidence_capped_reason == "normative_claim_uncited"
 
-    @pytest.fixture
-    def deep_fn(self):
-        async def deep(state):
-            return DeepResearchAgentState(messages=list(state.messages) + [AIMessage(content="Deep report.")])
-
-        return deep
-
-    @pytest.mark.asyncio
-    async def test_a_mixed_answer_on_a_stale_source_arrives_at_low(self, deep_fn):
-        """End to end through the chat node, which is where the level is set."""
-
-        async def research(state_input):
-            return ResearchAgentState(
-                messages=list(state_input.messages) + [AIMessage(content=KELLER_MEASURED_PLUS_VERDICT + " [1]")],
-                answer_citation_grounded=True,
-                answer_citation_fallback_used=True,
-                answer_measurement_grounded=True,
-                answer_normative_claim_uncited=True,
-                escalation_requested=False,
-                answer_confidence_marker="high",
-            )
-
-        agent = ConversationGraph(
-            research_fn=research,
-            deep_research_fn=deep_fn,
-            clarifier_fn=None,
-        )
-        state = ConversationState(messages=[HumanMessage(content="Reicht die Kellerhöhe?")])
-        result = await turn(agent, state, thread_id="f1")
-        assert result.answer_confidence == "low"
-        assert result.answer_confidence_capped_reason == "normative_claim_uncited"
+    def test_a_verdict_the_measurement_sentence_carries_itself_is_still_floored(self):
+        # A measured sentence that is also normative: the measurement grounds
+        # the number, never the verdict in the same sentence.
+        state = self._stamped((KELLER_MEASURED_PLUS_VERDICT, "measured", "normative"))
+        assert state.answer_confidence == "low"
+        assert state.answer_confidence_capped_reason == "normative_claim_uncited"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from aiq_agent.agents.piloti.answer_pipeline import settle_streamed_citations
+from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
 from aiq_agent.common.citation_verification import UNVERIFIED_QUOTE_MARKER
 from aiq_agent.common.citation_verification import SourceEntry
 from aiq_agent.common.citation_verification import SourceRegistry
@@ -28,10 +29,12 @@ SOURCES = (
 )
 
 
-def test_an_unbacked_marker_goes_and_the_rest_take_the_numbers_the_terminal_will_give():
+def test_an_unbacked_marker_is_labelled_and_the_rest_take_the_numbers_the_terminal_will_give():
     settled = settle_streamed_citations("Fluchtweg 40 m [1], erfunden [2], Treppe [3].", SOURCES, _registry())
     body, _, section = settled.content.partition("\n\n")
-    assert body == "Fluchtweg 40 m [1], erfunden, Treppe [2]."
+    # Labelled where it stood, not silently removed (ADR-0124): the claim's
+    # pointer did not hold, and the reader is told so.
+    assert body == f"Fluchtweg 40 m [1], erfunden {DROPPED_CITATION_MARKER}, Treppe [2]."
     # The source list rides along, renumbered, the unbacked line gone.
     assert "[1]" in section and "[2]" in section and "erfunden.pdf" not in section and "[3]" not in section
     assert [(s["number"], s["citation_key"]) for s in settled.sources] == [
@@ -93,27 +96,19 @@ def _one_source() -> SourceRegistry:
     return registry
 
 
-def test_the_single_source_fallback_settles_as_the_terminal_frame_writes_it():
-    # The only source line named nothing retrieved. The terminal cites the
-    # turn's one source; settled without the fallback, the reader saw a bare
-    # „## Quellen" that the terminal frame then replaced.
+def test_no_source_the_model_did_not_cite_is_attached():
+    # The single-source fallback attached the registry's one source when the
+    # only line named nothing retrieved; that source could be two turns old
+    # (ADR-0124). The marker is labelled and no chip is invented.
     settled = settle_streamed_citations(
         "Treppen brauchen 2,10 m [1].", "## Quellen\n- [1] erfunden.pdf, p.9", _one_source()
     )
 
-    assert settled.content == "Treppen brauchen 2,10 m [1].\n\n## Quellen\n- [1] [KB] oib.pdf, p.3"
-    assert [(s["number"], s["citation_key"]) for s in settled.sources] == [(1, "oib.pdf, p.3")]
+    assert settled.content == f"Treppen brauchen 2,10 m {DROPPED_CITATION_MARKER}."
+    assert settled.sources == []
 
 
-def test_no_fallback_settles_on_a_turn_that_looked_nothing_up():
-    settled = settle_streamed_citations(
-        "Hallo.", "## Quellen\n- [1] erfunden.pdf, p.9", _one_source(), lookup_attempted=False
-    )
-
-    assert "[1]" not in settled.content and settled.sources == []
-
-
-def test_the_settled_fallback_is_the_terminal_frame_byte_for_byte(monkeypatch):
+def test_the_settled_label_is_the_terminal_frame_byte_for_byte(monkeypatch):
     import asyncio
 
     from langchain_core.messages import AIMessage
@@ -122,7 +117,6 @@ def test_the_settled_fallback_is_the_terminal_frame_byte_for_byte(monkeypatch):
 
     from aiq_agent.agents.piloti import answer_pipeline
     from aiq_agent.agents.piloti.answer_pipeline import finalize_answer
-    from aiq_agent.agents.piloti.answer_pipeline import looked_up_this_turn
 
     monkeypatch.setattr(answer_pipeline, "get_source_id_for_tool", {"knowledge_search": "knowledge_layer"}.get)
 
@@ -135,8 +129,8 @@ def test_the_settled_fallback_is_the_terminal_frame_byte_for_byte(monkeypatch):
     ]
     registry = _one_source()
 
-    settled = settle_streamed_citations(prose, sources, registry, lookup_attempted=looked_up_this_turn(messages))
+    settled = settle_streamed_citations(prose, sources, registry)
     final = asyncio.run(finalize_answer(messages, registry=registry, tools=[], repair=None, turn_sources=[]))
 
-    assert final.citation_fallback_used
+    assert not final.citation_grounded and final.cited == ()
     assert settled.content == final.content.rstrip()

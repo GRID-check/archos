@@ -42,7 +42,6 @@ class TestCitationScores:
         assert scores == {
             "citation-health": 1.0,
             "answer-grounded": 1.0,
-            "citation-fallback": 0.0,
             "sources-empty": 0.0,
             "citations-removed": 0.0,
             "quotes-unverified": 0.0,

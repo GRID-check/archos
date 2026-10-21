@@ -115,6 +115,7 @@ from aiq_agent.common.wire_v2 import Step
 from aiq_agent.common.wire_v2 import StepFinishedBody
 from aiq_agent.common.wire_v2 import StepStartedBody
 from aiq_agent.common.wire_v2 import ToolStep
+from aiq_agent.common.workspace_records import is_workspace_call
 
 logger = logging.getLogger(__name__)
 
@@ -408,6 +409,13 @@ KEY_ACTION_ANNOTATIONS_SET = "status.action.annotationsSet"
 KEY_ACTION_ANNOTATIONS_UPDATE = "status.action.annotationsUpdate"
 KEY_ACTION_ANNOTATIONS_DELETE = "status.action.annotationsDelete"
 KEY_ACTION_ANNOTATIONS_REPLY = "status.action.annotationsReply"
+#: A call to the workspace through Piloti's MCP server (``workspace__call``,
+#: ADR-0121): a read runs, a write comes back as a proposal. Keyed on the
+#: QUALIFIED name, because the basename ``call`` says nothing and another group
+#: may own it. Value-less: the operation is an English id, not the reader's
+#: words, and the derivation names what was read (``workspace_records``).
+#: ``search`` and ``describe`` get no line: they are bookkeeping, like ``look``.
+KEY_ACTION_WORKSPACE_CALL = "status.action.workspaceCall"
 
 KEY_CITATIONS = "status.citations"
 #: The turn's one bounded repair (ADR-0067): a quotation no passage holds
@@ -454,6 +462,7 @@ ALL_STATUS_KEYS: tuple[str, ...] = (
     "status.action.annotationsUpdate",
     "status.action.annotationsDelete",
     "status.action.annotationsReply",
+    "status.action.workspaceCall",
     "status.citations",
     "status.repair",
     "status.escalation",
@@ -626,7 +635,7 @@ def _flag(args: Any, name: str) -> bool:
     return isinstance(args, dict) and str(args.get(name)).strip().lower() == "true"
 
 
-def _action_key(base: str, args: Any) -> str | None:
+def _action_key(base: str, args: Any, name: str = "") -> str | None:
     """The live-line key for a non-retrieval tool call, read from its arguments where they decide it.
 
     One tool, two promises: ``file_draft`` with ``submit`` hands the draft to a
@@ -634,6 +643,8 @@ def _action_key(base: str, args: Any) -> str | None:
     which asks nobody for anything. Likewise ``mark`` with ``open`` sets a mark
     in the person's name, which the proposal line would understate.
     """
+    if is_workspace_call(name):
+        return KEY_ACTION_WORKSPACE_CALL
     if base == "file_draft" and _flag(args, "submit"):
         return KEY_ACTION_DRAFT_SUBMITTED
     if base == "mark" and _flag(args, "open"):
@@ -1107,7 +1118,7 @@ def _describe_calls(calls: list[dict[str, Any]]) -> dict[str, Any]:
             else:
                 query = query or _query_text(call.get("args"))
         elif action_key is None:
-            action_key = _action_key(base, call.get("args"))
+            action_key = _action_key(base, call.get("args"), str(call.get("name") or ""))
 
     key: str | None
     values: dict[str, Any]

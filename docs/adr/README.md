@@ -185,6 +185,7 @@ Consequences, where a reader looks for them.
 | [0121](0121-everything-a-person-can-do-an-agent-can-do.md) | Everything a person can do, an agent can do: one MCP server, every agent a client | Accepted |
 | [0122](0122-piloti-works-the-office-through-its-door.md) | Piloti works the office through its door: workspace state in every turn, a work report, and an eval that measures it | Proposed |
 | [0123](0123-agents-consult-piloti-over-mcp-and-a2a.md) | Agents consult Piloti: an ask over MCP, and an A2A server on the same primitive | Accepted |
+| [0124](0124-every-sentence-shows-where-it-comes-from.md) | Every sentence shows where it comes from: per-sentence provenance, confidence held to the weakest claim | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

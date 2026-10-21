@@ -99,6 +99,7 @@ import { AnswerActions } from './AnswerActions'
 import { CardSlot, CardSlotLiveProvider, forgetArrivals } from './CardSlotArrival'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 import type { QuoteStamp } from '@/lib/conversations/message-quote-stamps'
+import type { ClaimStamp } from '@/lib/conversations/message-claim-stamps'
 import { projectKeysIn } from '@/lib/text/answer-directives'
 import { AnswerDataProvider, type AnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
 import { AnswerProjectStrip } from '@/shared/components/MarkdownRenderer/project-binding'
@@ -259,6 +260,12 @@ export interface AgentResponseProps {
    * verbatim in the ConfidenceChip tooltip.
    */
   answerConfidenceReason?: string
+  /** Where each sentence comes from (`TurnResult.claim_stamps`); the chip explains its level with them. */
+  claimStamps?: ClaimStamp[]
+  /** Which rule computed the confidence: 2 the per-sentence formula; absent on older answers. */
+  answerConfidenceVersion?: 1 | 2
+  /** A search ran and found nothing; the answer is the model's own knowledge, said in a note. */
+  lookupFoundNothing?: true
   /**
    * Citation-verification result: how many citations were removed as
    * unverifiable, with de-duplicated reasons. Renders a muted note inside the
@@ -582,6 +589,25 @@ const CitationsRemovedNote: FC<{ citationsRemoved?: { count: number; reasons: st
  * `role="note"`, muted, no icon, no tint, no border: truncation is a property
  * of the EVIDENCE, not an error state and not a verdict on the answer.
  */
+/**
+ * The search ran and found nothing, and the answer is shown anyway (ADR-0124).
+ * It used to be replaced by a canned „nothing retrieved" message; now the
+ * reader gets the answer and this note, so they can see it rests on the
+ * model's own knowledge and nothing it could cite. Above the sources row,
+ * not in the details: it changes how the whole answer reads.
+ */
+const LookupFoundNothingNote: FC<{ show: boolean }> = ({ show }) => {
+  const t = useTranslations('chat')
+  if (!show) return null
+  return (
+    <div className="mt-1.5" data-testid="lookup-found-nothing">
+      <span className="text-feedback-warning text-xs leading-relaxed" role="note">
+        {t('answerSources.lookupFoundNothing')}
+      </span>
+    </div>
+  )
+}
+
 const ResearchTruncatedNote: FC<{
   researchTruncated?: true
   truncationReason?: string
@@ -761,6 +787,8 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidence,
   answerConfidenceCappedReason,
   answerConfidenceReason,
+  claimStamps,
+  answerConfidenceVersion,
   memoryItems,
   skillsActivated,
   skillsHidden,
@@ -782,6 +810,8 @@ const AnswerDetails = memo(function AnswerDetails({
   answerConfidence?: AnswerConfidence
   answerConfidenceCappedReason?: AnswerConfidenceCappedReason
   answerConfidenceReason?: string
+  claimStamps?: ClaimStamp[]
+  answerConfidenceVersion?: 1 | 2
   memoryItems: TurnMemoryItem[]
   skillsActivated?: string[]
   skillsHidden?: string[]
@@ -864,6 +894,8 @@ const AnswerDetails = memo(function AnswerDetails({
               confidence={answerConfidence}
               cappedReason={answerConfidenceCappedReason}
               reason={answerConfidenceReason}
+              claimStamps={claimStamps}
+              version={answerConfidenceVersion}
             />
           )}
           <MemoryNotedChip items={memoryItems} />
@@ -918,6 +950,9 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   answerConfidence,
   answerConfidenceCappedReason,
   answerConfidenceReason,
+  claimStamps,
+  answerConfidenceVersion,
+  lookupFoundNothing,
   citationsRemoved,
   readSources,
   researchTruncated,
@@ -1745,6 +1780,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
               {lateBlocks}
 
               {/* "Belegt durch": provenance chips for sources this answer carries */}
+              <LookupFoundNothingNote show={lookupFoundNothing === true} />
               <AnswerSourcesRow
                 documents={documents}
                 anchorPrefix={anchorPrefix}
@@ -1773,6 +1809,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                       answerConfidence={answerConfidence}
                       answerConfidenceCappedReason={answerConfidenceCappedReason}
                       answerConfidenceReason={answerConfidenceReason}
+                      claimStamps={claimStamps}
+                      answerConfidenceVersion={answerConfidenceVersion}
                       memoryItems={memoryItems}
                       skillsActivated={skillsActivated}
                       skillsHidden={skillsHidden}
@@ -1947,6 +1985,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                   )}
                   data-testid="answer-footer"
                 >
+                  <LookupFoundNothingNote show={lookupFoundNothing === true} />
                   <AnswerSourcesRow
                     documents={documents}
                     anchorPrefix={anchorPrefix}
@@ -1972,6 +2011,8 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
                           answerConfidence={answerConfidence}
                           answerConfidenceCappedReason={answerConfidenceCappedReason}
                           answerConfidenceReason={answerConfidenceReason}
+                          claimStamps={claimStamps}
+                          answerConfidenceVersion={answerConfidenceVersion}
                           memoryItems={memoryItems}
                           skillsActivated={skillsActivated}
                           skillsHidden={skillsHidden}

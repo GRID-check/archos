@@ -122,7 +122,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "citation-fallback",
         "BOOLEAN",
-        "True when nothing the model cited survived and the single retrieved source was appended for it.",
+        "Retired with the single-source fallback (ADR-0124); no longer written. Kept so older traces chart.",
     ),
     ScoreDefinition(
         "sources-empty",
@@ -185,6 +185,34 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "On a work turn (kind work, ADR-0122): true when the report lists as many proposals as the turn put "
         "in front of the person as proposal cards. False is a turn that claimed a proposal it did not file, or "
         "filed one it did not report.",
+    ),
+    ScoreDefinition(
+        "claims-by-class",
+        "CATEGORICAL",
+        "One score per provenance class present in the answer (ADR-0124): where its sentences come from. "
+        "The comment and metadata carry how many sentences of that class.",
+        categories=(
+            "quoted",
+            "cited",
+            "cited_dropped",
+            "record",
+            "action",
+            "measured",
+            "reasoning",
+            "model_knowledge",
+        ),
+    ),
+    ScoreDefinition(
+        "claims-normative-uncited",
+        "NUMERIC",
+        "Sentences about the law (the normative detector) with no quoted or cited passage behind them.",
+        min_value=0,
+    ),
+    ScoreDefinition(
+        "citations-dropped-labelled",
+        "NUMERIC",
+        "Places the answer cited something that did not resolve, labelled in the text instead of removed.",
+        min_value=0,
     ),
     ScoreDefinition(
         "thread-answered-in-place",
@@ -291,7 +319,6 @@ def citation_scores(events: Iterable[Any]) -> list[RuntimeScore]:
     scores = [
         _boolean("citation-health", not unhealthy, ", ".join(unhealthy) or None),
         _boolean("answer-grounded", "answer_ungrounded" not in by_kind),
-        _boolean("citation-fallback", "citation_fallback" in by_kind),
         _boolean("sources-empty", False),
         RuntimeScore("citations-removed", _count(by_kind, "citations_removed")),
         RuntimeScore("quotes-unverified", _count(by_kind, "quote_unverified")),
@@ -338,6 +365,25 @@ def work_report_scores(result: Any) -> list[RuntimeScore]:
     reported = len(((meta.get("work") or {}).get("proposed")) or [])
     filed = proposal_cards(getattr(result, "cards", None) or [])
     return [_boolean("work-report-matches", reported == filed, f"reported {reported}, filed {filed}")]
+
+
+def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:
+    """The answer's per-sentence provenance (``common/claim_provenance.py``), zeros included.
+
+    ``stamps`` are ``ClaimStamp`` objects; ``dropped`` is how many labels the
+    final text carries where a citation did not resolve.
+    """
+    from aiq_agent.common.claim_provenance import class_counts
+    from aiq_agent.common.claim_provenance import normative_uncited
+
+    stamps = list(stamps)
+    scores = [
+        RuntimeScore("claims-by-class", name, comment=str(count), item=name, metadata={"count": count})
+        for name, count in class_counts(stamps).items()
+    ]
+    scores.append(RuntimeScore("claims-normative-uncited", float(normative_uncited(stamps))))
+    scores.append(RuntimeScore("citations-dropped-labelled", float(max(0, dropped))))
+    return scores
 
 
 def dialect_scores(repairs: list[dict[str, str]]) -> list[RuntimeScore]:

@@ -243,6 +243,16 @@ class TestRetrieval:
         turn_status.emit_retrieval([{"name": "remember", "args": {"text": "Dachneigung 30°"}}], round_index=0)
         assert _live(steps)[0].key == "status.action.remember"
 
+    def test_a_workspace_call_says_it_works_in_the_workspace_and_its_bookkeeping_says_nothing(self, steps) -> None:
+        """Keyed on the qualified name: a bare ``call`` from another group is not the workspace (ADR-0124)."""
+        call = {"name": "workspace__call", "args": {"name": "project-members-list", "input": {}}}
+        turn_status.emit_retrieval([call], round_index=0)
+        turn_status.emit_retrieval([{"name": "workspace__search", "args": {"query": "Mitglieder"}}], round_index=1)
+        turn_status.emit_retrieval([{"name": "call", "args": {}}], round_index=2)
+        live = _live(steps)
+        assert [payload.key for payload in live] == ["status.action.workspaceCall"]
+        assert live[0].values == {}
+
     def test_each_file_verb_says_which_one_it_was(self, steps) -> None:
         """One key per verb: „Entwurf wird geschrieben" is not „wird gelesen"."""
         verbs = {
@@ -695,6 +705,7 @@ def _every_live_payload(steps) -> list:
     canvas = (("marks", {}), ("mark", {}), ("mark", {"open": True}), ("update", {}), ("delete", {}), ("reply", {}))
     for index, (tool, args) in enumerate(canvas):
         turn_status.emit_retrieval([{"name": f"canvas__{tool}", "args": args}], round_index=12 + index)
+    turn_status.emit_retrieval([{"name": "workspace__call", "args": {"name": "tasks-list"}}], round_index=18)
     turn_status.emit_retrieval_requery(query_count=2)
     turn_status.emit_citation_check(source_count=3)
     turn_status.emit_answer_repair(quotes=1)
