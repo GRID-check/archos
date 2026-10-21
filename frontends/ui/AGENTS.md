@@ -1,19 +1,15 @@
-<!-- BEGIN:nextjs-agent-rules -->
-
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
-
-This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
-
-<!-- END:nextjs-agent-rules -->
-
 # The UI and the BFF: `frontends/ui`
 
 Next.js App Router: the product UI, the BFF API routes under `src/app/api`, and
 the WebSocket proxy (`server.js`). This is also where tenancy, authorization and
 the database live. The Python agent is stateless and trusts what this tier
 sends it.
+
+**This is not the Next.js of your training data.** Next 16 changed APIs,
+conventions and file layout: read the guide in `node_modules/next/dist/docs/`
+before writing Next code, and heed its deprecation notices. (`next dev` used to
+write this advice into this file itself; `agentRules: false` in `next.config.ts`
+stops it, because its rewrite dirtied the tracked file on every start.)
 
 ## What the gate does not cover
 
