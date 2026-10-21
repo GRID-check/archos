@@ -297,9 +297,18 @@ export const motionInstant: Transition = { duration: 0, delay: 0 }
 export function useMotionToken<T extends Transition | SpringTransition>(
   token: T
 ): T | typeof motionInstant {
+  return usePrefersReducedMotion() ? motionInstant : token
+}
+
+/**
+ * Whether the reader asked for reduced motion, read the way `useMotionToken`
+ * reads it (synchronously on the client). For a gesture target that should not
+ * move at all under the setting, rather than move in one frame: a transform
+ * written as a `transform` string is not one `<MotionConfig
+ * reducedMotion="user">` recognises, so it is dropped here instead.
+ */
+export function usePrefersReducedMotion(): boolean {
   return useSyncExternalStore(subscribeReducedMotion, readReducedMotion, () => false)
-    ? motionInstant
-    : token
 }
 
 const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)'

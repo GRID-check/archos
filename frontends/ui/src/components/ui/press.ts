@@ -22,3 +22,22 @@ export const PRESSABLE =
   'transition-[color,background-color,border-color,filter,transform] ' +
   '[transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ' +
   'ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100'
+
+/**
+ * The press for a control under ~24px: a checkbox, a radio. Two differences
+ * from {@link PRESSABLE}, both from its size.
+ *
+ * - **The dip is 0.95, not 0.98.** The press is budgeted in pixels like the
+ *   springs are: 0.98 of a 36px button is ~0.7px of give, and 0.98 of a 16px
+ *   box is a third of a pixel, which nobody sees. 0.95 gives the small box
+ *   the same ~1px a Button gets.
+ * - **Everything runs on `--motion-snap`.** A small control's colour change IS
+ *   its state flipping (the design language puts a checkbox tick on snap), so
+ *   it lands with the press rather than trailing it.
+ *
+ * `box-shadow` stays out of the list: the keyboard ring is a box-shadow, and a
+ * ring snaps. Compose with {@link FOCUS_RING} and `outline-none`.
+ */
+export const PRESSABLE_SMALL =
+  'transition-[color,background-color,border-color,opacity,transform] duration-snap ease-out ' +
+  'active:scale-95 motion-reduce:transition-none motion-reduce:active:scale-100'

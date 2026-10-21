@@ -726,7 +726,17 @@ times stops being a physical cue and becomes texture.
   `--motion-quick`, `active:scale-[0.98]` on `--motion-snap`, flat under
   reduced motion. Its keyboard ring is `FOCUS_RING`
   (`components/ui/focus-ring`) with `outline-none`. The hand-rolled controls
-  around an answer had drifted to four scales on two durations.
+  around an answer had drifted to four scales on two durations. Two
+  exceptions, both from size, never from taste. A control under ~24px (a
+  `Checkbox`, a `Radio`) takes `PRESSABLE_SMALL`: 0.95 on `--motion-snap`,
+  because the press is budgeted in pixels like the springs, and 0.98 of a
+  16px box is a third of a pixel. A row in an `ItemList` that is a link or a
+  button presses by a tint one step past its hover, not by a scale: a
+  full-width row that shrinks pulls its edges off the hairlines it shares. The
+  `RaisedCard` dips to the same 0.98 on `springPress` and lifts 2px on
+  `motionQuick`, both as `transform` strings on the compositor, and does
+  neither under reduced motion. A checkbox tick and a radio dot land on
+  `--motion-snap` (a fade and a 90% scale) as the box fills.
 - **Busy is not disabled.** A control that is working keeps its focus and its
   width: `aria-disabled` plus a guard in its handler, never `disabled`
   (Chrome blurs a focused button the moment it becomes disabled). Its labels

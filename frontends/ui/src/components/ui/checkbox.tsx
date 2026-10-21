@@ -6,6 +6,7 @@ import { CheckIcon, MinusIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { PRESSABLE_SMALL } from '@/components/ui/press'
 
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
@@ -17,7 +18,8 @@ const Checkbox = React.forwardRef<
     className={cn(
       // 16px is the right SIZE for a checkbox and a hopeless touch target, so
       // the box keeps its size and `touch-target` widens what a tap resolves to.
-      'peer border-input dark:bg-input-background data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary size-4 shrink-0 rounded-sm border outline-none transition-colors duration-snap ease-out motion-reduce:transition-none disabled:cursor-not-allowed disabled:opacity-50 touch-target',
+      'peer border-input dark:bg-input-background data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary size-4 shrink-0 rounded-sm border outline-none disabled:cursor-not-allowed disabled:opacity-50 touch-target',
+      PRESSABLE_SMALL,
       // `dark:bg-input-dark` and `data-[state=checked]:bg-primary` have equal
       // specificity, and the dark variant is emitted last — so in dark mode a
       // CHECKED box kept the unchecked fill and drew its dark tick on it,
@@ -37,7 +39,14 @@ const Checkbox = React.forwardRef<
   >
     <CheckboxPrimitive.Indicator
       data-slot="checkbox-indicator"
-      className="group/indicator flex items-center justify-center text-current transition-none"
+      // The tick lands with the fill, on `--motion-snap`: a fade and a 90%
+      // scale, so it reads as set down rather than switched on. Radix unmounts
+      // the indicator when the box empties, so there is no exit to time; the
+      // fill fading behind it carries the un-tick.
+      className={cn(
+        'group/indicator flex items-center justify-center text-current',
+        'animate-in fade-in-0 zoom-in-90 duration-snap ease-out motion-reduce:animate-none'
+      )}
     >
       {/* The indicator carries the root's `data-state`, so one of the two glyphs shows. */}
       <CheckIcon data-slot="checkbox-check" className="size-3.5 group-data-[state=indeterminate]/indicator:hidden" />
