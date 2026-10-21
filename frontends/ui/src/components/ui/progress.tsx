@@ -4,11 +4,15 @@ import * as React from 'react'
 import * as ProgressPrimitive from '@radix-ui/react-progress'
 
 import { cn } from '@/lib/utils'
+import { TONE_INK, type MeterTone } from './segment-meter'
 
 const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>
->(({ className, value, ...props }, ref) => (
+  React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root> & {
+    /** Fill in a feedback tone's ink (`segment-meter.tsx`) instead of the primary colour. */
+    tone?: MeterTone
+  }
+>(({ className, value, tone, ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
     data-slot="progress"
@@ -18,7 +22,10 @@ const Progress = React.forwardRef<
   >
     <ProgressPrimitive.Indicator
       data-slot="progress-indicator"
-      className="bg-primary h-full w-full flex-1 rounded-full transition-transform duration-deliberate ease-out motion-reduce:transition-none"
+      className={cn(
+        'h-full w-full flex-1 rounded-full transition-transform duration-deliberate ease-out motion-reduce:transition-none',
+        tone ? cn('bg-current', TONE_INK[tone]) : 'bg-primary'
+      )}
       style={{ transform: `translateX(-${100 - (value || 0)}%)` }}
     />
   </ProgressPrimitive.Root>

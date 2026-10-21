@@ -125,6 +125,8 @@ export type PostHogEvent =
   | 'report_exported'
   | 'similar_passages_searched'
   | 'similar_passage_opened'
+  | 'usage_notice_shown'
+  | 'usage_notice_dismissed'
 
 let initialized = false
 

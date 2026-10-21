@@ -55,6 +55,10 @@
               "de": "Eine Datei, die Piloti gerade einliest, können Sie jetzt in der Upload-Liste oder im Menü der Datei stoppen. Was Piloti bis dahin noch nicht gelesen hat, wird nicht zu seiner Antwortgrundlage hinzugefügt. Die Datei bleibt im Projekt und Sie können sie jederzeit erneut einlesen lassen."
             },
             {
+              "en": "The chat now tells you before a usage budget runs out: at 80 and 95 percent, when the month's pace would use it up early, and once it is spent, with when it renews and who can raise it.",
+              "de": "Der Chat informiert Sie jetzt, bevor Ihr Nutzungskontingent aufgebraucht ist: bei 80 und 95 Prozent, wenn es bei aktuellem Verbrauchstempo vor Monatsende erschöpft wäre, und nach dem Verbrauch – mit Angabe, wann es erneuert wird und wer es erhöhen kann."
+            },
+            {
               "en": "When you set up a project, you see the project folder as a tree before anything is uploaded and switch whole folders on or off, with backups and old states proposed off. Beside it you see what the office's sensitive-data list holds back, can change that list for this project, and restrict a folder before its files arrive.",
               "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
             },
@@ -65,6 +69,10 @@
             {
               "en": "When you set up a project, the questions step now also names the documents its location calls for, such as the Grundbuchauszug or the Flächenwidmungs- und Bebauungsplan, with the reason for your Bundesland. Hand each document in right at its entry, answer directly, or mark it as not known, and the step counts what is done.",
               "de": "Beim Anlegen eines Projekts nennt der Schritt „Fragen“ jetzt auch die für den Standort erforderlichen Unterlagen, etwa den Grundbuchauszug oder den Flächenwidmungs- und Bebauungsplan, und erklärt, warum sie in Ihrem Bundesland benötigt werden. Laden Sie jedes Dokument direkt beim entsprechenden Eintrag hoch, beantworten Sie die Frage direkt oder markieren Sie sie als nicht bekannt. Der Schritt zeigt an, was bereits erledigt ist."
+            },
+            {
+              "en": "Piloti can now sort all the loose files at the top of a project's Dateien or the Archiv into folders in one go, proposing a folder for each file and moving nothing until you apply the reviewed result. The sort keeps running when you close the window, and you can undo it afterwards.",
+              "de": "Piloti kann jetzt alle losen Dateien auf oberster Ebene im Bereich „Dateien“ eines Projekts oder im Archiv auf einmal in Ordner einsortieren, schlägt für jede Datei einen Ordner vor und verschiebt nichts, bevor Sie das geprüfte Ergebnis anwenden. Die Sortierung läuft weiter, wenn Sie das Fenster schließen, und lässt sich anschließend rückgängig machen."
             }
           ]
         },

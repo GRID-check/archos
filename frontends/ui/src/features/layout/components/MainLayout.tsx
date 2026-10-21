@@ -26,7 +26,7 @@ import { ComposerScrim } from './ComposerScrim'
 import { InputArea } from './InputArea'
 import { ChatDropZone } from './chat-drop-zone'
 import { RightsLostPanel } from './RightsLostPanel'
-import { useChatStore, NoSourcesBanner } from '@/features/chat'
+import { useChatStore, NoSourcesBanner, ChatUsageNotice } from '@/features/chat'
 import { useSessionUrl } from '@/hooks/use-session-url'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { useTranslations } from '@/i18n'
@@ -291,6 +291,9 @@ export const MainLayout: FC<MainLayoutProps> = ({
               >
                 {/* No sources warning - shown when no data sources or files available */}
                 <NoSourcesBanner isAuthenticated={isAuthenticated} />
+
+                {/* The budget, before it stops this person (lib/budgets/usage-notice.ts) */}
+                <ChatUsageNotice isAuthenticated={isAuthenticated} />
 
                 {/* Input Area - Using WebSocket mode for full HITL (human-in-the-loop) support */}
                 <InputArea

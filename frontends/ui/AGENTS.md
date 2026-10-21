@@ -46,6 +46,7 @@ bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
 | Add a lint rule of our own | Write it against ESLint's rule API in `eslint-rules/`, register it in `eslint-rules/index.mjs`, switch it on in `.oxlintrc.json`, spec it with oxlint's `RuleTester`, and plant a violation in `eslint-rules/lint-config.spec.mjs`. Suppress with `oxlint-disable-next-line <rule> -- <reason>` | `lint-config.spec.mjs` fails when a guarded rule stops firing at the path it guards. [`lint-evaluation.md`](../../docs/contributing/lint-evaluation.md) |
 | Add user-facing copy | Add the key to every dictionary in `src/i18n/dictionaries` | `key-coverage.spec.ts` |
 | Ship a user-visible surface | A `/dev/<name>` preview route, and a capture of it attached to the PR (`agent-browser` + `before-and-after`). Commit no PNGs | Review. [`docs/ux/visual-screenshots.md`](../../docs/ux/visual-screenshots.md) |
+| Build work over many items, or longer than one request | A server run on `bff_job_queue` (ADR-0121). The browser starts it, reads it and asks for the next step; it never loops over items | `browser-work-loops.spec.ts`, a per-file ratchet; review |
 
 ## Rules that need more than a row
 

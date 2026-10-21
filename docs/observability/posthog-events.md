@@ -110,6 +110,8 @@ No-op until `initPosthogClient` ran, which needs the host and project token in
 | `similar_passages_searched` | `entry` (`citation` or `selection`), `origin` (`point` or `embedded`), `groups`, `documents`, `projects_searched` | `features/similar-passages/lib/use-similar-passages.ts`, when an answer arrives |
 | `similar_passage_opened` | `group` (`current`, `project`, `office_shelf`), `rank` (the document's place in the answer) | `features/similar-passages/lib/use-similar-passages.ts`, `useSimilarPassagesViewer().open` |
 | `report_exported` | `kind` (`answer`, `room_schedule`, `annotations`, `open_points`), `format`. The trigger of the CSAT survey | `features/chat/components/AnswerActions.tsx`, `features/bim/components/ifc-model-tables.tsx`, `features/grid-cards/components/IfcDataCards.tsx`, `features/documents/components/review/review-export-menu.tsx` (a document's Protokoll, `annotations`), `features/documents/components/open-points/project-protocol-menu.tsx` (the project's Offene Punkte, `open_points`); each once its file is handed to the browser. Filing a Protokoll in the project („Im Projekt ablegen“) sends nothing: it stays in the app, and the upload's audit event records it |
+| `usage_notice_shown` | `level` (`forecast`, `warning`, `critical`, `exhausted`), `scope`, `window`, `unit`, `can_change` | `features/chat/components/ChatUsageNotice.tsx`, once per notice key per page view |
+| `usage_notice_dismissed` | `level`, `scope`, `window` | `features/chat/components/ChatUsageNotice.tsx`, the notice's × |
 
 `organization_created` is still a member of the `PostHogEvent` union, but nothing
 in the browser sends it any more: the route does. Drop it from the union when the

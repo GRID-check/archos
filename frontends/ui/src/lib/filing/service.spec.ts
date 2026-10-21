@@ -111,7 +111,7 @@ beforeEach(() => {
   vi.mocked(listProjectsFolders).mockResolvedValue([])
   vi.mocked(listShelfFileProposals).mockResolvedValue([])
   vi.mocked(judgeFiling).mockResolvedValue({
-    moves: [{ documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid der MA 37.', newFolder: null }],
+    moves: [{ documentId: 'd1', folder: 'Bescheide', reason: 'Ein Bescheid der MA 37.', newFolder: null, confidence: null }],
     traceId: 'trace-1',
     error: null,
   })

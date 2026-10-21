@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
  */
 export type MeterTone = 'success' | 'info' | 'warning' | 'destructive' | 'muted'
 
-const TONE_INK: Record<MeterTone, string> = {
+export const TONE_INK: Record<MeterTone, string> = {
   success: 'text-success',
   info: 'text-info',
   warning: 'text-warning',
