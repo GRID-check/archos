@@ -3,7 +3,7 @@
 /**
  * shadcn/ui `command` primitive built on cmdk — a keyboard-navigable,
  * fuzzy-filtered command list. `CommandDialog` wraps it in the project's
- * Dialog so it can be summoned as a palette (⌘K).
+ * Dialog so it can be summoned as a palette (⌘K), with no open or close motion.
  */
 
 import * as React from 'react'
@@ -51,6 +51,12 @@ interface CommandDialogProps extends React.ComponentPropsWithoutRef<typeof Dialo
   showHints?: boolean
   /** Visible labels next to the hint keys. Ignored unless `showHints` is set. */
   hintLabels?: CommandHintLabels
+  /**
+   * Open and close with no motion (`DialogContent`'s `instant`). On by default:
+   * a palette is summoned from the keyboard many times a day, and Raycast's
+   * answer (no open or close animation at all) is the right one for it.
+   */
+  instant?: boolean
 }
 
 function CommandHints({ labels }: { labels?: CommandHintLabels }) {
@@ -85,12 +91,14 @@ function CommandDialog({
   className,
   showHints = false,
   hintLabels,
+  instant = true,
   ...props
 }: CommandDialogProps) {
   return (
     <Dialog {...props}>
       <DialogContent
         showCloseButton={false}
+        instant={instant}
         className={cn('top-[30%] translate-y-0 gap-0 overflow-hidden rounded-xl p-0', className)}
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>

@@ -652,6 +652,12 @@ times stops being a physical cue and becomes texture.
 
 ### Fixed choreography
 
+- **A keyboard-summoned overlay does not animate.** The ⌘K palette and the
+  `?` cheatsheet open and close in one frame, panel and scrim alike
+  (`DialogContent instant`; `CommandDialog` is instant by default). They are
+  opened from the keyboard many times a day, and an entrance there is latency
+  between the keystroke and the thing asked for. A dialog opened with a click
+  on an occasional task keeps its entrance.
 - Content entrance: `animate-in fade-in-0` (+ `slide-in-from-bottom-1` for
   cards) via tw-animate-css.
 - **Chat turn entrance: the thread row owns it.** Every block arriving in the

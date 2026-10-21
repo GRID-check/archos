@@ -273,3 +273,39 @@ describe('the grabber pulls', () => {
     expect(content()).toBeInTheDocument()
   })
 })
+
+/*
+ * An overlay summoned from the keyboard many times a day (the ⌘K palette, the
+ * `?` cheatsheet) opens and closes with no motion: an entrance there is
+ * latency between the keystroke and what the reader asked for.
+ */
+describe('an instant dialog', () => {
+  function renderInstant(instant: boolean) {
+    render(
+      <Dialog open>
+        <DialogContent instant={instant}>
+          <DialogTitle>Befehle</DialogTitle>
+          <DialogDescription>Suchen und springen</DialogDescription>
+        </DialogContent>
+      </Dialog>
+    )
+    const content = screen.getByRole('dialog')
+    const overlay = document.querySelector('[data-slot="dialog-overlay"]')
+    return { content, overlay }
+  }
+
+  it('draws neither the panel nor the scrim with an entrance or exit', () => {
+    const { content, overlay } = renderInstant(true)
+    for (const element of [content, overlay]) {
+      expect(element).toHaveAttribute('data-instant', 'true')
+      expect(element?.getAttribute('class')).not.toMatch(/animate-(in|out)|zoom-|slide-in|fade-in/)
+    }
+  })
+
+  it('leaves an ordinary dialog its entrance', () => {
+    const { content, overlay } = renderInstant(false)
+    expect(content.className).toContain('data-[state=open]:animate-in')
+    expect(content.className).toContain('phone:data-[state=open]:slide-in-from-bottom')
+    expect(overlay?.getAttribute('class')).toContain('data-[state=open]:fade-in-0')
+  })
+})
