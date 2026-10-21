@@ -6,31 +6,46 @@
  */
 
 import 'server-only'
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { listProjectFolderTree } from '@/lib/authz/folder-access-repository'
 import { getDb } from '@/lib/db'
 import { folderCards, projectFolders, projects } from '@/lib/db/schema'
 import { officeShelfCollectionNames } from '@/lib/office-shelf/collection'
 import { normalizeFolderPath } from '@/lib/projects/folders'
-import type { FolderCardView, PutFolderCardRequest } from './types'
+import {
+  cardCollectionResolver,
+  cardsInCollection,
+  isCollectionOfProject,
+  projectCollectionCandidates,
+  type FolderWithCard,
+} from './collection-scope'
+import type { FolderCardView, FolderDescriptionView, PutFolderCardRequest } from './types'
 
-/** A restricted folder's own collection: `<project collection>_r<12 hex>` (ADR-0087). */
-const RESTRICTED_SUFFIX = /_r[0-9a-f]{12}$/
-
-/** Cards one read returns. Past this the listing is cut, so a runaway tree cannot flood a turn. */
-export const FOLDER_CARDS_LIMIT = 1_000
+export { FOLDER_CARDS_LIMIT } from './collection-scope'
 
 export interface CardFolder {
   folderId: string
   scope: 'project' | 'office_shelf'
 }
 
+interface CollectionOwner {
+  scope: 'project' | 'office_shelf'
+  projectId: string | null
+  /** The project's own collection; null for the office shelf. */
+  projectCollection: string | null
+}
+
 /**
  * The folder a collection and a path name, inside `organizationId`; null when the
- * collection is not the organization's, or no living folder has that path.
+ * collection is not the organization's, no living folder has that path, or the
+ * folder's documents do not live in that collection.
  *
  * A collection is the office shelf's, a project's, or a restricted folder's
- * inside a project (its name is the project's plus a suffix): the first two are
- * exact names, the third resolves to its project.
+ * inside a project (`<project>_r<12 hex>`, ADR-0087). The last check is what
+ * keeps a card in its folder's scope: a restricted folder's card named under the
+ * project's collection, under another folder's restricted collection, or under
+ * a collection no folder has, is refused, because whoever reads that collection
+ * may not read this folder (ADR-0088).
  */
 export async function findCardFolder(
   organizationId: string,
@@ -55,29 +70,37 @@ export async function findCardFolder(
       ),
     )
     .limit(1)
-  return row ? { folderId: row.id, scope: owner.scope } : null
+  if (!row) return null
+  if (owner.projectId && owner.projectCollection) {
+    const tree = await listProjectFolderTree(organizationId, owner.projectId)
+    if (cardCollectionResolver(tree, owner.projectCollection)(row.id) !== collection) return null
+  }
+  return { folderId: row.id, scope: owner.scope }
 }
 
-async function resolveCollectionOwner(
-  organizationId: string,
-  collection: string,
-): Promise<{ scope: 'project' | 'office_shelf'; projectId: string | null } | null> {
+async function resolveCollectionOwner(organizationId: string, collection: string): Promise<CollectionOwner | null> {
   if (officeShelfCollectionNames(organizationId).includes(collection)) {
-    return { scope: 'office_shelf', projectId: null }
+    return { scope: 'office_shelf', projectId: null, projectCollection: null }
   }
   const db = getDb()
-  for (const name of new Set([collection, collection.replace(RESTRICTED_SUFFIX, '')])) {
+  for (const name of projectCollectionCandidates(collection)) {
     const [project] = await db
-      .select({ id: projects.id })
+      .select({ id: projects.id, collectionName: projects.collectionName })
       .from(projects)
       .where(and(eq(projects.collectionName, name), eq(projects.organizationId, organizationId)))
       .limit(1)
-    if (project) return { scope: 'project', projectId: project.id }
+    if (project?.collectionName && isCollectionOfProject(project.collectionName, collection)) {
+      return { scope: 'project', projectId: project.id, projectCollection: project.collectionName }
+    }
   }
   return null
 }
 
-/** Write the folder's card, replacing what was there: one card per folder. */
+/**
+ * Write the folder's card, replacing what was there: one card per folder. A
+ * write that is not `fresh` (a `stale` or `failed` mark) keeps when the last good
+ * card was generated.
+ */
 export async function upsertFolderCard(
   organizationId: string,
   folder: CardFolder,
@@ -85,6 +108,7 @@ export async function upsertFolderCard(
 ): Promise<void> {
   const db = getDb()
   const now = new Date()
+  const fresh = body.status === 'fresh'
   const values = {
     collection: body.collection,
     abstract: body.abstract,
@@ -94,24 +118,46 @@ export async function upsertFolderCard(
     model: body.model,
     promptVersion: body.prompt_version,
     status: body.status,
-    generatedAt: body.status === 'fresh' ? now : null,
     updatedAt: now,
   }
   await db
     .insert(folderCards)
-    .values({ organizationId, folderId: folder.folderId, scope: folder.scope, ...values })
-    .onConflictDoUpdate({ target: folderCards.folderId, set: values })
+    .values({
+      organizationId,
+      folderId: folder.folderId,
+      scope: folder.scope,
+      ...values,
+      generatedAt: fresh ? now : null,
+    })
+    .onConflictDoUpdate({
+      target: folderCards.folderId,
+      set: { ...values, generatedAt: fresh ? now : sql`${folderCards.generatedAt}` },
+    })
 }
 
-/** The collection's cards with the folder's path and its person-written description; living folders only. */
-export async function getFolderCards(organizationId: string, collection: string): Promise<FolderCardView[]> {
+/**
+ * The cards of the folders whose documents live in `collection` NOW, each with
+ * the folder's path and person-written description, and every such living
+ * folder's description whether it has a card or not.
+ *
+ * The collection a card was written under is not trusted: a folder restricted
+ * after its card was written has its documents in its own collection, and its
+ * card is served there and no longer under the project's. It is recomputed from
+ * the folder tree on every read (`collection-scope.ts`).
+ */
+export async function getFolderCards(
+  organizationId: string,
+  collection: string,
+): Promise<{ cards: FolderCardView[]; folders: FolderDescriptionView[] }> {
+  const owner = await resolveCollectionOwner(organizationId, collection)
+  if (!owner) return { cards: [], folders: [] }
   const db = getDb()
   const rows = await db
     .select({
-      folderId: folderCards.folderId,
+      folderId: projectFolders.id,
       folderPath: projectFolders.path,
       folderDescription: projectFolders.description,
-      collection: folderCards.collection,
+      cardId: folderCards.id,
       abstract: folderCards.abstract,
       keyFacts: folderCards.keyFacts,
       inputHash: folderCards.inputHash,
@@ -122,32 +168,42 @@ export async function getFolderCards(organizationId: string, collection: string)
       generatedAt: folderCards.generatedAt,
       updatedAt: folderCards.updatedAt,
     })
-    .from(folderCards)
-    .innerJoin(projectFolders, eq(projectFolders.id, folderCards.folderId))
+    .from(projectFolders)
+    .leftJoin(
+      folderCards,
+      and(eq(folderCards.folderId, projectFolders.id), eq(folderCards.organizationId, organizationId)),
+    )
     .where(
       and(
-        eq(folderCards.organizationId, organizationId),
-        eq(folderCards.collection, collection),
+        eq(projectFolders.organizationId, organizationId),
+        eq(projectFolders.scope, owner.scope),
+        owner.projectId ? eq(projectFolders.projectId, owner.projectId) : isNull(projectFolders.projectId),
         isNull(projectFolders.deletedAt),
       ),
     )
     .orderBy(asc(projectFolders.path))
-    .limit(FOLDER_CARDS_LIMIT)
-  return rows.map((row) => ({
-    folder_id: row.folderId,
-    folder_path: row.folderPath,
-    folder_description: row.folderDescription,
-    collection: row.collection,
-    abstract: row.abstract,
-    key_facts: row.keyFacts,
-    input_hash: row.inputHash,
-    abstract_hash: row.abstractHash,
-    model: row.model,
-    prompt_version: row.promptVersion,
-    status: row.status,
-    generated_at: row.generatedAt ? new Date(row.generatedAt).toISOString() : null,
-    updated_at: new Date(row.updatedAt).toISOString(),
+  const folders: FolderWithCard[] = rows.map((row) => ({
+    folderId: row.folderId,
+    folderPath: row.folderPath,
+    folderDescription: row.folderDescription,
+    card:
+      row.cardId && row.inputHash !== null && row.status !== null && row.updatedAt !== null
+        ? {
+            abstract: row.abstract,
+            keyFacts: row.keyFacts ?? [],
+            inputHash: row.inputHash,
+            abstractHash: row.abstractHash,
+            model: row.model,
+            promptVersion: row.promptVersion,
+            status: row.status,
+            generatedAt: row.generatedAt,
+            updatedAt: row.updatedAt,
+          }
+        : null,
   }))
+  if (!owner.projectId || !owner.projectCollection) return cardsInCollection(folders, collection, () => collection)
+  const tree = await listProjectFolderTree(organizationId, owner.projectId)
+  return cardsInCollection(folders, collection, cardCollectionResolver(tree, owner.projectCollection))
 }
 
 /** Remove a folder's card; false when it had none. */

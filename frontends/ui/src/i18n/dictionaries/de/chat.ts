@@ -368,6 +368,8 @@ export const chat: typeof en.chat = {
   },
   // Der Zitat-Peek: was diese Fundstelle IST, bevor man sie öffnet.
   citationPeek: {
+    pageThumbnail: 'Seite {page}',
+    thumbnailLoading: 'Die Seite wird gezeichnet',
     wholeDocument: 'Gesamtes Dokument',
     openAtPage: 'An dieser Stelle öffnen',
     notOpenable: 'Zu dieser Quelle liegt in Piloti keine Datei vor.',
@@ -551,6 +553,19 @@ export const chat: typeof en.chat = {
     // (ADR-0051). Die Karte bietet nichts an: die Zeile existiert schon, wenn
     // sie erscheint, und der Laufblock darunter sagt, wie es steht — die Karte
     // ist die Quittung (was, welcher Art, bis wann) und nennt keinen Status.
+    // Wo Piloti in einem Dokument hingesehen hat (ADR-0128): je Ansicht die
+    // Seite und die Stelle, und was Piloti in der Runde gezeigt hat.
+    look: {
+      eyebrow: 'Angesehen',
+      looked: 'S. {page}',
+      shown: 'Gezeigt auf S. {page}',
+      wholePage: 'ganze Seite',
+      // Was Piloti von der Seite abgelesen hat, nie eine Messung (ADR-0125).
+      reading: 'Gelesen: {reading}',
+      readingNote: 'Von Piloti abgelesen, nicht gemessen.',
+      embeddedImage: 'Bild {index}',
+      open: '{document}, S. {page} öffnen',
+    },
     taskCreated: {
       eyebrow: 'Aufgabe',
       due: 'bis {date}',
@@ -962,6 +977,15 @@ export const chat: typeof en.chat = {
     },
   },
   thinking: {
+    // Eine Zeile je Dokument, das Piloti angesehen hat (ADR-0128); die
+    // Vorschaubilder öffnen die Stelle.
+    look: {
+      step: 'Angesehen: {document}, S. {page}, {where}',
+      stepWhole: 'Angesehen: {document}, S. {page}',
+      stepMany: 'Angesehen: {document}, {count} Stellen',
+      place: 'S. {page}, {where}',
+      placeWhole: 'S. {page}',
+    },
     inProgress: 'Denkvorgang läuft',
     working: 'Antwort wird erstellt …',
     waiting: 'Warten auf Antwort',
@@ -1061,6 +1085,8 @@ export const chat: typeof en.chat = {
           annotationsUpdate: 'Anmerkung wird geändert …',
           annotationsDelete: 'Anmerkung wird gelöscht …',
           annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
+          // Piloti sieht sich eine Seite oder einen Ausschnitt an (ADR-0128).
+          look: 'Sieht sich das Dokument an …',
           // Ein Aufruf im Arbeitsbereich über Piloti selbst: Lesen läuft,
           // Schreiben kommt als Vorschlag zurück.
           workspaceCall: 'Arbeitet im Arbeitsbereich …',

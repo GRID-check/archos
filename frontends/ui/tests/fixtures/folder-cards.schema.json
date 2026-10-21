@@ -286,6 +286,34 @@
       ],
       "additionalProperties": true
     },
+    "FolderDescriptionView": {
+      "type": "object",
+      "properties": {
+        "folder_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "folder_path": {
+          "type": "string"
+        },
+        "folder_description": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "folder_id",
+        "folder_path",
+        "folder_description"
+      ],
+      "additionalProperties": true
+    },
     "GetFolderCardsResponse": {
       "type": "object",
       "properties": {
@@ -428,10 +456,42 @@
             ],
             "additionalProperties": true
           }
+        },
+        "folders": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "folder_id": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "folder_path": {
+                "type": "string"
+              },
+              "folder_description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "folder_id",
+              "folder_path",
+              "folder_description"
+            ],
+            "additionalProperties": true
+          }
         }
       },
       "required": [
-        "cards"
+        "cards",
+        "folders"
       ],
       "additionalProperties": true
     }

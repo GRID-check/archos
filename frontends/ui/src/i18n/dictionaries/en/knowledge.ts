@@ -49,6 +49,15 @@ export const knowledge = {
     removed: 'The corpus no longer lists this document, but its indexed content is still searchable. Delete it to clear it.',
     inconsistent: 'Recorded as processed but no searchable content was found. Re-run the sync.',
   },
+  // A page drawn small with a place on it marked (ADR-0128): the look card,
+  // the Herleitung's look row and the citation peek share it.
+  placeThumbnail: {
+    page: 'Page {page}',
+    loading: 'Drawing the page',
+    noAccess: 'Not available to you',
+    unavailable: 'No preview of this page',
+    embeddedImage: 'Image {index} on this page',
+  },
   viewer: {
     view: 'View PDF',
     description: 'Original source document.',

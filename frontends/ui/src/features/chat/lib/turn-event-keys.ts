@@ -74,6 +74,9 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   'status.action.annotationsUpdate': 'thinking.turnStatus.',
   'status.action.annotationsDelete': 'thinking.turnStatus.',
   'status.action.annotationsReply': 'thinking.turnStatus.',
+  // Piloti looks at a page or a box on it (ADR-0128). No value: which document
+  // and where is the look's own Herleitung step.
+  'status.action.look': 'thinking.turnStatus.',
   // A call into the workspace through Piloti's own MCP server (ADR-0122): a
   // read runs, a write comes back as a proposal. No value: the operation is an
   // English id, not the reader's words.

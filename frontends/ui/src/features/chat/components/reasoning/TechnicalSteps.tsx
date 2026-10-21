@@ -34,6 +34,8 @@ export const technicalStepLabel = (step: StoredThinkingStep, t: Translator): str
       return step.skill ?? t('thinking.nodeName.skillSelection')
     case 'clarification':
       return t('thinking.nodeName.clarification')
+    case 'look':
+      return typeof step.detail?.document === 'string' ? `look: ${step.detail.document}` : step.kind
   }
 }
 

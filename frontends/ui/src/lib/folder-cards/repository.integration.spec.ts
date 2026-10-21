@@ -9,7 +9,10 @@
  *
  * Proves the SQL the route rests on: a path resolves to its folder inside the
  * organization and shelf; another organization neither reads nor writes the
- * card; a rewrite replaces the card; a deleted folder's card is not listed.
+ * card; a rewrite replaces the card; a deleted folder's card is not listed; a
+ * restricted folder's card is written and read under its own collection alone,
+ * including a card written before the folder was restricted; and a folder's
+ * description is returned before it has a card.
  */
 
 import { sql } from 'drizzle-orm'
@@ -78,23 +81,107 @@ describe.skipIf(!url)('folder cards against Postgres', () => {
     const folder = (await as(ORG, () => repo.findCardFolder(ORG, SHELF, 'Vertraege')))!
     await as(ORG, () => repo.upsertFolderCard(ORG, folder, body()))
     await as(ORG, () => repo.upsertFolderCard(ORG, folder, body({ abstract: 'Zweite Fassung.', input_hash: 'h2' })))
-    const cards = await as(ORG, () => repo.getFolderCards(ORG, SHELF))
+    const { cards } = await as(ORG, () => repo.getFolderCards(ORG, SHELF))
     expect(cards).toHaveLength(1)
     expect(cards[0]).toMatchObject({ abstract: 'Zweite Fassung.', input_hash: 'h2', folder_path: 'Vertraege' })
   })
 
   it('keeps another organization out, by the WHERE and by the policy', async () => {
-    expect(await as(OTHER_ORG, () => repo.getFolderCards(OTHER_ORG, SHELF))).toEqual([])
-    expect(await as(OTHER_ORG, () => repo.getFolderCards(ORG, SHELF))).toEqual([])
+    expect((await as(OTHER_ORG, () => repo.getFolderCards(OTHER_ORG, SHELF))).cards).toEqual([])
+    expect((await as(OTHER_ORG, () => repo.getFolderCards(ORG, SHELF))).cards).toEqual([])
     const folder = (await as(ORG, () => repo.findCardFolder(ORG, SHELF, 'Vertraege')))!
     // Stating the other organization's id inside this one's scope is refused by WITH CHECK or finds nothing.
     await expect(as(OTHER_ORG, () => repo.upsertFolderCard(ORG, folder, body()))).rejects.toThrow()
+  })
+
+  describe('a project with a folder that restricts reading', () => {
+    const PROJECT_COLLECTION = `proj_fc_${Date.now()}`
+    let projectId: string
+    let personalId: string
+    let restricted: string
+
+    const projectBody = (patch: Partial<import('./types').PutFolderCardRequest> = {}) =>
+      body({ collection: PROJECT_COLLECTION, folder_path: 'Personal', abstract: 'Gehälter der Mitarbeiter.', ...patch })
+
+    beforeAll(async () => {
+      const { restrictedCollectionName } = await import('@/lib/authz/folder-access-rule')
+      const [project] = Array.from(
+        await as(ORG, () =>
+          db.execute<{ id: string }>(sql`
+            INSERT INTO projects (organization_id, name, created_by, collection_name)
+            VALUES (${ORG}, 'Folder cards', 'user_fc', ${PROJECT_COLLECTION}) RETURNING id
+          `),
+        ),
+      )
+      projectId = project.id
+      const [personal] = Array.from(
+        await as(ORG, () =>
+          db.execute<{ id: string }>(sql`
+            INSERT INTO project_folders (organization_id, project_id, name, path, description)
+            VALUES (${ORG}, ${projectId}::uuid, 'Personal', 'Personal', 'Personalakten') RETURNING id
+          `),
+        ),
+      )
+      personalId = personal.id
+      restricted = restrictedCollectionName(PROJECT_COLLECTION, personalId)
+    })
+
+    afterAll(async () => {
+      await withPlatformAccess('folder cards spec cleanup', () =>
+        db.execute(sql`DELETE FROM projects WHERE id = ${projectId}::uuid`),
+      )
+    })
+
+    const restrict = () =>
+      as(ORG, () =>
+        db.execute(sql`
+          UPDATE project_folders SET access_mode = 'custom', access_changed_by = 'user_fc', access_changed_at = now()
+          WHERE id = ${personalId}::uuid
+        `),
+      )
+
+    it('returns a folder’s description before it has a card', async () => {
+      const read = await as(ORG, () => repo.getFolderCards(ORG, PROJECT_COLLECTION))
+      expect(read.cards).toEqual([])
+      expect(read.folders).toEqual([{ folder_id: personalId, folder_path: 'Personal', folder_description: 'Personalakten' }])
+    })
+
+    it('stops serving a card under the project collection once its folder is restricted', async () => {
+      const folder = (await as(ORG, () => repo.findCardFolder(ORG, PROJECT_COLLECTION, 'Personal')))!
+      await as(ORG, () => repo.upsertFolderCard(ORG, folder, projectBody()))
+      expect((await as(ORG, () => repo.getFolderCards(ORG, PROJECT_COLLECTION))).cards).toHaveLength(1)
+
+      await restrict()
+
+      const open = await as(ORG, () => repo.getFolderCards(ORG, PROJECT_COLLECTION))
+      expect(open.cards).toEqual([])
+      expect(open.folders).toEqual([])
+      const own = await as(ORG, () => repo.getFolderCards(ORG, restricted))
+      expect(own.cards).toHaveLength(1)
+      expect(own.cards[0]).toMatchObject({ folder_path: 'Personal', collection: restricted })
+    })
+
+    it('refuses to file a restricted folder’s card under any collection but its own', async () => {
+      expect(await as(ORG, () => repo.findCardFolder(ORG, PROJECT_COLLECTION, 'Personal'))).toBeNull()
+      expect(await as(ORG, () => repo.findCardFolder(ORG, `${PROJECT_COLLECTION}_r000000000000`, 'Personal'))).toBeNull()
+      expect((await as(ORG, () => repo.findCardFolder(ORG, restricted, 'Personal')))?.folderId).toBe(personalId)
+    })
+
+    it('keeps when the last good card was generated through a stale mark', async () => {
+      const folder = (await as(ORG, () => repo.findCardFolder(ORG, restricted, 'Personal')))!
+      await as(ORG, () => repo.upsertFolderCard(ORG, folder, projectBody({ collection: restricted })))
+      const [before] = (await as(ORG, () => repo.getFolderCards(ORG, restricted))).cards
+      await as(ORG, () => repo.upsertFolderCard(ORG, folder, projectBody({ collection: restricted, status: 'stale' })))
+      const [after] = (await as(ORG, () => repo.getFolderCards(ORG, restricted))).cards
+      expect(after.status).toBe('stale')
+      expect(after.generated_at).toBe(before.generated_at)
+    })
   })
 
   it('removes a card on request, and says so when there was none', async () => {
     const folder = (await as(ORG, () => repo.findCardFolder(ORG, SHELF, 'Vertraege')))!
     expect(await as(ORG, () => repo.deleteFolderCard(ORG, folder))).toBe(true)
     expect(await as(ORG, () => repo.deleteFolderCard(ORG, folder))).toBe(false)
-    expect(await as(ORG, () => repo.getFolderCards(ORG, SHELF))).toEqual([])
+    expect((await as(ORG, () => repo.getFolderCards(ORG, SHELF))).cards).toEqual([])
   })
 })

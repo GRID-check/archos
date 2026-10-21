@@ -140,6 +140,7 @@ import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { useLayoutStore } from '@/features/layout/store'
 import { TechnicalSteps } from './TechnicalSteps'
+import { LookStepRows } from './LookStepRow'
 import type { CitationSource } from '../../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { deriveTraceLanes } from '../../lib/trace-lanes'
@@ -1697,6 +1698,9 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
       <ReactFlowProvider>
         <FlowInner built={built} layout={layout} live={live ?? false} />
       </ReactFlowProvider>
+
+      {/* Where Piloti looked (ADR-0128): a row per document, its thumbnails open the place. */}
+      <LookStepRows steps={steps} />
 
       {showTechnicalReasoning && steps.length > 0 && (
         <div className="border-t border-base pt-2">

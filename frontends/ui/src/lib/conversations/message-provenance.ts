@@ -47,6 +47,7 @@ export const STEP_KINDS = [
   'tool',
   'skill',
   'clarification',
+  'look',
 ] as const
 export type StepKind = (typeof STEP_KINDS)[number]
 

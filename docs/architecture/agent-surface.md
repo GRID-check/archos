@@ -423,7 +423,7 @@ ceiling.
 | `create_task` | `task-create`, `task-run-commission` |
 | `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | `annotation-create`, `annotation-update`, `annotation-delete`, `annotation-reply-create` |
 | `ifc_query`, `ifc_measure` | `bim-model-query`, `ifc-query`, `ifc-measure` |
-| `read_passage`, `list_files`, `view_knowledge_image`, `ris_lookup_tool` | `passage-read`, `files-list`, `knowledge-image-view`, `law-lookup` |
+| `read_passage`, `list_files`, `look`, `ris_lookup_tool` | `passage-read`, `files-list`, `document-look`, `law-lookup` |
 
 Both paths stay open for the file operations Piloti also has `propose_file_change`
 for (move, rename, folders, assignments: the native tool refuses a chat in no
@@ -431,6 +431,27 @@ project, where the door is the only path) and for the version operations beside
 `file_draft`. A `file_draft` submit goes straight to review rather than becoming a
 proposal: the reviewer's approval is the person's yes, and the tool submits only
 when the person asked for it in the turn (ADR-0122, amendment of 2026-10-21).
+
+## Surface parity: canvas and chat
+
+The exposure config says who is offered a capability; the parity registry says
+where it is shown (ADR-0128). The canvas and the chat are mirrors: what a
+person or Piloti does on the review canvas, a reader of the chat sees done, and
+the other way round. [`parity.config.ts`](../../frontends/ui/src/lib/surface-parity/parity.config.ts)
+has one entry per capability (look, point, highlight, mark, update, delete,
+reply, compare Fassungen, ask about a box, open at a place) with its `canvas`
+and its `chat` form. A form is a rendering (a component, a card type, a step
+kind), an `exempt` line (the surface has no meaning for it), or a `gap` that
+names the slice closing it; the spec fails a gap whose card now exists, so a
+closed gap does not stay written down as open.
+
+`parity.config.spec.ts` fails when an op of `internalAnnotationRequestSchema` or
+a canvas operation of the catalog has no entry, when a side has neither mirror
+nor reason, or when a named component or card does not exist. It writes
+`tests/fixtures/surface-parity.json`; `tests/aiq_agent/tools/test_surface_parity.py`
+fails when a tool of the `canvas` group or `look` is missing from it, or an
+entry names a tool Piloti is not bound to. Regenerate with
+`UPDATE_FIXTURES=1 bunx vitest run src/lib/surface-parity/parity.config.spec.ts`.
 
 ## What deserves a tool
 
@@ -441,7 +462,7 @@ when the person asked for it in the turn (ADR-0122, amendment of 2026-10-21).
 | 3. Skills that teach composition | "To close out a project, do these five things" | Served as MCP prompts. Later |
 
 The Python-only reads (`knowledge_search`, `read_passage`, `list_files`,
-`view_knowledge_image`, `ifc_query`, `ifc_measure`, `ris_lookup`) reach the
+`look`, `ifc_query`, `ifc_measure`, `ris_lookup`) reach the
 server in phase 2 through an internal backend endpoint, so an external agent
 searches with the retrieval Piloti uses.
 

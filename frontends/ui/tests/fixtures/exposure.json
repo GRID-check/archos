@@ -3462,12 +3462,12 @@
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"
   },
-  "knowledge-image-view": {
+  "document-look": {
    "kind": "backend",
    "domain": "knowledge",
    "sensitivity": null,
    "external": true,
-   "piloti": "native:view_knowledge_image",
+   "piloti": "native:look",
    "platform": false,
    "withheld": null,
    "reason": "Piloti reads with this native tool itself; the door offers it to outside agents"

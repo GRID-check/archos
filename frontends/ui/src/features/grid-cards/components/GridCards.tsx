@@ -6,6 +6,7 @@ import { MemoryProposalCard } from './MemoryProposalCard'
 import { OperationReceipt } from './ProposalReceipts'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
 import { CanvasActivityCard } from './CanvasActivityCard'
+import { LookCard } from './LookCard'
 import { CalculationCard } from './CalculationCard'
 import { BuildingSectionCard } from '../schematics/BuildingSectionCard'
 import { StairDiagramCard } from '../schematics/StairDiagramCard'
@@ -444,6 +445,14 @@ export const GridCardView: FC<GridCardViewProps> = ({
           operation={card.operation}
           input={card.input ?? {}}
         />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'look') {
+    return (
+      <FadeIn distance={6}>
+        <LookCard document={card.document} items={card.items} />
       </FadeIn>
     )
   }

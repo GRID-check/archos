@@ -24,6 +24,8 @@ describe('stepNameLabel', () => {
     // ADR-0094: a settled Herleitung says the chat looked beyond its own project.
     ['project_lookup', 'thinking.stepName.otherProjects'],
     ['read_passage', 'thinking.stepName.reading'],
+    ['look', 'thinking.stepName.drawing'],
+    // Retired for `look` (ADR-0128): stored turns still carry the old name.
     ['view_knowledge_image', 'thinking.stepName.drawing'],
     ['write_file', 'thinking.stepName.draft'],
     ['file_draft', 'thinking.stepName.filing'],

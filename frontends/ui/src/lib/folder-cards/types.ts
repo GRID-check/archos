@@ -64,10 +64,26 @@ export const folderCardViewSchema = z.object({
 })
 export type FolderCardView = z.infer<typeof folderCardViewSchema>
 
+/** A living folder of the collection, card or not: what a person wrote about it, for the builder's first build. */
+export const folderDescriptionViewSchema = z.object({
+  folder_id: z.string().uuid(),
+  folder_path: z.string(),
+  folder_description: z.string().nullable(),
+})
+export type FolderDescriptionView = z.infer<typeof folderDescriptionViewSchema>
+
 export const putFolderCardResponseSchema = z.object({ folder_id: z.string().uuid(), status: z.enum(FOLDER_CARD_STATUSES) })
 export type PutFolderCardResponse = z.infer<typeof putFolderCardResponseSchema>
 
-export const getFolderCardsResponseSchema = z.object({ cards: z.array(folderCardViewSchema) })
+/**
+ * `cards`: the cards of the folders whose documents live in the asked collection
+ * NOW (computed from the folder tree, never from what the card was written
+ * under). `folders`: every such living folder with its description, card or not.
+ */
+export const getFolderCardsResponseSchema = z.object({
+  cards: z.array(folderCardViewSchema),
+  folders: z.array(folderDescriptionViewSchema),
+})
 export type GetFolderCardsResponse = z.infer<typeof getFolderCardsResponseSchema>
 
 export const deleteFolderCardResponseSchema = z.object({ deleted: z.boolean() })
@@ -77,5 +93,6 @@ export const FOLDER_CARD_WIRE_SCHEMAS = {
   PutFolderCardRequest: putFolderCardRequestSchema,
   PutFolderCardResponse: putFolderCardResponseSchema,
   FolderCardView: folderCardViewSchema,
+  FolderDescriptionView: folderDescriptionViewSchema,
   GetFolderCardsResponse: getFolderCardsResponseSchema,
 } as const

@@ -110,7 +110,10 @@ const ENTRIES = [
       'exact name from files-list), `doc_class` (a document type key such as `oib_guideline`), `title_contains` or `folder` (a ' +
       'folder path; it covers everything below it). `match: "exact"` finds every passage that contains the query literally, ' +
       'plus each matching file with its count and pages; use it for a number, a code, a name or to prove a term appears nowhere, ' +
-      'with several spellings separated by `|`. A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
+      'with several spellings separated by `|`. `match: "regex"` is the same search with a pattern in Python syntax (case-insensitive, ' +
+      '`|` is alternation); it needs one literal word it must contain, or a `folder`, `file_name` or `doc_class` to read in, and ' +
+      'a pattern that backtracks is refused. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
+      'A search that stops at its limit says its counts are lower bounds. A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
       'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
       'Returns up to 16 excerpts across several documents, each with its source, citation key, document type, folder and page. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
@@ -159,17 +162,18 @@ const ENTRIES = [
     needsProject: true,
   },
   {
-    name: 'knowledge-image-view',
-    tool: 'view_knowledge_image',
+    name: 'document-look',
+    tool: 'look',
     domain: 'knowledge',
-    summary: 'See a page or a region of a stored document as an image',
+    summary: 'Look at a page, a region of a page or an embedded image of a stored document',
     description:
-      'See a stored document’s page or embedded image as an image you can inspect: a drawing, a section, a photo or a chart. ' +
-      '`file_name` is the name in a hit’s citation line (not the display title) and `page_number` its page. For a project or ' +
-      'office shelf document also pass the hit’s `collection`, so the stored bytes can be read. A PDF page comes whole; ' +
-      '`image_index` (from a hit that names an embedded image) returns that image alone at its own resolution, and ' +
-      '`region: [x, y, w, h]` (shares of the page, origin top left) only that box, sharper. At most 6 calls per turn. Returns an ' +
-      'image content block, or a sentence saying why it could not.',
+      'See a stored document’s page, a region of it, or an image embedded in it, as an image you can inspect: a drawing, a ' +
+      'section, a photo or a chart. `document` is a file name from files-list or from a hit’s citation line (not the display ' +
+      'title), or a document id; the store it lives in is found for you. `page` starts at 1. `region: [x, y, w, h]` (shares ' +
+      'of the page as shown, 0 to 1, origin top left) shows only that box, sharper; `image_index` (from a hit that names an ' +
+      'embedded image) returns that image alone at its own resolution. On a large sheet look at the whole page once, then at ' +
+      'one to three regions; a region costs about as much as a whole page and shows far more. Returns an image content ' +
+      'block, or a sentence saying why it could not.',
     needsProject: true,
   },
   {

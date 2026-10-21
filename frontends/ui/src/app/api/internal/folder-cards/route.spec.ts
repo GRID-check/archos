@@ -91,10 +91,10 @@ describe('/api/internal/folder-cards', () => {
   })
 
   it('GET returns the collection’s cards in the stated tenant scope', async () => {
-    vi.mocked(getFolderCards).mockResolvedValue([])
+    vi.mocked(getFolderCards).mockResolvedValue({ cards: [], folders: [] })
     const res = await GET(get('?organization_id=org_1&collection=proj_1'))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ cards: [] })
+    expect(await res.json()).toEqual({ cards: [], folders: [] })
     expect(withTenant).toHaveBeenCalledWith({ organizationId: 'org_1' }, expect.any(Function))
     expect(getFolderCards).toHaveBeenCalledWith('org_1', 'proj_1')
   })

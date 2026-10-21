@@ -49,6 +49,7 @@ see.
 | Add a route that is not something a person does (transport, sign-in plumbing, typing) | Add it to `NOT_AN_AGENT_CAPABILITY` in `agent-reachability.spec.ts`, with a category and a reason |
 | Add an operation | Give it its entry in `frontends/ui/src/lib/agent-api/exposure.config.ts`: who sees it (`external`, `piloti`, `platform`), with a `reason` unless it is `OFFERED`. Regenerate `tests/fixtures/exposure.json` ([how](../architecture/agent-surface.md#the-exposure-config)) |
 | Add a route that is product configuration, a proxied service, model compute or screen state | Write its operation; its exposure entry is `withheld: { category, reason }` |
+| Add or change something on the review canvas or in the chat | Its entry in `frontends/ui/src/lib/surface-parity/parity.config.ts`, with its mirror or a reason ([how](../architecture/agent-surface.md#surface-parity-canvas-and-chat)) |
 | Offer a withheld operation again | Replace its exposure entry, and say why in the PR |
 | Give Piloti a native tool that does what an operation does | Set the operation's entry to `piloti: 'native:<tool>'`, and run the answer suite's workspace set before and after |
 | Change a route's body, query or meaning | Update the operation's schema and description. The schema is shared, so the type checker tells you; the description only review does |

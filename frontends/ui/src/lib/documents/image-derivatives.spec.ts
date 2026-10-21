@@ -1,6 +1,6 @@
 /**
  * The two service halves of a stored raster: the presigned PUT the ingest
- * pipeline writes through, and the derived key the `view_knowledge_image`
+ * pipeline writes through, and the derived key the `look`
  * tool reads back. Both build the key from the document's OWN row, so the
  * assertions here are about where the key can and cannot land.
  */

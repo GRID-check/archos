@@ -1238,7 +1238,7 @@ export async function findDocumentAuthoredByRef(
  * notes that "the safety comes from the dispatch that does not happen, never
  * from this string" about the project collection name it writes. This function
  * is what made that string load-bearing after all: it resolves any
- * `(collection, filename)` pair, and `view_knowledge_image` in the knowledge
+ * `(collection, filename)` pair, and `look` in the knowledge
  * layer calls the internal route with a file name and collection the MODEL
  * supplies, fetches the object, renders a page with pdfium and hands it back
  * as "the actual page the retrieved chunk describes".

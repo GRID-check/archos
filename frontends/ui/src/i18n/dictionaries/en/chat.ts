@@ -372,6 +372,8 @@ export const chat = {
   // Thread-header breadcrumb (project / session title) with inline rename.
   // The citation peek: what a Fundstelle IS, before you open it.
   citationPeek: {
+    pageThumbnail: 'Page {page}',
+    thumbnailLoading: 'Drawing the page',
     wholeDocument: 'Whole document',
     openAtPage: 'Open at this passage',
     notOpenable: 'No file for this source is available in Piloti.',
@@ -553,6 +555,19 @@ export const chat = {
     // renders, and the run block below it says how the work is going — so
     // this card is the receipt (what, of what kind, by when) and states no
     // status of its own.
+    // Where Piloti looked on a document (ADR-0128): per look the page and the
+    // place, and what Piloti showed the room.
+    look: {
+      eyebrow: 'Looked at',
+      looked: 'p. {page}',
+      shown: 'Shown on p. {page}',
+      wholePage: 'whole page',
+      // A reading is what Piloti read off the page, never a measurement (ADR-0125).
+      reading: 'Read: {reading}',
+      readingNote: 'Read off the page by Piloti, not measured.',
+      embeddedImage: 'image {index}',
+      open: 'Open {document} at p. {page}',
+    },
     taskCreated: {
       eyebrow: 'Task',
       due: 'by {date}',
@@ -962,6 +977,14 @@ export const chat = {
     },
   },
   thinking: {
+    // One row per document Piloti looked at (ADR-0128); its thumbnails open the place.
+    look: {
+      step: 'Looked at: {document}, p. {page}, {where}',
+      stepWhole: 'Looked at: {document}, p. {page}',
+      stepMany: 'Looked at: {document}, {count} places',
+      place: 'p. {page}, {where}',
+      placeWhole: 'p. {page}',
+    },
     inProgress: 'Thinking in progress',
     working: 'Working on a response …',
     waiting: 'Waiting for response',
@@ -1081,6 +1104,8 @@ export const chat = {
           annotationsUpdate: 'Changing an annotation …',
           annotationsDelete: 'Deleting an annotation …',
           annotationsReply: 'Replying to an annotation …',
+          // Piloti looks at a page or a region of it (ADR-0128).
+          look: 'Looking at the document …',
           // A call into the workspace through Piloti itself: a read runs, a
           // write comes back as a proposal.
           workspaceCall: 'Working in the workspace …',

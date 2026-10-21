@@ -183,6 +183,31 @@ const RAW_FIXTURES: CardInput[] = [
     proposal_id: '00000000-0000-4000-8000-0000000000b1',
   },
   {
+    // Both origins: a whole-page look, a region read with a question, and the
+    // box Piloti showed the room.
+    type: 'look',
+    document: { id: '00000000-0000-4000-8000-0000000000c1', name: 'Grundriss EG.pdf' },
+    items: [
+      { page: 2, scope: 'overview' },
+      {
+        page: 2,
+        scope: 'region',
+        region: [0.62, 0.04, 0.34, 0.22],
+        where: 'oben rechts',
+        question: 'Maßstab und Planstand im Plankopf?',
+        reading: 'M 1:100, Stand 14.03.2026',
+      },
+      {
+        origin: 'reference',
+        page: 2,
+        scope: 'region',
+        region: [0.58, 0.34, 0.14, 0.22],
+        where: 'in der Seitenmitte',
+        label: 'Hier: Laufbreite 1,10 m',
+      },
+    ],
+  },
+  {
     // Both kinds of row: two marks to take over or discard, a box and a
     // point, and an answer in an existing thread.
     type: 'canvas_activity',

@@ -1,7 +1,7 @@
 /**
  * INTERNAL service endpoint — resolves a document's SeaweedFS storage key from
  * the `(collectionName, filename)` pair the Python backend carries. Called
- * just-in-time by the backend's `view_knowledge_image` tool (ADR-0039) so it
+ * just-in-time by the backend's `look` tool (ADR-0039) so it
  * can fetch the raw bytes for a project/Archiv document that lives only in
  * SeaweedFS (never on the backend's disk).
  *

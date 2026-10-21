@@ -6,9 +6,12 @@
  *
  * A folder is named by its collection and its path inside it, and resolved to
  * its id inside the organization the body names; a collection that is not that
- * organization's, or a path with no living folder, is a 404. A restricted
- * folder is its own collection, so its card is read and written under that
- * collection alone (ADR-0088).
+ * organization's, a path with no living folder, or a collection the folder's
+ * documents do not live in, is a 404. A restricted folder is its own collection,
+ * so its card is written under that collection alone, and read under whichever
+ * collection the folder's documents live in NOW, computed from the folder tree
+ * on every read (ADR-0088). `GET` also returns every living folder of the
+ * collection with its description, so the builder has it before a first card.
  *
  * Service-to-service only: `GRID_INTERNAL_API_TOKEN` via `internalApiRoute`. The
  * organization is the caller's to state (the builder works for the organization
@@ -52,8 +55,7 @@ export const GET = internalApiRoute(
   'folder-cards',
   async ({ request }): Promise<GetFolderCardsResponse> => {
     const { organization_id, collection } = parseQuery(request, getFolderCardsQuerySchema)
-    const cards = await withTenant({ organizationId: organization_id }, () => getFolderCards(organization_id, collection))
-    return { cards }
+    return withTenant({ organizationId: organization_id }, () => getFolderCards(organization_id, collection))
   },
   TENANCY,
 )

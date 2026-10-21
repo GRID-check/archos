@@ -109,6 +109,9 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // reveals where those numbers came from on click. Nothing is written, and
   // the disclosure is one reader's view of data that already arrived.
   calculation: 'presentational',
+  // Where Piloti looked (ADR-0128): places on a document. Opening one is a
+  // read-only preview, so there is nothing to remember.
+  look: 'presentational',
   document_grid: 'presentational',
   // Reports a draft the working directory holds, and — once it has been filed,
   // whether by Piloti or by the reader's own press — the project document it

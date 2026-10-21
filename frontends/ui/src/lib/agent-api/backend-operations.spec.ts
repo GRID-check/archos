@@ -90,7 +90,7 @@ describe('the operations', () => {
       'knowledge-search',
       'passage-read',
       'files-list',
-      'knowledge-image-view',
+      'document-look',
       'ifc-query',
       'ifc-measure',
       'law-lookup',

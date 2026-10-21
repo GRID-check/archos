@@ -665,7 +665,7 @@ export const EXPOSURE = {
   'knowledge-search': { external: true, piloti: 'native:knowledge_search', reason: NATIVE_READ },
   'passage-read': { external: true, piloti: 'native:read_passage', reason: NATIVE_READ },
   'files-list': { external: true, piloti: 'native:list_files', reason: NATIVE_READ },
-  'knowledge-image-view': { external: true, piloti: 'native:view_knowledge_image', reason: NATIVE_READ },
+  'document-look': { external: true, piloti: 'native:look', reason: NATIVE_READ },
   'ifc-query': { external: true, piloti: 'native:ifc_query', reason: NATIVE_READ },
   'ifc-measure': { external: true, piloti: 'native:ifc_measure', reason: NATIVE_READ },
   'law-lookup': { external: true, piloti: 'native:ris_lookup_tool', reason: NATIVE_READ },

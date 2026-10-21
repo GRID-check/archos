@@ -198,6 +198,11 @@ export const CARD_EXPORT: Record<GridCard['type'], ExportKind> = {
   // `metadata.cardInteractions` and on the canvas, neither of which the export
   // reads; the marks themselves belong to the document's own Prüfansicht.
   canvas_activity: 'chrome',
+  // Where Piloti looked on a document (ADR-0128). The card is an ADDRESS (page,
+  // region, Fassung) whose picture the browser draws from the document; printed,
+  // it is coordinates with no picture. Revisit when the card draws its thumbnail
+  // (ADR-0128 plan, V4): the crop itself would be a finding a Behörde can read.
+  look: 'chrome',
 
   // Read live from the project's model; exported as a title plus `liveCard`.
   ifc_viewer: 'live',
