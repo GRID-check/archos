@@ -124,7 +124,7 @@ browser code. It counts the three signatures of a loop the browser drives (a
 `withConcurrency`, and `Promise.all(Array.from({ length: … }, worker))`) against
 `ci/browser_work_loops.json`. A file may not gain one, and a new file may not
 appear with one. The spec's failure tells the author to make it a server run and
-cites this ADR. The obligations row in `AGENTS.md` names the rule for the author
+cites this ADR. The obligations row in `frontends/ui/AGENTS.md` names the rule for the author
 before the test runs.
 
 ## Pros and Cons of the Options
