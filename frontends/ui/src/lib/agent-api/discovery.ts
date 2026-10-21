@@ -291,7 +291,8 @@ export async function runBackendOperation(
 }
 
 function unknownOperation(ctx: McpCallContext, name: string): CallToolResult {
-  const near = rank(ctx, name, undefined)
+  // The search schema bounds a query; a name the agent typed is bounded here, the one unchecked text ranked.
+  const near = rank(ctx, name.slice(0, MAX_SEARCH_QUERY_LENGTH), undefined)
     .slice(0, 5)
     .map((hit) => hit.name)
   const hint = near.length > 0 ? ` Closest: ${near.join(', ')}.` : ''
@@ -382,9 +383,12 @@ interface Hit {
   score: number
 }
 
-/** Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0122). */
+/**
+ * Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0122).
+ * `query` is at most {@link MAX_SEARCH_QUERY_LENGTH} characters: the search schema refuses a longer one.
+ */
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {
-  const score = operationScorer(query.slice(0, MAX_SEARCH_QUERY_LENGTH))
+  const score = operationScorer(query)
   const catalog: Hit[] = visibleOperations(ctx.principal)
     .filter((op) => !domain || op.domain === domain)
     .map((op) => {
@@ -503,6 +507,10 @@ export function callOperationTool(ctx: McpCallContext, args: unknown): Promise<C
     const flat = backendCallInput.safeParse(args)
     if (!flat.success) return Promise.resolve(failure(`call-operation needs { name, input } with ${backend.name}'s arguments.`))
     return runBackendOperation(ctx, backend, flat.data.input ?? {})
+  }
+  // A name the caller cannot see is unknown whatever shape its input has: say that, not how to shape it.
+  if (backendName && !findVisibleOperation(ctx.principal, backendName)) {
+    return runOperation(ctx, backendName, {})
   }
   const parsed = callInput.safeParse(args)
   if (!parsed.success) {

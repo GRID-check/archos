@@ -485,8 +485,11 @@ describe('the Python agent’s read tools', () => {
       'knowledge-search',
     )
     expect(describeOperation(ctx(piloti), { name: 'knowledge-search' }).isError).toBe(true)
-    const result = await callOperationTool(ctx(piloti), { name: 'knowledge-search', input: { projectId: PROJECT } })
+    // Flat, as its native tool takes it: `query` a string, where call-operation's input wants an object.
+    const result = await callOperationTool(ctx(piloti), { name: 'knowledge-search', input: { query: 'Stellplatz', projectId: PROJECT } })
     expect(result.isError).toBe(true)
+    // Unknown to Piloti, so it is told the name is unknown, not how to shape an input it cannot use.
+    expect((result.content[0] as { text: string }).text).toMatch(/^Unknown operation "knowledge-search"/)
     expect(callBackendOperation).not.toHaveBeenCalled()
   })
 })
