@@ -632,6 +632,39 @@ several questions in one process so all but the first are warm. What both
 measured on 2026-09-24, and the effort A/B:
 [turn-latency-measured-2026-09.md](../architecture/turn-latency-measured-2026-09.md).
 
+### The workspace set
+
+**The workspace set** (`-- --set workspace`, ADR-0122) asks Piloti for office
+work through its MCP door: reads, writes that must come back as proposals with
+the right input, two writes in one turn, an ambiguous target it must ask about,
+German and English, and follow-up turns in one conversation (a row's `turns`
+run in order; the checkpointer carries the history between processes). Each
+run sits in the current project of a fixture office
+(`frontends/ui/tests/fixtures/workspace/office.json`) as an admin, with a
+signed envelope. `scripts/turn_census/fixture_workspace.py` serves the door from
+the catalog production shows Piloti (`catalog.json`, written by
+`workspace-eval.fixture.spec.ts`) and the turn context with the WORKSPACE block
+the production renderer writes (`rendered.json`); a follow-up turn's block lists
+what the run filed, as production would. `--ranking production` searches as
+`discovery.ts` does today, `--ranking folded` as `lib/text/operation-search.ts`;
+`tests/test_workspace_eval.py` holds the Python mirror of both to lists the
+TypeScript wrote. The questions are `tests/fixtures/workspace/workspace_questions.yaml`;
+the checks (`reads`, `proposes`, `no_write`, `no_workspace`, `no_repeat`, the
+judge's `pending` and `asks`) are explained in its header. The report's
+`## Workspace` section gives the share of runs where every check held, rounds,
+door calls by kind, searches that found nothing, tokens and seconds. No corpus
+is needed. Run it before and after a change to the prompt's workspace facts,
+the WORKSPACE block, the work report or the catalog's search:
+
+```bash
+task be:eval:answer-suite -- --set workspace --out /tmp/ws/before
+task be:eval:answer-suite -- --set workspace --out /tmp/ws/after --baseline /tmp/ws/before/results.json
+```
+
+The suite starts each run from the working tree: edit nothing under `src/`
+while it runs, or run it from an exported copy of the commit
+(`git archive <sha> | tar -x -C /tmp/copy`).
+
 ## The socket-level streaming harness
 
 `/dev/stream-replay` drives the fold directly and carries no steps, so it

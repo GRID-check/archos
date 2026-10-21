@@ -4,10 +4,11 @@
  *
  * The catalog names and describes every operation in English
  * (`project-member-add`, "Add a person to a project"), and the people Piloti
- * works for ask in German. The first ranking split a query on `[^a-z0-9]`, so
- * „hinzufügen" became the fragments `hinzuf` and `gen`, and even a clean German
- * word could never meet an English summary: „Mitglied zu Projekt hinzufügen"
- * found nothing, and the agent spent its rounds searching again.
+ * works for ask in German. The ranking `discovery.ts` was written with splits a
+ * query on `[^a-z0-9]`, so „hinzufügen" becomes the fragments `hinzuf` and
+ * `gen`, and even a clean German word can never meet an English summary:
+ * „Mitglied zu Projekt hinzufügen" ranks `project-summary-generate` first, and
+ * the agent spends its rounds searching again (ADR-0122 has the numbers).
  *
  * Two causes, two fixes, both here:
  *
