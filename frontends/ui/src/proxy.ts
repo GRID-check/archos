@@ -49,6 +49,9 @@ const middleware = authkitMiddleware({
       // envelope for Piloti, and the `.well-known` documents are public by
       // specification (RFC 9728).
       '/api/mcp',
+      // The A2A door (ADR-0122): authenticates itself with the same bearer
+      // token as `/api/mcp`; the agent card is under `.well-known`.
+      '/api/a2a',
       '/.well-known/(.*)',
       // Signed document images. `_next/image` is excluded from the matcher
       // below, but the optimizer does not fetch the underlying route over the
