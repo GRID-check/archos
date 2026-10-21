@@ -201,14 +201,18 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "stored_image_index",
     "segment_index",
 )
-#: Fields stored as datetimes (a range on one is a ``DatetimeRange``). None yet:
-#: the range grammar of ``scope`` is complete here so a datetime payload field
-#: (a later slice) is added by naming it, not by touching the filter code.
-DATETIME_FIELDS: tuple[str, ...] = ()
+#: Payload field holding the document's own date: the title block's ``revision_date``, else the
+#: photo's ``capture.captured_at``, else absent. Copied from the metadata row (``payload.document_facts``).
+DOCUMENT_DATE_FIELD = "document_date"
+#: Payload field holding when the document was first indexed under its name (the row's ``added_at``).
+ADDED_AT_FIELD = "added_at"
+#: Fields stored as RFC 3339 datetimes and indexed as ``datetime`` (a range on one is a
+#: ``DatetimeRange``, ``scope._range``). Not :data:`INDEXED_AT_FIELD`, which is integer seconds.
+DATETIME_FIELDS: tuple[str, ...] = (DOCUMENT_DATE_FIELD, ADDED_AT_FIELD)
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 
-INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + BOOL_FIELDS + (TEXT_FIELD,))
+INDEXED_FIELDS = frozenset(KEYWORD_FIELDS + INTEGER_FIELDS + DATETIME_FIELDS + BOOL_FIELDS + (TEXT_FIELD,))
 
 #: Prefixes of collections an office owns. Anything else is shared corpus.
 TENANT_PREFIXES = (*OFFICE_SHELF_COLLECTION_PREFIXES, "proj_", "s_")
@@ -250,6 +254,8 @@ def _field_schema(field: str) -> Any:
         return models.PayloadSchemaType.INTEGER
     if field in BOOL_FIELDS:
         return models.PayloadSchemaType.BOOL
+    if field in DATETIME_FIELDS:
+        return models.PayloadSchemaType.DATETIME
     return models.PayloadSchemaType.KEYWORD
 
 

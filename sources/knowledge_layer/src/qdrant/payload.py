@@ -20,6 +20,9 @@ import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
 from dataclasses import field
+from datetime import UTC
+from datetime import date
+from datetime import datetime
 from typing import Any
 
 from aiq_agent.knowledge.base import reading_order
@@ -28,9 +31,12 @@ from aiq_agent.knowledge.document_classification import qdrant_doc_class
 
 from .prefilter import FOLDER_FIELD
 from .prefilter import folder_ancestors
+from .schema import ADDED_AT_FIELD
 from .schema import BOOL_FIELDS
 from .schema import CHUNK_ID_FIELD
 from .schema import CHUNK_ORDINAL_FIELD
+from .schema import DATETIME_FIELDS
+from .schema import DOCUMENT_DATE_FIELD
 from .schema import FACT_KEYS
 from .schema import INDEXED_AT_FIELD
 from .schema import INTEGER_FIELDS
@@ -123,6 +129,32 @@ def _as_int(value: Any) -> int | None:
         return None
 
 
+def as_rfc3339(value: Any) -> str | None:
+    """``value`` as an RFC 3339 UTC timestamp; None when it is not a date.
+
+    Reads a ``date``/``datetime``, an ISO 8601 string (``2026-01-31``, ``2026-01-31T10:00:00+02:00``,
+    a trailing ``Z``) and an EXIF-style ``2026:01:31 10:00:00``. A naive time is taken as UTC. A bool
+    or a number is not a date.
+    """
+    if isinstance(value, datetime):
+        moment = value
+    elif isinstance(value, date):
+        moment = datetime(value.year, value.month, value.day)
+    elif isinstance(value, str) and value.strip():
+        text = value.strip()
+        if re.fullmatch(r"\d{4}:\d{2}:\d{2}.*", text):
+            text = text[:10].replace(":", "-") + text[10:]
+        try:
+            moment = datetime.fromisoformat(text)
+        except ValueError:
+            return None
+    else:
+        return None
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
 def coerce_field(key: str, value: Any) -> Any:
     """A value in the type its index expects; None when it cannot be one.
 
@@ -135,6 +167,8 @@ def coerce_field(key: str, value: Any) -> Any:
         return _as_int(value)
     if key in BOOL_FIELDS:
         return _as_bool(value)
+    if key in DATETIME_FIELDS:
+        return as_rfc3339(value)
     if key in LIST_FIELDS:
         items = value if isinstance(value, (list, tuple, set)) else [value]
         return [str(item) for item in items if item is not None and str(item)]
@@ -164,7 +198,20 @@ def document_facts(document: Any | None) -> dict[str, Any]:
     folder_path = getattr(document, "folder_path", None) or None
     facts["folder_path"] = folder_path
     facts[FOLDER_FIELD] = folder_ancestors(folder_path)
+    # Stated even when unknown (None), so a date a person or a re-read removed stops matching a range.
+    facts[DOCUMENT_DATE_FIELD] = _document_date(document)
+    facts[ADDED_AT_FIELD] = as_rfc3339(getattr(document, "added_at", None))
     return facts
+
+
+def _document_date(document: Any) -> str | None:
+    """The document's own date: the title block's ``revision_date``, else the photo's ``captured_at``."""
+    revision = getattr(document, "revision_facts", None)
+    capture = getattr(document, "capture", None)
+    for source, key in ((revision, "revision_date"), (capture, "captured_at")):
+        if isinstance(source, Mapping) and (stamp := as_rfc3339(source.get(key))):
+            return stamp
+    return None
 
 
 #: The lifecycle states a project can be in (ADR-0098), as the BFF writes them.
@@ -237,7 +284,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
 #: point's own fields cannot strip what ingestion or a person put there.
 ENRICHED_FIELDS = frozenset(
     {"office_id", "project_id", "grid_document_id", "folder_path", FOLDER_FIELD, "tags", "topics", "superseded"}
-    | {"doc_class", INDEXED_AT_FIELD}
+    | {"doc_class", INDEXED_AT_FIELD, *DATETIME_FIELDS}
 )
 
 
@@ -268,6 +315,7 @@ STORE_ONLY_FIELDS = frozenset(
         PARAGRAPH_FIELD,
         CHUNK_DOC_CLASS_FIELD,
         INDEXED_AT_FIELD,
+        *DATETIME_FIELDS,
     }
 )
 

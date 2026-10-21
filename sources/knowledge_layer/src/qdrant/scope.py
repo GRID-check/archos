@@ -54,7 +54,10 @@ def _range(field: str, op: str, value: Any) -> models.FieldCondition:
     """``field`` compared by ``op`` to ``value``: an integer range, or a datetime range for a datetime field."""
     bound = _RANGE_OPERATORS[op]
     if field in DATETIME_FIELDS:
-        return models.FieldCondition(key=field, range=models.DatetimeRange(**{bound: value}))
+        moment = coerce_field(field, value)
+        if moment is None:
+            raise ValueError(f"Filter on {field!r}: {op} needs an ISO 8601 date, got {value!r}")
+        return models.FieldCondition(key=field, range=models.DatetimeRange(**{bound: moment}))
     if field not in INTEGER_FIELDS:
         raise ValueError(f"Filter on {field!r}: {op} needs an integer or datetime field")
     number = coerce_field(field, value)
