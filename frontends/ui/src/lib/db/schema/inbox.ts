@@ -165,6 +165,15 @@ export const INBOX_ITEM_TYPES = [
    */
   'piloti.intake_ready',
   /**
+   * Informational, operational tier: Piloti compared a new Fassung with the one
+   * it replaces, on its own (ADR-0130), and proposed marks where something
+   * moved. Addressed to the person whose upload or link made the Fassung, in
+   * whose name it ran; pointing at the new document and anchored on the first
+   * mark, so the row opens the Prüfansicht there. A notice that found nothing
+   * writes no row.
+   */
+  'piloti.revision_checked',
+  /**
    * Actionable, operational tier: a colleague made the recipient the
    * Zuständige of an Anmerkung, or Piloti did in a colleague's name (ADR-0106).
    * Anchored on the mark. Resolved when someone else becomes responsible, and

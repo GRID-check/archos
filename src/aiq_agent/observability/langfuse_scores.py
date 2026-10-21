@@ -91,6 +91,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("accepted", "dismissed", "undone"),
     ),
     ScoreDefinition(
+        "revision-notice",
+        "NUMERIC",
+        "How many marks Piloti proposed when it compared a new Fassung on its own (ADR-0130); 0 is compared, "
+        "nothing visible. On the trace of the first page's vision call; with piloti-decision on those marks, "
+        "the precision of noticing.",
+        writer="bff",
+        min_value=0,
+    ),
+    ScoreDefinition(
         "citation-health",
         "BOOLEAN",
         "True when citation verification found nothing to remove, patch or flag on this turn.",
@@ -223,6 +232,7 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
             "record",
             "action",
             "measured",
+            "observed",
             "reasoning",
             "model_knowledge",
         ),

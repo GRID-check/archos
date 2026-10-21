@@ -235,6 +235,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'piloti.asks_you': { icon: 'piloti', i18nKey: 'pilotiAsksYou', tone: 'request', anchor: 'mark' },
   'piloti.proposal_waiting': { icon: 'piloti', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
   'piloti.intake_ready': { icon: 'piloti', i18nKey: 'pilotiIntakeReady', tone: 'request' },
+  'piloti.revision_checked': { icon: 'piloti', i18nKey: 'pilotiRevisionChecked', tone: 'info', anchor: 'mark' },
   'annotation.assigned_to_you': { icon: 'user-plus', i18nKey: 'annotationAssigned', tone: 'request', anchor: 'mark' },
   'annotation.activity': { icon: 'message-square', i18nKey: 'annotationActivity', tone: 'info', anchor: 'mark' },
   // The chat mention's glyph: one sign for „someone asked you", wherever it was.

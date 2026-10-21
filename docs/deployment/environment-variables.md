@@ -365,6 +365,23 @@ Read by the BFF where an upload batch is sealed and settled (`frontends/ui/src/l
 |----------|----------|---------|-------------|
 | `GRID_FILING_SUGGESTIONS` | No | on | `off` stops Piloti from judging where an upload belongs: no `filing_review` job is queued and no model call is made. Open suggestions stay until decided. |
 
+### Office conventions (ADR-0129)
+
+Read by the BFF where a turn's context is built (`frontends/ui/src/lib/office-conventions/service.ts`).
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GRID_OFFICE_CONVENTIONS` | No | off | `on` lets Piloti count the office's conventions (folders its projects keep, where each Dokumentart is filed, the Plannummer shape, the Index style, the date in file names) from its own projects, and adds them to the WORKSPACE block of a turn that asks about filing or finding. Off, nothing is counted or read and the turn context is unchanged. No model call either way. |
+
+### Notices of a new Fassung (ADR-0130)
+
+When a document is linked as the newer Fassung of another, an organization with the WorkOS flag `piloti-notices` (off by default) has Piloti compare the changed pages and propose marks where something moved, through the `revision_notice` job, as the person whose upload or link made the Fassung (`frontends/ui/src/lib/revision-notice/`). The delay is read by the BFF that announces the Fassung, the page cap by the `bff-jobs` BFF that runs the job.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GRID_REVISION_NOTICE_DELAY_SECONDS` | No | `120` | How long a notice waits after the Fassung is announced before a worker may claim it, so re-reads and relinks have settled. `0` to `3600`. |
+| `GRID_REVISION_NOTICE_MAX_PAGES` | No | `3` | Most pages one notice looks at: one vision call each on the office's vision credential, and none for a page the index shows unchanged. `1` to `10`. The job is one slice, so keep this many calls inside `GRID_BFF_JOBS_SLICE_TIMEOUT_MS`; a retry answers the pages already compared from the cache. |
+
 ### Wakes of Piloti (ADR-0106)
 
 An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own open question, a delegation to Piloti) wakes Piloti through the `piloti_wake` job, which opens the chat socket as the person who acted. Only for an organization with the WorkOS flag `piloti-wakes` (off by default). The job dials the backend's chat role exactly as the gateway does, so the `bff-jobs` pod reads `BACKEND_CHAT_URL`, `BACKEND_REPLICAS`, `BACKEND_POD_WS_TEMPLATE` and `GRID_CHAT_AFFINITY` ([Frontend](#frontend)) and signs with `GRID_INTERNAL_API_TOKEN`. The caps are read by the BFF that takes the reply (at enqueue) and by the `bff-jobs` BFF (at claim), so set them on both.

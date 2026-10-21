@@ -146,6 +146,7 @@ const ALL_TYPES = [
   // A reading of a project's documents is ready for review (ADR-0111): setting
   // a project up is not a chat feature.
   'piloti.intake_ready',
+  'piloti.revision_checked',
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',
@@ -187,6 +188,7 @@ const OPERATIONAL_TYPES = [
   // A reading of a project's documents is ready for review (ADR-0111): setting
   // a project up is not a chat feature.
   'piloti.intake_ready',
+  'piloti.revision_checked',
   // A colleague's work on an Anmerkung: marks are not a chat feature either.
   'annotation.assigned_to_you',
   'annotation.activity',

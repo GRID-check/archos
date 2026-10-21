@@ -43,6 +43,10 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * `annotation_due_reminders` walks one organization's marks whose Frist is near
  * or past, a page per slice, as the system: it reminds each Zuständige of what
  * they were handed, and asks per mark whether they may still open the document.
+ * `revision_notice` is one step AS the person whose upload or link made a new
+ * Fassung (ADR-0130): it compares the changed pages with the older Fassung and
+ * proposes marks where something moved, under their rights today, and does
+ * nothing when the organization's `piloti-notices` is off.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -65,6 +69,7 @@ export const BFF_JOB_KINDS = [
   'filing_review',
   'inbox_push',
   'annotation_due_reminders',
+  'revision_notice',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -442,6 +447,22 @@ export const annotationDueRemindersPayloadSchema = z.object({
   counts: dueReminderCountsSchema,
 })
 export type AnnotationDueRemindersPayload = z.infer<typeof annotationDueRemindersPayloadSchema>
+
+/**
+ * `revision_notice`: compare a new Fassung with the one it replaces and leave
+ * what moved as proposed marks (ADR-0130). The job id is `noticeId`, uuid5 of
+ * the pair (`lib/revision-notice/notice.ts`), so a pair is noticed once however
+ * often it is announced. Ids only: both documents, the person's rights and the
+ * organization's switch are read again when it runs.
+ */
+export const revisionNoticePayloadSchema = z.object({
+  noticeId: z.string().uuid(),
+  newerId: z.string().uuid(),
+  olderId: z.string().uuid(),
+  /** The person whose upload or link made the Fassung: the notice runs as them, today. */
+  actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
+})
+export type RevisionNoticePayload = z.infer<typeof revisionNoticePayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

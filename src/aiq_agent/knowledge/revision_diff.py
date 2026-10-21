@@ -348,6 +348,27 @@ def diff_revisions(
     )
 
 
+def changed_pages(diff: RevisionDiff) -> tuple[int, ...]:
+    """The pages of the NEWER Fassung that changed or came new, as 1-based numbers, in page order.
+
+    What a look at the pictures is spent on (ADR-0130): a page the read content
+    shows unchanged is not sent to a vision model. A page whose label is not a
+    number (a roman preface, a sheet name) cannot be rendered by number and is
+    left out; a removed page has nothing on the newer Fassung to mark.
+    """
+    numbers: set[int] = set()
+    for change in diff.pages:
+        if change.kind == "removed" or not change.newer_page:
+            continue
+        try:
+            number = int(change.newer_page)
+        except ValueError:
+            continue
+        if number >= 1:
+            numbers.add(number)
+    return tuple(sorted(numbers))
+
+
 def chunk_from_store(text: str | None, metadata: Mapping[str, Any] | None) -> RevisionChunk | None:
     """One stored chunk as the compare reads it; ``None`` for a chunk that says nothing comparable."""
     metadata = metadata or {}

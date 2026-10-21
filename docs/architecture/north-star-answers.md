@@ -1086,6 +1086,12 @@ the north star, it also checks a new document against what it depends on.
 
 **Trigger.** The upload. Piloti runs a headless turn on the project's behalf.
 
+**Today** ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.md), behind
+`piloti-notices`): the visual half only. A Fassung linked to an older one is
+compared page by page and what moved is proposed as marks, with a thread message
+and an inbox row; nothing yet checks a Konzept's values against the drawings it
+names, which is this trajectory and the next slice.
+
 **Trajectory.**
 
 1. `read_passage(document="Brandschutzkonzept_Hubergasse14.pdf", pages="1-14")`

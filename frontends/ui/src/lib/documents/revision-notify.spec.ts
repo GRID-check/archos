@@ -18,6 +18,7 @@ vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValu
 vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn(), findRevisionCounterparts: vi.fn() }))
 vi.mock('./reconcile-status', () => ({ readRevisionLinkNames: vi.fn(), refreshCollectionFiles: vi.fn() }))
 vi.mock('./version-repository', () => ({ findPublishedVersion: vi.fn(), findPreviousVersion: vi.fn() }))
+vi.mock('@/lib/revision-notice/queue', () => ({ queueRevisionNotice: vi.fn().mockResolvedValue(true) }))
 vi.mock('./revision-announcement-repository', () => ({
   claimRevisionAnnouncement: vi.fn(),
   releaseRevisionAnnouncement: vi.fn(),
@@ -31,6 +32,7 @@ import { recipientsHoldingGroup } from '@/lib/inbox/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
 import { emitInboxItems } from '@/lib/inbox/service'
+import { queueRevisionNotice } from '@/lib/revision-notice/queue'
 import { SCREENED_ONLY } from './document-reader'
 import { claimRevisionAnnouncement, releaseRevisionAnnouncement } from './revision-announcement-repository'
 import {
@@ -687,5 +689,44 @@ describe('notifyNewRevision — announced once', () => {
 
     await expect(notifyNewRevision(link)).rejects.toThrow('db down')
     expect(releaseRevisionAnnouncement).toHaveBeenCalledWith({ organizationId: 'org-1', documentId: 'doc-b', anchorId: 'doc-a' })
+  })
+})
+
+describe('notifyNewRevision — Piloti notices the Fassung (ADR-0130)', () => {
+  beforeEach(() => {
+    vi.mocked(queueRevisionNotice).mockClear()
+  })
+
+  it('queues one notice of a Fassung under another name, as the person who made it, once the announcement is claimed', async () => {
+    await notifyNewRevision(link)
+
+    expect(queueRevisionNotice).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      actorUserId: 'editor',
+      newerId: 'doc-b',
+      olderId: 'doc-a',
+    })
+  })
+
+  it('queues nothing for a Fassung announced before', async () => {
+    vi.mocked(claimRevisionAnnouncement).mockResolvedValue(false)
+
+    await notifyNewRevision(link)
+
+    expect(queueRevisionNotice).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing for a same-name version, whose older bytes the index no longer holds', async () => {
+    await notifyNewRevision({ organizationId: 'org-1', actorUserId: 'editor', newerId: 'doc-a', olderId: 'doc-a', versionId: 'v2' })
+
+    expect(queueRevisionNotice).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing for a held document', async () => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(null)
+
+    await notifyNewRevision(link)
+
+    expect(queueRevisionNotice).not.toHaveBeenCalled()
   })
 })

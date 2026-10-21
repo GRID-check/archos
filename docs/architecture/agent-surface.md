@@ -762,7 +762,10 @@ What Piloti knows before its first call, and how it reports
   the asker's organization and project role, the project's name and id, whether
   the conversation is solo or shared, how many inbox items wait, the runs in
   flight, and this conversation's proposals with every status. Ids it names are
-  not looked up again, and a waiting proposal is not proposed twice.
+  not looked up again, and a waiting proposal is not proposed twice. On a
+  question about filing or finding it closes with the office's conventions,
+  counted from its projects and stated as "usually" (ADR-0129, behind
+  `GRID_OFFICE_CONVENTIONS`).
 - **The prompt's `<workspace>` facts** (`piloti_static.md`): queries in English,
   in the catalog's words; search and describe in one round, call in the next;
   a record is named, never cited; files and memory have their own native doors.

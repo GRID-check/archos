@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 
 from aiq_agent.knowledge.revision_diff import RevisionChunk
+from aiq_agent.knowledge.revision_diff import changed_pages
 from aiq_agent.knowledge.revision_diff import chunk_from_store
 from aiq_agent.knowledge.revision_diff import diff_revisions
 from aiq_agent.knowledge.revision_diff import diff_title_blocks
@@ -167,3 +168,25 @@ class TestRendering:
         text = render_diff(diff_revisions(older, newer), "a.pdf", "b.pdf")
         assert "… und 30 weitere geänderte Seiten." in text
         assert len(text) < 4000
+
+
+class TestChangedPages:
+    """What a notice spends its look on (ADR-0130): the newer Fassung's changed pages, by number."""
+
+    def test_only_changed_and_new_pages_of_the_newer_revision(self) -> None:
+        older = [_text("1", PAGE_1), _text("2", PAGE_2), _text("3", PAGE_3)]
+        newer = [_text("1", PAGE_1), _text("2", PAGE_2.replace("REI 90", "REI 60")), _text("3", PAGE_3)]
+        newer.append(_text("4", "Anhang\nNeue Tabelle"))
+
+        assert changed_pages(diff_revisions(older, newer)) == (2, 4)
+
+    def test_a_removed_page_and_an_unnumbered_label_are_left_out(self) -> None:
+        older = [_text("1", PAGE_1), _text("2", PAGE_2), _text("3", PAGE_3)]
+        newer = [_text("1", PAGE_1), _text("iv", "Vorwort\nneu")]
+
+        assert changed_pages(diff_revisions(older, newer)) == ()
+
+    def test_nothing_changed_is_no_page(self) -> None:
+        pages = [_text("1", PAGE_1), _text("2", PAGE_2)]
+
+        assert changed_pages(diff_revisions(pages, pages)) == ()

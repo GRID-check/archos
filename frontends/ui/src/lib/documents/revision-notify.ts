@@ -42,6 +42,12 @@
  * same Fassung again. A recipient who still holds the item is skipped too, not
  * folded, so a read item is never marked unread.
  *
+ * ## Piloti notices it
+ *
+ * A Fassung under another name, claimed here, also queues Piloti's notice of
+ * it (`lib/revision-notice`, ADR-0130): a comparison with the older one whose
+ * changes are proposed as marks. Only where the office switched it on.
+ *
  * ## It never fails its caller
  *
  * {@link announceNewRevision} is detached and logs. The link is stored and the
@@ -50,6 +56,7 @@
 
 import 'server-only'
 import { markParticipants } from '@/lib/annotations/attention'
+import { queueRevisionNotice } from '@/lib/revision-notice/queue'
 import { listDocumentAnnotations, type AnnotationRecord } from '@/lib/annotations/repository'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import type { Document } from '@/lib/db/schema'
@@ -212,6 +219,11 @@ export async function notifyNewRevision(announcement: NewRevisionAnnouncement): 
 
   const claim = { organizationId, documentId: newer.id, anchorId: announcement.versionId ?? follow.id }
   if (!(await claimRevisionAnnouncement(claim))) return 0
+  // Piloti checks a Fassung under another name against the one it replaces
+  // (ADR-0130), where the office switched it on. Once per claim, detached, never failing this.
+  if (!sameDocument) {
+    void queueRevisionNotice({ organizationId, actorUserId: announcement.actorUserId, newerId: newer.id, olderId: follow.id })
+  }
   try {
     return await writeRevisionItems(announcement, newer, follow, claim.anchorId)
   } catch (error) {

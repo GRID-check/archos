@@ -408,6 +408,20 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     person was working with it, not a request against them, so it does not earn
     mail. `per-anchor` on the proposal.
   */
+  /*
+    Piloti compared a new Fassung on its own and proposed marks (ADR-0130).
+    Informational: the marks wait in the Prüfansicht, where they are decided;
+    an unread row already counts. `per-anchor` on the first mark, so two notices
+    are two rows. Operational, like the other rows about Piloti's work on marks.
+  */
+  'piloti.revision_checked': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'low' },
+  },
   'piloti.proposal_waiting': {
     actionable: true,
     grouping: 'per-anchor',

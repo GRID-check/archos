@@ -130,6 +130,7 @@ class TestTheRoute:
             "summary": ["Die Wand im Norden ist um 0,5 m nach Osten gerückt."],
             "model": "openai/test-vlm",
             "cached": False,
+            "trace_id": None,
         }
         post.assert_awaited_once()
         sent = post.await_args.kwargs["json"]
@@ -273,10 +274,33 @@ class TestTracing:
         direct_trace._provider.force_flush()
         (span,) = exporter.get_finished_spans()
         assert span.attributes["langfuse.trace.name"] == route.TRACE_NAME == "revision-visual-compare"
+        assert span.attributes["langfuse.trace.metadata.purpose"] == "person"
         assert span.attributes["langfuse.observation.type"] == "generation"
         assert span.attributes["gen_ai.usage.input_tokens"] == 8000
         traced_input = span.attributes["langfuse.observation.input"]
         assert "base64" not in traced_input and "Ältere Fassung" in traced_input
+
+    async def test_a_notice_is_traced_as_one_and_hands_its_trace_on(self, pages, ingested, exporter):
+        response, _ = await _post({**BODY, "purpose": "notice"})
+
+        direct_trace._provider.force_flush()
+        (span,) = exporter.get_finished_spans()
+        assert span.attributes["langfuse.trace.metadata.purpose"] == "notice"
+        assert response.json()["trace_id"] == format(span.get_span_context().trace_id, "032x")
+
+    async def test_a_notice_queues_behind_people_waiting(self, pages, ingested, monkeypatch):
+        classes: list[str] = []
+        real = route.limited_async_http_client
+
+        def spy(*args, **kwargs):
+            classes.append(kwargs["cls"])
+            return real(*args, **kwargs)
+
+        monkeypatch.setattr(route, "limited_async_http_client", spy)
+        await _post({**BODY, "purpose": "notice"})
+        await _post({**BODY, "page": 2})
+
+        assert classes == ["bulk", "interactive"]
 
     async def test_a_cache_hit_makes_no_generation(self, pages, ingested, exporter):
         gateway = _gateway()
@@ -285,6 +309,61 @@ class TestTracing:
 
         direct_trace._provider.force_flush()
         assert len(exporter.get_finished_spans()) == 1
+
+
+class TestChangedPages:
+    """``revision-pages``: the newer Fassung's changed pages, from the index, without a model call."""
+
+    @pytest.fixture
+    def stored(self, monkeypatch):
+        chunks = {
+            OLDER: [("Grundriss EG\nWand 2,50 m", {"page_label": "1"}), ("Schnitt\nREI 90", {"page_label": "2"})],
+            NEWER: [("Grundriss EG\nWand 2,50 m", {"page_label": "1"}), ("Schnitt\nREI 60", {"page_label": "2"})],
+        }
+        monkeypatch.setattr(
+            "aiq_agent.knowledge.collection_pages.read_chunks", lambda collection, name: chunks.get(name)
+        )
+        return chunks
+
+    async def _pages(self, body=None, gateway=None):
+        fake, post = gateway or _gateway()
+        async with _client() as client:
+            with patch("httpx.AsyncClient", fake):
+                response = await client.post(
+                    f"/v1/collections/{COLLECTION}/revision-pages", json=body or {"older": OLDER, "newer": NEWER}
+                )
+        return response, post
+
+    async def test_only_the_changed_page_and_no_model(self, ingested, stored):
+        response, post = await self._pages()
+
+        assert response.status_code == 200
+        assert response.json() == {"pages": [2], "newer_page_count": 2, "comparable": True}
+        post.assert_not_awaited()
+
+    async def test_a_scan_with_nothing_read_is_not_comparable(self, ingested, stored):
+        stored[OLDER], stored[NEWER] = None, None
+
+        response, _ = await self._pages()
+
+        assert response.json() == {"pages": [], "newer_page_count": 0, "comparable": False}
+
+    async def test_a_file_not_ingested_is_a_409(self, ingested, stored):
+        ingested.discard(NEWER)
+
+        response, _ = await self._pages()
+
+        assert response.status_code == 409
+
+    async def test_an_index_outage_is_a_503_never_nothing_changed(self, ingested, monkeypatch):
+        def down(collection, name):
+            raise ConnectionError("qdrant down")
+
+        monkeypatch.setattr("aiq_agent.knowledge.collection_pages.read_chunks", down)
+
+        response, _ = await self._pages()
+
+        assert response.status_code == 503
 
 
 class TestParsing:

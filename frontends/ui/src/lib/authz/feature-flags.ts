@@ -198,6 +198,19 @@ export const FEATURE_FLAGS = {
    */
   pilotiActs: 'piloti-acts',
   /**
+   * Piloti notices a new Fassung (ADR-0130): when a document is linked as the
+   * newer Fassung of another, a job compares the changed pages of the two and
+   * leaves what moved as proposed marks on the new Fassung, in the name of the
+   * person whose upload or link made it. Read per organization when the job is
+   * queued (`isOrgFeatureEnabled`) and from that person's pinned session when it
+   * runs.
+   *
+   * An entitlement, off until an operator targets the organization: a notice is
+   * a vision call nobody asked for. With it off, a new Fassung is announced as
+   * before and nobody compares it until a person opens „Vergleichen".
+   */
+  pilotiNotices: 'piloti-notices',
+  /**
    * The agent door (ADR-0122): external agents (Claude, Cursor, ChatGPT)
    * reach the workspace as a person through the MCP server at `/api/mcp`.
    * An entitlement, because it lets software outside the browser act with a
@@ -267,6 +280,7 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'mail-import': 'entitlement',
   'piloti-wakes': 'entitlement',
   'piloti-acts': 'entitlement',
+  'piloti-notices': 'entitlement',
   'agent-mcp': 'entitlement',
   'agent-mcp-access': 'entitlement',
   'agent-mcp-secrets': 'entitlement',
@@ -334,6 +348,11 @@ export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>)
 /** Whether agents acting for people may ask Piloti questions in this organization (ADR-0124). */
 export function isPilotiAskEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiAsk)
+}
+
+/** Whether Piloti compares a new Fassung on its own and proposes marks where it changed (ADR-0130). */
+export function isPilotiNoticesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiNotices)
 }
 
 /** Whether Piloti may apply a change to Anmerkungen when the asker asks, or only propose (ADR-0105). */

@@ -610,6 +610,18 @@ export const collaboration = {
       // {actor}: that was Piloti. `titleRelatedNoSubject` when the document
       // could not be named. Same words as the review view: annotation, thread,
       // delegate.
+      // Piloti compared a new revision with the previous one on its own
+      // (ADR-0130) and proposed marks. {subject} the new revision, {related}
+      // the one compared, {marks} how many proposals. No {actor}: Piloti did it.
+      pilotiRevisionChecked: {
+        title: 'Piloti compared the new revision “{subject}”',
+        titleRelated: 'Piloti compared “{subject}” with “{related}”',
+        body: 'Proposals on the document, not yet accepted.',
+        variants: {
+          one: { body: '1 place marked as a proposal, not yet accepted.' },
+          many: { body: '{marks} places marked as proposals, not yet accepted.' },
+        },
+      },
       pilotiWorkDone: {
         title: 'Piloti worked on an annotation for you',
         titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',

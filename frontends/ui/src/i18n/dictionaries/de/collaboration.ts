@@ -453,6 +453,19 @@ export const collaboration: typeof en.collaboration = {
       // darunter ist, was die Anmerkung sagt. Kein {actor}: das war Piloti.
       // `titleRelatedNoSubject`, wenn das Dokument nicht zu benennen war.
       // Dieselben Wörter wie in der Prüfansicht: Anmerkung, Verlauf, delegieren.
+      // Piloti hat eine neue Fassung von sich aus mit der vorigen verglichen
+      // (ADR-0130) und Vorschläge markiert. {subject} die neue Fassung,
+      // {related} die verglichene, {marks} wie viele Vorschläge. Kein {actor}:
+      // das war Piloti. Der Auszug ist die erste Stelle.
+      pilotiRevisionChecked: {
+        title: 'Piloti hat die neue Fassung „{subject}“ verglichen',
+        titleRelated: 'Piloti hat „{subject}“ mit „{related}“ verglichen',
+        body: 'Vorschläge am Dokument, noch nicht übernommen.',
+        variants: {
+          one: { body: '1 Stelle als Vorschlag markiert, noch nicht übernommen.' },
+          many: { body: '{marks} Stellen als Vorschlag markiert, noch nicht übernommen.' },
+        },
+      },
       pilotiWorkDone: {
         title: 'Piloti hat eine Anmerkung für Sie bearbeitet',
         titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',

@@ -746,7 +746,10 @@ service functions the person's own routes use (`lib/annotations/agent.ts`):
 | Delete a mark | `delete` | `deleteAnnotation`, which allows only a mark the asker set themselves, while nobody else wrote in its thread and it was not carried | nothing left |
 
 Findings Piloti makes on its own initiative, including a whole-document review
-the person did not itemise, stay proposals (`propose`). The tool descriptions
+the person did not itemise, stay proposals (`propose`). So do the marks of a
+notice of a new Fassung (ADR-0130), which a job proposes through this same
+function, as the person who made the Fassung, recorded against a message in
+their thread about the document (`lib/revision-notice/job.ts`). The tool descriptions
 say when to use which: `open=true` only when the person asked for exactly that
 mark; `update` only when they asked for that change to that mark; `delete`
 only on explicit request.
@@ -973,6 +976,7 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
 | `piloti.work_failed` | a woken turn ended `failed`, or the wake job was refused or gave up before a turn answered (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
+| `piloti.revision_checked` | Piloti compared a new Fassung unasked and proposed marks on it ([ADR-0130](../adr/0130-piloti-notices-a-new-fassung.md)); anchored on the first mark | the person whose upload or link made the Fassung | no |
 | `annotation.assigned_to_you` | a person made someone Zuständige of an open mark (setting it, changing it, taking over Piloti's proposal that names one, or carrying it on to a replacing document), or Piloti did for the person its turn acted for | the new Zuständige, unless they did it themselves | yes |
 | `annotation.assigned_to_you`, variants `due` / `due_cleared` (`…_piloti`) | someone set, moved or cleared the date of an open mark whose Zuständige stays (a date that comes with a new Zuständige is their assignment) | the Zuständige, unless they did it, in the row they have for the mark | yes |
 | `annotation.assigned_to_you`, variants `due_soon` / `overdue` | the daily reminder: the Frist is today or tomorrow, or it has passed (below) | the Zuständige, while they may open the document; once per reminder and date, the overdue one upgrading the same row | yes |

@@ -174,7 +174,7 @@ class TestOneListOfNames:
 
     def test_every_score_the_bff_writes_is_defined(self):
         source = "\n".join(path.read_text() for path in (REPO / "frontends/ui/src/lib/langfuse").glob("*.ts"))
-        written = set(re.findall(r"""['"](user-feedback[a-z-]*|piloti-decision)['"]""", source))
+        written = set(re.findall(r"""['"](user-feedback[a-z-]*|piloti-decision|revision-notice)['"]""", source))
         defined = {definition.name for definition in SCORE_DEFINITIONS if definition.writer == "bff"}
 
         assert written <= defined

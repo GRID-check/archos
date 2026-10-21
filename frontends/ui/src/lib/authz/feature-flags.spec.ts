@@ -53,6 +53,7 @@ describe('the registry', () => {
         'mail-import',
         'piloti-acts',
         'piloti-ask',
+        'piloti-notices',
         'piloti-wakes',
         'platform-agent-mcp',
         'runtime-model-config',
