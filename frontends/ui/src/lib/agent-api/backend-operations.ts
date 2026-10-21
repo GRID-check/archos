@@ -43,7 +43,7 @@ import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-c
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import backendTools from '../../../tests/fixtures/backend-tools.schema.json'
 import type { AgentDomain, ToolAnnotations } from './operation'
-import type { OperationResult } from './dispatch'
+import { type OperationResult, readResponseBody } from './dispatch'
 
 export type { OperationResult }
 
@@ -329,18 +329,32 @@ const BACKEND_TOOL_TIMEOUT_MS = 120_000
 
 const ENVELOPE_HEADERS = ['x-grid-request-context', 'x-grid-request-context-sig'] as const
 
-function refusal(status: number, error: string, message: string): OperationResult {
-  return { status, ok: false, body: { error, message } }
+/**
+ * A refusal in the routes' error envelope (`{ error, code, details }`,
+ * `errorResponse` in `lib/api/handler.ts`), so the agent surface words a
+ * refusal from the backend exactly as one from a route.
+ */
+function refusal(status: number, code: string, message: string, details?: unknown): OperationResult {
+  return { status, ok: false, body: { error: message, code, ...(details === undefined ? {} : { details }) } }
 }
 
-async function readBody(response: Response): Promise<unknown> {
-  const text = await response.text()
-  if (!text) return null
-  try {
-    return JSON.parse(text) as unknown
-  } catch {
-    return text
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/**
+ * The backend's refusal (FastAPI: `{ detail: { error, issues?, tool? } }` or
+ * `{ detail: "…" }`) in the routes' envelope, normalised once here. The code is
+ * the backend's own (`invalid_arguments`, `tool_failed`); its `issues` become
+ * `details`, which tell the agent which argument to fix.
+ */
+export function backendRefusal(status: number, body: unknown): OperationResult {
+  const detail = isRecord(body) ? body.detail : undefined
+  if (typeof detail === 'string' && detail.trim()) return refusal(status, `http_${status}`, detail)
+  if (isRecord(detail) && typeof detail.error === 'string') {
+    const said = typeof detail.detail === 'string' ? `: ${detail.detail}` : ''
+    return refusal(status, detail.error, `The backend refused the call (${detail.error}${said})`, detail.issues)
   }
+  return refusal(status, `http_${status}`, `The backend answered HTTP ${status}`)
 }
 
 /**
@@ -426,7 +440,9 @@ export async function callBackendOperation(
       redirect: 'error',
       signal: AbortSignal.timeout(BACKEND_TOOL_TIMEOUT_MS),
     })
-    return { status: response.status, ok: response.ok, body: await readBody(response) }
+    // The routes' reader, with its 5 MiB cap: a tool's answer is read no further than a route's.
+    const body = await readResponseBody(response)
+    return response.ok ? { status: response.status, ok: true, body } : backendRefusal(response.status, body)
   } catch (error) {
     const timedOut =
       error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')

@@ -34,22 +34,30 @@ import {
   parseOperationInput,
 } from './dispatch'
 import { type BackendOperation, callBackendOperation, toMcpContent } from './backend-operations'
-import { AGENT_DOMAINS, type AgentOperation, annotationsOf } from './operation'
+import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
 import {
   callDecision,
   findVisibleBackendOperation,
   findVisibleOperation,
   visibleBackendOperations,
+  visibleDomains,
   visibleOperations,
 } from './policy'
+import type { AgentPrincipal } from './principal'
 import { readGateFor, sharedConversationReadRefusal } from './read-gate'
 import { type McpCallContext, recordOperationCalled, recordOperationMissing } from './telemetry'
 
-/** Longest text a result carries; beyond it the call must be narrowed. */
+/**
+ * Longest text a result carries; beyond it the call must be narrowed. The one
+ * cap on what an agent reads from this server: Piloti's own client
+ * (`tools/workspace/client.py`) adds none of its own.
+ */
 export const MAX_RESULT_CHARS = 40_000
 const DEFAULT_SEARCH_LIMIT = 10
 const MAX_SEARCH_LIMIT = 50
+/** A search is a few words; past this it is not one, and ranking it would cost every tenant the time. */
+export const MAX_SEARCH_QUERY_LENGTH = 200
 
 // --- results ---------------------------------------------------------------
 
@@ -57,9 +65,12 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-/** Text for a model, capped; whether it was cut. */
+/**
+ * Text for a model, capped; whether it was cut. Compact JSON: indentation is a
+ * third of a pretty-printed answer, and the model reads it as tokens it pays for.
+ */
 function renderText(value: unknown): { text: string; truncated: boolean } {
-  const full = typeof value === 'string' ? value : (JSON.stringify(value, null, 2) ?? 'null')
+  const full = typeof value === 'string' ? value : (JSON.stringify(value) ?? 'null')
   if (full.length <= MAX_RESULT_CHARS) return { text: full, truncated: false }
   const note =
     `\n\n[Truncated: showing ${MAX_RESULT_CHARS} of ${full.length} characters. ` +
@@ -144,48 +155,43 @@ function oversizedResult(opName: string, body: OversizedBody): CallToolResult {
   )
 }
 
-/** A route's answer as the tool result. A refusal keeps the route's own words: errors teach. */
-function fromOperationResult(opName: string, result: OperationResult): CallToolResult {
-  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
-  if (result.ok) {
-    if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
-    if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-    return success(result.body)
-  }
+/**
+ * A refusal in the error envelope every route answers with (`{ error, code,
+ * details }`, `errorResponse` in `lib/api/handler.ts`), which the backend's
+ * refusals are normalised to as well (`callBackendOperation`). The refuser's own
+ * words: errors teach.
+ */
+function refusalResult(result: OperationResult): CallToolResult {
   const body = isRecord(result.body) ? result.body : null
-  const message = typeof body?.error === 'string' ? body.error : `The route answered HTTP ${result.status}.`
+  const message = typeof body?.error === 'string' ? body.error : `The server answered HTTP ${result.status}.`
   const code = typeof body?.code === 'string' ? `, ${body.code}` : ''
   const details = body?.details === undefined ? '' : `\nDetails: ${JSON.stringify(body.details)}`
   return failure(`${message} (HTTP ${result.status}${code})${details}`)
 }
 
+/** A route's answer as the tool result. */
+function fromOperationResult(opName: string, result: OperationResult): CallToolResult {
+  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
+  if (!result.ok) return refusalResult(result)
+  if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
+  if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
+  return success(result.body)
+}
+
 /**
  * The backend's answer to a read tool as the tool result. Success is
  * `{ tool, result }`: the result is capped text with structuredContent, except
- * the page-image tool's content blocks, which stay images. A refusal keeps the
- * message of whoever refused: the BFF's `message`, or the backend's `detail`.
+ * the page-image tool's content blocks, which stay images.
  */
-function fromBackendResult(result: OperationResult): CallToolResult {
-  const body = isRecord(result.body) ? result.body : null
-  if (result.ok) {
-    const value = body && 'result' in body ? body.result : result.body
-    if (Array.isArray(value)) {
-      const content = toMcpContent(value).map((block) =>
-        block.type === 'text' ? { type: 'text' as const, text: renderText(block.text).text } : block,
-      )
-      return { content }
-    }
-    return success(value)
-  }
-  const detail = isRecord(body?.detail) ? body.detail : null
-  const code = [body?.error, detail?.error].find((value) => typeof value === 'string')
-  const message =
-    typeof body?.message === 'string'
-      ? body.message
-      : typeof detail?.error === 'string'
-        ? `${detail.error}${detail.issues === undefined ? '' : `: ${JSON.stringify(detail.issues)}`}`
-        : `The backend answered HTTP ${result.status}.`
-  return failure(`${message} (HTTP ${result.status}${typeof code === 'string' ? `, ${code}` : ''})`)
+function fromBackendResult(opName: string, result: OperationResult): CallToolResult {
+  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
+  if (!result.ok) return refusalResult(result)
+  const value = isRecord(result.body) && 'result' in result.body ? result.body.result : result.body
+  if (!Array.isArray(value)) return success(value)
+  const content = toMcpContent(value).map((block) =>
+    block.type === 'text' ? { type: 'text' as const, text: renderText(block.text).text } : block,
+  )
+  return { content }
 }
 
 // --- the input schema of one operation -------------------------------------
@@ -197,16 +203,30 @@ const IF_MATCH_SCHEMA = {
   type: 'string',
   minLength: 1,
   maxLength: IF_MATCH_MAX_LENGTH,
-  description:
-    'Sent as If-Match: the version you read (the project profile: its profileVersion). A write over a newer version is ' +
-    'refused; read again, then retry.',
+  description: 'Sent as If-Match: the version you read. A write over a newer one is refused (409); read again, then retry.',
 } as const
 
 const schemaCache = new Map<string, JsonSchemaNode>()
 
+/**
+ * `node` without what JSON Schema already means when it is absent:
+ * `additionalProperties: true` (the zod exporter writes it on every object that
+ * is not strict). An agent pays for every token of a tool list, and this one
+ * says nothing; validation is unchanged.
+ */
+export function withoutDefaults(node: JsonSchemaNode): JsonSchemaNode {
+  if (Array.isArray(node)) return node.map((item) => withoutDefaults(item as JsonSchemaNode)) as unknown as JsonSchemaNode
+  if (typeof node !== 'object' || node === null) return node
+  return Object.fromEntries(
+    Object.entries(node)
+      .filter(([key, value]) => !(key === 'additionalProperties' && value === true))
+      .map(([key, value]) => [key, typeof value === 'object' && value !== null ? withoutDefaults(value as JsonSchemaNode) : value]),
+  ) as JsonSchemaNode
+}
+
 function part(schema: Parameters<typeof toJsonSchema>[0]): { node: JsonSchemaNode; required: boolean } {
   try {
-    const node = toJsonSchema(schema)
+    const node = withoutDefaults(toJsonSchema(schema))
     const required = Array.isArray(node.required) ? node.required.length > 0 : !schema.isOptional()
     return { node, required }
   } catch {
@@ -231,10 +251,12 @@ export function inputSchemaOf(op: AgentOperation): JsonSchemaNode {
     properties[key] = node
     if (isRequired) required.push(key)
   }
-  // A write may refuse to overwrite a newer version than the one the agent read (If-Match).
-  if (!annotationsOf(op).readOnlyHint) properties.ifMatch = IF_MATCH_SCHEMA
+  // Only where the route reads the header: offered anywhere else, it would be a version check nobody makes.
+  if (op.ifMatchHeader) properties.ifMatch = IF_MATCH_SCHEMA
   const schema: JsonSchemaNode = { type: 'object', properties, additionalProperties: false }
   if (required.length > 0) schema.required = required
+  // JSON Schema's own keyword for sample instances (2020-12, `examples`).
+  if (op.examples && op.examples.length > 0) schema.examples = op.examples as unknown as JsonSchemaNode
   schemaCache.set(op.name, schema)
   return schema
 }
@@ -259,7 +281,7 @@ export async function runBackendOperation(
     }
     const result = await callBackendOperation(op.name, input, ctx.principal.session, { projectId })
     record(result.status)
-    return fromBackendResult(result)
+    return fromBackendResult(op.name, result)
   } catch (error) {
     console.error('[mcp] backend operation failed', op.name, error)
     record(500)
@@ -325,7 +347,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
   } catch (error) {
     if (error instanceof OperationInputError) {
       record(400)
-      return failure(`${error.message}. Use describe-operation for ${op.name} to see its input schema.`)
+      return failure(inputRefusal(op, error))
     }
     if (error instanceof ApiError) {
       record(error.status)
@@ -335,6 +357,17 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
     record(500)
     return failure(`${op.name} failed on the server. Try again; if it persists, report it.`)
   }
+}
+
+/** Longest input schema quoted in a refusal; a larger one is a describe-operation away. */
+const INLINE_SCHEMA_CHARS = 2_000
+
+/** What was wrong with the input, and the schema to fix it with when it is short: one round, not two. */
+function inputRefusal(op: AgentOperation, error: OperationInputError): string {
+  const schema = JSON.stringify(inputSchemaOf(op))
+  return schema.length <= INLINE_SCHEMA_CHARS
+    ? `${error.message}. The input schema of ${op.name}: ${schema}`
+    : `${error.message}. Use describe-operation for ${op.name} to see its input schema.`
 }
 
 // --- search ------------------------------------------------------------------
@@ -355,8 +388,14 @@ interface Searchable {
   description: string
 }
 
+/** A word of one letter matches nearly every operation (`(a+)+$` found all 248) and ranks nothing. */
+const MIN_WORD_LENGTH = 2
+
 function wordsOf(query: string): string[] {
-  return query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
+  return query
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= MIN_WORD_LENGTH)
 }
 
 /**
@@ -367,8 +406,10 @@ function wordsOf(query: string): string[] {
  */
 function scorerFor(query: string): (op: Searchable) => number {
   const words = wordsOf(query)
+  // A blank query lists everything; text with no usable word in it (`a`, `(+)$`) matches nothing.
+  const listsAll = query.trim() === ''
   return (op) => {
-    if (words.length === 0) return 1
+    if (words.length === 0) return listsAll ? 1 : 0
     const name = op.name.toLowerCase()
     const segments = name.split('-')
     const summary = op.summary.toLowerCase()
@@ -390,7 +431,7 @@ function scorerFor(query: string): (op: Searchable) => number {
 }
 
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {
-  const score = scorerFor(query)
+  const score = scorerFor(query.slice(0, MAX_SEARCH_QUERY_LENGTH))
   const catalog: Hit[] = visibleOperations(ctx.principal)
     .filter((op) => !domain || op.domain === domain)
     .map((op) => {
@@ -419,15 +460,19 @@ function rank(ctx: McpCallContext, query: string, domain: string | undefined): H
     .sort((a, b) => b.score - a.score)
 }
 
-const searchInput = z.object({
-  query: z.string(),
-  domain: z.enum(AGENT_DOMAINS).optional(),
-  limit: z.number().int().min(1).max(MAX_SEARCH_LIMIT).optional(),
-})
+/** The search input for `principal`: only the domains it can see may be named. */
+function searchInputFor(principal: AgentPrincipal) {
+  const domains = visibleDomains(principal) as [string, ...string[]]
+  return z.object({
+    query: z.string().max(MAX_SEARCH_QUERY_LENGTH),
+    domain: z.enum(domains).optional(),
+    limit: z.number().int().min(1).max(MAX_SEARCH_LIMIT).optional(),
+  })
+}
 
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
-  const parsed = searchInput.safeParse(args)
+  const parsed = searchInputFor(ctx.principal).safeParse(args)
   if (!parsed.success) return failure(`search-operations: ${parsed.error.issues.map((i) => i.message).join('; ')}`)
   const { query, domain, limit = DEFAULT_SEARCH_LIMIT } = parsed.data
   const hits = rank(ctx, query, domain)
@@ -439,7 +484,7 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
     next:
       shown.length === 0
         ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
-        : 'Call describe-operation for the input schema, then call-operation.',
+        : 'Call call-operation with the name; call describe-operation first when you do not know its input.',
   })
 }
 
@@ -525,74 +570,101 @@ export function reportMissingOperation(ctx: McpCallContext, args: unknown): Call
 
 // --- the meta-tools as JSON Schema ------------------------------------------
 
-export const META_TOOLS = {
-  'search-operations': {
-    title: 'Search operations',
-    description:
-      'Find Piloti operations by plain words, ranked over name, summary and description. ' +
-      'Start here: results name the operation to describe and call. Optionally narrow by domain.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        query: { type: 'string', description: 'Words such as "add project member" or "document version". Empty lists a domain.' },
-        domain: { type: 'string', enum: [...AGENT_DOMAINS], description: 'Only operations of this area.' },
-        limit: { type: 'integer', minimum: 1, maximum: MAX_SEARCH_LIMIT, description: `At most this many (default ${DEFAULT_SEARCH_LIMIT}).` },
-      },
-      required: ['query'],
-      additionalProperties: false,
-    },
-    readOnly: true,
-  },
-  'describe-operation': {
-    title: 'Describe an operation',
-    description:
-      'Full description, annotations and the input JSON Schema ({ params, query, body }) of one operation, ' +
-      'by the name search-operations returned. Read it before call-operation.',
-    inputSchema: {
-      type: 'object',
-      properties: { name: { type: 'string', description: 'An operation name, e.g. project-list.' } },
-      required: ['name'],
-      additionalProperties: false,
-    },
-    readOnly: true,
-  },
-  'call-operation': {
-    title: 'Call an operation',
-    description:
-      'Run one operation as the signed-in person, with the rights that person has. input is { params, query, body } ' +
-      'as describe-operation shows (the read tools of the agent, such as knowledge-search, take their arguments flat in input, projectId among them). A refusal comes back with the route\'s own message. Destructive operations are ' +
-      'marked in describe-operation; confirm those with the person first.',
-    inputSchema: {
-      type: 'object',
-      properties: {
-        name: { type: 'string', description: 'An operation name from search-operations.' },
-        input: {
-          type: 'object',
-          description: 'params: path ids; query: query string; body: JSON body; ifMatch: the version you read, for a write that refuses one over a newer version.',
-          properties: {
-            params: { type: 'object', additionalProperties: { type: 'string' } },
-            query: { type: 'object' },
-            body: {},
-            ifMatch: IF_MATCH_SCHEMA,
+/** One meta-tool as `tools/list` shows it. */
+export interface MetaTool {
+  readonly title: string
+  readonly description: string
+  readonly inputSchema: JsonSchemaNode
+  readonly readOnly: boolean
+}
+
+export type MetaToolName = 'search-operations' | 'describe-operation' | 'call-operation' | 'report-missing-operation'
+
+/**
+ * The four meta-tools of `search` mode, as `principal` sees them: the domain
+ * list names only the areas it can see (in-product Piloti never sees
+ * `platform`). The single source of their words: Piloti's own client reads the
+ * in-product variant from `src/aiq_agent/tools/workspace/meta_tools.json`,
+ * which `meta-tools.spec.ts` writes from here and holds current.
+ */
+export function metaToolsFor(principal: Pick<AgentPrincipal, 'actor'>): Record<MetaToolName, MetaTool> {
+  const piloti = principal.actor === 'piloti'
+  // Piloti has the agent read tools natively and never sees them here; an external agent runs its writes.
+  const flatTools = piloti ? '' : '; the agent read tools such as knowledge-search take their own arguments flat in `input` instead'
+  const writes = piloti
+    ? 'A write is never run: the result says "Proposed" and nothing changed, because the person decides on a card. Say in one ' +
+      'sentence what is proposed, and never claim it is done.'
+    : 'Destructive operations are marked in search and describe results; confirm those with the person first.'
+  return {
+    'search-operations': {
+      title: 'Search operations',
+      description:
+        'Find what can be done in the Piloti workspace (projects, members, documents and their versions, review, the inbox, ' +
+        'tasks, settings) by plain words, ranked over each operation\'s name, summary and description. Start here. Answers ' +
+        'operation names with one line each and whether each reads, writes or destroys. Then call-operation.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            maxLength: MAX_SEARCH_QUERY_LENGTH,
+            description: 'The goal in a few plain words, e.g. "add project member". Empty lists everything, or a whole domain.',
           },
+          domain: { type: 'string', enum: [...visibleDomains(principal)], description: 'Only operations of this area.' },
+          limit: { type: 'integer', minimum: 1, maximum: MAX_SEARCH_LIMIT, description: `At most this many (default ${DEFAULT_SEARCH_LIMIT}).` },
         },
+        required: ['query'],
+        additionalProperties: false,
       },
-      required: ['name'],
-      additionalProperties: false,
+      readOnly: true,
     },
-    readOnly: false,
-  },
-  'report-missing-operation': {
-    title: 'Report a missing operation',
-    description:
-      'Tell the Piloti team what you tried to do and could not find an operation for. Use it after search-operations came back empty. ' +
-      'Describe the goal, not the person or the documents involved.',
-    inputSchema: {
-      type: 'object',
-      properties: { description: { type: 'string', minLength: 1, maxLength: 2000, description: 'What you wanted to do.' } },
-      required: ['description'],
-      additionalProperties: false,
+    'describe-operation': {
+      title: 'Describe an operation',
+      description:
+        'One operation\'s description, annotations and input JSON Schema ({ params, query, body }), by the exact name ' +
+        'search-operations returned. Call it before the first call of an operation whose input you do not know. An unknown ' +
+        'name comes back with similar names.',
+      inputSchema: {
+        type: 'object',
+        properties: { name: { type: 'string', description: 'An operation name, e.g. project-list.' } },
+        required: ['name'],
+        additionalProperties: false,
+      },
+      readOnly: true,
     },
-    readOnly: false,
-  },
-} as const
+    'call-operation': {
+      title: 'Call an operation',
+      description:
+        'Run one operation as the signed-in person, with that person\'s rights. `input` is { params, query, body } as ' +
+        `describe-operation shows it (params: path ids; query: the query string; body: the JSON body)${flatTools}. ` +
+        'Input that does not fit comes back with the reason. A refusal names the reason and the next step; do not repeat ' +
+        `the same call. ${writes}`,
+      inputSchema: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', description: 'An operation name from search-operations.' },
+          // Untyped on purpose: the catalog's operations take { params, query, body }, the agent read tools their
+          // own flat arguments (knowledge-search's `query` is a string). The handler validates per operation.
+          input: { type: 'object', description: 'The operation\'s input, as describe-operation shows it.' },
+        },
+        required: ['name'],
+        additionalProperties: false,
+      },
+      readOnly: false,
+    },
+    'report-missing-operation': {
+      title: 'Report a missing operation',
+      description:
+        'Count a gap: the person wants something done in the workspace and search-operations found no operation for it with ' +
+        'two different phrasings. The Piloti team sees that a gap was reported, never your words, so describe the goal ' +
+        'without names or document contents. Then tell the person it cannot be done here yet.',
+      inputSchema: {
+        type: 'object',
+        properties: { description: { type: 'string', minLength: 1, maxLength: 2000, description: 'The goal that has no operation.' } },
+        required: ['description'],
+        additionalProperties: false,
+      },
+      readOnly: false,
+    },
+  }
+}

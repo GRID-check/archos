@@ -19,7 +19,10 @@ made it. Why NAT's ``mcp_client`` group was not used is in ``client.py``.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import re
+from pathlib import Path
 from typing import Any
 
 from aiq_agent import project_context
@@ -58,34 +61,26 @@ _NO_ENVELOPE = (
     "workspace on a person's behalf. Do not retry."
 )
 
-DESCRIPTIONS = {
-    "search": (
-        "Find what Piloti can do in the workspace: projects, members, documents and their revisions, the "
-        "inbox, tasks and task runs, settings. Call it when the person wants to read or change something in "
-        'the workspace and no other tool covers it. `query` states the goal in plain words ("add a member to '
-        'a project"), `domain` optionally narrows it to one area, `limit` (default 10) caps the hits. Answers '
-        "operation names with one line each. Then `workspace__describe` with the name, then "
-        "`workspace__call`. Nothing fits: `workspace__report_missing`."
-    ),
-    "describe": (
-        "Show how to call one operation: what it does, its input (`params` for path ids, `query`, `body`), "
-        "whether it reads or writes, and where its ids come from. `name` is a name from `workspace__search`, "
-        "spelled exactly. Read it before the first `workspace__call` of an operation; an unknown name comes "
-        "back with similar names."
-    ),
-    "call": (
-        "Run one operation on the person's behalf, with their rights. `name` from `workspace__search`, "
-        "`input` with the fields `params`, `query` and `body` as `workspace__describe` shows them. A read runs "
-        "at once. A write changes NOTHING: it comes back as a proposal the person accepts; tell them in one "
-        "sentence what is proposed, and never claim it is done. A refusal names the reason and the next "
-        "step; do not repeat the same call."
-    ),
-    "report_missing": (
-        "Report that the person wants something in the workspace and no operation fits (after "
-        "`workspace__search` with two different phrasings). `description` says in one or two sentences what "
-        "is missing. Then tell the person honestly that it cannot be done (yet)."
-    ),
-}
+#: The meta-tools' words, written once by the server (``metaToolsFor`` in
+#: ``frontends/ui/src/lib/agent-api/discovery.ts``) and exported here by
+#: ``meta-tools.spec.ts`` (``UPDATE_FIXTURES=1``): the in-product variant, which
+#: never offers the ``platform`` domain. This file keeps no copy of its own.
+META_TOOLS_PATH = Path(__file__).with_name("meta_tools.json")
+
+
+def _local_names(text: str) -> str:
+    """``text`` with the server's tool names as this group's (``call-operation`` -> ``workspace__call``)."""
+    for step, server_name in SERVER_TOOLS.items():
+        text = re.sub(rf"(?<![\w-]){re.escape(server_name)}(?![\w-])", f"workspace__{step}", text)
+    return text
+
+
+def _descriptions() -> dict[str, str]:
+    tools = json.loads(META_TOOLS_PATH.read_text(encoding="utf-8"))["tools"]
+    return {step: _local_names(tools[server_name]["description"]) for step, server_name in SERVER_TOOLS.items()}
+
+
+DESCRIPTIONS = _descriptions()
 
 
 class WorkspaceConfig(FunctionGroupBaseConfig, name="piloti_workspace"):

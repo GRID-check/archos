@@ -22,15 +22,18 @@ vi.mock('./operation-proposals', () => ({ proposeOperation: vi.fn() }))
 vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationMissing: vi.fn() }))
 
 import { callBackendOperation } from './backend-operations'
-import { callOperation, parseOperationInput } from './dispatch'
+import { callOperation, validateOperationInput } from './dispatch'
 import {
-  META_TOOLS,
   MAX_RESULT_CHARS,
+  MAX_SEARCH_QUERY_LENGTH,
   callOperationTool,
   describeOperation,
+  inputSchemaOf,
+  metaToolsFor,
   reportMissingOperation,
   searchOperations,
 } from './discovery'
+import type { AgentOperation } from './operation'
 import { proposeOperation } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
 import { recordOperationCalled, recordOperationMissing } from './telemetry'
@@ -117,7 +120,33 @@ describe('search-operations', () => {
   it('respects the limit', () => {
     expect(names(searchOperations(ctx(person), { query: '', limit: 2 }))).toHaveLength(2)
   })
+
+  it('ignores one-letter words, which match nearly every operation and rank nothing', () => {
+    // `(a+)+$` used to match all 248 operations: its one word, "a", is in nearly every description.
+    expect(structured(searchOperations(ctx(person), { query: '(a+)+$' })).total).toBe(0)
+    expect(names(searchOperations(ctx(person), { query: 'a project delete' }))[0]).toBe('project-delete')
+  })
+
+  it('refuses a query longer than a search', () => {
+    const result = searchOperations(ctx(person), { query: 'project '.repeat(MAX_SEARCH_QUERY_LENGTH) })
+    expect(result.isError).toBe(true)
+  })
+
+  it('never offers in-product Piloti the platform domain, and refuses it when named', () => {
+    const domains = (metaToolsFor(piloti)['search-operations'].inputSchema as { properties: { domain: { enum: string[] } } })
+      .properties.domain.enum
+    expect(domains).not.toContain('platform')
+    expect(searchOperations(ctx(piloti), { query: '', domain: 'platform' }).isError).toBe(true)
+    expect(searchOperations(ctx(person), { query: '', domain: 'platform' }).isError).toBeUndefined()
+  })
+
+  it('answers compact JSON: indentation is tokens the agent pays for', () => {
+    expect(text(searchOperations(ctx(person), { query: 'project' }))).not.toMatch(/\n\s/)
+  })
 })
+
+const schemaOf = (name: string) =>
+  structured(describeOperation(ctx(person), { name })).inputSchema as { properties: Record<string, unknown> }
 
 describe('describe-operation', () => {
   it('returns the input schema composed from params, query and body', () => {
@@ -189,10 +218,10 @@ describe('call-operation', () => {
     expect(text(result)).toContain('HTTP 403')
   })
 
-  it('teaches when the input does not fit the schema', async () => {
+  it('teaches when the input does not fit the schema, with the schema itself: one round, not two', async () => {
     // The real dispatcher validates before it calls the route; keep that step.
     vi.mocked(callOperation).mockImplementation(async (op, input) => {
-      parseOperationInput(op, input)
+      validateOperationInput(op, input)
       return { status: 200, ok: true, body: {} }
     })
     const result = await callOperationTool(ctx(person), {
@@ -201,7 +230,7 @@ describe('call-operation', () => {
     })
     expect(result.isError).toBe(true)
     expect(text(result)).toMatch(/body\.role/)
-    expect(text(result)).toMatch(/describe-operation/)
+    expect(text(result)).toContain('The input schema of project-member-add: {')
   })
 
   it('proposes instead of running a write for in-product Piloti', async () => {
@@ -267,13 +296,27 @@ describe('call-operation', () => {
     )
   })
 
-  it('offers ifMatch in the schema of a write, not of a read', () => {
-    const schemaOf = (name: string) =>
-      structured(describeOperation(ctx(person), { name })).inputSchema as { properties: Record<string, unknown> }
-    expect(schemaOf('project-member-add').properties).toHaveProperty('ifMatch')
-    expect(schemaOf('project-list').properties).not.toHaveProperty('ifMatch')
-    // And call-operation's own schema, which a client validates arguments against before sending them.
-    expect(META_TOOLS['call-operation'].inputSchema.properties.input.properties).toHaveProperty('ifMatch')
+  it('offers ifMatch only on an operation whose route reads the header', () => {
+    const write = (extra: Partial<AgentOperation>): AgentOperation => ({
+      name: `profile-write-${Object.keys(extra).length}`,
+      domain: 'projects',
+      summary: 'Write a profile',
+      description: 'A write whose route may or may not read If-Match.',
+      method: 'PUT',
+      path: '/api/projects/[id]/profile',
+      load: async () => ({}),
+      ...extra,
+    })
+    expect(inputSchemaOf(write({ ifMatchHeader: true })).properties).toHaveProperty('ifMatch')
+    expect(inputSchemaOf(write({})).properties).not.toHaveProperty('ifMatch')
+    expect(schemaOf('project-member-add').properties).not.toHaveProperty('ifMatch')
+  })
+
+  it('leaves call-operation\'s input untyped, so an agent read tool\'s own arguments get through', () => {
+    // knowledge-search takes `query` as a string; a schema typing input.query as an object made the SDK refuse it.
+    const input = (metaToolsFor(person)['call-operation'].inputSchema as { properties: { input: Record<string, unknown> } }).properties
+      .input
+    expect(input).toEqual({ type: 'object', description: expect.any(String) })
   })
 
   it('refuses an oversized answer and says how to narrow it', async () => {
@@ -430,12 +473,11 @@ describe('the Python agent’s read tools', () => {
     vi.mocked(callBackendOperation).mockResolvedValue({
       status: 403,
       ok: false,
-      body: { error: 'forbidden', message: 'You cannot use this project' },
+      body: { error: 'You cannot use this project', code: 'forbidden' },
     })
     const result = await callOperationTool(ctx(person), { name: 'files-list', input: { projectId: PROJECT } })
     expect(result.isError).toBe(true)
-    expect(text(result)).toContain('You cannot use this project')
-    expect(text(result)).toContain('HTTP 403')
+    expect(text(result)).toBe('You cannot use this project (HTTP 403, forbidden)')
   })
 
   it('are absent for in-product Piloti, which has them natively', async () => {

@@ -19,7 +19,7 @@
 
 import { BACKEND_OPERATIONS, type BackendOperation, findBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS, findOperation } from './catalog'
-import type { AgentDomain, AgentOperation, Sensitivity } from './operation'
+import { AGENT_DOMAINS, type AgentDomain, type AgentOperation, type Sensitivity, annotationsOf } from './operation'
 import type { AgentPrincipal } from './principal'
 
 /** The scope an external client needs for operations with a `sensitivity`. */
@@ -44,10 +44,6 @@ export const SENSITIVE_SCOPE_ENFORCED_BY_WORKOS = false
 export const PILOTI_HIDDEN_DOMAINS: ReadonlySet<AgentDomain> = new Set<AgentDomain>(['platform'])
 
 export type CallDecision = 'run' | 'propose'
-
-export function isReadOnly(op: AgentOperation): boolean {
-  return op.readOnly ?? op.method === 'GET'
-}
 
 /** May `principal` see (and so name) `op`? */
 export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
@@ -76,6 +72,11 @@ export function maySeeSensitive(
   )
 }
 
+/** The domains `principal` may search and be told about: in-product Piloti never hears of `platform`. */
+export function visibleDomains(principal: Pick<AgentPrincipal, 'actor'>): readonly AgentDomain[] {
+  return principal.actor === 'piloti' ? AGENT_DOMAINS.filter((domain) => !PILOTI_HIDDEN_DOMAINS.has(domain)) : AGENT_DOMAINS
+}
+
 export function visibleOperations(principal: AgentPrincipal): readonly AgentOperation[] {
   return AGENT_OPERATIONS.filter((op) => canSee(principal, op))
 }
@@ -101,5 +102,5 @@ export function findVisibleBackendOperation(principal: AgentPrincipal, name: str
 
 export function callDecision(principal: AgentPrincipal, op: AgentOperation): CallDecision {
   if (principal.actor === 'external_agent') return 'run'
-  return isReadOnly(op) ? 'run' : 'propose'
+  return annotationsOf(op).readOnlyHint ? 'run' : 'propose'
 }

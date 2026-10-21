@@ -57,9 +57,6 @@ ANSWER_MESSAGE_HEADER = "X-Grid-Answer-Message-Id"
 #: A routed operation runs a BFF route in-process, some of them a search.
 REQUEST_TIMEOUT_SECONDS = 30
 
-#: Cap on what is handed to the model; a longer answer says so (errors and truncation name the next call).
-MAX_RESULT_CHARS = 24_000
-
 #: How a tool-level error (``isError``) starts, so the model reads it as one. English, like everything
 #: the model reads from the workspace (AGENTS.md, "Industry standard first"); it words it for the reader.
 ERROR_PREFIX = "Error: "
@@ -162,9 +159,9 @@ def _result_text(message: dict[str, Any]) -> str:
     parts = [str(item.get("text", "")) for item in result.get("content") or [] if isinstance(item, dict)]
     text = "\n".join(part for part in parts if part).strip()
     if not text and result.get("structuredContent") is not None:
-        text = json.dumps(result["structuredContent"], ensure_ascii=False)
-    if len(text) > MAX_RESULT_CHARS:
-        text = text[:MAX_RESULT_CHARS] + "\n[Truncated: the answer is too long. Narrow it with `query` or `limit`.]"
+        text = json.dumps(result["structuredContent"], ensure_ascii=False, separators=(",", ":"))
+    # No cap of its own: the server caps every result (``MAX_RESULT_CHARS`` in ``discovery.ts``) and says how to
+    # narrow it; a second, smaller cut here would end mid-JSON and contradict the server's note.
     return f"{ERROR_PREFIX}{text}" if result.get("isError") else text
 
 

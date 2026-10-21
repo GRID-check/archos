@@ -16,11 +16,13 @@ import { NotFoundError } from '@/lib/api/errors'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 import { AGENT_OPERATIONS } from './catalog'
 import {
+  backendRefusal,
   BACKEND_OPERATIONS,
   callBackendOperation,
   findBackendOperation,
   toMcpContent,
 } from './backend-operations'
+import { MAX_TEXT_BYTES } from './dispatch'
 
 const requireProjectAccess = vi.hoisted(() => vi.fn())
 const resolveTurnContext = vi.hoisted(() => vi.fn())
@@ -236,8 +238,9 @@ describe('callBackendOperation', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('passes the backend’s refusal through with its status', async () => {
-    backendAnswers(422, { detail: { error: 'invalid_arguments' } })
+  it('passes the backend’s refusal through with its status, in the routes’ error envelope', async () => {
+    const issues = [{ loc: ['top_k'], msg: 'Input should be a valid integer' }]
+    backendAnswers(422, { detail: { error: 'invalid_arguments', tool: 'knowledge_search', issues } })
 
     const result = await callBackendOperation('knowledge-search', { top_k: 'many' }, session, {
       projectId: PROJECT,
@@ -246,8 +249,29 @@ describe('callBackendOperation', () => {
     expect(result).toEqual({
       status: 422,
       ok: false,
-      body: { detail: { error: 'invalid_arguments' } },
+      body: {
+        error: 'The backend refused the call (invalid_arguments)',
+        code: 'invalid_arguments',
+        details: issues,
+      },
     })
+  })
+
+  it('normalises every refusal shape the backend has once, here', () => {
+    expect(backendRefusal(403, { detail: { error: 'context_envelope_required', detail: 'a signed envelope' } }).body).toEqual({
+      error: 'The backend refused the call (context_envelope_required: a signed envelope)',
+      code: 'context_envelope_required',
+    })
+    expect(backendRefusal(500, { detail: 'Internal Server Error' }).body).toEqual({ error: 'Internal Server Error', code: 'http_500' })
+    expect(backendRefusal(502, 'Bad Gateway').body).toEqual({ error: 'The backend answered HTTP 502', code: 'http_502' })
+  })
+
+  it('reads the backend’s answer no further than a route’s (MAX_TEXT_BYTES)', async () => {
+    fetchMock.mockResolvedValue(
+      new Response('x', { status: 200, headers: { 'content-type': 'application/json', 'content-length': String(MAX_TEXT_BYTES + 1) } })
+    )
+    const result = await callBackendOperation('knowledge-search', {}, session, { projectId: PROJECT })
+    expect(result.body).toMatchObject({ oversized: true })
   })
 
   it('does not sign for a backend it cannot safely send the token to, or without the secret', async () => {

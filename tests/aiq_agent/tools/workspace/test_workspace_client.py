@@ -242,11 +242,34 @@ def test_a_jsonrpc_error_is_a_workspace_error() -> None:
         client._result_text(message)
 
 
-def test_a_long_answer_is_cut_and_says_how_to_narrow() -> None:
-    message = json.loads(result("x" * (client.MAX_RESULT_CHARS + 10)))
+def test_a_long_answer_is_passed_on_whole_because_the_server_caps_it() -> None:
+    """One cap, the server's (``MAX_RESULT_CHARS`` in ``discovery.ts``): a second cut here would end mid-JSON."""
+    long = "x" * 60_000
+    message = json.loads(result(long))
 
-    assert "Truncated" in client._result_text(message)
+    assert client._result_text(message) == long
+    assert not hasattr(client, "MAX_RESULT_CHARS")
 
 
 def test_the_group_exposes_exactly_the_four_named_functions() -> None:
     assert set(workspace.DESCRIPTIONS) == set(workspace.SERVER_TOOLS)
+
+
+def test_the_descriptions_are_the_servers_words_read_from_the_fixture() -> None:
+    """The server writes the meta-tools once (``metaToolsFor``); this group keeps no copy, only its own tool names."""
+    tools = json.loads(workspace.META_TOOLS_PATH.read_text(encoding="utf-8"))["tools"]
+
+    assert set(tools) == set(workspace.SERVER_TOOLS.values())
+    for step, server_name in workspace.SERVER_TOOLS.items():
+        expected = tools[server_name]["description"]
+        for other_step, other_name in workspace.SERVER_TOOLS.items():
+            expected = expected.replace(other_name, f"workspace__{other_step}")
+        assert workspace.DESCRIPTIONS[step] == expected
+        # The model knows these tools by this group's names only.
+        assert not any(name in workspace.DESCRIPTIONS[step] for name in workspace.SERVER_TOOLS.values())
+
+
+def test_the_in_product_search_never_offers_the_platform_domain() -> None:
+    tools = json.loads(workspace.META_TOOLS_PATH.read_text(encoding="utf-8"))["tools"]
+
+    assert "platform" not in tools["search-operations"]["inputSchema"]["properties"]["domain"]["enum"]

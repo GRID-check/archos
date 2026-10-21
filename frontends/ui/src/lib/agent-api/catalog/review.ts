@@ -227,6 +227,13 @@ export const reviewOperations: readonly AgentOperation[] = [
     path: '/api/documents/[id]/annotations',
     params: documentParams,
     body: createAnnotationRequestSchema,
+    examples: [
+      {
+        params: { id: '5b1e7c2a-9d4f-4c3b-8a6e-2f1d0c9b8a7e' },
+        // A region in page shares (origin top left); a point has x and y only.
+        body: { page: 2, shape: 'region', x: 0.42, y: 0.31, w: 0.18, h: 0.12, kind: 'question', body: 'Is this door 90 cm clear?' },
+      },
+    ],
     load: () => import('@/app/api/documents/[id]/annotations/route'),
   },
   {

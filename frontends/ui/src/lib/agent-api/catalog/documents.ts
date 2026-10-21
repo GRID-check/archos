@@ -35,6 +35,13 @@ const projectUploadBody = uploadBodySchemaWith({
   revisionOf: revisionOfField,
   ...documentUploadFields,
 })
+/** A small text file into a project's root: the multipart body as an agent sends it over MCP. */
+const projectUploadExample = {
+  body: {
+    files: [{ name: 'site-notes.txt', mimeType: 'text/plain', contentBase64: 'U2l0ZSB2aXNpdCAyMSBPY3RvYmVy' }],
+    fields: { projectId: '0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11' },
+  },
+}
 const officeShelfUploadBody = uploadBodySchemaWith({
   folderId: z.string().optional().describe('The office shelf folder id, from office-shelf-folder-list; omit for the root.'),
   revisionOf: revisionOfField,
@@ -337,6 +344,7 @@ export const documentsOperations: readonly AgentOperation[] = [
     path: '/api/documents/upload',
     body: projectUploadBody,
     bodyEncoding: 'multipart',
+    examples: [projectUploadExample],
     load: () => import('@/app/api/documents/upload/route'),
   },
   {

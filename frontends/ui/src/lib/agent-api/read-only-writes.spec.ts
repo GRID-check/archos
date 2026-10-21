@@ -17,7 +17,7 @@
  */
 import { describe, expect, it } from 'vitest'
 import { AGENT_OPERATIONS } from './catalog'
-import { isReadOnly } from './policy'
+import { annotationsOf } from './operation'
 
 const READ_ONLY_WRITE_METHODS: Readonly<Record<string, string>> = {
   'bim-model-query': 'queryAccessibleModel answers a query over the stored model; the POST carries the query.',
@@ -38,7 +38,7 @@ const READ_ONLY_WRITE_METHODS: Readonly<Record<string, string>> = {
   'skill-review': 'reviewSkill asks the model to review a draft in the body; the skill is not saved.',
 }
 
-const claims = AGENT_OPERATIONS.filter((op) => op.method !== 'GET' && isReadOnly(op))
+const claims = AGENT_OPERATIONS.filter((op) => op.method !== 'GET' && annotationsOf(op).readOnlyHint)
 
 describe('a non-GET operation that claims to change nothing', () => {
   it('is listed with the reason its service writes nothing', () => {
@@ -62,7 +62,7 @@ describe('a non-GET operation that claims to change nothing', () => {
   })
 
   it('is never sensitive: a sensitive operation hands out or widens something, which is a write', () => {
-    expect(AGENT_OPERATIONS.filter((op) => op.sensitivity && op.method !== 'GET' && isReadOnly(op)).map((op) => op.name)).toEqual([])
+    expect(AGENT_OPERATIONS.filter((op) => op.sensitivity && op.method !== 'GET' && annotationsOf(op).readOnlyHint).map((op) => op.name)).toEqual([])
   })
 })
 
@@ -78,7 +78,7 @@ const SENSITIVE_READS: Readonly<Record<string, string>> = {
 
 describe('a sensitive read', () => {
   it('is listed with the reason it returns no secret', () => {
-    const reads = AGENT_OPERATIONS.filter((op) => op.sensitivity && isReadOnly(op)).map((op) => op.name)
+    const reads = AGENT_OPERATIONS.filter((op) => op.sensitivity && annotationsOf(op).readOnlyHint).map((op) => op.name)
     expect(reads.sort()).toEqual(Object.keys(SENSITIVE_READS).sort())
   })
 })
@@ -88,13 +88,13 @@ describe('the operations the audit corrected', () => {
 
   it('project-experience-extract writes the profile and project memory, so Piloti proposes it', () => {
     expect(find('project-experience-extract')).toBeDefined()
-    expect(isReadOnly(find('project-experience-extract')!)).toBe(false)
+    expect(annotationsOf(find('project-experience-extract')!).readOnlyHint).toBe(false)
   })
 
   it('the audit-portal links mint a credential: secret, not a read', () => {
     for (const name of ['platform-audit-portal-link', 'organization-audit-portal-link-create']) {
       expect(find(name), name).toMatchObject({ sensitivity: 'secret' })
-      expect(isReadOnly(find(name)!), name).toBe(false)
+      expect(annotationsOf(find(name)!).readOnlyHint, name).toBe(false)
     }
   })
 })

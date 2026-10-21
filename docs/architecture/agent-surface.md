@@ -138,7 +138,44 @@ a client that lists 300 tools pays for them in every conversation.
 | `tools` | One MCP tool per operation, each with its annotations | A client or model that copes with a long list |
 
 `report-missing-operation` is how an agent says "I wanted to do X and found
-nothing". It emits `agent_operation_missing`.
+nothing". It emits `agent_operation_missing`, which carries the length of the
+description and never its words; the tool's own description says so.
+
+The meta-tools are written once, `metaToolsFor` in `discovery.ts`, per caller:
+in-product Piloti is never offered the `platform` domain, and its `call-operation`
+says a write comes back as a proposal. Piloti's client reads its variant from
+`src/aiq_agent/tools/workspace/meta_tools.json`, which `meta-tools.spec.ts`
+writes (`UPDATE_FIXTURES=1`) and holds current; Python keeps no copy and renames
+only the tool names to its own (`workspace__call`).
+
+`search-operations` matches plain words, never a pattern (a regular expression
+built from an agent's text would let one catastrophic pattern hold the event loop
+for every tenant). Words of one letter are dropped, a query is at most 200
+characters, and text with no usable word matches nothing.
+
+What a client pays up front, measured with `tools/list` in October 2026 (about
+four characters a token):
+
+| Mode | Piloti | External agent |
+|---|---|---|
+| `search` | 4 tools, 3.5k characters | 4 tools, 3.5k characters |
+| `tools` | 241 tools, 203k characters (was 267k for 250) | 301 tools, 277k characters (was 354k for 310) |
+
+`tools` mode lists only what says something: `ifMatch` only where the route reads
+it, no `additionalProperties: true` (JSON Schema's default), each annotation hint
+only where it differs from the specification's default or applies (a read states
+`readOnlyHint` and `openWorldHint`, a write `destructiveHint`, `openWorldHint` and
+an `idempotentHint` that is true), and the title once. `describe-operation` and
+the OpenAPI document state all four hints. `mcp-server.spec.ts` holds the average
+under 1,000 characters a tool. Claude clients defer MCP tools by default; the
+entry points carry `_meta["anthropic/alwaysLoad"]` so they stay loaded: the four
+meta-tools, and `project-list`, `knowledge-search` and `files-list` in `tools`
+mode.
+
+Both protocol eras answer one JSON body to a client that accepts JSON
+(`createAgentDoorHandler`, `mcp-server.ts`): the SDK's 2025-era fallback streams
+whatever the handler's `responseMode`, and refuses (406) a client that does not
+name both `application/json` and `text/event-stream`.
 
 The mode was called `discovery` until October 2026, and the server still
 accepts that name (header `x-piloti-mcp-mode` or `?mode=`). MCP's own
@@ -226,7 +263,11 @@ Do this in the same change that adds or changes the route. The exemplar is
 4. **Describe each path segment** in `params`: one key per `[segment]`, each with
    `.describe()` saying where the id comes from (`'The project id, from project-list.'`).
 5. **State the annotations** the defaults do not get right (below).
-6. **Run the gate**: `cd frontends/ui && bunx vitest run src/lib/agent-api/`. If
+6. **Give an example** when the input is hard to get right from the schema
+   alone (a patch, a placement, an upload): `examples`, one to three realistic
+   inputs. They reach the agent as the input schema's JSON Schema `examples`, and
+   `operation-examples.spec.ts` parses each against the operation's schemas.
+7. **Run the gate**: `cd frontends/ui && bunx vitest run src/lib/agent-api/`. If
    your route was in the baseline, the "baseline only shrinks" test lists it;
    rewrite the file with `UPDATE_FIXTURES=1` and commit the diff.
 
@@ -267,10 +308,20 @@ describable. Otherwise give the operation a looser `body` written for the agent
 (`z.object({...}).passthrough()` with the describable fields) and a comment that
 the route's schema is the gate. The route's schema is always the gate.
 
-Beside `params`, `query` and `body`, every write's input (and `call-operation`'s)
-takes `ifMatch`, sent to the route as `If-Match`: the version the agent read, for
-the routes that refuse a write over a newer one (the project profile). A proposal
-keeps it, so accepting later still refuses to overwrite a newer version.
+One convention for the version a write was made against. A route that reads the
+`If-Match` header (the project profile's PUT) flags its operation `ifMatchHeader`,
+and only that operation's input takes a top-level `ifMatch`, sent as the header. A
+route that takes the version in its body (a document version's content, approve,
+reject and request-changes) declares `ifMatch` in its body schema, and the agent
+sends it there. A top-level `ifMatch` on any other operation is refused, never
+dropped: a version check nobody makes is a lost update. A proposal keeps it, so
+accepting later still refuses to overwrite a newer version.
+
+The dispatcher validates the agent's input against the operation's schemas and
+forwards the input **as the agent sent it**, never zod's parsed output: the route
+parses with its own schema and is the gate, and a transform (`organization-download-log-list`
+turns its days into `Date`s) would hand the route something it refuses. A
+proposal stores the same original input.
 
 ### Annotations
 
@@ -300,7 +351,12 @@ answer JSON holding such a URL, so they are plain reads, and never run for Pilot
 conversation (`LINK_BEARING_OPERATIONS`).
 
 A JSON or text answer is streamed with a cap too, `MAX_TEXT_BYTES` (5 MiB): past it nothing more
-is read and the agent is told to narrow the call. The tool result shows 40k characters anyway.
+is read and the agent is told to narrow the call. The backend operations' answers are read by the
+same reader (`readResponseBody`), and their refusals are normalised once, in
+`callBackendOperation`, to the routes' error envelope (`{ error, code, details }`), so the agent
+reads a refusal from either the same way. The tool result shows `MAX_RESULT_CHARS` (40k
+characters) of compact JSON: the one cap, which Piloti's client does not cut again. Input that does
+not fit an operation comes back with the reason and, when it is short, the input schema itself.
 
 **In.** An operation says `bodyEncoding`:
 
@@ -389,7 +445,13 @@ after you cover a route, and the diff is the review.
 
 ## Telemetry
 
-Two PostHog events, sent through the collector (ADR-0119):
+Each MCP tool call is one Langfuse trace, `agent-tool-call`, holding one `TOOL`
+observation `mcp.<operation>` with the operation, domain, door, mode, decision,
+status and duration as metadata (`lib/langfuse/tool-call-trace.ts`,
+[`../observability/langfuse.md`](../observability/langfuse.md)). Never the input
+or the answer.
+
+And two PostHog events, sent through the collector (ADR-0119):
 
 | Event | When | Use |
 |---|---|---|
@@ -440,6 +502,12 @@ Cursor opens the sign-in on first use.
 
 A client that does not support OAuth cannot connect yet. Scripts get WorkOS API
 Keys later.
+
+`GET /api/openapi` describes the same operations as an OpenAPI 3.1 document
+(`openapi.ts`), for anyone who reads HTTP contracts in the standard form. Its
+paths accept the app's signed-in session cookie (`securitySchemes.sessionCookie`),
+not a bearer token: an agent calls the operations at `/api/mcp`. The operator
+console's operations (`platform`) are in it for platform staff only.
 
 The person-facing version of this section, with the copyable address, lives in
 the profile (`features/agent-connect/`) and in the user guide
