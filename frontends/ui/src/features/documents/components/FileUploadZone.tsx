@@ -225,56 +225,57 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
         </p>
       </motion.div>
 
-      {uploadValue.length > 0 && (
-        <ul className="flex flex-col gap-2">
-          <AnimatePresence initial={false}>
-          {uploadValue.map((item) => (
-            <motion.li
-              key={item.id}
-              role="listitem"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97 }}
-              transition={row}
-              className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2 shadow-xs"
-            >
-              <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm text-foreground">{item.file.name}</p>
-                {/* A held file's stored text is the verdict as JSON: it reads
-                    as its reasons, never as a red error line. */}
-                {item.phase === 'held' ? (
-                  <HeldUploadReason
-                    verdict={item.verdict}
-                    replacesHeld={item.replacesHeld}
-                    message={item.errorMessage}
-                    testId="upload-zone-held"
-                  />
-                ) : item.phase === 'failed' && item.errorMessage && item.failedReading ? (
-                  // The knowledge layer's stored text (`pdf_pages_unreadable: …`),
-                  // said in the reader's language as the upload tray says it.
-                  <IngestFailureNotice errorMessage={item.errorMessage} sentenceClassName="text-destructive" />
-                ) : item.phase === 'failed' && item.errorMessage ? (
-                  // An upload's own failure: a dictionary sentence (`lib/upload-failure.ts`).
-                  <p className="text-xs text-destructive">{item.errorMessage}</p>
-                ) : null}
-              </div>
-              {IN_FLIGHT.has(item.phase) ? (
-                <Spinner size="sm" className="shrink-0 text-muted-foreground" />
-              ) : (
-                // The tray's glyph and ink for the same phase; the word is for
-                // assistive tech, the row has no room for it.
-                <IngestionStatusWord mark={ingestionMarkOfPhase(item.phase)} className="shrink-0">
-                  <span className="sr-only" data-testid="upload-zone-state">
-                    {t(`uploads.row.${item.phase}`)}
-                  </span>
-                </IngestionStatusWord>
-              )}
-            </motion.li>
-          ))}
-          </AnimatePresence>
-        </ul>
-      )}
+      {/* Always mounted, hidden only once empty (`empty:hidden`): gated on the
+          length, the list unmounted with its last row and that row's exit
+          never played. */}
+      <ul className="flex flex-col gap-2 empty:hidden">
+        <AnimatePresence initial={false}>
+        {uploadValue.map((item) => (
+          <motion.li
+            key={item.id}
+            role="listitem"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.97 }}
+            transition={row}
+            className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2 shadow-xs"
+          >
+            <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm text-foreground">{item.file.name}</p>
+              {/* A held file's stored text is the verdict as JSON: it reads
+                  as its reasons, never as a red error line. */}
+              {item.phase === 'held' ? (
+                <HeldUploadReason
+                  verdict={item.verdict}
+                  replacesHeld={item.replacesHeld}
+                  message={item.errorMessage}
+                  testId="upload-zone-held"
+                />
+              ) : item.phase === 'failed' && item.errorMessage && item.failedReading ? (
+                // The knowledge layer's stored text (`pdf_pages_unreadable: …`),
+                // said in the reader's language as the upload tray says it.
+                <IngestFailureNotice errorMessage={item.errorMessage} sentenceClassName="text-destructive" />
+              ) : item.phase === 'failed' && item.errorMessage ? (
+                // An upload's own failure: a dictionary sentence (`lib/upload-failure.ts`).
+                <p className="text-xs text-destructive">{item.errorMessage}</p>
+              ) : null}
+            </div>
+            {IN_FLIGHT.has(item.phase) ? (
+              <Spinner size="sm" className="shrink-0 text-muted-foreground" />
+            ) : (
+              // The tray's glyph and ink for the same phase; the word is for
+              // assistive tech, the row has no room for it.
+              <IngestionStatusWord mark={ingestionMarkOfPhase(item.phase)} className="shrink-0">
+                <span className="sr-only" data-testid="upload-zone-state">
+                  {t(`uploads.row.${item.phase}`)}
+                </span>
+              </IngestionStatusWord>
+            )}
+          </motion.li>
+        ))}
+        </AnimatePresence>
+      </ul>
     </div>
   )
 }
