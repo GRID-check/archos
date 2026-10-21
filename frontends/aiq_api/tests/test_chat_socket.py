@@ -2596,7 +2596,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
         ):
-            verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
