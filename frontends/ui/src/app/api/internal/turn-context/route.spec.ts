@@ -15,7 +15,16 @@ vi.mock('@/lib/projects/proposal-decisions', async (original) => ({
   buildProposalDecisionsBlock: vi.fn(),
 }))
 vi.mock('@/lib/documents/review-decisions', () => ({ buildReviewDecisionsBlock: vi.fn() }))
-vi.mock('@/lib/conversations/cross-project-use', () => ({ drewOnOtherProjects: vi.fn(async () => false) }))
+vi.mock('@/lib/conversations/cross-project-use', () => ({
+  drewOnOtherProjects: vi.fn(async () => false),
+  isSoloAudience: vi.fn(() => true),
+}))
+vi.mock('@/lib/conversations/restricted-use-repository', () => ({ readConversationAudience: vi.fn(async () => ({})) }))
+vi.mock('@/lib/db', () => ({ getDb: vi.fn(() => ({})) }))
+vi.mock('@/lib/inbox/repository', () => ({ EVERY_INBOX_TYPE: 'every-type', countPendingInboxItems: vi.fn(async () => 3) }))
+vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
+vi.mock('@/lib/tasks/repository', () => ({ listRunsInProject: vi.fn(async () => []) }))
+vi.mock('@/lib/proposals/repository', () => ({ listConversationProposals: vi.fn(async () => []) }))
 vi.mock('@/lib/cross-project/reference-brief', () => ({ loadReferenceBrief: vi.fn(async () => null) }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
   ...(await original<typeof import('@/lib/db/tenant-context')>()),
@@ -34,7 +43,12 @@ import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { buildProposalDecisionsBlock } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
-import { drewOnOtherProjects } from '@/lib/conversations/cross-project-use'
+import { drewOnOtherProjects, isSoloAudience } from '@/lib/conversations/cross-project-use'
+import { countPendingInboxItems } from '@/lib/inbox/repository'
+import { findProjectInOrg } from '@/lib/projects/repository'
+import { listConversationProposals } from '@/lib/proposals/repository'
+import { listRunsInProject } from '@/lib/tasks/repository'
+import type { ProposedChangeRow } from '@/lib/proposals/repository'
 import { loadReferenceBrief } from '@/lib/cross-project/reference-brief'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import {
@@ -83,7 +97,24 @@ beforeEach(() => {
   vi.mocked(buildProjectMemoryDigest).mockResolvedValue('Digest')
   vi.mocked(buildProposalDecisionsBlock).mockResolvedValue('Proposal decisions')
   vi.mocked(buildReviewDecisionsBlock).mockResolvedValue('Review decisions')
+  vi.mocked(isSoloAudience).mockReturnValue(true)
+  vi.mocked(countPendingInboxItems).mockResolvedValue(3)
+  vi.mocked(listRunsInProject).mockResolvedValue([])
+  vi.mocked(listConversationProposals).mockResolvedValue([])
+  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
+  vi.mocked(findProjectInOrg).mockResolvedValue(null)
 })
+
+function proposalRow(overrides: Partial<ProposedChangeRow>): ProposedChangeRow {
+  return {
+    id: 'prop-1', organizationId: 'org_1', projectId: 'proj_1', scope: 'project', kind: 'operation',
+    payload: { operation: 'project-folder-create', input: {}, summary: 'Create a folder (name: Fotos)' },
+    status: 'proposed', proposedByKind: 'agent', onBehalfOf: 'user_1', originConversationId: 's_text-conversation',
+    originMessageId: null, originCardIndex: null, createdAt: new Date(), decidedBy: null, decidedAt: null,
+    results: null, applyingBy: null, applyingSince: null, originTraceId: null,
+    ...overrides,
+  } as ProposedChangeRow
+}
 
 describe('POST /api/internal/turn-context', () => {
   it('says when the conversation drew on another project (ADR-0094), so the turn starts with its doors shut', async () => {
@@ -116,6 +147,7 @@ describe('POST /api/internal/turn-context', () => {
       orgInstructions: 'Standing instructions',
       drewOnOtherProjects: false,
       referenceProjects: null,
+      workspace: expect.stringContaining('WORKSPACE v1'),
     })
     expect(Buffer.byteLength(data.projectContext)).toBeGreaterThan(6200)
     expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({
@@ -129,6 +161,30 @@ describe('POST /api/internal/turn-context', () => {
     expect(buildProjectMemoryDigest).toHaveBeenCalledWith('proj_1', 'org_1', { query: 'fire safety' })
     expect(buildReviewDecisionsBlock).toHaveBeenCalledWith('s_text-conversation', 'org_1')
     expect(resolveOrgInstructions).toHaveBeenCalledWith('org_1')
+  })
+
+  it('hands the turn the WORKSPACE block: roles, audience, what waits, and every proposal of this conversation', async () => {
+    vi.mocked(listConversationProposals).mockResolvedValueOnce([
+      proposalRow({ id: 'prop-2', status: 'failed', results: [{ label: 'x', ok: false, reason: 'folder exists' }] }),
+      proposalRow({ id: 'prop-1' }),
+    ])
+    const { data } = await (await call()).json()
+    expect(data.workspace).toContain('organization role member · project role project-editor')
+    expect(data.workspace).toContain('conversation: s_text-conversation · solo')
+    expect(data.workspace).toContain('inbox: 3 item(s) wait for the asker')
+    expect(data.workspace).toContain('- prop-2 · failed · operation: Create a folder (name: Fotos) · failed: folder exists')
+    expect(data.workspace).toContain('- prop-1 · waiting for the person · operation: Create a folder (name: Fotos)')
+    expect(listConversationProposals).toHaveBeenCalledWith('org_1', 's_text-conversation', 9)
+  })
+
+  it('says a shared conversation is shared, and answers without the parts it could not read', async () => {
+    vi.mocked(isSoloAudience).mockReturnValueOnce(false)
+    vi.mocked(countPendingInboxItems).mockRejectedValueOnce(new Error('db down'))
+    const response = await call()
+    expect(response.status).toBe(200)
+    const { data } = await response.json()
+    expect(data.workspace).toContain('shared (others read it, so no workspace read runs here')
+    expect(data.workspace).not.toContain('inbox:')
   })
 
   it.each(['organizationId', 'userId', 'projectId', 'conversationId'])('refuses a body %s override', async (field) => {

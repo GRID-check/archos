@@ -310,6 +310,37 @@ export async function listShelfProposals(
   )
 }
 
+/** Most proposals one conversation's list returns: the WORKSPACE block names the newest few. */
+export const MAX_CONVERSATION_PROPOSALS = 20
+
+/**
+ * The proposals made in one conversation, every status, newest first, bounded
+ * by `limit` (at most {@link MAX_CONVERSATION_PROPOSALS}). Read for the turn
+ * context of that same conversation, whose readers saw every one of them as a
+ * card, so no audience is narrowed here (ADR-0122).
+ */
+export async function listConversationProposals(
+  organizationId: string,
+  conversationId: string,
+  limit: number
+): Promise<ProposedChangeRow[]> {
+  const bounded = Math.min(Math.max(1, Math.trunc(limit)), MAX_CONVERSATION_PROPOSALS)
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select()
+      .from(proposedChanges)
+      .where(
+        and(
+          eq(proposedChanges.organizationId, organizationId),
+          eq(proposedChanges.originConversationId, conversationId)
+        )
+      )
+      .orderBy(desc(proposedChanges.createdAt), desc(proposedChanges.id))
+      .limit(bounded)
+  )
+}
+
 /**
  * Take back a proposal nobody has decided: delete it while it is still
  * `proposed` and nobody is applying it. Piloti withdraws its own filing

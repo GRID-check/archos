@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import uuid
 from pathlib import Path
 from typing import Any
@@ -171,6 +172,9 @@ class FixtureWorkspace:
         #: What the production renderers made of the office (``workspace-block.fixture.spec.ts``).
         self.rendered: dict[str, Any] = json.loads(rendered.read_text(encoding="utf-8")) if rendered.exists() else {}
         self.vocabulary = Vocabulary()
+        #: The proposals each conversation filed, oldest first: what its next turn's WORKSPACE block lists.
+        self._filed: dict[str, list[tuple[str, str]]] = {}
+        self._lock = threading.Lock()
 
     def rank(self, query: str, domain: str | None = None) -> list[dict[str, Any]]:
         if self.ranking == "production":
@@ -258,6 +262,10 @@ class FixtureWorkspace:
         # The same call in the same conversation files one proposal, as the server does.
         seed = json.dumps([conversation, op["name"], call_input], sort_keys=True, ensure_ascii=False)
         proposal_id = str(uuid.uuid5(uuid.NAMESPACE_URL, seed))
+        with self._lock:
+            filed = self._filed.setdefault(conversation or "", [])
+            if all(existing != proposal_id for existing, _ in filed):
+                filed.append((proposal_id, summary))
         return {
             "content": [{"type": "text", "text": PROPOSED_TEXT}],
             "structuredContent": {
@@ -302,6 +310,8 @@ class FixtureWorkspace:
     def turn_context(self, conversation: str | None, with_workspace: bool = True) -> dict[str, Any]:
         """The turn context of a chat in the office's current project: the WORKSPACE block, nothing else."""
         block = self.rendered.get("workspace") if with_workspace else None
+        if block:
+            block = self._with_proposals(block, conversation)
         return {
             "data": {
                 "projectContext": None,
@@ -312,6 +322,18 @@ class FixtureWorkspace:
                 **({"workspace": block.replace("{conversation}", conversation or "none")} if block else {}),
             }
         }
+
+    def _with_proposals(self, block: str, conversation: str | None) -> str:
+        """The block with the proposals this conversation filed, newest first, in the renderer's own lines."""
+        with self._lock:
+            filed = list(self._filed.get(conversation or "", []))
+        if not filed:
+            return block
+        template = self.rendered["proposalLine"]
+        lines = [template.replace("{id}", pid).replace("{summary}", summary) for pid, summary in reversed(filed[-8:])]
+        return block.replace(
+            "proposals made in this conversation: none", "\n".join([self.rendered["proposalsHeader"], *lines])
+        )
 
 
 def _is_project_id(key: str, office: dict[str, Any]) -> bool:

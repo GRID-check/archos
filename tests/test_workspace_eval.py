@@ -213,3 +213,17 @@ def test_the_fixture_bff_drops_the_mcp_door_without_the_token(tmp_path: Path) ->
             urllib.request.urlopen(request, timeout=5)
     finally:
         bff.stop()
+
+
+def test_a_follow_up_turn_sees_the_proposal_the_conversation_filed() -> None:
+    door = FixtureWorkspace()
+    before = door.turn_context("conv-f")["data"].get("workspace") or ""
+    assert "proposals made in this conversation: none" in before
+    door.call(
+        {"name": "project-folder-create", "input": {"params": {"id": OFFICE["current"]}, "body": {"name": "Fotos"}}},
+        "conv-f",
+    )
+    after = door.turn_context("conv-f")["data"]["workspace"]
+    assert "waiting for the person · operation: Create" in after
+    assert "Fotos" in after
+    assert "proposals made in this conversation: none" in door.turn_context("conv-other")["data"]["workspace"]
