@@ -183,6 +183,7 @@ Consequences, where a reader looks for them.
 | [0119](0119-every-metric-goes-to-posthog-through-the-collector.md) | Every metric goes to PostHog, through the collector, from an agent on every node | Accepted |
 | [0120](0120-addresses-are-geocoded-by-a-self-hosted-photon.md) | Addresses are geocoded by a Photon in the cluster, over the Austrian OSM extract | Proposed |
 | [0121](0121-everything-a-person-can-do-an-agent-can-do.md) | Everything a person can do, an agent can do: one MCP server, every agent a client | Accepted |
+| [0122](0122-every-sentence-shows-where-it-comes-from.md) | Every sentence shows where it comes from: per-sentence provenance, confidence held to the weakest claim | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

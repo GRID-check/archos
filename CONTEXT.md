@@ -216,14 +216,27 @@ _Code_: `derivation`.
 The row of source chips under an answer, one per document that backs its claims.
 
 **Citation**:
-A pointer from a claim to a document and a place in it. A quote that does not
-match the source word for word is marked *nicht wörtlich in der Quelle belegt*
-(not verbatim in the source) and lowers the answer's confidence.
+A pointer from a claim to a document and a place in it. It must resolve to a
+passage the turn read, and a § or Punkt written beside it must stand in that
+passage. A pointer that does not hold is not removed silently: it is replaced
+by *Beleg nicht verifiziert* (citation not verified) where it stood. A quote
+that does not match the source word for word, or changes what it negates
+(*nicht*, *kein*, *nur*, *außer*), is marked *nicht wörtlich in der Quelle
+belegt* (not verbatim in the source) and lowers the answer's confidence.
+
+**Provenance class** (Belegart):
+Where one sentence of an answer comes from: *quoted* or *cited* (a passage),
+*record* (an object in the workspace, read this turn), *action* (a proposal this
+turn filed), *measured* (the building model), *reasoning* (an Einschätzung drawn
+from a cited sentence), *model knowledge* (nothing in the answer behind it), or
+*cited, not verified*. Every sentence shows where it comes from.
+_Code_: `claim_provenance`, `claim_stamps`.
 
 **Confidence** (Sicherheit):
-How far an answer can be relied on: high, medium or low. A legal answer without
-verified citations cannot be high, and a model measurement alone caps it at
-medium.
+How far an answer can be relied on: high, medium or low. It is held to the
+weakest sentence the answer rests on (every statement about the law, a value
+or a deadline). A statement about the law needs a cited passage; a record or a
+measurement backs a fact about the office or the building, never the law.
 
 **Answer kind**:
 The shape of an answer: *direct*, *walkthrough*, *ruling* or *handoff*. Only a
