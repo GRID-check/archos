@@ -85,7 +85,8 @@ def load_questions(path: Path = QUESTIONS, spec: dict[str, Any] | None = None) -
             raise ValueError(f"{row['id']}: box must be one of {', '.join(BOXES)}")
         if row.get("box") == "given":
             raise ValueError(
-                f"{row['id']}: box: given needs a drawn region on the turn, which this set cannot send yet"
+                f"{row['id']}: box: given sends a drawn region on the turn, "
+                "which only the north-star set does (`turn_input.py`)"
             )
         rows.append({**row, "set": "visual", "gold": resolve_gold(row, elements)})
     return rows

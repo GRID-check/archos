@@ -21,7 +21,7 @@ match what ships today: lower it only when the star itself was wrong.
   [`tests/fixtures/north_star/north_star_questions.yaml`](../../tests/fixtures/north_star/north_star_questions.yaml),
   asked against the existing office-file and visual fixture projects:
   `task be:eval:answer-suite -- --set north-star`. A row that needs something
-  the harness cannot send yet (a box drawn on the canvas, a filed proposal) is
+  the harness lacks (an upload, a second project) is
   reported as not applicable on this commit, and a horizon row is listed but
   never run. `tests/test_north_star_rows.py` keeps this document and the rows
   in step.
@@ -76,11 +76,12 @@ Gründerzeithaus Hubergasse 14 in 1160 Wien:
   no indexed text. EG Index B has five doors and Index A four; the Wohnen
   dimension is 5,24 in Index B and 5,04 in Index A.
 
-The two slices disagree on details they were never meant to share: the
-drawings' Plankopf dates Index B 14.03.2026 and Index A 09.01.2026 and draws
-the Schnitt at 1:50 by „Architekturbüro Huber“, while the text slice dates
-them 03.02.2026 and 14.11.2025, at 1:100, by Atelier Lindner. Each exemplar is
-true to its own fixture. Unify the two before a single row asks across both.
+The two slices share their facts, and `tests/test_fixture_consistency.py`
+keeps them shared: Index B is dated 03.02.2026, Index A 14.11.2025, and the
+Planverfasser is Atelier Lindner Architektur ZT GmbH. EP-01 is drawn at 1:100
+and EP-02, the Schnitt, at 1:50, in the Plankopf of the drawings and in the
+Plankopf text of the files slice alike. The Schnitt's scale differing from the
+Grundrisse's is planted: a row that reads the Schnitt must not answer 1:100.
 
 ## The exemplars
 
@@ -569,7 +570,7 @@ Clicking an item opens the region on the canvas.
 **Answer.**
 
 ```md
-Maßstab **1:50**, Datum **14.03.2026**, Index B, so im Plankopf rechts unten auf EP-02 [1].
+Maßstab **1:50**, Datum **03.02.2026**, Index B, so im Plankopf rechts unten auf EP-02 [1].
 
 [[card:1]]
 
@@ -586,7 +587,7 @@ Maßstab **1:50**, Datum **14.03.2026**, Index B, so im Plankopf rechts unten au
 - Add the Planverfasser and every other Plankopf field unasked.
 
 **Checks.** Row `ns-plankopf`: a look, gold boxes `title-scale` and
-`title-date` covered, „1:50“ and „14.03.2026“. Report: one look is the ideal.
+`title-date` covered, „1:50“ and „03.02.2026“. Report: one look is the ideal.
 
 ---
 
@@ -660,7 +661,7 @@ on the matched regions; card parity once V3's look card exists.
 
 ### ns-drawn-box
 
-**Scene** 3 and 4 · **Capability** a box the person drew, put in context · **Fixture** visual · **Row** `ns-drawn-box` (`box: given`, not runnable yet)
+**Scene** 3 and 4 · **Capability** a box the person drew, put in context · **Fixture** visual · **Row** `ns-drawn-box` (`box: given`)
 
 **Setting.** EP-01_Grundrisse_Index-B.pdf open on the canvas at page 1. The
 person has drawn a Fokusbereich at `[0.30, 0.60, 0.10, 0.16]` around the wall
@@ -710,10 +711,11 @@ Index B and the same box on Index A. Both open at that region.
 - Answer the second half from memory of Index A's caption.
 - Set a mark or propose one unasked.
 
-**Checks.** Row `ns-drawn-box`: needs `given_box` and `canvas`, a canvas turn
-that carries the drawn box, which the harness cannot send yet (`visual_eval`
-refuses `box: given`), so it is reported not applicable. When it can: the first look's region equals the drawn box, the
-gold box `door-5` covered, „Tür“ and „dazugekommen“ or „neu“.
+**Checks.** Row `ns-drawn-box`: needs `given_box` and `canvas`. The suite
+sends the box on the turn the way the chat socket does (`turn_input.py`: a
+`user_message` with `focus_region` and `focus_file_name`, so the prompt carries
+the „Fokusbereich“ section): a look, the
+gold box `door-5` covered (it lies inside the drawn box), „Tür“ and „dazugekommen“ or „neu“.
 
 ---
 
@@ -769,8 +771,8 @@ glowing region are already in view. The citation `[1]` peeks the same crop.
 - Answer in the chat with „siehe Plan“ and no region.
 
 **Checks.** Row `ns-parity`: the chat half runs today: a look, gold box
-`dim-galerie` covered, „9,02“. The canvas half needs a canvas turn the
-harness cannot send (`canvas`), and the card half needs V3's look card; the
+`dim-galerie` covered, „9,02“. The canvas half needs a canvas turn without
+a drawn box, which a row cannot ask for yet, and the card half needs V3's look card; the
 report shows card parity as n/a until both exist. The surface parity registry
 of ADR-0128 is the CI side of this exemplar.
 
@@ -973,9 +975,9 @@ Behörde.“) and proposes nothing again.
 - Propose again a proposal still waiting.
 
 **Checks.** Row `ns-propose-move`: `propose_file_change` with
-`operation: move`, judge `pending`, „Behörde“. It needs the fixture BFF to
-file proposals (`/api/internal/proposals`), which it does not yet, so it is
-reported not applicable. Langfuse: `work-report-matches` true,
+`operation: move`, a proposal filed at the fixture BFF
+(`/api/internal/proposals`) for Schreiben_MA37_Baubeginn.pdf into Behörde and
+no direct write route called, judge `pending`, „Behörde“. Langfuse: `work-report-matches` true,
 `work-proposals-unfiled` 0, then `piloti-decision` = accepted.
 
 ---

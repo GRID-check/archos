@@ -83,6 +83,7 @@ QUESTIONS = ROOT / "tests" / "fixtures" / "derivation" / "loop_eval_questions.ya
 PRECEDENT_QUESTIONS = ROOT / "tests" / "fixtures" / "precedent" / "precedent_questions.yaml"
 sys.path.insert(0, str(HERE))
 
+import turn_input  # noqa: E402
 from census import ensure_key  # noqa: E402  (a sibling script, not a package)
 from census import kind as call_kind  # noqa: E402
 from census import records  # noqa: E402
@@ -92,6 +93,11 @@ from census import run_stamp  # noqa: E402
 from census import source_packages  # noqa: E402
 from census import timed_out  # noqa: E402
 from census import tree_pythonpath  # noqa: E402
+from files_eval import recorded_calls  # noqa: E402
+from fixture_bff import lookups_served  # noqa: E402
+from fixture_bff import proposals_filed  # noqa: E402
+from fixture_bff import writes_attempted  # noqa: E402
+from workspace_eval import run_conversation  # noqa: E402
 
 _ANSI = re.compile(r"\x1b\[[0-9;]*m")
 #: A cited corpus file's Richtlinie number: `oib-rl_2.1_…`, `oib-richtlinie_2.2_…`.
@@ -324,8 +330,6 @@ def _read_calls(run: Run, research: list[dict], answered_at: int | None, t0: flo
         for item in (entry.get("resp") or {}).get("output", []):
             if item.get("type") == "function_call":
                 run.tool_calls.append(str(item.get("name")))
-        from files_eval import recorded_calls
-
         run.tool_args.extend(recorded_calls((entry.get("resp") or {}).get("output", [])))
     if not research:
         return
@@ -368,9 +372,8 @@ def observe(
     run.envelope = {"kind": envelope.get("kind"), "cards": envelope.get("cards") or []} if envelope else None
     run.kind = str((envelope or {}).get("kind") or "")
     run.cited_families = sorted(set(_CITED_FAMILY.findall(run.answer)))
-    from fixture_bff import lookups_served
-
-    run.lookups = lookups_served(record.parent / "requests.jsonl", record.stem)
+    requests = record.parent / "requests.jsonl"
+    run.lookups = lookups_served(requests, record.stem)
     if "escalated" in run.signals:
         run.kind = run.kind or "handoff"
     run.checks = check(question, run, envelope)
@@ -386,6 +389,8 @@ def observe(
                 _judge(),
                 run.signals,
                 run.research_calls,
+                proposals_filed(requests, record.stem),
+                writes_attempted(requests, record.stem),
             )
         )
     if question.get("set") == "visual":
@@ -1020,8 +1025,6 @@ def run_suite(
         try:
             extra = env_for(conversation, question) if env_for else None
             if conversations:
-                from workspace_eval import run_conversation
-
                 record, before = run_conversation(question, index, out, conversation, overrides, extra)
                 offset = None if question.get("set") in ("files", "visual") else before
                 result = observe(
@@ -1164,6 +1167,8 @@ def start_visual_bff(out: Path, look: bool = True) -> tuple[Any, Any]:
             "GRID_EVAL_ENVELOPE": header,
             "GRID_EVAL_ENVELOPE_SIG": signature,
             **workspace.env(bff.url, look),
+            # A row with a drawn box sends it on the turn, as the canvas does (turn_input.py).
+            **turn_input.env_for(question),
         }
 
     return bff, env_for

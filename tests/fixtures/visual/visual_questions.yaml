@@ -115,7 +115,7 @@ questions:
     gold: {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: title-date}
     expect:
       tools: {must: [look]}
-      mentions: [["09.01.2026", "9. Januar 2026"]]
+      mentions: [["14.11.2025", "14. November 2025"]]
 
   - id: pv-title-date
     category: plankopf
@@ -124,7 +124,7 @@ questions:
     gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: title-date}
     expect:
       tools: {must: [look]}
-      mentions: [["14.03.2026", "14. März 2026"]]
+      mentions: [["03.02.2026", "3. Februar 2026"]]
 
   - id: pv-title-scale
     category: plankopf

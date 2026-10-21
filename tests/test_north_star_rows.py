@@ -25,6 +25,7 @@ import judge  # noqa: E402
 import north_star_eval  # noqa: E402
 import render_fixture_drawings as drawings  # noqa: E402
 import suite  # noqa: E402
+import turn_input  # noqa: E402
 import visual_eval  # noqa: E402
 
 ROWS = north_star_eval.load_questions()
@@ -162,11 +163,43 @@ class TestWhatRunsOnThisCommit:
         _, waiting, _ = north_star_eval.split(ROWS, set())
         assert any(w.startswith("ns-drawn-box (") and "given_box" in w for w in waiting)
 
-    def test_today_the_drawn_box_and_the_proposal_wait_and_say_why(self):
-        _, waiting, _ = north_star_eval.split(ROWS)
-        ids = {w.split(" ", 1)[0] for w in waiting}
-        assert "ns-drawn-box" in ids
-        assert ("ns-propose-move" in ids) == ("proposals" not in north_star_eval.harness_available())
+    def test_the_drawn_box_and_the_proposal_run_now(self):
+        assert north_star_eval.harness_available() == {"given_box", "canvas", "proposals"}
+        runnable, waiting, _ = north_star_eval.split(ROWS)
+        ids = {r["id"] for r in runnable}
+        assert {"ns-drawn-box", "ns-propose-move"} <= ids
+        assert not {w.split(" ", 1)[0] for w in waiting} & {"ns-drawn-box", "ns-propose-move"}
+
+    def test_a_row_needing_an_ability_the_harness_lacks_still_waits(self):
+        row = {"id": "ns-x", "fixture": "files", "needs": ["upload"]}
+        runnable, waiting, _ = north_star_eval.split([row])
+        assert runnable == [] and waiting == ["ns-x (upload)"]
+
+    def test_the_propose_row_asks_for_a_filed_proposal_and_no_direct_write(self):
+        expect = BY_ID["ns-propose-move"]["expect"]
+        label = "proposed:operation=move,document=Schreiben_MA37_Baubeginn.pdf,target_folder=Behörde"
+
+        def filed(document: str) -> list[dict]:
+            operations = [{"document": document, "target_folder": "Behörde"}]
+            return [{"kind": "file_operation", "payload": {"operation": "move", "operations": operations}}]
+
+        def checks(proposals: list[dict], writes: list[str]) -> dict[str, bool]:
+            return files_eval.files_checks(expect, [], "", "", None, [], 1, proposals, writes)
+
+        held = checks(filed("Schreiben_MA37_Baubeginn.pdf"), [])
+        assert held[label] and held["no_direct_write"]
+        assert not checks([], [])[label]
+        assert not checks(filed("Bescheid_MA37_Baubewilligung.pdf"), [])[label]
+        assert not checks(filed("Schreiben_MA37_Baubeginn.pdf"), ["/api/internal/document-versions"])["no_direct_write"]
+
+    def test_the_drawn_box_row_sends_its_box_on_the_turn(self):
+        fields = turn_input.message_fields(BY_ID["ns-drawn-box"])
+        assert fields == {
+            "focus_file_name": "EP-01_Grundrisse_Index-B.pdf",
+            "focus_shelf": "project",
+            "focus_region": {"page": 1, "x": 0.30, "y": 0.60, "w": 0.10, "h": 0.16},
+        }
+        assert {r["id"] for r in ROWS if turn_input.message_fields(r)} == {"ns-drawn-box"}
 
     def test_the_rows_run_files_first_each_behind_its_fixture(self):
         groups = north_star_eval.by_fixture(ROWS)

@@ -123,7 +123,7 @@ questions:
       - {document: EP-02_Schnitt_A-A.pdf, page: 1, element: title-date}
     expect:
       tools: {must: [look]}
-      mentions: [["1:50"], ["14.03.2026", "14. März 2026"]]
+      mentions: [["1:50"], ["03.02.2026", "3. Februar 2026"]]
       not_mentions: ["1:100"]
 
   - id: ns-fassung-compare
@@ -201,6 +201,8 @@ questions:
     question: Leg die Bestätigung der Baubeginnsanzeige zum Bescheid in den Ordner Behörde.
     expect:
       tools: {must: [{propose_file_change: {operation: move}}], must_not: [look]}
+      proposals:
+        - {operation: move, document: Schreiben_MA37_Baubeginn.pdf, target_folder: Behörde}
       mentions: [Behörde]
       judge: [pending]
 

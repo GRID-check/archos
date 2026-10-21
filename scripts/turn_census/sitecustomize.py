@@ -203,3 +203,17 @@ def _eval_envelope():
 
 
 _eval_envelope()
+
+
+def _eval_user_message():
+    """A row's drawn box, handed to the turn as the chat socket would (``turn_input.py``).
+
+    Only when the suite sets ``GRID_EVAL_USER_MESSAGE`` (a north-star row with ``box: given``).
+    """
+    if os.environ.get("GRID_EVAL_USER_MESSAGE"):
+        import turn_input
+
+        turn_input.install()
+
+
+_eval_user_message()

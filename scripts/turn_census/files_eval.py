@@ -36,7 +36,9 @@ QUESTIONS = ROOT / "tests" / "fixtures" / "files_eval" / "files_questions.yaml"
 #: The meanings this set asks the judge (``judge.py``).
 MEANING_CHECKS = ("none_found",)
 #: The keys an ``expect`` block may hold: the suite's own (``suite.check``) and this set's.
-CHECK_KEYS = frozenset({"tools", "max_research_calls", "mentions", "not_mentions", "at_least", "judge", "no_repeat"})
+CHECK_KEYS = frozenset(
+    {"tools", "max_research_calls", "mentions", "not_mentions", "at_least", "judge", "no_repeat", "proposals"}
+)
 TOOL_KEYS = frozenset({"must", "any", "must_not"})
 ARMS = ("search", "navigate", "both")
 
@@ -154,6 +156,29 @@ def called(item: Any, calls: list[dict[str, Any]]) -> bool:
     )
 
 
+def proposed(item: dict[str, Any], filed: list[dict[str, Any]]) -> bool:
+    """Whether a proposal the fixture BFF stored is the one ``item`` names.
+
+    ``item`` holds ``kind`` (default ``file_operation``), ``operation``, and any fields of one entry of the
+    proposal's ``operations`` (``document``, ``target_folder``, ...), each a value or a list of values.
+    """
+    wanted = {key: value for key, value in item.items() if key not in ("kind", "operation")}
+    for proposal in filed:
+        payload = proposal.get("payload") or {}
+        if proposal.get("kind") != item.get("kind", "file_operation"):
+            continue
+        if "operation" in item and not _matches(item["operation"], payload.get("operation")):
+            continue
+        entries = payload.get("operations") or [{}]
+        if any(all(_matches(v, entry.get(k)) for k, v in wanted.items()) for entry in entries):
+            return True
+    return False
+
+
+def _proposal_label(item: dict[str, Any]) -> str:
+    return ",".join(f"{key}={value}" for key, value in item.items())
+
+
 def files_checks(
     expect: dict[str, Any],
     calls: list[dict[str, Any]],
@@ -162,9 +187,20 @@ def files_checks(
     judge: Judge | None,
     signals: list[str],
     research_calls: int,
+    filed: list[dict[str, Any]] | None = None,
+    writes: list[str] | None = None,
 ) -> dict[str, bool]:
-    """This set's checks for one run; ``mentions`` and ``not_mentions`` are the suite's own."""
+    """This set's checks for one run; ``mentions`` and ``not_mentions`` are the suite's own.
+
+    ``filed`` and ``writes`` are what the fixture BFF saw (``fixture_bff.proposals_filed`` and
+    ``writes_attempted``): ``expect.proposals`` asks that each named proposal was filed and, with them,
+    that no direct write route was called, because a proposal that was also written is not a proposal.
+    """
     checks: dict[str, bool] = {}
+    for item in expect.get("proposals") or []:
+        checks[f"proposed:{_proposal_label(item)}"] = proposed(item, filed or [])
+    if expect.get("proposals"):
+        checks["no_direct_write"] = not writes
     tools = expect.get("tools") or {}
     for item in tools.get("must") or []:
         checks[f"must:{_label(item)}"] = called(item, calls)
