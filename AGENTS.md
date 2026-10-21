@@ -61,6 +61,13 @@ writing the code, and say what would. Name the gap and let the user decide which
 one they are paying for. This neither widens a task because you spotted
 something adjacent, nor narrows it to the comfortable part.
 
+**Aim at the north star, land on the clouds.** Design a capability twice:
+first the scene a person would experience if anything were buildable, with
+technology as the enabler and never the objection; then the slices we can
+build, measure and ship now, each naming the part of the star it serves. Keep
+both written down, the star above the plan. Show the person what supports the
+answer, not every step taken.
+
 **Prefer visuals.** For architecture, data flow, deployment topology or
 sequence, render an Excalidraw diagram (`create_view`) rather than prose alone:
 layered left to right, aligned, orthogonal arrows that miss the boxes, short

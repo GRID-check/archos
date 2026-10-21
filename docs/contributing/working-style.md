@@ -39,6 +39,49 @@ the part that is comfortable. It obliges you to name the gap between what was
 asked and what was expected, then let the user decide which one they are paying
 for.
 
+## Aim at the north star, land on the clouds
+
+A capability gets designed twice, on purpose, and the two passes must not be
+mixed.
+
+**First pass: the north star, with no technical limits.** Describe what the
+person would experience if anything were buildable: what the colleague in the
+office would do, see and show. Write it as a scene, not a feature list. In this
+pass, technology is what makes the scene possible, never a reason against it.
+"We have no page-range read" belongs in the second pass. In the first it only
+means "something has to read a document through".
+
+**Second pass: the landing.** Take the scene apart into what we can build now,
+measure, and ship, and say which part of the star each slice moves toward.
+This is where realism belongs: cost, latency, staleness, what the evidence
+supports, and what has to be measured before anyone calls it better. A slice
+that cannot name the part of the star it serves is not on the path.
+
+Keep both written down. The star goes at the top of the design (the ADR's
+context, or the capability register in
+[`agent-capabilities.md`](../architecture/agent-capabilities.md)), and the
+landing is the plan underneath it. When later work lands short, the star is
+still there to say how far short.
+
+Why both, and why in this order. Starting from the realistic version anchors the
+design on today's tools: you extend what exists by a step and call that the
+roadmap. Starting from the star alone produces a vision nobody can ship. The
+star sets the direction; the landing keeps it honest, including the honest
+sentence "this is not measured yet".
+
+The case: Piloti could already render any region of a page at 1200 dpi, but
+only looked when a person had drawn a box, and the chat never showed a look at
+all. The realistic framing ("the tool exists, add a prompt line") would have
+stopped there. The north star ("talk to a senior architect who opens the
+folder, reads the report through, looks at the stairwell on plan 03 and puts
+a finger on it") turned the same tool into four slices: a standing look rule,
+a card for the look that supports the answer, a Herleitung step, and parity
+between chat and canvas. See ADR-0127 and ADR-0128.
+
+One restraint survives the star: show what supports the answer, not
+everything that happened. An expert shows you the crop that proves the point.
+Every glance goes in the notebook (the Herleitung), not the answer.
+
 ## Prefer visuals
 
 The maintainer values visual explanations. When explaining architecture, data
