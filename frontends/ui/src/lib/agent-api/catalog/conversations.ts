@@ -56,6 +56,7 @@ export const conversationsOperations: readonly AgentOperation[] = [
     method: 'GET',
     path: '/api/conversations',
     query: listConversationsQuerySchema,
+    spansProjects: 'unlessScoped',
     load: () => import('@/app/api/conversations/route'),
   },
   {
@@ -307,6 +308,7 @@ export const conversationsOperations: readonly AgentOperation[] = [
     path: '/api/passages/similar',
     body: similarPassagesRequestSchema,
     readOnly: true,
+    spansProjects: 'always',
     load: () => import('@/app/api/passages/similar/route'),
   },
   {

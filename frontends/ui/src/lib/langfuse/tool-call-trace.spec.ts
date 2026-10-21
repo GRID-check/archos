@@ -60,6 +60,13 @@ describe('toolCallBatch', () => {
     })
   })
 
+  it('names an A2A door call for its door, which has no mode', () => {
+    const a2a: ToolCallRecord = { ...call, operation: 'piloti-ask-create', domain: 'conversations', door: 'a2a', mode: null, decision: 'run' }
+    const [trace, observation] = toolCallBatch(a2a, ids).batch
+    expect(trace?.body).toMatchObject({ tags: expect.arrayContaining(['door:a2a']) })
+    expect(observation?.body).toMatchObject({ name: 'a2a.piloti-ask-create', metadata: { door: 'a2a', mode: null } })
+  })
+
   it('names nobody unless identity attributes are on, and never carries the agent’s own text', () => {
     const unknown = toolCallBatch({ ...call, operation: null, decision: 'refused', status: 404 }, ids)
     const text = JSON.stringify(unknown)

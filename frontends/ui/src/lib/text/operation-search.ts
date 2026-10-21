@@ -37,10 +37,22 @@ export interface SearchableOperation {
   description: string
 }
 
-/** A vocabulary key this long or longer also matches the words it starts: `mitglieder` is `mitglied`. */
+/**
+ * A vocabulary key this long or longer also matches itself inflected (`mitglieder` is `mitglied` + `er`),
+ * never any longer word it starts: `auftraggeber` is not `auftrag`, `rechtzeitig` not `recht`.
+ */
 export const PREFIX_MATCH_MIN_LENGTH = 5
 
 const TERMS: ReadonlyArray<readonly [string, readonly string[]]> = Object.entries(vocabulary.terms)
+
+/** The endings an inflected word may add to a key (`vocabulary.inflections`), `''` among them. */
+const INFLECTIONS: ReadonlySet<string> = new Set(vocabulary.inflections)
+
+/** Whether `word` is `term`, or `term` inflected when the term is long enough to be inflected. */
+function isFormOf(word: string, term: string): boolean {
+  if (term.length < PREFIX_MATCH_MIN_LENGTH) return word === term
+  return word.startsWith(term) && INFLECTIONS.has(word.slice(term.length))
+}
 
 /** Lower case, German letters spelled out, accents dropped: the form query and catalog are compared in. */
 export function foldSearchText(text: string): string {
@@ -50,8 +62,7 @@ export function foldSearchText(text: string): string {
 function meaningsOf(word: string): string[] {
   const found = new Set<string>()
   for (const [term, meanings] of TERMS) {
-    const matches = term.length >= PREFIX_MATCH_MIN_LENGTH ? word.startsWith(term) : word === term
-    if (matches) for (const meaning of meanings) found.add(meaning)
+    if (isFormOf(word, term)) for (const meaning of meanings) found.add(meaning)
   }
   found.delete(word)
   return [...found]

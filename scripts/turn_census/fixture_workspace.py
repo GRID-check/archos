@@ -60,13 +60,20 @@ class Vocabulary:
     """``lib/text/operation-search.ts``'s word groups, from the same vocabulary file."""
 
     def __init__(self, path: Path = VOCABULARY) -> None:
-        self.terms: list[tuple[str, list[str]]] = list(json.loads(path.read_text(encoding="utf-8"))["terms"].items())
+        vocabulary = json.loads(path.read_text(encoding="utf-8"))
+        self.terms: list[tuple[str, list[str]]] = list(vocabulary["terms"].items())
+        self.inflections: frozenset[str] = frozenset(vocabulary["inflections"])
+
+    def _is_form_of(self, word: str, term: str) -> bool:
+        """``isFormOf``: the term itself, or the term inflected when it is long enough to be."""
+        if len(term) < PREFIX_MATCH_MIN_LENGTH:
+            return word == term
+        return word.startswith(term) and word[len(term) :] in self.inflections
 
     def _meanings(self, word: str) -> list[str]:
         found: list[str] = []
         for term, meanings in self.terms:
-            hit = word.startswith(term) if len(term) >= PREFIX_MATCH_MIN_LENGTH else word == term
-            if hit:
+            if self._is_form_of(word, term):
                 found.extend(meaning for meaning in meanings if meaning not in found)
         return [meaning for meaning in found if meaning != word]
 

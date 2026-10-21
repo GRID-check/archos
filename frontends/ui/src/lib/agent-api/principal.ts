@@ -135,17 +135,21 @@ function stringClaim(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
+/** The audience of `aud` (a string or a list) that this server accepts, as a URL; null when none is. */
+function acceptedAudienceOf(aud: unknown, accepted: readonly string[]): URL | null {
+  const named = (Array.isArray(aud) ? aud : [aud]).filter((value): value is string => typeof value === 'string')
+  const match = named.find((value) => accepted.includes(value))
+  return match ? new URL(match) : null
+}
+
 /**
- * Verifies an AuthKit access token as an MCP Auth token for `resource`, the door
- * it was sent to. Its `aud` may name either door (`acceptedAudiences`): both are
- * this server's resources and act with the same rights.
+ * Verifies an AuthKit access token as an MCP Auth token for this server. Its
+ * `aud` may name either door (`acceptedAudiences`): both are this server's
+ * resources and act with the same rights, so `jwtVerify`'s audience check is the
+ * binding (RFC 8707), and `AuthInfo.resource` is the audience the token really
+ * names, not the door it was sent to. Exported for the spec.
  */
-function tokenVerifier(
-  domain: string,
-  issuer: string,
-  resource: URL,
-  deps: PrincipalDeps,
-): OAuthTokenVerifier {
+export function tokenVerifier(domain: string, issuer: string, deps: PrincipalDeps): OAuthTokenVerifier {
   const audiences = acceptedAudiences()
   return {
     async verifyAccessToken(token): Promise<AuthInfo> {
@@ -156,6 +160,8 @@ function tokenVerifier(
           algorithms: ['RS256'],
         })
         const scope = stringClaim(payload.scope)
+        const resource = acceptedAudienceOf(payload.aud, audiences)
+        if (!resource) throw new OAuthError(OAuthErrorCode.InvalidToken, 'Token was not issued for this resource')
         return {
           token,
           clientId: stringClaim(payload.client_id) ?? '',
@@ -189,8 +195,8 @@ async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise
   let auth: AuthInfo
   try {
     auth = await verifyBearerToken(request.headers.get('authorization'), {
-      verifier: tokenVerifier(domain, issuer, resource, deps),
-      expectedResource: resource,
+      // No `expectedResource`: either door's audience is accepted, and the verifier checks it.
+      verifier: tokenVerifier(domain, issuer, deps),
       resourceMetadataUrl,
     })
   } catch (error) {

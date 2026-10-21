@@ -44,6 +44,20 @@ export const SENSITIVE_SCOPE_ENFORCED_BY_WORKOS = false
  */
 export const PILOTI_HIDDEN_DOMAINS: ReadonlySet<AgentDomain> = new Set<AgentDomain>(['platform'])
 
+/**
+ * Operations in-product Piloti never sees nor files: deciding a proposal and
+ * undoing a change Piloti made. A proposal is how the person says yes or no to
+ * Piloti (ADR-0105); a card that applies or dismisses another proposal would
+ * turn one click on a card the agent worded into a yes to a change the person
+ * never read, and an undo the agent proposes is the same decision made for them.
+ * `lib/proposals/operation-applier.ts` refuses them at the click as well.
+ */
+export const PILOTI_HIDDEN_OPERATIONS: ReadonlySet<string> = new Set([
+  'proposal-apply',
+  'proposal-dismiss',
+  'piloti-change-undo',
+])
+
 export type CallDecision = 'run' | 'propose'
 
 /** May `principal` see (and so name) `op`? */
@@ -53,7 +67,12 @@ export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
     // so showing one would only teach the model a call that cannot succeed. An ask is
     // how another agent consults Piloti: Piloti never asks Piloti (ADR-0123, the
     // recursion lock), and `piloti-ask-get` is a read it would otherwise simply run.
-    return !op.sensitivity && !PILOTI_HIDDEN_DOMAINS.has(op.domain) && !isPilotiAskOperation(op.name)
+    return (
+      !op.sensitivity &&
+      !PILOTI_HIDDEN_DOMAINS.has(op.domain) &&
+      !PILOTI_HIDDEN_OPERATIONS.has(op.name) &&
+      !isPilotiAskOperation(op.name)
+    )
   }
   return !op.sensitivity || maySeeSensitive(principal, op.sensitivity)
 }

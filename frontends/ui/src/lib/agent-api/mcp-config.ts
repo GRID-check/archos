@@ -81,7 +81,14 @@ export function doorOf(request: Request): AgentDoor {
  */
 export function acceptedAudiences(env: Env = process.env): string[] {
   const resources = [mcpResourceUrl(env), a2aResourceUrl(env)].filter((url): url is URL => url !== null)
-  return [...new Set(resources.flatMap((url) => [url.href, url.href.replace(/\/$/, '')]))]
+  return [
+    ...new Set(
+      resources.flatMap((url) => {
+        const bare = url.href.replace(/\/+$/, '')
+        return [bare, `${bare}/`]
+      }),
+    ),
+  ]
 }
 
 /** Hostnames a browser request to the endpoint may come from; the app's own. */

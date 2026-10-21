@@ -24,6 +24,8 @@ import 'server-only'
  *    another project (by id, or through a document, folder, model or
  *    conversation of one), or any project in a turn that has none, is refused
  *    (`soloReadRefusal`): the record below covers the turn's own project only.
+ *    So is a read whose answer spans the office's projects (`spansProjects`)
+ *    in a project's conversation, and one naming what the lookup cannot find.
  *    Every other read runs after the restricted folders it may have drawn on
  *    are recorded and the turn's answer is marked (`recordSoloWorkspaceRead`),
  *    once per MCP request, under the conversation's audience lock with the
@@ -83,7 +85,12 @@ export interface ReadGate {
    * (no `path`) names nothing here; Piloti never sees one.
    */
   beforeRead(
-    op: { readonly name: string; readonly domain: AgentDomain; readonly path?: AgentOperation['path'] },
+    op: {
+      readonly name: string
+      readonly domain: AgentDomain
+      readonly path?: AgentOperation['path']
+      readonly spansProjects?: AgentOperation['spansProjects']
+    },
     input?: TargetInput,
   ): Promise<string | null>
   /** After a read ran: whether its answer may hand on a link (a redirect, a `resource_link`). */
@@ -104,7 +111,9 @@ function buildGate(principal: AgentPrincipal): ReadGate {
         const safe = AUDIENCE_SAFE_READ_DOMAINS.has(op.domain) && !LINK_BEARING_OPERATIONS.has(op.name)
         return safe ? null : sharedConversationReadRefusal()
       }
-      const refused = op.path ? await soloReadRefusal(principal, { path: op.path }, input) : null
+      const refused = op.path
+        ? await soloReadRefusal(principal, { path: op.path, spansProjects: op.spansProjects }, input)
+        : null
       if (refused) return refused
       // Shared since the audience was first read: the lock saw it, nothing was recorded, nothing runs.
       return (await (recorded ??= recordSoloWorkspaceRead(principal))) ? null : sharedConversationReadRefusal()

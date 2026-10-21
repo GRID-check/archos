@@ -100,6 +100,7 @@ const SENSITIVE: Record<string, Sensitivity> = {
   'POST /api/holds/[id]/release': 'control',
   'PUT /api/organization/download-log/retention': 'control',
   'PUT /api/organization/deleted-folder-content': 'control',
+  'PUT /api/organization/web-search': 'control',
 }
 
 interface RouteMethod {

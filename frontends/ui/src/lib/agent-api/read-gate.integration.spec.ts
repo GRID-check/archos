@@ -17,6 +17,9 @@
  *   - a read naming another project, by its id or through one of its
  *     documents, is refused before it runs, and records nothing;
  *   - a read naming any project in a turn that has none is refused;
+ *   - a read whose answer spans the office's projects (similar passages, the
+ *     project list, an unnarrowed conversation list) is refused in a
+ *     project's conversation, and so is one naming what the lookup cannot find;
  *   - a read of the turn's own project runs, after every restricted folder of
  *     the project the requester may read is recorded for the conversation and
  *     the turn's answer is marked;
@@ -186,8 +189,34 @@ describe.skipIf(!url)('Piloti’s reads in a solo conversation against Postgres'
     expect(await reads.beforeRead(op('project-get'), { params: { id: ids.own } })).toBeNull()
     expect(await recordedFolders(chat)).toEqual([ids.folder])
     expect(await marked(answer)).toBe(1)
-    // A read that names nothing (the project list) runs too, on the same record.
-    expect(await reads.beforeRead(op('project-list'), {})).toBeNull()
+    // A list narrowed to the turn's project runs on the same record.
+    expect(await reads.beforeRead(op('conversation-list'), { query: { projectId: ids.own } })).toBeNull()
+  })
+
+  it('refuses a read whose answer spans the office’s projects in a project’s conversation', async () => {
+    const chat = await conversation(ids.own)
+    const reads = gate.readGateFor(principal(chat, ids.own))
+    const passage = { document: { kind: 'stored', documentId: ids.own }, passage: { text: 'Stellplatz je Wohnung', cited: false } }
+    // Naming the turn's own project does not narrow the similar-passage search: it reads every project.
+    expect(await reads.beforeRead(op('passage-similar-search'), { body: { ...passage, projectId: ids.own } })).toBe(
+      audience.SOLO_READ_REFUSALS.spansProjects
+    )
+    expect(await reads.beforeRead(op('project-list'), {})).toBe(audience.SOLO_READ_REFUSALS.spansProjects)
+    expect(await reads.beforeRead(op('conversation-list'), {})).toBe(audience.SOLO_READ_REFUSALS.spansProjects)
+    expect(await recordedFolders(chat)).toEqual([])
+  })
+
+  it('refuses a read naming something the lookup does not find, and passes the conversation’s own first turn', async () => {
+    const chat = `conv_readgate_${STAMP}_unborn`
+    const reads = gate.readGateFor(principal(chat, ids.own))
+    expect(await reads.beforeRead(op('document-get'), { params: { id: randomUUID() } })).toBe(
+      audience.SOLO_READ_REFUSALS.unknown
+    )
+    expect(await audience.soloReadRefusal(principal(chat, ids.own), op('conversation-get'), { params: { id: chat } })).toBeNull()
+    // A resource of a type the lookup cannot place names nothing it could check.
+    expect(
+      await reads.beforeRead(op('assignment-candidate-list'), { params: { resourceType: 'annotation', resourceId: randomUUID() } })
+    ).toBe(audience.SOLO_READ_REFUSALS.unknown)
   })
 
   it('records nothing and refuses the read once the conversation was shared before the lock', async () => {

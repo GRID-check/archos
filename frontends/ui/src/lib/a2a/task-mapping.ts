@@ -12,7 +12,8 @@
  * | Artifact per document | a document Piloti filed while answering, as data naming it |
  *
  * `metadata.projectId` on the incoming message names the project, because A2A
- * has no field for it.
+ * has no field for it. A `contextId` the client made up (any other shape than a
+ * conversation id) starts a new conversation; the task carries its id back.
  */
 
 import { type Artifact, type Message, type Part, Role, type Task, TaskState } from '@a2a-js/sdk'
@@ -22,6 +23,7 @@ import {
   UnsupportedOperationError,
 } from '@a2a-js/sdk/errors'
 import type { AskDocument, AskState, AskView, CreateAskRequest } from '@/lib/piloti-asks/ask-wire'
+import { conversationIdSchema } from '@/lib/session-documents/conversation-id'
 
 export const TASK_STATE_OF: Readonly<Record<AskState, TaskState>> = {
   submitted: TaskState.TASK_STATE_SUBMITTED,
@@ -140,6 +142,9 @@ export function askInputOf(incoming: Message | undefined, metadata?: Record<stri
   return {
     question,
     ...(isString(projectId) ? { projectId } : {}),
-    ...(incoming.contextId ? { conversationId: incoming.contextId } : {}),
+    // A contextId of another shape is one the client made up for a new conversation: it names none of ours.
+    ...(incoming.contextId && conversationIdSchema.safeParse(incoming.contextId).success
+      ? { conversationId: incoming.contextId }
+      : {}),
   }
 }

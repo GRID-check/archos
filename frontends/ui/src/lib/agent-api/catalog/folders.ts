@@ -483,6 +483,7 @@ export const foldersOperations: readonly AgentOperation[] = [
       "organization's queue, project admins their projects' part, everyone else an empty `items` list.",
     method: 'GET',
     path: '/api/quarantine',
+    spansProjects: 'always',
     load: () => import('@/app/api/quarantine/route'),
   },
   {
@@ -494,6 +495,7 @@ export const foldersOperations: readonly AgentOperation[] = [
       'compliance permission. Hold ids feed hold-release.',
     method: 'GET',
     path: '/api/holds',
+    spansProjects: 'always',
     load: () => import('@/app/api/holds/route'),
   },
   {
@@ -532,6 +534,7 @@ export const foldersOperations: readonly AgentOperation[] = [
       'are purges that got stuck. Needs the compliance permission.',
     method: 'GET',
     path: '/api/deletions',
+    spansProjects: 'always',
     load: () => import('@/app/api/deletions/route'),
   },
   {

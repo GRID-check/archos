@@ -16,6 +16,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/conversations/repository', () => ({
+  deleteConversationInOrg: vi.fn(),
   findConversationInOrg: vi.fn(),
   findMessageInConversation: vi.fn(),
   insertConversation: vi.fn(),
@@ -26,6 +27,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
   withTenant: vi.fn((_scope: unknown, fn: () => unknown) => fn()),
 }))
 vi.mock('./repository', () => ({
+  deleteAskQuestion: vi.fn(),
   endAsk: vi.fn(),
   findAsk: vi.fn(),
   findAskById: vi.fn(),
@@ -48,6 +50,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import {
+  deleteConversationInOrg,
   findConversationInOrg,
   findMessageInConversation,
   insertConversation,
@@ -55,9 +58,10 @@ import {
 } from '@/lib/conversations/repository'
 import type { Conversation, Message, PilotiAskRow } from '@/lib/db/schema'
 import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
-import { cancelHeadlessTurn, runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
+import { cancelHeadlessTurn, chatSocketUrl, runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import {
+  deleteAskQuestion,
   endAsk,
   findAsk,
   findAskById,
@@ -65,7 +69,16 @@ import {
   insertAsk,
   markAskWorking,
 } from './repository'
-import { ASK_REQUIRES, askAnswerMessageId, askEndOf, askPiloti, cancelAsk, getAsk, recordAskOutcome } from './service'
+import {
+  ASK_REQUIRES,
+  askAnswerMessageId,
+  askEndOf,
+  askMaxSeconds,
+  askPiloti,
+  cancelAsk,
+  getAsk,
+  recordAskOutcome,
+} from './service'
 
 const SECRET = 'internal-secret'
 const ORG = 'org_1'
@@ -94,8 +107,8 @@ const askRow = (over: Partial<PilotiAskRow> = {}): PilotiAskRow => ({
   requestedBy: USER,
   state: 'submitted',
   reason: null,
-  createdAt: new Date('2026-10-21T09:00:00Z'),
-  updatedAt: new Date('2026-10-21T09:00:00Z'),
+  createdAt: new Date(),
+  updatedAt: new Date(),
   endedAt: null,
   ...over,
 })
@@ -139,6 +152,7 @@ beforeEach(() => {
     memoryReflectionEnabled: false,
   }))
   vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'started' })
+  vi.mocked(chatSocketUrl).mockReturnValue('ws://aiq-agent:8000/websocket')
 })
 
 afterEach(() => {
@@ -225,6 +239,83 @@ describe('askPiloti', () => {
     expect(view.state).toBe('rejected')
     expect(view.reason).toMatch(/^budget: The organization LLM budget is exhausted/)
     expect(runHeadlessTurn).not.toHaveBeenCalled()
+    // The thread this ask opened holds nothing anyone will answer: it goes, the ask row with it.
+    expect(deleteConversationInOrg).toHaveBeenCalledWith(row.conversationId, ORG)
+  })
+
+  it('ends failed, with an id and no 500, when this deployment has no chat service', async () => {
+    vi.mocked(chatSocketUrl).mockImplementation(() => {
+      throw new Error('BACKEND_CHAT_URL is not set: the wake has no chat socket to open')
+    })
+    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    expect(view.id).toBe(row.id)
+    expect(view.state).toBe('failed')
+    expect(view.reason).toMatch(/could not be reached: .*BACKEND_CHAT_URL/)
+    expect(runHeadlessTurn).not.toHaveBeenCalled()
+  })
+
+  it('ends failed, never left submitted, when starting the turn throws', async () => {
+    vi.mocked(resolveTurnContext).mockRejectedValue(new Error('connection reset'))
+    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    expect(view.state).toBe('failed')
+    expect(view.reason).toBe('Piloti could not start the turn.')
+    expect(endAsk).toHaveBeenCalledWith(ORG, view.id, { state: 'failed', reason: 'Piloti could not start the turn.' })
+  })
+
+  it('takes back the question, and keeps the thread, when a continued conversation is busy', async () => {
+    vi.mocked(findConversationInOrg).mockResolvedValue(conversation())
+    vi.mocked(hasAskedInConversation).mockResolvedValue(true)
+    vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
+    const view = await askPiloti(SESSION, { question: 'Und?', conversationId: THREAD }, { waitMs: 0 })
+    expect(view.state).toBe('rejected')
+    expect(view.question).toBe('Und?')
+    expect(deleteAskQuestion).toHaveBeenCalledWith(ORG, THREAD, view.id)
+    expect(deleteConversationInOrg).not.toHaveBeenCalled()
+  })
+
+  it('sends no turn for an ask canceled while its turn context was read', async () => {
+    vi.mocked(resolveTurnContext).mockImplementation(async (_session, request) => {
+      row = { ...row, state: 'canceled', endedAt: new Date() }
+      return {
+        scope: [],
+        scopedCollections: [],
+        header: '',
+        conversationId: request.conversationId,
+        organizationId: ORG,
+        userId: USER,
+        projectId: request.projectId,
+        memoryReflectionEnabled: false,
+      }
+    })
+    const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    expect(runHeadlessTurn).not.toHaveBeenCalled()
+    expect(view.state).toBe('canceled')
+  })
+
+  it('stops a turn that was sent while the ask was canceled', async () => {
+    vi.mocked(markAskWorking).mockImplementation(async () => {
+      row = { ...row, state: 'canceled', endedAt: new Date() }
+      return false
+    })
+    vi.mocked(cancelHeadlessTurn).mockResolvedValue({ kind: 'sent' })
+    await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
+    expect(cancelHeadlessTurn).toHaveBeenCalledWith(expect.objectContaining({ turnId: row.id }))
+  })
+
+  it('returns at once with waitSeconds 0, and waits by default, for an answer one poll away', async () => {
+    const answerOnFirstPoll = () => {
+      let reads = 0
+      vi.mocked(findAsk).mockImplementation(async () => {
+        reads += 1
+        // Read 1 is the start's re-read, read 2 the one after `working`; read 3 is the first poll.
+        if (reads >= 3 && row.state === 'working') row = { ...row, state: 'completed', endedAt: new Date() }
+        return row
+      })
+    }
+    answerOnFirstPoll()
+    expect((await askPiloti(SESSION, { question: 'Hallo?', waitSeconds: 0 })).state).toBe('working')
+    answerOnFirstPoll()
+    expect((await askPiloti(SESSION, { question: 'Hallo?' })).state).toBe('completed')
   })
 
   it.each([
@@ -237,7 +328,9 @@ describe('askPiloti', () => {
     const view = await askPiloti(SESSION, { question: 'Hallo?' }, { waitMs: 0 })
     expect(view.state).toBe(state)
     expect(view.reason).toMatch(reason)
+    expect(view.pollAfterSeconds).toBeNull()
     expect(markAskWorking).not.toHaveBeenCalled()
+    expect(deleteConversationInOrg).toHaveBeenCalledWith(row.conversationId, ORG)
   })
 
   it('continues a conversation an earlier ask of the same person started, in its project', async () => {
@@ -300,6 +393,70 @@ describe('getAsk and cancelAsk', () => {
     ).toMatchObject({ userId: USER, conversationId: THREAD })
     expect(endAsk).toHaveBeenCalledWith(ORG, row.id, { state: 'canceled' })
     expect(view.state).toBe('canceled')
+  })
+
+  it('ends a submitted ask before it sends the stop, so a start under way sends no turn', async () => {
+    row = askRow({ state: 'submitted' })
+    let stateAtStop: string | null = null
+    vi.mocked(cancelHeadlessTurn).mockImplementation(async () => {
+      stateAtStop = row.state
+      return { kind: 'sent' }
+    })
+    expect((await cancelAsk(SESSION, row.id)).state).toBe('canceled')
+    expect(stateAtStop).toBe('canceled')
+  })
+
+  it('cancels a submitted ask even without a chat service', async () => {
+    row = askRow({ state: 'submitted' })
+    vi.mocked(chatSocketUrl).mockImplementation(() => {
+      throw new Error('BACKEND_CHAT_URL is not set')
+    })
+    const view = await cancelAsk(SESSION, row.id)
+    expect(view.state).toBe('canceled')
+    expect(cancelHeadlessTurn).not.toHaveBeenCalled()
+  })
+
+  it('refuses to claim a stop it could not send for a running ask', async () => {
+    row = askRow({ state: 'working' })
+    vi.mocked(chatSocketUrl).mockImplementation(() => {
+      throw new Error('BACKEND_CHAT_URL is not set')
+    })
+    await expect(cancelAsk(SESSION, row.id)).rejects.toBeInstanceOf(ConflictError)
+    expect(row.state).toBe('working')
+  })
+
+  it('answers canceled once the stop was taken, even when the turn’s notice is late', async () => {
+    vi.useFakeTimers({ toFake: ['setTimeout', 'Date'] })
+    try {
+      row = askRow({ state: 'working' })
+      vi.mocked(cancelHeadlessTurn).mockResolvedValue({ kind: 'sent' })
+      const pending = cancelAsk(SESSION, row.id)
+      await vi.advanceTimersByTimeAsync(6_000)
+      const view = await pending
+      expect(view.state).toBe('canceled')
+      expect(view.pollAfterSeconds).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('ends an ask whose outcome never came once it is older than any turn runs', async () => {
+    row = askRow({ state: 'working', createdAt: new Date(Date.now() - (askMaxSeconds() + 60) * 1_000) })
+    const view = await getAsk(SESSION, row.id)
+    expect(view.state).toBe('failed')
+    expect(view.reason).toMatch(/did not report the end of its turn/)
+  })
+
+  it('leaves a running ask alone inside that time', async () => {
+    row = askRow({ state: 'working', createdAt: new Date(Date.now() - 60_000) })
+    expect((await getAsk(SESSION, row.id)).state).toBe('working')
+    expect(endAsk).not.toHaveBeenCalled()
+  })
+
+  it('reads the longest an ask stays open from GRID_PILOTI_ASK_MAX_SECONDS', () => {
+    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: '600' })).toBe(600)
+    expect(askMaxSeconds({ GRID_PILOTI_ASK_MAX_SECONDS: 'x' })).toBe(1_800)
+    expect(askMaxSeconds({})).toBe(1_800)
   })
 })
 

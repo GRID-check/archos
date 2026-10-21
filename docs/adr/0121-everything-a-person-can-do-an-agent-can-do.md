@@ -128,7 +128,12 @@ The agent acts for a person, and the person decides what changes.
   the conversation is shared. A proposal may only name what the person whose
   turn it is may read: otherwise a member's Piloti could put a change to a
   project the member cannot see in front of an admin, whose click would apply
-  it. The card names each target for its reader and shows every input whole;
+  it. Piloti never files the person's own decisions: applying or dismissing
+  a proposal and undoing a change it made are hidden from it and refused at
+  the click (`PILOTI_HIDDEN_OPERATIONS`), so one card can never accept
+  another. Only a reader who may read every target may decide the card:
+  another's `canDecide` is false and their apply is refused with the card left
+  open. The card names each target for its reader and shows every input whole;
   „Apply“ waits until each value shown in part has been unfolded, so nobody
   accepts text they were not shown.
 
@@ -151,9 +156,16 @@ turn that has none, is refused: the record covers the turn's own project only,
 and recording another project as a cross-project hand-out (ADR-0094) would claim
 the answer was what the audience may read, which a route's answer is not. Fail
 closed: running the read as the audience instead would need every route to
-answer for a group, and none does. An organization-wide read that names no
-project (the inbox, a list across projects) still runs on the turn's record;
-that is the remaining gap.
+answer for a group, and none does. A read whose answer can carry any project's
+content without naming one (similar passages, the project list, the inbox, an
+unnarrowed conversation list) says so in the catalog (`spansProjects`) and is
+refused in a project's conversation; `read-gate.spec.ts` holds every other read
+that names no place to a list with the reason it carries no project's content.
+A read naming something the target lookup does not find is refused too: the
+lookup reads as the member, a route may read as the reviewer, and an unresolved
+place could not be recorded. The remaining gap is the conversation outside any
+project: a cross-project read there still runs on the turn's record, and a
+later share hands its answer to the new readers.
 
 ### Sensitive operations
 
@@ -169,7 +181,13 @@ and a purged folder's derived content are kept.
 `control` is its own class, not `access`, because it is a different decision for
 an office to delegate: an office may let its agents share and grant project
 roles and still keep its privacy and retention settings to people, and one
-opt-in per class is how it says so. Each of these switches is one a person can
+opt-in per class is how it says so. Web search is one: switching it on sends
+the members' questions to a web search provider (ADR-0022). Budgets are not:
+a budget limits what the office spends, not where its data goes or what it
+keeps as evidence, and one operation sets a limit either way (`null` is
+unlimited), so marking it would put routine tightening behind the opt-in to
+catch loosening. A loosened budget is recoverable, audited, and confirmed by
+the person like any write. Each of these switches is one a person can
 flip in the UI, so under the product owner's rule an agent may flip it too,
 behind the same guards as the other classes.
 
@@ -182,7 +200,9 @@ the person says yes or no to each such call; the guards are how that holds:
   default and read per
   organization when the token is verified (`SENSITIVE_OPT_IN_FLAGS`,
   `principal.ts`). Without its class's flag an operation is absent from
-  `tools/list`, search and describe, and a call names an unknown operation;
+  `tools/list`, search and describe, and a call names an unknown operation; a
+  search it would have topped says only that a matching change of access, a
+  credential or a control is not offered, and that the person makes it;
 - the client holds a step-up OAuth scope, and a call without it answers
   `403 insufficient_scope` so the client can ask the person to grant it. Until
   WorkOS defines that scope and grants it only on the person's step-up consent,
@@ -199,14 +219,17 @@ the person says yes or no to each such call; the guards are how that holds:
   holds every result, refusal and telemetry event of the key operations free of
   the key.
 
-**Built.** Twenty-four route methods are catalogued with a sensitivity, and
+**Built.** Twenty-five route methods are catalogued with a sensitivity, and
 `agent-reachability.spec.ts` (`SENSITIVE`) holds each to exactly its class and
 nothing else to one: folder access, sharing visibility and grants (add, change,
 revoke), project roles (add, remove) and custom roles (create, change, delete)
 as `access`; the LLM provider keys (list, connect, revoke, verify, mode) and the
 two audit-log portal links as `secret`; zero data retention, the two upload
 screening policies, letting a held file through, lifting a hold, download-log
-retention and the deleted-folder content policy as `control`. The routes stay the gate: each still runs its own `authz` and feature
+retention, the deleted-folder content policy and web search as `control`. Web
+search is a switch of its own route (`PUT /api/organization/web-search`): the
+generic settings save merged it unmarked, and refuses the key now, as it does
+every key a dedicated route owns. The routes stay the gate: each still runs its own `authz` and feature
 gate as the person. Until the scope is enforced in WorkOS no external client sees
 any of them, whatever the organization switched on.
 

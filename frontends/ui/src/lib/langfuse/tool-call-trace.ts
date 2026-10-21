@@ -2,7 +2,8 @@ import 'server-only'
 /**
  * One MCP tool call on the agent door as a Langfuse trace (ADR-0089, ADR-0121):
  * the trace `agent-tool-call` holding one `TOOL` observation named
- * `mcp.<operation>`. Everything the product does is observable in Langfuse, and
+ * `mcp.<operation>`, or `a2a.<operation>` for the A2A door's call of an ask
+ * route (ADR-0123). Everything the product does is observable in Langfuse, and
  * an agent's call is something the product does: which operation, for which
  * door, run or proposed, with what status and how long it took.
  *
@@ -34,9 +35,10 @@ export interface ToolCallRecord {
   /** A catalog or meta-tool name, or null for a name no operation has. */
   operation: string | null
   domain: string | null
-  /** `mcp` for an external agent, `piloti` for Piloti in-product. */
-  door: 'mcp' | 'piloti'
-  mode: 'search' | 'tools'
+  /** `mcp` for an external agent, `piloti` for Piloti in-product, `a2a` for the A2A door. */
+  door: 'mcp' | 'piloti' | 'a2a'
+  /** The MCP server's mode; null on the A2A door. */
+  mode: 'search' | 'tools' | null
   decision: 'run' | 'propose' | 'refused'
   status: number
   startedAt: number
@@ -66,7 +68,7 @@ const identityOn = () => process.env.GRID_TRACE_IDENTITY_ATTRIBUTES?.trim().toLo
 export function toolCallBatch(call: ToolCallRecord, ids: { traceId: string; observationId: string; eventIds: [string, string] }): IngestionBatch {
   const env = environment()
   const rel = release()
-  const name = `mcp.${call.operation ?? 'unknown'}`
+  const name = `${call.door === 'a2a' ? 'a2a' : 'mcp'}.${call.operation ?? 'unknown'}`
   const startTime = new Date(call.startedAt).toISOString()
   const endTime = new Date(call.endedAt).toISOString()
   const metadata = {

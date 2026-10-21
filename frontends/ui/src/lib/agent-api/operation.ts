@@ -125,7 +125,18 @@ export interface AgentOperation {
    * Piloti in-product only ever proposes it.
    */
   readonly sensitivity?: Sensitivity
+  /**
+   * A read whose answer can carry content of every project the person may
+   * read, not only the one a call names (ADR-0121, "Shared conversations").
+   * `always`: whatever the call names (similar passages search every project
+   * the person reads). `unlessScoped`: unless the call names a project (the
+   * conversation list without `projectId`). Piloti's read gate refuses it in a
+   * solo conversation of a project: the record there covers that project only.
+   */
+  readonly spansProjects?: SpansProjects
 }
+
+export type SpansProjects = 'always' | 'unlessScoped'
 
 /** An example input of an operation: `{ params, query, body }` as `call-operation` takes it. */
 export interface OperationExample {

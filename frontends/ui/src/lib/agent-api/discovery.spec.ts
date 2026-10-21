@@ -111,6 +111,15 @@ describe('search-operations', () => {
     expect(names(searchOperations(ctx(person), { query: 'folder access' }))).not.toContain('folder-access-grant')
   })
 
+  it('says a hidden operation would have answered, without naming it, when it outranks every hit', () => {
+    const result = searchOperations(ctx(piloti), { query: 'widen folder access' })
+    expect(names(result)).not.toContain('folder-access-grant')
+    expect(structured(result).next).toMatch(/^An operation that changes who may do what/)
+    expect(JSON.stringify(result)).not.toContain('folder-access-grant')
+    // A search the visible operations answer best carries no such note.
+    expect(structured(searchOperations(ctx(piloti), { query: 'list projects' })).next).not.toMatch(/who may do what/)
+  })
+
   it('says what to do when nothing matches', () => {
     const result = searchOperations(ctx(person), { query: 'zzz-qqxv' })
     expect(structured(result).total).toBe(0)
@@ -485,8 +494,11 @@ describe('the Python agent’s read tools', () => {
       'knowledge-search',
     )
     expect(describeOperation(ctx(piloti), { name: 'knowledge-search' }).isError).toBe(true)
-    const result = await callOperationTool(ctx(piloti), { name: 'knowledge-search', input: { projectId: PROJECT } })
+    // Flat, as its native tool takes it: `query` a string, where call-operation's input wants an object.
+    const result = await callOperationTool(ctx(piloti), { name: 'knowledge-search', input: { query: 'Stellplatz', projectId: PROJECT } })
     expect(result.isError).toBe(true)
+    // Unknown to Piloti, so it is told the name is unknown, not how to shape an input it cannot use.
+    expect((result.content[0] as { text: string }).text).toMatch(/^Unknown operation "knowledge-search"/)
     expect(callBackendOperation).not.toHaveBeenCalled()
   })
 })

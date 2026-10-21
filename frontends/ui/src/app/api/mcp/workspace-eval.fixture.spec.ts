@@ -27,7 +27,7 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/agent-api/telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapabilityMissing: vi.fn() }))
 
-import { describeOperation, searchOperations } from '@/lib/agent-api/discovery'
+import { describeOperation, SENSITIVE_MATCH_NOTE, searchOperations } from '@/lib/agent-api/discovery'
 import { annotationsOf } from '@/lib/agent-api/operation'
 import { visibleOperations } from '@/lib/agent-api/policy'
 import type { AgentPrincipal } from '@/lib/agent-api/principal'
@@ -142,6 +142,13 @@ describe('the workspace eval catalog', () => {
   it('finds for a German request what the English one finds', () => {
     expect(searchNames('Mitglied zu Projekt hinzufügen')[0]).toBe('project-person-add')
     expect(searchNames('add member project')[0]).toBe('project-person-add')
+  })
+
+  it('does not let the people list pass for a project role: its hit says so, and the search says what is hidden', () => {
+    const result = searchOperations(ctx, { query: 'Mitglied zu Projekt hinzufügen', limit: LIMIT })
+    const content = result.structuredContent as { operations: { name: string; summary: string }[]; next: string }
+    expect(content.operations[0]).toMatchObject({ name: 'project-person-add', summary: expect.stringMatching(/grants no access/) })
+    expect(content.next.startsWith(SENSITIVE_MATCH_NOTE)).toBe(true)
   })
 
 })

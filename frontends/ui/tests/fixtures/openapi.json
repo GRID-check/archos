@@ -1983,8 +1983,8 @@
     "/api/projects/{id}/people": {
       "post": {
         "operationId": "project-person-add",
-        "summary": "Add a person to the project record",
-        "description": "Adds someone to the project record by hand, such as an external planner: name, optional function, company, start and end month. No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.",
+        "summary": "Add a name to the project record’s people list (grants no access)",
+        "description": "Writes someone into the project record’s list of people by hand, such as an external planner: name, optional function, company, start and end month. It grants no access to the project and adds nobody to its team: who may open the project is a project role, project-member-add, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague of the office instead. Send all fields; use null for unknown.",
         "tags": [
           "projects"
         ],
@@ -2106,7 +2106,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Add a person to the project record",
+          "title": "Add a name to the project record’s people list (grants no access)",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -13016,7 +13016,7 @@
       "post": {
         "operationId": "piloti-ask-create",
         "summary": "Ask Piloti a question and get its answer",
-        "description": "Asks Piloti, the office’s own agent, a question as the signed-in person: it answers from the office’s documents, the project’s files and building law, with the person’s rights, and may file a document. Waits up to 40 seconds: state \"completed\" carries answer.text and any documents filed; state \"submitted\" or \"working\" means call piloti-ask-get with the id after pollAfterSeconds. Pass projectId (from project-list) to ask about one project, and conversationId from an earlier ask to follow up in the same conversation. \"rejected\" or \"failed\" carry the reason (a spent budget, a busy conversation). Uses the organization’s model budget, and needs the piloti-ask switch.",
+        "description": "Asks Piloti, the office’s own agent, a question as the signed-in person: it answers from the office’s documents, the project’s files and building law, with the person’s rights, and may file a document. Waits up to 40 seconds (less with waitSeconds): state \"completed\" carries answer.text and any documents filed; state \"submitted\" or \"working\" means call piloti-ask-get with the id after pollAfterSeconds. Pass projectId (from project-list) to ask about one project: without it Piloti answers for the office as a whole and reads no project’s files. Pass conversationId from an earlier ask to follow up in the same conversation. \"rejected\" or \"failed\" carry the reason (a spent budget, a busy conversation). Uses the organization’s model budget, and needs the piloti-ask switch.",
         "tags": [
           "conversations"
         ],
@@ -13041,6 +13041,10 @@
                   "conversationId": {
                     "type": "string",
                     "description": "Continue an earlier ask: its conversationId, from piloti-ask-create or piloti-ask-get. Piloti then sees the earlier questions and answers. Omit to start a new conversation."
+                  },
+                  "waitSeconds": {
+                    "type": "integer",
+                    "description": "How long to wait for the answer before returning (default and most 40); 0 returns the ask at once, and piloti-ask-get reads it later."
                   }
                 },
                 "required": [
@@ -20752,7 +20756,7 @@
       "put": {
         "operationId": "organization-settings-update",
         "summary": "Update the organization’s settings",
-        "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set. Read the current values first with organization-settings-get.",
+        "description": "Merges the provided fields into the organization’s settings: displayName, defaultLocale, and keys of the settings bag. Needs org:settings:manage. Keys that own a dedicated operation are refused: switch zero data retention with organization-zdr-set, the upload policy with organization-upload-screening-set, download log retention with organization-download-log-retention-set, web search with organization-web-search-set. Read the current values first with organization-settings-get.",
         "tags": [
           "organization"
         ],
@@ -21121,6 +21125,69 @@
           "title": "Read the budget warning for the asking person",
           "readOnlyHint": true,
           "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/organization/web-search": {
+      "put": {
+        "operationId": "organization-web-search-set",
+        "summary": "Switch web search on or off",
+        "description": "Switches whether Piloti may search the web when it answers the organization’s members. Needs org:settings:manage. Switching it on sends the members’ questions to a web search provider; read the current value (`settings.webSearchEnabled`, absent means on) with organization-settings-get. Returns `{ webSearchEnabled }`. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean",
+                    "description": "true lets Piloti search the web for this organization; false keeps every answer inside it."
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "control",
+        "x-mcp-annotations": {
+          "title": "Switch web search on or off",
+          "readOnlyHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }

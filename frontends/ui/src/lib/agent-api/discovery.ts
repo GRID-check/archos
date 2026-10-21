@@ -35,10 +35,12 @@ import {
   validateOperationInput,
 } from './dispatch'
 import { type BackendOperation, callBackendOperation, toMcpContent } from './backend-operations'
+import { AGENT_OPERATIONS } from './catalog'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
 import {
   callDecision,
+  canSee,
   findVisibleBackendOperation,
   findVisibleOperation,
   visibleBackendOperations,
@@ -291,7 +293,8 @@ export async function runBackendOperation(
 }
 
 function unknownOperation(ctx: McpCallContext, name: string): CallToolResult {
-  const near = rank(ctx, name, undefined)
+  // The search schema bounds a query; a name the agent typed is bounded here, the one unchecked text ranked.
+  const near = rank(ctx, name.slice(0, MAX_SEARCH_QUERY_LENGTH), undefined)
     .slice(0, 5)
     .map((hit) => hit.name)
   const hint = near.length > 0 ? ` Closest: ${near.join(', ')}.` : ''
@@ -382,9 +385,12 @@ interface Hit {
   score: number
 }
 
-/** Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0122). */
+/**
+ * Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0122).
+ * `query` is at most {@link MAX_SEARCH_QUERY_LENGTH} characters: the search schema refuses a longer one.
+ */
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {
-  const score = operationScorer(query.slice(0, MAX_SEARCH_QUERY_LENGTH))
+  const score = operationScorer(query)
   const catalog: Hit[] = visibleOperations(ctx.principal)
     .filter((op) => !domain || op.domain === domain)
     .map((op) => {
@@ -423,6 +429,29 @@ function searchInputFor(principal: AgentPrincipal) {
   })
 }
 
+/**
+ * The sentence a search adds when an operation it does not offer this caller
+ * (one that widens access, touches a credential or turns a control down) would
+ * have ranked first: without it the top hit is the nearest thing that is NOT
+ * what was asked (`Mitglied hinzufügen` finds the people list, not a project
+ * role). It names no operation: what is hidden stays absent from the listing.
+ */
+export const SENSITIVE_MATCH_NOTE =
+  'An operation that changes who may do what, a credential or a security control matches this request, and it ' +
+  'is not offered to you: none of the operations listed does that. Tell the person to make that change in Piloti themselves.'
+
+function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: string | undefined, best: number): boolean {
+  const score = operationScorer(query)
+  return AGENT_OPERATIONS.some(
+    (op) =>
+      op.sensitivity !== undefined &&
+      (!domain || op.domain === domain) &&
+      !canSee(ctx.principal, op) &&
+      score(op) > 0 &&
+      score(op) >= best,
+  )
+}
+
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
   const parsed = searchInputFor(ctx.principal).safeParse(args)
@@ -431,14 +460,12 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
   const hits = rank(ctx, query, domain)
   const shown = hits.slice(0, limit).map(({ score: _score, ...hit }) => hit)
   recordOperationCalled(ctx, { operation: 'search-operations', domain: domain ?? null, decision: 'run', status: 200, startedAt })
-  return success({
-    total: hits.length,
-    operations: shown,
-    next:
-      shown.length === 0
-        ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
-        : 'Call call-operation with the name; call describe-operation first when you do not know its input.',
-  })
+  const next =
+    shown.length === 0
+      ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
+      : 'Call call-operation with the name; call describe-operation first when you do not know its input.'
+  const hidden = query.trim() !== '' && sensitiveMatchOutranks(ctx, query, domain, hits[0]?.score ?? 0)
+  return success({ total: hits.length, operations: shown, next: hidden ? `${SENSITIVE_MATCH_NOTE} ${next}` : next })
 }
 
 const describeInput = z.object({ name: z.string().min(1) })
@@ -503,6 +530,10 @@ export function callOperationTool(ctx: McpCallContext, args: unknown): Promise<C
     const flat = backendCallInput.safeParse(args)
     if (!flat.success) return Promise.resolve(failure(`call-operation needs { name, input } with ${backend.name}'s arguments.`))
     return runBackendOperation(ctx, backend, flat.data.input ?? {})
+  }
+  // A name the caller cannot see is unknown whatever shape its input has: say that, not how to shape it.
+  if (backendName && !findVisibleOperation(ctx.principal, backendName)) {
+    return runOperation(ctx, backendName, {})
   }
   const parsed = callInput.safeParse(args)
   if (!parsed.success) {

@@ -12,6 +12,7 @@
  * ships, with no list to remember to extend.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { z } from 'zod'
 
 vi.mock('./dispatch', async (importOriginal) => ({
   ...(await importOriginal<typeof import('./dispatch')>()),
@@ -34,7 +35,9 @@ import { AGENT_OPERATIONS } from './catalog'
 import { conversationReachOf, recordSoloWorkspaceRead, soloReadRefusal } from './conversation-audience'
 import { callOperation } from './dispatch'
 import { runBackendOperation, runOperation } from './discovery'
+import type { AgentOperation } from './operation'
 import { proposeOperation } from './operation-proposals'
+import { KEY_TARGETS } from './operation-targets'
 import { callDecision, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import { AUDIENCE_SAFE_READ_DOMAINS, LINK_BEARING_OPERATIONS, readGateFor, sharedConversationReadRefusal } from './read-gate'
@@ -175,6 +178,80 @@ describe('in a conversation that is the requester’s alone', () => {
     const result = await runOperation(ctx(piloti()), 'project-list', {})
     expect(result.isError).toBe(true)
     expect(callOperation).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * Reads Piloti runs in a project's solo conversation that name no project, document,
+ * folder, conversation or model, and still carry no project's content. Each needs a
+ * reason a reviewer can disagree with; a read that can carry another project's content
+ * declares `spansProjects` instead, and is refused there.
+ */
+const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
+  'inbox-summary-get': 'a count of waiting items, no item',
+  'push-device-list': 'the person’s own devices',
+  'push-preference-get': 'the person’s own notification settings',
+  'user-preference-get': 'the person’s own preference bag',
+  'citation-format': 'formats the items the call sends; reads nothing',
+  'office-shelf-folder-list': 'the office shelf, which belongs to no project',
+  'office-shelf-document-list': 'the office shelf, which belongs to no project',
+  'office-shelf-document-summary': 'the office shelf, which belongs to no project',
+  'office-shelf-document-lookup': 'the office shelf, which belongs to no project',
+  'office-shelf-document-name-probe': 'the office shelf, which belongs to no project',
+  'office-shelf-document-revision-probe': 'the office shelf, which belongs to no project',
+  'office-shelf-document-search': 'the office shelf, which belongs to no project',
+  'knowledge-base-get': 'the platform’s base corpus, the same for every organization',
+  'ris-document-get': 'a public legal text',
+  'address-search': 'a public geocoder',
+  'widget-token-get': 'a token for the person’s own WorkOS widgets',
+  'organization-member-list': 'the organization’s members, which every member sees',
+  'organization-role-list': 'the organization’s roles',
+  'organization-settings-get': 'the organization’s settings',
+  'organization-instructions-get': 'the organization’s standing instructions, in every answer already',
+  'organization-memory-list': 'the knowledge shared by every project, which every member reads',
+  'organization-model-config-get': 'the organization’s model configuration',
+  'organization-model-search': 'the model catalog',
+  'organization-model-config-version-list': 'the organization’s model configuration history',
+  'organization-budget-get': 'limits in credits; a project limit names the project by id only',
+  'organization-usage-get': 'usage in credits by model and day',
+  'organization-usage-notice-get': 'the budget window close to stopping the person',
+  'organization-storage-get': 'storage totals of the organization',
+  'organization-upload-screening-get': 'the organization’s screening policy',
+  'organization-deleted-folder-content-get': 'the organization’s deleted-folder policy',
+  'skill-list': 'the organization’s skills',
+  'skill-invocable-list': 'the skills the person may invoke',
+  'skill-category-list': 'the skill categories',
+  'skill-review': 'reviews the skill text the call sends',
+}
+
+describe('every read of no named place either spans projects or carries no project’s content', () => {
+  const namesSomething = (op: AgentOperation): boolean => {
+    if (/\[[^\]]+\]/.test(op.path)) return true
+    const shapes = [op.query, op.body].filter((schema): schema is z.ZodObject<z.ZodRawShape> => schema instanceof z.ZodObject)
+    return shapes.some((schema) =>
+      Object.entries(schema.shape).some(([key, field]) => (key in KEY_TARGETS || key === 'resourceId' || key === 'entityId') && !(field as z.ZodTypeAny).isOptional()),
+    )
+  }
+  const unscoped = visibleOperations(piloti()).filter(
+    (op) => callDecision(piloti(), op) === 'run' && !op.spansProjects && !namesSomething(op),
+  )
+
+  it.each(unscoped.map((op) => [op.name]))('%s is listed with the reason it carries no project’s content', (name) => {
+    expect(READS_WITHOUT_PROJECT_CONTENT[name], `${name}: declare spansProjects, or list it with a reason`).toBeTruthy()
+  })
+
+  it('lists nothing that has left the catalog or now spans projects', () => {
+    for (const name of Object.keys(READS_WITHOUT_PROJECT_CONTENT)) {
+      expect(unscoped.some((op) => op.name === name), `${name} is no longer an unscoped read`).toBe(true)
+    }
+  })
+
+  it('marks the reads the review found leaking other projects’ content into a project conversation', () => {
+    const spans = (name: string) => AGENT_OPERATIONS.find((op) => op.name === name)?.spansProjects
+    expect(spans('passage-similar-search')).toBe('always')
+    expect(spans('project-list')).toBe('always')
+    expect(spans('inbox-list')).toBe('always')
+    expect(spans('conversation-list')).toBe('unlessScoped')
   })
 })
 

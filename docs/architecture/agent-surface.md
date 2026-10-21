@@ -132,9 +132,18 @@ A read in a solo conversation of another project is refused rather than
 recorded as a cross-project hand-out (`recordCrossProjectHandOut`,
 `conversation_source_projects`): that record says the conversation drew on the
 project as its audience may read it, and a route's answer is the requester's,
-with every restricted folder they may open. Not covered: an organization-wide
-read that names no project (the inbox, the conversation list, a document
-summary across projects) still runs, and records only the turn's own project.
+with every restricted folder they may open. A read whose answer can carry any
+project's content without naming one declares `spansProjects` in the catalog
+(`always`: similar passages, the project list, the inbox, the holds, quarantine
+and deletion queues, the download log; `unlessScoped`: the conversation and
+proposal lists without a `projectId`) and is refused in a project's
+conversation. `read-gate.spec.ts` lists every other Piloti read that names no
+place, each with the reason it carries no project's content, and fails on a new
+one. A read naming something the lookup does not find (a held upload a
+reviewer could open, a mistyped id, a `resourceType` it cannot place) is
+refused as well, except the
+conversation's own id before its row exists. Not covered: in a conversation
+outside any project a cross-project read still runs on the turn's record.
 `read-gate.integration.spec.ts` proves the refusals and the record against
 Postgres.
 
@@ -407,7 +416,10 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
 - **Piloti in-product never sees one** and `proposeOperation` refuses to file one
   (403): accepting a card the agent worded is not the confirmation such a change
-  needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`).
+  needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`),
+  nor the person's own decisions: `proposal-apply`, `proposal-dismiss` and
+  `piloti-change-undo` (`PILOTI_HIDDEN_OPERATIONS`), which the applier also
+  refuses at the click, so a card Piloti worded never applies another.
 - **An external agent sees one only when its organization switched the class
   on**: the entitlements `agent-mcp-access`, `agent-mcp-secrets` and
   `agent-mcp-controls`, off by
@@ -437,7 +449,7 @@ the map does not give it, or none where it does:
 |---|---|
 | `access` | `project-folder-access-set`, `sharing-visibility-set`, `sharing-grant-add`, `sharing-grant-update`, `sharing-grant-revoke`, `organization-role-create`, `organization-role-update`, `organization-role-delete`, `project-member-add`, `project-member-remove` |
 | `secret` | `organization-llm-credential-list`, `organization-llm-credential-create`, `organization-llm-credential-revoke`, `organization-llm-credential-verify`, `organization-llm-provider-mode-set`, `organization-audit-portal-link-create`, `platform-audit-portal-link` |
-| `control` | `organization-zdr-set`, `organization-upload-screening-set`, `project-upload-screening-set`, `document-quarantine-allow`, `hold-release`, `organization-download-log-retention-set`, `organization-deleted-folder-content-set` |
+| `control` | `organization-zdr-set`, `organization-upload-screening-set`, `project-upload-screening-set`, `document-quarantine-allow`, `hold-release`, `organization-download-log-retention-set`, `organization-deleted-folder-content-set`, `organization-web-search-set` |
 
 A new operation that widens access, touches a credential or turns a control down
 gets its line in `SENSITIVE` in the same change. Its description says that the
@@ -527,10 +539,15 @@ What Piloti knows before its first call, and how it reports
 - **German requests on the server.** `discovery.ts` ranks with
   `operationScorer` (`lib/text/operation-search.ts`): both sides folded, so a
   German query no longer breaks at its umlauts, and the office's words mapped to
-  the catalog's (`operation-search-vocabulary.json`). A one-letter word ranks
+  the catalog's (`operation-search-vocabulary.json`). A term matches itself and
+  its inflections (the file's `inflections`), never a longer word it starts:
+  „Auftraggeber" is not „Auftrag". A one-letter word ranks
   nothing and is dropped; a blank query lists everything, and text with no usable
-  word in it finds nothing. The prompt still asks for English queries, which
-  need no vocabulary entry.
+  word in it finds nothing. When an operation the caller is not offered (one
+  with a `sensitivity`) would have ranked first, the search's `next` says so
+  without naming it (`SENSITIVE_MATCH_NOTE`): „Mitglied hinzufügen" then lists
+  the people list, which grants no access, with that note. The prompt still
+  asks for English queries, which need no vocabulary entry.
 - **The text after a write.** `workspace__call` reads the server's „Proposed"
   line with the proposal's id and summary after it, so the work report and the
   next turn name the same proposal. A 429, from the door or from the route an
@@ -562,7 +579,9 @@ routes through `callOperation` as the person, so their gate is the gate. Its
 token's audience is `/api/a2a` or the MCP door's (`acceptedAudiences` in
 `mcp-config.ts`): two resources of this server (RFC 8707), each with its own
 protected-resource metadata (`/.well-known/oauth-protected-resource/api/mcp` and
-`…/api/a2a`, RFC 9728). Any other audience is refused.
+`…/api/a2a`, RFC 9728), each accepted with or without a trailing slash. Any
+other audience is refused. The audience check is `jwtVerify`'s; the verified
+token's `AuthInfo.resource` is the audience it names.
 
 ## Connecting a client
 

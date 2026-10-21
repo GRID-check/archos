@@ -77,10 +77,23 @@ domain, because an ask is a conversation.
 5. The chat socket posts every headless turn's outcome to
    `/api/internal/turns/outcome`. A turn that is not a wake is looked up as an
    ask there and ends it (`recordAskOutcome`), on whichever replica.
-6. The request waits up to 40 seconds (`ASK_WAIT_SECONDS`) by reading the row. An
-   ask that ended answers 200 with the answer, which is the message the turn
-   wrote, read by the id the agent derives (`answer_message_id`); one still
-   running answers 202 and the agent polls.
+6. The request waits up to 40 seconds (`ASK_WAIT_SECONDS`; `waitSeconds` in the
+   body asks for less, 0 for none) by reading the row. An ask that ended answers
+   200 with the answer, which is the message the turn wrote, read by the id the
+   agent derives (`answer_message_id`); one still running answers 202 and the
+   agent polls.
+
+An ask whose turn never started (a spent budget, a busy thread, a server that
+refused it, a deployment with no chat service) ends `rejected` or `failed` with
+the reason and takes back what it wrote: the question, and the thread when the
+ask opened it (its row goes with it, so a later read of the id is a 404). A
+throw while starting ends it `failed` too, never a 500 that leaves it
+`submitted`. A cancel ends a `submitted` ask before it sends the stop, and the
+start reads the row again before it sends the turn, so a cancel that lands
+first sends none; a turn sent while the ask was canceled is stopped. A cancel
+the server took answers `canceled` within five seconds even when the turn's own
+notice is late. An ask still open after `GRID_PILOTI_ASK_MAX_SECONDS` (30
+minutes) is ended `failed` when it is next read: its outcome notice was lost.
 
 The states are the A2A task states, lowercase: `submitted`, `working`,
 `completed`, `canceled`, `failed`, `rejected`. `input-required` does not occur,
@@ -120,13 +133,20 @@ refused with their A2A errors.
 | A2A | Piloti |
 |---|---|
 | Task | the `piloti_asks` row; `Task.id` is the ask's id |
-| `contextId` | the conversation the ask ran in; send it back to follow up |
+| `contextId` | the conversation the ask ran in; send it back to follow up. One the client made up, or one no ask of the person started, starts a new conversation, and the task carries its id |
 | `TaskState` | the ask's state, the same word |
 | Message (user) | the question, the person's message in the thread |
 | Message (agent) | Piloti's answer, its message in the thread |
 | Artifact `answer` | the answer's text, `artifactId` the answer's message id |
 | Artifact per document | a document Piloti filed in the thread while answering, as a data part naming it |
 | `message.metadata.projectId` | the project to ask in (A2A has no field for it) |
+
+A non-blocking `SendMessage` (`returnImmediately`; in 0.3, `blocking: false`)
+and a stream ask with `waitSeconds: 0`, so the task comes back at once; a
+stream of an ask that ended at once is one event, the whole task with its
+artifacts. The ask routes run with the agent as reader, so a refusal reaches
+the client in English. A body that is not JSON is the JSON-RPC parse error
+(-32700), checked before the SDK, whose transport would answer -32602.
 
 **The SDK.** `@a2a-js/sdk` 1.3.0, the official JavaScript SDK of the A2A
 project, implements 1.0 with a 0.3 compatibility layer. We use its types and
@@ -152,8 +172,10 @@ resource of its own (RFC 8707): its metadata is at
 `/.well-known/oauth-protected-resource/api/a2a` (RFC 9728), and its 401
 challenge points there. Each door accepts a token issued for either resource
 (`acceptedAudiences` in `lib/agent-api/mcp-config.ts`), because both are this
-server and act as the same person with the same rights; a token for any other
-audience is refused. The agent card names the OAuth scheme (authorization code
+server and act as the same person with the same rights, each spelled with or
+without a trailing slash; a token for any other audience is refused. The
+verified token's `AuthInfo.resource` is the audience it names, not the door it
+was sent to. The agent card names the OAuth scheme (authorization code
 with PKCE at AuthKit) and tells the client to ask for the token for `/api/a2a`.
 WorkOS must know `/api/a2a` as a resource indicator for it to issue such a
 token (`docs/architecture/agent-surface.md`, connecting a client).
@@ -178,8 +200,9 @@ the turn's message, which links the run.
 The ask is a turn, so it has its Langfuse trace like every turn, with
 `turn_trigger: agent_consult` and the ask's id as `trigger_event_id`, and the tag
 `trigger:agent_consult` (`record_turn_trigger`). The BFF makes no model call of
-its own. The MCP door's calls are `agent_operation_called` in PostHog
-(ADR-0121).
+its own. The MCP door's calls are `agent_operation_called` in PostHog and an
+`agent-tool-call` trace in Langfuse (ADR-0121); so is each A2A method, door
+`a2a`, its observation `a2a.<operation>`.
 
 ### Consequences
 
@@ -194,7 +217,8 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog
   blocking A2A `SendMessage` for up to five minutes. Both poll the database once
   every 750 ms while they wait.
 * Bad, because an ask whose turn never reports its end (a lost outcome notice)
-  stays `working` until the agent cancels it. There is no reaper yet.
+  reads `working` for up to thirty minutes, and is ended only when somebody
+  reads it after that; nothing sweeps the table.
 * Bad, because an A2A client that cannot send a `resource` parameter at all
   gets a token with no audience of ours and is refused.
 * Neutral: legacy 0.3 clients that read the agent card in its 0.3 shape find a
@@ -224,4 +248,4 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog
   the [JavaScript SDK](https://github.com/a2aproject/a2a-js).
 * The user guide: [`../user-guides/connect-your-agent.md`](../user-guides/connect-your-agent.md#ask-piloti).
 * **Revisit when** WorkOS Agent Auth replaces the bearer audience, when a lost
-  outcome needs a reaper, or when A2A clients ask for push notifications.
+  outcome needs a sweep rather than expiry on read, or when A2A clients ask for push notifications.

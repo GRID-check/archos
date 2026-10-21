@@ -334,7 +334,7 @@ const webSearchCacheKey = (organizationId: string): string => `websearch:${organ
 /**
  * Effective web-search availability for an org (ADR-0022) — read on every
  * WS upgrade and by the `/api/v1/data_sources` proxy, so it is cached
- * briefly (write-invalidated by `saveOrgSettings`). Two layers:
+ * briefly (write-invalidated by `setOrgWebSearchEnabled`). Two layers:
  *
  *  - Tenant layer: `settings.webSearchEnabled` (default TRUE — web search is
  *    a core capability until an org admin turns it off).
@@ -420,6 +420,38 @@ export async function setOrgZdrOnly(
 }
 
 /**
+ * Switch web search for the caller's organization (ADR-0022), audited as the
+ * settings save is. The only writer of
+ * `settings.webSearchEnabled`: the generic settings save refuses the key
+ * (`DEDICATED_ROUTE_SETTINGS`), so the switch has one route, and the agent
+ * catalog can mark that route a privacy control (`sensitivity: 'control'`).
+ */
+export async function setOrgWebSearchEnabled(
+  session: AuthorizedSession,
+  enabled: boolean,
+  request: Request
+): Promise<{ webSearchEnabled: boolean; previous: boolean }> {
+  const before = await getOrgSettings(session.organizationId)
+  const previous = before.settings.webSearchEnabled !== false
+  await writeDedicatedOrgSetting(session.organizationId, 'webSearchEnabled', enabled)
+  await invalidateCached(webSearchCacheKey(session.organizationId))
+  // The backend's shared record carries web search.
+  if (previous !== enabled) await invalidateBackendModelConfig(session.organizationId)
+  await recordAuditEvent({
+    organizationId: session.organizationId,
+    actor: { userId: session.userId, email: session.email },
+    // The settings save's own action and shape (`fields`), so no new audit schema is
+    // provisioned in WorkOS; the value is the switch, and an unmoved one lists nothing.
+    action: 'org.settings.updated',
+    targetType: 'organization',
+    targetId: session.organizationId,
+    metadata: { fields: previous === enabled ? '' : 'settings.webSearchEnabled' },
+    request,
+  })
+  return { webSearchEnabled: enabled, previous }
+}
+
+/**
  * Update the caller's org settings and record the audit trail. The coarse
  * gate (`org:settings:manage`) is enforced at the route via `apiRoute`'s
  * `options.permission`.
@@ -429,16 +461,10 @@ export async function saveOrgSettings(
   patch: OrgSettingsPatch,
   request: Request
 ): Promise<OrgSettings> {
-  // Read before writing: the backend's shared record carries web search, so the
-  // cross-tier delete fires solely when that field actually moves, and the
-  // audit names only what changed. (`zdrOnly` cannot move here: the merge
-  // refuses it.)
+  // Read before writing, so the audit names only what changed. (`zdrOnly` and
+  // `webSearchEnabled` cannot move here: the merge refuses them.)
   const before = await getOrgSettings(session.organizationId)
   const settings = await updateOrgSettings(session.organizationId, patch)
-  await invalidateCached(webSearchCacheKey(session.organizationId))
-  if (before.settings.webSearchEnabled !== settings.settings.webSearchEnabled) {
-    await invalidateBackendModelConfig(session.organizationId)
-  }
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },

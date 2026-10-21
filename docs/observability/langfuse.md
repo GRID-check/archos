@@ -17,7 +17,7 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 
 | Field in Langfuse | Where it comes from | Values |
 |---|---|---|
-| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>`; metadata and tags below) |
+| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `revision-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`), `similar-passages` (a retriever, not a generation: `observed_retrieval`), `agent-tool-call` (one MCP tool call on the agent door, or one A2A method, `lib/langfuse/tool-call-trace.ts`: one `TOOL` observation `mcp.<operation>` or `a2a.<operation>`; metadata and tags below) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
 | Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
@@ -129,8 +129,11 @@ Each MCP tool call at `/api/mcp` (ADR-0121), from an external agent or from
 Piloti's own `workspace__*` tools, is a root trace `agent-tool-call` holding one
 `TOOL` observation named `mcp.<operation>` (`search-operations`, `call-operation`
 is recorded under the operation it ran, `unknown` for a name no operation has:
-that is the agent's own text). Metadata on both: `operation`, `domain`, `door`
-(`mcp` or `piloti`), `mode` (`search` or `tools`), `decision` (`run`, `propose`
+that is the agent's own text). Each A2A method at `/api/a2a` (ADR-0123) is one
+too, its observation `a2a.<operation>` (`piloti-ask-create`, `piloti-ask-get`,
+`piloti-ask-cancel`); the polls a blocking call or a stream makes while it
+waits are not. Metadata on both: `operation`, `domain`, `door`
+(`mcp`, `piloti` or `a2a`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`
 or `refused`), `status` (the route's HTTP status), `duration_ms`, `client_id`.
 Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and

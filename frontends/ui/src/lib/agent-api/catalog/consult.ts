@@ -25,11 +25,11 @@ export const consultOperations: readonly AgentOperation[] = [
     description:
       'Asks Piloti, the office’s own agent, a question as the signed-in person: it answers from the office’s ' +
       'documents, the project’s files and building law, with the person’s rights, and may file a document. ' +
-      `Waits up to ${ASK_WAIT_SECONDS} seconds: state "completed" carries answer.text and any documents filed; ` +
-      'state "submitted" or "working" means call piloti-ask-get with the id after pollAfterSeconds. ' +
-      'Pass projectId (from project-list) to ask about one project, and conversationId from an earlier ask to ' +
-      'follow up in the same conversation. "rejected" or "failed" carry the reason (a spent budget, a busy ' +
-      'conversation). Uses the organization’s model budget, and needs the piloti-ask switch.',
+      `Waits up to ${ASK_WAIT_SECONDS} seconds (less with waitSeconds): state "completed" carries answer.text and ` +
+      'any documents filed; state "submitted" or "working" means call piloti-ask-get with the id after ' +
+      'pollAfterSeconds. Pass projectId (from project-list) to ask about one project: without it Piloti answers ' +
+      'for the office as a whole and reads no project’s files. Pass conversationId from an earlier ask to follow ' +
+      'up in the same conversation. "rejected" or "failed" carry the reason (a spent budget, a busy conversation). Uses the organization’s model budget, and needs the piloti-ask switch.',
     method: 'POST',
     path: '/api/piloti-asks',
     body: createAskSchema,

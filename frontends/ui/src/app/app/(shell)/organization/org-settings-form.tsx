@@ -5,7 +5,9 @@
  * override, the default interface language for new members, and the
  * org-level web-search toggle (ADR-0022), and where a new chat's Aufwand dial
  * starts. Persists to
- * `/api/organization/settings` (PUT), which enforces the admin check server-side.
+ * `/api/organization/settings` (PUT), and the web-search switch to its own
+ * `/api/organization/web-search` (PUT), the route an agent calls too; both
+ * enforce the admin check server-side.
  */
 
 import { type FC, useState, useCallback } from 'react'
@@ -76,10 +78,19 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
         body: JSON.stringify({
           displayName: displayName.trim() === '' ? null : displayName.trim(),
           defaultLocale: defaultLocaleValue,
-          settings: { webSearchEnabled, [CHAT_EFFORT_SETTING]: chatEffort },
+          settings: { [CHAT_EFFORT_SETTING]: chatEffort },
         }),
       })
       if (!res.ok) throw new Error(`Save failed (${res.status})`)
+      // Web search is a privacy switch with its own route (the generic save refuses the key).
+      if (webSearchEnabled !== baseline.webSearchEnabled) {
+        const switched = await fetch('/api/organization/web-search', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ enabled: webSearchEnabled }),
+        })
+        if (!switched.ok) throw new Error(`Save failed (${switched.status})`)
+      }
       setBaseline({
         displayName: displayName.trim(),
         defaultLocale: defaultLocaleValue,
@@ -92,7 +103,7 @@ export const OrgSettingsForm: FC<OrgSettingsFormProps> = ({
     } finally {
       setSaving(false)
     }
-  }, [displayName, defaultLocaleValue, webSearchEnabled, chatEffort, t])
+  }, [displayName, defaultLocaleValue, webSearchEnabled, chatEffort, baseline.webSearchEnabled, t])
 
   return (
     <FieldGroup>

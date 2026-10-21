@@ -59,7 +59,7 @@ import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { findOperation } from '@/lib/agent-api/catalog'
-import { describeTargets } from '@/lib/agent-api/operation-targets'
+import { describeTargets, requireTargetsReadable, TooManyTargetsError, targetsOf } from '@/lib/agent-api/operation-targets'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordDecisionScore, type Decision } from '@/lib/langfuse/decision-score'
@@ -331,6 +331,42 @@ async function mayDecide(session: AuthorizedSession, row: ProposedChangeRow): Pr
   }
 }
 
+/**
+ * Refuse a decider who may not read everything an `operation` proposal names
+ * (ADR-0121: a card names each target for its reader). Their apply would run as
+ * them, the route would answer 404, and the card would end `failed` for
+ * everyone; asked first, the proposal stays open for somebody who can read it.
+ */
+async function requireTargetsOfOperationReadable(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
+  if (row.kind !== 'operation') return
+  const typed = parseKindPayload(row.kind, row.payload)
+  if (typed.kind !== 'operation') return
+  const op = findOperation(typed.payload.operation)
+  // An operation that left the catalog fails at the applier, with its reason, for everyone alike.
+  if (!op) return
+  try {
+    await requireTargetsReadable(session, targetsOf(op, typed.payload.input))
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof ForbiddenError || error instanceof TooManyTargetsError) {
+      throw new ForbiddenError('This change names something you cannot open, so somebody who can must decide it', {
+        reason: 'proposal-decider-cannot-read-target',
+      })
+    }
+    throw error
+  }
+}
+
+/** Whether `session`'s person may read every target of `row` (true for a kind that is not an operation). */
+async function readsEveryTarget(session: AuthorizedSession, row: ProposedChangeRow): Promise<boolean> {
+  try {
+    await requireTargetsOfOperationReadable(session, row)
+    return true
+  } catch (error) {
+    if (error instanceof ForbiddenError) return false
+    throw error
+  }
+}
+
 const alreadyDecided = (row: ProposedChangeRow) =>
   new ConflictError('This proposal has already been decided', { reason: 'proposal-decided', status: row.status })
 
@@ -363,7 +399,7 @@ async function toView(
     decidedByName: nameOf(row.decidedBy),
     decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
     results: row.results ?? null,
-    canDecide: undecided && (await decides(row)),
+    canDecide: undecided && (await decides(row)) && (await readsEveryTarget(session, row)),
   }
   // Only a project's proposal has a project; the Büroablage's and the organization's have none.
   const projectId = row.scope === 'project' ? projectOf(row) : row.projectId
@@ -406,6 +442,7 @@ export async function applyProposal(
   const row = await requireReadableProposal(session, id)
   if (row.status !== 'proposed') throw alreadyDecided(row)
   await requireDecider(session, row)
+  await requireTargetsOfOperationReadable(session, row)
   const claim = await claimProposedChange(session.organizationId, id, session.userId, staleBefore())
   if (!claim) {
     const now = await findProposedChange(session.organizationId, id)

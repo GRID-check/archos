@@ -17,7 +17,10 @@ import 'server-only'
  *    read that names another project (by id, or through a document, folder,
  *    model or conversation of one), or any project in a turn that has none, is
  *    refused; so is a read of another conversation that drew on another
- *    project. What a call names is `operation-targets.ts`'s answer.
+ *    project, a read whose answer spans the office's projects
+ *    (`spansProjects`) in a project's conversation, and a read naming
+ *    something the lookup does not find. What a call names is
+ *    `operation-targets.ts`'s answer.
  *  - {@link recordSoloWorkspaceRead}: record the restricted folders the read
  *    may have drawn on before the content reaches the model. In ONE
  *    transaction under `lockConversationAudience`, the lock every share,
@@ -54,7 +57,7 @@ import {
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { AgentOperation } from './operation'
-import { type TargetInput, TooManyTargetsError, placesOf, targetsOf } from './operation-targets'
+import { type TargetInput, TooManyTargetsError, namesUntypedResource, placesOf, targetsOf } from './operation-targets'
 import type { AgentPrincipal } from './principal'
 
 /** `none`: the call belongs to no conversation. `solo`: the requester's alone. `shared`: anyone else reads it. */
@@ -86,6 +89,13 @@ export const SOLO_READ_REFUSALS = {
     'That belongs to another project than this conversation\'s, so Piloti does not read it here: its content would ' +
     'land in this conversation, where that project\'s rules for who may read it do not hold. Tell the person to ask ' +
     'in a conversation in that project, or to open it themselves.',
+  spansProjects:
+    'That read reaches across the office\'s projects, so Piloti does not run it in this project\'s conversation: ' +
+    'content of other projects would land here, where their rules for who may read it do not hold. Narrow it to ' +
+    'this project where the operation allows, or tell the person to open it themselves.',
+  unknown:
+    'Piloti cannot tell where that lives, so it does not read it here: what it does not find, it cannot hold to ' +
+    'this conversation\'s rules for who may read it. Check the id, or tell the person to open it themselves.',
   tooMany:
     'The call names too many projects, documents, folders or conversations to check. Narrow it and call again.',
 } as const
@@ -97,9 +107,11 @@ export const SOLO_READ_REFUSALS = {
  */
 export async function soloReadRefusal(
   principal: AgentPrincipal,
-  op: Pick<AgentOperation, 'path'>,
+  op: Pick<AgentOperation, 'path' | 'spansProjects'>,
   input: TargetInput,
 ): Promise<string | null> {
+  const turnProject = principal.projectId ?? null
+  if (op.spansProjects === 'always' && turnProject) return SOLO_READ_REFUSALS.spansProjects
   let targets
   try {
     targets = targetsOf(op, input)
@@ -107,14 +119,23 @@ export async function soloReadRefusal(
     if (error instanceof TooManyTargetsError) return SOLO_READ_REFUSALS.tooMany
     throw error
   }
+  if (namesUntypedResource(input)) return SOLO_READ_REFUSALS.unknown
+  const namesProject = targets.some((target) => target.type === 'project')
+  if (op.spansProjects === 'unlessScoped' && turnProject && !namesProject) return SOLO_READ_REFUSALS.spansProjects
   if (targets.length === 0) return null
   const { organizationId, userId } = principal.session
-  const turnProject = principal.projectId ?? null
   return withTenant(tenantOf(principal), async () => {
     const places = await placesOf(organizationId, userId, targets)
-    for (const place of places) {
-      // Nothing there for this reader: the route answers its own 404, and no content moves.
-      if (!place) continue
+    for (const [index, place] of places.entries()) {
+      if (!place) {
+        // This conversation's own first turn names it before its row exists.
+        const target = targets[index]
+        if (target?.type === 'conversation' && target.id === principal.conversationId) continue
+        // Not found as this reader is looked up here. The route may still find it with
+        // another reader (a reviewer sees a held upload), and nothing here would record
+        // where it lives, so it is refused rather than let through.
+        return SOLO_READ_REFUSALS.unknown
+      }
       if (place.projectId && !turnProject) return SOLO_READ_REFUSALS.noProject
       if (place.projectId && place.projectId !== turnProject) return SOLO_READ_REFUSALS.otherProject
       const other = place.conversationId && place.conversationId !== principal.conversationId
