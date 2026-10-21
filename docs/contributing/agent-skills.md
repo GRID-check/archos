@@ -82,8 +82,21 @@ Third-party skills sit in the same manifest, pinned to a commit and locked in
 | `codebase-design` | by name, and by the skill above | The architecture vocabulary the report is written in |
 | `grilling` | by name, and by the skill above | The decision loop once a candidate is picked |
 | `domain-modeling` | by name, and by the skill above | Keeps a `CONTEXT.md` glossary current as terms sharpen |
+| `emil-design-eng` | automatically, on UI polish and motion work | The bar for interface craft: easing, duration, origin, press feedback, the invisible details |
+| `animate` | automatically, when building a new animation | Walks the decisions in order: should it animate, purpose, curve, duration, interruption, exit |
+| `improve-animations` | automatically, on "audit the motion" or "make this feel better" | Read-only audit that writes self-contained plans for a cheaper executor |
+| `find-animation-opportunities` | automatically, on "what could animate here" | Proposes motion with exact values, and says what must not animate |
+| `animation-performance` | automatically, on jank and dropped frames | The composite-only rules, Motion's main-thread shorthands, inherited CSS variable cost |
+| `animation-vocabulary` | automatically, on "what is it called when" | Names a motion effect so a prompt or a review can ask for it precisely |
+| `apple-design` | automatically, on gestures, springs, sheets, materials, typography | The physical-motion half of the bar; our sheets and spring catalog are its territory |
+| `mobile-native` | automatically, on touch and PWA work | Piloti is a mobile-first PWA: tap highlight, `dvh`, input zoom, safe areas |
+| `break-ui` | automatically, on "stress-test this component" | Worst-case data: long German compound names, empty lists, huge counts |
+| `ask-sonner` | automatically, on toast work | `frontends/ui` uses Sonner (`components/ui/sonner.tsx`) |
+| `review-animations` | by name | The strict reviewer for a motion diff; approval is earned |
+| `pick-ui-library` | by name | A curated list to check before hand-rolling a general component ("Buy, don't build") |
+| `prototype` | by name | Several variants of one piece of UI behind a picker, to choose by feel |
 
-The last four are one capability. `improve-codebase-architecture` calls the
+The four from `improve-codebase-architecture` to `domain-modeling` are one capability. `improve-codebase-architecture` calls the
 Skill tool for the other three by name, so taking it alone leaves three dead
 calls. It also reads and maintains the root [`CONTEXT.md`](../../CONTEXT.md),
 the domain glossary; the engineering vocabulary is in
@@ -92,6 +105,12 @@ the domain glossary; the engineering vocabulary is in
 Eight are from [pstack](https://github.com/cursor/plugins/tree/main/pstack),
 picked out of its 44, and five from
 [mattpocock/skills](https://github.com/mattpocock/skills).
+Thirteen are from [emilkowalski/skills](https://github.com/emilkowalski/skills),
+which is all of it except `animate-expo` and `write-swift`: there is no React
+Native or Swift in this repo. Where one of them disagrees with the motion
+vocabulary in [`grid-design-language.md`](../design/grid-design-language.md#motion-vocabulary),
+the design language wins until it is changed, and changing it is a decision
+recorded there, not a drift in one component.
 `apm install cursor/plugins/pstack` takes the whole plugin in one dependency if
 you want the rest; the cost is context load from the ones that fire on their own.
 
