@@ -10,14 +10,37 @@ unregenerated would show the outside agent a tool that no longer exists.
 from __future__ import annotations
 
 import json
+import subprocess
+import sys
+from pathlib import Path
 
 from aiq_agent.common.backend_tools import BACKEND_READ_TOOLS
 from scripts.generate_backend_tools_schema import SCHEMA_PATH
-from scripts.generate_backend_tools_schema import render
+
+ROOT = Path(__file__).resolve().parents[3]
+
+
+def _render_in_a_clean_interpreter() -> str:
+    """The fixture as the generator writes it, from a process of its own.
+
+    NAT's function registry is process-global. Tests elsewhere in a shard import
+    the knowledge layer by its source path (`sources.knowledge_layer.src…`), which
+    registers each tool a second time under another module name, and the config
+    then refuses the short type as ambiguous. Which tests share a process depends
+    on how pytest-split groups them, so in-process rendering passed locally and
+    failed in CI. A fresh interpreter is how the generator itself runs.
+    """
+    return subprocess.run(
+        [sys.executable, "-c", "from scripts.generate_backend_tools_schema import render; print(render(), end='')"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=True,
+    ).stdout
 
 
 def test_the_committed_contract_is_the_one_the_tools_generate() -> None:
-    assert SCHEMA_PATH.read_text(encoding="utf-8") == render(), (
+    assert SCHEMA_PATH.read_text(encoding="utf-8") == _render_in_a_clean_interpreter(), (
         "frontends/ui/tests/fixtures/backend-tools.schema.json is stale: run "
         "`uv run python scripts/generate_backend_tools_schema.py` and commit it."
     )
