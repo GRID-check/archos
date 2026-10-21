@@ -77,6 +77,14 @@ class TestEachClassFromItsEvidence:
         prose = "Ich habe vorgeschlagen, Lea als Mitglied aufzunehmen; bitte bestätigen."
         assert _classes(prose, ClaimEvidence(records=[PROPOSAL]))[0][0] == "action"
 
+    def test_the_proposed_operation_is_not_read_as_a_prescription(self):
+        # „aufzunehmen" is the zu-infinitive the normative detector reads as
+        # „ist einzuhalten"; in an action report it names the operation.
+        prose = "Ich habe vorgeschlagen, Lea als Mitglied aufzunehmen; bitte bestätigen."
+        assert _classes(prose, ClaimEvidence(records=[PROPOSAL])) == [("action", "descriptive")]
+        prose = "Ich habe vorgeschlagen, die Brüstung anzuheben, weil die OIB-RL 4 das verlangt."
+        assert _classes(prose, ClaimEvidence(records=[PROPOSAL])) == [("action", "normative")]
+
     def test_a_sentence_stating_a_measured_value_at_its_own_precision_is_measured(self):
         assert _classes("Der Keller ist 2,70 m hoch.", ClaimEvidence(measured_values=["2.703 m"])) == [
             ("measured", "value")

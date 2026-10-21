@@ -134,6 +134,14 @@ _ACTION_RE = re.compile(
     re.IGNORECASE,
 )
 
+#: What a sentence reporting a proposal says about the proposed operation:
+#: „…, Lea als Mitglied aufzunehmen", „…, die Dateien zu verschieben", „bitte
+#: bestätigen Sie". The normative detector reads a zu-infinitive as a
+#: prescription („ist einzuhalten"); in an action report it is the operation,
+#: so it is left out before the claim type is decided. Everything else in the
+#: sentence („weil OIB 4 1,00 m verlangt") is still read.
+_ACTION_INFINITIVE_RE = re.compile(r"\b\w*zu\w+en\b|\bzu\s+\w+en\b|\bbestätigen\b|\bbestaetigen\b", re.IGNORECASE)
+
 _NUMBER_RE = re.compile(r"(?<![\w-])\d+(?:[.,]\d+)?(?!\w)")
 #: Words a record match may rest on: four letters or more, so „und", „die" and
 #: „ist" never ground anything.
@@ -436,9 +444,11 @@ def classify_claims(
     normative: Callable[[str], bool],
 ) -> list[ClaimStamp]:
     """One stamp per sentence of ``prose`` (the answer without its reference list), in document order."""
-    units = list(_units(prose))
-    typed = [(unit, claim_type(unit.text, normative)) for unit in units]
-    classified = [(unit, ctype, *_classify(unit, evidence)) for unit, ctype in typed]
+    classified = []
+    for unit in _units(prose):
+        provenance, operation, unmatched = _classify(unit, evidence)
+        typed_text = _ACTION_INFINITIVE_RE.sub("", unit.text) if provenance == "action" else unit.text
+        classified.append((unit, claim_type(typed_text, normative), provenance, operation, unmatched))
     supported = {unit.paragraph for unit, _, provenance, _, _ in classified if provenance in _PASSAGE_CLASSES}
     stamps = [
         ClaimStamp(
