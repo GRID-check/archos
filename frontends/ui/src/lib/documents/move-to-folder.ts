@@ -141,6 +141,38 @@ export async function moveDocumentToFolder(
   return { ok: true, document: { id: updated.id, folderId: updated.folderId } }
 }
 
+export interface DocumentMoveOutcome {
+  documentId: string
+  ok: boolean
+  error: string | null
+}
+
+/**
+ * Several moves, one at a time, each through {@link moveDocumentToFolder} with
+ * every check it makes: a bulk move is that move repeated, never a shortcut
+ * past it. One that is refused or throws is reported and the rest go on, so a
+ * single read-only folder does not stop a sort of a thousand files.
+ */
+export async function moveDocumentsToFolders(
+  moves: readonly MoveDocumentInput[],
+  session: AuthorizedSession,
+): Promise<DocumentMoveOutcome[]> {
+  const outcomes: DocumentMoveOutcome[] = []
+  for (const move of moves) {
+    try {
+      const result = await moveDocumentToFolder(move, session)
+      outcomes.push({ documentId: move.documentId, ok: result.ok, error: result.ok ? null : result.error })
+    } catch (error) {
+      outcomes.push({
+        documentId: move.documentId,
+        ok: false,
+        error: error instanceof Error ? error.message : 'Move failed.',
+      })
+    }
+  }
+  return outcomes
+}
+
 /**
  * Tell the backend where this document now lives (ADR-0049).
  *

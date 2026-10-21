@@ -128,3 +128,48 @@ export async function listFiledDocuments(
       .limit(MAX_FILED_SAMPLE)
   )
 }
+
+/**
+ * The documents at a shelf's root (no folder), as `reader` may see them, by
+ * name: what a root sort reads. Bounded by `limit`, which the caller sets one
+ * above what it will judge to know whether the root holds more.
+ */
+export async function listRootDocuments(
+  organizationId: string,
+  shelf: DocumentShelf,
+  reader: DocumentReader,
+  limit: number
+): Promise<Document[]> {
+  return withTenant({ organizationId }, () =>
+    getDb()
+      .select()
+      .from(documents)
+      .where(and(shelfDocumentWhere(shelf, organizationId), isNull(documents.folderId), documentVisibleTo(reader)))
+      .orderBy(documents.filename)
+      .limit(limit)
+  )
+}
+
+/** These documents, when they sit at the shelf's root and `reader` may see them. At most `ids.length`. */
+export async function findRootDocuments(
+  organizationId: string,
+  shelf: DocumentShelf,
+  reader: DocumentReader,
+  ids: readonly string[]
+): Promise<Document[]> {
+  if (ids.length === 0) return []
+  return withTenant({ organizationId }, () =>
+    getDb()
+      .select()
+      .from(documents)
+      .where(
+        and(
+          shelfDocumentWhere(shelf, organizationId),
+          isNull(documents.folderId),
+          inArray(documents.id, [...ids]),
+          documentVisibleTo(reader)
+        )
+      )
+      .limit(ids.length)
+  )
+}

@@ -22,8 +22,17 @@ import {
 
 /** The name basis runs while a person looks at the upload; the content basis is background. */
 const TIMEOUT_MS = { name: 30_000, content: 60_000 } as const
+/** A sort is a person waiting on a chunk that also asks the decision model per document. */
+const SORT_TIMEOUT_MS = 90_000
 
-type RawMove = { id: string; folder: string; reason: string; new?: boolean; description?: string | null }
+type RawMove = {
+  id: string
+  folder: string
+  reason: string
+  new?: boolean
+  description?: string | null
+  confidence?: number | null
+}
 
 /**
  * The moves of a parsed answer that the input grounds, one per document, in
@@ -51,6 +60,7 @@ export function keepKnownMoves(moves: readonly RawMove[], input: FilingJudgement
       folder: folder?.path ?? convention?.path ?? move.folder,
       reason,
       newFolder: convention ? { description: convention.description } : null,
+      confidence: move.confidence ?? null,
     })
   }
   return kept
@@ -60,6 +70,7 @@ export function keepKnownMoves(moves: readonly RawMove[], input: FilingJudgement
 export function filingFitBody(input: FilingJudgementInput): object {
   return {
     basis: input.basis,
+    purpose: input.purpose ?? 'upload',
     locale: input.locale,
     folders: input.folders.map((folder) => ({
       path: folder.path,
@@ -94,7 +105,7 @@ export async function judgeFiling(organizationId: string, input: FilingJudgement
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-grid-organization-id': organizationId },
       body: JSON.stringify(filingFitBody(input)),
-      signal: AbortSignal.timeout(TIMEOUT_MS[input.basis]),
+      signal: AbortSignal.timeout(input.purpose === 'sort' ? SORT_TIMEOUT_MS : TIMEOUT_MS[input.basis]),
     })
     if (!response.ok) return { moves: [], traceId: null, error: `backend_${response.status}` }
     const parsed = filingFitResponseSchema.safeParse(await response.json())
