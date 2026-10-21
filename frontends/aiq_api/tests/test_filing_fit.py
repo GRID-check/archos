@@ -12,10 +12,15 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
+from aiq_api.routes.filing_fit import MAX_SCORED_FOLDERS
+from aiq_api.routes.filing_fit import SORT_INSTRUCTIONS
+from aiq_api.routes.filing_fit import SYSTEM_PROMPT
 from aiq_api.routes.filing_fit import FilingFitRequest
+from aiq_api.routes.filing_fit import FilingMove
 from aiq_api.routes.filing_fit import add_filing_fit_routes
 from aiq_api.routes.filing_fit import build_user_content
 from aiq_api.routes.filing_fit import parse_moves
+from aiq_api.routes.filing_fit import score_moves
 
 BODY = {
     "basis": "content",
@@ -166,3 +171,98 @@ async def test_nothing_to_file_into_makes_no_call(app):
     body = (await _judge(app, fake, {**BODY, "folders": [], "conventions": []})).json()
     assert body["moves"] == []
     assert post.await_count == 0
+
+
+SORT_ANSWER = json.dumps(
+    {
+        "moves": [
+            {"id": "d1", "folder": "Korrespondenz", "reason": "Ein Brief an die Behörde."},
+            {"id": "d3", "folder": "Bescheide", "reason": "Ein Bescheid der MA 37."},
+        ]
+    }
+)
+
+
+class _Answer:
+    """What ``decide_many`` hands back per state: ``choice("folder")`` gives the distribution."""
+
+    def __init__(self, distribution: dict[str, float]):
+        self._distribution = distribution
+
+    def choice(self, key: str):
+        return "f0", self._distribution
+
+
+@pytest.fixture
+def decided(monkeypatch):
+    """A decide_many that answers every state with one distribution and records what it was asked."""
+    calls: list[dict] = []
+    distribution = {"f0": 0.9, "f2": 0.4, "none": 0.1}
+
+    async def fake_decide_many(states, questions, **kwargs):
+        calls.append({"states": list(states), "questions": questions, **kwargs})
+        return [_Answer(distribution) for _ in states]
+
+    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", fake_decide_many)
+    return calls
+
+
+@pytest.mark.asyncio
+async def test_sort_asks_with_the_sort_instructions_and_a_larger_budget(app, decided):
+    fake, post = _client_returning(SORT_ANSWER)
+    body = (await _judge(app, fake, {**BODY, "purpose": "sort"})).json()
+    assert [move["id"] for move in body["moves"]] == ["d1", "d3"]
+    payload = post.call_args.kwargs["json"]
+    assert payload["max_tokens"] == 4000
+    assert payload["messages"][0]["content"] == SYSTEM_PROMPT + "\n" + SORT_INSTRUCTIONS
+
+
+@pytest.mark.asyncio
+async def test_sort_attaches_the_probability_of_each_moves_folder(app, decided):
+    fake, _post = _client_returning(SORT_ANSWER)
+    body = (await _judge(app, fake, {**BODY, "purpose": "sort"})).json()
+    assert {move["id"]: move["confidence"] for move in body["moves"]} == {"d1": 0.4, "d3": 0.9}
+    (call,) = decided
+    assert len(call["states"]) == 2
+    assert all("folder" not in state for state in call["states"])
+    assert call["questions"]["folder"]["criteria"] == {
+        "f0": "Bescheide: Bescheide und Stellungnahmen der Behörden",
+        "f1": "Pläne/Einreichung: Einreichunterlagen",
+        "f2": "Korrespondenz: Briefe und Mails mit Behörden",
+        "none": "No folder of this shelf fits the document.",
+    }
+
+
+@pytest.mark.asyncio
+async def test_a_failed_score_keeps_every_move_unscored(app, monkeypatch):
+    async def broken(*_args, **_kwargs):
+        raise RuntimeError("endpoint down")
+
+    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", broken)
+    fake, _post = _client_returning(SORT_ANSWER)
+    response = await _judge(app, fake, {**BODY, "purpose": "sort"})
+    assert response.status_code == 200
+    assert [(move["id"], move["confidence"]) for move in response.json()["moves"]] == [("d1", None), ("d3", None)]
+
+
+@pytest.mark.asyncio
+async def test_an_upload_is_never_scored_and_keeps_the_upload_budget(app, monkeypatch):
+    spy = AsyncMock(return_value=[])
+    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", spy)
+    fake, post = _client_returning(SORT_ANSWER)
+    body = (await _judge(app, fake, BODY)).json()
+    assert [move["confidence"] for move in body["moves"]] == [None, None]
+    spy.assert_not_awaited()
+    payload = post.call_args.kwargs["json"]
+    assert payload["max_tokens"] == 2000
+    assert payload["messages"][0]["content"] == SYSTEM_PROMPT
+
+
+@pytest.mark.asyncio
+async def test_too_many_folders_to_offer_are_not_scored(monkeypatch):
+    spy = AsyncMock(return_value=[])
+    monkeypatch.setattr("aiq_agent.common.decisions.decide_many", spy)
+    request = _request(folders=[{"path": f"Ordner {index}"} for index in range(MAX_SCORED_FOLDERS + 1)])
+    scores = await score_moves(request, [FilingMove(id="d1", folder="Ordner 0", reason="x")], None)
+    assert scores == [None]
+    spy.assert_not_awaited()

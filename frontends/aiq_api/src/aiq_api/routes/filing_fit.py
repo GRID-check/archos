@@ -28,6 +28,11 @@ content`` runs when ingestion has read the batch, with the Dokumentart and the
 summary, queued as ``bulk``. The Dokumentart was set by a person or read from
 the content, and outweighs the file name (``doc_class`` beats every guess).
 
+**Sort.** ``purpose: sort`` is a person placing the shelf root's documents, not an upload: the prompt
+asks for a folder for every document that has a plausible home, the budget is 4000 tokens, the call queues
+``interactive``, and each move carries ``confidence``, Jev's probability for its folder (ADR-0064). Scoring
+only adds that number; a failure leaves the moves as they were.
+
 **Observable.** One ``filing-fit`` generation per call (ADR-0089), with the
 batch, the project, the shelf and the basis as metadata, and its trace id in
 the answer so a person's decision on the proposal is scored on it.
@@ -55,6 +60,7 @@ from pydantic import ConfigDict
 from pydantic import Field
 
 from aiq_agent.common import provider_limiter
+from aiq_agent.common.decisions import Decision
 from aiq_agent.common.openrouter import limited_async_http_client
 from aiq_agent.common.source_kinds import LEGACY_SHELF_VALUES
 from aiq_agent.observability.direct_trace import observed_generation
@@ -97,6 +103,24 @@ SYSTEM_PROMPT = (
     '"reason": "<one short sentence a person reads>"}]}. Use only ids from DOCUMENTS. An empty list is a '
     "good answer."
 )
+
+#: Appended to SYSTEM_PROMPT for ``purpose: sort``: a person sorting the shelf root, not an upload.
+SORT_INSTRUCTIONS = (
+    "This is not an upload. A person built these folders to sort the shelf root into, and asked you to place "
+    "every document of the batch. Propose a folder for every document that has a plausible home, even when "
+    "you are not certain; leave out only documents that no folder fits. When several folders fit, prefer the "
+    "deepest one. Prefer an existing folder, and name a CONVENTIONS folder only when no existing folder fits."
+)
+
+#: The decision slot a move's folder is scored under (``decide.filing-fit``).
+SCORE_SLOT = "filing-fit"
+SCORE_QUESTION = (
+    "Which folder of this architecture office's shelf does this document belong in? Choose none when no folder fits."
+)
+SCORE_NONE = "No folder of this shelf fits the document."
+#: One option per folder plus "none" is the decision model's 255-option ceiling.
+MAX_SCORED_FOLDERS = 254
+MAX_OPTION = 300
 
 
 class FilingFolder(BaseModel):
@@ -152,6 +176,8 @@ class FilingFitRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     basis: Literal["name", "content"]
+    #: ``sort``: a person sorting the shelf root, every document of the batch placed where it fits.
+    purpose: Literal["upload", "sort"] = "upload"
     locale: str = Field("de", max_length=16)
     folders: list[FilingFolder] = Field(default_factory=list, max_length=MAX_FOLDERS)
     conventions: list[FilingConvention] = Field(default_factory=list, max_length=MAX_CONVENTIONS)
@@ -167,6 +193,8 @@ class FilingMove(BaseModel):
     new: bool = False
     #: The description a new folder is created with (the convention's).
     description: str | None = None
+    #: Jev's probability that this folder is the one (``purpose: sort`` only); ``None`` when not scored.
+    confidence: float | None = None
 
 
 class FilingFitResponse(BaseModel):
@@ -248,6 +276,74 @@ def parse_moves(data: dict[str, Any], request: FilingFitRequest) -> list[FilingM
     return found
 
 
+def _candidate_folders(request: FilingFitRequest) -> dict[str, tuple[str, str | None]]:
+    """Existing folders, then conventions, keyed by path key; the first spelling of a key wins."""
+    candidates: dict[str, tuple[str, str | None]] = {}
+    for folder in request.folders:
+        candidates.setdefault(_path_key(folder.path), (folder.path, folder.description))
+    for convention in request.conventions:
+        candidates.setdefault(_path_key(convention.path), (convention.path, convention.description))
+    return candidates
+
+
+def _option(path: str, description: str | None) -> str:
+    """A folder as the decision reads it: its path and what a person wrote it is for, cut to ``MAX_OPTION``."""
+    return (f"{path}: {description}" if description else path)[:MAX_OPTION]
+
+
+def _score_state(document: FilingDocument) -> dict[str, Any]:
+    """What the decision reads of one document: the fields the model reads, never the folder it sits in."""
+    return _without_empty(
+        {
+            "file": document.file,
+            "type": document.type,
+            "tags": document.tags,
+            "summary": document.summary,
+            "language": "de",
+        }
+    )
+
+
+def _confidence(decision: Decision | None, key: str | None) -> float | None:
+    if decision is None or key is None:
+        return None
+    _chosen, distribution = decision.choice("folder")
+    return round(distribution.get(key, 0.0), 3)
+
+
+async def score_moves(
+    request: FilingFitRequest, moves: list[FilingMove], organization_id: str | None
+) -> list[float | None]:
+    """Jev's p(the move's folder) for each move, one decision per moved document, in move order.
+
+    Scoring only ADDS a number (ADR-0064): a failure, a skipped decision or too
+    many folders to offer as options leaves every confidence ``None`` and the
+    moves as they were.
+    """
+    from aiq_agent.common.decisions import choice
+    from aiq_agent.common.decisions import decide_many
+
+    candidates = _candidate_folders(request)
+    if not moves or len(candidates) > MAX_SCORED_FOLDERS:
+        return [None] * len(moves)
+    try:
+        keys = {path_key: f"f{index}" for index, path_key in enumerate(candidates)}
+        options = {keys[path_key]: _option(path, description) for path_key, (path, description) in candidates.items()}
+        options["none"] = SCORE_NONE
+        documents = {document.id: document for document in request.documents}
+        states = [_score_state(documents[move.id]) for move in moves]
+        decisions = await decide_many(
+            states,
+            {"folder": choice(SCORE_QUESTION, options)},
+            slot=SCORE_SLOT,
+            organization_id=organization_id,
+        )
+        return [_confidence(decision, keys.get(_path_key(move.folder))) for decision, move in zip(decisions, moves)]
+    except Exception as exc:  # noqa: BLE001 — scoring may only add; the moves stand
+        logger.warning("Filing move scoring failed: %s", type(exc).__name__)
+        return [None] * len(moves)
+
+
 def add_filing_fit_routes(router: APIRouter) -> None:
     """Register the filing judgement endpoint."""
 
@@ -269,14 +365,16 @@ def add_filing_fit_routes(router: APIRouter) -> None:
         if not cred.api_key:
             return FilingFitResponse(error="llm_not_configured")
 
+        sorting = request.purpose == "sort"
+        system_prompt = SYSTEM_PROMPT + "\n" + SORT_INSTRUCTIONS if sorting else SYSTEM_PROMPT
         payload = cred.request_body(
             {
                 "model": cred.model,
                 "temperature": 0,
-                "max_tokens": 2000,
+                "max_tokens": 4000 if sorting else 2000,
                 "response_format": {"type": "json_object"},
                 "messages": [
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": system_prompt},
                     {"role": "user", "content": build_user_content(request)},
                 ],
             }
@@ -287,12 +385,14 @@ def add_filing_fit_routes(router: APIRouter) -> None:
             "project_id": request.trace.project_id or "",
             "shelf": request.trace.shelf,
             "basis": request.basis,
+            "purpose": request.purpose,
             "documents": len(request.documents),
             "folders": len(request.folders),
             "conventions": len(request.conventions),
         }
-        # The name basis runs while the person still looks at the upload.
-        limiter = provider_limiter.INTERACTIVE if request.basis == "name" else provider_limiter.BULK
+        # The name basis runs while the person still looks at the upload, and so does a sort.
+        interactive = sorting or request.basis == "name"
+        limiter = provider_limiter.INTERACTIVE if interactive else provider_limiter.BULK
         trace_id: str | None = None
         try:
             async with (
@@ -318,4 +418,7 @@ def add_filing_fit_routes(router: APIRouter) -> None:
         moves = parse_moves(answer, request)
         if moves is None:
             return FilingFitResponse(error="llm_response_malformed", model=cred.model, trace_id=trace_id)
+        if sorting and moves:
+            for move, confidence in zip(moves, await score_moves(request, moves, x_grid_organization_id), strict=True):
+                move.confidence = confidence
         return FilingFitResponse(moves=moves, model=cred.model, trace_id=trace_id)
