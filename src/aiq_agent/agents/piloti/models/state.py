@@ -162,7 +162,7 @@ class ResearchAgentState(BaseModel):
     focus_region: FocusRegion | None = None
     reply_in_thread: bool = False
     # The event that woke this turn when nobody typed it (a reply or mention in
-    # an Anmerkung's thread, an assignment). Rendered as the „Geweckt durch“
+    # an Anmerkung's thread, an assignment). Rendered as the „Woken by“
     # section of the prompt: who woke it, and to answer where it happened.
     trigger: TurnTrigger | None = None
     # The notes the person typed while this turn ran (``common/steering.py``),

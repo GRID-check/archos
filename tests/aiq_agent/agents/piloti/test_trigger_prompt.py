@@ -1,4 +1,4 @@
-"""„Geweckt durch“: a turn an event woke, as the model reads it (ADR-0105 draft, §3(b)).
+"""„Woken by“: a turn an event woke, as the model reads it (ADR-0105 draft, §3(b)).
 
 What is load-bearing: the block reaches the prompt below the KV-cache boundary
 only on a woken turn; it names who acted, what happened and the event; it says
@@ -24,7 +24,7 @@ from aiq_agent.turn import context as turn_context
 from aiq_agent.turn.context import user_info_for
 from aiq_agent.turn.payload import extract_turn_inputs
 
-HEADING = "## Geweckt durch"
+HEADING = "## Woken by"
 BOUNDARY_ANCHOR = "## Context"
 CANVAS = [{"name": f"canvas__{tool}", "description": "x"} for tool in ("look", "mark", "reply")]
 MENTION = TurnTrigger(kind="thread_mention", event_id="reply-7", annotation_id="a-1")
@@ -52,18 +52,18 @@ def test_a_typed_turn_renders_none():
 def test_it_says_who_what_and_where_to_answer():
     block = trigger_block(_state(trigger=MENTION), [tool["name"] for tool in CANVAS])
 
-    assert "Anna Weber hat dich im Verlauf einer Anmerkung erwähnt" in block
+    assert "Anna Weber mentioned you in the thread of an Anmerkung" in block
     assert "`reply-7`" in block
     assert "`canvas__reply`" in block and "`a-1`" in block
-    assert "warte nicht" in block
+    assert "do not wait" in block
 
 
 def test_without_the_canvas_it_answers_in_the_reply_and_still_does_not_wait():
     block = trigger_block(_state(trigger=TurnTrigger(kind="assigned", event_id="as-1")), [])
 
-    assert "hat dir eine Anmerkung zugewiesen" in block
+    assert "assigned an Anmerkung to you" in block
     assert "canvas__reply" not in block
-    assert "warte nicht" in block
+    assert "do not wait" in block
 
 
 def test_the_wire_trigger_reaches_the_turn_inputs():
@@ -98,11 +98,11 @@ def test_a_woken_turn_names_the_person_from_the_signed_envelope(monkeypatch):
         [],
     )
 
-    assert "Anna Weber hat dich im Verlauf einer Anmerkung erwähnt" in block
-    assert "Eine Person" not in block
+    assert "Anna Weber mentioned you in the thread of an Anmerkung" in block
+    assert "A person" not in block
 
 
-def test_without_any_name_the_block_still_says_eine_person(monkeypatch):
+def test_without_any_name_the_block_still_says_a_person(monkeypatch):
     monkeypatch.setattr(turn_context, "get_current_principal", lambda: None)
 
     block = trigger_block(
@@ -110,15 +110,15 @@ def test_without_any_name_the_block_still_says_eine_person(monkeypatch):
         [],
     )
 
-    assert "Eine Person hat dich im Verlauf einer Anmerkung erwähnt" in block
+    assert "A person mentioned you in the thread of an Anmerkung" in block
 
 
 def test_a_question_from_a_connected_agent_names_the_door_and_answers_in_the_reply():
     trigger = TurnTrigger(kind="agent_consult", event_id="ask-1")
     block = trigger_block(_state(trigger=trigger), [tool["name"] for tool in CANVAS])
 
-    assert "Anna Weber hat dich über einen verbundenen Agenten" in block
+    assert "Anna Weber asked you through a connected agent" in block
     assert "`ask-1`" in block
     # No Anmerkung: the answer is the reply itself, even with the canvas at hand.
     assert "canvas__reply" not in block
-    assert "warte nicht" in block
+    assert "do not wait" in block

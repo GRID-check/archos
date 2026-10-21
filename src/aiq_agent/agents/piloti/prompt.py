@@ -290,16 +290,17 @@ def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
 
 
 #: What woke a turn, in the words the prompt uses (``wire_v2.TurnTrigger.kind``).
+#: English, like everything else the agent reads; „Anmerkung" is the domain's word.
 _TRIGGER_EVENTS = {
-    "thread_mention": "hat dich im Verlauf einer Anmerkung erwähnt",
-    "thread_reply": "hat im Verlauf einer Anmerkung geantwortet, die du begonnen hast",
-    "assigned": "hat dir eine Anmerkung zugewiesen",
-    "agent_consult": "hat dich über einen verbundenen Agenten (etwa Claude oder Cursor) gefragt",
+    "thread_mention": "mentioned you in the thread of an Anmerkung",
+    "thread_reply": "replied in the thread of an Anmerkung you started",
+    "assigned": "assigned an Anmerkung to you",
+    "agent_consult": "asked you through a connected agent (such as Claude or Cursor)",
 }
 
 
 def trigger_block(state: Any, tool_names: Sequence[str]) -> str | None:
-    """The „Geweckt durch“ section: an event woke this turn, nobody is typing. None for a typed turn.
+    """The „Woken by“ section: an event woke this turn, nobody is typing. None for a typed turn.
 
     A fact block, not a policy: who acted (the verified name the turn runs
     under), what they did, on which Anmerkung, and the outcome to reach, which
@@ -311,22 +312,22 @@ def trigger_block(state: Any, tool_names: Sequence[str]) -> str | None:
     if trigger is None:
         return None
     user = getattr(state, "user_info", None) or {}
-    who = (user.get("name") or user.get("email") or "Eine Person") if isinstance(user, dict) else "Eine Person"
+    who = (user.get("name") or user.get("email") or "A person") if isinstance(user, dict) else "A person"
     lines = [
-        "## Geweckt durch",
-        f"Niemand hat diese Frage in den Chat getippt: {who} {_TRIGGER_EVENTS[trigger.kind]} "
-        f"(Ereignis `{trigger.event_id}`), und das hat dich geweckt. Niemand sieht dir dabei live zu.",
+        "## Woken by",
+        f"Nobody typed this question into the chat: {who} {_TRIGGER_EVENTS[trigger.kind]} "
+        f"(event `{trigger.event_id}`), and that woke you. Nobody watches this turn live.",
     ]
     if trigger.annotation_id and "canvas__reply" in tool_names:
         lines.append(
-            f"Antworte dort, wo es passiert ist: im Verlauf der Anmerkung `{trigger.annotation_id}` mit "
-            "`canvas__reply` (`annotation` = diese id), kurz und für sich verständlich. Brauchst du eine Angabe, "
-            "frag dort im Verlauf; warte nicht auf eine Antwort in diesem Zug."
+            f"Answer where it happened: in the thread of the Anmerkung `{trigger.annotation_id}`, with "
+            "`canvas__reply` (`annotation` = this id), short and readable on its own. If you need something, "
+            "ask in that thread; do not wait for an answer in this turn."
         )
     else:
         lines.append(
-            "Antworte so, dass die Person es dort findet, wo sie gefragt hat. Brauchst du eine Angabe, frag in "
-            "deiner Antwort; warte nicht auf eine Antwort in diesem Zug."
+            "Answer so the person finds it where they asked. If you need something, ask in your answer; do not "
+            "wait for an answer in this turn."
         )
     return "\n".join(lines)
 

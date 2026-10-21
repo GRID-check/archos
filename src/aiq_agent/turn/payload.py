@@ -109,7 +109,7 @@ class TurnInputs(NamedTuple):
     trigger: TurnTrigger | None = None
     #: The name the sender stamped on the message (``user_message.author_name``).
     #: A woken turn has no signed-in principal, so this is the only place the
-    #: person who woke it is named; the „Geweckt durch“ block reads it.
+    #: person who woke it is named; the „Woken by“ block reads it.
     author_name: str | None = None
 
     @property
