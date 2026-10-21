@@ -618,6 +618,15 @@ def set_document_revision_facts(collection: str, filename: str, facts: dict[str,
     return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
 
 
+def set_document_page_count(collection: str, filename: str, page_count: int | None) -> bool:
+    """Set how many pages a document has (UPDATE-only, like :func:`set_document_capture`); ``None`` when it has none.
+
+    The ingest that read the file calls this after :func:`register_summary`, so a re-ingest overwrites the count.
+    ``False`` when the document has no metadata row.
+    """
+    return _get_document_metadata_store().set_page_count(collection, filename, page_count)
+
+
 def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
     """Record that a PERSON confirmed ``newer`` replaces ``older`` in this collection; ``None`` lifts it.
 
