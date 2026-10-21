@@ -13,7 +13,7 @@ import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AGENT_OPERATIONS } from './catalog'
-import { buildOpenApiDocument, openApiPath } from './openapi'
+import { buildOpenApiDocument, documentedOperations, openApiPath } from './openapi'
 import { pathParams } from './operation'
 
 const FIXTURE = join(process.cwd(), 'tests/fixtures/openapi.json')
@@ -107,5 +107,20 @@ describe('agent API OpenAPI document', () => {
     expect(info.title).toBe('Piloti workspace API')
     expect(info.description.startsWith('Piloti is the workspace for architects')).toBe(true)
     expect(info.description).toContain('/api/mcp')
+  })
+
+  it('names the security the paths accept: the app session cookie, with MCP as the agent door', () => {
+    expect(document.security).toEqual([{ sessionCookie: [] }])
+    const schemes = (document.components as { securitySchemes: Record<string, { type: string; in?: string; description: string }> })
+      .securitySchemes
+    expect(Object.keys(schemes)).toEqual(['sessionCookie'])
+    expect(schemes.sessionCookie).toMatchObject({ type: 'apiKey', in: 'cookie' })
+    expect(schemes.sessionCookie.description).toMatch(/\/api\/mcp/)
+  })
+
+  it('shows the operator console to platform staff only', () => {
+    const domains = (platformStaff: boolean) => new Set(documentedOperations(AGENT_OPERATIONS, { platformStaff }).map((op) => op.domain))
+    expect(domains(false).has('platform')).toBe(false)
+    expect(domains(true).has('platform')).toBe(true)
   })
 })

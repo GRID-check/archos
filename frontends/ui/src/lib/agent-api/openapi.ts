@@ -3,9 +3,11 @@
  *
  * Generated from the one catalog, `AGENT_OPERATIONS`, so it documents exactly
  * the routes an agent can already call and opens nothing new: each path here is
- * a route the UI calls, under that route's own `authz`. A script or an HTTP
- * client that reads OpenAPI finds the same operations an MCP client finds at
- * `/api/mcp`, by the same names.
+ * a route the UI calls, under that route's own `authz`. OpenAPI is the standard
+ * for an HTTP contract; MCP is the agent door. A client that reads OpenAPI finds
+ * the same operations an MCP client finds at `/api/mcp`, by the same names, and
+ * an agent calls them THERE, with its OAuth token: the paths themselves accept
+ * the app's signed-in session cookie only, which is what `security` says.
  *
  * OpenAPI 3.1 takes JSON Schema 2020-12 as its schema dialect, so the repo's own
  * zod converter (`lib/api/zod-json-schema.ts`) describes the inputs and no
@@ -23,7 +25,7 @@ export type OpenApiDocument = Record<string, unknown>
 /** The statuses `lib/api/handler.ts` answers with the shared error envelope. */
 const ERROR_RESPONSES = {
   '400': 'The input failed the route’s own validation (bad JSON, schema violation, invalid parameter).',
-  '401': 'No valid session or bearer token.',
+  '401': 'No valid session.',
   '403': 'Signed in, but the person may not do this here.',
   '404': 'The resource does not exist, or the person may not see it.',
   '429': 'Rate limited. Wait for the `Retry-After` header before calling again.',
@@ -227,6 +229,21 @@ function pathsOf(operations: readonly AgentOperation[]): Record<string, Record<s
  * The OpenAPI 3.1 document for `operations`. `serverUrl` is the origin the
  * paths are relative to; the route passes the deployment's, a spec a fixed one.
  */
+/**
+ * The operations the document shows a caller: the operator console (`platform`)
+ * only to platform staff. Its routes refuse everyone else anyway; listing them
+ * would only describe a console the reader cannot use.
+ */
+export function documentedOperations(
+  operations: readonly AgentOperation[],
+  { platformStaff }: { platformStaff: boolean },
+): readonly AgentOperation[] {
+  return platformStaff ? operations : operations.filter((op) => op.domain !== 'platform')
+}
+
+/** The cookie AuthKit keeps the app's session in (`WORKOS_COOKIE_NAME`, default `wos-session`). */
+const SESSION_COOKIE = 'wos-session'
+
 export function buildOpenApiDocument(
   operations: readonly AgentOperation[],
   { serverUrl }: { serverUrl: string },
@@ -242,20 +259,23 @@ export function buildOpenApiDocument(
         'Piloti is the workspace for architects: a planning office runs its projects, documents and ' +
         'processes in it, and Piloti, the agent, works in that office as a colleague. This document ' +
         'describes what an agent or a script can do there, acting as a signed-in person: every ' +
-        'operation is a route the Piloti app itself calls, under the same permissions. Every operation ' +
-        `is also an MCP tool at ${MCP_PATH}, by the same name as its operationId.`,
+        'operation is a route the Piloti app itself calls, under the same permissions. These paths ' +
+        'accept the app\u2019s signed-in session; an agent calls every operation as an MCP tool at ' +
+        `${MCP_PATH}, by the same name as its operationId, with an OAuth token.`,
     },
     servers: [{ url: serverUrl }],
-    security: [{ bearerAuth: [] }],
+    security: [{ sessionCookie: [] }],
     tags: domains.map((name) => ({ name })),
     paths: pathsOf(operations),
     components: {
       securitySchemes: {
-        bearerAuth: {
-          type: 'http',
-          scheme: 'bearer',
-          bearerFormat: 'JWT',
-          description: `A WorkOS AuthKit access token, the same one the MCP server at ${MCP_PATH} accepts.`,
+        sessionCookie: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: SESSION_COOKIE,
+          description:
+            'The Piloti app\u2019s signed-in session (WorkOS AuthKit), as a browser holds it. A bearer token is not accepted ' +
+            `here: an agent holds an OAuth token for the MCP server at ${MCP_PATH} and calls the operations there.`,
         },
       },
       schemas: { ErrorEnvelope: ERROR_ENVELOPE },

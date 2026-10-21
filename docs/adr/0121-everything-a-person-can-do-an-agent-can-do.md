@@ -267,13 +267,17 @@ Two moves that look like more of the same were weighed and refused:
 * Bad, because the first release has a baseline: routes that predate the rule are
   listed in a file and uncovered. The claim "everything" is true by direction,
   and the file says by how much it is not yet.
-* Neutral: Option 4 stays open. The catalog has enough to emit an OpenAPI
-  document later.
+* Neutral: the catalog emits an OpenAPI 3.1 document of the same operations
+  (`GET /api/openapi`, `lib/agent-api/openapi.ts`), because OpenAPI is the
+  standard for an HTTP contract. It describes; it is not a door. Its paths accept
+  the app's signed-in session cookie and say so (`securitySchemes.sessionCookie`),
+  and the document names `/api/mcp` as where an agent calls them. The operator
+  console's operations are in it for platform staff only.
 
-Option 4 was deferred, not rejected. Generating tools from OpenAPI needs response
-schemas, which the routes do not declare, and zod 4's JSON Schema export. The
-catalog names the same things an OpenAPI path does, so it can emit one when the
-routes declare their responses.
+Option 4, tools generated FROM OpenAPI, was deferred, not rejected. It needs
+response schemas, which the routes do not declare. The direction is the other
+way round today: the catalog is the source and OpenAPI one of its outputs, so
+the day the routes declare their responses the document can carry them.
 
 Option 2 is the one that rebuilds the problem. A private agent API for Piloti and
 a separate external door would each decide what an agent may do. They would drift
@@ -300,8 +304,11 @@ the way the three consumers of ADR-0055 did.
 - `/api/mcp` charges `mcp-request` (`lib/limits/rules.js`) once per request;
   `app/api/mcp/route.spec.ts` holds it.
 - PostHog events, through the collector (ADR-0119): `agent_operation_called`
-  (operation, client, status) and `agent_operation_missing` (what an agent
-  tried to do and no operation covers).
+  (operation, client, status) and `agent_operation_missing` (that an agent
+  found no operation, by the length of what it wanted, never its words).
+- Langfuse (ADR-0089): every MCP tool call is an `agent-tool-call` trace with
+  one `TOOL` observation (`lib/langfuse/tool-call-trace.ts`), so the agent
+  door is observable where the rest of the product is.
 - Nothing enforces that a description is true. Review is the gate.
 
 ## Follow-ups

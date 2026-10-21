@@ -4,7 +4,7 @@
   "info": {
     "title": "Piloti workspace API",
     "version": "1",
-    "description": "Piloti is the workspace for architects: a planning office runs its projects, documents and processes in it, and Piloti, the agent, works in that office as a colleague. This document describes what an agent or a script can do there, acting as a signed-in person: every operation is a route the Piloti app itself calls, under the same permissions. Every operation is also an MCP tool at /api/mcp, by the same name as its operationId."
+    "description": "Piloti is the workspace for architects: a planning office runs its projects, documents and processes in it, and Piloti, the agent, works in that office as a colleague. This document describes what an agent or a script can do there, acting as a signed-in person: every operation is a route the Piloti app itself calls, under the same permissions. These paths accept the app’s signed-in session; an agent calls every operation as an MCP tool at /api/mcp, by the same name as its operationId, with an OAuth token."
   },
   "servers": [
     {
@@ -13,7 +13,7 @@
   ],
   "security": [
     {
-      "bearerAuth": []
+      "sessionCookie": []
     }
   ],
   "tags": [
@@ -1320,10 +1320,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "access",
         "x-mcp-annotations": {
           "title": "Give someone a role on a project",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -1436,6 +1437,7 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "access",
         "x-mcp-annotations": {
           "title": "Remove a member’s project role",
           "readOnlyHint": false,
@@ -2374,7 +2376,7 @@
       "put": {
         "operationId": "project-profile-replace",
         "summary": "Replace a project’s whole profile",
-        "description": "Saves the entire profile from project-profile-get, edited. It overwrites everything, so prefer project-profile-patch for a single change. Needs project:edit. The If-Match version header is not sent through this tool, so the route checks the version inside the profile body instead; a 409 means someone saved meanwhile: read again.",
+        "description": "Saves the entire profile from project-profile-get, edited. It overwrites everything, so prefer project-profile-patch for a single change. Needs project:edit. Pass `ifMatch`: the `profileVersion` you read, sent as the If-Match header; a 409 means someone saved meanwhile: read again.",
         "tags": [
           "projects"
         ],
@@ -3923,10 +3925,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Set the project’s sensitive name terms",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -5802,6 +5805,7 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Release a legal hold",
           "readOnlyHint": false,
@@ -9553,6 +9557,7 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Allow a held document through screening",
           "readOnlyHint": false,
@@ -18963,10 +18968,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Set the deleted-folder content policy",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -19138,10 +19144,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Set download log retention",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -20803,10 +20810,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Save the upload screening policy",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -20977,10 +20985,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "control",
         "x-mcp-annotations": {
           "title": "Turn zero data retention on or off",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -22927,9 +22936,6 @@
                     "description": "The new display title; empty or null clears the override."
                   }
                 },
-                "required": [
-                  "display_title"
-                ],
                 "additionalProperties": true
               }
             }
@@ -25517,11 +25523,11 @@
   },
   "components": {
     "securitySchemes": {
-      "bearerAuth": {
-        "type": "http",
-        "scheme": "bearer",
-        "bearerFormat": "JWT",
-        "description": "A WorkOS AuthKit access token, the same one the MCP server at /api/mcp accepts."
+      "sessionCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "wos-session",
+        "description": "The Piloti app’s signed-in session (WorkOS AuthKit), as a browser holds it. A bearer token is not accepted here: an agent holds an OAuth token for the MCP server at /api/mcp and calls the operations there."
       }
     },
     "schemas": {
@@ -25565,7 +25571,7 @@
         }
       },
       "Error401": {
-        "description": "No valid session or bearer token.",
+        "description": "No valid session.",
         "content": {
           "application/json": {
             "schema": {
