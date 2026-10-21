@@ -5,7 +5,7 @@
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { applyRootSort } from '@/lib/filing/root-sort-run'
-import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-types'
+import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-wire'
 
 type Params = { runId: string }
 

@@ -23,7 +23,7 @@ import {
 } from '@/lib/documents/list-query'
 import { officeShelfNameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { searchOfficeShelfSchema } from '@/lib/office-shelf/search-wire'
-import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-types'
+import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-wire'
 import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
 import {
   openUploadBatchSchema,

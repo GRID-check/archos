@@ -125,18 +125,8 @@ export interface NewFolders {
   traceId: string | null
 }
 
-/** A placement the person kept: into an existing folder, a new one, or back to the root (`folderId` and `newFolderPath` null). */
-export const keptMoveSchema = z.object({
-  documentId: z.string().uuid(),
-  folderId: z.string().uuid().nullable(),
-  newFolderPath: z.string().min(1).max(1024).nullable(),
-})
-export type KeptMove = z.infer<typeof keptMoveSchema>
-
-export const applyRootSortRequestSchema = z.object({
-  keep: z.array(keptMoveSchema).min(1).max(MAX_ROOT_SORT_DOCUMENTS),
-})
-export type ApplyRootSortRequest = z.infer<typeof applyRootSortRequestSchema>
+/** What the person sends to apply a run: `./root-sort-wire`, the contract the route and the agent door share. */
+export type { ApplyRootSortRequest, KeptMove } from './root-sort-wire'
 
 export const ROOT_SORT_RUN_STATUSES = [
   'judging',
