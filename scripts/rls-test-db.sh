@@ -171,7 +171,8 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/projects/project-status.integration.spec.ts \
     src/lib/projects/project-record.integration.spec.ts \
     src/lib/projects/cleanup.integration.spec.ts \
-    src/lib/feedback/repository.integration.spec.ts
+    src/lib/feedback/repository.integration.spec.ts \
+    src/lib/filing/root-sort-run-repository.integration.spec.ts
 
 # The tenant suites above may leave queued jobs behind: Ausmisten bins a
 # subfolder, and a Papierkorb delete queues its purge takeover and a refused
