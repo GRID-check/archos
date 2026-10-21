@@ -59,4 +59,85 @@ export const profile = {
     securityFactorsDescription: 'Manage your password and multi-factor authentication.',
     widgetError: 'Could not load this section. Please refresh and try again.',
   },
+  connectAgent: {
+    title: 'Connect your agent',
+    description:
+      'Your own AI assistant (Claude, ChatGPT, Cursor and other MCP-capable clients) can work in Piloti for you: everything you can do here, with your rights. It asks you before it changes or deletes anything, and Piloti never gives it more than you have.',
+    urlLabel: 'MCP server address',
+    urlHint: 'Paste this address into your client. You sign in with your Piloti account.',
+    urlCode: 'MCP URL',
+    notice: {
+      orgDisabledTitle: 'Not switched on for your organization yet',
+      orgDisabledBody:
+        'Agent access is switched on per organization. As soon as it is, you can connect your assistant here.',
+      orgDisabledAdmin:
+        'You hold the right to manage this organization. Switching it on lets every member connect their own assistant, each with their own rights. Nothing changes for anyone until a person connects one.',
+      orgDisabledMember: 'Ask an administrator of your organization to switch it on.',
+      notConfiguredTitle: 'Not available on this installation',
+      notConfiguredBody:
+        'The external sign-in for agents is not set up on this Piloti installation yet, so no assistant can connect.',
+      notConfiguredAdmin:
+        'Whoever operates this installation has to set it up first. Your organization’s setting then takes effect.',
+      notConfiguredMember: 'Ask an administrator of your organization.',
+    },
+    steps: {
+      title: 'Connect a client',
+      signIn: 'Piloti opens its normal sign-in in your browser. Choose your organization if asked.',
+    },
+    clients: {
+      claude: {
+        name: 'Claude',
+        hint: 'claude.ai and Claude Desktop',
+        s1: 'Open Settings, then Connectors.',
+        s2: 'Choose “Add custom connector”.',
+        s3: 'Paste the address above and give it the name Piloti.',
+        s4: 'Sign in with your Piloti account when the browser opens.',
+      },
+      claudeCode: {
+        name: 'Claude Code',
+        hint: 'In the terminal',
+        s1: 'Add the server with this command:',
+        s2: 'Start Claude Code, type /mcp and choose piloti.',
+        s3: 'Sign in with your Piloti account when the browser opens.',
+      },
+      cursor: {
+        name: 'Cursor',
+        hint: 'mcp.json',
+        s1: 'Add the server to ~/.cursor/mcp.json (or .cursor/mcp.json in a project):',
+        s2: 'Cursor starts the sign-in the first time it uses the server.',
+      },
+      chatgpt: {
+        name: 'ChatGPT',
+        hint: 'Connectors',
+        s1: 'Where your plan offers connectors for MCP servers (often under developer mode), add a new one.',
+        s2: 'Paste the address above and choose OAuth as the sign-in.',
+        s3: 'Sign in with your Piloti account when asked.',
+      },
+      other: {
+        name: 'Other clients',
+        hint: 'MCP-capable clients',
+        s1: 'Any client that speaks MCP over HTTP and supports sign-in with OAuth can connect.',
+        s2: 'Add a remote server, paste the address above and sign in with your Piloti account.',
+        s3: 'A client without OAuth sign-in cannot connect yet.',
+      },
+    },
+    can: {
+      title: 'What your agent can do',
+      intro: 'Whatever you can do in Piloti, within your rights:',
+      projects: 'Open and search your projects',
+      documents: 'Read, upload and file documents',
+      shares: 'Submit revisions for approval and approve them',
+      annotations: 'Read and write annotations',
+      tasks: 'Create and update tasks',
+      inbox: 'Read and work through your inbox',
+    },
+    stays: {
+      title: 'What stays with you',
+      confirm: 'Anything that changes or deletes something needs your confirmation in the client first.',
+      sensitive: 'Access rights and API keys are not available to agents yet.',
+      rights: 'Your agent never gets more rights than you have. If you lose access, so does it.',
+    },
+    guide: 'Read the full guide',
+    guideHint: 'Per client, what happens at sign-in, revoking access and troubleshooting.',
+  },
 }

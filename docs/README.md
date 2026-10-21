@@ -99,6 +99,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Sensitive data, quarantine and folder access](user-guides/sensitive-data-and-access.md) | The office's sensitive-data list, the quarantine, the upload summary, the office's own roles, and restricting a folder to named people |
 | [Sensitive data and the AI Act](user-guides/ai-act.md) | Which screening is rules and which decision is a model, where a person decides, what the audit log records, and how generated content is marked |
 | [Reports Piloti Writes](user-guides/agent-authored-reports.md) | Where a deep-research report is filed, how it is marked as machine-written, why it stays out of the knowledge base, and who is responsible for it |
+| [Connect your agent](user-guides/connect-your-agent.md) | Connecting your own AI assistant (Claude, ChatGPT, Cursor) to Piloti: setup per client, sign-in, what it can and cannot do, confirmations, revoking access, troubleshooting |
 | [Knowledge Search](user-guides/knowledge-search.md) | How the AI searches OIB knowledge base and uploaded documents |
 | [Keyboard Shortcuts](user-guides/keyboard-shortcuts.md) | The command palette, `g …` section jumps, composer keys, and the two gates that enable them |
 | [Documents](user-guides/documents.md) | Uploading, tracking, and downloading documents |

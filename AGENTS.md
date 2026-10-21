@@ -76,6 +76,21 @@ it yourself when the library's shape does not answer your question, when it
 drags a native toolchain into the image, or when the thing *is* the product.
 Then keep the library in the suite as the oracle you check against.
 
+**Industry standard first.** Where a published standard or the dominant
+convention covers the problem, use it and its vocabulary: MCP for agents,
+A2A for agent-to-agent work, OAuth 2.1 and the RFCs behind it for delegation,
+OpenAPI for HTTP contracts, the vendor's own product (a WorkOS feature) before
+our own. Look the standard up before you design; a name we invent for a thing
+the standard already names is a translation every agent and new colleague pays
+for. Deviate only with the reason written in an ADR. Anything an agent reads
+(tool names, descriptions, errors, cards over the wire) is English, with one
+word per concept; German is for people, through i18n, and for domain data.
+
+**Question the rules, including these.** A rule here records a decision someone
+made with what they knew then. When one blocks the better result, or a new
+standard makes it wrong, say so and change the rule in the same change, with the
+reason; do not contort the code around it and do not break it silently.
+
 **Fix causes, not symptoms.** Establish what a measurement is *of* before
 optimising it. A change that improves a number without changing what produced it
 is a bandage, and it removes the signal pointing at the real fault. Verify the

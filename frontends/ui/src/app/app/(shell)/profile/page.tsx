@@ -20,6 +20,9 @@ import { getOrgSettings, getOrganizationOverview } from '@/lib/organizations/ser
 import { ProfileControls } from './profile-controls'
 import { isAuthRequired } from '@/lib/auth/auth-required'
 import { postHogConfigFromEnv } from '@/lib/analytics/posthog-config'
+import { ConnectAgentCard } from '@/features/agent-connect/components'
+import { loadAgentConnectState } from '@/features/agent-connect/lib/connect-state'
+import { CONNECT_AGENT_GUIDE_URL } from '@/features/agent-connect/lib/guide'
 
 const KNOWN_ROLE_SLUGS = new Set(['org-platform-owner', 'admin', 'member'])
 
@@ -147,6 +150,14 @@ export default async function ProfilePage(): Promise<JSX.Element> {
               </dl>
             </CardContent>
           </Card>
+
+          {/* Only a person with an organization can connect an agent to it. */}
+          {session.organizationId && (
+            <ConnectAgentCard
+              state={loadAgentConnectState(session)}
+              guideHref={CONNECT_AGENT_GUIDE_URL}
+            />
+          )}
 
           <ProfileControls
             authRequired={isAuthRequired()}
