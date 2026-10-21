@@ -21,12 +21,14 @@ vi.mock('./root-sort-run-repository', () => ({
   findLatestRootSortRun: vi.fn(),
   findRootSortRun: vi.fn(),
   insertRootSortRun: vi.fn(),
+  isRootSortJobWaiting: vi.fn(),
+  recordRootSortProgress: vi.fn(),
   updateRootSortRun: vi.fn(),
 }))
-vi.mock('./repository', () => ({ findRootDocuments: vi.fn() }))
+vi.mock('./repository', () => ({ findRootDocuments: vi.fn(), findShelfFolderPaths: vi.fn() }))
 vi.mock('@/lib/documents/move-to-folder', () => ({ moveDocumentsToFolders: vi.fn() }))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
-vi.mock('./root-sort-announce', () => ({ announceRootSortRun: vi.fn() }))
+vi.mock('./root-sort-announce', () => ({ announceRootSortRun: vi.fn(), settleRootSortNotices: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ ensureProjectFolderPaths: vi.fn() }))
 vi.mock('@/lib/office-shelf/folder-service', () => ({ ensureOfficeShelfFolderPaths: vi.fn() }))
 
@@ -38,16 +40,19 @@ import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import type { RootSortPayload } from '@/lib/jobs-queue/types'
 import { ensureProjectFolderPaths } from '@/lib/projects/folder-service'
 import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor, type SortContext } from './root-sort'
-import { applyRootSort, keptMovesOf, runRootSortSlice, startRootSort, undoRootSort } from './root-sort-run'
+import { applyRootSort, cancelRootSort, keptMovesOf, runRootSortSlice, startRootSort, undoRootSort, viewOf } from './root-sort-run'
 import {
   cancelReadyRootSortRuns,
+  isRootSortJobWaiting,
+  recordRootSortProgress,
   failStalledRootSortRuns,
   findRootSortRun,
   insertRootSortRun,
   updateRootSortRun,
 } from './root-sort-run-repository'
-import { announceRootSortRun } from './root-sort-announce'
-import { ROOT_SORT_CHUNK } from './root-sort-types'
+import { findRootDocuments, findShelfFolderPaths } from './repository'
+import { announceRootSortRun, settleRootSortNotices } from './root-sort-announce'
+import { CHUNKS_PER_SLICE, ROOT_SORT_CHUNK } from './root-sort-types'
 
 const SESSION = { userId: 'user-1', organizationId: 'org-1' } as AuthorizedSession
 const PAYLOAD: RootSortPayload = {
@@ -66,6 +71,7 @@ function run(patch: Partial<RootSortRun> = {}): RootSortRun {
     status: 'judging',
     documentIds: [],
     cursor: 0,
+    progressDone: 0,
     unreadable: 0,
     truncated: false,
     placements: [],
@@ -94,13 +100,15 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.mocked(sortContextFor).mockResolvedValue(CONTEXT)
   vi.mocked(failStalledRootSortRuns).mockResolvedValue([])
+  vi.mocked(cancelReadyRootSortRuns).mockResolvedValue([])
+  vi.mocked(isRootSortJobWaiting).mockResolvedValue(false)
   vi.mocked(requireSortable).mockResolvedValue()
   vi.mocked(updateRootSortRun).mockImplementation(async (_org, _id, _from, patch) => run(patch))
 })
 
 describe('runRootSortSlice', () => {
-  it('judges three chunks a slice, records a failed chunk, and keeps going', async () => {
-    const documentIds = ids(ROOT_SORT_CHUNK * 4)
+  it('judges a slice of chunks side by side, records a failed chunk, and keeps going', async () => {
+    const documentIds = ids(ROOT_SORT_CHUNK * (CHUNKS_PER_SLICE + 1))
     vi.mocked(findRootSortRun).mockResolvedValue(run({ documentIds }))
     vi.mocked(planRootChunk).mockImplementation(async (_session, _shelf, chunk) =>
       chunk.includes(`d${ROOT_SORT_CHUNK}`)
@@ -120,16 +128,16 @@ describe('runRootSortSlice', () => {
     const slice = await runRootSortSlice(SESSION, PAYLOAD)
     // Still judging: nothing to tell anyone yet.
     expect(announceRootSortRun).not.toHaveBeenCalled()
-    expect(planRootChunk).toHaveBeenCalledTimes(3)
+    expect(planRootChunk).toHaveBeenCalledTimes(CHUNKS_PER_SLICE)
     // The shelf's folders and conventions are read once for the slice, not once per chunk.
     expect(sortContextFor).toHaveBeenCalledTimes(1)
     expect(new Set(vi.mocked(planRootChunk).mock.calls.map((call) => call[3]))).toEqual(new Set([CONTEXT]))
     expect(slice.done).toBe(false)
     const [{ from, patch }] = written()
     expect(from).toEqual(['judging'])
-    expect(patch.cursor).toBe(ROOT_SORT_CHUNK * 3)
+    expect(patch.cursor).toBe(ROOT_SORT_CHUNK * CHUNKS_PER_SLICE)
     expect(patch.status).toBe('judging')
-    expect(patch.placements).toHaveLength(ROOT_SORT_CHUNK * 2)
+    expect(patch.placements).toHaveLength(ROOT_SORT_CHUNK * (CHUNKS_PER_SLICE - 1))
     expect(patch.failedDocumentIds).toHaveLength(ROOT_SORT_CHUNK)
   })
 
@@ -182,7 +190,7 @@ describe('runRootSortSlice', () => {
         { documentId: 'd1', folderId: 'f-new', expectedFolderId: null },
       ],
       SESSION,
-      { deadline: expect.any(Number) }
+      { deadline: expect.any(Number), onProgress: expect.any(Function), concurrency: 4 }
     )
     const { patch } = written()[0]
     expect(patch.status).toBe('applied')
@@ -216,7 +224,7 @@ describe('runRootSortSlice', () => {
         { documentId: 'd1', folderId: null, expectedFolderId: 'f2' },
       ],
       SESSION,
-      { deadline: expect.any(Number) }
+      { deadline: expect.any(Number), onProgress: expect.any(Function), concurrency: 4 }
     )
     const { patch } = written()[0]
     expect(patch.status).toBe('undone')
@@ -388,7 +396,7 @@ describe('a run is never left working with nothing working on it', () => {
       run({ status: 'failed', error: 'stalled', movedDocuments: [{ documentId: 'd0', folderId: 'f1' }] })
     )
     await undoRootSort(SESSION, PAYLOAD.runId)
-    expect(written()[0]).toEqual({ from: ['applied', 'failed'], patch: { status: 'undoing', cursor: 0 } })
+    expect(written()[0]).toEqual({ from: ['applied', 'failed'], patch: { status: 'undoing', cursor: 0, progressDone: 0 } })
     expect(written()[1]).toEqual({ from: ['undoing'], patch: { jobId: expect.any(String) } })
     expect(enqueueJob).toHaveBeenCalled()
   })
@@ -396,5 +404,95 @@ describe('a run is never left working with nothing working on it', () => {
   it('refuses to undo a run that moved nothing', async () => {
     vi.mocked(findRootSortRun).mockResolvedValue(run({ status: 'failed' }))
     await expect(undoRootSort(SESSION, PAYLOAD.runId)).rejects.toThrow('moved nothing')
+  })
+})
+
+describe('a run shows its progress as it happens', () => {
+  const placed = (chunk: readonly string[]) => ({
+    placements: chunk.map((documentId) => ({ documentId, folderId: 'f1', newFolderPath: null, reason: 'Passt.', confidence: 0.9 })),
+    error: null,
+    traceId: null,
+  })
+
+  it('counts each judged chunk past the cursor while the slice runs, written only over the step it read', async () => {
+    vi.mocked(findRootSortRun).mockResolvedValue(run({ documentIds: ids(ROOT_SORT_CHUNK * CHUNKS_PER_SLICE), cursor: 0 }))
+    vi.mocked(planRootChunk).mockImplementation(async (_session, _shelf, chunk) => placed(chunk))
+    await runRootSortSlice(SESSION, PAYLOAD)
+    // The first chunk to finish is written at once; the rest wait out the write interval.
+    expect(recordRootSortProgress).toHaveBeenCalledWith('org-1', PAYLOAD.runId, { status: 'judging', cursor: 0 }, ROOT_SORT_CHUNK)
+    // The slice's commit brings the live count up to the cursor it commits.
+    const { patch } = written()[0]
+    expect(patch.progressDone).toBe(patch.cursor)
+  })
+
+  it('never fails a slice because its progress could not be written', async () => {
+    vi.mocked(findRootSortRun).mockResolvedValue(run({ documentIds: ids(2) }))
+    vi.mocked(planRootChunk).mockImplementation(async (_session, _shelf, chunk) => placed(chunk))
+    vi.mocked(recordRootSortProgress).mockRejectedValue(new Error('db busy'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const slice = await runRootSortSlice(SESSION, PAYLOAD)
+    expect(written()[0].patch.cursor).toBe(2)
+    expect(slice.done).toBe(false)
+    warn.mockRestore()
+  })
+
+  it('reads the live count ahead of the cursor, and what grouping is working on', async () => {
+    const judging = await viewOf(SESSION, run({ documentIds: ids(100), cursor: 40, progressDone: 55 }))
+    expect(judging.progress).toEqual({ done: 55, total: 100 })
+    const grouping = await viewOf(
+      SESSION,
+      run({
+        status: 'grouping',
+        documentIds: ids(5),
+        cursor: 5,
+        placements: [{ documentId: 'd0', folderId: 'f1', newFolderPath: null, reason: '', confidence: null }],
+        failedDocumentIds: ['d1'],
+      })
+    )
+    expect(grouping.progress).toEqual({ done: 0, total: 3 })
+  })
+
+  it('says when the run waits for a free slot in the job pool, and only while it is working', async () => {
+    vi.mocked(isRootSortJobWaiting).mockResolvedValue(true)
+    expect((await viewOf(SESSION, run({ jobId: 'j1' }))).waiting).toBe(true)
+    expect((await viewOf(SESSION, run({ status: 'cancelled', jobId: 'j1' }))).waiting).toBe(false)
+  })
+
+  it('names the latest placements while judging, newest first, with the folder each went to', async () => {
+    vi.mocked(findRootDocuments).mockResolvedValue([
+      { id: 'd1', filename: 'b.pdf', displayName: 'Bescheid' },
+      { id: 'd2', filename: 'c.pdf', displayName: null },
+    ] as never)
+    vi.mocked(findShelfFolderPaths).mockResolvedValue(new Map([['f1', '03 Behörde']]))
+    const view = await viewOf(
+      SESSION,
+      run({
+        placements: [
+          { documentId: 'd1', folderId: 'f1', newFolderPath: null, reason: '', confidence: 0.9 },
+          { documentId: 'd2', folderId: 'f1', newFolderPath: null, reason: '', confidence: 0.9 },
+        ],
+      })
+    )
+    expect(view.recent).toEqual([
+      { name: 'c.pdf', folderPath: '03 Behörde' },
+      { name: 'Bescheid', folderPath: '03 Behörde' },
+    ])
+  })
+})
+
+describe('a notice never outlives what it announced', () => {
+  it('settles the run’s notices when the person applies or cancels it', async () => {
+    vi.mocked(findRootSortRun).mockResolvedValue(run({ status: 'ready' }))
+    await cancelRootSort(SESSION, PAYLOAD.runId)
+    expect(settleRootSortNotices).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }))
+  })
+
+  it('settles the notices of the waiting reviews a new run replaces', async () => {
+    const replaced = run({ id: 'old', status: 'cancelled' })
+    vi.mocked(cancelReadyRootSortRuns).mockResolvedValue([replaced])
+    vi.mocked(scanRoot).mockResolvedValue(SCAN)
+    vi.mocked(insertRootSortRun).mockResolvedValue(run())
+    await startRootSort(SESSION, { kind: 'project', projectId: 'p1' })
+    expect(settleRootSortNotices).toHaveBeenCalledWith(replaced)
   })
 })

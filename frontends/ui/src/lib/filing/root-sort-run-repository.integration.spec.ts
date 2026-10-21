@@ -76,11 +76,13 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
   let db: ReturnType<typeof import('@/lib/db').getDb>
 
   // One project per case, so the cases cannot see each other's in-work runs.
-  const projects: Record<'roundTrip' | 'unique' | 'conditional' | 'checks' | 'rls' | 'cascade' | 'officeShelf' | 'stalled' | 'fresh' | 'young' | 'cursor', string> = {
+  const projects: Record<'roundTrip' | 'unique' | 'conditional' | 'checks' | 'rls' | 'cascade' | 'officeShelf' | 'stalled' | 'fresh' | 'young' | 'cursor' | 'progress' | 'waiting', string> = {
     stalled: '',
     fresh: '',
     young: '',
     cursor: '',
+    progress: '',
+    waiting: '',
     roundTrip: '',
     unique: '',
     conditional: '',
@@ -424,6 +426,51 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
     expect(await repo.updateRootSortRun(ORG_A, run.id, ['applying'], { cursor: 100 }, { cursor: 0 })).toBeNull()
     expect((await repo.findRootSortRun(ORG_A, run.id))?.cursor).toBe(100)
     await repo.updateRootSortRun(ORG_A, run.id, ['applying'], { status: 'applied' })
+  })
+
+  it('raises the live progress only within the step it read, and never pulls it back', async () => {
+    const run = await repo.insertRootSortRun({
+      organizationId: ORG_A,
+      scope: 'project',
+      projectId: projects.progress,
+      requestedBy: ME,
+      status: 'judging',
+      documentIds: [],
+    })
+    const progressOf = async () => (await repo.findRootSortRun(ORG_A, run.id))?.progressDone
+    await repo.recordRootSortProgress(ORG_A, run.id, { status: 'judging', cursor: 0 }, 60)
+    expect(await progressOf()).toBe(60)
+    // A chunk that finished out of order writes a smaller count: it is kept at the larger.
+    await repo.recordRootSortProgress(ORG_A, run.id, { status: 'judging', cursor: 0 }, 30)
+    expect(await progressOf()).toBe(60)
+    // A slice the runner gave up on (it read cursor 0, the run is at 180 now) writes nothing.
+    await repo.updateRootSortRun(ORG_A, run.id, ['judging'], { cursor: 180, progressDone: 180 })
+    await repo.recordRootSortProgress(ORG_A, run.id, { status: 'judging', cursor: 0 }, 400)
+    expect(await progressOf()).toBe(180)
+    // Nor does a write for a step the run has left.
+    await repo.updateRootSortRun(ORG_A, run.id, ['judging'], { status: 'applying', cursor: 0, progressDone: 0 })
+    await repo.recordRootSortProgress(ORG_A, run.id, { status: 'judging', cursor: 0 }, 400)
+    expect(await progressOf()).toBe(0)
+    // The column refuses a negative count.
+    const refused = await refusal(() => repo.updateRootSortRun(ORG_A, run.id, ['applying'], { progressDone: -1 }))
+    expect(pgError(refused)).toMatchObject({ code: '23514', constraint_name: 'root_sort_runs_progress_done_check' })
+    await repo.updateRootSortRun(ORG_A, run.id, ['applying'], { status: 'applied' })
+  })
+
+  it('says a run waits only while its job is queued and no worker holds it', async () => {
+    const jobId = randomUUID()
+    expect(await repo.isRootSortJobWaiting(ORG_A, null)).toBe(false)
+    expect(await repo.isRootSortJobWaiting(ORG_A, jobId)).toBe(false)
+    await withPlatformAccess('test: queue a root sort job', () =>
+      db.execute(sql`insert into bff_job_queue (job_id, kind, lane) values (${jobId}, 'root_sort', ${ORG_A})`)
+    )
+    expect(await repo.isRootSortJobWaiting(ORG_A, jobId)).toBe(true)
+    // Another organization does not see this lane's job.
+    expect(await repo.isRootSortJobWaiting(ORG_B, jobId)).toBe(false)
+    await withPlatformAccess('test: claim it', () =>
+      db.execute(sql`update bff_job_queue set status = 'claimed', claimed_by = 'w1', claimed_at = now(), heartbeat_at = now() where job_id = ${jobId}`)
+    )
+    expect(await repo.isRootSortJobWaiting(ORG_A, jobId)).toBe(false)
   })
 
   it('cancels only this person\'s runs of the shelf that wait for review', async () => {

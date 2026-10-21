@@ -30,6 +30,7 @@ export const rootSortRuns = pgTable(
     status: text('status').$type<RootSortRunStatus>().notNull(),
     documentIds: jsonb('document_ids').$type<string[]>().notNull().default([]),
     cursor: integer('cursor').notNull().default(0),
+    progressDone: integer('progress_done').notNull().default(0),
     unreadable: integer('unreadable').notNull().default(0),
     truncated: boolean('truncated').notNull().default(false),
     placements: jsonb('placements').$type<RootSortPlacement[]>().notNull().default([]),

@@ -86,6 +86,10 @@
             {
               "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
               "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
+            },
+            {
+              "en": "Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.",
+              "de": "Das Sortieren aller Dateien in Ordnern zeigt jetzt den Fortschritt live an: die vier Schritte, die Anzahl der erledigten Dateien, die ungefähre Restdauer und die zuletzt abgelegten Dateien. Außerdem ist der Vorgang spürbar schneller abgeschlossen. Sobald Sie eine Sortierung anwenden oder abbrechen, wird die entsprechende Benachrichtigung in Ihrem Posteingang entfernt."
             }
           ]
         },

@@ -26,10 +26,23 @@
 import { z } from 'zod'
 import { MAX_JUDGED_DOCUMENTS } from './types'
 
-/** Most documents one judgement reads: one filing judgement. */
-export const ROOT_SORT_CHUNK = MAX_JUDGED_DOCUMENTS
-/** Judgements one job slice runs side by side; a slice must end well inside the runner's five minutes. */
-export const CHUNKS_PER_SLICE = 3
+/**
+ * Documents one judgement reads. Half of what one filing judgement may take
+ * (`MAX_JUDGED_DOCUMENTS`), because a call's time grows with its documents and
+ * the dialog's progress moves once per finished call. Measured by `task
+ * be:eval:root-sort` (two runs each, 150 documents): 60 took 35 s a call and
+ * placed 0.89, 0.929 and 0.906 right; 30 took 26 s and placed 0.914 and 0.89;
+ * 20 took 16 s but placed only 0.875 and 0.874. Sure placements at
+ * `SURE_CONFIDENCE` were right 0.96 to 0.97 of the time at every size.
+ */
+export const ROOT_SORT_CHUNK = MAX_JUDGED_DOCUMENTS / 2
+/**
+ * Judgements one job slice runs side by side: 180 documents a slice, as with
+ * three of 60, but done in the time of one 30-document call (about half a
+ * minute) instead of one 60-document call. Well inside the runner's five
+ * minutes; the provider limiter (ADR-0081) holds them back if the key is busy.
+ */
+export const CHUNKS_PER_SLICE = 6
 /** Most root documents one run reads; the rest wait for the next run. */
 export const MAX_ROOT_SORT_DOCUMENTS = 5000
 /** Moves one job slice applies (or undoes). */
@@ -45,8 +58,9 @@ export const MAX_MOVES_PER_SLICE = 100
  * too high, in the parent of the right folder, and scored at most 0.8, so they
  * land in the look. The rule is the lowest cut whose sure placements are right
  * at least 0.95 of the time in every run: 0.75 cleared it in one run (0.955)
- * and missed in the other (0.946), 0.8 cleared both. Re-run the eval before
- * moving it.
+ * and missed in the other (0.946), 0.8 cleared both. At 30 documents a call
+ * (`ROOT_SORT_CHUNK`) two more runs gave 0.963 and 0.972. Re-run the eval
+ * before moving it.
  */
 export const SURE_CONFIDENCE = 0.8
 
@@ -147,8 +161,20 @@ export const ROOT_SORT_WORKING_STATUSES: readonly RootSortRunStatus[] = ['judgin
 export const rootSortRunSchema = z.object({
   id: z.string(),
   status: z.enum(ROOT_SORT_RUN_STATUSES),
-  /** Of the current step: documents judged, moves applied or undone. */
+  /**
+   * Of the current step: documents judged, moves applied or undone, counted as
+   * they finish rather than when a slice ends (migration 0174). While grouping,
+   * `total` is the number of documents being grouped and `done` is 0: grouping
+   * is one call and has no count to report until it answers.
+   */
   progress: z.object({ done: z.number().int().nonnegative(), total: z.number().int().nonnegative() }),
+  /**
+   * The run's job is queued and no worker holds it yet: the run waits for a
+   * free slot in the job pool rather than being worked.
+   */
+  waiting: z.boolean(),
+  /** While judging: the last few files placed, newest first, so the person sees the work as it happens. */
+  recent: z.array(z.object({ name: z.string(), folderPath: z.string() })),
   /** Root documents ingestion has not read yet; they stay where they are. */
   unreadable: z.number().int().nonnegative(),
   /** The root held more than `MAX_ROOT_SORT_DOCUMENTS`. */
@@ -172,6 +198,8 @@ export const rootSortRunSchema = z.object({
   /** Why no new folders were proposed for the leftovers; the run is still ready, those files stay in the root. */
   groupingError: z.string().nullable(),
   createdAt: z.string(),
+  /** When the run last changed: a step, a slice or its progress. The grouping step's elapsed time is read from it. */
+  updatedAt: z.string(),
 })
 export type RootSortRunView = z.infer<typeof rootSortRunSchema>
 

@@ -192,3 +192,25 @@ export async function listShelfFolderPaths(organizationId: string, shelf: Docume
   )
   return rows.map((row) => row.path)
 }
+
+/**
+ * The paths of the shelf's living folders among `ids`, by id. For a root sort's
+ * running list of what it just placed: the ids come from its own placements,
+ * which only ever name a folder its requester was shown, so this answers no
+ * folder that person could not already see.
+ */
+export async function findShelfFolderPaths(
+  organizationId: string,
+  shelf: DocumentShelf,
+  ids: readonly string[]
+): Promise<Map<string, string>> {
+  if (ids.length === 0) return new Map()
+  const rows = await withTenant({ organizationId }, () =>
+    getDb()
+      .select({ id: projectFolders.id, path: projectFolders.path })
+      .from(projectFolders)
+      .where(and(shelfFolderWhere(shelf, organizationId), inArray(projectFolders.id, [...ids])))
+      .limit(ids.length)
+  )
+  return new Map(rows.map((row) => [row.id, row.path]))
+}

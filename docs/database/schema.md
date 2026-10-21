@@ -1550,7 +1550,7 @@ declares it. `grid_tenant_isolation` is untouched.
 
 ---
 
-## root_sort_runs (migration 0173, ADR-0121)
+## root_sort_runs (migrations 0173, 0174, ADR-0121)
 
 A person's run of sorting a shelf's root into its folders. The run is the
 state: the BFF job `root_sort` advances the row a bounded slice at a time, and
@@ -1566,6 +1566,12 @@ Unique partial index `root_sort_runs_one_in_work_per_shelf` on
 'applying', 'undoing')`: one run in work per shelf. A project run's
 organization is the project's (composite foreign key); an Archiv run has no
 project (CHECK). Tenant-secured by `grid_secure_table` on `organization_id`.
+
+`progress_done` (migration 0174) counts the items of the current step done so
+far, written while a slice runs; `cursor` is what a slice commits when it ends.
+Display only: it rises within a step (the write takes the GREATEST, conditioned
+on the status and cursor the slice read), resets to 0 when an apply or undo
+starts, and is never negative (CHECK).
 
 ## message_restricted_use (migration 0124)
 
