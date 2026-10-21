@@ -201,6 +201,11 @@ Port `5432` is mapped to the host by default. In production:
 
 ## Secrets Management
 
+The policy for every credential the platform and CI hold (who owns it, where it
+lives, how often it is rotated, how CI logs in without stored keys) is
+[`../compliance/secrets-and-keys.md`](../compliance/secrets-and-keys.md). This
+section covers the Docker Compose setup only.
+
 ### Current State
 
 | Secret | Location | Protection |

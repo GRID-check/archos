@@ -702,6 +702,11 @@ services:
       # The catalog endpoint works unauthenticated; the key (same one the
       # backend uses) scopes the listing to account availability when set.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      # One OpenRouter key per organization (ADR-0121): with a management key
+      # the BFF creates each organization's own key on first use. Empty = off,
+      # and every call runs on OPENROUTER_API_KEY.
+      - OPENROUTER_MANAGEMENT_KEY=${OPENROUTER_MANAGEMENT_KEY:-}
+      - OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD=${OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD:-}
       # Platform tier (ADR-0016): break-glass owner bootstrap, platform-org
       # external id override, and the self-serve org creation gate.
       - GRID_PLATFORM_OWNER_EMAILS=${GRID_PLATFORM_OWNER_EMAILS:-}

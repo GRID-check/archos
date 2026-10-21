@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
+from aiq_agent.common.llm_credentials import OrgKeys
 from aiq_api.routes.consistency_check import add_consistency_check_routes
 
 
@@ -286,7 +287,7 @@ async def test_consistency_check_uses_byok_credential_when_org_header_present(ap
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys(byok=byok)):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/consistency-check", json=_body(), headers={"x-grid-organization-id": "org-1"}
@@ -300,7 +301,7 @@ async def test_consistency_check_uses_byok_credential_when_org_header_present(ap
 @pytest.mark.asyncio
 async def test_consistency_check_env_fallback_when_byok_absent(app, monkeypatch):
     """With an org header but no BYOK credential, the route falls back to the env
-    chain (fail-open)."""
+    chain when the deployment has no per-org keys."""
     monkeypatch.setenv("CONSISTENCY_LLM_API_KEY", "env-key")
 
     captured: dict = {}
@@ -312,7 +313,7 @@ async def test_consistency_check_env_fallback_when_byok_absent(app, monkeypatch)
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys()):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/consistency-check", json=_body(), headers={"x-grid-organization-id": "org-1"}

@@ -177,3 +177,31 @@ describe("backendEnv extraction switches", () => {
     }
   });
 });
+
+/** The source of one exported env builder, up to the next export. */
+function builderSource(name: string): string {
+  const start = configSource.indexOf(`export function ${name}(`);
+  const end = configSource.indexOf("\nexport function ", start + 1);
+  return configSource.slice(start, end === -1 ? undefined : end);
+}
+
+describe("one OpenRouter key per organization (ADR-0121)", () => {
+  const orgKeysSource = readFileSync(
+    join(repoRoot, "frontends", "ui", "src", "lib", "llm-credentials", "org-keys.ts"),
+    "utf8",
+  );
+
+  it("hands the BFF the management key under the names the BFF reads", () => {
+    for (const name of ["OPENROUTER_MANAGEMENT_KEY", "OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD"]) {
+      expect(orgKeysSource).toContain(`'${name}'`);
+      expect(builderSource("frontendEnv")).toContain(`"${name}"`);
+    }
+    expect(builderSource("frontendEnv")).toContain('sref("OPENROUTER_MANAGEMENT_KEY")');
+  });
+
+  it("never gives the management key to the backend, which only ever needs an organization's key", () => {
+    for (const builder of ["backendEnv", "chatEnv", "apiEnv", "workerEnv", "ingestWorkerEnv"]) {
+      expect(builderSource(builder)).not.toContain("OPENROUTER_MANAGEMENT_KEY");
+    }
+  });
+});

@@ -1,8 +1,9 @@
-"""Per-organization BYOK LLM credentials (ADR-0022).
+"""Per-organization LLM keys: BYOK (ADR-0022) and the platform's per-org OpenRouter key (ADR-0121).
 
-Enterprise organizations can bring their own LLM provider key. The key lives
+Enterprise organizations can bring their own LLM provider key, and every
+organization has an OpenRouter key the platform provisioned for it. Both live
 in WorkOS Vault (or the local encrypted store) behind the BFF; this module
-pulls it **just in time** from the internal endpoint::
+pulls them **just in time** from the internal endpoint::
 
     GET {FRONTEND_INTERNAL_URL}/api/internal/llm-credential?organizationId=…
     x-grid-internal-token: {GRID_INTERNAL_API_TOKEN}
@@ -13,10 +14,19 @@ any shared cache. The org id — which already flows on every request
 (``x-grid-organization-id``) and inside worker ``usage_context`` — is all the
 backend needs.
 
-Resolution is cached in-process (60 s positive / 30 s negative) and fails
-OPEN to the workflow-YAML platform credential: a BYOK hiccup must never take
-chat down. Key material is never logged; log lines carry only the
-fingerprint the BFF computed.
+Resolution is cached in-process for 60 s and FAILS CLOSED (ADR-0121): when the
+keys of an organization cannot be read, :class:`OrgCredentialUnavailable` is
+raised, and the call is refused rather than sent on the deployment's shared
+key. A failure is remembered for :data:`FAILURE_TTL_SECONDS`, so a BFF outage
+costs one round-trip per organization per window rather than one per call.
+
+A deployment with per-organization keys switched off (no OpenRouter management
+key on the BFF, or no ``GRID_INTERNAL_API_TOKEN`` channel to ask through: local
+development, CI, evals) resolves to :attr:`OrgKeys.per_org_keys` ``False``, and
+calls run on the shared key as before ADR-0121.
+
+Key material is never logged; log lines carry only the fingerprint the BFF
+computed.
 """
 
 import logging
@@ -29,7 +39,7 @@ from dataclasses import field
 logger = logging.getLogger(__name__)
 
 POSITIVE_TTL_SECONDS = 60.0
-NEGATIVE_TTL_SECONDS = 30.0
+FAILURE_TTL_SECONDS = 5.0
 _REQUEST_TIMEOUT_SECONDS = 3.0
 
 # Pydantic field names langchain chat models use for the credential pair.
@@ -53,11 +63,34 @@ class OrgLLMCredential:
     key_fingerprint: str = ""
 
 
-class _CacheEntry:
-    __slots__ = ("credential", "expires_at")
+class OrgCredentialUnavailable(RuntimeError):
+    """An organization's keys could not be resolved, so its model call is refused (ADR-0121)."""
 
-    def __init__(self, credential: OrgLLMCredential | None, ttl: float) -> None:
-        self.credential = credential
+
+@dataclass(frozen=True)
+class OrgKeys:
+    """Every key one organization's model calls may carry.
+
+    ``byok`` is the organization's own credential in use, or None.
+    ``platform_key`` is the OpenRouter key the platform provisioned for it; None
+    only when ``per_org_keys`` is False, i.e. this deployment has none.
+    """
+
+    byok: OrgLLMCredential | None = None
+    platform_key: str | None = field(default=None, repr=False)
+    platform_key_fingerprint: str = ""
+    per_org_keys: bool = False
+
+
+NO_ORG_KEYS = OrgKeys()
+
+
+class _CacheEntry:
+    __slots__ = ("keys", "error", "expires_at")
+
+    def __init__(self, keys: OrgKeys | None, error: Exception | None, ttl: float) -> None:
+        self.keys = keys
+        self.error = error
         self.expires_at = time.monotonic() + ttl
 
 
@@ -75,12 +108,13 @@ def _internal_base_url() -> str:
     return (os.environ.get("FRONTEND_INTERNAL_URL") or "http://frontend:3000").rstrip("/")
 
 
-def _fetch_credential(organization_id: str) -> OrgLLMCredential | None:
-    """One HTTP round-trip to the BFF's internal resolution endpoint."""
+def _fetch_org_keys(organization_id: str) -> OrgKeys:
+    """One HTTP round-trip to the BFF's internal resolution endpoint. Raises on any failure."""
     token = os.environ.get("GRID_INTERNAL_API_TOKEN")
     if not token:
-        # No internal-token trust channel — BYOK cannot be resolved securely.
-        return None
+        # No internal-token trust channel: neither BYOK nor a per-org key can be
+        # resolved, and nothing in this deployment provisions one.
+        return NO_ORG_KEYS
 
     import httpx
 
@@ -92,7 +126,22 @@ def _fetch_credential(organization_id: str) -> OrgLLMCredential | None:
     )
     response.raise_for_status()
     payload = response.json()
-    data = payload.get("credential") if isinstance(payload, dict) else None
+    if not isinstance(payload, dict):
+        raise OrgCredentialUnavailable("the key endpoint answered something that is not an object")
+    per_org_keys = payload.get("perOrgKeys") is True
+    platform = payload.get("platformKey")
+    platform_key = platform.get("apiKey") if isinstance(platform, dict) else None
+    if per_org_keys and not (isinstance(platform_key, str) and platform_key):
+        raise OrgCredentialUnavailable("per-organization keys are on, but the organization's key was not served")
+    return OrgKeys(
+        byok=_byok_from(payload.get("credential")),
+        platform_key=platform_key if per_org_keys else None,
+        platform_key_fingerprint=str(platform.get("keyFingerprint") or "") if isinstance(platform, dict) else "",
+        per_org_keys=per_org_keys,
+    )
+
+
+def _byok_from(data: object) -> OrgLLMCredential | None:
     if not isinstance(data, dict):
         return None
     api_key = data.get("apiKey")
@@ -108,46 +157,67 @@ def _fetch_credential(organization_id: str) -> OrgLLMCredential | None:
     )
 
 
-def resolve_org_llm_credential(organization_id: str | None) -> OrgLLMCredential | None:
-    """The org's active BYOK credential, or None for the platform default.
+def cached_org_keys(organization_id: str) -> OrgKeys | None:
+    """The organization's keys when this process holds a fresh answer, else None. Never blocks.
 
-    In-process TTL cache keeps the hot path free of network calls; errors are
-    negative-cached and fail OPEN (platform credential) with a warning that
-    carries no key material.
+    Raises the remembered :class:`OrgCredentialUnavailable` inside its failure
+    window, as :func:`resolve_org_keys` would.
     """
-    if not organization_id:
-        return None
-
-    now = time.monotonic()
     with _cache_lock:
         entry = _cache.get(organization_id)
-        if entry is not None and entry.expires_at > now:
-            return entry.credential
+    if entry is None or entry.expires_at <= time.monotonic():
+        return None
+    if entry.error is not None:
+        raise OrgCredentialUnavailable(str(entry.error)) from entry.error
+    return entry.keys
 
+
+def resolve_org_keys(organization_id: str) -> OrgKeys:
+    """Every key the organization's calls may carry. Blocking on a cold cache; FAILS CLOSED.
+
+    Raises :class:`OrgCredentialUnavailable` when the keys cannot be resolved:
+    the caller's model call must not go out (ADR-0121).
+    """
+    cached = cached_org_keys(organization_id)
+    if cached is not None:
+        return cached
     try:
-        credential = _fetch_credential(organization_id)
-        ttl = POSITIVE_TTL_SECONDS if credential else NEGATIVE_TTL_SECONDS
-    except Exception as exc:  # noqa: BLE001 - fail open by design
-        logger.warning("BYOK credential resolution failed for org %s: %s", organization_id, type(exc).__name__)
-        credential = None
-        ttl = NEGATIVE_TTL_SECONDS
+        keys = _fetch_org_keys(organization_id)
+    except Exception as exc:  # noqa: BLE001 - every failure is the same refusal
+        logger.error("LLM key resolution failed for org %s: %s", organization_id, type(exc).__name__)
+        _remember(organization_id, _CacheEntry(None, exc, FAILURE_TTL_SECONDS))
+        raise OrgCredentialUnavailable(f"the LLM keys of organization {organization_id} could not be resolved") from exc
+    _remember(organization_id, _CacheEntry(keys, None, POSITIVE_TTL_SECONDS))
+    if keys.byok is not None:
+        logger.info(
+            "BYOK active for org %s (provider=%s, fingerprint=%s)",
+            organization_id,
+            keys.byok.provider,
+            keys.byok.key_fingerprint,
+        )
+    return keys
 
+
+def _remember(organization_id: str, entry: _CacheEntry) -> None:
+    now = time.monotonic()
     with _cache_lock:
-        _cache[organization_id] = _CacheEntry(credential, ttl)
+        _cache[organization_id] = entry
         # Bounded: one entry per org this process has served recently.
         if len(_cache) > 512:
             expired = [key for key, value in _cache.items() if value.expires_at <= now]
             for key in expired:
                 _cache.pop(key, None)
 
-    if credential is not None:
-        logger.info(
-            "BYOK credential active for org %s (provider=%s, fingerprint=%s)",
-            organization_id,
-            credential.provider,
-            credential.key_fingerprint,
-        )
-    return credential
+
+def resolve_org_llm_credential(organization_id: str | None) -> OrgLLMCredential | None:
+    """The org's BYOK credential in use, or None when it runs on its platform key.
+
+    Raises :class:`OrgCredentialUnavailable` when the organization's keys cannot
+    be resolved: there is no fallback to the shared key (ADR-0121).
+    """
+    if not organization_id:
+        return None
+    return resolve_org_keys(organization_id).byok
 
 
 def get_org_llm_credential_from_context() -> OrgLLMCredential | None:
@@ -165,7 +235,9 @@ def apply_org_credential(llm: object, credential: OrgLLMCredential | None = None
     at construction, so a copied model would silently keep calling with the
     OLD key. The model is therefore reconstructed through its constructor
     (client fields dropped, credential fields replaced), which re-runs the
-    validators that build the clients. Fails open to the original ``llm``.
+    validators that build the clients. A credential that cannot be applied
+    raises :class:`OrgCredentialUnavailable`: returning the original ``llm``
+    would send the organization's call on the shared key (ADR-0121).
     """
     if credential is None:
         credential = get_org_llm_credential_from_context()
@@ -174,14 +246,12 @@ def apply_org_credential(llm: object, credential: OrgLLMCredential | None = None
 
     fields = getattr(type(llm), "model_fields", None)
     if not fields:
-        logger.warning("Cannot apply BYOK credential to %s: not a pydantic model", type(llm).__name__)
-        return llm
+        raise OrgCredentialUnavailable(f"cannot apply a BYOK credential to {type(llm).__name__}: not a pydantic model")
 
     key_field = next((name for name in _API_KEY_FIELDS if name in fields), None)
     base_field = next((name for name in _BASE_URL_FIELDS if name in fields), None)
     if key_field is None or base_field is None:
-        logger.warning("Cannot apply BYOK credential to %s: no credential fields", type(llm).__name__)
-        return llm
+        raise OrgCredentialUnavailable(f"cannot apply a BYOK credential to {type(llm).__name__}: no credential fields")
 
     try:
         data = {}
@@ -195,11 +265,7 @@ def apply_org_credential(llm: object, credential: OrgLLMCredential | None = None
         data[key_field] = credential.api_key
         data[base_field] = credential.base_url
         return type(llm)(**data)
-    except Exception:
-        logger.warning(
-            "Failed to apply BYOK credential (fingerprint=%s) to %s; using platform credential",
-            credential.key_fingerprint,
-            type(llm).__name__,
-            exc_info=True,
-        )
-        return llm
+    except Exception as exc:
+        raise OrgCredentialUnavailable(
+            f"failed to apply BYOK credential (fingerprint={credential.key_fingerprint}) to {type(llm).__name__}"
+        ) from exc

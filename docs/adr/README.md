@@ -182,6 +182,8 @@ Consequences, where a reader looks for them.
 | [0118](0118-posthog-support-is-the-record-for-product-feedback.md) | PostHog Support is the record of triage for product feedback | Accepted |
 | [0119](0119-every-metric-goes-to-posthog-through-the-collector.md) | Every metric goes to PostHog, through the collector, from an agent on every node | Accepted |
 | [0120](0120-addresses-are-geocoded-by-a-self-hosted-photon.md) | Addresses are geocoded by a Photon in the cluster, over the Austrian OSM extract | Proposed |
+| [0121](0121-one-openrouter-key-per-organization.md) | One OpenRouter key per organization, with no fallback to a shared key | Accepted |
+| [0122](0122-rotating-self-generated-secrets.md) | Self-generated secrets rotate by redeploy, through a second credential where the consumer can hold one | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

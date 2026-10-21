@@ -36,6 +36,15 @@ A call site picks the adapter for its shape and never writes its own merge:
   model, the reranker): :func:`limited_async_http_client`, which queues the
   call for a provider slot (ADR-0081) and leaves the routing to the body.
 
+The same two seams (this module's transports and
+``llm_factory.prepare_request``) put the organization's own OpenRouter key on
+every call made for it (:func:`openrouter_key_for_call`, ADR-0121): never the
+shared key, and no call at all when its keys cannot be resolved. They also
+stamp every call with whose work it is:
+``user`` and ``metadata`` from the ambient cost tracker
+(:func:`attribution_fields`), so OpenRouter's activity can be filtered by
+organization, person and project.
+
 Detached work with no request (an ingest job) enters its organization's
 policy with :func:`data_policy_scope`; code that reads it with
 :func:`scoped_data_policy` and finds no scope pins.
@@ -51,6 +60,7 @@ recoverable. See https://openrouter.ai/docs/guides/features/zdr.
 
 from __future__ import annotations
 
+import asyncio
 import contextvars
 import json
 import logging
@@ -111,12 +121,17 @@ def preferred_providers() -> tuple[str, ...]:
 
 
 def targets_openrouter(url: object) -> bool:
-    """True when ``url`` (a base URL or a full request URL) is OpenRouter's."""
+    """True when ``url`` (a base URL or a full request URL, with or without a scheme) is OpenRouter's.
+
+    The host must BE ``openrouter.ai`` or one of its subdomains
+    (``eu.openrouter.ai``): an organization's key rides on every request this
+    accepts (ADR-0121), so ``openrouter.ai.example.com`` must not pass.
+    """
     if not url:
         return False
     text = str(url)
-    host = urlsplit(text).hostname if "://" in text else None
-    return OPENROUTER_HOST in (host or text)
+    host = (urlsplit(text if "://" in text else f"//{text}").hostname or "").rstrip(".")
+    return host == OPENROUTER_HOST or host.endswith(f".{OPENROUTER_HOST}")
 
 
 @dataclass(frozen=True)
@@ -235,24 +250,224 @@ def pin_chat_model(llm: object, policy: DataPolicy) -> object:
     return pinned
 
 
-def _pinned_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
-    """``request`` with ``policy`` merged into its JSON body."""
-    if not policy.zdr or request.method != "POST" or not targets_openrouter(str(request.url)):
+#: The tracker fields an OpenRouter call carries as ``metadata``, in this order.
+#: OpenRouter takes at most 16 pairs, keys up to 64 characters, values up to 512.
+ATTRIBUTION_METADATA_KEYS = (
+    "organization_id",
+    "user_id",
+    "project_id",
+    "conversation_id",
+    "job_id",
+    "message_id",
+    "activity",
+)
+_METADATA_PAIRS_MAX = 16
+_METADATA_VALUE_MAX = 512
+_USER_MAX = 256
+
+#: The endpoints whose request schema declares ``user``; any other OpenRouter
+#: endpoint (the alpha decisions route, audio) gets no attribution at all.
+_USER_PATHS = ("/chat/completions", "/responses", "/embeddings", "/rerank", "/images", "/images/generations")
+#: The endpoints whose request schema also declares ``metadata``.
+_METADATA_PATHS = ("/chat/completions", "/responses")
+
+
+def attribution_fields(*, metadata: bool = True) -> dict[str, Any]:
+    """The ``user`` and ``metadata`` that say whose work an OpenRouter call is.
+
+    Read from the ambient cost tracker, the same identity the call is booked to
+    on the usage ledger (ADR-0015), so a row in OpenRouter's activity and a row
+    on the ledger name the same organization, person and project. A call made
+    outside any tracker is on no ledger and gets no attribution either.
+
+    ``user`` is ``<organization_id>/<user_id>`` (either half alone when only it
+    is known): OpenRouter's one filterable per-end-user field, and the identity
+    it isolates abuse blocks by, so one person tripping a provider's filter no
+    longer blocks the whole account. WorkOS ids only, never a name or an email.
+    """
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    tracker = grid_cost_tracker_var.get()
+    if tracker is None:
+        return {}
+    fields: dict[str, Any] = {}
+    user = "/".join(
+        str(part) for part in (getattr(tracker, "organization_id", None), getattr(tracker, "user_id", None)) if part
+    )
+    if user:
+        fields["user"] = user[:_USER_MAX]
+    pairs = {
+        key: str(value)[:_METADATA_VALUE_MAX]
+        for key in ATTRIBUTION_METADATA_KEYS
+        if (value := getattr(tracker, key, None))
+    }
+    if metadata and pairs:
+        fields["metadata"] = pairs
+    return fields
+
+
+def with_attribution(body: dict[str, Any], fields: Mapping[str, Any]) -> dict[str, Any]:
+    """``body`` carrying ``fields``; ``body`` itself when there is nothing to add.
+
+    What the caller already set wins: its own ``user``, and each ``metadata``
+    key it named; ours fill the rest up to OpenRouter's 16 pairs. A NEW dict
+    whenever anything is added.
+    """
+    added: dict[str, Any] = {}
+    if fields.get("user") and not body.get("user"):
+        added["user"] = fields["user"]
+    existing = body.get("metadata")
+    extra = fields.get("metadata") or {}
+    if extra and (existing is None or isinstance(existing, Mapping)):
+        merged = dict(existing or {})
+        for key, value in extra.items():
+            if len(merged) >= _METADATA_PAIRS_MAX:
+                break
+            merged.setdefault(key, value)
+        if merged != existing:
+            added["metadata"] = merged
+    return {**body, **added} if added else body
+
+
+def _attribution_for(path: str) -> dict[str, Any]:
+    """The attribution an OpenRouter endpoint's schema can carry: none, ``user``, or both fields."""
+    path = path.rstrip("/")
+    if not path.endswith(_USER_PATHS):
+        return {}
+    return attribution_fields(metadata=path.endswith(_METADATA_PATHS))
+
+
+def _call_organization_id() -> str | None:
+    """The organization a call is made for: the ambient cost tracker's, else the request's.
+
+    The tracker first, so the key a call carries, its attribution and its ledger
+    row name the same organization. The request context is the signed envelope's
+    organization when one arrived (``project_context.GridRequestContext``).
+    """
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    tracker = grid_cost_tracker_var.get()
+    organization_id = getattr(tracker, "organization_id", None) if tracker is not None else None
+    if organization_id:
+        return str(organization_id)
+    try:
+        from aiq_agent.project_context import get_organization_id_from_context
+
+        return get_organization_id_from_context()
+    except Exception:  # noqa: BLE001 - outside a request there is no organization to name
+        logger.debug("No request context to read an organization from", exc_info=True)
+        return None
+
+
+def org_key_for(current_key: str | None, keys: Any) -> str | None:
+    """The key a call for an organization must carry instead of ``current_key``; None to leave it. Pure.
+
+    ``keys`` is the organization's ``llm_credentials.OrgKeys``. A call already on
+    the organization's own BYOK key, or on its platform key, keeps it. Every
+    other key (the deployment's shared key, a call-site env key) is replaced by
+    the organization's platform key (ADR-0121). Nothing changes on a deployment
+    without per-organization keys.
+    """
+    if not keys.per_org_keys:
+        return None
+    if keys.byok is not None and current_key == keys.byok.api_key:
+        return None
+    if current_key == keys.platform_key:
+        return None
+    return keys.platform_key
+
+
+def openrouter_key_for_call(current_key: str | None) -> str | None:
+    """The key this OpenRouter call must carry instead of ``current_key``, or None to leave it.
+
+    Blocks on a cold cache (one BFF round-trip per organization per minute).
+    Raises ``llm_credentials.OrgCredentialUnavailable`` when the organization's
+    keys cannot be resolved: the call must not go out (ADR-0121).
+    """
+    organization_id = _call_organization_id()
+    if not organization_id:
+        return None
+    from aiq_agent.common.llm_credentials import resolve_org_keys
+
+    return org_key_for(current_key, resolve_org_keys(organization_id))
+
+
+async def aopenrouter_key_for_call(current_key: str | None) -> str | None:
+    """:func:`openrouter_key_for_call` that resolves a cold cache off the event loop."""
+    organization_id = _call_organization_id()
+    if not organization_id:
+        return None
+    from aiq_agent.common.llm_credentials import cached_org_keys
+    from aiq_agent.common.llm_credentials import resolve_org_keys
+
+    keys = cached_org_keys(organization_id) or await asyncio.to_thread(resolve_org_keys, organization_id)
+    return org_key_for(current_key, keys)
+
+
+def _bearer(request: httpx.Request) -> str | None:
+    value = request.headers.get("authorization", "")
+    return value[7:] if value[:7].lower() == "bearer " else None
+
+
+def _rekey(request: httpx.Request, key: str | None) -> None:
+    if key:
+        request.headers["Authorization"] = f"Bearer {key}"
+
+
+#: The marker a refused call's 403 carries: the organization's keys could not be resolved.
+ORG_KEYS_REFUSAL_MARKER = "organization_keys_unavailable"
+
+
+def _refusal(request: httpx.Request, error: Exception) -> httpx.Response:
+    """The answer to a call whose organization's keys could not be resolved (ADR-0121).
+
+    A 403 rather than a raised exception: the OpenAI SDK retries anything a
+    transport raises as a connection error, three times, and loses the reason;
+    a 403 is final, and its message says why.
+    """
+    logger.error("Refused an OpenRouter call to %s: %s", request.url.path, error)
+    return httpx.Response(
+        403,
+        json={"error": {"code": 403, "message": f"{ORG_KEYS_REFUSAL_MARKER}: {error}"}},
+        request=request,
+    )
+
+
+def _shaped_request(request: httpx.Request, policy: DataPolicy) -> httpx.Request:
+    """``request`` with ``policy`` and the call's attribution merged into its JSON body.
+
+    A body that cannot be read or parsed (streamed, multipart) is refused only
+    when the policy must be applied to it; attribution is never a reason to
+    fail a call.
+    """
+    if request.method != "POST" or not targets_openrouter(str(request.url)):
+        return request
+    fields = _attribution_for(request.url.path)
+    if not policy.zdr and not fields:
         return request
     try:
-        body = json.loads(request.content or b"null")
+        raw = request.content
+    except httpx.RequestNotRead:
+        if policy.zdr:
+            raise
+        return request
+    try:
+        body = json.loads(raw or b"null")
     except ValueError:
         body = None
     if not isinstance(body, dict):
-        raise ZdrRoutingError(f"cannot pin a non-JSON request to {request.url.path} to ZDR endpoints")
-    if policy.is_applied_to(body):
+        if policy.zdr:
+            raise ZdrRoutingError(f"cannot pin a non-JSON request to {request.url.path} to ZDR endpoints")
+        return request
+    shaped = with_attribution(body if policy.is_applied_to(body) else policy.apply(body), fields)
+    if shaped is body:
         return request
     headers = {k: v for k, v in request.headers.items() if k.lower() != "content-length"}
     return httpx.Request(
         request.method,
         request.url,
         headers=headers,
-        content=json.dumps(policy.apply(body)).encode("utf-8"),
+        content=json.dumps(shaped).encode("utf-8"),
         extensions=request.extensions,
     )
 
@@ -381,7 +596,14 @@ class _PinningTransport(httpx.BaseTransport):
         self._inner = inner or httpx.HTTPTransport()
 
     def handle_request(self, request: httpx.Request) -> httpx.Response:
-        request = _pinned_request(request, self._policy)
+        if targets_openrouter(str(request.url)):
+            from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+            try:
+                _rekey(request, openrouter_key_for_call(_bearer(request)))
+            except OrgCredentialUnavailable as error:
+                return _refusal(request, error)
+        request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return self._inner.handle_request(request)
         model = _request_model(request)
@@ -417,7 +639,14 @@ class _AsyncPinningTransport(httpx.AsyncBaseTransport):
         self._inner = inner or httpx.AsyncHTTPTransport()
 
     async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
-        request = _pinned_request(request, self._policy)
+        if targets_openrouter(str(request.url)):
+            from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+            try:
+                _rekey(request, await aopenrouter_key_for_call(_bearer(request)))
+            except OrgCredentialUnavailable as error:
+                return _refusal(request, error)
+        request = _shaped_request(request, self._policy)
         if not _takes_slot(request):
             return await self._inner.handle_async_request(request)
         model = _request_model(request)

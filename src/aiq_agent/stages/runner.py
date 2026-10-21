@@ -120,8 +120,10 @@ def resolve_group_llm(base: Any, agent_group: AgentGroup, *, label: str) -> Any:
     """``base`` with the org's model override for ``agent_group`` and its BYOK credential applied.
 
     Must run while the request context is live: both transforms read it. A
-    failure falls back to ``base`` PINNED to zero-data-retention endpoints, and
-    a failed pin to ``None`` (do not run) — never to the bare model. Shared by
+    failed model override falls back to ``base`` PINNED to zero-data-retention
+    endpoints, and a failed pin to ``None`` (do not run) — never to the bare
+    model. An organization whose keys cannot be resolved does not run either:
+    its stage must not go out on another key (ADR-0121). Shared by
     the stage runner and by in-turn callers of a stage's model (the memory
     restriction judge in the ``remember`` tool).
     """
@@ -130,9 +132,13 @@ def resolve_group_llm(base: Any, agent_group: AgentGroup, *, label: str) -> Any:
     from aiq_agent.common import apply_model_override
     from aiq_agent.common import apply_org_credential
     from aiq_agent.common import apply_zdr_routing
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
 
     try:
         return apply_model_override(apply_org_credential(base), agent_group)
+    except OrgCredentialUnavailable:
+        logger.error("%s: the organization's LLM keys could not be resolved; not running", label)
+        return None
     except Exception:
         logger.warning("%s: model override/credential swap failed; using the configured model", label)
     try:

@@ -11,6 +11,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
+from aiq_agent.common.llm_credentials import OrgKeys
 from aiq_api.routes.generate_summary import add_generate_summary_routes
 
 
@@ -92,7 +93,7 @@ async def test_the_request_follows_the_organizations_zdr_setting(app, monkeypatc
         with (
             patch("httpx.AsyncClient", _fake_async_client(mock_post)),
             patch("aiq_agent.common.model_overrides.resolve_org_zdr_only", return_value=zdr),
-            patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys()),
         ):
             await client.post(
                 "/v1/generate-summary", json={"profile_text": "Büro."}, headers={"x-grid-organization-id": "org_1"}
@@ -257,7 +258,7 @@ async def test_generate_summary_uses_byok_credential_when_org_header_present(app
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=byok):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys(byok=byok)):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/generate-summary",
@@ -274,8 +275,8 @@ async def test_generate_summary_uses_byok_credential_when_org_header_present(app
 
 @pytest.mark.asyncio
 async def test_generate_summary_env_fallback_when_byok_absent(app, monkeypatch):
-    """With an org header but no BYOK credential, the route falls back to the env
-    chain (fail-open)."""
+    """With an org header, no BYOK credential and no per-org keys in this
+    deployment, the env chain names the key."""
     monkeypatch.setenv("SUMMARY_LLM_API_KEY", "env-key")
 
     captured: dict = {}
@@ -287,7 +288,7 @@ async def test_generate_summary_env_fallback_when_byok_absent(app, monkeypatch):
     mock_post = AsyncMock(side_effect=_capture)
 
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        with patch("aiq_agent.common.llm_credentials.resolve_org_llm_credential", return_value=None):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=OrgKeys()):
             with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
                 response = await client.post(
                     "/v1/generate-summary",
@@ -337,3 +338,35 @@ def test_placeholder_openrouter_key_does_not_select_the_openrouter_endpoint(monk
     assert cred.base_url == "https://api.openai.com/v1"
     assert cred.model == "gpt-4o-mini"
     assert cred.api_key == "sk-some-other-provider"  # pragma: allowlist secret
+
+
+@pytest.mark.asyncio
+async def test_generate_summary_for_an_organization_goes_out_on_its_own_key(app, monkeypatch):
+    """ADR-0121: with per-org keys on, the route never sends the env key for an
+    organization. The route names the organization as an argument, so nothing
+    ambient carries it to the transport; the resolver has to choose."""
+    monkeypatch.setenv("SUMMARY_LLM_API_KEY", "env-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-shared")
+
+    captured: dict = {}
+
+    async def _capture(url, json=None, headers=None):  # noqa: A002 - mirrors httpx kwarg
+        captured["headers"] = headers
+        return _summary_response("Org summary.")
+
+    mock_post = AsyncMock(side_effect=_capture)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        with patch(
+            "aiq_agent.common.llm_credentials.resolve_org_keys",
+            return_value=OrgKeys(per_org_keys=True, platform_key="sk-or-org"),
+        ):
+            with patch("httpx.AsyncClient", _fake_async_client(mock_post)):
+                response = await client.post(
+                    "/v1/generate-summary",
+                    json={"profile_text": "Project type: office renovation."},
+                    headers={"x-grid-organization-id": "org-1"},
+                )
+
+    assert response.status_code == 200
+    assert captured["headers"]["Authorization"] == "Bearer sk-or-org"

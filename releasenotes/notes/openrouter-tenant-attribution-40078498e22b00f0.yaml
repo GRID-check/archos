@@ -1,0 +1,13 @@
+---
+operators:
+  - >
+    Every organization now gets an OpenRouter key of its own the first time it
+    needs one, and no organization's request goes out on the shared key any
+    more; when its key cannot be read, the request is refused. Before
+    deploying, set the openrouterManagementKey secret on each stack, and
+    optionally openrouterOrgKeyMonthlyLimitUsd as a monthly backstop per key.
+  - >
+    Every model request sent to OpenRouter now names the office and the person
+    it was made for, so OpenRouter's activity can be filtered by the user
+    field, written as organization id, a slash, then user id. Only internal
+    ids are sent, never names or email addresses.

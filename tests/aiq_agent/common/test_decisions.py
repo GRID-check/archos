@@ -367,3 +367,20 @@ class TestLangfuseSeesEveryDecision:
 
         [(slot, _, body_out)] = spans
         assert slot == "turn" and body_out == {"decided": 0, "skipped": "error"}
+
+
+def test_an_organization_whose_keys_cannot_be_resolved_gets_no_decision(monkeypatch):
+    # ADR-0121: never the environment's key instead.
+    from unittest.mock import patch
+
+    from aiq_agent.common import decisions
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-shared")
+    with patch(
+        "aiq_agent.common.credential_resolution.resolve_llm_credential",
+        side_effect=OrgCredentialUnavailable("down"),
+    ):
+        endpoint, skipped = _RESOLVE_ENDPOINT("org_1")
+    assert endpoint is None
+    assert skipped == decisions.SKIPPED_ORG_KEYS

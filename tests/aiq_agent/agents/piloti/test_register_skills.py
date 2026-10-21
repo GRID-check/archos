@@ -448,8 +448,8 @@ async def test_the_model_credential_and_zdr_lookups_overlap():
 
 @pytest.mark.asyncio
 async def test_one_bad_tenant_reader_does_not_poison_the_others():
-    """Each lookup fails open on its own: a raising credential reader costs
-    the credential, never the turn — and never the other two readers."""
+    """A best-effort lookup fails open on its own: a raising override reader
+    costs the override, never the turn — and never the other readers."""
     builder = _FakeBuilder({"web_search_tool": web_search_tool})
     config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=False)
 
@@ -458,8 +458,8 @@ async def test_one_bad_tenant_reader_does_not_poison_the_others():
 
     with (
         patch.object(register_module, "PilotiAgent", _make_agent_stub()),
-        patch.object(request_llm_context, "get_model_overrides_from_context", return_value={"shallow_research": "x/y"}),
-        patch.object(request_llm_context, "get_org_llm_credential_from_context", side_effect=_boom),
+        patch.object(request_llm_context, "get_model_overrides_from_context", side_effect=_boom),
+        patch.object(request_llm_context, "get_org_llm_credential_from_context", return_value=None),
         patch.object(request_llm_context, "get_zdr_only_from_context", return_value=False),
     ):
         run_fn, gen = await _get_run_fn(config, builder)
@@ -467,6 +467,29 @@ async def test_one_bad_tenant_reader_does_not_poison_the_others():
         await gen.aclose()
 
     assert result.messages[-1].content == "hallo"
+
+
+@pytest.mark.asyncio
+async def test_an_organization_whose_keys_cannot_be_read_does_not_get_an_answer():
+    """ADR-0121: the key lookup is not best-effort. Running on the shared key
+    instead would be the fallback the decision removed."""
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+    builder = _FakeBuilder({"web_search_tool": web_search_tool})
+    config = ResearchAgentConfig(llm="research_llm", tools=["web_search_tool"], skills_enabled=False)
+
+    with (
+        patch.object(register_module, "PilotiAgent", _make_agent_stub()),
+        patch.object(request_llm_context, "get_model_overrides_from_context", return_value={}),
+        patch.object(
+            request_llm_context, "get_org_llm_credential_from_context", side_effect=OrgCredentialUnavailable("down")
+        ),
+        patch.object(request_llm_context, "get_zdr_only_from_context", return_value=False),
+    ):
+        run_fn, gen = await _get_run_fn(config, builder)
+        with pytest.raises(OrgCredentialUnavailable):
+            await run_fn(ResearchAgentState(messages=[HumanMessage(content="hallo")]))
+        await gen.aclose()
 
 
 @pytest.mark.asyncio

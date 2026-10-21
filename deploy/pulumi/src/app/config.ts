@@ -151,6 +151,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
   const { cfg } = w;
   const values: Record<string, pulumi.Input<string>> = {
     OPENROUTER_API_KEY: cfg.llm.openrouterApiKey,
+    OPENROUTER_MANAGEMENT_KEY: cfg.llm.openrouterManagementKey,
     TAVILY_API_KEY: cfg.llm.tavilyApiKey,
     GRID_INTERNAL_API_TOKEN: cfg.internal.apiToken,
     GRID_ADMIN_TOKEN: cfg.internal.adminToken,
@@ -601,6 +602,10 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // Model catalog. Pricing (margin, credit price) is a platform setting in
     // the database (ADR-0053), not an environment variable.
     sref("OPENROUTER_API_KEY"),
+    // One OpenRouter key per organization (ADR-0121): the management key that
+    // creates them stays on the BFF, and the backend never sees it.
+    sref("OPENROUTER_MANAGEMENT_KEY"),
+    { name: "OPENROUTER_ORG_KEY_MONTHLY_LIMIT_USD", value: cfg.llm.openrouterOrgKeyMonthlyLimitUsd },
     // Platform tier.
     { name: "GRID_PLATFORM_OWNER_EMAILS", value: cfg.auth.platformOwnerEmails },
     { name: "GRID_PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },

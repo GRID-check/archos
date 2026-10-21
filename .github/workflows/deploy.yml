@@ -37,8 +37,10 @@ name: Deploy (staging)
 #      in ≤2 weeks) — see docs/deployment/kubernetes.md §2b.
 #   4. COMMIT the updated Pulumi.dev.yaml (plaintext + `environment:` import) —
 #      without it every CI deploy fails its preflight.
-#   5. Add PULUMI_ACCESS_TOKEN as a secret of the `staging` environment, and
-#      restrict the environment to `develop` (docs/deployment/cd.md §3).
+#   5. Let the job log in to Pulumi Cloud: keyless through OIDC
+#      (docs/deployment/keyless-ci.md), or, until that cut-over, a
+#      PULUMI_ACCESS_TOKEN secret of the `staging` environment. Restrict the
+#      environment to `develop` (docs/deployment/cd.md §3).
 # The "Preflight" step below verifies step 2/4 happened and fails with
 # instructions if not.
 #
@@ -49,8 +51,9 @@ name: Deploy (staging)
 #   * GitHub environment `production` exists with REQUIRED REVIEWERS
 #     (Settings → Environments). The environment gate IS the human approval;
 #     until it exists the job runs unreviewed.
-#   * PULUMI_ACCESS_TOKEN reachable there: a secret of the `production`
-#     environment, restricted to `prod` (docs/deployment/cd.md §3).
+#   * A Pulumi Cloud login there: keyless through OIDC
+#     (docs/deployment/keyless-ci.md), or a PULUMI_ACCESS_TOKEN secret of the
+#     `production` environment, restricted to `prod` (docs/deployment/cd.md §3).
 #   * Images must ALREADY exist in GHCR: prod consumes the imageTag PINNED in
 #     its committed Pulumi.prod.yaml, so unlike staging this job sets NO config,
 #     resolves NO per-service refs and verifies NO rollback tag — the preview
@@ -117,6 +120,11 @@ jobs:
         && github.event.workflow_run.head_repository.full_name == github.repository)
       || (github.event_name == 'workflow_dispatch' && (inputs.target == 'staging' || inputs.target == 'both'))
     runs-on: ubuntu-latest
+    # id-token: the Pulumi login exchanges the job's OIDC token (pulumi-login).
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
     # Generous on purpose. A timeout that kills `pulumi up` mid-apply leaves
     # the stack with pending operations that someone clears by hand; the
     # policy pack's progress deadlines fail a stuck rollout long before this.
@@ -294,6 +302,18 @@ jobs:
           curl -fsSL https://get.pulumi.com -o "$RUNNER_TEMP/install-pulumi.sh"
           sh "$RUNNER_TEMP/install-pulumi.sh" --version "$version"
 
+      # Short-lived OIDC token when PULUMI_OIDC_ORGANIZATION is set, the stored
+      # PULUMI_ACCESS_TOKEN until then (docs/deployment/keyless-ci.md). Exported
+      # for every later step.
+      - name: Log in to Pulumi Cloud
+        uses: ./.github/actions/pulumi-login
+        with:
+          oidc-organization: ${{ vars.PULUMI_OIDC_ORGANIZATION }}
+          oidc-token-type: ${{ vars.PULUMI_OIDC_TOKEN_TYPE || 'personal' }}
+          oidc-scope: ${{ vars.PULUMI_OIDC_SCOPE }}
+          static-token: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+
       # One ref per service, all three the commit's own tag when CI triggered
       # this deploy. A rollback pins all three to the operator's tag, after
       # checking GHCR has it for each. A bare dispatch takes, per service, the
@@ -319,7 +339,6 @@ jobs:
           refs="$(./scripts/resolve-image-refs.sh)"
           printf '%s\n' "$refs" >> "$GITHUB_ENV"
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           GH_TOKEN: ${{ github.token }} # GHCR tag lookups
 
       # The PostHog release of the backend image, whose id posthog-python sends
@@ -371,7 +390,6 @@ jobs:
           fi
           node scripts/validate-crs.mjs .plan.json
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           POSTHOG_RELEASE_ID: ${{ steps.posthog-release.outputs.release-id }}
 
       # The apply runs on THIS runner, right after the gates, against the same
@@ -392,7 +410,6 @@ jobs:
           [ -z "$POSTHOG_RELEASE_ID" ] || pulumi config set grid-oib:posthogReleaseId "$POSTHOG_RELEASE_ID"
           pulumi up --yes
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           POSTHOG_RELEASE_ID: ${{ steps.posthog-release.outputs.release-id }}
 
       # Best effort: a missing output must not turn a finished deploy red.
@@ -416,7 +433,6 @@ jobs:
             echo "| Web | \`$WEB_IMAGE_REF\` |"
           } >> "$GITHUB_STEP_SUMMARY"
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
 
       # A PostHog annotation "deploy dev <sha>": when the cluster started running
       # this commit, for error tracking and the self-driving inbox to date a
@@ -448,6 +464,11 @@ jobs:
     # queue a prod apply on every merge to develop.
     if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && (inputs.target == 'prod' || inputs.target == 'both')) }}
     runs-on: ubuntu-latest
+    # id-token: the Pulumi login exchanges the job's OIDC token (pulumi-login).
+    permissions:
+      contents: read
+      packages: read
+      id-token: write
     # As generous as staging's, for the same reason.
     timeout-minutes: 60
     # Required-reviewer protection comes from this GitHub environment.
@@ -510,6 +531,18 @@ jobs:
           curl -fsSL https://get.pulumi.com -o "$RUNNER_TEMP/install-pulumi.sh"
           sh "$RUNNER_TEMP/install-pulumi.sh" --version "$version"
 
+      # Short-lived OIDC token when PULUMI_OIDC_ORGANIZATION is set, the stored
+      # PULUMI_ACCESS_TOKEN until then (docs/deployment/keyless-ci.md). Exported
+      # for every later step.
+      - name: Log in to Pulumi Cloud
+        uses: ./.github/actions/pulumi-login
+        with:
+          oidc-organization: ${{ vars.PULUMI_OIDC_ORGANIZATION }}
+          oidc-token-type: ${{ vars.PULUMI_OIDC_TOKEN_TYPE || 'personal' }}
+          oidc-scope: ${{ vars.PULUMI_OIDC_SCOPE }}
+          static-token: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+
       # The same two independent plan gates as staging (CRD schema validation +
       # mandatory CrossGuard policies), but against the prod stack and with NO
       # config overrides: what is previewed is exactly what the stack pins.
@@ -530,7 +563,6 @@ jobs:
           fi
           node scripts/validate-crs.mjs .plan.json
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
 
       - name: Pulumi up
         working-directory: deploy/pulumi
@@ -539,7 +571,6 @@ jobs:
           pulumi stack select matthiasbigl/grid-oib/prod
           pulumi up --yes
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
 
       - name: Record what was deployed
         id: deployed
@@ -560,7 +591,6 @@ jobs:
             echo "| Image tag | \`$tag\` |"
           } >> "$GITHUB_STEP_SUMMARY"
         env:
-          PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
 
       # The same marker as staging's, with the tag the stack file pins (the
       # promoted develop commit), not the merge commit of the promotion PR: the

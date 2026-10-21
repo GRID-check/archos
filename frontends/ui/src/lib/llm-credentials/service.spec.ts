@@ -98,10 +98,10 @@ describe('resolveActiveCredentialForBackend', () => {
     expect(revealSecret).not.toHaveBeenCalled()
   })
 
-  it('fails open to the platform key when the secret cannot be revealed', async () => {
+  it('fails closed when the secret cannot be revealed (ADR-0121: no fallback to the platform key)', async () => {
     vi.mocked(getActiveCredential).mockResolvedValue(ROW as never)
     vi.mocked(revealSecret).mockRejectedValue(new Error('vault down'))
-    expect(await resolveActiveCredentialForBackend('org-1')).toBeNull()
+    await expect(resolveActiveCredentialForBackend('org-1')).rejects.toMatchObject({ status: 503 })
   })
 })
 

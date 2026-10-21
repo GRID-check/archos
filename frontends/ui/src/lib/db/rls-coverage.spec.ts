@@ -176,6 +176,9 @@ const BOUNDARY_MIGRATIONS = [
   // Renames document_fassung_announcements to document_revision_announcements and
   // secures it under the new name, as 0043 did for jobs.
   '0165_revision_names.sql',
+  // Adds org_openrouter_keys — the OpenRouter key the platform provisions for
+  // each organization (ADR-0121). Keyed directly by its organization.
+  '0173_org_openrouter_keys.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

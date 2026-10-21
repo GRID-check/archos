@@ -16,18 +16,25 @@ name: Release notes
 # on every build.
 #
 # One-time setup:
-#   * Repository secret `OPENROUTER_API_KEY` — the translator. Without it the
-#     job still runs and publishes the English text on the German page, with a
+#   * The translator's OpenRouter key: keyless through OpenRouter's workload
+#     identity federation when the repository variable
+#     `OPENROUTER_FEDERATION_POLICY_ID` is set (docs/deployment/keyless-ci.md),
+#     else the repository secret `OPENROUTER_API_KEY`. Without either the job
+#     still runs and publishes the English text on the German page, with a
 #     warning in the log.
-#   * Repository secret `RELEASE_PAT` — a fine-grained PAT with `contents: write`
-#     on this repository, owned by an admin whose RepositoryRole bypass is listed
-#     on the `develop` rulesets. The `protect-develop` ruleset requires changes
-#     to arrive via pull request, and GitHub refuses the Actions integration
-#     itself as a ruleset bypass actor (422 "must be part of the ruleset source
-#     or owner organization"), so the push below runs as the PAT owner — the
-#     token on actions/checkout persists git credentials for the push. Unset
-#     falls back to `GITHUB_TOKEN`, which keeps the workflow usable in forks
-#     and other contexts without that ruleset.
+#   * A GitHub App that may push to `develop`: repository variable
+#     `RELEASE_APP_CLIENT_ID` and secret `RELEASE_APP_PRIVATE_KEY`, the app
+#     installed on this repository with `contents: write` and listed as a bypass
+#     actor on the `develop` rulesets (docs/deployment/keyless-ci.md). The
+#     `protect-develop` ruleset requires changes to arrive via pull request, and
+#     GitHub refuses the Actions integration itself as a ruleset bypass actor
+#     (422 "must be part of the ruleset source or owner organization"), so the
+#     push below runs as the app, with a token that lives one hour. A push made
+#     with an app token triggers CI, which a GITHUB_TOKEN push would not.
+#     Until the app exists, the repository secret `RELEASE_PAT` (a fine-grained
+#     PAT with `contents: write`, owned by an admin on the bypass list) serves;
+#     neither set falls back to `GITHUB_TOKEN`, which keeps the workflow usable
+#     in forks and other contexts without that ruleset.
 #
 # The commit is made with `[skip actions]`-free, ordinary content: it must
 # trigger the downstream image build, or the note never reaches the website. It
@@ -52,6 +59,7 @@ on:
 
 permissions:
   contents: write
+  id-token: write # the OpenRouter login exchanges the job's OIDC token
 
 concurrency:
   group: release-notes
@@ -63,22 +71,43 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      # A one-hour installation token of the release app (see the header),
+      # revoked when the job ends.
+      - name: Mint the release app's token
+        id: app-token
+        if: vars.RELEASE_APP_CLIENT_ID != ''
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ vars.RELEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           # reno reads release history from git; a shallow clone gives it none
           # (documented upstream, and it fails outright rather than degrading).
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token || secrets.RELEASE_PAT || secrets.GITHUB_TOKEN }}
 
       - uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
         with:
           enable-cache: true
 
+      # A 15-minute OpenRouter key when OPENROUTER_FEDERATION_POLICY_ID is set;
+      # this job finishes well inside that. A masked output, handed below only
+      # to the two steps that translate.
+      - name: Log in to OpenRouter
+        id: openrouter
+        if: vars.OPENROUTER_FEDERATION_POLICY_ID != ''
+        uses: ./.github/actions/openrouter-login
+        with:
+          federation-policy-id: ${{ vars.OPENROUTER_FEDERATION_POLICY_ID }}
+
       - name: Regenerate the changelog
         # Step-level, not job-level: the translator key reaches only the two
         # steps that translate, never the third-party setup actions.
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ steps.openrouter.outputs.key || secrets.OPENROUTER_API_KEY }}
           # Same default the script carries; set here so the model can be moved
           # without a code change.
           RELEASE_NOTES_TRANSLATION_MODEL: ${{ vars.RELEASE_NOTES_TRANSLATION_MODEL || 'openai/gpt-6-luna' }}
@@ -86,7 +115,7 @@ jobs:
           # English onto the German page is the thing this workflow exists to
           # prevent. Without one it is a warning, and the site stays live.
           # Through env, so no `${{ }}` reaches a shell (run-shell-injection).
-          REQUIRE: ${{ secrets.OPENROUTER_API_KEY != '' && '--require-translations' || '' }}
+          REQUIRE: ${{ (steps.openrouter.outputs.key != '' || secrets.OPENROUTER_API_KEY != '') && '--require-translations' || '' }}
         run: uv run --no-project --with reno==4.1.0 python scripts/release_notes.py publish $REQUIRE
 
       - name: Commit and push
@@ -95,9 +124,9 @@ jobs:
         # read-only above and never commits, switches branches, or pushes.
         if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_API_KEY: ${{ steps.openrouter.outputs.key || secrets.OPENROUTER_API_KEY }}
           RELEASE_NOTES_TRANSLATION_MODEL: ${{ vars.RELEASE_NOTES_TRANSLATION_MODEL || 'openai/gpt-6-luna' }}
-          REQUIRE: ${{ secrets.OPENROUTER_API_KEY != '' && '--require-translations' || '' }}
+          REQUIRE: ${{ (steps.openrouter.outputs.key != '' || secrets.OPENROUTER_API_KEY != '') && '--require-translations' || '' }}
         run: |
           set -euo pipefail
           files=(frontends/web/src/data/changelog.json releasenotes/translations/)

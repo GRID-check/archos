@@ -397,3 +397,20 @@ async def test_an_org_with_no_key_of_its_own_still_reranks(monkeypatch, tracker)
     await _reranker(api_key="platform-key").rerank("Fluchtweg", [_chunk("a")])  # pragma: allowlist secret
 
     assert seen[0].headers["Authorization"] == "Bearer platform-key"
+
+
+def test_an_organization_whose_keys_cannot_be_resolved_is_never_reranked_on_the_env_key(monkeypatch):
+    # ADR-0121: the resolver's refusal propagates instead of falling back to the env.
+    from unittest.mock import patch
+
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-shared")
+    with (
+        patch(
+            "aiq_agent.common.credential_resolution.resolve_llm_credential",
+            side_effect=OrgCredentialUnavailable("down"),
+        ),
+        pytest.raises(OrgCredentialUnavailable),
+    ):
+        ce._resolve_credential("https://openrouter.ai/api/v1", "cohere/rerank-v3.5", "org_1")

@@ -135,6 +135,8 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [CD](deployment/cd.md) | Continuous delivery |
 | [Startup Flow](deployment/startup-flow.md) | Boot sequence: PostgreSQL init, SeaweedFS, uvicorn, gateway |
 | [Security Config](deployment/security-config.md) | Auth configuration, storage credentials, key management |
+| [Keyless CI](deployment/keyless-ci.md) | Cutting CI over from stored keys to OIDC: Pulumi Cloud, Anthropic, OpenRouter, and a GitHub App for releases |
+| [Secrets and keys](compliance/secrets-and-keys.md) | The policy and inventory of every credential: owner, place, scope, rotation interval, access review, the ISO 27001 / SOC 2 mapping, and the rotation record |
 | [WorkOS Provisioning](deployment/workos-provisioning.md) | Applying the authorization catalog |
 
 ## API reference

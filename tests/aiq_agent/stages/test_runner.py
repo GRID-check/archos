@@ -503,3 +503,17 @@ class TestStageSpendNamesTheAnswer:
         from aiq_agent.stages.spec import TurnFacts
 
         assert _answer_message_id(TurnFacts(conversation_id="conv_1")) is None
+
+
+def test_a_stage_whose_organizations_keys_cannot_be_resolved_does_not_run(monkeypatch):
+    # ADR-0121: a stage must not fall back to the configured model on the shared key.
+    from aiq_agent import common
+    from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+    from aiq_agent.common.model_overrides import AgentGroup
+    from aiq_agent.stages.runner import resolve_group_llm
+
+    def unavailable(llm, credential=None):
+        raise OrgCredentialUnavailable("bff down")
+
+    monkeypatch.setattr(common, "apply_org_credential", unavailable)
+    assert resolve_group_llm(object(), AgentGroup.FOLLOW_UPS, label="follow_ups") is None

@@ -1,0 +1,56 @@
+name: OpenRouter login
+description: >-
+  A short-lived OpenRouter key for this job, exchanged for the job's GitHub OIDC
+  token through OpenRouter's workload identity federation (Business plan;
+  docs/deployment/keyless-ci.md). The job needs `permissions: id-token: write`.
+  The key lives 15 minutes, so only a job that finishes inside that may use it.
+  Returned as the masked output `key`, never exported to the environment: the
+  caller hands it to the steps that call a model, and no third-party action
+  sees it.
+
+inputs:
+  federation-policy-id:
+    description: The OpenRouter federation policy (Settings → Workload identity), repository variable OPENROUTER_FEDERATION_POLICY_ID.
+    required: true
+  audience:
+    description: The audience the policy requires on the GitHub OIDC token.
+    required: false
+    default: https://openrouter.ai
+
+outputs:
+  key:
+    description: The short-lived OpenRouter access token.
+    value: ${{ steps.exchange.outputs.key }}
+
+runs:
+  using: composite
+  steps:
+    # github-script rather than curl: the toolkit fetches the OIDC token and
+    # registers the key as a secret (core.setSecret) without a workflow command
+    # a later step could switch off.
+    - name: Exchange the GitHub OIDC token for an OpenRouter key
+      id: exchange
+      uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+      env:
+        POLICY_ID: ${{ inputs.federation-policy-id }}
+        AUDIENCE: ${{ inputs.audience }}
+      with:
+        script: |
+          const subjectToken = await core.getIDToken(process.env.AUDIENCE)
+          const response = await fetch('https://openrouter.ai/api/v1/oauth/token', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+              grant_type: 'urn:ietf:params:oauth:grant-type:token-exchange',
+              subject_token_type: 'urn:ietf:params:oauth:token-type:jwt',
+              federation_policy_id: process.env.POLICY_ID,
+              subject_token: subjectToken,
+            }),
+          })
+          const body = await response.json().catch(() => ({}))
+          if (!response.ok || typeof body.access_token !== 'string') {
+            core.setFailed(`OpenRouter refused the token exchange (HTTP ${response.status} ${body.error ?? ''}): check the federation policy's issuer, subject and audience.`)
+            return
+          }
+          core.setSecret(body.access_token)
+          core.setOutput('key', body.access_token)

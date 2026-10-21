@@ -200,6 +200,100 @@ def test_provider_order_is_not_pinned():
     assert "provider" not in payload["extra_body"]
 
 
+def _booked_to(**identity):
+    from aiq_agent.common.cost_tracking import GridCostTracker
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    return grid_cost_tracker_var.set(GridCostTracker(**identity))
+
+
+@pytest.mark.parametrize("responses_api", [False, True])
+def test_the_payload_names_whose_work_the_call_is(responses_api):
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    token = _booked_to(organization_id="org_1", user_id="user_2", conversation_id="c_3")
+    try:
+        payload = _sent_payload(_openrouter_chat_model(use_responses_api=responses_api), _messages())
+    finally:
+        grid_cost_tracker_var.reset(token)
+    extra_body = payload["extra_body"]
+    assert extra_body["user"] == "org_1/user_2"
+    assert extra_body["metadata"] == {"organization_id": "org_1", "user_id": "user_2", "conversation_id": "c_3"}
+    assert extra_body["plugins"] == [{"id": "response-healing"}], "attribution displaced the instance's extra_body"
+
+
+def test_attribution_keeps_the_instance_extra_body_without_a_cache_key():
+    # No system message means no cache key; the attribution must still layer
+    # over the instance's extra_body rather than replace it.
+    from langchain_core.messages import HumanMessage
+
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    token = _booked_to(organization_id="org_1")
+    try:
+        payload = _sent_payload(_openrouter_chat_model(), [HumanMessage(content="Hallo")])
+    finally:
+        grid_cost_tracker_var.reset(token)
+    assert payload["extra_body"]["user"] == "org_1"
+    assert payload["extra_body"]["plugins"] == [{"id": "response-healing"}]
+
+
+def test_a_bound_extra_body_does_not_displace_the_instances_without_a_cache_key():
+    # A per-call extra_body REPLACES the instance's in langchain's payload, so
+    # with no cache key and no tracker the healing plugin (and, on a pinned
+    # model, the ZDR routing) used to be dropped.
+    from langchain_core.messages import HumanMessage
+
+    payload = _sent_payload(_openrouter_chat_model(), [HumanMessage(content="Hallo")], extra_body={"x": 1})
+    assert payload["extra_body"]["x"] == 1
+    assert payload["extra_body"]["plugins"] == [{"id": "response-healing"}]
+
+
+@pytest.mark.parametrize("responses_api", [False, True])
+def test_a_chat_call_for_an_organization_goes_out_on_its_key(responses_api):
+    # Asserted on the WIRE: the per-call header has to survive langchain's
+    # payload builders and the OpenAI SDK's header merge on both APIs.
+    from unittest.mock import patch
+
+    import httpx
+    from langchain_core.messages import HumanMessage
+    from langchain_openai import ChatOpenAI
+
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+    from aiq_agent.common.llm_credentials import OrgKeys
+    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+
+    seen: list[httpx.Request] = []
+
+    def handler(request):
+        seen.append(request)
+        return httpx.Response(500, json={"error": {"message": "stop"}})
+
+    llm = enforce_chat_request_contract(
+        ChatOpenAI(
+            model="openai/gpt-5.6-luna",
+            api_key="sk-shared",  # pragma: allowlist secret
+            base_url="https://openrouter.ai/api/v1",
+            use_responses_api=responses_api,
+            max_retries=0,
+            http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+        )
+    )
+    token = _booked_to(organization_id="org_1")
+    try:
+        with (
+            patch(
+                "aiq_agent.common.llm_credentials.resolve_org_keys",
+                return_value=OrgKeys(per_org_keys=True, platform_key="sk-or-org"),
+            ),
+            pytest.raises(Exception),
+        ):
+            llm.invoke([HumanMessage(content="Hallo")])
+    finally:
+        grid_cost_tracker_var.reset(token)
+    assert seen and seen[0].headers["authorization"] == "Bearer sk-or-org"
+
+
 def test_a_turns_iterations_share_one_key():
     from langchain_core.messages import AIMessage
     from langchain_core.messages import ToolMessage
@@ -373,6 +467,53 @@ def test_the_configured_retry_messages_survive_the_merge():
     assert retry_messages(["Too Many Requests", "429"]) == ["Too Many Requests", "429", "rate_limit_exceeded"]
     assert retry_messages(None) == ["rate_limit_exceeded"]
     assert retry_messages(["rate_limit_exceeded"]) == ["rate_limit_exceeded"]
+
+
+async def test_an_async_chat_call_resolves_the_organizations_key_off_the_event_loop():
+    # A cold cache is a blocking BFF round-trip (3 s timeout); on the loop it
+    # would stall every conversation on the replica.
+    import threading
+    from unittest.mock import patch
+
+    import httpx
+    from langchain_core.messages import HumanMessage
+    from langchain_openai import ChatOpenAI
+
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+    from aiq_agent.common.llm_credentials import OrgKeys
+    from aiq_agent.common.llm_credentials import reset_credential_cache
+    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+
+    seen: list[httpx.Request] = []
+    resolved_on: list[str] = []
+
+    async def handler(request):
+        seen.append(request)
+        return httpx.Response(500, json={"error": {"message": "stop"}})
+
+    def resolve(organization_id):
+        resolved_on.append(threading.current_thread().name)
+        return OrgKeys(per_org_keys=True, platform_key="sk-or-org")
+
+    llm = enforce_chat_request_contract(
+        ChatOpenAI(
+            model="openai/gpt-5.6-luna",
+            api_key="sk-shared",  # pragma: allowlist secret
+            base_url="https://openrouter.ai/api/v1",
+            max_retries=0,
+            http_async_client=httpx.AsyncClient(transport=httpx.MockTransport(handler)),
+        )
+    )
+    reset_credential_cache()
+    token = _booked_to(organization_id="org_async")
+    try:
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys", side_effect=resolve), pytest.raises(Exception):
+            await llm.ainvoke([HumanMessage(content="Hallo")])
+    finally:
+        grid_cost_tracker_var.reset(token)
+        reset_credential_cache()
+    assert seen and seen[0].headers["authorization"] == "Bearer sk-or-org"
+    assert resolved_on and resolved_on[0] != threading.main_thread().name
 
 
 # -- a model that cannot stop reasoning ---------------------------------------

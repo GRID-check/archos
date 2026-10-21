@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import contextvars
 import json
+import uuid
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from unittest.mock import patch
 
 import httpx
@@ -24,15 +26,40 @@ from aiq_agent.common.openrouter import scoped_data_policy
 from aiq_agent.common.openrouter import targets_openrouter
 
 
+@pytest.fixture(autouse=True)
+def _fresh_key_cache():
+    """Every test resolves an organization's keys afresh; a cached answer would leak between them."""
+    from aiq_agent.common.llm_credentials import reset_credential_cache
+
+    reset_credential_cache()
+    yield
+    reset_credential_cache()
+
+
 class TestTargetsOpenRouter:
     @pytest.mark.parametrize(
         "url",
-        ["https://openrouter.ai/api/v1", "https://eu.openrouter.ai/api/v1", "https://openrouter.ai/api/v1/rerank"],
+        [
+            "https://openrouter.ai/api/v1",
+            "https://eu.openrouter.ai/api/v1",
+            "https://openrouter.ai/api/v1/rerank",
+            "openrouter.ai/api/v1",
+        ],
     )
     def test_openrouter_hosts(self, url):
         assert targets_openrouter(url)
 
-    @pytest.mark.parametrize("url", ["https://api.openai.com/v1", "", None, "https://evil.test/openrouter.ai"])
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "https://api.openai.com/v1",
+            "",
+            None,
+            "https://evil.test/openrouter.ai",
+            "https://openrouter.ai.evil.example/api/v1",
+            "https://notopenrouter.ai/api/v1",
+        ],
+    )
     def test_other_hosts(self, url):
         assert not targets_openrouter(url)
 
@@ -137,6 +164,205 @@ class TestThePinnedHttpClient:
     def test_a_body_it_cannot_pin_is_refused(self):
         with pytest.raises(ZdrRoutingError):
             self._send("https://openrouter.ai/api/v1/embeddings", b"not json")
+
+
+@contextmanager
+def _booked_to(**identity):
+    """Run the block inside a cost tracker naming ``identity``, as a turn or an ingest job does."""
+    from aiq_agent.common.cost_tracking import GridCostTracker
+    from aiq_agent.common.cost_tracking import grid_cost_tracker_var
+
+    token = grid_cost_tracker_var.set(
+        GridCostTracker(organization_id=identity.pop("organization_id", None), **identity)
+    )
+    try:
+        yield
+    finally:
+        grid_cost_tracker_var.reset(token)
+
+
+class TestAttribution:
+    def _send(self, url, body, policy=NO_RETENTION_LIMITS):
+        return TestThePinnedHttpClient()._send(url, json.dumps(body), policy)
+
+    def test_a_chat_call_names_its_organization_person_and_project(self):
+        with _booked_to(organization_id="org_1", user_id="user_2", project_id="p_3", activity="ingest"):
+            body = json.loads(self._send("https://openrouter.ai/api/v1/chat/completions", {"model": "m"}).content)
+        assert body["user"] == "org_1/user_2"
+        assert body["metadata"] == {
+            "organization_id": "org_1",
+            "user_id": "user_2",
+            "project_id": "p_3",
+            "activity": "ingest",
+        }
+
+    def test_an_embedding_call_carries_user_but_no_metadata(self):
+        # OpenRouter's embeddings schema declares `user` and not `metadata`.
+        with _booked_to(organization_id="org_1"):
+            body = json.loads(self._send("https://openrouter.ai/api/v1/embeddings", {"input": ["x"]}).content)
+        assert body["user"] == "org_1" and "metadata" not in body
+
+    def test_attribution_rides_along_with_the_pin(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            body = json.loads(
+                self._send("https://openrouter.ai/api/v1/responses", {"model": "m"}, ZERO_DATA_RETENTION).content
+            )
+        assert body["provider"]["zdr"] is True and body["user"] == "org_1/user_2"
+
+    def test_what_the_caller_set_wins(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            body = json.loads(
+                self._send(
+                    "https://openrouter.ai/api/v1/chat/completions",
+                    {"user": "mine", "metadata": {"organization_id": "kept", "x": "y"}},
+                ).content
+            )
+        assert body["user"] == "mine"
+        assert body["metadata"] == {"organization_id": "kept", "user_id": "user_2", "x": "y"}
+
+    def test_outside_a_tracker_nothing_is_added(self):
+        sent = self._send("https://openrouter.ai/api/v1/chat/completions", {"model": "m"})
+        assert json.loads(sent.content) == {"model": "m"}
+
+    def test_another_host_never_learns_who_asked(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            body = json.loads(self._send("https://api.openai.com/v1/chat/completions", {"model": "m"}).content)
+        assert "user" not in body and "metadata" not in body
+
+    def test_an_unparseable_body_is_sent_as_is_when_nothing_must_be_pinned(self):
+        with _booked_to(organization_id="org_1"):
+            sent = TestThePinnedHttpClient()._send(
+                "https://openrouter.ai/api/v1/chat/completions", b"not json", NO_RETENTION_LIMITS
+            )
+        assert sent.content == b"not json"
+
+
+class TestAttributionNeverFailsACall:
+    def test_ids_that_are_not_strings_are_written_as_strings(self):
+        with _booked_to(organization_id=uuid.UUID(int=1), user_id=7):
+            assert openrouter.attribution_fields()["user"] == f"{uuid.UUID(int=1)}/7"
+
+    def test_an_unread_body_passes_through_when_nothing_must_be_pinned(self):
+        request = httpx.Request("POST", "https://openrouter.ai/api/v1/chat/completions", files={"f": ("a", b"x")})
+        with _booked_to(organization_id="org_1"):
+            assert openrouter._shaped_request(request, NO_RETENTION_LIMITS) is request
+
+    def test_an_endpoint_whose_schema_has_no_user_gets_nothing(self):
+        with _booked_to(organization_id="org_1", user_id="user_2"):
+            sent = TestAttribution()._send("https://openrouter.ai/api/alpha/decisions", {"model": "m"})
+        assert json.loads(sent.content) == {"model": "m"}
+
+    def test_metadata_stops_at_sixteen_pairs_and_the_callers_keys_come_first(self):
+        theirs = {f"k{i}": "v" for i in range(14)}
+        with _booked_to(organization_id="org_1", user_id="user_2", project_id="p_3"):
+            body = json.loads(
+                TestAttribution()._send("https://openrouter.ai/api/v1/chat/completions", {"metadata": theirs}).content
+            )
+        assert len(body["metadata"]) == 16
+        assert theirs.items() <= body["metadata"].items()
+        assert body["metadata"]["organization_id"] == "org_1" and "project_id" not in body["metadata"]
+
+
+def _org_keys(**kwargs):
+    from aiq_agent.common.llm_credentials import OrgKeys
+
+    return OrgKeys(**{"per_org_keys": True, "platform_key": "sk-or-org", **kwargs})
+
+
+class TestEveryCallForAnOrganizationCarriesItsKey:
+    """ADR-0121: the shared key never serves an organization's call."""
+
+    def _sent(self, url="https://openrouter.ai/api/v1/embeddings", key="sk-shared"):
+        seen: list[httpx.Request] = []
+
+        def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={})
+
+        client = pinned_http_client(NO_RETENTION_LIMITS)
+        client._transport._inner = httpx.MockTransport(handler)
+        client.post(url, json={"input": ["x"]}, headers={"Authorization": f"Bearer {key}"})
+        return seen[0]
+
+    def test_the_shared_key_is_replaced_by_the_organizations(self):
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys()),
+        ):
+            assert self._sent().headers["authorization"] == "Bearer sk-or-org"
+
+    def test_a_call_on_the_organizations_own_byok_key_keeps_it(self):
+        from aiq_agent.common.llm_credentials import OrgLLMCredential
+
+        byok = OrgLLMCredential("c", "openrouter", "https://openrouter.ai/api/v1", "sk-byok")
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys(byok=byok)),
+        ):
+            assert self._sent(key="sk-byok").headers["authorization"] == "Bearer sk-byok"
+
+    def test_no_organization_keeps_the_shared_key(self):
+        with patch("aiq_agent.common.llm_credentials.resolve_org_keys") as resolve:
+            assert self._sent().headers["authorization"] == "Bearer sk-shared"
+        resolve.assert_not_called()
+
+    def test_a_deployment_without_per_org_keys_keeps_the_shared_key(self):
+        from aiq_agent.common.llm_credentials import NO_ORG_KEYS
+
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=NO_ORG_KEYS),
+        ):
+            assert self._sent().headers["authorization"] == "Bearer sk-shared"
+
+    def test_keys_that_cannot_be_resolved_refuse_the_call_with_a_final_403(self):
+        # Never sent, and a 403 rather than a raise: the OpenAI SDK retries a
+        # raised transport error as a connection failure and drops the reason.
+        from aiq_agent.common.llm_credentials import OrgCredentialUnavailable
+
+        seen: list[httpx.Request] = []
+
+        def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={})
+
+        client = pinned_http_client(NO_RETENTION_LIMITS)
+        client._transport._inner = httpx.MockTransport(handler)
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", side_effect=OrgCredentialUnavailable("down")),
+        ):
+            response = client.post(
+                "https://openrouter.ai/api/v1/embeddings", json={}, headers={"Authorization": "Bearer sk-shared"}
+            )
+        assert seen == []
+        assert response.status_code == 403
+        assert openrouter.ORG_KEYS_REFUSAL_MARKER in response.json()["error"]["message"]
+
+    def test_another_host_never_gets_the_organizations_key(self):
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys()),
+        ):
+            assert self._sent(url="https://api.openai.com/v1/embeddings").headers["authorization"] == "Bearer sk-shared"
+
+    async def test_the_async_transport_swaps_too(self):
+        seen: list[httpx.Request] = []
+
+        async def handler(request):
+            seen.append(request)
+            return httpx.Response(200, json={})
+
+        client = openrouter.pinned_async_http_client(NO_RETENTION_LIMITS)
+        client._transport._inner = httpx.MockTransport(handler)
+        with (
+            _booked_to(organization_id="org_1"),
+            patch("aiq_agent.common.llm_credentials.resolve_org_keys", return_value=_org_keys()),
+        ):
+            await client.post(
+                "https://openrouter.ai/api/v1/rerank", json={}, headers={"Authorization": "Bearer sk-shared"}
+            )
+        assert seen[0].headers["authorization"] == "Bearer sk-or-org"
 
 
 class TestTheIngestScope:

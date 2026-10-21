@@ -5,10 +5,11 @@ name: Claude Code
 # (CLAUDE.md -> AGENTS.md) and answers or pushes commits to the PR branch.
 #
 # Requires the Claude GitHub App (https://github.com/apps/claude) installed on
-# this repo, plus a `CLAUDE_CODE_OAUTH_TOKEN` repository secret. Pro/Max
-# subscribers generate that token by running `claude setup-token` locally — no
-# Claude API key or console billing needed. (API-key users would instead set
-# `anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}` below.)
+# this repo, and one way to reach Claude: keyless through Anthropic's workload
+# identity federation once the repository variables ANTHROPIC_FEDERATION_RULE_ID
+# and ANTHROPIC_ORGANIZATION_ID are set (API billing; docs/deployment/keyless-ci.md),
+# or until then a `CLAUDE_CODE_OAUTH_TOKEN` repository secret (subscription
+# billing), which Pro/Max subscribers generate with `claude setup-token`.
 #
 # Trigger gating happens twice: the job-level `if` avoids spinning a runner for
 # every comment on the repo, and the action itself re-checks the trigger phrase.
@@ -55,7 +56,16 @@ jobs:
 
       - uses: anthropics/claude-code-action@1d6de8cb0c237e7c15e9e1bdf973826ebae490cc # v1.0.248
         with:
-          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          # Keyless once ANTHROPIC_FEDERATION_RULE_ID is set: the action exchanges
+          # this job's GitHub OIDC token (id-token: write) for a short-lived
+          # Claude API token, and the static token below must then be empty, or
+          # it wins (docs/deployment/keyless-ci.md). Until then, the subscription
+          # token.
+          claude_code_oauth_token: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID == '' && secrets.CLAUDE_CODE_OAUTH_TOKEN || '' }}
+          anthropic_federation_rule_id: ${{ vars.ANTHROPIC_FEDERATION_RULE_ID }}
+          anthropic_organization_id: ${{ vars.ANTHROPIC_ORGANIZATION_ID }}
+          anthropic_service_account_id: ${{ vars.ANTHROPIC_SERVICE_ACCOUNT_ID }}
+          anthropic_workspace_id: ${{ vars.ANTHROPIC_WORKSPACE_ID }}
           # No `prompt`: the action runs in interactive mode and takes its
           # instructions from the comment that mentioned it.
           claude_args: |
