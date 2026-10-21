@@ -171,7 +171,9 @@ def _workspace_proposal(call_id: str = "w2") -> list:
 
 
 async def test_a_work_turn_is_grounded_by_what_it_read_and_proposed():
-    prose = "Anna Berger hat 3 Freigaben, davon 2 offen. Den Ordner Brandschutz habe ich vorgeschlagen; er wartet auf Sie."
+    prose = (
+        "Anna Berger hat 3 Freigaben, davon 2 offen. Den Ordner Brandschutz habe ich vorgeschlagen; er wartet auf Sie."
+    )
     messages = [
         HumanMessage("Was liegt bei Anna, und leg einen Ordner Brandschutz an."),
         *_workspace_read(),
