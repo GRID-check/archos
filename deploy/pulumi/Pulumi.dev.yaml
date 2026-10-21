@@ -179,6 +179,8 @@ config:
   # ── Auth / platform ──
   grid-oib:requireAuth: "true"
   grid-oib:workosClientId: client_01KEF0YGNPX7S4SF952ZX46V1K # pragma: allowlist secret (public OAuth client id)
+  # AuthKit domain of this stack's WorkOS environment: the agent doors' authorization server (ADR-0122).
+  grid-oib:workosAuthkitDomain: grateful-view-25-staging.authkit.app
   grid-oib:registryUsername: matthiasbigl
   # ── Observability / OTel Collector + Aspire dashboard (ADR-0029) ──
   # Deployed only when the flag is on AND every dependency is set; otherwise

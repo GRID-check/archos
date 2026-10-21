@@ -1139,6 +1139,13 @@ export interface GridConfig {
   auth: {
     requireAuth: boolean;
     workosClientId: string;
+    /**
+     * The environment's AuthKit domain, no scheme (`<slug>.authkit.app` or a
+     * custom auth domain): the authorization server of the agent doors
+     * (ADR-0122). Empty keeps `/api/mcp`, `/api/a2a` and `/api/platform/mcp`
+     * answering 503; Piloti's own calls still work.
+     */
+    workosAuthkitDomain: string;
     workosApiKey: pulumi.Output<string>;
     workosCookiePassword: pulumi.Output<string>;
     platformOwnerEmails: string;
@@ -3047,6 +3054,7 @@ export function loadConfig(): GridConfig {
     auth: {
       requireAuth: bool(cfg, "requireAuth", true),
       workosClientId,
+      workosAuthkitDomain: cfg.get("workosAuthkitDomain") ?? "",
       workosApiKey: workosApiKey ?? pulumi.output(""),
       workosCookiePassword: cfg.getSecret("workosCookiePassword") ?? pulumi.output(""),
       platformOwnerEmails: cfg.get("platformOwnerEmails") ?? "",

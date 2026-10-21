@@ -545,6 +545,8 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     { name: "GRID_ALLOW_AGENT_ORG_MEMORY", value: String(cfg.auth.allowAgentOrgMemory) },
     // WorkOS AuthKit.
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
+    // The agent doors' authorization server (ADR-0122); empty = the doors answer 503.
+    { name: "WORKOS_AUTHKIT_DOMAIN", value: cfg.auth.workosAuthkitDomain },
     sref("WORKOS_API_KEY"),
     sref("WORKOS_COOKIE_PASSWORD"),
     // Set BOTH: authkit-nextjs reads the literal NEXT_PUBLIC_ var (works at
