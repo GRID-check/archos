@@ -11,6 +11,8 @@ import { type FC, useId, useState } from 'react'
 import { ChevronDown, ChevronUp, AlertTriangle, XCircle, X, RotateCw, Check, Copy } from 'lucide-react'
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { AnimatePresence } from '@/components/motion'
+import { HeightArrival } from '@/components/motion/height-arrival'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatTime } from '@/shared/utils/format-time'
 import { shortRequestId } from '@/shared/utils/request-id'
@@ -118,14 +120,20 @@ export const ErrorBanner: FC<ErrorBannerProps> = ({
               </>
             )}
           </span>
-          {isExpanded && details && (
-            <pre
-              id={detailsId}
-              className="text-error bg-surface-raised mt-2 max-h-48 w-full overflow-auto whitespace-pre-wrap rounded p-2 font-mono text-xs"
-            >
-              {details}
-            </pre>
-          )}
+          {/* The details open in place and fold back: landed in one frame, the
+          card under the reader's pointer doubled its height at once. */}
+          <AnimatePresence initial={false}>
+            {isExpanded && details && (
+              <HeightArrival key="details" className="w-full">
+                <pre
+                  id={detailsId}
+                  className="text-error bg-surface-raised mt-2 max-h-48 w-full overflow-auto whitespace-pre-wrap rounded p-2 font-mono text-xs"
+                >
+                  {details}
+                </pre>
+              </HeightArrival>
+            )}
+          </AnimatePresence>
           {requestId && <RequestReference requestId={requestId} />}
           {onRetry && errorMeta.retryable !== false && (
             <div className="mt-2">
@@ -146,7 +154,7 @@ export const ErrorBanner: FC<ErrorBannerProps> = ({
             type="button"
             onClick={onDismiss}
             aria-label={tc('actions.close')}
-            className="text-muted-foreground hover:text-foreground absolute right-3 top-3 rounded-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+            className="text-muted-foreground hover:text-foreground duration-quick absolute right-3 top-3 rounded-xs transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
           >
             <X className="size-4" aria-hidden="true" />
           </button>

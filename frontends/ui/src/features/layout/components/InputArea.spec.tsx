@@ -2651,7 +2651,7 @@ describe('InputArea', () => {
 
       await waitFor(() => expect(mockSendMessage).toHaveBeenCalled())
       expect(String(mockSendMessage.mock.calls[0]?.[0])).toBe('Wie hoch ist die Attika?')
-      expect(screen.queryByTestId('composer-held-for-upload')).not.toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByTestId('composer-held-for-upload')).not.toBeInTheDocument())
     })
 
     test('is not swallowed by an upload that failed', async () => {

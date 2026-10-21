@@ -23,7 +23,8 @@
 
 'use client'
 
-import { useState, type CSSProperties, type FC } from 'react'
+import { useRef, useState, type CSSProperties, type FC } from 'react'
+import { useHeightGlide } from '@/components/motion/height-glide'
 import { Globe, Lock } from 'lucide-react'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
@@ -145,6 +146,11 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
   const scope = useCitationScope()
 
   const [expanded, setExpanded] = useState(false)
+  // „Weitere anzeigen" swaps the row's content for a longer one. Landed in one
+  // frame, the chips under the reader's pointer wrapped and everything below
+  // the answer jumped; glided, the growth reads as the answer to the press.
+  const rowRef = useRef<HTMLDivElement>(null)
+  useHeightGlide(rowRef, expanded)
   // Whether the reader watches this answer's sources arrive. Only then do the
   // chips and the gap row enter: a stored answer, restored on thread open,
   // switch or reload, is drawn as it stands (a CSS entrance replays on every
@@ -159,7 +165,11 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
   const numbered = documents.filter((doc) => citationNumbers(doc).length > 0)
   const rest = documents.filter((doc) => citationNumbers(doc).length === 0)
   const folded = Math.max(0, MAX_ANSWER_SOURCES - numbered.length)
-  const shown = expanded ? documents : [...numbered, ...rest.slice(0, folded)]
+  const collapsed = [...numbered, ...rest.slice(0, folded)]
+  const shown = expanded ? documents : collapsed
+  // The chips the press revealed fade in on their own, so the eye finds what
+  // is new; the ones that were already there stand still.
+  const revealedIds = expanded ? new Set(documents.filter((doc) => !collapsed.includes(doc)).map((doc) => doc.id)) : null
   const hidden = documents.length - shown.length
   // Citation chips always wear their lane tints: lane tint is provenance
   // (where it stands), not decoration — washes/alarms spend the hue budget
@@ -205,6 +215,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
 
   return (
     <div
+      ref={rowRef}
       className={cn('flex min-h-6 flex-wrap items-center gap-1.5', withDivider && 'border-t pt-2')}
       role="list"
       aria-label={t('answerSources.ariaLabel')}
@@ -230,7 +241,9 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
               // sequence drew the eye down the row instead of to the prose.
               // Only on an answer arriving in front of the reader.
               arrivesLive &&
-                'animate-in fade-in-0 slide-in-from-bottom-1 duration-base ease-entrance [animation-fill-mode:backwards] motion-reduce:animate-none'
+                'animate-in fade-in-0 slide-in-from-bottom-1 duration-base ease-entrance [animation-fill-mode:backwards] motion-reduce:animate-none',
+              revealedIds?.has(doc.id) &&
+                'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none'
             )}
           >
             {/* The mark lives on an INNER element. On the list item it swapped
