@@ -24,6 +24,7 @@ Config (env):
   AIQ_INGEST_MAX_WORKERS               jobs this process runs at once (default 2)
   GRID_INGEST_WORKER_DRAIN_SECONDS     drain budget on SIGTERM (default 600)
   GRID_WORKER_LIVENESS_FILE            touched while the loop is alive
+  GRID_FOLDER_CARDS                    ``on`` also runs the folder card builder here (ADR-0127)
 """
 
 from __future__ import annotations
@@ -77,6 +78,7 @@ async def run(stop: asyncio.Event) -> None:
         logger.info("Ingest worker %s claiming", ingest_dispatch.worker_id())
         clock.ready()
         boot_timing.flush()
+        cards = _start_folder_cards(stop)
         while not stop.is_set():
             lease_policy.touch_liveness(liveness)
             try:
@@ -84,6 +86,20 @@ async def run(stop: asyncio.Event) -> None:
             except TimeoutError:
                 pass
         await _drain(ingestor)
+        if cards is not None:
+            await cards
+
+
+def _start_folder_cards(stop: asyncio.Event) -> asyncio.Task | None:
+    """The folder card builder's loop, beside the claim loop, when ``GRID_FOLDER_CARDS`` is on."""
+    from aiq_agent.knowledge import folder_cards
+
+    if not folder_cards.enabled():
+        return None
+    from aiq_agent.knowledge.folder_cards import worker
+
+    logger.info("Ingest worker builds folder cards")
+    return asyncio.create_task(worker.loop(stop), name="folder-cards")
 
 
 async def _drain(ingestor) -> None:
