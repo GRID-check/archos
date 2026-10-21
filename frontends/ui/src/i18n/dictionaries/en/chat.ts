@@ -450,6 +450,15 @@ export const chat = {
       // command, so the reader can edit it before pressing send.
       fileNotePrefill: 'Write that up as a file note in my project.',
     },
+    workReport: {
+      eyebrow: 'Where the work stands',
+      done: 'Done',
+      proposed: 'Proposed, waiting for you',
+      blocked: 'Blocked',
+      next: 'Next',
+      who: 'Who: {who}',
+      due: 'by {due}',
+    },
     keyTakeaways: {
       eyebrow: 'What matters most',
     },

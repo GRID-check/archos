@@ -7,6 +7,7 @@ import {
   CONTEXT_MAX_CHARS,
   TOPIC_MAX_CHARS,
   VERDICT_VALUE_MAX_CHARS,
+  WORK_ITEMS_MAX,
   sanitizeAnswerMeta,
 } from './message-answer-meta'
 
@@ -21,9 +22,27 @@ const FIXTURE_PATH = resolve(__dirname, '../../../../../tests/fixtures/answer_me
 
 const fixture = JSON.parse(readFileSync(FIXTURE_PATH, 'utf-8')) as Record<string, unknown>
 
+/** The work report's crossing, gated by the backend the same way (ADR-0122). */
+const WORK_FIXTURE = JSON.parse(
+  readFileSync(resolve(__dirname, '../../../../../tests/fixtures/answer_meta/work_payload.json'), 'utf-8')
+) as Record<string, unknown>
+
 describe('sanitizeAnswerMeta', () => {
   test('the backend-gated wire payload survives verbatim', () => {
     expect(sanitizeAnswerMeta(fixture)).toEqual(fixture)
+  })
+
+  test('the backend-gated work report survives verbatim', () => {
+    expect(sanitizeAnswerMeta(WORK_FIXTURE)).toEqual(WORK_FIXTURE)
+  })
+
+  test('a work report is kept only on a work turn, bounded, and blank lines dropped', () => {
+    const work = { proposed: [{ text: ' ' }, ...Array.from({ length: 9 }, (_, i) => ({ text: `Schritt ${i}`, ref: 'x'.repeat(200) }))] }
+    expect(sanitizeAnswerMeta({ v: 1, kind: 'walkthrough', work })?.work).toBeUndefined()
+    const kept = sanitizeAnswerMeta({ v: 1, kind: 'work', work })?.work
+    expect(kept?.proposed).toHaveLength(WORK_ITEMS_MAX)
+    expect(kept?.proposed?.[0]).toEqual({ text: 'Schritt 0', ref: 'x'.repeat(80) })
+    expect(sanitizeAnswerMeta({ v: 1, kind: 'work', work: { done: [] } })).toEqual({ v: 1, kind: 'work' })
   })
 
   test('a callout stored with a German kind reads as the English kind', () => {

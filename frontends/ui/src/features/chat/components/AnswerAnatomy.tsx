@@ -17,6 +17,7 @@ import type { AnatomyShape, AnatomyVerdict } from '../lib/answer-meta-cards'
 import { CalloutCard } from '@/features/grid-cards/components/CalloutCard'
 import { KeyTakeawaysCard } from '@/features/grid-cards/components/KeyTakeawaysCard'
 import { VerdictHeaderCard } from '@/features/grid-cards/components/VerdictHeaderCard'
+import { WorkReportCard } from '@/features/grid-cards/components/WorkReportCard'
 import type { AnswerKind } from '@/lib/conversations/message-answer-meta'
 
 /**
@@ -136,6 +137,9 @@ export const AnatomyBlock: FC<{ card: AnatomyShape }> = ({ card }) => {
   }
   if (card.type === 'key_takeaways') {
     return <KeyTakeawaysCard flat title={card.title} items={card.items ?? []} />
+  }
+  if (card.type === 'work_report') {
+    return <WorkReportCard done={card.done} proposed={card.proposed} blocked={card.blocked} next={card.next} />
   }
   return null
 }

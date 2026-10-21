@@ -446,6 +446,15 @@ export const chat: typeof en.chat = {
       // keine Bitte.
       fileNotePrefill: 'Schreib das als Aktenvermerk in mein Projekt.',
     },
+    workReport: {
+      eyebrow: 'Arbeitsstand',
+      done: 'Erledigt',
+      proposed: 'Vorgeschlagen, wartet auf Sie',
+      blocked: 'Blockiert',
+      next: 'Als Nächstes',
+      who: 'Wer: {who}',
+      due: 'bis {due}',
+    },
     keyTakeaways: {
       eyebrow: 'Das Wichtigste',
     },
