@@ -65,6 +65,12 @@ export interface ProposalReceiptProps<K extends ProposedChangeKind> {
   decidedBody?: (proposal: ProposalOfKind<K>) => ReactNode
   /** A second way to apply, beside „Übernehmen“: the memory note filed in the project only. */
   alternative?: { label: string; working: string; body: ApplyProposalRequest }
+  /**
+   * Why „Übernehmen“ waits, when it does: the reader has not yet been shown
+   * everything the change would do (a value still shown in part). The buttons
+   * stay where they are; applying does nothing until this is gone.
+   */
+  acceptBlocked?: string
 }
 
 export function ProposalReceipt<K extends ProposedChangeKind>({
@@ -75,6 +81,7 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
   headline,
   decidedBody,
   alternative,
+  acceptBlocked,
 }: ProposalReceiptProps<K>) {
   const t = useTranslations('chat')
   const { locale } = useLocale()
@@ -106,6 +113,7 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
   }
 
   const pressed = busy !== null
+  const applyWaits = pressed || acceptBlocked !== undefined
   return (
     <ProposalShell tone="pending">
       {eyebrow}
@@ -145,16 +153,24 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
           button the reader just pressed dropped their focus to <body>.
           `aria-disabled` keeps it, the handler ignores a second press, and
           `StackedLabel` keeps the button as wide as its longer label. */}
+      {proposal?.canDecide && acceptBlocked && (
+        <p className="card-caption text-muted-foreground" data-testid="proposal-accept-blocked">
+          {acceptBlocked}
+        </p>
+      )}
+
       {proposal?.canDecide && (
         <div className={DECISION_ROW}>
           <p className="text-muted-foreground text-sm sm:mr-auto">{t('cards.proposalReceipt.prompt')}</p>
           <Button
             type="button"
             size="sm"
-            onClick={() => void decide('apply')}
-            aria-disabled={pressed || undefined}
+            onClick={() => {
+              if (!applyWaits) void decide('apply')
+            }}
+            aria-disabled={applyWaits || undefined}
             aria-busy={(busy?.action === 'apply' && !busy.withBody) || undefined}
-            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default')}
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default', acceptBlocked && 'aria-disabled:opacity-50')}
           >
             <StackedLabel
               busy={busy?.action === 'apply' && !busy.withBody}
@@ -167,8 +183,10 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
               type="button"
               variant="outline"
               size="sm"
-              onClick={() => void decide('apply', alternative.body)}
-              aria-disabled={pressed || undefined}
+              onClick={() => {
+                if (!applyWaits) void decide('apply', alternative.body)
+              }}
+              aria-disabled={applyWaits || undefined}
               aria-busy={(busy?.action === 'apply' && busy.withBody) || undefined}
               className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default')}
             >

@@ -640,6 +640,20 @@ export const chat = {
       // `{operation}` is the action's technical name; it is not translated.
       operation: 'Action: {operation}',
       inputLabel: 'Inputs',
+      // A long value is shortened at first; „Apply“ waits until every one has been read in full.
+      showAll: 'Show all ({length} characters)',
+      showLess: 'Show less',
+      readAllFirst: '{count, plural, one {Read the shortened value in full before you apply.} other {Read the # shortened values in full before you apply.}}',
+      targetsLabel: 'Applies to',
+      target: {
+        project: 'Project {name}',
+        document: 'Document {name}',
+        folder: 'Folder {name}',
+        conversation: 'Conversation {name}',
+        bim_model: 'Model {name}',
+        upload_batch: 'Upload {name}',
+        proposal: 'Proposal {name}',
+      },
       applied: 'The action was carried out.',
       dismissed: 'Discarded. The action was not carried out.',
     },

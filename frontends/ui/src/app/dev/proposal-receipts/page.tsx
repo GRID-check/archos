@@ -1,8 +1,9 @@
 'use client'
 
 /**
- * Dev preview — the three proposal cards as receipts of a proposal the server
- * holds (ADR-0105): files, a memory note, a change to the project facts.
+ * Dev preview — the proposal cards as receipts of a proposal the server holds
+ * (ADR-0105): files, a memory note, a change to the project facts, and an
+ * action of the agent catalog (ADR-0121), whose long value „Übernehmen“ waits on.
  *
  * `/dev` has no backend, so the proposals API is faked
  * (`../_fixtures/fake-proposals.ts`) with the real response shape: pressing
@@ -30,6 +31,7 @@ import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { FileOperationProposalCard } from '@/features/grid-cards/components/FileOperationProposalCard'
 import { MemoryProposalCard } from '@/features/grid-cards/components/MemoryProposalCard'
+import { OperationReceipt } from '@/features/grid-cards/components/ProposalReceipts'
 import { ProjectProfilePatchCard } from '@/features/grid-cards/components/ProjectProfilePatchCard'
 import { DEMO, DEMO_PROJECT_ID, useFakeProposalClient } from '../_fixtures/fake-proposals'
 
@@ -139,6 +141,10 @@ export default function ProposalReceiptsPreview() {
             </Panel>
             <Panel title="Projektkontext, verworfen" note="Verworfen, und wer es wann getan hat.">
               <Profile proposalId={DEMO.profileDismissed} />
+            </Panel>
+
+            <Panel title="Aktion, offen, mit langem Wert" note="Jede Eingabe ganz; ein langer Wert erst gekürzt. „Übernehmen“ wartet, bis jeder gekürzte Wert ganz angezeigt wurde, und „Betrifft“ nennt das Projekt beim Namen.">
+              <OperationReceipt proposalId={DEMO.operationOpen} title="Büroanweisungen setzen" operation="organization-instructions-set" input={{}} />
             </Panel>
 
             <Panel title="Dateien, ohne gespeicherten Vorschlag" note="Eine Antwort aus der Zeit vor den Vorschlägen auf dem Server, oder einer, den der Agent nicht ablegen konnte: lesbar, nicht übernehmbar, mit dem Grund.">

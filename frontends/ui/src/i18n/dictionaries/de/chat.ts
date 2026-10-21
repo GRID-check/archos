@@ -642,6 +642,20 @@ export const chat: typeof en.chat = {
       // „{operation}“ ist der technische Name der Aktion, er bleibt unübersetzt.
       operation: 'Aktion: {operation}',
       inputLabel: 'Eingaben',
+      // Ein langer Wert ist erst gekürzt; „Übernehmen“ wartet, bis jeder ganz gelesen ist.
+      showAll: 'Ganz anzeigen ({length} Zeichen)',
+      showLess: 'Weniger anzeigen',
+      readAllFirst: '{count, plural, one {Lies den gekürzten Wert ganz, bevor du übernimmst.} other {Lies die # gekürzten Werte ganz, bevor du übernimmst.}}',
+      targetsLabel: 'Betrifft',
+      target: {
+        project: 'Projekt {name}',
+        document: 'Dokument {name}',
+        folder: 'Ordner {name}',
+        conversation: 'Chat {name}',
+        bim_model: 'Modell {name}',
+        upload_batch: 'Upload {name}',
+        proposal: 'Vorschlag {name}',
+      },
       applied: 'Die Aktion wurde ausgeführt.',
       dismissed: 'Verworfen. Die Aktion wurde nicht ausgeführt.',
     },

@@ -452,6 +452,7 @@ What each body adds:
 | `file_operation` | the operation list | the same list, with each item's result and reason |
 | `memory` | the note, its kind and confidence, „Ersetzt: …“ for a correction, where it goes, and for an office note a second button, „Nur im Projekt merken“ (`memoryScope: 'project'`) | „Im Gedächtnis des Büros gemerkt.“ or „Im Projekt gemerkt.“ from the result's `scope` („Notiz gemerkt.“ for a row without one), or the failure's reason |
 | `project_profile` | the rationale and the Feld / Vorher / Nachher table, „Vorher“ being the profile as it is now | the table with „Nachher“ alone, because the profile holds the change by then; a failure's reason otherwise |
+| `operation` | the action's name; „Betrifft“, each target the call names, by name where this reader may read it (`targets`, resolved per reader on every read and never stored); every input whole, a long or multi-line value shown in part until unfolded, and „Übernehmen“ waiting (with the line that says why) until every such value has been unfolded once | „Die Aktion wurde ausgeführt.“, or the route's own reason for a failure |
 
 After a profile change is applied, by this reader or a colleague, the facts the
 thread's answers bind (`:project[key]`) are told to re-read; after a file

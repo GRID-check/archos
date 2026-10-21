@@ -12,19 +12,20 @@
  * what a reader decides is what is stored.
  */
 
-import { useMemo, type ReactNode } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import { FolderTree, Zap } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
 import { invalidateProjectFacts } from '@/features/chat/hooks/use-project-facts'
 import { buildPatchPreviewRows } from '@/lib/project-profile/patch-preview'
 import type { ProjectProfilePatchOperation } from '@/lib/project-profile/types'
-import type { MemoryPayload, ProposedChangeResult } from '@/lib/proposals/types'
+import type { MemoryPayload, OperationTargetView, ProposedChangeResult } from '@/lib/proposals/types'
 import { useCurrentProfile } from '../hooks/use-current-profile'
 import { useServerProposal } from '../hooks/use-server-proposal'
 import { notifyIfAnyApplied, type FileOperationItem, type FileOperationKind } from '../lib/file-operations'
-import { MAX_INPUT_ROWS, operationInputRows } from '../lib/operation-input'
+import { operationInputRows, previewOf, rowKey, type OperationInputRow } from '../lib/operation-input'
 import { OperationList } from './FileOperationRows'
 import { ProfilePatchTable } from './ProfilePatchTable'
 import { ProposalReceipt } from './ProposalReceipt'
@@ -111,25 +112,66 @@ export function FileOperationReceipt({
 
 // ── Operation ────────────────────────────────────────────────────────────
 
-/** The action's inputs as a compact list: what it will be called with. */
-function OperationInput({ input }: { input: Record<string, unknown> }) {
+/** What the call names, by name where this reader may read it (`targets` on the server's view), else by id. */
+function OperationTargets({ targets }: { targets: readonly OperationTargetView[] }) {
   const t = useTranslations('chat')
-  const rows = operationInputRows(input)
+  if (targets.length === 0) return null
+  return (
+    <p className="card-caption text-muted-foreground" data-testid="operation-targets">
+      <span className="font-medium">{t('cards.operationProposal.targetsLabel')}:</span>{' '}
+      {targets.map((target) => t(`cards.operationProposal.target.${target.type}`, { name: target.name ?? target.id })).join(', ')}
+    </p>
+  )
+}
+
+/**
+ * Every input of the action, whole: what it will be called with. A long value
+ * is shown in part until the reader unfolds it (`operation-input.ts`), and the
+ * receipt keeps „Übernehmen“ waiting until every one has been unfolded.
+ */
+function OperationInput({
+  rows,
+  unfolded,
+  onToggle,
+}: {
+  rows: readonly OperationInputRow[]
+  unfolded: ReadonlySet<string>
+  onToggle: (key: string) => void
+}) {
+  const t = useTranslations('chat')
   if (rows.length === 0) return null
-  const shown = rows.slice(0, MAX_INPUT_ROWS)
   return (
     <dl
       className="card-caption text-muted-foreground flex flex-col gap-0.5"
       aria-label={t('cards.operationProposal.inputLabel')}
       data-testid="operation-input"
     >
-      {shown.map((row) => (
-        <div key={row.key} className="flex gap-x-1.5">
-          <dt className="shrink-0 font-medium">{row.key}</dt>
-          <dd className="min-w-0 break-words">{row.value}</dd>
-        </div>
-      ))}
-      {rows.length > shown.length && <div>+{rows.length - shown.length}</div>}
+      {rows.map((row, index) => {
+        const key = rowKey(row, index)
+        const open = !row.long || unfolded.has(key)
+        return (
+          <div key={key} className="flex flex-col gap-0.5 sm:flex-row sm:gap-x-1.5">
+            <dt className="shrink-0 font-medium">{row.key}</dt>
+            <dd className="min-w-0 break-words" data-testid="operation-input-value">
+              {open ? <span className="whitespace-pre-wrap">{row.value}</span> : previewOf(row)}
+              {row.long && (
+                <Button
+                  type="button"
+                  variant="link"
+                  size="sm"
+                  className="ml-1 h-auto p-0 align-baseline"
+                  aria-expanded={open}
+                  onClick={() => onToggle(key)}
+                >
+                  {open
+                    ? t('cards.operationProposal.showLess')
+                    : t('cards.operationProposal.showAll', { length: row.value.length })}
+                </Button>
+              )}
+            </dd>
+          </div>
+        )
+      })}
     </dl>
   )
 }
@@ -150,6 +192,20 @@ export function OperationReceipt({
   const { proposal } = server
   const shownOperation = proposal?.payload.operation ?? operation
   const shownInput = proposal?.payload.input ?? input
+  const rows = useMemo(() => operationInputRows(shownInput), [shownInput])
+  // Unfolded once is read: folding it again does not make „Übernehmen“ wait again.
+  const [unfolded, setUnfolded] = useState<ReadonlySet<string>>(() => new Set())
+  const [read, setRead] = useState<ReadonlySet<string>>(() => new Set())
+  const toggle = (key: string) => {
+    setUnfolded((now) => {
+      const next = new Set(now)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+    setRead((now) => new Set(now).add(key))
+  }
+  const unread = rows.filter((row, index) => row.long && !read.has(rowKey(row, index))).length
 
   return (
     <ProposalReceipt
@@ -161,9 +217,11 @@ export function OperationReceipt({
           <p className="card-caption text-muted-foreground" data-testid="operation-name">
             {t('cards.operationProposal.operation', { operation: shownOperation })}
           </p>
-          <OperationInput input={shownInput} />
+          <OperationTargets targets={proposal?.targets ?? []} />
+          <OperationInput rows={rows} unfolded={unfolded} onToggle={toggle} />
         </>
       }
+      acceptBlocked={unread > 0 ? t('cards.operationProposal.readAllFirst', { count: unread }) : undefined}
       headline={(decided) => {
         switch (decided.status) {
           case 'applied':
