@@ -66,7 +66,7 @@ function input(overrides: Partial<PlacementInput> = {}): PlacementInput {
   return {
     folders,
     documents: [doc('d1'), doc('d2'), doc('d3'), doc('d4'), doc('d5')],
-    placements: [placed('d1', 'f3', 0.9), placed('d2', 'f4', 0.3), placed('d3', 'f2', 0.7)],
+    placements: [placed('d1', 'f3', 0.9), placed('d2', 'f4', 0.3), placed('d3', 'f2', 0.9)],
     newFolders: [],
     ...overrides,
   }

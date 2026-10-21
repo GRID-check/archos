@@ -204,6 +204,15 @@ tasks:
       # a question's wording or a threshold. A few cents for every part.
       - '{{.PY}} scripts/decision_eval_office.py {{.CLI_ARGS}}'
 
+  be:eval:root-sort:
+    desc: 'Root-sort eval — placement precision, coverage and the sure-threshold sweep on a labelled synthetic shelf, plus the new-folder grouping (NEEDS OPENROUTER_API_KEY; no backend)'
+    dir: '{{.ROOT_DIR}}/frontends/aiq_api'
+    cmds:
+      # Sets SURE_CONFIDENCE (frontends/ui/src/lib/filing/root-sort-types.ts).
+      # Run before and after a change to the sort prompt, the scoring or the
+      # threshold; writes tests/fixtures/root_sort/eval_<date>.json. A few cents.
+      - 'PYTHONPATH=../../src:src ../../.venv/bin/python -I ../../scripts/root_sort_eval.py {{.CLI_ARGS}}'
+
   be:eval:decisions:holdout:
     desc: 'Held-out check for the decision-model uses, on sets written blind to the wording — never tune on them (NEEDS OPENROUTER_API_KEY; no backend)'
     cmds:

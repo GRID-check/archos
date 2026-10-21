@@ -549,8 +549,11 @@ refusal: the queue retries that slice.
    `purpose: "sort"`). It places every document that has a plausible home, in
    the deepest folder that fits, and may propose a folder the office uses in
    its other projects but this shelf lacks. Jev (ADR-0064) scores each
-   placement's folder; at 0.6 or more a placement reads as sure, below it as
-   unsure. The threshold is not measured yet. A chunk that fails is recorded,
+   placement's folder; at 0.8 or more a placement reads as sure, below it as
+   unsure. The threshold is measured (`task be:eval:root-sort`, two runs over
+   150 labelled documents): sure placements were right 0.972 of the time at
+   0.8, against 0.93 at 0.6; most misses were one level too high and score
+   below the cut. A chunk that fails is recorded,
    and its documents stay in the root.
 3. **Group** (`grouping`, one slice). The documents no folder fits, up to 1000,
    go to `POST /v1/folder-proposals` in parallel chunks, and one merge call

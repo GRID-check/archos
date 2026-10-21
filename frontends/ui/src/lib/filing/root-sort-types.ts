@@ -36,10 +36,16 @@ export const MAX_ROOT_SORT_DOCUMENTS = 5000
 export const MAX_MOVES_PER_SLICE = 100
 /**
  * The decision model's agreement at which a placement reads as sure. Below it
- * the placement is still proposed, marked for a look. Unmeasured: the first
- * eval over real roots sets it.
+ * the placement is still proposed, marked for a look.
+ *
+ * Measured by `task be:eval:root-sort` on 150 labelled documents of a
+ * synthetic Austrian project shelf (`tests/fixtures/root_sort/`), two runs:
+ * at 0.8 the sure placements were right 0.972 and 0.972 of the time (106 and
+ * 108 sure), at 0.6 only 0.930 and 0.939. Most wrong ones were filed one level
+ * too high, in the parent of the right folder, and scored at most 0.8, so they
+ * land in the look. Re-run the eval before moving it.
  */
-export const SURE_CONFIDENCE = 0.6
+export const SURE_CONFIDENCE = 0.8
 
 /** Which shelf a run sorts: a project's Dateien or the office Archiv. */
 export type RootSortShelf = { kind: 'project'; projectId: string } | { kind: 'office_shelf' }
