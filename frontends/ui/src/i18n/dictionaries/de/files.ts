@@ -2032,6 +2032,7 @@ export const files: typeof en.files = {
     cancelled: 'Die Sortierung ist abgebrochen. Verschoben wurde nichts.',
     failed: 'Die Sortierung ist fehlgeschlagen.',
     failedReason: {
+      generic: 'Die Sortierung konnte nicht abgeschlossen werden. Sie können sie neu starten.',
       stalled: 'Die Sortierung ist stehen geblieben und wurde beendet. Sie können sie neu starten.',
       notQueued: 'Die Sortierung konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
       requesterLeft: 'Die Person, die die Sortierung gestartet hat, gehört nicht mehr zum Büro. Die Sortierung wurde beendet.',

@@ -2049,6 +2049,7 @@ export const files = {
     cancelled: 'The sort was cancelled. Nothing was moved.',
     failed: 'The sort failed.',
     failedReason: {
+      generic: 'The sort could not finish. You can start it again.',
       stalled: 'The sort stopped making progress and was ended. You can start it again.',
       notQueued: 'The sort could not be started. Please try again.',
       requesterLeft: 'The person who started the sort is no longer part of the office. The sort was ended.',

@@ -313,7 +313,7 @@ export function RootSortDialog({
                       ? t('rootSort.failedReason.notQueued')
                       : current.error === 'requester_left'
                         ? t('rootSort.failedReason.requesterLeft')
-                        : current.error}
+                        : t('rootSort.failedReason.generic')}
                 </p>
               )}
               {current.moved > 0 && <p>{t('rootSort.failedReason.partlyMoved', { count: current.moved })}</p>}
@@ -365,16 +365,16 @@ export function RootSortDialog({
           )}
           {phase === 'done' && (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy || !current}
-                onClick={() => {
-                  if (current) perform(() => undoRootSortRun(current.id))
-                }}
-              >
-                {t('rootSort.done.undo')}
-              </Button>
+              {current && current.moved > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => perform(() => undoRootSortRun(current.id))}
+                >
+                  {t('rootSort.done.undo')}
+                </Button>
+              )}
               <Button type="button" onClick={close}>
                 {t('rootSort.close')}
               </Button>
