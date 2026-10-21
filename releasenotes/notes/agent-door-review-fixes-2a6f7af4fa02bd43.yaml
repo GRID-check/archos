@@ -1,0 +1,22 @@
+---
+improvements:
+  - >
+    A question your connected assistant asks Piloti now always ends with an
+    answer or a reason, and one Piloti could not take leaves no empty
+    conversation behind. Stopping a question takes effect at once.
+security:
+  - >
+    In a project's private conversation Piloti no longer runs workspace reads
+    whose answer can carry other projects' content (similar passages, the
+    project list, the inbox, an unnarrowed conversation list), nor reads of
+    something it cannot place, such as a held upload or an untyped resource.
+    A comparison's second model is now checked as well.
+  - >
+    Piloti can no longer propose applying, dismissing or undoing another
+    proposal, and only a reader who may open everything a proposed change
+    names can decide it; a reader who may not leaves it open for someone who can.
+  - >
+    Web search has its own switch for agents, marked a security control, so an
+    agent can only turn it on where the organization allows agents to change
+    controls and the person confirms. Tokens for either agent door are accepted
+    with or without a trailing slash, and name their real audience.
