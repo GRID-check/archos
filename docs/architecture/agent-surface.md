@@ -363,6 +363,29 @@ new. The server answers a proposed write with the short text the model reads and
 `workspace__call` shows the card from that shape
 ([`proposed-changes.md`](proposed-changes.md#operation)).
 
+## Consulting Piloti, and the A2A door
+
+An agent can also ask Piloti itself (ADR-0122,
+[`../adr/0122-agents-consult-piloti-over-mcp-and-a2a.md`](../adr/0122-agents-consult-piloti-over-mcp-and-a2a.md)).
+`piloti-ask-create` (`catalog/consult.ts`) calls `POST /api/piloti-asks`, which
+runs a headless turn (ADR-0106) as the person in their own private thread, with
+the trigger `agent_consult`, waits up to 40 seconds and otherwise answers
+`working` for `piloti-ask-get` to poll. The organization's `piloti-ask` switch
+gates it, and the turn's budget pays for it.
+
+**The recursion lock.** In-product Piloti only proposes writes, and
+`lib/proposals/operation-applier.ts` neither files nor applies an ask, so no
+turn asks Piloti again. Piloti still sees the three operations in its catalog;
+hiding them belongs in `canSee` (`policy.ts`).
+
+**The A2A door.** `POST /api/a2a` serves the same asks to agents that speak A2A
+(1.0, and 0.3 without an `A2A-Version` header), through the official SDK
+(`@a2a-js/sdk`). The agent card is at `/.well-known/agent-card.json`. It
+authenticates with `resolvePrincipal` like this server, refuses Piloti's own
+credential, charges `mcp-request`, and answers every method by calling the ask
+routes through `callOperation` as the person, so their gate is the gate. Its
+token must carry this server's audience (`GRID_MCP_RESOURCE_URL`).
+
 ## Connecting a client
 
 The server's URL is `https://<app-host>/api/mcp`, for example
