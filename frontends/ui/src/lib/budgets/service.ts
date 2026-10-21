@@ -45,6 +45,7 @@ import { UNBILLED_USAGE_ACTIVITIES } from '@/lib/db/schema'
 import { getCached, invalidateCached, invalidateCachedPrefix } from '@/lib/cache'
 import { canManageBudgets } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { can } from '@/lib/authz/decide'
 import { resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { findProjectTenancy } from '@/lib/projects/repository'
 import { recordAuditEvent } from '@/lib/audit/service'
@@ -60,6 +61,7 @@ import {
   type EffectivePricing,
 } from '@/lib/pricing/service'
 import * as repository from './repository'
+import { decideUsageNotice, type ChatUsageNotice } from './usage-notice'
 import type {
   AnswerUsageRow,
   DailySpendRow,
@@ -609,6 +611,52 @@ export async function getConnectionDiagnostics(
     budgetExhausted: status.blocked,
     blockedScope: status.blockedScope,
     canManageBudgets: canManageBudgets(session),
+  }
+}
+
+/**
+ * The one budget notice for the chat composer, or null.
+ *
+ * The project only counts when the viewer may see it; a project id they cannot
+ * reach is dropped rather than refused, so its budget is never confirmed to
+ * exist and the organization's and their own windows are still reported.
+ */
+export async function getChatUsageNotice(
+  session: AuthorizedSession,
+  requested: { projectId?: string } = {},
+  now: Date = new Date(),
+): Promise<ChatUsageNotice | null> {
+  const projectId =
+    requested.projectId && (await can(session, 'project:view', { type: 'project', id: requested.projectId }))
+      ? requested.projectId
+      : null
+  const decision = decideUsageNotice(await getBudgetUtilisation(session.organizationId, session.userId, projectId), now)
+  if (!decision) return null
+
+  const budgetAdmin = canManageBudgets(session)
+  const projectAdmin =
+    decision.scope === 'project' && projectId && !budgetAdmin
+      ? await can(session, 'project:manage', { type: 'project', id: projectId })
+      : false
+  const canChange = budgetAdmin || projectAdmin
+  const href =
+    decision.scope === 'project' && projectId && canChange
+      ? `/app/projects/${encodeURIComponent(projectId)}/settings/usage`
+      : '/app/organization/budgets'
+  const showAmounts = canChange || decision.scope === 'member'
+
+  return {
+    level: decision.level,
+    scope: decision.scope,
+    window: decision.window,
+    unit: decision.unit,
+    percent: decision.percent,
+    amounts: showAmounts ? { used: decision.used, limit: decision.limit } : null,
+    resetsAt: decision.resetsAt,
+    runsOutAt: decision.runsOutAt,
+    canChange,
+    href,
+    key: [decision.scope, decision.scope === 'project' ? projectId : '', decision.window, decision.windowId, decision.level].join(':'),
   }
 }
 
