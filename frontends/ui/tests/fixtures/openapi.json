@@ -20872,6 +20872,59 @@
         }
       }
     },
+    "/api/organization/usage/notice": {
+      "get": {
+        "operationId": "organization-usage-notice-get",
+        "summary": "Read the budget warning for the asking person",
+        "description": "The one budget window close enough to stop this person, or null when none is. Pass projectId to include that project's budget. Any member may read; amounts appear only for budget admins. Read this before starting long work.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "projectId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 120
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read the budget warning for the asking person",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/organization/model-config/zdr": {
       "put": {
         "operationId": "organization-zdr-set",

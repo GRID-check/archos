@@ -131,3 +131,8 @@ export const orgSettingsPutSchema = z.object({
     })
     .optional(),
 })
+
+/** `GET /api/organization/usage/notice`: the chat's usage notice, optionally for one project. */
+export const usageNoticeQuerySchema = z.object({
+  projectId: z.string().max(120).optional(),
+})

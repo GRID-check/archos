@@ -13,6 +13,7 @@ import {
   orgInstructionsSchema,
   orgSettingsPutSchema,
   patchOrgMemorySchema,
+  usageNoticeQuerySchema,
   usageQuerySchema,
   zdrPutSchema,
 } from '@/lib/organizations/organization-wire'
@@ -427,6 +428,18 @@ export const organizationOperations: readonly AgentOperation[] = [
     path: '/api/organization/usage',
     query: usageQuerySchema,
     load: () => import('@/app/api/organization/usage/route'),
+  },
+  {
+    name: 'organization-usage-notice-get',
+    domain: 'organization',
+    summary: 'Read the budget warning for the asking person',
+    description:
+      'The one budget window close enough to stop this person, or null when none is. Pass projectId to include that ' +
+      "project's budget. Any member may read; amounts appear only for budget admins. Read this before starting long work.",
+    method: 'GET',
+    path: '/api/organization/usage/notice',
+    query: usageNoticeQuerySchema,
+    load: () => import('@/app/api/organization/usage/notice/route'),
   },
 
   // --- storage, sensitive data, auditing -----------------------------------

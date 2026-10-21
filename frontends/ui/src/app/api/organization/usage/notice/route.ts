@@ -7,15 +7,11 @@
  * person a budget stops is usually not an admin.
  */
 
-import { z } from 'zod'
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { getChatUsageNotice } from '@/lib/budgets/service'
-
-const querySchema = z.object({
-  projectId: z.string().max(120).optional(),
-})
+import { usageNoticeQuerySchema } from '@/lib/organizations/organization-wire'
 
 export const GET = apiRoute(
-  async ({ session, request }) => ({ notice: await getChatUsageNotice(session, parseQuery(request, querySchema)) }),
+  async ({ session, request }) => ({ notice: await getChatUsageNotice(session, parseQuery(request, usageNoticeQuerySchema)) }),
   { authz: { enforcedBy: 'getChatUsageNotice (project:view on the project, canManageBudgets for amounts)' } }
 )
