@@ -515,8 +515,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                     ) : countParts ? (
                       <>
                         {countParts.before}
-                        <RollingCount value={countParts.count} roll={roll} />
-                        {countParts.after}
+                        <RollingCount value={countParts.count} after={countParts.after} roll={roll} />
                       </>
                     ) : (
                       label
@@ -527,13 +526,17 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
             </span>
 
             <span className="relative flex shrink-0 items-center gap-2" aria-hidden="true">
-              <AnimatePresence mode="wait" initial={false}>
-                {endingWord && (
-                  <motion.span key={endingWord} className="text-xs font-medium text-muted-foreground" {...swap}>
-                    {endingWord}
-                  </motion.span>
-                )}
-              </AnimatePresence>
+              {/* The ending word rolls like the label beside it. `wait` left
+                  the slot empty for the whole exit before the next word came. */}
+              <span className="relative overflow-y-clip empty:hidden">
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {endingWord && (
+                    <motion.span key={endingWord} className="block text-xs font-medium text-muted-foreground" {...roll}>
+                      {endingWord}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </span>
               <AnimatePresence mode="popLayout" initial={false}>
                 {showElapsed && (
                   // A reserved width and tabular digits, so 9 s → 10 s does
@@ -721,47 +724,53 @@ const splitCount = (text: string): { before: string; count: string; after: strin
  * A count whose digits roll when it changes: the old number leaves upward and
  * the new one rises from below, overlapping, clipped to the line.
  *
- * When the number gains or loses a digit its box glides between the two widths
- * on the roll's own timing, so the words after it slide over rather than jump
- * a digit in the first frame (9 → 11 at the settle). An absolute sizer measures
- * the new number; between changes the box is `auto` again, so a late web font
- * cannot leave it clipped. `align-top` with the inherited line height keeps
- * its digits on the text's baseline: a clipping inline box would otherwise sit
- * on its bottom edge.
+ * When the number gains or loses a digit the box takes its new width in one
+ * frame and the words after it (`after`) glide from where they stood by
+ * transform, on the roll's own timing, so 9 → 11 at the settle slides rather
+ * than jumps. It used to tween the box's `width`, which re-laid out the line
+ * on every frame of the roll; a translate is composited. `align-top` with the
+ * inherited line height keeps the digits on the text's baseline: a clipping
+ * inline box would otherwise sit on its bottom edge.
  */
-const RollingCount: FC<{ value: string; roll: RollMotion }> = ({ value, roll }) => {
-  const box = useRef<HTMLSpanElement>(null)
+const RollingCount: FC<{ value: string; after: string; roll: RollMotion }> = ({ value, after, roll }) => {
   const sizer = useRef<HTMLSpanElement>(null)
+  const tail = useRef<HTMLSpanElement>(null)
   const lastWidth = useRef<number | null>(null)
-  // Before paint, so the first frame already shows the old width. A Web
-  // Animation with no fill: when it ends the box is `auto` again. Motion's
-  // `animate` started from the box's current width, already the new one.
+  // Before paint, so the first frame already shows the tail where it stood. A
+  // Web Animation with no fill: when it ends the tail is untransformed again.
   useLayoutEffect(() => {
+    // Measured on an absolute sizer: the leaving number is still in the box
+    // while it rolls out, so the box itself cannot say how wide the new one is.
     const next = sizer.current?.getBoundingClientRect().width ?? 0
     const previous = lastWidth.current
     lastWidth.current = next
     const duration = (roll.animate.transition.duration ?? 0) * 1000
     if (previous === null || Math.abs(previous - next) < 0.5 || duration === 0) return
-    box.current?.animate?.([{ width: `${previous}px` }, { width: `${next}px` }], {
-      duration,
-      easing: cssEasing(roll.animate.transition.ease),
-    })
+    tail.current?.animate?.(
+      [{ transform: `translateX(${previous - next}px)` }, { transform: 'translateX(0)' }],
+      { duration, easing: cssEasing(roll.animate.transition.ease) }
+    )
   }, [value, roll.animate.transition])
   return (
-    <span ref={box} className="relative inline-grid overflow-hidden align-top tabular-nums">
-      {/* Generated content, so the sizer's digits are not in the label's text. */}
-      <span
-        ref={sizer}
-        aria-hidden="true"
-        data-text={value}
-        className="invisible absolute whitespace-nowrap before:content-[attr(data-text)]"
-      />
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span key={value} data-derivation-count className="col-start-1 row-start-1" {...roll}>
-          {value}
-        </motion.span>
-      </AnimatePresence>
-    </span>
+    <>
+      <span className="relative inline-grid overflow-hidden align-top tabular-nums">
+        {/* Generated content, so the sizer's digits are not in the label's text. */}
+        <span
+          ref={sizer}
+          aria-hidden="true"
+          data-text={value}
+          className="invisible absolute whitespace-nowrap before:content-[attr(data-text)]"
+        />
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span key={value} data-derivation-count className="col-start-1 row-start-1" {...roll}>
+            {value}
+          </motion.span>
+        </AnimatePresence>
+      </span>
+      <span ref={tail} className="inline-block whitespace-pre">
+        {after}
+      </span>
+    </>
   )
 }
 
