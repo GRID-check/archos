@@ -1534,7 +1534,7 @@ them, and its checkpoints are in Postgres, so the next question on any replica
 picks it up. A replica holds no files that matter: the corpus is in SeaweedFS and
 a table, and its cache of corpus files is rebuilt on demand, so no replica's
 disappearance makes a document unreachable. Chat reads the cache only through
-`view_knowledge_image`, which fetches a missing PDF on demand.
+`look`, which fetches a missing PDF on demand.
 
 ### 6.5 Frontend tier — what actually bounds it
 

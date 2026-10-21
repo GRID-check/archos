@@ -850,14 +850,14 @@ Migration `0180`, [ADR-0127](../adr/0127-search-finds-list-orients-read-reads.md
 | `organization_id` | `text` | NOT NULL | The tenant; the RLS predicate. |
 | `folder_id` | `uuid` | NOT NULL, UNIQUE (`folder_cards_folder_key`) | One card per folder. Keyed by id, so a rename keeps the card. |
 | `scope` | `text` | NOT NULL, CHECK `project` or `office_shelf` | Equal to the folder's own, held by the composite key. |
-| `collection` | `text` | NOT NULL | The retrieval collection the card's documents live in. A restricted folder is its own collection, so its card lives in that scope and a parent card never reads it (ADR-0088). |
+| `collection` | `text` | NOT NULL | The retrieval collection the card was written under, checked on `PUT` against the folder's own (`computeFolderAccess(...).collectionFor`). A hint only: `GET` recomputes every card's collection from the folder tree at read time, so a folder restricted after its card was written is served under its own collection and no longer under the project's (ADR-0088). |
 | `abstract` | `text` | CHECK length at most 600 | At most three sentences, in German. `NULL` before the first build. |
 | `key_facts` | `jsonb` | NOT NULL default `[]`, CHECK array of at most 8 | `[{statement, documents: [file name], pages?}]`. |
 | `input_hash` | `text` | NOT NULL | Hash of what the card was built from; unchanged means nothing is rebuilt. |
 | `abstract_hash` | `text` | | Hash of the abstract, so an abstract that comes out the same does not rewrite the folder point. |
 | `model` / `prompt_version` | `text` | | What built it. |
 | `status` | `text` | NOT NULL default `stale`, CHECK `fresh`, `stale`, `failed` | |
-| `generated_at` | `timestamptz` | | Set when a `fresh` card is written. |
+| `generated_at` | `timestamptz` | | Set when a `fresh` card is written; a `stale` or `failed` mark keeps it. |
 | `created_at` / `updated_at` | `timestamptz` | NOT NULL default `now()` | |
 
 **Keys.** `folder_cards_folder_fkey`: FK (`folder_id`, `organization_id`, `scope`) → `project_folders (id, organization_id, scope)` `ON DELETE CASCADE`, so a card cannot name another tenant's folder or the wrong shelf and goes when its folder row does (an Archiv folder's delete, a project folder's purge keeps the tombstone and so the card, which `GET` skips). Index `idx_folder_cards_collection (organization_id, collection)` serves `list_files`.

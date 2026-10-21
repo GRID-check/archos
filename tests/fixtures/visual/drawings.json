@@ -1,0 +1,133 @@
+{
+ "$comment": "Fixture drawings of the visual eval (ADR-0128). Every figure on a page is an element with its box in shares of the page, origin top left (the frame of `look`'s region). scripts/turn_census/render_fixture_drawings.py draws the pages from this file at suite start; no image is committed. Gold boxes for IoU are these boxes. Names, numbers and parties are invented.",
+ "dpi": 200,
+ "sheets": {"A3": [420, 297], "A1": [841, 594]},
+ "drawings": [
+  {
+   "file_name": "EP-01_Grundrisse_Index-B.pdf",
+   "folder": "Einreichung/Pläne",
+   "sheet": "A3",
+   "pages": [
+    {
+     "number": 1, "storey": "EG",
+     "index_text": "Grundriss Erdgeschoss, Hubergasse 14, Einreichplan",
+     "elements": [
+      {"id": "sheet-title", "kind": "note", "box": [0.05, 0.02, 0.4, 0.04], "text": "Grundriss Erdgeschoss"},
+      {"id": "plan-area", "kind": "plan_area", "box": [0.04, 0.08, 0.66, 0.78], "value": 5},
+      {"id": "room-wohnen", "kind": "room", "box": [0.05, 0.1, 0.3, 0.36], "text": "Wohnen"},
+      {"id": "room-kueche", "kind": "room", "box": [0.35, 0.1, 0.18, 0.36], "text": "Küche"},
+      {"id": "room-bad", "kind": "room", "box": [0.53, 0.1, 0.16, 0.36], "text": "Bad"},
+      {"id": "room-schlafen", "kind": "room", "box": [0.05, 0.56, 0.3, 0.24], "text": "Schlafen"},
+      {"id": "room-kind", "kind": "room", "box": [0.35, 0.56, 0.34, 0.24], "text": "Kind"},
+      {"id": "dim-wohnen", "kind": "dimension", "box": [0.05, 0.47, 0.06, 0.03], "text": "5,24", "value": "5,24"},
+      {"id": "dim-kueche", "kind": "dimension", "box": [0.35, 0.47, 0.06, 0.03], "text": "3,14", "value": "3,14"},
+      {"id": "dim-bad", "kind": "dimension", "box": [0.53, 0.47, 0.06, 0.03], "text": "2,02", "value": "2,02"},
+      {"id": "dim-schlafen", "kind": "dimension", "box": [0.05, 0.81, 0.06, 0.03], "text": "4,38", "value": "4,38"},
+      {"id": "door-1", "kind": "door", "box": [0.335, 0.2, 0.03, 0.05]},
+      {"id": "door-2", "kind": "door", "box": [0.515, 0.2, 0.03, 0.05]},
+      {"id": "door-3", "kind": "door", "box": [0.2, 0.52, 0.04, 0.04]},
+      {"id": "door-4", "kind": "door", "box": [0.45, 0.52, 0.04, 0.04]},
+      {"id": "door-5", "kind": "door", "box": [0.335, 0.66, 0.03, 0.05]},
+      {"id": "legend", "kind": "legend_frame", "box": [0.74, 0.08, 0.22, 0.36], "text": "Legende"},
+      {"id": "legend-shaft", "kind": "legend_entry", "box": [0.75, 0.15, 0.2, 0.07], "symbol": "hatched_square", "text": "Schacht"},
+      {"id": "legend-riser", "kind": "legend_entry", "box": [0.75, 0.24, 0.2, 0.07], "symbol": "circle_cross", "text": "Steigleitung"},
+      {"id": "legend-level", "kind": "legend_entry", "box": [0.75, 0.32999999999999996, 0.2, 0.07], "symbol": "triangle", "text": "Höhenkote"},
+      {"id": "title-block", "kind": "title_block", "box": [0.74, 0.7, 0.22, 0.22]},
+      {"id": "title-number", "kind": "title_field", "box": [0.75, 0.72, 0.2, 0.04], "key": "Plannummer", "value": "EP-01", "text": "Plannummer: EP-01"},
+      {"id": "title-index", "kind": "title_field", "box": [0.75, 0.77, 0.2, 0.04], "key": "Index", "value": "B", "text": "Index: B"},
+      {"id": "title-date", "kind": "title_field", "box": [0.75, 0.82, 0.2, 0.04], "key": "Datum", "value": "14.03.2026", "text": "Datum: 14.03.2026"},
+      {"id": "title-scale", "kind": "title_field", "box": [0.75, 0.87, 0.2, 0.04], "key": "Maßstab", "value": "1:100", "text": "Maßstab: 1:100"}
+     ]
+    },
+    {
+     "number": 2, "storey": "OG",
+     "index_text": "Grundriss Obergeschoss, Hubergasse 14, Einreichplan",
+     "elements": [
+      {"id": "sheet-title", "kind": "note", "box": [0.05, 0.02, 0.4, 0.04], "text": "Grundriss Obergeschoss"},
+      {"id": "plan-area", "kind": "plan_area", "box": [0.04, 0.08, 0.66, 0.78], "value": 3},
+      {"id": "room-zimmer1", "kind": "room", "box": [0.05, 0.1, 0.3, 0.36], "text": "Zimmer 1"},
+      {"id": "room-zimmer2", "kind": "room", "box": [0.35, 0.1, 0.34, 0.36], "text": "Zimmer 2"},
+      {"id": "room-galerie", "kind": "room", "box": [0.05, 0.56, 0.64, 0.24], "text": "Galerie"},
+      {"id": "dim-zimmer1", "kind": "dimension", "box": [0.05, 0.47, 0.06, 0.03], "text": "4,12", "value": "4,12"},
+      {"id": "dim-zimmer2", "kind": "dimension", "box": [0.35, 0.47, 0.06, 0.03], "text": "3,66", "value": "3,66"},
+      {"id": "dim-galerie", "kind": "dimension", "box": [0.05, 0.81, 0.06, 0.03], "text": "9,02", "value": "9,02"},
+      {"id": "door-1", "kind": "door", "box": [0.335, 0.2, 0.03, 0.05]},
+      {"id": "door-2", "kind": "door", "box": [0.2, 0.52, 0.04, 0.04]},
+      {"id": "door-3", "kind": "door", "box": [0.5, 0.52, 0.04, 0.04]},
+      {"id": "legend", "kind": "legend_frame", "box": [0.74, 0.08, 0.22, 0.36], "text": "Legende"},
+      {"id": "legend-shaft", "kind": "legend_entry", "box": [0.75, 0.15, 0.2, 0.07], "symbol": "hatched_square", "text": "Schacht"},
+      {"id": "legend-riser", "kind": "legend_entry", "box": [0.75, 0.24, 0.2, 0.07], "symbol": "circle_cross", "text": "Steigleitung"},
+      {"id": "legend-level", "kind": "legend_entry", "box": [0.75, 0.32999999999999996, 0.2, 0.07], "symbol": "triangle", "text": "Höhenkote"},
+      {"id": "title-block", "kind": "title_block", "box": [0.74, 0.7, 0.22, 0.22]},
+      {"id": "title-number", "kind": "title_field", "box": [0.75, 0.72, 0.2, 0.04], "key": "Plannummer", "value": "EP-01", "text": "Plannummer: EP-01"},
+      {"id": "title-index", "kind": "title_field", "box": [0.75, 0.77, 0.2, 0.04], "key": "Index", "value": "B", "text": "Index: B"},
+      {"id": "title-date", "kind": "title_field", "box": [0.75, 0.82, 0.2, 0.04], "key": "Datum", "value": "14.03.2026", "text": "Datum: 14.03.2026"},
+      {"id": "title-scale", "kind": "title_field", "box": [0.75, 0.87, 0.2, 0.04], "key": "Maßstab", "value": "1:100", "text": "Maßstab: 1:100"}
+     ]
+    }
+   ]
+  },
+  {
+   "file_name": "EP-01_Grundrisse_Index-A.pdf",
+   "folder": "Einreichung/Pläne",
+   "sheet": "A3",
+   "pages": [
+    {
+     "number": 1, "storey": "EG",
+     "index_text": "Grundriss Erdgeschoss, Hubergasse 14, Einreichplan",
+     "elements": [
+      {"id": "sheet-title", "kind": "note", "box": [0.05, 0.02, 0.4, 0.04], "text": "Grundriss Erdgeschoss"},
+      {"id": "plan-area", "kind": "plan_area", "box": [0.04, 0.08, 0.66, 0.78], "value": 4},
+      {"id": "room-wohnen", "kind": "room", "box": [0.05, 0.1, 0.3, 0.36], "text": "Wohnen"},
+      {"id": "room-kueche", "kind": "room", "box": [0.35, 0.1, 0.18, 0.36], "text": "Küche"},
+      {"id": "room-bad", "kind": "room", "box": [0.53, 0.1, 0.16, 0.36], "text": "Bad"},
+      {"id": "room-schlafen", "kind": "room", "box": [0.05, 0.56, 0.3, 0.24], "text": "Schlafen"},
+      {"id": "room-kind", "kind": "room", "box": [0.35, 0.56, 0.34, 0.24], "text": "Kind"},
+      {"id": "dim-wohnen", "kind": "dimension", "box": [0.05, 0.47, 0.06, 0.03], "text": "5,04", "value": "5,04"},
+      {"id": "dim-kueche", "kind": "dimension", "box": [0.35, 0.47, 0.06, 0.03], "text": "3,14", "value": "3,14"},
+      {"id": "dim-bad", "kind": "dimension", "box": [0.53, 0.47, 0.06, 0.03], "text": "2,02", "value": "2,02"},
+      {"id": "dim-schlafen", "kind": "dimension", "box": [0.05, 0.81, 0.06, 0.03], "text": "4,38", "value": "4,38"},
+      {"id": "door-1", "kind": "door", "box": [0.335, 0.2, 0.03, 0.05]},
+      {"id": "door-2", "kind": "door", "box": [0.515, 0.2, 0.03, 0.05]},
+      {"id": "door-3", "kind": "door", "box": [0.2, 0.52, 0.04, 0.04]},
+      {"id": "door-4", "kind": "door", "box": [0.45, 0.52, 0.04, 0.04]},
+      {"id": "legend", "kind": "legend_frame", "box": [0.74, 0.08, 0.22, 0.36], "text": "Legende"},
+      {"id": "legend-shaft", "kind": "legend_entry", "box": [0.75, 0.15, 0.2, 0.07], "symbol": "hatched_square", "text": "Schacht"},
+      {"id": "legend-riser", "kind": "legend_entry", "box": [0.75, 0.24, 0.2, 0.07], "symbol": "circle_cross", "text": "Steigleitung"},
+      {"id": "legend-level", "kind": "legend_entry", "box": [0.75, 0.32999999999999996, 0.2, 0.07], "symbol": "triangle", "text": "Höhenkote"},
+      {"id": "title-block", "kind": "title_block", "box": [0.74, 0.7, 0.22, 0.22]},
+      {"id": "title-number", "kind": "title_field", "box": [0.75, 0.72, 0.2, 0.04], "key": "Plannummer", "value": "EP-01", "text": "Plannummer: EP-01"},
+      {"id": "title-index", "kind": "title_field", "box": [0.75, 0.77, 0.2, 0.04], "key": "Index", "value": "A", "text": "Index: A"},
+      {"id": "title-date", "kind": "title_field", "box": [0.75, 0.82, 0.2, 0.04], "key": "Datum", "value": "09.01.2026", "text": "Datum: 09.01.2026"},
+      {"id": "title-scale", "kind": "title_field", "box": [0.75, 0.87, 0.2, 0.04], "key": "Maßstab", "value": "1:100", "text": "Maßstab: 1:100"}
+     ]
+    }
+   ]
+  },
+  {
+   "file_name": "EP-02_Schnitt_A-A.pdf",
+   "folder": "Einreichung/Pläne",
+   "sheet": "A1",
+   "pages": [
+    {
+     "number": 1, "storey": "",
+     "index_text": "Schnitt A-A durch das Stiegenhaus, Hubergasse 14, Planverfasser Architekturbüro Huber",
+     "elements": [
+      {"id": "sheet-title", "kind": "note", "box": [0.05, 0.02, 0.3, 0.025], "text": "Schnitt A-A"},
+      {"id": "plan-area", "kind": "plan_area", "box": [0.08, 0.15, 0.62, 0.66]},
+      {"id": "room-eg", "kind": "room", "box": [0.1, 0.5, 0.5, 0.28], "text": "EG"},
+      {"id": "room-og", "kind": "room", "box": [0.1, 0.22, 0.5, 0.28], "text": "OG"},
+      {"id": "dim-height-eg", "kind": "dimension", "box": [0.62, 0.62, 0.05, 0.012], "text": "RH 2,65", "value": "2,65"},
+      {"id": "dim-height-og", "kind": "dimension", "box": [0.62, 0.34, 0.05, 0.012], "text": "RH 2,70", "value": "2,70"},
+      {"id": "dim-parapet-og", "kind": "dimension", "box": [0.62, 0.44, 0.05, 0.012], "text": "BRH 1,00", "value": "1,00"},
+      {"id": "title-block", "kind": "title_block", "box": [0.74, 0.7, 0.22, 0.22]},
+      {"id": "title-number", "kind": "title_field", "box": [0.75, 0.72, 0.2, 0.04], "key": "Plannummer", "value": "EP-02", "text": "Plannummer: EP-02"},
+      {"id": "title-index", "kind": "title_field", "box": [0.75, 0.77, 0.2, 0.04], "key": "Index", "value": "B", "text": "Index: B"},
+      {"id": "title-date", "kind": "title_field", "box": [0.75, 0.82, 0.2, 0.04], "key": "Datum", "value": "14.03.2026", "text": "Datum: 14.03.2026"},
+      {"id": "title-scale", "kind": "title_field", "box": [0.75, 0.87, 0.2, 0.04], "key": "Maßstab", "value": "1:50", "text": "Maßstab: 1:50"}
+     ]
+    }
+   ]
+  }
+ ]
+}

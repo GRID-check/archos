@@ -1332,8 +1332,8 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    new kind so "precision" is shown as its own diagnostic, not a citation
    defect).
 
-5. **Multimodal answer-time page/image viewing** — a new NAT tool
-   `view_knowledge_image` (`llamaindex/view_image.py`, gated on
+5. **Multimodal answer-time page/image viewing** — the NAT tool `look`
+   (`tools/look/`, ADR-0128; renderer `knowledge_layer/view_image.py`, gated on
    `AIQ_VIEW_IMAGES_ENABLED`, default on, plus a resolvable VLM key) hands a
    knowledge image to the VLM **as an image block during a research turn** —
    not just at ingestion. Three source shapes: **PDF pages** are re-rendered on
@@ -1353,7 +1353,7 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    `MAX_STORED_IMAGES_PER_DOCUMENT` (64, `frontends/ui/src/lib/s3.ts`, enforced
    by the presign route; the backend stops at the first refusal). The caption
    chunk records `image_key` and `stored_image_index`; `_format_results` shows
-   an `Image: stored (view_knowledge_image image_index=N)` line only for such a
+   an `Image: stored (look image_index=N)` line only for such a
    chunk, and the tool's `image_index` argument fetches that raster through
    `GET /api/internal/document-file?imageIndex=N` — the BFF derives the key
    from the document's own row, so the backend never names an object key. Fail

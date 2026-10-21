@@ -43,6 +43,7 @@ import math
 import re
 import threading
 import unicodedata
+import urllib.parse
 from collections import Counter
 from collections.abc import Callable
 from http.server import BaseHTTPRequestHandler
@@ -484,6 +485,10 @@ class FixtureBFF:
                 return 200, self.workspace.handle(body, conversation)
             if path == "/api/internal/turn-context":
                 return 200, self.workspace.turn_context(conversation)
+            # `--set visual`: where `look` finds a file's storage key.
+            document_file = getattr(self.workspace, "document_file", None)
+            if path == "/api/internal/document-file" and document_file is not None:
+                return document_file(body)
             return None
         if path == "/api/internal/turn-context":
             return 200, office.turn_context()
@@ -510,7 +515,19 @@ class FixtureBFF:
                     body = json.loads(raw.decode("utf-8") or "{}")
                 except ValueError:
                     body = {}
-                path = self.path.split("?", 1)[0]
+                path, _, query = self.path.partition("?")
+                if query and not body:
+                    body = {key: values[0] for key, values in urllib.parse.parse_qs(query).items()}
+                # `--set visual`: the object store the run reads sheets from, path-style S3, no signature checked.
+                objects = getattr(bff.workspace, "object_bytes", None)
+                blob = objects(path) if objects is not None and self.command == "GET" else None
+                if blob is not None:
+                    self.send_response(200)
+                    self.send_header("Content-Type", "application/pdf")
+                    self.send_header("Content-Length", str(len(blob)))
+                    self.end_headers()
+                    self.wfile.write(blob)
+                    return
                 conversation = _conversation_of(self.headers.get("X-Grid-Request-Context"))
                 trusted = self.headers.get("X-Grid-Internal-Token") == bff.token
                 answer = bff._answer(path, body, bff.office_for(conversation), conversation) if trusted else None

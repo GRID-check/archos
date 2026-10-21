@@ -1,0 +1,213 @@
+# The visual eval (`task be:eval:answer-suite -- --set visual [--look off]`, ADR-0128): questions whose
+# answer is on a drawing and nowhere in the indexed text, asked in a fixture project whose three
+# drawings `scripts/turn_census/render_fixture_drawings.py` draws from `drawings.json` beside this
+# file at suite start (nothing else is committed). `scripts/turn_census/fixture_visual.py` seeds them;
+# `scripts/turn_census/visual_eval.py` scores the runs. Change this file and `drawings.json` together:
+# `tests/test_visual_eval.py` holds the values here to the spec's.
+#
+# `expect` is the suite's own (`suite.check`) plus, as the files set has it (`files_eval.files_checks`):
+#   mentions:  words the answer must hold (a list item is alternatives)
+#   tools:     what the MODEL called. `look` stands for the one capability under any of its names today
+#              (`look`, `canvas__look`, `view_knowledge_image`; `visual_eval.LOOK_TOOLS`).
+#     must:     it looked at least once
+#     must_not: it did not look (a skip control: a hit already holds the answer)
+# `gold` is where the answer is: `{document, page, element}`, the element an id of that page in
+# `drawings.json`, a list when the answer is in several places. The box comes from the spec, so it is exact.
+# `box: found` means the turn must find the place itself; `given` is a turn that comes with a drawn box
+# (a Fokusbereich), which this set cannot send yet: no row uses it, and the loader refuses it until it can.
+# Scored per run: the checks, the number of looks, and for each gold box the best IoU and the best coverage
+# (the share of the gold box a look contained) over the looks at that document and page. The check is
+# coverage: a generous crop that holds the figure looked in the right place, and IoU says how tightly.
+# Facts, read off `drawings.json`: EG Index B has 5 doors and Index A 4 (door-5 is new); the Wohnen
+# dimension is 5,24 in Index B and 5,04 in Index A; the OG has 3 doors. Only each page's caption is indexed.
+
+questions:
+  # --- dimensions: a printed string, small against the sheet ------------------
+  - id: pv-dim-wohnen
+    category: dimension
+    question: Wie breit ist der Wohnraum im Erdgeschoss laut Grundriss Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: dim-wohnen}
+    expect:
+      tools: {must: [look]}
+      mentions: [["5,24", "5.24"]]
+
+  - id: pv-dim-bad
+    category: dimension
+    question: Welches Maß steht beim Bad im Erdgeschoss-Grundriss Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: dim-bad}
+    expect:
+      tools: {must: [look]}
+      mentions: [["2,02", "2.02"]]
+
+  - id: pv-dim-galerie
+    category: dimension
+    question: Wie lang ist die Galerie im Obergeschoss?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 2, element: dim-galerie}
+    expect:
+      tools: {must: [look]}
+      mentions: [["9,02", "9.02"]]
+
+  - id: pv-dim-raumhoehe
+    category: dimension
+    question: Wie hoch ist der Raum im Erdgeschoss laut Schnitt A-A?
+    box: found
+    gold: {document: EP-02_Schnitt_A-A.pdf, page: 1, element: dim-height-eg}
+    expect:
+      tools: {must: [look]}
+      mentions: [["2,65", "2.65"]]
+
+  - id: pv-dim-bruestung
+    category: dimension
+    question: Wie hoch ist die Brüstung im Obergeschoss im Schnitt A-A?
+    box: found
+    gold: {document: EP-02_Schnitt_A-A.pdf, page: 1, element: dim-parapet-og}
+    expect:
+      tools: {must: [look]}
+      mentions: [["1,00", "1.00", "1 m"]]
+
+  # --- counts: the weakest thing a model does with a plan ---------------------
+  - id: pv-count-doors-eg-b
+    category: count
+    question: Wie viele Türen hat das Erdgeschoss im Grundriss Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: plan-area}
+    expect:
+      tools: {must: [look]}
+      mentions: [["5 Türen", "fünf Türen", "5 Tür", "fünf Tür"]]
+
+  - id: pv-count-doors-og
+    category: count
+    question: Wie viele Türen sind im Obergeschoss eingezeichnet?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 2, element: plan-area}
+    expect:
+      tools: {must: [look]}
+      mentions: [["3 Türen", "drei Türen", "3 Tür", "drei Tür"]]
+
+  - id: pv-count-doors-eg-a
+    category: count
+    question: Und wie viele Türen hat das Erdgeschoss im Grundriss Index A?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: plan-area}
+    expect:
+      tools: {must: [look]}
+      mentions: [["4 Türen", "vier Türen", "4 Tür", "vier Tür"]]
+
+  - id: pv-count-doors-total
+    category: count
+    question: Wie viele Türen zeigt Index B der Grundrisse insgesamt, beide Geschosse zusammen?
+    box: found
+    gold:
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: plan-area}
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 2, element: plan-area}
+    expect:
+      tools: {must: [look]}
+      mentions: [["8 Türen", "acht Türen", "8 Tür", "acht Tür"]]
+
+  # --- Plankopf: a value in the title block -----------------------------------
+  - id: pv-title-date-a
+    category: plankopf
+    question: Welches Datum steht im Plankopf des Grundrisses Index A?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: title-date}
+    expect:
+      tools: {must: [look]}
+      mentions: [["09.01.2026", "9. Januar 2026"]]
+
+  - id: pv-title-date
+    category: plankopf
+    question: Welches Datum steht im Plankopf des Grundrisses Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: title-date}
+    expect:
+      tools: {must: [look]}
+      mentions: [["14.03.2026", "14. März 2026"]]
+
+  - id: pv-title-scale
+    category: plankopf
+    question: In welchem Maßstab ist der Schnitt A-A gezeichnet?
+    box: found
+    gold: {document: EP-02_Schnitt_A-A.pdf, page: 1, element: title-scale}
+    expect:
+      tools: {must: [look]}
+      mentions: [["1:50"]]
+
+  # --- legend: a symbol and what it stands for --------------------------------
+  - id: pv-legend-shaft
+    category: legend
+    question: Was bedeutet das schraffierte Quadrat in der Legende des Grundrisses Erdgeschoss Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: legend-shaft}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Schacht"]]
+
+  - id: pv-legend-riser
+    category: legend
+    question: Wofür steht der Kreis mit dem Kreuz in der Legende des Erdgeschoss-Grundrisses Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: legend-riser}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Steigleitung"]]
+
+  - id: pv-legend-level
+    category: legend
+    question: Wie heißt das ausgefüllte Dreieck in der Legende des Grundrisses Erdgeschoss Index B?
+    box: found
+    gold: {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: legend-level}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Höhenkote", "Hoehenkote"]]
+
+  # --- Fassungen: two versions of one sheet, one door and one dimension apart --
+  - id: pv-fassung-overall
+    category: fassung
+    question: Was hat sich im Erdgeschoss-Grundriss zwischen Index A und Index B geändert?
+    box: found
+    gold:
+      - {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: plan-area}
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: plan-area}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Tür"], ["5,24", "5.24"]]
+
+  - id: pv-fassung-dimension
+    category: fassung
+    question: Welches Raummaß im Erdgeschoss ist in Index B anders als in Index A?
+    box: found
+    gold:
+      - {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: dim-wohnen}
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: dim-wohnen}
+    expect:
+      tools: {must: [look]}
+      mentions: [["Wohn"], ["5,04", "5.04"], ["5,24", "5.24"]]
+
+  - id: pv-fassung-door
+    category: fassung
+    question: Ist im Erdgeschoss von Index A auf Index B eine Tür dazugekommen oder weggefallen?
+    box: found
+    gold:
+      - {document: EP-01_Grundrisse_Index-A.pdf, page: 1, element: plan-area}
+      - {document: EP-01_Grundrisse_Index-B.pdf, page: 1, element: door-5}
+    expect:
+      tools: {must: [look]}
+      mentions: [["dazu", "neu", "zusätzlich", "hinzu", "ergänzt"]]
+
+  # --- skip controls: an exact hit already holds the answer, so a look is waste -
+  - id: pv-skip-author
+    category: skip
+    question: Wer ist der Planverfasser des Schnitts A-A?
+    expect:
+      tools: {must_not: [look]}
+      mentions: [["Huber"]]
+
+  - id: pv-skip-listing
+    category: skip
+    question: Welche Pläne liegen im Ordner Einreichung/Pläne?
+    expect:
+      tools: {must_not: [look]}
+      mentions: [["EP-01_Grundrisse_Index-B.pdf", "Grundrisse_Index-B"], ["EP-02_Schnitt_A-A.pdf", "Schnitt_A-A"]]

@@ -48,6 +48,9 @@ its eyes; the canvas and the answer cards are its finger; the Herleitung is its
 notebook; the one API and its MCP door make each of these one capability for
 every client; the evals say whether we got there.
 
+What each scene sounds like in a single turn, with the ideal trajectory, the
+answer and the checks that hold it: [`north-star-answers.md`](north-star-answers.md).
+
 **Restraint that survives the star:** the answer shows what supports it, not
 everything that happened. The crop that proves the point is a card; every other
 glance is a line in the Herleitung.
@@ -63,8 +66,8 @@ inspection) and the research behind ADR-0127 and ADR-0128.
 | Orient in a project (star 1) | **Weak.** `list_files` lists a folder | A folder is a path string; no tree, no counts, no page counts, nothing derived from its children | ADR-0127: folder cards, exact facts computed on read, then a short summary built from the children |
 | Read a document through (star 2) | **Weak.** `read_passage` returns up to 12 chunks | No page range, no continuation, no whole-document read for PDFs; extracted text exists only as chunks | ADR-0127: page ranges and a continuation cursor over chunks in reading order |
 | Find an exact phrase (grep) | **Partial.** Literal match, per-file counts | No regex, no context lines, no folder scope, stops at 500 chunks per collection | ADR-0127: regex, context, folder scope |
-| Choose between search, browse and read | **Weak.** | The prompt says "Retrieve first", every worked example is a search, and round 0 always prefetches a search; one paragraph mentions opening files | ADR-0127: three moves taught with when-to-use rules and examples; retrieval stays round 0 |
-| Look at a region (star 3) | **Strong on the canvas, absent in the chat.** `canvas__look` renders any region up to 1200 dpi; the box glows for everyone in the document | The look rule is injected only when a person drew a box; nothing makes Piloti look on its own; no look survives the answer | ADR-0128: a standing look policy in the prompt, one look capability in every context |
+| Choose between search, browse and read | **Taught, not yet measured.** The prompt's `<sources>` teaches three moves (search finds, list orients, read reads) with a worked example of a ranged read, of list then exact search then read, and of a look; round 0 still prefetches a search | No `files` eval run yet before and after the prompt change | ADR-0127: three moves taught with when-to-use rules and examples; retrieval stays round 0 |
+| Look at a region (star 3) | **Strong on the canvas, invisible in the chat.** `look`, one tool in every context, renders any region up to 1200 dpi; the box glows for everyone who has the document open | A standing look policy now sits in the prompt (`<sources>`: before a value off a drawing, a figure, an image-only hit, a Fassung comparison, a drawn box), unmeasured; no look survives the answer | ADR-0128: a standing look policy in the prompt, one look capability in every context |
 | Point and show (star 4) | **Partial.** `canvas__point` and `canvas__highlight` while a document is open; `canvas__mark` proposes findings | Pointing is ephemeral and canvas-only; citations carry a region box that the chat never renders | ADR-0128: a card for the look that supports the answer, citations rendered as places |
 | Chat and canvas as mirrors | **Absent.** | Capabilities are bound per surface; nothing checks parity | ADR-0128: a parity register checked in CI, like `exposure.config.ts` |
 | Compare Fassungen visually | **Partial.** `document-revision-compare` returns boxes and sentences for one page pair | Text and boxes only, no side-by-side crops, uses the ingest model | ADR-0128 |

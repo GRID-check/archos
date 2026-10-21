@@ -99,16 +99,14 @@ class TestTheFixture:
 
 
 class TestTheArms:
-    TOOLS = ["web_search_tool", "knowledge_search", "read_passage", "list_files", "view_knowledge_image"]
+    TOOLS = ["web_search_tool", "knowledge_search", "read_passage", "list_files", "look"]
 
     def test_both_changes_nothing(self):
         assert files_eval.arm_overrides("both", self.TOOLS) == []
 
     def test_search_unbinds_the_navigation_tools_and_keeps_ranked_search_only(self):
         pairs = dict(files_eval.arm_overrides("search", self.TOOLS))
-        assert (
-            pairs["functions.shallow_research_agent.tools"] == "web_search_tool,knowledge_search,view_knowledge_image"
-        )
+        assert pairs["functions.shallow_research_agent.tools"] == "web_search_tool,knowledge_search,look"
         assert pairs["functions.knowledge_search.match_modes"] == "meaning"
 
     def test_navigate_drops_the_prefetch_and_ranked_search(self):

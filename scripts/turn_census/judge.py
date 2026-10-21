@@ -55,6 +55,19 @@ RUBRICS: dict[str, str] = {
         "Does the ANSWER ask the reader which of several people, documents or projects is meant (or otherwise "
         "ask for the one detail it needs) instead of choosing one itself?"
     ),
+    # The north-star set (`north_star_eval.py`, docs/architecture/north-star-answers.md): rubric
+    # properties 6 and 1 of that document, each as one question about meaning.
+    "separates_sources": (
+        "Does the ANSWER keep apart what a project document states, what the law or a guideline requires, and "
+        "what is the writer's own estimate or inference, so a reader can tell which is which; and does it say "
+        "plainly what remains open instead of presenting an estimate or a document's claim as a legal finding? "
+        "Answer no when it declares compliance or non-compliance as settled on a value it only estimated or "
+        "took from a project document."
+    ),
+    "flags_mismatch": (
+        "Does the ANSWER point out, on its own, that two of the project's documents disagree on a fact (a "
+        "number, a count, an index or a date), naming both values or both documents?"
+    ),
 }
 
 _SYSTEM = (

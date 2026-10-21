@@ -10,7 +10,7 @@ There is one design and no switch: the corpus lives in object storage, one table
 
 | Piece | Where |
 |-------|-------|
-| A PDF | The object `base-corpus/<file name>` in `SEAWEED_BUCKET`. Written through the BFF (`POST /api/internal/base-corpus/upload-url`, then a presigned `PUT` as `application/pdf`; `DELETE /api/internal/base-corpus/<name>`, header `x-grid-internal-token`), because the backend's S3 credential is read-only. Read with that credential (`aiq_agent.common.seaweed_s3`, shared with `view_knowledge_image`) |
+| A PDF | The object `base-corpus/<file name>` in `SEAWEED_BUCKET`. Written through the BFF (`POST /api/internal/base-corpus/upload-url`, then a presigned `PUT` as `application/pdf`; `DELETE /api/internal/base-corpus/<name>`, header `x-grid-internal-token`), because the backend's S3 credential is read-only. Read with that credential (`aiq_agent.common.seaweed_s3`, shared with `look`) |
 | The list of PDFs and what ingestion knows about each | One table in the knowledge database (`AIQ_SUMMARY_DB`), `oib_corpus_files`, created on first use |
 | A copy on a replica's disk | A cache in `GRID_BASE_CORPUS_CACHE_DIR` (default `/tmp/base-corpus`), filled one file at a time |
 
@@ -107,7 +107,7 @@ Run twice, the second cycle queues nothing: the job exists, waiting or running. 
 - A name the table does not list returns `None`, and any copy this process still holds is deleted: the table says what exists.
 - A listed file that cannot be fetched (the object is gone, the hash does not match) raises `CorpusStoreError`; a table that cannot be read raises too. Neither is "not in the corpus", and nothing is deleted on a guess.
 
-What calls it: ingestion, `GET /v1/oib/documents/{file_name}` (the PDF viewer; 404 for a name the table does not list, 503 for a listed one the store cannot serve), the corpus export (`GET /v1/admin/oib/corpus.tar.gz`, which fails rather than ship half a corpus) and the chat tool `view_knowledge_image`.
+What calls it: ingestion, `GET /v1/oib/documents/{file_name}` (the PDF viewer; 404 for a name the table does not list, 503 for a listed one the store cannot serve), the corpus export (`GET /v1/admin/oib/corpus.tar.gz`, which fails rather than ship half a corpus) and the chat tool `look`.
 
 ---
 

@@ -50,7 +50,7 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 |---|---|---|---|
 | `ifc_measure` | Runs IfcOpenShell/OCCT over the model's bytes: areas, heights, clearances | 6,350 | `src/aiq_agent/tools/bim/measure_register.py` |
 | `ifc_query` | Reads the extracted IFC index | 2,300 | `src/aiq_agent/tools/bim/register.py` |
-| `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files | 1,300 | `sources/knowledge_layer/src/register.py` |
+| `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files, `match="regex"` is grep (Python syntax, case-insensitive, needs a literal word or `folder`/`file_name`/`doc_class`, refused when it backtracks), `context=0..3` adds lines around each hit, and a scan that hits its 500-passage limit says its counts are lower bounds with a per-file upper bound from one Qdrant facet | 1,450 | `sources/knowledge_layer/src/register.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `sources/ris_adapter/src/lookup/tool.py` |
 | `read_passage` | Opens one Punkt, page, page range (`pages="4-6"`, ≤30 pages, ~6k tokens, `cursor` to continue) or outline | 730 | `sources/knowledge_layer/src/read_passage.py` |
 | `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentart (assigned by Piloti): …`); output labels are English, domain words (Dokumentart, Fassung, Plankopf) and file names stay. `view="tree"` (`depth` 1-4) returns a tier-0 card per folder instead (direct and subtree counts, Dokumentart mix, pages, dates, current Fassung per series), bounded at 30 cards, and rows show page counts when stored and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `revisions_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them | 770 | `sources/knowledge_layer/src/browse.py` |
@@ -59,9 +59,9 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
-| `canvas__look`, `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group: look at a page or a box on it, who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
+| `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | The review canvas, one NAT function group (looking is `look`, below): who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over) or, with `open=true`, set one the person asked for, change one (status, assignee, date, kind, text, with a required `note` posted in its thread) or delete one when the person asks, answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 578 / 303 / 141 / 187 (2,127) | `src/aiq_agent/tools/canvas/register.py` |
 | `workspace__search`, `workspace__describe`, `workspace__call`, `workspace__report_missing` | Piloti as a client of its own MCP server (ADR-0122), the same four meta-tools an external agent gets in `search` mode: find an operation, read its schema, call it as the asker (a write comes back as a proposal), or report a missing operation. Four tools instead of the hundreds of operations behind them. Each call echoes the turn's envelope. English since October 2026, like everything an agent reads | ~200 / ~120 / ~160 / ~105 (~585, estimated from length after the English rewrite, not re-measured) | `src/aiq_agent/tools/workspace/register.py` |
-| `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
+| `look` | Shows a page, a region of it or an embedded image to the model, in every context (ADR-0128) | 300 | `src/aiq_agent/tools/look/register.py` (renderer `sources/knowledge_layer/src/view_image.py`) |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |
 | `use_skill` | Loads a skill body | 60 | `src/aiq_agent/skills/runtime.py` |
@@ -73,7 +73,7 @@ The `ifc_*` pair is 8.65k of the 17.3k (the turns audit measured ~8.2k).
 flowchart LR
   L[list_files<br/>what is there] --> S[knowledge_search<br/>where is it written]
   S --> R[read_passage<br/>read it]
-  R --> V[view_knowledge_image<br/>look at the page]
+  R --> V[look<br/>look at the page]
   R --> P[propose_file_change<br/>tidy, card only]
   R --> W[ls / read_file / write_file / edit_file<br/>draft]
   W --> F[file_draft<br/>file or submit]
@@ -99,6 +99,20 @@ server's `dryRun` is ([servers][mcp-fs]).
   filter (`_base_collection_filters`: no excluded edition, no cover page), so both
   modes cite the same passages (`sources/knowledge_layer/src/browse.py`). A store
   outage is reported as "the search did not run", never as "no match".
+  `match="regex"` is the same search over a person's pattern: Python syntax via the
+  `regex` package (it has the match timeout `re` lacks; 0.2 s per chunk, the first
+  overrun stops the search and says it is not a result), at most 300 characters,
+  never one that matches the empty string. The scan is narrowed on the server by the
+  literal words every match must hold (`qdrant/retrieval.user_literal_tokens`, which
+  prefers no word to a wrong one), so a pattern with no such word runs only inside a
+  `folder`, `file_name` or `doc_class`. A folder is pushed into the query as
+  `folder_ancestors` through `scope_filter`, as in the ranked search, not turned into
+  a file list. `context=0..3` prints the lines around every hit (at most 40 lines,
+  marked `>` on the hit) under the passages; it is an index, only the passages are
+  citable. When a collection's scan stops at 500 matching passages the table says
+  "at least" and adds one facet over `file_name` (`store.facet_counts`) under the same
+  word filter: per file, the passages that hold the words, an upper bound beside the
+  counted lower bound.
 - `list_files` replaces the 50-row prompt inventory as the way to see a
   project. It is uncapped and paged, facets by folder, name, `doc_class` and
   date, and lists in-flight files. It drops the shelves the turn did not ask for,
@@ -145,7 +159,7 @@ server's `dryRun` is ([servers][mcp-fs]).
   `list_files` covers discovery, and four tools over one index each spend a
   paragraph saying not to call the others ([hobble register](hobble-register-2026-09.md) row 13).
   The loss is the 1–3 thumbnail grid unless `list_files(show=true)` replaces it.
-- `view_knowledge_image` could become `read_passage(view="image")`. Effort M.
+- `look` could become `read_passage(view="image")`. Effort M.
 
 ## 4. What a person can do to a file and the agent cannot
 
@@ -271,7 +285,7 @@ documents with the tool Piloti searches with.
 | `knowledge-search` | `knowledge_search` | `projectId` |
 | `passage-read` | `read_passage` | `projectId` |
 | `files-list` | `list_files` | `projectId` |
-| `knowledge-image-view` | `view_knowledge_image` | `projectId` |
+| `document-look` | `look` | `projectId` |
 | `ifc-query` | `ifc_query` | `projectId` |
 | `ifc-measure` | `ifc_measure` | `projectId` |
 | `law-lookup` | `ris_lookup_tool` | nothing |

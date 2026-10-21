@@ -225,11 +225,13 @@ carries a tool's input or output.**
 | `tool` | `tool` (basename), `status: running \| ok \| error` |
 | `skill` | `phase: offered \| activated \| loaded`, `skill?`, `title?`, `hidden`, `count?`, `channel` |
 | `clarification` | `max_turns` |
+| `look` | `round?`, `document_name`, `document_id?`, `revision_id?`, `shelf: stored \| base`, `page`, `region?` (`[x, y, w, h]`, shares of the page), `image_index?`, `where?`, `question?`, `reading?`: one look that rendered (ADR-0128), an address and never pixels |
 
 The UI stores a folded step in a compact form, `StoredThinkingStep`
 (`frontends/ui/src/lib/conversations/message-provenance.ts`): `id`,
 `userMessageId`, `timestamp`, `isComplete`, `kind`, `scope?`, and per kind
-`turnEvent?`, `traceLanes?`, `round?`, `tool?`, `skill?`, `slot?`, `detail?`.
+`turnEvent?`, `traceLanes?`, `round?`, `tool?`, `skill?`, `slot?`, `detail?`. A
+`look` step keeps its address in `detail` (`document`, `page`, `x`/`y`/`w`/`h`, …).
 That is what a message row keeps in `metadata.provenance.thinkingSteps`, and the
 only shape `sanitizeProvenance` accepts. Rows written before the cut were
 rewritten by migration `0097_herleitung_steps_v2`.
@@ -606,7 +608,7 @@ what it did before the canvas could ask.
 What the turn does with them (`turn/payload.py`, `agents/piloti/prompt.py`):
 the system prompt gains a „Fokusbereich“ section naming the document, page and
 box in words, and telling the model to look at exactly that crop
-(`canvas__look` with `region=[x, y, w, h]`) before it answers. With
+(`look` with `region=[x, y, w, h]`) before it answers. With
 `reply_in_thread`, it is told it was asked in that mark's thread and to answer
 there with `canvas__reply`: nothing is posted on the model's behalf. Such a
 turn runs with no restricted folder in scope, because a thread is read by

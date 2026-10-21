@@ -74,7 +74,9 @@ Backend job.** `tests/aiq_agent/common/test_claim_queue.py`,
 `tests/knowledge_layer_tests/test_ingest_queue.py` and
 `frontends/aiq_api/tests/test_research_queue_fair.py` run every scenario on
 SQLite, which ranks in Python, and on Postgres, which runs production's claim
-SQL. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
+SQL. The folder card builder's suites (`tests/aiq_agent/knowledge/folder_cards/`:
+dirty queue, budget, manifests, worker) run on both too, through the
+`database_url` and `agent_db` fixtures in their `conftest.py`. Without `AIQ_TEST_POSTGRES_URL` the Postgres parameter skips, so the task
 reuses `scripts/rls-test-db.sh --exec` for a throwaway cluster and names a
 scratch database in it. Each file carries an `AIQ_TEST_POSTGRES_REQUIRED` guard,
 set in CI, that fails instead of skipping. A new suite with a Postgres parameter

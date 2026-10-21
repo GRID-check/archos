@@ -155,6 +155,16 @@ What it decides:
      document it names before an answer states it. A person's folder description
      (migration 0145) is an input and wins over the abstract. Tier 1 ships after tier 0
      and after the eval has a baseline.
+   - *Tier 1 updates incrementally.* Each card keeps a manifest of what it was written
+     from (a fingerprint per direct child document, each child folder's abstract hash,
+     the description, the prompt version, an increments counter), in the agent DB
+     beside the builder's queue. A rebuild diffs the inputs against it: when only
+     documents left, the facts citing them are dropped and nothing is called; otherwise
+     the model gets the old card and the diff alone and returns the updated card,
+     through the same validator. A full rebuild runs when there is no prior card, the
+     prompt version or the description changed, the diff touches more than half the
+     children, or after 10 increments in a row (the counter resets), so drift from
+     editing by diff stays bounded.
 5. **Qdrant, small and high-value.** Group by `grid_document_id`. Use facets for the
    per-file count of a capped exact search. Add `document_date` and `added_at` as
    datetime payload fields with a datetime index (payload backfill through the existing

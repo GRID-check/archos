@@ -673,7 +673,7 @@ the way a design tool shows its collaborators:
 | The mark a colleague has open | a ring round the pin (an outline round a region) in their colour, with their first name at its top-right; „Anna +1" for several; a person whose own pointer is within 48 px of the mark is not named twice (`selectionTagged`); never the reader's own tabs, never Piloti | `peerSelections`, `PeerSelection` |
 | A box being dragged out | dashed in their colour, with their first name over its top-right corner; beside the box when the box is narrower than the name, so the name never lies over a pin next to it (`draftTagPlace`) | `review-page-layer.tsx` |
 | A colleague out of view | a chip at the edge that leads to them („Lena · Seite 2"), decided by whether their point is on screen (`peerSide`); a click jumps there; the face's tooltip names the page. Never over the open card: the card keeps out of the foot, and a row that would still lie over it steps aside (`covers`) | `Elsewhere` in `document-review.tsx` |
-| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`canvas__look` sends the `look` op: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
+| Piloti | its own pointer, always led by its name („Piloti · Fluchtweg · für Anna"), quieting once it is parked with nothing in hand (`pilotiResting`); the box it reads glows while it reads it (`look` sends the `look` op for a workspace document, from the canvas or the chat: presence and a `reading` activity) | `PilotiCursor`, `tools/canvas/presence.py` `show_reading` |
 
 A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
@@ -721,9 +721,9 @@ Piloti reaches marks in two ways.
 `/api/internal/document-annotations`: `canvas__marks` (`list`), `canvas__mark`
 (`propose`, or `create` with `open=true`), `canvas__update` (`update`),
 `canvas__delete` (`delete`), `canvas__reply` (`reply`), `canvas__room`
-(`room`), and the gestures `canvas__point` and `canvas__highlight`;
-`canvas__look` renders the page or a box on it through `view_knowledge_image`'s
-own body. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
+(`room`), and the gestures `canvas__point` and `canvas__highlight`.
+`look` (`src/aiq_agent/tools/look/`, ADR-0128), a tool of its own bound in every
+context, renders the page or a box on it and makes the box glow here. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
 
 - A tool may name a document (`document`: a file name from the turn's inventory, or an id); the name is resolved against the inventory and its id read from `GET /api/internal/document-file` with the envelope echoed. Without one it acts on the document open on the canvas (`focus_document_id`), then on the conversation's *subject*. The server checks a named document against the asker's access and the turn's signed scope (`lib/annotations/agent.ts`).
 - With no document named and no subject, the tool gets a typed 422 and asks which document is meant.
@@ -797,7 +797,7 @@ are accountable.
 
 1. The canvas opens a conversation whose subject is the document, before the socket opens. The proxy only verifies a conversation that exists at upgrade time.
 2. It sends the question with `focus_region` (page and normalized box) on the wire v2 `user_message`.
-3. The agent looks at a server-side crop of exactly that box, from `canvas__look` (or `view_knowledge_image`) with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
+3. The agent looks at a server-side crop of exactly that box, from `look` with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
 4. The answer streams into a card beside the box and can be kept as a mark.
 
 A turn that ended is read by its outcome, never its phase alone

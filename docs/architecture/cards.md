@@ -34,12 +34,12 @@ sources, and the persisted decisions of interactive cards.
 ## Current card types
 
 Defined in `src/aiq_agent/cards/models.py` as a discriminated union (`GridCard`)
-— **23 types in four families**: 17 the answering model may emit, 16 of them
+— **25 types in four families**: 17 the answering model may emit, 16 of them
 through `emit_card` too; the 17th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
 (`CHAT_ONLY_CARD_TYPES`: `emit_card`, `describe_card` and the post-hoc
 validator refuse it, because only the chat pipeline recites its `[N]`); and
-six it may not on any surface (`SYSTEM_CARD_TYPES`, the tool-owned cards).
+eight it may not on any surface (`SYSTEM_CARD_TYPES`, the tool-owned cards).
 
 Twenty-three former types were **deleted** from the union in 2026-09
 (`catalog.RETIRED_CARD_TYPES`, before launch, so no stored message needed
@@ -140,6 +140,7 @@ catalog omits them entirely).
 | `task_created` | work Piloti has taken on, as a task row somebody can come back to — title, goal, due date and a link to the run's thread. Informational: the task is already queued when it renders, so there is no Accept | the `create_task` tool |
 | `file_operation_proposal` **(interactive)** | a workspace change the agent PROPOSED and did not make — a move, a rename, a new folder, an assignment. One card type for four verbs, discriminated by `operation`, carrying a capped LIST so an „organise the Einreichung" turn is one decision and not four. With `proposal_id` it shows a proposal stored on the server ([`proposed-changes.md`](proposed-changes.md), ADR-0105): accepting asks the server to apply it in the accepting person's session, and every reader sees the same decision. The result is reported per row — a batch where the third fails says two landed and one did not, with the reason. Without one (an answer older than server proposals, or one the agent could not store) the card is read-only: nothing runs in the browser any more, a decision recorded on the message is replayed, and an undecided card says „Konnte nicht als Vorschlag angelegt werden“ | `propose_file_change` under `src/aiq_agent/tools/files/` (a Dokumentart proposal waits for a project-scoped doc_class route) |
 | `canvas_activity` **(interactive)** | what Piloti did on ONE document: the marks it proposed (each drawn on a small page at its normalized place, numbered like the canvas's pins, dashed while a proposal), the marks it set, changed or deleted because the person asked, and the threads it answered in. Each proposed mark is answered on its own, „Übernehmen" / „Verwerfen", through the annotations client (`PATCH …/annotations/{id}`, status `open` / `dismissed`), and stored per mark under `itemDecisionKey`. A change reads „#4 erledigt" with Piloti's note, and „Rückgängig" PATCHes the inverse with the status Piloti left as `expectedStatus`, stored per row. The card reads the document's marks once it is on screen and lets the canvas win, so a mark a colleague answered there reads as answered here. „Im Dokument zeigen" opens the Prüfansicht at that mark over the chat (`features/documents/lib/open-review.ts`) | the canvas tools under `src/aiq_agent/tools/canvas/` |
+| `look` | where Piloti looked on ONE document in this turn (ADR-0128): an item per look the answer relies on (page, region as `[x, y, w, h]`, `where` in words, the `question` and the first `reading`) and a `reference` item per box or pointer it showed the room. An ADDRESS (document id, Fassung as `revision_id`, page, region, `image_index`), never pixels: a `data:` string is refused anywhere on it, by the model and by the generated schema. Which looks become items is decided once the answer is final: the looked-at documents the answer cites, or all of them when it cites none, and every gesture (`tools/look/cards.py`). Drawn per item as the page clip with the place marked (`PageRegionThumbnail`, from the document's own routes, so only a reader who may open the document sees it), the place in words, the question and the reading marked as read, not measured; pressing an item opens the viewer at the page with the box glowing (`PagePlaceButton`). Not exported: printed, it is coordinates without the picture | `look`, through `place_look_cards` in `finalize_answer`; `canvas__highlight` and `canvas__point` add the `reference` items |
 
 **(interactive)** marks a card whose answer is a commitment and is therefore
 persisted on the message; see
