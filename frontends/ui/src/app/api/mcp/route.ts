@@ -15,9 +15,8 @@
 
 import { type AuthInfo, originValidationResponse } from '@modelcontextprotocol/server'
 import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
+import { principalOrRefusal } from '@/lib/agent-api/door-principal'
 import { createAgentDoorHandler, resolveMode } from '@/lib/agent-api/mcp-server'
-import { type AgentPrincipal, isChallenge, resolvePrincipal } from '@/lib/agent-api/principal'
-import { ApiError, ServiceUnavailableError } from '@/lib/api/errors'
 import { errorResponse } from '@/lib/api/handler'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
@@ -60,25 +59,6 @@ const batchRefused = (): Response =>
     { status: 400 },
   )
 
-/**
- * Who calls, or the response that refuses them. Resolving the principal asks
- * WorkOS (the signing keys, the membership, the feature flags); when it cannot
- * answer, the agent gets a JSON 503 it can retry, not an unexplained 500.
- */
-async function principalOf(request: Request): Promise<AgentPrincipal | Response> {
-  try {
-    const principal = await resolvePrincipal(request)
-    return isChallenge(principal) ? principal.response : principal
-  } catch (error) {
-    if (error instanceof ApiError) return errorResponse(error, request)
-    console.error('[mcp] could not resolve the caller', error)
-    return errorResponse(
-      new ServiceUnavailableError('Who is calling could not be checked right now. Try again shortly.'),
-      request,
-    )
-  }
-}
-
 export const POST = tenantSlotRoute(async (request: Request): Promise<Response> => {
   // Browsers attach Origin; agents and desktop clients do not. A page on another
   // origin must not be able to drive a signed-in person's agent.
@@ -87,7 +67,7 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
 
   if (await isBatch(request)) return batchRefused()
 
-  const principal = await principalOf(request)
+  const principal = await principalOrRefusal(request, 'mcp')
   if (principal instanceof Response) return principal
 
   // Once per HTTP request, after the caller is known and before any tool runs

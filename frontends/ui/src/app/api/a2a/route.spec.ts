@@ -123,6 +123,14 @@ describe('who is turned away', () => {
     expect(enforceLimit).not.toHaveBeenCalled()
   })
 
+  it('answers a JSON 503 the agent can retry when WorkOS does not answer', async () => {
+    vi.mocked(resolvePrincipal).mockRejectedValueOnce(new Error('fetch failed: api.workos.com'))
+    const response = await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'SERVICE_UNAVAILABLE' })
+    expect(askPiloti).not.toHaveBeenCalled()
+  })
+
   it('refuses Piloti’s own credential: Piloti never asks Piloti', async () => {
     vi.mocked(resolvePrincipal).mockResolvedValue({ ...PERSON, actor: 'piloti', clientId: null })
     const response = await POST(rpc('SendMessage', { message: userMessage('Hallo?') }, V1))

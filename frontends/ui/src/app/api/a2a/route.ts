@@ -35,8 +35,8 @@ import {
   VERSION_NOT_SUPPORTED,
 } from '@/lib/a2a/http'
 import { PilotiA2ARequestHandler } from '@/lib/a2a/request-handler'
+import { principalOrRefusal } from '@/lib/agent-api/door-principal'
 import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
-import { isChallenge, resolvePrincipal } from '@/lib/agent-api/principal'
 import { errorResponse } from '@/lib/api/handler'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
@@ -56,8 +56,8 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
     )
   }
 
-  const principal = await resolvePrincipal(request)
-  if (isChallenge(principal)) return principal.response
+  const principal = await principalOrRefusal(request, 'a2a')
+  if (principal instanceof Response) return principal
   if (principal.actor !== 'external_agent') {
     return Response.json({ error: PILOTI_DOOR_REFUSAL, code: 'FORBIDDEN' }, { status: 403 })
   }
