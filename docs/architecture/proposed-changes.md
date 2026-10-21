@@ -538,6 +538,20 @@ what it started). `failed` ends a run with its reason when a slice is refused
 (the person lost the shelf, the project closed). A transient error is not a
 refusal: the queue retries that slice.
 
+**A run is never left working with nothing working on it.** If its job cannot
+be queued, the step that moved it is taken back (a new run ends `failed` with
+`not_queued`, an apply returns to `ready`, an undo to `applied`). If its job
+dies (out of attempts), the run stops moving: a working run untouched for 30
+minutes (`STALLED_AFTER_MS`, far beyond a slice and the queue's backoff) is
+ended `failed` with `stalled` whenever anyone opens the sort, starts one or
+reads a run of that shelf, so the one-in-work index frees the shelf. A run that
+failed part of the way through applying can still be undone.
+
+**The person is told.** When a run becomes `ready` or `failed`, its requester
+gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
+`lib/filing/root-sort-announce.ts`) that opens the shelf with the dialog
+(`?rootSort=<runId>`), so closing the dialog never means missing the result.
+
 **The slices.** Each one is bounded well inside the runner's 300 s ceiling
 (`GRID_BFF_JOBS_SLICE_TIMEOUT_MS`), and the cursor is saved after each one.
 
@@ -571,7 +585,9 @@ refusal: the queue retries that slice.
    `moveDocumentToFolder` with all its checks, and records each outcome; a move
    that fails is recorded and the rest go on.
 6. **Undo** (`undoing`). Moves the documents the run moved back to the root, 100
-   per slice. The folders it created stay.
+   per slice, from `applied` or from a `failed` run that had moved some. The
+   folders it created stay. What it could not move back is kept apart
+   (`undo_failures`) and named in the dialog.
 
 **The reading rules are the upload filing's.** Only folders every member may
 read, only screened documents, nothing on a closed project. The gate is

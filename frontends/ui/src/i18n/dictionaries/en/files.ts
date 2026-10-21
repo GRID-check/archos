@@ -2048,6 +2048,11 @@ export const files = {
     },
     cancelled: 'The sort was cancelled. Nothing was moved.',
     failed: 'The sort failed.',
+    failedReason: {
+      stalled: 'The sort stopped making progress and was ended. You can start it again.',
+      notQueued: 'The sort could not be started. Please try again.',
+      partlyMoved: '{count, plural, one {# file was already moved; Undo puts it back.} other {# files were already moved; Undo puts them back.}}',
+    },
     review: {
       sure: '{count} sure',
       unsure: '{count} unsure',

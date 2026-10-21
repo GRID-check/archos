@@ -305,7 +305,16 @@ export function RootSortDialog({
           {phase === 'failed' && current && (
             <div className="flex flex-col gap-2 text-sm">
               <p className="font-medium">{t('rootSort.failed')}</p>
-              {current.error && <p className="text-muted-foreground break-words">{current.error}</p>}
+              {current.error && (
+                <p className="text-muted-foreground break-words">
+                  {current.error === 'stalled'
+                    ? t('rootSort.failedReason.stalled')
+                    : current.error === 'not_queued'
+                      ? t('rootSort.failedReason.notQueued')
+                      : current.error}
+                </p>
+              )}
+              {current.moved > 0 && <p>{t('rootSort.failedReason.partlyMoved', { count: current.moved })}</p>}
             </div>
           )}
         </div>
@@ -384,6 +393,16 @@ export function RootSortDialog({
               <Button type="button" variant="outline" onClick={close}>
                 {t('rootSort.close')}
               </Button>
+              {current.moved > 0 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => perform(() => undoRootSortRun(current.id))}
+                >
+                  {t('rootSort.done.undo')}
+                </Button>
+              )}
               <Button type="button" disabled={busy} onClick={start}>
                 {t('rootSort.restart')}
               </Button>

@@ -29,6 +29,7 @@ import { findRootDocuments } from './repository'
 import { announceRootSortRun } from './root-sort-announce'
 import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor } from './root-sort'
 import {
+  failStalledRootSortRuns,
   findLatestRootSortRun,
   findRootSortRun,
   insertRootSortRun,
@@ -47,6 +48,19 @@ import {
 
 const ONE_IN_WORK_INDEX = 'root_sort_runs_one_in_work_per_shelf'
 
+/**
+ * A working run that has not moved for this long has no job left: a slice
+ * writes its run at least every five minutes (the runner's slice ceiling), and
+ * the queue's retries with their backoff end well inside it.
+ */
+export const STALLED_AFTER_MS = 30 * 60 * 1000
+
+/** End the shelf's runs whose job died, and tell their requesters. Run before anything reads or starts a run. */
+async function settleStalledRuns(organizationId: string, shelf: DocumentShelf): Promise<void> {
+  const ended = await failStalledRootSortRuns(organizationId, shelf, new Date(Date.now() - STALLED_AFTER_MS))
+  for (const run of ended) await announceRootSortRun(run)
+}
+
 export function shelfOfRun(run: Pick<RootSortRun, 'scope' | 'projectId'>): DocumentShelf {
   return run.scope === 'project' && run.projectId ? projectShelf(run.projectId) : OFFICE_SHELF
 }
@@ -54,6 +68,7 @@ export function shelfOfRun(run: Pick<RootSortRun, 'scope' | 'projectId'>): Docum
 /** What the shelf's root holds now, and this person's latest run on it. */
 export async function describeRootSort(session: AuthorizedSession, shelf: DocumentShelf) {
   const scan = await scanRoot(session, shelf)
+  await settleStalledRuns(session.organizationId, shelf)
   const latest = await findLatestRootSortRun(session.organizationId, shelf, session.userId)
   return {
     files: scan.documents.length,
@@ -79,6 +94,7 @@ export async function startRootSort(session: AuthorizedSession, shelf: DocumentS
   const scan = await scanRoot(session, shelf)
   if (scan.folders.length === 0) throw new BadRequestError('The shelf has no folder to sort into.')
   if (scan.documents.length === 0) throw new BadRequestError('The root holds no file to sort.')
+  await settleStalledRuns(session.organizationId, shelf)
   let run: RootSortRun
   try {
     run = await insertRootSortRun({
@@ -95,16 +111,36 @@ export async function startRootSort(session: AuthorizedSession, shelf: DocumentS
     if (isUniqueViolation(error, ONE_IN_WORK_INDEX)) throw new ConflictError('A sort of this shelf is already running.')
     throw error
   }
-  await enqueueSlice(session, run.id)
+  await enqueueOrRevert(session, run, ['judging'], { status: 'failed', error: 'not_queued', finishedAt: new Date() })
   return viewOf(session, run)
+}
+
+/**
+ * Queue the run's next slice. A run whose job could not be queued would say it
+ * is working with nothing working on it, so the step that moved it is taken
+ * back (or a new run ended) before the failure surfaces.
+ */
+async function enqueueOrRevert(
+  session: AuthorizedSession,
+  run: RootSortRun,
+  from: readonly RootSortRunStatus[],
+  revert: RootSortRunPatch
+): Promise<void> {
+  try {
+    await enqueueSlice(session, run.id)
+  } catch (error) {
+    await updateRootSortRun(session.organizationId, run.id, from, revert)
+    throw error
+  }
 }
 
 /** The run, when it is this person's and they may still sort its shelf. */
 async function ownRun(session: AuthorizedSession, runId: string): Promise<RootSortRun> {
-  const run = await findRootSortRun(session.organizationId, runId)
-  if (!run || run.requestedBy !== session.userId) throw new NotFoundError('Run not found.')
-  await requireSortable(session, shelfOfRun(run))
-  return run
+  const found = await findRootSortRun(session.organizationId, runId)
+  if (!found || found.requestedBy !== session.userId) throw new NotFoundError('Run not found.')
+  await requireSortable(session, shelfOfRun(found))
+  await settleStalledRuns(session.organizationId, shelfOfRun(found))
+  return (await findRootSortRun(session.organizationId, runId)) ?? found
 }
 
 export async function getRootSortRun(session: AuthorizedSession, runId: string): Promise<RootSortRunView> {
@@ -151,14 +187,16 @@ export async function applyRootSort(session: AuthorizedSession, runId: string, k
   const keptMoves = keptMovesOf(run, keep)
   if (keptMoves.length === 0) throw new BadRequestError('Nothing to move.')
   const updated = await transition(session, run, ['ready'], { status: 'applying', keptMoves, cursor: 0 })
-  await enqueueSlice(session, run.id)
+  await enqueueOrRevert(session, updated, ['applying'], { status: 'ready', keptMoves: [], cursor: 0 })
   return viewOf(session, updated)
 }
 
+/** Send back what the run moved: after it applied, or after it failed part of the way through applying. */
 export async function undoRootSort(session: AuthorizedSession, runId: string): Promise<RootSortRunView> {
   const run = await ownRun(session, runId)
-  const updated = await transition(session, run, ['applied'], { status: 'undoing', cursor: 0 })
-  await enqueueSlice(session, run.id)
+  if (run.movedDocumentIds.length === 0) throw new BadRequestError('The run moved nothing to undo.')
+  const updated = await transition(session, run, ['applied', 'failed'], { status: 'undoing', cursor: 0 })
+  await enqueueOrRevert(session, updated, ['undoing'], { status: run.status, cursor: 0 })
   return viewOf(session, updated)
 }
 

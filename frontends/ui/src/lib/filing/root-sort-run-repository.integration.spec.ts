@@ -76,7 +76,9 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
   let db: ReturnType<typeof import('@/lib/db').getDb>
 
   // One project per case, so the cases cannot see each other's in-work runs.
-  const projects: Record<'roundTrip' | 'unique' | 'conditional' | 'checks' | 'rls' | 'cascade' | 'archiv', string> = {
+  const projects: Record<'roundTrip' | 'unique' | 'conditional' | 'checks' | 'rls' | 'cascade' | 'archiv' | 'stalled' | 'fresh', string> = {
+    stalled: '',
+    fresh: '',
     roundTrip: '',
     unique: '',
     conditional: '',
@@ -357,6 +359,29 @@ describe.skipIf(!url)('root_sort_runs against Postgres', () => {
 
     expect(await repo.findRootSortRun(ORG_B, run.id)).toBeNull()
     expect((await repo.findRootSortRun(ORG_A, run.id))?.status).toBe('judging')
+  })
+
+  it('ends a working run that stopped moving, frees the shelf, and leaves a fresh one alone', async () => {
+    const insert = (projectId: string, status: RootSortRunStatus) =>
+      repo.insertRootSortRun({ organizationId: ORG_A, scope: 'project', projectId, requestedBy: ME, status, documentIds: [] })
+    const stalled = await insert(projects.stalled, 'applying')
+    await withTenant({ organizationId: ORG_A, userId: ME }, () =>
+      db.execute(sql`update root_sort_runs set updated_at = now() - interval '2 hours' where id = ${stalled.id}`)
+    )
+    const fresh = await insert(projects.fresh, 'judging')
+    const before = new Date(Date.now() - 30 * 60 * 1000)
+
+    // Another organization's sweep reaches nothing of this one.
+    expect(await repo.failStalledRootSortRuns(ORG_B, { kind: 'project', projectId: projects.stalled }, before)).toEqual([])
+
+    const ended = await repo.failStalledRootSortRuns(ORG_A, { kind: 'project', projectId: projects.stalled }, before)
+    expect(ended.map((run) => [run.id, run.status, run.error])).toEqual([[stalled.id, 'failed', 'stalled']])
+    expect(ended[0].finishedAt).not.toBeNull()
+
+    // The shelf takes a new run again, and the other shelf's fresh run kept working.
+    expect((await insert(projects.stalled, 'judging')).status).toBe('judging')
+    expect(await repo.failStalledRootSortRuns(ORG_A, { kind: 'project', projectId: projects.fresh }, before)).toEqual([])
+    expect((await repo.findRootSortRun(ORG_A, fresh.id))?.status).toBe('judging')
   })
 
   it('deletes a project\'s runs with it, and leaves the Archiv runs alone', async () => {

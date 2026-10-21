@@ -2031,6 +2031,11 @@ export const files: typeof en.files = {
     },
     cancelled: 'Die Sortierung ist abgebrochen. Verschoben wurde nichts.',
     failed: 'Die Sortierung ist fehlgeschlagen.',
+    failedReason: {
+      stalled: 'Die Sortierung ist stehen geblieben und wurde beendet. Sie können sie neu starten.',
+      notQueued: 'Die Sortierung konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
+      partlyMoved: '{count, plural, one {# Datei wurde schon verschoben; Rückgängig legt sie zurück.} other {# Dateien wurden schon verschoben; Rückgängig legt sie zurück.}}',
+    },
     review: {
       sure: '{count} sicher',
       unsure: '{count} unsicher',

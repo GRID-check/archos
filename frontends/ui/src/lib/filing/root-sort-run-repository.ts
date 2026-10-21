@@ -6,12 +6,12 @@
  */
 
 import 'server-only'
-import { and, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { rootSortRuns, type RootSortRun } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { DocumentShelf } from '@/lib/documents/shelf'
-import type { RootSortRunStatus } from './root-sort-types'
+import { ROOT_SORT_WORKING_STATUSES, type RootSortRunStatus } from './root-sort-types'
 
 export type NewRootSortRun = Pick<
   typeof rootSortRuns.$inferInsert,
@@ -99,4 +99,32 @@ export async function updateRootSortRun(
       .returning()
   )
   return row ?? null
+}
+
+/**
+ * End every run of the shelf that says it is working but has not moved since
+ * `before`: its job died (out of attempts, or never queued), and nothing else
+ * will ever finish it. Without this the shelf's one-in-work index would refuse
+ * every later run. Answers the runs it ended.
+ */
+export async function failStalledRootSortRuns(
+  organizationId: string,
+  shelf: DocumentShelf,
+  before: Date
+): Promise<RootSortRun[]> {
+  return withTenant({ organizationId }, () =>
+    getDb()
+      .update(rootSortRuns)
+      .set({ status: 'failed', error: 'stalled', finishedAt: sql`now()`, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(rootSortRuns.organizationId, organizationId),
+          eq(rootSortRuns.scope, shelf.kind),
+          shelf.kind === 'project' ? eq(rootSortRuns.projectId, shelf.projectId) : isNull(rootSortRuns.projectId),
+          inArray(rootSortRuns.status, [...ROOT_SORT_WORKING_STATUSES]),
+          lt(rootSortRuns.updatedAt, before)
+        )
+      )
+      .returning()
+  )
 }
