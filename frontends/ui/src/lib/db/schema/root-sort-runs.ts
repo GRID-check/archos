@@ -32,6 +32,7 @@ export const rootSortRuns = pgTable(
     keptMoves: jsonb('kept_moves').$type<KeptMove[]>().notNull().default([]),
     movedDocumentIds: jsonb('moved_document_ids').$type<string[]>().notNull().default([]),
     moveFailures: jsonb('move_failures').$type<RootSortMoveFailure[]>().notNull().default([]),
+    undoFailures: jsonb('undo_failures').$type<RootSortMoveFailure[]>().notNull().default([]),
     error: text('error'),
     groupingError: text('grouping_error'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

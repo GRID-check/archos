@@ -15,7 +15,8 @@
 -- The JSON columns hold the run's own lists, bounded by the CHECKs: the root
 -- documents read (at most 5000 ids), what Piloti placed, the new folders it
 -- proposed, what the person kept, and what was moved, so undo moves exactly
--- those back. Ids and paths only, never document content.
+-- those back, and what an apply or an undo could not move, kept apart so the
+-- undo reports its own. Ids and paths only, never document content.
 --
 -- `error` ends a run (`failed`); `grouping_error` does not: a grouping that
 -- failed leaves its files in the root and the run still reaches `ready`, and
@@ -40,6 +41,7 @@ CREATE TABLE IF NOT EXISTS "root_sort_runs" (
   "kept_moves" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "moved_document_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "move_failures" jsonb DEFAULT '[]'::jsonb NOT NULL,
+  "undo_failures" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "error" text,
   "grouping_error" text,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -63,6 +65,7 @@ CREATE TABLE IF NOT EXISTS "root_sort_runs" (
       AND jsonb_array_length("kept_moves") <= 5000
       AND jsonb_array_length("moved_document_ids") <= 5000
       AND jsonb_array_length("move_failures") <= 5000
+      AND jsonb_array_length("undo_failures") <= 5000
     )
 );
 --> statement-breakpoint

@@ -2076,6 +2076,7 @@ export const files: typeof en.files = {
       foldersKept: 'Angelegte Ordner bleiben bestehen.',
       undo: 'Rückgängig',
       undone: 'Rückgängig gemacht. Die Dateien liegen wieder im Stammordner.',
+      undoFailed: '{count, plural, one {# Datei konnte nicht zurückgelegt werden und bleibt im Ordner, in den sie verschoben wurde.} other {# Dateien konnten nicht zurückgelegt werden und bleiben in den Ordnern, in die sie verschoben wurden.}}',
     },
   },
 }

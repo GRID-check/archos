@@ -292,7 +292,12 @@ export function RootSortDialog({
           )}
 
           {phase === 'undone' && (
-            <p className="text-sm font-medium">{t('rootSort.done.undone')}</p>
+            <div className="flex flex-col gap-2 text-sm">
+              <p className="font-medium">{t('rootSort.done.undone')}</p>
+              {current && current.undoFailures.length > 0 && (
+                <p className="text-destructive">{t('rootSort.done.undoFailed', { count: current.undoFailures.length })}</p>
+              )}
+            </div>
           )}
 
           {phase === 'cancelled' && <p className="text-sm">{t('rootSort.cancelled')}</p>}

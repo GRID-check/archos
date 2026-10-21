@@ -49,7 +49,7 @@ import {
   shelfFolders,
   type ShelfFolders,
 } from './service'
-import { MAX_JUDGED_FOLDERS, type FilingFolderInput, type FilingMove } from './types'
+import { MAX_JUDGED_FOLDERS, type FilingConventionInput, type FilingFolderInput, type FilingMove } from './types'
 
 /**
  * The grouping of every leftover document (parallel chunks, one merge, then the
@@ -174,17 +174,22 @@ export function placementsOf(
 }
 
 /** Judge one chunk of root documents. A judgement that failed is `error` and no placements. */
-export async function planRootChunk(
-  session: AuthorizedSession,
-  shelf: DocumentShelf,
-  documentIds: readonly string[]
-): Promise<RootSortPlan> {
+/**
+ * What every judgement of one shelf reads besides its documents: the folders,
+ * their Dokumentarten, what a new folder may not collide with, and the
+ * office's conventions. The same for every chunk of a run, so a job slice
+ * reads it once and hands it to each chunk it judges side by side.
+ */
+export interface SortContext {
+  folders: ShelfFolders
+  inputs: FilingFolderInput[]
+  space: FolderSpace
+  conventions: FilingConventionInput[]
+}
+
+export async function sortContextFor(session: AuthorizedSession, shelf: DocumentShelf): Promise<SortContext> {
   await requireSortable(session, shelf)
-  const [folders, documents] = await Promise.all([
-    shelfFolders(session, shelf),
-    judgeableRootDocuments(session, shelf, documentIds),
-  ])
-  if (documents.length === 0) return { placements: [], error: null, traceId: null }
+  const folders = await shelfFolders(session, shelf)
   const [inputs, space, conventions] = await Promise.all([
     folderInputs(session, shelf, folders),
     folderSpace(session, shelf, folders),
@@ -192,13 +197,25 @@ export async function planRootChunk(
       ? conventionsFor(session, shelf.projectId, folders.rows.map((row) => row.path), true)
       : Promise.resolve([]),
   ])
+  return { folders, inputs, space, conventions }
+}
+
+/** Judge one chunk of root documents against the shelf's context. A judgement that failed is `error` and no placements. */
+export async function planRootChunk(
+  session: AuthorizedSession,
+  shelf: DocumentShelf,
+  documentIds: readonly string[],
+  context: SortContext
+): Promise<RootSortPlan> {
+  const documents = await judgeableRootDocuments(session, shelf, documentIds)
+  if (documents.length === 0) return { placements: [], error: null, traceId: null }
   const judgement = await judgeFiling(session.organizationId, {
     basis: 'content',
     purpose: 'sort',
     locale: REASON_LOCALE,
-    folders: inputs,
-    conventions,
-    documents: documents.map((row) => documentInput(row, folders, 'content')),
+    folders: context.inputs,
+    conventions: context.conventions,
+    documents: documents.map((row) => documentInput(row, context.folders, 'content')),
     trace: {
       batchId: randomUUID(),
       projectId: shelf.kind === 'project' ? shelf.projectId : null,
@@ -207,7 +224,7 @@ export async function planRootChunk(
   })
   if (judgement.error) return { placements: [], error: judgement.error, traceId: judgement.traceId }
   return {
-    placements: placementsOf(judgement.moves, openFoldersOf(folders), space),
+    placements: placementsOf(judgement.moves, openFoldersOf(context.folders), context.space),
     error: null,
     traceId: judgement.traceId,
   }

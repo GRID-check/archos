@@ -2093,6 +2093,7 @@ export const files = {
       foldersKept: 'Folders that were created stay.',
       undo: 'Undo',
       undone: 'Undone. The files are back in the root.',
+      undoFailed: '{count, plural, one {# file could not be moved back and stays in the folder the sort put it in.} other {# files could not be moved back and stay in the folders the sort put them in.}}',
     },
   },
 }

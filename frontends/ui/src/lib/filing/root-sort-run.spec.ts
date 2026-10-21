@@ -13,6 +13,7 @@ vi.mock('./root-sort', () => ({
   proposeRootFolders: vi.fn(),
   requireSortable: vi.fn(),
   scanRoot: vi.fn(),
+  sortContextFor: vi.fn(),
 }))
 vi.mock('./root-sort-run-repository', () => ({
   findLatestRootSortRun: vi.fn(),
@@ -33,7 +34,7 @@ import { moveDocumentsToFolders } from '@/lib/documents/move-to-folder'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import type { RootSortPayload } from '@/lib/jobs-queue/types'
 import { ensureProjectFolderPaths } from '@/lib/projects/folder-service'
-import { planRootChunk, proposeRootFolders, requireSortable, scanRoot } from './root-sort'
+import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor, type SortContext } from './root-sort'
 import { keptMovesOf, runRootSortSlice, startRootSort } from './root-sort-run'
 import { findRootSortRun, insertRootSortRun, updateRootSortRun } from './root-sort-run-repository'
 import { ROOT_SORT_CHUNK } from './root-sort-types'
@@ -63,6 +64,7 @@ function run(patch: Partial<RootSortRun> = {}): RootSortRun {
     keptMoves: [],
     movedDocumentIds: [],
     moveFailures: [],
+    undoFailures: [],
     error: null,
     groupingError: null,
     createdAt: new Date('2026-10-21T12:00:00Z'),
@@ -75,8 +77,11 @@ function run(patch: Partial<RootSortRun> = {}): RootSortRun {
 /** What the slice wrote, and from which status. */
 const written = () => vi.mocked(updateRootSortRun).mock.calls.map(([, , from, patch]) => ({ from, patch }))
 
+const CONTEXT = { folders: { rows: [] }, inputs: [], space: {}, conventions: [] } as unknown as SortContext
+
 beforeEach(() => {
   vi.resetAllMocks()
+  vi.mocked(sortContextFor).mockResolvedValue(CONTEXT)
   vi.mocked(requireSortable).mockResolvedValue()
   vi.mocked(updateRootSortRun).mockImplementation(async (_org, _id, _from, patch) => run(patch))
 })
@@ -102,6 +107,9 @@ describe('runRootSortSlice', () => {
     )
     const slice = await runRootSortSlice(SESSION, PAYLOAD)
     expect(planRootChunk).toHaveBeenCalledTimes(3)
+    // The shelf's folders and conventions are read once for the slice, not once per chunk.
+    expect(sortContextFor).toHaveBeenCalledTimes(1)
+    expect(new Set(vi.mocked(planRootChunk).mock.calls.map((call) => call[3]))).toEqual(new Set([CONTEXT]))
     expect(slice.done).toBe(false)
     const [{ from, patch }] = written()
     expect(from).toEqual(['judging'])
@@ -165,10 +173,12 @@ describe('runRootSortSlice', () => {
     expect(slice.done).toBe(true)
   })
 
-  it('undoes exactly what the run moved, back to the root', async () => {
-    vi.mocked(findRootSortRun).mockResolvedValue(run({ status: 'undoing', movedDocumentIds: ['d0', 'd1'] }))
+  it('undoes exactly what the run moved, back to the root, and keeps its failures apart', async () => {
+    vi.mocked(findRootSortRun).mockResolvedValue(
+      run({ status: 'undoing', movedDocumentIds: ['d0', 'd1'], moveFailures: [{ documentId: 'd9', error: 'x' }] })
+    )
     vi.mocked(moveDocumentsToFolders).mockImplementation(async (moves) =>
-      moves.map((move) => ({ documentId: move.documentId, ok: true, error: null }))
+      moves.map((move) => ({ documentId: move.documentId, ok: move.documentId !== 'd1', error: move.documentId === 'd1' ? 'Folder is read-only.' : null }))
     )
     await runRootSortSlice(SESSION, PAYLOAD)
     expect(moveDocumentsToFolders).toHaveBeenCalledWith(
@@ -178,7 +188,10 @@ describe('runRootSortSlice', () => {
       ],
       SESSION
     )
-    expect(written()[0].patch.status).toBe('undone')
+    const { patch } = written()[0]
+    expect(patch.status).toBe('undone')
+    expect(patch.undoFailures).toEqual([{ documentId: 'd1', error: 'Folder is read-only.' }])
+    expect(patch.moveFailures).toBeUndefined()
   })
 
   it('ends without work for a run that is not working, or is not this person’s', async () => {

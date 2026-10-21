@@ -29,6 +29,7 @@ export type RootSortRunPatch = Partial<
     | 'keptMoves'
     | 'movedDocumentIds'
     | 'moveFailures'
+    | 'undoFailures'
     | 'error'
     | 'groupingError'
     | 'finishedAt'

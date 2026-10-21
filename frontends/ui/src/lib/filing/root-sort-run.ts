@@ -26,7 +26,7 @@ import { ensureOfficeShelfFolderPaths } from '@/lib/office-shelf/folder-service'
 import { folderPathKey } from '@/lib/projects/folders'
 import { ensureProjectFolderPaths } from '@/lib/projects/folder-service'
 import { findRootDocuments } from './repository'
-import { planRootChunk, proposeRootFolders, requireSortable, scanRoot } from './root-sort'
+import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor } from './root-sort'
 import {
   findLatestRootSortRun,
   findRootSortRun,
@@ -214,6 +214,7 @@ export async function viewOf(session: AuthorizedSession, run: RootSortRun): Prom
     review,
     moved: run.movedDocumentIds.length,
     moveFailures: run.moveFailures.slice(0, 50),
+    undoFailures: run.undoFailures.slice(0, 50),
     error: run.error,
     groupingError: run.groupingError,
     createdAt: new Date(run.createdAt).toISOString(),
@@ -233,7 +234,8 @@ async function judgeSlice(session: AuthorizedSession, run: RootSortRun): Promise
   const chunks = Array.from({ length: Math.ceil(step.length / ROOT_SORT_CHUNK) }, (_, index) =>
     step.slice(index * ROOT_SORT_CHUNK, (index + 1) * ROOT_SORT_CHUNK)
   )
-  const plans = await Promise.all(chunks.map((ids) => planRootChunk(session, shelf, ids)))
+  const context = await sortContextFor(session, shelf)
+  const plans = await Promise.all(chunks.map((ids) => planRootChunk(session, shelf, ids, context)))
   const cursor = run.cursor + step.length
   return {
     placements: [...run.placements, ...plans.flatMap((plan) => plan.placements)],
@@ -307,8 +309,8 @@ async function undoSlice(session: AuthorizedSession, run: RootSortRun): Promise<
   const done = cursor >= run.movedDocumentIds.length
   return {
     cursor,
-    moveFailures: [
-      ...run.moveFailures,
+    undoFailures: [
+      ...run.undoFailures,
       ...outcomes.flatMap((o) => (o.ok ? [] : [{ documentId: o.documentId, error: o.error ?? 'Undo failed.' }])),
     ],
     status: done ? 'undone' : 'undoing',

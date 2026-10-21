@@ -25,6 +25,7 @@ const RUN: RootSortRunView = {
   review: null,
   moved: 0,
   moveFailures: [],
+  undoFailures: [],
   error: null,
   groupingError: null,
   createdAt: '2026-10-21T12:00:00.000Z',

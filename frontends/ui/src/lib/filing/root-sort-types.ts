@@ -167,6 +167,8 @@ export const rootSortRunSchema = z.object({
     .nullable(),
   moved: z.number().int().nonnegative(),
   moveFailures: z.array(z.object({ documentId: z.string(), error: z.string() })),
+  /** What the undo could not send back to the root; those files stay where the run put them. */
+  undoFailures: z.array(z.object({ documentId: z.string(), error: z.string() })),
   error: z.string().nullable(),
   /** Why no new folders were proposed for the leftovers; the run is still ready, those files stay in the root. */
   groupingError: z.string().nullable(),
