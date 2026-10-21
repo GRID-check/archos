@@ -198,25 +198,30 @@ restart separately, and chunk keys off the data disk.
     questions below.
 * **3b, out.** Add a KEDA `ScaledObject` on the `seaweedfs-volume` StatefulSet,
   built like `backend-scaling.ts`:
-  * **Triggers:** two `metrics-api` triggers on an internal endpoint, each a
-    measure that rises as the pool fills: **used bytes** (from each volume
-    server's disk status) and **used slots** (`Max − Free` from the master's
-    `/dir/status`). Both use `metricType: AverageValue`, with `targetValue` set
-    to 80% of one server's capacity (its PVC size, its slot count). KEDA then
-    asks for `ceil(used / (0.8 × one server))` servers, so the pool keeps about
-    20% headroom, and the HPA takes the larger of the two. The PVC size and the
-    slot count change as 3a grows the disks, so the endpoint reports the target
-    alongside the value. `activationTargetValue` plays no part:
-    `minReplicaCount` is at least 1, and activation only governs 0 ↔ 1.
+  * **Trigger:** one `metrics-api` trigger on an internal endpoint that
+    returns **the number of volume servers the pool needs**:
+    `max(ceil(used bytes / (0.8 × one server's PVC size)), ceil(used slots /
+    (0.8 × one server's slot count)))`. Used bytes come from each volume
+    server's disk status, used slots from `Max − Free` in the master's
+    `/dir/status`, and the per-server capacity from what the servers report
+    now. The trigger is `metricType: AverageValue` with a fixed
+    `targetValue: "1"`, so KEDA asks for exactly that many servers.
+
+    The 80% headroom is computed in the endpoint, not in the `ScaledObject`,
+    because a `metrics-api` trigger reads only the value: its `targetValue` is
+    fixed in the manifest. When 3a grows a PVC or `-max=0` raises a server's
+    slot count, the next poll already returns a smaller count, and no manifest
+    changes. `AverageValue` is also what the fallback below requires.
+    `activationTargetValue` plays no part: `minReplicaCount` is at least 1, and
+    activation only governs 0 ↔ 1.
   * **Up only:** scale-down is disabled. A volume server holds data, and
     removing one is a drain, not a scale-in.
   * **`fallback`:** the repository's own `scalerFallback`
     (`keda-scaling.ts`): `failureThreshold` and a fixed `replicas`, with
     `behavior: currentReplicasIfHigher`, so a blind scaler never takes the
     pool below what it already runs. KEDA honours a fallback only on
-    `AverageValue` triggers, which is one more reason for the metric type
-    above. The concrete threshold and count are chosen when the
-    `ScaledObject` is written.
+    `AverageValue` triggers, which the trigger above is. The concrete
+    threshold and count are chosen when the `ScaledObject` is written.
   * **`maxReplicaCount`:** the number of `data` nodes, because volume servers
     spread one per node.
   * **What a scale-up does:** the StatefulSet claims `data-seaweedfs-volume-N`,
@@ -292,6 +297,9 @@ Nothing enforces this yet. Each phase lands with its gate:
   * A spec holds that every `data-seaweedfs-volume` claim carries a
     `storage_limit`, and that the volume `ScaledObject` has scale-down disabled
     and a `fallback`.
+  * A unit test holds that the endpoint's server count follows capacity: the
+    same used bytes ask for fewer servers after a PVC grows, and the count is
+    the larger of the bytes and slots demands.
   * The CrossGuard policy pack refuses an autoresize annotation without a
     limit.
 
