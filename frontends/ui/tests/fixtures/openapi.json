@@ -23109,7 +23109,7 @@
         "x-mcp-annotations": {
           "title": "Force a rebuild of chosen base-corpus documents",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -23595,7 +23595,7 @@
         "x-mcp-annotations": {
           "title": "Set the fleet-wide default models",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -23926,7 +23926,7 @@
         "x-mcp-annotations": {
           "title": "Replace the norm registry",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -24616,8 +24616,8 @@
         "x-mcp-annotations": {
           "title": "Publish a new price list",
           "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": true,
+          "destructiveHint": true,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }
@@ -25033,7 +25033,7 @@
         "x-mcp-annotations": {
           "title": "Set the fleet-wide reasoning efforts",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -25148,7 +25148,7 @@
         "x-mcp-annotations": {
           "title": "Set the fleet-wide retrieval settings",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }

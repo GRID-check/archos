@@ -160,6 +160,18 @@ describe('external agent (bearer token)', () => {
     expect((await verifier.verifyAccessToken(await token())).resource?.href).toBe(RESOURCE)
   })
 
+  it('keeps the platform door’s audience apart from the office doors’, both ways (ADR-0126)', async () => {
+    const PLATFORM_RESOURCE = 'https://app.piloti.test/api/platform/mcp'
+    const office = tokenVerifier(DOMAIN, ISSUER, { jwks }, 'mcp')
+    const platform = tokenVerifier(DOMAIN, ISSUER, { jwks }, 'platform')
+    await expect(office.verifyAccessToken(await token({}, { aud: PLATFORM_RESOURCE }))).rejects.toThrow()
+    await expect(tokenVerifier(DOMAIN, ISSUER, { jwks }, 'a2a').verifyAccessToken(await token({}, { aud: PLATFORM_RESOURCE }))).rejects.toThrow()
+    for (const aud of [RESOURCE, A2A_RESOURCE]) {
+      await expect(platform.verifyAccessToken(await token({}, { aud })), aud).rejects.toThrow()
+    }
+    expect((await platform.verifyAccessToken(await token({}, { aud: PLATFORM_RESOURCE }))).resource?.href).toBe(PLATFORM_RESOURCE)
+  })
+
   it('refuses a foreign audience on the A2A door too, and points it at the A2A door’s metadata', async () => {
     for (const aud of ['https://other.example/api/a2a', 'https://other.example/api/mcp', 'https://app.piloti.test/api/other']) {
       const { response } = challengeOf(await resolvePrincipal(bearerAt(A2A_RESOURCE, await token({}, { aud })), { jwks }))

@@ -37,19 +37,33 @@ import {
   searchOperations,
 } from './discovery'
 import { type AgentOperation, annotationsOf } from './operation'
-import { visibleBackendOperations, visibleOperations } from './policy'
+import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
 
-/** What the agent reads once, at connect time. */
+/** What the agent reads once, at connect time, on an office door. */
 export const MCP_INSTRUCTIONS = [
   'Piloti is the workspace for architects: a planning office runs its projects and processes in it, and Piloti, the agent, is a colleague in that office.',
   'Through this server you act for the signed-in person, with exactly the rights they have: their projects, documents, folders, review, conversations, tasks, skills and knowledge.',
   'Start with project-list to see which projects exist, then search-operations to find what you need and call-operation to run it (describe-operation shows an input you do not know).',
   'Ask the person before a destructive operation. If nothing fits what they asked for, say so and call report-missing-operation.',
 ].join(' ')
+
+/** What the agent reads once, at connect time, on the platform door (ADR-0126). */
+export const PLATFORM_MCP_INSTRUCTIONS = [
+  'This is the Piloti platform console: GRID operates Piloti for every planning office here, and you act for a platform operator with exactly the platform permissions they hold.',
+  'Settings, prices, models and the base knowledge corpus here apply to every organization at once; nothing of an office\'s own workspace is here.',
+  'Start with platform-overview-get for the organizations, then search-operations to find what you need and call-operation to run it (describe-operation shows an input you do not know).',
+  'Ask the person before every destructive operation: here one reaches every tenant. If nothing fits, say so and call report-missing-operation.',
+].join(' ')
+
+/** The server's name and instructions on each door. */
+const SERVER_IDENTITY: Readonly<Record<AgentDoor, { name: string; instructions: string }>> = {
+  office: { name: 'piloti', instructions: MCP_INSTRUCTIONS },
+  platform: { name: 'piloti-platform', instructions: PLATFORM_MCP_INSTRUCTIONS },
+}
 
 /**
  * Tools a Claude client keeps loaded although it defers MCP tools by default
@@ -183,7 +197,8 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
 }
 
 export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpServer {
-  const server = new McpServer({ name: 'piloti', version: '1.0.0' }, { instructions: MCP_INSTRUCTIONS })
+  const { name, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
+  const server = new McpServer({ name, version: '1.0.0' }, { instructions })
   const ctx: McpCallContext = { principal, mode }
   if (mode === 'tools') registerOperationTools(server, ctx)
   else registerMetaTools(server, ctx)

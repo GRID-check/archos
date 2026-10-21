@@ -23,8 +23,11 @@ import type { AgentPrincipal } from './principal'
 
 export type McpMode = 'search' | 'tools'
 
-/** Where a call came in: the MCP server for an external agent or for Piloti, or the A2A door. */
-export type CallDoor = 'mcp' | 'piloti' | 'a2a'
+/**
+ * Where a call came in: the office MCP server for an external agent or for
+ * Piloti, the A2A door, or the platform door (`/api/platform/mcp`, ADR-0126).
+ */
+export type CallDoor = 'mcp' | 'piloti' | 'a2a' | 'platform'
 
 export interface McpCallContext {
   principal: AgentPrincipal
@@ -34,8 +37,11 @@ export interface McpCallContext {
   door?: CallDoor
 }
 
-const doorOf = ({ principal, door }: McpCallContext): CallDoor =>
-  door ?? (principal.actor === 'external_agent' ? 'mcp' : 'piloti')
+function doorOf({ principal, door }: McpCallContext): CallDoor {
+  if (door) return door
+  if (principal.door === 'platform') return 'platform'
+  return principal.actor === 'external_agent' ? 'mcp' : 'piloti'
+}
 
 export function recordOperationCalled(
   ctx: McpCallContext,

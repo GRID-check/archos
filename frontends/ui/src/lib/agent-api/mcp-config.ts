@@ -8,10 +8,13 @@
  * environment at call time so a spec can set it and a deployment change needs no
  * rebuild.
  *
- * Two doors, two resources (RFC 8707): the MCP server at `/api/mcp` and the A2A
- * server at `/api/a2a`. Both are this server, verify a token the same way and
- * act as the same person with the same rights, so each accepts a token issued
- * for either (`acceptedAudiences`); a token for anything else is refused.
+ * Three resources (RFC 8707). The office doors, the MCP server at `/api/mcp` and
+ * the A2A server at `/api/a2a`, are this server for an office's agents: they
+ * verify a token the same way and act as the same person with the same rights,
+ * so each accepts a token issued for either. The platform door
+ * (`/api/platform/mcp`, ADR-0126) is the operator console's own MCP server: it
+ * accepts only a token issued for it, and neither office door accepts one
+ * (`acceptedAudiences`). A token for anything else is refused everywhere.
  */
 
 import { type OAuthMetadata, buildOAuthProtectedResourceMetadata } from '@modelcontextprotocol/server'
@@ -19,9 +22,22 @@ import { configuredAppOrigin } from '@/lib/app-origin'
 
 export const MCP_PATH = '/api/mcp'
 export const A2A_PATH = '/api/a2a'
+/** The operator console's MCP server (ADR-0126): beside the routes it serves, not under the office door's path. */
+export const PLATFORM_MCP_PATH = '/api/platform/mcp'
 
-/** The two doors an external agent knocks on, each its own protected resource. */
-export type AgentDoor = 'mcp' | 'a2a'
+/** The endpoints an external agent knocks on, each its own protected resource. */
+export type DoorResource = 'mcp' | 'a2a' | 'platform'
+
+/**
+ * The audience groups: the endpoints that take each other's tokens. The office
+ * doors are one group; the platform door is a group of its own, so a token for
+ * an office never reaches the operator console and the reverse.
+ */
+const AUDIENCE_GROUPS: Readonly<Record<DoorResource, readonly DoorResource[]>> = {
+  mcp: ['mcp', 'a2a'],
+  a2a: ['mcp', 'a2a'],
+  platform: ['platform'],
+}
 
 /** Scopes a client may ask WorkOS for. `piloti:sensitive` is not among them until WorkOS defines it. */
 export const MCP_SCOPES_SUPPORTED = ['openid', 'profile', 'email', 'offline_access'] as const
@@ -65,22 +81,39 @@ export function a2aResourceUrl(env: Env = process.env): URL | null {
   return mcp ? new URL(A2A_PATH, mcp.origin) : null
 }
 
+/**
+ * The platform door's resource: the MCP resource's origin plus `/api/platform/mcp`,
+ * derived as the A2A door's is, so one setting moves all three; `null` when there is none.
+ */
+export function platformMcpResourceUrl(env: Env = process.env): URL | null {
+  const mcp = mcpResourceUrl(env)
+  return mcp ? new URL(PLATFORM_MCP_PATH, mcp.origin) : null
+}
+
 /** The resource `door` is. */
-export function doorResourceUrl(door: AgentDoor, env: Env = process.env): URL | null {
+export function doorResourceUrl(door: DoorResource, env: Env = process.env): URL | null {
+  if (door === 'platform') return platformMcpResourceUrl(env)
   return door === 'a2a' ? a2aResourceUrl(env) : mcpResourceUrl(env)
 }
 
-/** The door a request knocks on, by its path. */
-export function doorOf(request: Request): AgentDoor {
-  return new URL(request.url).pathname.startsWith(A2A_PATH) ? 'a2a' : 'mcp'
+const underPath = (pathname: string, path: string): boolean => pathname === path || pathname.startsWith(`${path}/`)
+
+/** The endpoint a request knocks on, by its path. */
+export function doorOf(request: Request): DoorResource {
+  const { pathname } = new URL(request.url)
+  if (underPath(pathname, PLATFORM_MCP_PATH)) return 'platform'
+  return underPath(pathname, A2A_PATH) ? 'a2a' : 'mcp'
 }
 
 /**
- * Every `aud` a token may carry on either door: both resources, each with and
- * without a trailing slash, since a client may spell it either way.
+ * Every `aud` a token may carry on `door`: the resources of its audience group
+ * (both office doors for either; the platform door alone for itself), each with
+ * and without a trailing slash, since a client may spell it either way.
  */
-export function acceptedAudiences(env: Env = process.env): string[] {
-  const resources = [mcpResourceUrl(env), a2aResourceUrl(env)].filter((url): url is URL => url !== null)
+export function acceptedAudiences(door: DoorResource = 'mcp', env: Env = process.env): string[] {
+  const resources = AUDIENCE_GROUPS[door]
+    .map((member) => doorResourceUrl(member, env))
+    .filter((url): url is URL => url !== null)
   return [
     ...new Set(
       resources.flatMap((url) => {
@@ -102,8 +135,15 @@ export function allowedOriginHostnames(env: Env = process.env): string[] {
   return [...hosts]
 }
 
+/** The name the metadata gives each resource (`resource_name`), shown by a client while it signs in. */
+const RESOURCE_NAMES: Readonly<Record<DoorResource, string>> = {
+  mcp: 'Piloti',
+  a2a: 'Piloti',
+  platform: 'Piloti platform console',
+}
+
 /** The RFC 9728 document for `door`, or `null` while no AuthKit domain or resource URL is set. */
-export function protectedResourceMetadata(env: Env = process.env, door: AgentDoor = 'mcp') {
+export function protectedResourceMetadata(env: Env = process.env, door: DoorResource = 'mcp') {
   const issuer = authkitIssuer(env)
   const resource = doorResourceUrl(door, env)
   if (!issuer || !resource) return null
@@ -121,14 +161,14 @@ export function protectedResourceMetadata(env: Env = process.env, door: AgentDoo
       oauthMetadata,
       resourceServerUrl: resource,
       scopesSupported: [...MCP_SCOPES_SUPPORTED],
-      resourceName: 'Piloti',
+      resourceName: RESOURCE_NAMES[door],
     }),
     bearer_methods_supported: ['header'],
   }
 }
 
 /** The metadata response the `.well-known` routes answer with: the MCP door's unless `door` says otherwise. */
-export function protectedResourceMetadataResponse(door: AgentDoor = 'mcp'): Response {
+export function protectedResourceMetadataResponse(door: DoorResource = 'mcp'): Response {
   const metadata = protectedResourceMetadata(process.env, door)
   if (!metadata) {
     return Response.json(

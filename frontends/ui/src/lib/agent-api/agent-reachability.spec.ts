@@ -113,6 +113,10 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
     category: 'other',
     reason: 'the MCP endpoint itself: it is the door every operation here goes through',
   },
+  '* /api/platform/mcp': {
+    category: 'other',
+    reason: 'the platform door (ADR-0126): the MCP endpoint for the operator console, through which the platform operations are called',
+  },
   '* /api/a2a': {
     category: 'other',
     reason: 'the A2A endpoint (ADR-0123): another protocol onto the piloti-ask operations, which an MCP client calls directly',

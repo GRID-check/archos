@@ -54,6 +54,7 @@ describe('the registry', () => {
         'piloti-acts',
         'piloti-ask',
         'piloti-wakes',
+        'platform-agent-mcp',
         'runtime-model-config',
         'skills',
         'task-automation',

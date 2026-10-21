@@ -227,6 +227,15 @@ export const FEATURE_FLAGS = {
    */
   agentMcpControls: 'agent-mcp-controls',
   /**
+   * The platform door (ADR-0126): a platform operator's agent reaches the
+   * operator console through its own MCP server at `/api/platform/mcp`. Read
+   * for the GRID Platform organization only, from the verified token's
+   * organization (`lib/agent-api/principal.ts`); no other organization can
+   * reach that door at all. An entitlement, off until an operator switches it
+   * on for the platform organization: every write there reaches every tenant.
+   */
+  platformAgentMcp: 'platform-agent-mcp',
+  /**
    * Agents consult Piloti (ADR-0123): an agent acting for a person asks Piloti
    * a question (`piloti-ask-create` on the agent door, `SendMessage` on the
    * A2A door) and Piloti answers in a turn run as that person, on their
@@ -262,6 +271,7 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'agent-mcp-access': 'entitlement',
   'agent-mcp-secrets': 'entitlement',
   'agent-mcp-controls': 'entitlement',
+  'platform-agent-mcp': 'entitlement',
   'piloti-ask': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',

@@ -43,15 +43,21 @@ export const SENSITIVE_SCOPE_ENFORCED_BY_WORKOS = false
  * The doors agents reach the catalog through. `office` is every door an office's
  * agents use: `/api/mcp`, the A2A door (`/api/a2a`) and Piloti's own workspace
  * door. The operator console (`platform`) is GRID's, not an office's: every
- * write there (defaults, prices, keys) reaches every tenant. It is planned as a
- * second server for platform staff (`/api/platform/mcp`), a door of its own that
- * offers exactly that domain; its operations need no change for it.
+ * write there (defaults, prices, keys) reaches every tenant. Its door is a
+ * second MCP server for platform staff, `/api/platform/mcp` (ADR-0126), that
+ * offers exactly that domain and nothing else.
  */
-export type AgentDoor = 'office'
+export type AgentDoor = 'office' | 'platform'
 
 /** The domains each door offers. */
 export const DOOR_DOMAINS: Readonly<Record<AgentDoor, ReadonlySet<AgentDomain>>> = {
   office: new Set(AGENT_DOMAINS.filter((domain) => domain !== 'platform')),
+  platform: new Set<AgentDomain>(['platform']),
+}
+
+/** The door `principal` was resolved on: the platform door's own, else an office door. */
+export function doorOfPrincipal(principal: Pick<AgentPrincipal, 'door'>): AgentDoor {
+  return principal.door ?? 'office'
 }
 
 /**
@@ -83,7 +89,7 @@ export type CallDecision = 'run' | 'propose'
 
 /** May `principal` see (and so name) `op`? */
 export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
-  if (!isOnDoor(op)) return false
+  if (!isOnDoor(op, doorOfPrincipal(principal))) return false
   if (principal.actor === 'piloti') {
     // Piloti may not propose a sensitive operation (`proposeOperation` refuses it too),
     // so showing one would only teach the model a call that cannot succeed. An ask is
@@ -131,16 +137,22 @@ export function findVisibleOperation(principal: AgentPrincipal, name: string): A
 }
 
 /**
- * The Python agent's read tools (`backend-operations.ts`). An outside agent
- * sees them; in-product Piloti does not, because it already has every one as a
- * native tool and a second copy would bloat its context and blur its tool choice.
+ * The Python agent's read tools (`backend-operations.ts`). An outside agent on
+ * an office door sees them; in-product Piloti does not, because it already has
+ * every one as a native tool and a second copy would bloat its context and blur
+ * its tool choice. The platform door offers the operator console only, and these
+ * read an office's workspace.
  */
+function seesBackendOperations(principal: AgentPrincipal): boolean {
+  return principal.actor !== 'piloti' && doorOfPrincipal(principal) === 'office'
+}
+
 export function visibleBackendOperations(principal: AgentPrincipal): readonly BackendOperation[] {
-  return principal.actor === 'piloti' ? [] : BACKEND_OPERATIONS
+  return seesBackendOperations(principal) ? BACKEND_OPERATIONS : []
 }
 
 export function findVisibleBackendOperation(principal: AgentPrincipal, name: string): BackendOperation | undefined {
-  return principal.actor === 'piloti' ? undefined : findBackendOperation(name)
+  return seesBackendOperations(principal) ? findBackendOperation(name) : undefined
 }
 
 export function callDecision(principal: AgentPrincipal, op: AgentOperation): CallDecision {
