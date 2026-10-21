@@ -63,6 +63,10 @@
               "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
             },
             {
+              "en": "Finishing the project intake now ends on a check that lands on the save button before the project opens, and moving between intake steps no longer pauses on an empty form.",
+              "de": "Beim Abschließen der Projektaufnahme endet der Ablauf jetzt mit einer Prüfung, bei der der Fokus auf der Schaltfläche „Speichern“ liegt, bevor das Projekt geöffnet wird; beim Wechsel zwischen den Schritten bleibt der Ablauf nicht mehr bei einem leeren Formular stehen."
+            },
+            {
               "en": "While Piloti reads a new project's documents, the setup shows how far it has got: the site, how many documents are read, and the values, contradictions and gaps found so far. You can leave and ask the project chat meanwhile; your Postfach tells you when Piloti is done.",
               "de": "Während Piloti die Dokumente eines neuen Projekts liest, zeigt das Setup den aktuellen Stand: das Grundstück, die Anzahl der bereits gelesenen Dokumente sowie die bisher gefundenen Werte, Widersprüche und Lücken. Sie können die Ansicht verlassen und in der Zwischenzeit den Projekt-Chat befragen; Ihr Postfach informiert Sie, wenn Piloti fertig ist."
             },
@@ -86,6 +90,14 @@
             {
               "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
               "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
+            },
+            {
+              "en": "Buttons, chips and tabs now give way softly when you press them, and dialogs and menus get out of the way the moment you dismiss them. The whole workspace answers your hand a little faster.",
+              "de": "Buttons, Chips und Tabs geben jetzt sanft nach, wenn Sie darauf drücken, und Dialoge und Menüs verschwinden sofort, sobald Sie sie schließen. Der gesamte Arbeitsbereich reagiert etwas schneller auf Ihre Eingaben."
+            },
+            {
+              "en": "The command palette opens instantly on Cmd+K, and once one tooltip is showing, the next one appears as soon as you point at it.",
+              "de": "Die Command-Palette öffnet sich sofort mit Cmd+K. Sobald ein Tooltip angezeigt wird, erscheint der nächste, sobald Sie mit dem Mauszeiger darüberfahren."
             },
             {
               "en": "Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.",
@@ -115,6 +127,14 @@
             {
               "en": "Suggested follow-up questions now appear under every answer when your office has chosen a model that always thinks before it answers. Before, those suggestions quietly went missing on such models.",
               "de": "Wenn Ihr Büro ein Modell ausgewählt hat, das vor jeder Antwort immer nachdenkt, erscheinen jetzt unter jeder Antwort Folgefragen. Bisher wurden diese Vorschläge bei solchen Modellen nicht angezeigt."
+            },
+            {
+              "en": "Going back in the browser returns a page to where you had scrolled it, instead of keeping the scroll position of the page you just left.",
+              "de": "Wenn Sie im Browser zurückgehen, springt die Seite zu ihrer vorherigen Scrollposition zurück, statt die Scrollposition der gerade verlassenen Seite beizubehalten."
+            },
+            {
+              "en": "Saving organization settings, standing instructions or the price list now shows Saved on the button itself rather than in a separate message, and a usage or storage panel that fails to load offers a retry in place.",
+              "de": "Beim Speichern von Organisationseinstellungen, dauerhaften Anweisungen oder der Preisliste wird „Gespeichert“ jetzt direkt auf der Schaltfläche statt in einer separaten Meldung angezeigt. Ein Nutzungs- oder Speicher-Panel, das nicht geladen werden kann, bietet direkt dort die Möglichkeit, es erneut zu versuchen."
             },
             {
               "en": "When reading a project's documents stops before it finishes, the person who started it now gets a Postfach entry saying so, instead of nothing.",
