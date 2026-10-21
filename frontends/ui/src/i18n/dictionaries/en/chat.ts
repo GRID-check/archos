@@ -1355,6 +1355,37 @@ export const chat = {
     adminMessage:
       'The usage budget is used up, so new messages can’t be sent right now. Raise the limits under Organization → Usage & budgets.',
   },
+  /**
+   * The usage notice above the composer (`UsageNotice.tsx`): one budget window,
+   * at one of four levels, before it stops this person. `{budget}` is one of the
+   * `budget.*` phrases and always opens the sentence.
+   */
+  usageNotice: {
+    budget: {
+      organization: { day: 'The office’s daily budget', month: 'The office’s monthly budget' },
+      member: { day: 'Your personal daily budget', month: 'Your personal monthly budget' },
+      project: { day: 'This project’s daily budget', month: 'This project’s monthly budget' },
+    },
+    title: {
+      forecast: '{budget} runs out around {date} at this pace',
+      warning: '{budget} is {percent} used',
+      critical: '{budget} is almost used up ({percent})',
+      exhausted: '{budget} is used up',
+    },
+    usedSoFar: '{percent} used so far.',
+    amountsCredits: '{used} of {limit} credits.',
+    amountsTokens: '{used} of {limit} tokens.',
+    paceRunsOut: 'At this pace it runs out around {date}.',
+    longRunsMayStop: 'A long research run may stop before it finishes.',
+    renewsDay: 'It renews at {time}.',
+    renewsMonth: 'It renews on {date}.',
+    blockedDay: 'New messages can’t be sent until it renews at {time}.',
+    blockedMonth: 'New messages can’t be sent until it renews on {date}.',
+    askAdmin: 'An admin can raise the limit.',
+    raiseLimit: 'Raise the limit',
+    seeUsage: 'See usage',
+    meterLabel: '{percent} of the budget used',
+  },
   noSources: {
     warning:
       'No data sources selected and no files are available. Responses are more likely to be inaccurate or outdated unless external data sources are added.',

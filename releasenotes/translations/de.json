@@ -2764,6 +2764,10 @@
     "de": "Der Chatverlauf gibt nicht mehr an, dass Ihre Chats nur in diesem Browser gespeichert sind. Sie werden in Ihrem Arbeitsbereich gespeichert und sind auf jedem Gerät verfügbar, auf dem Sie sich anmelden."
   },
   {
+    "en": "The chat now tells you before a usage budget runs out: at 80 and 95 percent, when the month's pace would use it up early, and once it is spent, with when it renews and who can raise it.",
+    "de": "Der Chat informiert Sie jetzt, bevor Ihr Nutzungskontingent aufgebraucht ist: bei 80 und 95 Prozent, wenn es bei aktuellem Verbrauchstempo vor Monatsende erschöpft wäre, und nach dem Verbrauch – mit Angabe, wann es erneuert wird und wer es erhöhen kann."
+  },
+  {
     "en": "The chat stays open during and after a deep research, so you can keep asking beside the run, and Bericht fortschreiben runs in the same chat.",
     "de": "Der Chat bleibt während und nach einer Tiefenrecherche offen: Sie fragen neben dem Durchlauf weiter, und „Bericht fortschreiben“ läuft im selben Chat."
   },

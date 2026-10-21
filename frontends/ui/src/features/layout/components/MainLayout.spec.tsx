@@ -60,6 +60,8 @@ vi.mock('@/features/chat', () => ({
     return selector ? selector(asStoreState<ChatStoreWithHydration>(state)) : state
   }),
   NoSourcesBanner: () => <div data-testid="no-sources-banner">No Sources Banner</div>,
+  ChatUsageNotice: ({ isAuthenticated }: { isAuthenticated?: boolean }) =>
+    isAuthenticated ? <div data-testid="usage-notice-slot" /> : null,
 }))
 
 // Mock the layout store
@@ -132,6 +134,8 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('sessions-panel')).toBeInTheDocument()
     expect(screen.getByTestId('chat-area')).toBeInTheDocument()
     expect(screen.getByTestId('input-area')).toBeInTheDocument()
+    // The usage notice rides above the composer for a signed-in reader.
+    expect(screen.getByTestId('usage-notice-slot')).toBeInTheDocument()
   })
 
   test('renders core sections when unauthenticated', () => {
@@ -141,6 +145,7 @@ describe('MainLayout', () => {
     expect(screen.getByTestId('sessions-panel')).toBeInTheDocument()
     expect(screen.getByTestId('chat-area')).toBeInTheDocument()
     expect(screen.getByTestId('input-area')).toBeInTheDocument()
+    expect(screen.queryByTestId('usage-notice-slot')).toBeNull()
   })
 
   test('a chat the reader may no longer read shows the state instead of the transcript and the composer (ADR-0088)', () => {

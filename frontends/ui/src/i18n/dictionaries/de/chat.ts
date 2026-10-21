@@ -1374,6 +1374,36 @@ export const chat: typeof en.chat = {
     adminMessage:
       'Das Nutzungsbudget ist aufgebraucht, daher können derzeit keine neuen Nachrichten gesendet werden. Erhöhen Sie die Limits unter Organisation → Verbrauch & Budgets.',
   },
+  /**
+   * Der Verbrauchshinweis über dem Eingabefeld (`UsageNotice.tsx`). `{budget}`
+   * ist eine der `budget.*`-Wendungen und steht immer am Satzanfang.
+   */
+  usageNotice: {
+    budget: {
+      organization: { day: 'Das Tagesbudget des Büros', month: 'Das Monatsbudget des Büros' },
+      member: { day: 'Ihr persönliches Tagesbudget', month: 'Ihr persönliches Monatsbudget' },
+      project: { day: 'Das Tagesbudget dieses Projekts', month: 'Das Monatsbudget dieses Projekts' },
+    },
+    title: {
+      forecast: '{budget} reicht bei diesem Tempo nur bis etwa {date}',
+      warning: '{budget} ist zu {percent} verbraucht',
+      critical: '{budget} ist fast aufgebraucht ({percent})',
+      exhausted: '{budget} ist aufgebraucht',
+    },
+    usedSoFar: 'Bisher {percent} verbraucht.',
+    amountsCredits: '{used} von {limit} Punkten.',
+    amountsTokens: '{used} von {limit} Tokens.',
+    paceRunsOut: 'Bei diesem Tempo reicht es bis etwa {date}.',
+    longRunsMayStop: 'Eine längere Recherche kann vor ihrem Ende abbrechen.',
+    renewsDay: 'Es erneuert sich um {time} Uhr.',
+    renewsMonth: 'Es erneuert sich am {date}.',
+    blockedDay: 'Bis es sich um {time} Uhr erneuert, können keine neuen Nachrichten gesendet werden.',
+    blockedMonth: 'Bis es sich am {date} erneuert, können keine neuen Nachrichten gesendet werden.',
+    askAdmin: 'Eine Administratorin oder ein Administrator kann das Limit erhöhen.',
+    raiseLimit: 'Limit erhöhen',
+    seeUsage: 'Verbrauch ansehen',
+    meterLabel: '{percent} des Budgets verbraucht',
+  },
   noSources: {
     warning:
       'Keine Datenquellen ausgewählt und keine Dateien verfügbar. Antworten sind eher ungenau oder veraltet, sofern keine externen Datenquellen hinzugefügt werden.',

@@ -55,6 +55,10 @@
               "de": "Eine Datei, die Piloti gerade einliest, können Sie jetzt in der Upload-Liste oder im Menü der Datei stoppen. Was Piloti bis dahin noch nicht gelesen hat, wird nicht zu seiner Antwortgrundlage hinzugefügt. Die Datei bleibt im Projekt und Sie können sie jederzeit erneut einlesen lassen."
             },
             {
+              "en": "The chat now tells you before a usage budget runs out: at 80 and 95 percent, when the month's pace would use it up early, and once it is spent, with when it renews and who can raise it.",
+              "de": "Der Chat informiert Sie jetzt, bevor Ihr Nutzungskontingent aufgebraucht ist: bei 80 und 95 Prozent, wenn es bei aktuellem Verbrauchstempo vor Monatsende erschöpft wäre, und nach dem Verbrauch – mit Angabe, wann es erneuert wird und wer es erhöhen kann."
+            },
+            {
               "en": "When you set up a project, you see the project folder as a tree before anything is uploaded and switch whole folders on or off, with backups and old states proposed off. Beside it you see what the office's sensitive-data list holds back, can change that list for this project, and restrict a folder before its files arrive.",
               "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
             },

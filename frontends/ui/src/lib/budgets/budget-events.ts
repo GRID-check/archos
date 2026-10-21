@@ -32,6 +32,7 @@ import { getCached } from '@/lib/cache'
 import type { BudgetScope, BudgetUnit } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import { getBudgetUtilisation, type BudgetUtilisation } from './service'
+import { utcWindow } from './usage-notice'
 
 /** Percent of a limit that is worth an event, highest first. */
 export const BUDGET_THRESHOLDS = [100, 80] as const
@@ -46,16 +47,6 @@ const MINUTE_MS = 60_000
 export const thresholdReached = (used: number, limit: number): BudgetThreshold | null => {
   const percent = limit > 0 ? (used / limit) * 100 : 100
   return BUDGET_THRESHOLDS.find((threshold) => percent >= threshold) ?? null
-}
-
-/** UTC identity of the window `now` is in, and when it ends. Rolls over with the rollup (`utcDayStart`). */
-const windowOf = (window: 'day' | 'month', now: Date): { id: string; endsAt: number } => {
-  const year = now.getUTCFullYear()
-  const month = now.getUTCMonth()
-  if (window === 'month') {
-    return { id: now.toISOString().slice(0, 7), endsAt: Date.UTC(year, month + 1, 1) }
-  }
-  return { id: now.toISOString().slice(0, 10), endsAt: Date.UTC(year, month, now.getUTCDate() + 1) }
 }
 
 const blockedKey = (organizationId: string, userId: string, scope: BudgetScope): string =>
@@ -117,7 +108,7 @@ export async function announceBudgetThresholds(params: {
     for (const usage of usages) {
       const threshold = thresholdReached(usage.used, usage.limit)
       if (threshold === null) continue
-      const window = windowOf(usage.window, now)
+      const window = utcWindow(usage.window, now)
       const ttlMs = Math.max(MINUTE_MS, window.endsAt - now.getTime() + HOUR_MS)
       await getCached(thresholdKey(organizationId, usage, window.id, threshold), ttlMs, async () => {
         captureServer({
