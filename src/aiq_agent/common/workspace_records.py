@@ -175,6 +175,30 @@ def record_from_result(operation: str, arguments: dict[str, Any], text: str) -> 
     return WorkspaceRecord(operation, "read", _haystack(values), frozenset(counts))
 
 
+#: How the tool names the proposal it filed, after the server's „Proposed …"
+#: (``tools/workspace/register._show_proposal``): „Proposal <uuid>: <summary>.".
+_PROPOSAL_ID_RE = re.compile(
+    r"\bProposal ([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\b"
+)
+
+
+def filed_proposal_ids(messages: Sequence[Any]) -> frozenset[str]:
+    """The ids of the proposals this turn's workspace calls filed, lower-cased.
+
+    ``messages`` is this turn's slice of the transcript. Read off the results
+    the model was given, so an id here is one the server returned for a write
+    this turn, never one the model wrote itself.
+    """
+    ids: set[str] = set()
+    for message in messages:
+        if not is_workspace_call(getattr(message, "name", "") or ""):
+            continue
+        text = _content_text(getattr(message, "content", "")).strip()
+        if text.startswith(PROPOSED_PREFIX):
+            ids.update(match.lower() for match in _PROPOSAL_ID_RE.findall(text))
+    return frozenset(ids)
+
+
 def records_from_messages(messages: Sequence[Any]) -> list[WorkspaceRecord]:
     """The records this turn's workspace calls left, in the order their results arrived.
 

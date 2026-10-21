@@ -6,6 +6,8 @@ from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
 
+from aiq_agent.common.answer_envelope import drop_unfiled_proposals
+from aiq_agent.common.workspace_records import filed_proposal_ids
 from aiq_agent.common.workspace_records import is_workspace_call
 from aiq_agent.common.workspace_records import record_from_result
 from aiq_agent.common.workspace_records import records_from_messages
@@ -73,3 +75,37 @@ def test_records_come_from_this_turns_calls_in_order_and_other_tools_are_ignored
 def test_a_result_without_its_call_names_nothing_and_is_skipped():
     orphan = ToolMessage(content='{"a": "b"}', tool_call_id="nowhere", name="workspace__call")
     assert records_from_messages([orphan]) == []
+
+
+def test_the_ids_this_turn_filed_are_read_off_the_text_the_tool_gave_the_model():
+    from aiq_agent.tools.workspace.register import _show_proposal
+
+    filed = "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c"
+    structured = {"decision": "propose", "proposalId": filed.upper(), "operation": "folder-create", "summary": "Neu."}
+    # The tool's own wording, so a change to it breaks here and not in production.
+    text = _show_proposal(structured, {"input": {}}, "Proposed — the person decides. Nothing was changed.", {})
+    messages = [
+        HumanMessage("Leg an."),
+        *_call("c1", "folder-create", text),
+        # A read that mentions an id files nothing.
+        *_call("c2", "inbox-list", '{"items": [{"text": "Proposal 0b0b0b0b-0000-4000-8000-000000000000"}]}'),
+    ]
+    assert filed_proposal_ids(messages) == frozenset({filed})
+
+
+def test_unfiled_proposed_lines_are_dropped_and_counted():
+    filed = "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c"
+    payload = {
+        "v": 1,
+        "kind": "work",
+        "work": {
+            "done": [{"text": "gelesen"}],
+            "proposed": [{"text": "a", "ref": filed}, {"text": "b", "ref": "other"}, {"text": "c"}],
+        },
+    }
+    trimmed, dropped = drop_unfiled_proposals(payload, frozenset({filed}))
+    assert dropped == 2
+    assert trimmed["work"] == {"done": [{"text": "gelesen"}], "proposed": [{"text": "a", "ref": filed}]}
+    only_unfiled = {"v": 1, "kind": "work", "work": {"proposed": [{"text": "b", "ref": "other"}]}}
+    assert drop_unfiled_proposals(only_unfiled, frozenset()) == ({"v": 1, "kind": "work"}, 1)
+    assert drop_unfiled_proposals(payload, frozenset({filed, "other"}))[1] == 1

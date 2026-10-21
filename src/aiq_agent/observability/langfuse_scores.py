@@ -183,8 +183,15 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "work-report-matches",
         "BOOLEAN",
         "On a work turn (kind work, ADR-0122): true when the report lists as many proposals as the turn put "
-        "in front of the person as proposal cards. False is a turn that claimed a proposal it did not file, or "
-        "filed one it did not report.",
+        "in front of the person as proposal cards. A reported proposal no write filed is dropped before this "
+        "is counted (work-proposals-unfiled), so false is mostly a turn that filed a proposal it did not report.",
+    ),
+    ScoreDefinition(
+        "work-proposals-unfiled",
+        "NUMERIC",
+        "On a work turn (kind work, ADR-0122): the report's proposed lines whose ref named no proposal this "
+        "turn filed, dropped before the person saw them. Above zero is a turn that claimed a proposal it did not make.",
+        min_value=0,
     ),
     ScoreDefinition(
         "claims-by-class",
@@ -365,6 +372,11 @@ def work_report_scores(result: Any) -> list[RuntimeScore]:
     reported = len(((meta.get("work") or {}).get("proposed")) or [])
     filed = proposal_cards(getattr(result, "cards", None) or [])
     return [_boolean("work-report-matches", reported == filed, f"reported {reported}, filed {filed}")]
+
+
+def work_unfiled_scores(dropped: int) -> list[RuntimeScore]:
+    """How many of a work report's ``proposed`` lines named no proposal this turn filed; zero included."""
+    return [RuntimeScore("work-proposals-unfiled", float(max(0, dropped)))]
 
 
 def claim_scores(stamps: Iterable[Any], *, dropped: int) -> list[RuntimeScore]:

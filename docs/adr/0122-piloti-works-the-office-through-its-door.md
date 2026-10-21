@@ -70,7 +70,10 @@ judged against a baseline that now exists.
 2. **`kind: "work"`** joins the envelope, with a `work` field (`done`,
    `proposed` with proposal ids, `blocked` with who is needed, `next`), gated to
    work turns and bounded, rendered after the prose as „Arbeitsstand". A
-   workspace record is named, never cited.
+   workspace record is named, never cited. A `proposed` line whose `ref` is
+   not the id of a proposal this turn's writes filed is dropped before the
+   person sees it (`answer_envelope.drop_unfiled_proposals`): it would send
+   them to decide something that does not exist.
 3. **The prompt** leads with the colleague who works in the workspace and gains
    a `<workspace>` section of facts: English queries in the catalog's words, one
    round to find and describe, the next to call, ids from the block, proposals
@@ -82,7 +85,7 @@ judged against a baseline that now exists.
 5. **The workspace set** of the answer suite measures all of this, with a door
    served from the catalog production shows and checks on what was filed.
 6. **Langfuse**: `answer_kind`, `work_*` counts, the tag `kind:work`, and the
-   `work-report-matches` score.
+   `work-report-matches` and `work-proposals-unfiled` scores.
 
 ### Consequences
 

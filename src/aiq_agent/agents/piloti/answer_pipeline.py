@@ -43,6 +43,7 @@ from aiq_agent.common.answer_dialect import DialectResult
 from aiq_agent.common.answer_dialect import validate_dialect
 from aiq_agent.common.answer_envelope import TAKEAWAYS_MIN_PROSE_CHARS
 from aiq_agent.common.answer_envelope import AnswerMeta
+from aiq_agent.common.answer_envelope import drop_unfiled_proposals
 from aiq_agent.common.answer_envelope import extract_answer_envelope
 from aiq_agent.common.answer_envelope import gate_answer_meta
 from aiq_agent.common.answer_envelope import resolve_callout_marker
@@ -67,14 +68,17 @@ from aiq_agent.common.claim_provenance import classify_claims
 from aiq_agent.common.claim_provenance import weakest_claim
 from aiq_agent.common.quote_stamps import stamp_quote_lines
 from aiq_agent.common.tool_validation import validate_tool_availability
+from aiq_agent.common.turn_status import emit_anatomy_dropped
 from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
+from aiq_agent.common.workspace_records import filed_proposal_ids
 from aiq_agent.common.workspace_records import records_from_messages
 from aiq_agent.observability.langfuse_scores import card_validity_score
 from aiq_agent.observability.langfuse_scores import claim_scores
 from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import quote_patch_scores
+from aiq_agent.observability.langfuse_scores import work_unfiled_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 
 from .answer_shape import drop_restated_mindmaps
@@ -882,6 +886,7 @@ def _gated_meta(
     registry: SourceRegistry,
     *,
     turn_sources: Sequence[SourceEntry] | None = None,
+    filed_proposals: frozenset[str] = frozenset(),
 ) -> dict[str, Any] | None:
     """The structured trailer, gated once the text is final.
 
@@ -903,6 +908,11 @@ def _gated_meta(
     trailer carries no ``[N]`` markers. ``turn_sources`` is this turn's capture
     log; ``None`` (the default) reads the ambient one, so tests pin the gate by
     passing entries explicitly.
+
+    A work report's ``proposed`` line whose ``ref`` names no proposal this
+    turn filed (``filed_proposals``, read off the workspace results) is
+    dropped: it would send the person to decide something that does not
+    exist. How many is scored on every work turn (``work-proposals-unfiled``).
     """
     if extracted.meta is None or extracted.escalation_requested:
         return None
@@ -915,7 +925,14 @@ def _gated_meta(
     if gated is None:
         return None
     captures = list(turn_sources) if turn_sources is not None else get_turn_captures()
-    return drop_ungrounded_trailer_values(gated, captures)
+    grounded = drop_ungrounded_trailer_values(gated, captures)
+    if extracted.meta.kind != "work":
+        return grounded
+    reported, unfiled = drop_unfiled_proposals(grounded, filed_proposals)
+    if unfiled:
+        emit_anatomy_dropped(field="work", reason="proposal_not_filed")
+    emit_scores(work_unfiled_scores(unfiled), writer="piloti")
+    return reported
 
 
 def _normative_claim_uncited(content: str, grounding: _Grounding) -> bool:
@@ -1136,6 +1153,7 @@ async def finalize_answer(
         content,
         registry,
         turn_sources=_trailer_captures(turn_sources),
+        filed_proposals=filed_proposal_ids(turn),
     )
     content, meta, _cards_suppressed = _suppress_cards(content, meta)
     content = resolve_callout_marker(content, has_callout=bool(meta and "callout" in meta))

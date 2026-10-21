@@ -202,3 +202,48 @@ async def test_a_work_turn_still_floors_on_a_legal_sentence_without_a_passage():
 
     assert state.answer_confidence == "low"
     assert state.answer_confidence_capped_reason == "normative_claim_uncited"
+
+
+# --- a reported proposal the turn did not file ---
+
+FILED_ID = "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c"
+
+
+async def test_a_reported_proposal_no_write_filed_is_dropped_and_scored(monkeypatch):
+    written: list = []
+    monkeypatch.setattr(answer_pipeline, "emit_scores", lambda scores, **_: written.extend(scores))
+    envelope = (
+        '```answer_json\n{"kind": "work", "confidence": {"level": "high"}, '
+        '"answer": "Den Ordner Brandschutz habe ich vorgeschlagen.", "work": {"proposed": ['
+        f'{{"text": "Ordner Brandschutz anlegen", "ref": "{FILED_ID.upper()}"}},'
+        '{"text": "Lea ins Projekt aufnehmen", "ref": "0b0b0b0b-0000-4000-8000-000000000000"},'
+        '{"text": "Plan umbenennen"}], "next": [{"text": "Ordner freigeben", "who": "Anna"}]}}\n```'
+    )
+    messages = [HumanMessage("Leg einen Ordner Brandschutz an."), *_workspace_proposal(), AIMessage(envelope)]
+
+    final, _ = await _finalize(messages)
+
+    assert final.answer_meta["work"] == {
+        "proposed": [{"text": "Ordner Brandschutz anlegen", "ref": FILED_ID.upper()}],
+        "next": [{"text": "Ordner freigeben", "who": "Anna"}],
+    }
+    assert {score.name: score.value for score in written}["work-proposals-unfiled"] == 2.0
+
+
+async def test_a_proposal_filed_last_turn_is_not_this_turns_report():
+    envelope = (
+        '```answer_json\n{"kind": "work", "confidence": {"level": "high"}, '
+        '"answer": "Den Ordner habe ich vorgeschlagen.", "work": {"proposed": ['
+        f'{{"text": "Ordner Brandschutz anlegen", "ref": "{FILED_ID}"}}]}}}}\n```'
+    )
+    messages = [
+        HumanMessage("Leg einen Ordner an."),
+        *_workspace_proposal(),
+        AIMessage("Vorgeschlagen."),
+        HumanMessage("Und jetzt?"),
+        AIMessage(envelope),
+    ]
+
+    final, _ = await _finalize(messages)
+
+    assert "work" not in (final.answer_meta or {})

@@ -750,6 +750,33 @@ def _gate_work(meta: AnswerMeta, ctx: GateContext) -> dict | None:
     return report or None
 
 
+def drop_unfiled_proposals(payload: dict | None, filed: frozenset[str]) -> tuple[dict | None, int]:
+    """``payload`` without the work report's ``proposed`` lines whose ``ref`` names no proposal filed this turn.
+
+    A ``proposed`` line tells the person a decision waits for them; one the
+    turn did not file sends them to an inbox with nothing in it. ``filed`` is
+    the ids the server returned for this turn's writes
+    (``workspace_records.filed_proposal_ids``), lower-cased; a line without a
+    ``ref`` names none of them. Returns the payload (``work`` gone when nothing
+    is left in it) and how many lines were dropped.
+    """
+    work = (payload or {}).get("work")
+    if not isinstance(work, dict) or not work.get("proposed"):
+        return payload, 0
+    proposed = work["proposed"]
+    kept = [line for line in proposed if str(line.get("ref") or "").strip().lower() in filed]
+    dropped = len(proposed) - len(kept)
+    if not dropped:
+        return payload, 0
+    rest = {section: lines for section, lines in work.items() if section != "proposed"}
+    if kept:
+        rest["proposed"] = kept
+    trimmed = {key: value for key, value in (payload or {}).items() if key != "work"}
+    if rest:
+        trimmed["work"] = {section: rest[section] for section in WORK_SECTIONS if section in rest}
+    return trimmed, dropped
+
+
 @dataclass(frozen=True)
 class AnatomyField:
     """One envelope field: its wire name and its deterministic gate.
