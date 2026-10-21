@@ -27,11 +27,18 @@ import { documents } from '@/lib/db/schema'
 import { getProjectFolderAccess, requireFolderWrite } from '@/lib/authz/folder-access'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { collectionFileRef, collectionFileUrl, type CollectionFileRef } from '@/lib/documents/collection-file-ref'
-import { placeProjectDocuments } from '@/lib/projects/collection-placement'
+import {
+  collectionFileRef,
+  collectionFileUrl,
+  purgeIngestedChunks,
+  type CollectionFileRef,
+} from '@/lib/documents/collection-file-ref'
+import { IN_FLIGHT_DOCUMENT_STATUSES } from '@/lib/documents/document-status'
+import { PURGE_TIMEOUT_MS, placeProjectDocuments } from '@/lib/projects/collection-placement'
 import { assertIfcMayBeFiledIn } from '@/lib/projects/ifc-folder-guard'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { findDocumentForSession } from './access'
+import { reingestDocument } from './service'
 import { documentShelf, type DocumentShelf } from './shelf'
 import { requireShelfWrite } from './shelf-authz'
 import { findShelfFolder } from './shelf-folders'
@@ -57,10 +64,37 @@ export interface MoveDocumentResult {
   folderId: string | null
 }
 
+/** The collection a crossing move must still be placed in, for the caller to place once. */
+interface PlacementDue {
+  projectId: string
+  collectionName: string
+}
+
+export type MoveDocumentOutcomeResult =
+  | {
+      ok: true
+      document: MoveDocumentResult
+      /** Moved, but not yet in the collection its folder calls for: only a crossing move can be. */
+      pending?: boolean
+      /** Set only by a deferred crossing move: the caller runs placement for this project. */
+      placementDue?: PlacementDue | null
+    }
+  | { ok: false; error: string }
+
+export interface MoveDocumentOptions {
+  /** Internal to {@link moveDocumentsToFolders}, which runs one placement pass per project after its moves. */
+  deferPlacement?: boolean
+}
+
+const IN_FLIGHT_MESSAGE =
+  'This document is still being processed. Move it across a restriction once processing has finished.'
+const PURGE_FAILED_MESSAGE = 'The document could not be removed from its current collection, so it was not moved. Try again.'
+
 export async function moveDocumentToFolder(
   input: MoveDocumentInput,
   session: AuthorizedSession,
-): Promise<{ ok: true; document: MoveDocumentResult } | { ok: false; error: string }> {
+  { deferPlacement = false }: MoveDocumentOptions = {},
+): Promise<MoveDocumentOutcomeResult> {
   const db = getDb()
 
   // The document is read FIRST and without a shelf permission check, because
@@ -110,23 +144,54 @@ export async function moveDocumentToFolder(
   }
 
   if (document.folderId === input.folderId) {
-    return { ok: true, document: { id: document.id, folderId: document.folderId } }
+    return { ok: true, document: { id: document.id, folderId: document.folderId }, pending: false, placementDue: null }
   }
 
-  const [updated] = await db
-    .update(documents)
-    .set({ folderId: input.folderId, updatedAt: new Date() })
-    .where(eq(documents.id, document.id))
-    .returning({ id: documents.id, folderId: documents.folderId })
+  // Across a restriction boundary the chunks leave the collection they are in
+  // BEFORE the row says it is in a restricted folder. Placement reads the target
+  // from the row, so the write cannot simply come first and be left to the
+  // placement pass: a failed purge would then leave the document filed in the
+  // restricted folder with its chunks still answering the open collection. So
+  // the purge runs first, by the collection the row is in now, and a failed
+  // purge refuses the move with nothing written. Placement purges it again
+  // afterwards; the backend answers a purge of a file with no chunks as success.
+  const crossing = shelf.kind === 'project' && targetCollection !== document.collectionName
+  if (crossing) {
+    if (IN_FLIGHT_DOCUMENT_STATUSES.has(document.status.toLowerCase())) return { ok: false, error: IN_FLIGHT_MESSAGE }
+    const ref = collectionFileRef(document)
+    if (ref && !(await purgeIngestedChunks(getBackendUrl(), ref, PURGE_TIMEOUT_MS, { permanent: true }))) {
+      return { ok: false, error: PURGE_FAILED_MESSAGE }
+    }
+  }
+
+  let updated: MoveDocumentResult
+  try {
+    ;[updated] = await db
+      .update(documents)
+      .set({ folderId: input.folderId, updatedAt: new Date() })
+      .where(eq(documents.id, document.id))
+      .returning({ id: documents.id, folderId: documents.folderId })
+  } catch (error) {
+    // The purge went through and the row did not move: it is still in its open
+    // folder with nothing left to answer for it. Read it into that collection
+    // again, then let the failure surface.
+    if (crossing) await restoreAfterFailedMove(session, document.id)
+    throw error
+  }
   // Before the mirrors below: the row is where the workspaces read from.
   publishShelfChanged(session.organizationId, shelf)
+  const moved: MoveDocumentResult = { id: updated.id, folderId: updated.folderId }
 
-  // Across a restriction boundary the document belongs in another collection:
-  // placement purges it from this one first, then re-reads it into the right
-  // one under its new path, so the path mirror below has nothing to add.
-  if (shelf.kind === 'project' && targetCollection !== document.collectionName) {
-    await placeProjectDocuments(session.organizationId, shelf.projectId)
-    return { ok: true, document: { id: updated.id, folderId: updated.folderId } }
+  // Across a restriction the document then belongs in another collection:
+  // placement re-points the row into it, under its new path, so the path mirror
+  // below has nothing to add. Until placement has done so the document is in
+  // no collection at all, which is safe; the placement sweep finishes it.
+  if (crossing) {
+    const placementDue = { projectId: shelf.projectId, collectionName: targetCollection }
+    if (deferPlacement) return { ok: true, document: moved, pending: true, placementDue }
+    await placeProjects(session.organizationId, [shelf.projectId])
+    const placed = await isInCollection(session, document.id, targetCollection)
+    return { ok: true, document: moved, pending: !placed, placementDue: null }
   }
 
   const backendRef = collectionFileRef({
@@ -139,13 +204,36 @@ export async function moveDocumentToFolder(
     await mirrorDocumentFolderPath(backendRef, destinationPath)
   }
 
-  return { ok: true, document: { id: updated.id, folderId: updated.folderId } }
+  return { ok: true, document: moved, pending: false, placementDue: null }
+}
+
+/**
+ * Run placement once for each project. A failure is logged rather than thrown:
+ * the purge has already happened, so the document is findable nowhere, and the
+ * placement sweep finishes what placement did not.
+ */
+async function placeProjects(organizationId: string, projectIds: Iterable<string>): Promise<void> {
+  for (const projectId of new Set(projectIds)) {
+    try {
+      await placeProjectDocuments(organizationId, projectId)
+    } catch (error) {
+      console.warn(`[documents] placement of project ${projectId} failed; the placement sweep finishes it`, error)
+    }
+  }
+}
+
+/** Whether the document's row is in the collection its folder calls for, as the row reads now. */
+async function isInCollection(session: AuthorizedSession, documentId: string, collectionName: string): Promise<boolean> {
+  const after = await findDocumentForSession(session, documentId)
+  return after?.collectionName === collectionName
 }
 
 export interface DocumentMoveOutcome {
   documentId: string
   ok: boolean
   error: string | null
+  /** Moved, but not yet in the collection its folder calls for; placement finishes it. Absent when it is placed. */
+  pending?: boolean
 }
 
 /**
@@ -153,16 +241,29 @@ export interface DocumentMoveOutcome {
  * every check it makes: a bulk move is that move repeated, never a shortcut
  * past it. One that is refused or throws is reported and the rest go on, so a
  * single read-only folder does not stop a sort of a thousand files.
+ *
+ * Placement is the one step that is not repeated per move. A crossing move
+ * defers it, and after the loop placement runs ONCE per affected project: a
+ * pass reads the whole tree, so N crossing moves cost one pass, not N. Every
+ * crossing move's own purge, and the refusal of one whose purge failed, stay
+ * per move, so the restricted content is no less protected than one move at a time.
  */
 export async function moveDocumentsToFolders(
   moves: readonly MoveDocumentInput[],
   session: AuthorizedSession,
 ): Promise<DocumentMoveOutcome[]> {
   const outcomes: DocumentMoveOutcome[] = []
+  const crossed: Array<{ outcome: DocumentMoveOutcome; documentId: string; placementDue: PlacementDue }> = []
   for (const move of moves) {
     try {
-      const result = await moveDocumentToFolder(move, session)
-      outcomes.push({ documentId: move.documentId, ok: result.ok, error: result.ok ? null : result.error })
+      const result = await moveDocumentToFolder(move, session, { deferPlacement: true })
+      if (!result.ok) {
+        outcomes.push({ documentId: move.documentId, ok: false, error: result.error, pending: false })
+        continue
+      }
+      const outcome: DocumentMoveOutcome = { documentId: move.documentId, ok: true, error: null, pending: result.pending }
+      outcomes.push(outcome)
+      if (result.placementDue) crossed.push({ outcome, documentId: move.documentId, placementDue: result.placementDue })
     } catch (error) {
       // A refusal says what it is; anything else is logged here and never reaches the body.
       if (!(error instanceof ApiError)) console.error(`[documents] move of ${move.documentId} failed`, error)
@@ -170,10 +271,29 @@ export async function moveDocumentsToFolders(
         documentId: move.documentId,
         ok: false,
         error: error instanceof ApiError ? error.message : 'Move failed.',
+        pending: false,
       })
     }
   }
+  // One pass per project, then each crossed document is read back: a document
+  // the pass did not place stays pending, and the sweep places it.
+  await placeProjects(
+    session.organizationId,
+    crossed.map((item) => item.placementDue.projectId),
+  )
+  for (const { outcome, documentId, placementDue } of crossed) {
+    outcome.pending = !(await isInCollection(session, documentId, placementDue.collectionName))
+  }
   return outcomes
+}
+
+/** Re-read a document whose chunks were purged for a move that then did not happen. Best-effort, logged. */
+async function restoreAfterFailedMove(session: AuthorizedSession, documentId: string): Promise<void> {
+  try {
+    await reingestDocument(session, documentId)
+  } catch (error) {
+    console.error(`[documents] ${documentId} lost its chunks to a move that failed, and could not be re-read`, error)
+  }
 }
 
 /**

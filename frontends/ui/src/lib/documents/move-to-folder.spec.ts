@@ -24,7 +24,12 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 vi.mock('@/lib/projects/collection-placement', () => ({
-  placeProjectDocuments: vi.fn(async () => ({ moved: 0, failed: [] })),
+  PURGE_TIMEOUT_MS: 15_000,
+  placeProjectDocuments: vi.fn(async () => ({ moved: 0, failed: [], pending: 0 })),
+}))
+vi.mock('@/lib/documents/collection-file-ref', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/documents/collection-file-ref')>()),
+  purgeIngestedChunks: vi.fn(async () => true),
 }))
 vi.mock('@/lib/projects/repository', () => ({
   findProjectInOrg: vi.fn(async () => ({ id: 'proj-1', collectionName: 'proj_1' })),
@@ -43,6 +48,8 @@ const db = vi.hoisted(() => ({
   /** Rows the next `select(...).limit()` resolves to, in call order. */
   selects: [] as Array<Array<Record<string, unknown>>>,
   updates: [] as Array<Record<string, unknown>>,
+  /** The next update throws this, once. */
+  updateFails: null as Error | null,
 }))
 
 vi.mock('@/lib/db', () => ({
@@ -53,9 +60,14 @@ vi.mock('@/lib/db', () => ({
     update: () => ({
       set: (values: Record<string, unknown>) => {
         db.updates.push(values)
+        const failure = db.updateFails
+        db.updateFails = null
         return {
           where: () => ({
-            returning: async () => [{ id: 'doc-1', folderId: values.folderId }],
+            returning: async () => {
+              if (failure) throw failure
+              return [{ id: 'doc-1', folderId: values.folderId }]
+            },
           }),
         }
       },
@@ -66,6 +78,8 @@ vi.mock('@/lib/db', () => ({
 // The document is loaded through the hold (`findDocumentForSession`, ADR-0086):
 // here it answers the first queued row, as the query would for a visible one.
 // `visibility.integration.spec.ts` holds the rule itself against Postgres.
+vi.mock('./service', () => ({ reingestDocument: vi.fn() }))
+
 vi.mock('./access', () => ({
   findDocumentForSession: vi.fn(async () => db.selects.shift()?.[0] ?? null),
 }))
@@ -87,10 +101,12 @@ vi.mock('@/lib/db/schema', () => ({
 import { getProjectFolderAccess, requireFolderWrite, type ProjectFolderAccess } from '@/lib/authz/folder-access'
 import { folderReadOnlyError } from '@/lib/authz/folder-access-rule'
 import { placeProjectDocuments } from '@/lib/projects/collection-placement'
+import { purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { canManageOfficeShelf } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { ForbiddenError } from '@/lib/api/errors'
-import { moveDocumentToFolder } from './move-to-folder'
+import { reingestDocument } from './service'
+import { moveDocumentToFolder, moveDocumentsToFolders } from './move-to-folder'
 
 const SESSION = { organizationId: 'org-1', userId: 'user-1' } as never
 
@@ -101,6 +117,7 @@ const DOCUMENT = {
   filename: 'Fluchtwegplan.pdf',
   collectionName: 'proj_1',
   authoredBy: 'user' as const,
+  status: 'completed',
 }
 
 let fetchSpy: ReturnType<typeof vi.fn>
@@ -291,6 +308,178 @@ describe('moveDocumentToFolder across a restriction (ADR-0087)', () => {
     expect(requireFolderWrite).toHaveBeenCalledWith(SESSION, 'proj-1', ['folder-vertraege', 'folder-1'])
     expect(db.updates).toHaveLength(0)
     expect(fetchSpy).not.toHaveBeenCalled()
+  })
+})
+
+/**
+ * A move across a restriction purges the document's chunks from the collection
+ * they are in BEFORE the row is written (a failed purge writes nothing), and a
+ * batch runs placement once per project, not once per crossing move.
+ */
+describe('moveDocumentToFolder across a restriction: purge first, placement checked', () => {
+  const LOCKED = 'proj_1_r0123456789ab'
+  const lockedAccess = (): ProjectFolderAccess => ({
+    hiddenFolderIds: new Set(),
+    isVisible: () => true,
+    collectionFor: (id) => (id === 'f-locked' ? LOCKED : 'proj_1'),
+    clearedRestrictedCollections: [],
+    levelOf: () => 'write',
+    sourceFolderOf: () => null,
+    anyRestricted: true,
+  })
+  const LOCKED_FOLDER = { id: 'f-locked', path: 'Verträge' }
+
+  beforeEach(() => {
+    vi.mocked(purgeIngestedChunks).mockReset()
+    vi.mocked(purgeIngestedChunks).mockResolvedValue(true)
+    vi.mocked(placeProjectDocuments).mockReset()
+    vi.mocked(placeProjectDocuments).mockResolvedValue({ moved: 0, failed: [], pending: 0 })
+  })
+
+  it('purges the old collection before it writes the row, and places after the write', async () => {
+    const order: string[] = []
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess())
+    vi.mocked(purgeIngestedChunks).mockImplementationOnce(async (_backend, ref) => {
+      order.push(`purge ${ref.collectionName} after ${db.updates.length} writes`)
+      return true
+    })
+    vi.mocked(placeProjectDocuments).mockImplementationOnce(async () => {
+      order.push(`place after ${db.updates.length} writes`)
+      return { moved: 1, failed: [], pending: 0 }
+    })
+    db.selects = [[DOCUMENT], [LOCKED_FOLDER], [{ ...DOCUMENT, collectionName: LOCKED }]]
+
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'f-locked' }, SESSION)
+
+    expect(order).toEqual(['purge proj_1 after 0 writes', 'place after 1 writes'])
+    expect(vi.mocked(purgeIngestedChunks).mock.calls[0][1]).toEqual({
+      collectionName: 'proj_1',
+      filename: 'Fluchtwegplan.pdf',
+    })
+    expect(vi.mocked(purgeIngestedChunks).mock.calls[0][3]).toEqual({ permanent: true })
+    expect(result).toEqual({
+      ok: true,
+      document: { id: 'doc-1', folderId: 'f-locked' },
+      pending: false,
+      placementDue: null,
+    })
+  })
+
+  it('refuses the move, and writes nothing, when the purge from the open collection fails', async () => {
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess())
+    vi.mocked(purgeIngestedChunks).mockResolvedValueOnce(false)
+    db.selects = [[DOCUMENT], [LOCKED_FOLDER]]
+
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'f-locked' }, SESSION)
+
+    expect(result).toEqual({ ok: false, error: expect.stringContaining('was not moved') })
+    expect(db.updates).toHaveLength(0)
+    expect(placeProjectDocuments).not.toHaveBeenCalled()
+  })
+
+  it('reads the document again when the row did not move after its chunks were purged', async () => {
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess())
+    db.selects = [[DOCUMENT], [LOCKED_FOLDER]]
+    db.updateFails = new Error('connection reset')
+
+    await expect(moveDocumentToFolder({ documentId: 'doc-1', folderId: 'f-locked' }, SESSION)).rejects.toThrow(
+      'connection reset'
+    )
+    expect(purgeIngestedChunks).toHaveBeenCalled()
+    expect(reingestDocument).toHaveBeenCalledWith(SESSION, 'doc-1')
+    expect(placeProjectDocuments).not.toHaveBeenCalled()
+  })
+
+  it('reports the move as pending, not as placed, when placement does not place the document', async () => {
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess())
+    vi.mocked(placeProjectDocuments).mockResolvedValueOnce({ moved: 0, failed: ['doc-1'], pending: 0 })
+    // The row is in the folder it was moved to, and still in the open collection.
+    db.selects = [[DOCUMENT], [LOCKED_FOLDER], [DOCUMENT]]
+
+    const result = await moveDocumentToFolder({ documentId: 'doc-1', folderId: 'f-locked' }, SESSION)
+
+    expect(result).toMatchObject({ ok: true, pending: true })
+    expect(db.updates[0].folderId).toBe('f-locked')
+  })
+
+  it('runs placement once for a batch of crossing moves, after every move has purged and written', async () => {
+    const writesAtPlacement: number[] = []
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess()).mockResolvedValueOnce(lockedAccess())
+    vi.mocked(placeProjectDocuments).mockImplementationOnce(async () => {
+      writesAtPlacement.push(db.updates.length)
+      return { moved: 2, failed: [], pending: 0 }
+    })
+    db.selects = [
+      [DOCUMENT], [LOCKED_FOLDER],
+      [{ ...DOCUMENT, id: 'doc-2', filename: 'Zweites.pdf' }], [LOCKED_FOLDER],
+      [{ ...DOCUMENT, collectionName: LOCKED }],
+      [{ ...DOCUMENT, id: 'doc-2', collectionName: LOCKED }],
+    ]
+
+    const outcomes = await moveDocumentsToFolders(
+      [
+        { documentId: 'doc-1', folderId: 'f-locked' },
+        { documentId: 'doc-2', folderId: 'f-locked' },
+      ],
+      SESSION,
+    )
+
+    expect(outcomes).toEqual([
+      { documentId: 'doc-1', ok: true, error: null, pending: false },
+      { documentId: 'doc-2', ok: true, error: null, pending: false },
+    ])
+    expect(placeProjectDocuments).toHaveBeenCalledTimes(1)
+    expect(placeProjectDocuments).toHaveBeenCalledWith('org-1', 'proj-1')
+    expect(writesAtPlacement).toEqual([2])
+    expect(purgeIngestedChunks).toHaveBeenCalledTimes(2)
+  })
+
+  it('reports a crossing document that the batch placement did not place as pending, and the others as placed', async () => {
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess()).mockResolvedValueOnce(lockedAccess())
+    db.selects = [
+      [DOCUMENT], [LOCKED_FOLDER],
+      [{ ...DOCUMENT, id: 'doc-2', filename: 'Zweites.pdf' }], [LOCKED_FOLDER],
+      // After placement: doc-1 is in the locked collection, doc-2 is not.
+      [{ ...DOCUMENT, collectionName: LOCKED }],
+      [{ ...DOCUMENT, id: 'doc-2', filename: 'Zweites.pdf' }],
+    ]
+
+    const outcomes = await moveDocumentsToFolders(
+      [
+        { documentId: 'doc-1', folderId: 'f-locked' },
+        { documentId: 'doc-2', folderId: 'f-locked' },
+      ],
+      SESSION,
+    )
+
+    expect(outcomes).toEqual([
+      { documentId: 'doc-1', ok: true, error: null, pending: false },
+      { documentId: 'doc-2', ok: true, error: null, pending: true },
+    ])
+  })
+
+  it('a batch refuses only the crossing move whose purge failed, and still places the others', async () => {
+    vi.mocked(getProjectFolderAccess).mockResolvedValueOnce(lockedAccess()).mockResolvedValueOnce(lockedAccess())
+    vi.mocked(purgeIngestedChunks).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    db.selects = [
+      [DOCUMENT], [LOCKED_FOLDER],
+      [{ ...DOCUMENT, id: 'doc-2', filename: 'Zweites.pdf' }], [LOCKED_FOLDER],
+      [{ ...DOCUMENT, id: 'doc-2', collectionName: LOCKED }],
+    ]
+
+    const outcomes = await moveDocumentsToFolders(
+      [
+        { documentId: 'doc-1', folderId: 'f-locked' },
+        { documentId: 'doc-2', folderId: 'f-locked' },
+      ],
+      SESSION,
+    )
+
+    expect(outcomes[0]).toMatchObject({ documentId: 'doc-1', ok: false, pending: false })
+    expect(outcomes[0].error).toContain('was not moved')
+    expect(outcomes[1]).toEqual({ documentId: 'doc-2', ok: true, error: null, pending: false })
+    expect(db.updates.map((values) => values.folderId)).toEqual(['f-locked'])
+    expect(placeProjectDocuments).toHaveBeenCalledTimes(1)
   })
 })
 

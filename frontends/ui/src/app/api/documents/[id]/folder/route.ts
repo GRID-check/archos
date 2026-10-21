@@ -27,7 +27,8 @@ export const PATCH = apiRoute<Params>(
     const { folderId } = await parseJsonBody(request, moveSchema)
     const result = await moveDocumentToFolder({ documentId: params.id, folderId }, session)
     if (!result.ok) throw new BadRequestError(result.error)
-    return result.document
+    // `pending`: moved across a restriction and not yet placed in its new collection; searchable nowhere until the sweep places it.
+    return { ...result.document, pending: result.pending ?? false }
   },
   {
     authz: {
