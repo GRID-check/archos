@@ -1,0 +1,12 @@
+---
+features:
+  - >
+    The assistant you connected to Piloti, such as Claude or Cursor, can now
+    ask Piloti a question for you and gets Piloti's own answer, with your
+    rights; each question and answer is kept in a private conversation of
+    yours. Agents built on the Agent2Agent standard can ask Piloti the same way.
+operators:
+  - >
+    Asking Piloti from another agent is off until the piloti-ask feature flag
+    is created in WorkOS and switched on for an organization; it also needs
+    agent-mcp. Migration 0175 adds the asks table.

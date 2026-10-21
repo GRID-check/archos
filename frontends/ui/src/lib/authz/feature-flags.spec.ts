@@ -52,6 +52,7 @@ describe('the registry', () => {
         'deep-research',
         'mail-import',
         'piloti-acts',
+        'piloti-ask',
         'piloti-wakes',
         'runtime-model-config',
         'skills',

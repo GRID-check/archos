@@ -88,6 +88,41 @@ write Anmerkungen, create and update Aufgaben, and work through your inbox. It
 sees only what you can see: a project you are not a member of, or a folder
 restricted to other people, does not exist for it.
 
+## Ask Piloti
+
+Your agent can also ask Piloti itself, the way you would ask a colleague who
+knows the office's documents, the project's files and building law. Piloti
+answers as you, with your rights, and may file a document while it answers
+([ADR-0123](../adr/0123-agents-consult-piloti-over-mcp-and-a2a.md)).
+
+- **Your organization switches it on.** Asking Piloti is a second switch,
+  `piloti-ask`, beside agent access. Each question is a Piloti answer like one
+  you type, paid from your and your organization's AI budget. Without the
+  switch the agent is told „Asking Piloti from another agent is not enabled for
+  this organization“.
+- **How the agent asks.** Over MCP it calls `piloti-ask-create` with the
+  question and, if it is about one project, the project. Piloti answers within
+  about 40 seconds; a longer answer comes back as „working“ and the agent reads
+  it a little later with `piloti-ask-get`. To follow up, the agent passes the
+  conversation of the first question.
+- **You can read along.** Every question your agent asks lands in a private
+  conversation of yours in Piloti, with Piloti's answer, like one you typed.
+  Nobody else sees it unless you share it.
+- **Piloti does not ask itself.** Piloti, inside the product, cannot use this to
+  ask Piloti, and an answer Piloti is giving to your agent cannot start another
+  one.
+
+### Agents that speak A2A
+
+Agents built on the Agent2Agent protocol (A2A) reach the same thing without MCP.
+Piloti's agent card is at `https://<your Piloti address>/.well-known/agent-card.json`
+and the endpoint is `https://<your Piloti address>/api/a2a` (A2A 1.0, and 0.3 for
+older clients). Sign-in is the same as for MCP: the agent signs in with your
+Piloti account and asks for the token for `https://<your Piloti address>/api/mcp`.
+A task is one question to Piloti; its `contextId` is the conversation, so a
+follow-up sends it back; the answer is an artifact, and so is each document
+Piloti filed. Agent access (`agent-mcp`) and `piloti-ask` must both be on.
+
 ## What stays with you
 
 - **Changes and deletions need your yes.** The client asks you before it makes a
@@ -126,4 +161,7 @@ restricted to other people, does not exist for it.
 | **403** „You are not a member of this organization“ | You are no longer a member of the organization the connection was made for | Check your membership. If you belong to another organization now, remove the connector and connect again, choosing that one |
 | **403** „The token is not bound to an organization“ | You signed in without choosing an organization | Connect again and choose the organization when asked |
 | **503** | The external sign-in is not set up on this installation | Tell whoever operates Piloti |
+| **403** „Asking Piloti from another agent is not enabled for this organization“ | Agent access is on, asking Piloti is not | Ask an administrator to switch on `piloti-ask` |
+| An ask ends „rejected“ with „budget“ | Your, the project's or the organization's AI budget is spent | An administrator raises it under Organization → Usage & budgets |
+| An ask ends „rejected“: „Piloti is still answering in this conversation“ | The agent asked again in a conversation where Piloti had not finished | Wait for the first answer (`piloti-ask-get`), then ask again |
 | The profile shows no address | Agent access is off for your organization, or the installation is not set up | Read the notice in the section |

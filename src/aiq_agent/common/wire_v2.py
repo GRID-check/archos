@@ -878,13 +878,15 @@ class FocusRegion(_Model):
 class TurnTrigger(_Model):
     """The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).
 
-    Set by the BFF's wake job, never by a browser: the person whose act is the
-    event holds the socket (their pinned session), and the turn answers where
-    the event happened. ``event_id`` is the reply (or assignment) id the job was
-    enqueued for; ``annotation_id`` the Anmerkung it happened on.
+    Set by the BFF, never by a browser: the person whose act is the event holds
+    the socket (their pinned session), and the turn answers where the event
+    happened. For a wake, ``event_id`` is the reply (or assignment) id the job
+    was enqueued for and ``annotation_id`` the Anmerkung it happened on.
+    ``agent_consult`` is a question another agent asked on the person's behalf
+    (ADR-0123): ``event_id`` is the ask's id, and there is no Anmerkung.
     """
 
-    kind: Literal["thread_mention", "thread_reply", "assigned"]
+    kind: Literal["thread_mention", "thread_reply", "assigned", "agent_consult"]
     event_id: str = Field(min_length=1, max_length=128)
     annotation_id: str | None = Field(default=None, min_length=1, max_length=128)
 

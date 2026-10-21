@@ -226,6 +226,18 @@ export const FEATURE_FLAGS = {
    * download log and a purged folder's content are kept).
    */
   agentMcpControls: 'agent-mcp-controls',
+  /**
+   * Agents consult Piloti (ADR-0123): an agent acting for a person asks Piloti
+   * a question (`piloti-ask-create` on the agent door, `SendMessage` on the
+   * A2A door) and Piloti answers in a turn run as that person, on their
+   * budget. Read from the person's session on `POST /api/piloti-asks`.
+   *
+   * An entitlement, off until an operator targets the organization: every ask
+   * is a model turn nobody typed, paid from the organization's budget. With it
+   * off, the ask is refused (403) and nothing else changes; the agent door
+   * still reaches the workspace (`agent-mcp`).
+   */
+  pilotiAsk: 'piloti-ask',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -250,6 +262,7 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'agent-mcp-access': 'entitlement',
   'agent-mcp-secrets': 'entitlement',
   'agent-mcp-controls': 'entitlement',
+  'piloti-ask': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',
@@ -306,6 +319,11 @@ export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>):
 /** Whether events on Piloti's work wake a turn for this organization (ADR-0106). */
 export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)
+}
+
+/** Whether agents acting for people may ask Piloti questions in this organization (ADR-0123). */
+export function isPilotiAskEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiAsk)
 }
 
 /** Whether Piloti may apply a change to Anmerkungen when the asker asks, or only propose (ADR-0105). */

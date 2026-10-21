@@ -57,6 +57,8 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, string> = {
   'POST /api/notifications/push/devices': 'registers this browser’s Web Push subscription; an agent has no browser to notify',
   '* /api/notifications/push/config': 'the VAPID public key a browser subscribes with; transport, not an act',
   '* /api/mcp': 'the MCP endpoint itself: it is the door every operation here goes through',
+  '* /api/a2a':
+    'the A2A endpoint (ADR-0123): another protocol onto the piloti-ask operations, which an MCP client calls directly',
   '* /api/v1/[...path]': 'transport proxy to the backend; the capabilities behind it are catalogued at their own routes',
   '* /api/jobs/async/[...path]': 'transport proxy to the job API; starting and steering runs is catalogued at the task routes',
   '* /api/dictation': 'speech-to-text for the person’s microphone; an agent sends text',

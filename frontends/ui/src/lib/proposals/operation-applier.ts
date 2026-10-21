@@ -26,18 +26,28 @@ import { callOperation, OperationInputError, validateOperationInput } from '@/li
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
 import { PILOTI_HIDDEN_DOMAINS } from '@/lib/agent-api/policy'
+import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
 /**
+ * Why Piloti never asks Piloti (ADR-0123, the recursion lock): every operation
+ * Piloti's own door reaches arrives here as a proposal, so refusing an ask here
+ * is what keeps a turn, a turn an ask started included, from starting another.
+ */
+export const PILOTI_ASK_REFUSAL =
+  'Piloti cannot ask Piloti: an ask is how another agent consults Piloti, and a turn may not start another.'
+
+/**
  * Why `name` cannot be applied as a proposal, or null when it can: it exists, it
- * writes, and Piloti may propose it. Every operation proposal is Piloti's
- * (`proposeOperation` files them), and Piloti never proposes a sensitive
+ * writes, it is no ask, and Piloti may propose it. Every operation proposal is
+ * Piloti's (`proposeOperation` files them), and Piloti never proposes a sensitive
  * operation nor one of a domain it does not see (`policy.ts`). Asked again
  * here, at the click, because the catalog may have changed since the proposal
  * was filed: an operation that became sensitive, or moved to a hidden domain,
  * since then is not run on a card the agent worded.
  */
 function unusableReason(op: AgentOperation | undefined, name: string): string | null {
+  if (isPilotiAskOperation(name)) return PILOTI_ASK_REFUSAL
   if (!op) return `The operation ${name} no longer exists`
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
   if (op.sensitivity) return `The operation ${name} is not one Piloti may propose; make the change in Piloti yourself`

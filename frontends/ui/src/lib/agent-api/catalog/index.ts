@@ -9,6 +9,7 @@
 import { AGENT_DOMAINS, type AgentOperation } from '../operation'
 import { bimOperations } from './bim'
 import { collaborationOperations } from './collaboration'
+import { consultOperations } from './consult'
 import { conversationsOperations } from './conversations'
 import { documentsOperations } from './documents'
 import { foldersOperations } from './folders'
@@ -26,6 +27,7 @@ const unordered: readonly AgentOperation[] = [
   ...foldersOperations,
   ...reviewOperations,
   ...conversationsOperations,
+  ...consultOperations,
   ...collaborationOperations,
   ...tasksOperations,
   ...skillsOperations,

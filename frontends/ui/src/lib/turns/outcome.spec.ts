@@ -29,6 +29,7 @@ vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn() }))
+vi.mock('@/lib/piloti-asks/service', () => ({ recordAskOutcome: vi.fn() }))
 
 import { onWakeEnded } from '@/lib/annotations/attention'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/lib/annotations/wake-ids'
@@ -39,6 +40,7 @@ import { findDocumentInOrg } from '@/lib/documents/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { recordAskOutcome } from '@/lib/piloti-asks/service'
 import { expectRegistered } from '@/test-utils/audit'
 import { DEFAULT_FAILURE_REASON, recordTurnOutcome, wakeEndOf } from './outcome'
 import type { TurnOutcomeRequest } from './outcome-types'
@@ -106,6 +108,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   markIs(null)
   vi.mocked(handBackDelegation).mockResolvedValue(true)
+  vi.mocked(recordAskOutcome).mockResolvedValue(false)
   vi.mocked(findDocumentInOrg).mockResolvedValue({ id: DOC_ID, projectId: 'proj_1' } as Partial<Document> as Document)
   vi.mocked(publishToDocumentRoom).mockResolvedValue(undefined)
   vi.mocked(onWakeEnded).mockResolvedValue(undefined)
@@ -150,6 +153,20 @@ describe('recordTurnOutcome', () => {
     expect(await recordTurnOutcome(request(MENTION))).toEqual({ settled: false })
     expect(endWake).not.toHaveBeenCalled()
     expect(onWakeEnded).not.toHaveBeenCalled()
+  })
+
+  it('hands a turn that is no wake to the asks, and settles what the ask settled (ADR-0123)', async () => {
+    vi.mocked(findWakeById).mockResolvedValue(null)
+    vi.mocked(recordAskOutcome).mockResolvedValue(true)
+    expect(await recordTurnOutcome(request(MENTION))).toEqual({ settled: true })
+    expect(recordAskOutcome).toHaveBeenCalledWith(request(MENTION))
+    expect(endWake).not.toHaveBeenCalled()
+  })
+
+  it('never asks the asks about a turn that is a wake', async () => {
+    wakeEndsAs(MENTION)
+    await recordTurnOutcome(request(MENTION))
+    expect(recordAskOutcome).not.toHaveBeenCalled()
   })
 
   it('settles nothing when the conversation is not the wake\'s thread', async () => {

@@ -34,6 +34,8 @@ describe('AuthKit v4 proxy', () => {
             // The MCP server checks its own bearer token or envelope (ADR-0121);
             // the OAuth protected-resource metadata is public by RFC 9728.
             '/api/mcp',
+            // The A2A server checks the same bearer token (ADR-0123).
+            '/api/a2a',
             '/.well-known/(.*)',
             // The image optimizer re-enters the router in-process, so
             // middleware runs on this route with a cookie-less mocked request.
