@@ -224,4 +224,3 @@ export const documentsOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/documents/name-matches/route'),
   },
 ]
-

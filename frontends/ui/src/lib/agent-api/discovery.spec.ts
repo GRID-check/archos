@@ -80,9 +80,11 @@ describe('search-operations', () => {
     expect(names(result)[0]).toBe('project-delete')
   })
 
-  it('treats a query with metacharacters as a regular expression', () => {
-    const result = searchOperations(ctx(person), { query: '^project-(list|delete)$' })
-    expect(names(result).sort()).toEqual(['project-delete', 'project-list'])
+  it('never compiles the caller’s text as a regular expression (ReDoS)', () => {
+    // A catastrophic pattern is just words here: it must return promptly, and
+    // its letters still find the operations they name.
+    const result = searchOperations(ctx(person), { query: '^(a+)+$ project-(list|delete)' })
+    expect(names(result)).toEqual(expect.arrayContaining(['project-delete', 'project-list']))
   })
 
   it('narrows by domain and lists a whole domain for an empty query', () => {

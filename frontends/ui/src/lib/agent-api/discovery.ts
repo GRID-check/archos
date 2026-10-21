@@ -164,8 +164,6 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
 
 // --- search ------------------------------------------------------------------
 
-const REGEX_META = /[\\^$.*+?()[\]{}|]/
-
 interface Hit {
   name: string
   summary: string
@@ -179,15 +177,13 @@ function wordsOf(query: string): string[] {
   return query.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean)
 }
 
+/**
+ * Plain words only. A regular expression built from the caller's text would let
+ * one catastrophic pattern hold the event loop for every tenant (ReDoS), and
+ * kebab-case names already split into words: `document version list` finds
+ * `document-version-list`.
+ */
 function scorerFor(query: string): (op: AgentOperation) => number {
-  if (REGEX_META.test(query)) {
-    try {
-      const pattern = new RegExp(query, 'i')
-      return (op) => (pattern.test(op.name) ? 3 : 0) + (pattern.test(op.summary) ? 2 : 0) + (pattern.test(op.description) ? 1 : 0)
-    } catch {
-      // Not a valid pattern after all: fall through to plain words.
-    }
-  }
   const words = wordsOf(query)
   return (op) => {
     if (words.length === 0) return 1
@@ -320,7 +316,7 @@ export const META_TOOLS = {
     inputSchema: {
       type: 'object',
       properties: {
-        query: { type: 'string', description: 'Words such as "add project member", or a regex such as "^document-.*-(list|get)$". Empty lists a domain.' },
+        query: { type: 'string', description: 'Words such as "add project member" or "document version". Empty lists a domain.' },
         domain: { type: 'string', enum: [...AGENT_DOMAINS], description: 'Only operations of this area.' },
         limit: { type: 'integer', minimum: 1, maximum: MAX_SEARCH_LIMIT, description: `At most this many (default ${DEFAULT_SEARCH_LIMIT}).` },
       },
