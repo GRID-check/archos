@@ -389,6 +389,16 @@ route sends rather than its service, is sent for an assign too.
 
 ## How decisions reach Piloti
 
+**This conversation's own proposals, every status (ADR-0122).** The turn
+context's WORKSPACE block (`lib/turn-context/workspace-block.ts`, read by
+`listConversationProposals`) lists the newest eight proposals made in the
+conversation the turn answers in, `proposed` and `failed` included, each with
+its id, status, summary and, from `results`, why it failed or what it created.
+Those are exactly the two statuses `PROPOSAL_DECISIONS` leaves out, and without
+them Piloti proposed a waiting write again or reported a failed one as done. No
+privacy predicate narrows the list: its readers are the conversation's readers,
+who saw every one of these proposals as a card.
+
 Piloti reads what people decided about its proposals in the `PROPOSAL_DECISIONS
 v1` block on the memory channel (`x-grid-project-memory`; the prompt explains
 the block once, next to `PROJECT_MEMORY`). It has two sources, and a proposal is

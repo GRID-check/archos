@@ -1,0 +1,35 @@
+{
+  "v": 1,
+  "kind": "work",
+  "topic": "Kindergarten Baden vorbereitet",
+  "work": {
+    "done": [
+      {
+        "text": "Projektmitglieder und Ordner des Kindergartens Baden gelesen"
+      }
+    ],
+    "proposed": [
+      {
+        "text": "Thomas Wagner als Bearbeiter ins Projekt aufnehmen",
+        "ref": "6f7a8b9c-0d1e-4f2a-9b3c-4d5e6f7a8b9c"
+      },
+      {
+        "text": "Ordner Ausschreibung anlegen",
+        "ref": "7a8b9c0d-1e2f-4a3b-8c4d-5e6f7a8b9c0d"
+      }
+    ],
+    "blocked": [
+      {
+        "text": "Brandschutzkonzept fehlt im Projekt",
+        "who": "Fachplaner Brandschutz"
+      }
+    ],
+    "next": [
+      {
+        "text": "Vorschläge annehmen, dann lege ich die Ausschreibungsunterlagen an",
+        "who": "Lena Berger",
+        "due": "heute"
+      }
+    ]
+  }
+}

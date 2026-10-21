@@ -29,6 +29,11 @@ channel alone ranks, and the run's report says so.
 
 Every request is appended to ``requests.jsonl`` beside the run, so a check can
 read which lookups a turn made and with what arguments.
+
+``--set workspace`` hands it a ``fixture_workspace.FixtureWorkspace`` instead:
+then it serves Piloti's MCP door (``POST /api/mcp``) and a turn context with
+the WORKSPACE block, logs what the door answered beside each call, and drops
+every other route the same way.
 """
 
 from __future__ import annotations
@@ -421,9 +426,17 @@ class FixtureBFF:
     """The fixture office behind a local HTTP server, on a free port, until :meth:`stop`."""
 
     def __init__(
-        self, token: str, log_path: Path, office: FixtureOffice | None = None, embed: Embed | None = None
+        self,
+        token: str,
+        log_path: Path,
+        office: FixtureOffice | None = None,
+        embed: Embed | None = None,
+        workspace: Any = None,
     ) -> None:
         self.embed = embed
+        #: ``fixture_workspace.FixtureWorkspace`` for ``--set workspace``: then this serves Piloti's MCP door
+        #: and a turn context with its WORKSPACE block, in place of the precedent office's routes.
+        self.workspace = workspace
         self.office = office or FixtureOffice(embed=embed)
         self._offices = {self.office.scenario: self.office}
         self._scenario_of: dict[str, str] = {}
@@ -463,7 +476,15 @@ class FixtureBFF:
             scenario = self._scenario_of.get(conversation_id or "")
             return self._offices.get(scenario or "", self.office)
 
-    def _answer(self, path: str, body: dict[str, Any], office: FixtureOffice) -> tuple[int, dict[str, Any]] | None:
+    def _answer(
+        self, path: str, body: dict[str, Any], office: FixtureOffice, conversation: str | None = None
+    ) -> tuple[int, dict[str, Any]] | None:
+        if self.workspace is not None:
+            if path == "/api/mcp":
+                return 200, self.workspace.handle(body, conversation)
+            if path == "/api/internal/turn-context":
+                return 200, self.workspace.turn_context(conversation)
+            return None
         if path == "/api/internal/turn-context":
             return 200, office.turn_context()
         if path == "/api/internal/cross-project/search":
@@ -492,8 +513,12 @@ class FixtureBFF:
                 path = self.path.split("?", 1)[0]
                 conversation = _conversation_of(self.headers.get("X-Grid-Request-Context"))
                 trusted = self.headers.get("X-Grid-Internal-Token") == bff.token
-                answer = bff._answer(path, body, bff.office_for(conversation)) if trusted else None
-                bff._log({"path": path, "body": body, "served": answer is not None, "conversation": conversation})
+                answer = bff._answer(path, body, bff.office_for(conversation), conversation) if trusted else None
+                entry = {"path": path, "body": body, "served": answer is not None, "conversation": conversation}
+                if answer is not None and path == "/api/mcp":
+                    # What the door answered, so a check reads the proposals and refusals a turn met.
+                    entry["result"] = answer[1].get("result")
+                bff._log(entry)
                 if answer is None:
                     # As unreachable as today's suite's BFF: no status line at all.
                     self.close_connection = True

@@ -278,6 +278,7 @@ def _turn_state(
         platform_lessons=context.platform_lessons,
         org_instructions=context.org_instructions,
         reference_projects=context.reference_projects,
+        workspace_block=context.workspace,
         deep_research_allowed=context.deep_research_allowed,
         tasks_allowed=context.tasks_allowed,
         confined=context.confined,

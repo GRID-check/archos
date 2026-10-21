@@ -15,7 +15,22 @@ import { buildProposalDecisionsBlock, composeMemoryContext } from '@/lib/project
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
 import { buildFolderDescriptionsBlock } from '@/lib/filing/folder-descriptions-block'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import { getDb } from '@/lib/db'
+import { isSoloAudience } from '@/lib/conversations/cross-project-use'
+import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
+import { countPendingInboxItems, EVERY_INBOX_TYPE } from '@/lib/inbox/repository'
+import { listConversationProposals } from '@/lib/proposals/repository'
+import { findProjectInOrg } from '@/lib/projects/repository'
+import { listRunsInProject } from '@/lib/tasks/repository'
+import type { ProjectAccess } from '@/lib/authz/projects'
 import type { TurnContextRequest, TurnContextResponse } from './wire'
+import {
+  MAX_WORKSPACE_PROPOSALS,
+  type WorkspaceFacts,
+  proposalOutcomeOf,
+  proposalSummaryOf,
+  renderWorkspaceBlock,
+} from './workspace-block'
 
 async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | null> {
   try {
@@ -26,6 +41,58 @@ async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | nu
   }
 }
 
+/** Task runs that still hold the project's attention. */
+const ACTIVE_RUN_STATUSES = new Set(['queued', 'running'])
+
+/**
+ * The WORKSPACE block (ADR-0122): the asker's roles, the project, the
+ * conversation's audience, what waits in their inbox, the project's runs in
+ * flight and this conversation's proposals with every status. Read after the
+ * access checks above, under the turn's tenant; each part fails open to
+ * "unknown" on its own, so one slow table never costs the turn its context.
+ */
+async function loadWorkspaceBlock(
+  session: AuthorizedSession,
+  context: VerifiedGridRequestContext,
+  projectAccess: ProjectAccess | null,
+): Promise<string> {
+  const { organizationId, projectId, conversationId, userId } = context
+  const [project, audience, inboxWaiting, runs, proposals] = await Promise.all([
+    projectId ? advisory('load the project', () => findProjectInOrg(projectId, organizationId)) : Promise.resolve(null),
+    conversationId
+      ? advisory('load the conversation audience', async () =>
+          isSoloAudience(await readConversationAudience(getDb(), organizationId, conversationId), userId)
+            ? ('solo' as const)
+            : ('shared' as const),
+        )
+      : Promise.resolve(null),
+    advisory('count the inbox', () => countPendingInboxItems(organizationId, userId, EVERY_INBOX_TYPE)),
+    projectId ? advisory('list the project runs', () => listRunsInProject(projectId, organizationId)) : Promise.resolve(null),
+    conversationId
+      ? advisory('list the conversation proposals', () =>
+          listConversationProposals(organizationId, conversationId, MAX_WORKSPACE_PROPOSALS + 1),
+        )
+      : Promise.resolve(null),
+  ])
+  const facts: WorkspaceFacts = {
+    organizationRole: session.role || null,
+    projectRole: projectAccess?.role ?? null,
+    project: projectId && project ? { id: projectId, name: project.name, status: project.status } : null,
+    conversation: conversationId ? { id: conversationId, audience: audience ?? 'unknown' } : null,
+    inboxWaiting,
+    activeRuns: runs ? runs.filter((run) => ACTIVE_RUN_STATUSES.has(run.status)).length : null,
+    proposals: (proposals ?? []).slice(0, MAX_WORKSPACE_PROPOSALS).map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      status: row.status,
+      summary: proposalSummaryOf(row.kind, row.payload),
+      outcome: proposalOutcomeOf(row.results),
+    })),
+    proposalsTruncated: (proposals?.length ?? 0) > MAX_WORKSPACE_PROPOSALS,
+  }
+  return renderWorkspaceBlock(facts)
+}
+
 /** Reload prompt data only after today's requester access has been checked. */
 export async function loadTurnContext(
   session: AuthorizedSession,
@@ -33,7 +100,7 @@ export async function loadTurnContext(
   input: TurnContextRequest,
 ): Promise<TurnContextResponse> {
   const { organizationId, projectId, conversationId } = context
-  if (projectId) await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
+  const projectAccess = projectId ? await requireProjectAccess(session, projectId, CHAT_PERMISSIONS) : null
   if (conversationId) {
     // An RLS-hidden foreign row is not a genuinely new conversation.
     const tenancy = await withPlatformAccess(
@@ -47,7 +114,7 @@ export async function loadTurnContext(
     }
   }
 
-  const [projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects, folders] = await Promise.all([
+  const [projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects, folders, workspace] = await Promise.all([
     projectId ? loadProjectPromptView(projectId, organizationId) : Promise.resolve(null),
     resolveOrgInstructions(organizationId),
     buildProjectMemoryDigest(projectId ?? undefined, organizationId, { query: input.query || undefined }),
@@ -65,6 +132,8 @@ export async function loadTurnContext(
     advisory('load reference projects', () => loadReferenceBrief(organizationId, projectId ?? null)),
     // What a person wrote each folder holds, beside the tree the inventory shows.
     advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null)),
+    // Who asks, where, and what is open now: the state office work starts from (ADR-0122).
+    advisory('load the workspace block', () => loadWorkspaceBlock(session, context, projectAccess)),
   ])
   return {
     projectContext,
@@ -72,5 +141,6 @@ export async function loadTurnContext(
     orgInstructions,
     drewOnOtherProjects: drewOnOthers,
     referenceProjects,
+    workspace,
   }
 }

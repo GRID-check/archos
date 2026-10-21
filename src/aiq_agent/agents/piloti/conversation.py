@@ -455,6 +455,7 @@ class ConversationGraph:
             platform_lessons=state.platform_lessons,
             org_instructions=state.org_instructions,
             reference_projects=state.reference_projects,
+            workspace_block=state.workspace_block,
             focus_file_name=state.focus_file_name,
             focus_shelf=state.focus_shelf,
             focus_region=state.focus_region,

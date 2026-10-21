@@ -507,7 +507,7 @@ class TestStrictResponseFormat:
         assert confidence["properties"]["level"]["enum"] == ["low", "medium", "high"]
         assert "kind=ruling" in schema["properties"]["kind"]["description"]
         kind = schema["properties"]["kind"]["anyOf"][0]
-        assert kind["enum"] == ["direct", "walkthrough", "ruling", "handoff"]
+        assert kind["enum"] == ["direct", "walkthrough", "ruling", "handoff", "work"]
 
     def test_an_enforced_reply_parses_through_the_same_validator(self):
         """Strict mode spells absence as null; extraction must not care."""
@@ -650,6 +650,7 @@ class TestTopicContextRegistry:
             "context",
             "callout",
             "takeaways",
+            "work",
         ]
 
     def test_the_taught_schema_names_topic_and_context(self):

@@ -37,10 +37,17 @@ class ContextBlocks:
     #: like this one), so the agent can look there unasked. None from an older
     #: BFF, or when the office has none.
     reference_projects: str | None = None
+    #: The WORKSPACE block (ADR-0122): who asks, where, and what is open now,
+    #: this conversation's proposals included. None from an older BFF.
+    workspace: str | None = None
 
 
 #: The catalog is a dozen short lines; anything longer is cut at a line.
 REFERENCE_PROJECTS_MAX_CHARS = 4000
+
+#: The block is a few header lines and at most eight proposals of ~200 chars
+#: (``MAX_WORKSPACE_PROPOSALS`` in ``lib/turn-context/workspace-block.ts``).
+WORKSPACE_MAX_CHARS = 3000
 
 
 def _bounded_lines(value: str | None, max_chars: int) -> str | None:
@@ -103,6 +110,10 @@ def _parse_blocks(body: object) -> ContextBlocks:
         reference_projects=_bounded_lines(
             data.get("referenceProjects") if isinstance(data.get("referenceProjects"), str) else None,
             REFERENCE_PROJECTS_MAX_CHARS,
+        ),
+        workspace=_bounded_lines(
+            data.get("workspace") if isinstance(data.get("workspace"), str) else None,
+            WORKSPACE_MAX_CHARS,
         ),
     )
 

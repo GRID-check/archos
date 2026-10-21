@@ -510,6 +510,30 @@ been unfolded ([`proposed-changes.md`](proposed-changes.md#operation)). The serv
 `workspace__call` shows the card from that shape
 ([`proposed-changes.md`](proposed-changes.md#operation)).
 
+What Piloti knows before its first call, and how it reports
+([ADR-0122](../adr/0122-piloti-works-the-office-through-its-door.md)):
+
+- **The WORKSPACE block** of each turn's context (`lib/turn-context/workspace-block.ts`):
+  the asker's organization and project role, the project's name and id, whether
+  the conversation is solo or shared, how many inbox items wait, the runs in
+  flight, and this conversation's proposals with every status. Ids it names are
+  not looked up again, and a waiting proposal is not proposed twice.
+- **The prompt's `<workspace>` facts** (`piloti_static.md`): queries in English,
+  in the catalog's words; search and describe in one round, call in the next;
+  a record is named, never cited; files and memory have their own native doors.
+- **The work report** (`kind: work`): an operations turn ends with what it
+  proposed (with the proposal ids), what is blocked and on whom, and what is
+  next, drawn after the prose.
+- **German requests on the server.** `discovery.ts` ranks with `wordsOf`, which
+  splits on `[^a-z0-9]`, so a German query breaks at its umlauts and never meets
+  the English catalog. `lib/text/operation-search.ts` folds both sides and maps
+  the office's words to the catalog's (`operation-search-vocabulary.json`);
+  `discovery.ts` adopts it by ranking with `operationScorer(query)` in place of
+  `scorerFor`. Until it does, the prompt's English queries carry the load.
+
+The workspace set of the answer suite measures all of it
+([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set)).
+
 ## Connecting a client
 
 The server's URL is `https://<app-host>/api/mcp`, for example
