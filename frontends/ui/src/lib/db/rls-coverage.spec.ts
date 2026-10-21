@@ -184,6 +184,10 @@ const BOUNDARY_MIGRATIONS = [
   // behalf (ADR-0124). Keyed by its organization; the composite foreign key
   // ties it to its conversation's.
   '0179_piloti_asks.sql',
+  // Adds folder_cards — the tier-1 abstract and key facts of a folder
+  // (ADR-0127). Keyed by its organization; the composite foreign key ties it
+  // to its folder's organization and shelf.
+  '0180_folder_cards.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

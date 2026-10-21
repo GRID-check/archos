@@ -2771,6 +2771,63 @@ check_in grid_asks "SELECT count(*) FROM pg_tables WHERE tablename = 'piloti_ask
 echo "==> 0179 asks and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0180: the folder cards of the file tools (ADR-0127), and the DOWN.
+#
+# On a database of its own, migrated through 0180, with one Archiv (office
+# shelf) folder per organization. The CHECKs refuse an abstract past 600
+# characters, key facts that are not an array or hold nine entries, and an
+# unknown status; the composite key refuses a card on another organization's
+# folder (or on the wrong shelf), a second card for one folder, and cascades
+# with the folder. The runtime role sees its organization's cards and no
+# other's, and cannot write one into another organization. The down drops the
+# table and leaves the folders.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0180 folder cards and their down migration on grid_foldercards"
+migrate_until grid_foldercards 0180_folder_cards
+sql_in grid_foldercards <<'SQL'
+INSERT INTO project_folders (id, organization_id, scope, name, path) VALUES
+  ('f1f1f1f1-0000-4000-8000-000000000180', 'org_0180_a', 'office_shelf', 'Vertraege', 'Vertraege'),
+  ('f2f2f2f2-0000-4000-8000-000000000180', 'org_0180_b', 'office_shelf', 'Vertraege', 'Vertraege'),
+  ('f3f3f3f3-0000-4000-8000-000000000180', 'org_0180_b', 'office_shelf', 'Plaene', 'Plaene');
+INSERT INTO folder_cards (organization_id, folder_id, scope, collection, input_hash) VALUES
+  ('org_0180_a', 'f1f1f1f1-0000-4000-8000-000000000180', 'office_shelf', 'archiv_org_0180_a', 'h1'),
+  ('org_0180_b', 'f2f2f2f2-0000-4000-8000-000000000180', 'office_shelf', 'archiv_org_0180_b', 'h2');
+SQL
+check_in grid_foldercards "SELECT status || ':' || key_facts::text FROM folder_cards WHERE organization_id = 'org_0180_a'" "stale:[]" "0180: a card starts stale with no key facts"
+FC180="INSERT INTO folder_cards (organization_id, folder_id, scope, collection, input_hash"
+refused_in grid_foldercards "UPDATE folder_cards SET abstract = repeat('a', 601) WHERE organization_id = 'org_0180_a'" "folder_cards_abstract_length" "an abstract past 600 characters"
+refused_in grid_foldercards "UPDATE folder_cards SET key_facts = '{}'::jsonb WHERE organization_id = 'org_0180_a'" "folder_cards_key_facts_shape" "key facts that are not an array"
+refused_in grid_foldercards "UPDATE folder_cards SET key_facts = '[1,2,3,4,5,6,7,8,9]'::jsonb WHERE organization_id = 'org_0180_a'" "folder_cards_key_facts_shape" "nine key facts"
+refused_in grid_foldercards "UPDATE folder_cards SET status = 'building' WHERE organization_id = 'org_0180_a'" "folder_cards_status_check" "an unknown status"
+refused_in grid_foldercards "$FC180) VALUES ('org_0180_a', 'f3f3f3f3-0000-4000-8000-000000000180', 'office_shelf', 'archiv_org_0180_a', 'h')" "folder_cards_folder_fkey" "a card on another organization's folder"
+refused_in grid_foldercards "$FC180) VALUES ('org_0180_b', 'f3f3f3f3-0000-4000-8000-000000000180', 'project', 'archiv_org_0180_b', 'h')" "folder_cards_folder_fkey" "a card on the wrong shelf"
+refused_in grid_foldercards "$FC180) VALUES ('org_0180_a', 'f1f1f1f1-0000-4000-8000-000000000180', 'office_shelf', 'archiv_org_0180_a', 'h')" "folder_cards_folder_key" "a second card for one folder"
+RW180=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_foldercards -qtA \
+  -c "SET grid.organization_id = 'org_0180_a'" \
+  -c "SELECT string_agg(organization_id, ',') FROM folder_cards")
+if [ "$RW180" != "org_0180_a" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_foldercards: the runtime role saw cards that are not its organization's (got: $RW180)" >&2
+  exit 1
+fi
+RWUP180=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_foldercards -qtA \
+  -c "SET grid.organization_id = 'org_0180_a'" \
+  -c "WITH u AS (UPDATE folder_cards SET collection = 'x' WHERE organization_id = 'org_0180_b' RETURNING 1) SELECT count(*) FROM u")
+if [ "$RWUP180" != "0" ]; then
+  echo "MIGRATION ASSERTION FAILED on grid_foldercards: the runtime role updated another organization's card (got: $RWUP180)" >&2
+  exit 1
+fi
+sql_in grid_foldercards <<<"DELETE FROM project_folders WHERE id = 'f2f2f2f2-0000-4000-8000-000000000180';"
+check_in grid_foldercards "SELECT count(*) FROM folder_cards WHERE organization_id = 'org_0180_b'" "0" "0180: a card goes with its folder"
+apply_in grid_foldercards 0180_folder_cards.sql
+check_in grid_foldercards "SELECT count(*) FROM folder_cards" "1" "0180 re-applies and keeps the cards"
+apply_in grid_foldercards 0180_folder_cards.down.sql
+check_in grid_foldercards "SELECT count(*) FROM pg_tables WHERE tablename = 'folder_cards'" "0" "0180 down drops the table"
+check_in grid_foldercards "SELECT count(*) FROM project_folders WHERE id = 'f1f1f1f1-0000-4000-8000-000000000180'" "1" "0180 down leaves the folders"
+apply_in grid_foldercards 0180_folder_cards.sql
+check_in grid_foldercards "SELECT count(*) FROM pg_tables WHERE tablename = 'folder_cards'" "1" "0180 applies again after its down"
+echo "==> 0180 folder cards and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose
