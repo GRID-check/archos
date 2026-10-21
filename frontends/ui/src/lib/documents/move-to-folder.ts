@@ -266,16 +266,29 @@ export interface MoveDocumentsOptions {
    * time and carries on from the first one missing.
    */
   deadline?: number
+  /**
+   * Told how many moves are done before each next one starts, so a job slice
+   * can show its progress while it runs. The last count is the answer itself.
+   */
+  onProgress?: (done: number) => Promise<void> | void
+  /**
+   * Moves in flight at once (default 1). The moves are started in order and
+   * every one started finishes, so the answer is still the first N moves, in
+   * order: a deadline leaves a prefix, never a gap.
+   */
+  concurrency?: number
 }
 
 /**
- * Several moves, one at a time, each through {@link moveDocumentToFolder} with
- * every check it makes: a bulk move is that move repeated, never a shortcut
- * past it. One that is refused or throws is reported and the rest go on, so a
- * single read-only folder does not stop a sort of a thousand files.
+ * Several moves, each through {@link moveDocumentToFolder} with every check it
+ * makes: a bulk move is that move repeated, never a shortcut past it. One that
+ * is refused or throws is reported and the rest go on, so a single read-only
+ * folder does not stop a sort of a thousand files. One at a time unless the
+ * caller asks for more; the moves are of different documents, so they do not
+ * contend.
  *
  * Placement is the one step that is not repeated per move. A crossing move
- * defers it, and after the loop placement runs ONCE per affected project: a
+ * defers it, and after the moves placement runs ONCE per affected project: a
  * pass reads the whole tree, so N crossing moves cost one pass, not N. Every
  * crossing move's own purge, and the refusal of one whose purge failed, stay
  * per move, so the restricted content is no less protected than one move at a time.
@@ -283,48 +296,66 @@ export interface MoveDocumentsOptions {
 export async function moveDocumentsToFolders(
   moves: readonly MoveDocumentInput[],
   session: AuthorizedSession,
-  { deadline }: MoveDocumentsOptions = {},
+  { deadline, onProgress, concurrency = 1 }: MoveDocumentsOptions = {},
 ): Promise<DocumentMoveOutcome[]> {
-  const outcomes: DocumentMoveOutcome[] = []
-  const crossed: Array<{ outcome: DocumentMoveOutcome; documentId: string; placementDue: PlacementDue }> = []
-  for (const move of moves) {
-    if (deadline !== undefined && Date.now() >= deadline) break
-    try {
-      const result = await moveDocumentToFolder(move, session, { deferPlacement: true })
-      if (!result.ok) {
-        outcomes.push({ documentId: move.documentId, ok: false, error: result.error, pending: false })
-        continue
-      }
-      const outcome: DocumentMoveOutcome = {
-        documentId: move.documentId,
-        ok: true,
-        error: null,
-        pending: result.pending,
-        changed: result.changed ?? true,
-      }
-      outcomes.push(outcome)
-      if (result.placementDue) crossed.push({ outcome, documentId: move.documentId, placementDue: result.placementDue })
-    } catch (error) {
-      // A refusal says what it is; anything else is logged here and never reaches the body.
-      if (!(error instanceof ApiError)) console.error(`[documents] move of ${move.documentId} failed`, error)
-      outcomes.push({
-        documentId: move.documentId,
-        ok: false,
-        error: error instanceof ApiError ? error.message : 'Move failed.',
-        pending: false,
-      })
+  const settled: Array<{ outcome: DocumentMoveOutcome; placementDue?: PlacementDue }> = []
+  let next = 0
+  let done = 0
+  const lane = async (): Promise<void> => {
+    while (next < moves.length) {
+      if (deadline !== undefined && Date.now() >= deadline) return
+      const index = next++
+      if (done > 0) await onProgress?.(done)
+      settled[index] = await moveOne(moves[index], session)
+      done += 1
     }
   }
+  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, moves.length)) }, lane))
+  // Started in order and all finished: `settled` has no hole before its end.
+  const outcomes = settled.map((item) => item.outcome)
+  const crossed = settled.flatMap((item) => (item.placementDue ? [{ outcome: item.outcome, placementDue: item.placementDue }] : []))
   // One pass per project, then each crossed document is read back: a document
   // the pass did not place stays pending, and the sweep places it.
   await placeProjects(
     session.organizationId,
     crossed.map((item) => item.placementDue.projectId),
   )
-  for (const { outcome, documentId, placementDue } of crossed) {
-    outcome.pending = !(await isInCollection(session, documentId, placementDue.collectionName))
+  for (const { outcome, placementDue } of crossed) {
+    outcome.pending = !(await isInCollection(session, outcome.documentId, placementDue.collectionName))
   }
   return outcomes
+}
+
+/** One move of a batch, as its outcome: a refusal or an error is reported, never thrown. */
+async function moveOne(
+  move: MoveDocumentInput,
+  session: AuthorizedSession,
+): Promise<{ outcome: DocumentMoveOutcome; placementDue?: PlacementDue }> {
+  try {
+    const result = await moveDocumentToFolder(move, session, { deferPlacement: true })
+    if (!result.ok) return { outcome: { documentId: move.documentId, ok: false, error: result.error, pending: false } }
+    return {
+      outcome: {
+        documentId: move.documentId,
+        ok: true,
+        error: null,
+        pending: result.pending,
+        changed: result.changed ?? true,
+      },
+      placementDue: result.placementDue ?? undefined,
+    }
+  } catch (error) {
+    // A refusal says what it is; anything else is logged here and never reaches the body.
+    if (!(error instanceof ApiError)) console.error(`[documents] move of ${move.documentId} failed`, error)
+    return {
+      outcome: {
+        documentId: move.documentId,
+        ok: false,
+        error: error instanceof ApiError ? error.message : 'Move failed.',
+        pending: false,
+      },
+    }
+  }
 }
 
 /** Re-read a document whose chunks were purged for a move that then did not happen. Best-effort, logged. */

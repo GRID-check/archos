@@ -14,7 +14,7 @@ import type { RootSortRun } from '@/lib/db/schema'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { recipientsHoldingGroup } from '@/lib/inbox/repository'
-import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
+import { emitInboxItems, resolveInboxItemsAnchoredOn, type InboxEmission } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import type { RootSortPlacement } from './root-sort-types'
 
@@ -31,6 +31,28 @@ export async function announceRootSortRun(run: RootSortRun): Promise<void> {
     const told = await recipientsHoldingGroup(run.organizationId, emission.groupKey, [emission.recipientUserId])
     if (told.has(emission.recipientUserId)) return
     await emitInboxItems([emission])
+  })
+}
+
+/**
+ * Resolve the run's notice once it no longer says what is true: a „ready to
+ * review“ row after the person applied or cancelled the run, or a new run
+ * replaced it, and a „stopped“ row once its moves are undone. A notice left
+ * open sends the person to a review that is gone. Best effort, like the
+ * announcement.
+ */
+export async function settleRootSortNotices(run: RootSortRun): Promise<void> {
+  const stale = [
+    ...(run.status === 'ready' ? [] : (['root_sort.ready'] as const)),
+    ...(run.status === 'failed' ? [] : (['root_sort.failed'] as const)),
+  ]
+  await bestEffortInbox(`settling the notices of run ${run.id}`, run.organizationId, async () => {
+    await resolveInboxItemsAnchoredOn({
+      organizationId: run.organizationId,
+      types: stale,
+      anchorId: run.id,
+      recipientUserId: run.requestedBy,
+    })
   })
 }
 

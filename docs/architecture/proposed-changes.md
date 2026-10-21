@@ -573,7 +573,7 @@ gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
 1. **Scan** (the start request, not a slice). The shelf's open folders and the
    root documents the judgement may read: screened, and read by ingestion.
    Others are counted as unreadable. At most 5000 root documents per run.
-2. **Judge** (`judging`). A slice runs three chunks of 60 documents side by
+2. **Judge** (`judging`). A slice runs six chunks of 30 documents side by
    side through the filing judgement (`POST /v1/filing-fit` with
    `purpose: "sort"`). It places every document that has a plausible home, in
    the deepest folder that fits, and may propose a folder the office uses in
@@ -583,7 +583,11 @@ gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
    150 labelled documents): sure placements were right 0.972 of the time at
    0.8, against 0.93 at 0.6; most misses were one level too high and score
    below the cut. A chunk that fails is recorded,
-   and its documents stay in the root.
+   and its documents stay in the root. A chunk is 30 documents, not the
+   judgement's 60, because a call's time grows with its documents and the
+   dialog's progress moves once per finished call: measured, 30 took 26 s a call
+   and placed as well as 60 (0.914 and 0.89 against 0.89 to 0.929), while 20
+   took 16 s but placed 0.875.
 3. **Group** (`grouping`, one slice). The documents no folder fits, up to 1000,
    go to `POST /v1/folder-proposals` in parallel chunks, and one merge call
    unifies the names into at most 12 new folders, so names agree across the
@@ -599,15 +603,33 @@ gets an Eingang item (`root_sort.ready`, `root_sort.failed`,
    on the person.
 5. **Apply** (`applying`). The apply request records what the person kept on
    the row. The first slice creates the kept new folders through the shelf's
-   folder ensure. Each slice then moves at most 100 documents, each through
-   `moveDocumentToFolder` with all its checks, and records each outcome; a move
-   that fails is recorded and the rest go on.
+   folder ensure. Each slice then moves at most 100 documents, four at a time,
+   each through `moveDocumentToFolder` with all its checks, and records each
+   outcome; a move that fails is recorded and the rest go on. The moves start in
+   order and every one started finishes, so a slice that stops at its time
+   budget still ends on a prefix and the next carries on from the cursor.
 6. **Undo** (`undoing`). Moves the documents the run moved back to the root, 100
    per slice, from `applied` or from a `failed` run that had moved some, and
    only where a document is still in the folder the run put it in: one a
    colleague filed since stays where they put it. The folders it created stay.
    What it could not move back is kept apart (`undo_failures`) and named in the
    dialog.
+
+**The dialog sees the work as it happens.** A slice commits its cursor only
+when it ends, so the run also keeps `progress_done` (migration 0174): each
+finished chunk and every few moves raise it while the slice runs, at most one
+write a second, never below what it was and only while the run is still at the
+status and cursor the slice read. It is display only; nothing resumes from it.
+The run's view adds whether its job still waits for a worker (`waiting`, read
+from `bff_job_queue`), the latest few placements with their folders while
+judging (`recent`), and `updatedAt`, from which the dialog reads how long
+grouping has run. What the dialog makes of them:
+[`file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#sorting-the-root).
+
+**A notice never outlives what it announced.** The „ready to review“ row is
+resolved when the person applies or cancels the run or a new run replaces it,
+and the „stopped“ row when its moves are undone (`settleRootSortNotices`). An
+open row used to send the person to a review that was already applied.
 
 **The reading rules are the upload filing's.** Only folders every member may
 read, only screened documents, nothing on a closed project. The gate is

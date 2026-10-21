@@ -185,6 +185,22 @@ describe('moveDocumentToFolder', () => {
     expect(db.updates).toHaveLength(0)
   })
 
+  it('answers a batch run several at a time in the order it was asked, and counts its progress up', async () => {
+    // No document is found, so every move is refused: what is checked is the batch's shape.
+    const ids = ['doc-a', 'doc-b', 'doc-c', 'doc-d', 'doc-e']
+    const counts: number[] = []
+    const outcomes = await moveDocumentsToFolders(
+      ids.map((documentId) => ({ documentId, folderId: 'folder-1' })),
+      SESSION,
+      { concurrency: 3, onProgress: (done) => void counts.push(done) },
+    )
+
+    expect(outcomes.map((outcome) => outcome.documentId)).toEqual(ids)
+    expect(outcomes.every((outcome) => !outcome.ok)).toBe(true)
+    expect(counts).toEqual([...counts].sort((a, b) => a - b))
+    expect(Math.max(...counts)).toBeLessThan(ids.length)
+  })
+
   it('clears the backend path when the document goes back to the project root', async () => {
     db.selects = [[{ ...DOCUMENT, folderId: 'folder-1' }]]
 
