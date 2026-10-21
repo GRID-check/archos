@@ -18,7 +18,7 @@
 import { folderMatchKey } from '@/lib/projects/folders'
 
 /** The shape of the stored JSON; bump when a field changes meaning, and the stored row is recomputed. */
-export const EXTRACTOR_VERSION = 1
+export const EXTRACTOR_VERSION = 2
 
 /** A convention needs at least this many projects behind it. */
 export const MIN_PROJECTS = 3
@@ -167,13 +167,21 @@ function learnSkeleton(folders: readonly ConventionFolder[], projectsWithFolders
     .slice(0, MAX_SKELETON_FOLDERS)
 }
 
+/**
+ * The folder a document is filed in, cut to {@link MAX_SKELETON_DEPTH}: the
+ * depth the skeleton shows the whole office. The conventions are the office's,
+ * read by every member, including projects a member is not on (ADR-0129), so a
+ * filing line names no folder deeper than the skeleton would.
+ */
+const filedIn = (doc: ConventionDocument): string => prefixes(doc.folderPath).at(-1) ?? ''
+
 function learnFiling(documents: readonly ConventionDocument[]) {
-  const filed = documents.filter((doc) => doc.docType !== null && conventionPathKey(doc.folderPath) !== '')
-  const spelled = spellings(filed.map((doc) => [conventionPathKey(doc.folderPath), doc.folderPath.trim()]))
+  const filed = documents.filter((doc) => doc.docType !== null && conventionPathKey(filedIn(doc)) !== '')
+  const spelled = spellings(filed.map((doc) => [conventionPathKey(filedIn(doc)), filedIn(doc)]))
   const types = [...new Set(filed.map((doc) => doc.docType as string))].sort()
   return types.flatMap((docType) => {
     const ofType = filed.filter((doc) => doc.docType === docType)
-    const agreed = agreedAcrossProjects(perProject(ofType, (doc) => doc.projectId, (doc) => conventionPathKey(doc.folderPath)))
+    const agreed = agreedAcrossProjects(perProject(ofType, (doc) => doc.projectId, (doc) => conventionPathKey(filedIn(doc))))
     if (!agreed) return []
     return [{ docType, path: spelled.get(agreed.value) ?? agreed.value, projects: agreed.projects, of: agreed.of }]
   })

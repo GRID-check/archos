@@ -14,7 +14,7 @@
  * ## When it is counted
  *
  * When a turn that asks about filing or finding finds the stored fingerprint
- * stale, it claims the refresh (at most once per {@link REFRESH_MIN_INTERVAL_MS}
+ * stale (the office's fingerprint is read at most once a minute per process), it claims the refresh (at most once per {@link REFRESH_MIN_INTERVAL_MS}
  * per organization) and starts it detached, and is answered from the previous
  * count: no turn waits on one backend listing per project. The refresh is not
  * a `bff_job_queue` kind on purpose: it is derived, idempotent and replaced
@@ -53,6 +53,36 @@ export const MAX_PROJECTS = 30
 
 /** At most one refresh per organization in this window, however often the office changes. */
 export const REFRESH_MIN_INTERVAL_MS = 10 * 60 * 1000
+
+/** How long a turn reuses an organization's fingerprint before it reads the two aggregates again. */
+export const FINGERPRINT_TTL_MS = 60 * 1000
+/** Organizations whose fingerprint one process keeps; past it the oldest is forgotten. */
+const FINGERPRINT_CACHE_MAX = 1000
+
+/**
+ * The fingerprint per organization, for {@link FINGERPRINT_TTL_MS}, in this
+ * process. The question that asks for conventions is broad („wo", „such…"), so
+ * without it every such turn ran a `count(*)` and a `max(updated_at)` over all
+ * of the office's documents and folders. A minute late is nothing for a record
+ * whose refresh is rate-limited to {@link REFRESH_MIN_INTERVAL_MS} anyway.
+ * Holds only a hash-like string per organization id, no tenant content.
+ */
+const fingerprints = new Map<string, { value: string; readAt: number }>()
+
+async function cachedFingerprint(organizationId: string, now: number = Date.now()): Promise<string> {
+  const held = fingerprints.get(organizationId)
+  if (held && now - held.readAt < FINGERPRINT_TTL_MS) return held.value
+  const value = await officeSourceFingerprint(organizationId)
+  fingerprints.delete(organizationId)
+  fingerprints.set(organizationId, { value, readAt: now })
+  if (fingerprints.size > FINGERPRINT_CACHE_MAX) fingerprints.delete(fingerprints.keys().next().value as string)
+  return value
+}
+
+/** Forget every cached fingerprint (tests). */
+export function forgetOfficeFingerprints(): void {
+  fingerprints.clear()
+}
 
 /** Whether the deployment learns and shows the office's conventions. Off unless switched on. */
 export function officeConventionsEnabled(env: Record<string, string | undefined> = process.env): boolean {
@@ -160,10 +190,7 @@ export function isStale(
  */
 export async function officeConventionsForTurn(organizationId: string, query: string | null | undefined) {
   if (!officeConventionsEnabled() || !asksWhereThingsAre(query)) return null
-  const [row, fingerprint] = await Promise.all([
-    readOfficeConventions(organizationId),
-    officeSourceFingerprint(organizationId),
-  ])
+  const [row, fingerprint] = await Promise.all([readOfficeConventions(organizationId), cachedFingerprint(organizationId)])
   if (isStale(row, fingerprint)) await requestOfficeConventionsRefresh(organizationId)
   const conventions = row?.extractorVersion === EXTRACTOR_VERSION ? row.conventions : null
   if (!conventions) return null

@@ -114,6 +114,8 @@ async function lookUp({ collection, filename, imageIndex }: DocumentFileQuery, o
     // error. NULL means the shared bucket, exactly as the column does.
     storageBucket: document.storageBucket,
     contentType: document.contentType,
+    // The Fassung these bytes are; null when the document has no version row.
+    versionId: document.versionId,
   }
 }
 

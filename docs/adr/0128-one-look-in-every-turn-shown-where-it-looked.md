@@ -136,7 +136,12 @@ and gives the reader the same evidence on both surfaces.
   pages, so a turn cannot spend its looks on overviews and never read a region
   (LED-Bench: whole-sheet answering is the weakest mode). Every result states
   how many looks remain. Each look records its rendered size and estimated
-  visual tokens on its span.
+  visual tokens on its span. A reading (the second reader's vision call) is
+  booked to the usage ledger under the role `look_reading`, inside the turn's
+  budget. A call through the external door (`document-look`) runs with its own
+  budget of one look and its own ledger tracker for the person the envelope
+  names, so each such call costs one look and its reading is booked; the door's
+  calls are bounded by the BFF's budget gate.
 * **The glow follows the document, not the surface.** `look` calls
   `presence.show_reading` whenever the document is a workspace document, so a
   colleague who has it open on the canvas sees the box glow while Piloti reads,

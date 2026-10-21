@@ -47,6 +47,7 @@ import asyncio
 import bisect
 import logging
 import re
+import time
 import unicodedata
 from collections.abc import Iterable
 from collections.abc import Mapping
@@ -1419,6 +1420,40 @@ def _phrase_pattern(phrase: str) -> str:
     return f"{start}{body}{end}"
 
 
+#: German inflectional endings :func:`inflection_stem` strips, longest first.
+_INFLECTION_ENDINGS = ("ern", "nen", "en", "er", "es", "em", "e", "n", "s")
+#: Words shorter than this keep their form: a code, an abbreviation, a short word is matched as written.
+_INFLECTED_MIN_CHARS = 5
+#: What a stripped word must keep.
+_STEM_MIN_CHARS = 4
+
+
+def inflection_stem(phrase: str) -> str:
+    """``phrase`` with each long word's inflectional ending removed: the stem the count and the context lines look for.
+
+    A Python approximation of the stemmed index's Snowball German, for counting
+    and showing the matches that index found („Fluchtwegbreiten“ → „Fluchtwegbreit“,
+    which the substring pattern then finds in „Fluchtwegbreite“ and „Fluchtwegbreiten“).
+    Which chunks match is decided by the index, never by this.
+    """
+    words = []
+    for word in phrase.split():
+        stem = word
+        if len(word) >= _INFLECTED_MIN_CHARS and word.isalpha():
+            for ending in _INFLECTION_ENDINGS:
+                if word.lower().endswith(ending) and len(word) - len(ending) >= _STEM_MIN_CHARS:
+                    stem = word[: -len(ending)]
+                    break
+        words.append(stem)
+    return " ".join(words)
+
+
+def stemmed_pattern(phrases: Sequence[str]) -> str | None:
+    """The counting pattern of a stemmed search: each phrase and its stem (the phrases alone when too long)."""
+    stems = [inflection_stem(phrase) for phrase in phrases]
+    return phrase_pattern([*phrases, *stems]) or phrase_pattern(phrases)
+
+
 def phrase_pattern(phrases: Sequence[str]) -> str | None:
     """The ONE case-insensitive regex that finds any of ``phrases``, or None when it is too long.
 
@@ -1457,17 +1492,39 @@ class FileMatches:
         return sorted({chunk.page_number for chunk in self.chunks if getattr(chunk, "page_number", None)})
 
 
-def group_matches(chunks: Iterable[Any], pattern: Any, *, timeout: float | None = None) -> list[FileMatches]:
+def group_matches(
+    chunks: Iterable[Any],
+    pattern: Any,
+    *,
+    timeout: float | None = None,
+    store_decides: bool = False,
+    deadline: float | None = None,
+) -> list[FileMatches]:
     """Chunks the :func:`phrase_pattern` really matches, grouped per file, most occurrences first.
 
     The same pattern the store filtered with, compiled here: what the store
     returned and what is counted cannot disagree about what a match is. A
     person's regex arrives compiled, with the timeout it ran under.
+
+    ``store_decides`` (a stemmed search) keeps every chunk the store returned:
+    the stemmed index matched it, so it counts at least once even where the
+    counting pattern's approximation of the stem finds no place in it.
+
+    ``deadline`` (a ``time.monotonic()`` instant, with ``timeout``) bounds the
+    whole count: each chunk's timeout shrinks to what is left, and
+    ``TimeoutError`` is raised once nothing is.
     """
     compiled = pattern if hasattr(pattern, "finditer") else re.compile(pattern)
     groups: dict[tuple[str, str], FileMatches] = {}
     for chunk in chunks:
+        if deadline is not None and timeout is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise TimeoutError("the count ran out of time")
+            timeout = min(timeout, remaining)
         count = _occurrences(getattr(chunk, "content", "") or "", compiled, timeout)
+        if store_decides:
+            count = max(count, 1)
         if not count:
             continue
         metadata = getattr(chunk, "metadata", None) or {}
@@ -1535,6 +1592,12 @@ def _failed_note(failed: Sequence[str]) -> str:
 #: What the pattern tolerates, said where a count or a „Nein“ is stated.
 _TOLERATED = (
     "ignoring case, umlaut spelling (ä/ae, ö/oe, ü/ue, ß/ss), and a line break, space or hyphen between the words"
+)
+
+#: Said above the table of a stemmed search: what "a match" meant.
+_STEMMED_NOTE = (
+    "Inflected forms included (German stemming): a passage matches when it holds the words in any inflected "
+    "form („Fluchtwegbreiten“ for „Fluchtwegbreite“) or literally as before; a compound matches only literally."
 )
 
 #: What a person's regex tolerates: nothing but what they wrote, apart from case.
@@ -2099,6 +2162,13 @@ _TOO_COSTLY = (
     'a no. Rewrite it without nested repetition, or use `match="exact"` for a literal word.'
 )
 
+#: What a regex whose whole scan outran its deadline is told: too costly, and not a result.
+_TOO_COSTLY_SCAN = (
+    "`query` is too costly: reading this regex over every passage that holds its words takes longer than one "
+    "search may, and the search was stopped. This is NOT a result, neither a hit nor a no. Narrow it with "
+    '`folder=`, `file_name=` or `doc_class=`, add a rarer literal word, or use `match="exact"` for a literal word.'
+)
+
 
 def _context_lines(value: Any) -> tuple[int | None, str]:
     """``context=`` as a count of lines (0 to :data:`MAX_CONTEXT_LINES`), None for none, or a refusal."""
@@ -2141,8 +2211,12 @@ async def exact_search(
     filters: dict[str, Any] | None = None,
     regex_mode: bool = False,
     context: int | str | None = None,
+    stemmed: bool = False,
 ) -> str:
     """``knowledge_search(match="exact"|"regex")``: every chunk in scope that contains the phrase or matches the regex.
+
+    ``stemmed`` (exact only) also finds the inflected forms of each phrase through
+    the German-stemmed index (``qdrant.retrieval.stem_condition``).
 
     ``entries`` is the scope the search already resolved and restricted to the
     turn, so the exact mode reads exactly what the meaning mode reads — and the
@@ -2162,7 +2236,7 @@ async def exact_search(
         phrases = split_alternatives(text)
         if not phrases:
             return f"Provide a `query` of at least {MIN_PHRASE_CHARS} characters: the literal word or phrase to find."
-        pattern = phrase_pattern(phrases)
+        pattern = stemmed_pattern(phrases) if stemmed else phrase_pattern(phrases)
         if pattern is None:
             return (
                 "`query` is too long for the exact search: it finds a word or a short phrase, not a sentence. "
@@ -2210,6 +2284,7 @@ async def exact_search(
         compiled=compiled,
         regex_mode=regex_mode,
         context=context_lines,
+        stemmed=stemmed and not regex_mode,
     )
 
 
@@ -2268,7 +2343,9 @@ async def _search(
     compiled: Any = None,
     regex_mode: bool = False,
     context: int | None = None,
+    stemmed: bool = False,
 ) -> str:
+    from .qdrant.retrieval import USER_REGEX_SCAN_SECONDS
     from .qdrant.retrieval import USER_REGEX_TIMEOUT
     from .qdrant.retrieval import PatternTooCostly
     from .read_passage import _passage_result
@@ -2277,6 +2354,8 @@ async def _search(
     # A person's regex is the only caller that asks for the timed, narrowed-by-its-words read; a store
     # that knows only the literal lookup is never handed the keyword.
     read_options: dict[str, Any] = {"user_regex": True} if regex_mode else {}
+    if stemmed:
+        read_options["stem_phrases"] = list(phrases)
 
     async def _one(entry: Any) -> tuple[list[Any] | None, bool]:
         chunks = await retriever.find_text(
@@ -2302,7 +2381,7 @@ async def _search(
     failed: list[str] = []
     for entry, result in zip(entries, results, strict=True):
         if isinstance(result, PatternTooCostly):
-            return _TOO_COSTLY
+            return _TOO_COSTLY_SCAN if result.scan else _TOO_COSTLY
         if isinstance(result, BaseException):
             # An outage is not an empty collection: counted, and said, never
             # folded into „keine Fundstelle“.
@@ -2323,10 +2402,14 @@ async def _search(
         return "Full-text search is not available in this environment. Use `knowledge_search`."
 
     timeout = USER_REGEX_TIMEOUT if regex_mode else None
+    # Counting reads every matched chunk again; it gets a deadline of its own, as the scan did.
+    deadline = time.monotonic() + USER_REGEX_SCAN_SECONDS if regex_mode else None
     try:
-        groups = group_matches(chunks, compiled if regex_mode else pattern, timeout=timeout)
+        groups = group_matches(
+            chunks, compiled if regex_mode else pattern, timeout=timeout, store_decides=stemmed, deadline=deadline
+        )
     except TimeoutError:
-        return _TOO_COSTLY
+        return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
     if not groups:
         return no_match_message(phrases, answered, failed, regex_mode=regex_mode)
     # The match table names every matching file and counts its matches, which
@@ -2342,6 +2425,8 @@ async def _search(
     trailer = match_table(
         groups, phrases, truncated=truncated, failed=failed, regex_mode=regex_mode, candidates=candidates
     )
+    if stemmed:
+        trailer = f"{_STEMMED_NOTE}\n{trailer}"
     if context is not None:
         try:
             snippets = match_snippets(groups, compiled if regex_mode else re.compile(pattern), context, timeout=timeout)

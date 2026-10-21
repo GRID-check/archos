@@ -13,6 +13,7 @@ vi.mock('./catalog', async () => {
 
 import { FAKE_OPERATIONS } from './test-operations'
 import {
+  RENAMED_BACKEND_OPERATIONS,
   SENSITIVE_SCOPE,
   SENSITIVE_SCOPE_ENFORCED_BY_WORKOS,
   callDecision,
@@ -175,6 +176,15 @@ describe('backend operations', () => {
     expect(findVisibleBackendOperation(person(), 'knowledge-search')?.name).toBe('knowledge-search')
     expect(visibleBackendOperations(piloti)).toEqual([])
     expect(findVisibleBackendOperation(piloti, 'knowledge-search')).toBeUndefined()
+  })
+
+  it('answer to a renamed one’s old name for one release, without listing it under that name', () => {
+    expect(findVisibleBackendOperation(person(), 'knowledge-image-view')?.name).toBe('document-look')
+    expect(visibleBackendOperations(person()).map((o) => o.name)).not.toContain('knowledge-image-view')
+    expect(findVisibleBackendOperation(piloti, 'knowledge-image-view')).toBeUndefined()
+    for (const current of Object.values(RENAMED_BACKEND_OPERATIONS)) {
+      expect(visibleBackendOperations(person()).map((o) => o.name)).toContain(current)
+    }
   })
 
   it('are not on the platform door: they read an office’s workspace', () => {

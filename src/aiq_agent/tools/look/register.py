@@ -117,14 +117,15 @@ def _observe(
     )
 
 
-async def _blocks_for(view: Any, question: str, sees: bool | None, region: Any) -> tuple[list[dict], str]:
-    """What the model gets for a rendered look, and the reading the card keeps.
+async def _blocks_for(view: Any, question: str, sees: bool | None, region: Any) -> tuple[list[dict], str, str]:
+    """What the model gets for a rendered look, the reading the card keeps, and everything read.
 
     The blocks are the region text, the readings it asked for, and the image if
     it sees. A model that takes no images is never sent one (the next model call
     of the turn would be refused): it gets the readings alone, answering
     :data:`DEFAULT_QUESTION` when it asked nothing. The second value is the
     reading's summary, or its first line, for the card item; empty without one.
+    The third is every reading line and the summary, for the claim provenance.
     """
     from .reading import DEFAULT_QUESTION
     from .reading import read_region
@@ -133,12 +134,13 @@ async def _blocks_for(view: Any, question: str, sees: bool | None, region: Any) 
     blind = sees is False
     question = question.strip() or (DEFAULT_QUESTION if blind else "")
     if not question:
-        return view.blocks(), ""
+        return view.blocks(), "", ""
     reading = await read_region(view.jpeg, question, region=region is not None)
     text = f"{view.text}\n\n{render_readings(reading, blind=blind)}"
     blocks = view.with_text(text).blocks()
     kept = (reading.summary or (reading.lines[0].text if reading.lines else "")) if reading.usable else ""
-    return (blocks[:1] if blind else blocks), kept
+    read = "\n".join([*(line.text for line in reading.lines), reading.summary]).strip() if reading.usable else ""
+    return (blocks[:1] if blind else blocks), kept, read
 
 
 async def run_look(
@@ -177,9 +179,19 @@ async def run_look(
             else:
                 rendered = await render
             if isinstance(rendered, View):
-                result, reading = await _blocks_for(rendered, question or "", await turn_sees(), region)
+                result, reading, read = await _blocks_for(rendered, question or "", await turn_sees(), region)
                 # The Herleitung row now, the card item once the answer is final (`cards.py`).
-                note_look(resolved, page, rendered.region, image_index, question, reading=reading)
+                note_look(
+                    resolved,
+                    page,
+                    rendered.region,
+                    image_index,
+                    question,
+                    reading=reading,
+                    read=read,
+                    # The Fassung read, so the card keeps showing these bytes after a newer one lands.
+                    revision_id=rendered.version_id,
+                )
             else:
                 result = rendered
     except Refused as refused:

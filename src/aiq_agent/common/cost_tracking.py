@@ -48,6 +48,7 @@ import math
 import os
 import urllib.error
 import urllib.request
+from collections.abc import Mapping
 from concurrent.futures import Future
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
@@ -55,6 +56,7 @@ from contextvars import ContextVar
 from contextvars import copy_context
 from dataclasses import dataclass
 from threading import Lock
+from types import SimpleNamespace
 from typing import Any
 
 from langchain_core.callbacks import BaseCallbackHandler
@@ -165,6 +167,13 @@ USAGE_ROLE_RERANK = "rerank"
 USAGE_ROLE_INGEST_VISION = "ingest_vision"
 USAGE_ROLE_INGEST_TRANSCRIPTION = "ingest_transcription"
 USAGE_ROLE_EMBEDDING = "embedding"
+
+#: The second reader of ``look`` (``tools/look/reading.py``): one vision call per
+#: look with a question, made with ``httpx`` and so never seen by the callback path.
+USAGE_ROLE_LOOK_READING = "look_reading"
+#: The Fassung comparison's vision call (``routes/revision_compare.py``), asked by a
+#: person in the compare view or by a notice Piloti runs on its own (ADR-0130).
+USAGE_ROLE_REVISION_COMPARE = "revision_compare"
 
 #: ``activity`` of a document ingestion job's spend (the ledger's CHECK lists it).
 USAGE_ACTIVITY_INGEST = "ingest"
@@ -766,6 +775,40 @@ def _usage_event_from_openai(response: Any, *, role: str, requested_model: str |
         is_byok=is_byok if isinstance(is_byok, bool) else None,
         role=role,
     )
+
+
+def record_completion_usage(
+    body: Mapping[str, Any], *, role: str, requested_model: str | None, is_byok: bool | None = None
+) -> bool:
+    """Book one chat completion made with a raw HTTP client, from its parsed JSON ``body``. ``True`` if it landed.
+
+    The direct vision calls (``look``'s reading, the Fassung comparison) post
+    to ``/chat/completions`` themselves, so neither the callback path nor
+    :func:`meter_openai_client` sees them. The body's ``usage`` carries the
+    tokens and OpenRouter's ``cost``; a body without one is booked as
+    ``missing`` with no tokens rather than dropped, so the call is still
+    counted. Attribution is the ambient tracker's; with none nothing is
+    recorded. Never raises.
+    """
+    tracker = grid_cost_tracker_var.get()
+    if tracker is None:
+        return False
+    try:
+        response = SimpleNamespace(
+            usage=body.get("usage") if isinstance(body.get("usage"), dict) else {},
+            id=body.get("id"),
+            model=body.get("model") if isinstance(body.get("model"), str) else None,
+        )
+        event = _usage_event_from_openai(response, role=role, requested_model=requested_model)
+        if event is None:
+            return False
+        if event.is_byok is None:
+            event.is_byok = is_byok
+        tracker.record(event)
+    except Exception:  # noqa: BLE001 - accounting must never fail the call it measures
+        logger.warning("Could not record a %s usage event", role, exc_info=True)
+        return False
+    return True
 
 
 def _metered(create: Any, role: str) -> Any:

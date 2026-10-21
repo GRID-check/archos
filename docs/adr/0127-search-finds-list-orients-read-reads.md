@@ -215,7 +215,11 @@ flowchart LR
   is hidden when the card is read, and an answer cites documents, never cards.
 * Bad, because `match="regex"` runs a model-written pattern over chunk text. It runs
   under the `regex` package's timeout with a length cap, and a pattern with no literal
-  token runs only inside a folder, file or Dokumentart.
+  token runs only inside a folder, file or Dokumentart. The per-chunk timeout does
+  not bound a scan (a pattern cheap per chunk is costly over ten thousand), so the
+  scan of one collection, and the count after it, each stop at a deadline
+  (`USER_REGEX_SCAN_SECONDS`, 3 s) and the scan at `USER_REGEX_SCAN_CHUNKS` (20 000);
+  the reply then says the pattern is too costly and that this is not a result.
 * Neutral: no scratch-note tool. The working directory's `write_file` emits a
   `document_draft` card meant for commissioned documents, the transcript and the
   „Bereits gelesen" digest already carry a chat turn's notes, and work that outgrows

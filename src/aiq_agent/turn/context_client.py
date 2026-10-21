@@ -58,7 +58,12 @@ OFFICE_CONVENTIONS_HEADER = "office conventions ("
 
 
 def office_convention_lines(workspace: str | None) -> int:
-    """How many convention lines the WORKSPACE block carries under its header; 0 without one. Pure."""
+    """How many convention lines the WORKSPACE block carries under its header; 0 without one. Pure.
+
+    Counts every ``- `` line after the header, which is right only while the BFF
+    renders the conventions LAST in the block (``renderWorkspaceBlock``); a
+    section added after them would be counted as conventions.
+    """
     if not workspace:
         return 0
     lines = workspace.splitlines()

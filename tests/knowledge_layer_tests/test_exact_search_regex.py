@@ -324,6 +324,48 @@ class TestCostlyPatterns:
         with pytest.raises(PatternTooCostly):
             retrieval.find_text("proj_1", r"(a|aa)+$", None, 5, user_regex=True)
 
+    def test_a_pattern_cheap_per_chunk_but_costly_over_many_is_stopped_at_the_scan_deadline(self, monkeypatch):
+        """The review's pattern: it names a common word, so the gate passes, and it never matches.
+
+        Each chunk costs it well under the per-chunk limit; sixty of them cost seconds. The scan
+        stops at its own deadline instead of reading on, and says it was the scan.
+        """
+        import time
+
+        monkeypatch.setattr(retrieval, "USER_REGEX_SCAN_SECONDS", 0.3)
+        text = "Brandschutz " + "Wand aus Beton, a " * 330
+        records = [SimpleNamespace(id=str(n), payload={"text": text, "chunk_id": str(n)}) for n in range(60)]
+        fake = SimpleNamespace(scroll=lambda *a, **k: iter(records), text_index_sound=lambda scope: True)
+        monkeypatch.setattr(retrieval, "get_store", lambda *a, **k: fake)
+
+        started = time.monotonic()
+        with pytest.raises(PatternTooCostly) as stopped:
+            retrieval.find_text("proj_1", r"\bbrandschutz\b(.*a){3}Z", None, 5, user_regex=True)
+        assert time.monotonic() - started < 1.5
+        assert stopped.value.scan is True
+
+    def test_a_scan_past_its_chunk_cap_is_stopped(self, monkeypatch):
+        monkeypatch.setattr(retrieval, "USER_REGEX_SCAN_CHUNKS", 3)
+        records = [SimpleNamespace(id=str(n), payload={"text": "Tür T30", "chunk_id": str(n)}) for n in range(10)]
+        fake = SimpleNamespace(scroll=lambda *a, **k: iter(records), text_index_sound=lambda scope: False)
+        monkeypatch.setattr(retrieval, "get_store", lambda *a, **k: fake)
+        with pytest.raises(PatternTooCostly) as stopped:
+            retrieval.find_text("proj_1", r"T90", None, 5, user_regex=True)
+        assert stopped.value.scan is True
+
+    async def test_a_scan_that_ran_out_of_time_is_said_to_be_no_result(self, search_with, monkeypatch):
+        monkeypatch.setattr(retrieval, "USER_REGEX_SCAN_CHUNKS", 1)
+        search_with(_Store([_chunk("Grundriss_EG.pdf", "Tür", chunk_id=str(n)) for n in range(3)]))
+        text = await _search(query=r"\bTür\b T90", match="regex", folder="Plaene")
+        assert "too costly" in text and "NOT a result" in text and "takes longer than one search may" in text
+
+    def test_counting_the_matches_has_a_deadline_too(self):
+        import time
+
+        chunks = [_chunk("a.pdf", "Tür T30", chunk_id=str(n)) for n in range(3)]
+        with pytest.raises(TimeoutError):
+            group_matches(chunks, user_pattern(r"T30")[0], timeout=0.2, deadline=time.monotonic() - 1)
+
     def test_an_ordinary_pattern_is_not_stopped(self, monkeypatch):
         record = SimpleNamespace(id="1", payload={"text": "Tür T30-2", "chunk_id": "1"})
         fake = SimpleNamespace(scroll=lambda *a, **k: iter([record]), text_index_sound=lambda scope: False)

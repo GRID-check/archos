@@ -229,6 +229,31 @@ describe('noticeRevision', () => {
     expect(runAgentAnnotationRequest).not.toHaveBeenCalled()
     expect(insertMessages).toHaveBeenCalledTimes(1)
   })
+
+  it('on a retry after the marks were written, still tells the person and scores the marks it wrote', async () => {
+    await noticeRevision(ORG, payload)
+    const proposed = vi.mocked(runAgentAnnotationRequest).mock.calls[0][2]
+    const written = proposed.op === 'propose' ? proposed.proposals : []
+    vi.mocked(runAgentAnnotationRequest).mockClear()
+    vi.mocked(emitInboxItems).mockClear()
+    vi.mocked(recordRevisionNoticeScore).mockClear()
+    vi.mocked(listDocumentAnnotations).mockResolvedValue(
+      written.map((mark, index) => ({
+        ...mark,
+        id: `mark-${index + 1}`,
+        w: mark.w ?? null,
+        h: mark.h ?? null,
+        authorKind: 'piloti',
+      })) as unknown as Awaited<ReturnType<typeof listDocumentAnnotations>>,
+    )
+
+    const outcome = await noticeRevision(ORG, payload)
+
+    expect(runAgentAnnotationRequest).not.toHaveBeenCalled()
+    expect(emitInboxItems).toHaveBeenCalledWith([expect.objectContaining({ anchorId: 'mark-1' })])
+    expect(recordRevisionNoticeScore).toHaveBeenCalledWith(expect.objectContaining({ proposed: 1 }))
+    expect(outcome).toEqual({ status: 'proposed', compared: [2, 4, 5], marks: 1 })
+  })
 })
 
 describe('runRevisionNotice', () => {

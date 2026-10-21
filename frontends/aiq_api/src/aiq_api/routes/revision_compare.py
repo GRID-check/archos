@@ -19,6 +19,8 @@ the model is the organization's ``ingest_vlm`` choice when it made one: a
 comparison is the same eyes on the same drawings as the page's caption. The
 call queues as interactive, since a person waits on it (ADR-0081), and is traced
 as a ``revision-visual-compare`` generation with the pixels left out (ADR-0089).
+It is booked to the usage ledger (role ``revision_compare``) for the organization
+and person the BFF names in ``x-grid-organization-id`` / ``x-grid-user-id``.
 
 **A second click costs no model call.** The result is cached under the content
 hashes of the two rendered pages (``revision_compare.cache_key``), so the same
@@ -65,6 +67,10 @@ from pydantic import Field
 from aiq_agent.common import provider_limiter
 from aiq_agent.common.cache import get_json
 from aiq_agent.common.cache import set_json
+from aiq_agent.common.cost_tracking import USAGE_ROLE_REVISION_COMPARE
+from aiq_agent.common.cost_tracking import BudgetSnapshot
+from aiq_agent.common.cost_tracking import record_completion_usage
+from aiq_agent.common.cost_tracking import track_llm_costs
 from aiq_agent.common.credential_resolution import ResolvedCredential
 from aiq_agent.common.openrouter import limited_async_http_client
 from aiq_agent.knowledge import get_available_documents_async
@@ -222,6 +228,13 @@ async def _ask_model(
             data = response.json()
             generation.finish(data)
             trace_id = generation.trace_id
+            if isinstance(data, dict):
+                record_completion_usage(
+                    data,
+                    role=USAGE_ROLE_REVISION_COMPARE,
+                    requested_model=cred.model,
+                    is_byok=cred.source == "byok",
+                )
         content, _finish_reason = message_content(data)
         return extract_json_object(content), trace_id
     except httpx.HTTPError as exc:
@@ -296,6 +309,7 @@ def add_revision_compare_routes(router: APIRouter) -> None:
         collection_name: str,
         request: RevisionCompareRequest,
         x_grid_organization_id: str | None = Header(default=None),
+        x_grid_user_id: str | None = Header(default=None),
     ) -> RevisionCompareResponse:
         """Compare page ``page`` of ``older`` and ``newer`` (both files of this collection) with a vision model.
 
@@ -316,7 +330,11 @@ def add_revision_compare_routes(router: APIRouter) -> None:
         if hit is not None:
             return _response(hit, cred.model, cached=True)
 
-        reply, trace_id = await _ask_model(cred, older_jpeg, newer_jpeg, request.page, request.purpose)
+        # Booked to the organization and the person (a notice: whoever uploaded the Fassung) the BFF names,
+        # so the ledger, the budget gate the notice checks, and the invoice see this call (ADR-0130).
+        identity = {"organization_id": x_grid_organization_id, "user_id": x_grid_user_id}
+        with track_llm_costs(identity=identity, budget=BudgetSnapshot()):
+            reply, trace_id = await _ask_model(cred, older_jpeg, newer_jpeg, request.page, request.purpose)
         result = compare.parse_compare(reply, request.page)
         await asyncio.to_thread(_remember, key, result)
         return _response(result, cred.model, cached=False, trace_id=trace_id)

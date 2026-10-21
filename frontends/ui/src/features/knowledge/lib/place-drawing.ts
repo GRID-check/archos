@@ -121,6 +121,15 @@ async function drawImage(place: PagePlace, fit: PlaceFit, clip: boolean, signal:
  * Draw `place` into `canvas` to fit `fit`. With `clip`, the part around its
  * box; without, or for a place with no box on the page, the whole page.
  * Never rejects.
+ *
+ * Each call opens its own pdf.js document. The file routes it reads
+ * (`/api/documents/{id}/file`, `…/versions/{versionId}/file`) answer the whole
+ * file and no `Range` (no `Accept-Ranges`, no `Content-Length`), so pdf.js
+ * reads the whole file rather than the pages it needs. Their
+ * `Cache-Control: private, max-age=300` lets the browser reuse the bytes for a
+ * card's later thumbnails of the same file, not for ones fetched at once.
+ * Range support waits on the download log: an own-list document's every range
+ * request would be one access row (`recordDocumentAccess`).
  */
 export async function drawPlace(options: {
   place: PagePlace

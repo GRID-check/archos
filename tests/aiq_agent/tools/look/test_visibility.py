@@ -98,6 +98,23 @@ class TestALookIsSeen:
         assert [item["scope"] for item in card["items"]] == ["overview", "region"]
         assert card["items"][1]["where"] == "oben rechts"
 
+    async def test_a_look_records_the_revision_it_read(self, registry, steps, monkeypatch) -> None:
+        """The card and the step name the version whose bytes were rendered, so a newer Fassung never redraws them."""
+        import knowledge_layer.view_image as view
+
+        async def locate(collection, file_name, organization_id=None, image_index=None):
+            return view.StorageLocation("key", None, "version-7") if collection == "proj_1" else None
+
+        monkeypatch.setattr(view, "_resolve_storage_location", locate)
+        set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
+
+        await run_look(page=1, region=[0.1, 0.1, 0.3, 0.2])
+
+        assert [step.revision_id for step in steps] == ["version-7"]
+        place_look_cards(take_looks())
+        [card] = _looks(registry)
+        assert [item.get("revision_id") for item in card["items"]] == ["version-7"]
+
     async def test_a_refused_look_leaves_neither_step_nor_card(self, registry, steps) -> None:
         result = await run_look("Grundriss", page=1)  # two files: a question, not a look
 
@@ -206,8 +223,34 @@ async def test_a_reading_rides_on_the_card_item(monkeypatch):
             view.text = text
             return view
 
-    blocks, reading = await look_register._blocks_for(_View(), "Wie breit ist der Gang?", True, [0, 0, 1, 1])
+    blocks, reading, _ = await look_register._blocks_for(_View(), "Wie breit ist der Gang?", True, [0, 0, 1, 1])
     assert reading == "Gangbreite 1,10 m"
     assert "Gangbreite 1,10 m" in blocks[0]["text"]
-    _, none = await look_register._blocks_for(_View(), "", True, None)
-    assert none == ""
+    _, none, nothing = await look_register._blocks_for(_View(), "", True, None)
+    assert none == "" and nothing == ""
+
+
+async def test_every_line_a_look_read_counts_for_the_provenance_not_only_the_cards_one(registry, monkeypatch):
+    """The card keeps the summary; a value on a later ``Gelesen:`` line must still be ``observed``."""
+    from aiq_agent.tools.look.cards import relied_readings
+    from aiq_agent.tools.look.reading import Reading
+    from aiq_agent.tools.look.reading import ReadingLine
+
+    async def fake_read(_jpeg, _question, region=False):
+        return Reading(
+            lines=(
+                ReadingLine(text="Raum 1.04", kind="label", confidence="high"),
+                ReadingLine(text="Raumhöhe 2,70 m", kind="dimension", confidence="high"),
+            ),
+            summary="Ein Raum mit Höhenkote.",
+        )
+
+    monkeypatch.setattr("aiq_agent.tools.look.reading.read_region", fake_read)
+    set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
+
+    await run_look(page=1, region=[0.1, 0.1, 0.3, 0.2], question="Wie hoch ist der Raum?")
+
+    held = take_looks()
+    assert held[0]["item"]["reading"] == "Ein Raum mit Höhenkote."
+    [read] = relied_readings(held)
+    assert "Raumhöhe 2,70 m" in read

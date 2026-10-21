@@ -95,6 +95,7 @@ import {
   findDocumentInOrg,
   markDocumentNotIndexed,
   findStorageKeyByCollectionAndFilename,
+  type StoredDocumentFile,
   findStorageKeyByIdAndCollection,
   listDocumentLevelPage,
   listProjectDocumentPage,
@@ -3403,11 +3404,6 @@ export async function findDocumentStorageKey(
   collectionName: string,
   filename: string,
   organizationId?: string
-): Promise<{
-  id: string
-  storageKey: string
-  storageBucket: string | null
-  contentType: string | null
-} | null> {
+): Promise<StoredDocumentFile | null> {
   return findStorageKeyByCollectionAndFilename(collectionName, filename, organizationId)
 }

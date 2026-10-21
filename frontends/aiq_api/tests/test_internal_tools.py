@@ -266,3 +266,34 @@ def test_every_allowlisted_tool_is_a_read():
     """The list is a promise to the MCP clients that none of these changes anything."""
     forbidden = ("write", "edit", "file_draft", "propose", "remember", "create", "delete", "submit", "emit")
     assert [name for name in BACKEND_READ_TOOLS if any(word in name for word in forbidden)] == []
+
+
+def test_a_door_call_is_booked_to_the_envelopes_person_and_may_render_one_look(
+    client: TestClient, fake_function: _FakeFunction, monkeypatch: pytest.MonkeyPatch
+):
+    """A ``document-look`` with a question makes a vision call: it lands on the ledger, and it is one look."""
+    from aiq_agent.common import cost_tracking
+    from aiq_agent.common.image_view_budget import try_consume_image_view
+
+    posted: list[dict[str, Any]] = []
+    monkeypatch.setattr(cost_tracking, "_post_usage_events", posted.append)
+    looks: list[bool] = []
+
+    async def look_and_read(value: _SearchInput) -> Any:
+        looks.extend([try_consume_image_view("region"), try_consume_image_view("region")])
+        cost_tracking.record_completion_usage(
+            {"usage": {"prompt_tokens": 900, "completion_tokens": 50, "cost": 0.002}},
+            role=cost_tracking.USAGE_ROLE_LOOK_READING,
+            requested_model="vision-1",
+        )
+        return "Gelesen: 2,70 m"
+
+    monkeypatch.setattr(fake_function, "ainvoke", look_and_read)
+
+    response = _post(client, "knowledge_search", {"arguments": {"query": "Raumhöhe"}}, _headers())
+
+    assert response.status_code == 200
+    assert looks == [True, False]
+    [batch] = posted
+    assert (batch["organizationId"], batch["userId"], batch["projectId"]) == ("org_1", "user_1", "proj_1")
+    assert [(event["role"], event["costUsd"]) for event in batch["events"]] == [("look_reading", 0.002)]

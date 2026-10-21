@@ -56,6 +56,9 @@ from .internal_auth import _require_internal_token
 
 logger = logging.getLogger(__name__)
 
+#: How many images one door call may render: a ``document-look`` is one look, whatever it asks.
+DOOR_LOOKS_PER_CALL = 1
+
 #: Where a read tool is served; the BFF's ``backend-operations.ts`` posts here.
 INTERNAL_TOOL_PATH = "/v1/internal/tools/{name}"
 
@@ -124,6 +127,30 @@ def _turn_headers(request: Request, context: GridRequestContext) -> Iterator[Non
         state.metadata.reset(token)
 
 
+@contextmanager
+def _metered_call() -> Iterator[None]:
+    """One door call as one bounded, booked unit of work, the way a chat turn is.
+
+    The usage ledger: every model call a tool makes (a ``look``'s reading, a
+    search's rerank) is booked to the person and organization the envelope
+    verified, inside their budget, and reaches the BFF's budget gate, which
+    refuses the next door call once it is spent. The image budget: a call gets
+    a fresh one of :data:`DOOR_LOOKS_PER_CALL`, so one ``document-look`` costs one
+    look, its reading included. The door's
+    calls themselves are bounded by the budget, not by a per-call price.
+    """
+    from aiq_agent.common.cost_tracking import track_llm_costs
+    from aiq_agent.common.image_view_budget import begin_image_view_budget
+    from aiq_agent.common.image_view_budget import end_image_view_budget
+
+    token = begin_image_view_budget(limit=DOOR_LOOKS_PER_CALL)
+    try:
+        with track_llm_costs():
+            yield
+    finally:
+        end_image_view_budget(token)
+
+
 def _wire(result: Any) -> Any:
     """What a tool returned, as JSON: text stays text, content blocks stay blocks."""
     return result if isinstance(result, str) else to_jsonable_python(result, fallback=str)
@@ -161,7 +188,7 @@ def add_internal_tool_routes(router: APIRouter) -> None:
                 detail={"error": "invalid_arguments", "tool": name, "issues": exc.errors(include_input=False)},
             ) from exc
 
-        with _turn_headers(request, context):
+        with _turn_headers(request, context), _metered_call():
             try:
                 result = await function.ainvoke(arguments)
             except Exception as exc:

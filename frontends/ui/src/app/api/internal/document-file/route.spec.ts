@@ -64,7 +64,7 @@ function envelope(
   }
 }
 
-const STORED = { id: '11111111-1111-4111-8111-111111111111', storageKey: 'org/o1/project/p1/doc/d1/plan.png', storageBucket: null, contentType: 'image/png' }
+const STORED = { id: '11111111-1111-4111-8111-111111111111', storageKey: 'org/o1/project/p1/doc/d1/plan.png', storageBucket: null, contentType: 'image/png', versionId: null }
 
 describe('GET /api/internal/document-file', () => {
   beforeEach(() => {
@@ -104,6 +104,7 @@ describe('GET /api/internal/document-file', () => {
       storageKey: 'org/o1/archiv/doc/d1/plan.png',
       storageBucket: null,
       contentType: 'image/png',
+      versionId: null,
     })
     const res = await GET(request('?collection=archiv_org_1&filename=plan.png&organizationId=org_1'))
     expect(res.status).toBe(200)
@@ -122,6 +123,7 @@ describe('GET /api/internal/document-file', () => {
       storageKey: 'org/o1/project/p1/doc/d1/plan.png',
       storageBucket: null,
       contentType: 'image/png',
+      versionId: '22222222-2222-4222-8222-222222222222',
     })
     const res = await GET(request())
     expect(res.status).toBe(200)
@@ -130,6 +132,8 @@ describe('GET /api/internal/document-file', () => {
       storageKey: 'org/o1/project/p1/doc/d1/plan.png',
       storageBucket: null,
       contentType: 'image/png',
+      // The Fassung, so a look card keeps showing the bytes that were read (ADR-0128).
+      versionId: '22222222-2222-4222-8222-222222222222',
     })
   })
 
@@ -143,6 +147,7 @@ describe('GET /api/internal/document-file', () => {
       storageKey: 'org/o1/project/p1/doc/d1/plan.png',
       storageBucket: 'grid-org-o1-abcdef123456',
       contentType: 'image/png',
+      versionId: null,
     })
     const res = await GET(request())
     expect(await res.json()).toMatchObject({ storageBucket: 'grid-org-o1-abcdef123456' })

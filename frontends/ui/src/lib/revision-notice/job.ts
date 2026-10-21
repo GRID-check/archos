@@ -50,6 +50,7 @@ import { emitInboxItems } from '@/lib/inbox/service'
 import type { JobAttempt, RevisionNoticePayload } from '@/lib/jobs-queue/types'
 import { recordRevisionNoticeScore } from '@/lib/langfuse/revision-notice-score'
 import {
+  alreadyProposed,
   maxNoticePages,
   noticeExcerpt,
   noticeMessage,
@@ -116,7 +117,10 @@ async function leave(input: {
   const found = proposalsFrom(input.comparisons, olderName)
   if (found.length === 0) return 0
   // A retry after the marks were written proposes nothing again, and still writes the message.
-  const fresh = proposalsFrom(input.comparisons, olderName, await listDocumentAnnotations(session.organizationId, newer.id))
+  const existing = await listDocumentAnnotations(session.organizationId, newer.id)
+  const fresh = proposalsFrom(input.comparisons, olderName, existing)
+  // ...and still counts the marks it wrote then, for the inbox row and the score.
+  const earlier = alreadyProposed(found, existing).flatMap((mark) => (mark.id ? [{ id: mark.id }] : []))
 
   const conversationId = await ensureDocumentThread(session, newer)
   const messageId = revisionNoticeMessageId(payload.noticeId)
@@ -130,7 +134,7 @@ async function leave(input: {
           { organizationId: session.organizationId, conversationId, onBehalfOf: session.userId },
         )
       : null
-  const marks = (result && 'proposed' in result ? result.proposed : undefined) ?? []
+  const marks = [...earlier, ...((result && 'proposed' in result ? result.proposed : undefined) ?? [])]
 
   await insertMessages([
     {
@@ -155,7 +159,7 @@ async function leave(input: {
 
   const first = marks[0]
   if (first) {
-    const excerpt = noticeExcerpt(fresh)
+    const excerpt = noticeExcerpt(fresh.length > 0 ? fresh : found)
     await emitInboxItems([
       {
         organizationId: session.organizationId,

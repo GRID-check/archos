@@ -222,7 +222,10 @@ is stamped `observed`, after `measured` in the precedence. It is labelled in the
 confidence mix as read off the drawing. A vision model's perception is not a
 reproducible measurement, so its ceiling is `medium` for a value or descriptive
 sentence, and `low` for a normative one: like a record or a measurement, a
-reading never grounds a claim about the law (ADR-0128). Matching is lexical, at
-the precision the sentence writes, as for `measured`; a measurement or a record
-that matches wins. Wire, `claims-by-class` and the UI mix gain the class; a turn
+reading never grounds a claim about the law (ADR-0128). Matching is lexical and
+exact, unlike `measured`: a reading is already rounded text, so a sentence number
+counts only with the same value and either the same unit after it („1 m" for a
+read „1,00 m") or the same decimals („2,70"). A bare whole number („3 Geschosse"
+beside a read „2,70 m") rounds to nothing. A measurement or a record that
+matches wins. Wire, `claims-by-class` and the UI mix gain the class; a turn
 stored before it reads unchanged.

@@ -14,7 +14,9 @@ model reads (``render_readings``). A measurement comes from the BIM tools.
 
 The call is one Langfuse generation, ``look-reading`` (ADR-0089), with the
 image left out of the input (``redact_inline_images``): a trace holds the
-question and what came back, never the pixels of a customer's drawing.
+question and what came back, never the pixels of a customer's drawing. It is
+booked to the usage ledger under the role ``look_reading`` (``_book``), so the
+turn's budget, the usage dashboards and the invoice count it.
 :func:`read_region` never raises; a call that could not be made returns a
 :class:`Reading` that says why.
 """
@@ -168,6 +170,18 @@ def _reply_text(data: Any) -> str:
     return content if isinstance(content, str) else ""
 
 
+def _book(data: Any, cred: ResolvedCredential) -> None:
+    """Put the reading on the usage ledger, in the turn's budget: the callback path never sees this call."""
+    if not isinstance(data, Mapping):
+        return
+    from aiq_agent.common.cost_tracking import USAGE_ROLE_LOOK_READING
+    from aiq_agent.common.cost_tracking import record_completion_usage
+
+    record_completion_usage(
+        data, role=USAGE_ROLE_LOOK_READING, requested_model=cred.model, is_byok=cred.source == "byok"
+    )
+
+
 async def read_region(jpeg: bytes, question: str, *, region: bool = False) -> Reading:
     """One vision call: ``question`` put to the crop ``jpeg``. Never raises; a failure is in the result.
 
@@ -200,6 +214,7 @@ async def read_region(jpeg: bytes, question: str, *, region: bool = False) -> Re
             response.raise_for_status()
             data = response.json()
             generation.finish(data)
+            _book(data, cred)
     except (httpx.HTTPError, ValueError) as exc:
         logger.warning("look: the reading request failed: %s", type(exc).__name__)
         return Reading(failure="the vision model could not be reached", model=cred.model)

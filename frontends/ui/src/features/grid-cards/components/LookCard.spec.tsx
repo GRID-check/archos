@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
 import { lookCardSchema } from '@/shared/cards/generated'
+import { placeFileUrl } from '@/features/knowledge/lib/page-place'
 import { LookCard, lookItemColor, lookItemPlace } from './LookCard'
 
 const state = vi.hoisted((): FakePdfState => ({ fail: false, pages: [], destroyed: 0 }))
@@ -84,6 +85,13 @@ describe('LookCard', () => {
     expect(lookItemColor('base', 'look')).toBe('var(--source-law)')
     expect(lookItemColor('stored', 'look')).toBe('var(--source-project)')
     expect(lookItemColor('stored', 'reference')).toBe('var(--paper-ink)')
+  })
+
+  test('an item that names its Fassung is drawn from that Fassung, not the current one', () => {
+    const [item] = parsed([{ page: 1, scope: 'overview', revision_id: 'version-7' }])
+    expect(placeFileUrl(lookItemPlace(DOCUMENT, item!))).toBe(`/api/documents/${DOCUMENT.id}/versions/version-7/file`)
+    const [current] = parsed([{ page: 1, scope: 'overview' }])
+    expect(placeFileUrl(lookItemPlace(DOCUMENT, current!))).toBe(`/api/documents/${DOCUMENT.id}/file`)
   })
 
   test('draws each place on screen and opens the document at it, with the box, by keyboard', async () => {

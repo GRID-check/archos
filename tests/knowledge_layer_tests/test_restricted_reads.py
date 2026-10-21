@@ -433,3 +433,36 @@ async def test_the_lookup_echoes_the_turns_signed_envelope(monkeypatch):
     monkeypatch.setattr("aiq_agent.project_context.get_request_envelope_from_context", lambda: (None, None))
     await _resolve_storage_location(PROJ, "plan.png")
     assert "x-grid-request-context" not in seen[-1]
+
+
+async def test_the_lookup_carries_the_revision_the_bff_names(monkeypatch):
+    """``versionId`` rides on the location, so ``look`` can record which Fassung it rendered (ADR-0128)."""
+    import httpx
+
+    from sources.knowledge_layer.src.view_image import _resolve_storage_location
+    from sources.knowledge_layer.src.view_image import location_version
+
+    body = {"storageKey": "k", "versionId": "v-7"}
+
+    class _Client:
+        def __init__(self, **_kwargs):
+            pass
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *_args):
+            return False
+
+        async def get(self, url, *, params, headers):
+            return SimpleNamespace(status_code=200, json=lambda: body)
+
+    monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
+    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+    monkeypatch.setattr(httpx, "AsyncClient", _Client)
+
+    location = await _resolve_storage_location(PROJ, "plan.png")
+    assert location == ("k", None) and location_version(location) == "v-7"
+
+    del body["versionId"]
+    assert location_version(await _resolve_storage_location(PROJ, "plan.png")) is None

@@ -432,13 +432,48 @@ def _measured(sentence: str, values: Sequence[str]) -> bool:
 _CODE_RE = re.compile(r"(?<![\w-])(?=[\w.]*\d)(?=[\w.]*[^\W\d_])\w[\w.]*(?![\w-])")
 
 
+#: A number and the word or unit written right after it („2,70 m" → „m", „3 Geschosse" → „geschosse").
+_NUMBER_WITH_UNIT_RE = re.compile(r"(?<![\w-])(\d+(?:[.,]\d+)?)(?!\w)(?:\s?([^\W\d_]+[²³]?|%|°))?")
+
+
+def _written_numbers(text: str) -> list[tuple[float, int, str]]:
+    """Every number in ``text`` as (value, decimals written, the unit after it, casefolded or empty)."""
+    numbers = []
+    for match in _NUMBER_WITH_UNIT_RE.finditer(text):
+        parsed = _as_number(match.group(1))
+        if parsed is not None:
+            numbers.append((parsed[0], parsed[1], (match.group(2) or "").casefold()))
+    return numbers
+
+
+def _reads_number(sentence: str, read: str) -> bool:
+    """Whether the sentence repeats a number a look read, exactly.
+
+    A reading is already rounded text, so nothing is rounded here: the value
+    must be equal, and either the unit after it is the same on both sides
+    („1 m" for a read „1,00 m") or the decimals are („2,70" for „2,70 m"). A
+    bare whole number („3 Geschosse" beside a read „2,70 m" or a sheet „3")
+    carries neither and is not a reading repeated.
+    """
+    read_numbers = _written_numbers(read)
+    for value, decimals, unit in _written_numbers(sentence):
+        for read_value, read_decimals, read_unit in read_numbers:
+            if value != read_value:
+                continue
+            if unit and unit == read_unit:
+                return True
+            if decimals and decimals == read_decimals:
+                return True
+    return False
+
+
 def _observed(sentence: str, readings: Sequence[str]) -> bool:
-    """Whether the sentence states a number or a code a look read, at the precision it writes."""
+    """Whether the sentence states a number or a code a look read, exactly as it was read."""
     if not readings:
         return False
     text = _MARKER_RE.sub("", sentence)
     read = " ".join(readings)
-    if _measured(text, [read]):
+    if _reads_number(text, read):
         return True
     read_codes = {code.rstrip(".").casefold() for code in _CODE_RE.findall(read)}
     return any(code.rstrip(".").casefold() in read_codes for code in _CODE_RE.findall(text))

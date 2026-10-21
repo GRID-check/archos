@@ -13,6 +13,8 @@ import time
 
 import httpx
 
+#: Eval-only. The file holds every request body in full, base64 page images included: point it at
+#: scratch space for a census over test fixtures, never at a run over a customer's documents.
 _OUT = os.environ.get("REC_OUT", "")
 _SEQ = itertools.count(1)
 _HOSTS = ("openrouter.ai", "api.typesafe.ai", "api.openai.com")

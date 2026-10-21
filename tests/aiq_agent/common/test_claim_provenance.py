@@ -180,6 +180,20 @@ class TestEachClassFromItsEvidence:
         assert _classes("Die Tür ist 1 m breit.", evidence) == [("observed", "value")]
         assert _classes("Die Tür ist 1,20 m breit.", evidence) == [("model_knowledge", "value")]
 
+    def test_a_whole_number_a_reading_rounds_to_is_not_observed(self):
+        # A reading is rounded text: „3" is not „2,70 m" read at a coarser precision.
+        evidence = ClaimEvidence(readings=("Raumhöhe 2,70 m",))
+        assert _classes("Das Gebäude hat 3 Geschosse. Die Frist beträgt 3 Wochen.", evidence) == [
+            ("model_knowledge", "value"),
+            ("model_knowledge", "value"),
+        ]
+        assert _classes("Die Raumhöhe beträgt 2,7 m.", evidence) == [("observed", "value")]
+        assert _classes("Die Raumhöhe beträgt 2,70.", evidence) == [("observed", "value")]
+        # A sheet number is not a count of storeys.
+        assert _classes("Das Gebäude hat 3 Geschosse.", ClaimEvidence(readings=("Blatt 3, M 1:100",)))[0][0] == (
+            "model_knowledge"
+        )
+
     def test_a_code_a_look_read_is_observed_and_no_reading_means_no_class(self):
         evidence = ClaimEvidence(readings=("Wandaufbau EI30, Tür D1",))
         assert _classes("Die Wand ist EI30.", evidence)[0][0] == "observed"

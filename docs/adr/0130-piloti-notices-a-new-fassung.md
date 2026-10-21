@@ -158,11 +158,12 @@ what moved, the basis says it was read off two pictures.
 - Before it spends, the job asks the person's budget status
   (`getBudgetStatus`); a spent scope, or a budget that cannot be read, ends it.
   Fail-closed, unlike a turn: nobody asked for this spend.
-- **Known gap.** The compare's vision call is made outside a turn and is not
-  booked to `llm_usage_events` (`cost_tracking.record_usage_event` books only
-  inside a turn's tracker). That is true for a person's click today too. Until it
-  is booked, the budget gate reads spend that excludes notices, and Langfuse is
-  where their cost is seen. Booking auxiliary vision calls is its own change.
+- The compare's vision call is booked to `llm_usage_events` under the role
+  `revision_compare` (`cost_tracking.record_completion_usage`), for the
+  organization and person the BFF names in `x-grid-organization-id` /
+  `x-grid-user-id`: the notice's person, or the person who clicked
+  „Vergleichen". The budget gate a later notice asks therefore reads spend that
+  includes earlier notices. A cache hit makes no call and books nothing.
 
 ### Observability
 
@@ -196,7 +197,9 @@ star eval before it ships. It is not in this slice.
 - Bad: the notice compares pictures, so a change that moves no pixels on the
   compared pages (a value in a report the index did not read) is not seen, and a
   page past the cap is only named.
-- Bad: spend outside a turn is not yet booked to the budget (above).
+- Neutral: the compare is booked once it is made; the gate is asked before the
+  job starts, so the calls of one notice (at most the page cap) can run past a
+  budget that the first of them used up.
 - Neutral: an announcement without a person (none today) is not noticed.
 
 ### Confirmation

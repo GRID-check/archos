@@ -30,6 +30,7 @@ import {
   conventionDocumentOf,
   isStale,
   officeConventionsEnabled,
+  forgetOfficeFingerprints,
   officeConventionsForTurn,
   openFolders,
   refreshOfficeConventions,
@@ -70,6 +71,7 @@ const stored = (overrides: Record<string, unknown> = {}) => ({
 
 beforeEach(() => {
   vi.clearAllMocks()
+  forgetOfficeFingerprints()
   vi.unstubAllEnvs()
   vi.stubEnv('GRID_OFFICE_CONVENTIONS', 'on')
   vi.mocked(officeSourceFingerprint).mockResolvedValue('fp-1')
@@ -154,6 +156,25 @@ describe('officeConventionsForTurn', () => {
 
     vi.mocked(readOfficeConventions).mockResolvedValue(null)
     expect(await officeConventionsForTurn('org-1', 'Wo legen wir das ab?')).toBeNull()
+  })
+})
+
+describe('the fingerprint', () => {
+  it('is read once a minute per organization, not on every turn that asks where things are', async () => {
+    vi.useFakeTimers({ now: new Date('2026-10-21T10:00:00Z') })
+    try {
+      vi.mocked(readOfficeConventions).mockResolvedValue(stored())
+      await officeConventionsForTurn('org-1', 'Wo legen wir das ab?')
+      await officeConventionsForTurn('org-1', 'Wo finde ich den Bescheid?')
+      await officeConventionsForTurn('org-2', 'Wo finde ich den Bescheid?')
+      expect(vi.mocked(officeSourceFingerprint).mock.calls).toEqual([['org-1'], ['org-2']])
+
+      vi.advanceTimersByTime(61_000)
+      await officeConventionsForTurn('org-1', 'Wo legen wir das ab?')
+      expect(officeSourceFingerprint).toHaveBeenCalledTimes(3)
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

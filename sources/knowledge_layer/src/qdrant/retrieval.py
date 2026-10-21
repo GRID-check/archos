@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from collections.abc import Mapping
 from collections.abc import MutableMapping
 from collections.abc import Sequence
@@ -20,6 +21,7 @@ from qdrant_client import models
 from .boost import parse_boost
 from .payload import project_payload
 from .schema import TEXT_FIELD
+from .schema import TEXT_STEM_FIELD
 from .scope import scope_filter
 from .search import Hit
 from .search import _alias as search_alias
@@ -280,11 +282,27 @@ def literal_tokens(pattern: str) -> list[list[str]] | None:
 #: pattern that needs longer is backtracking catastrophically, and the whole search stops.
 USER_REGEX_TIMEOUT = 0.2
 
+#: Seconds the whole scan of one collection may take with a person's regex, reading included.
+#: The per-chunk limit alone does not bound it: a pattern that costs 0.15 s on each of 10 000
+#: chunks naming a common word passes every chunk's limit and holds a worker for 25 minutes.
+USER_REGEX_SCAN_SECONDS = 3.0
+
+#: Chunks one scan with a person's regex may read. Past it the pattern narrows too little to
+#: answer in one search, whatever each chunk costs.
+USER_REGEX_SCAN_CHUNKS = 20_000
+
 logger = logging.getLogger(__name__)
 
 
 class PatternTooCostly(ValueError):
-    """A person's regex ran past :data:`USER_REGEX_TIMEOUT` on one chunk: it would stall the scan."""
+    """A person's regex is too costly to finish: it ran past :data:`USER_REGEX_TIMEOUT` on one chunk
+    (``scan`` False), or the scan ran past :data:`USER_REGEX_SCAN_SECONDS` or
+    :data:`USER_REGEX_SCAN_CHUNKS` (``scan`` True). Either way the search did not run to its end.
+    """
+
+    def __init__(self, pattern: str, *, scan: bool = False) -> None:
+        super().__init__(pattern)
+        self.scan = scan
 
 
 def compile_user_regex(pattern: str) -> regex.Pattern[str]:
@@ -417,8 +435,42 @@ def _text_prefilter(scope: str, pattern: str, *, user_regex: bool = False) -> li
     ]
 
 
+def stem_condition(phrases: Sequence[str]) -> models.Filter:
+    """Chunks holding any of ``phrases`` in some inflected form: the German-stemmed index on :data:`TEXT_STEM_FIELD`.
+
+    A phrase of one word is a token match, of several a phrase match; both are
+    analysed with the index's stemmer, so „Fluchtwegbreiten“ matches „Fluchtwegbreite“.
+    """
+    conditions = []
+    for phrase in dict.fromkeys(" ".join(str(phrase).split()) for phrase in phrases):
+        if not phrase:
+            continue
+        match = models.MatchPhrase(phrase=phrase) if " " in phrase else models.MatchText(text=phrase)
+        conditions.append(models.FieldCondition(key=TEXT_STEM_FIELD, match=match))
+    if not conditions:
+        raise ValueError("A stemmed search needs at least one phrase")
+    return models.Filter(should=conditions)
+
+
+def _stemmed_hits(scope: str, phrases: Sequence[str], filters: dict[str, Any] | None, limit: int) -> list[Hit]:
+    """Every chunk of ``scope`` the stemmed index says holds an inflected form of ``phrases``, up to ``limit``."""
+    hits: list[Hit] = []
+    for record in get_store().scroll(scope, filters, stem_condition(phrases)):
+        payload = dict(record.payload or {})
+        hits.append(Hit(str(payload.get("chunk_id") or record.id), str(payload.get("text") or ""), payload, 0.0, 1.0))
+        if len(hits) >= limit:
+            break
+    return hits
+
+
 def find_text(
-    scope: str, pattern: str, filters: dict[str, Any] | None, limit: int, *, user_regex: bool = False
+    scope: str,
+    pattern: str,
+    filters: dict[str, Any] | None,
+    limit: int,
+    *,
+    user_regex: bool = False,
+    stem_phrases: Sequence[str] | None = None,
 ) -> list[Hit]:
     """Every chunk of ``scope`` whose text matches the regex ``pattern``, up to ``limit``.
 
@@ -432,23 +484,53 @@ def find_text(
 
     ``user_regex`` is a person's own pattern (``match="regex"``): compiled by
     :func:`compile_user_regex`, narrowed by :func:`user_literal_tokens`, and
-    stopped with :class:`PatternTooCostly` when one chunk outruns the timeout.
+    stopped with :class:`PatternTooCostly` when one chunk outruns the timeout, or the whole
+    scan outruns :data:`USER_REGEX_SCAN_SECONDS` or :data:`USER_REGEX_SCAN_CHUNKS`.
+
+    ``stem_phrases`` (``match="exact"`` with ``stemmed``) adds every chunk the
+    German-stemmed index says holds an inflected form of a phrase
+    (:func:`stem_condition`) ahead of the regex's matches: the stemmed result
+    is the literal one and more, and a chunk written before the stemmed field
+    existed is still found literally.
     """
+    if stem_phrases:
+        stemmed = _stemmed_hits(scope, stem_phrases, filters, limit)
+        seen = {hit.chunk_id for hit in stemmed}
+        literal = [
+            hit for hit in find_text(scope, pattern, filters, limit, user_regex=user_regex) if hit.chunk_id not in seen
+        ]
+        return (stemmed + literal)[:limit]
     compiled = compile_user_regex(pattern) if user_regex else re.compile(pattern)
     hits: list[Hit] = []
-    for record in get_store().scroll(scope, filters, *_text_prefilter(scope, pattern, user_regex=user_regex)):
+    deadline = time.monotonic() + USER_REGEX_SCAN_SECONDS
+    records = get_store().scroll(scope, filters, *_text_prefilter(scope, pattern, user_regex=user_regex))
+    for scanned, record in enumerate(records, start=1):
         payload = dict(record.payload or {})
         text = str(payload.get("text") or "")
-        try:
-            found = compiled.search(text, timeout=USER_REGEX_TIMEOUT) if user_regex else compiled.search(text)
-        except TimeoutError:
-            logger.warning("regex search in %s stopped: a chunk took longer than %ss", scope, USER_REGEX_TIMEOUT)
-            raise PatternTooCostly(pattern) from None
+        found = _user_search(compiled, text, pattern, scope, deadline, scanned) if user_regex else compiled.search(text)
         if found:
             hits.append(Hit(str(payload.get("chunk_id") or record.id), text, payload, 0.0, 1.0))
             if len(hits) >= limit:
                 break
     return hits
+
+
+def _user_search(compiled: Any, text: str, pattern: str, scope: str, deadline: float, scanned: int) -> Any:
+    """A person's regex over one chunk, inside the scan's deadline; raises :class:`PatternTooCostly` past it.
+
+    The chunk's own limit shrinks to what is left of the scan's, so the scan as a
+    whole ends near :data:`USER_REGEX_SCAN_SECONDS` however the time is spread.
+    """
+    remaining = deadline - time.monotonic()
+    if remaining <= 0 or scanned > USER_REGEX_SCAN_CHUNKS:
+        logger.warning("regex search in %s stopped after %d chunks: the scan ran out of time", scope, scanned - 1)
+        raise PatternTooCostly(pattern, scan=True)
+    timeout = min(USER_REGEX_TIMEOUT, remaining)
+    try:
+        return compiled.search(text, timeout=timeout)
+    except TimeoutError:
+        logger.warning("regex search in %s stopped: a chunk took longer than %.3fs", scope, timeout)
+        raise PatternTooCostly(pattern, scan=timeout < USER_REGEX_TIMEOUT) from None
 
 
 def candidate_counts(

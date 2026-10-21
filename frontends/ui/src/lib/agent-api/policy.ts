@@ -102,8 +102,19 @@ export function visibleBackendOperations(principal: AgentPrincipal): readonly Ba
   return BACKEND_OPERATIONS.filter((op) => canSee(principal, op))
 }
 
+/**
+ * Old names of the backend operations, each to the name that replaced it, accepted for one release:
+ * `knowledge-image-view` became `document-look` when `look` replaced the image tool (ADR-0128, October
+ * 2026). An outside agent with a cached tool list or a saved prompt still calls the old name; it is
+ * neither listed nor searchable under it. Remove after the December 2026 release (2026-12-31), with
+ * the `RENAMED_OPERATIONS` map in `catalog/index.ts`.
+ */
+export const RENAMED_BACKEND_OPERATIONS: Readonly<Record<string, string>> = {
+  'knowledge-image-view': 'document-look',
+}
+
 export function findVisibleBackendOperation(principal: AgentPrincipal, name: string): BackendOperation | undefined {
-  const op = findBackendOperation(name)
+  const op = findBackendOperation(name) ?? findBackendOperation(RENAMED_BACKEND_OPERATIONS[name] ?? '')
   return op && canSee(principal, op) ? op : undefined
 }
 

@@ -292,6 +292,25 @@ class TestTracing:
         assert span.attributes["langfuse.trace.metadata.purpose"] == "notice"
         assert response.json()["trace_id"] == format(span.get_span_context().trace_id, "032x")
 
+    async def test_the_vision_call_is_booked_to_the_named_organization_and_person(self, pages, ingested, monkeypatch):
+        """A notice's spend reaches the ledger the budget gate reads; a cache hit books nothing (ADR-0130)."""
+        from aiq_agent.common import cost_tracking
+
+        posted: list[dict] = []
+        monkeypatch.setattr(cost_tracking, "_post_usage_events", posted.append)
+        headers = {"x-grid-organization-id": "org-1", "x-grid-user-id": "user-9"}
+        gateway = _gateway()
+
+        await _post({**BODY, "purpose": "notice"}, gateway=gateway, headers=headers)
+        await _post({**BODY, "purpose": "notice"}, gateway=gateway, headers=headers)
+
+        [batch] = posted
+        assert (batch["organizationId"], batch["userId"]) == ("org-1", "user-9")
+        [event] = batch["events"]
+        assert event["role"] == "revision_compare"
+        assert (event["promptTokens"], event["completionTokens"], event["costUsd"]) == (8000, 120, 0.0014)
+        assert event["costSource"] == "usage_field"
+
     async def test_a_notice_queues_behind_people_waiting(self, pages, ingested, monkeypatch):
         classes: list[str] = []
         real = route.limited_async_http_client

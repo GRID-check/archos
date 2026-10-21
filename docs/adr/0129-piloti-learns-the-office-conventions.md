@@ -87,7 +87,7 @@ still shows how the office named and filed it):
 | Convention | Counted from | Example line |
 |---|---|---|
 | **Folder skeleton** | Folder paths (depth ≤ 2) that recur across projects, compared without case and without a leading ordinal (`03_Behörde` = `Behörde`) | `folders most projects keep: Grundlagen (7 of 7), Einreichung (6 of 7)` |
-| **Where each Dokumentart is filed** | Per project, the folder most documents of that Dokumentart sit in; then across projects | `Gutachten usually under Fachplaner/Gutachten (4 of 5 projects that file one)` |
+| **Where each Dokumentart is filed** | Per project, the folder most documents of that Dokumentart sit in, cut to depth 2 like the skeleton; then across projects | `Gutachten usually under Fachplaner/Gutachten (4 of 5 projects that file one)` |
 | **Plannummer shape** | The title block's `document_number`, masked: a run of letters is `A`, each digit `0`, separators kept (`HUB-EP-01-003` → `A-A-00-000`) | `Plannummer usually shaped A-A-00-000` |
 | **Index style** | The title block's `revision`: letters (A, B), numbers (1, 2), two-digit numbers (01, 02), letter plus number (A1) | `Index usually letters (A, B, C)` |
 | **Date in file names** | Date tokens in file names: `YYYY-MM-DD` (any of `-_.`), `YYYYMMDD`, `DD.MM.YYYY`, `DD.MM.YY` (dots only: `01-02-03` is a Plannummer far more often), and six digits as `YYMMDD` or `DDMMYY` only when exactly one reading lands near the upload date | `file names usually write a date as YYMMDD` |
@@ -98,6 +98,16 @@ Each line is kept only when at least **three projects** show it and they are
 also the privacy floor: a folder name or a number shape that only one project
 carries is never stated, so a project a reader cannot open contributes counts,
 never its names. A Plannummer is stated only as a shape, never as an example.
+
+**The audience is the organization, not the project.** Every member reads the
+conventions, including about projects they are not on: they describe how the
+office works, which is one row per organization, not per reader. Restricting
+the count to the projects each asker can open would make it a per-person
+record and break the one-row design. What keeps that safe is what a line may
+name: counts, shapes, and folder paths no deeper than depth 2 (a filing line is
+cut to the depth the skeleton shows, so `Fachplaner/Gutachten/Statik Müller`
+is stated as `Fachplaner/Gutachten`), each shared by at least three projects.
+A folder under an own access list never counts (ADR-0087).
 
 **Not learned in this slice: Dokumentarten per phase.** The project phase is
 one current value in the profile (`/facts/project_phase`), not a fact stamped
@@ -128,7 +138,10 @@ Existing tables checked first:
 - **Change detection is a fingerprint**: the count and latest `updated_at` of
   the office's project documents (screened only) and of its project folders.
   An upload, a move, a rename, a delete or a folder change moves it. Two
-  aggregates over the organization's rows, no backend call.
+  aggregates over the organization's rows, no backend call, read at most once a
+  minute per organization and process (`FINGERPRINT_TTL_MS`): the question that
+  asks for conventions is broad, and a minute late is nothing beside the
+  ten-minute refresh limit.
 - **It is requested lazily**, by the first filing or finding question that
   finds the stored fingerprint stale, at most once per ten minutes per
   organization (`refresh_requested_at`, claimed in one

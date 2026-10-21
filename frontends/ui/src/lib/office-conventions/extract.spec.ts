@@ -99,6 +99,16 @@ describe('extractOfficeConventions: where each Dokumentart is filed', () => {
     expect(result.filing).toEqual([{ docType: 'Gutachten', path: 'Fachplaner/Gutachten', projects: 3, of: 4 }])
   })
 
+  it('names no folder deeper than the skeleton: a member reads it about projects they are not on', () => {
+    const result = extractOfficeConventions({
+      folders: [],
+      documents: ['p1', 'p2', 'p3'].map((project) =>
+        doc(project, { docType: 'Gutachten', folderPath: `Fachplaner/Gutachten/Statik ${project} Müller` })
+      ),
+    })
+    expect(result.filing).toEqual([{ docType: 'Gutachten', path: 'Fachplaner/Gutachten', projects: 3, of: 3 }])
+  })
+
   it('states no place when the projects disagree', () => {
     const result = extractOfficeConventions({
       folders: [],

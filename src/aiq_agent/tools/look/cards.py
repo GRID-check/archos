@@ -90,12 +90,20 @@ def _where(region: list[float] | None) -> str | None:
     return where_on_the_page(SimpleNamespace(x=x, y=y, w=w, h=h))
 
 
-def _hold(document: dict[str, Any], item: dict[str, Any]) -> int | None:
-    """Hold one entry for the answer's cards; its number in the turn, None with no card channel."""
+def _hold(document: dict[str, Any], item: dict[str, Any], read: str = "") -> int | None:
+    """Hold one entry for the answer's cards; its number in the turn, None with no card channel.
+
+    ``read`` is everything the look read (every ``Gelesen:`` line), held beside
+    the item for the claim provenance: the item keeps one short reading for the
+    card, and a value from a later line must still count as read.
+    """
     registry = get_card_registry()
     if registry is None:
         return None
-    return registry.hold(HELD, {"document": document, "item": item})
+    entry: dict[str, Any] = {"document": document, "item": item}
+    if read:
+        entry["read"] = read
+    return registry.hold(HELD, entry)
 
 
 def _looked_document(resolved: Any) -> dict[str, Any]:
@@ -116,12 +124,14 @@ def note_look(
     question: str = "",
     reading: str = "",
     revision_id: str | None = None,
+    read: str = "",
 ) -> None:
     """Record one look that rendered: hold its card item, emit its Herleitung row. Never raises.
 
     ``resolved`` is ``look``'s :class:`~aiq_agent.tools.look.resolve.Resolved`.
     ``revision_id`` is the Fassung when the caller knows it; absent, the reader
-    is shown the document's current Fassung.
+    is shown the document's current Fassung. ``read`` is the whole reading
+    (every line), for the claim provenance; ``reading`` is the card's short one.
     """
     try:
         document = _looked_document(resolved)
@@ -142,7 +152,7 @@ def note_look(
             "where": _where(box) if frame == "page" else None,
         }
         item.update({key: value for key, value in optional.items() if value is not None})
-        number = _hold(document, item)
+        number = _hold(document, item, read=(read or "").strip())
         emit_look_step(
             number if number is not None else uuid4().hex[:8],
             document_name=document["name"],
@@ -231,7 +241,11 @@ def relied_readings(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -
     except Exception:  # noqa: BLE001 - provenance is never worth the answer
         logger.warning("Could not decide which readings the answer relies on", exc_info=True)
         return []
-    return [str(e["item"]["reading"]) for e in kept if e["item"]["origin"] == "look" and e["item"].get("reading")]
+    return [
+        str(e.get("read") or e["item"]["reading"])
+        for e in kept
+        if e["item"]["origin"] == "look" and (e.get("read") or e["item"].get("reading"))
+    ]
 
 
 def place_look_cards(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -> int:

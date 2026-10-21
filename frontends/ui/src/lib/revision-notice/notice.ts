@@ -128,6 +128,23 @@ const samePlace = (mark: ExistingMark, proposal: AnnotationProposal): boolean =>
   Math.abs((mark.h ?? 0) - (proposal.h ?? 0)) < 1e-4
 
 /**
+ * The marks Piloti already proposed for ``found`` (a retried notice wrote them
+ * before it failed), in ``found``'s order. They stand for the marks the retry
+ * does not propose again, so its inbox row and its score count them. Pure.
+ */
+export function alreadyProposed<T extends ExistingMark>(
+  found: readonly AnnotationProposal[],
+  existing: readonly T[],
+): T[] {
+  const marks: T[] = []
+  for (const proposal of found) {
+    const mark = existing.find((candidate) => samePlace(candidate, proposal) && !marks.includes(candidate))
+    if (mark) marks.push(mark)
+  }
+  return marks
+}
+
+/**
  * The proposed marks for what the pages showed, at most
  * {@link MAX_PROPOSALS_PER_CALL}, in page order. A change Piloti already
  * proposed in the same place with the same words (a retried notice) is not

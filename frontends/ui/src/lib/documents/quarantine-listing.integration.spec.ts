@@ -122,6 +122,8 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     const { withPlatformAccess } = await import('@/lib/db/tenant-context')
     await withPlatformAccess('test teardown', async () => {
       await db.execute(sql`DELETE FROM bim_models WHERE organization_id = ${ORG}`)
+      await db.execute(sql`UPDATE documents SET published_version_id = NULL WHERE organization_id = ${ORG}`)
+      await db.execute(sql`DELETE FROM document_versions WHERE organization_id = ${ORG}`)
       await db.execute(sql`DELETE FROM documents WHERE organization_id = ${ORG}`)
       await db.execute(sql`DELETE FROM conversations WHERE organization_id = ${ORG}`)
       await db.execute(sql`DELETE FROM projects WHERE organization_id = ${ORG}`)
@@ -212,6 +214,36 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
     await expect(repo.findStorageKeyByCollectionAndFilename(COLLECTION, 'project-ready.pdf', ORG)).resolves.toMatchObject({
       storageKey: 'k/project/project-ready.pdf',
     })
+  })
+
+  it("names the Fassung the agent's byte lookup resolves: the published version the bytes mirror", async () => {
+    const versions = await inTenant(() =>
+      db.execute<{ id: string; state: string }>(sql`
+        INSERT INTO document_versions
+          (organization_id, document_id, project_id, version_number, state, origin, storage_key, created_by)
+        SELECT organization_id, id, project_id, n, state, 'upload', key, created_by
+        FROM documents,
+          (VALUES (1, 'superseded', 'k/project/old-project-ready.pdf'),
+                  (2, 'published', 'k/project/project-ready.pdf')) AS v(n, state, key)
+        WHERE organization_id = ${ORG} AND filename = 'project-ready.pdf'
+        RETURNING id, state
+      `)
+    )
+    const published = Array.from(versions).find((row) => row.state === 'published')
+    await inTenant(() =>
+      db.execute(sql`
+        UPDATE documents SET published_version_id = ${String(published?.id)}::uuid
+        WHERE organization_id = ${ORG} AND filename = 'project-ready.pdf'
+      `)
+    )
+    await expect(repo.findStorageKeyByCollectionAndFilename(COLLECTION, 'project-ready.pdf', ORG)).resolves.toMatchObject({
+      storageKey: 'k/project/project-ready.pdf',
+      versionId: String(published?.id),
+    })
+    // A document with no version row is still found; it names no Fassung.
+    await expect(
+      repo.findStorageKeyByCollectionAndFilename(`archiv_${ORG}`, 'office_shelf-ready.pdf', ORG)
+    ).resolves.toMatchObject({ versionId: null })
   })
 
   it('narrows the IFC model list the same way, and gives the agent none', async () => {
