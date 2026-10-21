@@ -24,10 +24,20 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { callOperation, OperationInputError, parseOperationInput } from '@/lib/agent-api/dispatch'
 import { findOperation } from '@/lib/agent-api/catalog'
 import { annotationsOf, type AgentOperation } from '@/lib/agent-api/operation'
+import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 import type { OperationPayload, ProposedChangeResult } from './types'
 
-/** Why `name` cannot be applied as a proposal, or null when it can: it exists and it writes. */
+/**
+ * Why Piloti never asks Piloti (ADR-0122, the recursion lock): every operation
+ * Piloti's own door reaches arrives here as a proposal, so refusing an ask here
+ * is what keeps a turn, a turn an ask started included, from starting another.
+ */
+export const PILOTI_ASK_REFUSAL =
+  'Piloti cannot ask Piloti: an ask is how another agent consults Piloti, and a turn may not start another.'
+
+/** Why `name` cannot be applied as a proposal, or null when it can: it exists, it writes, and it is no ask. */
 function unusableReason(op: AgentOperation | undefined, name: string): string | null {
+  if (isPilotiAskOperation(name)) return PILOTI_ASK_REFUSAL
   if (!op) return `The operation ${name} no longer exists`
   if (annotationsOf(op).readOnlyHint) return `The operation ${name} only reads, so there is nothing to apply`
   return null

@@ -12952,6 +12952,199 @@
         }
       }
     },
+    "/api/piloti-asks/{id}/cancel": {
+      "post": {
+        "operationId": "piloti-ask-cancel",
+        "summary": "Stop Piloti working on an ask",
+        "description": "Stops the turn of an ask that is still \"submitted\" or \"working\"; the ask ends \"canceled\" and whatever Piloti already wrote stays in the conversation. Refused (409) once the ask has ended. The id comes from piloti-ask-create.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The ask id, from piloti-ask-create."
+            },
+            "description": "The ask id, from piloti-ask-create."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Stop Piloti working on an ask",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/piloti-asks": {
+      "post": {
+        "operationId": "piloti-ask-create",
+        "summary": "Ask Piloti a question and get its answer",
+        "description": "Asks Piloti, the office’s own agent, a question as the signed-in person: it answers from the office’s documents, the project’s files and building law, with the person’s rights, and may file a document. Waits up to 40 seconds: state \"completed\" carries answer.text and any documents filed; state \"submitted\" or \"working\" means call piloti-ask-get with the id after pollAfterSeconds. Pass projectId (from project-list) to ask about one project, and conversationId from an earlier ask to follow up in the same conversation. \"rejected\" or \"failed\" carry the reason (a spent budget, a busy conversation). Uses the organization’s model budget, and needs the piloti-ask switch.",
+        "tags": [
+          "conversations"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 8000,
+                    "description": "The question or request for Piloti, in the words the person would use, German or English."
+                  },
+                  "projectId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "description": "The project Piloti should answer in, from project-list. Omit for the office as a whole."
+                  },
+                  "conversationId": {
+                    "type": "string",
+                    "description": "Continue an earlier ask: its conversationId, from piloti-ask-create or piloti-ask-get. Piloti then sees the earlier questions and answers. Omit to start a new conversation."
+                  }
+                },
+                "required": [
+                  "question"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Ask Piloti a question and get its answer",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/piloti-asks/{id}": {
+      "get": {
+        "operationId": "piloti-ask-get",
+        "summary": "Read an ask to Piloti, and its answer once there",
+        "description": "The ask piloti-ask-create started, by its id: its state, the answer once \"completed\", the documents Piloti filed, or the reason it failed. Pass waitSeconds (at most 40) to wait for the answer instead of polling quickly. Only the person the ask was made for can read it.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The ask id, from piloti-ask-create."
+            },
+            "description": "The ask id, from piloti-ask-create."
+          },
+          {
+            "name": "waitSeconds",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Wait up to this many seconds (at most 40) for the answer before returning."
+            },
+            "description": "Wait up to this many seconds (at most 40) for the answer before returning."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read an ask to Piloti, and its answer once there",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/assignments/{resourceType}/{resourceId}": {
       "post": {
         "operationId": "assignment-add",

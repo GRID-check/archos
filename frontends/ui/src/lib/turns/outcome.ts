@@ -19,7 +19,10 @@
  * trail records the end (`piloti.wake.ended`, every outcome, the failure's
  * reason included) and `onWakeEnded` tells the attention slice, each once.
  *
- * Idempotent and forgiving: a turn that is not a wake (a browser's), a
+ * A turn that is not a wake may be an ask another agent put to Piloti
+ * (ADR-0122): its outcome ends the ask (`recordAskOutcome`), by the same id.
+ *
+ * Idempotent and forgiving: a turn that is neither (a browser's), a
  * conversation that is not the wake's thread, and a wake that already ended
  * settle nothing and say so (`{ settled: false }`), because the socket posts
  * every headless turn and has nothing to do with the answer. A wake still
@@ -44,6 +47,7 @@ import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { memberReader } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { announcePilotiWork } from '@/lib/annotations/piloti-work'
+import { recordAskOutcome } from '@/lib/piloti-asks/service'
 import type { TurnOutcomeRequest, TurnOutcomeResponse } from './outcome-types'
 
 /** What the wake records when a turn failed or was refused without saying why. */
@@ -167,7 +171,9 @@ export async function recordTurnOutcome(request: TurnOutcomeRequest): Promise<Tu
     'turn outcome: the chat socket names a turn by id, before any organization is known',
     () => findWakeById(request.turnId)
   )
-  if (!wake || (wake.status !== 'started' && wake.status !== 'queued')) return NOT_SETTLED
+  // Not a wake: the turn may be an ask another agent put to Piloti (ADR-0122).
+  if (!wake) return { settled: await recordAskOutcome(request) }
+  if (wake.status !== 'started' && wake.status !== 'queued') return NOT_SETTLED
   // The thread the wake ran in is derived, never stored; a mismatch is a turn that is not this wake's.
   if (request.conversationId !== documentThreadConversationId(wake.documentId, wake.actorUserId)) return NOT_SETTLED
 
