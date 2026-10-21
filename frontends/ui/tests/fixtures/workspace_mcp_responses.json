@@ -29,7 +29,7 @@
     "refused_shared_conversation": {
       "status": 200,
       "contentType": "application/json",
-      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"This conversation is shared, so Piloti reads nothing from the workspace in it: the answer would be visible to everyone who reads the conversation, including people who may not open that content. Tell the person to open it themselves in Piloti, or to ask in a conversation that is theirs alone.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}"
+      "body": "{\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"This conversation is shared, and that read answers with what the person may see, not with what everyone in the conversation may: in a shared conversation Piloti reads only a document or a project's facts, of a project every reader may open. Tell the person to open it themselves, or to ask in a conversation that is theirs alone.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}"
     },
     "refused_wrong_token": {
       "status": 403,

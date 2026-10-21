@@ -4,52 +4,63 @@ import 'server-only'
  * conversation it answers in (ADR-0093, ADR-0094, ADR-0121).
  *
  * A read runs as the requester, with the requester's rights, and its answer
- * lands in the conversation's transcript. The agent's own retrieval tools are
- * held to the conversation's AUDIENCE: they search only folders everyone who
- * reads the conversation may read, and record what they use before the model
- * sees it (the internal restricted-use route, `admitSourceFolders`). A
- * workspace read cannot be held that way: a route answers for one person, and
- * nothing in its answer says which folder or project the content came from.
- * So the gate fails closed:
+ * lands in the conversation's transcript. It is held to ADR-0094's one rule,
+ * the rule `project_lookup` follows: what it names must lie in the reach of the
+ * conversation's AUDIENCE, and what it hands out is recorded on the conversation
+ * before it runs (`conversation-audience.ts` decides and records):
  *
- *  - In a conversation someone else reads too (shared with named people,
- *    visible to the project or the office), Piloti runs no workspace read and
- *    no backend read. The model relays {@link sharedConversationReadRefusal}.
- *    Writes still become proposals: those run as whoever accepts them. A
- *    domain whose every answer each reader of the conversation may read could
- *    be listed in {@link AUDIENCE_SAFE_READ_DOMAINS}; none is today (project
- *    names, the member list's admin-only fields, a person's inbox and tasks
- *    all depend on who asks).
- *  - In a conversation that is the requester's alone, a read that names
- *    another project (by id, or through a document, folder, model or
- *    conversation of one), or any project in a turn that has none, is refused
- *    (`soloReadRefusal`): the record below covers the turn's own project only.
- *    So is a read whose answer spans the office's projects (`spansProjects`)
- *    in a project's conversation, and one naming what the lookup cannot find.
- *    Every other read runs after the restricted folders it may have drawn on
- *    are recorded and the turn's answer is marked (`recordSoloWorkspaceRead`),
- *    once per MCP request, under the conversation's audience lock with the
- *    audience read again inside it, so a later share is judged against them
- *    and a share that slipped in first refuses the read.
+ *  - In a conversation that is the requester's alone, a read of the turn's own
+ *    project runs on the record of its restricted folders, and a read of
+ *    another project the requester may chat in runs on a cross-project
+ *    hand-out (that project and the restricted folders the read may carry). A
+ *    read whose answer spans the office's projects (`spansProjects`) is still
+ *    refused in a project's conversation.
+ *  - In a conversation someone else reads too, only a read listed in
+ *    {@link AUDIENCE_READS} runs: its answer is one document's content, or one
+ *    project's facts, which is what every reader of that place reads. The place
+ *    must be the conversation's own project or one in the audience's reach, and
+ *    never a restricted folder or a held file. Every other read answers with the
+ *    requester's own view and is refused with {@link sharedConversationReadRefusal}.
+ *    Writes still become proposals.
  *  - A call that belongs to no conversation (an external agent, a run with no
  *    chat) writes no transcript, and passes.
  *
  * One gate per principal, and the principal is built per HTTP request, so the
- * audience is read once per request and never outlives it.
+ * audience is read once per request and never outlives it. Each read is
+ * recorded under the audience lock, checked against that audience, so a share
+ * that slipped in since refuses the read.
  */
 
-import { type ConversationReach, conversationReachOf, recordSoloWorkspaceRead, soloReadRefusal } from './conversation-audience'
-import type { AgentDomain, AgentOperation } from './operation'
+import {
+  type ConversationAudience,
+  type ReadCarries,
+  READ_REFUSALS,
+  conversationAudienceOf,
+  judgeWorkspaceRead,
+  ownRestrictingFolders,
+  recordWorkspaceHandOut,
+} from './conversation-audience'
+import type { AgentOperation } from './operation'
 import type { TargetInput } from './operation-targets'
 import type { AgentPrincipal } from './principal'
 
-/** Domains Piloti may read in a shared conversation. Empty: see the module docstring before adding one. */
-export const AUDIENCE_SAFE_READ_DOMAINS: ReadonlySet<AgentDomain> = new Set<AgentDomain>()
+/**
+ * The reads Piloti runs in a shared conversation, each with what its answer is
+ * and why that answer is the same for every reader who may read the place it
+ * names. Everything else a route answers is the requester's view. Adding one is
+ * a claim a reviewer can check against the route: a link-bearing read
+ * ({@link LINK_BEARING_OPERATIONS}) never qualifies.
+ */
+export const AUDIENCE_READS: Readonly<Record<string, { carries: ReadCarries; reason: string }>> = {
+  'document-get': { carries: 'document', reason: 'the document as its listing row, which every reader of it sees' },
+  'document-text-get': { carries: 'document', reason: 'the document’s own text, which every reader of it reads' },
+  'project-get': { carries: 'projectFacts', reason: 'the project row, gated by project:view alone' },
+  'project-profile-get': { carries: 'projectFacts', reason: 'the project’s profile, gated by project:view alone' },
+}
 
 /**
  * Reads whose answer is a link that works for whoever holds it (a presigned
- * URL, minted for the requester). Refused in a shared conversation even if
- * their domain were ever listed in {@link AUDIENCE_SAFE_READ_DOMAINS}: the link
+ * URL, minted for the requester). Never in {@link AUDIENCE_READS}: the link
  * would reach every reader of the transcript with the requester's access.
  */
 export const LINK_BEARING_OPERATIONS: ReadonlySet<string> = new Set([
@@ -59,35 +70,23 @@ export const LINK_BEARING_OPERATIONS: ReadonlySet<string> = new Set([
   'bim-model-source-get',
 ])
 
-/**
- * The sentence the model reads when a read is refused in a shared conversation. English, whatever the
- * person's locale: an agent reads it, and anything an agent reads is English (AGENTS.md, "Industry
- * standard first"). The model words it for the reader in their own language. It used to be the
- * German i18n entry `errors.agentSurface.sharedConversationRead`, quoted to the reader verbatim;
- * no person reads this text directly, so it is not copy and has no dictionary entry.
- */
-export const SHARED_CONVERSATION_READ_REFUSAL =
-  'This conversation is shared, so Piloti reads nothing from the workspace in it: the answer would be visible to ' +
-  'everyone who reads the conversation, including people who may not open that content. Tell the person to open it ' +
-  'themselves in Piloti, or to ask in a conversation that is theirs alone.'
-
 /** The sentence the model relays when a read is refused in a shared conversation. */
 export function sharedConversationReadRefusal(): string {
-  return SHARED_CONVERSATION_READ_REFUSAL
+  return READ_REFUSALS.shared
 }
 
 export interface ReadGate {
   /**
    * Before a read of `op` with `input` runs: `null` when it may run, else the
-   * refusal the model relays. In a solo conversation the record is written
-   * before this resolves; a failure to read the audience, to resolve what the
-   * call names or to record rejects, and the read must not run. A backend read
-   * (no `path`) names nothing here; Piloti never sees one.
+   * refusal the model relays. The record is written before this resolves; a
+   * failure to read the audience, to resolve what the call names or to record
+   * rejects, and the read must not run. A backend read (no `path`) names
+   * nothing here, and runs only in a solo conversation.
    */
   beforeRead(
     op: {
       readonly name: string
-      readonly domain: AgentDomain
+      readonly domain: AgentOperation['domain']
       readonly path?: AgentOperation['path']
       readonly spansProjects?: AgentOperation['spansProjects']
     },
@@ -100,26 +99,24 @@ export interface ReadGate {
 const gates = new WeakMap<AgentPrincipal, ReadGate>()
 
 function buildGate(principal: AgentPrincipal): ReadGate {
-  let reach: Promise<ConversationReach> | undefined
-  let recorded: Promise<boolean> | undefined
-  const reachOnce = () => (reach ??= conversationReachOf(principal))
+  let audience: Promise<ConversationAudience | null> | undefined
+  let ownFolders: Promise<string[]> | undefined
+  const audienceOnce = () => (audience ??= conversationAudienceOf(principal))
   return {
     async beforeRead(op, input = {}) {
-      const now = await reachOnce()
-      if (now === 'none') return null
-      if (now === 'shared') {
-        const safe = AUDIENCE_SAFE_READ_DOMAINS.has(op.domain) && !LINK_BEARING_OPERATIONS.has(op.name)
-        return safe ? null : sharedConversationReadRefusal()
-      }
-      const refused = op.path
-        ? await soloReadRefusal(principal, { path: op.path, spansProjects: op.spansProjects }, input)
-        : null
-      if (refused) return refused
-      // Shared since the audience was first read: the lock saw it, nothing was recorded, nothing runs.
-      return (await (recorded ??= recordSoloWorkspaceRead(principal))) ? null : sharedConversationReadRefusal()
+      const now = await audienceOnce()
+      if (!now) return null
+      const shape = op.path ? { path: op.path, spansProjects: op.spansProjects } : null
+      const judged = await judgeWorkspaceRead(principal, now, shape, input, AUDIENCE_READS[op.name]?.carries, () =>
+        (ownFolders ??= ownRestrictingFolders(principal)),
+      )
+      if ('refusal' in judged) return judged.refusal
+      // Shared or re-shared since the audience was read: the lock saw it, nothing was recorded, nothing runs.
+      return (await recordWorkspaceHandOut(principal, now, judged.handOut)) ? null : READ_REFUSALS.audienceChanged
     },
     async mayHandOnLink() {
-      return (await reachOnce()) !== 'shared'
+      const now = await audienceOnce()
+      return !now || now.solo
     },
   }
 }

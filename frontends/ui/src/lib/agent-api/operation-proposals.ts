@@ -18,6 +18,7 @@ import { createProposal } from '@/lib/proposals/service'
 import { MAX_OPERATION_SUMMARY_LENGTH, type OperationPayload } from '@/lib/proposals/types'
 import type { OperationInput } from './dispatch'
 import type { AgentOperation } from './operation'
+import { proposalReachRefusal } from './conversation-audience'
 import { requireTargetsReadable, targetsOf, TooManyTargetsError } from './operation-targets'
 
 /** Why a sensitive operation is never proposed, in words the model relays. */
@@ -103,7 +104,10 @@ export function summaryOfOperation(op: AgentOperation, input: OperationInput): s
  * the call names a project, document, folder or conversation the person whose
  * turn it is may not read: otherwise a member's Piloti could put a change to a
  * project the member cannot see in front of an admin who can, and the admin's
- * click would apply it (a confused deputy). A turn in no project files it on the
+ * click would apply it (a confused deputy). Refused (403) in a shared
+ * conversation when it names a project outside the audience's reach
+ * (`proposalReachRefusal`, ADR-0094): its card sits where every reader reads
+ * it. A turn in no project files it on the
  * organization (0174). The same call repeated in the conversation, for the same
  * person, while the first proposal is still open files nothing and returns that
  * one. Runs in the person's tenant scope: the conversation, the open proposal
@@ -155,6 +159,8 @@ export async function proposeOperation({
   const { session } = principal
   const row = await withTenant({ organizationId: session.organizationId, userId: session.userId }, async () => {
     await requireTargetsReadable(session, targets)
+    const outsideReach = await proposalReachRefusal(principal, targets)
+    if (outsideReach) throw new ForbiddenError(outsideReach)
     return createProposal(session, {
       projectId: principal.projectId ?? null,
       kind: 'operation',

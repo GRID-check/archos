@@ -75,6 +75,9 @@ vi.mock('./operation-targets-repository', () => ({
 }))
 vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleTo: vi.fn(async () => true) }))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
+// Whose reach a shared conversation's proposal must stay in: SQL and WorkOS, proven in
+// operation-proposals.integration.spec.ts; here only that its refusal files nothing.
+vi.mock('./conversation-audience', () => ({ proposalReachRefusal: vi.fn(async () => null) }))
 
 const dispatch = vi.hoisted(() => ({ callOperation: vi.fn() }))
 vi.mock('./dispatch', async (original) => ({
@@ -141,6 +144,7 @@ import {
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { requireProposable, type KindPayload } from '@/lib/proposals/kinds'
 import { applyProposal, createProposal, dismissProposal, getProposal, listOpenProposals } from '@/lib/proposals/service'
+import { proposalReachRefusal } from './conversation-audience'
 import { MAX_PROPOSED_INPUT_CHARS, proposeOperation } from './operation-proposals'
 import type { AgentOperation } from './operation'
 
@@ -328,6 +332,16 @@ describe('proposeOperation', () => {
   it('refuses a call naming a project the asker cannot read, before anything is filed (confused deputy)', async () => {
     vi.mocked(requireProjectAccess).mockRejectedValue(new NotFoundError())
     await expect(propose()).rejects.toBeInstanceOf(NotFoundError)
+    expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
+  it('refuses, in a shared conversation, a call naming a project outside the audience’s reach, before anything is filed', async () => {
+    vi.mocked(proposalReachRefusal).mockResolvedValueOnce('outside the reach')
+    await expect(propose()).rejects.toMatchObject({ status: 403, message: 'outside the reach' })
+    expect(proposalReachRefusal).toHaveBeenCalledWith(
+      expect.objectContaining({ conversationId: 'conv_1' }),
+      expect.arrayContaining([{ type: 'project', id: PROJECT }])
+    )
     expect(insertProposedChange).not.toHaveBeenCalled()
   })
 

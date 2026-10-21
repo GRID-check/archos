@@ -24,7 +24,10 @@
  *   - the card names the target for a reader who may read it, by name;
  *   - a reader who may decide the proposal's project but not read its target
  *     sees no decision on the card, and an apply of theirs is refused and
- *     leaves the card open for somebody who can (it used to end it `failed`).
+ *     leaves the card open for somebody who can (it used to end it `failed`);
+ *   - in a shared conversation, a change naming a project outside the
+ *     audience's reach (ADR-0094) is refused and stores nothing, while one of
+ *     the conversation's own project is filed.
  */
 
 import { randomUUID } from 'node:crypto'
@@ -43,6 +46,11 @@ const ids = { visible: '', hidden: '' }
 // WorkOS: the member holds a grant on the visible project and none on the hidden one.
 vi.mock('@/lib/authz/resource-check', () => ({
   checkResourcePermission: vi.fn(async (input: { resourceExternalId: string }) => input.resourceExternalId === ids.visible),
+}))
+// WorkOS: who besides the asker may open which project; the member opens the visible one only.
+vi.mock('@/lib/authz/project-membership', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/authz/project-membership')>()),
+  userHoldsProjectPermission: vi.fn(async (_session: unknown, projectId: string) => projectId === ids.visible),
 }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn(async () => new Map()) }))
 vi.mock('@/lib/audit/after-commit', () => ({ recordAuditEventAfterCommit: vi.fn() }))
@@ -192,5 +200,35 @@ describe.skipIf(!url)('Piloti’s proposed operations against Postgres', () => {
       asMember(() => applyProposal(member, proposalId, new Request('http://localhost/api/proposals/apply', { method: 'POST' })))
     ).rejects.toMatchObject({ status: 403 })
     expect((await inOrg(() => getProposal(admin, proposalId))).status).toBe('proposed')
+  })
+
+  it('refuses, in a shared conversation, a change to a project not every reader may open, and stores nothing', async () => {
+    const shared = `${conversation}_shared`
+    await inOrg(() =>
+      db.execute(sql`
+        insert into conversations (id, organization_id, created_by, project_id, visibility)
+        values (${shared}, ${ORG}, ${ADMIN}, ${ids.visible}::uuid, 'private')`)
+    )
+    await inOrg(() =>
+      db.execute(sql`
+        insert into resource_shares (organization_id, resource_type, resource_id, subject_user_id, role, granted_by)
+        values (${ORG}, 'conversation', ${shared}, ${MEMBER}, 'viewer', ${ADMIN})`)
+    )
+    const before = (await rowsFor(ids.hidden)).length
+    await expect(
+      proposeOperation({
+        principal: { session: admin, conversationId: shared, projectId: ids.visible },
+        op: rename,
+        input: { params: { id: ids.hidden }, body: { name: 'Vor allen' } },
+      })
+    ).rejects.toMatchObject({ status: 403 })
+    expect(await rowsFor(ids.hidden)).toHaveLength(before)
+    // The conversation's own project is every reader's: filed.
+    const own = await proposeOperation({
+      principal: { session: admin, conversationId: shared, projectId: ids.visible },
+      op: rename,
+      input: { params: { id: ids.visible }, body: { name: 'Sichtbar, im Team' } },
+    })
+    expect(own.proposalId).toBeTruthy()
   })
 })

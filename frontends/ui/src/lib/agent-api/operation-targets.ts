@@ -4,10 +4,12 @@
  *
  * Two gates ask it, each about a different person:
  *
- *  - The read gate (`read-gate.ts`): a read in Piloti's solo conversation may
- *    only reach the turn's own project. What it names is resolved to where it
- *    lives, and a read naming another project, or any project in a turn that has
- *    none, is refused before it runs (`placesOf`).
+ *  - The read gate (`read-gate.ts`, `conversation-audience.ts`): a read in a
+ *    conversation of Piloti's may reach only what the conversation's audience
+ *    may read (ADR-0094). What it names is resolved to where it lives
+ *    (`placesOf`), judged against the audience's reach, and recorded on the
+ *    conversation before it runs; a proposal in a shared conversation is held
+ *    to the same reach.
  *  - The proposal (`operation-proposals.ts`): a write Piloti proposes may only
  *    name what the person whose turn it is may read, so a member's Piloti cannot
  *    put a card in front of an admin that changes a project the member cannot
@@ -178,7 +180,7 @@ function namesUntyped(value: unknown, depth: number): boolean {
 /**
  * Whether `input` names a resource by a type this file cannot place (a
  * `resourceType` of `project_folder`, an `entityType` of `annotation`): the
- * call reaches something {@link targetsOf} does not list. The solo read gate
+ * call reaches something {@link targetsOf} does not list. The read gate
  * refuses such a read, because it cannot tell which project's content the
  * answer carries.
  */

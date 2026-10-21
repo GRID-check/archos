@@ -2,14 +2,16 @@
  * @vitest-environment node
  */
 /**
- * The ratchet on Piloti's reads in a conversation other people read (H1,
- * ADR-0093, ADR-0094, ADR-0121).
+ * The ratchet on Piloti's reads in a conversation (H1, ADR-0093, ADR-0094,
+ * ADR-0121).
  *
  * A read runs as the requester and lands in a transcript the whole audience
- * reads, so in a shared conversation no read Piloti can name may reach the
- * dispatcher or the backend. Walked over the REAL catalog and the real backend
- * operations: an operation added tomorrow is held by this file the day it
- * ships, with no list to remember to extend.
+ * reads. In a shared conversation only a read listed in `AUDIENCE_READS` (one
+ * document's content, one project's facts) may reach the dispatcher, and no
+ * backend read. Walked over the REAL catalog and the real backend operations
+ * with the REAL judge: an operation added tomorrow is held by this file the day
+ * it ships, with no list to remember to extend. Who reads the conversation and
+ * the record are the database's (`read-gate.integration.spec.ts`).
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
@@ -24,23 +26,39 @@ vi.mock('./backend-operations', async (importOriginal) => ({
 }))
 vi.mock('./operation-proposals', () => ({ proposeOperation: vi.fn() }))
 vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapabilityMissing: vi.fn() }))
-vi.mock('./conversation-audience', () => ({
-  conversationReachOf: vi.fn(),
-  recordSoloWorkspaceRead: vi.fn(),
-  soloReadRefusal: vi.fn(),
+vi.mock('@/lib/db/tenant-context', () => ({ withTenant: vi.fn((_tenant: unknown, run: () => unknown) => run()) }))
+vi.mock('./operation-targets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./operation-targets')>()),
+  placesOf: vi.fn(),
+}))
+vi.mock('@/lib/cross-project/audience-reach', () => ({ audienceReachAmong: vi.fn() }))
+vi.mock('@/lib/authz/folder-access-repository', () => ({ listProjectFolderTree: vi.fn(async () => []) }))
+vi.mock('./conversation-audience', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('./conversation-audience')>()),
+  conversationAudienceOf: vi.fn(),
+  ownRestrictingFolders: vi.fn(async () => ['folder_own']),
+  recordWorkspaceHandOut: vi.fn(),
 }))
 
+import { audienceReachAmong } from '@/lib/cross-project/audience-reach'
+import type { Project } from '@/lib/db/schema'
 import { BACKEND_OPERATIONS, callBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
-import { conversationReachOf, recordSoloWorkspaceRead, soloReadRefusal } from './conversation-audience'
+import {
+  type ConversationAudience,
+  READ_REFUSALS,
+  conversationAudienceOf,
+  ownRestrictingFolders,
+  recordWorkspaceHandOut,
+} from './conversation-audience'
+import { callDecision, visibleOperations } from './policy'
 import { callOperation } from './dispatch'
 import { runBackendOperation, runOperation } from './discovery'
 import type { AgentOperation } from './operation'
 import { proposeOperation } from './operation-proposals'
-import { KEY_TARGETS } from './operation-targets'
-import { callDecision, visibleOperations } from './policy'
+import { KEY_TARGETS, placesOf } from './operation-targets'
 import type { AgentPrincipal } from './principal'
-import { AUDIENCE_SAFE_READ_DOMAINS, LINK_BEARING_OPERATIONS, readGateFor, sharedConversationReadRefusal } from './read-gate'
+import { AUDIENCE_READS, LINK_BEARING_OPERATIONS, readGateFor, sharedConversationReadRefusal } from './read-gate'
 
 const session = {
   userId: 'user_1',
@@ -68,28 +86,41 @@ const ctx = (principal: AgentPrincipal) => ({ principal, mode: 'search' as const
 
 const text = (result: { content: unknown[] }) => (result.content[0] as { text: string }).text
 
+const audienceOf = (solo: boolean): ConversationAudience => ({
+  row: { exists: true, projectId: 'proj_1', createdBy: 'user_1', visibility: 'private', grantees: solo ? [] : ['user_2'] },
+  solo,
+  key: solo ? 'private|user_1' : 'private|user_1|user_2',
+})
+const reachOf = (ids: string[], solo: boolean) => ({
+  projects: ids.map((id) => ({ id }) as Project),
+  restrictedFolders: solo,
+  key: audienceOf(solo).key,
+})
+
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(callOperation).mockResolvedValue({ status: 200, ok: true, body: { ok: true } })
   vi.mocked(callBackendOperation).mockResolvedValue({ status: 200, ok: true, body: { result: 'ok' } })
-  vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(true)
-  vi.mocked(soloReadRefusal).mockResolvedValue(null)
+  vi.mocked(recordWorkspaceHandOut).mockResolvedValue(true)
+  vi.mocked(placesOf).mockResolvedValue([])
 })
 
 describe('in a shared conversation', () => {
   beforeEach(() => {
-    vi.mocked(conversationReachOf).mockResolvedValue('shared')
+    vi.mocked(conversationAudienceOf).mockResolvedValue(audienceOf(false))
   })
 
   const reads = visibleOperations(piloti()).filter((op) => callDecision(piloti(), op) === 'run')
+  const unlisted = reads.filter((op) => !AUDIENCE_READS[op.name])
 
   it('has reads to hold (the walk below is not vacuous)', () => {
-    expect(reads.length).toBeGreaterThan(50)
+    expect(unlisted.length).toBeGreaterThan(50)
   })
 
-  it.each(reads.map((op) => [op.name]))('%s never reaches callOperation', async (name) => {
+  it.each(unlisted.map((op) => [op.name]))('%s never reaches callOperation', async (name) => {
     const result = await runOperation(ctx(piloti()), name, {})
     expect(callOperation).not.toHaveBeenCalled()
+    expect(recordWorkspaceHandOut).not.toHaveBeenCalled()
     expect(result.isError).toBe(true)
     expect(text(result)).toBe(sharedConversationReadRefusal())
   })
@@ -100,10 +131,66 @@ describe('in a shared conversation', () => {
     expect(result.isError).toBe(true)
   })
 
+  it('lists only reads of the catalog that name the one kind of place they carry, and no link', () => {
+    for (const [name, { carries }] of Object.entries(AUDIENCE_READS)) {
+      const op = reads.find((candidate) => candidate.name === name)
+      expect(op, `${name} is not a read Piloti runs`).toBeDefined()
+      expect(LINK_BEARING_OPERATIONS.has(name), `${name} hands on a link`).toBe(false)
+      expect(op?.spansProjects, `${name} spans projects`).toBeUndefined()
+      const segment = carries === 'document' ? '/api/documents/[id]' : '/api/projects/[id]'
+      expect(op?.path.startsWith(segment), `${name} must name its ${carries} in its path`).toBe(true)
+      expect(op?.path.match(/\[[^\]]+\]/g), `${name} must name nothing else`).toHaveLength(1)
+      expect(op?.query, name).toBeUndefined()
+      expect(op?.body, name).toBeUndefined()
+    }
+  })
+
+  it('runs a listed read of a project in the audience’s reach, recorded before it runs', async () => {
+    vi.mocked(placesOf).mockResolvedValue([{ projectId: 'proj_closed', conversationId: null }])
+    vi.mocked(audienceReachAmong).mockResolvedValue(reachOf(['proj_closed'], false))
+    const result = await runOperation(ctx(piloti()), 'project-get', { params: { id: 'proj_closed' } })
+    expect(result.isError).toBeUndefined()
+    expect(recordWorkspaceHandOut).toHaveBeenCalledWith(expect.anything(), audienceOf(false), {
+      projectIds: ['proj_closed'],
+      folderIds: [],
+    })
+    expect(vi.mocked(recordWorkspaceHandOut).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(callOperation).mock.invocationCallOrder[0],
+    )
+    // Nothing of the conversation's own project's restricted folders: a shared chat records none.
+    expect(ownRestrictingFolders).not.toHaveBeenCalled()
+  })
+
+  it('refuses a listed read of a project outside the reach, and records nothing', async () => {
+    vi.mocked(placesOf).mockResolvedValue([{ projectId: 'proj_active', conversationId: null }])
+    vi.mocked(audienceReachAmong).mockResolvedValue(reachOf([], false))
+    const result = await runOperation(ctx(piloti()), 'project-get', { params: { id: 'proj_active' } })
+    expect(text(result)).toBe(READ_REFUSALS.outsideReach)
+    expect(callOperation).not.toHaveBeenCalled()
+    expect(recordWorkspaceHandOut).not.toHaveBeenCalled()
+  })
+
+  it('refuses a held document or another conversation’s file, even in reach', async () => {
+    vi.mocked(audienceReachAmong).mockResolvedValue(reachOf(['proj_closed'], false))
+    vi.mocked(placesOf).mockResolvedValueOnce([
+      { projectId: 'proj_closed', conversationId: null, document: { folderId: null, passedScreening: false } },
+    ])
+    expect(text(await runOperation(ctx(piloti()), 'document-get', { params: { id: 'doc_1' } }))).toBe(
+      READ_REFUSALS.notEveryReader,
+    )
+    vi.mocked(placesOf).mockResolvedValueOnce([
+      { projectId: 'proj_1', conversationId: 'conv_other', document: { folderId: null, passedScreening: true } },
+    ])
+    expect(text(await runOperation(ctx(piloti()), 'document-get', { params: { id: 'doc_2' } }))).toBe(
+      READ_REFUSALS.notEveryReader,
+    )
+    expect(callOperation).not.toHaveBeenCalled()
+  })
+
   it('reads the audience once per request, however many reads it carries', async () => {
     const principal = piloti()
-    for (const op of reads.slice(0, 5)) await runOperation(ctx(principal), op.name, {})
-    expect(conversationReachOf).toHaveBeenCalledTimes(1)
+    for (const op of unlisted.slice(0, 5)) await runOperation(ctx(principal), op.name, {})
+    expect(conversationAudienceOf).toHaveBeenCalledTimes(1)
   })
 
   it('still files a write as a proposal: it runs as whoever accepts it', async () => {
@@ -118,8 +205,7 @@ describe('in a shared conversation', () => {
     expect(sharedConversationReadRefusal()).toMatch(/^This conversation is shared/)
   })
 
-  it('keeps every link-bearing read out even if its domain is ever listed as safe', async () => {
-    expect([...AUDIENCE_SAFE_READ_DOMAINS]).toEqual([])
+  it('never hands on a link', async () => {
     for (const name of LINK_BEARING_OPERATIONS) {
       expect(AGENT_OPERATIONS.some((op) => op.name === name), `${name} is not in the catalog`).toBe(true)
     }
@@ -127,8 +213,8 @@ describe('in a shared conversation', () => {
   })
 
   it('fails closed when the audience cannot be read', async () => {
-    vi.mocked(conversationReachOf).mockRejectedValue(new Error('database down'))
-    const result = await runOperation(ctx(piloti()), 'project-list', {})
+    vi.mocked(conversationAudienceOf).mockRejectedValue(new Error('database down'))
+    const result = await runOperation(ctx(piloti()), 'project-get', { params: { id: 'proj_1' } })
     expect(result.isError).toBe(true)
     expect(callOperation).not.toHaveBeenCalled()
   })
@@ -136,46 +222,57 @@ describe('in a shared conversation', () => {
 
 describe('in a conversation that is the requester’s alone', () => {
   beforeEach(() => {
-    vi.mocked(conversationReachOf).mockResolvedValue('solo')
+    vi.mocked(conversationAudienceOf).mockResolvedValue(audienceOf(true))
   })
 
-  it('records the read once per request, before the first read runs', async () => {
+  it('records each read before it runs, with the own project’s folders computed once per request', async () => {
     const principal = piloti()
-    await runOperation(ctx(principal), 'project-list', {})
-    await runOperation(ctx(principal), 'document-get', { params: { id: 'doc_1' } })
-    expect(recordSoloWorkspaceRead).toHaveBeenCalledTimes(1)
-    expect(recordSoloWorkspaceRead).toHaveBeenCalledWith(principal)
-    expect(vi.mocked(recordSoloWorkspaceRead).mock.invocationCallOrder[0]).toBeLessThan(
+    vi.mocked(placesOf).mockResolvedValue([{ projectId: 'proj_1', conversationId: null }])
+    await runOperation(ctx(principal), 'project-get', { params: { id: 'proj_1' } })
+    await runOperation(ctx(principal), 'project-member-list', { params: { id: 'proj_1' } })
+    expect(recordWorkspaceHandOut).toHaveBeenCalledTimes(2)
+    expect(recordWorkspaceHandOut).toHaveBeenCalledWith(principal, audienceOf(true), {
+      projectIds: [],
+      folderIds: ['folder_own'],
+    })
+    expect(ownRestrictingFolders).toHaveBeenCalledTimes(1)
+    expect(vi.mocked(recordWorkspaceHandOut).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(callOperation).mock.invocationCallOrder[0],
     )
     expect(callOperation).toHaveBeenCalledTimes(2)
   })
 
-  it('asks what each read names, with the call’s own input, before it runs', async () => {
-    const principal = piloti()
-    const input = { params: { id: 'doc_1' } }
-    await runOperation(ctx(principal), 'document-get', input)
-    expect(soloReadRefusal).toHaveBeenCalledWith(principal, { path: '/api/documents/[id]' }, input)
+  it('runs a read of another project in reach as a hand-out of that project', async () => {
+    vi.mocked(placesOf).mockResolvedValue([{ projectId: 'proj_b', conversationId: null }])
+    vi.mocked(audienceReachAmong).mockResolvedValue(reachOf(['proj_b'], true))
+    const result = await runOperation(ctx(piloti()), 'project-get', { params: { id: 'proj_b' } })
+    expect(result.isError).toBeUndefined()
+    // A project's facts carry no folder; the conversation's own project is not touched.
+    expect(recordWorkspaceHandOut).toHaveBeenCalledWith(expect.anything(), audienceOf(true), {
+      projectIds: ['proj_b'],
+      folderIds: [],
+    })
+    expect(audienceReachAmong).toHaveBeenCalledWith(session, audienceOf(true).row, ['proj_b'])
   })
 
-  it('runs nothing that names another project, and relays the refusal (the SQL is proven in read-gate.integration.spec.ts)', async () => {
-    vi.mocked(soloReadRefusal).mockResolvedValue('That belongs to another project')
+  it('runs nothing outside the reach, and relays the refusal', async () => {
+    vi.mocked(placesOf).mockResolvedValue([{ projectId: 'proj_b', conversationId: null }])
+    vi.mocked(audienceReachAmong).mockResolvedValue(reachOf([], true))
     const result = await runOperation(ctx(piloti()), 'document-get', { params: { id: 'doc_1' } })
-    expect(result.isError).toBe(true)
-    expect(text(result)).toBe('That belongs to another project')
+    expect(text(result)).toBe(READ_REFUSALS.outsideReach)
     expect(callOperation).not.toHaveBeenCalled()
   })
 
-  it('runs nothing once the lock finds the conversation shared after all', async () => {
-    vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(false)
-    const result = await runOperation(ctx(piloti()), 'project-list', {})
-    expect(text(result)).toBe(sharedConversationReadRefusal())
+  it('runs nothing once the lock finds the audience changed', async () => {
+    vi.mocked(recordWorkspaceHandOut).mockResolvedValue(false)
+    const result = await runOperation(ctx(piloti()), 'inbox-summary-get', {})
+    expect(text(result)).toBe(READ_REFUSALS.audienceChanged)
     expect(callOperation).not.toHaveBeenCalled()
   })
 
   it('runs nothing when the record cannot be written', async () => {
-    vi.mocked(recordSoloWorkspaceRead).mockRejectedValue(new Error('lock timeout'))
-    const result = await runOperation(ctx(piloti()), 'project-list', {})
+    vi.mocked(recordWorkspaceHandOut).mockRejectedValue(new Error('lock timeout'))
+    const result = await runOperation(ctx(piloti()), 'inbox-summary-get', {})
     expect(result.isError).toBe(true)
     expect(callOperation).not.toHaveBeenCalled()
   })
@@ -239,11 +336,11 @@ describe('every read of no named place either spans projects or carries no proje
 
 describe('outside a conversation', () => {
   it('reads the audience of nothing and records nothing for an external agent', async () => {
-    vi.mocked(conversationReachOf).mockResolvedValue('none')
+    vi.mocked(conversationAudienceOf).mockResolvedValue(null)
     const person: AgentPrincipal = { actor: 'external_agent', session, clientId: 'c', scopes: [] }
     const result = await runOperation(ctx(person), 'project-list', {})
     expect(result.isError).toBeUndefined()
-    expect(recordSoloWorkspaceRead).not.toHaveBeenCalled()
+    expect(recordWorkspaceHandOut).not.toHaveBeenCalled()
     expect(callOperation).toHaveBeenCalledTimes(1)
   })
 })
