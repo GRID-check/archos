@@ -26,6 +26,7 @@ import { ensureOfficeShelfFolderPaths } from '@/lib/office-shelf/folder-service'
 import { folderPathKey } from '@/lib/projects/folders'
 import { ensureProjectFolderPaths } from '@/lib/projects/folder-service'
 import { findRootDocuments } from './repository'
+import { announceRootSortRun } from './root-sort-announce'
 import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor } from './root-sort'
 import {
   findLatestRootSortRun,
@@ -342,14 +343,17 @@ export async function runRootSortSlice(session: AuthorizedSession, payload: Root
   } catch (error) {
     // A refusal (the person lost the shelf, the project closed) ends the run with its reason; anything else is retried.
     if (!(error instanceof BadRequestError || error instanceof NotFoundError || error instanceof ForbiddenError)) throw error
-    await updateRootSortRun(session.organizationId, run.id, [run.status], {
+    const failed = await updateRootSortRun(session.organizationId, run.id, [run.status], {
       status: 'failed',
       error: error.message,
       finishedAt: new Date(),
     })
+    if (failed) await announceRootSortRun(failed)
     return { done: true, payload }
   }
   const updated = await updateRootSortRun(session.organizationId, run.id, [run.status], patch)
+  // The person may have closed the dialog: a run that now waits on them, or ended badly, tells them in the Eingang.
+  if (updated && updated.status !== run.status) await announceRootSortRun(updated)
   const working = updated !== null && STEPS[updated.status] !== undefined
   return { done: !working, payload }
 }

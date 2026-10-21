@@ -523,6 +523,35 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: { send: 'if-unread', afterMinutes: 60 },
     push: { category: 'requests', urgency: 'high' },
   },
+  /*
+    A sort of a shelf's root has proposed where its files go and waits for the
+    requester (ADR-0121). Informational, not actionable: the dialog is where the
+    decision is made, and the row counts in the badge until it is read, so
+    nothing needs to resolve it. `per-anchor` on the run, so the one notice per
+    run stays one row. In-app only: the person asked for the sort and is
+    probably near it. Operational: documents are not a chat feature.
+  */
+  'root_sort.ready': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'normal' },
+  },
+  /*
+    A sort stopped on an error. Kept as long as a failed job, and mailed once
+    unread after half an hour, as `job.failed` is: the requester may have closed
+    the tab and gone, and the run's reason is what they need to find.
+  */
+  'root_sort.failed': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 30 },
+    push: { category: 'results', urgency: 'normal' },
+  },
 }
 
 /**

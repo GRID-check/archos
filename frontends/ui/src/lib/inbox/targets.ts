@@ -123,6 +123,16 @@ const ORGANIZATION_DESTINATIONS: Partial<Record<InboxItemType, string>> = {
   'piloti.proposal_waiting': '/app/office-shelf',
 }
 
+/**
+ * A sort of a shelf's root (ADR-0121): the row lands on the shelf's files with
+ * the sort dialog open on the run (`?rootSort=<runId>`, read by
+ * `features/documents/hooks/use-root-sort-param`). The run's id is the anchor.
+ */
+function rootSortHref(shelfPath: string, runId: string | null | undefined): string {
+  const run = runId?.trim()
+  return run ? `${shelfPath}?rootSort=${encodeURIComponent(run)}` : shelfPath
+}
+
 function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
   return {
     type,
@@ -175,7 +185,11 @@ const organizationTarget: InboxTargetDescriptor = {
   resolve: async (session, resourceId) => {
     if (resourceId !== session.organizationId) return null
     return {
-      deepLink: (context) => ORGANIZATION_DESTINATIONS[context.itemType] ?? '/app/organization',
+      deepLink: (context) =>
+        // The office filing's sort: its anchor is the run.
+        context.itemType.startsWith('root_sort.')
+          ? rootSortHref('/app/office-shelf', context.anchorId)
+          : (ORGANIZATION_DESTINATIONS[context.itemType] ?? '/app/organization'),
     }
   },
 }
@@ -228,6 +242,10 @@ const projectTarget: InboxTargetDescriptor = {
         if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/files`
         // A finished reading waits on the project's setup page, where it is reviewed (ADR-0111).
         if (context.itemType === 'piloti.intake_ready') return `/app/projects/${resourceId}/setup`
+        // A sort of the project's root waits in its files, with the dialog open (ADR-0121).
+        if (context.itemType.startsWith('root_sort.')) {
+          return rootSortHref(`/app/projects/${resourceId}/files`, context.anchorId)
+        }
         if (context.run) return runDeepLink(resourceId, context.run)
         const taskId = context.taskId?.trim() ? context.taskId.trim() : null
         if (taskId) {

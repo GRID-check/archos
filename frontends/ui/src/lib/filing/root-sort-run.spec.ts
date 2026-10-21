@@ -24,6 +24,7 @@ vi.mock('./root-sort-run-repository', () => ({
 vi.mock('./repository', () => ({ findRootDocuments: vi.fn() }))
 vi.mock('@/lib/documents/move-to-folder', () => ({ moveDocumentsToFolders: vi.fn() }))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
+vi.mock('./root-sort-announce', () => ({ announceRootSortRun: vi.fn() }))
 vi.mock('@/lib/projects/folder-service', () => ({ ensureProjectFolderPaths: vi.fn() }))
 vi.mock('@/lib/office-shelf/folder-service', () => ({ ensureOfficeShelfFolderPaths: vi.fn() }))
 
@@ -37,6 +38,7 @@ import { ensureProjectFolderPaths } from '@/lib/projects/folder-service'
 import { planRootChunk, proposeRootFolders, requireSortable, scanRoot, sortContextFor, type SortContext } from './root-sort'
 import { keptMovesOf, runRootSortSlice, startRootSort } from './root-sort-run'
 import { findRootSortRun, insertRootSortRun, updateRootSortRun } from './root-sort-run-repository'
+import { announceRootSortRun } from './root-sort-announce'
 import { ROOT_SORT_CHUNK } from './root-sort-types'
 
 const SESSION = { userId: 'user-1', organizationId: 'org-1' } as AuthorizedSession
@@ -106,6 +108,8 @@ describe('runRootSortSlice', () => {
           }
     )
     const slice = await runRootSortSlice(SESSION, PAYLOAD)
+    // Still judging: nothing to tell anyone yet.
+    expect(announceRootSortRun).not.toHaveBeenCalled()
     expect(planRootChunk).toHaveBeenCalledTimes(3)
     // The shelf's folders and conventions are read once for the slice, not once per chunk.
     expect(sortContextFor).toHaveBeenCalledTimes(1)
@@ -136,6 +140,8 @@ describe('runRootSortSlice', () => {
     expect(vi.mocked(proposeRootFolders).mock.calls[0][2]).toEqual(['d2', 'd3'])
     expect(written()[0].patch).toEqual({ newFolders: [], groupingError: 'backend_unreachable', status: 'ready' })
     expect(slice.done).toBe(true)
+    // Ready waits on the person: they are told, whether or not the dialog is open.
+    expect(announceRootSortRun).toHaveBeenCalledWith(expect.objectContaining({ status: 'ready' }))
   })
 
   it('creates the kept new folders once, before the first move, and applies through moveDocumentToFolder', async () => {
@@ -209,6 +215,7 @@ describe('runRootSortSlice', () => {
     const slice = await runRootSortSlice(SESSION, PAYLOAD)
     expect(slice.done).toBe(true)
     expect(written()[0].patch.status).toBe('failed')
+    expect(announceRootSortRun).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }))
   })
 
   it('stops when the person cancelled while the slice ran', async () => {

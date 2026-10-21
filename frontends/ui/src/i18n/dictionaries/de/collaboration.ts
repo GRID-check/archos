@@ -721,6 +721,32 @@ export const collaboration: typeof en.collaboration = {
         titleRelatedNoSubject: '{actor} hat Sie in Anmerkung {related} erwähnt',
         body: 'Antworten Sie im Verlauf der Anmerkung.',
       },
+      // Eine Sortierung der Wurzel eines Ablageorts (ADR-0121) hat vorgeschlagen,
+      // wohin ihre Dateien sollen. {subject} ist das Projekt; die Büroablage
+      // nennt keinen Ort, ihre Variante sagt es. {count} sind die Dateien, die
+      // verschoben werden sollen.
+      rootSortReady: {
+        titleOne: 'Die Sortierung von „{subject}“ ist bereit zur Durchsicht: 1 Datei',
+        titleMany: 'Die Sortierung von „{subject}“ ist bereit zur Durchsicht: {count} Dateien',
+        titleNone: 'Die Sortierung von „{subject}“ ist bereit zur Durchsicht',
+        title: 'Die Sortierung von „{subject}“ ist bereit zur Durchsicht',
+        body: 'Prüfen Sie, wohin jede Datei soll. Verschoben wird erst, was Sie übernehmen.',
+        variants: {
+          office: {
+            titleOne: 'Die Sortierung der Büroablage ist bereit zur Durchsicht: 1 Datei',
+            titleMany: 'Die Sortierung der Büroablage ist bereit zur Durchsicht: {count} Dateien',
+            titleNone: 'Die Sortierung der Büroablage ist bereit zur Durchsicht',
+            title: 'Die Sortierung der Büroablage ist bereit zur Durchsicht',
+          },
+        },
+      },
+      rootSortFailed: {
+        title: 'Die Sortierung von „{subject}“ wurde abgebrochen',
+        body: 'Was bis dahin verschoben wurde, bleibt. Öffnen Sie die Dateien, um den Grund zu sehen.',
+        variants: {
+          office: { title: 'Die Sortierung der Büroablage wurde abgebrochen' },
+        },
+      },
       unknown: {
         title: 'Es gab Aktivität',
         body: 'in {subject}',

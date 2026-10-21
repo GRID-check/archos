@@ -40,6 +40,7 @@ import { isInternalDragActive, useFolderDropTarget, type FileDropAim } from '../
 import { useFileListing } from '../hooks/use-file-listing'
 import { useFileSearch } from '../hooks/use-file-search'
 import { useFolderParam } from '../hooks/use-folder-param'
+import { useRootSortParam } from '../hooks/use-root-sort-param'
 import { useFolderTree } from '../hooks/use-folder-tree'
 import { useIngestionCompleteToast } from '../hooks/use-ingestion-complete-toast'
 import { useLevelListing } from '../hooks/use-level-listing'
@@ -787,6 +788,9 @@ export function FileWorkspace({
     () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'office_shelf' }),
     [shelf.projectId]
   )
+  // An inbox row that says the sort is ready opens its dialog (`?rootSort=<runId>`).
+  const openRootSort = useCallback(() => setRootSortOpen(true), [])
+  useRootSortParam(mayRootSort, openRootSort)
   const advancedEntries: ActionMenuEntry[] | undefined = mayRootSort
     ? [
         { type: 'label', label: t('rootSort.advanced') },
