@@ -167,6 +167,9 @@ class ConversationState(BaseModel):
     # each, from the turn context; rendered as ``<referenzprojekte>`` when
     # ``project_lookup`` is bound. Plain str, as above.
     reference_projects: str | None = None
+    # The WORKSPACE block from the turn context (ADR-0122): who asks, where,
+    # and what is open now. Rendered when the workspace tools are bound. Plain str.
+    workspace_block: str | None = None
     # Set when this turn commissioned a run instead of answering itself
     # (ADR-0062): the ``task_runs`` row and the message that run narrates itself
     # in, both minted by the BFF before the worker was asked for anything.

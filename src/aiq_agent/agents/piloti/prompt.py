@@ -56,6 +56,9 @@ logger = logging.getLogger(__name__)
 AGENT_DIR = Path(__file__).parent
 PROMPTS_DIR = AGENT_DIR / "prompts"
 PROMPT_NAME = "piloti"
+#: The workspace function group's tools as bound (`workspace__search` …): the
+#: WORKSPACE block renders only when one of them is (ADR-0122).
+WORKSPACE_TOOL_PREFIX = "workspace__"
 #: The bundled fallback for the static half. Langfuse holds the live one.
 STATIC_PROMPT_FILE = "piloti_static.md"
 #: What the live text is called in Langfuse. A wire name: every version in the
@@ -422,6 +425,13 @@ def render_system_prompt(
         # model does not have.
         reference_projects=(
             state.reference_projects if any(tool.get("name") == "project_lookup" for tool in tools_info) else None
+        ),
+        # Who asks, where, and what is open now (ADR-0122): only when the turn
+        # can act on it through the workspace tools.
+        workspace_block=(
+            state.workspace_block
+            if any(str(tool.get("name", "")).startswith(WORKSPACE_TOOL_PREFIX) for tool in tools_info)
+            else None
         ),
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),

@@ -148,6 +148,8 @@ class ResearchAgentState(BaseModel):
     # The office's reference projects, threaded through from
     # ``ConversationState`` (see the note there).
     reference_projects: str | None = None
+    # The WORKSPACE block, threaded through from ``ConversationState``.
+    workspace_block: str | None = None
     # The composer's "Asking about <file>" subject for this turn (filename +
     # shelf). Rendered into the system prompt so "summarize this document"
     # has an antecedent.

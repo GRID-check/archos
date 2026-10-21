@@ -63,6 +63,10 @@ class TurnContext:
     #: each: rendered as ``<referenzprojekte>`` so the agent looks there unasked
     #: (docs/design/cross-project-escalation.md). None: none, or not loaded.
     reference_projects: str | None = None
+    #: The WORKSPACE block (ADR-0122): the asker's roles, the project, the
+    #: conversation's audience, what waits, and this conversation's proposals
+    #: with every status. Rendered when the workspace tools are bound.
+    workspace: str | None = None
     #: Whether this turn may hand work over (`create_task`). Its own flag, see
     #: :class:`aiq_agent.stages.flags.TurnFlags`.
     tasks_allowed: bool = True
@@ -327,6 +331,7 @@ async def _load_turn_context(
         platform_lessons=lessons.digest,
         org_instructions=blocks.org_instructions,
         reference_projects=blocks.reference_projects,
+        workspace=blocks.workspace,
         # The restriction is settled after the whole setup gather
         # (`settle_restriction`): the digest and the subject can each confine.
         deep_research_allowed=turn_flags.deep_research_allowed,
