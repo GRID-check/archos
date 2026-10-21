@@ -2500,6 +2500,10 @@
     "de": "Manche PDFs, die bestimmte Zeichnungsprogramme oder Scanner exportieren, enthalten Text, der als Kauderwelsch herauskommt. Piloti liest ein solches PDF jetzt als Seitenbilder, und das Kauderwelsch landet nicht mehr in der Suche."
   },
   {
+    "en": "Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.",
+    "de": "Das Sortieren aller Dateien in Ordnern zeigt jetzt den Fortschritt live an: die vier Schritte, die Anzahl der erledigten Dateien, die ungefähre Restdauer und die zuletzt abgelegten Dateien. Außerdem ist der Vorgang spürbar schneller abgeschlossen. Sobald Sie eine Sortierung anwenden oder abbrechen, wird die entsprechende Benachrichtigung in Ihrem Posteingang entfernt."
+  },
+  {
     "en": "Sorting now applies to both the list and the card view, so switching views keeps the order you chose.",
     "de": "Die Sortierung gilt jetzt für Liste und Kacheln, ein Wechsel der Ansicht behält also die gewählte Reihenfolge."
   },
