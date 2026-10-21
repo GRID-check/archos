@@ -80,7 +80,10 @@ Each sentence of the final answer gets two labels (`common/claim_provenance.py`)
 The confidence (rule 2, `markers.surface_claim_confidence`) is
 `min(self-report, min over load-bearing sentences of ceiling(class, type))`,
 under the hard quote gate. Load-bearing are the normative and value sentences,
-or all sentences when there are none. The ceiling is `high` for quoted and cited
+or all sentences when there are none. An answer with no sentence at all (a
+card marker, a heading) is held at `low`, rule 1's floor for an answer with
+nothing behind it, never left at its self-report
+(`claim_provenance.NO_CLAIMS_CEILING`). The ceiling is `high` for quoted and cited
 sentences of any type, and for record, action and measured sentences that are not
 normative; `medium` for reasoning, for descriptive model knowledge, and for a
 record sentence stating a number no record holds; `low` for any normative
@@ -92,7 +95,14 @@ for a height.
 
 Records travel their own channel (`common/workspace_records.py`), read off this
 turn's `workspace__call` results in the transcript, and never enter the
-`SourceRegistry`.
+`SourceRegistry`. A record is a server row Piloti did not write: an object the
+workspace marks as Piloti's (`role: "assistant"`, `authoredBy: "agent"`,
+`authorKind: "piloti"`, as `conversation-message-list` returns an earlier
+answer) adds nothing to it, and a capped answer carrying such a marker is no
+record. A sentence matches a record on one shared number, or on two shared
+words that stand in ONE item of it (a row of a list, or the values outside
+any list); a result that is not the route's JSON (a refusal, a guard's
+notice) is no record.
 
 Kept hard: a verbatim quote must match (marker, patch, stamp; now also its
 polarity); a pointer must resolve to what it names (now also its locus); trailer
@@ -145,8 +155,10 @@ Changed alongside:
   `grounding.py`): such a sentence floors the answer as an uncited legal claim.
   Before, the same false fire floored the whole answer only when no citation
   survived anywhere.
-* Bad, because record matching is lexical (two shared words or one number). A
-  coincidental match can stamp a sentence `record`; it cannot ground the law.
+* Bad, because record matching is lexical (two shared words in one row, or
+  one number). A coincidental match can stamp a sentence `record`; it cannot
+  ground the law. A shared number is the weaker half: a count of 2 in a long
+  list matches any sentence that says 2.
 * Bad, because the locus check can label a correct citation whose chunk does not
   carry the Punkt it belongs to. Fail-open only for entries with no text and no clause.
 * Bad, because an unsourced answer is now shown. The note says so; a ruling is not.

@@ -73,6 +73,33 @@ class TestEachClassFromItsEvidence:
         prose = "Ich würde den Schnitt zuerst prüfen."
         assert _classes(prose, ClaimEvidence(records=[APPROVALS])) == [("model_knowledge", "descriptive")]
 
+    def test_two_shared_words_in_different_rows_are_a_coincidence(self):
+        tasks = record_from_result(
+            "project-tasks-list",
+            {},
+            '{"items": [{"title": "Planung Tiefgarage", "status": "open"},'
+            '{"title": "Fassade Nord", "status": "done"}]}',
+        )
+        prose = "Die Planung der Fassade sollte früh beginnen."
+        assert _classes(prose, ClaimEvidence(records=[tasks]))[0][0] == "model_knowledge"
+        # The same two words in one row are a sentence read off that row.
+        prose = "Die Planung der Tiefgarage ist offen."
+        assert _classes(prose, ClaimEvidence(records=[tasks]))[0][0] == "record"
+
+    def test_piloti_s_own_earlier_answer_is_no_record(self):
+        # An earlier answer read back through the workspace is model knowledge, not a server fact.
+        history = record_from_result(
+            "conversation-message-list",
+            {},
+            '[{"id": "m1", "role": "user", "content": "Zähl bitte nach."},'
+            '{"id": "m2", "role": "assistant", "content": "Die Tiefgarage hat 42 Stellplätze im Untergeschoß."}]',
+        )
+        prose = "Die Tiefgarage hat 42 Stellplätze im Untergeschoß."
+        assert _classes(prose, ClaimEvidence(records=[history])) == [("model_knowledge", "value")]
+        # Capped, it cannot be split by author, so it is no record at all.
+        capped = '[{"role": "assistant", "content": "Die Tiefgarage hat 42 Stellpl'
+        assert record_from_result("conversation-message-list", {}, capped) is None
+
     def test_a_sentence_reporting_a_proposal_is_action(self):
         prose = "Ich habe vorgeschlagen, Lea als Mitglied aufzunehmen; bitte bestätigen."
         assert _classes(prose, ClaimEvidence(records=[PROPOSAL]))[0][0] == "action"
@@ -229,8 +256,13 @@ class TestTheCeilings:
         assert all(stamp.load_bearing for stamp in stamps)
         assert claims_ceiling(stamps) == "medium"
 
-    def test_an_answer_with_no_sentence_has_no_ceiling(self):
-        assert claims_ceiling([]) is None and weakest_claim([]) is None
+    def test_an_answer_with_no_sentence_is_floored_not_left_unchecked(self):
+        # Rule 1's intent (ADR-0124): nothing behind the answer, so the self-report cannot stand.
+        assert claims_ceiling([]) == "low" and weakest_claim([]) is None
+        stamps = classify_claims(
+            "## Ergebnis\n\n[[card:1]]", ClaimEvidence(), normative=answer_mentions_normative_claim
+        )
+        assert stamps == [] and claims_ceiling(stamps) == "low"
 
 
 def test_counts_and_the_normative_tally():

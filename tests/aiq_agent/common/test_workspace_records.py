@@ -48,7 +48,7 @@ def test_a_proposal_carries_what_was_proposed_and_a_refusal_is_no_record():
         "Proposed — the person decides. Nothing was changed.",
     )
     assert proposal.outcome == "proposed" and "lea@buero.at" in proposal.haystack
-    assert record_from_result("member-add", {}, "Fehler: the workspace server refused the call (403)") is None
+    assert record_from_result("member-add", {}, "Error: the workspace server refused the call (403)") is None
     assert record_from_result("member-add", {}, "  ") is None
 
 
@@ -63,7 +63,7 @@ def test_records_come_from_this_turns_calls_in_order_and_other_tools_are_ignored
         *_call("1", "project-members-list", '{"members": [{"name": "Anna Berger"}]}'),
         *_call("2", "search-operations", "project-members-list: …", tool="workspace__search"),
         *_call("3", "member-add", "Proposed — the person decides. Nothing was changed.", body={"email": "x@y.at"}),
-        *_call("4", "task-get", "Fehler: not found"),
+        *_call("4", "task-get", "Error: not found"),
     ]
     records = records_from_messages(messages)
     assert [(record.operation, record.outcome) for record in records] == [
@@ -109,3 +109,23 @@ def test_unfiled_proposed_lines_are_dropped_and_counted():
     only_unfiled = {"v": 1, "kind": "work", "work": {"proposed": [{"text": "b", "ref": "other"}]}}
     assert drop_unfiled_proposals(only_unfiled, frozenset()) == ({"v": 1, "kind": "work"}, 1)
     assert drop_unfiled_proposals(payload, frozenset({filed, "other"}))[1] == 1
+
+
+def test_a_notice_the_agent_answered_the_call_with_is_no_record():
+    from aiq_agent.common.steering import HELD_FOR_STEER
+    from aiq_agent.tools.workspace.register import RATE_LIMITED
+
+    for text in (HELD_FOR_STEER, RATE_LIMITED, "Error reaching the workspace: timeout. Nothing was changed."):
+        assert record_from_result("task-get", {}, text) is None
+
+
+def test_a_read_keeps_one_item_per_row_and_none_for_piloti_s_words():
+    record = record_from_result(
+        "comment-list",
+        {},
+        '{"total": 2, "items": [{"authoredBy": "user", "text": "Schnitt prüfen"},'
+        '{"authoredBy": "agent", "text": "Die Brüstung ist zu niedrig"}]}',
+    )
+    assert "schnitt prüfen" in record.haystack and "brüstung" not in record.haystack
+    assert any("schnitt prüfen" in item for item in record.items)
+    assert any(item.split("\n") == ["2"] for item in record.items)

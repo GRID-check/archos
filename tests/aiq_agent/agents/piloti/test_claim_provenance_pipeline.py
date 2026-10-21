@@ -247,3 +247,12 @@ async def test_a_proposal_filed_last_turn_is_not_this_turns_report():
     final, _ = await _finalize(messages)
 
     assert "work" not in (final.answer_meta or {})
+
+
+async def test_an_answer_with_no_sentence_is_floored_not_left_at_its_self_report():
+    messages = [HumanMessage("Zeig mir das."), AIMessage(ANSWER_ENVELOPE.format(prose="## Ergebnis"))]
+
+    final, state = await _finalize(messages)
+
+    assert final.claim_stamps == () and final.claims_ceiling == "low"
+    assert state.answer_confidence == "low" and state.answer_confidence_capped_reason == "ungrounded"

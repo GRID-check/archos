@@ -171,7 +171,7 @@ _STOPWORDS = frozenset(
 )  # fmt: skip
 
 
-#: A sentence matches a record on two shared words, or on one shared number.
+#: A sentence matches a record on two words shared with one of its items, or on one shared number.
 _MIN_RECORD_HITS = 2
 
 #: Counts the answer spells out, so „drei offene Freigaben" is checked like „3".
@@ -358,10 +358,13 @@ def _whole_word_in(token: str, haystack: str) -> bool:
 def _record_match(sentence: str, records: Sequence[WorkspaceRecord]) -> tuple[WorkspaceRecord, tuple[str, ...]] | None:
     """The record a sentence was read from, and the numbers in it no record holds; None when none matches.
 
-    A sentence matches a record when one of its words (four letters or more,
-    not a function word) or one of its numbers stands in the record's values,
-    or a number equals the length of a list it carried. The record with most
-    matches wins.
+    A sentence matches a record on one of its numbers standing in the record's
+    values (or equal to the length of a list it carried), or on two of its
+    words (four letters or more, not a function word) standing in ONE item of
+    it: one row of a list, or the values outside any list. Two words scattered
+    over a long answer („Planung" in one task, „Fassade" in another) are a
+    coincidence, not a sentence read off a row. The record with most matches
+    wins.
     """
     folded = _MARKER_RE.sub("", sentence).casefold()
     words = {word for word in _WORD_RE.findall(folded) if word not in _STOPWORDS}
@@ -370,10 +373,13 @@ def _record_match(sentence: str, records: Sequence[WorkspaceRecord]) -> tuple[Wo
     ]
     best: tuple[int, WorkspaceRecord] | None = None
     for record in records:
-        word_hits = sum(1 for word in words if _whole_word_in(word, record.haystack))
+        word_hits = max(
+            (sum(1 for word in words if _whole_word_in(word, item)) for item in record.items or (record.haystack,)),
+            default=0,
+        )
         number_hits = sum(1 for number in numbers if _number_in(number, record))
         # One shared word is a coincidence („Schnitt" in a recommendation);
-        # two, or a number, is a sentence read off the record.
+        # two in one row, or a number, is a sentence read off the record.
         hits = word_hits + 2 * number_hits
         if hits >= _MIN_RECORD_HITS and (best is None or hits > best[0]):
             best = (hits, record)
@@ -598,11 +604,18 @@ def ceiling(provenance: ProvenanceClass, ctype: ClaimType, *, unmatched: bool = 
     return "medium"
 
 
-def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level | None:
-    """The lowest ceiling among the load-bearing sentences; None when the answer has no sentence."""
+#: The ceiling of an answer with no sentence to stamp (a card marker, a code
+#: block, a heading alone). Nothing in it can carry evidence, and rule 1 floors
+#: an answer without a verified citation at ``low``; so does this, rather than
+#: leaving the self-report unchecked.
+NO_CLAIMS_CEILING: Level = "low"
+
+
+def claims_ceiling(stamps: Sequence[ClaimStamp]) -> Level:
+    """The lowest ceiling among the load-bearing sentences; :data:`NO_CLAIMS_CEILING` when there is none."""
     bearing = [stamp for stamp in stamps if stamp.load_bearing]
     if not bearing:
-        return None
+        return NO_CLAIMS_CEILING
     return min(
         (ceiling(stamp.provenance, stamp.claim_type, unmatched=bool(stamp.unmatched)) for stamp in bearing),
         key=_LEVELS.index,

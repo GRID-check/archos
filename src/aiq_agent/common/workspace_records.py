@@ -26,12 +26,25 @@ the model made this turn, paired with its result. The tool's text is all the
 model read, so it is all a sentence can have been written from:
 
 - a READ answers with the route's JSON (``discovery.ts`` ``renderText``), whose
-  scalar values become the record's haystack; a capped, non-JSON answer is
-  matched as text;
+  scalar values become the record's haystack, one ITEM per element of a list
+  (a row); a capped answer is the JSON cut short, matched as text, one item per
+  fragment between brackets;
 - a WRITE answers „Proposed — the person decides. Nothing was changed.": a
   PROPOSAL, whose evidence is the server row the person decides on. Its values
   are the inputs the model proposed;
-- a refusal („Fehler …") is no record at all.
+- anything else (a refusal, which the tool words „Error …", or a notice the
+  agent's own guards answered the call with) is no JSON and no record.
+
+## What a record never holds: Piloti's own words
+
+A record is evidence because the server holds it and the model did not write
+it. A conversation's history (``conversation-message-list``), a comment thread
+or a report Piloti drafted are server rows too, but the words in them are an
+earlier answer's, and matching a sentence against them would launder model
+knowledge into ``record``. So an object marked as Piloti's (``role:
+"assistant"``, ``authoredBy: "agent"``, ``authorKind: "piloti"``) contributes
+nothing, and a capped answer carrying such a marker, which cannot be split by
+author, is no record.
 
 Pure: messages in, records out. The caller scopes the messages to this turn
 (``answer_pipeline.this_turn``).
@@ -57,8 +70,21 @@ _QUALIFIED_CALL_NAMES = (f"{WORKSPACE_GROUP}__{WORKSPACE_CALL}", f"{WORKSPACE_GR
 
 #: The server's text for a write it filed as a proposal (``discovery.ts``).
 PROPOSED_PREFIX = "Proposed"
-#: How the tool words every refusal and failure for the model (``tools/workspace``).
-_REFUSAL_PREFIXES = ("Fehler", "Error")
+#: How a read's text starts: the route's JSON, whole or capped.
+_JSON_STARTS = ("{", "[")
+
+#: The markers the workspace's wire puts on what Piloti wrote: a stored
+#: answer's ``role``, a Kommentar's or a Dokument's ``authoredBy``, a thread
+#: message's ``authorKind``. Matched casefolded.
+_PILOTI_AUTHORED: dict[str, frozenset[str]] = {
+    "role": frozenset({"assistant"}),
+    "authoredby": frozenset({"agent", "piloti"}),
+    "authorkind": frozenset({"agent", "piloti"}),
+}
+_PILOTI_AUTHORED_TEXT_RE = re.compile(
+    r'"(?:role|authoredBy|authorKind)"\s*:\s*"(?:assistant|agent|piloti)"', re.IGNORECASE
+)
+_FRAGMENT_SPLIT_RE = re.compile(r"[{}\[\]\n]")
 
 RecordOutcome = Literal["read", "proposed"]
 
@@ -99,6 +125,9 @@ class WorkspaceRecord:
     #: The counts it implies without stating them: the length of every list,
     #: and how often each value repeats („2 offen" when two rows say pending).
     counts: frozenset[int] = frozenset()
+    #: The haystack per item: one row of a list, or the values outside any
+    #: list. Words a sentence is matched on must stand in one item together.
+    items: tuple[str, ...] = ()
 
     def to_wire(self) -> dict[str, Any]:
         return {"operation": self.operation, "outcome": self.outcome}
@@ -110,15 +139,35 @@ def is_workspace_call(tool_name: str) -> bool:
     return any(name == qualified or name.endswith(f"__{qualified}") for qualified in _QUALIFIED_CALL_NAMES)
 
 
-def _scalars(value: Any, counts: set[int]) -> Iterable[str]:
-    """Every scalar under ``value``, as text; the length of every list on the way into ``counts``."""
+def _piloti_authored(value: dict[str, Any]) -> bool:
+    """Whether ``value`` is an object the workspace marks as written by Piloti."""
+    for key, item in value.items():
+        marks = _PILOTI_AUTHORED.get(str(key).casefold())
+        if marks and isinstance(item, str) and item.strip().casefold() in marks:
+            return True
+    return False
+
+
+def _scalars(value: Any, counts: set[int], items: list[list[str]] | None = None) -> Iterable[str]:
+    """Every scalar under ``value`` as text, skipping what Piloti wrote; list lengths into ``counts``.
+
+    With ``items``, each list element's scalars also go into an item of their own.
+    """
     if isinstance(value, dict):
+        if _piloti_authored(value):
+            return
         for item in value.values():
-            yield from _scalars(item, counts)
+            yield from _scalars(item, counts, items)
     elif isinstance(value, list):
         counts.add(len(value))
         for item in value:
-            yield from _scalars(item, counts)
+            if items is None:
+                yield from _scalars(item, counts, None)
+                continue
+            row = list(_scalars(item, counts, items))
+            if row:
+                items.append(row)
+            yield from row
     elif isinstance(value, bool) or value is None:
         return
     elif isinstance(value, (int, float, str)):
@@ -138,6 +187,40 @@ def _with_spellings(text: str) -> list[str]:
 
 def _haystack(values: Iterable[str]) -> str:
     return "\n".join(spelling for value in values for spelling in _with_spellings(value))
+
+
+def _read_record(operation: str, text: str) -> WorkspaceRecord | None:
+    """The record a read's JSON makes, whole or capped; None when it holds nothing but Piloti's words."""
+    counts: set[int] = set()
+    rows: list[list[str]] = []
+    try:
+        parsed = json.loads(text)
+    except ValueError:
+        if _PILOTI_AUTHORED_TEXT_RE.search(text):
+            return None
+        values = [text]
+        rows = [[fragment] for fragment in _FRAGMENT_SPLIT_RE.split(text) if fragment.strip()]
+    else:
+        values = list(_scalars(parsed, counts, rows))
+        loose = _outside_rows(parsed)
+        if loose:
+            rows.append(loose)
+    if not values and not counts:
+        return None
+    counts.update(Counter(value.casefold() for value in values).values())
+    items = tuple(_haystack(row) for row in rows) or (_haystack(values),)
+    return WorkspaceRecord(operation, "read", _haystack(values), frozenset(counts), items)
+
+
+def _outside_rows(value: Any) -> list[str]:
+    """The scalars of ``value`` that stand outside every list: a page's total, a project's own name."""
+    if isinstance(value, dict):
+        if _piloti_authored(value):
+            return []
+        return [scalar for item in value.values() for scalar in _outside_rows(item)]
+    if isinstance(value, list):
+        return []
+    return list(_scalars(value, set()))
 
 
 def _calls_by_id(messages: Sequence[Any]) -> dict[str, dict[str, Any]]:
@@ -160,19 +243,13 @@ def _content_text(content: Any) -> str:
 def record_from_result(operation: str, arguments: dict[str, Any], text: str) -> WorkspaceRecord | None:
     """The record one ``workspace__call`` result makes, or None for a refusal or an empty answer."""
     stripped = text.strip()
-    if not stripped or stripped.startswith(_REFUSAL_PREFIXES):
-        return None
-    counts: set[int] = set()
     if stripped.startswith(PROPOSED_PREFIX):
         call_input = arguments.get("input") if isinstance(arguments.get("input"), dict) else {}
-        values = list(_scalars(call_input, counts))
+        values = list(_scalars(call_input, set()))
         return WorkspaceRecord(operation, "proposed", _haystack(values), frozenset())
-    try:
-        values = list(_scalars(json.loads(stripped), counts))
-    except ValueError:
-        values = [stripped]
-    counts.update(Counter(value.casefold() for value in values).values())
-    return WorkspaceRecord(operation, "read", _haystack(values), frozenset(counts))
+    if not stripped.startswith(_JSON_STARTS):
+        return None
+    return _read_record(operation, stripped)
 
 
 #: How the tool names the proposal it filed, after the server's „Proposed …"

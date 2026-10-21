@@ -311,8 +311,9 @@ def surface_claim_confidence(
     """Rule 2: ``min(self-report, weakest load-bearing sentence's ceiling)``, under the hard quote gate.
 
     ``claims_ceiling`` is ``claim_provenance.claims_ceiling`` of the final
-    answer; ``None`` (an answer with no sentence) leaves the self-report to the
-    quote gate alone. The self-report is never raised.
+    answer, which floors an answer with no sentence at ``low``
+    (``NO_CLAIMS_CEILING``); ``None``, a state that carries no ceiling, leaves
+    the self-report to the quote gate alone. The self-report is never raised.
     """
     if self_reported is None:
         return None
