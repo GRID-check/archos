@@ -198,7 +198,9 @@ the person says yes or no to each such call; the guards are how that holds:
   default and read per
   organization when the token is verified (`SENSITIVE_OPT_IN_FLAGS`,
   `principal.ts`). Without its class's flag an operation is absent from
-  `tools/list`, search and describe, and a call names an unknown operation;
+  `tools/list`, search and describe, and a call names an unknown operation; a
+  search it would have topped says only that a matching change of access, a
+  credential or a control is not offered, and that the person makes it;
 - the client holds a step-up OAuth scope, and a call without it answers
   `403 insufficient_scope` so the client can ask the person to grant it. Until
   WorkOS defines that scope and grants it only on the person's step-up consent,

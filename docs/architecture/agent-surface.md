@@ -539,10 +539,15 @@ What Piloti knows before its first call, and how it reports
 - **German requests on the server.** `discovery.ts` ranks with
   `operationScorer` (`lib/text/operation-search.ts`): both sides folded, so a
   German query no longer breaks at its umlauts, and the office's words mapped to
-  the catalog's (`operation-search-vocabulary.json`). A one-letter word ranks
+  the catalog's (`operation-search-vocabulary.json`). A term matches itself and
+  its inflections (the file's `inflections`), never a longer word it starts:
+  „Auftraggeber" is not „Auftrag". A one-letter word ranks
   nothing and is dropped; a blank query lists everything, and text with no usable
-  word in it finds nothing. The prompt still asks for English queries, which
-  need no vocabulary entry.
+  word in it finds nothing. When an operation the caller is not offered (one
+  with a `sensitivity`) would have ranked first, the search's `next` says so
+  without naming it (`SENSITIVE_MATCH_NOTE`): „Mitglied hinzufügen" then lists
+  the people list, which grants no access, with that note. The prompt still
+  asks for English queries, which need no vocabulary entry.
 - **The text after a write.** `workspace__call` reads the server's „Proposed"
   line with the proposal's id and summary after it, so the work report and the
   next turn name the same proposal. A 429, from the door or from the route an

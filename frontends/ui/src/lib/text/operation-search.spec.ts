@@ -32,6 +32,35 @@ describe('searchWordGroups', () => {
     expect(searchWordGroups('neubau')).toEqual([['neubau']])
   })
 
+  it.each([
+    ['Auftraggeber', 'task'],
+    ['Eingangsbereich', 'inbox'],
+    ['Kostenschätzung', 'budget'],
+    ['rechtzeitig', 'role'],
+    ['Rechtslage', 'role'],
+  ])('does not read %s as a form of a shorter term (no %s)', (word, wrong) => {
+    expect(searchWordGroups(word).flat()).not.toContain(wrong)
+  })
+
+  it.each([
+    ['Aufträge', 'task'],
+    ['Eingangs', 'inbox'],
+    ['Kosten', 'budget'],
+    ['Rechte', 'role'],
+    ['Einladung', 'add'],
+    ['archivieren', 'archive'],
+    ['Zuständigkeit', 'assignment'],
+  ])('still reads the inflected %s as its term (%s)', (word, meaning) => {
+    expect(searchWordGroups(word).flat()).toContain(meaning)
+  })
+
+  it('reads Freigabe as an approval, not a release', () => {
+    for (const word of ['Freigabe', 'freigeben']) {
+      expect(searchWordGroups(word).flat()).toContain('approve')
+      expect(searchWordGroups(word).flat()).not.toContain('release')
+    }
+  })
+
   it('splits a compound of two terms into two words', () => {
     expect(searchWordGroups('Projektmitglieder')).toEqual([
       ['projekt', 'project'],

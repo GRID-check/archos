@@ -35,10 +35,12 @@ import {
   validateOperationInput,
 } from './dispatch'
 import { type BackendOperation, callBackendOperation, toMcpContent } from './backend-operations'
+import { AGENT_OPERATIONS } from './catalog'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
 import {
   callDecision,
+  canSee,
   findVisibleBackendOperation,
   findVisibleOperation,
   visibleBackendOperations,
@@ -427,6 +429,29 @@ function searchInputFor(principal: AgentPrincipal) {
   })
 }
 
+/**
+ * The sentence a search adds when an operation it does not offer this caller
+ * (one that widens access, touches a credential or turns a control down) would
+ * have ranked first: without it the top hit is the nearest thing that is NOT
+ * what was asked (`Mitglied hinzufügen` finds the people list, not a project
+ * role). It names no operation: what is hidden stays absent from the listing.
+ */
+export const SENSITIVE_MATCH_NOTE =
+  'An operation that changes who may do what, a credential or a security control matches this request, and it ' +
+  'is not offered to you: none of the operations listed does that. Tell the person to make that change in Piloti themselves.'
+
+function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: string | undefined, best: number): boolean {
+  const score = operationScorer(query)
+  return AGENT_OPERATIONS.some(
+    (op) =>
+      op.sensitivity !== undefined &&
+      (!domain || op.domain === domain) &&
+      !canSee(ctx.principal, op) &&
+      score(op) > 0 &&
+      score(op) >= best,
+  )
+}
+
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
   const parsed = searchInputFor(ctx.principal).safeParse(args)
@@ -435,14 +460,12 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
   const hits = rank(ctx, query, domain)
   const shown = hits.slice(0, limit).map(({ score: _score, ...hit }) => hit)
   recordOperationCalled(ctx, { operation: 'search-operations', domain: domain ?? null, decision: 'run', status: 200, startedAt })
-  return success({
-    total: hits.length,
-    operations: shown,
-    next:
-      shown.length === 0
-        ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
-        : 'Call call-operation with the name; call describe-operation first when you do not know its input.',
-  })
+  const next =
+    shown.length === 0
+      ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
+      : 'Call call-operation with the name; call describe-operation first when you do not know its input.'
+  const hidden = query.trim() !== '' && sensitiveMatchOutranks(ctx, query, domain, hits[0]?.score ?? 0)
+  return success({ total: hits.length, operations: shown, next: hidden ? `${SENSITIVE_MATCH_NOTE} ${next}` : next })
 }
 
 const describeInput = z.object({ name: z.string().min(1) })

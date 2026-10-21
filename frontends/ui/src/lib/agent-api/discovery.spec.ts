@@ -111,6 +111,15 @@ describe('search-operations', () => {
     expect(names(searchOperations(ctx(person), { query: 'folder access' }))).not.toContain('folder-access-grant')
   })
 
+  it('says a hidden operation would have answered, without naming it, when it outranks every hit', () => {
+    const result = searchOperations(ctx(piloti), { query: 'widen folder access' })
+    expect(names(result)).not.toContain('folder-access-grant')
+    expect(structured(result).next).toMatch(/^An operation that changes who may do what/)
+    expect(JSON.stringify(result)).not.toContain('folder-access-grant')
+    // A search the visible operations answer best carries no such note.
+    expect(structured(searchOperations(ctx(piloti), { query: 'list projects' })).next).not.toMatch(/who may do what/)
+  })
+
   it('says what to do when nothing matches', () => {
     const result = searchOperations(ctx(person), { query: 'zzz-qqxv' })
     expect(structured(result).total).toBe(0)

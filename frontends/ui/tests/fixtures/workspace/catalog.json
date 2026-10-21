@@ -185,11 +185,11 @@
   {
    "name": "project-person-add",
    "domain": "projects",
-   "summary": "Add a person to the project record",
-   "description": "Adds someone to the project record by hand, such as an external planner: name, optional function, company, start and end month. No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.",
+   "summary": "Add a name to the project record’s people list (grants no access)",
+   "description": "Writes someone into the project record’s list of people by hand, such as an external planner: name, optional function, company, start and end month. It grants no access to the project and adds nobody to its team: who may open the project is a project role, project-member-add, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague of the office instead. Send all fields; use null for unknown.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-person-add\",\"domain\":\"projects\",\"summary\":\"Add a person to the project record\",\"description\":\"Adds someone to the project record by hand, such as an external planner: name, optional function, company, start and end month. No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.\",\"annotations\":{\"title\":\"Add a person to the project record\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"function\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"company\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"startedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"endedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"userId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"name\",\"function\",\"company\",\"startedOn\",\"endedOn\",\"userId\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-person-add\",\"domain\":\"projects\",\"summary\":\"Add a name to the project record’s people list (grants no access)\",\"description\":\"Writes someone into the project record’s list of people by hand, such as an external planner: name, optional function, company, start and end month. It grants no access to the project and adds nobody to its team: who may open the project is a project role, project-member-add, which the person may have to set in Piloti themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague of the office instead. Send all fields; use null for unknown.\",\"annotations\":{\"title\":\"Add a name to the project record’s people list (grants no access)\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"function\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"company\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]},\"startedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"endedOn\":{\"anyOf\":[{\"type\":\"string\"},{\"type\":\"null\"}]},\"userId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"name\",\"function\",\"company\",\"startedOn\",\"endedOn\",\"userId\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-person-delete",
@@ -2178,8 +2178,8 @@
    "project-record-get",
    "project-upload-screening-get",
    "organization-budget-remove",
-   "project-list",
    "project-person-add",
+   "project-list",
    "project-document-list",
    "office-shelf-folder-list",
    "project-folder-list",
@@ -2366,14 +2366,14 @@
    "document-version-approve"
   ],
   "Freigabe anfordern": [
+   "document-version-approve",
    "skill-review",
    "document-preview-get",
    "document-version-reviewer-list",
-   "mention-request-release",
    "task-run-review",
    "project-intake-complete",
    "document-quarantine-allow-request",
-   "document-version-approve",
+   "document-version-publish",
    "document-version-reject",
    "document-version-request-changes"
   ],

@@ -1,5 +1,6 @@
 {
-  "comment": "The office's own words for what the agent catalog names in English. Domain data, read by lib/text/operation-search.ts and by scripts/turn_census/fixture_workspace.py. Keys are folded (lower case, ä→ae, ö→oe, ü→ue, ß→ss). A key of five letters or more also matches the words it starts (inflection: 'mitglieder' is 'mitglied'); a shorter key matches only itself. Values are words the catalog's operation names and summaries use.",
+  "comment": "The office's own words for what the agent catalog names in English. Domain data, read by lib/text/operation-search.ts and by scripts/turn_census/fixture_workspace.py. Keys are folded (lower case, ä→ae, ö→oe, ü→ue, ß→ss). A key of five letters or more also matches itself followed by one of the inflections ('mitglieder' is 'mitglied' + 'er'), and no other word it starts: 'Auftraggeber' is not 'Auftrag', 'rechtzeitig' not 'Recht'. A shorter key matches only itself. Values are words the catalog's operation names and summaries use.",
+  "inflections": ["", "e", "em", "en", "end", "ens", "er", "ern", "es", "est", "et", "ien", "ieren", "iert", "ierte", "ierten", "in", "innen", "keit", "keiten", "n", "nen", "s", "st", "t", "te", "ten", "ung", "ungen"],
   "terms": {
     "projekt": ["project"],
     "vorhaben": ["project"],
@@ -67,8 +68,8 @@
     "kommentar": ["annotation", "reply"],
     "antwort": ["answer", "reply"],
     "antworten": ["answer", "reply"],
-    "freigabe": ["release", "review"],
-    "freigeb": ["release", "review"],
+    "freigabe": ["approve", "review"],
+    "freigeb": ["approve", "review"],
     "pruef": ["review", "check"],
     "gedaechtnis": ["memory"],
     "erinner": ["memory"],

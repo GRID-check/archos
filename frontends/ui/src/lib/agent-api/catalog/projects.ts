@@ -425,10 +425,13 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-person-add',
     domain: 'projects',
-    summary: 'Add a person to the project record',
+    summary: 'Add a name to the project record’s people list (grants no access)',
     description:
-      'Adds someone to the project record by hand, such as an external planner: name, optional function, company, start and end month. ' +
-      'No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.',
+      'Writes someone into the project record’s list of people by hand, such as an external planner: name, optional ' +
+      'function, company, start and end month. It grants no access to the project and adds nobody to its team: who ' +
+      'may open the project is a project role, project-member-add, which the person may have to set in Piloti ' +
+      'themselves. No e-mail or phone is kept. Pass `userId` (from organization-member-list) to describe a colleague ' +
+      'of the office instead. Send all fields; use null for unknown.',
     method: 'POST',
     path: '/api/projects/[id]/people',
     params: projectParams,
