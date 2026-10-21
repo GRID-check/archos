@@ -784,6 +784,12 @@ def _page_text(value: Any) -> str:
         return text
 
 
+def _pages_text(value: Any) -> str:
+    """A ``pages`` range in one spelling (``"4 – 6"`` and ``"4-6"`` are one range), or the raw text."""
+    text = str(value).strip() if value is not None else ""
+    return "".join(text.replace("\u2013", "-").replace("\u2014", "-").lower().split())
+
+
 def _search_signature(args: dict[str, Any]) -> str:
     """What a ``knowledge_search`` call ASKS FOR: the query plus every narrowing.
 
@@ -838,6 +844,8 @@ def _passage_signature(args: dict[str, Any]) -> str:
             _argument_text(args, "document", fold_case=True),
             _clause_argument(args).strip("."),
             _page_text(args.get("page")),
+            _pages_text(args.get("pages")),
+            str(args.get("cursor") or "").strip(),
         ]
     )
 
@@ -908,6 +916,8 @@ def _locator_line(args: Any) -> tuple[str, dict[str, str]] | None:
     if clause:
         return KEY_RETRIEVAL_CLAUSE, {**values, "clause": clause}
     page = args.get("page")
+    if page is None or not str(page).strip():
+        page = args.get("pages")
     if page is not None and str(page).strip():
         return KEY_RETRIEVAL_PAGE, {**values, "page": str(page).strip()}
     return None

@@ -201,6 +201,10 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "stored_image_index",
     "segment_index",
 )
+#: Fields stored as datetimes (a range on one is a ``DatetimeRange``). None yet:
+#: the range grammar of ``scope`` is complete here so a datetime payload field
+#: (a later slice) is added by naming it, not by touching the filter code.
+DATETIME_FIELDS: tuple[str, ...] = ()
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 

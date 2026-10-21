@@ -101,7 +101,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Open a document you can already NAME: `document=` alone returns its OUTLINE — the document's opening passage plus a Gliederung of its top-level Punkte — and `document=` with `clause=` or `page=` returns exactly that passage. Deterministic lookup, not a search — no ranking, no second guess at your wording. Returns the same quotable excerpts with a Citation key that `knowledge_search` returns.\nWHEN TO CALL — you know WHICH document and want to know what it covers ('worum geht es in der OIB 2?', 'was regelt das Brandschutzkonzept?'): pass `document=` alone and read the Gliederung, rather than guessing a Punkt number that may not exist. Or your own conclusion named a document and a Punkt (or a page) you have not read this turn: a hit's `Punkt:` line pointed at a neighbouring requirement, a Richtlinie cross-refers ('siehe Pkt. 3.5.2'), or the user named chapter and verse. Pass `document=` the exact name or display title as the inventory or a previous hit printed it (e.g. 'OIB-Richtlinie 2, Ausgabe Mai 2023' or 'oib-rl_2_ausgabe_mai_2023.pdf'), and `clause=` the number alone ('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3') — for a project document, exactly what a hit's `Punkt:` line printed ('§ 4', 'Geschoße', 'Zeilen 2-41'), or `page=` the page number. With `clause=`, `page=` is ignored: the Punkt alone names the passage.\nALWAYS pass `conclusion=` — one sentence saying what you now know and what you still need, which is why you are opening THIS passage. It is the Herleitung checkpoint the reader sees above the fetch; it changes nothing about what is opened and never appears in `answer`.\nWHEN NOT TO CALL — you do not know WHICH document holds the answer, or you have only a topic: that is `knowledge_search`, and this tool cannot search for you. To put a file on screen it is `surface_documents`. Do not call it twice for the same Punkt, and do not ask a second time for an outline you already have.\nRETURNS — with `clause=` or `page=`, the passages under that Punkt or page, in document order. With neither, the document's opening passage plus a `## Gliederung` listing its Punkte with their pages: that list is an index, not evidence — only the passages carry a Citation, and a listed Punkt is read by calling again with `clause=`. Every passage carries Source, Citation (copy verbatim), Dokumentart, Punkt and page. An unknown document name is REFUSED with up to three verbatim guesses from this turn's readable inventory when anything is close (labelled as guesses — pass one back exactly, or resolve the name with `knowledge_search` first) rather than inventing one.",
+      "description": "Open a document you can already NAME: `document=` alone returns its OUTLINE — the document's opening passage plus a Gliederung of its top-level Punkte — and `document=` with `clause=` or `page=` returns exactly that passage. Deterministic lookup, not a search — no ranking, no second guess at your wording. Returns the same quotable excerpts with a Citation key that `knowledge_search` returns.\nWHEN TO CALL — you know WHICH document and want to know what it covers ('worum geht es in der OIB 2?', 'was regelt das Brandschutzkonzept?'): pass `document=` alone and read the Gliederung, rather than guessing a Punkt number that may not exist. Or your own conclusion named a document and a Punkt (or a page) you have not read this turn: a hit's `Punkt:` line pointed at a neighbouring requirement, a Richtlinie cross-refers ('siehe Pkt. 3.5.2'), or the user named chapter and verse. Pass `document=` the exact name or display title as the inventory or a previous hit printed it (e.g. 'OIB-Richtlinie 2, Ausgabe Mai 2023' or 'oib-rl_2_ausgabe_mai_2023.pdf'), and `clause=` the number alone ('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3') — for a project document, exactly what a hit's `Punkt:` line printed ('§ 4', 'Geschoße', 'Zeilen 2-41'), or `page=` the page number. With `clause=`, `page=` is ignored: the Punkt alone names the passage.\nREAD PAGES — `pages=` a range ('4-6', or one page '4', at most 30 pages) returns those pages in reading order without the overlap between neighbouring chunks, up to about 6k tokens. A read that stopped early ends with a `cursor`: pass it back with the same `document=` to continue. With the page count from list_files, request every range you need in ONE round.\nALWAYS pass `conclusion=` — one sentence saying what you now know and what you still need, which is why you are opening THIS passage. It is the Herleitung checkpoint the reader sees above the fetch; it changes nothing about what is opened and never appears in `answer`.\nWHEN NOT TO CALL — you do not know WHICH document holds the answer, or you have only a topic: that is `knowledge_search`, and this tool cannot search for you. To put a file on screen it is `surface_documents`. Do not call it twice for the same Punkt, and do not ask a second time for an outline you already have.\nRETURNS — with `clause=` or `page=`, the passages under that Punkt or page, in document order. With neither, the document's opening passage plus a `## Gliederung` listing its Punkte with their pages: that list is an index, not evidence — only the passages carry a Citation, and a listed Punkt is read by calling again with `clause=`. Every passage carries Source, Citation (copy verbatim), Dokumentart, Punkt and page. An unknown document name is REFUSED with up to three verbatim guesses from this turn's readable inventory when anything is close (labelled as guesses — pass one back exactly, or resolve the name with `knowledge_search` first) rather than inventing one.",
       "inputSchema": {
         "properties": {
           "clause": {
@@ -124,6 +124,18 @@
             "title": "Conclusion",
             "type": "string"
           },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Cursor"
+          },
           "document": {
             "title": "Document",
             "type": "string"
@@ -142,6 +154,21 @@
             ],
             "default": null,
             "title": "Page"
+          },
+          "pages": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Pages"
           }
         },
         "required": [
@@ -159,7 +186,7 @@
         "openWorldHint": false,
         "readOnlyHint": true
       },
-      "description": "Browse the reader's OWN files the way they would in the Files pane: which files exist, in which folder, of which Dokumentart, uploaded when. Deterministic listing, paged, never capped by the prompt inventory — the inventory in your prompt shows at most a few dozen names, this shows all.\nWHEN TO CALL — the question is about WHICH files there are, not what they say: „welche Unterlagen haben wir“, „was liegt im Ordner Brandschutz“, „was ist diese Woche neu“, „gibt es schon ein Protokoll zur Baubesprechung“, „wie heißt die Datei mit dem Schnitt genau“. Also first, when you need an exact file name for `read_passage`, `knowledge_search(file_name=…)` or a file operation and the inventory does not show it.\n- no arguments: every file on Projektwissen, Büroablage and Private Sitzung, paged and ordered by folder, after an overview of the top-level folders with their file counts. `folder=` narrows that to one folder and everything below it.\n- `name_contains=` words that must all appear in the file name or title („brandschutz eg“); case and umlaut spelling do not matter.\n- `doc_class=` one Dokumentart key; `added_since=` YYYY-MM-DD; `sort=newest` for recent uploads.\n- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n- `shelf=` project | office_shelf | session | base (base = the platform OIB corpus, listed only when asked).\n- `offset=` the next page, as the result says.\n- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; every other filter is ignored.\n- `revisions_of=` plus `compare_to=` another Fassung of that chain (its file name, or \"previous\" for the one before): what changed, page by page, in the printed text and in your reading of the drawings, with the Plankopf's Index and Stand. Call it for „was hat sich zwischen Index B und C geändert“.\nWHEN NOT TO CALL — to learn what a file SAYS: that is `read_passage` / `knowledge_search`. To find which files MENTION a term: `knowledge_search(match=\"exact\")`.\nRETURNS — a count, the subfolders, then one line per file: exact file name, title, folder, Dokumentart, Themen, the date a photo was taken, a Fassung mark (read from the name, or a replacement a person confirmed with what changed), upload date, a one-line summary. An index, not a source: never cite it and never answer what a file contains from its summary. Write file names exactly as returned — each becomes a link the reader can open.",
+      "description": "Browse the reader's OWN files the way they would in the Files pane: which files exist, in which folder, of which Dokumentart, uploaded when. Deterministic listing, paged, never capped by the prompt inventory — the inventory in your prompt shows at most a few dozen names, this shows all.\nWHEN TO CALL — the question is about WHICH files there are, not what they say: „welche Unterlagen haben wir“, „was liegt im Ordner Brandschutz“, „was ist diese Woche neu“, „gibt es schon ein Protokoll zur Baubesprechung“, „wie heißt die Datei mit dem Schnitt genau“. Also first, when you need an exact file name for `read_passage`, `knowledge_search(file_name=…)` or a file operation and the inventory does not show it.\n- no arguments: every file on Projektwissen, Büroablage and Private Sitzung, paged and ordered by folder, after an overview of the top-level folders with their file counts. `folder=` narrows that to one folder and everything below it.\n- `name_contains=` words that must all appear in the file name or title („brandschutz eg“); case and umlaut spelling do not matter.\n- `doc_class=` one Dokumentart key; `added_since=` YYYY-MM-DD; `sort=newest` for recent uploads.\n- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n- `shelf=` project | office_shelf | session | base (base = the platform OIB corpus, listed only when asked).\n- `offset=` the next page, as the result says.\n- `view=\"tree\"` (`depth=` 1-4, default 2): a card per folder instead of file lines: counts, Dokumentart mix, pages, dates, the current Fassung. Call it for „was liegt in diesem Projekt“, „wie viele Einreichunterlagen, welcher Index gilt“, then open what you need. Filters apply; no paging.\n- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; every other filter is ignored.\n- `revisions_of=` plus `compare_to=` another Fassung of that chain (its file name, or \"previous\" for the one before): what changed, page by page, in the printed text and in your reading of the drawings, with the Plankopf's Index and Stand. Call it for „was hat sich zwischen Index B und C geändert“.\nWHEN NOT TO CALL — to learn what a file SAYS: that is `read_passage` / `knowledge_search`. To find which files MENTION a term: `knowledge_search(match=\"exact\")`.\nRETURNS — a count, the subfolders, then one line per file: exact file name, title, folder, Dokumentart, page count, topics, the date a photo was taken, a Fassung mark (read from the name, or a replacement a person confirmed with what changed), upload date, a one-line summary. An index, not a source: never cite it and never answer what a file contains from its summary. Write file names exactly as returned — each becomes a link the reader can open.",
       "inputSchema": {
         "properties": {
           "added_since": {
@@ -185,6 +212,21 @@
             ],
             "default": null,
             "title": "Compare To"
+          },
+          "depth": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Depth"
           },
           "doc_class": {
             "anyOf": [
@@ -299,6 +341,22 @@
             ],
             "default": null,
             "title": "Topic"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "enum": [
+                  "files",
+                  "tree"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "View"
           }
         },
         "title": "InputArgsSchema",

@@ -5534,6 +5534,14 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         from aiq_agent.knowledge import set_document_folder_path
 
                         register_summary(collection_name, file_name, summary, tags=tags, topics=topics)
+                        # The page count the listing and the tree show: the highest page
+                        # any chunk reaches. A text file has none, which clears an old count.
+                        from aiq_agent.knowledge import set_document_page_count
+                        from aiq_agent.knowledge.page_count import largest_page
+
+                        set_document_page_count(
+                            collection_name, file_name, largest_page(doc.metadata for doc in all_documents)
+                        )
                         # The title block (Plankopf) the vision model read on the first drawing
                         # page that has one: Plannummer, Index, Datum. Read from the same
                         # analysis as the chunks, so it costs no further call. A re-upload
@@ -6065,22 +6073,37 @@ class LlamaIndexRetriever(BaseRetriever):
         filters: dict[str, Any] | None,
         limit: int,
         order_by: str | None = None,
+        start_from: tuple[int, int] | None = None,
     ) -> list[Chunk] | None:
         """The chunks ``filters`` admits, by scroll, with no query vector and no ranking.
 
         No embedding and no lazy adapter start-up: nothing here needs the
         embedder (``qdrant/reads.py``).
         """
-        return await asyncio.to_thread(self._fetch_sync, collection_name, filters, limit, order_by)
+        return await asyncio.to_thread(self._fetch_sync, collection_name, filters, limit, order_by, start_from)
 
     def _fetch_sync(
-        self, collection_name: str, filters: dict[str, Any] | None, limit: int, order_by: str | None
+        self,
+        collection_name: str,
+        filters: dict[str, Any] | None,
+        limit: int,
+        order_by: str | None,
+        start_from: tuple[int, int] | None = None,
     ) -> list[Chunk]:
         from ..qdrant import reads as qdrant_reads
+        from ..qdrant.schema import CHUNK_ORDINAL_FIELD
 
-        chunks = [self._chunk_from_hit(hit) for hit in qdrant_reads.fetch(collection_name, filters, limit, order_by)]
-        for rank, chunk in enumerate(chunks):
+        if start_from is None:
+            hits = qdrant_reads.fetch(collection_name, filters, limit, order_by)
+        else:
+            hits = qdrant_reads.fetch_from(collection_name, filters, start_from, limit)
+        chunks = [self._chunk_from_hit(hit) for hit in hits]
+        for rank, (chunk, hit) in enumerate(zip(chunks, hits, strict=True)):
             chunk.retrieval_rank = rank
+            # A reader that continues a read needs the chunk's place in its file, which the hit's
+            # metadata leaves out as store-only (``payload.STORE_ONLY_FIELDS``).
+            if isinstance(hit.payload.get(CHUNK_ORDINAL_FIELD), int):
+                chunk.metadata.setdefault(CHUNK_ORDINAL_FIELD, hit.payload[CHUNK_ORDINAL_FIELD])
         return chunks
 
     def _find_text_sync(

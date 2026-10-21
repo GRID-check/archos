@@ -36,11 +36,11 @@ import logging
 import os
 import sys
 from collections.abc import Callable
-from collections.abc import Iterable
 from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
+from aiq_agent.knowledge.page_count import largest_page
 from aiq_agent.knowledge.schema import AvailableDocument
 
 logger = logging.getLogger(__name__)
@@ -60,31 +60,6 @@ FAILED = "failed"
 PayloadReader = Callable[[str, str], list[Mapping[str, Any]]]
 # Stores one file's page count; ``False`` when the metadata row is absent.
 PageCountWriter = Callable[[str, str, int], bool]
-
-
-def _page_number(value: Any) -> int | None:
-    """A page number as stored: a whole number of at least 1, from an int or its string; ``None`` otherwise."""
-    if isinstance(value, bool):
-        return None
-    try:
-        page = int(value)
-    except (TypeError, ValueError):
-        return None
-    return page if page >= 1 else None
-
-
-def largest_page(payloads: Iterable[Mapping[str, Any]]) -> int | None:
-    """The highest page any of the chunks reaches: its ``page_end``, or its ``page_label`` where it has no end.
-
-    ``None`` when no chunk carries a page number. Pure: the chunks are plain mappings.
-    """
-    pages = [
-        page
-        for payload in payloads
-        for page in (_page_number(payload.get("page_label")), _page_number(payload.get("page_end")))
-        if page is not None
-    ]
-    return max(pages, default=None)
 
 
 @dataclass

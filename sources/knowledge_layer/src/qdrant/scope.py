@@ -14,13 +14,17 @@ always accepted::
     {"field": [v1, ...]}                          -> any of
     {"field": {"$eq"|"$ne": v}}                   -> (not) equal
     {"field": {"$in"|"$nin": [v1, ...]}}          -> (not) in
+    {"field": {"$gt"|"$gte"|"$lt"|"$lte": v}}     -> range (integer and datetime fields only)
     {"$and": [node, ...]}  /  {"$or": [node, ...]} -> groups
 
 ``$ne`` and ``$nin`` keep a point that lacks the field, as
 ``test_page_chunk_exclusion.py`` pins: the base corpus's ``chunking $ne page``
 must not drop chunks written before ``chunking`` existed. A field that is not
 indexed raises, because strict mode would refuse it at the server anyway and
-a refusal deep in a search reads as "nothing found".
+a refusal deep in a search reads as "nothing found". A range on a keyword or
+boolean field raises for the same reason: Qdrant would refuse it, and a range
+over strings is not what the caller meant. One range operator per condition;
+a closed interval is ``{"$and": [{"f": {"$gte": a}}, {"f": {"$lte": b}}]}``.
 """
 
 from __future__ import annotations
@@ -33,14 +37,30 @@ from qdrant_client import models
 from aiq_agent.profile_names import legacy_profile_token
 
 from .payload import coerce_field
+from .schema import DATETIME_FIELDS
 from .schema import INDEXED_FIELDS
+from .schema import INTEGER_FIELDS
 from .schema import LEGACY_CHUNKING
 from .schema import LEGACY_FIELDS
 from .schema import PROJECT_FACTS_FIELD
 from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
 
-_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin"})
+_RANGE_OPERATORS = {"$gt": "gt", "$gte": "gte", "$lt": "lt", "$lte": "lte"}
+_OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin", *_RANGE_OPERATORS})
+
+
+def _range(field: str, op: str, value: Any) -> models.FieldCondition:
+    """``field`` compared by ``op`` to ``value``: an integer range, or a datetime range for a datetime field."""
+    bound = _RANGE_OPERATORS[op]
+    if field in DATETIME_FIELDS:
+        return models.FieldCondition(key=field, range=models.DatetimeRange(**{bound: value}))
+    if field not in INTEGER_FIELDS:
+        raise ValueError(f"Filter on {field!r}: {op} needs an integer or datetime field")
+    number = coerce_field(field, value)
+    if number is None:
+        raise ValueError(f"Filter on {field!r}: {op} needs a number, got {value!r}")
+    return models.FieldCondition(key=field, range=models.Range(**{bound: number}))
 
 
 def _match(field: str, value: Any) -> models.FieldCondition:
@@ -121,6 +141,8 @@ def _field_exact(field: str, condition: Any) -> models.Filter:
         return models.Filter(must_not=[_match(field, value)])
     if op == "$in":
         return models.Filter(must=[_match_any(field, value)])
+    if op in _RANGE_OPERATORS:
+        return models.Filter(must=[_range(field, op, value)])
     # $nin of nothing excludes nothing.
     return models.Filter(must_not=[_match_any(field, value)] if value else [])
 

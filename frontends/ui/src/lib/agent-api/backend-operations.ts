@@ -126,7 +126,10 @@ const ENTRIES = [
     description:
       'Open a document you can already name. `document` alone returns its outline: the opening passage and a list of its ' +
       'top-level clauses with their pages. `document` with `clause` (a clause number such as `3.5.2`, a table caption, or the ' +
-      'clause label a hit printed) or with `page` returns exactly that passage. A deterministic lookup, not a search. Pass ' +
+      'clause label a hit printed) or with `page` returns exactly that passage. `pages` (a range such as `4-6`, at most 30 pages) ' +
+      'returns those pages in reading order without the overlap between neighbouring chunks, up to about 6k tokens; a read that ' +
+      'stopped early ends with a `cursor`, which you pass back with the same `document` to continue. With the page count from ' +
+      'files-list, request every range you need in one round. A deterministic lookup, not a search. Pass ' +
       '`document` exactly as files-list or a previous hit printed it (a file name or a display title). Call it when you know which ' +
       'document and want to know what it covers, or when a hit or a cross-reference points at a clause you have not read. Pass ' +
       '`conclusion`: one sentence on what you know and what you still need. Returns passages in document order, each with its ' +
@@ -147,6 +150,8 @@ const ENTRIES = [
       'office shelf and the conversation’s own files, by folder, after an overview of the top-level folders. Narrow with `folder`, ' +
       '`name_contains` (words that must all appear in the name or title), `doc_class`, `added_since` (YYYY-MM-DD), `sort: newest`, ' +
       '`topic`, or `shelf` (project, office_shelf, session, or base for the shared OIB corpus); page with `offset`. ' +
+      '`view: tree` (with `depth` 1 to 4, default 2) returns a card per folder instead of file lines: counts, document-type mix, pages, ' +
+      'dates and the current revision; use it for what is in a project or folder and which revision is current. ' +
       '`revisions_of` (a file name) lists that document’s revisions, newest first, with index or date, upload date and what ' +
       'changed; add `compare_to` (another revision’s file name, or `previous`) for what changed page by page. Returns one line per ' +
       'file: exact name, title, folder, document type, topics, revision mark, upload date and a one-line summary. An index, not a ' +

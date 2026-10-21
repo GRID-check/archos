@@ -71,6 +71,46 @@ def fetch(scope: str, filters: dict[str, Any] | None, limit: int, order_by: str 
     return [_hit(record) for record in records]
 
 
+def fetch_from(scope: str, filters: dict[str, Any] | None, start: tuple[int, int], limit: int) -> list[Hit]:
+    """The chunks ``filters`` admits that come AFTER ``start`` in document order, at most ``limit`` of them.
+
+    ``start`` is the ``(reading_order, chunk_ordinal)`` of the last chunk a reader
+    already holds: it and everything before it are dropped, so a read that stopped
+    at a size cap continues where it stopped. The rest comes back in
+    :func:`in_document_order`. The scope filter is applied by the store as for every
+    read; ``start`` only narrows within it, so it cannot reach another scope.
+
+    A set holding a point without ``reading_order`` (written before the field
+    existed) is read whole and ordered here, as :func:`fetch` does; the rest takes
+    the server-side bound ``reading_order >= start[0]`` and is read from there.
+    A chunk without ``chunk_ordinal`` sorts after the numbered chunks of its page
+    (:data:`UNNUMBERED`), so a cursor at the end of a page's numbered chunks skips
+    no numbered chunk and re-reads no unnumbered one.
+    """
+    store = get_store()
+    if limit <= 0 or not store.exists(scope):
+        return []
+    page, ordinal = start
+    if _orders_server_side(store, scope, filters):
+        bound = {READING_ORDER_FIELD: {"$gte": page}}
+        records = list(store.scroll(scope, {"$and": [filters, bound]} if filters else bound, limit=WHOLE_SET_CAP))
+    else:
+        records = list(store.scroll(scope, filters, limit=WHOLE_SET_CAP))
+    _warn_if_capped(records, scope)
+    after = [hit for hit in in_document_order([_hit(record) for record in records]) if position(hit) > (page, ordinal)]
+    return after[:limit]
+
+
+#: The ordinal a chunk without ``chunk_ordinal`` takes in a cursor: after every numbered chunk of its page.
+UNNUMBERED = 2**31
+
+
+def position(hit: Hit) -> tuple[int, int]:
+    """Where ``hit`` sits for a cursor: ``(reading_order, chunk_ordinal)``, :data:`UNNUMBERED` when it has none."""
+    ordinal = hit.payload.get(CHUNK_ORDINAL_FIELD)
+    return reading_order(hit.payload.get("page_label")), ordinal if isinstance(ordinal, int) else UNNUMBERED
+
+
 def in_document_order(hits: Sequence[Hit]) -> list[Hit]:
     """One document's ``hits`` in reading order: page, section structure, then place in the file.
 

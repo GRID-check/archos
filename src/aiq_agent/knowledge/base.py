@@ -346,6 +346,7 @@ class BaseRetriever(ABC):
         filters: dict[str, Any] | None,
         limit: int,
         order_by: str | None = None,
+        start_from: tuple[int, int] | None = None,
     ) -> list[Chunk] | None:
         """The chunks of ``collection_name`` that ``filters`` admits, read by filter alone.
 
@@ -359,6 +360,11 @@ class BaseRetriever(ABC):
         every chunk tied with the last of them: a tie is never split, so a
         caller that re-sorts by a finer key starting with :data:`READING_ORDER`
         keeps exactly what it would have kept from the whole set.
+
+        ``start_from=(reading_order, chunk_ordinal)`` continues a read: the chunk at
+        that place and everything before it are left out, and the rest comes in
+        document order (``order_by`` is then implied). It narrows within the
+        filter and the caller's scope; it never widens either.
 
         ``None`` means the backend cannot read by filter, never "nothing
         matched": the caller then takes its old path (``retrieve``). A store
