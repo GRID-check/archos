@@ -52,6 +52,7 @@ from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.common.wire_v2 import StepFinishedBody
 from aiq_agent.common.wire_v2 import TextMessageContentBody
 from aiq_agent.common.wire_v2 import TextMessageStartBody
+from aiq_agent.common.wire_v2 import ToolStep
 from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.common.wire_v2 import WireSource
 from aiq_agent.common.write_fence import TurnFenced
@@ -3036,3 +3037,37 @@ async def test_one_turn_s_reply_is_not_the_next_turn_s(harness, thread_posts, pe
     assert [(payload["body"], payload["answerMessageId"]) for payload, _ in thread_posts] == [
         ("Zweite Antwort.", answer_message_id(CONV, WAKE_2))
     ]
+
+
+# ---------------------------------------------------------------------------
+# file-tools-used: which office-file moves a turn made (ADR-0127)
+# ---------------------------------------------------------------------------
+
+
+async def test_a_turn_that_listed_and_searched_scores_both(harness, monkeypatch):
+    scored: list[tuple[str, float | str]] = []
+
+    def capture(scores, **_):
+        scored.extend((score.name, score.value) for score in scores)
+        return len(scores)
+
+    monkeypatch.setattr(chat_socket, "emit_scores", capture)
+
+    async def turn(request, ask):
+        for number, tool in enumerate(("knowledge_search", "list_files", "list_files"), start=1):
+            yield StepFinishedBody(step=ToolStep(id=f"tool:{number}", tool=tool, status="ok"))
+        yield _finished(request)
+
+    sock = harness(turn).connect()
+    sock.client(type="user_message", message_id="t1", text="Was liegt im Projekt?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    await _settle_background()
+
+    assert ("file-tools-used", "both") in scored
+
+
+def test_only_a_tool_step_names_a_tool():
+    assert chat_socket.tool_called_by(StepFinishedBody(step=ToolStep(id="t", tool="read_passage"))) == "read_passage"
+    status = StepFinishedBody(step=StatusStep(id="s", slot="documents", key="status.documents.session"))
+    assert chat_socket.tool_called_by(status) is None
+    assert chat_socket.tool_called_by(TextMessageStartBody(message_id="m")) is None

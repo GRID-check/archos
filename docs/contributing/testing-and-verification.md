@@ -663,6 +663,37 @@ task be:eval:answer-suite -- --set workspace --out /tmp/ws/before
 task be:eval:answer-suite -- --set workspace --out /tmp/ws/after --baseline /tmp/ws/before/results.json
 ```
 
+**The files set** (`-- --set files --arm search|navigate|both`, ADR-0127) asks about
+a project's own files: what is in a folder, where a document is, how many, what a
+page range says, every occurrence of a word. About 20 `pf-*` rows
+(`tests/fixtures/files_eval/files_questions.yaml`, whose header says what each check
+means) run through the real `list_files`, `knowledge_search` and `read_passage` in a
+fixture project (`tests/fixtures/files_eval/project.yaml`, the intake eval's project
+grown to nested folders, a 14-page report and a letter). Each row states
+`expect.tools`, the move that fits it, and the report gives pass rate, rounds,
+tokens, seconds, the moves each row made and the `status:budget|repeat|width`
+counts. A row with `needs:` waits for a tool argument a later slice adds and is
+listed as not applicable until the tool schema shows it.
+
+The arms measure each way of finding alone: `search` unbinds `list_files` and
+`read_passage` and keeps `match=meaning`; `navigate` drops the round-0 prefetch
+(`prefetch: false` on the agent) and keeps the literal modes (`match_modes` on
+`knowledge_search`); `both` is production. Both knobs are eval-only and default to
+today's behaviour. Run each arm with `--runs 3`, as the judge rows are noisy.
+
+The project has to exist where the tools read it. The suite seeds it itself
+(`scripts/turn_census/fixture_files.py`: one chunk per page into the Qdrant at
+`AIQ_QDRANT_URL`, the documents into the metadata store at `AIQ_SUMMARY_DB`, which
+must be a database URL). Seeding is idempotent and embeds only what changed; it
+needs the deployment's embedding key. Reseed after editing `project.yaml` by
+running the suite again.
+
+```bash
+task be:eval:answer-suite -- --set files --arm both --runs 3 --out /tmp/pf/both
+task be:eval:answer-suite -- --set files --arm search --runs 3 --out /tmp/pf/search
+task be:eval:answer-suite -- --set files --arm navigate --runs 3 --out /tmp/pf/navigate
+```
+
 The suite starts each run from the working tree: edit nothing under `src/`
 while it runs, or run it from an exported copy of the commit
 (`git archive <sha> | tar -x -C /tmp/copy`).

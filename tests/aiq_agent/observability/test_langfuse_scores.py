@@ -206,3 +206,29 @@ class TestSteerCount:
         from aiq_agent.observability.langfuse_scores import steer_scores
 
         assert steer_scores(SteerInbox()) == []
+
+
+class TestFileToolsUsed:
+    @pytest.mark.parametrize(
+        ("tools", "expected"),
+        [
+            (["knowledge_search"], "search"),
+            (["list_files", "read_passage"], "navigate"),
+            (["knowledge_search", "list_files"], "both"),
+            (["knowledge_search", "read_passage", "list_files"], "both"),
+            (["web_search", "ifc_query"], "none"),
+        ],
+    )
+    def test_the_moves_a_turn_made(self, tools, expected):
+        from aiq_agent.observability.langfuse_scores import file_tool_scores
+
+        [score] = file_tool_scores(tools)
+
+        assert (score.name, score.value) == ("file-tools-used", expected)
+        assert score.data_type == "CATEGORICAL"
+        assert expected in next(d for d in SCORE_DEFINITIONS if d.name == "file-tools-used").categories
+
+    def test_a_turn_with_no_tool_calls_writes_no_score(self):
+        from aiq_agent.observability.langfuse_scores import file_tool_scores
+
+        assert file_tool_scores([]) == []

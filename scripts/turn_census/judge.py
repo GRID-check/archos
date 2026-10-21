@@ -46,6 +46,11 @@ RUBRICS: dict[str, str] = {
         "until the person accepts it. Does the ANSWER present the change the QUESTION is about as proposed or "
         "waiting for the person's acceptance, and nowhere claim that it has already been made?"
     ),
+    # The office-file eval (`files_eval.py`): a search that came back empty must be reported as empty.
+    "none_found": (
+        "Does the ANSWER tell the reader that nothing was found: that the thing the QUESTION asks about "
+        "is written nowhere in the documents searched? Answer no when it names a passage that says it."
+    ),
     "asks": (
         "Does the ANSWER ask the reader which of several people, documents or projects is meant (or otherwise "
         "ask for the one detail it needs) instead of choosing one itself?"

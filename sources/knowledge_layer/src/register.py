@@ -198,6 +198,15 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
         default="sqlite+aiosqlite:///./summaries.db",
         description="Database URL for document summaries (SQLite or PostgreSQL)",
     )
+    match_modes: list[str] = Field(
+        default_factory=lambda: ["meaning", "exact", "regex"],
+        description=(
+            "EVAL KNOB, not a product setting: the `match=` modes the search accepts. The answer suite's "
+            "`search` arm keeps only `meaning` and its `navigate` arm only the literal modes, to measure "
+            "each way of finding on its own (ADR-0127). A comma-separated string is read as a list, which "
+            "is how `nat run --override` hands one over. Production keeps the default: every mode."
+        ),
+    )
     hybrid_search: bool | None = Field(
         default=None,
         description=(
@@ -303,6 +312,14 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "draft and the search is the baseline."
         ),
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def read_match_modes(cls, data):
+        """``match_modes`` given as a comma-separated string (a ``nat run --override``) is a list."""
+        if isinstance(data, dict) and isinstance(data.get("match_modes"), str):
+            data = {**data, "match_modes": [mode.strip() for mode in data["match_modes"].split(",") if mode.strip()]}
+        return data
 
     @model_validator(mode="after")
     def validate_summary_config(self):
@@ -2068,6 +2085,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         target_collections = _restrict_scope_to_turn(
             _resolve_scoped_collections(config, session_collection, base_collection)
         )
+
+        mode = (match or "meaning").strip().lower()
+        if mode in {"meaning", "exact", "regex"} and mode not in config.match_modes:
+            return f"`match={mode}` is not available in this configuration."
 
         # The literal mode: same scope, same narrowing, no ranking at all.
         if (match or "meaning").strip().lower() == "exact":

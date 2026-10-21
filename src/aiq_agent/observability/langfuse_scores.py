@@ -174,6 +174,13 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         min_value=0,
     ),
     ScoreDefinition(
+        "file-tools-used",
+        "CATEGORICAL",
+        "Which of the office-file moves a turn used (ADR-0127): search (knowledge_search, round 0 included), "
+        "navigate (list_files, read_passage), both, or none. Written on every turn that called a tool.",
+        categories=("none", "search", "navigate", "both"),
+    ),
+    ScoreDefinition(
         "card-validity",
         "CATEGORICAL",
         "Each envelope card that missed its schema: repaired, or dropped.",
@@ -407,6 +414,31 @@ def dialect_scores(repairs: list[dict[str, str]]) -> list[RuntimeScore]:
 def quote_patch_scores(patched: int) -> list[RuntimeScore]:
     """How many quotes the repair pass corrected on one answer."""
     return [RuntimeScore("quotes-patched", float(max(0, patched)))]
+
+
+#: The tool basenames that navigate the office's files (ADR-0127); ``knowledge_search`` is the search move.
+NAVIGATE_TOOLS = frozenset({"list_files", "read_passage"})
+SEARCH_TOOLS = frozenset({"knowledge_search"})
+
+
+def file_tool_scores(tools: Iterable[str]) -> list[RuntimeScore]:
+    """Which office-file moves a turn used, from the basenames of the tools it called.
+
+    Nothing for a turn that called no tool at all; ``none`` for a turn that
+    called tools but none of these. Exact search is still ``search`` here: the
+    span metadata of the tool says which match mode it ran in.
+    """
+    called = set(tools)
+    if not called:
+        return []
+    searched = bool(called & SEARCH_TOOLS)
+    navigated = bool(called & NAVIGATE_TOOLS)
+    value = "both" if searched and navigated else "search" if searched else "navigate" if navigated else "none"
+    return [
+        RuntimeScore(
+            "file-tools-used", value, comment=", ".join(sorted(called & (SEARCH_TOOLS | NAVIGATE_TOOLS))) or None
+        )
+    ]
 
 
 def steer_scores(inbox: Any) -> list[RuntimeScore]:

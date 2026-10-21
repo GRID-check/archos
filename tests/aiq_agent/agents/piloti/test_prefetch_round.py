@@ -188,3 +188,37 @@ class TestNothingRunsThatShouldNot:
     async def test_no_prefetch_is_the_turn_as_before(self):
         result = await _run(_agent(ANSWER, llm_calls=[]), prefetch=())
         assert RAN == [] and result.retrieval_rounds == [] and result.tool_iterations == 0
+
+
+class TestPrefetchSwitch:
+    """``prefetch: false`` is the answer suite's navigate arm (ADR-0127): round 0 fetches nothing."""
+
+    def _asked(self):
+        from aiq_agent.agents.piloti.decisions import TurnDecisions
+        from aiq_agent.agents.piloti.decisions import TurnFacts
+
+        decisions = TurnDecisions(decided=True, needs_evidence=0.9, corpus="baurecht", corpus_p=0.8)
+        return decisions, TurnFacts(question="Wie lang darf der Fluchtweg sein?")
+
+    def test_the_default_prefetches_the_question(self):
+        from aiq_agent.agents.piloti.register import _turn_prefetch
+
+        decisions, facts = self._asked()
+
+        calls = _turn_prefetch(decisions, facts, ResearchAgentState(messages=[]))
+
+        assert [call["name"] for call in calls] == ["knowledge_search"]
+
+    def test_switched_off_it_prefetches_nothing(self):
+        from aiq_agent.agents.piloti.register import _turn_prefetch
+
+        decisions, facts = self._asked()
+
+        assert _turn_prefetch(decisions, facts, ResearchAgentState(messages=[]), enabled=False) == ()
+
+    def test_the_config_knob_defaults_on_and_reads_the_override_string(self):
+        from aiq_agent.agents.piloti.register import ResearchAgentConfig
+
+        assert ResearchAgentConfig(llm="research_llm").prefetch is True
+        # `nat run --override … prefetch false` hands the value over as a string.
+        assert ResearchAgentConfig(llm="research_llm", prefetch="false").prefetch is False
