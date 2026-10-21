@@ -41,7 +41,14 @@ where capacity lives, and how it grows without a person in the hot path.
 ## Decision Drivers
 
 * **A new organization never fails its first upload because of a storage
-  limit.** Running out is detected days ahead, not by a customer.
+  limit, as long as the pool is below the caps someone chose.** Running out is
+  detected days ahead, not by a customer. At a cap the store refuses writes as
+  it does today: the upload answers 502 „Object storage is unavailable", the
+  `bff-upstream-error` alert and the cap's own alert page, and raising a cap is
+  a person's decision, because it is spend. No new admission path is added:
+  the per-organization quota (ADR-0042) already refuses an upload with 507
+  before the bytes move, and a pool-level gate there would only duplicate the
+  store's refusal.
 * **Capacity grows without a code change**, within a ceiling someone chose.
   Block storage cannot shrink, so every automatic expansion is a permanent
   cost.
@@ -160,8 +167,8 @@ rows, not new alerts, are where rules go on the free plan:
 | Pool disk | `k8s.volume.available / k8s.volume.capacity` under 20% on any `data-seaweedfs*` claim, from `kubelet_stats` | Disk, the next wall |
 | Volumes going read-only | `SeaweedFS_volumeServer_read_only_volumes{type="isDiskSpaceLow"}` above 0 | SeaweedFS's own brake has engaged |
 
-#1117's `bff-upstream-error` alert stays as the last line: a user is already
-seeing an error.
+PR #1117's `bff-upstream-error` alert stays as the last line: a user is
+already seeing an error.
 
 **Phase 2: the split topology in prod (a maintenance window).** Follow the
 runbook in `kubernetes.md`, "Migrating SeaweedFS to the split topology". Rehearse
@@ -191,12 +198,25 @@ restart separately, and chunk keys off the data disk.
     questions below.
 * **3b, out.** Add a KEDA `ScaledObject` on the `seaweedfs-volume` StatefulSet,
   built like `backend-scaling.ts`:
-  * **Trigger:** a `metrics-api` trigger on an internal endpoint that reports
-    the pool's fill (free slots and free bytes from the master's `/dir/status`
-    and each volume server's disk status).
+  * **Triggers:** two `metrics-api` triggers on an internal endpoint, each a
+    measure that rises as the pool fills: **used bytes** (from each volume
+    server's disk status) and **used slots** (`Max − Free` from the master's
+    `/dir/status`). Both use `metricType: AverageValue`, with `targetValue` set
+    to 80% of one server's capacity (its PVC size, its slot count). KEDA then
+    asks for `ceil(used / (0.8 × one server))` servers, so the pool keeps about
+    20% headroom, and the HPA takes the larger of the two. The PVC size and the
+    slot count change as 3a grows the disks, so the endpoint reports the target
+    alongside the value. `activationTargetValue` plays no part:
+    `minReplicaCount` is at least 1, and activation only governs 0 ↔ 1.
   * **Up only:** scale-down is disabled. A volume server holds data, and
     removing one is a drain, not a scale-in.
-  * **`fallback`:** keep the current count.
+  * **`fallback`:** the repository's own `scalerFallback`
+    (`keda-scaling.ts`): `failureThreshold` and a fixed `replicas`, with
+    `behavior: currentReplicasIfHigher`, so a blind scaler never takes the
+    pool below what it already runs. KEDA honours a fallback only on
+    `AverageValue` triggers, which is one more reason for the metric type
+    above. The concrete threshold and count are chosen when the
+    `ScaledObject` is written.
   * **`maxReplicaCount`:** the number of `data` nodes, because volume servers
     spread one per node.
   * **What a scale-up does:** the StatefulSet claims `data-seaweedfs-volume-N`,
@@ -262,6 +282,12 @@ Nothing enforces this yet. Each phase lands with its gate:
     of refusal it already makes for an unsafe `minFreeSpace`.
 * **Phase 1.** The four rows are recorded in `metrics.md` beside the insight's
   SQL, as ADR-0119 requires.
+* **Phase 2.** Nothing automated gates the migration: the runbook is the only
+  gate. Its prerequisites are that the offsite mirror is on with a verified
+  inventory, and that the filer's Postgres store is provisioned. They are
+  checked by hand before the window, and `pulumi preview` already warns about
+  encryption without a backup. A live migration of every document is a step a
+  person takes deliberately, so this stays a checklist rather than a test.
 * **Phase 3.**
   * A spec holds that every `data-seaweedfs-volume` claim carries a
     `storage_limit`, and that the volume `ScaledObject` has scale-down disabled
@@ -275,7 +301,7 @@ Nothing enforces this yet. Each phase lands with its gate:
 
 * Good, because it costs nothing today.
 * Bad, because about 70 organizations is a date on the calendar, and 20 Gi a
-  nearer one. Both arrive with no warning beyond #1117's after-the-fact alert.
+  nearer one. Both arrive with no warning beyond PR #1117's after-the-fact alert.
 
 ### B. A disk per organization
 
