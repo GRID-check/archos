@@ -137,7 +137,9 @@ export function ShortcutsCheatsheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-visible p-0 sm:max-w-4xl motion-reduce:animate-none">
+      {/* `instant`: summoned by `?` from the keyboard, so it appears in the
+          frame the key lands, like the palette. */}
+      <DialogContent instant className="gap-0 overflow-visible p-0 sm:max-w-4xl">
         {/* Clip the body to the dialog radius; keep overflow off the dialog
             itself so the close control's focus ring is a full ring, not a
             clipped top-right border. */}
