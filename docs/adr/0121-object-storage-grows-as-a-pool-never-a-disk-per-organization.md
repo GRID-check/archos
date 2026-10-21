@@ -124,6 +124,31 @@ Each phase stands on its own and leaves prod safer than before.
   about 70.
 * Dev gets the same configuration, and its own `seaweedfsVolumeMaxCount`.
 
+Why SeaweedFS defaults to 7, and what setting it to 1 gives up:
+
+* **Writes in parallel.** A volume is one append-only file, and writes to it
+  happen one at a time. Several writable volumes let concurrent uploads to the
+  same collection be written side by side, across disks and servers.
+* **No stall when a volume fills.** The others stay writable while a new one
+  grows. `threshold = 0.9` grows before the last one is full, for the same
+  reason.
+* **No first-write wait.** Growing a volume takes a moment, and growing in
+  bulk keeps later writes from waiting on it.
+* **Built for a different store.** The default is tuned for few collections
+  and many concurrent writers on large disks, where 7 of hundreds of slots
+  costs nothing. A bucket per organization on one small disk is the opposite
+  case, and SeaweedFS's
+  [many-small-buckets guidance](https://github.com/seaweedfs/seaweedfs/wiki/Optimization-for-Many-Small-Buckets)
+  sets growth to 1 for it.
+* **What we lose.** Two simultaneous uploads into one organization's bucket are
+  written one after the other. An append costs far less than the upload in
+  front of it, so this should not be noticeable at office-sized write rates.
+  On 3.80 the background loop gives an active bucket about three volumes
+  anyway.
+* **The escape hatch.** A bucket that does need more parallel writes gets its
+  own rule:
+  `fs.configure -locationPrefix=/buckets/<bucket>/ -volumeGrowthCount=<n>`.
+
 **Phase 1: see it coming (a day).** Add rows to the PostHog **Data stores**
 alert (ADR-0119, [`metrics.md`](../observability/metrics.md#alerts)), because
 rows, not new alerts, are where rules go on the free plan:
