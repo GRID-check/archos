@@ -27,6 +27,7 @@ const CAPPED_REASON_KEYS: Record<AnswerConfidenceCappedReason, string> = {
 /** The mix line's parts, in the order they are read: what holds first, what does not last. */
 const MIX_PARTS: readonly (keyof ClaimMix)[] = [
   'supported',
+  'observed',
   'reasoning',
   'modelKnowledge',
   'normativeUncited',

@@ -22,6 +22,7 @@ export const CLAIM_PROVENANCES = [
   'record',
   'action',
   'measured',
+  'observed',
   'reasoning',
   'model_knowledge',
 ] as const
@@ -105,11 +106,13 @@ const PASSAGE: ReadonlySet<ClaimProvenance> = new Set(['quoted', 'cited'])
  * - `normativeUncited`: it states the law with no quoted or cited passage
  *   (a record or a measurement beside it does not count);
  * - `supported`: a passage, a record, an action or a measurement stands behind it;
+ * - `observed`: it repeats a value a look read off a drawing (never grounds the law);
  * - `reasoning`: an Einschätzung drawn from a cited sentence near it;
  * - `modelKnowledge`: the model's own knowledge, nothing in the answer behind it.
  */
 export interface ClaimMix {
   supported: number
+  observed: number
   reasoning: number
   modelKnowledge: number
   normativeUncited: number
@@ -119,6 +122,7 @@ export interface ClaimMix {
 export function claimMix(stamps: readonly ClaimStamp[]): ClaimMix {
   const mix: ClaimMix = {
     supported: 0,
+    observed: 0,
     reasoning: 0,
     modelKnowledge: 0,
     normativeUncited: 0,
@@ -129,6 +133,7 @@ export function claimMix(stamps: readonly ClaimStamp[]): ClaimMix {
     else if (stamp.claimType === 'normative' && !PASSAGE.has(stamp.provenance))
       mix.normativeUncited += 1
     else if (SUPPORTED.has(stamp.provenance)) mix.supported += 1
+    else if (stamp.provenance === 'observed') mix.observed += 1
     else if (stamp.provenance === 'reasoning') mix.reasoning += 1
     else mix.modelKnowledge += 1
   }

@@ -9,8 +9,9 @@ refuses), nothing on this side re-runs, drops or rejects it, and the turn looks
 with ``look`` and answers.
 
 What this cannot show is whether every provider accepts a historical call to an
-undeclared tool; the answer suite's first run after the deploy does. If one
-refuses, map the old names to ``look`` in the transcript loader for a release.
+undeclared tool, so ``history.replay_retired_look_names`` does not ask: it shows
+the model the old calls (and their results) as ``look``, arguments renamed, for
+one release. The first test runs it through the compiled graph; the rest pin the mapping.
 """
 
 from __future__ import annotations
@@ -27,6 +28,7 @@ from langchain_core.tools import tool
 
 from aiq_agent.agents.piloti.agent import PilotiAgent
 from aiq_agent.agents.piloti.history import prune_tool_results
+from aiq_agent.agents.piloti.history import replay_retired_look_names
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.common import LLMProvider
 from aiq_agent.common import turn_status
@@ -127,11 +129,14 @@ async def test_a_follow_up_after_a_retired_look_looks_with_look_and_answers(reti
     # Only `look` is bound; the retired name is never offered again.
     bound = [t.name for call in llm.bind_tools.call_args_list for t in call.args[0]]
     assert retired not in bound and "look" in bound
-    # Every request carries the old call WITH its result: a call without one is what a provider refuses.
+    # Every request carries the old call WITH its result, both under the name that is bound now:
+    # a call without a result, or to an undeclared tool, is what a provider refuses.
     for request in model.requests:
-        calls = [c["id"] for m in request if isinstance(m, AIMessage) for c in m.tool_calls if c["name"] == retired]
-        results = [m.tool_call_id for m in request if isinstance(m, ToolMessage) and m.name == retired]
-        assert calls == results == ["old-1"]
+        old = [c for m in request if isinstance(m, AIMessage) for c in m.tool_calls if c["id"] == "old-1"]
+        results = [m for m in request if isinstance(m, ToolMessage) and m.tool_call_id == "old-1"]
+        assert [c["name"] for c in old] == ["look"]
+        assert [m.name for m in results] == ["look"]
+        assert not any(c["name"] == retired for m in request if isinstance(m, AIMessage) for c in m.tool_calls)
 
 
 @pytest.mark.parametrize("retired", sorted(RETIRED_CALLS))
@@ -148,3 +153,38 @@ def test_one_turn_later_the_retired_call_is_pruned_with_its_result(retired: str)
 
     assert not any(isinstance(m, ToolMessage) for m in pruned)
     assert not any(isinstance(m, AIMessage) and m.tool_calls for m in pruned)
+
+
+def test_the_retired_call_is_replayed_as_look_with_its_arguments_renamed() -> None:
+    old = _previous_turn("view_knowledge_image")
+
+    replayed = replay_retired_look_names(old)
+
+    call = replayed[1].tool_calls[0]
+    assert call["name"] == "look"
+    # file_name -> document, page_number -> page; look takes no collection.
+    assert call["args"] == {"document": "Grundriss_EG.pdf", "page": 2}
+    assert replayed[2].name == "look" and replayed[2].tool_call_id == "old-1"
+    # The stored transcript is not edited.
+    assert old[1].tool_calls[0]["name"] == "view_knowledge_image"
+    assert old[1].tool_calls[0]["args"]["file_name"] == "Grundriss_EG.pdf"
+
+
+def test_the_canvas_call_keeps_its_arguments_and_provider_tool_use_blocks_follow() -> None:
+    message = AIMessage(
+        content=[{"type": "tool_use", "id": "old-1", "name": "canvas__look", "input": {"page": 2}}],
+        tool_calls=[{"name": "canvas__look", "args": RETIRED_CALLS["canvas__look"], "id": "old-1"}],
+    )
+
+    replayed = replay_retired_look_names([message])[0]
+
+    assert replayed.tool_calls[0]["name"] == "look"
+    assert replayed.tool_calls[0]["args"] == RETIRED_CALLS["canvas__look"]
+    assert replayed.content[0]["name"] == "look"
+
+
+def test_other_tools_and_plain_messages_are_untouched() -> None:
+    other = AIMessage(content="", tool_calls=[{"name": "web_search", "args": {"page_number": 3}, "id": "w1"}])
+    messages = [HumanMessage(content="hi"), other, AIMessage(content="ok")]
+
+    assert replay_retired_look_names(messages) == messages

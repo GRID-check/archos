@@ -411,6 +411,7 @@
             "record",
             "action",
             "measured",
+            "observed",
             "reasoning",
             "model_knowledge"
           ],

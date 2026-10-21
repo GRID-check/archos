@@ -213,3 +213,16 @@ Changed alongside:
   (no corpus under `data/oib`, no Qdrant, no Docker), and no live workspace turn
   exists in the last 30 days of exported traces. Both are the first evidence to
   collect after merge.
+
+## Amendment, 2026-10-21: a reading is a class of its own
+
+A sentence that repeats a number or code a `look` read off a drawing this turn
+(the `reading` of a look card item the answer relies on, `tools/look/cards.relied_readings`)
+is stamped `observed`, after `measured` in the precedence. It is labelled in the
+confidence mix as read off the drawing. A vision model's perception is not a
+reproducible measurement, so its ceiling is `medium` for a value or descriptive
+sentence, and `low` for a normative one: like a record or a measurement, a
+reading never grounds a claim about the law (ADR-0128). Matching is lexical, at
+the precision the sentence writes, as for `measured`; a measurement or a record
+that matches wins. Wire, `claims-by-class` and the UI mix gain the class; a turn
+stored before it reads unchanged.

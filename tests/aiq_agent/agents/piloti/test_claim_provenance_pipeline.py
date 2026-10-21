@@ -6,6 +6,8 @@ The parts are tested in ``tests/aiq_agent/common``; these go through
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 from langchain_core.messages import ToolMessage
@@ -256,3 +258,57 @@ async def test_an_answer_with_no_sentence_is_floored_not_left_at_its_self_report
 
     assert final.claim_stamps == () and final.claims_ceiling == "low"
     assert state.answer_confidence == "low" and state.answer_confidence_capped_reason == "ungrounded"
+
+
+def _hold_a_look(reading: str, name: str = "Grundriss_EG.pdf") -> None:
+    from aiq_agent.tools.look.cards import note_look
+
+    resolved = SimpleNamespace(file_name=name, collection="proj_1", target=None)
+    note_look(resolved, 2, [0.1, 0.1, 0.3, 0.2], question="Türbreite?", reading=reading)
+
+
+async def test_a_value_taken_from_a_look_is_observed_and_held_at_medium():
+    from aiq_agent.cards.registry import CardRegistry
+    from aiq_agent.cards.registry import reset_card_registry
+    from aiq_agent.cards.registry import set_card_registry
+
+    token = set_card_registry(CardRegistry())
+    try:
+        _hold_a_look("Gelesen: Tür 1,00 m breit")
+        prose = "Die Tür im EG ist 1,00 m breit."
+        messages = [HumanMessage("Wie breit ist die Tür?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+        final, state = await _finalize(messages)
+    finally:
+        reset_card_registry(token)
+
+    assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed"]
+    assert state.answer_confidence == "medium"
+
+
+async def test_a_reading_beside_a_legal_statement_does_not_ground_it():
+    from aiq_agent.cards.registry import CardRegistry
+    from aiq_agent.cards.registry import reset_card_registry
+    from aiq_agent.cards.registry import set_card_registry
+
+    token = set_card_registry(CardRegistry())
+    try:
+        _hold_a_look("Gelesen: Fluchtweg 1,20 m")
+        prose = "Der Fluchtweg ist 1,20 m breit. Das genügt nach § 5 der Bauordnung."
+        messages = [HumanMessage("Passt der Fluchtweg?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+        final, state = await _finalize(messages)
+    finally:
+        reset_card_registry(token)
+
+    assert [stamp["provenance"] for stamp in final.claim_stamps] == ["observed", "model_knowledge"]
+    assert state.answer_confidence == "low"
+
+
+async def test_a_value_with_no_look_behind_it_is_not_observed():
+    prose = "Die Tür im EG ist 1,00 m breit."
+    messages = [HumanMessage("Wie breit ist die Tür?"), AIMessage(ANSWER_ENVELOPE.format(prose=prose))]
+
+    final, _ = await _finalize(messages)
+
+    assert [stamp["provenance"] for stamp in final.claim_stamps] == ["model_knowledge"]

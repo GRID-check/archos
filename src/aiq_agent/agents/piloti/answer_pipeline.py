@@ -1158,6 +1158,7 @@ async def finalize_answer(
     # The looks the answer relies on become `look` cards (ADR-0128), taken before
     # the suppression can clear them and placed after it: they are evidence, not trailer.
     from aiq_agent.tools.look.cards import place_look_cards
+    from aiq_agent.tools.look.cards import relied_readings
     from aiq_agent.tools.look.cards import take_looks
 
     looks = take_looks()
@@ -1168,7 +1169,7 @@ async def finalize_answer(
     # like the quote check it repeats: each line reads the registry's passages.
     pairs = [(source.entry, source.number) for source in cited]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
-    claims = _claim_provenance(content, cited, stamps, turn, measured_values)
+    claims = _claim_provenance(content, cited, stamps, turn, measured_values, relied_readings(looks, cited))
     final_messages = list(messages)
     final_messages[index] = messages[index].model_copy(update={"content": content})
     return FinalAnswer(
@@ -1213,6 +1214,7 @@ def _claim_provenance(
     quote_stamps: Sequence[dict[str, Any]],
     turn: Sequence[Any],
     measured_values: Sequence[str],
+    readings: Sequence[str] = (),
 ) -> _Claims:
     """Stamp each sentence of the final text with where it comes from (``common/claim_provenance``).
 
@@ -1226,6 +1228,7 @@ def _claim_provenance(
         quote_stamps=quote_stamps,
         records=records_from_messages(turn),
         measured_values=tuple(value for value in measured_values if value),
+        readings=tuple(readings),
     )
     stamps = classify_claims(prose_without_references(content), evidence, normative=answer_mentions_normative_claim)
     weakest = weakest_claim(stamps)

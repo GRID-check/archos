@@ -92,6 +92,72 @@ def trim_message_history(
     )
 
 
+#: The tools ``look`` replaced (ADR-0128), and what each one's arguments are called now.
+#: A stored transcript still holds calls to them, and a provider may reject a past
+#: call to a tool that is not declared, so replay shows the model ``look`` instead.
+#: ``collection`` goes: ``look`` never takes one. Compatibility for ONE release;
+#: remove this table, :func:`replay_retired_look_names` and its test after 2026-12-01.
+_RETIRED_LOOK_NAMES: dict[str, dict[str, str | None]] = {
+    "view_knowledge_image": {"file_name": "document", "page_number": "page", "collection": None},
+    "canvas__look": {},
+}
+_LOOK = "look"
+
+
+def _look_args(name: str, args: Any) -> Any:
+    if not isinstance(args, dict):
+        return args
+    renames = _RETIRED_LOOK_NAMES[name]
+    mapped = {}
+    for key, value in args.items():
+        target = renames.get(key, key)
+        if target is not None:
+            mapped[target] = value
+    return mapped
+
+
+def replay_retired_look_names(messages: list[BaseMessage]) -> list[BaseMessage]:
+    """The history with past calls to ``view_knowledge_image`` and ``canvas__look`` shown as ``look``.
+
+    Covers the call (``tool_calls`` and provider ``tool_use`` blocks) and the
+    ``ToolMessage`` that answers it, with the arguments renamed. The messages
+    are copied, never edited: the stored transcript keeps what happened.
+    """
+    replayed: list[BaseMessage] = []
+    for message in messages:
+        if isinstance(message, ToolMessage) and message.name in _RETIRED_LOOK_NAMES:
+            message = message.model_copy(update={"name": _LOOK})
+        elif isinstance(message, AIMessage) and _calls_retired_look(message):
+            message = _with_look_calls(message)
+        replayed.append(message)
+    return replayed
+
+
+def _calls_retired_look(message: AIMessage) -> bool:
+    blocks = message.content if isinstance(message.content, list) else []
+    return any(call.get("name") in _RETIRED_LOOK_NAMES for call in message.tool_calls) or any(
+        isinstance(block, dict) and block.get("name") in _RETIRED_LOOK_NAMES for block in blocks
+    )
+
+
+def _with_look_calls(message: AIMessage) -> AIMessage:
+    calls = [
+        {**call, "name": _LOOK, "args": _look_args(call["name"], call.get("args"))}
+        if call.get("name") in _RETIRED_LOOK_NAMES
+        else call
+        for call in message.tool_calls
+    ]
+    update: dict[str, Any] = {"tool_calls": calls}
+    if isinstance(message.content, list):
+        update["content"] = [
+            {**block, "name": _LOOK, "input": _look_args(block["name"], block.get("input"))}
+            if isinstance(block, dict) and block.get("name") in _RETIRED_LOOK_NAMES
+            else block
+            for block in message.content
+        ]
+    return message.model_copy(update=update)
+
+
 def prune_tool_results(messages: list[BaseMessage], *, keep_turns: int = 1) -> list[BaseMessage]:
     """The history with tool results kept for the last ``keep_turns`` turns only.
 
@@ -105,6 +171,7 @@ def prune_tool_results(messages: list[BaseMessage], *, keep_turns: int = 1) -> l
     calls. A turn starts at a ``HumanMessage``; the current question is a
     turn of its own and counts.
     """
+    messages = replay_retired_look_names(messages)
     boundaries = [i for i, m in enumerate(messages) if isinstance(m, HumanMessage)]
     if len(boundaries) <= keep_turns + 1:
         return list(messages)

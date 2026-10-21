@@ -57,11 +57,24 @@ describe('claim stamps', () => {
     const mix = claimMix(sanitizeClaimStamps(WIRE) ?? [])
     expect(mix).toEqual({
       supported: 2,
+      observed: 0,
       reasoning: 0,
       modelKnowledge: 0,
       normativeUncited: 1,
       dropped: 1,
     })
+  })
+
+  test('a sentence read off a drawing is its own bucket, and never backs a legal statement', () => {
+    const mix = claimMix(
+      sanitizeClaimStamps([
+        { text: 'Die Tür ist 1,00 m breit.', provenance: 'observed', claim_type: 'value' },
+        { text: 'Das ist zulässig.', provenance: 'observed', claim_type: 'normative' },
+      ]) ?? []
+    )
+    expect(mix.observed).toBe(1)
+    expect(mix.normativeUncited).toBe(1)
+    expect(mix.supported).toBe(0)
   })
 
   test('a record never counts as backing a legal statement', () => {

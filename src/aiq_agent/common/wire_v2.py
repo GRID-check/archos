@@ -338,7 +338,7 @@ class ClaimStamp(_Model):
 
     text: str = Field(max_length=300, description="The sentence as the final text writes it, cut at 300 characters.")
     provenance: Literal[
-        "quoted", "cited", "cited_dropped", "record", "action", "measured", "reasoning", "model_knowledge"
+        "quoted", "cited", "cited_dropped", "record", "action", "measured", "observed", "reasoning", "model_knowledge"
     ]
     claim_type: Literal["normative", "value", "descriptive"]
     load_bearing: bool = False

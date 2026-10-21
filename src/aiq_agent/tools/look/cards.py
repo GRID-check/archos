@@ -220,6 +220,20 @@ def relied_on(held: Sequence[dict[str, Any]], cited_names: set[str]) -> list[dic
     ]
 
 
+def relied_readings(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -> list[str]:
+    """What the looks the answer relies on read off the drawings, one text per look. Pure; never raises.
+
+    The claim provenance (ADR-0125, amendment of 2026-10-21) stamps a sentence
+    that repeats one of these ``observed``.
+    """
+    try:
+        kept = relied_on(held, _cited_names(cited))
+    except Exception:  # noqa: BLE001 - provenance is never worth the answer
+        logger.warning("Could not decide which readings the answer relies on", exc_info=True)
+        return []
+    return [str(e["item"]["reading"]) for e in kept if e["item"]["origin"] == "look" and e["item"].get("reading")]
+
+
 def place_look_cards(held: Sequence[dict[str, Any]], cited: Iterable[Any] = ()) -> int:
     """Put the entries the answer relies on onto ``look`` cards; how many items landed. Never raises."""
     registry = get_card_registry()

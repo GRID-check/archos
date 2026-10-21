@@ -173,6 +173,36 @@ class TestEachClassFromItsEvidence:
             ("measured", "value")
         ]
 
+    def test_a_sentence_repeating_a_value_a_look_read_is_observed(self):
+        evidence = ClaimEvidence(readings=("Gelesen: Tür 1,00 m, Brüstung 0,90 m",))
+        assert _classes("Die Tür ist 1,00 m breit.", evidence) == [("observed", "value")]
+        # At the precision the sentence writes it, like a measurement.
+        assert _classes("Die Tür ist 1 m breit.", evidence) == [("observed", "value")]
+        assert _classes("Die Tür ist 1,20 m breit.", evidence) == [("model_knowledge", "value")]
+
+    def test_a_code_a_look_read_is_observed_and_no_reading_means_no_class(self):
+        evidence = ClaimEvidence(readings=("Wandaufbau EI30, Tür D1",))
+        assert _classes("Die Wand ist EI30.", evidence)[0][0] == "observed"
+        assert _classes("Die Wand ist EI30.", ClaimEvidence())[0][0] == "model_knowledge"
+
+    def test_a_measurement_or_a_record_outranks_a_reading(self):
+        evidence = ClaimEvidence(measured_values=["2.703 m"], readings=("Höhe 2,70 m",))
+        assert _classes("Der Keller ist 2,70 m hoch.", evidence)[0][0] == "measured"
+
+    def test_a_reading_never_grounds_a_normative_sentence(self):
+        evidence = ClaimEvidence(readings=("Gelesen: Öffnung 1,20 m",))
+        stamps = classify_claims(
+            "Die Öffnung ist 1,20 m breit. Sie muss mindestens 1,20 m breit sein.",
+            evidence,
+            normative=answer_mentions_normative_claim,
+        )
+        assert [(stamp.provenance, stamp.claim_type) for stamp in stamps] == [
+            ("observed", "value"),
+            ("observed", "normative"),
+        ]
+        assert claims_ceiling(stamps) == "low"
+        assert claims_ceiling(stamps[:1]) == "medium"
+
     def test_an_uncited_sentence_beside_a_cited_one_is_reasoning_and_alone_is_model_knowledge(self):
         prose = "Die Raumhöhe muss 2,50 m betragen [1]. Das betrifft auch das Dachgeschoß.\n\nIch würde früh planen."
         assert _classes(prose, ClaimEvidence(cited_numbers=frozenset({1}))) == [
@@ -222,6 +252,10 @@ class TestTheCeilings:
             ("record", "normative", "low"),
             ("action", "normative", "low"),
             ("measured", "normative", "low"),
+            # A reading is a model's perception: capped at medium, never the law.
+            ("observed", "descriptive", "medium"),
+            ("observed", "value", "medium"),
+            ("observed", "normative", "low"),
             ("reasoning", "descriptive", "medium"),
             ("reasoning", "normative", "low"),
             ("reasoning", "value", "low"),

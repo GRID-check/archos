@@ -22,16 +22,20 @@ Each sentence gets two independent labels.
 5. ``record``: its names, numbers or states match a workspace record this
    turn read (``common/workspace_records.py``).
 6. ``measured``: it states a value an IFC measurement produced this turn.
-7. ``reasoning``: no pointer, but its paragraph has a quoted or cited
+7. ``observed``: it states a number or code a ``look`` read off a drawing this
+   turn (ADR-0125, amendment of 2026-10-21). A model's perception of a drawing,
+   not a reproducible measurement: its ceiling is ``medium``, and it never
+   grounds a normative claim.
+8. ``reasoning``: no pointer, but its paragraph has a quoted or cited
    sentence it can be drawn from (an Einschätzung).
-8. ``model_knowledge``: no pointer, and nothing in the answer to derive it from.
+9. ``model_knowledge``: no pointer, and nothing in the answer to derive it from.
 
 *Claim type*: ``normative`` (the normative-claim detector, run per sentence),
 ``value`` (a number, a class, a Frist), or ``descriptive``.
 
 The ceiling a sentence allows (:func:`ceiling`) is ``high`` for evidence and
-lower without it, and never lets a record, an action or a measurement ground a
-normative claim: those three are evidence about the office and the building,
+lower without it, and never lets a record, an action, a measurement or a
+reading ground a normative claim: those three are evidence about the office and the building,
 not about the law. That is the anti-laundering rule of
 ``agents/piloti/grounding.py``, now enforced per sentence rather than by
 flooring the whole answer.
@@ -64,6 +68,7 @@ ProvenanceClass = Literal[
     "record",
     "action",
     "measured",
+    "observed",
     "reasoning",
     "model_knowledge",
 ]
@@ -77,6 +82,7 @@ PROVENANCE_CLASSES: tuple[ProvenanceClass, ...] = (
     "record",
     "action",
     "measured",
+    "observed",
     "reasoning",
     "model_knowledge",
 )
@@ -193,6 +199,9 @@ class ClaimEvidence:
     records: Sequence[WorkspaceRecord] = ()
     #: The value texts this turn's measurements produced („2,70 m").
     measured_values: Sequence[str] = ()
+    #: What this turn's looks read off the drawings the answer relies on (the
+    #: ``reading`` of each ``look`` card item). A perception, not a measurement.
+    readings: Sequence[str] = ()
 
 
 @dataclass(frozen=True)
@@ -418,6 +427,23 @@ def _measured(sentence: str, values: Sequence[str]) -> bool:
     return False
 
 
+#: A token a drawing reading can hold and a sentence can repeat: a number, or a
+#: code that mixes letters and digits („EI30", „D1").
+_CODE_RE = re.compile(r"(?<![\w-])(?=[\w.]*\d)(?=[\w.]*[^\W\d_])\w[\w.]*(?![\w-])")
+
+
+def _observed(sentence: str, readings: Sequence[str]) -> bool:
+    """Whether the sentence states a number or a code a look read, at the precision it writes."""
+    if not readings:
+        return False
+    text = _MARKER_RE.sub("", sentence)
+    read = " ".join(readings)
+    if _measured(text, [read]):
+        return True
+    read_codes = {code.rstrip(".").casefold() for code in _CODE_RE.findall(read)}
+    return any(code.rstrip(".").casefold() in read_codes for code in _CODE_RE.findall(text))
+
+
 def _class_with_pointer(unit: _Unit, evidence: ClaimEvidence) -> ProvenanceClass | None:
     """The class a sentence's own pointer gives it (a label, a quote, a marker), or None when it has none."""
     if DROPPED_CITATION_MARKER in unit.text:
@@ -452,6 +478,8 @@ def _classify(unit: _Unit, evidence: ClaimEvidence) -> tuple[ProvenanceClass, st
         return "record", record.operation, unmatched
     if _measured(unit.text, evidence.measured_values):
         return "measured", None, ()
+    if _observed(unit.text, evidence.readings):
+        return "observed", None, ()
     return "model_knowledge", None, ()
 
 
@@ -585,7 +613,9 @@ def ceiling(provenance: ProvenanceClass, ctype: ClaimType, *, unmatched: bool = 
 
     - ``high`` for a quoted or cited sentence of any type, and for a record,
       an action or a measurement that is not normative.
-    - ``medium`` for a record sentence stating a number no record holds (a
+    - ``medium`` for a sentence read off a drawing (``observed``): a model's
+      perception, whatever its type, and ``low`` when it is normative. Also
+      for a record sentence stating a number no record holds (a
       misread until shown otherwise), for ``reasoning``, and for a descriptive
       sentence from model knowledge.
     - ``low`` for a normative sentence without a passage, a value sentence
@@ -595,6 +625,8 @@ def ceiling(provenance: ProvenanceClass, ctype: ClaimType, *, unmatched: bool = 
         return "low"
     if provenance in _PASSAGE_CLASSES:
         return "high"
+    if provenance == "observed":
+        return "low" if ctype == "normative" else "medium"
     if provenance in _FACT_CLASSES:
         if ctype == "normative":
             return "low"
