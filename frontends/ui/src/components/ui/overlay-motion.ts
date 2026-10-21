@@ -17,9 +17,9 @@
  *    zoom and slide in from their trigger, so they arrive; a decision belongs at
  *    the START of that move, not at the end.
  *  - **Exits run one step shorter than their entrance.** 240 → 180ms, on
- *    `--ease-exit`, which accelerates away. Nobody wants to watch a thing they
- *    just dismissed, and a dismissal that lingers as long as the opening reads
- *    as the app not believing the click.
+ *    `--ease-exit`, which starts at once. Nobody wants to watch a thing they
+ *    just dismissed, and a dismissal that lingers as long as the opening, or
+ *    hesitates before it moves, reads as the app not believing the click.
  *
  * These are ANIMATION properties, not transitions, so the reduced-motion escape
  * is `motion-reduce:animate-none` rather than `motion-reduce:transition-none`.

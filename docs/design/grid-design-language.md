@@ -545,12 +545,35 @@ thing they just dismissed.
 
 | Token / class | cubic-bezier | For |
 |---|---|---|
-| `--ease-out` / `ease-out` | `0, 0, 0.2, 1` | Colour, opacity, hover, press |
+| `--ease-out` / `ease-out` | `0.23, 1, 0.32, 1` | Colour, opacity, hover, press. Also the default for any transition utility that names no curve |
 | `--ease-entrance` / `ease-entrance` | `0.16, 1, 0.3, 1` | Anything that **moves** on arrival |
-| `--ease-exit` / `ease-exit` | `0.4, 0, 1, 1` | Anything **leaving** — departure accelerates away |
+| `--ease-exit` / `ease-exit` | `0.23, 1, 0.32, 1` | Anything **leaving**: it starts at once |
 | `--ease-cycle` / `ease-cycle` | `0.65, 0, 0.35, 1` | **Only** looping / indeterminate motion |
 
-No `linear`, no `ease-in-out`, no `ease-in`, no bare `ease`. A lint rule
+**Why `--ease-out` is strong.** It was Tailwind's stock `0, 0, 0.2, 1`, which
+spends its first third barely moving. A press or a hover is feedback, and
+feedback is read in the first frames, so the curve front-loads the change
+(Emil Kowalski's strong ease-out). A transition utility with no `duration-*`
+or `ease-*` of its own runs on `--motion-quick` and this curve
+(`--default-transition-*` in `tokens.css`), not on Tailwind's 150ms.
+
+**Why exits no longer accelerate away.** `--ease-exit` was `0.4, 0, 1, 1`, an
+ease-in, on the argument that a dismissal that decelerates looks reluctant.
+In practice the ease-in was the reluctant one: after an Escape or a scrim click
+the surface barely moved for the first third of its run, which is exactly when
+the reader is watching to see the dismissal land, and a flicked sheet stalled
+before it left. Exits now start at once on the same strong ease-out, and stay
+one step shorter than their entrance; the tail runs while the surface is
+already nearly gone. The token keeps its own name so exits can be retuned
+without touching every hover.
+
+No `ease-in-out`, no `ease-in`, no bare `ease`, and no `linear` on a
+transition. `linear` is allowed in exactly one place: inside a loop's own
+`@keyframes` / `animation` shorthand where the motion is a constant velocity
+with no arrival in it, a spinner's rotation (`animate-spin`) or a band sweeping
+across a label (`animate-shimmer-*`). A wheel turning at a steady speed is the
+physical case; easing it would make the spinner lurch once per turn. A loop
+that breathes or shuttles still takes `--ease-cycle`. A lint rule
 (`grid/motion-vocabulary`) flags `transition-all`, `ease-linear`, `ease-in`,
 `ease-in-out`, `animate-pulse`, literal durations, hand-written
 `[animation-delay:…]` / `[animation-duration:…]`, transitions on
