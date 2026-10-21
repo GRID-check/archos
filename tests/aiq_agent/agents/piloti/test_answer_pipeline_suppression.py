@@ -97,6 +97,11 @@ class TestShouldSuppressMetaCards:
         meta = _gated({"kind": "ruling", "callout": _CALLOUT}, prose_chars=300)
         assert _should_suppress_meta_cards(SHORT_PROSE, meta) is False
 
+    def test_a_work_report_vetoes(self):
+        # A work turn's prose is short by design; its report is the answer (ADR-0122).
+        meta = _gated({"kind": "work", "work": {"done": [{"text": "Freigaben gelesen"}]}}, prose_chars=60)
+        assert _should_suppress_meta_cards(SHORT_PROSE, meta) is False
+
     def test_short_direct_answer_without_verdict_drops(self):
         meta = _gated({"kind": "direct", "callout": _CALLOUT}, prose_chars=300)
         assert _should_suppress_meta_cards(SHORT_PROSE, meta) is True

@@ -958,6 +958,11 @@ def _should_suppress_meta_cards(content: str, gated_meta: dict[str, Any] | None)
     A short walkthrough/direct answer with takeaways/callout/summary but no
     verdict is the shape that pays full-context card generations for prose
     the reader finishes in one screen.
+
+    A work turn (``kind=work``, ADR-0122) is exempt like a ruling: its report
+    IS the answer, and its prose is short by design. Suppressing it dropped
+    the report of every work turn that read and proposed nothing a system
+    card stood for.
     """
     if not gated_meta:
         return False
@@ -969,7 +974,7 @@ def _should_suppress_meta_cards(content: str, gated_meta: dict[str, Any] | None)
         return False
     if gated_meta.get("verdict") is not None:
         return False
-    return gated_meta.get("kind") != "ruling"
+    return gated_meta.get("kind") not in ("ruling", "work")
 
 
 def _suppress_cards(content: str, gated_meta: dict[str, Any] | None) -> tuple[str, dict[str, Any] | None, bool]:
