@@ -1999,6 +1999,7 @@ export const files: typeof en.files = {
   },
   // Den Stammordner in Ordner einsortieren (das Menü „Erweitert“). Ein Lauf, eine Prüfung, ein Rückgängig.
   rootSort: {
+    advanced: 'Erweitert',
     menuItem: 'Alle Dateien in Ordner einsortieren…',
     title: 'Dateien in Ordner einsortieren',
     description: 'Piloti schlägt für jede Datei im Stammordner einen Ordner vor. Verschoben wird erst, wenn Sie übernehmen.',

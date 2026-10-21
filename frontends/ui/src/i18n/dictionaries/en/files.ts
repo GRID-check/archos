@@ -2016,6 +2016,7 @@ export const files = {
   },
   // Sorting the shelf's root into folders (the Advanced menu). One run, one review, one undo.
   rootSort: {
+    advanced: 'Advanced',
     menuItem: 'Sort all files into folders…',
     title: 'Sort files into folders',
     description: 'Piloti proposes a folder for each file in the root. Nothing moves until you apply.',

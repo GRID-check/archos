@@ -789,6 +789,7 @@ export function FileWorkspace({
   )
   const advancedEntries: ActionMenuEntry[] | undefined = mayRootSort
     ? [
+        { type: 'label', label: t('rootSort.advanced') },
         {
           type: 'item',
           id: 'root-sort',
