@@ -22,7 +22,7 @@
  * never closes — and its count is the number a person should want at zero.
  */
 
-import type { JSX } from 'react'
+import { useRef, type JSX } from 'react'
 import { CircleDashed, Inbox } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -32,6 +32,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
+import { useSwapFade } from '@/hooks/use-swap-fade'
 import {
   TASK_FILTERS,
   filterCounts,
@@ -68,6 +69,8 @@ export function TaskList({
   const counts = filterCounts(tasks)
   const visible = tasks.filter((task) => matchesFilter(task, filter))
   const groups = groupByRecency(visible)
+  const swapRef = useRef<HTMLDivElement>(null)
+  useSwapFade(swapRef, filter)
 
   if (loading) {
     return (
@@ -146,40 +149,43 @@ export function TaskList({
         ))}
       </ToggleGroup>
 
-      {visible.length === 0 ? (
-        <EmptyState
-          icon={Inbox}
-          title={filter === 'all' ? t('list.emptyTitle') : t(`list.emptyFiltered.${filter}`)}
-          description={filter === 'all' ? t('list.emptyDescription') : undefined}
-          action={
-            filter === 'all' ? undefined : (
-              <Button variant="outline" size="sm" onClick={() => onFilterChange('all')}>
-                {t('filters.showAll')}
-              </Button>
-            )
-          }
-        />
-      ) : (
-        <div className="flex flex-col gap-6" data-testid="task-groups">
-          {groups.map((group) => (
-            <section key={group.bucket} aria-label={t(`buckets.${group.bucket}`)}>
-              <SectionLabel as="h2" className="mb-2">
-                {t(`buckets.${group.bucket}`)}
-              </SectionLabel>
-              <div className="flex flex-col gap-3">
-                {group.tasks.map((task) => (
-                  <TaskCard
-                    key={task.id}
-                    projectId={projectId}
-                    task={task}
-                    onSelect={onSelectTask}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      )}
+      {/* The rows a filter press replaced fade in (`useSwapFade`). */}
+      <div ref={swapRef}>
+        {visible.length === 0 ? (
+          <EmptyState
+            icon={Inbox}
+            title={filter === 'all' ? t('list.emptyTitle') : t(`list.emptyFiltered.${filter}`)}
+            description={filter === 'all' ? t('list.emptyDescription') : undefined}
+            action={
+              filter === 'all' ? undefined : (
+                <Button variant="outline" size="sm" onClick={() => onFilterChange('all')}>
+                  {t('filters.showAll')}
+                </Button>
+              )
+            }
+          />
+        ) : (
+          <div className="flex flex-col gap-6" data-testid="task-groups">
+            {groups.map((group) => (
+              <section key={group.bucket} aria-label={t(`buckets.${group.bucket}`)}>
+                <SectionLabel as="h2" className="mb-2">
+                  {t(`buckets.${group.bucket}`)}
+                </SectionLabel>
+                <div className="flex flex-col gap-3">
+                  {group.tasks.map((task) => (
+                    <TaskCard
+                      key={task.id}
+                      projectId={projectId}
+                      task={task}
+                      onSelect={onSelectTask}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -22,7 +22,7 @@
  */
 
 import type { JSX } from 'react'
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { Search } from 'lucide-react'
 import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
@@ -44,6 +44,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Project } from '@/lib/db/schema'
 import { useTranslations } from '@/i18n'
+import { useSwapFade } from '@/hooks/use-swap-fade'
 import { TOUR_ANCHORS } from '@/features/onboarding/lib/product-tour'
 import { CreateProjectDialog } from './create-project-dialog'
 import { ProjectCard } from './project-card'
@@ -104,6 +105,9 @@ export function ProjectsGrid({
   // A segment that emptied (its last project moved) is gone, so it is no longer
   // what the list shows either.
   const activeFilter: ProjectStatusFilter = statusOptions.includes(statusFilter) ? statusFilter : 'all'
+  // The list the filter replaced fades in, so the swap reads as its answer.
+  const listRef = useRef<HTMLDivElement>(null)
+  useSwapFade(listRef, activeFilter)
 
   const needle = query.trim().toLowerCase()
   const isSearching = needle.length > 0
@@ -191,7 +195,7 @@ export function ProjectsGrid({
         </ToggleGroup>
       )}
 
-      <div className="mt-7">
+      <div ref={listRef} className="mt-7">
         {!hasProjects ? (
           <EmptyState
             art={<RisoPrint id="vignetten/abstecken/empty" />}
