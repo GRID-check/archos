@@ -397,12 +397,20 @@ canvas tools (`canvas__mark`, `canvas__update`, `canvas__delete`,
 `canvas__reply`). Outside agents keep every one. The workspace set of the answer
 suite gained rows that check each job is done with the native tool.
 
-**Open question to the product owner.** The file operations keep both paths:
-`propose_file_change` refuses a chat in no project, where the door is the only
-way to move, rename or file. `file_draft` and the version operations
-(`document-version-content-replace`, `…-submit`, `…-fork`) also keep both, but
-not for a technical reason: the native draft submits at once where the door
-proposes, and which of the two the person should get is the owner's call.
+**Both paths stay for files and drafts.** `propose_file_change` refuses a chat
+in no project, where the door is the only way to move, rename or file.
+`file_draft` and the version operations (`document-version-content-replace`,
+`…-submit`, `…-fork`) also keep both.
+
+**Decided (2026-10-21): `file_draft` with `submit` goes straight to review; it
+does not become a proposal.** A submit publishes nothing. It asks a named
+reviewer, and that reviewer's approve and the publish after it are the person's
+yes. The tool submits only when the person's own words in the turn ask for it
+(`submit` defaults to `False`, and a reviewer without it is refused), so a
+proposal would ask the same person twice for one decision. The door's version
+operations still propose when Piloti calls them, because they act on a
+project document the turn did not draft, and the rule for those is the door's:
+a write needs the person's yes.
 
 ### The app is a client of the same routes
 

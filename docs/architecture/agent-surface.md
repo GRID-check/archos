@@ -428,8 +428,9 @@ ceiling.
 Both paths stay open for the file operations Piloti also has `propose_file_change`
 for (move, rename, folders, assignments: the native tool refuses a chat in no
 project, where the door is the only path) and for the version operations beside
-`file_draft`; that second pair is an open question to the product owner
-(ADR-0122, amendment of 2026-10-21).
+`file_draft`. A `file_draft` submit goes straight to review rather than becoming a
+proposal: the reviewer's approval is the person's yes, and the tool submits only
+when the person asked for it in the turn (ADR-0122, amendment of 2026-10-21).
 
 ## What deserves a tool
 
