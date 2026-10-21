@@ -61,4 +61,8 @@ export const errors: typeof en.errors = {
     memory:
       'Diese Unterhaltung stützt sich auf laufende andere Projekte oder auf Ordner anderer Projekte mit eigener Zugriffsliste, deshalb wird nichts aus ihr im Projekt- oder Büro-Gedächtnis gespeichert: Dieses Gedächtnis lesen alle im Projekt, auch Personen, die jene Projekte oder Ordner nicht öffnen dürfen. Was aus den offenen Ordnern abgeschlossener Projekte stammt, darf gespeichert werden.',
   },
+  agentSurface: {
+    sharedConversationRead:
+      'In einer geteilten Unterhaltung liest Piloti nichts aus dem Arbeitsbereich: Die Antwort wäre für alle sichtbar, die die Unterhaltung lesen, auch für Personen, die diese Inhalte nicht öffnen dürfen. Öffnen Sie es selbst in Piloti oder fragen Sie in einer Unterhaltung, die nur Ihnen gehört.',
+  },
 }

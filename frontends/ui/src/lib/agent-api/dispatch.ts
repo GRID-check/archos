@@ -58,6 +58,26 @@ export interface BinaryBody {
   readonly tooLarge?: true
 }
 
+/**
+ * The most bytes of a JSON or text answer read into memory. A tool result shows
+ * at most 40k characters, so anything near this is already an answer the agent
+ * must narrow; past it the rest is never read, so a list nobody bounded cannot
+ * hold a whole response in the process.
+ */
+export const MAX_TEXT_BYTES = 5 * 1024 * 1024
+
+/** A JSON or text answer over {@link MAX_TEXT_BYTES}: not read, only described. */
+export interface OversizedBody {
+  readonly oversized: true
+  readonly contentType: string
+  /** The declared size, when the route stated one. */
+  readonly bytes: number | null
+}
+
+export function isOversizedBody(value: unknown): value is OversizedBody {
+  return typeof value === 'object' && value !== null && (value as { oversized?: unknown }).oversized === true
+}
+
 /** A route that answered with a redirect, usually to a presigned URL. Never followed server-side. */
 export interface RedirectBody {
   readonly redirect: true
@@ -154,8 +174,7 @@ async function readAtMost(response: Response, max: number): Promise<Uint8Array |
 }
 
 async function readBinary(response: Response, contentType: string | null): Promise<BinaryBody> {
-  const declared = Number(response.headers.get('content-length'))
-  const size = response.headers.get('content-length') !== null && Number.isFinite(declared) ? declared : null
+  const size = declaredLength(response)
   const filename = filenameFromDisposition(response.headers.get('content-disposition'))
   const named = filename ? { filename } : {}
   if (size !== null && size > MAX_INLINE_BYTES) {
@@ -173,13 +192,43 @@ async function readBinary(response: Response, contentType: string | null): Promi
   }
 }
 
+/** The declared `Content-Length`, or null when absent or not a number. */
+function declaredLength(response: Response): number | null {
+  const header = response.headers.get('content-length')
+  const value = Number(header)
+  return header !== null && Number.isFinite(value) ? value : null
+}
+
+/** A JSON or text answer, streamed with the {@link MAX_TEXT_BYTES} cap the binary path has. */
+async function readText(response: Response, contentType: string): Promise<string | OversizedBody> {
+  const size = declaredLength(response)
+  if (size !== null && size > MAX_TEXT_BYTES) {
+    await response.body?.cancel().catch(() => undefined)
+    return { oversized: true, contentType, bytes: size }
+  }
+  const bytes = await readAtMost(response, MAX_TEXT_BYTES)
+  if (!bytes) return { oversized: true, contentType, bytes: size }
+  return new TextDecoder().decode(bytes)
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text) as unknown
+  } catch {
+    return null
+  }
+}
+
 async function readBody(response: Response): Promise<unknown> {
   const type = response.headers.get('content-type') ?? ''
   if (response.status === 204) return null
   const location = response.headers.get('location')
   if (REDIRECT_STATUSES.has(response.status) && location) return { redirect: true, location }
-  if (type.includes('json')) return response.json().catch(() => null)
-  if (type.startsWith('text/')) return response.text()
+  if (type.includes('json') || type.startsWith('text/')) {
+    const text = await readText(response, type)
+    if (typeof text !== 'string') return text
+    return type.includes('json') ? parseJson(text) : text
+  }
   const binary = await readBinary(response, type || null)
   // An answer with no type and no bytes is an empty success, not a file.
   return !type && binary.bytes === 0 ? null : binary

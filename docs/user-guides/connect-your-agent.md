@@ -83,7 +83,7 @@ yet.
 ## What your agent can do
 
 Whatever you can do in Piloti, within your rights: open and search your projects,
-read, upload and file documents, share documents and handle Freigaben, read and
+read, upload, file and share documents, handle Freigaben, read and
 write Anmerkungen, create and update Aufgaben, and work through your inbox. It
 sees only what you can see: a project you are not a member of, or a folder
 restricted to other people, does not exist for it.
@@ -94,9 +94,16 @@ restricted to other people, does not exist for it.
   call marked as a change or a deletion. Piloti marks every operation as a read,
   a change or a deletion, and a deletion that cannot be undone is marked as
   such. Read what the client shows before you confirm.
-- **Access rights and API keys are not available to agents yet.** Operations that
-  widen who may do what, or touch the organization's secrets, are hidden from
-  external agents.
+- **Access changes and API keys work only once your organization switches them
+  on, and your agent always asks you first.** Sharing a document or a chat,
+  setting who may open a folder, defining a role, and the organization's LLM
+  provider keys are hidden from agents until an administrator switches them on
+  for the organization, one switch for access changes and one for API keys. Your
+  client must also have been granted the extra permission for them when you
+  signed in. Each such call is marked as one to confirm, so the client asks you
+  every time. An API key goes in and never comes back out: an agent sees only its
+  last four characters. Piloti itself, inside the product, never does any of
+  this for you.
 - **No more than you have.** An agent never gets rights you lack.
 
 ## Revoke access

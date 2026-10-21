@@ -48,6 +48,11 @@ PROTOCOL_VERSION = "2025-11-25"
 MODE_HEADER = "x-piloti-mcp-mode"
 DISCOVERY_MODE = "discovery"
 
+#: The answer the turn is writing (``turn_answer_message_id``), as the other internal tools send it in
+#: their bodies (``answerMessageId``): the BFF marks it in ``message_restricted_use`` when a read runs in
+#: a conversation that drew on a restricted folder (ADR-0093). A header, because the MCP body is JSON-RPC.
+ANSWER_MESSAGE_HEADER = "X-Grid-Answer-Message-Id"
+
 #: A routed operation runs a BFF route in-process, some of them a search.
 REQUEST_TIMEOUT_SECONDS = 30
 
@@ -90,8 +95,8 @@ def _base_url() -> str:
     return url.rstrip("/")
 
 
-def request_headers(token: str, envelope: SignedEnvelope) -> dict[str, str]:
-    return {
+def request_headers(token: str, envelope: SignedEnvelope, answer_message_id: str | None = None) -> dict[str, str]:
+    headers = {
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": PROTOCOL_VERSION,
@@ -101,6 +106,9 @@ def request_headers(token: str, envelope: SignedEnvelope) -> dict[str, str]:
         "X-Grid-Request-Context": envelope.header,
         "X-Grid-Request-Context-Sig": envelope.signature,
     }
+    if answer_message_id:
+        headers[ANSWER_MESSAGE_HEADER] = answer_message_id
+    return headers
 
 
 def _jsonrpc_from(raw: str, content_type: str) -> dict[str, Any]:
@@ -155,17 +163,22 @@ def _result_text(message: dict[str, Any]) -> str:
     return f"Fehler: {text}" if result.get("isError") else text
 
 
-def call_tool(name: str, arguments: dict[str, Any], envelope: SignedEnvelope) -> str:
+def call_tool(
+    name: str, arguments: dict[str, Any], envelope: SignedEnvelope, *, answer_message_id: str | None = None
+) -> str:
     """One MCP ``tools/call``; the result text. See :func:`call_tool_result` for the rest of the answer."""
-    return call_tool_result(name, arguments, envelope).text
+    return call_tool_result(name, arguments, envelope, answer_message_id=answer_message_id).text
 
 
-def call_tool_result(name: str, arguments: dict[str, Any], envelope: SignedEnvelope) -> ToolResult:
+def call_tool_result(
+    name: str, arguments: dict[str, Any], envelope: SignedEnvelope, *, answer_message_id: str | None = None
+) -> ToolResult:
     """One MCP ``tools/call``; the text and the ``structuredContent``. Blocking: call it through ``asyncio.to_thread``.
 
     Raises :class:`WorkspaceError` for a refusal or a transport failure, so the
     tool has one thing to catch. A tool-level error (``isError``) is NOT raised:
     it is the server teaching the model what to fix, and is returned as text.
+    ``answer_message_id`` names the answer the turn writes (:data:`ANSWER_MESSAGE_HEADER`); None sends none.
     """
     token = os.environ.get("GRID_INTERNAL_API_TOKEN")
     if not token:
@@ -175,7 +188,7 @@ def call_tool_result(name: str, arguments: dict[str, Any], envelope: SignedEnvel
     request = urllib.request.Request(
         f"{_base_url()}{MCP_PATH}",
         data=json.dumps(body).encode("utf-8"),
-        headers=request_headers(token, envelope),
+        headers=request_headers(token, envelope, answer_message_id),
         method="POST",
     )
     try:

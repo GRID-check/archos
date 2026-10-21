@@ -24,7 +24,8 @@ const doorOf = (principal: AgentPrincipal) => (principal.kind === 'person' ? 'mc
 export function recordOperationCalled(
   { principal, mode }: McpCallContext,
   call: {
-    operation: string
+    /** A catalog name, or null for a name no operation has: that is the agent's own text. */
+    operation: string | null
     domain: string | null
     decision: CallDecision | 'refused'
     status: number

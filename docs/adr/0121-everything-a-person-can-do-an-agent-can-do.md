@@ -105,8 +105,10 @@ planned. None has a path to a route except the dispatcher.
 
 A WorkOS access token carries no permissions. The person's live membership, role
 and permissions are resolved on every call with `resolvePinnedRequesterSession`
-(ADR-0108), so a role change or a removed member takes effect on the next call
-and not when a token expires.
+(ADR-0108), so a role change or a removed member takes effect within a minute
+(the external door's membership lookup is cached at most that long) and not when
+a token expires. The per-change table is in `agent-surface.md`, "How long a
+revocation takes".
 
 External agents are off by default. A WorkOS feature flag, `agent-mcp`, gates
 them per organization; an organization admin turns it on.
@@ -122,27 +124,62 @@ The agent acts for a person, and the person decides what changes.
   asks its user before a call the annotations mark as a write.
 - **Piloti in-product never applies a write itself.** Every write it attempts
   becomes an `operation` proposal, a server object the person accepts, which runs
-  as the accepting person, or dismisses (ADR-0105). A read runs at once.
+  as the accepting person, or dismisses (ADR-0105). A read runs at once, unless
+  the conversation is shared.
+
+#### Shared conversations
+
+A read runs as the requester and its answer lands in the transcript, which
+everyone the conversation is shared with reads. Piloti's own retrieval answers
+to that audience (ADR-0093, ADR-0094); a route's answer is one person's and does
+not say which folder or project it came from. So in a conversation anyone else
+reads, Piloti runs no workspace read and no backend read, and relays a refusal
+instead; writes are still proposed, since they run as whoever accepts them. In a
+conversation that is the requester's alone, the read runs after every folder of
+the turn's project that restricts someone and that the requester may read is
+recorded for the conversation and the turn's answer is marked, so a later share
+is judged against them. Fail closed: running the read as the audience instead
+would need every route to answer for a group, and none does.
 
 ### Sensitive operations
 
 An operation may carry `sensitivity: 'access' | 'secret'`. `access` widens who
 may do what: sharing grants, folder access, custom role definitions. `secret`
-touches the organization's credentials: LLM provider keys.
+touches the organization's credentials: LLM provider keys, and the audit-log
+Admin Portal links, which hand out a credential.
 
-These are designed to be reachable, with guards a plain operation does not need:
+They are reachable, with guards a plain operation does not need. The product
+owner decided (2026-10) that an agent may do everything a person can, as long as
+the person says yes or no to each such call; the guards are how that holds:
 
-- the organization opted in a second time;
+- the organization opted in a second time, per class: the WorkOS entitlements
+  `agent-mcp-access` and `agent-mcp-secrets`, both off by default and read per
+  organization when the token is verified (`SENSITIVE_OPT_IN_FLAGS`,
+  `principal.ts`). Without its class's flag an operation is absent from
+  `tools/list`, search and describe, and a call names an unknown operation;
 - the client holds a step-up OAuth scope, and a call without it answers
-  `403 insufficient_scope` so the client can ask the person to grant it;
-- the person confirms every call (`destructiveHint` is always true);
-- Piloti in-product only proposes them, never applies one;
-- a secret is write-only and never returned.
+  `403 insufficient_scope` so the client can ask the person to grant it. Until
+  WorkOS defines that scope and grants it only on the person's step-up consent,
+  the scope is ignored and no external agent sees a sensitive operation;
+- the person confirms every call: `destructiveHint` is true on every sensitive
+  operation, the one sensitive read (`organization-llm-credential-list`)
+  included;
+- Piloti in-product neither sees nor proposes them: one click on a card the
+  agent worded is not the confirmation they need. It does not see the `platform`
+  domain at all;
+- a secret is write-only and never returned: the key list answers a masked
+  hint (the last four characters) and a fingerprint, and `secret-operations.spec.ts`
+  holds every result, refusal and telemetry event of the key operations free of
+  the key.
 
-**They are not catalogued yet.** They wait for an explicit permission decision
-in the agent tooling: whether an agent may hold the right to widen access at all.
-Until that is made, they are uncovered, and the ratchet lists them as such. An
-unmade decision is recorded as a gap and not as a policy.
+**Built.** Fifteen route methods are catalogued with a sensitivity, and
+`agent-reachability.spec.ts` (`SENSITIVE`) holds each to exactly its class and
+nothing else to one: folder access, sharing visibility and grants (add, change,
+revoke) and custom roles (create, change, delete) as `access`; the LLM provider
+keys (list, connect, revoke, verify, mode) and the two audit-log portal links as
+`secret`. The routes stay the gate: each still runs its own `authz` and feature
+gate as the person. Until the scope is enforced in WorkOS no external client sees
+any of them, whatever the organization switched on.
 
 ### Discovery and tools mode
 
@@ -254,6 +291,13 @@ the way the three consumers of ADR-0055 did.
   Schema export can describe.
 - The principal and policy specs under `lib/agent-api/` cover who may call (the
   `agent-mcp` flag, scopes, audience) and what the client must confirm.
+- `read-gate.spec.ts` walks the real catalog and the backend operations: no read
+  Piloti can name reaches the dispatcher or the backend in a shared conversation.
+- `read-only-writes.spec.ts` lists every non-GET operation that claims
+  `readOnly`, each with the reason its service writes nothing; a new claim fails
+  until it has one, and no sensitive operation may claim it.
+- `/api/mcp` charges `mcp-request` (`lib/limits/rules.js`) once per request;
+  `app/api/mcp/route.spec.ts` holds it.
 - PostHog events, through the collector (ADR-0119): `agent_operation_called`
   (operation, client, status) and `agent_capability_missing` (what an agent
   tried to do and no operation covers).

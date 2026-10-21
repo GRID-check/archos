@@ -8,46 +8,21 @@
  * (ADR-0017); every check lives in `@/lib/sharing/service`.
  */
 
-import { z } from 'zod'
 import { captureServer } from '@/lib/analytics/posthog-server'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { requireCollaborationEnabled } from '@/lib/authz/feature-flags'
-import { RESOURCE_ROLES } from '@/lib/db/schema'
 import { changeResourceRole, escalateToOwner, grantResourceAccess } from '@/lib/sharing/service'
 import { requireShareableType } from '@/lib/sharing/registry'
+import { grantPostSchema, roleChangeSchema } from '@/lib/sharing/sharing-wire'
 
 type Params = { resourceType: string; resourceId: string }
-
-/**
- * `collaborator` is the default role for an invitee (spec SH-10) — the role that
- * lets someone actually take part, which is the point of inviting them.
- */
-const grantSchema = z.object({
-  subjectUserId: z.string().min(1).max(256),
-  role: z.enum(RESOURCE_ROLES).default('collaborator'),
-})
-
-/**
- * Self-escalation is a distinct, audited act rather than "grant yourself owner",
- * so it is its own body shape: a project admin taking ownership must be
- * distinguishable from a normal grant in the audit trail (spec SH-10, SH-14).
- */
-const escalateSchema = z.object({ escalate: z.literal(true) })
-
-const postSchema = z.union([escalateSchema, grantSchema])
-
-const roleChangeSchema = z.object({
-  subjectUserId: z.string().min(1).max(256),
-  role: z.enum(RESOURCE_ROLES),
-})
-
 
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {
     const gated = requireCollaborationEnabled(session)
     if (gated) return gated
     const resourceType = requireShareableType(params.resourceType)
-    const body = await parseJsonBody(request, postSchema)
+    const body = await parseJsonBody(request, grantPostSchema)
 
     if ('escalate' in body) {
       return escalateToOwner(session, resourceType, params.resourceId, request)

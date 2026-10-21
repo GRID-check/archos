@@ -207,6 +207,18 @@ export const FEATURE_FLAGS = {
    * own in-product calls to the same server are not gated by it.
    */
   agentMcp: 'agent-mcp',
+  /**
+   * The organization's second opt-in for the agent door (ADR-0121, "Sensitive
+   * operations"): operations with `sensitivity: 'access'` (sharing grants,
+   * folder access, custom role definitions) are offered to an external agent
+   * only with this on. One flag per class, so an office can let its agents
+   * share and still keep its provider keys to itself. Read per organization
+   * when the bearer token is verified (`lib/agent-api/principal.ts`). Piloti
+   * in-product never sees these operations, flag or not.
+   */
+  agentMcpAccess: 'agent-mcp-access',
+  /** The same opt-in for `sensitivity: 'secret'`: the organization's LLM provider keys and audit-log links. */
+  agentMcpSecrets: 'agent-mcp-secrets',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -228,6 +240,8 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'piloti-wakes': 'entitlement',
   'piloti-acts': 'entitlement',
   'agent-mcp': 'entitlement',
+  'agent-mcp-access': 'entitlement',
+  'agent-mcp-secrets': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',

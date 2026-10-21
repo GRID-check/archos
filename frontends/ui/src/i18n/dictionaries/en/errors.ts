@@ -69,4 +69,13 @@ export const errors = {
     memory:
       'This conversation drew on other projects that are still running, or on folders of other projects with their own access list, so nothing from it is saved to project or office memory: everyone in this project reads that memory, including people who may not open those projects or folders. What came from the open folders of closed projects may be saved.',
   },
+  /**
+   * The agent surface (ADR-0121) refusing a workspace read Piloti would make in
+   * a conversation other people read. Relayed as the tool result; the agent
+   * quotes the German one to the reader.
+   */
+  agentSurface: {
+    sharedConversationRead:
+      'This conversation is shared, so Piloti reads nothing from the workspace in it: the answer would be visible to everyone who reads the conversation, including people who may not open that content. Open it yourself in Piloti, or ask in a conversation that is yours alone.',
+  },
 }

@@ -20,8 +20,14 @@ vi.mock('@/lib/agent-api/catalog', async () => {
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 vi.mock('@/lib/agent-api/telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapabilityMissing: vi.fn() }))
+vi.mock('@/lib/limits', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/limits')>()),
+  enforceLimit: vi.fn(),
+}))
 
+import { TooManyRequestsError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
 import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
 import { DELETE, GET, POST } from './route'
 
@@ -72,6 +78,14 @@ beforeEach(() => {
   process.env.GRID_INTERNAL_API_TOKEN = SECRET
   process.env.WORKOS_REDIRECT_URI = 'https://app.piloti.test/api/auth/callback'
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
+  vi.mocked(enforceLimit).mockResolvedValue({
+    allowed: true,
+    rule: MCP_REQUEST_LIMIT.name,
+    remaining: 1,
+    limit: MCP_REQUEST_LIMIT.limit,
+    retryAfterSeconds: 0,
+    degraded: false,
+  })
 })
 
 describe('authentication', () => {
@@ -117,6 +131,44 @@ describe('origin', () => {
   })
 })
 
+describe('rate limit (M6)', () => {
+  it('charges the mcp-request rule once per HTTP request, to the member, after the caller is known', async () => {
+    const response = await POST(
+      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, pilotiHeaders()),
+    )
+    expect(response.status).toBe(200)
+    expect(enforceLimit).toHaveBeenCalledTimes(1)
+    expect(enforceLimit).toHaveBeenCalledWith(MCP_REQUEST_LIMIT, memberSubject(session))
+  })
+
+  it('charges nothing for a caller it turned away', async () => {
+    expect((await POST(rpc('tools/list', {}))).status).toBe(401)
+    expect(enforceLimit).not.toHaveBeenCalled()
+  })
+
+  it('answers 429 with Retry-After once the budget is spent, and runs nothing', async () => {
+    const decision = {
+      allowed: false,
+      rule: MCP_REQUEST_LIMIT.name,
+      remaining: 0,
+      limit: MCP_REQUEST_LIMIT.limit,
+      retryAfterSeconds: 7,
+      degraded: false,
+    }
+    vi.mocked(enforceLimit).mockRejectedValueOnce(new TooManyRequestsError(decision))
+    const response = await POST(rpc('tools/list', {}, pilotiHeaders()))
+    expect(response.status).toBe(429)
+    expect(response.headers.get('retry-after')).toBe('7')
+    expect(response.headers.get('x-ratelimit-policy')).toBe('mcp-request')
+  })
+
+  it('names a budget and documents it', () => {
+    expect(MCP_REQUEST_LIMIT).toMatchObject({ name: 'mcp-request' })
+    expect(MCP_REQUEST_LIMIT.limit).toBeGreaterThan(0)
+    expect(MCP_REQUEST_LIMIT.burst?.limit).toBeLessThan(MCP_REQUEST_LIMIT.limit)
+  })
+})
+
 describe('stateless transport', () => {
   it('answers GET and DELETE with 405', async () => {
     for (const handler of [GET, DELETE]) {
@@ -156,7 +208,8 @@ describe('MCP round trip as Piloti', () => {
   })
 
   it('lists one tool per operation in tools mode, chosen by query or header', async () => {
-    const expected = ['project-list', 'project-member-add', 'project-delete', 'document-search', 'folder-access-grant', 'report-missing-capability']
+    // folder-access-grant is sensitive: Piloti may not propose it, so it never sees it (M4).
+    const expected = ['project-list', 'project-member-add', 'project-delete', 'document-search', 'report-missing-capability']
     expect(await toolNames(`${URL_}?mode=tools`)).toEqual(expected)
     expect(await toolNames(URL_, { 'x-piloti-mcp-mode': 'tools' })).toEqual(expected)
   })

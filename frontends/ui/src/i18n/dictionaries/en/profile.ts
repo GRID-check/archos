@@ -125,7 +125,7 @@ export const profile = {
       title: 'What your agent can do',
       intro: 'Whatever you can do in Piloti, within your rights:',
       projects: 'Open and search your projects',
-      documents: 'Read, upload and file documents',
+      documents: 'Read, upload, file and share documents',
       shares: 'Submit revisions for approval and approve them',
       annotations: 'Read and write annotations',
       tasks: 'Create and update tasks',
@@ -134,7 +134,7 @@ export const profile = {
     stays: {
       title: 'What stays with you',
       confirm: 'Anything that changes or deletes something needs your confirmation in the client first.',
-      sensitive: 'Access rights and API keys are not available to agents yet.',
+      sensitive: 'Access changes and API keys work only once your organization switches them on, and your agent always asks you first.',
       rights: 'Your agent never gets more rights than you have. If you lose access, so does it.',
     },
     guide: 'Read the full guide',

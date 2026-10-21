@@ -55,8 +55,13 @@ export interface PinnedRequester {
  */
 export async function resolvePinnedRequesterSession(
   requester: PinnedRequester,
+  options: { membershipTtlMs?: number } = {},
 ): Promise<AuthorizedSession | null> {
-  const membership = await resolveSubjectMembership(requester.organizationId, requester.userId)
+  const membership = await resolveSubjectMembership(
+    requester.organizationId,
+    requester.userId,
+    ...(options.membershipTtlMs === undefined ? [] : [options.membershipTtlMs]),
+  )
   return sessionFor(requester, membership)
 }
 

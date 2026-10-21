@@ -19,9 +19,10 @@ vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { FRESH_MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
 import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
-import { type AgentPrincipal, type AuthChallenge, isChallenge, resolvePrincipal } from './principal'
+import { ANSWER_MESSAGE_HEADER, type AgentPrincipal, type AuthChallenge, isChallenge, resolvePrincipal } from './principal'
 
 const DOMAIN = 'auth.piloti.test'
 const ISSUER = `https://${DOMAIN}`
@@ -87,13 +88,23 @@ describe('external agent (bearer token)', () => {
       session,
       clientId: 'client_claude',
       scopes: ['openid', 'profile'],
+      sensitiveOptIns: ['access', 'secret'],
     })
-    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({
-      userId: 'user_1',
-      email: null,
-      organizationId: 'org_1',
-    })
+    // The fresh membership lookup: a removed member's token stops working within a minute (L7).
+    expect(resolvePinnedRequesterSession).toHaveBeenCalledWith(
+      { userId: 'user_1', email: null, organizationId: 'org_1' },
+      { membershipTtlMs: FRESH_MEMBERSHIP_TTL_MS }
+    )
+    expect(FRESH_MEMBERSHIP_TTL_MS).toBeLessThanOrEqual(60_000)
     expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp', 'org_1')
+  })
+
+  it('reads the organization’s opt-in per sensitivity class, each on its own', async () => {
+    vi.mocked(isOrgFeatureEnabled).mockImplementation(async (flag) => flag !== 'agent-mcp-secrets')
+    const result = (await resolvePrincipal(bearer(await token()), { jwks })) as AgentPrincipal
+    expect(result.sensitiveOptIns).toEqual(['access'])
+    expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp-access', 'org_1')
+    expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp-secrets', 'org_1')
   })
 
   it('never carries the token into the session', async () => {
@@ -200,9 +211,18 @@ describe('Piloti in-product (internal token and envelope)', () => {
       scopes: [],
       conversationId: 'conv_1',
       projectId: 'proj_1',
+      answerMessageId: null,
     })
     // The product itself is not an opt-in feature.
     expect(isOrgFeatureEnabled).not.toHaveBeenCalled()
+  })
+
+  it('reads the answer id the turn names, and ignores one that is not a uuid', async () => {
+    const answer = '0b8f3c2e-5d1a-4c6b-9e7f-1a2b3c4d5e6f'
+    const named = await resolvePrincipal(piloti({ ...envelope(), [ANSWER_MESSAGE_HEADER]: answer }), { jwks })
+    expect(named).toMatchObject({ kind: 'piloti', answerMessageId: answer })
+    const junk = await resolvePrincipal(piloti({ ...envelope(), [ANSWER_MESSAGE_HEADER]: 'drop table' }), { jwks })
+    expect(junk).toMatchObject({ kind: 'piloti', answerMessageId: null })
   })
 
   it('refuses the service token alone', async () => {

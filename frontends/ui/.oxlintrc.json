@@ -228,9 +228,7 @@
         "src/app/api/internal/agent-profiler-spans/route.ts",
         "src/app/api/internal/citation-events/route.ts",
         "src/app/api/internal/memory/route.ts",
-        "src/app/api/internal/usage/route.ts",
-        "src/app/api/sharing/\\[resourceType\\]/\\[resourceId\\]/grants/route.ts",
-        "src/app/api/sharing/\\[resourceType\\]/\\[resourceId\\]/route.ts"
+        "src/app/api/internal/usage/route.ts"
       ],
       "rules": { "typescript/no-restricted-imports": "off" }
     },

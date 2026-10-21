@@ -1672,7 +1672,12 @@
                       "type": "object",
                       "additionalProperties": {}
                     },
-                    "body": {}
+                    "body": {},
+                    "ifMatch": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 256
+                    }
                   },
                   "additionalProperties": false
                 },
@@ -2681,7 +2686,12 @@
                           "type": "object",
                           "additionalProperties": {}
                         },
-                        "body": {}
+                        "body": {},
+                        "ifMatch": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 256
+                        }
                       },
                       "additionalProperties": false
                     },

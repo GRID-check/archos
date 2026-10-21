@@ -147,6 +147,28 @@ async def test_the_request_is_one_stateless_tools_call_in_discovery_mode(monkeyp
     }
 
 
+async def test_each_call_names_the_answer_its_turn_writes(monkeypatch, sent) -> None:
+    """The BFF marks that answer when a read runs in a conversation that drew on a restricted folder (ADR-0093)."""
+    from aiq_agent.turn.response import turn_answer_message_id
+
+    bind(monkeypatch, turn_of("anna"))
+    await workspace.run_call("project-get", {"params": {"id": "p1"}})
+
+    (request,) = sent
+    assert header(request, client.ANSWER_MESSAGE_HEADER) == turn_answer_message_id("conv-1")
+
+
+async def test_a_run_outside_a_conversation_names_no_answer(monkeypatch, sent) -> None:
+    bind(monkeypatch, turn_of("anna"))
+    from nat.plugin_api import Context
+
+    Context.get().conversation_id = None
+    await workspace.run_search("anything")
+
+    (request,) = sent
+    assert header(request, client.ANSWER_MESSAGE_HEADER) is None
+
+
 async def test_the_four_functions_map_to_the_servers_four_tools(monkeypatch, sent) -> None:
     bind(monkeypatch, turn_of("anna"))
     await workspace.run_search("x", domain="projects", limit=3)

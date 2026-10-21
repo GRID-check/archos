@@ -35,10 +35,14 @@ flowchart LR
    checked for signature, issuer (`https://<WORKOS_AUTHKIT_DOMAIN>`) and audience
    (the MCP URL, RFC 8707). A token carries no permissions, so the person's
    membership, role and permissions are resolved on every call with
-   `resolvePinnedRequesterSession` (ADR-0108).
+   `resolvePinnedRequesterSession` (ADR-0108). Then the request is charged one
+   unit of `mcp-request` (`lib/limits/rules.js`: 600 per ten minutes, 30 per five
+   seconds, per member, shared by every client of that person); a spent budget
+   answers 429 with `Retry-After` before any tool runs.
 3. **Policy.** `policy.ts` decides whether this call may run. The organization
    needs the `agent-mcp` flag for an external agent. Piloti in-product has no
-   such flag, but its writes never run directly (see below).
+   such flag, but its writes never run directly, and its reads are held to the
+   conversation's audience (see below).
 4. **Dispatch.** `dispatch.ts` builds a `Request` from the operation's method and
    path and calls the route's exported handler in-process, inside
    `runAsActingSession`. The handler's factory then resolves the session (now the
@@ -60,12 +64,60 @@ leak its person into the next one.
 **Only `lib/agent-api/dispatch.ts` enters it**, and only with a session built by
 `resolvePinnedRequesterSession`. Never call `runAsActingSession` anywhere else.
 
+### How long a revocation takes
+
+A token outlives the membership it was issued for, so how soon a removal bites
+is how old the answers about the person may be:
+
+| What changed | When the agent door notices |
+|---|---|
+| Removed from the organization, or the organization role changed | Within a minute on the external door: its membership lookup is cached for `FRESH_MEMBERSHIP_TTL_MS` (60 s) under its own key, not the ten minutes the session cache keeps. A lookup WorkOS does not answer refuses. Piloti's door reads the envelope's person through the ten-minute cache; a turn is minutes long |
+| A project role or a folder's access changed | As fast as the route's own check: the project and folder decisions read WorkOS through their own caches, exactly as for a browser |
+| The `agent-mcp` flag turned off | Within 30 seconds: the flag is read per call, through the flag cache (`lib/workos/feature-flags.ts`) |
+| The token revoked in WorkOS | Not before it expires. The server verifies the signature and claims and does not introspect; the membership check above is what makes a revoked person's token useless |
+
 ### The person says yes or no
 
 | Client | A read | A write |
 |---|---|---|
 | External agent | Runs | The client asks its user, driven by the tool annotations |
-| Piloti in-product | Runs | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
+| Piloti in-product, in a conversation that is the person's alone | Runs, after the restricted folders it may draw on are recorded (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
+| Piloti in-product, in a shared conversation | Refused, with a sentence the model relays | As above |
+
+### Shared conversations
+
+A read runs as the requester, and its answer lands in a transcript everyone the
+conversation is shared with reads. Piloti's own retrieval is held to that
+audience (ADR-0093, ADR-0094: it searches only what every reader may read, and
+records what it used before the model sees it). A route's answer is one
+person's and does not say which folder or project its content came from, so
+`read-gate.ts` fails closed, once per MCP request:
+
+- **Shared** (named grantees, or visible to the project or the office): no
+  workspace read and no backend read runs. The model gets
+  `errors.agentSurface.sharedConversationRead` ("In einer geteilten Unterhaltung
+  liest Piloti nichts aus dem Arbeitsbereich …") to relay. A redirect or a
+  presigned link is never handed on there either. `AUDIENCE_SAFE_READ_DOMAINS`
+  is empty: a domain belongs in it only when every reader of the conversation
+  may read every answer of every operation in it.
+- **Solo** (private, the requester's alone, or not created yet): before the
+  first read of the request, `recordSoloWorkspaceRead` admits every folder of
+  the turn's project that restricts someone and that the requester may read
+  (`admitSourceFolders`), and marks the turn's answer (`markTurnAnswer`), as
+  the internal restricted-use route does. A later share is then judged against
+  those folders. This over-records on purpose: the answer's own provenance is
+  unknown. The answer's id comes from the agent in `x-grid-answer-message-id`
+  (`turn_answer_message_id`), as the other internal tools send `answerMessageId`.
+- **No conversation** (an external agent, a run with no chat): nothing to judge.
+
+Not covered yet: a read in a solo conversation of another project's object, by
+id, records only the turn's own project. A later share of that conversation is
+not judged against the other project (ADR-0094's `conversation_source_projects`
+is written by the cross-project lookups alone).
+
+`read-gate.spec.ts` walks the real catalog and every backend operation and fails
+if any read Piloti can name reaches `callOperation` or `callBackendOperation` in
+a shared conversation.
 
 `annotationsOf` in `operation.ts` states every hint: `readOnlyHint`,
 `destructiveHint`, `idempotentHint`, `openWorldHint`. A hint left out would
@@ -167,11 +219,16 @@ describable. Otherwise give the operation a looser `body` written for the agent
 (`z.object({...}).passthrough()` with the describable fields) and a comment that
 the route's schema is the gate. The route's schema is always the gate.
 
+Beside `params`, `query` and `body`, every write's input (and `call-operation`'s)
+takes `ifMatch`, sent to the route as `If-Match`: the version the agent read, for
+the routes that refuse a write over a newer one (the project profile). A proposal
+keeps it, so accepting later still refuses to overwrite a newer version.
+
 ### Annotations
 
 | Field | Set it when | Default |
 |---|---|---|
-| `readOnly: true` | A POST that only searches or computes | `method === 'GET'` |
+| `readOnly: true` | A POST that only searches or computes. Read the route's service first: a row, a file, a grant or a credential is a write. Add the operation to `read-only-writes.spec.ts` with one line saying why it writes nothing | `method === 'GET'` |
 | `destructive: true` | A person confirms it in a dialog: delete, revoke, release, purge | `method === 'DELETE'` |
 | `idempotent: true` | Calling twice leaves the same state (a PUT-like PATCH) | GET, PUT, DELETE |
 
@@ -191,7 +248,11 @@ the text names the other ways in: `document-text-get` for the text in pages, `do
 a time-limited link. A route that redirects (3xx with `Location`) is handed on as a
 `resource_link` and never followed server-side; the link is a credential and expires.
 `document-download`, `document-preview-get`, `document-thumbnail-get` and `bim-model-source-get`
-answer JSON holding such a URL, so they are plain reads.
+answer JSON holding such a URL, so they are plain reads, and never run for Piloti in a shared
+conversation (`LINK_BEARING_OPERATIONS`).
+
+A JSON or text answer is streamed with a cap too, `MAX_TEXT_BYTES` (5 MiB): past it nothing more
+is read and the agent is told to narrow the call. The tool result shows 40k characters anyway.
 
 **In.** An operation says `bodyEncoding`:
 
@@ -212,14 +273,47 @@ part), `mail-import-complete`.
 
 `sensitivity: 'access'` marks an operation that widens who may do what (sharing
 grants, folder access, custom role definitions). `sensitivity: 'secret'` marks one
-that touches the organization's secrets (LLM provider keys). The mechanism exists:
-a sensitive operation is always `destructiveHint`, needs the organization's second
-opt-in and a step-up OAuth scope (`403 insufficient_scope` without it), is only
-proposed by Piloti, and a secret is write-only and never returned.
+that touches the organization's secrets (LLM provider keys) or hands out a
+credential (an Admin Portal link). A sensitive operation is always
+`destructiveHint` (`annotationsOf`, reads included), is a write except for the
+reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
-**No sensitive operation is catalogued yet.** They wait for an explicit
-permission decision in the agent tooling. Until then the ratchet lists their
-routes as uncovered. Do not catalogue one on your own initiative.
+- **Piloti in-product never sees one** and `proposeOperation` refuses to file one
+  (403): accepting a card the agent worded is not the confirmation such a change
+  needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`).
+- **An external agent sees one only when its organization switched the class
+  on**: the entitlements `agent-mcp-access` and `agent-mcp-secrets`, off by
+  default, read per organization into `AgentPrincipal.sensitiveOptIns` when the
+  token is verified (`SENSITIVE_OPT_IN_FLAGS`, `principal.ts`), and checked by
+  `maySeeSensitive` (`policy.ts`). Rows in
+  [`workos-provisioning.md`](../deployment/workos-provisioning.md).
+- **And only with the step-up scope `piloti:sensitive`,
+  and only once `SENSITIVE_SCOPE_ENFORCED_BY_WORKOS` (`policy.ts`) is true.** It
+  is false: WorkOS does not define the scope yet, so a token carrying the string
+  proves nothing. Flip it in the change that records here how the scope is
+  defined and granted (on the person's step-up consent) in each WorkOS
+  environment.
+
+- **A secret is write-only.** `organization-llm-credential-create` takes the key;
+  no answer carries it back, the list shows `keyHint` (the last four characters)
+  and a fingerprint, and the door's telemetry carries no input.
+  `secret-operations.spec.ts` runs the key operations through `runOperation` and
+  the real routes and fails if the key appears in a result, a refusal or a
+  telemetry event.
+
+The catalogued ones, and their class, are the `SENSITIVE` map of
+`agent-reachability.spec.ts`, which fails when an operation carries a sensitivity
+the map does not give it, or none where it does:
+
+| Class | Operations |
+|---|---|
+| `access` | `project-folder-access-set`, `sharing-visibility-set`, `sharing-grant-add`, `sharing-grant-update`, `sharing-grant-revoke`, `organization-role-create`, `organization-role-update`, `organization-role-delete` |
+| `secret` | `organization-llm-credential-list`, `organization-llm-credential-create`, `organization-llm-credential-revoke`, `organization-llm-credential-verify`, `organization-llm-provider-mode-set`, `organization-audit-portal-link-create`, `platform-audit-portal-link` |
+
+A new operation that widens access or touches a credential gets its line in
+`SENSITIVE` in the same change. Its description says that the organization
+switches it on and that the person confirms every call; a secret's says the key
+is write-only.
 
 ## Exemptions
 
@@ -251,7 +345,7 @@ Two PostHog events, sent through the collector (ADR-0119):
 
 | Event | When | Use |
 |---|---|---|
-| `agent_operation_called` | Each call: operation name, client, status | Which operations agents use, and which fail |
+| `agent_operation_called` | Each call: operation name (null for a name no operation has: that is the agent's own text), client, status | Which operations agents use, and which fail |
 | `agent_capability_missing` | An agent calls `report-missing-capability` | The backlog of operations nobody has written |
 
 ## How Piloti uses it
@@ -259,7 +353,8 @@ Two PostHog events, sent through the collector (ADR-0119):
 Piloti reaches the workspace through the same server, as one more client. In a
 turn it echoes the turn's signed request-context envelope; the BFF resolves the
 person it names and builds the pinned session. Python never signs an envelope. A
-read runs. A write never runs: it becomes an `operation` proposal, shown as a card,
+read runs, unless the conversation is shared ([above](#shared-conversations)). A
+write never runs: it becomes an `operation` proposal, shown as a card,
 that the person accepts or dismisses (ADR-0105). The accepting person's session is
 the one the operation runs in. A turn in no project files the proposal on the
 organization, and the same call repeated while its proposal is open files nothing
@@ -297,6 +392,11 @@ Cursor opens the sign-in on first use.
 
 A client that does not support OAuth cannot connect yet. Scripts get WorkOS API
 Keys later.
+
+The person-facing version of this section, with the copyable address, lives in
+the profile (`features/agent-connect/`) and in the user guide
+[`../user-guides/connect-your-agent.md`](../user-guides/connect-your-agent.md).
+Change a client's steps in both.
 
 ## WorkOS dashboard setup
 

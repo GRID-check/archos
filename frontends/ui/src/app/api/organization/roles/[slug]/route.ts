@@ -13,15 +13,13 @@ import { BadRequestError } from '@/lib/api/errors'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { deleteCustomRole, updateCustomRole } from '@/lib/authz/custom-roles'
-import { roleFieldsSchema } from '../schema'
+import { updateRoleSchema } from '@/lib/authz/role-wire'
 
 type Params = { slug: string }
 
-const patchSchema = roleFieldsSchema.partial().strict()
-
 export const PATCH = apiRoute<Params>(
   async ({ session, params, request }) => {
-    const input = await parseJsonBody(request, patchSchema)
+    const input = await parseJsonBody(request, updateRoleSchema)
     if (Object.keys(input).length === 0) throw new BadRequestError('Nothing to change')
     return { role: await updateCustomRole(session, params.slug, input, request) }
   },

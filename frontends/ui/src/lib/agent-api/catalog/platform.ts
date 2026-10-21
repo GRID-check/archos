@@ -114,10 +114,13 @@ export const platformOperations: readonly AgentOperation[] = [
     summary: 'Get an Admin Portal link to the platform audit log',
     description:
       'Generates a short-lived WorkOS Admin Portal link to the platform organization’s audit-log viewer, where break-glass ' +
-      'access and other platform events land. Returns `{ link }`; open it in a browser. Changes nothing.',
+      'access and other platform events land. Returns `{ link }`; open it in a browser. The link is a credential to the ' +
+      'platform audit log: hand it to nobody else.',
     method: 'POST',
     path: '/api/platform/audit-portal',
-    readOnly: true,
+    // Mints an Admin Portal credential: a write that hands out a secret, never a read.
+    idempotent: false,
+    sensitivity: 'secret',
     load: () => import('@/app/api/platform/audit-portal/route'),
   },
 

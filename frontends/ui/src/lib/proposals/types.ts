@@ -172,6 +172,8 @@ export const operationInputSchema = z
     params: z.record(z.string()).optional(),
     query: z.record(z.unknown()).optional(),
     body: z.unknown().optional(),
+    /** The version the agent read, sent as If-Match when the proposal is applied: a newer one refuses it. */
+    ifMatch: z.string().min(1).max(256).optional(),
   })
   .strict()
 export type OperationProposalInput = z.infer<typeof operationInputSchema>

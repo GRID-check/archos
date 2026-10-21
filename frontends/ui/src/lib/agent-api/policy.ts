@@ -8,18 +8,40 @@
  *  - What `tools/list` shows. The specification allows the list to vary by
  *    credentials. An operation with a `sensitivity` (it widens who may do what,
  *    or touches the organization's secrets) is shown to an external agent only
- *    when its client was granted the step-up scope.
+ *    when the organization switched its class on (`agent-mcp-access`,
+ *    `agent-mcp-secrets`), its client was granted the step-up scope AND that
+ *    scope is enforced by WorkOS ({@link SENSITIVE_SCOPE_ENFORCED_BY_WORKOS},
+ *    off), and never to in-product Piloti, which also never sees the
+ *    `platform` domain.
  *  - Whether a call runs or is proposed. In-product Piloti never applies a write
  *    itself; the person accepts or dismisses it (ADR-0105).
  */
 
 import { BACKEND_OPERATIONS, type BackendOperation, findBackendOperation } from './backend-operations'
 import { AGENT_OPERATIONS, findOperation } from './catalog'
-import type { AgentOperation } from './operation'
+import type { AgentDomain, AgentOperation, Sensitivity } from './operation'
 import type { AgentPrincipal } from './principal'
 
 /** The scope an external client needs for operations with a `sensitivity`. */
 export const SENSITIVE_SCOPE = 'piloti:sensitive'
+
+/**
+ * Whether {@link SENSITIVE_SCOPE} means anything yet. A token's scopes are only
+ * as good as the authorization server that grants them: until the scope is
+ * defined in WorkOS, granted only after the person's step-up consent, and that
+ * is verified per environment, a client could carry the string without anyone
+ * having agreed to it. So it is ignored, and no external agent sees a
+ * sensitive operation. Flip this in the change that records the WorkOS setup
+ * in `docs/architecture/agent-surface.md#sensitive-operations`, never before.
+ */
+export const SENSITIVE_SCOPE_ENFORCED_BY_WORKOS = false
+
+/**
+ * Domains in-product Piloti never sees. `platform` is the operator console of
+ * the GRID Platform organization: nothing an office asks its colleague for, and
+ * every write there (defaults, prices, keys) reaches every tenant.
+ */
+export const PILOTI_HIDDEN_DOMAINS: ReadonlySet<AgentDomain> = new Set<AgentDomain>(['platform'])
 
 export type CallDecision = 'run' | 'propose'
 
@@ -29,9 +51,29 @@ export function isReadOnly(op: AgentOperation): boolean {
 
 /** May `principal` see (and so name) `op`? */
 export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
-  if (!op.sensitivity) return true
-  // Piloti sees them: its writes become proposals the person confirms.
-  return principal.kind === 'piloti' || principal.scopes.includes(SENSITIVE_SCOPE)
+  if (principal.kind === 'piloti') {
+    // Piloti may not propose a sensitive operation (`proposeOperation` refuses it too),
+    // so showing one would only teach the model a call that cannot succeed.
+    return !op.sensitivity && !PILOTI_HIDDEN_DOMAINS.has(op.domain)
+  }
+  return !op.sensitivity || maySeeSensitive(principal, op.sensitivity)
+}
+
+/**
+ * Whether an external principal may be offered an operation of class
+ * `sensitivity`: the organization switched the class on, the scope means
+ * something ({@link SENSITIVE_SCOPE_ENFORCED_BY_WORKOS}), and the client holds
+ * it. `scopeEnforced` exists so the specs can reach the opt-in check.
+ */
+export function maySeeSensitive(
+  principal: AgentPrincipal,
+  sensitivity: Sensitivity,
+  scopeEnforced: boolean = SENSITIVE_SCOPE_ENFORCED_BY_WORKOS,
+): boolean {
+  if (principal.kind !== 'person') return false
+  return (
+    (principal.sensitiveOptIns ?? []).includes(sensitivity) && scopeEnforced && principal.scopes.includes(SENSITIVE_SCOPE)
+  )
 }
 
 export function visibleOperations(principal: AgentPrincipal): readonly AgentOperation[] {

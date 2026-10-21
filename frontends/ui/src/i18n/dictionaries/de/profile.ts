@@ -127,7 +127,7 @@ export const profile: typeof en.profile = {
       title: 'Was Ihr Agent kann',
       intro: 'Alles, was Sie in Piloti tun können, im Rahmen Ihrer Rechte:',
       projects: 'Ihre Projekte öffnen und durchsuchen',
-      documents: 'Dokumente lesen, hochladen und ablegen',
+      documents: 'Dokumente lesen, hochladen, ablegen und teilen',
       shares: 'Fassungen zur Freigabe einreichen und freigeben',
       annotations: 'Anmerkungen lesen und schreiben',
       tasks: 'Aufgaben anlegen und bearbeiten',
@@ -136,7 +136,7 @@ export const profile: typeof en.profile = {
     stays: {
       title: 'Was bei Ihnen bleibt',
       confirm: 'Alles, was etwas ändert oder löscht, bestätigen Sie zuerst im Client.',
-      sensitive: 'Zugriffsrechte und API-Schlüssel stehen Agenten noch nicht zur Verfügung.',
+      sensitive: 'Zugriffsänderungen und API-Schlüssel funktionieren erst, wenn Ihre Organisation sie freischaltet, und Ihr Agent fragt Sie immer zuerst.',
       rights: 'Ihr Agent bekommt nie mehr Rechte als Sie. Verlieren Sie den Zugang, verliert er ihn auch.',
     },
     guide: 'Zur ausführlichen Anleitung',

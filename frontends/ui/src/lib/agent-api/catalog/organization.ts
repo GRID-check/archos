@@ -16,11 +16,21 @@ import {
   usageQuerySchema,
   zdrPutSchema,
 } from '@/lib/organizations/organization-wire'
+import { createRoleSchema, updateRoleSchema } from '@/lib/authz/role-wire'
+import { createCredentialSchema, providerModeSchema } from '@/lib/llm-credentials/credential-wire'
 import { uploadScreeningPolicySchema } from '@/lib/upload-screening/policy'
 import type { AgentOperation } from '../operation'
 
 const memoryParams = z.object({
   itemId: z.string().describe('The organization memory item id, from organization-memory-list.'),
+})
+
+const roleParams = z.object({
+  slug: z.string().describe('The custom role’s slug, from organization-role-list.'),
+})
+
+const credentialParams = z.object({
+  id: z.string().uuid().describe('The credential id (a UUID), from organization-llm-credential-list.'),
 })
 
 const versionParams = z.object({
@@ -61,6 +71,50 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'GET',
     path: '/api/organization/roles',
     load: () => import('@/app/api/organization/roles/route'),
+  },
+  {
+    name: 'organization-role-create',
+    domain: 'organization',
+    summary: 'Define a custom role',
+    description:
+      'Creates a custom role from `name`, an optional `description` and `permissions`, at most 50, each one the editor holds; ' +
+      'the `assignable` list of organization-role-list names them. The slug is derived from the name, once. Needs ' +
+      'org:members:manage. Returns `{ role }`. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'POST',
+    path: '/api/organization/roles',
+    body: createRoleSchema,
+    idempotent: false,
+    sensitivity: 'access',
+    load: () => import('@/app/api/organization/roles/route'),
+  },
+  {
+    name: 'organization-role-update',
+    domain: 'organization',
+    summary: 'Change a custom role',
+    description:
+      'Changes a custom role’s `name`, `description` or `permissions`; send only what changes. A built-in role cannot be ' +
+      'changed, and a permission the editor lacks cannot be added. Every holder of the role gets the new permissions. Needs ' +
+      'org:members:manage. Returns `{ role }`. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'PATCH',
+    path: '/api/organization/roles/[slug]',
+    params: roleParams,
+    body: updateRoleSchema,
+    idempotent: true,
+    sensitivity: 'access',
+    load: () => import('@/app/api/organization/roles/[slug]/route'),
+  },
+  {
+    name: 'organization-role-delete',
+    domain: 'organization',
+    summary: 'Delete a custom role',
+    description:
+      'Deletes a custom role. Refused with 409 `role-assigned` while somebody holds it, and for a built-in role. Needs ' +
+      'org:members:manage. Returns `{ slug }`. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'DELETE',
+    path: '/api/organization/roles/[slug]',
+    params: roleParams,
+    sensitivity: 'access',
+    load: () => import('@/app/api/organization/roles/[slug]/route'),
   },
 
   // --- settings ------------------------------------------------------------
@@ -248,6 +302,79 @@ export const organizationOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/organization/model-config/zdr/route'),
   },
 
+  // --- LLM provider keys ---------------------------------------------------
+  {
+    name: 'organization-llm-credential-list',
+    domain: 'organization',
+    summary: 'List the organization’s LLM provider keys',
+    description:
+      'The organization’s own LLM provider keys as metadata: provider, label, base URL, status, dates, a masked `keyHint` ' +
+      '(the last four characters) and a fingerprint. The key itself is write-only and never returned. Also the `mode` ' +
+      '(`byok` or `platform`). Needs org:models:manage and the byok-llm feature. ' +
+      'Sensitive: the organization switches it on for agents, and the person confirms every call. ',
+    method: 'GET',
+    path: '/api/organization/llm-credentials',
+    sensitivity: 'secret',
+    load: () => import('@/app/api/organization/llm-credentials/route'),
+  },
+  {
+    name: 'organization-llm-credential-create',
+    domain: 'organization',
+    summary: 'Connect an LLM provider key',
+    description:
+      'Checks `apiKey` against the provider, stores it encrypted and makes it the active key. `provider` is one of the presets; ' +
+      '`baseUrl` only where the provider takes one; `rotatedFrom` names the key it replaces. The key is write-only: no answer carries it ' +
+      'back. Returns `{ credential }` as organization-llm-credential-list shows it. Needs ' +
+      'org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call. Ask the person for the key; never invent or reuse one.',
+    method: 'POST',
+    path: '/api/organization/llm-credentials',
+    body: createCredentialSchema,
+    idempotent: false,
+    sensitivity: 'secret',
+    load: () => import('@/app/api/organization/llm-credentials/route'),
+  },
+  {
+    name: 'organization-llm-credential-revoke',
+    domain: 'organization',
+    summary: 'Revoke an LLM provider key',
+    description:
+      'Revokes the key; the organization’s traffic falls back to the platform service within a minute. The key is never ' +
+      'returned. Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'DELETE',
+    path: '/api/organization/llm-credentials/[id]',
+    params: credentialParams,
+    sensitivity: 'secret',
+    load: () => import('@/app/api/organization/llm-credentials/[id]/route'),
+  },
+  {
+    name: 'organization-llm-credential-verify',
+    domain: 'organization',
+    summary: 'Check an LLM provider key against the provider',
+    description:
+      'Asks the provider whether the active key still works and records when. Returns `{ credential, modelCount }`; the key ' +
+      'itself is never returned. Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'POST',
+    path: '/api/organization/llm-credentials/[id]/verify',
+    params: credentialParams,
+    idempotent: true,
+    sensitivity: 'secret',
+    load: () => import('@/app/api/organization/llm-credentials/[id]/verify/route'),
+  },
+  {
+    name: 'organization-llm-provider-mode-set',
+    domain: 'organization',
+    summary: 'Choose between the organization’s key and the platform',
+    description:
+      'Sets `mode`: `byok` sends the organization’s traffic through its own key, `platform` through the platform service, ' +
+      'without deleting the stored key. New conversations follow within a minute. Needs org:models:manage and the byok-llm ' +
+      'feature. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'PUT',
+    path: '/api/organization/llm-credentials/mode',
+    body: providerModeSchema,
+    sensitivity: 'secret',
+    load: () => import('@/app/api/organization/llm-credentials/mode/route'),
+  },
+
   // --- budgets and usage ---------------------------------------------------
   {
     name: 'organization-budget-get',
@@ -397,6 +524,8 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'POST',
     path: '/api/organization/audit-portal',
     idempotent: false,
+    // The link is a credential to the organization's audit log, as platform-audit-portal-link's is.
+    sensitivity: 'secret',
     load: () => import('@/app/api/organization/audit-portal/route'),
   },
   {

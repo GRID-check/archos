@@ -18,7 +18,9 @@ import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
 import { buildMcpServer, resolveMode } from '@/lib/agent-api/mcp-server'
 import { type AgentPrincipal, isChallenge, resolvePrincipal } from '@/lib/agent-api/principal'
 import type { McpMode } from '@/lib/agent-api/telemetry'
+import { errorResponse } from '@/lib/api/handler'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
+import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
 
 export const dynamic = 'force-dynamic'
 
@@ -48,6 +50,14 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
 
   const principal = await resolvePrincipal(request)
   if (isChallenge(principal)) return principal.response
+
+  // Once per HTTP request, after the caller is known and before any tool runs
+  // (ADR-0040). The routes it dispatches to still charge their own rules.
+  try {
+    await enforceLimit(MCP_REQUEST_LIMIT, memberSubject(principal.session))
+  } catch (error) {
+    return errorResponse(error, request)
+  }
 
   // Not the bearer token: nothing downstream may be able to forward it.
   const authInfo: AuthInfo = {

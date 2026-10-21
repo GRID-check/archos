@@ -16,7 +16,7 @@ import {
   createCustomRole,
   listOrganizationRoles,
 } from '@/lib/authz/custom-roles'
-import { roleFieldsSchema } from './schema'
+import { createRoleSchema } from '@/lib/authz/role-wire'
 
 export const GET = apiRoute(
   async ({ session }) => ({
@@ -33,7 +33,7 @@ export const GET = apiRoute(
 
 export const POST = apiRoute(
   async ({ session, request }) => {
-    const input = await parseJsonBody(request, roleFieldsSchema.strict())
+    const input = await parseJsonBody(request, createRoleSchema)
     return { role: await createCustomRole(session, input, request) }
   },
   { status: 201, authz: { permission: ORG_PERMISSIONS.membersManage } }

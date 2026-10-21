@@ -23,6 +23,7 @@ import {
 } from '@/lib/documents/list-query'
 import { officeShelfNameProbeRequestSchema } from '@/lib/documents/name-probe-types'
 import { searchOfficeShelfSchema } from '@/lib/office-shelf/search-wire'
+import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
 import {
   openUploadBatchSchema,
   sealUploadBatchSchema,
@@ -598,12 +599,28 @@ export const foldersOperations: readonly AgentOperation[] = [
     summary: 'Read who may open a project folder',
     description:
       'The folder’s access as it is now: `{ mode: "inherit" }`, or `{ mode: "custom", everyoneReads, people: [{ userId, level }] }`. ' +
-      'Needs manage rights on the project and write access on the folder, as a change would. Changing access stays with a person in Piloti. ' +
+      'Needs manage rights on the project and write access on the folder, as a change would. Change it with project-folder-access-set. ' +
       'Folder ids come from project-folder-list.',
     method: 'GET',
     path: '/api/projects/[id]/folders/[folderId]/access',
     params: folderParams,
     load: () => import('@/app/api/projects/[id]/folders/[folderId]/access/route'),
   },
-
+  {
+    name: 'project-folder-access-set',
+    domain: 'folders',
+    summary: 'Set who may open a project folder',
+    description:
+      'Replaces the folder’s access. `{ mode: "inherit" }` returns it to the project’s access; `{ mode: "custom", everyoneReads, ' +
+      'people: [{ userId, level }] }` gives it its own list, `level` `read` or `write`, at most 50 people, user ids from ' +
+      'organization-member-list. A change of who may read moves the documents below the folder before the answer; `failed` lists ' +
+      'any that did not move, and the same call again retries them. Needs manage rights on the project and write access on the ' +
+      'folder. Read the access first with project-folder-access-get. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'PUT',
+    path: '/api/projects/[id]/folders/[folderId]/access',
+    params: folderParams,
+    body: folderAccessSchema,
+    sensitivity: 'access',
+    load: () => import('@/app/api/projects/[id]/folders/[folderId]/access/route'),
+  },
 ]

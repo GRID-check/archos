@@ -44,6 +44,8 @@ describe('the registry', () => {
     expect(entitlements).toEqual(
       [
         'agent-mcp',
+        'agent-mcp-access',
+        'agent-mcp-secrets',
         'byok-llm',
         'collaboration',
         'deep-research',

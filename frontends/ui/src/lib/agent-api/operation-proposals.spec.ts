@@ -267,6 +267,13 @@ describe('proposeOperation', () => {
     expect(insertProposedChange).not.toHaveBeenCalled()
   })
 
+  it('refuses to file a sensitive operation, whatever the proposer may do (M4)', async () => {
+    const sensitive = { ...FOLDER_RENAME, name: 'folder-access-grant', sensitivity: 'access' as const }
+    await expect(propose(sensitive)).rejects.toMatchObject({ status: 403 })
+    await expect(propose({ ...sensitive, sensitivity: 'secret' as const })).rejects.toBeInstanceOf(ForbiddenError)
+    expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
   it('files the same call once while the first proposal is open, and again once it is decided', async () => {
     const first = await propose()
     const again = await propose()

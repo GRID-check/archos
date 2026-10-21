@@ -24,6 +24,7 @@ vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapability
 import { callBackendOperation } from './backend-operations'
 import { callOperation, parseOperationInput } from './dispatch'
 import {
+  META_TOOLS,
   MAX_RESULT_CHARS,
   callOperationTool,
   describeOperation,
@@ -241,6 +242,47 @@ describe('call-operation', () => {
       expect.anything(),
       expect.objectContaining({ decision: 'refused', status: 404 }),
     )
+  })
+
+  it('records an unknown name as null: it is the agent\'s own text (L9)', async () => {
+    await callOperationTool(ctx(person), { name: 'Anna Huber anrufen', input: {} })
+    expect(recordOperationCalled).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ operation: null, domain: null, decision: 'refused', status: 404 }),
+    )
+    expect(JSON.stringify(vi.mocked(recordOperationCalled).mock.calls)).not.toContain('Anna Huber')
+  })
+
+  it('passes ifMatch through call-operation to the dispatcher', async () => {
+    await callOperationTool(ctx(person), {
+      name: 'project-member-add',
+      input: { params: { id: 'p1' }, body: { userId: 'u2', role: 'viewer' }, ifMatch: '"3"' },
+    })
+    expect(callOperation).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'project-member-add' }),
+      expect.objectContaining({ ifMatch: '"3"' }),
+      session,
+    )
+  })
+
+  it('offers ifMatch in the schema of a write, not of a read', () => {
+    const schemaOf = (name: string) =>
+      structured(describeOperation(ctx(person), { name })).inputSchema as { properties: Record<string, unknown> }
+    expect(schemaOf('project-member-add').properties).toHaveProperty('ifMatch')
+    expect(schemaOf('project-list').properties).not.toHaveProperty('ifMatch')
+    // And call-operation's own schema, which a client validates arguments against before sending them.
+    expect(META_TOOLS['call-operation'].inputSchema.properties.input.properties).toHaveProperty('ifMatch')
+  })
+
+  it('refuses an oversized answer and says how to narrow it', async () => {
+    vi.mocked(callOperation).mockResolvedValueOnce({
+      status: 200,
+      ok: true,
+      body: { oversized: true, contentType: 'application/json', bytes: 9 * 1024 * 1024 },
+    })
+    const result = await callOperationTool(ctx(person), { name: 'project-list' })
+    expect(result.isError).toBe(true)
+    expect(text(result)).toMatch(/was not read\. Narrow the call/)
   })
 
   it('truncates a large result and says how to page', async () => {

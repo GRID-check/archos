@@ -25,6 +25,7 @@ from typing import Any
 from aiq_agent import project_context
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.retrieval_trace import emit_step_span
+from aiq_agent.turn.response import turn_answer_message_id
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig
@@ -95,6 +96,12 @@ def _envelope() -> SignedEnvelope | None:
     return SignedEnvelope(header=header, signature=signature)
 
 
+def _answer_message_id() -> str | None:
+    """The answer this turn writes, for the BFF to mark (ADR-0093); none outside a conversation."""
+    conversation_id = project_context.get_conversation_id_from_context()
+    return turn_answer_message_id(conversation_id) if conversation_id else None
+
+
 def _observe(step: str, request: dict[str, Any], outcome: dict[str, Any]) -> None:
     """A ``workspace.<step>`` observation and the turn's tag. Names and sizes, never the answer's text."""
     add_trace_tag(FEATURE_TAG)
@@ -108,7 +115,9 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"refused": "no_envelope"})
         return _NO_ENVELOPE
     try:
-        result = await asyncio.to_thread(call_tool_result, SERVER_TOOLS[step], arguments, envelope)
+        result = await asyncio.to_thread(
+            call_tool_result, SERVER_TOOLS[step], arguments, envelope, answer_message_id=_answer_message_id()
+        )
     except WorkspaceError as exc:
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"error": str(exc), "status": exc.status})
         return (

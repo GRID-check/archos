@@ -133,8 +133,9 @@ export function annotationsOf(op: AgentOperation): ToolAnnotations {
   return {
     title: op.summary,
     readOnlyHint,
-    // A sensitive write is always one the client confirms with the person.
-    destructiveHint: !readOnlyHint && (op.sensitivity !== undefined || (op.destructive ?? op.method === 'DELETE')),
+    // A sensitive operation is always one the client confirms with the person, a read of
+    // the organization's keys included; any other read never is.
+    destructiveHint: op.sensitivity !== undefined || (!readOnlyHint && (op.destructive ?? op.method === 'DELETE')),
     idempotentHint: readOnlyHint || (op.idempotent ?? (op.method === 'PUT' || op.method === 'DELETE')),
     openWorldHint: false,
   }

@@ -10,10 +10,12 @@
 import { describe, expect, it } from 'vitest'
 import {
   MAX_INLINE_BYTES,
+  MAX_TEXT_BYTES,
   callOperation,
   filenameFromDisposition,
   formDataOf,
   isBinaryBody,
+  isOversizedBody,
   isRedirectBody,
 } from './dispatch'
 import type { AgentOperation, RouteHandler } from './operation'
@@ -116,6 +118,58 @@ describe('a binary answer', () => {
     const text = operation(async () => new Response('hello', { headers: { 'content-type': 'text/markdown' } }))
     expect((await callOperation(json, {}, session)).body).toEqual({ a: 1 })
     expect((await callOperation(text, {}, session)).body).toBe('hello')
+  })
+})
+
+describe('a JSON or text answer too large to read (M6)', () => {
+  it('is described, not read, when Content-Length announces more than the cap', async () => {
+    const op = operation(
+      async () =>
+        new Response('{}', {
+          headers: { 'content-type': 'application/json', 'content-length': String(MAX_TEXT_BYTES + 1) },
+        }),
+    )
+    const result = await callOperation(op, {}, session)
+    expect(isOversizedBody(result.body)).toBe(true)
+    expect(result.body).toMatchObject({ bytes: MAX_TEXT_BYTES + 1, contentType: 'application/json' })
+  })
+
+  it('stops reading a JSON stream that grows past the cap without announcing its size', async () => {
+    let pulled = 0
+    const chunk = new Uint8Array(1024 * 1024).fill(0x20)
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1
+        // An answer with no end: only the cap stops it.
+        controller.enqueue(chunk)
+      },
+    })
+    const op = operation(async () => new Response(stream, { headers: { 'content-type': 'application/json' } }))
+    const result = await callOperation(op, {}, session)
+    expect(isOversizedBody(result.body)).toBe(true)
+    expect(pulled).toBeLessThanOrEqual(MAX_TEXT_BYTES / chunk.byteLength + 2)
+  })
+
+  it('reads one at the cap, and an unparsable JSON body as null', async () => {
+    const atCap = operation(async () => new Response(JSON.stringify('x'.repeat(MAX_TEXT_BYTES - 2)), { headers: { 'content-type': 'application/json' } }))
+    expect(typeof (await callOperation(atCap, {}, session)).body).toBe('string')
+    const broken = operation(async () => new Response('{nope', { headers: { 'content-type': 'application/json' } }))
+    expect((await callOperation(broken, {}, session)).body).toBeNull()
+  })
+})
+
+describe('If-Match', () => {
+  it('reaches the route as the header the browser sends', async () => {
+    let seen: string | null = null
+    const op = operation(
+      async (request) => {
+        seen = request.headers.get('if-match')
+        return Response.json({ ok: true })
+      },
+      { method: 'PUT' },
+    )
+    await callOperation(op, { body: {}, ifMatch: '"7"' }, session)
+    expect(seen).toBe('"7"')
   })
 })
 

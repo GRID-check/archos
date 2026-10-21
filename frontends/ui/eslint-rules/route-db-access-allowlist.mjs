@@ -14,6 +14,4 @@ export const PRE_EXISTING_DB_IMPORTERS = [
   'app/api/internal/citation-events/route.ts',
   'app/api/internal/memory/route.ts',
   'app/api/internal/usage/route.ts',
-  'app/api/sharing/[resourceType]/[resourceId]/grants/route.ts',
-  'app/api/sharing/[resourceType]/[resourceId]/route.ts',
 ]

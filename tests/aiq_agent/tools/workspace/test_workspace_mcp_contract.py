@@ -48,6 +48,10 @@ ENVELOPE_HEADER = (
     base64.urlsafe_b64encode(json.dumps(ENVELOPE_PAYLOAD, separators=(",", ":")).encode()).decode().rstrip("=")
 )
 
+#: The answer a turn names (``turn_answer_message_id``), a uuid the BFF marks when the conversation drew on a
+#: restricted folder (ADR-0093). Fixed here so the fixture is stable.
+ANSWER_MESSAGE_ID = "6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e"
+
 #: One real call per tool the agent exposes (``register.SERVER_TOOLS``), a write and a read of ``call-operation``.
 CASES: list[tuple[str, str, dict[str, Any]]] = [
     ("search", "search-operations", {"query": "project", "limit": 10}),
@@ -122,7 +126,7 @@ def _built_requests(monkeypatch: pytest.MonkeyPatch) -> list[dict[str, Any]]:
     for case, tool, arguments in CASES:
         opener = _Opener(_Reply(json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"content": []}}), "application/json"))
         monkeypatch.setattr(client, "_opener", opener)
-        client.call_tool(tool, arguments, _envelope())
+        client.call_tool(tool, arguments, _envelope(), answer_message_id=ANSWER_MESSAGE_ID)
         request = opener.request
         built.append(
             {
@@ -257,3 +261,16 @@ def test_a_tool_level_error_comes_back_as_text(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
     text = client.call_tool("describe-operation", {"name": "nope"}, _envelope())
     assert text.startswith("Fehler: Unknown operation")
+
+
+def test_a_read_refused_in_a_shared_conversation_reaches_the_model_as_the_servers_sentence(monkeypatch) -> None:
+    """In a shared conversation the server runs no read (ADR-0093): the model gets its sentence, as an error."""
+    entry = _responses()["responses"]["refused_shared_conversation"]
+    assert entry["status"] == 200
+    monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
+    tool, arguments = next((t, a) for n, t, a in CASES if n == "call_read")
+
+    result = client.call_tool_result(tool, arguments, _envelope(), answer_message_id=ANSWER_MESSAGE_ID)
+
+    assert result.text.startswith("Fehler: In einer geteilten Unterhaltung")
+    assert result.structured is None

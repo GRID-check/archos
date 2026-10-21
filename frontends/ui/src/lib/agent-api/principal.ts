@@ -37,10 +37,13 @@ import { ApiError } from '@/lib/api/errors'
 import { requireVerifiedContext, requirePinnedSession } from '@/lib/api/internal-envelope'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
+import { FRESH_MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
+import { FEATURE_FLAGS, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
+import { isUuid } from '@/lib/ids'
 import { INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { authkitDomain, authkitIssuer, mcpResourceUrl } from './mcp-config'
+import { SENSITIVITIES, type Sensitivity } from './operation'
 
 export interface AgentPrincipal {
   /** `person`: an external agent acting for a person. `piloti`: the in-product agent. */
@@ -53,7 +56,37 @@ export interface AgentPrincipal {
   conversationId?: string | null
   /** The project the turn runs in (Piloti only). */
   projectId?: string | null
+  /**
+   * The answer the turn is writing (Piloti only), from {@link ANSWER_MESSAGE_HEADER}: the id the
+   * agent mints for it (`turn_answer_message_id`), marked in `message_restricted_use` when a read
+   * runs in a conversation that drew on a restricted folder (ADR-0093). Unsigned, like the
+   * `answerMessageId` the internal routes take in their bodies: it only ever narrows.
+   */
+  answerMessageId?: string | null
+  /**
+   * The sensitivity classes the organization switched on for its agents
+   * ({@link SENSITIVE_OPT_IN_FLAGS}), read when the token is verified. Absent or
+   * empty: no operation with a `sensitivity` is offered. Never set for Piloti.
+   */
+  sensitiveOptIns?: readonly Sensitivity[]
 }
+
+/** The organization's opt-in per sensitivity class (ADR-0121, "Sensitive operations"). */
+export const SENSITIVE_OPT_IN_FLAGS: Readonly<Record<Sensitivity, KnownFeatureFlag>> = {
+  access: FEATURE_FLAGS.agentMcpAccess,
+  secret: FEATURE_FLAGS.agentMcpSecrets,
+}
+
+/** The classes whose opt-in flag is on for `organizationId`; a failed lookup reads as off. */
+async function sensitiveOptInsOf(organizationId: string): Promise<Sensitivity[]> {
+  const on = await Promise.all(
+    SENSITIVITIES.map((sensitivity) => isOrgFeatureEnabled(SENSITIVE_OPT_IN_FLAGS[sensitivity], organizationId)),
+  )
+  return SENSITIVITIES.filter((_, index) => on[index] === true)
+}
+
+/** The header Piloti names the turn's answer in; anything but a uuid is ignored. */
+export const ANSWER_MESSAGE_HEADER = 'x-grid-answer-message-id'
 
 /** A request that did not authenticate, with the answer to send. */
 export interface AuthChallenge {
@@ -164,10 +197,26 @@ async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise
     return refuse(403, 'Agent access (MCP) is not enabled for this organization.')
   }
 
-  const session = await resolvePinnedRequesterSession({ userId, email: null, organizationId })
+  // A token outlives the membership it was issued for; the fresh lookup makes a
+  // removal or a role change bite within a minute here, not the session cache's ten.
+  const session = await resolvePinnedRequesterSession(
+    { userId, email: null, organizationId },
+    { membershipTtlMs: FRESH_MEMBERSHIP_TTL_MS },
+  )
   if (!session) return refuse(403, 'You are not a member of this organization.')
 
-  return { kind: 'person', session, clientId: auth.clientId || null, scopes: auth.scopes }
+  return {
+    kind: 'person',
+    session,
+    clientId: auth.clientId || null,
+    scopes: auth.scopes,
+    sensitiveOptIns: await sensitiveOptInsOf(organizationId),
+  }
+}
+
+function answerMessageIdOf(request: Request): string | null {
+  const value = request.headers.get(ANSWER_MESSAGE_HEADER)?.trim()
+  return value && isUuid(value) ? value : null
 }
 
 async function pilotiPrincipal(request: Request): Promise<AgentPrincipal | AuthChallenge> {
@@ -183,6 +232,7 @@ async function pilotiPrincipal(request: Request): Promise<AgentPrincipal | AuthC
       scopes: [],
       conversationId: context.conversationId,
       projectId: context.projectId,
+      answerMessageId: answerMessageIdOf(request),
     }
   } catch (error) {
     if (error instanceof ApiError) {

@@ -1,0 +1,7 @@
+---
+security:
+  - >
+    In a conversation you have shared, Piloti no longer looks things up in your
+    projects for you: whatever it found would be visible to everyone in the
+    conversation, including people who may not open it. Ask in a conversation
+    that is yours alone, or open it yourself.

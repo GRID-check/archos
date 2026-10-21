@@ -769,7 +769,7 @@
       "post": {
         "operationId": "project-experience-extract",
         "summary": "Extract experience from a closing project",
-        "description": "Reads the project’s own documents once and returns what they say as suggestions for the office’s experience, which a person confirms. Refused for a closed project. Starts a paid model call; writes nothing by itself.",
+        "description": "Reads the project’s own documents once and stores what they say as suggestions: unconfirmed facts on the project profile and drafted decisions in project memory, which a person then confirms or dismisses. Refused for a closed project. Starts a paid model call. Needs project:memory:write or project:edit.",
         "tags": [
           "projects"
         ],
@@ -812,9 +812,9 @@
         },
         "x-mcp-annotations": {
           "title": "Extract experience from a closing project",
-          "readOnlyHint": true,
+          "readOnlyHint": false,
           "destructiveHint": false,
-          "idempotentHint": true,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }
@@ -7782,7 +7782,7 @@
       "get": {
         "operationId": "project-folder-access-get",
         "summary": "Read who may open a project folder",
-        "description": "The folder’s access as it is now: `{ mode: \"inherit\" }`, or `{ mode: \"custom\", everyoneReads, people: [{ userId, level }] }`. Needs manage rights on the project and write access on the folder, as a change would. Changing access stays with a person in Piloti. Folder ids come from project-folder-list.",
+        "description": "The folder’s access as it is now: `{ mode: \"inherit\" }`, or `{ mode: \"custom\", everyoneReads, people: [{ userId, level }] }`. Needs manage rights on the project and write access on the folder, as a change would. Change it with project-folder-access-set. Folder ids come from project-folder-list.",
         "tags": [
           "folders"
         ],
@@ -7837,6 +7837,138 @@
           "title": "Read who may open a project folder",
           "readOnlyHint": true,
           "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "put": {
+        "operationId": "project-folder-access-set",
+        "summary": "Set who may open a project folder",
+        "description": "Replaces the folder’s access. `{ mode: \"inherit\" }` returns it to the project’s access; `{ mode: \"custom\", everyoneReads, people: [{ userId, level }] }` gives it its own list, `level` `read` or `write`, at most 50 people, user ids from organization-member-list. A change of who may read moves the documents below the folder before the answer; `failed` lists any that did not move, and the same call again retries them. Needs manage rights on the project and write access on the folder. Read the access first with project-folder-access-get. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "folders"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "folderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The folder id, from project-folder-list or project-folder-bin-list."
+            },
+            "description": "The folder id, from project-folder-list or project-folder-bin-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "const": "inherit"
+                      }
+                    },
+                    "required": [
+                      "mode"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "mode": {
+                        "const": "custom"
+                      },
+                      "everyoneReads": {
+                        "type": "boolean"
+                      },
+                      "people": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "userId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 100
+                            },
+                            "level": {
+                              "type": "string",
+                              "enum": [
+                                "read",
+                                "write"
+                              ]
+                            }
+                          },
+                          "required": [
+                            "userId",
+                            "level"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 50
+                      }
+                    },
+                    "required": [
+                      "mode",
+                      "everyoneReads",
+                      "people"
+                    ],
+                    "additionalProperties": false
+                  }
+                ],
+                "discriminator": {
+                  "propertyName": "mode"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Set who may open a project folder",
+          "readOnlyHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -14453,7 +14585,7 @@
       "get": {
         "operationId": "sharing-get",
         "summary": "Read who has access to a resource",
-        "description": "The sharing state of a conversation or other shareable resource: its visibility, the people with a grant and their roles, and the person’s own role. Changing access is not offered to agents.",
+        "description": "The sharing state of a conversation or other shareable resource: its visibility, the people with a grant and their roles, and the person’s own role. Change it with sharing-visibility-set, sharing-grant-add, sharing-grant-update and sharing-grant-revoke.",
         "tags": [
           "collaboration"
         ],
@@ -14508,6 +14640,371 @@
           "title": "Read who has access to a resource",
           "readOnlyHint": true,
           "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "patch": {
+        "operationId": "sharing-visibility-set",
+        "summary": "Set who beyond the invited people may see a resource",
+        "description": "Sets the resource’s `visibility`: `private` (only the people with a grant), `project` (every member of its project) or `organization` (every member). Only the resource owner may change it. Returns the sharing state as sharing-get does. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "collaboration"
+        ],
+        "parameters": [
+          {
+            "name": "resourceType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            },
+            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The id of that resource, from its list operation."
+            },
+            "description": "The id of that resource, from its list operation."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "visibility": {
+                    "type": "string",
+                    "enum": [
+                      "private",
+                      "project",
+                      "organization"
+                    ]
+                  }
+                },
+                "required": [
+                  "visibility"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Set who beyond the invited people may see a resource",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/sharing/{resourceType}/{resourceId}/grants": {
+      "post": {
+        "operationId": "sharing-grant-add",
+        "summary": "Give a person access to a resource",
+        "description": "Grants `subjectUserId` a `role` on the resource: `viewer`, `collaborator` (the default) or `owner`. User ids come from sharing-candidate-list. Only the resource owner may grant. `{ escalate: true }` instead makes a project administrator the owner of a resource they were not party to, recorded as its own act. Returns the sharing state. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "collaboration"
+        ],
+        "parameters": [
+          {
+            "name": "resourceType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            },
+            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The id of that resource, from its list operation."
+            },
+            "description": "The id of that resource, from its list operation."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "escalate": {
+                        "const": true
+                      }
+                    },
+                    "required": [
+                      "escalate"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "subjectUserId": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256
+                      },
+                      "role": {
+                        "type": "string",
+                        "enum": [
+                          "viewer",
+                          "collaborator",
+                          "owner"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "subjectUserId"
+                    ],
+                    "additionalProperties": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Give a person access to a resource",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      "patch": {
+        "operationId": "sharing-grant-update",
+        "summary": "Change a person’s role on a resource",
+        "description": "Sets the `role` (`viewer`, `collaborator`, `owner`) of a person who already has a grant, named by `subjectUserId` as sharing-get lists them. Only the resource owner may change it, and the last owner cannot step down. Returns the sharing state. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "collaboration"
+        ],
+        "parameters": [
+          {
+            "name": "resourceType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            },
+            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The id of that resource, from its list operation."
+            },
+            "description": "The id of that resource, from its list operation."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "subjectUserId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256
+                  },
+                  "role": {
+                    "type": "string",
+                    "enum": [
+                      "viewer",
+                      "collaborator",
+                      "owner"
+                    ]
+                  }
+                },
+                "required": [
+                  "subjectUserId",
+                  "role"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Change a person’s role on a resource",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/sharing/{resourceType}/{resourceId}/grants/{subjectUserId}": {
+      "delete": {
+        "operationId": "sharing-grant-revoke",
+        "summary": "Take away a person’s access to a resource",
+        "description": "Removes the grant of `subjectUserId`, as sharing-get lists them. Naming the person themselves leaves the resource, which needs no ownership; removing somebody else needs the owner. Returns the sharing state. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "collaboration"
+        ],
+        "parameters": [
+          {
+            "name": "resourceType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+            },
+            "description": "The kind of shareable resource, such as `conversation` or `document`, as the resource’s own operations name it."
+          },
+          {
+            "name": "resourceId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The id of that resource, from its list operation."
+            },
+            "description": "The id of that resource, from its list operation."
+          },
+          {
+            "name": "subjectUserId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The user id of the person whose grant ends, from sharing-get."
+            },
+            "description": "The user id of the person whose grant ends, from sharing-get."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Take away a person’s access to a resource",
+          "readOnlyHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -18138,10 +18635,11 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "secret",
         "x-mcp-annotations": {
           "title": "Get a link to the audit log viewer",
           "readOnlyHint": false,
-          "destructiveHint": false,
+          "destructiveHint": true,
           "idempotentHint": false,
           "openWorldHint": false
         }
@@ -18793,6 +19291,327 @@
         }
       }
     },
+    "/api/organization/llm-credentials": {
+      "post": {
+        "operationId": "organization-llm-credential-create",
+        "summary": "Connect an LLM provider key",
+        "description": "Checks `apiKey` against the provider, stores it encrypted and makes it the active key. `provider` is one of the presets; `baseUrl` only where the provider takes one; `rotatedFrom` names the key it replaces. The key is write-only: no answer carries it back. Returns `{ credential }` as organization-llm-credential-list shows it. Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call. Ask the person for the key; never invent or reuse one.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "openrouter",
+                      "openai",
+                      "azure-openai",
+                      "custom"
+                    ]
+                  },
+                  "label": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "baseUrl": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 500
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "apiKey": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 512
+                  },
+                  "rotatedFrom": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "provider",
+                  "label",
+                  "apiKey"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "secret",
+        "x-mcp-annotations": {
+          "title": "Connect an LLM provider key",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
+      "get": {
+        "operationId": "organization-llm-credential-list",
+        "summary": "List the organization’s LLM provider keys",
+        "description": "The organization’s own LLM provider keys as metadata: provider, label, base URL, status, dates, a masked `keyHint` (the last four characters) and a fingerprint. The key itself is write-only and never returned. Also the `mode` (`byok` or `platform`). Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call. ",
+        "tags": [
+          "organization"
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "secret",
+        "x-mcp-annotations": {
+          "title": "List the organization’s LLM provider keys",
+          "readOnlyHint": true,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/organization/llm-credentials/{id}": {
+      "delete": {
+        "operationId": "organization-llm-credential-revoke",
+        "summary": "Revoke an LLM provider key",
+        "description": "Revokes the key; the organization’s traffic falls back to the platform service within a minute. The key is never returned. Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The credential id (a UUID), from organization-llm-credential-list."
+            },
+            "description": "The credential id (a UUID), from organization-llm-credential-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "secret",
+        "x-mcp-annotations": {
+          "title": "Revoke an LLM provider key",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/organization/llm-credentials/{id}/verify": {
+      "post": {
+        "operationId": "organization-llm-credential-verify",
+        "summary": "Check an LLM provider key against the provider",
+        "description": "Asks the provider whether the active key still works and records when. Returns `{ credential, modelCount }`; the key itself is never returned. Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The credential id (a UUID), from organization-llm-credential-list."
+            },
+            "description": "The credential id (a UUID), from organization-llm-credential-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "secret",
+        "x-mcp-annotations": {
+          "title": "Check an LLM provider key against the provider",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/organization/llm-credentials/mode": {
+      "put": {
+        "operationId": "organization-llm-provider-mode-set",
+        "summary": "Choose between the organization’s key and the platform",
+        "description": "Sets `mode`: `byok` sends the organization’s traffic through its own key, `platform` through the platform service, without deleting the stored key. New conversations follow within a minute. Needs org:models:manage and the byok-llm feature. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mode": {
+                    "type": "string",
+                    "enum": [
+                      "byok",
+                      "platform"
+                    ]
+                  }
+                },
+                "required": [
+                  "mode"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "secret",
+        "x-mcp-annotations": {
+          "title": "Choose between the organization’s key and the platform",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/organization/members": {
       "get": {
         "operationId": "organization-member-list",
@@ -19419,6 +20238,89 @@
       }
     },
     "/api/organization/roles": {
+      "post": {
+        "operationId": "organization-role-create",
+        "summary": "Define a custom role",
+        "description": "Creates a custom role from `name`, an optional `description` and `permissions`, at most 50, each one the editor holds; the `assignable` list of organization-role-list names them. The slug is derived from the name, once. Needs org:members:manage. Returns `{ role }`. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 150
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "maxItems": 50
+                  }
+                },
+                "required": [
+                  "name",
+                  "permissions"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Define a custom role",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      },
       "get": {
         "operationId": "organization-role-list",
         "summary": "List the organization’s roles",
@@ -19455,6 +20357,152 @@
           "title": "List the organization’s roles",
           "readOnlyHint": true,
           "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/organization/roles/{slug}": {
+      "delete": {
+        "operationId": "organization-role-delete",
+        "summary": "Delete a custom role",
+        "description": "Deletes a custom role. Refused with 409 `role-assigned` while somebody holds it, and for a built-in role. Needs org:members:manage. Returns `{ slug }`. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The custom role’s slug, from organization-role-list."
+            },
+            "description": "The custom role’s slug, from organization-role-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Delete a custom role",
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "patch": {
+        "operationId": "organization-role-update",
+        "summary": "Change a custom role",
+        "description": "Changes a custom role’s `name`, `description` or `permissions`; send only what changes. A built-in role cannot be changed, and a permission the editor lacks cannot be added. Every holder of the role gets the new permissions. Needs org:members:manage. Returns `{ role }`. Sensitive: the organization switches it on for agents, and the person confirms every call.",
+        "tags": [
+          "organization"
+        ],
+        "parameters": [
+          {
+            "name": "slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The custom role’s slug, from organization-role-list."
+            },
+            "description": "The custom role’s slug, from organization-role-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 64
+                  },
+                  "description": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "maxLength": 150
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "permissions": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "maxItems": 50
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-piloti-sensitivity": "access",
+        "x-mcp-annotations": {
+          "title": "Change a custom role",
+          "readOnlyHint": false,
+          "destructiveHint": true,
           "idempotentHint": true,
           "openWorldHint": false
         }
@@ -20928,7 +21976,7 @@
       "post": {
         "operationId": "platform-audit-portal-link",
         "summary": "Get an Admin Portal link to the platform audit log",
-        "description": "Generates a short-lived WorkOS Admin Portal link to the platform organization’s audit-log viewer, where break-glass access and other platform events land. Returns `{ link }`; open it in a browser. Changes nothing.",
+        "description": "Generates a short-lived WorkOS Admin Portal link to the platform organization’s audit-log viewer, where break-glass access and other platform events land. Returns `{ link }`; open it in a browser. The link is a credential to the platform audit log: hand it to nobody else.",
         "tags": [
           "platform"
         ],
@@ -20957,11 +22005,12 @@
             "$ref": "#/components/responses/Error429"
           }
         },
+        "x-piloti-sensitivity": "secret",
         "x-mcp-annotations": {
           "title": "Get an Admin Portal link to the platform audit log",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }

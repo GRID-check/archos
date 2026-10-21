@@ -14,9 +14,12 @@ vi.mock('./catalog', async () => {
 import { FAKE_OPERATIONS } from './test-operations'
 import {
   SENSITIVE_SCOPE,
+  SENSITIVE_SCOPE_ENFORCED_BY_WORKOS,
   callDecision,
+  canSee,
   findVisibleBackendOperation,
   findVisibleOperation,
+  maySeeSensitive,
   visibleBackendOperations,
   visibleOperations,
 } from './policy'
@@ -64,17 +67,55 @@ describe('visibleOperations', () => {
     expect(names(person())).toContain('project-member-add')
   })
 
-  it('shows it once the client holds piloti:sensitive', () => {
-    expect(names(person([SENSITIVE_SCOPE]))).toContain('folder-access-grant')
+  it('ignores piloti:sensitive while WorkOS does not define and enforce it (M5)', () => {
+    // A token carrying the string proves nothing until the authorization server grants it on step-up.
+    expect(SENSITIVE_SCOPE_ENFORCED_BY_WORKOS).toBe(false)
+    expect(names(person([SENSITIVE_SCOPE]))).not.toContain('folder-access-grant')
+    expect(findVisibleOperation(person([SENSITIVE_SCOPE]), 'folder-access-grant')).toBeUndefined()
   })
 
-  it('shows it to Piloti, whose writes are only proposals', () => {
-    expect(names(piloti)).toContain('folder-access-grant')
+  it('hides it from Piloti, which may not even propose it (M4)', () => {
+    expect(names(piloti)).not.toContain('folder-access-grant')
+    expect(findVisibleOperation(piloti, 'folder-access-grant')).toBeUndefined()
+  })
+
+  it('hides every platform operation from Piloti, and only from Piloti (H3)', () => {
+    const platformRead = { ...op('project-list'), name: 'platform-overview-get', domain: 'platform' as const }
+    expect(canSee(piloti, platformRead)).toBe(false)
+    expect(canSee(person(), platformRead)).toBe(true)
   })
 
   it('treats a hidden operation as absent', () => {
     expect(findVisibleOperation(person(), 'folder-access-grant')).toBeUndefined()
     expect(findVisibleOperation(person(), 'project-list')?.name).toBe('project-list')
+  })
+})
+
+describe('the guards on a sensitive operation (ADR-0121)', () => {
+  const optedIn = (sensitiveOptIns: AgentPrincipal['sensitiveOptIns'], scopes = [SENSITIVE_SCOPE]): AgentPrincipal => ({
+    ...person(scopes),
+    sensitiveOptIns,
+  })
+
+  it('needs the organization’s opt-in for that class, the scope, and the scope enforced', () => {
+    expect(maySeeSensitive(optedIn(['access']), 'access', true)).toBe(true)
+    // The other class stays off: an office may let agents share and keep its keys.
+    expect(maySeeSensitive(optedIn(['access']), 'secret', true)).toBe(false)
+    expect(maySeeSensitive(optedIn(['secret']), 'secret', true)).toBe(true)
+    expect(maySeeSensitive(optedIn([]), 'access', true)).toBe(false)
+    expect(maySeeSensitive(optedIn(undefined), 'access', true)).toBe(false)
+    expect(maySeeSensitive(optedIn(['access'], []), 'access', true)).toBe(false)
+    expect(maySeeSensitive(optedIn(['access']), 'access', false)).toBe(false)
+  })
+
+  it('is off by default: an opted-in organization’s agent with the scope sees nothing until WorkOS enforces it', () => {
+    expect(canSee(optedIn(['access', 'secret']), op('folder-access-grant'))).toBe(false)
+  })
+
+  it('never lets Piloti see one, whatever its principal claims', () => {
+    const claiming: AgentPrincipal = { ...piloti, scopes: [SENSITIVE_SCOPE], sensitiveOptIns: ['access', 'secret'] }
+    expect(maySeeSensitive(claiming, 'access', true)).toBe(false)
+    expect(canSee(claiming, op('folder-access-grant'))).toBe(false)
   })
 })
 

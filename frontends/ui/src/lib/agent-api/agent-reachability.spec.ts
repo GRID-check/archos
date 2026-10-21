@@ -27,7 +27,7 @@ import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { toJsonSchema } from '@/lib/api/zod-json-schema'
 import { AGENT_OPERATIONS } from './catalog'
-import { pathParams } from './operation'
+import { type Sensitivity, pathParams } from './operation'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const API_DIR = join(HERE, '../../app/api')
@@ -64,24 +64,29 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, string> = {
 }
 
 /**
- * Sensitive capabilities not yet reachable (ADR-0121, "Sensitive operations"):
- * changing who may see or do what, and the organization's secrets. They are
- * meant to become operations with `sensitivity` set, behind the extra guards
- * the ADR names (organization opt-in, step-up scope, the person confirms,
- * Piloti only proposes). Until those guards ship they are listed here, so
- * nothing catalogues them by accident. Same key format as above.
+ * Every route method an agent reaches only under the extra guards of ADR-0121
+ * ("Sensitive operations"), with its class: `access` changes who may see or do
+ * what, `secret` touches the organization's credentials. Each is catalogued
+ * with exactly this `sensitivity`, and nothing else carries one, so a grant of
+ * access cannot become a plain operation, nor a plain one a guarded one, without
+ * a line here. Keyed `METHOD /api/path`.
  */
-const PERSON_ONLY: Record<string, string> = {
-  'PUT /api/projects/[id]/folders/[folderId]/access': 'sets which roles may open a folder: a grant of access',
-  'PATCH /api/sharing/[resourceType]/[resourceId]': 'changes who may see a shared resource: a grant of access',
-  '* /api/sharing/[resourceType]/[resourceId]/grants': 'grants a person access to a resource: a grant of access',
-  '* /api/sharing/[resourceType]/[resourceId]/grants/[subjectUserId]': 'changes or revokes a person’s access grant',
-  'POST /api/organization/roles': 'defines a custom role, i.e. what its holders may do: a grant of permissions',
-  '* /api/organization/roles/[slug]': 'changes or deletes a custom role’s permissions: a grant of permissions',
-  '* /api/organization/llm-credentials': 'the organization’s LLM provider keys: secrets an agent never writes or reads',
-  '* /api/organization/llm-credentials/[id]': 'revokes an LLM provider key: the organization’s secrets',
-  '* /api/organization/llm-credentials/[id]/verify': 'tests an LLM provider key against the provider: the organization’s secrets',
-  '* /api/organization/llm-credentials/mode': 'switches the organization between its own keys and the platform’s',
+const SENSITIVE: Record<string, Sensitivity> = {
+  'PUT /api/projects/[id]/folders/[folderId]/access': 'access',
+  'PATCH /api/sharing/[resourceType]/[resourceId]': 'access',
+  'POST /api/sharing/[resourceType]/[resourceId]/grants': 'access',
+  'PATCH /api/sharing/[resourceType]/[resourceId]/grants': 'access',
+  'DELETE /api/sharing/[resourceType]/[resourceId]/grants/[subjectUserId]': 'access',
+  'POST /api/organization/roles': 'access',
+  'PATCH /api/organization/roles/[slug]': 'access',
+  'DELETE /api/organization/roles/[slug]': 'access',
+  'GET /api/organization/llm-credentials': 'secret',
+  'POST /api/organization/llm-credentials': 'secret',
+  'DELETE /api/organization/llm-credentials/[id]': 'secret',
+  'POST /api/organization/llm-credentials/[id]/verify': 'secret',
+  'PUT /api/organization/llm-credentials/mode': 'secret',
+  'POST /api/organization/audit-portal': 'secret',
+  'POST /api/platform/audit-portal': 'secret',
 }
 
 interface RouteMethod {
@@ -131,7 +136,7 @@ function listedIn(map: Record<string, string>, route: RouteMethod): boolean {
 }
 
 function isExempt(route: RouteMethod): boolean {
-  return listedIn(NOT_AN_AGENT_CAPABILITY, route) || listedIn(PERSON_ONLY, route)
+  return listedIn(NOT_AN_AGENT_CAPABILITY, route)
 }
 
 const ROUTES = personFacingRouteMethods()
@@ -172,15 +177,18 @@ describe('every person-facing route is agent-reachable (ADR-0121)', () => {
     expect(stale, 'Remove these from agent-reachability-baseline.json (UPDATE_FIXTURES=1 rewrites it).').toEqual([])
   })
 
-  it('a person-only capability is never catalogued', () => {
-    const catalogued = ROUTES.filter((route) => COVERED.has(route.key) && listedIn(PERSON_ONLY, route))
-    expect(catalogued.map((route) => route.key)).toEqual([])
+  it('a sensitive capability is catalogued with exactly its class, and nothing else carries one', () => {
+    const catalogued = Object.fromEntries(
+      AGENT_OPERATIONS.filter((op) => op.sensitivity).map((op) => [`${op.method} ${op.path}`, op.sensitivity]),
+    )
+    expect(catalogued).toEqual(SENSITIVE)
   })
 
   it('every exemption names a route that exists, with a reason', () => {
     const paths = new Set(ROUTES.map((route) => route.path))
     const keys = new Set(ROUTES.map((route) => route.key))
-    for (const [key, reason] of Object.entries({ ...NOT_AN_AGENT_CAPABILITY, ...PERSON_ONLY })) {
+    for (const key of Object.keys(SENSITIVE)) expect(keys.has(key), `${key} matches no route`).toBe(true)
+    for (const [key, reason] of Object.entries(NOT_AN_AGENT_CAPABILITY)) {
       expect(reason.length, key).toBeGreaterThan(30)
       const [method, path] = key.split(' ') as [string, string]
       // The MCP route answers with its own factory-less handler, so it may not

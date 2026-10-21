@@ -22,11 +22,14 @@ import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
 import {
   type BinaryBody,
   MAX_INLINE_BYTES,
+  MAX_TEXT_BYTES,
   type OperationInput,
   type OperationResult,
   OperationInputError,
   callOperation,
+  type OversizedBody,
   isBinaryBody,
+  isOversizedBody,
   isRedirectBody,
   parseOperationInput,
 } from './dispatch'
@@ -40,6 +43,7 @@ import {
   visibleBackendOperations,
   visibleOperations,
 } from './policy'
+import { readGateFor, sharedConversationReadRefusal } from './read-gate'
 import { type McpCallContext, recordCapabilityMissing, recordOperationCalled } from './telemetry'
 
 /** Longest text a result carries; beyond it the call must be narrowed. */
@@ -131,8 +135,18 @@ function redirectResult(opName: string, location: string): CallToolResult {
   }
 }
 
+/** An answer too large to read: the agent is told to narrow the call, as the text cap tells it. */
+function oversizedResult(opName: string, body: OversizedBody): CallToolResult {
+  return failure(
+    `${opName} answered with more than ${sizeText(MAX_TEXT_BYTES)} of ${body.contentType || 'text'}` +
+      (body.bytes === null ? '' : ` (${sizeText(body.bytes)})`) +
+      ', so it was not read. Narrow the call: pass a smaller limit or filters in input.query, or fetch one item by id.'
+  )
+}
+
 /** A route's answer as the tool result. A refusal keeps the route's own words: errors teach. */
 function fromOperationResult(opName: string, result: OperationResult): CallToolResult {
+  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
   if (result.ok) {
     if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
     if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
@@ -176,6 +190,18 @@ function fromBackendResult(result: OperationResult): CallToolResult {
 
 // --- the input schema of one operation -------------------------------------
 
+/** An ETag is short; anything longer is not one. */
+const IF_MATCH_MAX_LENGTH = 256
+
+const IF_MATCH_SCHEMA = {
+  type: 'string',
+  minLength: 1,
+  maxLength: IF_MATCH_MAX_LENGTH,
+  description:
+    'Sent as If-Match: the version you read (the project profile: its profileVersion). A write over a newer version is ' +
+    'refused; read again, then retry.',
+} as const
+
 const schemaCache = new Map<string, JsonSchemaNode>()
 
 function part(schema: Parameters<typeof toJsonSchema>[0]): { node: JsonSchemaNode; required: boolean } {
@@ -205,6 +231,8 @@ export function inputSchemaOf(op: AgentOperation): JsonSchemaNode {
     properties[key] = node
     if (isRequired) required.push(key)
   }
+  // A write may refuse to overwrite a newer version than the one the agent read (If-Match).
+  if (!annotationsOf(op).readOnlyHint) properties.ifMatch = IF_MATCH_SCHEMA
   const schema: JsonSchemaNode = { type: 'object', properties, additionalProperties: false }
   if (required.length > 0) schema.required = required
   schemaCache.set(op.name, schema)
@@ -224,6 +252,11 @@ export async function runBackendOperation(
     recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'run', status, startedAt })
   const projectId = typeof input.projectId === 'string' ? input.projectId : undefined
   try {
+    const refused = await readGateFor(ctx.principal).beforeRead(op)
+    if (refused) {
+      record(403)
+      return failure(refused)
+    }
     const result = await callBackendOperation(op.name, input, ctx.principal.session, { projectId })
     record(result.status)
     return fromBackendResult(result)
@@ -252,7 +285,8 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
   if (!op) {
     const backend = findVisibleBackendOperation(ctx.principal, name)
     if (backend) return runBackendOperation(ctx, backend, isRecord(input) ? { ...input } : {})
-    recordOperationCalled(ctx, { operation: name, domain: null, decision: 'refused', status: 404, startedAt })
+    // Not the caller's text: an unknown name is whatever the agent typed, and server events are non-personal.
+    recordOperationCalled(ctx, { operation: null, domain: null, decision: 'refused', status: 404, startedAt })
     return unknownOperation(ctx, name)
   }
   const decision = callDecision(ctx.principal, op)
@@ -276,8 +310,16 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
         },
       }
     }
+    const gate = readGateFor(ctx.principal)
+    const refused = await gate.beforeRead(op)
+    if (refused) {
+      record(403)
+      return failure(refused)
+    }
     const result = await callOperation(op, input, ctx.principal.session)
     record(result.status)
+    // A link works for whoever holds it, with the requester's access: never into a transcript others read.
+    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return failure(sharedConversationReadRefusal())
     return fromOperationResult(op.name, result)
   } catch (error) {
     if (error instanceof OperationInputError) {
@@ -447,6 +489,7 @@ const callInput = z.object({
       params: z.record(z.string()).optional(),
       query: z.record(z.unknown()).optional(),
       body: z.unknown().optional(),
+      ifMatch: z.string().min(1).max(IF_MATCH_MAX_LENGTH).optional(),
     })
     .optional(),
 })
@@ -524,11 +567,12 @@ export const META_TOOLS = {
         name: { type: 'string', description: 'An operation name from search-operations.' },
         input: {
           type: 'object',
-          description: 'params: path ids; query: query string; body: JSON body.',
+          description: 'params: path ids; query: query string; body: JSON body; ifMatch: the version you read, for a write that refuses one over a newer version.',
           properties: {
             params: { type: 'object', additionalProperties: { type: 'string' } },
             query: { type: 'object' },
             body: {},
+            ifMatch: IF_MATCH_SCHEMA,
           },
         },
       },

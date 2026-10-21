@@ -510,12 +510,14 @@ export const projectsOperations: readonly AgentOperation[] = [
     domain: 'projects',
     summary: 'Extract experience from a closing project',
     description:
-      'Reads the project’s own documents once and returns what they say as suggestions for the office’s experience, which a person confirms. ' +
-      'Refused for a closed project. Starts a paid model call; writes nothing by itself.',
+      'Reads the project’s own documents once and stores what they say as suggestions: unconfirmed facts on the project profile and ' +
+      'drafted decisions in project memory, which a person then confirms or dismisses. Refused for a closed project. Starts a paid ' +
+      'model call. Needs project:memory:write or project:edit.',
     method: 'POST',
     path: '/api/projects/[id]/experience',
     params: projectParams,
-    readOnly: true,
+    // Not a read: extractProjectExperience patches the profile (patchProjectProfile) and writes draft decisions.
+    idempotent: false,
     load: () => import('@/app/api/projects/[id]/experience/route'),
   },
   {

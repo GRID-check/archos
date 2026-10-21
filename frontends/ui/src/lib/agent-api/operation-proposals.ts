@@ -11,11 +11,20 @@ import 'server-only'
  * decides, not the agent's.
  */
 
+import { ForbiddenError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { createProposal } from '@/lib/proposals/service'
 import { MAX_OPERATION_SUMMARY_LENGTH, type OperationPayload } from '@/lib/proposals/types'
 import type { OperationInput } from './dispatch'
 import type { AgentOperation } from './operation'
+
+/** Why a sensitive operation is never proposed, in words the model relays. */
+export function sensitiveProposalRefusal(op: Pick<AgentOperation, 'name'>): string {
+  return (
+    `Piloti cannot propose ${op.name}: it changes who may do what, or touches the organization's secrets, ` +
+    'so the person does it in Piloti themselves.'
+  )
+}
 
 /** Longest value quoted from the input in the summary. */
 const VALUE_LENGTH = 60
@@ -62,6 +71,7 @@ export function summaryOfOperation(op: AgentOperation, input: OperationInput): s
  * organization (0174). The same call repeated in the conversation while the
  * first proposal is still open files nothing and returns that one. Returns the
  * proposal's id, which the card carries, and the line the person will read.
+ * Refused (403) for an operation with a `sensitivity`, before anything is filed.
  */
 export async function proposeOperation({
   principal,
@@ -76,10 +86,20 @@ export async function proposeOperation({
   op: AgentOperation
   input: OperationInput
 }): Promise<{ proposalId: string; summary: string }> {
+  // A sensitive operation widens who may do what or touches the organization's
+  // secrets. Accepting a proposal is one click on a card the agent worded, which
+  // is not the confirmation such a change needs, so Piloti files none (ADR-0121).
+  if (op.sensitivity) throw new ForbiddenError(sensitiveProposalRefusal(op))
   const summary = summaryOfOperation(op, input)
   const payload: OperationPayload = {
     operation: op.name,
-    input: { params: input.params, query: input.query, body: input.body },
+    input: {
+      params: input.params,
+      query: input.query,
+      body: input.body,
+      // Kept, so accepting later still refuses to write over a version newer than the one the agent read.
+      ...(input.ifMatch ? { ifMatch: input.ifMatch } : {}),
+    },
     summary,
   }
   const row = await createProposal(principal.session, {

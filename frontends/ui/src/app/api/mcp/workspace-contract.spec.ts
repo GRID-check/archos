@@ -34,11 +34,16 @@ vi.mock('@/lib/agent-api/telemetry', () => ({
   recordCapabilityMissing: vi.fn(),
 }))
 vi.mock('@/lib/agent-api/operation-proposals', () => ({ proposeOperation: vi.fn() }))
+vi.mock('@/lib/agent-api/conversation-audience', () => ({
+  conversationReachOf: vi.fn(),
+  recordSoloWorkspaceRead: vi.fn(),
+}))
 vi.mock('@/lib/agent-api/dispatch', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/agent-api/dispatch')>()),
   callOperation: vi.fn(),
 }))
 
+import { conversationReachOf, recordSoloWorkspaceRead } from '@/lib/agent-api/conversation-audience'
 import { callOperation } from '@/lib/agent-api/dispatch'
 import { proposeOperation } from '@/lib/agent-api/operation-proposals'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
@@ -158,6 +163,8 @@ beforeEach(() => {
     status: 200,
     body: { projects: [{ id: 'proj_1', name: 'Haus Muster' }] },
   })
+  vi.mocked(conversationReachOf).mockResolvedValue('solo')
+  vi.mocked(recordSoloWorkspaceRead).mockResolvedValue(undefined)
   vi.mocked(proposeOperation).mockResolvedValue({
     proposalId: 'prop_1',
     summary: 'Add user_2 to proj_1 as viewer',
@@ -244,6 +251,31 @@ describe('what client.py sends, replayed against the real route', () => {
       email: null,
       organizationId: 'org_1',
     })
+  })
+
+  it('records the read in a solo conversation for the answer the client named, before running it', async () => {
+    await POST(replay(recorded('call_read')))
+    expect(vi.mocked(recordSoloWorkspaceRead)).toHaveBeenCalledTimes(1)
+    const [principal] = vi.mocked(recordSoloWorkspaceRead).mock.calls[0]
+    expect(principal).toMatchObject({
+      kind: 'piloti',
+      conversationId: 'conv_1',
+      answerMessageId: recorded('call_read').headers['x-grid-answer-message-id'],
+    })
+    expect(vi.mocked(recordSoloWorkspaceRead).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(callOperation).mock.invocationCallOrder[0]
+    )
+  })
+
+  it('refuses a read in a shared conversation with a sentence the model relays, and runs nothing', async () => {
+    vi.mocked(conversationReachOf).mockResolvedValue('shared')
+    const answer = await captured(await POST(replay(recorded('call_read'))))
+    answers.refused_shared_conversation = answer
+    const result = messageOf<ToolResult>(answer).result
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toMatch(/^In einer geteilten Unterhaltung/)
+    expect(vi.mocked(callOperation)).not.toHaveBeenCalled()
+    expect(vi.mocked(recordSoloWorkspaceRead)).not.toHaveBeenCalled()
   })
 
   it('hands a tool-level error back as a tool result, not a protocol error', async () => {

@@ -26,6 +26,7 @@ import {
   unreadAnchorsQuerySchema,
 } from '@/lib/inbox/inbox-wire'
 import { pushPreferencesPatchSchema } from '@/lib/inbox/push-categories'
+import { grantPostSchema, roleChangeSchema, visibilitySchema } from '@/lib/sharing/sharing-wire'
 import { applyProposalRequestSchema, PROPOSAL_SCOPES, PROPOSED_CHANGE_KINDS } from '@/lib/proposals/types'
 import { listSessionDocumentsQuerySchema } from '@/lib/session-documents/session-documents-wire'
 import { updatePreferencesSchema } from '@/lib/user-preferences/preferences-wire'
@@ -184,14 +185,15 @@ export const collaborationOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/notifications/push/preferences/route'),
   },
 
-  // Sharing (read only)
+  // Sharing
   {
     name: 'sharing-get',
     domain: 'collaboration',
     summary: 'Read who has access to a resource',
     description:
       'The sharing state of a conversation or other shareable resource: its visibility, the people with a grant ' +
-      'and their roles, and the person’s own role. Changing access is not offered to agents.',
+      'and their roles, and the person’s own role. Change it with sharing-visibility-set, sharing-grant-add, sharing-grant-update ' +
+      'and sharing-grant-revoke.',
     method: 'GET',
     path: '/api/sharing/[resourceType]/[resourceId]',
     params: resourceParams,
@@ -208,6 +210,71 @@ export const collaborationOperations: readonly AgentOperation[] = [
     path: '/api/sharing/[resourceType]/[resourceId]/candidates',
     params: resourceParams,
     load: () => import('@/app/api/sharing/[resourceType]/[resourceId]/candidates/route'),
+  },
+  {
+    name: 'sharing-visibility-set',
+    domain: 'collaboration',
+    summary: 'Set who beyond the invited people may see a resource',
+    description:
+      'Sets the resource’s `visibility`: `private` (only the people with a grant), `project` (every member of its project) or ' +
+      '`organization` (every member). Only the resource owner may change it. Returns the sharing state as sharing-get does. ' +
+      'Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'PATCH',
+    path: '/api/sharing/[resourceType]/[resourceId]',
+    params: resourceParams,
+    body: visibilitySchema,
+    idempotent: true,
+    sensitivity: 'access',
+    load: () => import('@/app/api/sharing/[resourceType]/[resourceId]/route'),
+  },
+  {
+    name: 'sharing-grant-add',
+    domain: 'collaboration',
+    summary: 'Give a person access to a resource',
+    description:
+      'Grants `subjectUserId` a `role` on the resource: `viewer`, `collaborator` (the default) or `owner`. User ids come from ' +
+      'sharing-candidate-list. Only the resource owner may grant. `{ escalate: true }` instead makes a project administrator ' +
+      'the owner of a resource they were not party to, recorded as its own act. Returns the sharing state. ' +
+      'Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'POST',
+    path: '/api/sharing/[resourceType]/[resourceId]/grants',
+    params: resourceParams,
+    body: grantPostSchema,
+    idempotent: false,
+    sensitivity: 'access',
+    load: () => import('@/app/api/sharing/[resourceType]/[resourceId]/grants/route'),
+  },
+  {
+    name: 'sharing-grant-update',
+    domain: 'collaboration',
+    summary: 'Change a person’s role on a resource',
+    description:
+      'Sets the `role` (`viewer`, `collaborator`, `owner`) of a person who already has a grant, named by `subjectUserId` as ' +
+      'sharing-get lists them. Only the resource owner may change it, and the last owner cannot step down. Returns the ' +
+      'sharing state. Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'PATCH',
+    path: '/api/sharing/[resourceType]/[resourceId]/grants',
+    params: resourceParams,
+    body: roleChangeSchema,
+    idempotent: true,
+    sensitivity: 'access',
+    load: () => import('@/app/api/sharing/[resourceType]/[resourceId]/grants/route'),
+  },
+  {
+    name: 'sharing-grant-revoke',
+    domain: 'collaboration',
+    summary: 'Take away a person’s access to a resource',
+    description:
+      'Removes the grant of `subjectUserId`, as sharing-get lists them. Naming the person themselves leaves the resource, ' +
+      'which needs no ownership; removing somebody else needs the owner. Returns the sharing state. ' +
+      'Sensitive: the organization switches it on for agents, and the person confirms every call.',
+    method: 'DELETE',
+    path: '/api/sharing/[resourceType]/[resourceId]/grants/[subjectUserId]',
+    params: resourceParams.extend({
+      subjectUserId: z.string().describe('The user id of the person whose grant ends, from sharing-get.'),
+    }),
+    sensitivity: 'access',
+    load: () => import('@/app/api/sharing/[resourceType]/[resourceId]/grants/[subjectUserId]/route'),
   },
 
   // Assignments
