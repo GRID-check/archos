@@ -49,6 +49,11 @@ export interface FilesHeaderControlsProps {
   upload?: ReactNode
   /** More for the phone's ⋯, after the view choice and the Papierkorb. */
   moreEntries?: readonly ActionMenuEntry[]
+  /**
+   * The shelf's advanced actions (sort the root into folders). On a phone they
+   * follow `moreEntries` in the ⋯; on a wide screen they get a ⋯ of their own.
+   */
+  advancedEntries?: readonly ActionMenuEntry[]
 }
 
 export function FilesHeaderControls({
@@ -61,6 +66,7 @@ export function FilesHeaderControls({
   search,
   upload,
   moreEntries,
+  advancedEntries,
 }: FilesHeaderControlsProps): JSX.Element {
   const t = useTranslations('files')
   const choose = (value: string): void => {
@@ -117,6 +123,7 @@ export function FilesHeaderControls({
           ]
         : []),
       ...(moreEntries && moreEntries.length > 0 ? [{ type: 'separator' as const }, ...moreEntries] : []),
+      ...(advancedEntries && advancedEntries.length > 0 ? [{ type: 'separator' as const }, ...advancedEntries] : []),
     ]
     return (
       <div className="flex min-w-0 items-center gap-2" data-testid="files-controls">
@@ -172,6 +179,17 @@ export function FilesHeaderControls({
       {renderFilter(false)}
       {searchField('w-full sm:w-64 lg:w-72')}
       {upload}
+      {advancedEntries && advancedEntries.length > 0 && (
+        <ActionMenu
+          mode="dropdown"
+          entries={advancedEntries}
+          trigger={
+            <Button type="button" variant="ghost" size="icon" aria-label={t('workspace.more')} data-testid="files-advanced">
+              <MoreHorizontal aria-hidden />
+            </Button>
+          }
+        />
+      )}
     </div>
   )
 }
