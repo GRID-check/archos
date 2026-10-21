@@ -169,6 +169,44 @@ describe('rate limit (M6)', () => {
   })
 })
 
+describe('one JSON-RPC message per POST', () => {
+  it('refuses a batch with 400 before anything runs, so one charge cannot cover a hundred calls', async () => {
+    const call = (id: number) => ({
+      jsonrpc: '2.0',
+      id,
+      method: 'tools/call',
+      params: { name: 'search-operations', arguments: { query: 'project' } },
+    })
+    const request = new Request(URL_, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', ...pilotiHeaders() },
+      body: ` ${JSON.stringify([call(1), call(2), call(3)])}`,
+    })
+    const response = await POST(request)
+    expect(response.status).toBe(400)
+    expect(await response.json()).toMatchObject({ jsonrpc: '2.0', id: null, error: { code: -32600 } })
+    expect(enforceLimit).not.toHaveBeenCalled()
+    expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
+  })
+
+  it('still answers a single message after looking at the body', async () => {
+    const response = await POST(
+      rpc('tools/call', { name: 'search-operations', arguments: { query: 'project' } }, pilotiHeaders()),
+    )
+    expect(response.status).toBe(200)
+  })
+})
+
+describe('when WorkOS does not answer', () => {
+  it('answers a JSON 503 the agent can retry, not a bare 500', async () => {
+    vi.mocked(resolvePinnedRequesterSession).mockRejectedValueOnce(new Error('fetch failed: api.workos.com'))
+    const response = await POST(rpc('tools/list', {}, pilotiHeaders()))
+    expect(response.status).toBe(503)
+    expect(await response.json()).toMatchObject({ code: 'SERVICE_UNAVAILABLE', error: expect.stringMatching(/Try again/) })
+    expect(enforceLimit).not.toHaveBeenCalled()
+  })
+})
+
 describe('stateless transport', () => {
   it('answers GET and DELETE with 405', async () => {
     for (const handler of [GET, DELETE]) {

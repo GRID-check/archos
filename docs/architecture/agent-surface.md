@@ -41,7 +41,11 @@ flowchart LR
    `resolvePinnedRequesterSession` (ADR-0108). Then the request is charged one
    unit of `mcp-request` (`lib/limits/rules.js`: 600 per ten minutes, 30 per five
    seconds, per member, shared by every client of that person); a spent budget
-   answers 429 with `Retry-After` before any tool runs.
+   answers 429 with `Retry-After` before any tool runs. One POST carries one
+   JSON-RPC message: a batch (a body that is an array, dropped from MCP in its
+   2025-06-18 revision) is refused with 400 before the caller is resolved, so
+   one charge cannot cover a hundred calls. When WorkOS cannot answer who is
+   calling, the door answers a JSON 503 the client can retry.
 3. **Policy.** `policy.ts` decides whether this call may run. The organization
    needs the `agent-mcp` flag for an external agent. Piloti in-product has no
    such flag, but its writes never run directly, and its reads are held to the

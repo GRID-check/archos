@@ -13,11 +13,11 @@
  * session the factory resolves (see `authz-coverage.spec.ts`).
  */
 
-import { type AuthInfo, createMcpHandler, originValidationResponse } from '@modelcontextprotocol/server'
+import { type AuthInfo, originValidationResponse } from '@modelcontextprotocol/server'
 import { allowedOriginHostnames } from '@/lib/agent-api/mcp-config'
-import { buildMcpServer, resolveMode } from '@/lib/agent-api/mcp-server'
+import { createAgentDoorHandler, resolveMode } from '@/lib/agent-api/mcp-server'
 import { type AgentPrincipal, isChallenge, resolvePrincipal } from '@/lib/agent-api/principal'
-import type { McpMode } from '@/lib/agent-api/telemetry'
+import { ApiError, ServiceUnavailableError } from '@/lib/api/errors'
 import { errorResponse } from '@/lib/api/handler'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 import { MCP_REQUEST_LIMIT, enforceLimit, memberSubject } from '@/lib/limits'
@@ -27,20 +27,57 @@ export const dynamic = 'force-dynamic'
 /**
  * One handler for the process; the principal reaches the per-request server
  * factory through the SDK's `authInfo` pass-through, the documented way to key
- * a factory off the caller. (A handler per request would also repeat the SDK's
- * one-time `responseMode` warning on every call.)
+ * a factory off the caller. A legacy-protocol client that accepts only
+ * `application/json` gets one JSON body (`createAgentDoorHandler`).
  */
-const handler = createMcpHandler(
-  (context) => {
-    const { principal, mode } = context.authInfo?.extra as { principal: AgentPrincipal; mode: McpMode }
-    return buildMcpServer(principal, mode)
-  },
-  {
-    legacy: 'stateless',
-    responseMode: 'json',
-    onerror: (error) => console.error('[mcp]', error.message),
-  },
-)
+const handler = createAgentDoorHandler((error) => console.error('[mcp]', error.message))
+
+/**
+ * A JSON-RPC batch (a body that is an array). MCP dropped batching in its
+ * 2025-06-18 revision; the SDK still accepts one for older clients, and a
+ * batch would run up to the SDK's hundred calls under the ONE charge below.
+ * Read from a clone, so the handler still reads the body.
+ */
+async function isBatch(request: Request): Promise<boolean> {
+  try {
+    return (await request.clone().text()).trimStart().startsWith('[')
+  } catch {
+    return false
+  }
+}
+
+/** One JSON-RPC message per POST, so one charge of the request limit covers one call. */
+const batchRefused = (): Response =>
+  Response.json(
+    {
+      jsonrpc: '2.0',
+      id: null,
+      error: {
+        code: -32600,
+        message: 'Batch requests are not supported: send one JSON-RPC message per POST.',
+      },
+    },
+    { status: 400 },
+  )
+
+/**
+ * Who calls, or the response that refuses them. Resolving the principal asks
+ * WorkOS (the signing keys, the membership, the feature flags); when it cannot
+ * answer, the agent gets a JSON 503 it can retry, not an unexplained 500.
+ */
+async function principalOf(request: Request): Promise<AgentPrincipal | Response> {
+  try {
+    const principal = await resolvePrincipal(request)
+    return isChallenge(principal) ? principal.response : principal
+  } catch (error) {
+    if (error instanceof ApiError) return errorResponse(error, request)
+    console.error('[mcp] could not resolve the caller', error)
+    return errorResponse(
+      new ServiceUnavailableError('Who is calling could not be checked right now. Try again shortly.'),
+      request,
+    )
+  }
+}
 
 export const POST = tenantSlotRoute(async (request: Request): Promise<Response> => {
   // Browsers attach Origin; agents and desktop clients do not. A page on another
@@ -48,8 +85,10 @@ export const POST = tenantSlotRoute(async (request: Request): Promise<Response> 
   const rejected = originValidationResponse(request, allowedOriginHostnames())
   if (rejected) return rejected
 
-  const principal = await resolvePrincipal(request)
-  if (isChallenge(principal)) return principal.response
+  if (await isBatch(request)) return batchRefused()
+
+  const principal = await principalOf(request)
+  if (principal instanceof Response) return principal
 
   // Once per HTTP request, after the caller is known and before any tool runs
   // (ADR-0040). The routes it dispatches to still charge their own rules.
