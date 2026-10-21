@@ -188,6 +188,8 @@ Consequences, where a reader looks for them.
 | [0124](0124-agents-consult-piloti-over-mcp-and-a2a.md) | Agents consult Piloti: an ask over MCP, and an A2A server on the same primitive | Accepted |
 | [0125](0125-every-sentence-shows-where-it-comes-from.md) | Every sentence shows where it comes from: per-sentence provenance, confidence held to the weakest claim | Accepted |
 | [0126](0126-the-operator-console-has-its-own-mcp-door.md) | The operator console has its own MCP door: a second server for platform staff, its own audience | Accepted |
+| [0127](0127-search-finds-list-orients-read-reads.md) | Search finds, list orients, read reads: the office's files become navigable beside RAG, and a folder is a card | Proposed |
+| [0128](0128-one-look-in-every-turn-shown-where-it-looked.md) | One look in every turn: Piloti looks at a region of a page in chat, canvas and door alike, and the reader sees where | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
