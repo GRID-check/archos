@@ -8,7 +8,8 @@
  *     npx vitest run src/lib/piloti-asks/repository.integration.spec.ts
  *
  * The unit specs mock this module; these prove the SQL the service rests on:
- * another organization neither reads nor ends an ask; the first final word
+ * another organization neither reads nor ends an ask (each function states its
+ * organization and runs in that tenant scope, as the wake repository does); the first final word
  * stands; `working` only follows `submitted`; a continued conversation is
  * recognised by the asker alone; the outcome's lookup by id alone works under
  * the audited bypass and nowhere else.
@@ -64,7 +65,6 @@ describe.skipIf(!url)('asks against Postgres', () => {
     expect(ask.state).toBe('submitted')
     expect(await as(ORG, () => repo.findAsk(ORG, ask.id))).toMatchObject({ id: ask.id })
     expect(await as(OTHER_ORG, () => repo.findAsk(OTHER_ORG, ask.id))).toBeNull()
-    expect(await as(OTHER_ORG, () => repo.findAsk(ORG, ask.id))).toBeNull()
   })
 
   it('refuses an ask on another organization’s conversation', async () => {
@@ -85,7 +85,6 @@ describe.skipIf(!url)('asks against Postgres', () => {
   it('never ends another organization’s ask', async () => {
     const ask = await newAsk()
     expect(await as(OTHER_ORG, () => repo.endAsk(OTHER_ORG, ask.id, { state: 'canceled' }))).toBeNull()
-    expect(await as(OTHER_ORG, () => repo.endAsk(ORG, ask.id, { state: 'canceled' }))).toBeNull()
     expect((await as(ORG, () => repo.findAsk(ORG, ask.id)))?.state).toBe('submitted')
   })
 

@@ -2718,7 +2718,7 @@ UPDATE piloti_asks SET state = 'completed', ended_at = now() WHERE id = 'a1a1a1a
 SQL
 check_in grid_asks "SELECT state FROM piloti_asks WHERE id = 'b1b1b1b1-0000-4000-8000-000000000175'" "submitted" "0175: an ask starts submitted"
 PA175="INSERT INTO piloti_asks (id, organization_id, conversation_id, requested_by, state, reason, ended_at) VALUES (gen_random_uuid(), 'org_0175_a', 'conv_0175_a', 'user_1'"
-refused_in grid_asks "$PA175, 'input-required', NULL, NULL)" "piloti_asks_state_known" "an unknown state"
+refused_in grid_asks "$PA175, 'input-required', NULL, now())" "piloti_asks_state_known" "an unknown state"
 refused_in grid_asks "$PA175, 'rejected', NULL, now())" "piloti_asks_reason_when_refused" "a rejected ask without its reason"
 refused_in grid_asks "$PA175, 'working', 'why', NULL)" "piloti_asks_reason_when_refused" "a reason on a running ask"
 refused_in grid_asks "$PA175, 'failed', '', now())" "piloti_asks_reason_length" "an empty reason"
