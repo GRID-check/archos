@@ -40,6 +40,7 @@ import { isInternalDragActive, useFolderDropTarget, type FileDropAim } from '../
 import { useFileListing } from '../hooks/use-file-listing'
 import { useFileSearch } from '../hooks/use-file-search'
 import { useFolderParam } from '../hooks/use-folder-param'
+import { useRootSortParam } from '../hooks/use-root-sort-param'
 import { useFolderTree } from '../hooks/use-folder-tree'
 import { useIngestionCompleteToast } from '../hooks/use-ingestion-complete-toast'
 import { useLevelListing } from '../hooks/use-level-listing'
@@ -86,6 +87,8 @@ import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
 import { FolderBrief } from './folder-brief'
 import { FolderPickerSheet } from './folder-picker-sheet'
+import { RootSortDialog } from './root-sort/root-sort-dialog'
+import type { RootSortShelf } from '@/lib/filing/root-sort-types'
 import { SelectionBar } from './selection-bar'
 import { withoutOlderRevisions } from '../lib/revision-chain'
 import { sortedFolderDestinations } from '../lib/folder-path-label'
@@ -750,6 +753,7 @@ export function FileWorkspace({
   const selection = useDocumentSelection()
   const { exit: exitSelection, set: setSelection, start: startSelection } = selection
   const [moveSheetOpen, setMoveSheetOpen] = useState(false)
+  const [rootSortOpen, setRootSortOpen] = useState(false)
   const searchingNow = search.query.trim() !== '' || search.semantic.active
   const sliceOpen = briefSurface.slice !== undefined
   useEffect(() => {
@@ -777,6 +781,28 @@ export function FileWorkspace({
         {...props}
       />
     ) : undefined
+
+  // Sorting the root moves its files into folders: a writer of the root may run it, as may anyone who may move a file there.
+  const mayRootSort = canManage && access.mayWriteAt(null)
+  const rootSortShelf = useMemo<RootSortShelf>(
+    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'office_shelf' }),
+    [shelf.projectId]
+  )
+  // An inbox row that says the sort is ready opens its dialog (`?rootSort=<runId>`).
+  const openRootSort = useCallback(() => setRootSortOpen(true), [])
+  useRootSortParam(mayRootSort, openRootSort)
+  const advancedEntries: ActionMenuEntry[] | undefined = mayRootSort
+    ? [
+        { type: 'label', label: t('rootSort.advanced') },
+        {
+          type: 'item',
+          id: 'root-sort',
+          label: t('rootSort.menuItem'),
+          onSelect: () => setRootSortOpen(true),
+          testId: 'root-sort-trigger',
+        },
+      ]
+    : undefined
 
   const controls = (
     <FilesHeaderControls
@@ -807,6 +833,7 @@ export function FileWorkspace({
       // same control floats at the foot of the screen instead (`uploadFab`).
       upload={phone ? undefined : uploader({ allowFolders: true, pickFilesRef, pickFolderRef })}
       moreEntries={moreEntries}
+      advancedEntries={advancedEntries}
     />
   )
 
@@ -1079,6 +1106,15 @@ export function FileWorkspace({
       {/* Who may read and write a folder (ADR-0088), a project's only. Saving
           moves and re-reads the folder's documents, so both listings are read
           again. */}
+      {mayRootSort && (
+        <RootSortDialog
+          shelf={rootSortShelf}
+          open={rootSortOpen}
+          onOpenChange={setRootSortOpen}
+          onApplied={() => void reloadAll()}
+        />
+      )}
+
       {shelf.folderAccess && (
         <FolderAccessDialog
           open={access.editingFolderId !== null}

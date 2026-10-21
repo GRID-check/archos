@@ -81,6 +81,7 @@ from .routes.documents import add_document_routes
 from .routes.drafts import add_draft_routes
 from .routes.feedback_digest import add_feedback_digest_routes
 from .routes.filing_fit import add_filing_fit_routes
+from .routes.folder_proposals import add_folder_proposals_routes
 from .routes.generate_conversation_title import add_generate_conversation_title_routes
 from .routes.generate_summary import add_generate_summary_routes
 from .routes.ingest import add_ingest_routes
@@ -338,6 +339,8 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
         # Where an upload belongs, judged once per batch from the folders'
         # descriptions and what ingestion read; the BFF files the proposals.
         add_filing_fit_routes,
+        # New folders for the shelf root's documents that fit none of its folders (the sort's second pass).
+        add_folder_proposals_routes,
         add_generate_conversation_title_routes,
         add_dictation_routes,
         add_consistency_check_routes,

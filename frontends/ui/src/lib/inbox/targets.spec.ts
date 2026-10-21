@@ -72,6 +72,15 @@ describe('the organization target', () => {
     expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/office-shelf')
   })
 
+  it('lands an office filing sort on the office shelf with the run open', async () => {
+    const access = await organizationTarget.resolve(makeSession(), 'org_1')
+
+    expect(access!.deepLink({ itemType: 'root_sort.ready', anchorId: 'run-1' })).toBe(
+      '/app/office-shelf?rootSort=run-1',
+    )
+    expect(access!.deepLink({ itemType: 'root_sort.failed', anchorId: null })).toBe('/app/office-shelf')
+  })
+
   it('falls back to the organization overview for a type with no destination', async () => {
     const access = await organizationTarget.resolve(makeSession(), 'org_1')
 
@@ -192,6 +201,17 @@ describe('the project target', () => {
     expect(
       access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1', taskId: '   ' }),
     ).toBe('/app/projects/proj_1/automation?tab=jobs')
+  })
+
+  it('lands a project sort on its files with the run open', async () => {
+    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
+    const access = await projectTarget.resolve(makeSession(), 'proj_1')
+    expect(access!.deepLink({ itemType: 'root_sort.ready', anchorId: 'run-1' })).toBe(
+      '/app/projects/proj_1/files?rootSort=run-1',
+    )
+    expect(access!.deepLink({ itemType: 'root_sort.failed', anchorId: 'run 2' })).toBe(
+      '/app/projects/proj_1/files?rootSort=run%202',
+    )
   })
 
   it('redacts the row, rather than throwing, for a project the reader can no longer open', async () => {

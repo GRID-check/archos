@@ -14,6 +14,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSeparator,
@@ -26,6 +27,7 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuLabel,
   ContextMenuRadioGroup,
   ContextMenuRadioItem,
   ContextMenuSeparator,
@@ -63,6 +65,9 @@ export type ActionMenuItemEntry = {
 
 export type ActionMenuSeparatorEntry = { type: 'separator' }
 
+/** A heading over the entries after it, not itself an action: „Erweitert“ over what is rarely used. */
+export type ActionMenuLabelEntry = { type: 'label'; label: string }
+
 export type ActionMenuSubEntry = {
   type: 'sub'
   id: string
@@ -83,11 +88,13 @@ export type ActionMenuRadioEntry = {
 export type ActionMenuEntry =
   | ActionMenuItemEntry
   | ActionMenuSeparatorEntry
+  | ActionMenuLabelEntry
   | ActionMenuSubEntry
   | ActionMenuRadioEntry
 
 type MenuParts = {
   Item: typeof DropdownMenuItem
+  Label: typeof DropdownMenuLabel
   Separator: typeof DropdownMenuSeparator
   Sub: typeof DropdownMenuSub
   SubTrigger: typeof DropdownMenuSubTrigger
@@ -105,6 +112,7 @@ type MenuParts = {
 
 const DROPDOWN_PARTS: MenuParts = {
   Item: DropdownMenuItem,
+  Label: DropdownMenuLabel,
   Separator: DropdownMenuSeparator,
   Sub: DropdownMenuSub,
   SubTrigger: DropdownMenuSubTrigger,
@@ -116,6 +124,7 @@ const DROPDOWN_PARTS: MenuParts = {
 
 const CONTEXT_PARTS: MenuParts = {
   Item: ContextMenuItem,
+  Label: ContextMenuLabel,
   Separator: ContextMenuSeparator,
   Sub: ContextMenuSub,
   SubTrigger: ContextMenuSubTrigger,
@@ -130,6 +139,12 @@ function renderEntries(entries: readonly ActionMenuEntry[], parts: MenuParts): R
     switch (entry.type) {
       case 'separator':
         return <parts.Separator key={`sep-${index}`} />
+      case 'label':
+        return (
+          <parts.Label key={`label-${index}`} className="text-muted-foreground text-xs font-medium">
+            {entry.label}
+          </parts.Label>
+        )
       case 'item': {
         const Icon = entry.icon
         const content = (
