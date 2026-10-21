@@ -35,9 +35,9 @@ def test_counts_separate_direct_from_subtree_and_the_cards_come_parents_first():
         file_rows([_doc("a.pdf", "E"), _doc("b.pdf", "E/P"), _doc("c.pdf", "E/P"), _doc("d.pdf")]), root=None, depth=2
     )
     assert [card.path for card in cards] == ["", "E", "E/P"]
-    top, einreichung, plans = cards
+    top, submission, plans = cards
     assert (top.total, top.direct) == (4, 1)
-    assert (einreichung.total, einreichung.direct, einreichung.subfolders) == (3, 1, (("E/P", 2),))
+    assert (submission.total, submission.direct, submission.subfolders) == (3, 1, (("E/P", 2),))
     assert (plans.total, plans.direct, plans.depth) == (2, 2, 2)
 
 
@@ -79,13 +79,13 @@ def test_dates_and_the_newest_document():
     assert card.newest == "b.pdf (2026-06-12)"
 
 
-def test_current_fassung_from_a_name_series():
+def test_current_revision_from_a_name_series():
     card = _cards([_doc("EP_Index-A.pdf", "E"), _doc("EP_Index-B.pdf", "E")])["E"]
     assert card.superseded == 1
     assert card.current == ("EP_Index-B.pdf (Index B; by file name) replaces EP_Index-A.pdf",)
 
 
-def test_current_fassung_from_a_title_block_beats_the_name():
+def test_current_revision_from_a_title_block_beats_the_name():
     facts_a = {"document_number": "A-101", "revision": "A", "revision_date": "2026-01-01"}
     facts_b = {"document_number": "A-101", "revision": "B", "revision_date": "2026-02-03"}
     card = _cards(
@@ -94,12 +94,12 @@ def test_current_fassung_from_a_title_block_beats_the_name():
     assert card.current == ("Plan neu.pdf (Index B, Stand 03.02.2026; by Plankopf) replaces Plan alt.pdf",)
 
 
-def test_current_fassung_from_a_persons_confirmation():
+def test_current_revision_from_a_persons_confirmation():
     card = _cards([_doc("alt.pdf", "E", superseded_by="neu.pdf"), _doc("neu.pdf", "E")])["E"]
     assert card.current == ("neu.pdf (confirmed) replaces alt.pdf",)
 
 
-def test_an_older_fassung_outside_the_selection_still_counts_when_series_rows_are_given():
+def test_an_older_revision_outside_the_selection_still_counts_when_series_rows_are_given():
     rows = file_rows([_doc("EP_Index-A.pdf", "alt"), _doc("EP_Index-B.pdf", "E")])
     inside = [row for row in rows if row.folder == "E"]
     card = {c.path: c for c in folder_cards(inside, root="E", depth=1, series_rows=rows)}["E"]
@@ -115,7 +115,7 @@ def test_the_tree_is_bounded_and_names_the_next_call():
     assert "never cite it" in text
 
 
-def test_a_card_names_at_most_three_current_fassungen():
+def test_a_card_names_at_most_three_current_revisions():
     docs = [_doc(f"S{i}_Index-{x}.pdf", "E") for i in range(5) for x in "AB"]
     text = render_tree(list(_cards(docs).values()), total_rows=len(docs))
     assert text.count("Current Fassung:") == 6  # three on the top card, three on E
