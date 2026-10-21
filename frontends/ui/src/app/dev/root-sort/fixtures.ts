@@ -10,7 +10,7 @@ import type {
   RootSortFolder,
   RootSortPlacement,
 } from '@/lib/filing/root-sort-types'
-import type { WorkingRootSortStatus } from '@/features/documents/lib/root-sort-phase'
+import type { RootSortProgressProps } from '@/features/documents/components/root-sort/root-sort-status'
 
 const FOLDERS: Array<[id: string, name: string, path: string, parentId: string | null]> = [
   ['f-entwurf', '01 Entwurf', '01 Entwurf', null],
@@ -111,10 +111,29 @@ export const fixtureNewFolders: NewFolderProposal[] = [
 ]
 
 /** The working state: the judgement is part way through a root of 340 files. */
-export const fixtureProgress: { status: WorkingRootSortStatus; done: number; total: number } = {
-  status: 'judging',
-  done: 120,
-  total: 340,
+/** The working states, by preview variant: what the server reports at each step, with the dialog's own readings. */
+export const fixtureProgress: Record<
+  'working' | 'starting' | 'waiting' | 'grouping' | 'applying',
+  RootSortProgressProps
+> = {
+  working: {
+    status: 'judging',
+    done: 420,
+    total: 1000,
+    waiting: false,
+    recent: [
+      { name: 'Bescheid_Baubewilligung_2026-03.pdf', folderPath: '03 Behörde und Bescheide' },
+      { name: 'Statik_Vorbemessung_Holzbau.pdf', folderPath: '05 Fachplaner/Tragwerk' },
+      { name: 'Grundriss_EG_Einreichung.pdf', folderPath: '04 Einreichung/Pläne' },
+      { name: 'Foto_Bestand_Fassade_Nord.jpg', folderPath: '02 Bestand/Fotos' },
+    ],
+    remainingSeconds: 95,
+    elapsedSeconds: 0,
+  },
+  starting: { status: 'judging', done: 0, total: 1000, waiting: false, recent: [], remainingSeconds: null, elapsedSeconds: 0 },
+  waiting: { status: 'judging', done: 0, total: 1000, waiting: true, recent: [], remainingSeconds: null, elapsedSeconds: 0 },
+  grouping: { status: 'grouping', done: 0, total: 212, waiting: false, recent: [], remainingSeconds: null, elapsedSeconds: 42 },
+  applying: { status: 'applying', done: 310, total: 760, waiting: false, recent: [], remainingSeconds: 50, elapsedSeconds: 0 },
 }
 
 /** The done state: 37 files moved, three did not. */

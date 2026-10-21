@@ -21,14 +21,21 @@ export interface TransferRate {
 }
 
 /**
- * Live transfer rate and ETA over a sliding window.
+ * Live transfer rate and ETA over a sliding window. Counts anything that
+ * accumulates: bytes for an upload, files for a root sort.
  *
  * The maths lives in {@link TransferRateEstimator} (pure, tested without a
  * clock); this hook only owns the sampling and the tick.
  */
-export function useTransferRate(uploadedBytes: number, remainingBytes: number, active: boolean): TransferRate {
+export function useTransferRate(
+  uploadedBytes: number,
+  remainingBytes: number,
+  active: boolean,
+  /** The estimator's window: longer for progress that arrives in steps rather than a stream. */
+  windowMs?: number
+): TransferRate {
   const estimatorRef = useRef<TransferRateEstimator | null>(null)
-  estimatorRef.current ??= new TransferRateEstimator()
+  estimatorRef.current ??= new TransferRateEstimator(windowMs)
   const [, forceTick] = useState(0)
 
   useEffect(() => {

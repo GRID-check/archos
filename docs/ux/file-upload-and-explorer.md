@@ -703,6 +703,55 @@ archived document is dropped, not shown (`lib/documents/revision-links.ts`).
 has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 `src/i18n/forbidden-file-words.spec.ts` holds the copy to it.
 
+## Sorting the root
+
+„Alle Dateien in Ordner einsortieren…“ (⋯ → Erweitert) sorts up to 5000 loose
+files into the shelf's folders as a server run (ADR-0121,
+[`proposed-changes.md`](../architecture/proposed-changes.md#sorting-the-root)).
+
+**Preview:** `/dev/root-sort` (the review; `?variant=unsure`), and every
+working state: `?variant=starting`, `waiting`, `working`, `grouping`,
+`applying`, `done`.
+
+**The complaint.** The first version felt broken. A session on 21 October 2026
+(PostHog) shows why: the person started a sort, saw a bar at „0 von 24“ and
+nothing else for thirteen seconds, closed the dialog, and started it again. The
+cursor a slice commits only moved when the slice ended, three calls of 60 files
+that each took 35 to 53 s, so the count jumped once a minute and stood still in
+between. Grouping was a spinner with no number. And after they had applied, the
+Postfach still said the review was ready.
+
+**What it does now, law by law:**
+
+- **Visibility of system status, Doherty threshold.** Something on screen
+  changes every few seconds: the count and the bar after each call of 30 files
+  (the server writes its progress per call, migration 0174), the files just
+  placed below them, and during grouping a clock („Läuft seit 42 Sek.“), because
+  a number that visibly moves is the difference between working and hung. A run
+  whose job waits for a free worker says so instead of sitting at zero.
+- **Goal-gradient, Zeigarnik.** The four steps (Zuordnen, Neue Ordner,
+  Durchsehen, Verschieben) are one track (`StageTrack`) shown from the intro to
+  the end, so the review reads as step three of four, and the person sees how
+  much is behind them. Time left („Noch etwa 2 Min.“) appears once there is a
+  rate to read it from, rounded up, read over two minutes because progress
+  arrives in steps rather than as a stream.
+- **Labor illusion, operational transparency.** „Zuletzt zugeordnet“ names the
+  last four files and the folder each went to. The work is seen happening, and
+  a wrong guess is visible before the review.
+- **User control and freedom.** The dialog says, in every working state, that
+  closing it is safe, and where the result will arrive (the Postfach for a
+  review, the dialog for a move).
+- **Peak-end rule.** The end is a checkmark and a count, with Undo beside it
+  whenever something moved; a notice that has done its job is resolved, so the
+  last thing the Postfach says about a run is true.
+- **Tesler's law, error prevention.** The intro says what will happen before
+  anything does: assignment, new folders, a review, and nothing moves until the
+  person applies.
+
+The run also got faster where it was slow: calls of 30 files, six at a time
+(measured: as accurate as 60 and a quarter faster per call), and moves four at a
+time.
+
 ## Where the code lives
 
 | Concern | Module |

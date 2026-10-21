@@ -1,13 +1,15 @@
 'use client'
 
 /**
- * Dev preview for „Alle Dateien in Ordner einsortieren“. Three states, all from
+ * Dev preview for „Alle Dateien in Ordner einsortieren“. Every state, all from
  * fixtures, no network:
  *
  * - the review (default; `?variant=unsure` opens it on „Nur unsichere anzeigen“):
  *   the real review organism (`RootSortReview`) with a folder tree, sure and
  *   unsure placements, new folder proposals and files that stay in the root;
- * - `?variant=working`: the progress the server reports while it judges;
+ * - `?variant=working`: judging, with its count, time left and the files just
+ *   placed; `starting` before the first call answers, `waiting` while the job
+ *   waits for a slot, `grouping` with its running clock, `applying`;
  * - `?variant=done`: the outcome after files moved.
  *
  * German, pinned, as the copy is written for the German product. Not linked from
@@ -19,6 +21,7 @@ import { use, useMemo, useState } from 'react'
 import {
   RootSortOutcome,
   RootSortProgress,
+  RootSortStages,
 } from '@/features/documents/components/root-sort/root-sort-status'
 import { RootSortReview } from '@/features/documents/components/root-sort/root-sort-review'
 import {
@@ -63,6 +66,8 @@ function Review({ onlyUnsureStart }: { onlyUnsureStart: boolean }): JSX.Element 
   const [onlyUnsure, setOnlyUnsure] = useState(onlyUnsureStart)
   return (
     <Shell>
+      <RootSortStages status="ready" />
+      <div className="mt-4" />
       <RootSortReview
         input={input}
         state={state}
@@ -83,19 +88,21 @@ export default function RootSortDevPage({
   const variant = use(searchParams).variant
   const label = typeof variant === 'string' ? `?variant=${variant}` : ''
   let body: JSX.Element
-  if (variant === 'working') {
+  const working = typeof variant === 'string' && variant in fixtureProgress ? fixtureProgress[variant as keyof typeof fixtureProgress] : null
+  if (working) {
     body = (
       <Shell>
-        <RootSortProgress
-          status={fixtureProgress.status}
-          done={fixtureProgress.done}
-          total={fixtureProgress.total}
-        />
+        <RootSortStages status={working.status} />
+        <div className="mt-4">
+          <RootSortProgress {...working} />
+        </div>
       </Shell>
     )
   } else if (variant === 'done') {
     body = (
       <Shell>
+        <RootSortStages status="applied" />
+        <div className="mt-4" />
         <RootSortOutcome
           moved={fixtureOutcome.moved}
           failedCount={fixtureOutcome.failedCount}

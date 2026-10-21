@@ -20,6 +20,8 @@ const RUN: RootSortRunView = {
   id: 'run-1',
   status: 'judging',
   progress: { done: 0, total: 120 },
+  waiting: false,
+  recent: [],
   unreadable: 0,
   truncated: false,
   review: null,
@@ -29,6 +31,7 @@ const RUN: RootSortRunView = {
   error: null,
   groupingError: null,
   createdAt: '2026-10-21T12:00:00.000Z',
+  updatedAt: '2026-10-21T12:00:00.000Z',
 }
 
 describe('rootSortPath', () => {

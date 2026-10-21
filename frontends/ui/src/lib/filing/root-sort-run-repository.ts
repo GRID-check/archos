@@ -1,5 +1,5 @@
 /**
- * The SQL of `root_sort_runs` (migration 0173). No authorization here;
+ * The SQL of `root_sort_runs` (migrations 0173, 0174). No authorization here;
  * `./root-sort-run` owns it. Every write states the status it expects, so a
  * slice the queue retried, or a click that raced the job, changes nothing it
  * did not mean to.
@@ -23,6 +23,7 @@ export type RootSortRunPatch = Partial<
     RootSortRun,
     | 'status'
     | 'cursor'
+    | 'progressDone'
     | 'placements'
     | 'failedDocumentIds'
     | 'newFolders'
@@ -108,6 +109,51 @@ export async function updateRootSortRun(
   return row ?? null
 }
 
+/**
+ * Raise what the run shows as done in its current step, while the slice that
+ * does it is still running (migration 0174). Display only, so it never moves a
+ * cursor: it writes only while the run is still in `status` at `cursor` (a
+ * slice the runner gave up on cannot reach the step after it), and it takes the
+ * GREATEST, so chunks finishing out of order cannot pull it back.
+ */
+export async function recordRootSortProgress(
+  organizationId: string,
+  runId: string,
+  expected: { status: RootSortRunStatus; cursor: number },
+  done: number
+): Promise<void> {
+  await withTenant({ organizationId }, () =>
+    getDb()
+      .update(rootSortRuns)
+      .set({ progressDone: sql`GREATEST(${rootSortRuns.progressDone}, ${done})`, updatedAt: sql`now()` })
+      .where(
+        and(
+          eq(rootSortRuns.organizationId, organizationId),
+          eq(rootSortRuns.id, runId),
+          eq(rootSortRuns.status, expected.status),
+          eq(rootSortRuns.cursor, expected.cursor)
+        )
+      )
+  )
+}
+
+/**
+ * Whether the run's job is queued and no worker holds it yet: the run waits for
+ * a free slot in the BFF's job pool rather than being worked. False once a
+ * worker claims it, and for a run without a job.
+ */
+export async function isRootSortJobWaiting(organizationId: string, jobId: string | null): Promise<boolean> {
+  if (jobId === null) return false
+  const [row] = await withTenant({ organizationId }, () =>
+    getDb()
+      .select({ status: bffJobQueue.status })
+      .from(bffJobQueue)
+      .where(and(eq(bffJobQueue.jobId, jobId), eq(bffJobQueue.lane, organizationId)))
+      .limit(1)
+  )
+  return row?.status === 'queued'
+}
+
 /** How long a run may say it is working before its job row exists: the step that moved it queues the job just after. */
 export const STALL_GRACE_MS = 2 * 60 * 1000
 
@@ -143,13 +189,13 @@ export async function failStalledRootSortRuns(organizationId: string, shelf: Doc
   )
 }
 
-/** Cancel this person's runs of the shelf that still wait for review: a new run replaces them. */
+/** Cancel this person's runs of the shelf that still wait for review: a new run replaces them. Answers the runs it cancelled. */
 export async function cancelReadyRootSortRuns(
   organizationId: string,
   shelf: DocumentShelf,
   requestedBy: string
-): Promise<void> {
-  await withTenant({ organizationId }, () =>
+): Promise<RootSortRun[]> {
+  return withTenant({ organizationId }, () =>
     getDb()
       .update(rootSortRuns)
       .set({ status: 'cancelled', finishedAt: sql`now()`, updatedAt: sql`now()` })
@@ -162,5 +208,6 @@ export async function cancelReadyRootSortRuns(
           eq(rootSortRuns.status, 'ready')
         )
       )
+      .returning()
   )
 }

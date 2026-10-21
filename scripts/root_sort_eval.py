@@ -21,8 +21,9 @@ WHAT IT MEASURES
   were grouped, and each group's purity by the theme a person would give it.
 
 The sort runs in chunks of ``CHUNK`` documents, the production ``ROOT_SORT_CHUNK``
-(``MAX_JUDGED_DOCUMENTS`` in ``frontends/ui/src/lib/filing/types.ts``). No conventions
-are sent, so a placement is always into an existing folder of the shelf.
+(half of ``MAX_JUDGED_DOCUMENTS`` in ``frontends/ui/src/lib/filing/types.ts``), and each
+chunk's seconds are reported with the grouping's. No conventions are sent, so a placement
+is always into an existing folder of the shelf.
 
 USAGE
 -----
@@ -42,6 +43,7 @@ import argparse
 import json
 import os
 import sys
+import time
 from collections import Counter
 from datetime import date
 from pathlib import Path
@@ -52,7 +54,7 @@ FIXTURE = REPO_ROOT / "tests" / "fixtures" / "root_sort" / "austrian_office_root
 sys.path.insert(0, str(REPO_ROOT / "src"))
 sys.path.insert(0, str(REPO_ROOT / "frontends" / "aiq_api" / "src"))
 
-CHUNK = 60
+CHUNK = 30
 REQUESTED_CUTS = (0.4, 0.5, 0.6, 0.7, 0.8)
 SCAN_CUTS = tuple(round(0.30 + 0.05 * step, 2) for step in range(13))
 TARGET_PRECISION = 0.95
@@ -154,15 +156,18 @@ def judge_chunk(client: Any, folders: list[dict[str, Any]], chunk: list[dict[str
 
 def judge_all(
     client: Any, folders: list[dict[str, Any]], documents: list[dict[str, Any]]
-) -> tuple[dict[str, Any], str | None]:
-    """Every document's proposed move (id → move) plus the model that answered, in production-sized chunks."""
+) -> tuple[dict[str, Any], str | None, list[float]]:
+    """Every document's proposed move (id → move), the model that answered, and each chunk's seconds."""
     moves: dict[str, Any] = {}
     model: str | None = None
+    seconds: list[float] = []
     for index, start in enumerate(range(0, len(documents), CHUNK)):
+        started = time.perf_counter()
         data = judge_chunk(client, folders, documents[start : start + CHUNK], index)
+        seconds.append(round(time.perf_counter() - started, 1))
         model = model or data.get("model")
         moves.update({move["id"]: move for move in data["moves"]})
-    return moves, model
+    return moves, model, seconds
 
 
 def score_records(documents: list[dict[str, Any]], moves: dict[str, Any]) -> list[dict[str, Any]]:
@@ -287,10 +292,12 @@ def run_eval(fixture: dict[str, Any]) -> dict[str, Any]:
     client = build_client()
     folders = folders_payload(fixture)
     documents = indexed_documents(fixture)
-    moves, model = judge_all(client, folders, documents)
+    moves, model, chunk_seconds = judge_all(client, folders, documents)
     rows = score_records(documents, moves)
     leftovers = [doc for doc in documents if not doc["label"]]
+    started = time.perf_counter()
     proposals = run_grouping(client, folders, leftovers)
+    grouping_seconds = round(time.perf_counter() - started, 1)
     cuts = [cut_metrics(rows, cut) for cut in sorted(set(REQUESTED_CUTS) | set(SCAN_CUTS))]
     return {
         "date": date.today().isoformat(),
@@ -302,6 +309,7 @@ def run_eval(fixture: dict[str, Any]) -> dict[str, Any]:
         "cuts": cuts,
         "recommendation": recommend(cuts),
         "grouping": group_report(proposals, leftovers),
+        "seconds": {"chunks": chunk_seconds, "grouping": grouping_seconds},
         "documents": rows,
     }
 
@@ -362,6 +370,9 @@ def markdown_summary(report: dict[str, Any]) -> str:
     lines += [
         "",
         _recommendation_line(report),
+        "",
+        f"Seconds per chunk of {report['chunk']}: {report['seconds']['chunks']}; "
+        f"grouping: {report['seconds']['grouping']}.",
         "",
         "## Grouping of the no-fit documents",
         *_group_lines(report["grouping"]),
