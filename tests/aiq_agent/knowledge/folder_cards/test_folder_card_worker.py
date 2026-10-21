@@ -161,6 +161,7 @@ class TestRunOnce:
         assert report.outcomes == {"stale": 1}
         assert len(model.calls) == 1
         assert project.cards[("proj", "Gutachten/Behörde")]["status"] == "stale"
+        assert project.points[-1] == ("status", "proj", "Gutachten/Behörde", "stale")
 
     async def test_a_folder_that_shrank_below_the_threshold_loses_its_card(self, project):
         await worker.run_once(llm=FakeModel(_abstracts))
@@ -172,6 +173,7 @@ class TestRunOnce:
         assert report.outcomes == {"skipped": 1}
         assert ("proj", "Gutachten/Behörde") in project.deletes
         assert ("proj", "Gutachten/Behörde") not in project.cards
+        assert project.points[-1] == ("delete", "proj", "Gutachten/Behörde", None)
 
     async def test_a_failed_build_is_retried_and_the_pass_goes_on(self, project):
         def reply(prompt):
@@ -218,3 +220,34 @@ class TestReconcile:
         assert marked == 2
         assert _paths() == ["Gutachten", "Gutachten/Behörde"]
         assert queue.collections_due_for_reconcile(3600) == []
+
+
+class TestTheQdrantPoint:
+    async def test_every_card_the_bff_accepted_gets_its_point_with_the_written_card(self, project):
+        await worker.run_once(llm=FakeModel(_abstracts))
+
+        written = {(collection, path): card for op, collection, path, card in project.points if op == "put"}
+        assert set(written) == {("proj", put["folder_path"]) for put in project.puts}
+        assert (
+            written[("proj", "Gutachten/Behörde")]["abstract"]
+            == project.cards[("proj", "Gutachten/Behörde")]["abstract"]
+        )
+
+    async def test_a_card_the_bff_refused_gets_no_point(self, project):
+        project.folders.discard(("proj", "Gutachten/Behörde"))
+
+        await worker.run_once(llm=FakeModel(_abstracts))
+
+        assert ("proj", "Gutachten/Behörde") not in {(c, p) for _op, c, p, _d in project.points}
+
+    def test_a_point_that_cannot_be_written_never_fails_the_card(self, monkeypatch, caplog):
+        from aiq_agent.knowledge import factory as knowledge_factory
+
+        def broken():
+            raise RuntimeError("no embedder")
+
+        monkeypatch.setattr(knowledge_factory, "get_active_retriever", broken)
+
+        worker._publish_point("proj_1", {"folder_path": "Gutachten", "abstract": "Ein Ordner.", "key_facts": []})
+
+        assert "no Qdrant point for Gutachten" in caplog.text

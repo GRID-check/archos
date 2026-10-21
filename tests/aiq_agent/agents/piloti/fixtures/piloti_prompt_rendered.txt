@@ -266,7 +266,7 @@ Evidence lives in four places, each behind a tool whose description says what it
 - Academic papers, through the paper search tool, for scientific or technical validation.
 - The web, for general facts and news, and for what none of the others holds.
 The reader's own files are worked the way a person works the Files pane. Retrieval stays the start, and a round-0 search is often already in front of you; from there, three moves, each described by its tool:
-- Search finds where something is written: `knowledge_search` by meaning for a topic; `match="exact"` or `"regex"` for a word, a name or a number, and to show it is written nowhere; `folder=` when the place is known.
+- Search finds where something is written: `knowledge_search` by meaning for a topic; `match="exact"` or `"regex"` for a word, a name or a number, and to show it is written nowhere; `folder=` when the place is known; `group_by="document"` for which documents deal with a topic.
 - List orients: which files, how many, which Fassung. `list_files`, with `view="tree"` for a folder or the project.
 - Read reads what a document says: `read_passage`, `pages=` for a range, every range in one round.
 Open a file rather than guess from its name or summary. A simple question stays one move, or none when the prefetch answers it.

@@ -237,7 +237,18 @@ flowchart LR
 * `tests/knowledge_layer_tests/test_exact_search_regex.py`: regex timeout, the
   no-literal refusal, context lines, and the folder pushdown.
 * `sources/knowledge_layer/tests/test_qdrant_scope_kind.py`: no chunk read, scroll, facet
-  or count returns a `kind=folder` point unless it asks for one.
+  or count returns a `kind=folder` point unless it asks for one, the folder query finds the
+  card, and a restricted folder's card is invisible without its scope;
+  `tests/knowledge_layer_tests/test_folder_channel.py`: a `Folder:` line is never a citation.
+* `tests/knowledge_layer_tests/test_group_by_document.py`: grouping keeps rank order, keys by
+  `grid_document_id` with the collection and file name as the fallback, and only the
+  passages shown are citable.
+* `sources/knowledge_layer/tests/test_qdrant_bm25_tuning.py`: the rebuild reads the chunk
+  lengths back out of the stored BM25 weights, records the measured `avg_len` on the new
+  collection and recomputes the lexical vectors; writes and queries use the collection's own.
+* `sources/knowledge_layer/tests/test_qdrant_stemmed_search.py`: `stemmed=true` finds
+  `Fluchtwegbreite` and `Fluchtwegbreiten` both ways on Qdrant 1.19, keeps every literal match,
+  and the exact search stays literal without it.
 * `tests/aiq_agent/observability/test_langfuse_scores.py` for the two new scores, and
   `test_model_calls_are_traced.py` for the tier-1 generation.
 * `task db:test:rls` for `folder_cards`.
@@ -312,6 +323,23 @@ questions.
   §5 rows 1 and 4; that document is updated in the slices that land them.
 * [`piloti-filesystem-design.md`](../architecture/piloti-filesystem-design.md) stays an
   exploration. This decision builds none of its namespace or mounts.
+* BM25 length, measured before tuning (2026-10-21, Qdrant 1.19.2). `avg_len` counts
+  Qdrant's own tokens, the words left after the German analysis, not model tokens: on OIB
+  text and on German prose a chunk holds 0.29 to 0.32 of them per `cl100k` token. A
+  640-token section chunk is therefore about 210, a full 1,024-token split about 310, and a
+  median 128-token OIB Punkt about 41. The default 256 sits inside the office collection's
+  range and well above the corpus's clause chunks, which is the opposite of the 640 to
+  1,024 the plan assumed. So nothing is set by hand: the `_vN` rebuild measures the source
+  collection's mean from its stored weights, records it on the new collection
+  (`aiq:bm25_length`) and recomputes the lexical vectors when it moved more than 10 %; `k`
+  and `b` stay Qdrant's until a parity sweep sets them (`scripts/qdrant_rebuild.py
+  --bm25-k/--bm25-b`). The steps are in `docs/deployment/qdrant-runbook.md`.
+* Inflected forms are an option, not a default. `match="exact"` stays literal; with
+  `stemmed=true` it adds every chunk a Snowball German full-text index on a second text
+  field (`text_stem`) matches. Qdrant keeps one index per key, and the literal index on
+  `text` must stay unstemmed for numbers and codes. Compound parts (`Fluchtweg` inside
+  `Fluchtwegbreite`) are still found only literally. Points written before the field get
+  it from the next `_vN` rebuild and are matched literally until then.
 * Revisit when: the navigate-only arm matches the both arm on the `pf-*` set (the
   prefetch may then become a tree prefetch); the both arm loses to search-only on any
   question family (roll back that family's prompt rule); read-through rows hit

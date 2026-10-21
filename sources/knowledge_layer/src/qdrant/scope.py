@@ -17,6 +17,13 @@ always accepted::
     {"field": {"$gt"|"$gte"|"$lt"|"$lte": v}}     -> range (integer and datetime fields only)
     {"$and": [node, ...]}  /  {"$or": [node, ...]} -> groups
 
+A read is over chunks unless it says otherwise. A folder card's point
+(``kind = folder``, ADR-0127) sits in its folder's scope beside the chunks, so
+:func:`scope_filter` leaves it out of every read by default and admits it only
+to a read that asks for ``kind="folder"``; a delete of a whole scope asks for
+``kind="any"``. A chunk carries no ``kind`` at all, which the ``must_not``
+keeps: nothing was backfilled.
+
 ``$ne`` and ``$nin`` keep a point that lacks the field, as
 ``test_page_chunk_exclusion.py`` pins: the base corpus's ``chunking $ne page``
 must not drop chunks written before ``chunking`` existed. A field that is not
@@ -31,6 +38,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from typing import Any
+from typing import Literal
 
 from qdrant_client import models
 
@@ -38,13 +46,19 @@ from aiq_agent.profile_names import legacy_profile_token
 
 from .payload import coerce_field
 from .schema import DATETIME_FIELDS
+from .schema import FOLDER_KIND
 from .schema import INDEXED_FIELDS
 from .schema import INTEGER_FIELDS
+from .schema import KIND_FIELD
 from .schema import LEGACY_CHUNKING
 from .schema import LEGACY_FIELDS
 from .schema import PROJECT_FACTS_FIELD
 from .schema import SCOPE_FIELD
-from .schema import TEXT_FIELD
+from .schema import TEXT_FIELDS
+
+#: Which points a read is over: chunks (every read's default), folder card points, or both
+#: (only a write or a delete that names a whole scope).
+PointKind = Literal["chunk", "folder", "any"]
 
 _RANGE_OPERATORS = {"$gt": "gt", "$gte": "gte", "$lt": "lt", "$lte": "lte"}
 _OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin", *_RANGE_OPERATORS})
@@ -131,7 +145,7 @@ def _field(field: str, condition: Any) -> models.Filter:
 
 def _field_exact(field: str, condition: Any) -> models.Filter:
     """One ``field: condition`` pair as a filter, in exactly the spelling given."""
-    if field not in INDEXED_FIELDS or field == TEXT_FIELD:
+    if field not in INDEXED_FIELDS or field in TEXT_FIELDS:
         raise ValueError(f"Filter on {field!r}: not an indexed payload field")
     if not isinstance(condition, dict):
         return models.Filter(must=[_match(field, condition)])
@@ -176,14 +190,36 @@ def scope_condition(scopes: Sequence[str]) -> models.FieldCondition:
     return models.FieldCondition(key=SCOPE_FIELD, match=models.MatchAny(any=list(dict.fromkeys(names))))
 
 
+def _is_folder() -> models.FieldCondition:
+    return models.FieldCondition(key=KIND_FIELD, match=models.MatchValue(value=FOLDER_KIND))
+
+
+def kind_filter(kind: PointKind = "chunk") -> models.Filter:
+    """Only points of ``kind``, over a whole collection: for the one read that lists scopes, not one of them."""
+    if kind == "chunk":
+        return models.Filter(must_not=[_is_folder()])
+    if kind == "folder":
+        return models.Filter(must=[_is_folder()])
+    return models.Filter()
+
+
 def scope_filter(
     scopes: Sequence[str],
     filters: dict[str, Any] | None = None,
     *extra: models.Condition,
+    kind: PointKind = "chunk",
 ) -> models.Filter:
-    """The filter for a read over ``scopes``: the scope, the caller's filter, and any extra conditions."""
+    """The filter for a read over ``scopes``: the scope, the caller's filter, any extra conditions, and the kind.
+
+    ``kind`` defaults to chunks: a folder card's point never reaches a chunk read,
+    a count or a facet unless the caller asks for ``"folder"`` (or ``"any"``).
+    """
+    if kind not in ("chunk", "folder", "any"):
+        raise ValueError(f"Unknown point kind {kind!r}")
     must: list[Any] = [scope_condition(scopes)]
     if filters:
         must.append(translate(filters))
     must.extend(extra)
-    return models.Filter(must=must)
+    if kind == "folder":
+        must.append(_is_folder())
+    return models.Filter(must=must, must_not=[_is_folder()] if kind == "chunk" else None)

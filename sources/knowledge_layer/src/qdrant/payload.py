@@ -49,6 +49,7 @@ from .schema import PROJECT_STATUS_FIELD
 from .schema import READING_ORDER_FIELD
 from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
+from .schema import TEXT_STEM_FIELD
 
 #: LlamaIndex's own keys on a stored node. ``_node_content`` is a second, JSON
 #: copy of the whole node including its text; ``doc_id``/``ref_doc_id``/
@@ -270,6 +271,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
     typed[FOLDER_FIELD] = folder_ancestors(typed.get("folder_path"))
     typed[SCOPE_FIELD] = scope
     typed[TEXT_FIELD] = record.text or ""
+    typed[TEXT_STEM_FIELD] = typed[TEXT_FIELD]
     typed[CHUNK_ID_FIELD] = str(record.chunk_id)
     typed[READING_ORDER_FIELD] = reading_order(typed.get("page_label"))
     if record.ordinal is not None:
@@ -302,7 +304,8 @@ def chunk_own_payload(scope: str, record: ChunkRecord) -> dict[str, Any]:
 #: chunk read back carries exactly the metadata the chunker gave it; the facts
 #: themselves are read from the metadata store, their authority.
 STORE_ONLY_FIELDS = frozenset(
-    {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD, "office_id", "project_id", "grid_document_id"}
+    {TEXT_FIELD, TEXT_STEM_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD}
+    | {"office_id", "project_id", "grid_document_id"}
     | {
         CHUNK_ORDINAL_FIELD,
         "folder_path",

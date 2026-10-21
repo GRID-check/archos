@@ -25,7 +25,11 @@ activity (``track_llm_costs``, like every summary ingestion writes), and in
 writes ``folder-card-fresh`` (the share of claimed folders whose card is fresh
 afterwards) on its first generation's trace.
 
-Folder points in Qdrant (S11c) are not written here yet.
+Every card the BFF accepted is also a Qdrant point ``kind = folder`` in its folder's own
+scope (``knowledge_layer.qdrant.folders``): written beside the ``PUT``, its status changed
+beside a restamp, removed beside a delete. The point is derived; a failure to write it is
+logged and never fails the card, and the nightly reconcile does not see it (a rebuild of
+the card rewrites it).
 """
 
 from __future__ import annotations
@@ -125,6 +129,47 @@ def _load(claim: queue.Claim) -> _Collection | None:
 
 
 # ---------------------------------------------------------------------------
+# The card's Qdrant point (derived; never fails the card)
+# ---------------------------------------------------------------------------
+
+
+def _publish_point(collection: str, card: dict[str, Any]) -> None:
+    """Embed ``card`` with the production embedder and write its point into ``collection``'s scope."""
+    try:
+        from knowledge_layer.qdrant import folders
+        from knowledge_layer.qdrant.store import get_store
+
+        from aiq_agent.knowledge.factory import get_active_retriever
+
+        retriever = get_active_retriever()
+        text = folders.embedding_text(card["folder_path"], card.get("abstract"), card.get("key_facts"))
+        vector = retriever.embed_query(text)
+        folders.upsert_folder_card(get_store(retriever.embedding_identity()), collection, card, vector)
+    except Exception:  # noqa: BLE001 — the card is written; its point is derived
+        logger.warning("folder cards: no Qdrant point for %s in %s", card.get("folder_path"), collection, exc_info=True)
+
+
+def _restamp_point(collection: str, folder_path: str, status: str) -> None:
+    try:
+        from knowledge_layer.qdrant import folders
+        from knowledge_layer.qdrant.store import get_store
+
+        folders.set_folder_card_status(get_store(), collection, folder_path, status)
+    except Exception:  # noqa: BLE001
+        logger.warning("folder cards: could not restamp the point of %s in %s", folder_path, collection, exc_info=True)
+
+
+def _drop_point(collection: str, folder_path: str) -> None:
+    try:
+        from knowledge_layer.qdrant import folders
+        from knowledge_layer.qdrant.store import get_store
+
+        folders.delete_folder_card(get_store(), collection, folder_path)
+    except Exception:  # noqa: BLE001
+        logger.warning("folder cards: could not delete the point of %s in %s", folder_path, collection, exc_info=True)
+
+
+# ---------------------------------------------------------------------------
 # Writes through the BFF
 # ---------------------------------------------------------------------------
 
@@ -153,12 +198,14 @@ def _restamp(claim: queue.Claim, context: _Collection, existing: dict[str, Any],
     )
     if client.put_card(body):
         context.cards[claim.folder_path] = {**existing, "status": status}
+        _restamp_point(claim.collection, claim.folder_path, status)
 
 
 def _drop(claim: queue.Claim, context: _Collection, existing: dict[str, Any] | None) -> Outcome:
     """An empty or tiny folder: its listing is its card, so a stored card goes."""
     if existing is not None:
         client.delete_card(context.organization_id, claim.collection, claim.folder_path)
+        _drop_point(claim.collection, claim.folder_path)
         queue.delete_manifest(claim.collection, claim.folder_path)
         context.cards.pop(claim.folder_path, None)
         _mark_parent(claim, context)
@@ -191,6 +238,7 @@ def _store(
         return
     queue.put_manifest(claim.collection, claim.folder_path, manifest.to_json())
     context.cards[claim.folder_path] = {**(existing or {}), **body}
+    _publish_point(claim.collection, body)
     if (existing or {}).get("abstract_hash") != draft.abstract_hash:
         _mark_parent(claim, context)
 

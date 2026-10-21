@@ -6057,11 +6057,14 @@ class LlamaIndexRetriever(BaseRetriever):
         filters: dict[str, Any] | None = None,
         limit: int = 500,
         user_regex: bool = False,
+        stem_phrases: list[str] | None = None,
     ) -> list[Chunk] | None:
         """Every chunk matching the regex ``pattern`` (``qdrant.retrieval.find_text``).
 
         ``user_regex`` marks a person's own pattern (``match="regex"``), which is read
         with a match timeout and raises ``PatternTooCostly`` when it backtracks.
+        ``stem_phrases`` adds the chunks holding an inflected form of those phrases
+        (the German-stemmed index, ``knowledge_search(stemmed=true)``).
 
         The vector store is the source of truth for chunk text, so this reads it
         there. No embedding, no ranking: a scroll over the collection, narrowed
@@ -6069,7 +6072,9 @@ class LlamaIndexRetriever(BaseRetriever):
         regex. A collection with no chunks is an empty answer, not a failure;
         a store error raises, so the caller can say the search did not run.
         """
-        return await asyncio.to_thread(self._find_text_sync, collection_name, pattern, filters, limit, user_regex)
+        return await asyncio.to_thread(
+            self._find_text_sync, collection_name, pattern, filters, limit, user_regex, stem_phrases
+        )
 
     async def candidate_counts(
         self, collection_name: str, pattern: str, filters: dict[str, Any] | None = None, user_regex: bool = False
@@ -6121,7 +6126,13 @@ class LlamaIndexRetriever(BaseRetriever):
         return chunks
 
     def _find_text_sync(
-        self, collection_name: str, pattern: str, filters: dict[str, Any] | None, limit: int, user_regex: bool = False
+        self,
+        collection_name: str,
+        pattern: str,
+        filters: dict[str, Any] | None,
+        limit: int,
+        user_regex: bool = False,
+        stem_phrases: list[str] | None = None,
     ) -> list[Chunk]:
         if not pattern or limit <= 0:
             return []
@@ -6131,7 +6142,9 @@ class LlamaIndexRetriever(BaseRetriever):
         # caller orders them by document and page (cosine 1.0).
         return [
             self._chunk_from_hit(hit)
-            for hit in qdrant_retrieval.find_text(collection_name, pattern, filters, limit, user_regex=user_regex)
+            for hit in qdrant_retrieval.find_text(
+                collection_name, pattern, filters, limit, user_regex=user_regex, stem_phrases=stem_phrases
+            )
         ]
 
     def _warm_sync(self, query: str) -> None:

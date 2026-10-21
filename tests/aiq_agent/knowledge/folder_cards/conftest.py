@@ -82,6 +82,8 @@ class FakeBff:
     descriptions: dict[tuple[str, str], str] = field(default_factory=dict)
     puts: list[dict[str, Any]] = field(default_factory=list)
     deletes: list[tuple[str, str]] = field(default_factory=list)
+    #: What the worker did to each card's Qdrant point: ``(op, collection, folder_path, detail)``.
+    points: list[tuple[str, str, str, Any]] = field(default_factory=list)
 
     def put_card(self, body: dict[str, Any]) -> bool:
         key = (body["collection"], body["folder_path"])
@@ -119,6 +121,22 @@ def bff(monkeypatch) -> FakeBff:
     monkeypatch.setattr(client, "get_cards", fake.get_cards)
     monkeypatch.setattr(client, "read_collection", fake.read_collection)
     monkeypatch.setattr(client, "delete_card", fake.delete_card)
+    # The point writes need an embedder and a Qdrant; ``test_folder_card_points.py`` runs them for real.
+    from aiq_agent.knowledge.folder_cards import worker
+
+    monkeypatch.setattr(
+        worker,
+        "_publish_point",
+        lambda collection, card: fake.points.append(("put", collection, card["folder_path"], card)),
+    )
+    monkeypatch.setattr(
+        worker,
+        "_restamp_point",
+        lambda collection, path, status: fake.points.append(("status", collection, path, status)),
+    )
+    monkeypatch.setattr(
+        worker, "_drop_point", lambda collection, path: fake.points.append(("delete", collection, path, None))
+    )
     return fake
 
 

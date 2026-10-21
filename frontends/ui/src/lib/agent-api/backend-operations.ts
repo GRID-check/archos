@@ -110,12 +110,16 @@ const ENTRIES = [
       'exact name from files-list), `doc_class` (a document type key such as `oib_guideline`), `title_contains` or `folder` (a ' +
       'folder path; it covers everything below it). `match: "exact"` finds every passage that contains the query literally, ' +
       'plus each matching file with its count and pages; use it for a number, a code, a name or to prove a term appears nowhere, ' +
-      'with several spellings separated by `|`. `match: "regex"` is the same search with a pattern in Python syntax (case-insensitive, ' +
+      'with several spellings separated by `|`; `stemmed: true` also finds the inflected forms of each word (German stemming). ' +
+      '`match: "regex"` is the same search with a pattern in Python syntax (case-insensitive, ' +
       '`|` is alternation); it needs one literal word it must contain, or a `folder`, `file_name` or `doc_class` to read in, and ' +
       'a pattern that backtracks is refused. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
-      'A search that stops at its limit says its counts are lower bounds. A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
+      'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
+      'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
+      'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
       'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
       'Returns up to 16 excerpts across several documents, each with its source, citation key, document type, folder and page. ' +
+      'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
       'citation or a file name; an empty result says how to retry.',

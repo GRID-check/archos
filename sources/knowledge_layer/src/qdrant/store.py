@@ -45,12 +45,13 @@ from .schema import LEXICAL
 from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
 from .schema import Physical
+from .schema import bm25_length_of
 from .schema import ensure_collection
 from .schema import ensure_payload_indexes
 from .schema import identity_mismatch
 from .schema import physical_for_scope
 from .schema import text_index_drift
-from .scope import scope_condition
+from .scope import kind_filter
 from .scope import scope_filter
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,11 @@ FACET_LIMIT = 100_000
 #: Chunk ids per delete request: a re-upload retires every chunk of the version
 #: it replaces, and a large drawing set has thousands.
 DELETE_BATCH = 1024
+
+#: How long a process trusts the BM25 length it read from a collection's metadata. A rebuild
+#: switches the alias to a collection written with another one; within this window a writer may
+#: still compute with the old, which the runbook's restart after the switch closes.
+BM25_LENGTH_TTL_SECONDS = 300.0
 
 #: The pause before each retry of a write that failed transiently. A peer
 #: that is restarting (a rollout, a drain) answers again within seconds; a
@@ -110,9 +116,14 @@ def with_retry(label: str, work: Callable[[], T]) -> T:
     return work()
 
 
-def bm25(text: str) -> models.Document:
-    """The text as Qdrant's server-side BM25 input, with the one set of German options."""
-    return models.Document(text=text, model=BM25_MODEL, options=dict(BM25_OPTIONS))
+def bm25(text: str, length: Mapping[str, float] | None = None) -> models.Document:
+    """The text as Qdrant's server-side BM25 input: the one German analysis, and the collection's length normalisation.
+
+    ``length`` (``k``, ``b``, ``avg_len``) is the target collection's
+    (:meth:`QdrantStore.bm25_length`); without one Qdrant's defaults apply, which is
+    what every collection not built by a tuning rebuild was written with.
+    """
+    return models.Document(text=text, model=BM25_MODEL, options={**BM25_OPTIONS, **dict(length or {})})
 
 
 class QdrantStore:
@@ -126,6 +137,7 @@ class QdrantStore:
         self._verified: set[Physical] = set()
         self._indexed: set[tuple[Physical, str]] = set()
         self._sound_text: set[Physical] = set()
+        self._bm25_lengths: dict[Physical, tuple[float, dict[str, float]]] = {}
         self._ensure_lock = threading.Lock()
 
     @staticmethod
@@ -173,6 +185,24 @@ class QdrantStore:
         except Exception:  # noqa: BLE001 - see the docstring; the refusal surfaces on the query
             logger.error("Qdrant %s: could not create missing payload indexes", alias, exc_info=True)
 
+    def bm25_length(self, scope: str) -> dict[str, float]:
+        """The BM25 length normalisation ``scope``'s collection was written with (``{}``: Qdrant's defaults).
+
+        Read from the collection's metadata (``schema.BM25_LENGTH_KEY``) and kept for
+        :data:`BM25_LENGTH_TTL_SECONDS`: every write and query must compute with the
+        collection's own, and a rebuild may move the alias to one with another.
+        """
+        physical = physical_for_scope(scope)
+        cached = self._bm25_lengths.get(physical)
+        now = time.monotonic()
+        if cached is not None and cached[0] > now:
+            return dict(cached[1])
+        if not self.exists(scope):
+            return {}
+        length = bm25_length_of(self.client.get_collection(ALIASES[physical]).config.metadata)
+        self._bm25_lengths[physical] = (now + BM25_LENGTH_TTL_SECONDS, length)
+        return dict(length)
+
     def check_identity(self, scope: str) -> None:
         """Raise when ``scope``'s collection holds vectors from another embedder than this process's.
 
@@ -216,9 +246,10 @@ class QdrantStore:
             return 0
         alias = self.ensure(scope, len(usable[0].embedding))
         mode = models.UpdateMode.INSERT_ONLY if insert_only else None
+        length = self.bm25_length(scope)
         for start in range(0, len(usable), UPSERT_BATCH):
             batch = usable[start : start + UPSERT_BATCH]
-            points = [self._point(scope, record, enrichment) for record in batch]
+            points = [self._point(scope, record, enrichment, length) for record in batch]
             with_retry(f"upsert into {scope}", lambda: self.client.upsert(alias, points, wait=True, update_mode=mode))
             if insert_only:
                 self._merge_own_payloads(alias, scope, batch)
@@ -241,10 +272,15 @@ class QdrantStore:
             with_retry(label, lambda: self.client.batch_update_points(alias, chunk, wait=True))
 
     @staticmethod
-    def _point(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any] | None) -> models.PointStruct:
+    def _point(
+        scope: str,
+        record: ChunkRecord,
+        enrichment: Mapping[str, Any] | None,
+        length: Mapping[str, float] | None = None,
+    ) -> models.PointStruct:
         vector: dict[str, Any] = {DENSE: [float(value) for value in record.embedding]}
         if (record.text or "").strip():
-            vector[LEXICAL] = bm25(record.text)
+            vector[LEXICAL] = bm25(record.text, length)
         return models.PointStruct(
             id=point_id(record.chunk_id), vector=vector, payload=build_payload(scope, record, enrichment)
         )
@@ -252,7 +288,9 @@ class QdrantStore:
     def _delete(self, scope: str, *conditions: models.Condition) -> None:
         if not self.exists(scope):
             return
-        selector = models.FilterSelector(filter=models.Filter(must=[scope_condition([scope]), *conditions]))
+        # A delete names what it deletes: by chunk id or file name nothing else matches, and a
+        # whole scope's delete takes its folder card points with it.
+        selector = models.FilterSelector(filter=scope_filter([scope], None, *conditions, kind="any"))
         with_retry(
             f"delete in {scope}", lambda: self.client.delete(self.alias(scope), points_selector=selector, wait=True)
         )
@@ -277,16 +315,13 @@ class QdrantStore:
         self._delete(scope, models.FieldCondition(key="file_name", match=models.MatchAny(any=sorted(names))))
 
     def delete_scope(self, scope: str) -> None:
-        """Delete every chunk of ``scope``: a collection deleted, a conversation's uploads reaped."""
+        """Delete every point of ``scope``, folder card points too: a collection deleted, uploads reaped."""
         self._delete(scope)
 
     @staticmethod
     def _file_filter(scope: str, file_name: str) -> models.Filter:
-        return models.Filter(
-            must=[
-                scope_condition([scope]),
-                models.FieldCondition(key="file_name", match=models.MatchValue(value=file_name)),
-            ]
+        return scope_filter(
+            [scope], None, models.FieldCondition(key="file_name", match=models.MatchValue(value=file_name))
         )
 
     def set_file_payloads(self, scope: str, payloads: Mapping[str, Mapping[str, Any]]) -> None:
@@ -365,13 +400,13 @@ class QdrantStore:
         """Every ``file_name`` value the points of ``scope`` carry."""
         if not self.exists(scope):
             return []
-        return self._facet(self.alias(scope), "file_name", models.Filter(must=[scope_condition([scope])]))
+        return self._facet(self.alias(scope), "file_name", scope_filter([scope]))
 
     def file_counts(self, scope: str) -> dict[str, int]:
         """``file_name -> chunks`` for every file with a point in ``scope``, one exact facet."""
         if not self.exists(scope):
             return {}
-        return self._facet_counts(self.alias(scope), "file_name", models.Filter(must=[scope_condition([scope])]))
+        return self._facet_counts(self.alias(scope), "file_name", scope_filter([scope]))
 
     def scopes(self, physical: Physical) -> list[str]:
         """Every logical scope with at least one point in ``physical``'s collection."""
@@ -382,13 +417,13 @@ class QdrantStore:
         alias = ALIASES[physical]
         if not any(entry.alias_name == alias for entry in self.client.get_aliases().aliases):
             return {}
-        return self._facet_counts(alias, SCOPE_FIELD, None)
+        return self._facet_counts(alias, SCOPE_FIELD, kind_filter("chunk"))
 
     def chunk_ids(self, scope: str) -> Iterable[str]:
         """The chunk id of every point of ``scope``, read by scroll with nothing else in the payload."""
         if not self.exists(scope):
             return
-        query_filter = models.Filter(must=[scope_condition([scope])])
+        query_filter = scope_filter([scope])
         offset: Any = None
         while True:
             page, offset = self.client.scroll(
@@ -427,7 +462,7 @@ class QdrantStore:
         """About ``size`` chunk ids of ``scope``, read from a random place in point-id order (wrapping round)."""
         if not self.exists(scope) or size <= 0:
             return []
-        query_filter = models.Filter(must=[scope_condition([scope])])
+        query_filter = scope_filter([scope])
         ids: dict[str, None] = {}
         for offset in (str(uuid.uuid4()), None):
             page, _next = self.client.scroll(
@@ -456,7 +491,7 @@ class QdrantStore:
             return False
         if self.count(scope) == 0:
             return False
-        selector = models.Filter(must=[scope_condition([scope])])
+        selector = scope_filter([scope])
         with_retry(
             f"set payload on {scope}",
             lambda: self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True),

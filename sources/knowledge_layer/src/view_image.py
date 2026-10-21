@@ -333,16 +333,37 @@ def _crop_image_region(image_bytes: bytes, region: Region, max_dim: int) -> tupl
     return buf.getvalue(), cropped.width, cropped.height, widened
 
 
+class StorageLocation(tuple):
+    """``(storage_key, storage_bucket)``, and the Fassung (``version_id``) those bytes are, when the BFF said.
+
+    A tuple so every caller that unpacks or compares the pair reads it as
+    before; ``version_id`` rides along for ``look``'s card (ADR-0128).
+    """
+
+    version_id: str | None
+
+    def __new__(cls, storage_key: str, storage_bucket: str | None, version_id: str | None = None):  # noqa: ANN204
+        location = super().__new__(cls, (storage_key, storage_bucket))
+        location.version_id = version_id
+        return location
+
+
+def location_version(location: object) -> str | None:
+    """The Fassung a resolved location names; None for a bare pair or none."""
+    return getattr(location, "version_id", None)
+
+
 async def _resolve_storage_location(
     collection: str, file_name: str, organization_id: str | None = None, image_index: int | None = None
-) -> tuple[str, str | None] | None:
+) -> StorageLocation | None:
     """Resolve a ``(collection, filename)`` pair to a SeaweedFS object location.
 
     With ``image_index`` the location is that of the stored raster the ingest
     pipeline kept under the document (``imageIndex`` query param); the BFF
     derives the key from the row, so an index it does not know yields ``None``.
 
-    Returns ``(storage_key, storage_bucket)``, where ``storage_bucket`` is
+    Returns ``(storage_key, storage_bucket)`` as a :class:`StorageLocation`
+    that also carries the Fassung (``versionId``) when the BFF names one, where ``storage_bucket`` is
     ``None`` for a document in the deployment's shared bucket — which is every
     document written before per-organization buckets existed (ADR-0043). The
     bucket comes from the BFF rather than being derived here on purpose: the
@@ -389,7 +410,10 @@ async def _resolve_storage_location(
         storage_bucket = data.get("storageBucket")
         if not isinstance(storage_bucket, str) or not storage_bucket:
             storage_bucket = None
-        return storage_key, storage_bucket
+        version_id = data.get("versionId")
+        return StorageLocation(
+            storage_key, storage_bucket, version_id if isinstance(version_id, str) and version_id else None
+        )
     except Exception:  # noqa: BLE001 - fail-open contract
         logger.warning("look: storage-key lookup failed for %s/%s", collection, file_name, exc_info=True)
         return None
@@ -501,6 +525,8 @@ class View:
     width: int
     height: int
     region: Region | None = None
+    #: The Fassung the bytes are, when the document service named one; None for the base corpus.
+    version_id: str | None = None
 
     def with_text(self, text: str) -> "View":
         return replace(self, text=text)
@@ -690,7 +716,8 @@ async def _uploaded_image(
         "({size}). This is the actual image the retrieved chunk "
         "describes — inspect it for plans, drawings, scale and relationships."
     )
-    return await _raster_view(image_bytes, region, limits, describe, f"the image '{file_name}'", tool)
+    result = await _raster_view(image_bytes, region, limits, describe, f"the image '{file_name}'", tool)
+    return replace(result, version_id=location_version(location)) if isinstance(result, View) else result
 
 
 async def _stored_pdf(
@@ -719,6 +746,7 @@ async def _stored_pdf(
     )
     if isinstance(result, View):
         note_collections_read([collection])
+        return replace(result, version_id=location_version(location))
     return result
 
 
