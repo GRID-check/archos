@@ -79,6 +79,33 @@ def section_position(metadata: Mapping[str, Any] | None) -> tuple[int, int, int]
     return (metadata_int(metadata, "section_order"), metadata_int(metadata, "line_start"), part)
 
 
+#: A chunk's place in its document as one total order: page, section structure, numbered before
+#: unnumbered, place in the file, chunk id. See :func:`document_position`.
+DocumentPosition = tuple[int, int, int, int, int, int, str]
+
+
+def document_position(metadata: Mapping[str, Any] | None, chunk_id: Any) -> DocumentPosition:
+    """Where a chunk sits in its document: the ONE key every reader sorts, cuts and continues by.
+
+    ``reading_order`` of the page, then :func:`section_position`, then the chunk's place in its file
+    (``chunk_ordinal``; a chunk without one, written before the field existed, sorts after the
+    numbered chunks of its place), then the chunk id, which makes the order total. A ranged read's
+    cursor carries this whole key and the continuation compares the same key
+    (``read_passage``, ``qdrant/reads.fetch_from``): a cursor holding only part of it skipped
+    chunks whose part agreed but whose sort position did not (a table part filed after a later
+    text chunk, an unnumbered chunk in an earlier section).
+    """
+    ordinal = (metadata or {}).get("chunk_ordinal")
+    numbered = isinstance(ordinal, int) and not isinstance(ordinal, bool)
+    return (
+        reading_order((metadata or {}).get("page_label")),
+        *section_position(metadata),
+        0 if numbered else 1,
+        ordinal if numbered else 0,
+        str(chunk_id or ""),
+    )
+
+
 #: ``Chunk.metadata`` key under which :meth:`BaseRetriever.search_grouped` puts
 #: each chunk's score in the one fused ranking across every group. Comparable
 #: across groups, unlike ``Chunk.score`` (the chunk's own cosine); the grouped
@@ -346,7 +373,7 @@ class BaseRetriever(ABC):
         filters: dict[str, Any] | None,
         limit: int,
         order_by: str | None = None,
-        start_from: tuple[int, int] | None = None,
+        start_from: DocumentPosition | None = None,
     ) -> list[Chunk] | None:
         """The chunks of ``collection_name`` that ``filters`` admits, read by filter alone.
 
@@ -361,7 +388,7 @@ class BaseRetriever(ABC):
         caller that re-sorts by a finer key starting with :data:`READING_ORDER`
         keeps exactly what it would have kept from the whole set.
 
-        ``start_from=(reading_order, chunk_ordinal)`` continues a read: the chunk at
+        ``start_from`` (a :func:`document_position`) continues a read: the chunk at
         that place and everything before it are left out, and the rest comes in
         document order (``order_by`` is then implied). It narrows within the
         filter and the caller's scope; it never widens either.

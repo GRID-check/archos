@@ -232,3 +232,20 @@ class TestFileToolsUsed:
         from aiq_agent.observability.langfuse_scores import file_tool_scores
 
         assert file_tool_scores([]) == []
+
+    @pytest.mark.parametrize(
+        ("tools", "literal", "expected"),
+        [
+            (["knowledge_search"], 1, "navigate"),
+            (["knowledge_search", "knowledge_search"], 1, "both"),
+            (["knowledge_search", "read_passage"], 1, "navigate"),
+            (["knowledge_search"], 3, "navigate"),
+        ],
+    )
+    def test_a_literal_search_is_navigation_as_the_eval_arms_count_it(self, tools, literal, expected):
+        """The files eval's navigate arm is list, read and LITERAL search; ranked search is the search arm."""
+        from aiq_agent.observability.langfuse_scores import file_tool_scores
+
+        [score] = file_tool_scores(tools, literal)
+
+        assert score.value == expected

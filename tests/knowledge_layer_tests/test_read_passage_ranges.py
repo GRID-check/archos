@@ -25,6 +25,7 @@ from aiq_agent.common.turn_status import fetch_signature
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.schema import ContentType
 from aiq_agent.knowledge.scoping import ScopedCollection
+from sources.knowledge_layer.src.read_passage import LABEL_FILTERS
 from sources.knowledge_layer.src.read_passage import RangeRefused
 from sources.knowledge_layer.src.read_passage import ReadCursor
 from sources.knowledge_layer.src.read_passage import ReadPassageConfig
@@ -76,6 +77,11 @@ def _chunk(
     )
 
 
+def _at(page: int, ordinal: int, file_name: str = REPORT) -> tuple:
+    """The cursor position of a ``_chunk(page, ordinal)``: no section structure, numbered."""
+    return (page, 0, 0, 0, 0, ordinal, f"{file_name}-{page}-{ordinal}")
+
+
 SENTENCE = "Der Fluchtweg darf an keiner Stelle länger als vierzig Meter sein und muss ins Freie führen."
 
 
@@ -90,7 +96,7 @@ class _Retriever:
         self.calls.append({"collection": collection_name, "filters": filters, "limit": limit, "start_from": start_from})
         ordered = _range_order(self.chunks)
         if start_from is not None:
-            ordered = [chunk for chunk in ordered if _chunk_position(chunk) > start_from]
+            ordered = [chunk for chunk in ordered if _chunk_position(chunk) > tuple(start_from)]
         return [chunk.model_copy(deep=True) for chunk in ordered[:limit]]
 
 
@@ -301,7 +307,7 @@ class TestCursor:
         third = await _read(document=REPORT, cursor=_cursor_of(second), conclusion="x")
         assert {int(n) for n in re.findall(r"Abschnitt (\d+)\.", third)} == {8, 9}
         assert _cursor_of(third) is None and "Read pages" in third
-        assert retriever.calls[1]["start_from"] == (2, 3)
+        assert retriever.calls[1]["start_from"] == _at(2, 3)
 
     @pytest.mark.asyncio
     async def test_a_continuation_stays_inside_the_requested_range(self, harness):
@@ -314,30 +320,32 @@ class TestCursor:
         assert _cursor_of(rest) is None
 
     @pytest.mark.asyncio
-    async def test_a_cut_never_splits_chunks_that_share_a_place(self, harness):
-        # Three unnumbered chunks of one page tie at one place; the cap cannot fall between them.
+    async def test_a_cut_between_unnumbered_chunks_of_one_page_loses_none(self, harness):
+        # Three unnumbered chunks of one page; the chunk id orders them, so a cut may fall between them.
         chunks = [_chunk(1, 0, "Erster. " + "x" * 20_000)]
         for tail in "abc":
             chunk = _chunk(2, 0, f"Gleichstand {tail}. " + "y" * 3_000)
             chunk.metadata.pop("chunk_ordinal")
+            chunk.chunk_id = f"unnumbered-{tail}"
             chunks.append(chunk)
         harness(chunks)
 
         first = await _read(document=REPORT, pages="1-2", conclusion="x")
-
-        assert "Erster." in first and "Gleichstand" not in first
         rest = await _read(document=REPORT, cursor=_cursor_of(first), conclusion="x")
-        assert all(f"Gleichstand {tail}." in rest for tail in "abc")
+
+        both = first + rest
+        assert "Erster." in first
+        assert all(both.count(f"Gleichstand {tail}.") == 1 for tail in "abc")
 
     @pytest.mark.asyncio
     async def test_a_cursor_with_nothing_after_it_says_the_read_is_complete(self, harness):
         harness([_chunk(1, 0, "Eins.")])
-        token = encode_cursor(ReadCursor(REPORT, COLLECTION, 1, 0, None))
+        token = encode_cursor(ReadCursor(REPORT, COLLECTION, _at(1, 0), None))
 
         assert "the read is complete" in await _read(document=REPORT, cursor=token, conclusion="x")
 
     def test_the_token_round_trips(self):
-        cursor = ReadCursor(REPORT, COLLECTION, 7, 12, 9)
+        cursor = ReadCursor(REPORT, COLLECTION, (7, 2, 14, 3, 0, 12, "c-7"), 9, LABEL_FILTERS)
 
         assert decode_cursor(encode_cursor(cursor)) == cursor
         assert "=" not in encode_cursor(cursor)
@@ -347,8 +355,8 @@ class TestCursor:
         assert decode_cursor(token) is None
 
     def test_an_edited_token_does_not_decode(self):
-        raw = json.loads(base64.urlsafe_b64decode(encode_cursor(ReadCursor(REPORT, COLLECTION, 7, 12, 9)) + "=="))
-        raw[2] = 1  # a cursor moved to page 1 by hand keeps the old checksum
+        raw = json.loads(base64.urlsafe_b64decode(encode_cursor(ReadCursor(REPORT, COLLECTION, _at(7, 12), 9)) + "=="))
+        raw[2][0] = 1  # a cursor moved to page 1 by hand keeps the old checksum
         forged = base64.urlsafe_b64encode(json.dumps(raw).encode()).decode().rstrip("=")
 
         assert decode_cursor(forged) is None
@@ -356,7 +364,7 @@ class TestCursor:
     @pytest.mark.asyncio
     async def test_a_cursor_for_another_document_is_refused(self, harness):
         retriever = harness([_chunk(1, 0, "Eins.")], documents=(REPORT, OTHER))
-        token = encode_cursor(ReadCursor(OTHER, COLLECTION, 1, 0, None))
+        token = encode_cursor(ReadCursor(OTHER, COLLECTION, _at(1, 0, OTHER), None))
 
         text = await _read(document=REPORT, cursor=token, conclusion="x")
 
@@ -376,7 +384,7 @@ class TestCursor:
     async def test_a_cursor_cannot_move_the_read_to_another_collection(self, harness):
         """The collection a cursor names must be one the document resolves to in THIS turn's scope."""
         retriever = harness([_chunk(1, 0, "Eins.")])
-        token = encode_cursor(ReadCursor(REPORT, "proj_somebody_else", 1, 0, None))
+        token = encode_cursor(ReadCursor(REPORT, "proj_somebody_else", _at(1, 0), None))
 
         text = await _read(document=REPORT, cursor=token, conclusion="x")
 
@@ -386,7 +394,7 @@ class TestCursor:
     @pytest.mark.asyncio
     async def test_every_fetch_of_a_ranged_read_is_in_the_turns_own_scope(self, harness):
         retriever = harness([_chunk(1, 0, "Eins.")])
-        token = encode_cursor(ReadCursor(REPORT, COLLECTION, 1, 0, None))
+        token = encode_cursor(ReadCursor(REPORT, COLLECTION, _at(1, 0), None))
 
         await _read(document=REPORT, pages="1-2", conclusion="x")
         await _read(document=REPORT, cursor=token, conclusion="x")
@@ -408,3 +416,123 @@ class TestRepeatGuard:
 
     def test_a_cursor_is_part_of_the_identity(self):
         assert fetch_signature(self._call(pages="1-9", cursor="a")) != fetch_signature(self._call(pages="1-9"))
+
+
+class _FilteringRetriever(_Retriever):
+    """A retriever that applies the range filters as the store does, ordering and cutting like ``reads.fetch``.
+
+    ``legacy=True`` stands for a document written before ``reading_order`` existed: a range on that
+    field admits none of its points, while the ``page_label`` family does.
+    """
+
+    def __init__(self, chunks: list[Chunk], legacy: bool = False):
+        super().__init__(chunks)
+        self.legacy = legacy
+
+    def _admits(self, chunk: Chunk, filters: dict) -> bool:
+        page = int(chunk.metadata["page_label"])
+        for clause in filters.get("$and", [filters]):
+            ((field, condition),) = clause.items()
+            if field == "file_name" and chunk.file_name != condition["$eq"]:
+                return False
+            if field == "page_label" and chunk.metadata["page_label"] not in condition["$in"]:
+                return False
+            if field == "reading_order" and (
+                self.legacy or page < condition.get("$gte", page) or page > condition.get("$lte", page)
+            ):
+                return False
+        return True
+
+    async def fetch(self, collection_name, filters, limit, order_by=None, start_from=None):
+        self.calls.append({"collection": collection_name, "filters": filters, "limit": limit, "start_from": start_from})
+        ordered = _range_order([chunk for chunk in self.chunks if self._admits(chunk, filters)])
+        if start_from is not None:
+            ordered = [chunk for chunk in ordered if _chunk_position(chunk) > tuple(start_from)]
+        return [chunk.model_copy(deep=True) for chunk in ordered[:limit]]
+
+
+def _sections(text: str) -> list[str]:
+    return re.findall(r"Abschnitt (\w+)\.", text)
+
+
+class TestContinuationLosesNothing:
+    @pytest.mark.asyncio
+    async def test_a_table_part_filed_after_a_later_text_chunk_is_still_read(self, harness, monkeypatch):
+        """Page 1 sorts [text 4, text 5, table part 3]: the cut after text 4 must not drop table part 3."""
+        table = _chunk(1, 3, "Abschnitt Tabelle. " + "t" * 3_000)
+        table.metadata["table_part"] = 2
+        chunks = [
+            _chunk(1, 4, "Abschnitt vier. " + "x" * 20_000),
+            _chunk(1, 5, "Abschnitt fuenf. " + "y" * 5_000),
+            table,
+        ]
+        harness(chunks)
+
+        first = await _read(document=REPORT, pages="1-2", conclusion="x")
+        rest = await _read(document=REPORT, cursor=_cursor_of(first), conclusion="x")
+
+        assert _sections(first) == ["vier"]
+        assert _sections(rest) == ["fuenf", "Tabelle"]
+
+    @pytest.mark.asyncio
+    async def test_mixed_numbered_and_unnumbered_chunks_do_not_end_a_read_early(self, harness):
+        unnumbered_first = _chunk(1, 0, "Abschnitt eins. " + "x" * 20_000)
+        unnumbered_first.metadata.pop("chunk_ordinal")
+        unnumbered_first.metadata["section_order"] = 1
+        numbered = _chunk(1, 7, "Abschnitt zwei. " + "y" * 5_000)
+        numbered.metadata["section_order"] = 2
+        unnumbered_last = _chunk(1, 0, "Abschnitt drei. " + "z" * 100)
+        unnumbered_last.metadata.pop("chunk_ordinal")
+        unnumbered_last.metadata["section_order"] = 3
+        unnumbered_last.chunk_id = "late"
+        harness([unnumbered_last, numbered, unnumbered_first])
+
+        first = await _read(document=REPORT, pages="1", conclusion="x")
+        rest = await _read(document=REPORT, cursor=_cursor_of(first), conclusion="x")
+
+        assert _sections(first) == ["eins"]
+        assert _sections(rest) == ["zwei", "drei"]
+        assert "the read is complete" not in rest
+
+
+class TestLegacyDocument:
+    @pytest.mark.asyncio
+    async def test_a_continuation_of_a_document_without_reading_order_reads_the_rest(self, harness, monkeypatch):
+        chunks = [_chunk(1 + index // 2, index, f"Abschnitt {index}. " + "x" * 5_000) for index in range(10)]
+        retriever = _FilteringRetriever(chunks, legacy=True)
+        harness([])
+        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
+
+        first = await _read(document=REPORT, pages="1-5", conclusion="x")
+        second = await _read(document=REPORT, cursor=_cursor_of(first), conclusion="x")
+        third = await _read(document=REPORT, cursor=_cursor_of(second), conclusion="x")
+
+        assert _sections(first) == ["0", "1", "2", "3"]
+        assert _sections(second) == ["4", "5", "6", "7"]
+        assert _sections(third) == ["8", "9"] and _cursor_of(third) is None
+        assert "page_label" in json.dumps(retriever.calls[-1]["filters"])
+
+
+class TestLookBackFillsTheFetch:
+    @pytest.mark.asyncio
+    async def test_a_range_behind_a_full_look_back_window_is_still_read(self, harness, monkeypatch):
+        """170 chunks on the eight look-back pages fill the 160-chunk fetch; the range itself must still come back."""
+        look_back = [_chunk(1 + index % 8, 100 + index, f"Vorlauf {index}.") for index in range(170)]
+        wanted = [_chunk(9, 900, "Abschnitt neun."), _chunk(9, 901, "Abschnitt neunB.")]
+        retriever = _FilteringRetriever(look_back + wanted)
+        harness([])
+        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: retriever)
+
+        text = await _read(document=REPORT, pages="9", conclusion="x")
+
+        assert _sections(text) == ["neun", "neunB"]
+        assert "carries no passage" not in text
+
+
+class TestNeighboursNeedOrdinals:
+    def test_a_chunk_without_an_ordinal_keeps_its_head(self):
+        first = _chunk(4, 0, f"Anfang. {SENTENCE}")
+        second = _chunk(4, 1, f"{SENTENCE} Danach.")
+        second.metadata.pop("chunk_ordinal")
+
+        assert _without_overlap([first, second])[1].content == second.content

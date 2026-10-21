@@ -101,3 +101,58 @@ class TestPipelineWiring:
             positions = exporter._processor_names
 
             assert positions["grid_inline_image_redaction"] == min(positions.values())
+
+
+class TestWhatThePatternMustAlsoCover:
+    """The carriers a first pattern missed (review of d902392a0): each must leave no pixel behind."""
+
+    def test_a_payload_wrapped_into_lines(self):
+        wrapped = "data:image/png;base64," + "\n".join(["QUJD" * 19] * 5)
+        escaped = json.dumps(wrapped)  # the line breaks as `\n` inside a JSON string
+
+        for text in (f"x {wrapped} y", escaped):
+            assert "QUJD" not in redact_inline_images(text)
+
+    def test_slashes_escaped_by_two_rounds_of_json(self):
+        twice = json.dumps(json.dumps(DATA_URL).replace("/", "\\/")).replace("/", "\\/")
+
+        assert "\\\\\\/" in twice
+        assert "QUJD" not in redact_inline_images(twice)
+
+    def test_a_data_url_that_is_not_base64(self):
+        svg = "data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3Cpath%2F%3E"
+        result = redact_inline_images(f'<img src="{svg}"> after')
+
+        assert "%3Cpath" not in result and result.endswith('"> after')
+
+    def test_media_type_parameters_before_the_payload(self):
+        assert "QUJD" not in redact_inline_images(f"data:image/png;charset=utf-8;base64,{PIXELS}")
+
+    def test_text_after_the_image_is_kept(self):
+        assert redact_inline_images(f'"{DATA_URL}", "next": "Das Mass ist 2,40 m."').endswith(
+            '", "next": "Das Mass ist 2,40 m."'
+        )
+
+
+class TestSequenceAttributes:
+    async def test_a_list_valued_attribute_leaves_without_pixels(self):
+        from nat.data_models.span import Span
+
+        span = Span(name="tool", attributes={"gen_ai.prompt.images": [DATA_URL, "kept"]})
+
+        await InlineImageRedactionProcessor().process(span)
+
+        values = span.attributes["gen_ai.prompt.images"]
+        assert "QUJD" not in json.dumps(values) and values[1] == "kept"
+
+
+class TestDirectTracer:
+    def test_a_direct_generation_prompt_carries_no_pixels(self):
+        from aiq_agent.observability.direct_trace import INPUT_ATTRIBUTE
+        from aiq_agent.observability.direct_trace import generation_start_attributes
+
+        messages = [{"role": "user", "content": _view_image_result()}]
+        attributes = generation_start_attributes("conversation-title", model="m", messages=messages)
+
+        assert "QUJD" not in attributes[INPUT_ATTRIBUTE]
+        assert "[image, " in attributes[INPUT_ATTRIBUTE]

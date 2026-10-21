@@ -97,6 +97,7 @@ from aiq_agent.common.steering import SteerInbox
 from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import bind_steer_inbox
 from aiq_agent.common.steering import unbind_steer_inbox
+from aiq_agent.common.turn_status import is_literal_search
 from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 from aiq_agent.common.wire_v2 import CLIENT_MESSAGE
 from aiq_agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED
@@ -1517,18 +1518,22 @@ def tool_called_by(body: Any) -> str | None:
 
 async def _relay_workflow(turn: RunningTurn, request: UserMessage, session: Any) -> None:
     """Send every body the turn's ``_run`` yields, in order; the stream closes in this task."""
-    tools_called: set[str] = set()
+    # One entry per call (a tool step is sent when it starts and again when it ends, under one id).
+    tools_called: dict[str, str] = {}
+    literal_searches: set[str] = set()
     async with contextlib.aclosing(stream_workflow(request, session=session)) as bodies:
         async for body in bodies:
             if (tool := tool_called_by(body)) is not None:
-                tools_called.add(tool)
+                tools_called[body.step.id] = tool
+            elif is_literal_search(getattr(body, "step", None)):
+                literal_searches.add(body.step.id)
             # The terminal is the turn's authoritative record; the root span,
             # exported after it, carries it to Langfuse (`turn_outcome`).
             if isinstance(body, RunFinishedBody):
                 record_turn_finished(body)
                 if body.outcome == "answered":
                     emit_scores(turn_outcome_scores(body.result), writer="chat")
-                emit_scores(file_tool_scores(tools_called), writer="chat")
+                emit_scores(file_tool_scores(tools_called.values(), len(literal_searches)), writer="chat")
                 if turn.inbox.received:
                     emit_scores(steer_scores(turn.inbox), writer="chat")
             elif isinstance(body, RunErrorBody):

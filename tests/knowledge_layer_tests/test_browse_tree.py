@@ -99,6 +99,36 @@ def test_current_revision_from_a_persons_confirmation():
     assert card.current == ("neu.pdf (confirmed) replaces alt.pdf",)
 
 
+def test_a_confirmed_chain_has_one_current_revision():
+    """A → B → C, each confirmed: only C is current, and it replaces both."""
+    card = _cards(
+        [
+            _doc("A.pdf", "E", superseded_by="B.pdf"),
+            _doc("B.pdf", "E", superseded_by="C.pdf"),
+            _doc("C.pdf", "E"),
+        ]
+    )["E"]
+    assert card.current == ("C.pdf (confirmed) replaces A.pdf, B.pdf",)
+    assert card.superseded == 2
+
+
+def test_a_name_series_whose_head_a_person_replaced_is_not_current():
+    """EP_Index-B heads a name series over Index-A, but a person confirmed Neu.pdf replaces it."""
+    card = _cards(
+        [
+            _doc("EP_Index-A.pdf", "E"),
+            _doc("EP_Index-B.pdf", "E", superseded_by="Neu.pdf"),
+            _doc("Neu.pdf", "E"),
+        ]
+    )["E"]
+    assert card.current == ("Neu.pdf (confirmed) replaces EP_Index-A.pdf, EP_Index-B.pdf",)
+
+
+def test_a_confirmation_loop_names_nothing_current():
+    card = _cards([_doc("A.pdf", "E", superseded_by="B.pdf"), _doc("B.pdf", "E", superseded_by="A.pdf")])["E"]
+    assert card.current == ()
+
+
 def test_an_older_revision_outside_the_selection_still_counts_when_series_rows_are_given():
     rows = file_rows([_doc("EP_Index-A.pdf", "alt"), _doc("EP_Index-B.pdf", "E")])
     inside = [row for row in rows if row.folder == "E"]
@@ -173,3 +203,13 @@ class TestTheTool:
         set_turn_documents([_doc("a.pdf")])
         with pytest.raises(Exception):  # noqa: B017,PT011 - the Literal rejects it at the schema
             await self._call(view="forest")
+
+
+@pytest.mark.parametrize("raw", [7, "7", " 7 ", 7.0, 0, -3, "", None, "sieben", True, False])
+def test_the_listing_and_the_store_parse_a_page_count_alike(raw):
+    """One parse of a page number (``page_count.page_number``): a flag is no count, anywhere."""
+    from aiq_agent.knowledge.document_metadata_store import _decode_page_count
+    from aiq_agent.knowledge.page_count import page_number
+
+    [row] = file_rows([{"file_name": "a.pdf", "collection": "proj_1", "page_count": raw}])
+    assert row.page_count == _decode_page_count(raw) == page_number(raw)

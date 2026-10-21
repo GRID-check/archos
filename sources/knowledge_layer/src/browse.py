@@ -44,6 +44,7 @@ page is not evidence in either mode.
 from __future__ import annotations
 
 import asyncio
+import bisect
 import logging
 import re
 import unicodedata
@@ -56,9 +57,11 @@ from dataclasses import replace
 from typing import Any
 from typing import Literal
 
+import regex
 from pydantic import Field
 
 from aiq_agent.common.source_kinds import canonical_shelf_value
+from aiq_agent.knowledge.page_count import page_number
 from aiq_agent.knowledge.title_block import display_date
 from aiq_agent.knowledge.title_block import document_key
 from aiq_agent.knowledge.title_block import newest_first
@@ -110,6 +113,13 @@ MAX_MATCH_PASSAGES = 8
 #: A single character matches noise. Two and three characters („EG“, „T30“)
 #: are real search terms and match as whole words (:data:`WHOLE_WORD_MAX_CHARS`).
 MIN_PHRASE_CHARS = 2
+
+#: A person's regex is a pattern, not a document: longer than this is refused.
+MAX_USER_PATTERN_CHARS = 300
+
+#: Lines of context around a hit (``context=``), and the lines the whole index may print.
+MAX_CONTEXT_LINES = 3
+MAX_SNIPPET_LINES = 40
 
 #: Alternatives in one exact search. „BA-03 | BA 03 | Brandabschnitt 3“
 #: is one question asked three ways; ten is a runaway.
@@ -178,15 +188,6 @@ def _attr(row: Any, name: str) -> Any:
     return row.get(name) if isinstance(row, dict) else getattr(row, name, None)
 
 
-def _page_count(value: Any) -> int | None:
-    """A stored page count as a positive int; anything else is unknown."""
-    try:
-        count = int(value)
-    except (TypeError, ValueError):
-        return None
-    return count if count > 0 else None
-
-
 def file_row(row: Any) -> FileRow | None:
     """An inventory row (``AvailableDocument`` or its dict) as a :class:`FileRow`."""
     file_name = str(_attr(row, "file_name") or "").strip()
@@ -216,7 +217,7 @@ def file_row(row: Any) -> FileRow | None:
         change_summary=(str(_attr(row, "change_summary") or "").strip() or None),
         change_basis=(str(_attr(row, "change_basis") or "").strip() or None),
         revision_facts=revision_facts if isinstance(revision_facts, dict) and revision_facts else None,
-        page_count=_page_count(_attr(row, "page_count")),
+        page_count=page_number(_attr(row, "page_count")),
     )
 
 
@@ -701,7 +702,7 @@ def render_listing(listing: Listing, *, in_flight: Sequence[str] = ()) -> str:
         "read; a file whose reading failed is not here but under `documents_unreadable:` in the project context, "
         "and a file missing here is no proof it does not exist. Write file names exactly as they appear here: the "
         "reader sees each as a link that opens the file. Read: `read_passage(document=…)`; search inside: "
-        '`knowledge_search(file_name=…)`, literally with `match="exact"`; see a page: `view_knowledge_image`.'
+        '`knowledge_search(file_name=…)`, literally with `match="exact"`; see a page: `look`.'
     )
     return "\n".join(lines)
 
@@ -757,29 +758,55 @@ class _Series:
     older: tuple[str, ...]
 
 
+def _confirmed_head(row: FileRow, by_key: dict[_RowKey, FileRow]) -> FileRow | None:
+    """The end of the confirmed chain ``row`` starts: A → B → C gives C. ``None`` for a chain that loops."""
+    seen: set[_RowKey] = set()
+    current = row
+    while current.superseded_by and (current.collection, current.superseded_by) in by_key:
+        seen.add((current.collection, current.file_name))
+        current = by_key[(current.collection, current.superseded_by)]
+        if (current.collection, current.file_name) in seen:
+            return None
+    return current
+
+
 def _revision_series(rows: Sequence[FileRow]) -> list[_Series]:
     """Every series of Fassungen among ``rows``, by the same precedence ``select_files`` marks them.
 
-    A person's confirmation beats the title block, which beats the file name.
+    A person's confirmation beats the title block, which beats the file name. A confirmed chain
+    A → B → C is ONE series headed by C: B is not current because something replaces it. A
+    title-block or name series whose head a person confirmed as replaced joins the series of the
+    chain's end, so no file a person marked as replaced is ever called current.
     """
     by_key = {(row.collection, row.file_name): row for row in rows}
     confirmed = confirmed_revision_marks(rows)
-    replaced: dict[_RowKey, list[str]] = {}
+    heads: dict[_RowKey, _RowKey] = {}
     for row in rows:
-        target = (row.collection, row.superseded_by or "")
-        if target in by_key and (row.collection, row.file_name) in confirmed:
-            replaced.setdefault(target, []).append(row.file_name)
-    series = [_Series(by_key[head], "confirmed", tuple(sorted(names, key=fold))) for head, names in replaced.items()]
+        if row.superseded_by and (row.collection, row.superseded_by) in by_key:
+            head = _confirmed_head(row, by_key)
+            if head is not None:
+                heads[(row.collection, row.file_name)] = (head.collection, head.file_name)
+    replaced: dict[_RowKey, list[str]] = {}
+    for key, head_key in heads.items():
+        replaced.setdefault(head_key, []).append(key[1])
     _, block_series_of = title_block_marks(rows)
     _, name_series_of = revision_marks(rows)
+    grouped: list[tuple[str, dict[_RowKey, list[str]]]] = []
     for basis, series_of, skip in (
         ("by Plankopf", block_series_of, set(confirmed)),
         ("by file name", name_series_of, set(confirmed) | set(block_series_of)),
     ):
         groups: dict[_RowKey, list[str]] = {}
         for key, head_key in series_of.items():
-            if key != head_key and key not in skip:
+            if key == head_key or key in skip:
+                continue
+            if head_key in heads:
+                replaced.setdefault(heads[head_key], []).append(key[1])
+            else:
                 groups.setdefault(head_key, []).append(key[1])
+        grouped.append((basis, groups))
+    series = [_Series(by_key[head], "confirmed", tuple(sorted(names, key=fold))) for head, names in replaced.items()]
+    for basis, groups in grouped:
         series += [_Series(by_key[head], basis, tuple(sorted(names, key=fold))) for head, names in groups.items()]
     return series
 
@@ -879,8 +906,25 @@ def _count(number: int, noun: str) -> str:
     return f"{number} {noun}{'' if number == 1 else 's'}"
 
 
-def _card_lines(card: FolderCard) -> list[str]:
-    """One card as the model reads it: counts, document types, dates, current Fassungen, subfolders."""
+def abstract_lines(found: Mapping[tuple[str, str], Any]) -> dict[str, list[str]]:
+    """The written (tier-1) abstracts by folder path, one ``About:`` line per collection that has one.
+
+    ``found`` maps ``(collection, folder_path)`` to what
+    ``aiq_agent.knowledge.folder_cards.listing_abstracts`` read: ``abstract``,
+    ``status``, ``generated_at``. A card that is not fresh says so and since when.
+    """
+    lines: dict[str, list[str]] = {}
+    for (_collection, path), card in sorted(found.items()):
+        line = f"About: {card.abstract}"
+        if card.status != "fresh":
+            written = f", written {str(card.generated_at)[:10]}" if card.generated_at else ""
+            line += f" ({card.status}{written})"
+        lines.setdefault(path, []).append(line)
+    return lines
+
+
+def _card_lines(card: FolderCard, about: Sequence[str] = ()) -> list[str]:
+    """One card as the model reads it: counts, the written abstract, document types, dates, Fassungen, subfolders."""
     older = f"; {card.superseded} older Fassung{'' if card.superseded == 1 else 'en'}" if card.superseded else ""
     here = f"{card.direct} here, {card.total - card.direct} below{older}" if card.subfolders else f"all here{older}"
     head = f"{card.path}/" if card.path else "Top level"
@@ -890,7 +934,7 @@ def _card_lines(card: FolderCard) -> list[str]:
     if card.pages:
         head += f", {_count(card.pages, 'page')}"
         head += f" ({card.pages_unknown} without count)" if card.pages_unknown else ""
-    lines = [head]
+    lines = [head, *(f"  {line}" for line in about)]
     types = [f"{tag} {count}" for tag, count in card.types[:MAX_TYPE_COUNTS]]
     if card.untyped:
         types.append(f"untyped {card.untyped}")
@@ -916,8 +960,13 @@ def render_tree(
     notes: Sequence[str] = (),
     scope: str = "",
     in_flight: Sequence[str] = (),
+    abstracts: Mapping[str, Sequence[str]] | None = None,
 ) -> str:
-    """The folder tree as the model reads it: a card per folder, bounded, ending with how to go on."""
+    """The folder tree as the model reads it: a card per folder, bounded, ending with how to go on.
+
+    ``abstracts`` are the written cards' ``About:`` lines by folder path (:func:`abstract_lines`).
+    """
+    abstracts = abstracts or {}
     lines: list[str] = [*notes]
     if not cards:
         if not notes:
@@ -928,7 +977,7 @@ def render_tree(
         sorted(cards, key=lambda card: (card.depth, -card.total, _card_order(card)))[:MAX_TREE_CARDS], key=_card_order
     )
     for card in shown:
-        lines.extend(_card_lines(card))
+        lines.extend(_card_lines(card, abstracts.get(card.path, ())))
     hidden = len(cards) - len(shown)
     if hidden:
         lines.append(
@@ -1386,9 +1435,11 @@ def phrase_pattern(phrases: Sequence[str]) -> str | None:
     return pattern if len(pattern) <= MAX_PATTERN_CHARS and ordered else None
 
 
-def _occurrences(body: str, pattern: re.Pattern[str]) -> int:
-    """Non-overlapping matches: one place in the text counts once, whichever alternative found it."""
-    return sum(1 for _ in pattern.finditer(body))
+def _occurrences(body: str, pattern: Any, timeout: float | None = None) -> int:
+    """Non-empty, non-overlapping matches: one place in the text counts once, whichever alternative found it."""
+    if timeout is None:
+        return sum(1 for match in pattern.finditer(body) if match.end() > match.start())
+    return sum(1 for match in pattern.finditer(body, timeout=timeout) if match.end() > match.start())
 
 
 @dataclass
@@ -1406,16 +1457,17 @@ class FileMatches:
         return sorted({chunk.page_number for chunk in self.chunks if getattr(chunk, "page_number", None)})
 
 
-def group_matches(chunks: Iterable[Any], pattern: str) -> list[FileMatches]:
+def group_matches(chunks: Iterable[Any], pattern: Any, *, timeout: float | None = None) -> list[FileMatches]:
     """Chunks the :func:`phrase_pattern` really matches, grouped per file, most occurrences first.
 
     The same pattern the store filtered with, compiled here: what the store
-    returned and what is counted cannot disagree about what a match is.
+    returned and what is counted cannot disagree about what a match is. A
+    person's regex arrives compiled, with the timeout it ran under.
     """
-    compiled = re.compile(pattern)
+    compiled = pattern if hasattr(pattern, "finditer") else re.compile(pattern)
     groups: dict[tuple[str, str], FileMatches] = {}
     for chunk in chunks:
-        count = _occurrences(getattr(chunk, "content", "") or "", compiled)
+        count = _occurrences(getattr(chunk, "content", "") or "", compiled, timeout)
         if not count:
             continue
         metadata = getattr(chunk, "metadata", None) or {}
@@ -1485,24 +1537,57 @@ _TOLERATED = (
     "ignoring case, umlaut spelling (ä/ae, ö/oe, ü/ue, ß/ss), and a line break, space or hyphen between the words"
 )
 
+#: What a person's regex tolerates: nothing but what they wrote, apart from case.
+_TOLERATED_REGEX = (
+    "as a regex in Python syntax, ignoring case; umlaut spellings and line breaks are not matched for you"
+)
+
+
+def _wanted(phrases: Sequence[str], regex_mode: bool) -> str:
+    if regex_mode:
+        return f"regex `{phrases[0]}`"
+    return " | ".join(f'"{phrase}"' for phrase in phrases)
+
+
+def _candidate_lines(candidates: Mapping[str, int] | None, counted: Mapping[str, int], limit: int = 10) -> list[str]:
+    """The files a capped search could not finish counting, by how many passages hold the pattern's words."""
+    if not candidates:
+        return []
+    ranked = sorted(candidates.items(), key=lambda item: (-item[1], fold(item[0])))
+    shown = ", ".join(f"{name} {count}" for name, count in ranked[:limit])
+    more = f" … (+{len(ranked) - limit} files)" if len(ranked) > limit else ""
+    return [
+        "Passages that hold the pattern's words, per file (an upper bound of its matching passages; "
+        f"the counted matches above are the lower bound): {shown}{more}."
+    ]
+
 
 def match_table(
-    groups: Sequence[FileMatches], phrases: Sequence[str], *, truncated: bool, failed: Sequence[str] = ()
+    groups: Sequence[FileMatches],
+    phrases: Sequence[str],
+    *,
+    truncated: bool,
+    failed: Sequence[str] = (),
+    regex_mode: bool = False,
+    candidates: Mapping[str, int] | None = None,
 ) -> str:
     """The per-file answer to "where does this appear": every file, not the top three."""
-    wanted = " | ".join(f'"{phrase}"' for phrase in phrases)
+    wanted = _wanted(phrases, regex_mode)
     floor = "at least " if truncated else ""
+    tolerated = _TOLERATED_REGEX if regex_mode else _TOLERATED
     lines = [
         f"## Matches for {wanted}",
-        f"{floor}{sum(group.occurrences for group in groups)} occurrence(s) in {len(groups)} file(s), {_TOLERATED}:",
+        f"{floor}{sum(group.occurrences for group in groups)} occurrence(s) in {len(groups)} file(s), {tolerated}:",
     ]
     for group in groups:
         shelf = f" ({_SHELF_LABELS[group.shelf]})" if group.shelf in _SHELF_LABELS else ""
         lines.append(f"- {group.file_name}{shelf}: {group.occurrences}×{_pages_label(group.pages)}")
     if truncated:
         lines.append(
-            "The search stopped at its upper limit: the list is incomplete. Narrow it with `folder=` or `file_name=`."
+            f"The search stopped after {MAX_MATCH_CHUNKS} matching passages in a collection: the counts above are "
+            "lower bounds and the list may miss files. Narrow it with `folder=` or `file_name=`."
         )
+        lines.extend(_candidate_lines(candidates, {group.file_name: group.occurrences for group in groups}))
     if failed:
         lines.append(_failed_note(failed))
     lines.append(
@@ -1512,12 +1597,82 @@ def match_table(
     return "\n".join(lines)
 
 
-def no_match_message(phrases: Sequence[str], searched: int, failed: Sequence[str] = ()) -> str:
+def _line_spans(body: str, pattern: Any, timeout: float | None) -> list[tuple[int, int]]:
+    """``(first line, last line)`` of every non-empty match in ``body``, counting from 0."""
+    starts = [0]
+    starts.extend(match.end() for match in re.finditer("\n", body))
+    matches = pattern.finditer(body) if timeout is None else pattern.finditer(body, timeout=timeout)
+
+    def line_of(offset: int) -> int:
+        return max(0, bisect.bisect_right(starts, offset) - 1)
+
+    return [(line_of(m.start()), line_of(max(m.start(), m.end() - 1))) for m in matches if m.end() > m.start()]
+
+
+def _context_ranges(spans: Sequence[tuple[int, int]], context: int, last: int) -> list[tuple[int, int]]:
+    """The line ranges around ``spans``, ``context`` lines each side, overlapping ones joined."""
+    ranges: list[tuple[int, int]] = []
+    for first, end in sorted(spans):
+        low, high = max(0, first - context), min(last, end + context)
+        if ranges and low <= ranges[-1][1] + 1:
+            ranges[-1] = (ranges[-1][0], max(ranges[-1][1], high))
+        else:
+            ranges.append((low, high))
+    return ranges
+
+
+def _chunk_snippets(chunk: Any, where: str, pattern: Any, context: int, room: int, timeout: float | None):
+    """One chunk's ``(lines, cut)``: its hit ranges, at most ``room`` lines, ``cut`` when it had to stop."""
+    body = (getattr(chunk, "content", "") or "").replace("\r\n", "\n")
+    lines = body.split("\n")
+    spans = _line_spans(body, pattern, timeout)
+    hit_lines = {number for first, end in spans for number in range(first, end + 1)}
+    out: list[str] = []
+    for low, high in _context_ranges(spans, context, len(lines) - 1):
+        left = room - len(out) - 1  # one line is the header
+        if left < 1:
+            return out, True
+        shown = min(high, low + left - 1)
+        out.append(f"{where}:")
+        out.extend(f"{'>' if number in hit_lines else ' '} {lines[number].strip()}" for number in range(low, shown + 1))
+        if shown < high:
+            return out, True
+    return out, False
+
+
+def match_snippets(groups: Sequence[FileMatches], pattern: Any, context: int, *, timeout: float | None = None) -> str:
+    """The lines around every match, ``context`` each side: grep ``-C`` over the files, as an index.
+
+    Per hit ``file, p.N:`` and its lines (``>`` marks a line the pattern matched), at most
+    :data:`MAX_SNIPPET_LINES` lines in all; it says when it stopped. Pure.
+    """
+    out: list[str] = []
+    cut = False
+    chunks = [(group.file_name, chunk) for group in groups for chunk in group.chunks]
+    for file_name, chunk in chunks:
+        page = getattr(chunk, "page_number", None)
+        where = f"{file_name}, p.{page}" if page else file_name
+        found, cut = _chunk_snippets(chunk, where, pattern, context, MAX_SNIPPET_LINES - len(out), timeout)
+        out.extend(found)
+        if cut:
+            break
+    if not out:
+        return ""
+    if cut:
+        out.append(f"… the lines stop at {MAX_SNIPPET_LINES}; narrow with `folder=` or `file_name=` for the rest.")
+    out.append("This is an index: cite the passages above, not these lines.")
+    return "\n".join(["## Lines around the matches", *out])
+
+
+def no_match_message(
+    phrases: Sequence[str], searched: int, failed: Sequence[str] = (), *, regex_mode: bool = False
+) -> str:
     """``No match`` over the ``searched`` collections that ANSWERED; never a "no" over one that failed."""
-    wanted = " | ".join(f'"{phrase}"' for phrase in phrases)
-    short = " | ".join(f'"{phrase}"' for phrase in phrases if len(phrase) <= WHOLE_WORD_MAX_CHARS)
+    wanted = _wanted(phrases, regex_mode)
+    short = "" if regex_mode else " | ".join(f'"{phrase}"' for phrase in phrases if len(phrase) <= WHOLE_WORD_MAX_CHARS)
     whole_word = f" {short} was searched as a whole word only, not inside longer words." if short else ""
-    head = f"No match for {wanted} in {searched} collection(s), {_TOLERATED}.{whole_word}"
+    tolerated = _TOLERATED_REGEX if regex_mode else _TOLERATED
+    head = f"No match for {wanted} in {searched} collection(s), {tolerated}.{whole_word}"
     if failed:
         return f"{head} {_failed_note(failed)} For those collections this is NOT a no."
     return (
@@ -1527,9 +1682,9 @@ def no_match_message(phrases: Sequence[str], searched: int, failed: Sequence[str
     )
 
 
-def search_failed_message(phrases: Sequence[str], failed: Sequence[str]) -> str:
+def search_failed_message(phrases: Sequence[str], failed: Sequence[str], *, regex_mode: bool = False) -> str:
     """Every collection failed: there is no answer, and in particular no Nein."""
-    wanted = " | ".join(f'"{phrase}"' for phrase in phrases)
+    wanted = _wanted(phrases, regex_mode)
     return (
         f"The full-text search for {wanted} could not run: none of the {len(failed)} collection(s) answered "
         f"({_collection_names(failed)}). This is NOT a result, neither a hit nor a no. Tell the reader the search "
@@ -1840,8 +1995,15 @@ async def list_files(config: ListFilesConfig, _builder: Builder):
             depth=_coerce_int(depth, DEFAULT_TREE_DEPTH, low=1, high=MAX_TREE_DEPTH),
             series_rows=on_shelves(rows, shelf=shelf, default_shelves=turn.own_shelves),
         )
+        from aiq_agent.knowledge.folder_cards import listing_abstracts
+
         return render_tree(
-            cards, total_rows=listing.total, notes=listing.notes, scope=_scope_of(listing), in_flight=in_flight
+            cards,
+            total_rows=listing.total,
+            notes=listing.notes,
+            scope=_scope_of(listing),
+            in_flight=in_flight,
+            abstracts=abstract_lines(await listing_abstracts(collections)),
         )
 
     yield FunctionInfo.from_fn(_list, description=_LIST_FILES_DESCRIPTION)
@@ -1857,9 +2019,12 @@ async def _files_by_collection(
 ) -> dict[str, list[str]] | None:
     """The files a narrowed exact search may read, per collection; ``None`` when nothing narrows it.
 
-    A folder, a Dokumentart and a title are not on the chunks (ADR-0049: a
-    folder rename would rewrite every vector; ``doc_class`` is human-set and
-    store-authoritative), so every narrowing becomes the list of files it names.
+    A Dokumentart and a title are not searchable on the chunks as a person
+    types them (``doc_class`` is human-set and store-authoritative; a title is
+    a substring), so they become the list of files they name. A folder is on
+    every point since ADR-0116 (``folder_ancestors``): the exact search pushes
+    it into the query (:func:`_folder_scope`), and only the ranked search still
+    asks this function for the collections a folder reaches.
     """
     if not (file_name or folder or doc_class or title_contains):
         return None
@@ -1889,6 +2054,80 @@ async def _files_by_collection(
     return names
 
 
+def user_pattern(text: str) -> tuple[Any | None, str]:
+    """A person's regex, compiled; ``(None, refusal)`` when it cannot run, with the line that teaches the fix.
+
+    Python syntax, case-insensitive. Refused: longer than :data:`MAX_USER_PATTERN_CHARS`, not a valid
+    pattern, and a pattern that matches the empty string (it would match every passage). Catastrophic
+    backtracking is stopped at match time, by the timeout the store scan runs under.
+    """
+    from .qdrant.retrieval import compile_user_regex
+
+    pattern = text.strip()
+    if len(pattern) < MIN_PHRASE_CHARS:
+        return None, f"Provide a `query` of at least {MIN_PHRASE_CHARS} characters: the regex to find."
+    if len(pattern) > MAX_USER_PATTERN_CHARS:
+        return None, (
+            f"`query` is too long for a regex ({len(pattern)} characters, at most {MAX_USER_PATTERN_CHARS}). "
+            "Shorten it to the part that identifies the passage."
+        )
+    try:
+        compiled = compile_user_regex(pattern)
+    except (regex.error, RecursionError, OverflowError) as error:
+        return None, (
+            f"`query` is not a valid regex (Python syntax): {error}. Escape a literal ( ) [ ] {{ }} . * + ? | \\ "
+            'with a backslash, or use `match="exact"` for a literal word.'
+        )
+    if compiled.search(""):
+        return None, (
+            "`query` matches the empty string, so it would match every passage. Add the text that must be there."
+        )
+    return compiled, ""
+
+
+#: What a regex with no literal word and no narrowing is told: it would read every passage of every file.
+_NEEDS_A_ANCHOR = (
+    "A regex needs something to narrow the search with: one literal word it must contain (a whole word, e.g. "
+    "`Fluchtweg` or `BA-03`; a word followed by `?`, `*`, `\\w` or a class does not count), or a `folder=`, "
+    '`file_name=` or `doc_class=` to read in. Add one of them, or use `match="exact"` for a literal.'
+)
+
+#: What a regex that outran its time limit is told.
+_TOO_COSTLY = (
+    "`query` is too costly: the regex backtracks on a passage of the files (nested repetition such as `(a+)+`, or "
+    "overlapping alternatives under a `*`), and the search was stopped. This is NOT a result, neither a hit nor "
+    'a no. Rewrite it without nested repetition, or use `match="exact"` for a literal word.'
+)
+
+
+def _context_lines(value: Any) -> tuple[int | None, str]:
+    """``context=`` as a count of lines (0 to :data:`MAX_CONTEXT_LINES`), None for none, or a refusal."""
+    if value is None or (isinstance(value, str) and not value.strip()):
+        return None, ""
+    try:
+        lines = int(str(value).strip())
+    except ValueError:
+        lines = -1
+    if not 0 <= lines <= MAX_CONTEXT_LINES:
+        return None, f"`context` is a number of lines from 0 to {MAX_CONTEXT_LINES}, got {value!r}."
+    return lines, ""
+
+
+async def _folder_scope(search_config: Any, folder: str) -> tuple[set[str], str | None]:
+    """The collections that hold files in ``folder`` or below, and the folder as the points spell it.
+
+    The key is the folder in its stored spelling (so „Plaene“ finds „Pläne“) as
+    :func:`prefilter.folder_key` writes it onto every point; ``(set(), None)`` when no file is filed there.
+    """
+    from .qdrant import prefilter
+
+    rows = await _turn_rows(search_config)
+    resolved = _folder_matches(rows, folder)
+    if resolved is None:
+        return set(), None
+    return {row.collection for row in rows if _in_folder(row, resolved)}, prefilter.folder_key(resolved)
+
+
 async def exact_search(
     entries: Sequence[Any],
     text: str,
@@ -1900,34 +2139,54 @@ async def exact_search(
     doc_class: str | None = None,
     title_contains: str | None = None,
     filters: dict[str, Any] | None = None,
+    regex_mode: bool = False,
+    context: int | str | None = None,
 ) -> str:
-    """``knowledge_search(match="exact")``: every chunk in scope that contains the phrase.
+    """``knowledge_search(match="exact"|"regex")``: every chunk in scope that contains the phrase or matches the regex.
 
     ``entries`` is the scope the search already resolved and restricted to the
     turn, so the exact mode reads exactly what the meaning mode reads — and the
     base corpus through the same store filter (:func:`_collection_filter`).
+    A folder narrows inside the query (``folder_ancestors``), the other narrowings by file list.
     """
-    phrases = split_alternatives(text)
-    if not phrases:
-        return f"Provide a `query` of at least {MIN_PHRASE_CHARS} characters: the literal word or phrase to find."
-    pattern = phrase_pattern(phrases)
-    if pattern is None:
-        return (
-            "`query` is too long for the exact search: it finds a word or a short phrase, not a sentence. "
-            "Shorten it to the words that must appear literally."
-        )
+    context_lines, refusal = _context_lines(context)
+    if refusal:
+        return refusal
+    if regex_mode:
+        pattern = text.strip()
+        phrases = [pattern]
+        compiled, refusal = user_pattern(text)
+        if compiled is None:
+            return refusal
+    else:
+        phrases = split_alternatives(text)
+        if not phrases:
+            return f"Provide a `query` of at least {MIN_PHRASE_CHARS} characters: the literal word or phrase to find."
+        pattern = phrase_pattern(phrases)
+        if pattern is None:
+            return (
+                "`query` is too long for the exact search: it finds a word or a short phrase, not a sentence. "
+                "Shorten it to the words that must appear literally."
+            )
+        compiled = re.compile(pattern)
     narrowed = await _files_by_collection(
-        search_config, file_name=file_name, folder=folder, doc_class=doc_class, title_contains=title_contains
+        search_config, file_name=file_name, folder=None, doc_class=doc_class, title_contains=title_contains
     )
+    folder_key: str | None = None
+    if folder:
+        in_folder, folder_key = await _folder_scope(search_config, folder)
+        entries = [entry for entry in entries if entry.collection in in_folder]
     if narrowed is not None:
         # The rows name files on every shelf; the turn may have dropped some of
         # those shelves from ``entries``. Either way nothing in scope is left.
         entries = [entry for entry in entries if entry.collection in narrowed]
-        if not entries:
-            return (
-                "No file in scope matches that narrowing (`file_name`, `folder`, `doc_class`, "
-                "`title_contains`). `list_files` shows what exists."
-            )
+    if (narrowed is not None or folder) and not entries:
+        return (
+            "No file in scope matches that narrowing (`file_name`, `folder`, `doc_class`, "
+            "`title_contains`). `list_files` shows what exists."
+        )
+    if regex_mode and not (narrowed is not None or folder_key) and not _has_literal_word(pattern):
+        return _NEEDS_A_ANCHOR
     from .register import _resolve_base_collection
 
     base = _resolve_base_collection(search_config)
@@ -1938,10 +2197,27 @@ async def exact_search(
             search_config=search_config,
             caller_filters=filters,
             files=None if narrowed is None else narrowed[entry.collection],
+            folder_key=folder_key,
         )
         for entry in entries
     }
-    return await _search(retriever, entries, phrases, pattern, filters_by_collection)
+    return await _search(
+        retriever,
+        entries,
+        phrases,
+        pattern,
+        filters_by_collection,
+        compiled=compiled,
+        regex_mode=regex_mode,
+        context=context_lines,
+    )
+
+
+def _has_literal_word(pattern: str) -> bool:
+    """True when a person's regex names a word the full-text index can narrow the scan with."""
+    from .qdrant.retrieval import user_literal_tokens
+
+    return bool(user_literal_tokens(pattern))
 
 
 def _collection_filter(
@@ -1951,16 +2227,28 @@ def _collection_filter(
     search_config: Any,
     caller_filters: dict[str, Any] | None,
     files: Sequence[str] | None,
+    folder_key: str | None = None,
 ) -> dict[str, Any] | None:
-    """The store filter for one collection: the file narrowing, and on the base corpus its standing filter.
+    """The store filter for one collection: the narrowing, and on the base corpus its standing filter.
 
     The base corpus holds text that is not evidence (cover and Impressum page
     chunks) and editions the deployment excludes; the ranked search keeps both
     out with ``register._base_collection_filters``, and a literal search that
     skipped it returned exactly those as citable passages. User collections are
-    never filtered beyond the narrowing, as in the ranked search.
+    never filtered beyond the narrowing, as in the ranked search. The narrowing
+    is a file list and/or the folder condition; ``scope_filter`` ANDs it onto the tenancy condition.
     """
-    narrowing = {"file_name": {"$in": sorted(files)}} if files is not None else None
+    from .qdrant.prefilter import FOLDER_FIELD
+
+    clauses = [
+        clause
+        for clause in (
+            {"file_name": {"$in": sorted(files)}} if files is not None else None,
+            {FOLDER_FIELD: folder_key} if folder_key else None,
+        )
+        if clause
+    ]
+    narrowing = None if not clauses else clauses[0] if len(clauses) == 1 else {"$and": clauses}
     if collection != base:
         return narrowing
     from .register import _base_collection_filters
@@ -1976,13 +2264,27 @@ async def _search(
     phrases: Sequence[str],
     pattern: str,
     filters_by_collection: dict[str, dict[str, Any] | None],
+    *,
+    compiled: Any = None,
+    regex_mode: bool = False,
+    context: int | None = None,
 ) -> str:
+    from .qdrant.retrieval import USER_REGEX_TIMEOUT
+    from .qdrant.retrieval import PatternTooCostly
     from .read_passage import _passage_result
     from .register import _format_results
 
+    # A person's regex is the only caller that asks for the timed, narrowed-by-its-words read; a store
+    # that knows only the literal lookup is never handed the keyword.
+    read_options: dict[str, Any] = {"user_regex": True} if regex_mode else {}
+
     async def _one(entry: Any) -> tuple[list[Any] | None, bool]:
         chunks = await retriever.find_text(
-            entry.collection, pattern, filters=filters_by_collection.get(entry.collection), limit=MAX_MATCH_CHUNKS
+            entry.collection,
+            pattern,
+            filters=filters_by_collection.get(entry.collection),
+            limit=MAX_MATCH_CHUNKS,
+            **read_options,
         )
         if chunks is None:
             return None, False
@@ -1995,29 +2297,38 @@ async def _search(
     results = await asyncio.gather(*(_one(entry) for entry in entries), return_exceptions=True)
     chunks: list[Any] = []
     truncated = False
+    capped: list[Any] = []
     answered = 0
     failed: list[str] = []
     for entry, result in zip(entries, results, strict=True):
+        if isinstance(result, PatternTooCostly):
+            return _TOO_COSTLY
         if isinstance(result, BaseException):
             # An outage is not an empty collection: counted, and said, never
             # folded into „keine Fundstelle“.
             logger.warning("exact search: %s failed: %s", entry.collection, result)
             failed.append(entry.collection)
             continue
-        found, capped = result
+        found, hit_cap = result
         if found is None:
             continue
         answered += 1
         chunks.extend(found)
-        truncated = truncated or capped
+        truncated = truncated or hit_cap
+        if hit_cap:
+            capped.append(entry)
     if not answered:
         if failed:
-            return search_failed_message(phrases, failed)
+            return search_failed_message(phrases, failed, regex_mode=regex_mode)
         return "Full-text search is not available in this environment. Use `knowledge_search`."
 
-    groups = group_matches(chunks, pattern)
+    timeout = USER_REGEX_TIMEOUT if regex_mode else None
+    try:
+        groups = group_matches(chunks, compiled if regex_mode else pattern, timeout=timeout)
+    except TimeoutError:
+        return _TOO_COSTLY
     if not groups:
-        return no_match_message(phrases, answered, failed)
+        return no_match_message(phrases, answered, failed, regex_mode=regex_mode)
     # The match table names every matching file and counts its matches, which
     # is content of each file it names, passages shown or not: reported for the
     # restricted-use admission (ADR-0088), beside the passages the grounding
@@ -2027,11 +2338,46 @@ async def _search(
     note_collections_read(group.collection for group in groups)
     passages = pick_passages(groups)
     query = " | ".join(phrases)
-    formatted = await asyncio.to_thread(
-        _format_results,
-        _passage_result(passages, query),
-        query,
-        trailer=match_table(groups, phrases, truncated=truncated, failed=failed),
+    candidates = await _candidate_counts(retriever, capped, pattern, filters_by_collection, regex_mode=regex_mode)
+    trailer = match_table(
+        groups, phrases, truncated=truncated, failed=failed, regex_mode=regex_mode, candidates=candidates
     )
+    if context is not None:
+        try:
+            snippets = match_snippets(groups, compiled if regex_mode else re.compile(pattern), context, timeout=timeout)
+        except TimeoutError:
+            return _TOO_COSTLY
+        trailer = f"{trailer}\n\n{snippets}" if snippets else trailer
+    formatted = await asyncio.to_thread(_format_results, _passage_result(passages, query), query, trailer=trailer)
     logger.info("exact search: %r matched %d file(s)", query, len(groups))
     return formatted
+
+
+async def _candidate_counts(
+    retriever: Any,
+    capped: Sequence[Any],
+    pattern: str,
+    filters_by_collection: Mapping[str, dict[str, Any] | None],
+    *,
+    regex_mode: bool,
+) -> dict[str, int] | None:
+    """Per file, the passages that hold the pattern's words, over the collections whose scan hit its limit.
+
+    One Qdrant facet each, under the filter the scan used. A retriever without the facet, or a
+    pattern with no word to count by, gives None: the table then says "at least" and nothing more.
+    """
+    counter = getattr(retriever, "candidate_counts", None)
+    if counter is None or not capped:
+        return None
+    totals: dict[str, int] = {}
+    for entry in capped:
+        try:
+            counts = await counter(
+                entry.collection, pattern, filters_by_collection.get(entry.collection), user_regex=regex_mode
+            )
+        except Exception:  # noqa: BLE001 — the counts are an addition to an answer the scan already gave
+            logger.warning("exact search: candidate counts for %s failed", entry.collection, exc_info=True)
+            continue
+        for name, count in (counts or {}).items():
+            totals[name] = totals.get(name, 0) + count
+    return totals or None

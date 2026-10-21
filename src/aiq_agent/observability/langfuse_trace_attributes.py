@@ -1066,7 +1066,7 @@ try:
         every span, ahead of everything else, and always: a size and an eight
         character hash say that an image was sent and which one.
 
-        Every string attribute is scanned, not only ``input.value``,
+        Every string attribute, and every list of strings, is scanned, not only ``input.value``,
         ``output.value`` and ``nat.metadata``, so a new place a payload is
         copied to is covered without anyone remembering it. Never raises.
         """
@@ -1078,6 +1078,11 @@ try:
                 for key, value in list((item.attributes or {}).items()):
                     if isinstance(value, str) and "data:image" in value:
                         item.attributes[key] = redact_inline_images(value)
+                    elif isinstance(value, list | tuple) and any(
+                        isinstance(entry, str) and "data:image" in entry for entry in value
+                    ):
+                        # A sequence-valued attribute (OpenTelemetry allows lists of strings).
+                        item.attributes[key] = type(value)(redact_inline_images(list(value)))
             except Exception:
                 logger.debug("Failed to redact inline images from a span", exc_info=True)
             return item

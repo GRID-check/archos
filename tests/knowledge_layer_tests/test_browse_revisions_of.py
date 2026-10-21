@@ -445,13 +445,13 @@ class TestComparing:
 
     async def test_a_file_outside_the_chain_is_refused_with_the_chain(self, scope, stored):
         text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="Schnitt.pdf", shelf="project")
-        assert "ist keine Fassung dieses Dokuments" in text
+        assert "is not a Fassung of this document" in text
         assert "Plan_Index_A.pdf" in text
         assert stored == []
 
     async def test_a_document_with_one_revision_has_nothing_to_compare(self, scope, stored):
         text = await self._call(revisions_of="Plan_Index_A.pdf", compare_to="vorige", shelf="office_shelf")
-        assert "nichts zu vergleichen" in text
+        assert "nothing to compare" in text
 
     async def test_identical_revisions_with_several_chunks_on_a_page_compare_as_unchanged(
         self,
@@ -490,10 +490,10 @@ class TestComparing:
         text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
         assert text.startswith(FETCH_FAILED_MARKER)
-        assert "nicht erreichbar" in text
-        assert "nicht im Index" not in text
+        assert "not reachable" in text
+        assert "is not in the index" not in text
         assert stored == []
 
     async def test_a_file_the_index_does_not_hold_is_said_not_compared(self, scope, qdrant_store):  # noqa: ARG002
         text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
-        assert "nicht im Index" in text
+        assert "is not in the index" in text

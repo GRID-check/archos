@@ -131,6 +131,11 @@ def _payload(chunk_id: str, page: int, ordinal: int | None, text: str = "t") -> 
     return payload
 
 
+def _at(page: int, ordinal: int, chunk_id: str) -> tuple:
+    """The ``document_position`` of a numbered chunk with no section structure."""
+    return (page, 0, 0, 0, 0, ordinal, chunk_id)
+
+
 def test_fetch_from_continues_after_the_start_in_document_order(monkeypatch):
     records = [
         _Record("proj_a", _payload("p3b", 3, 5)),
@@ -142,11 +147,11 @@ def test_fetch_from_continues_after_the_start_in_document_order(monkeypatch):
     store = _Store(records)
     monkeypatch.setattr(reads, "get_store", lambda: store)
 
-    hits = reads.fetch_from("proj_a", {"file_name": "a.pdf"}, (3, 4), 10)
+    hits = reads.fetch_from("proj_a", {"file_name": "a.pdf"}, _at(3, 4, "p3a"), 10)
 
     assert [hit.chunk_id for hit in hits] == ["p3b", "p3n"]
-    assert [hit.chunk_id for hit in reads.fetch_from("proj_a", None, (1, 0), 2)] == ["p2", "p3a"]
-    assert reads.fetch_from("proj_a", None, (9, 0), 5) == []
+    assert [hit.chunk_id for hit in reads.fetch_from("proj_a", None, _at(1, 0, "p1"), 2)] == ["p2", "p3a"]
+    assert reads.fetch_from("proj_a", None, _at(9, 0, "z"), 5) == []
 
 
 def test_fetch_from_reads_only_the_scope_it_is_asked_for(monkeypatch):
@@ -158,7 +163,42 @@ def test_fetch_from_reads_only_the_scope_it_is_asked_for(monkeypatch):
     store = _Store(records)
     monkeypatch.setattr(reads, "get_store", lambda: store)
 
-    hits = reads.fetch_from("proj_a", {"file_name": "a.pdf"}, (1, 0), 10)
+    hits = reads.fetch_from("proj_a", {"file_name": "a.pdf"}, _at(1, 0, ""), 10)
 
     assert [hit.text for hit in hits] == ["mine"]
     assert {scope for scope, _filters in store.calls} == {"proj_a"}
+
+
+def _place(payload: dict[str, Any], **structure: int) -> dict[str, Any]:
+    return {**payload, **structure}
+
+
+def test_fetch_from_compares_the_key_it_sorts_by_so_a_table_part_out_of_ordinal_order_is_kept(monkeypatch):
+    """Page 5 sorts [text 4, text 5, table part 3]: a cursor after text 4 must still reach table part 3."""
+    records = [
+        _Record("proj_a", _payload("t4", 5, 4)),
+        _Record("proj_a", _payload("t5", 5, 5)),
+        _Record("proj_a", _place(_payload("table", 5, 3), table_part=2)),
+    ]
+    monkeypatch.setattr(reads, "get_store", lambda: _Store(records))
+    ordered = reads.in_document_order([reads._hit(record) for record in records])
+    assert [hit.chunk_id for hit in ordered] == ["t4", "t5", "table"]
+
+    hits = reads.fetch_from("proj_a", None, reads._document_key(ordered[0]), 10)
+
+    assert [hit.chunk_id for hit in hits] == ["t5", "table"]
+
+
+def test_fetch_from_does_not_end_a_read_at_an_unnumbered_chunk_of_an_earlier_section(monkeypatch):
+    """Unnumbered (section 1), numbered 7 (section 2), unnumbered (section 3): a cut after the first loses neither."""
+    records = [
+        _Record("proj_a", _place(_payload("u1", 5, None), section_order=1)),
+        _Record("proj_a", _place(_payload("n7", 5, 7), section_order=2)),
+        _Record("proj_a", _place(_payload("u3", 5, None), section_order=3)),
+    ]
+    monkeypatch.setattr(reads, "get_store", lambda: _Store(records))
+    first = reads._hit(records[0])
+
+    hits = reads.fetch_from("proj_a", None, reads._document_key(first), 10)
+
+    assert [hit.chunk_id for hit in hits] == ["n7", "u3"]

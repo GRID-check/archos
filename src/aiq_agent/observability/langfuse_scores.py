@@ -176,9 +176,20 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
     ScoreDefinition(
         "file-tools-used",
         "CATEGORICAL",
-        "Which of the office-file moves a turn used (ADR-0127): search (knowledge_search, round 0 included), "
-        "navigate (list_files, read_passage), both, or none. Written on every turn that called a tool.",
+        "Which of the office-file moves a turn used (ADR-0127), as the files eval's arms define them: search "
+        "(knowledge_search ranked by meaning, round 0 included), navigate (list_files, read_passage, and "
+        "knowledge_search in a literal mode, exact or regex), both, or none. Written on every turn that called "
+        "a tool.",
         categories=("none", "search", "navigate", "both"),
+    ),
+    ScoreDefinition(
+        "folder-card-fresh",
+        "NUMERIC",
+        "Share of the folders one folder-card pass claimed whose written card is fresh afterwards (ADR-0127): "
+        "built, or unchanged because nothing it reads changed. Below 1 is a pass that hit the monthly budget "
+        "or a failed build. Written on the pass's first folder-card generation.",
+        min_value=0,
+        max_value=1,
     ),
     ScoreDefinition(
         "card-validity",
@@ -416,29 +427,35 @@ def quote_patch_scores(patched: int) -> list[RuntimeScore]:
     return [RuntimeScore("quotes-patched", float(max(0, patched)))]
 
 
-#: The tool basenames that navigate the office's files (ADR-0127); ``knowledge_search`` is the search move.
+#: The tool basenames that navigate the office's files (ADR-0127). ``knowledge_search`` is the search
+#: move when it ranks by meaning and a navigate move in a literal mode (``match="exact"`` or ``"regex"``),
+#: as the files eval's ``navigate`` arm defines it (``scripts/turn_census/files_eval.py``).
 NAVIGATE_TOOLS = frozenset({"list_files", "read_passage"})
 SEARCH_TOOLS = frozenset({"knowledge_search"})
 
 
-def file_tool_scores(tools: Iterable[str]) -> list[RuntimeScore]:
-    """Which office-file moves a turn used, from the basenames of the tools it called.
+def file_tool_scores(tools: Iterable[str], literal_searches: int = 0) -> list[RuntimeScore]:
+    """Which office-file moves a turn used, from the basenames of the tools it called, one per call.
 
-    Nothing for a turn that called no tool at all; ``none`` for a turn that
-    called tools but none of these. Exact search is still ``search`` here: the
-    span metadata of the tool says which match mode it ran in.
+    ``literal_searches`` is how many of the ``knowledge_search`` calls ran in a literal mode
+    (``turn_status.emit_literal_search``): those count as navigation, the rest as search, so the
+    score separates the eval's arms. Nothing for a turn that called no tool at all; ``none`` for a
+    turn that called tools but none of these.
     """
-    called = set(tools)
-    if not called:
+    calls = list(tools)
+    if not calls:
         return []
-    searched = bool(called & SEARCH_TOOLS)
-    navigated = bool(called & NAVIGATE_TOOLS)
+    searches = sum(1 for tool in calls if tool in SEARCH_TOOLS)
+    literal = min(max(0, literal_searches), searches)
+    searched = searches > literal
+    navigated = literal > 0 or any(tool in NAVIGATE_TOOLS for tool in calls)
     value = "both" if searched and navigated else "search" if searched else "navigate" if navigated else "none"
-    return [
-        RuntimeScore(
-            "file-tools-used", value, comment=", ".join(sorted(called & (SEARCH_TOOLS | NAVIGATE_TOOLS))) or None
-        )
-    ]
+    named = set(calls) & NAVIGATE_TOOLS
+    if searched:
+        named.add("knowledge_search")
+    if literal:
+        named.add("knowledge_search (literal)")
+    return [RuntimeScore("file-tools-used", value, comment=", ".join(sorted(named)) or None)]
 
 
 def steer_scores(inbox: Any) -> list[RuntimeScore]:

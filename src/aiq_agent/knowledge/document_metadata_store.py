@@ -43,6 +43,7 @@ from aiq_agent.common.db_utils import redact_db_url
 from aiq_agent.knowledge.document_classification import LEGACY_DOC_CLASSES
 from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
 from aiq_agent.knowledge.document_classification import canonical_doc_class
+from aiq_agent.knowledge.page_count import page_number
 from aiq_agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
@@ -253,13 +254,11 @@ def _encode_page_count(page_count: int | None) -> int | None:
 
 
 def _decode_page_count(raw: Any) -> int | None:
-    """The stored page count as an ``int``; ``None`` for a missing, zero or non-numeric value."""
-    if raw is None:
-        return None
-    try:
-        return _encode_page_count(int(raw))
-    except (TypeError, ValueError):
-        return None
+    """The stored page count as an ``int``; ``None`` for a missing, zero or non-numeric value.
+
+    The one parse of a page number (``page_count.page_number``), shared with the listing and the backfill.
+    """
+    return page_number(raw)
 
 
 def _kept_reason(stored: dict[str, Any] | None, older: str) -> dict[str, Any]:

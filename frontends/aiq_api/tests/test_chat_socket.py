@@ -50,6 +50,7 @@ from aiq_agent.common.wire_v2 import StageValue
 from aiq_agent.common.wire_v2 import StateSnapshotBody
 from aiq_agent.common.wire_v2 import StatusStep
 from aiq_agent.common.wire_v2 import StepFinishedBody
+from aiq_agent.common.wire_v2 import StepStartedBody
 from aiq_agent.common.wire_v2 import TextMessageContentBody
 from aiq_agent.common.wire_v2 import TextMessageStartBody
 from aiq_agent.common.wire_v2 import ToolStep
@@ -2551,7 +2552,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
     requests: list[list] = []
     deciding, steered = asyncio.Event(), asyncio.Event()
 
-    @tool("canvas__look")
+    @tool("look")
     def look(page: int) -> str:
         """Look at a page."""
         ran.append("look")
@@ -2567,7 +2568,7 @@ async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back
         AIMessage(
             content="",
             tool_calls=[
-                {"name": "canvas__look", "args": {"page": 1}, "id": "l1"},
+                {"name": "look", "args": {"page": 1}, "id": "l1"},
                 {"name": "canvas__mark", "args": {"target": "Tür"}, "id": "m1"},
             ],
         ),
@@ -3064,6 +3065,31 @@ async def test_a_turn_that_listed_and_searched_scores_both(harness, monkeypatch)
     await _settle_background()
 
     assert ("file-tools-used", "both") in scored
+
+
+async def test_a_turn_whose_only_search_was_literal_scores_navigate(harness, monkeypatch):
+    from aiq_agent.common.turn_status import status_step
+
+    scored: list[tuple[str, float | str]] = []
+
+    def capture(scores, **_):
+        scored.extend((score.name, score.value) for score in scores)
+        return len(scores)
+
+    monkeypatch.setattr(chat_socket, "emit_scores", capture)
+
+    async def turn(request, ask):
+        yield StepStartedBody(step=ToolStep(id="tool:1", tool="knowledge_search"))
+        yield StepFinishedBody(step=status_step("literal-search:abc", channel="technical", match="exact"))
+        yield StepFinishedBody(step=ToolStep(id="tool:1", tool="knowledge_search", status="ok"))
+        yield _finished(request)
+
+    sock = harness(turn).connect()
+    sock.client(type="user_message", message_id="t1", text="Wo steht Brandabschnitt?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+    await _settle_background()
+
+    assert ("file-tools-used", "navigate") in scored
 
 
 def test_only_a_tool_step_names_a_tool():

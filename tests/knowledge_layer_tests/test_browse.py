@@ -290,9 +290,8 @@ class TestExactSearch:
         text = await _exact(query="BA-03", folder="Plaene")
         assert "No match for" in text
         assert [call["collection"] for call in store.calls] == ["proj_1"]
-        assert store.calls[0]["filters"] == {
-            "file_name": {"$in": ["Grundriss_EG.pdf", "Grundriss_OG1.pdf", "Schnitt_A-A.pdf"]}
-        }
+        # A folder is pushed into the query (ADR-0116), not turned into a file list.
+        assert store.calls[0]["filters"] == {"folder_ancestors": "plaene"}
 
     async def test_a_narrowing_that_names_no_file_says_so(self, search_with):
         search_with(_TextStore([]))

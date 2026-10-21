@@ -60,7 +60,6 @@ import asyncio
 import base64
 import binascii
 import hashlib
-import hmac
 import json
 import logging
 import re
@@ -418,15 +417,33 @@ def _parse_pages(raw: Any, document: str = "<document>") -> tuple[int, int] | No
     return first, last
 
 
+#: The two filter families a ranged read can use, recorded in its cursor so a continuation reads the
+#: same set: a range on ``reading_order``, or the ``page_label`` strings of a document written before
+#: that field existed.
+ORDER_FILTERS = "order"
+LABEL_FILTERS = "label"
+_FILTER_KINDS = (ORDER_FILTERS, LABEL_FILTERS)
+
+
 @dataclass(frozen=True)
 class ReadCursor:
-    """Where a ranged read stopped: the last chunk it returned, and the page the whole read ends on."""
+    """Where a ranged read stopped: the last chunk it returned, and the page the whole read ends on.
+
+    ``position`` is that chunk's whole :func:`~aiq_agent.knowledge.base.document_position`, the key the
+    chunks are sorted and cut by, so the continuation compares the same key. ``filters`` is the filter
+    family the read used (:data:`ORDER_FILTERS` or :data:`LABEL_FILTERS`). ``collection`` is empty when
+    the read spanned more than one collection, and the continuation then reads every one it resolves to.
+    """
 
     file_name: str
     collection: str
-    page: int
-    ordinal: int
+    position: tuple[int, int, int, int, int, int, str]
     last_page: int | None
+    filters: str = ORDER_FILTERS
+
+    @property
+    def page(self) -> int:
+        return self.position[0]
 
 
 def _cursor_check(fields: Sequence[Any]) -> str:
@@ -439,11 +456,16 @@ def encode_cursor(cursor: ReadCursor) -> str:
     It names a POSITION in one document and nothing else. The scope a read runs in is never in it:
     the continuation resolves ``document`` against this turn's own scope again and refuses a token
     for another file, so editing the token can move the read within the document but cannot reach
-    another one. The checksum is not a secret; it catches a mangled or hand-written token.
+    another one. The checksum is an unkeyed digest that catches a mangled or hand-written token; it
+    guards nothing, because nothing in the token can widen the scope.
     """
-    fields = [cursor.file_name, cursor.collection, cursor.page, cursor.ordinal, cursor.last_page]
+    fields = [cursor.file_name, cursor.collection, list(cursor.position), cursor.last_page, cursor.filters]
     body = json.dumps([*fields, _cursor_check(fields)], ensure_ascii=False, separators=(",", ":"))
     return base64.urlsafe_b64encode(body.encode()).decode().rstrip("=")
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
 
 
 def decode_cursor(token: str) -> ReadCursor | None:
@@ -452,20 +474,23 @@ def decode_cursor(token: str) -> ReadCursor | None:
     try:
         raw = json.loads(base64.urlsafe_b64decode(text + "=" * (-len(text) % 4)))
         *fields, check = raw
-        file_name, collection, page, ordinal, last_page = fields
+        file_name, collection, position, last_page, filters = fields
     except (ValueError, TypeError, binascii.Error):
         return None
-    if not isinstance(check, str) or not hmac.compare_digest(check, _cursor_check(fields)):
+    if not isinstance(check, str) or check != _cursor_check(fields):
         return None
-    numbers = (page, ordinal) if last_page is None else (page, ordinal, last_page)
-    if not (isinstance(file_name, str) and isinstance(collection, str)):
+    if not (isinstance(file_name, str) and isinstance(collection, str) and filters in _FILTER_KINDS):
         return None
-    if not all(isinstance(number, int) and not isinstance(number, bool) for number in numbers) or page < 1:
+    if not (isinstance(position, list) and len(position) == 7 and isinstance(position[6], str)):
         return None
-    return ReadCursor(file_name, collection, page, ordinal, last_page)
+    if not all(_is_int(number) for number in position[:6]) or position[0] < 1:
+        return None
+    if last_page is not None and not _is_int(last_page):
+        return None
+    return ReadCursor(file_name, collection, tuple(position), last_page, filters)  # type: ignore[arg-type]
 
 
-def _range_filters(file_name: str, first: int, last: int | None) -> dict[str, Any]:
+def _range_filters(file_name: str, first: int, last: int | None, window: int = _PAGE_SPAN_WINDOW) -> dict[str, Any]:
     """Admit the document's chunks whose START page lies in ``[first - window, last]``.
 
     ``reading_order`` is the start page as an integer, so this is one range on an indexed integer and
@@ -474,17 +499,24 @@ def _range_filters(file_name: str, first: int, last: int | None) -> dict[str, An
     """
     clauses: list[dict[str, Any]] = [
         {"file_name": {"$eq": file_name}},
-        {"reading_order": {"$gte": max(1, first - _PAGE_SPAN_WINDOW)}},
+        {"reading_order": {"$gte": max(1, first - window)}},
     ]
     if last is not None:
         clauses.append({"reading_order": {"$lte": last}})
     return {"$and": clauses}
 
 
-def _range_label_filters(file_name: str, first: int, last: int) -> dict[str, Any]:
+def _range_label_filters(file_name: str, first: int, last: int, window: int = _PAGE_SPAN_WINDOW) -> dict[str, Any]:
     """The same set by ``page_label`` strings: for a document written before ``reading_order`` existed."""
-    labels = [str(number) for number in range(max(1, first - _PAGE_SPAN_WINDOW), last + 1)]
+    labels = [str(number) for number in range(max(1, first - window), last + 1)]
     return {"$and": [{"file_name": {"$eq": file_name}}, {"page_label": {"$in": labels}}]}
+
+
+def _filters_for(kind: str, first: int, last: int | None, window: int = _PAGE_SPAN_WINDOW):
+    """The filter builder of one family; the label family needs an end page, so without one it is the range."""
+    if kind == LABEL_FILTERS and last is not None:
+        return lambda file_name: _range_label_filters(file_name, first, last, window)
+    return lambda file_name: _range_filters(file_name, first, last, window)
 
 
 def _page_span(chunk: Any) -> tuple[int, int] | None:
@@ -510,32 +542,16 @@ def _chunk_ordinal(chunk: Any) -> int | None:
     return ordinal if isinstance(ordinal, int) and not isinstance(ordinal, bool) else None
 
 
-def _chunk_position(chunk: Any) -> tuple[int, int]:
-    """``(reading_order, chunk_ordinal)`` as a cursor compares it; a chunk with no ordinal sorts last on its page."""
-    from aiq_agent.knowledge.base import reading_order
+def _chunk_position(chunk: Any) -> tuple[int, int, int, int, int, int, str]:
+    """The chunk's :func:`~aiq_agent.knowledge.base.document_position`: what ranged reads sort, cut and continue by."""
+    from aiq_agent.knowledge.base import document_position
 
-    from .qdrant.reads import UNNUMBERED
-
-    ordinal = _chunk_ordinal(chunk)
-    page = reading_order((getattr(chunk, "metadata", None) or {}).get("page_label"))
-    return page, UNNUMBERED if ordinal is None else ordinal
+    return document_position(getattr(chunk, "metadata", None), getattr(chunk, "chunk_id", ""))
 
 
 def _range_order(chunks: Sequence[Any]) -> list[Any]:
-    """The chunks in document order: page, the section structure, then place in the file.
-
-    Stable, so chunks that tie keep the order the store returned them in (its own document order).
-    """
-    from aiq_agent.knowledge.base import section_position
-
-    return sorted(
-        chunks,
-        key=lambda chunk: (
-            _chunk_position(chunk)[0],
-            *section_position(getattr(chunk, "metadata", None)),
-            _chunk_position(chunk)[1],
-        ),
-    )
+    """The chunks in document order: page, the section structure, then place in the file, then chunk id."""
+    return sorted(chunks, key=_chunk_position)
 
 
 def _words_with_offsets(text: str) -> list[tuple[str, int]]:
@@ -577,15 +593,29 @@ def _neighbours(previous: Any, chunk: Any) -> bool:
     before, after = previous.metadata or {}, chunk.metadata or {}
     if before.get("collection") != after.get("collection") or before.get("chunking") != after.get("chunking"):
         return False
-    ordinals = (_chunk_ordinal(previous), _chunk_ordinal(chunk))
-    return None in ordinals or ordinals[1] - ordinals[0] == 1
+    before_ordinal, after_ordinal = _chunk_ordinal(previous), _chunk_ordinal(chunk)
+    # A chunk without an ordinal has no known predecessor: legacy chunks of a page are ordered by id.
+    return before_ordinal is not None and after_ordinal is not None and after_ordinal - before_ordinal == 1
 
 
 def _repeated_head(previous: str, text: str) -> int:
-    """How many characters of ``text`` repeat the end of ``previous``; 0 when they do not, or would be all of it."""
-    before, after = _words_with_offsets(previous), _words_with_offsets(text)
-    for count in range(min(len(before), len(after) - 1), _MIN_OVERLAP_WORDS - 1, -1):
-        if [word for word, _ in before[-count:]] != [word for word, _ in after[:count]]:
+    """How many characters of ``text`` repeat the end of ``previous``; 0 when they do not, or would be all of it.
+
+    Only a repeat that ends within :data:`_MAX_OVERLAP_CHARS` of ``text`` counts, so only the words
+    that start there are candidates, and only a count whose first word is ``text``'s first word is
+    compared: linear in practice, where trying every count was quadratic in the chunk's words.
+    """
+    after = _words_with_offsets(text[: _MAX_OVERLAP_CHARS + 1])
+    if len(after) <= _MIN_OVERLAP_WORDS:
+        return 0
+    tail = previous[-(_MAX_OVERLAP_CHARS * 2) :]
+    before = [word for word, _ in _words_with_offsets(tail)]
+    if len(tail) < len(previous):
+        before = before[1:]  # the slice may have cut its first word in two
+    words = [word for word, _ in after]
+    longest = min(len(before), len(after) - 1)
+    for count in range(longest, _MIN_OVERLAP_WORDS - 1, -1):
+        if before[-count] != words[0] or before[-count:] != words[:count]:
             continue
         end = after[count][1]
         return end if _MIN_OVERLAP_CHARS <= end <= _MAX_OVERLAP_CHARS else 0
@@ -602,33 +632,37 @@ def _is_range_text(value: Any) -> bool:
 def _within_budget(chunks: Sequence[Any], cap: int) -> tuple[list[Any], bool]:
     """The leading chunks whose text fits ``cap`` characters, and whether any were left out.
 
-    The cut falls between two chunks that sit at different places (page, ordinal) and never inside a
-    group that shares one: a cursor names a place, so a group cut in two would leave its second half
-    unreachable. The first group is always taken, so a read always returns something.
+    The cut falls between two chunks; the cursor names the last kept chunk's whole position
+    (:func:`_chunk_position`, a total order), so the continuation starts at the next one. The first
+    chunk is always taken, so a read always returns something.
     """
     kept: list[Any] = []
     size = 0
-    index = 0
-    while index < len(chunks):
-        place = _chunk_position(chunks[index])
-        end = index
-        while end < len(chunks) and _chunk_position(chunks[end]) == place:
-            end += 1
-        group = chunks[index:end]
-        weight = sum(len(chunk.content) for chunk in group)
-        if kept and size + weight > cap:
+    for chunk in chunks:
+        if kept and size + len(chunk.content) > cap:
             return kept, True
-        kept.extend(group)
-        size += weight
-        index = end
+        kept.append(chunk)
+        size += len(chunk.content)
     return kept, False
 
 
-def _next_cursor(last_chunk: Any, last_page: int | None) -> str:
-    """The token that continues a read after ``last_chunk``."""
-    page, ordinal = _chunk_position(last_chunk)
-    collection = str((getattr(last_chunk, "metadata", None) or {}).get("collection") or "")
-    return encode_cursor(ReadCursor(last_chunk.file_name, collection, max(page, 1), ordinal, last_page))
+def _in_range(chunks: Sequence[Any], first: int, last: int | None, start: tuple[Any, ...] | None) -> list[Any]:
+    """The fetched chunks that meet ``[first, last]`` and, on a continuation, come after ``start``."""
+    return [
+        chunk
+        for chunk in chunks
+        if _meets_range(chunk, first, last) and (start is None or _chunk_position(chunk) > tuple(start))
+    ]
+
+
+def _next_cursor(kept: Sequence[Any], last_page: int | None, filters: str) -> str:
+    """The token that continues a read after the last of ``kept``."""
+    last_chunk = kept[-1]
+    position = _chunk_position(last_chunk)
+    collections = {str((getattr(chunk, "metadata", None) or {}).get("collection") or "") for chunk in kept}
+    collection = collections.pop() if len(collections) == 1 else ""
+    cursor = ReadCursor(last_chunk.file_name, collection, (max(position[0], 1), *position[1:]), last_page, filters)
+    return encode_cursor(cursor)
 
 
 def _range_trailer(document: str, kept: Sequence[Any], first: int, last: int | None, cursor: str | None) -> str:
@@ -1372,14 +1406,14 @@ async def _structural_fetch(
     collection: str,
     filters: dict[str, Any],
     top_k: int,
-    start_from: tuple[int, int] | None = None,
+    start_from: tuple[Any, ...] | None = None,
 ) -> list[Any] | None:
     """The chunks by filter alone, in reading order, when the backend reads that way; else ``None``.
 
     No probe, no embedding, no ranking (``BaseRetriever.fetch``). The cut is in
     reading order and never splits a tie, so every sort below keeps what it
     would have kept from the whole set. With ``start_from`` the read continues after that
-    ``(reading_order, chunk_ordinal)`` instead (a ranged read's cursor).
+    :func:`_chunk_position` instead (a ranged read's cursor).
     """
     from aiq_agent.knowledge.base import READING_ORDER
 
@@ -1396,7 +1430,7 @@ async def _fetch(
     filters: dict[str, Any],
     query: str,
     top_k: int,
-    start_from: tuple[int, int] | None = None,
+    start_from: tuple[Any, ...] | None = None,
 ) -> tuple[list[Any], bool]:
     """One filtered fetch against one collection, stamped with where it came from.
 
@@ -1440,7 +1474,7 @@ async def _fetch_all(
     filters_for,
     query: str,
     top_k: int,
-    start_from: tuple[int, int] | None = None,
+    start_from: tuple[Any, ...] | None = None,
 ) -> Fetched:
     """One filtered fetch per target, gathered. Failures are returned, not raised:
     one unreachable collection must not refuse the document that did answer."""
@@ -1670,22 +1704,21 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # `pages` beside a cursor only says where the read ends; the cursor says where it starts.
         first = cursor.page if cursor is not None else span[0]
         last = span[1] if span is not None else (cursor.last_page if cursor is not None else None)
-        start = (cursor.page, cursor.ordinal) if cursor is not None else None
+        start = cursor.position if cursor is not None else None
+        kind = cursor.filters if cursor is not None else ORDER_FILTERS
 
         query = _fetch_query(document, None, None)
-        fetched = await _fetch_all(
-            targets, lambda file_name: _range_filters(file_name, first, last), query, _MAX_OUTLINE_CHUNKS, start
-        )
+        fetched = await _fetch_all(targets, _filters_for(kind, first, last), query, _MAX_OUTLINE_CHUNKS, start)
         if start is None and not fetched.chunks and not fetched.failures and last is not None:
             # A document written before `reading_order` existed has no value for the range to compare.
-            fetched = await _fetch_all(
-                targets, lambda file_name: _range_label_filters(file_name, first, last), query, _MAX_OUTLINE_CHUNKS
-            )
-        chunks = [
-            chunk
-            for chunk in fetched.chunks
-            if _meets_range(chunk, first, last) and (start is None or _chunk_position(chunk) > start)
-        ]
+            # The cursor records the family, so the continuation reads the same set.
+            kind = LABEL_FILTERS
+            fetched = await _fetch_all(targets, _filters_for(kind, first, last), query, _MAX_OUTLINE_CHUNKS)
+        chunks = _in_range(fetched.chunks, first, last, start)
+        if start is None and not chunks and not fetched.failures and len(fetched.chunks) >= _MAX_OUTLINE_CHUNKS:
+            # The look-back pages alone filled the fetch: read again from the first page itself.
+            fetched = await _fetch_all(targets, _filters_for(kind, first, last, 0), query, _MAX_OUTLINE_CHUNKS)
+            chunks = _in_range(fetched.chunks, first, last, start)
         label = _locus_label(document, None, None, (first, last) if last is not None else (first, first))
         if fetched.failures and not chunks:
             logger.warning("read_passage: every fetch failed for %r", label, exc_info=fetched.failures[0])
@@ -1695,10 +1728,10 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         if not chunks:
             return await _miss(document, targets, _no_passage_message(document, None, None, span))
 
-        ordered = _without_overlap(_range_order(chunks))
+        ordered = await asyncio.to_thread(lambda: _without_overlap(_range_order(chunks)))
         kept, more = _within_budget(ordered, _MAX_READ_CHARS)
         capped = len(fetched.chunks) >= _MAX_OUTLINE_CHUNKS
-        next_cursor = _next_cursor(kept[-1], last) if more or capped else None
+        next_cursor = _next_cursor(kept, last, kind) if more or capped else None
         trailer = _range_trailer(document, kept, first, last, next_cursor)
         merged = _passage_result(kept, label)
         formatted = await asyncio.to_thread(
