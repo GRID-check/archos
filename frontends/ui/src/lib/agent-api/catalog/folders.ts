@@ -520,6 +520,7 @@ export const foldersOperations: readonly AgentOperation[] = [
     path: '/api/holds/[id]/release',
     params: holdParams,
     destructive: true,
+    sensitivity: 'control',
     load: () => import('@/app/api/holds/[id]/release/route'),
   },
   {

@@ -66,7 +66,8 @@ const NOT_AN_AGENT_CAPABILITY: Record<string, string> = {
 /**
  * Every route method an agent reaches only under the extra guards of ADR-0121
  * ("Sensitive operations"), with its class: `access` changes who may see or do
- * what, `secret` touches the organization's credentials. Each is catalogued
+ * what, `secret` touches the organization's credentials, `control` turns a
+ * security or compliance control down or off. Each is catalogued
  * with exactly this `sensitivity`, and nothing else carries one, so a grant of
  * access cannot become a plain operation, nor a plain one a guarded one, without
  * a line here. Keyed `METHOD /api/path`.
@@ -80,6 +81,9 @@ const SENSITIVE: Record<string, Sensitivity> = {
   'POST /api/organization/roles': 'access',
   'PATCH /api/organization/roles/[slug]': 'access',
   'DELETE /api/organization/roles/[slug]': 'access',
+  // A project role up to project-admin is a grant of access like any folder grant.
+  'POST /api/projects/[id]/members': 'access',
+  'DELETE /api/projects/[id]/members/[assignmentId]': 'access',
   'GET /api/organization/llm-credentials': 'secret',
   'POST /api/organization/llm-credentials': 'secret',
   'DELETE /api/organization/llm-credentials/[id]': 'secret',
@@ -87,6 +91,13 @@ const SENSITIVE: Record<string, Sensitivity> = {
   'PUT /api/organization/llm-credentials/mode': 'secret',
   'POST /api/organization/audit-portal': 'secret',
   'POST /api/platform/audit-portal': 'secret',
+  'PUT /api/organization/model-config/zdr': 'control',
+  'PUT /api/organization/upload-screening': 'control',
+  'PUT /api/projects/[id]/upload-screening': 'control',
+  'POST /api/documents/[id]/quarantine/release': 'control',
+  'POST /api/holds/[id]/release': 'control',
+  'PUT /api/organization/download-log/retention': 'control',
+  'PUT /api/organization/deleted-folder-content': 'control',
 }
 
 interface RouteMethod {

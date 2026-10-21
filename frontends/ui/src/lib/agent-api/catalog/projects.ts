@@ -210,6 +210,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     params: projectParams,
     body: addMemberSchema,
     idempotent: true,
+    sensitivity: 'access',
     load: () => import('@/app/api/projects/[id]/members/route'),
   },
   {
@@ -223,6 +224,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     path: '/api/projects/[id]/members/[assignmentId]',
     params: memberParams,
     destructive: true,
+    sensitivity: 'access',
     load: () => import('@/app/api/projects/[id]/members/[assignmentId]/route'),
   },
   {
@@ -481,6 +483,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     path: '/api/projects/[id]/upload-screening',
     params: projectParams,
     body: projectScreeningOverrideSchema,
+    sensitivity: 'control',
     load: () => import('@/app/api/projects/[id]/upload-screening/route'),
   },
   {

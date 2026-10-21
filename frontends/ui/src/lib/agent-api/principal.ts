@@ -85,6 +85,7 @@ export interface AgentPrincipal {
 export const SENSITIVE_OPT_IN_FLAGS: Readonly<Record<Sensitivity, KnownFeatureFlag>> = {
   access: FEATURE_FLAGS.agentMcpAccess,
   secret: FEATURE_FLAGS.agentMcpSecrets,
+  control: FEATURE_FLAGS.agentMcpControls,
 }
 
 /** The classes whose opt-in flag is on for `organizationId`; a failed lookup reads as off. */

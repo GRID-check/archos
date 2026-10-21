@@ -300,6 +300,7 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/organization/model-config/zdr',
     body: zdrPutSchema,
+    sensitivity: 'control',
     load: () => import('@/app/api/organization/model-config/zdr/route'),
   },
 
@@ -475,6 +476,7 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/organization/upload-screening',
     body: uploadScreeningPolicySchema,
+    sensitivity: 'control',
     load: () => import('@/app/api/organization/upload-screening/route'),
   },
   {
@@ -499,6 +501,7 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/organization/deleted-folder-content',
     body: deletedFolderContentSchema,
+    sensitivity: 'control',
     load: () => import('@/app/api/organization/deleted-folder-content/route'),
   },
   {
@@ -525,6 +528,7 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'PUT',
     path: '/api/organization/download-log/retention',
     body: downloadLogRetentionSchema,
+    sensitivity: 'control',
     load: () => import('@/app/api/organization/download-log/retention/route'),
   },
   {

@@ -88,7 +88,7 @@ describe('external agent (bearer token)', () => {
       session,
       clientId: 'client_claude',
       scopes: ['openid', 'profile'],
-      sensitiveOptIns: ['access', 'secret'],
+      sensitiveOptIns: ['access', 'secret', 'control'],
     })
     // The fresh membership lookup: a removed member's token stops working within a minute (L7).
     expect(resolvePinnedRequesterSession).toHaveBeenCalledWith(
@@ -102,9 +102,10 @@ describe('external agent (bearer token)', () => {
   it('reads the organization’s opt-in per sensitivity class, each on its own', async () => {
     vi.mocked(isOrgFeatureEnabled).mockImplementation(async (flag) => flag !== 'agent-mcp-secrets')
     const result = (await resolvePrincipal(bearer(await token()), { jwks })) as AgentPrincipal
-    expect(result.sensitiveOptIns).toEqual(['access'])
+    expect(result.sensitiveOptIns).toEqual(['access', 'control'])
     expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp-access', 'org_1')
     expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp-secrets', 'org_1')
+    expect(isOrgFeatureEnabled).toHaveBeenCalledWith('agent-mcp-controls', 'org_1')
   })
 
   it('never carries the token into the session', async () => {

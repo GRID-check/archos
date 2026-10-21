@@ -143,17 +143,29 @@ would need every route to answer for a group, and none does.
 
 ### Sensitive operations
 
-An operation may carry `sensitivity: 'access' | 'secret'`. `access` widens who
-may do what: sharing grants, folder access, custom role definitions. `secret`
-touches the organization's credentials: LLM provider keys, and the audit-log
-Admin Portal links, which hand out a credential.
+An operation may carry `sensitivity: 'access' | 'secret' | 'control'`. `access`
+widens who may do what: sharing grants, folder access, project roles, custom
+role definitions. `secret` touches the organization's credentials: LLM provider
+keys, and the audit-log Admin Portal links, which hand out a credential.
+`control` turns a security or compliance control down or off: zero data
+retention, the upload screening policy (the office's and a project's), letting a
+held file through screening, lifting a legal hold, and how long the download log
+and a purged folder's derived content are kept.
+
+`control` is its own class, not `access`, because it is a different decision for
+an office to delegate: an office may let its agents share and grant project
+roles and still keep its privacy and retention settings to people, and one
+opt-in per class is how it says so. Each of these switches is one a person can
+flip in the UI, so under the product owner's rule an agent may flip it too,
+behind the same guards as the other classes.
 
 They are reachable, with guards a plain operation does not need. The product
 owner decided (2026-10) that an agent may do everything a person can, as long as
 the person says yes or no to each such call; the guards are how that holds:
 
 - the organization opted in a second time, per class: the WorkOS entitlements
-  `agent-mcp-access` and `agent-mcp-secrets`, both off by default and read per
+  `agent-mcp-access`, `agent-mcp-secrets` and `agent-mcp-controls`, all off by
+  default and read per
   organization when the token is verified (`SENSITIVE_OPT_IN_FLAGS`,
   `principal.ts`). Without its class's flag an operation is absent from
   `tools/list`, search and describe, and a call names an unknown operation;
@@ -172,7 +184,7 @@ the person says yes or no to each such call; the guards are how that holds:
   holds every result, refusal and telemetry event of the key operations free of
   the key.
 
-**Built.** Fifteen route methods are catalogued with a sensitivity, and
+**Built.** Twenty-four route methods are catalogued with a sensitivity, and
 `agent-reachability.spec.ts` (`SENSITIVE`) holds each to exactly its class and
 nothing else to one: folder access, sharing visibility and grants (add, change,
 revoke) and custom roles (create, change, delete) as `access`; the LLM provider

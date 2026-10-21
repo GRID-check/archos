@@ -380,9 +380,13 @@ part), `mail-import-complete`.
 ### Sensitive operations
 
 `sensitivity: 'access'` marks an operation that widens who may do what (sharing
-grants, folder access, custom role definitions). `sensitivity: 'secret'` marks one
-that touches the organization's secrets (LLM provider keys) or hands out a
-credential (an Admin Portal link). A sensitive operation is always
+grants, folder access, project roles, custom role definitions). `sensitivity:
+'secret'` marks one that touches the organization's secrets (LLM provider keys)
+or hands out a credential (an Admin Portal link). `sensitivity: 'control'` marks
+one that turns a security or compliance control down or off: zero data
+retention, upload screening, letting a held file through, lifting a legal hold,
+how long the download log and a purged folder's content are kept. A sensitive
+operation is always
 `destructiveHint` (`annotationsOf`, reads included), is a write except for the
 reads `read-only-writes.spec.ts` lists with why they return no secret, and:
 
@@ -390,7 +394,8 @@ reads `read-only-writes.spec.ts` lists with why they return no secret, and:
   (403): accepting a card the agent worded is not the confirmation such a change
   needs. Piloti never sees the `platform` domain either (`PILOTI_HIDDEN_DOMAINS`).
 - **An external agent sees one only when its organization switched the class
-  on**: the entitlements `agent-mcp-access` and `agent-mcp-secrets`, off by
+  on**: the entitlements `agent-mcp-access`, `agent-mcp-secrets` and
+  `agent-mcp-controls`, off by
   default, read per organization into `AgentPrincipal.sensitiveOptIns` when the
   token is verified (`SENSITIVE_OPT_IN_FLAGS`, `principal.ts`), and checked by
   `maySeeSensitive` (`policy.ts`). Rows in
@@ -418,10 +423,14 @@ the map does not give it, or none where it does:
 | `access` | `project-folder-access-set`, `sharing-visibility-set`, `sharing-grant-add`, `sharing-grant-update`, `sharing-grant-revoke`, `organization-role-create`, `organization-role-update`, `organization-role-delete` |
 | `secret` | `organization-llm-credential-list`, `organization-llm-credential-create`, `organization-llm-credential-revoke`, `organization-llm-credential-verify`, `organization-llm-provider-mode-set`, `organization-audit-portal-link-create`, `platform-audit-portal-link` |
 
-A new operation that widens access or touches a credential gets its line in
-`SENSITIVE` in the same change. Its description says that the organization
-switches it on and that the person confirms every call; a secret's says the key
-is write-only.
+A new operation that widens access, touches a credential or turns a control down
+gets its line in `SENSITIVE` in the same change. Its description says that the
+organization switches it on and that the person confirms every call; a secret's
+says the key is write-only.
+
+Applying a proposal checks again: an operation that became sensitive, or moved
+to a domain Piloti does not see, after the proposal was filed fails instead of
+running (`operation-applier.ts`).
 
 ## Exemptions
 
@@ -432,6 +441,7 @@ channel, the proxies), browser sign-in plumbing (the AuthKit callback and
 redirect) and typing indicators. "Nobody would ask an agent to do that" is not a
 reason; an operation costs a few lines.
 
+| `control` | `organization-zdr-set`, `organization-upload-screening-set`, `project-upload-screening-set`, `document-quarantine-allow`, `hold-release`, `organization-download-log-retention-set`, `organization-deleted-folder-content-set` |
 ## The ratchet
 
 `agent-reachability.spec.ts` walks every `app/api/**/route.ts` and fails when:

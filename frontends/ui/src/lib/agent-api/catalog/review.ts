@@ -360,6 +360,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     path: '/api/documents/[id]/quarantine/release',
     params: documentParams,
     destructive: true,
+    sensitivity: 'control',
     load: () => import('@/app/api/documents/[id]/quarantine/release/route'),
   },
 

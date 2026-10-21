@@ -115,8 +115,11 @@ export interface AgentOperation {
   readonly examples?: readonly OperationExample[]
   /**
    * An operation that widens who may do what (`access`: sharing, folder
-   * access, role definitions) or touches the organization's secrets
-   * (`secret`: LLM provider keys). An agent may call it for a person who holds
+   * access, project roles, role definitions), touches the organization's
+   * secrets (`secret`: LLM provider keys), or turns a security or compliance
+   * control down or off (`control`: zero data retention, upload screening, a
+   * held file let through, a legal hold lifted, retention shortened). An agent
+   * may call it for a person who holds
    * the right, under the extra guards ADR-0121 names: the organization opted
    * in, the client was granted the step-up scope, the person confirms, and
    * Piloti in-product only ever proposes it.
@@ -131,7 +134,7 @@ export interface OperationExample {
   readonly body?: unknown
 }
 
-export const SENSITIVITIES = ['access', 'secret'] as const
+export const SENSITIVITIES = ['access', 'secret', 'control'] as const
 export type Sensitivity = (typeof SENSITIVITIES)[number]
 
 /**

@@ -219,6 +219,13 @@ export const FEATURE_FLAGS = {
   agentMcpAccess: 'agent-mcp-access',
   /** The same opt-in for `sensitivity: 'secret'`: the organization's LLM provider keys and audit-log links. */
   agentMcpSecrets: 'agent-mcp-secrets',
+  /**
+   * The same opt-in for `sensitivity: 'control'`: the switches that turn a
+   * security or compliance control down or off (zero data retention, upload
+   * screening, letting a held file through, lifting a legal hold, how long the
+   * download log and a purged folder's content are kept).
+   */
+  agentMcpControls: 'agent-mcp-controls',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -242,6 +249,7 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'agent-mcp': 'entitlement',
   'agent-mcp-access': 'entitlement',
   'agent-mcp-secrets': 'entitlement',
+  'agent-mcp-controls': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',
