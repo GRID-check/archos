@@ -89,7 +89,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `SEAWEED_ENDPOINT` | Yes (Docker) | `http://seaweedfs:8333` (compose), `http://localhost:8333` (local) | S3-compatible endpoint URL. In Docker this references the seaweedfs service. |
+| `SEAWEED_ENDPOINT` | Yes (Docker) | `http://seaweedfs:8333` (compose), `http://localhost:8333` (local) | S3-compatible endpoint URL. In Docker this references the seaweedfs service. Unset, the frontend never falls through to the AWS SDK's default (AWS S3 itself): outside production it uses `http://localhost:8333`, and with `NODE_ENV=production` the first storage call fails with an error naming this variable (`storageEndpoint` in `frontends/ui/src/lib/s3.ts`). |
 | `SEAWEED_PUBLIC_ENDPOINT` | No (falls back to `SEAWEED_ENDPOINT`) | `http://localhost:8333` (compose dev) | Browser-reachable SeaweedFS endpoint. The UI signs presigned URLs against this host so the browser can fetch them. Also consumed by the backend tier: the `/v1/ingest` SSRF allowlist (`aiq_api.routes.ingest._object_store_hosts`) trusts exactly the hosts of `SEAWEED_ENDPOINT` and `SEAWEED_PUBLIC_ENDPOINT`, so the backend must receive the same value the UI presigns against or every presigned ingest URL is rejected. |
 | `SEAWEED_ACCESS_KEY` | Yes | `seaweedadmin` | SeaweedFS access key. Change in production. |
 | `SEAWEED_SECRET_KEY` | Yes | `seaweedadmin` | SeaweedFS secret key. Change in production. |
