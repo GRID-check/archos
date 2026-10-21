@@ -132,9 +132,17 @@ A read in a solo conversation of another project is refused rather than
 recorded as a cross-project hand-out (`recordCrossProjectHandOut`,
 `conversation_source_projects`): that record says the conversation drew on the
 project as its audience may read it, and a route's answer is the requester's,
-with every restricted folder they may open. Not covered: an organization-wide
-read that names no project (the inbox, the conversation list, a document
-summary across projects) still runs, and records only the turn's own project.
+with every restricted folder they may open. A read whose answer can carry any
+project's content without naming one declares `spansProjects` in the catalog
+(`always`: similar passages, the project list, the inbox, the holds, quarantine
+and deletion queues, the download log; `unlessScoped`: the conversation and
+proposal lists without a `projectId`) and is refused in a project's
+conversation. `read-gate.spec.ts` lists every other Piloti read that names no
+place, each with the reason it carries no project's content, and fails on a new
+one. A read naming something the lookup does not find (a held upload a
+reviewer could open, a mistyped id) is refused as well, except the
+conversation's own id before its row exists. Not covered: in a conversation
+outside any project a cross-project read still runs on the turn's record.
 `read-gate.integration.spec.ts` proves the refusals and the record against
 Postgres.
 

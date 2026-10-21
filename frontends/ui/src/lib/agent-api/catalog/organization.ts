@@ -516,6 +516,7 @@ export const organizationOperations: readonly AgentOperation[] = [
     method: 'GET',
     path: '/api/organization/download-log',
     query: downloadLogQuerySchema,
+    spansProjects: 'always',
     load: () => import('@/app/api/organization/download-log/route'),
   },
   {

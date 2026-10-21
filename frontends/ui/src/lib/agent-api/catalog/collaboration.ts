@@ -68,6 +68,7 @@ export const collaborationOperations: readonly AgentOperation[] = [
     method: 'GET',
     path: '/api/inbox',
     query: inboxListQuerySchema,
+    spansProjects: 'always',
     load: () => import('@/app/api/inbox/route'),
   },
   {
@@ -382,6 +383,7 @@ export const collaborationOperations: readonly AgentOperation[] = [
     // Looser than the route's `proposalListQuerySchema` (a refined schema is not a ZodObject): the route is the
     // gate and still demands a project, or shelf=office_shelf.
     query: proposalListQuery,
+    spansProjects: 'unlessScoped',
     load: () => import('@/app/api/proposals/route'),
   },
   {

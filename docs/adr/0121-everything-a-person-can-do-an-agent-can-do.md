@@ -151,9 +151,16 @@ turn that has none, is refused: the record covers the turn's own project only,
 and recording another project as a cross-project hand-out (ADR-0094) would claim
 the answer was what the audience may read, which a route's answer is not. Fail
 closed: running the read as the audience instead would need every route to
-answer for a group, and none does. An organization-wide read that names no
-project (the inbox, a list across projects) still runs on the turn's record;
-that is the remaining gap.
+answer for a group, and none does. A read whose answer can carry any project's
+content without naming one (similar passages, the project list, the inbox, an
+unnarrowed conversation list) says so in the catalog (`spansProjects`) and is
+refused in a project's conversation; `read-gate.spec.ts` holds every other read
+that names no place to a list with the reason it carries no project's content.
+A read naming something the target lookup does not find is refused too: the
+lookup reads as the member, a route may read as the reviewer, and an unresolved
+place could not be recorded. The remaining gap is the conversation outside any
+project: a cross-project read there still runs on the turn's record, and a
+later share hands its answer to the new readers.
 
 ### Sensitive operations
 

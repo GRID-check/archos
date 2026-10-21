@@ -60,7 +60,7 @@ const PATH_SEGMENT_TARGETS: Readonly<Record<string, TargetType>> = {
 }
 
 /** An input key, and what its value (a string or a list of strings) names. */
-const KEY_TARGETS: Readonly<Record<string, TargetType>> = {
+export const KEY_TARGETS: Readonly<Record<string, TargetType>> = {
   projectId: 'project',
   projectIds: 'project',
   documentId: 'document',
@@ -69,6 +69,8 @@ const KEY_TARGETS: Readonly<Record<string, TargetType>> = {
   folderIds: 'folder',
   conversationId: 'conversation',
   modelId: 'bim_model',
+  // The model a comparison or a compliance diff reads beside the one in the path (`lib/bim/query.ts`).
+  baseModelId: 'bim_model',
 }
 
 /** The values a `resourceType` / `entityType` takes that name something here. */

@@ -69,6 +69,7 @@ export const projectsOperations: readonly AgentOperation[] = [
       'Start here: most other operations take a project id from this list.',
     method: 'GET',
     path: '/api/projects',
+    spansProjects: 'always',
     load: () => import('@/app/api/projects/route'),
   },
   {
@@ -131,6 +132,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     method: 'GET',
     path: '/api/projects/same-address',
     query: sameAddressQuerySchema,
+    spansProjects: 'always',
     load: () => import('@/app/api/projects/same-address/route'),
   },
   {
