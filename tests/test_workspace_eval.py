@@ -29,6 +29,8 @@ from fixture_workspace import PROPOSED_TEXT  # noqa: E402
 from fixture_workspace import FixtureWorkspace  # noqa: E402
 from fixture_workspace import workspace_calls  # noqa: E402
 
+from tests.aiq_agent.tools.test_exposure_config import piloti_tool_names  # noqa: E402
+
 CATALOG = json.loads((FIXTURES / "catalog.json").read_text(encoding="utf-8"))
 OFFICE = json.loads((FIXTURES / "office.json").read_text(encoding="utf-8"))
 TOKEN = "eval-token"
@@ -137,6 +139,7 @@ def test_turn_context_carries_the_rendered_workspace_block() -> None:
 
 def test_every_question_names_operations_and_ids_the_fixture_holds() -> None:
     names = {op["name"] for op in CATALOG["operations"]}
+    tools = piloti_tool_names()
     # A read the office answers under a name the catalog no longer has is a read that always fails.
     assert set(OFFICE["reads"]) <= names, set(OFFICE["reads"]) - names
     office_text = json.dumps(OFFICE, ensure_ascii=False)
@@ -150,6 +153,9 @@ def test_every_question_names_operations_and_ids_the_fixture_holds() -> None:
                 if isinstance(value, str) and "-" in value and len(value) == 36:
                     assert value in office_text, (question["id"], value)
         assert set(expect.get("judge") or []) <= set(workspace_eval.MEANING_CHECKS)
+        for item in expect.get("uses") or []:
+            for name in item if isinstance(item, list) else [item]:
+                assert name in names or name in tools, (question["id"], name)
 
 
 def _call(tool: str, arguments: dict, result: dict) -> dict:
@@ -196,6 +202,18 @@ def test_the_checks_read_what_the_door_served() -> None:
     }
     metrics = workspace_eval.door_metrics(calls)
     assert metrics["searches"] == 1 and metrics["search_misses"] == 1 and metrics["proposals"] == 1
+
+
+def test_uses_passes_on_a_native_tool_or_a_door_operation_and_any_of_a_list() -> None:
+    calls = [_call("call-operation", {"name": "project-member-list", "input": {}}, {"structuredContent": {}})]
+    expect = {"uses": ["remember", ["ifc_measure", "ifc_query"], "project-member-list", "canvas__mark"]}
+    checks = workspace_eval.workspace_checks(expect, calls, ["remember", "ifc_query"], "a", "q", None, [])
+    assert checks == {
+        "uses:remember": True,
+        "uses:ifc_measure": True,
+        "uses:project-member-list": True,
+        "uses:canvas__mark": False,
+    }
 
 
 def test_a_judge_that_cannot_answer_fails_the_check_and_says_so() -> None:

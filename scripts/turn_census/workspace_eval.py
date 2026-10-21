@@ -131,6 +131,13 @@ def proposed(expected: dict[str, Any], filed: list[dict[str, Any]], tool_calls: 
     return False
 
 
+def used(expected: str | list[str], calls: list[dict[str, Any]], tool_calls: list[str]) -> bool:
+    """Whether the turn did the work with one of ``expected``: a native tool it called, or a door operation."""
+    options = [str(option) for option in (expected if isinstance(expected, list) else [expected])]
+    called = {_operation(call) for call in calls if call.get("tool") == "call-operation"}
+    return any(option in called or any(name.endswith(option) for name in tool_calls) for option in options)
+
+
 Judge = Callable[[str, str, str], "bool | None"]
 
 
@@ -154,6 +161,9 @@ def workspace_checks(
         # Two writes of one operation (a member added to two projects) are two checks.
         key = key if key not in checks else f"{key}#{sum(k.startswith(key) for k in checks) + 1}"
         checks[key] = proposed(item, filed, tool_calls)
+    for item in expect.get("uses") or []:
+        first = item[0] if isinstance(item, list) else item
+        checks[f"uses:{first}"] = used(item, calls, tool_calls)
     if expect.get("no_write"):
         checks["no_write"] = not filed
     if expect.get("no_workspace"):

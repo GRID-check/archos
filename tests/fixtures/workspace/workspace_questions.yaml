@@ -13,6 +13,10 @@
 #   proposes:   writes that must have been PROPOSED: {operation, input: {dotted.path: value}};
 #               a value matches case-insensitively, a list of values means any one of them.
 #               `or_tool` names a native tool that does the same job (the check passes on it).
+#   uses:       tools the turn must have done the work with: a native tool's name as the model binds
+#               it (`remember`, `canvas__mark`) or a door operation; a list item means any one of them.
+#               Which tool is Piloti's for a job is `frontends/ui/src/lib/agent-api/exposure.config.ts`
+#               (`piloti: 'native:<tool>'` hides the door's operation from Piloti).
 #   no_write:   true: nothing proposed (an ambiguous target is asked about, not guessed)
 #   no_workspace: true: the door was not used at all
 #   no_repeat:  operations a follow-up must not call again (the earlier turn already read them)
@@ -149,3 +153,36 @@ questions:
     question: Wie breit muss ein Fluchtweg in einem Wohngebäude der Gebäudeklasse 4 mindestens sein?
     expect:
       no_workspace: true
+
+  # The native tools Piloti does office work with (ADR-0122, amendment of 2026-10-21: the
+  # exposure config hides the door's look-alike from Piloti). Each row is the job; the check is
+  # that it got done with Piloti's own tool, not with a door operation it no longer sees.
+  - id: ws-remember-de
+    question: "Merk dir für dieses Projekt: Die Bauherrin will alle Pläne zusätzlich als DWG."
+    expect:
+      uses: [remember]
+
+  - id: ws-task-create-de
+    question: Leg für dieses Projekt einen Auftrag an, der jeden Montag die offenen Fristen prüft.
+    expect:
+      uses: [create_task]
+
+  - id: ws-mark-de
+    question: Markier in der Baubeschreibung auf Seite 1 die Stelle mit der Raumhöhe.
+    expect:
+      uses: [canvas__mark]
+
+  - id: ws-model-count-de
+    question: Wie viele Türen hat das IFC-Modell dieses Projekts?
+    expect:
+      uses: [[ifc_query, ifc_measure]]
+
+  - id: ws-model-measure-de
+    question: Wie groß ist die Nettogrundfläche des Wohnzimmers im IFC-Modell?
+    expect:
+      uses: [[ifc_measure, ifc_query]]
+
+  - id: ws-search-documents-de
+    question: Wo in unseren Projektunterlagen steht etwas zur Dachentwässerung?
+    expect:
+      uses: [knowledge_search]
