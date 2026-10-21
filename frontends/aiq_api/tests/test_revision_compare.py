@@ -125,12 +125,16 @@ class TestTheRoute:
         response, post = await _post(headers={"x-grid-organization-id": "org-1"})
 
         assert response.status_code == 200
-        assert response.json() == {
+        body = response.json()
+        # The trace id is whatever tracer the process has (another test may have
+        # installed one); the test that installs its own pins the value.
+        assert set(body) >= {"trace_id"}
+        body.pop("trace_id")
+        assert body == {
             "regions": [{"page": 1, "x": 0.2, "y": 0.3, "w": 0.1, "h": 0.25, "label": "Wand verschoben"}],
             "summary": ["Die Wand im Norden ist um 0,5 m nach Osten gerückt."],
             "model": "openai/test-vlm",
             "cached": False,
-            "trace_id": None,
         }
         post.assert_awaited_once()
         sent = post.await_args.kwargs["json"]
