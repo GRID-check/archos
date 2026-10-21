@@ -78,7 +78,7 @@ const COPY_BUTTON_CLASS = cn(
   'absolute right-2 top-2 rounded-md bg-muted p-1.5 text-muted-foreground',
   // The reveal fades on --motion-quick and the press is the house one; the
   // hover's colour and fill ease with it instead of snapping under the fade.
-  'opacity-0 transition-[opacity,color,background-color,transform] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out group-hover:opacity-100 active:scale-[0.98] motion-reduce:active:scale-100',
+  'opacity-0 transition-[opacity,color,background-color,scale] [transition-duration:var(--motion-quick),var(--motion-quick),var(--motion-quick),var(--motion-snap)] ease-out group-hover:opacity-100 active:scale-[0.98] motion-reduce:active:scale-100',
   'focus-visible:opacity-100 pointer-coarse:opacity-100 motion-reduce:transition-none',
   'inline-flex items-center justify-center pointer-coarse:size-11 pointer-coarse:bg-transparent pointer-coarse:p-0',
   'hover:bg-accent hover:text-foreground',
