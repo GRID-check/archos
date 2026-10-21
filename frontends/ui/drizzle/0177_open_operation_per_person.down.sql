@@ -1,8 +1,8 @@
--- Reverse 0176. ORDER: roll the frontend back first; the older build looks an
+-- Reverse 0177. ORDER: roll the frontend back first; the older build looks an
 -- open call up without the person.
 --
 -- Lossy: of several open proposals for one call in one conversation, made for
--- different people, the oldest stays and the later ones are deleted, as 0174
+-- different people, the oldest stays and the later ones are deleted, as 0175
 -- folded them, so the narrower index can be built.
 DELETE FROM "proposed_changes" AS later
   USING "proposed_changes" AS earlier

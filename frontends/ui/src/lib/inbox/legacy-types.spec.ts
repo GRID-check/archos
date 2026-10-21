@@ -20,7 +20,7 @@ describe('inbox types written before the English names', () => {
     expect(legacyInboxTypeAliases(['annotation.activity'])).toEqual([])
   })
 
-  it('reads a task run row an older pod wrote as job.* as the task_run type (0175)', () => {
+  it('reads a task run row an older pod wrote as job.* as the task_run type (0176)', () => {
     expect(canonicalInboxType('job.completed')).toBe('task_run.completed')
     expect(canonicalInboxType('job.failed')).toBe('task_run.failed')
     expect(canonicalInboxType('job.waiting')).toBe('task_run.waiting')

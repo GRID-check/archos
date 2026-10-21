@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * Piloti never decides a proposal for the person (ADR-0105, ADR-0121): applying,
+ * Piloti never decides a proposal for the person (ADR-0105, ADR-0122): applying,
  * dismissing or undoing a change is absent from its catalog, refused when it is
  * proposed, and refused when an old proposal of one is applied, so one click on
  * a card Piloti worded can never be a yes to a change the person did not read.
@@ -62,7 +62,7 @@ describe('proposal decisions', () => {
   })
 })
 
-describe('an operation off the office door (ADR-0121, amendment of 2026-10-21)', () => {
+describe('an operation off the office door (ADR-0122, amendment of 2026-10-21)', () => {
   // A withheld operation and an operator-console one: proposed before they left the door, or never offered.
   it.each(['organization-instructions-set', 'platform-lesson-update'])(
     'is refused like an unknown name when %s is proposed or applied',

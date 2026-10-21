@@ -1,5 +1,5 @@
 /**
- * An ask as an A2A task, and an A2A message as an ask (ADR-0123): the mapping
+ * An ask as an A2A task, and an A2A message as an ask (ADR-0124): the mapping
  * table in `task-mapping.ts`, pinned.
  */
 

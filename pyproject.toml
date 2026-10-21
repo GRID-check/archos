@@ -135,7 +135,7 @@ aiq_cross_project = "aiq_agent.tools.cross_project.register"
 # route, and a deployment without it keeps every other tool.
 aiq_canvas = "aiq_agent.tools.canvas.register"
 # Piloti as a client of its own MCP server (`workspace` function group,
-# `tools/workspace`, ADR-0121): search, describe and call the operations a person
+# `tools/workspace`, ADR-0122): search, describe and call the operations a person
 # can do in the product. Its own entry point: it calls the BFF's `/api/mcp`, and a
 # deployment without it keeps every other tool.
 aiq_workspace = "aiq_agent.tools.workspace.register"

@@ -1,4 +1,4 @@
-# The workspace eval (`task be:eval:answer-suite -- --set workspace`, ADR-0122): office work
+# The workspace eval (`task be:eval:answer-suite -- --set workspace`, ADR-0123): office work
 # asked of Piloti in the fixture office (`frontends/ui/tests/fixtures/workspace/office.json`),
 # its door served by `scripts/turn_census/fixture_workspace.py`.
 #
@@ -39,7 +39,7 @@ questions:
       no_write: true
       mentions: [Thomas Wagner]
 
-  # A project role is the person's to grant: project-member-add is `access` (ADR-0121), which
+  # A project role is the person's to grant: project-member-add is `access` (ADR-0122), which
   # in-product Piloti neither sees nor proposes. It must not file a look-alike instead
   # (project-person-add is the project record's list of parties, not access).
   - id: ws-member-add-de

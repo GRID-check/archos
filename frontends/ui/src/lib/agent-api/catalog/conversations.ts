@@ -1,5 +1,5 @@
 /**
- * The conversations operations (ADR-0121): threads with Piloti and colleagues,
+ * The conversations operations (ADR-0122): threads with Piloti and colleagues,
  * the messages in them, answer feedback, citations and similar passages.
  * See `projects.ts` for the shape and `docs/architecture/agent-surface.md` for
  * the rules.

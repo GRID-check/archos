@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * "Agent verbinden" in the profile (ADR-0121): how a person connects their own
+ * "Agent verbinden" in the profile (ADR-0122): how a person connects their own
  * AI assistant (Claude, ChatGPT, Cursor, ...) to Piloti.
  *
  * Draws a server-decided {@link AgentConnectState}; it reads no environment and

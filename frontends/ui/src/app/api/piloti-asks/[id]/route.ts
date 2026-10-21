@@ -1,5 +1,5 @@
 /**
- * One ask (ADR-0123): `GET ?waitSeconds=` → the ask as `AskView`, waiting up
+ * One ask (ADR-0124): `GET ?waitSeconds=` → the ask as `AskView`, waiting up
  * to `waitSeconds` (at most `ASK_WAIT_SECONDS`) for it to end. The poll behind
  * `piloti-ask-get` and the A2A door's `GetTask`. Only the person the ask was
  * made for reads it. Thin handler; the rules live in `@/lib/piloti-asks/service`.

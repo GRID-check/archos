@@ -1,4 +1,4 @@
-"""The agent's read tools over HTTP, for the BFF's MCP server (ADR-0121).
+"""The agent's read tools over HTTP, for the BFF's MCP server (ADR-0122).
 
 The route must run a tool only for the person a signed, current envelope names,
 only when the tool is on the read allowlist, and with the turn context the tools

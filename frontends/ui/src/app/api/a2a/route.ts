@@ -1,5 +1,5 @@
 /**
- * The A2A door (ADR-0123): Piloti as an A2A server, JSON-RPC over HTTP, for
+ * The A2A door (ADR-0124): Piloti as an A2A server, JSON-RPC over HTTP, for
  * agents that speak the Agent2Agent protocol rather than MCP.
  *
  * `POST /api/a2a` takes A2A 1.0 (`SendMessage`, `SendStreamingMessage`,

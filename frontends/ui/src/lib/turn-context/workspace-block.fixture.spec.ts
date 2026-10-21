@@ -3,7 +3,7 @@
  */
 /**
  * The workspace eval's WORKSPACE block, written by the production renderer
- * (ADR-0122). The fixture office (`tests/fixtures/workspace/office.json`) is
+ * (ADR-0123). The fixture office (`tests/fixtures/workspace/office.json`) is
  * the source; this writes the block the real BFF would hand a turn of Lena
  * Berger's in its current project to `tests/fixtures/workspace/rendered.json`,
  * which `scripts/turn_census/fixture_workspace.py` serves with `{conversation}`

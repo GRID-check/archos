@@ -62,7 +62,7 @@ export function parseKindPayload(kind: ProposedChangeKind, payload: unknown): Ki
  * - `project_profile`: `PROFILE_WRITE` in `lib/project-profile/profile-service.ts`,
  *   the same two rights.
  * - `operation`: the right to see the project. The operation's own route is the
- *   gate and runs in the decider's session when it is applied (ADR-0121), so a
+ *   gate and runs in the decider's session when it is applied (ADR-0122), so a
  *   second, narrower list here would only disagree with it. An organization-
  *   scoped one has no project and no right here at all ({@link ORGANIZATION_KINDS}).
  */
@@ -74,7 +74,7 @@ export const DECIDE_PERMISSIONS: Record<ProposedChangeKind, readonly ProjectPerm
 }
 
 /**
- * The kinds that may be the organization's, with no project (0174), and are
+ * The kinds that may be the organization's, with no project (0175), and are
  * decided by anyone who can read the proposal: their gate is not a project
  * right but the route they run, in the decider's session.
  */

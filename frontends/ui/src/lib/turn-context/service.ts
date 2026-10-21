@@ -42,7 +42,7 @@ async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | nu
 }
 
 /**
- * The WORKSPACE block (ADR-0122): the asker's roles, the project, the
+ * The WORKSPACE block (ADR-0123): the asker's roles, the project, the
  * conversation's audience, what waits in their inbox, the project's runs in
  * flight and this conversation's proposals with every status. Read after the
  * access checks above, under the turn's tenant; each part fails open to
@@ -131,7 +131,7 @@ export async function loadTurnContext(
     advisory('load reference projects', () => loadReferenceBrief(organizationId, projectId ?? null)),
     // What a person wrote each folder holds, beside the tree the inventory shows.
     advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null)),
-    // Who asks, where, and what is open now: the state office work starts from (ADR-0122).
+    // Who asks, where, and what is open now: the state office work starts from (ADR-0123).
     advisory('load the workspace block', () => loadWorkspaceBlock(session, context, projectAccess)),
   ])
   return {

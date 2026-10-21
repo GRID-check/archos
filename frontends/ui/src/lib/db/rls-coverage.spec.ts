@@ -177,9 +177,9 @@ const BOUNDARY_MIGRATIONS = [
   // secures it under the new name, as 0043 did for jobs.
   '0165_revision_names.sql',
   // Adds piloti_asks — a question another agent asked Piloti on a person's
-  // behalf (ADR-0123). Keyed by its organization; the composite foreign key
+  // behalf (ADR-0124). Keyed by its organization; the composite foreign key
   // ties it to its conversation's.
-  '0177_piloti_asks.sql',
+  '0178_piloti_asks.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

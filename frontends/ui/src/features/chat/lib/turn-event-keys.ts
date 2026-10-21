@@ -74,7 +74,7 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   'status.action.annotationsUpdate': 'thinking.turnStatus.',
   'status.action.annotationsDelete': 'thinking.turnStatus.',
   'status.action.annotationsReply': 'thinking.turnStatus.',
-  // A call into the workspace through Piloti's own MCP server (ADR-0121): a
+  // A call into the workspace through Piloti's own MCP server (ADR-0122): a
   // read runs, a write comes back as a proposal. No value: the operation is an
   // English id, not the reader's words.
   'status.action.workspaceCall': 'thinking.turnStatus.',

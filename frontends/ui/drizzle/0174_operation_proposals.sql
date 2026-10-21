@@ -1,4 +1,4 @@
--- A fourth kind of proposed change (ADR-0105, ADR-0121): `operation`, any WRITE
+-- A fourth kind of proposed change (ADR-0105, ADR-0122): `operation`, any WRITE
 -- operation of the agent catalog (`lib/agent-api`) that Piloti calls through
 -- the MCP surface. Piloti never applies it; a person accepts it, and it then
 -- runs as that person through the operation's own route, so the route's

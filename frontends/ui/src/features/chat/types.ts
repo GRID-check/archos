@@ -375,13 +375,13 @@ export interface ChatMessage {
    */
   quoteStamps?: QuoteStamp[]
   /**
-   * Where each sentence comes from (`TurnResult.claim_stamps`, ADR-0124). The
+   * Where each sentence comes from (`TurnResult.claim_stamps`, ADR-0125). The
    * confidence chip explains its level as their mix.
    */
   claimStamps?: ClaimStamp[]
   /**
    * Which rule computed `answerConfidence`: 2 the per-sentence formula
-   * (ADR-0124). Absent on an answer stored before it, which keeps the
+   * (ADR-0125). Absent on an answer stored before it, which keeps the
    * explanation of the answer-level floors it was computed with.
    */
   answerConfidenceVersion?: 1 | 2

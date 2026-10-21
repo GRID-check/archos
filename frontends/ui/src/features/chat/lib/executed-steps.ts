@@ -90,7 +90,7 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   create_folder: 'fileProposal',
   assign_document: 'fileProposal',
   set_doc_class: 'fileProposal',
-  // The workspace group's `call` (`workspace__call`, ADR-0121): a read of the
+  // The workspace group's `call` (`workspace__call`, ADR-0122): a read of the
   // office's own state, or a proposal. The wire sends the basename, and no
   // other group binds a bare `call`. `search` and `describe` are bookkeeping
   // and get no chip, like the canvas's `look` gets none of its own.

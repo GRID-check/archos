@@ -1,4 +1,4 @@
-"""The record channel (ADR-0124): workspace calls read off this turn's transcript, never off the source registry."""
+"""The record channel (ADR-0125): workspace calls read off this turn's transcript, never off the source registry."""
 
 from __future__ import annotations
 

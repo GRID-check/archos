@@ -2,7 +2,7 @@
  * The bodies and query of the document routes that used to declare them inline
  * (a Next route exports handlers only), kept here so the route and the agent
  * catalog (`lib/agent-api/catalog/documents.ts`, `review.ts`) parse against one
- * schema (ADR-0055, ADR-0121).
+ * schema (ADR-0055, ADR-0122).
  */
 
 import { z } from 'zod'

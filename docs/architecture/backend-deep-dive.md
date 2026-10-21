@@ -116,7 +116,7 @@ field at its default, and each is reset at the turn boundary in
   machine-readable reason the UI can explain.
 
   **Two rules, and the turn says which** (`answer_confidence_version`). Chat
-  uses rule 2 (ADR-0124, `markers.surface_claim_confidence`): every sentence of
+  uses rule 2 (ADR-0125, `markers.surface_claim_confidence`): every sentence of
   the final text is stamped with a provenance class and a claim type
   (`common/claim_provenance.py`, `TurnResult.claim_stamps`), and the self-report
   is held under the weakest load-bearing sentence's ceiling, plus the quote gate
@@ -138,7 +138,7 @@ field at its default, and each is reset at the turn boundary in
     the SECOND kind of grounding, below.
   - `"citation_fallback"` — no longer produced. It named the single registry
     source Piloti appended when nothing the model wrote survived verification;
-    that fallback invented an attribution and was removed (ADR-0124). Stored
+    that fallback invented an attribution and was removed (ADR-0125). Stored
     turns still carry the token.
 
   **Two kinds of grounding.** The guard was written against one form of

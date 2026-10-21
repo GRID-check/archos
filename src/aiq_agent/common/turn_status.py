@@ -410,7 +410,7 @@ KEY_ACTION_ANNOTATIONS_UPDATE = "status.action.annotationsUpdate"
 KEY_ACTION_ANNOTATIONS_DELETE = "status.action.annotationsDelete"
 KEY_ACTION_ANNOTATIONS_REPLY = "status.action.annotationsReply"
 #: A call to the workspace through Piloti's MCP server (``workspace__call``,
-#: ADR-0121): a read runs, a write comes back as a proposal. Keyed on the
+#: ADR-0122): a read runs, a write comes back as a proposal. Keyed on the
 #: QUALIFIED name, because the basename ``call`` says nothing and another group
 #: may own it. Value-less: the operation is an English id, not the reader's
 #: words, and the derivation names what was read (``workspace_records``).

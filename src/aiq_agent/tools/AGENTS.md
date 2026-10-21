@@ -168,7 +168,7 @@ Three consequences worth knowing before adding a fifth operation:
 ## A new workspace capability is a route and an operation, not a tool
 
 Piloti reaches the workspace through the BFF's MCP server (`/api/mcp`) like any
-agent (ADR-0121). Everything a person can do there is an operation in
+agent (ADR-0122). Everything a person can do there is an operation in
 `frontends/ui/src/lib/agent-api/catalog/`, run as the person (except the ones
 `withheld` from every agent: product configuration, proxied services, screen state), and a write from
 this tier becomes a proposal the person accepts. So a capability that has a UI
@@ -179,7 +179,7 @@ served to other agents through the same server
 
 ## The workspace tools are Piloti as a client of its own MCP server
 
-`workspace` (`workspace/`, the `piloti_workspace` function group, ADR-0121) is
+`workspace` (`workspace/`, the `piloti_workspace` function group, ADR-0122) is
 four tools, `workspace__search`, `workspace__describe`, `workspace__call` and
 `workspace__report_missing`: the meta-tools an external agent gets from
 `POST /api/mcp` in `discovery` mode. Each call is one stateless JSON-RPC

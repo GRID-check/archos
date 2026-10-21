@@ -296,7 +296,7 @@ export const chat = {
     // promise evidence that is not there.
     researchTruncatedWithoutSources:
       'The search stopped before it was finished, and before it had found anything',
-    // The search ran and found nothing; the answer is shown anyway (ADR-0124),
+    // The search ran and found nothing; the answer is shown anyway (ADR-0125),
     // and this sentence says what it then rests on.
     lookupFoundNothing: 'The search found no sources. This answer rests on general knowledge and is not backed.',
     // WHY it stopped, appended to whichever sentence above applies as a short
@@ -644,7 +644,7 @@ export const chat = {
         dismissed: 'Discarded. The project context is unchanged.',
       },
     },
-    // An action Piloti PROPOSED through the MCP surface (ADR-0121). Nothing has
+    // An action Piloti PROPOSED through the MCP surface (ADR-0122). Nothing has
     // happened until the reader accepts; accepting runs it in the reader's own
     // session, and the action's route checks the permission.
     operationProposal: {
@@ -1480,7 +1480,7 @@ export const chat = {
       citationFallback:
         'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
     },
-    // The assessment since ADR-0124: computed per statement, not per answer.
+    // The assessment since ADR-0125: computed per statement, not per answer.
     // Older answers keep the copy above, under which they were computed.
     byClaim: {
       tooltip:

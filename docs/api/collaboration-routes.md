@@ -322,7 +322,7 @@ For every distinct target on the page — resolved **once per resource**, not on
 per item — access is re-derived; anything unreachable, or already marked inert,
 comes back with `href: null`, `subject: null`, `related: null`, `excerpt: null` and `variant: null`. Such rows are **redacted, not
 dropped**: a redacted row explains itself, a vanished one looks like a bug.
-A run's row (`task_run.completed`, `task_run.failed`, `task_run.waiting`; `job.*` before migration 0175) targets its project,
+A run's row (`task_run.completed`, `task_run.failed`, `task_run.waiting`; `job.*` before migration 0176) targets its project,
 and is also judged by the run it names: a revision task whose document now sits
 in a folder the reader may not read is redacted like a revoked target
 (`unreadableRunIds`, `lib/tasks/subject-access.ts`, ADR-0093), as the task list

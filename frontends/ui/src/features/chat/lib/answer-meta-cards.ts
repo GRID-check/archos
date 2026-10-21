@@ -44,7 +44,7 @@ export interface AnatomyTakeaways {
   items: KeyTakeawayData[]
 }
 
-/** The report of an operations turn (`kind: work`, ADR-0122), drawn after the prose. */
+/** The report of an operations turn (`kind: work`, ADR-0123), drawn after the prose. */
 export interface AnatomyWork extends AnswerMetaWork {
   type: 'work_report'
 }

@@ -87,7 +87,7 @@ function stringNode(schema: z.ZodString): JsonSchemaNode {
  * One zod node as JSON Schema. Throws for anything it cannot describe.
  *
  * A `.describe()` text becomes the node's `description`: it is the guidance a
- * model reads for that field when the schema is an MCP tool's input (ADR-0121),
+ * model reads for that field when the schema is an MCP tool's input (ADR-0122),
  * and the one a Python reader sees for a wire field.
  */
 export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {

@@ -1,5 +1,5 @@
 /**
- * How an agent sends bytes (ADR-0121). Pure: no `server-only`, no I/O, so the
+ * How an agent sends bytes (ADR-0122). Pure: no `server-only`, no I/O, so the
  * catalog, the OpenAPI export and the specs share it.
  *
  * An MCP tool call carries JSON, so a file travels as base64 inside it. The

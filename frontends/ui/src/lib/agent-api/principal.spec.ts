@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * Who may knock on the agent door (ADR-0121).
+ * Who may knock on the agent door (ADR-0122).
  *
  * The external door's whole security argument is in these cases: a token for
  * another audience, an expired one, one without an organization, or one from an
@@ -139,7 +139,7 @@ describe('external agent (bearer token)', () => {
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
   })
 
-  it('takes a token for the A2A door on either door: both are this server’s resources (ADR-0123)', async () => {
+  it('takes a token for the A2A door on either door: both are this server’s resources (ADR-0124)', async () => {
     const forA2a = await token({}, { aud: A2A_RESOURCE })
     expect(isChallenge(await resolvePrincipal(bearer(forA2a), { jwks }))).toBe(false)
     expect(isChallenge(await resolvePrincipal(bearerAt(A2A_RESOURCE, forA2a), { jwks }))).toBe(false)

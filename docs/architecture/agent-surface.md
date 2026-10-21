@@ -4,7 +4,7 @@ Every capability a person has in Piloti is catalogued as an operation, and an
 agent can do on that person's behalf, through one MCP server at `/api/mcp`, what
 only Piloti has: the office's workspace, Piloti's domain knowledge and Piloti
 itself ([What the door offers](#what-the-door-offers)). This page is the long form of
-[ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md): how the
+[ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md): how the
 server works, how to add an operation, how to connect a client, and how to set up
 WorkOS. The rule for contributors, in short, is
 [`../contributing/headless-first.md`](../contributing/headless-first.md).
@@ -261,11 +261,11 @@ words are in [`../glossary.md`](../glossary.md#agent-surface-and-standard-terms)
   `tests/aiq_agent/tools/workspace/test_english_only.py`, for what the workspace
   tools tell Piloti's model.
 - Not yet: the internal routes Piloti's native tools call still refuse in German
-  (`AGENT_REFUSAL_LOCALE`); see ADR-0121, "Follow-ups".
+  (`AGENT_REFUSAL_LOCALE`); see ADR-0122, "Follow-ups".
 
 ## What the door offers
 
-The rule ([ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md),
+The rule ([ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md),
 "Amendment: the door offers what only Piloti has"): a calling agent comes to
 Piloti for what it cannot get elsewhere. The office door offers
 
@@ -600,7 +600,7 @@ write never runs: it becomes an `operation` proposal, shown as a card,
 that the person accepts or dismisses (ADR-0105). The accepting person's session is
 the one the operation runs in. A turn in no project files the proposal on the
 organization, and the same call repeated for the same person while its proposal
-is open files nothing new (0176). The proposal is filed in the person's tenant
+is open files nothing new (0177). The proposal is filed in the person's tenant
 scope, carries the turn's answer as its origin message, and is refused (404)
 when the call names a project, document, folder or conversation the person may
 not read: a member's Piloti cannot put a change to a project the member cannot
@@ -614,7 +614,7 @@ been unfolded ([`proposed-changes.md`](proposed-changes.md#operation)). The serv
 ([`proposed-changes.md`](proposed-changes.md#operation)).
 
 What Piloti knows before its first call, and how it reports
-([ADR-0122](../adr/0122-piloti-works-the-office-through-its-door.md)):
+([ADR-0123](../adr/0123-piloti-works-the-office-through-its-door.md)):
 
 - **The WORKSPACE block** of each turn's context (`lib/turn-context/workspace-block.ts`):
   the asker's organization and project role, the project's name and id, whether
@@ -648,8 +648,8 @@ The workspace set of the answer suite measures all of it
 ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set)).
 ## Consulting Piloti, and the A2A door
 
-An agent can also ask Piloti itself (ADR-0123,
-[`../adr/0123-agents-consult-piloti-over-mcp-and-a2a.md`](../adr/0123-agents-consult-piloti-over-mcp-and-a2a.md)).
+An agent can also ask Piloti itself (ADR-0124,
+[`../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md`](../adr/0124-agents-consult-piloti-over-mcp-and-a2a.md)).
 `piloti-ask-create` (`catalog/consult.ts`) calls `POST /api/piloti-asks`, which
 runs a headless turn (ADR-0106) as the person in their own private thread, with
 the trigger `agent_consult`, waits up to 40 seconds and otherwise answers
@@ -743,11 +743,11 @@ applied by the deploy.
 The protected-resource metadata (RFC 9728) is served by the app and names the
 authorization server; a client reads it from the `WWW-Authenticate` challenge on
 its first, unauthenticated call. The routes that serve it use `publicApiRoute`
-and are covered by ADR-0121.
+and are covered by ADR-0122.
 
 ## Related
 
-- [ADR-0121](../adr/0121-everything-a-person-can-do-an-agent-can-do.md): the decision and the options that lost.
+- [ADR-0122](../adr/0122-everything-a-person-can-do-an-agent-can-do.md): the decision and the options that lost.
 - [ADR-0055](../adr/0055-api-first-workspace-primitives.md): one HTTP surface per primitive.
 - [ADR-0105](../adr/0105-piloti-works-on-shared-objects.md) and [`proposed-changes.md`](proposed-changes.md): proposals, the person decides.
 - [ADR-0108](../adr/0108-background-runs-act-as-the-person-who-commissioned-them.md): resolving the person on every call.

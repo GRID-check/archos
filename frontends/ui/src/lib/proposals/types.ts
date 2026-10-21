@@ -22,7 +22,7 @@ import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/projects
  * assumptions, as a JSON patch on the profile (0143).
  * `operation`: any WRITE operation of the agent catalog (`lib/agent-api`),
  * proposed by Piloti through the MCP surface and run, when a person accepts,
- * as that person (0173, ADR-0121).
+ * as that person (0174, ADR-0122).
  */
 export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile', 'operation'] as const
 export type ProposedChangeKind = (typeof PROPOSED_CHANGE_KINDS)[number]
@@ -35,7 +35,7 @@ export const PROPOSED_CHANGE_STATUSES = ['proposed', 'applied', 'partially_appli
 export type ProposedChangeStatus = (typeof PROPOSED_CHANGE_STATUSES)[number]
 
 /**
- * The shelf a proposal is on (0146, 0174). `project`: a project's. `office_shelf`
+ * The shelf a proposal is on (0146, 0175). `project`: a project's. `office_shelf`
  * (the Büroablage, `project_folders.scope`'s vocabulary): no project, and it can
  * only move Büroablage documents (`proposed_changes_office_shelf_move`).
  * `organization`: no project either, and only an `operation` (a write that is
@@ -179,13 +179,13 @@ export const operationInputSchema = z
 export type OperationProposalInput = z.infer<typeof operationInputSchema>
 
 /**
- * Any write operation of the agent catalog (ADR-0121), proposed instead of
+ * Any write operation of the agent catalog (ADR-0122), proposed instead of
  * applied. Accepting runs it as the DECIDING person through `callOperation`, so
  * the route's own authorization decides; `summary` is the line the person reads.
  * Created only by `proposeOperation` (`lib/agent-api/operation-proposals.ts`),
  * which checks the operation exists and writes: there is no agent-facing
  * create for this kind in `internalProposalRequestSchema`. In a turn with no
- * project it is the organization's (scope `organization`, 0174).
+ * project it is the organization's (scope `organization`, 0175).
  */
 export const operationPayloadSchema = z
   .object({
@@ -244,7 +244,7 @@ const proposedChangeBaseSchema = z.object({
   id: z.string().uuid(),
   /**
    * The project. Null only for a Büroablage file operation (0146) and an
-   * organization-scoped operation (0174); a memory note and a profile change
+   * organization-scoped operation (0175); a memory note and a profile change
    * are always made in a project.
    */
   projectId: z.string().nullable(),

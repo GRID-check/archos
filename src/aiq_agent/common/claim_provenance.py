@@ -6,7 +6,7 @@ citation meant „low", whatever the answer rested on. That was right for a
 question about the Bauordnung and wrong for most of what an office asks
 Piloti now: „Anna hat drei offene Freigaben" rests on a server record stronger
 than any passage, and still surfaced as „Antwort nicht durch Quellen belegt".
-The unit that can tell the two apart is the sentence (ADR-0124, after Harvey's
+The unit that can tell the two apart is the sentence (ADR-0125, after Harvey's
 BigLaw Bench, which scores per sentence that should carry a source).
 
 Each sentence gets two independent labels.

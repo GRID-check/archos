@@ -1,6 +1,6 @@
 /**
  * The request shape of `GET /api/session/documents`, shared by the route and the
- * MCP catalog (ADR-0121).
+ * MCP catalog (ADR-0122).
  */
 
 import { z } from 'zod'

@@ -1,8 +1,8 @@
--- 0177: a question another agent asks Piloti on a person's behalf (ADR-0123).
+-- 0178: a question another agent asks Piloti on a person's behalf (ADR-0124).
 --
 -- ## What was missing
 --
--- An external agent connected through the agent door (ADR-0121) could do
+-- An external agent connected through the agent door (ADR-0122) could do
 -- everything the person can do in the workspace, and could not do the one
 -- thing a colleague does most: ask Piloti. A turn ran only from a browser or
 -- from a wake (ADR-0106). `POST /api/piloti-asks` (the MCP operation

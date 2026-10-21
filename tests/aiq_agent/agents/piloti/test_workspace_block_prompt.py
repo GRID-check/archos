@@ -1,4 +1,4 @@
-"""The WORKSPACE block: turn context → state → prompt (ADR-0122).
+"""The WORKSPACE block: turn context → state → prompt (ADR-0123).
 
 The BFF names who asks, where, and what is open now, this conversation's
 proposals with every status among it. It renders below the KV-cache boundary,

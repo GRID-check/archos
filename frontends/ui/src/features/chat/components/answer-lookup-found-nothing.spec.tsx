@@ -1,5 +1,5 @@
 /**
- * The note on an answer whose search found nothing (ADR-0124).
+ * The note on an answer whose search found nothing (ADR-0125).
  *
  * `lookup_found_nothing` on the terminal frame → `lookupFoundNothing` on the
  * message → `AgentResponse`, which says, under the prose and outside the

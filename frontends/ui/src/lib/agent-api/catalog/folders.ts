@@ -1,5 +1,5 @@
 /**
- * The folders, documents, uploads and holds operations (ADR-0121). See `projects.ts` for the shape
+ * The folders, documents, uploads and holds operations (ADR-0122). See `projects.ts` for the shape
  * and `docs/architecture/agent-surface.md` for the rules.
  *
  * Folder access is readable here (project-folder-access-get); changing it stays with a person.

@@ -162,7 +162,7 @@ stays outside `grid_conversation_restricted_use`, so a hand-out of projects
 alone marks nothing.
 
 **The workspace door shares the reach and the record** (added 2026-10-21).
-Piloti's reads through its MCP door (ADR-0121) reach other projects by this
+Piloti's reads through its MCP door (ADR-0122) reach other projects by this
 rule, not one of their own: what a read names must lie in the audience's reach
 (`audienceReachAmong`, the function `audienceReach` is built on), and the read
 is recorded through `recordCrossProjectHandOut` before it runs, with the

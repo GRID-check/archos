@@ -144,7 +144,7 @@ def record_turn_ledger(
         removed_citations=list(final.removed_citations),
         unverified_quote_count=final.unverified_quote_count,
         grounded=final.citation_grounded,
-        # The single-source fallback is gone (ADR-0124); the column stays for the rows already written.
+        # The single-source fallback is gone (ADR-0125); the column stays for the rows already written.
         fallback_used=False,
         confidence_capped_reason=capped_reason,
         source_origins=[source_origin_token(entry).strip("[]").lower() or None for entry in turn_sources],

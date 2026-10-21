@@ -3,7 +3,7 @@
 Four tools (``workspace__search``, ``workspace__describe``, ``workspace__call``,
 ``workspace__report_missing``), one NAT function group, because they share the
 client and the refusal. They are the SAME four meta-tools an external agent
-(Claude, Cursor) gets from the server in ``search`` mode (ADR-0121): the
+(Claude, Cursor) gets from the server in ``search`` mode (ADR-0122): the
 model finds an operation by what it wants to do, reads its schema, then calls
 it. Reads run; a write comes back as a proposal the person accepts, so nothing
 here changes the workspace on its own authority (ADR-0105).

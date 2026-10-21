@@ -590,7 +590,7 @@ const CitationsRemovedNote: FC<{ citationsRemoved?: { count: number; reasons: st
  * of the EVIDENCE, not an error state and not a verdict on the answer.
  */
 /**
- * The search ran and found nothing, and the answer is shown anyway (ADR-0124).
+ * The search ran and found nothing, and the answer is shown anyway (ADR-0125).
  * It used to be replaced by a canned „nothing retrieved" message; now the
  * reader gets the answer and this note, so they can see it rests on the
  * model's own knowledge and nothing it could cite. Above the sources row,

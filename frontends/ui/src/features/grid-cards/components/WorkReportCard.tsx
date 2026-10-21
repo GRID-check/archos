@@ -2,7 +2,7 @@
 
 /**
  * WorkReportCard — „Arbeitsstand", the closing block of an operations turn
- * (`kind: work`, ADR-0122).
+ * (`kind: work`, ADR-0123).
  *
  * A work turn is not an answer to a question: Piloti read the workspace,
  * proposed changes the person accepts, met something it could not do, and

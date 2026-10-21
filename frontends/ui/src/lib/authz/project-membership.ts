@@ -33,7 +33,7 @@ const MEMBERSHIP_NEGATIVE_TTL_MS = 30 * 1000
 
 /**
  * The membership age a door accepts when nobody signs in on it and a revocation
- * must bite within a minute rather than ten: the external agent door (ADR-0121),
+ * must bite within a minute rather than ten: the external agent door (ADR-0122),
  * where a token outlives the membership it was issued for. Cached under its own
  * key, so the longer-lived entry never answers for it.
  */

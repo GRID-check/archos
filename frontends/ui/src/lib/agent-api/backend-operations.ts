@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * The agent's read tools, offered to other agents over MCP (ADR-0121).
+ * The agent's read tools, offered to other agents over MCP (ADR-0122).
  *
  * `catalog/` covers what the BFF's routes do. Piloti's best READ tools live
  * only in the Python agent: knowledge search, passage reading, the file

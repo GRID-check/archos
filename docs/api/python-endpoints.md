@@ -219,7 +219,7 @@ What NAT's front-end plugin still mounts on the `chat` role, none of which runs 
 - `db_url`: Job store database URL (default `sqlite+aiosqlite:///./jobs.db`)
 - `expiry_seconds`: Job TTL (default 86400, min 600, max 604800)
 
-## Read tools for other agents (internal; ADR-0121)
+## Read tools for other agents (internal; ADR-0122)
 
 On the `api` role, internal-token only and off the external allowlist. The BFF's MCP server is the only caller ([`agent-tool-surface.md`](../architecture/agent-tool-surface.md#these-read-tools-are-also-served-over-mcp)).
 

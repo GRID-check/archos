@@ -67,7 +67,7 @@ export type ConfinedAction = ConversationConfinedError['action']
  * two person-facing paths (a memory proposal applied by a person, a background
  * run with no reader) fall back to this constant without saying who reads. Flip
  * it once each caller states its reader, as the MCP dispatcher does
- * (`ActingReader`, `lib/agent-api/acting-session.ts`). Listed in ADR-0121's
+ * (`ActingReader`, `lib/agent-api/acting-session.ts`). Listed in ADR-0122's
  * follow-ups. The MCP surface does not use it: its refusals are English.
  */
 export const AGENT_REFUSAL_LOCALE: Locale = 'de'

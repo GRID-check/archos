@@ -291,7 +291,7 @@ export const chat: typeof en.chat = {
     // Derselbe Sachverhalt, wenn die Antwort gar keine Quellen nennt: der Satz
     // oben verspräche „die bis dahin gefundenen Belege“, die es nicht gibt.
     researchTruncatedWithoutSources: 'Recherche vorzeitig beendet, bevor Belege gefunden wurden',
-    // Die Suche lief und fand nichts; die Antwort steht trotzdem da (ADR-0124),
+    // Die Suche lief und fand nichts; die Antwort steht trotzdem da (ADR-0125),
     // und dieser Satz sagt, worauf sie dann beruht.
     lookupFoundNothing:
       'Die Suche hat keine Quellen gefunden. Diese Antwort beruht auf allgemeinem Wissen und ist nicht belegt.',
@@ -648,7 +648,7 @@ export const chat: typeof en.chat = {
       },
     },
     // Eine Aktion, die Piloti über die MCP-Schnittstelle VORGESCHLAGEN hat
-    // (ADR-0121). Bis zum Annehmen ist nichts geschehen; das Annehmen führt sie
+    // (ADR-0122). Bis zum Annehmen ist nichts geschehen; das Annehmen führt sie
     // in der Sitzung der Lesenden aus, die Route prüft die Berechtigung.
     operationProposal: {
       eyebrow: 'Aktion',
@@ -1499,7 +1499,7 @@ export const chat: typeof en.chat = {
       citationFallback:
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
-    // Die Einschätzung seit ADR-0124: pro Aussage gerechnet, nicht pro Antwort.
+    // Die Einschätzung seit ADR-0125: pro Aussage gerechnet, nicht pro Antwort.
     // Ältere Antworten behalten die Texte oben, unter denen sie berechnet wurden.
     byClaim: {
       tooltip:

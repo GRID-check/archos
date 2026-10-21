@@ -1,4 +1,4 @@
-"""The read tools Piloti's agent has that the BFF does not, served to other agents (ADR-0121).
+"""The read tools Piloti's agent has that the BFF does not, served to other agents (ADR-0122).
 
 The BFF's operation catalog (``frontends/ui/src/lib/agent-api/catalog``) covers what
 the BFF's routes do. Piloti's best READ tools live only here, in the Python agent:

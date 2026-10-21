@@ -1286,7 +1286,7 @@ class TestPilotiSourceRegistryGating:
         """A research turn that DID query a data source and captured nothing ships its answer, labelled.
 
         It used to raise EmptySourceRegistryError, and the reader got a canned
-        „nothing retrieved" message instead of the answer (ADR-0124). The
+        „nothing retrieved" message instead of the answer (ADR-0125). The
         answer now carries the banner flag, and every sentence is the model's
         own knowledge; an [N] it wrote anyway is labelled, not shown as a source.
         """
@@ -1472,7 +1472,7 @@ class TestPilotiSourceRegistryGating:
 
     @pytest.mark.asyncio
     async def test_a_source_the_model_did_not_cite_is_never_appended(self, mock_llm_provider, mock_llm):
-        """The single-source fallback is gone (ADR-0124): an uncited answer stays uncited, with no chip invented."""
+        """The single-source fallback is gone (ADR-0125): an uncited answer stays uncited, with no chip invented."""
         populate_from_config(
             [
                 {
@@ -1886,7 +1886,7 @@ class TestPilotiAnswerGrounding:
     async def test_not_grounded_when_no_citation_survives_beside_a_lone_source(self, mock_llm_provider, mock_llm):
         # No model citation survives and exactly one registry source exists:
         # the fallback appended it and called the answer grounded. Nothing is
-        # appended any more, so nothing grounds it (ADR-0124).
+        # appended any more, so nothing grounds it (ADR-0125).
         self._after_a_lookup(mock_llm, "Answer without any citation.")
         source = SourceEntry(url="https://example.com/a", title="A", tool_name="web_search_tool")
         with (
@@ -1940,7 +1940,7 @@ class TestPilotiAnswerGrounding:
         # to (``all_sources`` is patched; the URL index is not). The single-
         # source fallback used to attach that source in the [1]'s place; the
         # marker is now labelled where it stood and no source is attached
-        # (ADR-0124). Uses the REAL verification/sanitization pipeline.
+        # (ADR-0125). Uses the REAL verification/sanitization pipeline.
         self._after_a_lookup(mock_llm, "The building height limit is 12 m [1].")
         source = SourceEntry(url="https://example.gv.at/oib", title="OIB Richtlinie", tool_name="web_search_tool")
         with patch.object(SourceRegistry, "all_sources", return_value=[source]):
@@ -2039,7 +2039,7 @@ class TestPilotiAnswerGrounding:
     async def test_a_lone_registry_source_is_not_emitted_when_nothing_was_cited(self, mock_llm_provider, mock_llm):
         # Exactly one registry source and no surviving model citation: the
         # single-source fallback emitted that source as the answer's chip. It
-        # is gone (ADR-0124), so no chip is invented.
+        # is gone (ADR-0125), so no chip is invented.
         self._after_a_lookup(mock_llm, "Answer without any citation.", query="https://example.com/only")
         registry = SourceRegistry()
         only = SourceEntry(url="https://example.com/only", title="Only", tool_name="web_search_tool")
@@ -3010,7 +3010,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         assert result.answer_normative_claim_uncited is True
 
         # The composition the guard performs, on this turn's own stamps (rule 2,
-        # ADR-0124): the verdict sentence is normative with no passage behind it.
+        # ADR-0125): the verdict sentence is normative with no passage behind it.
         assert [stamp["claim_type"] for stamp in result.claim_stamps] == ["normative"]
         assert result.answer_claims_ceiling == "low"
         assert surface_claim_confidence("high", result.answer_claims_ceiling) == "low"
@@ -3024,7 +3024,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         """A measurement never reaches the registry, so nothing can hand it out as „[1]".
 
         The single-source fallback that once appended a lone registry source is
-        gone (ADR-0124); the measurement stays out of the registry regardless,
+        gone (ADR-0125); the measurement stays out of the registry regardless,
         because the registry is what ``[N]`` resolves through.
         """
         tools = self._measuring_turn(mock_llm, "Der Keller ist 2,70 m hoch.")
@@ -3045,7 +3045,7 @@ class TestMeasurementSourcesDoNotGroundCitations:
         """Same turn as above minus the legal claim: the sentence states the measured value.
 
         Rule 1 held it at "medium" for want of a per-sentence split; rule 2 has
-        one (ADR-0124), so a measured sentence that states no law allows "high".
+        one (ADR-0125), so a measured sentence that states no law allows "high".
         """
         from aiq_agent.agents.piloti.markers import surface_claim_confidence
 

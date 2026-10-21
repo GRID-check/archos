@@ -523,7 +523,7 @@ def _verify(content: str, registry: SourceRegistry, *, with_nearest: bool = Fals
     over every cited page that only a patch about to run reads.
     """
     # Labelled, not stripped: a claim whose pointer did not hold must not read
-    # like every other unmarked sentence (ADR-0124). The locus beside a marker
+    # like every other unmarked sentence (ADR-0125). The locus beside a marker
     # is held to the passage it resolves to.
     verification = verify_citations(
         content, registry, reference_sources=registry.all_sources(), label_dropped=True, check_locus=True
@@ -615,7 +615,7 @@ def _ground(verified: _Verified, registry: SourceRegistry) -> _Grounding:
     used to append the registry's one source when no citation survived; the
     registry is cumulative across the conversation, so that source could be
     two turns old and about another question. It was the one place the system
-    invented an attribution, and it is gone (ADR-0124): an answer without a
+    invented an attribution, and it is gone (ADR-0125): an answer without a
     surviving citation shows its sentences as what they are.
     """
     content = verified.content
@@ -647,7 +647,7 @@ def _require_retrieval(lookup_attempted: bool, tools: Sequence[BaseTool], *, rul
     When a passage search ran and found nothing, the answer used to be
     replaced by a canned „nothing retrieved" message, whatever it said. It now
     ships with every sentence labelled as the model's own knowledge and a
-    banner saying the search found nothing (ADR-0124): an answer the reader can
+    banner saying the search found nothing (ADR-0125): an answer the reader can
     see is unsourced serves them better than none. A ``ruling`` is the
     exception and is still refused: it exists to carry a copyable legal value,
     and a value without a source is the fabrication the trailer gate refuses
@@ -941,7 +941,7 @@ def _normative_claim_uncited(content: str, grounding: _Grounding) -> bool:
     Only meaningful when the citation gate already failed: with no verified
     citation, "mentions the law" and "asserts the law without support" are the
     same thing. The confidence reads the per-sentence stamps instead
-    (ADR-0124); this answer-level flag stays for the trace and the ledger.
+    (ADR-0125); this answer-level flag stays for the trace and the ledger.
     """
     return not grounding.citation_grounded and answer_mentions_normative_claim(prose_without_references(content))
 
@@ -976,7 +976,7 @@ def _should_suppress_meta_cards(content: str, gated_meta: dict[str, Any] | None)
     verdict is the shape that pays full-context card generations for prose
     the reader finishes in one screen.
 
-    A work turn (``kind=work``, ADR-0122) is exempt like a ruling: its report
+    A work turn (``kind=work``, ADR-0123) is exempt like a ruling: its report
     IS the answer, and its prose is short by design. Suppressing it dropped
     the report of every work turn that read and proposed nothing a system
     card stood for.

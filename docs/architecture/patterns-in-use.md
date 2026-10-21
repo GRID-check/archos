@@ -157,7 +157,7 @@ Every capability a person has is an operation in
 `frontends/ui/src/lib/agent-api/catalog/`, naming the BFF route the UI calls. The
 MCP server at `/api/mcp` runs that route's handler in-process as the person, so
 authz, rate limit and body schema are the route's own. A route that is not a
-person's act (transport, sign-in plumbing) is exempt with a reason. ADR-0121,
+person's act (transport, sign-in plumbing) is exempt with a reason. ADR-0122,
 [`agent-surface.md`](agent-surface.md).
 **Enforced by:** `frontends/ui/src/lib/agent-api/agent-reachability.spec.ts`; the
 routes that predate it sit in a shrink-only baseline.

@@ -118,7 +118,7 @@ describe('ConfidenceChip', () => {
 })
 
 /**
- * Rule 2 (ADR-0124): the level is held to the weakest sentence the answer rests
+ * Rule 2 (ADR-0125): the level is held to the weakest sentence the answer rests
  * on, and the tooltip says what the sentences rest on. A turn stored before it
  * carries no version and keeps the copy it was computed under.
  */

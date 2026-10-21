@@ -89,7 +89,7 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // `card-interactivity.spec.tsx`, which it would retire.
   file_operation_proposal: 'interactive',
   // Asks the user to run an operation of the product's MCP surface that Piloti
-  // only PROPOSED (ADR-0121). Decided on the server like `file_operation_proposal`
+  // only PROPOSED (ADR-0122). Decided on the server like `file_operation_proposal`
   // above: Accept and Discard go to `/api/proposals/[id]`, the object records who
   // decided, and nothing is written to `cardInteractions`. The card always carries
   // its `proposal_id`: a call that stored no proposal has no card.

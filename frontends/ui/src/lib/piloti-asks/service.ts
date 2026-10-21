@@ -1,5 +1,5 @@
 /**
- * An agent asks Piloti (ADR-0123): the service behind `/api/piloti-asks`.
+ * An agent asks Piloti (ADR-0124): the service behind `/api/piloti-asks`.
  *
  * A connected agent (through the MCP door, or the A2A door, which calls the
  * same routes) asks Piloti a question for the person it acts for. The answer is

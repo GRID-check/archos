@@ -368,7 +368,7 @@
     },
     "ClaimStamp": {
       "additionalProperties": false,
-      "description": "Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0124), in document order.\n\n``provenance`` is the strongest evidence the sentence has; ``claim_type``\nwhether it states the law, a value, or a description. ``load_bearing``\nsentences are the ones the turn's confidence is held to.",
+      "description": "Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0125), in document order.\n\n``provenance`` is the strongest evidence the sentence has; ``claim_type``\nwhether it states the law, a value, or a description. ``load_bearing``\nsentences are the ones the turn's confidence is held to.",
       "properties": {
         "claim_type": {
           "enum": [
@@ -3034,7 +3034,7 @@
     },
     "TurnTrigger": {
       "additionalProperties": false,
-      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0123): ``event_id`` is the ask's id, and there is no Anmerkung.",
+      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF, never by a browser: the person whose act is the event holds\nthe socket (their pinned session), and the turn answers where the event\nhappened. For a wake, ``event_id`` is the reply (or assignment) id the job\nwas enqueued for and ``annotation_id`` the Anmerkung it happened on.\n``agent_consult`` is a question another agent asked on the person's behalf\n(ADR-0124): ``event_id`` is the ask's id, and there is no Anmerkung.",
       "properties": {
         "annotation_id": {
           "anyOf": [

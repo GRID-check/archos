@@ -10,7 +10,7 @@ informed: everyone working in this repo
 
 ## Context and Problem Statement
 
-ADR-0121 gave Piloti everything a person can do, through four meta-tools on
+ADR-0122 gave Piloti everything a person can do, through four meta-tools on
 its own MCP server (`workspace__search`, `__describe`, `__call`,
 `__report_missing`). Nothing around those tools changed. The prompt never named
 them, the output contract knew only answers to questions (`direct`,
@@ -127,7 +127,7 @@ is one ranking to measure (the `--ranking` switch went when `discovery.ts`
 adopted the folded scorer).
 
 **The set after the fix waves.** Project roles, sharing and folder access became
-`access` operations (ADR-0121), which in-product Piloti neither sees nor
+`access` operations (ADR-0122), which in-product Piloti neither sees nor
 proposes. The rows that asked Piloti to add a project member now expect no write
 (`ws-member-add-de`), the two-write row pairs a folder with a rename, the
 pending follow-up asks about a folder, and the ambiguity row asks which folder.

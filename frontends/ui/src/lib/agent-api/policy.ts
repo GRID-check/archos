@@ -1,5 +1,5 @@
 /**
- * What a principal sees and may call on the agent door (ADR-0121).
+ * What a principal sees and may call on the agent door (ADR-0122).
  *
  * The routes stay the gate: every call runs the route's own `authz` as the
  * person. This module decides only two things the routes cannot know, because
@@ -56,7 +56,7 @@ export const DOOR_DOMAINS: Readonly<Record<AgentDoor, ReadonlySet<AgentDomain>>>
 
 /**
  * Whether `op` is offered on `door` at all, to anyone: not withheld
- * (ADR-0121, "Amendment: the door offers what only Piloti has") and of a
+ * (ADR-0122, "Amendment: the door offers what only Piloti has") and of a
  * domain the door offers. The one rule every listing, search, describe, call,
  * proposal and apply goes through; an operation off the door reads as an
  * unknown name.
@@ -87,7 +87,7 @@ export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
   if (principal.actor === 'piloti') {
     // Piloti may not propose a sensitive operation (`proposeOperation` refuses it too),
     // so showing one would only teach the model a call that cannot succeed. An ask is
-    // how another agent consults Piloti: Piloti never asks Piloti (ADR-0123, the
+    // how another agent consults Piloti: Piloti never asks Piloti (ADR-0124, the
     // recursion lock), and `piloti-ask-get` is a read it would otherwise simply run.
     return (
       !op.sensitivity &&

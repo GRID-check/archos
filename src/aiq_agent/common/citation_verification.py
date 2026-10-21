@@ -3774,7 +3774,7 @@ def verify_citations(
             source section.
         label_dropped: Put :data:`DROPPED_CITATION_MARKER` where an
             unresolvable inline citation stood instead of deleting it silently
-            (chat, ADR-0124). Also applies to an empty registry: every number
+            (chat, ADR-0125). Also applies to an empty registry: every number
             the answer wrote is then unresolvable, and the model's own source
             list goes with them.
         check_locus: Hold a § or Punkt written beside a resolved ``[N]`` to

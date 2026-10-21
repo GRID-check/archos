@@ -11,7 +11,7 @@ informed: everyone working on the answer pipeline
 ## Context and Problem Statement
 
 Piloti is growing from a building-law Q&A into the colleague that runs a
-planning office's work, and since ADR-0121 it reads and proposes changes to the
+planning office's work, and since ADR-0122 it reads and proposes changes to the
 whole workspace through one MCP server. The confidence an answer carries was
 built for the first job. It was decided for the whole answer by floors
 (`markers.surface_answer_confidence`): no verified citation meant "low", a
@@ -120,7 +120,7 @@ Changed alongside:
   (`TurnResult.lookup_found_nothing`). A `ruling` is still refused.
 - **Quote polarity** (`common/quote_polarity.py`): a quote whose aligned passage
   stretch negates or restricts something else is not verbatim.
-- **A work turn** (`kind: "work"`, ADR-0122) is judged by the same rule. It is
+- **A work turn** (`kind: "work"`, ADR-0123) is judged by the same rule. It is
   not a legal answer: its sentences rest on what it read (`record`) and
   proposed (`action`), so it reaches the model's own level, and a sentence about
   the law inside it still needs a passage. The name a proposal was filed with

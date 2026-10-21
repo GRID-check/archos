@@ -1,4 +1,4 @@
-"""The agent's read tools, served to the BFF for other agents (ADR-0121).
+"""The agent's read tools, served to the BFF for other agents (ADR-0122).
 
 ``POST /v1/internal/tools/{name}`` runs one of ``BACKEND_READ_TOOLS`` (knowledge
 search, passage reading, the file browser, page images, the two BIM tools, RIS)

@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The agent's read tools over MCP (ADR-0121): the operations are the contract
+ * The agent's read tools over MCP (ADR-0122): the operations are the contract
  * the Python tools generate, and a call is the person's own chat turn context,
  * signed by this tier and sent to the backend with the internal token.
  */

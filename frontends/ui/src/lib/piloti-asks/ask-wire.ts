@@ -1,5 +1,5 @@
 /**
- * The contract of a question another agent asks Piloti (ADR-0123): the routes
+ * The contract of a question another agent asks Piloti (ADR-0124): the routes
  * under `/api/piloti-asks`, the MCP operations in
  * `lib/agent-api/catalog/consult.ts`, and the A2A door (`lib/a2a/`) all read
  * it from here. Pure: no database, no service (`lib/api/wire-modules.spec.ts`).

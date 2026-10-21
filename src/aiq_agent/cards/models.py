@@ -256,7 +256,7 @@ class OperationProposalCard(CardModel):
     """A workspace operation the agent PROPOSES through the MCP surface and a person runs.
 
     System-emitted for a write operation Piloti called on the product's own MCP
-    server (ADR-0121): the call changed nothing, it stored an ``operation``
+    server (ADR-0122): the call changed nothing, it stored an ``operation``
     proposal (ADR-0105) and this card shows it. Accepting runs the operation
     as the ACCEPTING person through the operation's own route, so that route's
     authorization decides; dismissing runs nothing. ``proposal_id`` is

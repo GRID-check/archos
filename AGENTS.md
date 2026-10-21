@@ -203,7 +203,7 @@ UI, the agent's tools, tasks and any later integration are equal clients of it;
 no service function is reached from a second path, and no contract is written
 twice. [`docs/adr/0055-api-first-workspace-primitives.md`](docs/adr/0055-api-first-workspace-primitives.md).
 
-**The agent door offers what only Piloti has** (ADR-0121 and its amendment). One
+**The agent door offers what only Piloti has** (ADR-0122 and its amendment). One
 MCP server at `/api/mcp` is the agent surface; Claude, Cursor and Piloti itself
 are clients of it, and the UI is another. Each tool is an operation in
 `frontends/ui/src/lib/agent-api/catalog/` that names a route the UI already

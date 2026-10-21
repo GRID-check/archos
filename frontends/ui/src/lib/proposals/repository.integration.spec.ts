@@ -27,9 +27,9 @@
  *     documents; its organization lists it on its shelf, another organization
  *     sees none of it, and Piloti's withdrawal deletes an open one and never a
  *     decided one;
- *   - an organization-scoped proposal (0174) has no project, is an `operation`
+ *   - an organization-scoped proposal (0175) has no project, is an `operation`
  *     and nothing else, and is listed on its own shelf; one open operation
- *     call is one proposal per conversation and person (0176), however it is
+ *     call is one proposal per conversation and person (0177), however it is
  *     spelled and however many run at once, and a decided one frees the call.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
@@ -406,7 +406,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
     })
   })
 
-  describe('the organization and one open call (0174)', () => {
+  describe('the organization and one open call (0175)', () => {
     const call = (input: unknown, operation = 'organization-memory-create') => ({
       operation,
       input,
@@ -486,7 +486,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
       ).toBe(4)
     })
 
-    it('keeps the same call for another person apart: B’s call is never folded into A’s card (0176)', async () => {
+    it('keeps the same call for another person apart: B’s call is never folded into A’s card (0177)', async () => {
       const mine = await operationProposal(call({ body: { content: 'zu zweit' } }))
       const theirs = await operationProposal(call({ body: { content: 'zu zweit' } }), { onBehalfOf: OTHER_USER })
       expect(theirs).toMatchObject({ created: true, row: { onBehalfOf: OTHER_USER } })

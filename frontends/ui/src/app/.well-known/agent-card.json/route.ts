@@ -1,5 +1,5 @@
 /**
- * Piloti's A2A agent card (ADR-0123), at the path the A2A specification names
+ * Piloti's A2A agent card (ADR-0124), at the path the A2A specification names
  * (`/.well-known/agent-card.json`): what an A2A client reads before it sends a
  * message. Public by specification, like the RFC 9728 document beside it; the
  * proxy lets `/.well-known/*` through.

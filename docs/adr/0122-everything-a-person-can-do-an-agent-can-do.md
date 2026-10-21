@@ -455,7 +455,7 @@ the operations (`job-*` to `task-*`, `run-*` to `task-run-*`, quarantine
 `release` to `allow`), the mode (`discovery` to `search`), the missing-operation
 tool and event, the principal's `kind: 'person' | 'piloti'` to RFC 8693's actor
 (`external_agent` | `piloti`, the person being the subject), and the inbox types
-`job.*` to `task_run.*` (migration 0175). Left for their own changes, each
+`job.*` to `task_run.*` (migration 0176). Left for their own changes, each
 because it reaches persisted data or another wave's code:
 
 - **Run status on A2A's task states.** A task run's status is stored in four
@@ -474,7 +474,7 @@ because it reaches persisted data or another wave's code:
   same key names the catalog operation) and is stored in
   `proposed_changes.payload`. Left out of the security fix wave because it is
   not contained: the key is read by the CHECK `proposed_changes_office_shelf_move`
-  (0146, 0174), by Python's `propose_file_change` and its JSON Schema fixture,
+  (0146, 0175), by Python's `propose_file_change` and its JSON Schema fixture,
   by the notice variants and by the file cards, some sixty files. One migration
   rewrites the stored payloads and the CHECK, and the agent's side changes in
   the same commit; the `operation` kind keeps `operation`.

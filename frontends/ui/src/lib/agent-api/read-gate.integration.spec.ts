@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * Piloti's workspace reads in a conversation, against a REAL Postgres through
- * the restricted runtime role (ADR-0093, ADR-0094, ADR-0121):
+ * the restricted runtime role (ADR-0093, ADR-0094, ADR-0122):
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/agent-api/read-gate.integration.spec.ts

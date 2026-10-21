@@ -29,7 +29,7 @@ describe('stepNameLabel', () => {
     ['file_draft', 'thinking.stepName.filing'],
     ['document_annotations', 'thinking.stepName.annotations'],
     ['set_doc_class', 'thinking.stepName.fileProposal'],
-    // ADR-0124: a workspace read or proposal is work the Herleitung names.
+    // ADR-0125: a workspace read or proposal is work the Herleitung names.
     ['call', 'thinking.stepName.workspace'],
   ])('%s → %s', (name, key) => {
     expect(stepNameLabel(name, t)).toBe(key)

@@ -264,7 +264,7 @@ class TestMeasurementConfidenceEndToEnd:
 
 
 class TestRuleTwoKeepsTheLaunderingPathShut:
-    """The same two answers, stamped per sentence (ADR-0124): what a measurement grounds, and what it never does.
+    """The same two answers, stamped per sentence (ADR-0125): what a measurement grounds, and what it never does.
 
     Under rule 2 the measured sentence is ``measured`` and may reach "high"; a
     sentence about the law next to it is still floored, because a measurement

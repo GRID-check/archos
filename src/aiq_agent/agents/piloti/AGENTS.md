@@ -33,7 +33,7 @@ decided before the answer can only withhold a capability the answer turned out
 to need.
 
 **Confidence is held to the weakest sentence, and the law has its own currency**
-(ADR-0124). `finalize_answer` stamps every sentence of the final text with a
+(ADR-0125). `finalize_answer` stamps every sentence of the final text with a
 provenance class and a claim type (`common/claim_provenance.py`); the surfaced
 level is the self-report under the weakest load-bearing sentence's ceiling
 (`markers.surface_claim_confidence`). A cited passage, a workspace record, an

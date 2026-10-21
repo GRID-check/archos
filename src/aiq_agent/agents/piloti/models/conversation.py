@@ -167,7 +167,7 @@ class ConversationState(BaseModel):
     # each, from the turn context; rendered as ``<referenzprojekte>`` when
     # ``project_lookup`` is bound. Plain str, as above.
     reference_projects: str | None = None
-    # The WORKSPACE block from the turn context (ADR-0122): who asks, where,
+    # The WORKSPACE block from the turn context (ADR-0123): who asks, where,
     # and what is open now. Rendered when the workspace tools are bound. Plain str.
     workspace_block: str | None = None
     # Set when this turn commissioned a run instead of answering itself
@@ -222,10 +222,10 @@ class ConversationState(BaseModel):
     # pipeline did not stamp the answer.
     claim_stamps: list[dict[str, Any]] | None = None
     # Which confidence rule computed ``answer_confidence``: 2 the per-sentence
-    # formula (ADR-0124), 1 the answer-level floors. None with no confidence.
+    # formula (ADR-0125), 1 the answer-level floors. None with no confidence.
     answer_confidence_version: int | None = None
     # A lookup ran, found nothing, and the answer shipped labelled as model
-    # knowledge (ADR-0124): the reader's banner.
+    # knowledge (ADR-0125): the reader's banner.
     lookup_found_nothing: bool = False
     # The thinking level the answering call ran at, lifted from Piloti's state
     # onto ``TurnResult.reasoning_effort``. None when no answering call ran.
@@ -258,7 +258,7 @@ class ConversationState(BaseModel):
     #   "measurement_only"        measured and purely descriptive, so "high" was
     #                             reduced to "medium" rather than to "low".
     #   "citation_fallback"       no longer produced (the single-source fallback
-    #                             went with ADR-0124); stored turns carry it.
+    #                             went with ADR-0125); stored turns carry it.
     answer_confidence_capped_reason: (
         Literal[
             "ungrounded",

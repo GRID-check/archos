@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * A wire module is a contract, nothing else (ADR-0055, ADR-0121).
+ * A wire module is a contract, nothing else (ADR-0055, ADR-0122).
  *
  * `lib/**\/*-wire.ts` holds the zod schema a route parses and the MCP catalog
  * describes, so the route, the agent surface and the browser read one shape.

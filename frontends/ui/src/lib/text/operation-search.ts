@@ -1,6 +1,6 @@
 /**
  * Ranking the agent catalog's operations by the words of a request, in either
- * of the office's languages (ADR-0122).
+ * of the office's languages (ADR-0123).
  *
  * The catalog names and describes every operation in English
  * (`project-member-add`, "Add a person to a project"), and the people Piloti
@@ -8,7 +8,7 @@
  * split a query on `[^a-z0-9]`, so „hinzufügen" became the fragments `hinzuf`
  * and `gen`, and even a clean German word could never meet an English summary:
  * „Mitglied zu Projekt hinzufügen" ranked `project-summary-generate` first, and
- * the agent spent its rounds searching again (ADR-0122 has the numbers).
+ * the agent spent its rounds searching again (ADR-0123 has the numbers).
  * `discovery.ts` ranks with this module now.
  *
  * Two causes, two fixes, both here:

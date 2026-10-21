@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * Piloti's writes through the MCP surface, filed as proposals against a REAL
- * Postgres through the restricted runtime role (ADR-0121, ADR-0105):
+ * Postgres through the restricted runtime role (ADR-0122, ADR-0105):
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/agent-api/operation-proposals.integration.spec.ts

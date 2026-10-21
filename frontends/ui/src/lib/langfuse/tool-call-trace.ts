@@ -1,9 +1,9 @@
 import 'server-only'
 /**
- * One MCP tool call on the agent door as a Langfuse trace (ADR-0089, ADR-0121):
+ * One MCP tool call on the agent door as a Langfuse trace (ADR-0089, ADR-0122):
  * the trace `agent-tool-call` holding one `TOOL` observation named
  * `mcp.<operation>`, or `a2a.<operation>` for the A2A door's call of an ask
- * route (ADR-0123). Everything the product does is observable in Langfuse, and
+ * route (ADR-0124). Everything the product does is observable in Langfuse, and
  * an agent's call is something the product does: which operation, for which
  * door, run or proposed, with what status and how long it took.
  *

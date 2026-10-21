@@ -1,5 +1,5 @@
 /**
- * Piloti's A2A agent card (ADR-0123): what an A2A client reads at
+ * Piloti's A2A agent card (ADR-0124): what an A2A client reads at
  * `/.well-known/agent-card.json` before it sends a message.
  *
  * One skill, `consult`: ask Piloti a question as the person the client acts

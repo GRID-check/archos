@@ -1,4 +1,4 @@
-"""The contract of the read tools other agents reach over MCP is the one the tools generate (ADR-0121).
+"""The contract of the read tools other agents reach over MCP is the one the tools generate (ADR-0122).
 
 ``frontends/ui/tests/fixtures/backend-tools.schema.json`` is what the BFF's MCP
 server shows an outside agent: each tool's name, the description the chat model

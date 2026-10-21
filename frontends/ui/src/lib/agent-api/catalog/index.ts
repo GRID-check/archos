@@ -1,5 +1,5 @@
 /**
- * Every operation Piloti's MCP server offers (ADR-0121): one list, built from
+ * Every operation Piloti's MCP server offers (ADR-0122): one list, built from
  * one file per domain so the domains grow without touching each other.
  *
  * `agent-reachability.spec.ts` holds this list to the routes: every route a

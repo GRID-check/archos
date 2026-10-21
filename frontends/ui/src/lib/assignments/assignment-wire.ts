@@ -1,6 +1,6 @@
 /**
  * The assignment routes' request shapes, shared by the routes and the MCP
- * catalog (`lib/agent-api/catalog/collaboration.ts`, ADR-0121).
+ * catalog (`lib/agent-api/catalog/collaboration.ts`, ADR-0122).
  */
 
 import { z } from 'zod'

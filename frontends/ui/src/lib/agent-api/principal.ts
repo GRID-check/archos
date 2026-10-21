@@ -1,6 +1,6 @@
 import 'server-only'
 /**
- * Who is calling the agent door, and with what rights (ADR-0121).
+ * Who is calling the agent door, and with what rights (ADR-0122).
  *
  * Two doors lead to the same server, and each ends in the same thing: an
  * {@link AgentPrincipal} whose `session` is a role-bearing, live-resolved
@@ -81,7 +81,7 @@ export interface AgentPrincipal {
   sensitiveOptIns?: readonly Sensitivity[]
 }
 
-/** The organization's opt-in per sensitivity class (ADR-0121, "Sensitive operations"). */
+/** The organization's opt-in per sensitivity class (ADR-0122, "Sensitive operations"). */
 export const SENSITIVE_OPT_IN_FLAGS: Readonly<Record<Sensitivity, KnownFeatureFlag>> = {
   access: FEATURE_FLAGS.agentMcpAccess,
   secret: FEATURE_FLAGS.agentMcpSecrets,

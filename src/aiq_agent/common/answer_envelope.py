@@ -164,7 +164,7 @@ TAKEAWAYS_MAX_ITEMS = 5
 _MIN_MATCHABLE_NAME_CHARS = 4
 
 #: Exclusive shapes of a shallow answer. A verdict is kept only for ``ruling``,
-#: a work report only for ``work`` (ADR-0122).
+#: a work report only for ``work`` (ADR-0123).
 AnswerKind = Literal["direct", "walkthrough", "ruling", "handoff", "work"]
 
 #: A work report's lists hold at most this many lines each; a line longer than
@@ -347,7 +347,7 @@ class AnswerMeta(_EnvelopeModel):
     )
     takeaways: list[AnswerMetaTakeaway] | None = None
     callout: AnswerMetaCallout | None = None
-    #: ANATOMY, kind=work only (ADR-0122): the report the reader acts on and the
+    #: ANATOMY, kind=work only (ADR-0123): the report the reader acts on and the
     #: next turn can read back (it rides the stored message's ``answerMeta``).
     work: AnswerMetaWork | None = None
     confidence: AnswerMetaConfidence | None = None

@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * Dev preview for "Agent verbinden" in the profile (ADR-0121): the section in
+ * Dev preview for "Agent verbinden" in the profile (ADR-0122): the section in
  * every state the server can decide, from fixtures. Not linked from anywhere;
  * 404s outside development. Pinned to German, the product's primary language.
  */

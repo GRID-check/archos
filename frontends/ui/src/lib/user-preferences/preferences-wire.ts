@@ -1,6 +1,6 @@
 /**
  * The request shape of `POST /api/user/preferences`, shared by the route and the
- * MCP catalog (ADR-0121).
+ * MCP catalog (ADR-0122).
  */
 
 import { z } from 'zod'

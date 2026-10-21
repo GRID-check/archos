@@ -1,7 +1,7 @@
 import 'server-only'
 /**
  * What Piloti may read through the MCP surface, judged by who reads the
- * conversation it answers in (ADR-0093, ADR-0094, ADR-0121).
+ * conversation it answers in (ADR-0093, ADR-0094, ADR-0122).
  *
  * A read runs as the requester, with the requester's rights, and its answer
  * lands in the conversation's transcript. It is held to ADR-0094's one rule,

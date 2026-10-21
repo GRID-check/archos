@@ -1,4 +1,4 @@
-"""The strict half of ADR-0124: a dropped pointer is labelled, a locus must be in its passage, polarity holds.
+"""The strict half of ADR-0125: a dropped pointer is labelled, a locus must be in its passage, polarity holds.
 
 Each test here fails on the code before the change: the verifier deleted an
 unresolvable ``[N]`` silently, never compared a § beside a marker with the

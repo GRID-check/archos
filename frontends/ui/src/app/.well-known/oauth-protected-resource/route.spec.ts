@@ -3,7 +3,7 @@
  */
 /**
  * The RFC 9728 document an MCP client reads to find the authorization server
- * (ADR-0121). Both well-known paths serve the same document: the bare one and
+ * (ADR-0122). Both well-known paths serve the same document: the bare one and
  * the path-inserted one the 401 challenge points at.
  */
 
@@ -33,7 +33,7 @@ describe('oauth-protected-resource', () => {
     })
   }
 
-  it('serves the A2A door its own document, naming its own resource (ADR-0123)', async () => {
+  it('serves the A2A door its own document, naming its own resource (ADR-0124)', async () => {
     const response = a2a()
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({

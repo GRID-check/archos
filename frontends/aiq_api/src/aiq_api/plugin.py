@@ -350,7 +350,7 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
         add_project_experience_routes,
         add_ingest_routes,
         # The agent's read tools (knowledge, passages, files, page images, BIM, RIS) for the
-        # BFF's MCP server, run for the person a signed envelope names (ADR-0121).
+        # BFF's MCP server, run for the person a signed envelope names (ADR-0122).
         # Internal-token only, off the external allowlist.
         add_internal_tool_routes,
         # Reads an Outlook archive the BFF staged, for its mail import (ADR-0085).

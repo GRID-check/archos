@@ -1,4 +1,4 @@
--- Reverse 0174. ORDER: roll the frontend back first; the newer build writes the
+-- Reverse 0175. ORDER: roll the frontend back first; the newer build writes the
 -- `organization` scope, and the restored CHECKs refuse it.
 --
 -- Lossy: organization-scoped proposals are deleted (the older build cannot read

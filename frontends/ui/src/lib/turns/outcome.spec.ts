@@ -155,7 +155,7 @@ describe('recordTurnOutcome', () => {
     expect(onWakeEnded).not.toHaveBeenCalled()
   })
 
-  it('hands a turn that is no wake to the asks, and settles what the ask settled (ADR-0123)', async () => {
+  it('hands a turn that is no wake to the asks, and settles what the ask settled (ADR-0124)', async () => {
     vi.mocked(findWakeById).mockResolvedValue(null)
     vi.mocked(recordAskOutcome).mockResolvedValue(true)
     expect(await recordTurnOutcome(request(MENTION))).toEqual({ settled: true })

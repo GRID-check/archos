@@ -198,7 +198,7 @@ export const FEATURE_FLAGS = {
    */
   pilotiActs: 'piloti-acts',
   /**
-   * The agent door (ADR-0121): external agents (Claude, Cursor, ChatGPT)
+   * The agent door (ADR-0122): external agents (Claude, Cursor, ChatGPT)
    * reach the workspace as a person through the MCP server at `/api/mcp`.
    * An entitlement, because it lets software outside the browser act with a
    * person's rights; nobody has it until an operator targets the organization.
@@ -208,7 +208,7 @@ export const FEATURE_FLAGS = {
    */
   agentMcp: 'agent-mcp',
   /**
-   * The organization's second opt-in for the agent door (ADR-0121, "Sensitive
+   * The organization's second opt-in for the agent door (ADR-0122, "Sensitive
    * operations"): operations with `sensitivity: 'access'` (sharing grants,
    * folder access, custom role definitions) are offered to an external agent
    * only with this on. One flag per class, so an office can let its agents
@@ -227,7 +227,7 @@ export const FEATURE_FLAGS = {
    */
   agentMcpControls: 'agent-mcp-controls',
   /**
-   * Agents consult Piloti (ADR-0123): an agent acting for a person asks Piloti
+   * Agents consult Piloti (ADR-0124): an agent acting for a person asks Piloti
    * a question (`piloti-ask-create` on the agent door, `SendMessage` on the
    * A2A door) and Piloti answers in a turn run as that person, on their
    * budget. Read from the person's session on `POST /api/piloti-asks`.
@@ -321,7 +321,7 @@ export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>)
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)
 }
 
-/** Whether agents acting for people may ask Piloti questions in this organization (ADR-0123). */
+/** Whether agents acting for people may ask Piloti questions in this organization (ADR-0124). */
 export function isPilotiAskEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.pilotiAsk)
 }

@@ -102,7 +102,7 @@ const BACKEND_ANSWER_KEYS = [
   // ledger: bounded into `provenance.quoteStamps`.
   'quote_stamps',
   // Where each sentence comes from, which rule computed the confidence, and
-  // whether the search found nothing (ADR-0124): bounded into `provenance`.
+  // whether the search found nothing (ADR-0125): bounded into `provenance`.
   'claim_stamps',
   'answer_confidence_version',
   'lookup_found_nothing',

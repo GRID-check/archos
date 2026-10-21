@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * An agent asks Piloti (ADR-0123). Pinned here: the switch; the thread (a new
+ * An agent asks Piloti (ADR-0124). Pinned here: the switch; the thread (a new
  * private one, or one an earlier ask of the same person started, never another
  * conversation); the question written under the ask's id; the headless turn
  * with the `agent_consult` trigger, `if_idle` and the signed envelope; every way

@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * A secret is write-only through the agent door (ADR-0121, "Sensitive
+ * A secret is write-only through the agent door (ADR-0122, "Sensitive
  * operations"). The organization's LLM provider key goes in through
  * `organization-llm-credential-create` and never comes back out: not in a
  * result, not in a refusal, not in the telemetry the door records. The

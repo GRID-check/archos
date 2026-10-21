@@ -42,14 +42,14 @@ const middleware = authkitMiddleware({
       // enforces its own shared-token auth (X-Grid-Internal-Token). Without
       // this entry AuthKit 303-redirects the POST to WorkOS sign-in.
       '/api/internal/(.*)',
-      // The agent door (ADR-0121): the MCP endpoint and the OAuth discovery
+      // The agent door (ADR-0122): the MCP endpoint and the OAuth discovery
       // documents an MCP client fetches before it has any credential. Clients
       // carry no AuthKit cookie; `/api/mcp` authenticates itself, a WorkOS
       // bearer token for an external agent or the signed request-context
       // envelope for Piloti, and the `.well-known` documents are public by
       // specification (RFC 9728).
       '/api/mcp',
-      // The A2A door (ADR-0123): authenticates itself with the same bearer
+      // The A2A door (ADR-0124): authenticates itself with the same bearer
       // token as `/api/mcp`; the agent card is under `.well-known`.
       '/api/a2a',
       '/.well-known/(.*)',

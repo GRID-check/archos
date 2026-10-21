@@ -80,7 +80,7 @@ TOOLS: dict[str, tuple[str, str]] = {
         "reports",
         "tests/aiq_agent/tools/canvas/test_look.py::test_a_look_reports_the_collection_it_read",
     ),
-    # Piloti's own MCP server (ADR-0121). Its operations return workspace records
+    # Piloti's own MCP server (ADR-0122). Its operations return workspace records
     # (projects, members, document metadata, proposals), never passages: reading a
     # passage stays with knowledge_search and read_passage, which report. OPEN
     # CONDITION, not yet pinned by a test here: the server's catalog must not expose
