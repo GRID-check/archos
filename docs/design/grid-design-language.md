@@ -658,6 +658,12 @@ times stops being a physical cue and becomes texture.
   opened from the keyboard many times a day, and an entrance there is latency
   between the keystroke and the thing asked for. A dialog opened with a click
   on an occasional task keeps its entrance.
+- **Toasts move on Sonner's paths and our clock.** A toast drops in from the
+  edge it sits on and leaves through it, and the stack lifts and expands, all
+  through Sonner's own CSS transitions, which `globals.css` retimes onto
+  `--motion-base` / `--ease-entrance` (leaving: `--motion-quick` /
+  `--ease-exit`). Transitions, not keyframes: a toast dismissed while it is
+  still arriving turns around from where it is.
 - **Tooltips: one delay, then instant.** One `TooltipProvider` at the root
   (`components/ui/tooltip.tsx`; a `Tooltip` joins the one above it and only
   mounts its own where none exists). The first tooltip waits 300ms

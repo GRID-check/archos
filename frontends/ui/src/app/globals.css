@@ -1348,7 +1348,7 @@ body {
 }
 
 /* =============================================================================
-   Stream A motion kit — collapsible body + sonner toast entrances.
+   Stream A motion kit — collapsible body + sonner toast timing.
    APPENDED block; nothing above this line was touched.
    ============================================================================= */
 
@@ -1388,44 +1388,54 @@ body {
   animation: collapsible-closed var(--motion-quick) var(--ease-exit);
 }
 
-/* Sonner toasts (`components/ui/sonner.tsx`). Sonner's own styles.css is NOT
-   imported — toasts are positioned by sonner's inline styles and skinned by
-   our classNames — so without these rules toasts appear instantly. The enter
-   runs when sonner flips `data-mounted`, the leave when it flips
-   `data-removed` (sonner keeps dismissed toasts mounted through the exit).
-   Max 8px of travel, transform/opacity only; the leave fades in place. */
-@keyframes sonner-toast-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+/* Sonner toasts (`components/ui/sonner.tsx`): its own motion, on our clock.
+
+   Sonner injects its stylesheet from JavaScript (a <style> appended to <head>
+   at import), so its geometry is always there: a toast mounts at
+   `translateY(-100%)` (top) or `100%` (bottom) and `opacity: 0`, and flips to
+   rest when it sets `data-mounted`; it leaves through the same edge when it
+   sets `data-removed`; the stack lifts, scales and expands through the same
+   transitions. Those are CSS TRANSITIONS, so a toast dismissed while it is
+   still arriving turns around from where it is.
+
+   What is not ours is the clock: 400ms on the bare default `ease` (and 500ms /
+   200ms for a toast leaving from behind the front one). This retimes every one
+   of them onto the motion tokens and leaves the paths alone: moving on
+   `--motion-base` / `--ease-entrance`, box-shadow on `--motion-quick`, and a
+   toast that is leaving one step shorter on `--ease-exit`.
+
+   `!important` because sonner's sheet is appended after this one and its
+   leaving-toast rule carries five attribute selectors; a timing longhand is
+   all it touches. A swipe still wins: sonner sets `transition: none` while a
+   finger drags, which empties the property list these durations apply to.
+   There used to be @keyframes here, played on top of sonner's transitions:
+   two animations on one transform, and a keyframe restarts from zero when it
+   is interrupted. Under reduced motion sonner turns its own transitions off. */
+[data-sonner-toast] {
+  transition-duration: var(--motion-base), var(--motion-base), var(--motion-base), var(--motion-quick) !important;
+  transition-timing-function: var(--ease-entrance) !important;
 }
 
-@keyframes sonner-toast-out {
-  from {
-    opacity: 1;
-  }
-  to {
-    opacity: 0;
-  }
-}
-
-[data-sonner-toast][data-mounted='true'] {
-  animation: sonner-toast-in var(--motion-base) var(--ease-entrance);
-}
-
-/* After the enter rule: a toast that is both mounted and removed plays the leave. */
 [data-sonner-toast][data-removed='true'] {
-  animation: sonner-toast-out var(--motion-quick) var(--ease-exit);
+  transition-duration: var(--motion-quick) !important;
+  transition-timing-function: var(--ease-exit) !important;
+}
+
+/* A collapsed stack hides the content of the toasts behind the front one by
+   fading it (sonner: `opacity .4s`), and the action and close buttons ease
+   their hover the same way. */
+[data-sonner-toast] > * {
+  transition-duration: var(--motion-quick) !important;
+  transition-timing-function: var(--ease-out) !important;
+}
+
+[data-sonner-toast] :is([data-button], [data-close-button]) {
+  transition-duration: var(--motion-quick) !important;
+  transition-timing-function: var(--ease-out) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  [data-slot='collapsible-content'],
-  [data-sonner-toast] {
+  [data-slot='collapsible-content'] {
     animation: none !important;
   }
 }
