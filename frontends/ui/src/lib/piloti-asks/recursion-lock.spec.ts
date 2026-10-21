@@ -8,8 +8,9 @@
  * write becomes a proposal (ADR-0121), and a turn an ask started is such a turn.
  * So the lock is held where proposals are filed and applied: an ask is refused
  * when it is proposed (nothing is filed) and when an old one is applied
- * (nothing is called). The A2A door's half, refusing Piloti's credential, is in
- * `app/api/a2a/route.spec.ts`.
+ * (nothing is called). Before both, Piloti never sees an ask (`canSee` in
+ * `policy.ts`), so `piloti-ask-get`, a read, cannot run either. The A2A door's
+ * half, refusing Piloti's credential, is in `app/api/a2a/route.spec.ts`.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -22,6 +23,8 @@ vi.mock('@/lib/agent-api/dispatch', async () => {
 
 import { UnprocessableError } from '@/lib/api/errors'
 import { findOperation } from '@/lib/agent-api/catalog'
+import { callDecision, findVisibleOperation, visibleOperations } from '@/lib/agent-api/policy'
+import type { AgentPrincipal } from '@/lib/agent-api/principal'
 import { callOperation } from '@/lib/agent-api/dispatch'
 import { requireProposable } from '@/lib/proposals/kinds'
 import { applyOperation, PILOTI_ASK_REFUSAL, requireProposableOperation } from '@/lib/proposals/operation-applier'
@@ -50,6 +53,19 @@ describe('the lock names real operations', () => {
     const { AGENT_OPERATIONS } = await import('@/lib/agent-api/catalog')
     const onAskRoutes = AGENT_OPERATIONS.filter((op) => op.path.startsWith('/api/piloti-asks')).map((op) => op.name)
     expect(onAskRoutes.sort()).toEqual([...PILOTI_ASK_OPERATIONS].sort())
+  })
+})
+
+describe('Piloti does not see an ask', () => {
+  const piloti: AgentPrincipal = { actor: 'piloti', session: SESSION, clientId: null, scopes: [] }
+  const agent: AgentPrincipal = { actor: 'external_agent', session: SESSION, clientId: 'claude', scopes: [] }
+
+  it.each(PILOTI_ASK_OPERATIONS)('%s is absent from Piloti’s catalog and offered to an external agent', (name) => {
+    expect(visibleOperations(piloti).map((op) => op.name)).not.toContain(name)
+    expect(findVisibleOperation(piloti, name)).toBeUndefined()
+    const offered = findVisibleOperation(agent, name)
+    expect(offered?.name).toBe(name)
+    expect(callDecision(agent, offered!)).toBe('run')
   })
 })
 

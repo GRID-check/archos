@@ -85,6 +85,14 @@ describe('visibleOperations', () => {
     expect(canSee(person(), platformRead)).toBe(true)
   })
 
+  it('hides the asks from Piloti, and only from Piloti: Piloti never asks Piloti (ADR-0123)', () => {
+    for (const name of ['piloti-ask-create', 'piloti-ask-get', 'piloti-ask-cancel']) {
+      const ask = { ...op('project-list'), name, domain: 'conversations' as const }
+      expect(canSee(piloti, ask), name).toBe(false)
+      expect(canSee(person(), ask), name).toBe(true)
+    }
+  })
+
   it('treats a hidden operation as absent', () => {
     expect(findVisibleOperation(person(), 'folder-access-grant')).toBeUndefined()
     expect(findVisibleOperation(person(), 'project-list')?.name).toBe('project-list')

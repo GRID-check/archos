@@ -21,6 +21,7 @@ import { BACKEND_OPERATIONS, type BackendOperation, findBackendOperation } from 
 import { AGENT_OPERATIONS, findOperation } from './catalog'
 import { AGENT_DOMAINS, type AgentDomain, type AgentOperation, type Sensitivity, annotationsOf } from './operation'
 import type { AgentPrincipal } from './principal'
+import { isPilotiAskOperation } from '@/lib/piloti-asks/ask-wire'
 
 /** The scope an external client needs for operations with a `sensitivity`. */
 export const SENSITIVE_SCOPE = 'piloti:sensitive'
@@ -49,8 +50,10 @@ export type CallDecision = 'run' | 'propose'
 export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
   if (principal.actor === 'piloti') {
     // Piloti may not propose a sensitive operation (`proposeOperation` refuses it too),
-    // so showing one would only teach the model a call that cannot succeed.
-    return !op.sensitivity && !PILOTI_HIDDEN_DOMAINS.has(op.domain)
+    // so showing one would only teach the model a call that cannot succeed. An ask is
+    // how another agent consults Piloti: Piloti never asks Piloti (ADR-0123, the
+    // recursion lock), and `piloti-ask-get` is a read it would otherwise simply run.
+    return !op.sensitivity && !PILOTI_HIDDEN_DOMAINS.has(op.domain) && !isPilotiAskOperation(op.name)
   }
   return !op.sensitivity || maySeeSensitive(principal, op.sensitivity)
 }
