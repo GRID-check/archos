@@ -29,10 +29,11 @@ export interface OperationInput {
   readonly query?: Record<string, unknown>
   readonly body?: unknown
   /**
-   * Sent as `If-Match`: the version the caller read, for the routes that
-   * refuse a write over a newer one (the project profile, a version's content).
-   * The only header an operation carries; everything else a route reads from
-   * the session or the body.
+   * Sent as `If-Match`: the version the caller read. Only an operation whose
+   * route reads the header (`ifMatchHeader`, the project profile) takes it; a
+   * route that wants the version in its body (a document version's content and
+   * decisions) declares `ifMatch` in its body schema instead. The only header an
+   * operation carries; everything else a route reads from the session or the body.
    */
   readonly ifMatch?: string
 }
@@ -59,10 +60,10 @@ export interface BinaryBody {
 }
 
 /**
- * The most bytes of a JSON or text answer read into memory. A tool result shows
- * at most 40k characters, so anything near this is already an answer the agent
- * must narrow; past it the rest is never read, so a list nobody bounded cannot
- * hold a whole response in the process.
+ * The most bytes of a JSON or text answer read into memory, from a route or from
+ * the backend. A tool result shows at most `MAX_RESULT_CHARS`, so anything near
+ * this is already an answer the agent must narrow; past it the rest is never
+ * read, so a list nobody bounded cannot hold a whole response in the process.
  */
 export const MAX_TEXT_BYTES = 5 * 1024 * 1024
 
@@ -219,7 +220,13 @@ function parseJson(text: string): unknown {
   }
 }
 
-async function readBody(response: Response): Promise<unknown> {
+/**
+ * A response body as the agent surface reads it, with every cap in place: no
+ * body for 204, a redirect described and never followed, JSON parsed, text as
+ * text (both {@link MAX_TEXT_BYTES} at most), anything else as a
+ * {@link BinaryBody}. The one reader for a route's answer and the backend's.
+ */
+export async function readResponseBody(response: Response): Promise<unknown> {
   const type = response.headers.get('content-type') ?? ''
   if (response.status === 204) return null
   const location = response.headers.get('location')
@@ -234,20 +241,38 @@ async function readBody(response: Response): Promise<unknown> {
   return !type && binary.bytes === 0 ? null : binary
 }
 
-/** Validate `input` against the operation's schemas; the parsed input, or an {@link OperationInputError}. */
-export function parseOperationInput(op: AgentOperation, input: OperationInput): OperationInput {
-  const parse = (schema: AgentOperation['params'] | AgentOperation['body'], value: unknown, label: string) => {
-    if (!schema) return value
+/**
+ * Check `input` against the operation's schemas, and return it as it came:
+ * NOT zod's parsed output. The route parses its own input with its own schema
+ * and is the gate; forwarding the parsed copy would hand it what a transform
+ * made of the agent's input (a `Date` serialized back as an ISO string with a
+ * time the route's date parser refuses, a default the route would not have
+ * applied). A proposal stores this same original input for the same reason.
+ * Throws {@link OperationInputError} for input the operation cannot take.
+ */
+export function validateOperationInput(op: AgentOperation, input: OperationInput): OperationInput {
+  const check = (schema: AgentOperation['params'] | AgentOperation['body'], value: unknown, label: string) => {
+    if (!schema) return
     const result = schema.safeParse(value ?? {})
-    if (result.success) return result.data
+    if (result.success) return
     const issues = result.error.issues.map((issue) => `${label}.${issue.path.join('.')}: ${issue.message}`)
     throw new OperationInputError(`${op.name}: ${issues.join('; ')}`)
   }
+  check(op.params, input.params, 'params')
+  check(op.query, input.query, 'query')
+  if (op.body) check(op.body, input.body, 'body')
+  const ifMatch = typeof input.ifMatch === 'string' ? input.ifMatch : undefined
+  if (ifMatch !== undefined && !op.ifMatchHeader) {
+    // Never dropped silently: a version check the agent asked for and nobody made is a lost update.
+    throw new OperationInputError(
+      `${op.name} takes no top-level ifMatch; when its body schema has an ifMatch field, send the version there`,
+    )
+  }
   return {
-    params: parse(op.params, input.params, 'params') as Record<string, string> | undefined,
-    query: parse(op.query, input.query, 'query') as Record<string, unknown> | undefined,
-    body: op.body ? parse(op.body, input.body, 'body') : input.body,
-    ifMatch: typeof input.ifMatch === 'string' ? input.ifMatch : undefined,
+    ...(input.params === undefined ? {} : { params: input.params }),
+    ...(input.query === undefined ? {} : { query: input.query }),
+    ...(input.body === undefined ? {} : { body: input.body }),
+    ...(ifMatch === undefined ? {} : { ifMatch }),
   }
 }
 
@@ -265,16 +290,16 @@ export function formDataOf(body: UploadBody): FormData {
   return form
 }
 
-function requestInit(op: AgentOperation, parsed: OperationInput): Pick<RequestInit, 'headers' | 'body'> {
+function requestInit(op: AgentOperation, input: OperationInput): Pick<RequestInit, 'headers' | 'body'> {
   const headers: Record<string, string> = {}
-  if (parsed.ifMatch) headers['if-match'] = parsed.ifMatch
-  if (op.method === 'GET' || parsed.body === undefined) return { headers }
+  if (input.ifMatch) headers['if-match'] = input.ifMatch
+  if (op.method === 'GET' || input.body === undefined) return { headers }
   if (op.bodyEncoding === 'multipart') {
     // No content-type: `Request` adds `multipart/form-data` with its boundary.
-    return { headers, body: formDataOf(parsed.body as UploadBody) }
+    return { headers, body: formDataOf(input.body as UploadBody) }
   }
   if (op.bodyEncoding === 'raw') {
-    const bytes = decodeBase64((parsed.body as { contentBase64: string }).contentBase64)
+    const bytes = decodeBase64((input.body as { contentBase64: string }).contentBase64)
     if (!bytes) throw new OperationInputError('body.contentBase64 is not valid base64 or is over the size cap')
     headers['content-type'] = 'application/octet-stream'
     // A browser states the length; the mail import checks it against the part size.
@@ -282,7 +307,7 @@ function requestInit(op: AgentOperation, parsed: OperationInput): Pick<RequestIn
     return { headers, body: bytes }
   }
   headers['content-type'] = 'application/json'
-  return { headers, body: JSON.stringify(parsed.body) }
+  return { headers, body: JSON.stringify(input.body) }
 }
 
 /**
@@ -297,11 +322,11 @@ export async function callOperation(
   session: AuthorizedSession,
   reader: ActingReader = 'person',
 ): Promise<OperationResult> {
-  const parsed = parseOperationInput(op, input)
-  const url = new URL(resolvePath(op, parsed.params), DISPATCH_ORIGIN)
-  url.search = searchParamsOf(parsed.query).toString()
+  const checked = validateOperationInput(op, input)
+  const url = new URL(resolvePath(op, checked.params), DISPATCH_ORIGIN)
+  url.search = searchParamsOf(checked.query).toString()
 
-  const request = new Request(url, { method: op.method, ...requestInit(op, parsed) })
+  const request = new Request(url, { method: op.method, ...requestInit(op, checked) })
 
   const routeModule = await op.load()
   const handler = routeModule[op.method]
@@ -309,10 +334,13 @@ export async function callOperation(
 
   const response = await runAsActingSession(
     session,
-    () => handler(request, { params: Promise.resolve(parsed.params ?? {}) }),
+    () => handler(request, { params: Promise.resolve(checked.params ?? {}) }),
     reader,
   )
-  const body = await readBody(response)
+  const body = await readResponseBody(response)
   // A redirect is an answer (the link), not a failure, though `Response.ok` is false for it.
   return { status: response.status, ok: response.ok || isRedirectBody(body), body }
 }
+
+/** @deprecated The old name; it validates and returns the original input. Use {@link validateOperationInput}. */
+export const parseOperationInput = validateOperationInput

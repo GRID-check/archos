@@ -16,7 +16,11 @@
  */
 
 import { z } from 'zod'
-import { consistencyCheckSchema, patchProfileSchema } from '@/lib/project-profile/profile-wire'
+import {
+  consistencyCheckSchema,
+  generateSummaryRequestSchema,
+  patchProfileSchema,
+} from '@/lib/project-profile/profile-wire'
 import { ProjectProfileSchema } from '@/lib/project-profile/types'
 import { intakeDecisionsRequestSchema, startIntakeRequestSchema } from '@/lib/project-intake/types'
 import { confirmCleanupSchema, proposeCleanupSchema } from '@/lib/projects/cleanup-wire'
@@ -52,17 +56,6 @@ const personParams = projectParams.extend({
     .string()
     .describe(
       'The stored person id, from project-record-get (people[].id). A member nobody described yet has no id; add them first.'
-    ),
-})
-
-// The generate-summary route reads an optional `{ locale }` itself and tolerates a missing or invalid body,
-// so there is no route schema to share; this only tells the agent the one field.
-const generateSummaryBody = z.object({
-  locale: z
-    .string()
-    .optional()
-    .describe(
-      'The language to write the summary in, "de" or "en". Defaults to the person’s UI language.'
     ),
 })
 
@@ -304,11 +297,12 @@ export const projectsOperations: readonly AgentOperation[] = [
     summary: 'Replace a project’s whole profile',
     description:
       'Saves the entire profile from project-profile-get, edited. It overwrites everything, so prefer project-profile-patch for a single change. ' +
-      'Needs project:edit. The If-Match version header is not sent through this tool, so the route checks the version inside the profile body instead; a 409 means someone saved meanwhile: read again.',
+      'Needs project:edit. Pass `ifMatch`: the `profileVersion` you read, sent as the If-Match header; a 409 means someone saved meanwhile: read again.',
     method: 'PUT',
     path: '/api/projects/[id]/profile',
     params: projectParams,
     body: ProjectProfileSchema,
+    ifMatchHeader: true,
     load: () => import('@/app/api/projects/[id]/profile/route'),
   },
   {
@@ -322,6 +316,18 @@ export const projectsOperations: readonly AgentOperation[] = [
     path: '/api/projects/[id]/profile/patches',
     params: projectParams,
     body: patchProfileSchema,
+    examples: [
+      {
+        params: { id: '0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11' },
+        body: {
+          patch: [
+            // A bare value is stored as a confirmed fact.
+            { op: 'replace', path: '/facts/building_class', value: 'GK4' },
+            { op: 'remove', path: '/unknowns/0' },
+          ],
+        },
+      },
+    ],
     load: () => import('@/app/api/projects/[id]/profile/patches/route'),
   },
   {
@@ -544,7 +550,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     method: 'POST',
     path: '/api/projects/[id]/generate-summary',
     params: projectParams,
-    body: generateSummaryBody,
+    body: generateSummaryRequestSchema,
     idempotent: true,
     load: () => import('@/app/api/projects/[id]/generate-summary/route'),
   },

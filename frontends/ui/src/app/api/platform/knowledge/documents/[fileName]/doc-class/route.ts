@@ -9,12 +9,13 @@ import { NextResponse } from 'next/server'
 import { platformApiRoute } from '@/lib/api/platform-handler'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { updateKnowledgeBaseDocClass } from '@/lib/knowledge/service'
+import { knowledgeDocClassSchema } from '@/lib/platform/platform-wire'
 
 export const PATCH = platformApiRoute<{ fileName: string }>(
   async ({ request, params }) => {
     const { fileName } = params
-    const body = (await request.json().catch(() => null)) as { doc_class?: unknown } | null
-    const docClass = typeof body?.doc_class === 'string' ? body.doc_class : ''
+    const body = knowledgeDocClassSchema.safeParse(await request.json().catch(() => null))
+    const docClass = body.success ? body.data.doc_class : ''
     if (!docClass) {
       return NextResponse.json(
         { error: 'A doc_class is required', code: 'BAD_REQUEST' },

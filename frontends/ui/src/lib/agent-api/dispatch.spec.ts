@@ -18,6 +18,7 @@ import {
   isOversizedBody,
   isRedirectBody,
 } from './dispatch'
+import { findOperation } from './catalog'
 import type { AgentOperation, RouteHandler } from './operation'
 import { MAX_UPLOAD_BYTES, rawBodySchema, uploadBodySchema, uploadBodySchemaWith } from './upload-wire'
 import { z } from 'zod'
@@ -159,17 +160,54 @@ describe('a JSON or text answer too large to read (M6)', () => {
 })
 
 describe('If-Match', () => {
-  it('reaches the route as the header the browser sends', async () => {
+  it('reaches a route that reads the header as the header the browser sends', async () => {
     let seen: string | null = null
     const op = operation(
       async (request) => {
         seen = request.headers.get('if-match')
         return Response.json({ ok: true })
       },
-      { method: 'PUT' },
+      { method: 'PUT', ifMatchHeader: true },
     )
     await callOperation(op, { body: {}, ifMatch: '"7"' }, session)
     expect(seen).toBe('"7"')
+  })
+
+  it('is refused, never dropped, for a route that does not read the header', async () => {
+    let called = false
+    const op = operation(
+      async () => {
+        called = true
+        return Response.json({ ok: true })
+      },
+      { method: 'POST' },
+    )
+    await expect(callOperation(op, { body: {}, ifMatch: '"7"' }, session)).rejects.toThrow(/takes no top-level ifMatch/)
+    expect(called).toBe(false)
+  })
+
+  it('is offered only where the route reads it: the project profile PUT', async () => {
+    const { AGENT_OPERATIONS } = await import('./catalog')
+    expect(AGENT_OPERATIONS.filter((op) => op.ifMatchHeader).map((op) => op.name)).toEqual(['project-profile-replace'])
+  })
+})
+
+describe('what reaches the route', () => {
+  it('is the agent\'s input, not what the operation\'s schema made of it', async () => {
+    // organization-download-log-list's query schema turns `from`/`to` into Dates. Forwarding that parsed copy
+    // sent `2026-10-01T00:00:00.000Z` where the route parses YYYY-MM-DD, and every call with a day range was a 400.
+    const real = findOperation('organization-download-log-list')!
+    let query: string | null = null
+    const op = { ...real, load: async () => ({ GET: async (request: Request) => ((query = new URL(request.url).search), Response.json({ rows: [] })) }) }
+    const result = await callOperation(op, { query: { from: '2026-10-01', to: '2026-10-21' } }, session)
+    expect(result.ok).toBe(true)
+    expect(query).toBe('?from=2026-10-01&to=2026-10-21')
+  })
+
+  it('is still checked against the schema first', async () => {
+    const real = findOperation('organization-download-log-list')!
+    const op = { ...real, load: async () => ({ GET: async () => Response.json({}) }) }
+    await expect(callOperation(op, { query: { from: 'yesterday' } }, session)).rejects.toThrow(/query\.from/)
   })
 })
 

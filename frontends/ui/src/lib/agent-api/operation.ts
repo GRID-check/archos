@@ -100,6 +100,20 @@ export interface AgentOperation {
   /** Calling it twice with the same input leaves the same state. Defaults to GET, PUT and DELETE. */
   readonly idempotent?: boolean
   /**
+   * The route reads the `If-Match` header (the project profile's PUT), so the
+   * agent's top-level `ifMatch` is offered and sent as that header. Only these
+   * operations take it; a route that wants the version in its body declares
+   * `ifMatch` in the body schema, and a top-level one anywhere else is refused.
+   */
+  readonly ifMatchHeader?: true
+  /**
+   * One to three realistic inputs, for an operation whose input is hard to get
+   * right from the schema alone (nested bodies, patches, uploads). Shown in
+   * `describe-operation` and as the input schema's JSON Schema `examples`;
+   * `agent-reachability.spec.ts` holds each to the operation's own schemas.
+   */
+  readonly examples?: readonly OperationExample[]
+  /**
    * An operation that widens who may do what (`access`: sharing, folder
    * access, role definitions) or touches the organization's secrets
    * (`secret`: LLM provider keys). An agent may call it for a person who holds
@@ -108,6 +122,13 @@ export interface AgentOperation {
    * Piloti in-product only ever proposes it.
    */
   readonly sensitivity?: Sensitivity
+}
+
+/** An example input of an operation: `{ params, query, body }` as `call-operation` takes it. */
+export interface OperationExample {
+  readonly params?: Record<string, string>
+  readonly query?: Record<string, unknown>
+  readonly body?: unknown
 }
 
 export const SENSITIVITIES = ['access', 'secret'] as const

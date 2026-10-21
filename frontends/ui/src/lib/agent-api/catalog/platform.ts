@@ -22,6 +22,8 @@ import { platformOrgBudgetPutSchema } from '@/lib/budgets/platform-contract'
 import { putNormRegistryBodySchema, verifyNormRequestSchema } from '@/lib/norms/schemas'
 import { updateLessonSchema } from '@/lib/platform-lessons/types'
 import {
+  knowledgeDisplayTitleSchema,
+  knowledgeDocClassSchema,
   modelDefaultsPutSchema,
   pricingPutSchema,
   reasoningEffortsPutSchema,
@@ -676,10 +678,7 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PATCH',
     path: '/api/platform/knowledge/documents/[fileName]/display-title',
     params: fileNameParams,
-    // The route reads the body by hand (no zod schema); it is the gate.
-    body: z.object({
-      display_title: z.string().nullable().describe('The new display title; empty or null clears the override.'),
-    }),
+    body: knowledgeDisplayTitleSchema,
     idempotent: true,
     load: () => import('@/app/api/platform/knowledge/documents/[fileName]/display-title/route'),
   },
@@ -693,8 +692,7 @@ export const platformOperations: readonly AgentOperation[] = [
     method: 'PATCH',
     path: '/api/platform/knowledge/documents/[fileName]/doc-class',
     params: fileNameParams,
-    // The route reads the body by hand (no zod schema); it is the gate.
-    body: z.object({ doc_class: z.string().min(1).describe('The document type to set.') }),
+    body: knowledgeDocClassSchema,
     idempotent: true,
     load: () => import('@/app/api/platform/knowledge/documents/[fileName]/doc-class/route'),
   },

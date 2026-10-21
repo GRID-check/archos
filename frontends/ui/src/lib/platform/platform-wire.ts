@@ -51,3 +51,17 @@ export const pricingPutSchema = z.object({
 export const reingestKnowledgeSchema = z.object({
   fileNames: z.array(z.string()).min(1),
 })
+
+/** PATCH /api/platform/knowledge/documents/[fileName]/display-title */
+export const knowledgeDisplayTitleSchema = z.object({
+  display_title: z
+    .string()
+    .nullable()
+    .optional()
+    .describe('The new display title; empty or null clears the override.'),
+})
+
+/** PATCH /api/platform/knowledge/documents/[fileName]/doc-class */
+export const knowledgeDocClassSchema = z.object({
+  doc_class: z.string().min(1, 'A doc_class is required').describe('The document type to set.'),
+})

@@ -26,3 +26,14 @@ export const patchProfileSchema = z.object({
    */
   conversationId: z.string().min(1).max(128).optional(),
 })
+
+/**
+ * `POST …/generate-summary`. Optional: the route tolerates a missing or invalid
+ * body (older callers send none) and then writes in the person's UI language.
+ */
+export const generateSummaryRequestSchema = z.object({
+  locale: z
+    .string()
+    .optional()
+    .describe('The language to write the summary in, "de" or "en". Defaults to the person’s UI language.'),
+})
