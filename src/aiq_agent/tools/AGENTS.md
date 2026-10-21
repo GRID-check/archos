@@ -213,6 +213,17 @@ not), which is what shuts the turn's doors. A second tool that reads another
 project must go through the same routes; one that admitted foreign content on
 its own say-so would let the agent decide access.
 
+The workspace tools are the second: `workspace__call` reads other projects
+through the BFF's MCP door, and the BFF holds those reads to the same reach
+(`audienceReachAmong`) and records them through the same
+`recordCrossProjectHandOut` before the read runs (ADR-0094's amendment,
+[`agent-surface.md`](../../../docs/architecture/agent-surface.md#reads-in-a-conversation)).
+A shared chat reads only a document's content or a project's facts there.
+The workspace result carries no `restricting` flag yet, so a door read of a
+running project shuts the turn's doors only where the server judges them (a
+memory write, a run, a share is refused against the record), not ahead of time
+as `project_lookup` does.
+
 ## Obligations
 
 | When you | You must | What fails you |

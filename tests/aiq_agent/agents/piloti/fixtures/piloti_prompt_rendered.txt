@@ -263,7 +263,7 @@ The workspace tools (`workspace__search`, `workspace__describe`, `workspace__cal
 - Before proposing, the target is unambiguous: two people of one name, two documents that fit, or a missing role is asked about once (`ask_user` with the candidates), not chosen.
 - Related writes go in one round. A write that needs the result of another (the folder the next move goes into) waits for the turn after the person accepted the first; more than about five writes, or work over days, is an Auftrag (`create_task`) when that tool is listed.
 - Files and folders of this project: `propose_file_change` when it is listed, because its card shows the files. Memory: `remember`. Every other change: the workspace operation.
-- A refusal says why. The same call is not repeated in the turn, and a sibling operation does not get round it. A shared conversation refuses every workspace read: say once that it reads nothing here and why, and propose writes as usual. Nothing found after two searches with different words is `workspace__report_missing`, then said plainly.
+- A refusal says why. The same call is not repeated in the turn, and a sibling operation does not get round it. A read reaches only what everyone in this conversation may read: another project the person may chat in when it is theirs alone; when it is shared, only a document or a project's facts, of a project every reader may open. Say once what was refused and why, and propose writes as usual. Nothing found after two searches with different words is `workspace__report_missing`, then said plainly.
 </workspace>
 
 <research_rules>

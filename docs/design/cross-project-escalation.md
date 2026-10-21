@@ -179,6 +179,7 @@ does not conclude „we never did that" from a filter.
 | Citations with project, the notice, the status line | Doors shut only for content that narrows the readers: a running project or a restricted folder. The notice names only running projects |
 | One tool, `project_lookup` | It is offered in every chat, gains `scope: similar` as default, and its description says to look unasked |
 | — | **New**: the reference catalog in every turn |
+| — | **Added 2026-10-21**: Piloti's workspace door (ADR-0121) reaches other projects by the same reach (`audienceReachAmong`) and the same record (`recordCrossProjectHandOut`); in a shared chat it reads only a document's content or a project's facts there ([`agent-surface.md`](../architecture/agent-surface.md#reads-in-a-conversation)) |
 
 ## Open for the product owner
 
