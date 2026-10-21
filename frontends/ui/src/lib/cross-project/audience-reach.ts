@@ -23,11 +23,11 @@ import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import { audienceKey, isSoloAudience } from '@/lib/conversations/cross-project-use'
-import { readConversationAudience } from '@/lib/conversations/restricted-use-repository'
+import { readConversationAudience, type ConversationAudienceRow } from '@/lib/conversations/restricted-use-repository'
 import { getDb } from '@/lib/db'
 import type { Project } from '@/lib/db/schema'
 import { isProjectClosed } from '@/lib/projects/project-status'
-import { listChatProjects } from '@/lib/projects/service'
+import { listChatProjects, listChatProjectsAmong } from '@/lib/projects/service'
 
 /**
  * How many other readers a shared conversation's reach asks about. Beyond it
@@ -72,8 +72,31 @@ export async function audienceReach(session: AuthorizedSession, conversationId: 
     readConversationAudience(getDb(), session.organizationId, conversationId),
     listChatProjects(session, 'newest'),
   ])
+  return reachOver(session, audience, chat)
+}
+
+/**
+ * The same reach, asked about the named projects only: the workspace door
+ * (`lib/agent-api/conversation-audience.ts`) judges the few projects one read
+ * names against the audience it already read, rather than listing the office.
+ * A project the asker may not chat in, or that does not exist, is not in it.
+ */
+export async function audienceReachAmong(
+  session: AuthorizedSession,
+  audience: ConversationAudienceRow,
+  projectIds: readonly string[]
+): Promise<AudienceReach> {
+  return reachOver(session, audience, await listChatProjectsAmong(session, projectIds))
+}
+
+/** Of `chat`, the projects the conversation's whole audience may open: the one rule, for both. */
+async function reachOver(
+  session: AuthorizedSession,
+  audience: ConversationAudienceRow,
+  chat: readonly Project[]
+): Promise<AudienceReach> {
   const key = audienceKey(audience)
-  if (isSoloAudience(audience, session.userId)) return { projects: chat, restrictedFolders: true, key }
+  if (isSoloAudience(audience, session.userId)) return { projects: [...chat], restrictedFolders: true, key }
   const closed = chat.filter((project) => isProjectClosed(project))
   const others = otherReaders(audience.createdBy, audience.grantees, session.userId)
   if (audience.visibility !== 'private' || others.length > REACH_MAX_OTHER_READERS) {

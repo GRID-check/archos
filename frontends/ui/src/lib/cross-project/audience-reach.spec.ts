@@ -33,7 +33,13 @@ vi.mock('@/lib/db', () => ({ getDb: () => ({}) }))
 vi.mock('@/lib/conversations/restricted-use-repository', () => ({
   readConversationAudience: vi.fn(async () => state.audience),
 }))
-vi.mock('@/lib/projects/service', () => ({ listChatProjects: vi.fn(async () => state.chat) }))
+vi.mock('@/lib/projects/service', () => ({
+  listChatProjects: vi.fn(async () => state.chat),
+  // The asker's chat projects among the named ones, as the workspace door asks.
+  listChatProjectsAmong: vi.fn(async (_session: unknown, named: readonly string[]) =>
+    state.chat.filter((found) => named.includes(found.id))
+  ),
+}))
 vi.mock('@/lib/authz/project-membership', () => ({
   userHoldsProjectPermission: vi.fn(async (_session: unknown, projectId: string, userId: string) => {
     state.checks += 1
@@ -42,7 +48,7 @@ vi.mock('@/lib/authz/project-membership', () => ({
 }))
 
 import { audienceKey } from '@/lib/conversations/cross-project-use'
-import { audienceReach, REACH_MAX_OTHER_READERS } from './audience-reach'
+import { audienceReach, audienceReachAmong, REACH_MAX_OTHER_READERS } from './audience-reach'
 
 const session = { userId: OWNER, organizationId: 'org_1' } as AuthorizedSession
 const solo: ConversationAudienceRow = { exists: true, projectId: 'own', createdBy: OWNER, visibility: 'private', grantees: [] }
@@ -98,5 +104,20 @@ describe('audienceReach', () => {
     state.opens = new Set([`${INA}:foreign`])
 
     expect(ids((await audienceReach(session, 's_conv')).projects)).toEqual(['foreign', 'archive'])
+  })
+})
+
+describe('audienceReachAmong', () => {
+  it('is the same rule asked about the named projects only, with the audience the caller read', async () => {
+    const shared = { ...solo, grantees: [INA] }
+    state.opens = new Set([`${INA}:running`])
+
+    const reach = await audienceReachAmong(session, shared, ['running', 'foreign', 'archive', 'nowhere'])
+
+    expect(ids(reach.projects)).toEqual(['running', 'archive'])
+    expect(reach).toMatchObject({ restrictedFolders: false, key: audienceKey(shared) })
+    // Only the named active projects the asker may chat in are asked about.
+    expect(state.checks).toBe(2)
+    expect(ids((await audienceReachAmong(session, solo, ['foreign'])).projects)).toEqual(['foreign'])
   })
 })

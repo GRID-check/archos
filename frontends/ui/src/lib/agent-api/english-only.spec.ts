@@ -38,7 +38,7 @@ import { isOnDoor } from './policy'
 import { buildOpenApiDocument } from './openapi'
 import { sensitiveProposalRefusal } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
-import { SHARED_CONVERSATION_READ_REFUSAL } from './read-gate'
+import { READ_REFUSALS } from './conversation-audience'
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '../..')
 const SURFACE_DIRS = ['lib/agent-api', 'app/api/mcp']
@@ -189,7 +189,7 @@ describe('everything an agent reads is English', () => {
 
   it('in the refusals the model reads', () => {
     const found: Found[] = [
-      { where: 'SHARED_CONVERSATION_READ_REFUSAL', text: SHARED_CONVERSATION_READ_REFUSAL },
+      ...Object.entries(READ_REFUSALS).map(([key, text]) => ({ where: `READ_REFUSALS.${key}`, text })),
       { where: 'sensitiveProposalRefusal', text: sensitiveProposalRefusal({ name: 'organization-role-create' }) },
     ]
     expect(germanIn(found)).toEqual([])

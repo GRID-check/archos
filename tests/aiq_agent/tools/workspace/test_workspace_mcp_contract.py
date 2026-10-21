@@ -264,7 +264,7 @@ def test_a_tool_level_error_comes_back_as_text(monkeypatch: pytest.MonkeyPatch) 
 
 
 def test_a_read_refused_in_a_shared_conversation_reaches_the_model_as_the_servers_sentence(monkeypatch) -> None:
-    """In a shared conversation the server runs no read (ADR-0093): the model gets its sentence, as an error."""
+    """A read a shared conversation refuses (ADR-0094) reaches the model as the server's sentence, an error."""
     entry = _responses()["responses"]["refused_shared_conversation"]
     assert entry["status"] == 200
     monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))

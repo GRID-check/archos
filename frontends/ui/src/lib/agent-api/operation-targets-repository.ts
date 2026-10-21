@@ -16,7 +16,7 @@ import { findConversationInOrg } from '@/lib/conversations/repository'
 import { getDb } from '@/lib/db'
 import { findBimModelById } from '@/lib/bim/repository'
 import { projectFolders, projects, proposedChanges, uploadBatches } from '@/lib/db/schema'
-import { memberReader } from '@/lib/documents/document-reader'
+import { hasPassedScreening, memberReader } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { isUuid } from '@/lib/ids'
 import type { OperationTarget } from './operation-targets'
@@ -26,6 +26,13 @@ export interface TargetPlace {
   projectId: string | null
   /** The conversation it belongs to: a conversation itself, a file dropped into one, a proposal made in one. */
   conversationId: string | null
+  /**
+   * For a document only: the folder it is filed in (null: its shelf's root), and
+   * whether its screening let it through to everyone who may read it, or it is
+   * held from all but its uploader and reviewers (ADR-0086). What the workspace
+   * door asks before a document's content may land in a shared conversation.
+   */
+  document?: { folderId: string | null; passedScreening: boolean }
 }
 
 const place = (projectId: string | null, conversationId: string | null = null): TargetPlace => ({
@@ -57,7 +64,11 @@ export async function findTargetPlace(
     }
     case 'document': {
       const doc = await findDocumentInOrg(target.id, organizationId, memberReader(userId))
-      return doc ? place(doc.projectId, doc.conversationId ?? null) : null
+      if (!doc) return null
+      return {
+        ...place(doc.projectId, doc.conversationId ?? null),
+        document: { folderId: doc.folderId ?? null, passedScreening: hasPassedScreening(doc) },
+      }
     }
     case 'folder': {
       const [row] = await db
