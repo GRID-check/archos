@@ -366,6 +366,79 @@
       "title": "CitationsRemoved",
       "type": "object"
     },
+    "ClaimStamp": {
+      "additionalProperties": false,
+      "description": "Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0122), in document order.\n\n``provenance`` is the strongest evidence the sentence has; ``claim_type``\nwhether it states the law, a value, or a description. ``load_bearing``\nsentences are the ones the turn's confidence is held to.",
+      "properties": {
+        "claim_type": {
+          "enum": [
+            "normative",
+            "value",
+            "descriptive"
+          ],
+          "title": "Claim Type",
+          "type": "string"
+        },
+        "load_bearing": {
+          "default": false,
+          "title": "Load Bearing",
+          "type": "boolean"
+        },
+        "numbers": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Numbers",
+          "type": "array"
+        },
+        "operation": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Operation"
+        },
+        "provenance": {
+          "enum": [
+            "quoted",
+            "cited",
+            "cited_dropped",
+            "record",
+            "action",
+            "measured",
+            "reasoning",
+            "model_knowledge"
+          ],
+          "title": "Provenance",
+          "type": "string"
+        },
+        "text": {
+          "description": "The sentence as the final text writes it, cut at 300 characters.",
+          "maxLength": 300,
+          "title": "Text",
+          "type": "string"
+        },
+        "unmatched": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unmatched",
+          "type": "array"
+        }
+      },
+      "required": [
+        "text",
+        "provenance",
+        "claim_type"
+      ],
+      "title": "ClaimStamp",
+      "type": "object"
+    },
     "ClarificationStep": {
       "additionalProperties": false,
       "description": "The clarify step started: the one row it contributes before its first question.",
@@ -2754,6 +2827,22 @@
           "default": null,
           "title": "Answer Confidence Reason"
         },
+        "answer_confidence_version": {
+          "anyOf": [
+            {
+              "enum": [
+                1,
+                2
+              ],
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Answer Confidence Version"
+        },
         "answer_meta": {
           "anyOf": [
             {
@@ -2785,6 +2874,13 @@
           ],
           "default": null
         },
+        "claim_stamps": {
+          "items": {
+            "$ref": "#/$defs/ClaimStamp"
+          },
+          "title": "Claim Stamps",
+          "type": "array"
+        },
         "escalation_reason": {
           "anyOf": [
             {
@@ -2800,6 +2896,11 @@
         "job_admission_rejected": {
           "default": false,
           "title": "Job Admission Rejected",
+          "type": "boolean"
+        },
+        "lookup_found_nothing": {
+          "default": false,
+          "title": "Lookup Found Nothing",
           "type": "boolean"
         },
         "message_id": {

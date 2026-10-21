@@ -145,6 +145,9 @@ ANSWER_LIFTS: tuple[tuple[str, str], ...] = (
     ("answer_meta", "answer_meta"),
     ("retrieval_ledger", "retrieval_ledger"),
     ("quote_stamps", "quote_stamps"),
+    ("claim_stamps", "claim_stamps"),
+    ("answer_confidence_version", "answer_confidence_version"),
+    ("answer_lookup_found_nothing", "lookup_found_nothing"),
     ("reasoning_effort", "reasoning_effort"),
 )
 

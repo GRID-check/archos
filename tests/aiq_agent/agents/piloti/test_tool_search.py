@@ -456,7 +456,7 @@ class TestTheAgentBindsWhatWasRetrieved:
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
-            mock_verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             mock_sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
@@ -572,7 +572,7 @@ class TestNarrowingCostsNoTurn:
             patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as mock_verify,
             patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as mock_sanitize,
         ):
-            mock_verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+            mock_verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
                 verified_report=content, removed_citations=[]
             )
             mock_sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)

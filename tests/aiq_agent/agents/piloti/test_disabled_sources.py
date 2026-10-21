@@ -126,7 +126,7 @@ def _bypass_citation_pipeline():
         patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
         patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
     ):
-        verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+        verify.side_effect = lambda content, reg, reference_sources=None, **_: MagicMock(
             verified_report=content, removed_citations=[]
         )
         sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)

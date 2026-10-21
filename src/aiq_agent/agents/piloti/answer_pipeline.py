@@ -3,12 +3,14 @@
 Stages over ``(messages, registry)``, in this order: DSML strip, envelope
 split, grouped-citation expansion and control-marker extraction
 (``_extract``), envelope card registration, citation and quote verification
-with the turn's ONE repair, the single-source fallback citation, the dialect
-validator (``common/answer_dialect``), sanitisation, the restated-mindmap
-drop, re-citing the composed cards, the ``answer_meta`` gates, card
-suppression, callout resolution, the normative-claim brake, and last the
-quote-line stamps (``common/quote_stamps``). Not all pure: card registration,
-re-citing and suppression write the turn's card registry.
+with the turn's ONE repair (an unresolvable ``[N]`` is labelled where it
+stood, never silently removed), the dialect validator
+(``common/answer_dialect``), sanitisation, the restated-mindmap drop,
+re-citing the composed cards, the ``answer_meta`` gates, card suppression,
+callout resolution, the normative-claim brake, the quote-line stamps
+(``common/quote_stamps``), and last the per-sentence provenance stamps
+(``common/claim_provenance``) the confidence is computed from. Not all pure:
+card registration, re-citing and suppression write the turn's card registry.
 :func:`finalize_answer` runs them and returns a :class:`FinalAnswer`; the
 agent copies its signal fields onto the state (``ledger.assemble_result``).
 """
@@ -44,6 +46,7 @@ from aiq_agent.common.answer_envelope import AnswerMeta
 from aiq_agent.common.answer_envelope import extract_answer_envelope
 from aiq_agent.common.answer_envelope import gate_answer_meta
 from aiq_agent.common.answer_envelope import resolve_callout_marker
+from aiq_agent.common.citation_verification import DROPPED_CITATION_MARKER
 from aiq_agent.common.citation_verification import EmptySourceRegistryError
 from aiq_agent.common.citation_verification import SourceEntry
 from aiq_agent.common.citation_verification import SourceRegistry
@@ -55,14 +58,20 @@ from aiq_agent.common.citation_verification import expand_grouped_citations
 from aiq_agent.common.citation_verification import get_turn_captures
 from aiq_agent.common.citation_verification import merged_citations
 from aiq_agent.common.citation_verification import sanitize_report
-from aiq_agent.common.citation_verification import source_origin_token
 from aiq_agent.common.citation_verification import verify_citations
 from aiq_agent.common.citation_verification import verify_quoted_spans
+from aiq_agent.common.claim_provenance import ClaimEvidence
+from aiq_agent.common.claim_provenance import ClaimStamp
+from aiq_agent.common.claim_provenance import claims_ceiling
+from aiq_agent.common.claim_provenance import classify_claims
+from aiq_agent.common.claim_provenance import weakest_claim
 from aiq_agent.common.quote_stamps import stamp_quote_lines
 from aiq_agent.common.tool_validation import validate_tool_availability
 from aiq_agent.common.turn_status import emit_answer_repair
 from aiq_agent.common.turn_status import emit_citation_check
+from aiq_agent.common.workspace_records import records_from_messages
 from aiq_agent.observability.langfuse_scores import card_validity_score
+from aiq_agent.observability.langfuse_scores import claim_scores
 from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import quote_patch_scores
@@ -114,7 +123,6 @@ class FinalAnswer:
     answered: bool
     content: str | None = None
     citation_grounded: bool = False
-    citation_fallback_used: bool = False
     quotes_verified: bool = True
     unverified_quote_count: int = 0
     normative_claim_uncited: bool = False
@@ -140,6 +148,16 @@ class FinalAnswer:
     quote_stamps: tuple[dict[str, Any], ...] = ()
     #: What the dialect validator repaired (``common/answer_dialect.py``), one entry per repair.
     dialect_repairs: tuple[dict[str, str], ...] = ()
+    #: One stamp per sentence of ``content``: where it comes from and what kind
+    #: of claim it is (``common/claim_provenance.py``), wire-ready.
+    claim_stamps: tuple[dict[str, Any], ...] = ()
+    #: The weakest load-bearing sentence's ceiling, and that sentence's
+    #: ``(class, type)``: what the surfaced confidence is held under.
+    claims_ceiling: str | None = None
+    weakest_claim: tuple[str, str] | None = None
+    #: A lookup ran and retrieved nothing, and the answer ships anyway, every
+    #: sentence labelled as the model's own knowledge (a ruling is refused instead).
+    lookup_found_nothing: bool = False
 
 
 # --------------------------------------------------------------------------
@@ -165,10 +183,9 @@ _REFERENCE_LINE_RE = re.compile(r"^\s*$|\[\d+\]|<?https?://")
 def prose_without_references(content: str) -> str:
     """The answer's own sentences, with any trailing reference list removed.
 
-    The normative brake judges what the ANSWER asserts, and a bibliography
-    asserts nothing. It matters because of where that line comes from: the
-    single-source fallback appends it, so leaving it in made every
-    fallback-grounded answer read as normative and floored measured,
+    The normative brake and the per-sentence stamps judge what the ANSWER
+    asserts, and a bibliography asserts nothing: a source line names the
+    instrument the brake's strong tier matches, so leaving it in floored
     purely descriptive answers to "low" under a reason that was not true of a
     single sentence the model wrote.
 
@@ -184,8 +201,8 @@ def prose_without_references(content: str) -> str:
     marker on it („- Damit ist der Raum unzulässig [1]") is cut too. Keeping
     the lines the normative brake fires on was measured and is inverted: a
     compliance bibliography is a list of exactly the instrument names the
-    brake's strong tier matches (11 of 14 genuine entries fire, including the
-    line this module appends itself). A real finite-verb test needs a POS
+    brake's strong tier matches (11 of 14 genuine entries fire). A real
+    finite-verb test needs a POS
     tagger; a heuristic that cuts the wrong way is worse than the gap.
     """
     if not isinstance(content, str):
@@ -195,47 +212,6 @@ def prose_without_references(content: str) -> str:
         if all(_REFERENCE_LINE_RE.search(line) for line in tail.splitlines()):
             return content[: match.start()]
     return content
-
-
-def _without_empty_reference_heading(content: str) -> tuple[str, str]:
-    """``content`` without a trailing reference heading nothing follows, and the label to write instead.
-
-    The label keeps the answer's language: an emptied „## Quellen" comes back
-    as „**Quellen:**", anything else as „**References:**".
-    """
-    last = None
-    for last in _REFERENCES_SECTION_RE.finditer(content):
-        pass
-    if last is None or content[last.end() :].strip():
-        return content, "References"
-    label = "Quellen" if "quellen" in last.group(0).lower() else "References"
-    return content[: last.start()].rstrip(), label
-
-
-def append_minimal_citation(report_text: str, source: SourceEntry) -> str:
-    """Append one verified citation when the model omitted references.
-
-    ``verify_citations`` may strip every citation line under a reference
-    heading („## Quellen", „**References:**" …) and leave the empty heading
-    behind; it is dropped first, so the ``[1]`` lands on the answer's last
-    sentence and the output has exactly one references section.
-    """
-    citation_target = source.url or source.citation_key
-    if not citation_target:
-        return report_text
-    content, label = _without_empty_reference_heading(report_text.rstrip())
-    if content.endswith((".", "!", "?")):
-        content = f"{content[:-1]} [1]{content[-1]}"
-    else:
-        content = f"{content} [1]"
-
-    token = source_origin_token(source)
-    prefix = f"{token} " if token else ""
-    if source.url:
-        reference = f"- [1] {prefix}{source.title or source.url} - {source.url}"
-    else:
-        reference = f"- [1] {prefix}{citation_target}"
-    return f"{content}\n\n**{label}:**\n{reference}"
 
 
 # --------------------------------------------------------------------------
@@ -519,11 +495,6 @@ def _passage_lookup_attempted(messages: Sequence[Any]) -> bool:
     )
 
 
-def looked_up_this_turn(messages: Sequence[Any]) -> bool:
-    """Whether a data-source tool ran since the last human message: the gate on the single-source fallback."""
-    return _source_lookup_attempted(this_turn(messages))
-
-
 def handed_this_turn(messages: Sequence[Any]) -> frozenset[int]:
     """The ``[[card:N]]`` numbers a tool handed the model since the last human message."""
     return frozenset(_handed_markers(this_turn(messages)))
@@ -547,7 +518,12 @@ def _verify(content: str, registry: SourceRegistry, *, with_nearest: bool = Fals
     ``with_nearest`` asks for each misquote's nearest cited passage, a search
     over every cited page that only a patch about to run reads.
     """
-    verification = verify_citations(content, registry, reference_sources=registry.all_sources())
+    # Labelled, not stripped: a claim whose pointer did not hold must not read
+    # like every other unmarked sentence (ADR-0122). The locus beside a marker
+    # is held to the passage it resolves to.
+    verification = verify_citations(
+        content, registry, reference_sources=registry.all_sources(), label_dropped=True, check_locus=True
+    )
     logger.debug(
         "Piloti: citation verification complete — %d valid, %d removed",
         len(verification.valid_citations),
@@ -594,7 +570,6 @@ class _Grounding:
 
     content: str
     citation_grounded: bool = False
-    citation_fallback_used: bool = False
     cited: tuple[CitedSource, ...] = ()
     unverified_quotes: tuple[UnverifiedQuote, ...] = ()
     removed_citations: tuple[dict[str, Any], ...] = ()
@@ -629,12 +604,15 @@ def _cited_sources(valid_citations: Sequence[dict[str, Any]], registry: SourceRe
     return tuple(cited)
 
 
-def _ground(verified: _Verified, registry: SourceRegistry, *, lookup_attempted: bool) -> _Grounding:
-    """Resolve the surviving citations, or fall back to the turn's one source.
+def _ground(verified: _Verified, registry: SourceRegistry) -> _Grounding:
+    """Resolve the surviving citations into the sources the answer cites.
 
-    The fallback fires only on a turn that looked something up: a greeting on
-    a conversation whose registry still holds last turn's source must not be
-    handed that source as its citation.
+    Nothing is attached that the model did not cite. A single-source fallback
+    used to append the registry's one source when no citation survived; the
+    registry is cumulative across the conversation, so that source could be
+    two turns old and about another question. It was the one place the system
+    invented an attribution, and it is gone (ADR-0122): an answer without a
+    surviving citation shows its sentences as what they are.
     """
     content = verified.content
     if verified.unverified_quotes:
@@ -650,33 +628,31 @@ def _ground(verified: _Verified, registry: SourceRegistry, *, lookup_attempted: 
     if verified.verification.valid_citations:
         cited = _cited_sources(verified.verification.valid_citations, registry)
         return _Grounding(content, citation_grounded=True, cited=cited, **common)
-    sources = registry.all_sources()
-    if lookup_attempted and len(sources) == 1:
-        # ``append_minimal_citation`` always writes "[1]".
-        return _Grounding(
-            append_minimal_citation(content, sources[0]),
-            citation_grounded=True,
-            citation_fallback_used=True,
-            cited=(CitedSource(sources[0], 1),),
-            **common,
-        )
     return _Grounding(content, **common)
 
 
-def _require_retrieval(lookup_attempted: bool, tools: Sequence[BaseTool]) -> None:
-    """An empty registry after a lookup is the hardest citation failure there is.
+def _require_retrieval(lookup_attempted: bool, tools: Sequence[BaseTool], *, ruling: bool) -> bool:
+    """An empty registry after a lookup: recorded, refused for a ruling, labelled for everything else.
 
     Distinguishes "retrieval genuinely failed" from "the agent answered
-    without ever querying a data source". Only the former is an error: a
-    greeting, a shelf listing from the inventory or a reply from project
-    context has nothing to cite, and discarding it would replace a
-    substantive answer with a misleading "search tools failed" message. So
-    does a record lookup (`RECORD_TOOLS`): the caller passes whether a
-    passage search ran.
+    without ever querying a data source". A greeting, a shelf listing from the
+    inventory or a reply from project context has nothing to cite. So does a
+    record lookup (`RECORD_TOOLS`): the caller passes whether a passage search
+    ran.
+
+    When a passage search ran and found nothing, the answer used to be
+    replaced by a canned „nothing retrieved" message, whatever it said. It now
+    ships with every sentence labelled as the model's own knowledge and a
+    banner saying the search found nothing (ADR-0122): an answer the reader can
+    see is unsourced serves them better than none. A ``ruling`` is the
+    exception and is still refused: it exists to carry a copyable legal value,
+    and a value without a source is the fabrication the trailer gate refuses
+    everywhere else. Returns whether the lookup found nothing (the banner's
+    signal).
     """
     if not lookup_attempted:
         logger.debug("Piloti: answered without querying any data-source tool; no verification")
-        return
+        return False
     _, available_count, unavailable = validate_tool_availability(
         list(tools), research_type="research", enable_logging=False
     )
@@ -688,7 +664,10 @@ def _require_retrieval(lookup_attempted: bool, tools: Sequence[BaseTool]) -> Non
     citation_events.record_empty_registry(
         agent="shallow", unavailable_tools=unavailable, available_count=available_count
     )
-    raise EmptySourceRegistryError("research", unavailable_tools=unavailable, available_count=available_count)
+    if ruling:
+        raise EmptySourceRegistryError("research", unavailable_tools=unavailable, available_count=available_count)
+    logger.info("Piloti: a lookup found nothing; the answer ships labelled as model knowledge")
+    return True
 
 
 def _recite_surface_cards(
@@ -722,21 +701,18 @@ def settle_streamed_citations(
     sources_text: str,
     registry: SourceRegistry,
     *,
-    lookup_attempted: bool = True,
     kind: str | None = None,
 ) -> SettledStream | None:
     """The streamed prose with its ``[N]`` markers settled, and the sources they name.
 
     The same steps :func:`finalize_answer` runs on the finished answer: verify
-    each source line against the registry, mark each quote no retrieved
-    passage holds and fall back to the turn's one source when no citation
-    survived (:func:`_ground`), sanitise (which drops the markers that lost
-    their line and closes the gaps), and read the cited sources off the
+    each source line against the registry, label each marker that did not
+    resolve, mark each quote no retrieved passage holds (:func:`_ground`),
+    sanitise (which closes the gaps), and read the cited sources off the
     survivors. Run the moment the envelope's ``answer`` string closes, which
     is before the cards and the pipeline: the pending markers on screen become
     the answer's own citations, numbered as the terminal frame will number
-    them (ADR-0066). ``lookup_attempted`` is the terminal's own gate on the
-    fallback (a data-source tool ran this turn). ``kind`` is the envelope's,
+    them (ADR-0066). ``kind`` is the envelope's,
     for the dialect's budget, which the terminal applies too. ``None`` when
     there is nothing to settle.
     """
@@ -748,9 +724,8 @@ def settle_streamed_citations(
     # A quote no retrieved passage holds is marked HERE, as the terminal frame
     # marks it: settled without the check, it read as a real quotation until
     # the terminal frame, seconds later, and the text changed under the reader
-    # when the marker arrived. The single-source fallback likewise: without it
-    # the reader saw an empty source heading the terminal then replaced.
-    grounding = _ground(verified, registry, lookup_attempted=lookup_attempted)
+    # when the marker arrived.
+    grounding = _ground(verified, registry)
     # The dialect held as the terminal holds it, so a block unwrapped there is
     # not drawn here first.
     sanitized = sanitize_report(validate_dialect(grounding.content, kind).text)
@@ -810,11 +785,8 @@ class LiveAnswer:
     objects, no awaiting.
     """
 
-    def __init__(
-        self, registry: SourceRegistry, *, lookup_attempted: bool = True, handed: Collection[int] = ()
-    ) -> None:
+    def __init__(self, registry: SourceRegistry, *, handed: Collection[int] = ()) -> None:
         self._registry = registry
-        self._lookup_attempted = lookup_attempted
         self._handed = frozenset(handed)
         self._settled: SettledStream | None = None
         self._tool_cards: list[dict[str, Any]] | None = None
@@ -846,7 +818,6 @@ class LiveAnswer:
             prose,
             sources_text,
             self._registry,
-            lookup_attempted=self._lookup_attempted,
             kind=(fields or {}).get("kind"),
         )
         if settled is None:
@@ -952,12 +923,10 @@ def _normative_claim_uncited(content: str, grounding: _Grounding) -> bool:
 
     Only meaningful when the citation gate already failed: with no verified
     citation, "mentions the law" and "asserts the law without support" are the
-    same thing. The single-source FALLBACK does not count as the citation that
-    switches it off: one Bauordnung link captured two turns ago was enough to
-    disarm the brake AND hand a mixed answer the model's own "high".
+    same thing. The confidence reads the per-sentence stamps instead
+    (ADR-0122); this answer-level flag stays for the trace and the ledger.
     """
-    model_cited = grounding.citation_grounded and not grounding.citation_fallback_used
-    return not model_cited and answer_mentions_normative_claim(prose_without_references(content))
+    return not grounding.citation_grounded and answer_mentions_normative_claim(prose_without_references(content))
 
 
 #: Short-overview card floor. Below this a non-ruling answer without a
@@ -1112,6 +1081,7 @@ async def finalize_answer(
     repair: RepairFn | None,
     turn_sources: Sequence[SourceEntry] | None = None,
     card_repair: CardRepairFn | None = None,
+    measured_values: Sequence[str] = (),
 ) -> FinalAnswer:
     """Run every post-answer stage and return the answer as the reader gets it.
 
@@ -1119,10 +1089,12 @@ async def finalize_answer(
     finalises AFTER ``end_turn_capture``: the ContextVar is back to its prior
     value by then, so the trailer-grounding veto would read an empty list and
     abstain on every turn. ``None`` falls back to the ambient log for direct
-    callers.
+    callers. ``measured_values`` are this turn's measurements' value texts:
+    a sentence stating one is stamped ``measured``.
 
-    Raises :class:`EmptySourceRegistryError` when a data-source lookup ran and
-    nothing came back: that turn has no answer to show.
+    Raises :class:`EmptySourceRegistryError` when a data-source lookup ran,
+    nothing came back, and the answer is a ``ruling``: a ruling without a
+    source has nothing to show. Any other answer ships labelled.
     """
     index = answer_index(messages)
     if index is None or not messages[index].content:
@@ -1138,13 +1110,16 @@ async def finalize_answer(
         extracted = replace(extracted, content=with_cards)
     lookup_attempted = _source_lookup_attempted(turn)
     sources = registry.all_sources()
+    found_nothing = False
     if sources:
         emit_citation_check(source_count=len(sources))
         verified = await _verify_with_quote_patch(extracted.content, registry, repair)
-        grounding = _ground(verified, registry, lookup_attempted=lookup_attempted)
     else:
-        _require_retrieval(_passage_lookup_attempted(turn), tools)
-        grounding = _Grounding(extracted.content)
+        ruling = extracted.meta is not None and extracted.meta.kind == "ruling"
+        found_nothing = _require_retrieval(_passage_lookup_attempted(turn), tools, ruling=ruling)
+        # Nothing to resolve against: every [N] the model wrote is labelled.
+        verified = _verify(extracted.content, registry)
+    grounding = _ground(verified, registry)
 
     dialect = _held_to_dialect(grounding.content, extracted.meta)
     sanitized = sanitize_report(dialect.text)
@@ -1163,6 +1138,7 @@ async def finalize_answer(
     # like the quote check it repeats: each line reads the registry's passages.
     pairs = [(source.entry, source.number) for source in cited]
     stamps = await asyncio.to_thread(stamp_quote_lines, content, pairs, registry.all_sources())
+    claims = _claim_provenance(content, cited, stamps, turn, measured_values)
     final_messages = list(messages)
     final_messages[index] = messages[index].model_copy(update={"content": content})
     return FinalAnswer(
@@ -1170,7 +1146,6 @@ async def finalize_answer(
         answered=True,
         content=content,
         citation_grounded=grounding.citation_grounded,
-        citation_fallback_used=grounding.citation_fallback_used,
         quotes_verified=not grounding.unverified_quotes,
         unverified_quote_count=len(grounding.unverified_quotes),
         normative_claim_uncited=_normative_claim_uncited(content, grounding),
@@ -1186,4 +1161,47 @@ async def finalize_answer(
         removed_citations=grounding.removed_citations,
         quote_stamps=tuple(stamps),
         dialect_repairs=tuple(dialect.repairs),
+        claim_stamps=tuple(claim.to_wire() for claim in claims.stamps),
+        claims_ceiling=claims.ceiling,
+        weakest_claim=claims.weakest,
+        lookup_found_nothing=found_nothing,
+    )
+
+
+@dataclass(frozen=True)
+class _Claims:
+    """The answer's per-sentence stamps and what the confidence reads off them."""
+
+    stamps: tuple[ClaimStamp, ...]
+    ceiling: str | None
+    weakest: tuple[str, str] | None
+
+
+def _claim_provenance(
+    content: str,
+    cited: Sequence[CitedSource],
+    quote_stamps: Sequence[dict[str, Any]],
+    turn: Sequence[Any],
+    measured_values: Sequence[str],
+) -> _Claims:
+    """Stamp each sentence of the final text with where it comes from (``common/claim_provenance``).
+
+    Runs on the text the reader gets, with the ``[N]`` it shows, after the
+    quote stamps it reads. Records come from this turn's workspace calls
+    (``common/workspace_records``), never from the source registry. Observed
+    as three scores.
+    """
+    evidence = ClaimEvidence(
+        cited_numbers=frozenset(source.number for source in cited if source.number is not None),
+        quote_stamps=quote_stamps,
+        records=records_from_messages(turn),
+        measured_values=tuple(value for value in measured_values if value),
+    )
+    stamps = classify_claims(prose_without_references(content), evidence, normative=answer_mentions_normative_claim)
+    weakest = weakest_claim(stamps)
+    emit_scores(claim_scores(stamps, dropped=content.count(DROPPED_CITATION_MARKER)), writer="piloti")
+    return _Claims(
+        stamps=tuple(stamps),
+        ceiling=claims_ceiling(stamps),
+        weakest=(weakest.provenance, weakest.claim_type) if weakest is not None else None,
     )

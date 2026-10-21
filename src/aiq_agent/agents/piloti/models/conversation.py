@@ -214,6 +214,16 @@ class ConversationState(BaseModel):
     # lifted from Piloti's state and onto ``TurnResult.quote_stamps``. None when
     # the answer quotes nothing.
     quote_stamps: list[dict[str, Any]] | None = None
+    # One stamp per sentence of the answer (``common/claim_provenance.py``),
+    # lifted from Piloti's state onto ``TurnResult.claim_stamps``. None when the
+    # pipeline did not stamp the answer.
+    claim_stamps: list[dict[str, Any]] | None = None
+    # Which confidence rule computed ``answer_confidence``: 2 the per-sentence
+    # formula (ADR-0122), 1 the answer-level floors. None with no confidence.
+    answer_confidence_version: int | None = None
+    # A lookup ran, found nothing, and the answer shipped labelled as model
+    # knowledge (ADR-0122): the reader's banner.
+    lookup_found_nothing: bool = False
     # The thinking level the answering call ran at, lifted from Piloti's state
     # onto ``TurnResult.reasoning_effort``. None when no answering call ran.
     reasoning_effort: str | None = None
@@ -233,7 +243,8 @@ class ConversationState(BaseModel):
     # conversation suppressed (``deep_research_declined``) never reaches it, so
     # the wire never narrates an escalation that did not occur.
     escalation_reason: str | None = None
-    # Present only when the self-reported confidence was downgraded. Five causes:
+    # Present only when the self-reported confidence was downgraded
+    # (``markers.CappedReason`` says which rule produces which). Five causes:
     #   "ungrounded"              nothing verified and nothing measured.
     #   "quote_unverified"        a quoted span matched no retrieved passage.
     #   "normative_claim_uncited" the answer WAS measurement-grounded but also
@@ -243,10 +254,8 @@ class ConversationState(BaseModel):
     #                             favour.
     #   "measurement_only"        measured and purely descriptive, so "high" was
     #                             reduced to "medium" rather than to "low".
-    #   "citation_fallback"       the only citation came from the single-source
-    #                             fallback — real, but not one the model wrote,
-    #                             and possibly captured on an earlier turn — so
-    #                             it lifts no further than a measurement does.
+    #   "citation_fallback"       no longer produced (the single-source fallback
+    #                             went with ADR-0122); stored turns carry it.
     answer_confidence_capped_reason: (
         Literal[
             "ungrounded",

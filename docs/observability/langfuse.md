@@ -175,7 +175,7 @@ a name is written but not declared, or declared but not listed here.
 | `citations-removed` | numeric | agent | citations verification dropped |
 | `quotes-unverified` | numeric | agent | quoted spans no passage holds |
 | `retrieval-precision` | numeric 0–1 | agent | share of distinct retrieved sources the answer cited |
-| `citation-fallback` | boolean | agent | the single retrieved source was appended for the model |
+| `citation-fallback` | boolean | agent | retired with the single-source fallback (ADR-0122); no longer written, kept so older traces chart |
 | `sources-empty` | boolean | agent | a lookup ran and found nothing |
 | `answer-confidence` | categorical | agent | `low`, `medium`, `high` as shown |
 | `confidence-capped` | categorical | agent | which guard lowered it, or `none` |
@@ -183,6 +183,9 @@ a name is written but not declared, or declared but not listed here.
 | `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
+| `claims-by-class` | categorical | agent | one score per provenance class present in the answer (`quoted`, `cited`, `cited_dropped`, `record`, `action`, `measured`, `reasoning`, `model_knowledge`; `common/claim_provenance.py`, ADR-0122); the comment and `metadata.count` say how many sentences |
+| `claims-normative-uncited` | numeric | agent | sentences about the law with no quoted or cited passage behind them |
+| `citations-dropped-labelled` | numeric | agent | places the answer cited something that did not resolve (no source, or a § / Punkt the cited passage does not hold), labelled in the text instead of removed |
 | `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
 | `thread-answered-in-place` | boolean | agent, when the turn leaves the canvas | on a turn asked to answer in an Anmerkung's thread: true when the model replied there itself (`canvas__reply`), false when it did not and the socket posts the answer for it. No score when the turn may not post there (`thread_reply` = `skipped_withheld`). The false rate is how often the prompt is ignored, which the fallback otherwise hides |
 | `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |

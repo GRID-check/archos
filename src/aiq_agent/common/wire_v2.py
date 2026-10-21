@@ -304,6 +304,27 @@ class QuoteStamp(_Model):
     url: str | None = None
 
 
+class ClaimStamp(_Model):
+    """Where one sentence of ``text`` comes from (``common/claim_provenance.py``, ADR-0122), in document order.
+
+    ``provenance`` is the strongest evidence the sentence has; ``claim_type``
+    whether it states the law, a value, or a description. ``load_bearing``
+    sentences are the ones the turn's confidence is held to.
+    """
+
+    text: str = Field(max_length=300, description="The sentence as the final text writes it, cut at 300 characters.")
+    provenance: Literal[
+        "quoted", "cited", "cited_dropped", "record", "action", "measured", "reasoning", "model_knowledge"
+    ]
+    claim_type: Literal["normative", "value", "descriptive"]
+    load_bearing: bool = False
+    numbers: list[int] = Field(default_factory=list)
+    #: For a ``record`` or ``action``: the workspace operation it came from.
+    operation: str | None = None
+    #: For a ``record``: numbers the sentence states that no record this turn held.
+    unmatched: list[str] = Field(default_factory=list)
+
+
 class TurnResult(_Model):
     """Everything the finished turn delivers; authoritative, and what the server persists.
 
@@ -335,6 +356,15 @@ class TurnResult(_Model):
     retrieval_ledger: list[dict[str, Any]] = Field(default_factory=list)
     #: One stamp per quote line of ``text``, in document order.
     quote_stamps: list[QuoteStamp] = Field(default_factory=list)
+    #: One stamp per sentence of ``text``, in document order (ADR-0122).
+    claim_stamps: list[ClaimStamp] = Field(default_factory=list)
+    #: Which rule computed ``answer_confidence``: 2 the per-sentence formula
+    #: (ADR-0122). Absent on every turn stored before it, which the reader
+    #: renders under the answer-level floors it was computed with.
+    answer_confidence_version: Literal[1, 2] | None = None
+    #: A lookup ran and found nothing; the answer is the model's own knowledge
+    #: and says so in a banner. False on every other turn.
+    lookup_found_nothing: bool = False
     #: ADR-0062: the run this turn commissioned instead of answering itself.
     run: RunHandoff | None = None
     #: The thinking level the answering call RAN at, resolved (the asker's level,
