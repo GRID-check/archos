@@ -236,7 +236,8 @@ was changed.", and `structuredContent`
 contract with the in-product client: `workspace__call` (`tools/workspace/register.py`)
 reads it and puts the `operation_proposal` card in the registry with the
 server's `proposal_id` (`tools/workspace/cards.py`); a repeat that comes back with
-the same id shows no second card. A run with no card channel keeps the proposal
+the same id shows no second card. The model reads the server's text with
+`Proposal <id>: <summary>.` after it, the id its work report names. A run with no card channel keeps the proposal
 and tells the model the card could not be shown; the proposal waits in the
 person's inbox.
 

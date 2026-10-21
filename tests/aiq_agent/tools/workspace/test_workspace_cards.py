@@ -89,7 +89,7 @@ async def test_a_proposed_write_puts_the_card_in_the_chat_with_the_servers_propo
 
     text = await workspace.run_call("folder-rename", CALL_INPUT)
 
-    assert text == PROPOSED_TEXT
+    assert text == f"{PROPOSED_TEXT} Proposal {PROPOSAL_ID}: Rename (folder-rename)."
     (card,) = registry.snapshot()
     assert card == {
         "type": "operation_proposal",
@@ -158,6 +158,23 @@ async def test_only_call_emits_cards(server, registry) -> None:
 
     await workspace.run_describe("folder-rename")
 
+    assert registry.snapshot() == []
+
+
+async def test_a_rate_limited_door_tells_the_model_to_call_again_next_round(server, registry, monkeypatch) -> None:
+    def refuse(request: Any, timeout: float) -> _Response:  # noqa: ARG001
+        raise client.urllib.error.HTTPError(request.full_url, 429, "Too Many Requests", {}, None)
+
+    monkeypatch.setattr(client._opener, "open", refuse)
+
+    assert await workspace.run_search("list projects") == workspace.RATE_LIMITED
+    assert "next round" in workspace.RATE_LIMITED
+
+
+async def test_a_rate_limited_operation_tells_the_model_to_call_again_next_round(server, registry) -> None:
+    server.append(structured_answer(None, "Too many requests. (HTTP 429, rate_limited)", is_error=True))
+
+    assert await workspace.run_call("folder-rename", CALL_INPUT) == workspace.RATE_LIMITED
     assert registry.snapshot() == []
 
 

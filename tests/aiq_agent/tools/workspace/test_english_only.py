@@ -77,6 +77,7 @@ def test_the_texts_the_model_reads_at_run_time_are_english() -> None:
         *register.DESCRIPTIONS.values(),
         register._NO_ENVELOPE,
         register._PROPOSED_WITHOUT_CARD,
+        register.RATE_LIMITED,
         client.ERROR_PREFIX,
     ]
     assert [text for text in texts if german_words(text)] == []

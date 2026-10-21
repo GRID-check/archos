@@ -524,12 +524,17 @@ What Piloti knows before its first call, and how it reports
 - **The work report** (`kind: work`): an operations turn ends with what it
   proposed (with the proposal ids), what is blocked and on whom, and what is
   next, drawn after the prose.
-- **German requests on the server.** `discovery.ts` ranks with `wordsOf`, which
-  splits on `[^a-z0-9]`, so a German query breaks at its umlauts and never meets
-  the English catalog. `lib/text/operation-search.ts` folds both sides and maps
-  the office's words to the catalog's (`operation-search-vocabulary.json`);
-  `discovery.ts` adopts it by ranking with `operationScorer(query)` in place of
-  `scorerFor`. Until it does, the prompt's English queries carry the load.
+- **German requests on the server.** `discovery.ts` ranks with
+  `operationScorer` (`lib/text/operation-search.ts`): both sides folded, so a
+  German query no longer breaks at its umlauts, and the office's words mapped to
+  the catalog's (`operation-search-vocabulary.json`). A one-letter word ranks
+  nothing and is dropped; a blank query lists everything, and text with no usable
+  word in it finds nothing. The prompt still asks for English queries, which
+  need no vocabulary entry.
+- **The text after a write.** `workspace__call` reads the server's „Proposed"
+  line with the proposal's id and summary after it, so the work report and the
+  next turn name the same proposal. A 429, from the door or from the route an
+  operation runs, reads „rate limited; call again in the next round".
 
 The workspace set of the answer suite measures all of it
 ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set)).

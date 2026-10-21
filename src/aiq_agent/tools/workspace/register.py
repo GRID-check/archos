@@ -56,6 +56,13 @@ SERVER_TOOLS = {
 # standard first"; the terms are in docs/glossary.md, "Agent surface and standard terms"). The model
 # answers the person in their language; it does not quote these sentences.
 
+#: A 429, from the door itself or from the route an operation runs. The limit is per minute and a round
+#: takes seconds, so the next round may well be served; this one is not.
+RATE_LIMITED = "Error: rate limited; nothing was changed. Call again in the next round, not in this one."
+
+#: How a route's own 429 reads once ``discovery.ts`` has worded it (``refusalResult``).
+_ROUTE_RATE_LIMITED = re.compile(r"\(HTTP 429\b")
+
 _NO_ENVELOPE = (
     "Error: this run carries no signed request context, so Piloti cannot read or do anything in the "
     "workspace on a person's behalf. Do not retry."
@@ -118,12 +125,17 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
         )
     except WorkspaceError as exc:
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"error": str(exc), "status": exc.status})
+        if exc.status == 429:
+            return RATE_LIMITED
         return (
             f"Error reaching the workspace: {exc}. Nothing was changed. Tell the person it did not work, and do "
             "not retry in the same answer."
         )
     text = result.text
     outcome: dict[str, Any] = {"chars": len(text)}
+    if result.structured is None and _ROUTE_RATE_LIMITED.search(text):
+        _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, {"status": 429})
+        return RATE_LIMITED
     if step == "call":
         text = _show_proposal(result.structured, arguments, text, outcome)
     _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, outcome)
@@ -140,14 +152,17 @@ def _show_proposal(
 ) -> str:
     """Put the card for a write the server proposed in front of the reader; the text the model reads.
 
-    A read, a refusal and any other answer pass through. The server's own short text ("Proposed — the
-    person decides") is what the model reads; it never sees the structured result.
+    A read, a refusal and any other answer pass through. For a proposal the model reads the server's
+    short text ("Proposed — the person decides") with the proposal's id and summary after it: the id is
+    what the work report's ``proposed`` names and what the next turn's WORKSPACE block lists, and the
+    summary is what the person sees on the card, so the model says what waits in the card's words.
     """
     proposal = proposal_from(structured)
     if proposal is None:
         return text
     shown = emit_operation_proposal_card(proposal, arguments.get("input"))
     outcome.update({"proposed": proposal.operation, "card": shown})
+    text = f"{text} Proposal {proposal.proposal_id}: {proposal.summary.rstrip('.')}."
     return text if shown else text + _PROPOSED_WITHOUT_CARD
 
 
