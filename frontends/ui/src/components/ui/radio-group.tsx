@@ -39,8 +39,13 @@ const RadioGroupItem = React.forwardRef<
     )}
     {...props}
   >
-    {/* The dot lands on `--motion-snap`, the same beat as the Checkbox tick. */}
-    <RadioGroupPrimitive.Indicator className="flex items-center justify-center animate-in fade-in-0 zoom-in-90 duration-snap ease-out motion-reduce:animate-none">
+    {/* The dot lands on `--motion-snap`, the same beat as the Checkbox tick,
+        and the same way: mounted always, transitioning on `data-state`, so a
+        pre-selected group does not pop its dots in on load. */}
+    <RadioGroupPrimitive.Indicator
+      forceMount
+      className="flex items-center justify-center transition-[opacity,scale] duration-snap ease-out motion-reduce:transition-none data-[state=unchecked]:scale-90 data-[state=unchecked]:opacity-0"
+    >
       <Circle className="size-2 fill-primary" />
     </RadioGroupPrimitive.Indicator>
   </RadioGroupPrimitive.Item>

@@ -40,12 +40,16 @@ const Checkbox = React.forwardRef<
     <CheckboxPrimitive.Indicator
       data-slot="checkbox-indicator"
       // The tick lands with the fill, on `--motion-snap`: a fade and a 90%
-      // scale, so it reads as set down rather than switched on. Radix unmounts
-      // the indicator when the box empties, so there is no exit to time; the
-      // fill fading behind it carries the un-tick.
+      // scale, so it reads as set down rather than switched on. It stays
+      // mounted and TRANSITIONS on its own `data-state`, never an `animate-in`:
+      // Radix mounts the indicator only while checked, so a mount animation
+      // replayed on every pre-checked box of a list as it loaded. A transition
+      // has no first frame to play from, so only a real toggle moves.
+      forceMount
       className={cn(
         'group/indicator flex items-center justify-center text-current',
-        'animate-in fade-in-0 zoom-in-90 duration-snap ease-out motion-reduce:animate-none'
+        'transition-[opacity,scale] duration-snap ease-out motion-reduce:transition-none',
+        'data-[state=unchecked]:scale-90 data-[state=unchecked]:opacity-0'
       )}
     >
       {/* The indicator carries the root's `data-state`, so one of the two glyphs shows. */}
