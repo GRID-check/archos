@@ -114,11 +114,15 @@ def get_cards(organization_id: str, collection: str, *, timeout: float = 0) -> d
 
 def read_collection(
     organization_id: str, collection: str, *, timeout: float = 0
-) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
-    """A collection's cards by folder path, and every living folder's description by path.
+) -> tuple[dict[str, dict[str, Any]], dict[str, str], set[str] | None]:
+    """A collection's cards by folder path, every described folder's description, and the folders it owns.
 
     The descriptions cover folders that have no card yet, so a folder's first build
-    already reads what a person wrote about it. Raises :class:`FolderCardsError`.
+    already reads what a person wrote about it. The third value is the path of every
+    living folder whose documents live in this collection, described or not: a card
+    for any other path is refused by the BFF, so the builder must not build it.
+    ``None`` when the reply carries no ``folders`` list (nothing is known, nothing is
+    filtered). Raises :class:`FolderCardsError`.
     """
     reply = _call("GET", query={"organization_id": organization_id, "collection": collection}, timeout=timeout)
     cards = reply.get("cards")
@@ -141,7 +145,16 @@ def read_collection(
         if isinstance(folders, list)
         else {}
     )
-    return by_path, descriptions
+    owned = (
+        {
+            str(folder["folder_path"]).strip("/")
+            for folder in folders
+            if isinstance(folder, dict) and folder.get("folder_path")
+        }
+        if isinstance(folders, list)
+        else None
+    )
+    return by_path, descriptions, owned
 
 
 def delete_card(organization_id: str, collection: str, folder_path: str) -> bool:

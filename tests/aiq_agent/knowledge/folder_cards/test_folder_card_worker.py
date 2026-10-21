@@ -184,6 +184,41 @@ class TestRunOnce:
         assert report.outcomes == {"failed": 1, "skipped": 1}
         assert "Gutachten/Behörde" in _paths()
 
+    async def test_a_folder_this_collection_does_not_own_is_dropped_without_a_model_call(self, project):
+        # "Pläne" has one file; add more so only ownership, not size, decides.
+        for name in ("Schnitt.pdf", "Ansicht.pdf", "Detail.pdf"):
+            _file(name, "Pläne")
+        project.folders.discard(("proj", "Pläne"))
+        queue.mark("proj", ["Pläne"], ORG)
+        model = FakeModel(_abstracts)
+
+        report = await worker.run_once(llm=model)
+
+        assert report.outcomes == {"fresh": 1, "skipped": 1}  # Behörde built, Pläne not ours
+        assert all("Pläne" not in prompt.split("\n")[1] for prompt in model.calls)
+        assert queue.tokens_used(ORG) == 1100  # one build, none for Pläne
+        assert "Pläne" not in _paths()
+
+    async def test_a_card_the_bff_refuses_is_skipped_not_fresh(self, project, monkeypatch):
+        monkeypatch.setattr(worker.client, "put_card", lambda body: False)
+
+        report = await worker.run_once(llm=FakeModel(_abstracts))
+
+        assert report.outcomes == {"skipped": 2}
+        assert queue.get_manifest("proj", "Gutachten/Behörde") is None
+
+    async def test_an_unparsable_reply_still_costs_the_budget(self, project):
+        class Garbage(FakeModel):
+            async def ainvoke(self, messages):
+                message = await super().ainvoke(messages)
+                message.content = "kein JSON"
+                return message
+
+        report = await worker.run_once(llm=Garbage(_abstracts))
+
+        assert report.outcomes == {"failed": 1, "skipped": 1}
+        assert queue.tokens_used(ORG) == 1100
+
     async def test_no_summary_model_builds_nothing(self, project, monkeypatch):
         monkeypatch.setattr(worker, "summary_llm", lambda: None)
 

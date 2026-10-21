@@ -102,10 +102,11 @@ class FakeBff:
 
     def read_collection(
         self, organization_id: str, collection: str, *, timeout: float = 0
-    ) -> tuple[dict[str, dict[str, Any]], dict[str, str]]:
-        """Like the BFF: cards, plus every described folder's description whether it has a card or not."""
+    ) -> tuple[dict[str, dict[str, Any]], dict[str, str], set[str]]:
+        """Like the BFF: cards, every described folder's description, and the folders the collection owns."""
         described = {path: text for (name, path), text in self.descriptions.items() if name == collection and text}
-        return self.get_cards(organization_id, collection, timeout=timeout), described
+        owned = {path for name, path in self.folders if name == collection}
+        return self.get_cards(organization_id, collection, timeout=timeout), described, owned
 
     def delete_card(self, organization_id: str, collection: str, folder_path: str) -> bool:
         self.deletes.append((collection, folder_path))

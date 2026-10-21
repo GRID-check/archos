@@ -38,6 +38,7 @@ import asyncio
 import logging
 import os
 import time
+from collections.abc import Iterable
 from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
@@ -89,6 +90,8 @@ class _Collection:
     cards: dict[str, dict[str, Any]]
     #: Every living folder's description by path, whether it has a card or not.
     descriptions: dict[str, str] = field(default_factory=dict)
+    #: Paths of the living folders whose documents live in this collection; ``None`` when the BFF did not say.
+    owned: set[str] | None = None
 
 
 def monthly_token_cap() -> int:
@@ -124,8 +127,8 @@ def _load(claim: queue.Claim) -> _Collection | None:
         logger.warning("folder cards: no organization known for %s; its folders wait", claim.collection)
         return None
     queue.remember_collection(claim.collection, organization_id)
-    cards, descriptions = client.read_collection(organization_id, claim.collection)
-    return _Collection(organization_id, collection_rows(claim.collection), cards, descriptions)
+    cards, descriptions, owned = client.read_collection(organization_id, claim.collection)
+    return _Collection(organization_id, collection_rows(claim.collection), cards, descriptions, owned)
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +223,8 @@ def _store(
     draft: build.FolderCardDraft,
     model: str,
     manifest: incremental.Manifest,
-) -> None:
+) -> bool:
+    """``PUT`` the card; ``False`` when the BFF refused it (no folder of this collection lives at that path)."""
     body = client.put_request(
         organization_id=context.organization_id,
         collection=claim.collection,
@@ -235,12 +239,13 @@ def _store(
     )
     if not client.put_card(body):
         logger.info("folder cards: %s in %s is no folder the BFF knows", claim.folder_path, claim.collection)
-        return
+        return False
     queue.put_manifest(claim.collection, claim.folder_path, manifest.to_json())
     context.cards[claim.folder_path] = {**(existing or {}), **body}
     _publish_point(claim.collection, body)
     if (existing or {}).get("abstract_hash") != draft.abstract_hash:
         _mark_parent(claim, context)
+    return True
 
 
 # ---------------------------------------------------------------------------
@@ -283,7 +288,7 @@ def _prune(
     inputs: FolderInputs,
     digest: str,
     update: incremental.Plan,
-) -> None:
+) -> bool:
     """Only documents left: drop the facts that cited them, keep the abstract. No model call."""
     facts = incremental.surviving_facts(existing.get("key_facts") or [], inputs.child_names)
     abstract = existing["abstract"]
@@ -293,7 +298,21 @@ def _prune(
         existing.get("abstract_hash") or build.abstract_hash(abstract),
     )
     manifest = incremental.manifest_of(inputs, increments=update.increments)
-    _store(claim, context, existing, digest, draft, existing.get("model") or "", manifest)
+    return _store(claim, context, existing, digest, draft, existing.get("model") or "", manifest)
+
+
+#: A stem shorter than this ("A", "Nr 1") is too common a word to prove the abstract names the document.
+_MIN_NAMED_STEM = 4
+
+
+def names_removed(abstract: str, removed: Iterable[str]) -> bool:
+    """Whether ``abstract`` mentions a removed document by file name or by name without extension. Pure."""
+    text = abstract.casefold()
+    for name in removed:
+        stem = name.rsplit(".", 1)[0] if "." in name else name
+        if name.casefold() in text or (len(stem) >= _MIN_NAMED_STEM and stem.casefold() in text):
+            return True
+    return False
 
 
 async def _write(
@@ -309,6 +328,9 @@ async def _write(
 
 
 async def _build(claim: queue.Claim, context: _Collection, llm: Any, report: RunReport) -> Outcome:
+    if context.owned is not None and claim.folder_path not in context.owned:
+        # Marked here, but its documents live in another collection (a restricted child marks its open ancestors).
+        return "skipped"
     inputs = folder_inputs(claim.collection, claim.folder_path, context.rows, context.cards, context.descriptions)
     existing = context.cards.get(inputs.folder_path)
     outcome, digest = _decide(inputs, existing)
@@ -317,22 +339,29 @@ async def _build(claim: queue.Claim, context: _Collection, llm: Any, report: Run
     if outcome is not None:
         return outcome
     update = incremental.plan(existing, await asyncio.to_thread(_stored_manifest, claim), inputs)
+    if update.mode == "prune" and existing is not None and names_removed(existing["abstract"], update.diff.removed):
+        # The abstract speaks of a document that is gone: the model rewrites it from the diff.
+        update = incremental.Plan("incremental", update.diff, increments=update.increments + 1, reason="named removal")
     if update.mode == "prune" and existing is not None:
-        await asyncio.to_thread(_prune, claim, context, existing, inputs, digest, update)
-        return "fresh"
+        stored = await asyncio.to_thread(_prune, claim, context, existing, inputs, digest, update)
+        return "fresh" if stored else "skipped"
     if await asyncio.to_thread(queue.tokens_used, context.organization_id) >= monthly_token_cap():
         logger.info("folder cards: %s is over its monthly budget", context.organization_id)
         if existing is not None:
             await asyncio.to_thread(_restamp, claim, context, existing, "stale")
         return "stale"
     with _ledger(context.organization_id):
-        generation = await _write(inputs, existing, update, llm)
+        try:
+            generation = await _write(inputs, existing, update, llm)
+        except build.GenerationRejected as rejected:
+            await asyncio.to_thread(queue.add_tokens, context.organization_id, rejected.tokens)
+            raise
     report.trace_id = report.trace_id or generation.trace_id
     await asyncio.to_thread(queue.add_tokens, context.organization_id, generation.tokens)
     draft = build.validate(generation.reply, inputs)
     manifest = incremental.manifest_of(inputs, increments=update.increments)
-    await asyncio.to_thread(_store, claim, context, existing, digest, draft, generation.model, manifest)
-    return "fresh"
+    stored = await asyncio.to_thread(_store, claim, context, existing, digest, draft, generation.model, manifest)
+    return "fresh" if stored else "skipped"
 
 
 def _give_up(claim: queue.Claim, context: _Collection | None) -> None:
@@ -405,9 +434,11 @@ def _folders(rows: list[Any]) -> set[str]:
 def reconcile_collection(collection: str, organization_id: str) -> int:
     """Mark every folder whose stored card no longer matches its inputs, or that lacks one it deserves."""
     rows = collection_rows(collection)
-    cards, descriptions = client.read_collection(organization_id, collection)
+    cards, descriptions, owned = client.read_collection(organization_id, collection)
     due: list[str] = []
     for path in sorted(_folders(rows) | set(cards)):
+        if owned is not None and path not in owned:
+            continue
         existing = cards.get(path)
         outcome, _digest = _decide(folder_inputs(collection, path, rows, cards, descriptions), existing)
         if outcome == "skipped":

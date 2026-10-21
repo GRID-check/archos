@@ -166,6 +166,24 @@ class TestWorker:
         assert card["abstract"] == "Akten des Projekts."
         assert [fact["documents"] for fact in card["key_facts"]] == [["Akt 2.pdf"]]
 
+    async def test_a_removal_the_abstract_names_is_rewritten_not_pruned(self, folder):
+        first = FakeModel(lambda prompt: {"abstract": "Akten, darunter Akt 1.", "key_facts": []})
+        await worker.run_once(llm=first)
+        factory.unregister_summary("proj", "Akt 1.pdf")
+        second = FakeModel(lambda prompt: {"abstract": "Akten des Projekts.", "key_facts": []})
+
+        report = await worker.run_once(llm=second)
+
+        assert report.outcomes == {"fresh": 1}
+        assert len(second.calls) == 1 and "Akt 1.pdf" in second.calls[0]
+        assert folder.cards[("proj", "Akten")]["abstract"] == "Akten des Projekts."
+        assert _increments() == 1
+
+    def test_names_removed_matches_file_name_or_stem_but_not_short_stems(self):
+        assert worker.names_removed("Enthält das Brandschutzgutachten.", ["Brandschutzgutachten.pdf"])
+        assert worker.names_removed("Siehe Plan.pdf", ["Plan.pdf"])
+        assert not worker.names_removed("Ein Ordner mit Plänen.", ["A.pdf", "Statik.pdf"])
+
     async def test_the_tenth_increment_is_followed_by_a_full_build_that_resets_the_counter(self, folder):
         model = FakeModel(_card)
         await worker.run_once(llm=model)

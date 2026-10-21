@@ -109,6 +109,14 @@ class FolderCardDraft:
     dropped_facts: int = 0
 
 
+class GenerationRejected(ValueError):
+    """The provider answered (and charged) but the reply is no card; ``tokens`` is what the call cost."""
+
+    def __init__(self, message: str, *, tokens: int) -> None:
+        super().__init__(message)
+        self.tokens = tokens
+
+
 @dataclass(frozen=True)
 class Generation:
     reply: CardReply
@@ -271,10 +279,13 @@ async def generate(
         response = await structured.ainvoke([SystemMessage(content=system), HumanMessage(content=prompt)])
         text = content_to_text(getattr(response, "content", response))
         generation.finish(_completion_body(response, text))
-        parsed = extract_json(text)
-        if not isinstance(parsed, dict):
-            raise ValueError("the folder card reply is not a JSON object")
-        reply = CardReply.model_validate(parsed)
+        try:
+            parsed = extract_json(text)
+            if not isinstance(parsed, dict):
+                raise ValueError("the folder card reply is not a JSON object")
+            reply = CardReply.model_validate(parsed)
+        except Exception as exc:  # noqa: BLE001 — the call was made and billed; the worker books it
+            raise GenerationRejected(str(exc), tokens=_tokens(response, prompt, text)) from exc
     return Generation(reply=reply, model=model, tokens=_tokens(response, prompt, text), trace_id=generation.trace_id)
 
 

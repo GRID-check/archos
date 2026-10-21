@@ -79,6 +79,27 @@ class TestTransport:
         assert seen["method"] == "GET" and seen["token"] == "t"
         assert "organization_id=org_1" in seen["url"] and "collection=proj" in seen["url"]
 
+    def test_read_collection_lists_every_owned_folder_even_undescribed(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        reply = {
+            "cards": [],
+            "folders": [
+                {"folder_path": "A/", "folder_description": None},
+                {"folder_path": "B", "folder_description": "Pläne"},
+            ],
+        }
+        monkeypatch.setattr(client._opener, "open", lambda request, timeout: _Reply(json.dumps(reply).encode()))
+
+        cards, descriptions, owned = client.read_collection("org_1", "proj")
+
+        assert (cards, descriptions, owned) == ({}, {"B": "Pläne"}, {"A", "B"})
+
+    def test_a_reply_without_folders_owns_nothing_known(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
+        monkeypatch.setattr(client._opener, "open", lambda request, timeout: _Reply(b'{"cards": []}'))
+
+        assert client.read_collection("org_1", "proj")[2] is None
+
     def test_a_404_on_put_is_no_folder(self, monkeypatch):
         monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "t")
 
