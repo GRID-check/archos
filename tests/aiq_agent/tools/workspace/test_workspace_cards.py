@@ -203,7 +203,7 @@ def test_proposal_from_reads_only_the_documented_shape() -> None:
     assert cards.proposal_from({**proposed(), "summary": "  "}) is None
 
 
-async def test_a_read_lands_in_the_herleitung_ledger_and_a_proposal_or_refusal_does_not(server, registry) -> None:
+async def test_a_read_lands_in_the_retrieval_ledger_and_a_proposal_or_refusal_does_not(server, registry) -> None:
     from aiq_agent.common.turn_status import begin_lane_capture
     from aiq_agent.common.turn_status import end_lane_capture
     from aiq_agent.common.turn_status import get_lane_captures
