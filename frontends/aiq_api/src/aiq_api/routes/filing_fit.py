@@ -326,22 +326,51 @@ async def score_moves(
     candidates = _candidate_folders(request)
     if not moves or len(candidates) > MAX_SCORED_FOLDERS:
         return [None] * len(moves)
-    try:
-        keys = {path_key: f"f{index}" for index, path_key in enumerate(candidates)}
-        options = {keys[path_key]: _option(path, description) for path_key, (path, description) in candidates.items()}
-        options["none"] = SCORE_NONE
-        documents = {document.id: document for document in request.documents}
-        states = [_score_state(documents[move.id]) for move in moves]
-        decisions = await decide_many(
-            states,
-            {"folder": choice(SCORE_QUESTION, options)},
-            slot=SCORE_SLOT,
-            organization_id=organization_id,
-        )
-        return [_confidence(decision, keys.get(_path_key(move.folder))) for decision, move in zip(decisions, moves)]
-    except Exception as exc:  # noqa: BLE001 — scoring may only add; the moves stand
-        logger.warning("Filing move scoring failed: %s", type(exc).__name__)
-        return [None] * len(moves)
+    # No catch: `decide_many` already answers None for a call that failed, so
+    # anything raised here is a fault in this code and must be seen.
+    keys = {path_key: f"f{index}" for index, path_key in enumerate(candidates)}
+    options = {keys[path_key]: _option(path, description) for path_key, (path, description) in candidates.items()}
+    options["none"] = SCORE_NONE
+    documents = {document.id: document for document in request.documents}
+    states = [_score_state(documents[move.id]) for move in moves]
+    decisions = await decide_many(
+        states,
+        {"folder": choice(SCORE_QUESTION, options)},
+        slot=SCORE_SLOT,
+        organization_id=organization_id,
+    )
+    return [_confidence(decision, keys.get(_path_key(move.folder))) for decision, move in zip(decisions, moves)]
+
+
+def _request_body(cred: Any, request: FilingFitRequest) -> dict[str, Any]:
+    """The completion request: a sort places every document, so it gets its own instructions and more room."""
+    sorting = request.purpose == "sort"
+    return cred.request_body(
+        {
+            "model": cred.model,
+            "temperature": 0,
+            "max_tokens": 4000 if sorting else 2000,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": SYSTEM_PROMPT + "\n" + SORT_INSTRUCTIONS if sorting else SYSTEM_PROMPT},
+                {"role": "user", "content": build_user_content(request)},
+            ],
+        }
+    )
+
+
+def _trace_metadata(request: FilingFitRequest) -> dict[str, Any]:
+    """What the generation carries in Langfuse: ids and counts, never content."""
+    return {
+        "batch_id": request.trace.batch_id,
+        "project_id": request.trace.project_id or "",
+        "shelf": request.trace.shelf,
+        "basis": request.basis,
+        "purpose": request.purpose,
+        "documents": len(request.documents),
+        "folders": len(request.folders),
+        "conventions": len(request.conventions),
+    }
 
 
 def add_filing_fit_routes(router: APIRouter) -> None:
@@ -366,33 +395,11 @@ def add_filing_fit_routes(router: APIRouter) -> None:
             return FilingFitResponse(error="llm_not_configured")
 
         sorting = request.purpose == "sort"
-        system_prompt = SYSTEM_PROMPT + "\n" + SORT_INSTRUCTIONS if sorting else SYSTEM_PROMPT
-        payload = cred.request_body(
-            {
-                "model": cred.model,
-                "temperature": 0,
-                "max_tokens": 4000 if sorting else 2000,
-                "response_format": {"type": "json_object"},
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": build_user_content(request)},
-                ],
-            }
-        )
+        payload = _request_body(cred, request)
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {cred.api_key}"}
-        metadata = {
-            "batch_id": request.trace.batch_id,
-            "project_id": request.trace.project_id or "",
-            "shelf": request.trace.shelf,
-            "basis": request.basis,
-            "purpose": request.purpose,
-            "documents": len(request.documents),
-            "folders": len(request.folders),
-            "conventions": len(request.conventions),
-        }
+        metadata = _trace_metadata(request)
         # The name basis runs while the person still looks at the upload, and so does a sort.
-        interactive = sorting or request.basis == "name"
-        limiter = provider_limiter.INTERACTIVE if interactive else provider_limiter.BULK
+        limiter = provider_limiter.INTERACTIVE if sorting or request.basis == "name" else provider_limiter.BULK
         trace_id: str | None = None
         try:
             async with (

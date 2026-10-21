@@ -370,19 +370,26 @@ async def _verify(
     by_id = {document.id: document for document in documents}
     options = {f"f{index}": _option(proposal.path, proposal.description) for index, proposal in enumerate(proposals)}
     options["none"] = NONE_OPTION
-    try:
-        decisions = await decide_many(
-            [_score_state(by_id[document_id]) for _index, document_id in slots],
-            {"folder": choice(VERIFY_QUESTION, options)},
-            slot=SCORE_SLOT,
-            organization_id=organization_id,
-        )
-        for (index, document_id), decision in zip(slots, decisions, strict=True):
-            if decision is not None:
-                _chosen, distribution = decision.choice("folder")
-                proposals[index].confidences[document_id] = round(distribution.get(f"f{index}", 0.0), 3)
-    except Exception as exc:  # noqa: BLE001 — verification adds numbers; the proposals stand
-        logger.warning("Folder proposal verification failed: %s", type(exc).__name__)
+    # No catch: `decide_many` already answers None for a call that failed, so
+    # anything raised here is a fault in this code and must be seen.
+    decisions = await decide_many(
+        [_score_state(by_id[document_id]) for _index, document_id in slots],
+        {"folder": choice(VERIFY_QUESTION, options)},
+        slot=SCORE_SLOT,
+        organization_id=organization_id,
+    )
+    _apply_confidences(proposals, slots, decisions)
+
+
+def _apply_confidences(
+    proposals: Sequence[FolderProposal], slots: Sequence[tuple[int, str]], decisions: Sequence[Any]
+) -> None:
+    """Set each decided slot's probability for its own folder; an undecided slot stays without one."""
+    for (index, document_id), decision in zip(slots, decisions, strict=True):
+        if decision is None:
+            continue
+        _chosen, distribution = decision.choice("folder")
+        proposals[index].confidences[document_id] = round(distribution.get(f"f{index}", 0.0), 3)
 
 
 async def _propose(cred: Any, request: FolderProposalsRequest, organization_id: str | None) -> FolderProposalsResponse:

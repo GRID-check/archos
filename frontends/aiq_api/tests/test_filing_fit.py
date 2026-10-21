@@ -235,8 +235,9 @@ async def test_sort_attaches_the_probability_of_each_moves_folder(app, decided):
 
 @pytest.mark.asyncio
 async def test_a_failed_score_keeps_every_move_unscored(app, monkeypatch):
-    async def broken(*_args, **_kwargs):
-        raise RuntimeError("endpoint down")
+    async def broken(states, *_args, **_kwargs):
+        # How `decide_many` fails: one None per call it could not make, never a raise.
+        return [None] * len(states)
 
     monkeypatch.setattr("aiq_agent.common.decisions.decide_many", broken)
     fake, _post = _client_returning(SORT_ANSWER)

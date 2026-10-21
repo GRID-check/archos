@@ -317,8 +317,9 @@ async def test_an_unreadable_reduce_is_an_error_and_proposes_nothing(app, decide
 
 @pytest.mark.asyncio
 async def test_a_jev_failure_keeps_the_proposals_with_empty_confidences(app, monkeypatch):
-    async def broken(*_args, **_kwargs):
-        raise RuntimeError("endpoint down")
+    async def broken(states, *_args, **_kwargs):
+        # How `decide_many` fails: one None per call it could not make, never a raise.
+        return [None] * len(states)
 
     monkeypatch.setattr("aiq_agent.common.decisions.decide_many", broken)
     fake, _post = _fake_http(_route([("d1", json.dumps(PROPOSAL))]))
