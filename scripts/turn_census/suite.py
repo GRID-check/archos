@@ -142,6 +142,12 @@ class Run:
     holdout: bool = False
     answer: str = ""
     error: str = ""
+    #: `--set workspace`: the calls the measured (last) turn made on the MCP door, as the fixture
+    #: served them (`workspace_eval.py`), how many the conversation's earlier turns made before it,
+    #: and how many turns the conversation had.
+    door: list[dict] = field(default_factory=list)
+    door_offset: int | None = None
+    turns: int = 1
 
 
 # --- Questions ---------------------------------------------------------------
@@ -181,6 +187,13 @@ def load_precedent_questions(path: Path = PRECEDENT_QUESTIONS) -> list[dict]:
     import yaml
 
     return list((yaml.safe_load(path.read_text(encoding="utf-8")) or {}).get("questions") or [])
+
+
+def _workspace_questions() -> list[dict]:
+    """The workspace set (``workspace_eval.py``): office work in the fixture office, some rows several turns."""
+    from workspace_eval import load_questions as load_workspace_questions
+
+    return load_workspace_questions()
 
 
 def load_questions(path: Path = QUESTIONS, *, core_only: bool = True) -> tuple[list[dict], list[str]]:
@@ -279,13 +292,19 @@ def _read_calls(run: Run, research: list[dict], answered_at: int | None, t0: flo
         run.first_text_s = round(first_text - t0, 1)
 
 
-def observe(question: dict, index: int, record: Path, log: Path) -> Run:
-    """Everything one turn left behind, read into a Run."""
+def observe(question: dict, index: int, record: Path, log: Path, door_offset: int | None = None) -> Run:
+    """Everything one turn left behind, read into a Run.
+
+    ``door_offset`` (``--set workspace``) is how many MCP calls the
+    conversation made before this turn: the turn's own are the ones after it.
+    """
     run = Run(
         question_id=str(question["id"]),
         run=index,
         scenario=str(question.get("scenario") or ""),
         holdout=bool(question.get("holdout")),
+        door_offset=door_offset,
+        turns=len(question.get("turns") or []) or 1,
     )
     rows = sorted(records(record), key=lambda r: r["t_start"])
     log_text = log.read_text(errors="replace") if log.exists() else ""
@@ -309,6 +328,22 @@ def observe(question: dict, index: int, record: Path, log: Path) -> Run:
     if "escalated" in run.signals:
         run.kind = run.kind or "handoff"
     run.checks = check(question, run, envelope)
+    if door_offset is not None:
+        from fixture_workspace import workspace_calls
+        from workspace_eval import workspace_checks
+
+        run.door = workspace_calls(record.parent / "requests.jsonl", record.stem)[door_offset:]
+        run.checks.update(
+            workspace_checks(
+                question.get("expect") or {},
+                run.door,
+                run.tool_calls,
+                run.answer,
+                str(question.get("question") or ""),
+                _judge(),
+                run.signals,
+            )
+        )
     if "escalated" not in run.signals and not run.answer:
         run.error = _no_answer(log_text)
     return run
@@ -608,6 +643,12 @@ def render(
         "",
         *(failing or ["None."]),
     ]
+    if meta.get("set") == "workspace":
+        from workspace_eval import report_lines
+
+        lines += ["", *report_lines(runs)]
+        if meta.get("ranking"):
+            lines.append(f"The fixture door ranked searches as `{meta['ranking']}`.")
     if skipped:
         lines += ["", f"Skipped, need a project: {', '.join(skipped)}."]
     if not_in_corpus:
@@ -872,11 +913,14 @@ def run_suite(
     overrides: list[list[str]] | None,
     stamp: str | None = None,
     env_for: Any = None,
+    conversations: bool = False,
 ) -> list[Run]:
     """Every question ``runs`` times, ``workers`` at once; each recorded as ``suite-{stamp}-{id}-{run}``.
 
     ``env_for(conversation_id, question)``, when given, is each run's extra
     environment (the precedent eval's envelope and fixture BFF).
+    ``conversations`` (``--set workspace``): a row's ``turns`` run in order in
+    one conversation, and the last is the one observed with its door calls.
     """
     out.mkdir(parents=True, exist_ok=True)
     stamp = stamp or run_stamp()
@@ -887,8 +931,14 @@ def run_suite(
         conversation = f"suite-{stamp}-{question['id']}-{index}"
         try:
             extra = env_for(conversation, question) if env_for else None
-            record = run_once(str(question["question"]).strip(), out, conversation, overrides, extra)
-            result = observe(question, index, record, record.with_suffix(".log"))
+            if conversations:
+                from workspace_eval import run_conversation
+
+                record, before = run_conversation(question, index, out, conversation, overrides, extra)
+                result = observe(question, index, record, record.with_suffix(".log"), door_offset=before)
+            else:
+                record = run_once(str(question["question"]).strip(), out, conversation, overrides, extra)
+                result = observe(question, index, record, record.with_suffix(".log"))
         except Exception as exc:  # noqa: BLE001 - one run's failure is that run's, not the suite's
             result = Run(question_id=str(question["id"]), run=index, error=f"{type(exc).__name__}: {exc}")
         print(f"  {question['id']} #{index}: {result.wall_s}s, {result.research_calls} call(s)", flush=True)
@@ -930,6 +980,36 @@ def precedent_envelope(office: dict, conversation_id: str, secret: str, current:
     header = base64.urlsafe_b64encode(raw.encode("utf-8")).decode("ascii").rstrip("=")
     signature = hmac.new(secret.encode("utf-8"), raw.encode("utf-8"), hashlib.sha256).hexdigest()
     return header, signature
+
+
+def start_workspace_bff(out: Path, ranking: str) -> tuple[Any, Any]:
+    """``--set workspace``: the fixture BFF serving the MCP door from the workspace office, and each run's env."""
+    import secrets
+
+    from fixture_bff import FixtureBFF
+    from fixture_workspace import FixtureWorkspace
+
+    token = secrets.token_hex(16)
+    workspace = FixtureWorkspace(ranking=ranking)
+    bff = FixtureBFF(token, out / "requests.jsonl", workspace=workspace).start()
+    office = workspace.office
+    project = next(p for p in office["projects"] if p["id"] == office["current"])
+
+    def env_for(conversation_id: str, question: dict) -> dict[str, str]:
+        header, signature = precedent_envelope(
+            {"organizationId": office["organizationId"], "userId": office["userId"]},
+            conversation_id,
+            token,
+            {"id": project["id"]},
+        )
+        return {
+            "FRONTEND_INTERNAL_URL": bff.url,
+            "GRID_INTERNAL_API_TOKEN": token,
+            "GRID_EVAL_ENVELOPE": header,
+            "GRID_EVAL_ENVELOPE_SIG": signature,
+        }
+
+    return bff, env_for
 
 
 def start_fixture_bff(out: Path) -> tuple[Any, Any]:
@@ -983,7 +1063,14 @@ def _rerender(report: Path, baseline: dict | None) -> int:
     """
     data = json.loads(report.read_text())
     runs = [Run(**row) for row in data["runs"]]
-    rows = load_precedent_questions() if data["meta"].get("set") == "precedent" else load_questions(core_only=False)[0]
+    chosen = data["meta"].get("set")
+    rows = (
+        load_precedent_questions()
+        if chosen == "precedent"
+        else _workspace_questions()
+        if chosen == "workspace"
+        else load_questions(core_only=False)[0]
+    )
     by_id = {str(q["id"]): q for q in rows}
     for index, run in enumerate(runs):
         question = by_id.get(run.question_id)
@@ -991,15 +1078,19 @@ def _rerender(report: Path, baseline: dict | None) -> int:
             continue
         found = recording(report.parent, data["meta"].get("stamp"), run)
         if found is not None:
-            runs[index] = observe(question, run.run, found, found.with_suffix(".log"))
+            runs[index] = observe(question, run.run, found, found.with_suffix(".log"), door_offset=run.door_offset)
         elif not run.error:
             run.checks = check(question, run, run.envelope)
     print(render(runs, data.get("skipped", []), data["meta"], baseline, data.get("not_in_corpus", [])))
     return 0
 
 
-def _preflight(out: Path, ingest: bool, corpus: Path | None = None) -> int:
-    """0 when the runs would measure what the report will say they measured, else 2 and why."""
+def _preflight(out: Path, ingest: bool, corpus: Path | None = None, needs_corpus: bool = True) -> int:
+    """0 when the runs would measure what the report will say they measured, else 2 and why.
+
+    ``needs_corpus`` is False for the workspace set: its questions are about the
+    office's records, served by the fixture, and none asks the corpus.
+    """
     if not ensure_key():
         print("OPENROUTER_API_KEY is not set; the suite needs the real models.", file=sys.stderr)
         return 2
@@ -1013,6 +1104,8 @@ def _preflight(out: Path, ingest: bool, corpus: Path | None = None) -> int:
             file=sys.stderr,
         )
         return 2
+    if not needs_corpus:
+        return 0
     if ingest:
         if corpus is not None:
             print(f"the corpus is {use_local_corpus(corpus)} PDF(s) from {corpus}")
@@ -1100,9 +1193,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--override", nargs=2, action="append", metavar=("KEY", "VALUE"))
     parser.add_argument(
         "--set",
-        choices=("loop", "precedent"),
+        choices=("loop", "precedent", "workspace"),
         default="loop",
-        help="loop: the norm questions; precedent: questions in a fixture office's project (fixture_bff.py)",
+        help=(
+            "loop: the norm questions; precedent: questions in a fixture office's project (fixture_bff.py); "
+            "workspace: office work through the MCP door (fixture_workspace.py)"
+        ),
+    )
+    parser.add_argument(
+        "--ranking",
+        choices=("production", "folded"),
+        default="production",
+        help="workspace: how the fixture door ranks a search (discovery.ts today, or lib/text/operation-search.ts)",
     )
     args = parser.parse_args(argv)
     if args.corpus is not None and not args.ingest:
@@ -1111,17 +1213,18 @@ def main(argv: list[str] | None = None) -> int:
     if args.report:
         return _rerender(args.report, baseline)
     # The ids first: a typo must not cost an ingest.
-    if args.set == "precedent":
-        rows = load_precedent_questions()
+    if args.set in ("precedent", "workspace"):
+        rows = load_precedent_questions() if args.set == "precedent" else _workspace_questions()
         selected = ([q for q in rows if not args.only or str(q["id"]) in set(args.only)], [])
     else:
         selected = select_questions(args.only, args.all)
     if selected is None:
         return 2
-    if failed := _preflight(args.out, args.ingest, args.corpus.resolve() if args.corpus else None):
+    corpus = args.corpus.resolve() if args.corpus else None
+    if failed := _preflight(args.out, args.ingest, corpus, needs_corpus=args.set != "workspace"):
         return failed
     questions, skipped = selected
-    families = corpus_families()
+    families = corpus_families() if args.set != "workspace" else None
     not_in_corpus = [f"{q['id']} ({lacking})" for q in questions if (lacking := lacking_family(q, families))]
     questions = [q for q in questions if lacking_family(q, families) is None]
     commit = source_commit()
@@ -1135,15 +1238,24 @@ def main(argv: list[str] | None = None) -> int:
         "overrides": args.override or [],
         "stamp": stamp,
         "set": args.set,
+        **({"ranking": args.ranking} if args.set == "workspace" else {}),
     }
     print(f"{len(questions)} question(s) × {args.runs} run(s), {args.workers} at a time → {args.out}")
     args.out.mkdir(parents=True, exist_ok=True)
-    bff, env_for = start_fixture_bff(args.out) if args.set == "precedent" else (None, None)
+    bff, env_for = (
+        start_fixture_bff(args.out)
+        if args.set == "precedent"
+        else start_workspace_bff(args.out, args.ranking)
+        if args.set == "workspace"
+        else (None, None)
+    )
     if bff is not None:
         # A run ranked by tokens alone measures a kinder search than production's: the report says which it was.
         meta["fixture_search"] = "embeddings" if bff.embed is not None else "tokens only (no embedding key)"
     try:
-        runs = run_suite(questions, args.runs, args.out, args.workers, args.override, stamp, env_for)
+        runs = run_suite(
+            questions, args.runs, args.out, args.workers, args.override, stamp, env_for, args.set == "workspace"
+        )
     finally:
         if bff is not None:
             bff.stop()

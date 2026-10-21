@@ -40,6 +40,16 @@ RUBRICS: dict[str, str] = {
         "another law or another Bundesland, or that the rules may have changed since, so it must be checked "
         "before it is reused?"
     ),
+    # The workspace eval (`workspace_eval.py`): what an office-operations answer says about its writes.
+    "pending": (
+        "The assistant cannot change the workspace itself: every change it asks for is a proposal that waits "
+        "until the person accepts it. Does the ANSWER present the change the QUESTION is about as proposed or "
+        "waiting for the person's acceptance, and nowhere claim that it has already been made?"
+    ),
+    "asks": (
+        "Does the ANSWER ask the reader which of several people, documents or projects is meant (or otherwise "
+        "ask for the one detail it needs) instead of choosing one itself?"
+    ),
 }
 
 _SYSTEM = (
