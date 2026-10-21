@@ -172,8 +172,10 @@ resource of its own (RFC 8707): its metadata is at
 `/.well-known/oauth-protected-resource/api/a2a` (RFC 9728), and its 401
 challenge points there. Each door accepts a token issued for either resource
 (`acceptedAudiences` in `lib/agent-api/mcp-config.ts`), because both are this
-server and act as the same person with the same rights; a token for any other
-audience is refused. The agent card names the OAuth scheme (authorization code
+server and act as the same person with the same rights, each spelled with or
+without a trailing slash; a token for any other audience is refused. The
+verified token's `AuthInfo.resource` is the audience it names, not the door it
+was sent to. The agent card names the OAuth scheme (authorization code
 with PKCE at AuthKit) and tells the client to ask for the token for `/api/a2a`.
 WorkOS must know `/api/a2a` as a resource indicator for it to issue such a
 token (`docs/architecture/agent-surface.md`, connecting a client).

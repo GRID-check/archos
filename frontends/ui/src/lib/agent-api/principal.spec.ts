@@ -22,7 +22,14 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { FRESH_MEMBERSHIP_TTL_MS } from '@/lib/authz/project-membership'
 import { buildGridRequestContextEnvelope, GRID_HEADER_NAMES } from '@/lib/request-context'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
-import { ANSWER_MESSAGE_HEADER, type AgentPrincipal, type AuthChallenge, isChallenge, resolvePrincipal } from './principal'
+import {
+  ANSWER_MESSAGE_HEADER,
+  type AgentPrincipal,
+  type AuthChallenge,
+  isChallenge,
+  resolvePrincipal,
+  tokenVerifier,
+} from './principal'
 
 const DOMAIN = 'auth.piloti.test'
 const ISSUER = `https://${DOMAIN}`
@@ -137,6 +144,20 @@ describe('external agent (bearer token)', () => {
     expect(isChallenge(await resolvePrincipal(bearer(forA2a), { jwks }))).toBe(false)
     expect(isChallenge(await resolvePrincipal(bearerAt(A2A_RESOURCE, forA2a), { jwks }))).toBe(false)
     expect(isChallenge(await resolvePrincipal(bearerAt(A2A_RESOURCE, await token()), { jwks }))).toBe(false)
+  })
+
+  it('takes either door’s audience spelled with a trailing slash', async () => {
+    for (const aud of [`${A2A_RESOURCE}/`, `${RESOURCE}/`]) {
+      const jwt = await token({}, { aud })
+      expect(isChallenge(await resolvePrincipal(bearer(jwt), { jwks })), aud).toBe(false)
+      expect(isChallenge(await resolvePrincipal(bearerAt(A2A_RESOURCE, jwt), { jwks })), aud).toBe(false)
+    }
+  })
+
+  it('names the audience the token carries as its resource, not the door it was sent to', async () => {
+    const verifier = tokenVerifier(DOMAIN, ISSUER, { jwks })
+    expect((await verifier.verifyAccessToken(await token({}, { aud: A2A_RESOURCE }))).resource?.href).toBe(A2A_RESOURCE)
+    expect((await verifier.verifyAccessToken(await token())).resource?.href).toBe(RESOURCE)
   })
 
   it('refuses a foreign audience on the A2A door too, and points it at the A2A door’s metadata', async () => {

@@ -574,7 +574,9 @@ routes through `callOperation` as the person, so their gate is the gate. Its
 token's audience is `/api/a2a` or the MCP door's (`acceptedAudiences` in
 `mcp-config.ts`): two resources of this server (RFC 8707), each with its own
 protected-resource metadata (`/.well-known/oauth-protected-resource/api/mcp` and
-`…/api/a2a`, RFC 9728). Any other audience is refused.
+`…/api/a2a`, RFC 9728), each accepted with or without a trailing slash. Any
+other audience is refused. The audience check is `jwtVerify`'s; the verified
+token's `AuthInfo.resource` is the audience it names.
 
 ## Connecting a client
 
