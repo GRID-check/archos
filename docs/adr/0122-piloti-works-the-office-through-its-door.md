@@ -21,9 +21,11 @@ search that split words at their umlauts.
 
 Measured on 21 October 2026 with the workspace set introduced here (15 rows,
 2 runs each, the production search, the boot model `gpt-6-luna` at medium
-effort): **3 of 30 runs** did everything the row asked; **0 of 14** expected
-proposals were filed; **32 of 86** searches found nothing; a run took a median
-of **5.5 rounds** and **195k input tokens**. Typical turn: four German searches
+effort): **6 of 30 runs** did everything the row asked; of 14 expected writes
+**none** was proposed through the workspace (3 went through the native file
+tool, which the set accepts for this project's files); **32 of 86** searches
+found nothing; a run took a median of **5.5 rounds**, **195k input tokens** and
+**30 s**. Typical turn: four German searches
 for „Projektmitglieder anzeigen", then `report-missing-capability`, then
 „diese Funktion ist nicht verfügbar". The same German queries through the
 server's own ranking (`workspace-eval.fixture.spec.ts`) return the intended
@@ -108,8 +110,15 @@ judged against a baseline that now exists.
 
 ## More Information
 
-**Measured after** (same set, same model, 2 runs each): see the table in the
-pull request and `docs/contributing/testing-and-verification.md#the-workspace-set`.
+**Measured after: not yet.** The after run on 21 October 2026 failed on every
+turn with OpenRouter 402 (the account's credits were spent: 280.05 of 280), so
+no after number exists. One smoke run of `ws-two-writes-de` on the changed code
+before that showed the shape change (every query English, every search found
+operations, the WORKSPACE block in the request) and also the next defect it
+fixed in the prompt: a wrong `domain` hid `project-folder-create`, and a call
+went out with an empty `input`. Before this record is accepted, run
+`task be:eval:answer-suite -- --set workspace --baseline <before>/results.json`
+twice, `--ranking production` and `--ranking folded`, and write the numbers here.
 
 **Deferred, each with what it needs:**
 
