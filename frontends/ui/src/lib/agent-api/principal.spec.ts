@@ -27,6 +27,7 @@ import { ANSWER_MESSAGE_HEADER, type AgentPrincipal, type AuthChallenge, isChall
 const DOMAIN = 'auth.piloti.test'
 const ISSUER = `https://${DOMAIN}`
 const RESOURCE = 'https://app.piloti.test/api/mcp'
+const A2A_RESOURCE = 'https://app.piloti.test/api/a2a'
 const SECRET = 'internal-token-for-tests' // pragma: allowlist secret
 const KID = 'test-key'
 
@@ -62,8 +63,9 @@ async function token(claims: Record<string, unknown> = {}, options: { aud?: stri
   return jwt.sign(privateKey)
 }
 
-const bearer = (jwt: string) =>
-  new Request(RESOURCE, { method: 'POST', headers: { authorization: `Bearer ${jwt}` } })
+const bearerAt = (url: string, jwt: string) =>
+  new Request(url, { method: 'POST', headers: { authorization: `Bearer ${jwt}` } })
+const bearer = (jwt: string) => bearerAt(RESOURCE, jwt)
 
 function challengeOf(result: AgentPrincipal | AuthChallenge): AuthChallenge {
   if (!isChallenge(result)) throw new Error('expected a challenge')
@@ -127,6 +129,24 @@ describe('external agent (bearer token)', () => {
       await resolvePrincipal(bearer(await token({}, { aud: 'https://other.example/api/mcp' })), { jwks }),
     )
     expect(response.status).toBe(401)
+    expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
+  })
+
+  it('takes a token for the A2A door on either door: both are this server’s resources (ADR-0123)', async () => {
+    const forA2a = await token({}, { aud: A2A_RESOURCE })
+    expect(isChallenge(await resolvePrincipal(bearer(forA2a), { jwks }))).toBe(false)
+    expect(isChallenge(await resolvePrincipal(bearerAt(A2A_RESOURCE, forA2a), { jwks }))).toBe(false)
+    expect(isChallenge(await resolvePrincipal(bearerAt(A2A_RESOURCE, await token()), { jwks }))).toBe(false)
+  })
+
+  it('refuses a foreign audience on the A2A door too, and points it at the A2A door’s metadata', async () => {
+    for (const aud of ['https://other.example/api/a2a', 'https://other.example/api/mcp', 'https://app.piloti.test/api/other']) {
+      const { response } = challengeOf(await resolvePrincipal(bearerAt(A2A_RESOURCE, await token({}, { aud })), { jwks }))
+      expect(response.status, aud).toBe(401)
+      expect(response.headers.get('www-authenticate')).toContain(
+        'resource_metadata="https://app.piloti.test/.well-known/oauth-protected-resource/api/a2a"',
+      )
+    }
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
   })
 

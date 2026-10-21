@@ -550,8 +550,8 @@ gates it, and the turn's budget pays for it.
 
 **The recursion lock.** In-product Piloti only proposes writes, and
 `lib/proposals/operation-applier.ts` neither files nor applies an ask, so no
-turn asks Piloti again. Piloti still sees the three operations in its catalog;
-hiding them belongs in `canSee` (`policy.ts`).
+turn asks Piloti again. Piloti does not see the three operations either
+(`canSee` in `policy.ts`), so it cannot name one or run `piloti-ask-get`.
 
 **The A2A door.** `POST /api/a2a` serves the same asks to agents that speak A2A
 (1.0, and 0.3 without an `A2A-Version` header), through the official SDK
@@ -559,7 +559,10 @@ hiding them belongs in `canSee` (`policy.ts`).
 authenticates with `resolvePrincipal` like this server, refuses Piloti's own
 credential, charges `mcp-request`, and answers every method by calling the ask
 routes through `callOperation` as the person, so their gate is the gate. Its
-token must carry this server's audience (`GRID_MCP_RESOURCE_URL`).
+token's audience is `/api/a2a` or the MCP door's (`acceptedAudiences` in
+`mcp-config.ts`): two resources of this server (RFC 8707), each with its own
+protected-resource metadata (`/.well-known/oauth-protected-resource/api/mcp` and
+`…/api/a2a`, RFC 9728). Any other audience is refused.
 
 ## Connecting a client
 
@@ -612,8 +615,9 @@ applied by the deploy.
    clients register. Prefer it.
 3. **Enable Dynamic Client Registration (DCR)** for older clients that predate
    CIMD.
-4. **Register the MCP URL as a Resource Indicator** (RFC 8707):
-   `https://<app-host>/api/mcp`. Tokens are audience-bound to it, and the server
+4. **Register the MCP URL and the A2A URL as Resource Indicators** (RFC 8707):
+   `https://<app-host>/api/mcp` and `https://<app-host>/api/a2a`. Tokens are
+   audience-bound to one of them; either door takes a token for either, and
    rejects a token that names another audience.
 5. **Create the feature flag `agent-mcp`**, off by default, in the same
    environment. Turn it on per organization.

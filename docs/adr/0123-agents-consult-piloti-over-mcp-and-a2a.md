@@ -94,10 +94,9 @@ because `ask_user` refuses on a headless turn.
   turn an ask started can ask Piloti again. The model reads the refusal.
 * The A2A door refuses Piloti's own credential (the internal token with the
   turn's envelope) with 403.
-* Not covered yet: in-product Piloti still SEES the three operations, and may
-  run `piloti-ask-get` (a read of the person's own asks). Hiding them is a line
-  in `canSee` (`lib/agent-api/policy.ts`), left to the change that owns that
-  module.
+* In-product Piloti does not see the three operations (`canSee` in
+  `lib/agent-api/policy.ts`), so it cannot name one, nor run `piloti-ask-get`,
+  which as a read would otherwise run without a proposal.
 
 ### Budget and limits
 
@@ -147,14 +146,17 @@ person. The route's `authz`, its rate limit, its body schema, the switch and the
 budget apply to an A2A client exactly as to an MCP client.
 
 **Authentication.** The A2A door authenticates exactly as `/api/mcp`
-(`resolvePrincipal`): a WorkOS AuthKit bearer token verified for the agent
-door's audience (`GRID_MCP_RESOURCE_URL`, RFC 8707), the organization's
-`agent-mcp` flag, the person's live membership. The agent card names that OAuth
-scheme (authorization code with PKCE at AuthKit) and tells the client to ask for
-the token for the agent door's resource. A2A clients that cannot send a
-`resource` parameter will get a token with another audience and be refused;
-accepting `/api/a2a` as a second audience is a change in `principal.ts`, left to
-the change that owns that module.
+(`resolvePrincipal`): a WorkOS AuthKit bearer token, the organization's
+`agent-mcp` flag, the person's live membership. `/api/a2a` is a protected
+resource of its own (RFC 8707): its metadata is at
+`/.well-known/oauth-protected-resource/api/a2a` (RFC 9728), and its 401
+challenge points there. Each door accepts a token issued for either resource
+(`acceptedAudiences` in `lib/agent-api/mcp-config.ts`), because both are this
+server and act as the same person with the same rights; a token for any other
+audience is refused. The agent card names the OAuth scheme (authorization code
+with PKCE at AuthKit) and tells the client to ask for the token for `/api/a2a`.
+WorkOS must know `/api/a2a` as a resource indicator for it to issue such a
+token (`docs/architecture/agent-surface.md`, connecting a client).
 
 **Streaming** comes cheap with the SDK's transport, so it is on: the stream opens
 with the task, sends a status update for each change of state, then the
@@ -193,8 +195,8 @@ its own. The MCP door's calls are `agent_operation_called` in PostHog
   every 750 ms while they wait.
 * Bad, because an ask whose turn never reports its end (a lost outcome notice)
   stays `working` until the agent cancels it. There is no reaper yet.
-* Bad, because the A2A door accepts only tokens for the agent door's audience,
-  which some A2A clients cannot request.
+* Bad, because an A2A client that cannot send a `resource` parameter at all
+  gets a token with no audience of ours and is refused.
 * Neutral: legacy 0.3 clients that read the agent card in its 0.3 shape find a
   1.0 card; the SDK's card translation is internal to its express router.
 

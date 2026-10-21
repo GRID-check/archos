@@ -8,6 +8,7 @@
  */
 
 import { beforeEach, describe, expect, it } from 'vitest'
+import { GET as a2a } from './api/a2a/route'
 import { GET as pathInserted } from './api/mcp/route'
 import { GET } from './route'
 
@@ -31,6 +32,18 @@ describe('oauth-protected-resource', () => {
       })
     })
   }
+
+  it('serves the A2A door its own document, naming its own resource (ADR-0123)', async () => {
+    const response = a2a()
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      resource: 'https://app.piloti.test/api/a2a',
+      authorization_servers: ['https://auth.piloti.test'],
+      scopes_supported: ['openid', 'profile', 'email', 'offline_access'],
+      resource_name: 'Piloti',
+      bearer_methods_supported: ['header'],
+    })
+  })
 
   it('takes the resource from the pinned app origin when none is set', async () => {
     delete process.env.GRID_MCP_RESOURCE_URL

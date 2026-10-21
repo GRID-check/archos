@@ -118,7 +118,8 @@ Agents built on the Agent2Agent protocol (A2A) reach the same thing without MCP.
 Piloti's agent card is at `https://<your Piloti address>/.well-known/agent-card.json`
 and the endpoint is `https://<your Piloti address>/api/a2a` (A2A 1.0, and 0.3 for
 older clients). Sign-in is the same as for MCP: the agent signs in with your
-Piloti account and asks for the token for `https://<your Piloti address>/api/mcp`.
+Piloti account and asks for the token for `https://<your Piloti address>/api/a2a`
+(a token for `…/api/mcp` works too).
 A task is one question to Piloti; its `contextId` is the conversation, so a
 follow-up sends it back; the answer is an artifact, and so is each document
 Piloti filed. Agent access (`agent-mcp`) and `piloti-ask` must both be on.

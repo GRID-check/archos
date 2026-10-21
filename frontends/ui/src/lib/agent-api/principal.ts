@@ -42,7 +42,7 @@ import { FEATURE_FLAGS, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { isUuid } from '@/lib/ids'
 import { INTERNAL_TOKEN_HEADER, requireInternalToken } from '@/lib/internal-auth'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
-import { authkitDomain, authkitIssuer, mcpResourceUrl } from './mcp-config'
+import { acceptedAudiences, authkitDomain, authkitIssuer, doorOf, doorResourceUrl } from './mcp-config'
 import { SENSITIVITIES, type Sensitivity } from './operation'
 
 /**
@@ -135,15 +135,18 @@ function stringClaim(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
-/** Verifies an AuthKit access token as an MCP Auth token for `resource`. */
+/**
+ * Verifies an AuthKit access token as an MCP Auth token for `resource`, the door
+ * it was sent to. Its `aud` may name either door (`acceptedAudiences`): both are
+ * this server's resources and act with the same rights.
+ */
 function tokenVerifier(
   domain: string,
   issuer: string,
   resource: URL,
   deps: PrincipalDeps,
 ): OAuthTokenVerifier {
-  // A client may spell the resource with or without a trailing slash.
-  const audiences = [resource.href, resource.href.replace(/\/$/, '')]
+  const audiences = acceptedAudiences()
   return {
     async verifyAccessToken(token): Promise<AuthInfo> {
       try {
@@ -174,7 +177,7 @@ function tokenVerifier(
 async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise<AgentPrincipal | AuthChallenge> {
   const domain = authkitDomain()
   const issuer = authkitIssuer()
-  const resource = mcpResourceUrl()
+  const resource = doorResourceUrl(doorOf(request))
   if (!domain || !issuer || !resource) {
     return refuse(
       503,
