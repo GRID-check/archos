@@ -31,8 +31,6 @@ import 'server-only'
  * audience is read once per request and never outlives it.
  */
 
-import { getDictionary } from '@/i18n/dictionaries'
-import { AGENT_REFUSAL_LOCALE } from '@/lib/conversations/restricted-egress'
 import { type ConversationReach, conversationReachOf, recordSoloWorkspaceRead } from './conversation-audience'
 import type { AgentDomain } from './operation'
 import type { AgentPrincipal } from './principal'
@@ -53,9 +51,21 @@ export const LINK_BEARING_OPERATIONS: ReadonlySet<string> = new Set([
   'bim-model-source-get',
 ])
 
+/**
+ * The sentence the model reads when a read is refused in a shared conversation. English, whatever the
+ * person's locale: an agent reads it, and anything an agent reads is English (AGENTS.md, "Industry
+ * standard first"). The model words it for the reader in their own language. It used to be the
+ * German i18n entry `errors.agentSurface.sharedConversationRead`, quoted to the reader verbatim;
+ * no person reads this text directly, so it is not copy and has no dictionary entry.
+ */
+export const SHARED_CONVERSATION_READ_REFUSAL =
+  'This conversation is shared, so Piloti reads nothing from the workspace in it: the answer would be visible to ' +
+  'everyone who reads the conversation, including people who may not open that content. Tell the person to open it ' +
+  'themselves in Piloti, or to ask in a conversation that is theirs alone.'
+
 /** The sentence the model relays when a read is refused in a shared conversation. */
 export function sharedConversationReadRefusal(): string {
-  return getDictionary(AGENT_REFUSAL_LOCALE).errors.agentSurface.sharedConversationRead
+  return SHARED_CONVERSATION_READ_REFUSAL
 }
 
 export interface ReadGate {

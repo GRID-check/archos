@@ -555,7 +555,7 @@ export const collaboration = {
       },
       // The row lands on the run itself (its block in the thread, else the
       // task), where the result and the reason are.
-      jobCompleted: {
+      taskRunCompleted: {
         title: 'Piloti finished “{subject}”',
         body: 'Open it to see the result.',
       },
@@ -568,13 +568,13 @@ export const collaboration = {
         title: 'The import of “{subject}” stopped',
         body: 'What was imported until then stays in the project. The import list under Files gives the reason.',
       },
-      jobFailed: {
+      taskRunFailed: {
         title: 'Piloti could not finish “{subject}”',
         body: 'Open it to see what went wrong.',
       },
       // A run stopped to ask its requester something (ADR-0062, `wartet`). The
       // body says where the answer goes, because the run resumes nowhere else.
-      jobWaiting: {
+      taskRunWaiting: {
         title: 'Piloti has a question about “{subject}”',
         body: 'Answer it in the thread and Piloti carries on.',
       },

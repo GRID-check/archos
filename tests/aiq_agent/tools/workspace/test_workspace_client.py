@@ -131,14 +131,14 @@ async def test_concurrent_turns_never_swap_identities(monkeypatch, sent) -> None
     assert by_query == {f"query of {u}": turn_of(u)["x-grid-request-context"] for u in ("anna", "ben", "cleo")}
 
 
-async def test_the_request_is_one_stateless_tools_call_in_discovery_mode(monkeypatch, sent) -> None:
+async def test_the_request_is_one_stateless_tools_call_in_search_mode(monkeypatch, sent) -> None:
     bind(monkeypatch, turn_of("anna"))
     await workspace.run_call("project-get", {"params": {"id": "p1"}})
 
     (request,) = sent
     assert request.full_url == "http://bff.test/api/mcp"
     assert header(request, "X-grid-internal-token") == SECRET
-    assert header(request, "X-piloti-mcp-mode") == "discovery"
+    assert header(request, "X-piloti-mcp-mode") == "search"
     assert json.loads(request.data) == {
         "jsonrpc": "2.0",
         "id": 1,
@@ -177,7 +177,7 @@ async def test_the_four_functions_map_to_the_servers_four_tools(monkeypatch, sen
     await workspace.run_report_missing("cannot do b")
 
     names = [json.loads(r.data)["params"]["name"] for r in sent]
-    assert names == ["search-operations", "describe-operation", "call-operation", "report-missing-capability"]
+    assert names == ["search-operations", "describe-operation", "call-operation", "report-missing-operation"]
     assert json.loads(sent[0].data)["params"]["arguments"] == {"query": "x", "limit": 3, "domain": "projects"}
 
 
@@ -187,7 +187,7 @@ async def test_without_a_full_envelope_nothing_is_sent(monkeypatch, sent, header
     text = await workspace.run_call("project-delete", {})
 
     assert sent == []
-    assert "Sitzungsnachweis" in text
+    assert "no signed request context" in text
 
 
 async def test_a_tool_level_error_is_relayed_as_the_servers_lesson(monkeypatch, sent) -> None:
@@ -202,7 +202,7 @@ async def test_a_tool_level_error_is_relayed_as_the_servers_lesson(monkeypatch, 
 
     text = await workspace.run_describe("proj-get")
 
-    assert text == "Fehler: Unknown operation `proj-get`. Did you mean `project-get`?"
+    assert text == "Error: Unknown operation `proj-get`. Did you mean `project-get`?"
 
 
 async def test_a_refusal_from_the_server_is_worded_with_its_own_sentence(monkeypatch, sent) -> None:
@@ -216,7 +216,7 @@ async def test_a_refusal_from_the_server_is_worded_with_its_own_sentence(monkeyp
     text = await workspace.run_call("project-get", {})
 
     assert "(401): request context signature invalid" in text
-    assert "nichts geändert" in text
+    assert "Nothing was changed" in text
 
 
 async def test_an_unreachable_server_is_a_sentence_not_a_crash(monkeypatch, sent) -> None:
@@ -245,7 +245,7 @@ def test_a_jsonrpc_error_is_a_workspace_error() -> None:
 def test_a_long_answer_is_cut_and_says_how_to_narrow() -> None:
     message = json.loads(result("x" * (client.MAX_RESULT_CHARS + 10)))
 
-    assert "gekürzt" in client._result_text(message)
+    assert "Truncated" in client._result_text(message)
 
 
 def test_the_group_exposes_exactly_the_four_named_functions() -> None:

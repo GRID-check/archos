@@ -19,7 +19,7 @@ vi.mock('./backend-operations', async (importOriginal) => ({
   callBackendOperation: vi.fn(),
 }))
 vi.mock('./operation-proposals', () => ({ proposeOperation: vi.fn() }))
-vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordCapabilityMissing: vi.fn() }))
+vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationMissing: vi.fn() }))
 
 import { callBackendOperation } from './backend-operations'
 import { callOperation, parseOperationInput } from './dispatch'
@@ -28,12 +28,12 @@ import {
   MAX_RESULT_CHARS,
   callOperationTool,
   describeOperation,
-  reportMissingCapability,
+  reportMissingOperation,
   searchOperations,
 } from './discovery'
 import { proposeOperation } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
-import { recordCapabilityMissing, recordOperationCalled } from './telemetry'
+import { recordOperationCalled, recordOperationMissing } from './telemetry'
 
 const session = {
   userId: 'user_1',
@@ -46,9 +46,9 @@ const session = {
   permissions: [],
   featureFlags: null,
 }
-const person: AgentPrincipal = { kind: 'person', session, clientId: 'c', scopes: [] }
-const piloti: AgentPrincipal = { kind: 'piloti', session, clientId: null, scopes: [] }
-const ctx = (principal: AgentPrincipal) => ({ principal, mode: 'discovery' as const })
+const person: AgentPrincipal = { actor: 'external_agent', session, clientId: 'c', scopes: [] }
+const piloti: AgentPrincipal = { actor: 'piloti', session, clientId: null, scopes: [] }
+const ctx = (principal: AgentPrincipal) => ({ principal, mode: 'search' as const })
 
 interface Structured extends Record<string, unknown> {
   operations: { name: string }[]
@@ -111,7 +111,7 @@ describe('search-operations', () => {
   it('says what to do when nothing matches', () => {
     const result = searchOperations(ctx(person), { query: 'zzz-qqxv' })
     expect(structured(result).total).toBe(0)
-    expect(structured(result).next).toMatch(/report-missing-capability/)
+    expect(structured(result).next).toMatch(/report-missing-operation/)
   })
 
   it('respects the limit', () => {
@@ -167,6 +167,7 @@ describe('call-operation', () => {
       expect.objectContaining({ name: 'project-member-add' }),
       { params: { id: 'p1' }, body: { userId: 'u2', role: 'viewer' } },
       session,
+      'agent',
     )
     expect(result.isError).toBeUndefined()
     expect(structured(result)).toEqual({ projects: [] })
@@ -262,6 +263,7 @@ describe('call-operation', () => {
       expect.objectContaining({ name: 'project-member-add' }),
       expect.objectContaining({ ifMatch: '"3"' }),
       session,
+      'agent',
     )
   })
 
@@ -367,16 +369,16 @@ describe('call-operation with a file in the answer', () => {
   })
 })
 
-describe('report-missing-capability', () => {
+describe('report-missing-operation', () => {
   it('answers recorded and sends only the length of the description', () => {
     const description = 'Export the Bauakt as a ZIP for Anna Muster'
-    const result = reportMissingCapability(ctx(person), { description })
+    const result = reportMissingOperation(ctx(person), { description })
     expect(structured(result)).toEqual({ status: 'recorded' })
-    expect(recordCapabilityMissing).toHaveBeenCalledWith(expect.anything(), description.length)
+    expect(recordOperationMissing).toHaveBeenCalledWith(expect.anything(), description.length)
   })
 
   it('refuses an empty description', () => {
-    expect(reportMissingCapability(ctx(person), { description: '' }).isError).toBe(true)
+    expect(reportMissingOperation(ctx(person), { description: '' }).isError).toBe(true)
   })
 })
 

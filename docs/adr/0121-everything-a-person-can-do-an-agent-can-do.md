@@ -181,15 +181,16 @@ keys (list, connect, revoke, verify, mode) and the two audit-log portal links as
 gate as the person. Until the scope is enforced in WorkOS no external client sees
 any of them, whatever the organization switched on.
 
-### Discovery and tools mode
+### Search and tools mode
 
 MCP has no standard tool search. With about 300 operations, listing them all in
 `tools/list` costs a client tens of thousands of tokens on every conversation.
 PostHog's `exec` and Cloudflare's search-and-execute are the industry answer.
 The server has two modes:
 
-- `discovery` (default): four meta-tools, `search-operations`,
-  `describe-operation`, `call-operation` and `report-missing-capability`. The
+- `search` (default; `discovery` until October 2026, still accepted): four
+  meta-tools, `search-operations`, `describe-operation`, `call-operation` and
+  `report-missing-operation` (`report-missing-capability` until then). The
   agent searches the catalog, reads one operation's schema, then calls it. The
   annotations that `call-operation` cannot carry per operation are answered by
   `describe-operation` and enforced at the call.
@@ -249,7 +250,7 @@ Two moves that look like more of the same were weighed and refused:
 * Good, because one server serves Claude, Cursor, ChatGPT and Piloti, so a
   capability added for one is there for all.
 * Good, because the catalog's descriptions are the first place a missing
-  capability becomes visible: `agent_capability_missing` says what agents asked
+  capability becomes visible: `agent_operation_missing` says what agents asked
   for and could not do.
 * Bad, because in-process dispatch couples the MCP server to the Next route
   modules. A route that moves breaks its operation; the `load` check in the spec
@@ -299,9 +300,48 @@ the way the three consumers of ADR-0055 did.
 - `/api/mcp` charges `mcp-request` (`lib/limits/rules.js`) once per request;
   `app/api/mcp/route.spec.ts` holds it.
 - PostHog events, through the collector (ADR-0119): `agent_operation_called`
-  (operation, client, status) and `agent_capability_missing` (what an agent
+  (operation, client, status) and `agent_operation_missing` (what an agent
   tried to do and no operation covers).
 - Nothing enforces that a description is true. Review is the gate.
+
+## Follow-ups
+
+The October 2026 terminology pass made everything an agent reads English, with
+one word per concept and the standard's word where one exists (AGENTS.md,
+"Industry standard first"; the terms are in
+[`../glossary.md`](../glossary.md#agent-surface-and-standard-terms)). It renamed
+the operations (`job-*` to `task-*`, `run-*` to `task-run-*`, quarantine
+`release` to `allow`), the mode (`discovery` to `search`), the missing-operation
+tool and event, the principal's `kind: 'person' | 'piloti'` to RFC 8693's actor
+(`external_agent` | `piloti`, the person being the subject), and the inbox types
+`job.*` to `task_run.*` (migration 0175). Left for their own changes, each
+because it reaches persisted data or another wave's code:
+
+- **Run status on A2A's task states.** A task run's status is stored in four
+  vocabularies (the `task_runs` column, the run ledger, the run block, the
+  backend job store). Map them onto A2A's `submitted`, `working`,
+  `input-required`, `completed`, `failed`, `canceled` with one migration and one
+  mapping module, instead of a fifth translation.
+- **`?session=` to `?conversation=`** in the app's URLs and the BFF's query
+  parameters, with a redirect for one release: "session" is the auth session's
+  word.
+- **`AnswerKind` `handoff` to `escalation`**: the answer envelope's kind for a
+  question handed to deep research, persisted in stored answers and the
+  envelope schema.
+- **The `file_operation` proposal payload's `operation` field to `action`**: it
+  collides with the agent surface's "operation" and is stored in
+  `proposed_changes.payload`.
+- **`AGENT_REFUSAL_LOCALE` to English**: the internal routes Piloti's native
+  tools call still refuse in German, because two person-facing paths fall back to
+  that constant without naming their reader. Give each caller an explicit reader,
+  as the MCP dispatcher now has, then flip it. Part of the core-agent wave, with
+  Piloti's native tool descriptions and its prompt's `<auftraege_aus>` block.
+- **`/api/projects/[id]/jobs` to `…/tasks`**: not renamed, because
+  `/api/projects/[id]/tasks` already serves the project's task runs. Move the
+  runs to `…/task-runs` first, then the definitions to `…/tasks`.
+- **`/api/documents/[id]/quarantine/release` and `…/request-release`** to
+  `…/allow` and `…/request-allow`: the operations say "allow", the paths do not
+  yet.
 
 ## More Information
 

@@ -84,7 +84,7 @@ describe('external agent (bearer token)', () => {
     const result = await resolvePrincipal(bearer(await token()), { jwks })
 
     expect(result).toEqual({
-      kind: 'person',
+      actor: 'external_agent',
       session,
       clientId: 'client_claude',
       scopes: ['openid', 'profile'],
@@ -205,7 +205,7 @@ describe('Piloti in-product (internal token and envelope)', () => {
   it('resolves a verified envelope to Piloti, with its conversation and project', async () => {
     const result = await resolvePrincipal(piloti(envelope()), { jwks })
     expect(result).toEqual({
-      kind: 'piloti',
+      actor: 'piloti',
       session,
       clientId: null,
       scopes: [],
@@ -220,9 +220,9 @@ describe('Piloti in-product (internal token and envelope)', () => {
   it('reads the answer id the turn names, and ignores one that is not a uuid', async () => {
     const answer = '0b8f3c2e-5d1a-4c6b-9e7f-1a2b3c4d5e6f'
     const named = await resolvePrincipal(piloti({ ...envelope(), [ANSWER_MESSAGE_HEADER]: answer }), { jwks })
-    expect(named).toMatchObject({ kind: 'piloti', answerMessageId: answer })
+    expect(named).toMatchObject({ actor: 'piloti', answerMessageId: answer })
     const junk = await resolvePrincipal(piloti({ ...envelope(), [ANSWER_MESSAGE_HEADER]: 'drop table' }), { jwks })
-    expect(junk).toMatchObject({ kind: 'piloti', answerMessageId: null })
+    expect(junk).toMatchObject({ actor: 'piloti', answerMessageId: null })
   })
 
   it('refuses the service token alone', async () => {

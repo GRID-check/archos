@@ -14,7 +14,12 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+
+vi.mock('server-only', () => ({}))
+
+import type { AuthorizedSession } from '@/lib/auth/types'
+import { actingReaderIsAgent, currentActingSession, runAsActingSession } from './acting-session'
 
 const SRC = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
@@ -38,5 +43,17 @@ describe('the acting session', () => {
       .map((file) => relative(SRC, file).split('\\').join('/'))
       .filter((file) => !ALLOWED.has(file))
     expect(callers).toEqual([])
+  })
+
+  it('says whether an agent reads the answer, so the route words it in English', async () => {
+    const session = { userId: 'user_1' } as AuthorizedSession
+    expect(actingReaderIsAgent()).toBe(false)
+    await runAsActingSession(session, async () => {
+      expect(currentActingSession()).toBe(session)
+      expect(actingReaderIsAgent()).toBe(true)
+    }, 'agent')
+    // A person applying a proposal reads the route's words in their own language.
+    await runAsActingSession(session, async () => expect(actingReaderIsAgent()).toBe(false))
+    expect(currentActingSession()).toBeUndefined()
   })
 })

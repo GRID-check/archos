@@ -9,12 +9,20 @@ import 'server-only'
  * the catalog's. A call goes to the backend's `POST /v1/internal/tools/{name}`
  * (`frontends/aiq_api/src/aiq_api/routes/internal_tools.py`).
  *
- * Nothing is described twice. The tool's description and input schema are the
- * ones the chat model reads, generated from the Python functions into
- * `tests/fixtures/backend-tools.schema.json` (`scripts/generate_backend_tools_schema.py`,
- * held current by `tests/aiq_agent/common/test_backend_tools_schema.py`). This
- * file adds only what is the BFF's to say: the MCP name, the domain, and
- * whether the tool needs a project.
+ * The input schema is the one the chat model reads, generated from the Python
+ * functions into `tests/fixtures/backend-tools.schema.json`
+ * (`scripts/generate_backend_tools_schema.py`, held current by
+ * `tests/aiq_agent/common/test_backend_tools_schema.py`). The DESCRIPTION is
+ * this file's own, in English: the fixture's are Piloti's native tool
+ * descriptions, written for Piloti's prompt in a German office, with German
+ * terms, German example queries and Piloti's other tools (`surface_documents`,
+ * cards) that an outside agent does not have. Anything an agent reads is
+ * English, one word per concept (AGENTS.md, "Industry standard first"), so the
+ * agent surface layers its own words over the fixture instead of changing
+ * Piloti's tools, which the core-agent wave owns. The schema's property
+ * descriptions keep the fixture's text with {@link ENGLISH_GLOSSES} applied.
+ * `english-only.spec.ts` holds both to English. This file also says the MCP
+ * name, the domain, and whether the tool needs a project.
  *
  * Who is asking is decided here, and signed. The backend cannot decide project
  * access (ADR-0003, ADR-0084), so {@link callBackendOperation} builds the
@@ -56,7 +64,7 @@ export interface BackendOperation {
   readonly domain: Extract<AgentDomain, 'knowledge' | 'bim'>
   /** One line for `tools` and `search`. */
   readonly summary: string
-  /** The description the chat model reads, verbatim from the Python function. */
+  /** What an outside agent reads: this file's English description, not the Python function's. */
   readonly description: string
   /** The Python function's name: the path segment of the backend route. */
   readonly tool: string
@@ -80,6 +88,8 @@ interface Entry {
   readonly tool: string
   readonly domain: BackendOperation['domain']
   readonly summary: string
+  /** The English description an outside agent reads, written for this surface (see the module comment). */
+  readonly description: string
   readonly needsProject: boolean
   /** The tool reaches a public service outside the workspace. */
   readonly openWorld?: boolean
@@ -92,6 +102,20 @@ const ENTRIES: readonly Entry[] = [
     domain: 'knowledge',
     summary:
       'Search the project’s, the office’s and the building-law documents for quotable passages',
+    description:
+      'Search the stored documents for quotable passages: the shared OIB corpus (the Austrian building guidelines), ' +
+      'the project’s documents and the office shelf. The evidence tool: each hit is an excerpt with a citation key to quote verbatim. ' +
+      'Call it for any question that needs a passage from a stored document. Rewrite the question into a search query (topic, ' +
+      'jurisdiction, year); the documents are mostly German, so query in the documents’ language. Narrow with `file_name` (an ' +
+      'exact name from files-list), `doc_class` (a document type key such as `oib_guideline`), `title_contains` or `folder` (a ' +
+      'folder path; it covers everything below it). `match: "exact"` finds every passage that contains the query literally, ' +
+      'plus each matching file with its count and pages; use it for a number, a code, a name or to prove a term appears nowhere, ' +
+      'with several spellings separated by `|`. A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
+      'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
+      'Returns up to 16 excerpts across several documents, each with its source, citation key, document type, folder and page. ' +
+      'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
+      'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
+      'citation or a file name; an empty result says how to retry.',
     needsProject: true,
   },
   {
@@ -99,6 +123,16 @@ const ENTRIES: readonly Entry[] = [
     tool: 'read_passage',
     domain: 'knowledge',
     summary: 'Open one passage, page or outline of a named document',
+    description:
+      'Open a document you can already name. `document` alone returns its outline: the opening passage and a list of its ' +
+      'top-level clauses with their pages. `document` with `clause` (a clause number such as `3.5.2`, a table caption, or the ' +
+      'clause label a hit printed) or with `page` returns exactly that passage. A deterministic lookup, not a search. Pass ' +
+      '`document` exactly as files-list or a previous hit printed it (a file name or a display title). Call it when you know which ' +
+      'document and want to know what it covers, or when a hit or a cross-reference points at a clause you have not read. Pass ' +
+      '`conclusion`: one sentence on what you know and what you still need. Returns passages in document order, each with its ' +
+      'source, citation key (quote it verbatim), document type, clause and page; an outline is an index, not evidence. An unknown ' +
+      'name is refused with up to three close names to pass back exactly. When you do not know which document holds the answer, ' +
+      'call knowledge-search.',
     needsProject: true,
   },
   {
@@ -106,6 +140,17 @@ const ENTRIES: readonly Entry[] = [
     tool: 'list_files',
     domain: 'knowledge',
     summary: 'Browse the project’s and the office’s files by folder, name, type and date',
+    description:
+      'Browse the person’s own files as the Files pane shows them: which files exist, in which folder, of which document type, ' +
+      'uploaded when. A deterministic, paged listing. Call it when the question is which files there are, not what they say, and ' +
+      'first when you need an exact file name for passage-read or knowledge-search. No arguments: every file on the project, the ' +
+      'office shelf and the conversation’s own files, by folder, after an overview of the top-level folders. Narrow with `folder`, ' +
+      '`name_contains` (words that must all appear in the name or title), `doc_class`, `added_since` (YYYY-MM-DD), `sort: newest`, ' +
+      '`topic`, or `shelf` (project, office_shelf, session, or base for the shared OIB corpus); page with `offset`. ' +
+      '`revisions_of` (a file name) lists that document’s revisions, newest first, with index or date, upload date and what ' +
+      'changed; add `compare_to` (another revision’s file name, or `previous`) for what changed page by page. Returns one line per ' +
+      'file: exact name, title, folder, document type, topics, revision mark, upload date and a one-line summary. An index, not a ' +
+      'source: never cite it or answer what a file says from its summary. Copy file names exactly.',
     needsProject: true,
   },
   {
@@ -113,6 +158,13 @@ const ENTRIES: readonly Entry[] = [
     tool: 'view_knowledge_image',
     domain: 'knowledge',
     summary: 'See a page or a region of a stored document as an image',
+    description:
+      'See a stored document’s page or embedded image as an image you can inspect: a drawing, a section, a photo or a chart. ' +
+      '`file_name` is the name in a hit’s citation line (not the display title) and `page_number` its page. For a project or ' +
+      'office shelf document also pass the hit’s `collection`, so the stored bytes can be read. A PDF page comes whole; ' +
+      '`image_index` (from a hit that names an embedded image) returns that image alone at its own resolution, and ' +
+      '`region: [x, y, w, h]` (shares of the page, origin top left) only that box, sharper. At most 6 calls per turn. Returns an ' +
+      'image content block, or a sentence saying why it could not.',
     needsProject: true,
   },
   {
@@ -120,6 +172,23 @@ const ENTRIES: readonly Entry[] = [
     tool: 'ifc_query',
     domain: 'bim',
     summary: 'Query the properties, quantities and classification of a project’s building model',
+    description:
+      'Query the project’s IFC (BIM) model for exact facts the export states: element counts, rooms and their areas, storeys, ' +
+      'property values (fire rating, U-value, load-bearing), materials and classifications. Use it instead of knowledge-search when ' +
+      'the question is about this building rather than a regulation. `operation`: `overview` (start here), `health` (the ' +
+      'validation report: unassigned elements, rooms without area, missing property sets; read it before claiming coverage), ' +
+      '`types`, `properties` (the model’s own property vocabulary with values and counts; call it before filtering on a ' +
+      'property you have not seen), `elements`, `element` (one element by GlobalId), `schedule` (every room with storey, area and ' +
+      'volume, with totals), `takeoff` (one quantity summed per type, optionally by material), `profile` (project facts the model ' +
+      'implies, as proposals for a person to confirm), `compliance` (the OIB rule catalogue against the model: per requirement, ' +
+      'how many elements are met, not met or undecidable, and which property would decide it; pass `building_class` 1 to 5 and ' +
+      '`main_use`), `compliance-diff` and `compare` (against an older revision named by `compare_with`), and `aggregate` (count, ' +
+      'sum, avg, min or max, optionally grouped). `filters` is a JSON object (`ifcTypes`, `storeys`, `nameContains`, `material`, ' +
+      '`classification`, `properties` with operators eq, neq, contains, gt, gte, lt, lte, exists, missing); only elements, ' +
+      'aggregate and takeoff take it, and an unknown key is rejected. Storey names match exactly: copy them from `overview`. ' +
+      '`model_name` picks one model when the project has several. A compliance result is never a statement that the building ' +
+      'complies: it reads published values only. A missing value is a fact about the export, not the building. Report numbers and ' +
+      'caveat lines as returned; never recompute them.',
     needsProject: true,
   },
   {
@@ -128,6 +197,24 @@ const ENTRIES: readonly Entry[] = [
     domain: 'bim',
     summary:
       'Measure distances, areas, topology and spatial relations in a project’s building model',
+    description:
+      'Measure the project’s IFC (BIM) model: dimensions, distances, areas, clear heights and widths, and spatial relations, each ' +
+      'with how it was obtained. Use it when the file does not state the number and the geometry has to be read, or to check a ' +
+      'declared number another way; for counts and published values call ifc-query first. Call `operation: "briefing"` ' +
+      'first, once per model: it names the storeys, the property vocabulary this export used, and what this file cannot answer; ' +
+      'copy storey and property names from it. Then `find_elements` for GlobalIds, `element`, `relations`, `measure` (one ' +
+      'element or a known set), `survey` (one measure across a whole selection, with the spread: use it whenever the question is ' +
+      'plural), `element_profile` (every measure that applies to one element), `distance` (centre to centre or between bounding ' +
+      'boxes, never a clear dimension), `clearance` (the smallest surface-to-surface gap), `sun_position`, `storey_heights` ' +
+      '(structural pitch, not clear room height), `room_inventory` (suspected room uses, a proposal), `fire` (OIB 2 geometry: a ' +
+      'height, never a building class), `envelope` (OIB 6 geometry of the whole building; no U-value is calculated), `overhang`, ' +
+      '`light_incidence` (the light prism over an opening, as geometry), `view` (a floor plan image for you to look at; never ' +
+      'read a number off it), `draw` (the plan as an SVG file for the person) and `shopping_list` (the model’s blind spots as an ' +
+      'IDS 1.0 file). Every answer says whether the value is declared by the file, computed from the geometry (with a tolerance ' +
+      'to quote) or inferred (a proposal to confirm). `decidable: false` is a finding about the export: report what is missing ' +
+      'and the remedy verbatim. Never recompute, round or convert a returned number, and pass only GlobalIds a call returned. ' +
+      'A measurement that contradicts a declared quantity is reported as a contradiction with both numbers. The first ' +
+      'geometric call on a model costs seconds; later calls are fast.',
     needsProject: true,
   },
   {
@@ -135,11 +222,66 @@ const ENTRIES: readonly Entry[] = [
     tool: 'ris_lookup_tool',
     domain: 'knowledge',
     summary: 'Look up Austrian law in RIS and read the provision',
+    description:
+      'Answer a question about Austrian law from RIS, the federal legal information system, with the actual paragraphs, quotable ' +
+      'and citable. Call it when the question turns on what an Austrian law says: the building codes and other state laws, the ' +
+      'federal acts behind them, and court decisions; OIB guidelines become binding through these laws, so their binding force ' +
+      'belongs here too. For the content of the OIB guidelines or the office’s documents, call knowledge-search. One call reads ' +
+      'the address out of the question, finds the law, downloads at most two documents and cuts out the paragraphs that answer it. ' +
+      '`question`: the legal question as the person means it, in German, the language of the law, not a list of search terms. ' +
+      '`conclusion`: one sentence on what you know and what you still need. `jurisdiction`: the federal state, when the person ' +
+      'named one. `instrument`: an address when you have one (a law’s name or citation such as `§ 63 BO Wien`, a RIS document ' +
+      'number or a ris.bka.gv.at URL); name every section you need in one call, up to six. `application`: only for case law, the ' +
+      'gazettes or drafts; leave it empty for statute law. Returns numbered passages, each with its source, document type, clause, ' +
+      'a citation key to quote verbatim and the paragraph text. A miss says what was searched and one concrete retry.',
     needsProject: false,
     // Reaches the public RIS, not only the office's own workspace.
     openWorld: true,
   },
 ]
+
+/**
+ * English for the German terms the fixture's input-schema descriptions carry, applied to every
+ * `description` in a tool's schema (the property names, types and enums are the tool's and are not
+ * touched). A new German term in a tool's schema fails `english-only.spec.ts`; add its gloss here.
+ */
+export const ENGLISH_GLOSSES: readonly (readonly [RegExp, string])[] = [
+  [/OIB 2 \(Brandschutz\)/g, 'OIB 2 (fire safety)'],
+  [/OIB 6 \(Wärmeschutz\)/g, 'OIB 6 (thermal protection)'],
+  [/the Gebäudeklasse hangs on/g, 'the building class hangs on'],
+  [/\(Brandübertragung\)/g, '(fire spread to a neighbour)'],
+  [/\(unbestimmt, ausgeschlossen\)/g, '(undetermined, excluded)'],
+  [/and unbestimmt \(/g, 'and undetermined ('],
+  [/Brüstungs- und Sturzhöhe/g, 'sill and head height'],
+  [/lichte Raumhöhe/g, 'clear room height'],
+  [/a Raumhöhennachweis/g, 'a room-height check'],
+  [/the LICHTE Breite and Höhe/g, 'the CLEAR width and height'],
+  [/the Lichteinfallswinkel/g, 'the light-incidence angle'],
+  [/the BESTIMMUNG/g, 'the PROVISION'],
+  [/the lateral Verschwenkung/g, 'the lateral swivel'],
+  [/a lichte Breite/g, 'a clear width'],
+  [/a lichte Höhe/g, 'a clear height'],
+  [/an Achsabstand/g, 'a centre-to-centre distance'],
+  [/\(Achsabstand\)/g, '(centre to centre)'],
+  [/a Fluchtweglänge/g, 'an escape-route length'],
+  [/the NUTZBREITE/g, 'the USABLE WIDTH'],
+  [/a Wendekreis check/g, 'a turning-circle check'],
+  [/the Bestimmung/g, 'the provision'],
+]
+
+/** `schema` with {@link ENGLISH_GLOSSES} applied to every `description` in it. */
+function glossed<T>(schema: T): T {
+  if (Array.isArray(schema)) return schema.map((item) => glossed(item)) as T
+  if (typeof schema !== 'object' || schema === null) return schema
+  return Object.fromEntries(
+    Object.entries(schema).map(([key, value]) => [
+      key,
+      key === 'description' && typeof value === 'string'
+        ? ENGLISH_GLOSSES.reduce((text, [german, english]) => text.replace(german, english), value)
+        : glossed(value),
+    ]),
+  ) as T
+}
 
 const PROJECT_ID_SCHEMA = {
   type: 'string',
@@ -162,13 +304,14 @@ function build(entry: Entry): BackendOperation {
   // Fails the import, not a call: the contract and this table disagree.
   if (!tool)
     throw new Error(`backend-tools.schema.json has no tool ${entry.tool} (operation ${entry.name})`)
+  const inputSchema = glossed(tool.inputSchema)
   return {
     name: entry.name,
     domain: entry.domain,
     summary: entry.summary,
-    description: tool.description,
+    description: entry.description,
     tool: entry.tool,
-    inputSchema: entry.needsProject ? withProjectId(tool.inputSchema) : tool.inputSchema,
+    inputSchema: entry.needsProject ? withProjectId(inputSchema) : inputSchema,
     annotations: { title: entry.summary, ...tool.annotations, openWorldHint: entry.openWorld ?? false },
     needsProject: entry.needsProject,
   }

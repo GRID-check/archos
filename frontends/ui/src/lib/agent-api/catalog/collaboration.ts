@@ -82,10 +82,10 @@ export const collaborationOperations: readonly AgentOperation[] = [
   {
     name: 'inbox-unread-anchor-list',
     domain: 'collaboration',
-    summary: 'List unread marks inside a document',
+    summary: 'List unread annotations inside a document',
     description:
-      'The ids of the marks (anchors) in one document whose news the person has not read, as `{ anchorIds }`. ' +
-      'resourceId is a document id from document-list. Opening a mark’s thread clears it (inbox-item-mark-read).',
+      'The ids of the annotations (anchors) in one document whose news the person has not read, as `{ anchorIds }`. ' +
+      'resourceId is a document id from document-list. Opening an annotation’s thread clears it (inbox-item-mark-read).',
     method: 'GET',
     path: '/api/inbox/unread-anchors',
     query: unreadAnchorsQuerySchema,
@@ -97,7 +97,7 @@ export const collaborationOperations: readonly AgentOperation[] = [
     summary: 'Mark inbox items read',
     description:
       'Marks read by `itemIds` (from inbox-list), or everything with `{ all: true }`, or the news on one document ' +
-      'mark (`resourceType`, `resourceId`, `anchorId`), or the “new marks” rows of a document (`marksSet: true`). ' +
+      'annotation (`resourceType`, `resourceId`, `anchorId`), or the “new annotations” rows of a document (`marksSet: true`). ' +
       'Returns the recomputed badge count.',
     method: 'POST',
     path: '/api/inbox/read',

@@ -469,7 +469,7 @@ export const organizationOperations: readonly AgentOperation[] = [
     domain: 'organization',
     summary: 'Read the deleted-folder content policy',
     description:
-      'Who may still see chats, answers and notes drawn from a folder once the folder is purged. Any member may read. ' +
+      'Who may still see conversations, answers and notes drawn from a folder once the folder is purged. Any member may read. ' +
       'Change with organization-deleted-folder-content-set.',
     method: 'GET',
     path: '/api/organization/deleted-folder-content',

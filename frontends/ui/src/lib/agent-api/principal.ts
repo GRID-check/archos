@@ -45,9 +45,19 @@ import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { authkitDomain, authkitIssuer, mcpResourceUrl } from './mcp-config'
 import { SENSITIVITIES, type Sensitivity } from './operation'
 
+/**
+ * Who acts, in the words of OAuth token exchange (RFC 8693): the SUBJECT is the
+ * person the call is for (`session`), the ACTOR is the agent doing it, and the
+ * CLIENT is the OAuth client that holds the token (`clientId`). `external_agent`:
+ * an agent outside Piloti (Claude, Cursor, ChatGPT) on the person's OAuth token.
+ * `piloti`: the in-product agent, echoing the turn's signed envelope.
+ */
+export type AgentActor = 'external_agent' | 'piloti'
+
 export interface AgentPrincipal {
-  /** `person`: an external agent acting for a person. `piloti`: the in-product agent. */
-  kind: 'person' | 'piloti'
+  /** The agent that acts ({@link AgentActor}). Until October 2026 this was `kind: 'person' | 'piloti'`. */
+  actor: AgentActor
+  /** The subject: the person the call acts for, as a live-resolved session with their rights. */
   session: AuthorizedSession
   /** The OAuth client that holds the token; `null` for Piloti. */
   clientId: string | null
@@ -95,7 +105,7 @@ export interface AuthChallenge {
 }
 
 export function isChallenge(value: AgentPrincipal | AuthChallenge): value is AuthChallenge {
-  return value.kind === 'challenge'
+  return 'kind' in value && value.kind === 'challenge'
 }
 
 /** Test seam: replaces the remote AuthKit key set. */
@@ -206,7 +216,7 @@ async function externalPrincipal(request: Request, deps: PrincipalDeps): Promise
   if (!session) return refuse(403, 'You are not a member of this organization.')
 
   return {
-    kind: 'person',
+    actor: 'external_agent',
     session,
     clientId: auth.clientId || null,
     scopes: auth.scopes,
@@ -226,7 +236,7 @@ async function pilotiPrincipal(request: Request): Promise<AgentPrincipal | AuthC
     const context = requireVerifiedContext(request)
     const session = await requirePinnedSession(context)
     return {
-      kind: 'piloti',
+      actor: 'piloti',
       session,
       clientId: null,
       scopes: [],

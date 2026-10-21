@@ -16,7 +16,7 @@ import 'server-only'
  */
 
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { runAsActingSession } from './acting-session'
+import { type ActingReader, runAsActingSession } from './acting-session'
 import { type AgentOperation, pathParams } from './operation'
 import { type UploadBody, decodeBase64 } from './upload-wire'
 
@@ -288,12 +288,14 @@ function requestInit(op: AgentOperation, parsed: OperationInput): Pick<RequestIn
 /**
  * Call `op` as `session`. Route refusals come back as a result with their
  * status and the route's error envelope, exactly as the browser sees them;
- * only input the operation cannot even address throws.
+ * only input the operation cannot even address throws. `reader` says who reads
+ * what the route words: an agent (English) or the person applying a proposal.
  */
 export async function callOperation(
   op: AgentOperation,
   input: OperationInput,
   session: AuthorizedSession,
+  reader: ActingReader = 'person',
 ): Promise<OperationResult> {
   const parsed = parseOperationInput(op, input)
   const url = new URL(resolvePath(op, parsed.params), DISPATCH_ORIGIN)
@@ -305,8 +307,10 @@ export async function callOperation(
   const handler = routeModule[op.method]
   if (!handler) throw new Error(`${op.path} exports no ${op.method} handler`)
 
-  const response = await runAsActingSession(session, () =>
-    handler(request, { params: Promise.resolve(parsed.params ?? {}) }),
+  const response = await runAsActingSession(
+    session,
+    () => handler(request, { params: Promise.resolve(parsed.params ?? {}) }),
+    reader,
   )
   const body = await readBody(response)
   // A redirect is an answer (the link), not a failure, though `Response.ok` is false for it.

@@ -37,8 +37,8 @@ const session = {
   featureFlags: null,
 }
 
-const person = (scopes: string[] = []): AgentPrincipal => ({ kind: 'person', session, clientId: 'c', scopes })
-const piloti: AgentPrincipal = { kind: 'piloti', session, clientId: null, scopes: [] }
+const person = (scopes: string[] = []): AgentPrincipal => ({ actor: 'external_agent', session, clientId: 'c', scopes })
+const piloti: AgentPrincipal = { actor: 'piloti', session, clientId: null, scopes: [] }
 const op = (name: string) => FAKE_OPERATIONS.find((candidate) => candidate.name === name)!
 
 describe('callDecision', () => {

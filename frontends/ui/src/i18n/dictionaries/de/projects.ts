@@ -154,14 +154,14 @@ export const projects: typeof en.projects = {
         'Sie sehen dieses Projekt, weil abgeschlossene Projekte für das ganze Büro lesbar sind. Ordner mit eigener Zugriffsliste bleiben für Sie verborgen.',
       pausedTitle: 'Ruhendes Projekt',
       pausedOn: 'Ruht seit {date}.',
-      pausedBody: 'Alles bleibt bearbeitbar. Geplante Aufträge laufen erst wieder, wenn es fortgesetzt wird.',
+      pausedBody: 'Alles bleibt bearbeitbar. Geplante Aufgaben laufen erst wieder, wenn es fortgesetzt wird.',
     },
     card: {
       heading: 'Projektstatus',
       track: 'Lebenszyklus des Projekts',
-      activeDescription: 'In Arbeit. Seine Mitglieder arbeiten darin, geplante Aufträge laufen.',
+      activeDescription: 'In Arbeit. Seine Mitglieder arbeiten darin, geplante Aufgaben laufen.',
       pausedDescription:
-        'Wartet, etwa auf einen Bescheid oder eine Entscheidung der Bauherrschaft. Es bleibt bearbeitbar und nur für seine Mitglieder sichtbar; geplante Aufträge laufen nicht, und es steht nicht mehr unter „Aktiv“.',
+        'Wartet, etwa auf einen Bescheid oder eine Entscheidung der Bauherrschaft. Es bleibt bearbeitbar und nur für seine Mitglieder sichtbar; geplante Aufgaben laufen nicht, und es steht nicht mehr unter „Aktiv“.',
       closedDescription:
         'Schreibgeschützt und für das ganze Büro lesbar, als Referenz für künftige Projekte. Ordner mit eigener Zugriffsliste bleiben eingeschränkt. Wieder geöffnet ist es bearbeitbar und nur noch für seine Mitglieder sichtbar.',
       closedFacts: '{outcome} · Abschluss {month}',
@@ -211,7 +211,7 @@ export const projects: typeof en.projects = {
         heading: 'Was sich ändert',
         readOnly: 'Dateien, Ordner, Briefing und Projektgedächtnis werden schreibgeschützt.',
         office: 'Alle im Büro können das Projekt lesen und dazu fragen. Ordner mit eigener Zugriffsliste bleiben eingeschränkt.',
-        stops: 'Tiefenrecherchen und geplante Aufträge laufen nicht mehr.',
+        stops: 'Tiefenrecherchen und geplante Aufgaben laufen nicht mehr.',
         reopen: 'Sie können es jederzeit wieder öffnen.',
       },
     },

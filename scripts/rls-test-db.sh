@@ -2694,6 +2694,31 @@ check_in grid_orgop "SELECT count(*) FROM proposed_changes WHERE kind = 'operati
 echo "==> 0174 organization operation proposals and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0175: the inbox types of a task run say `task_run`, not `job`, and
+# the DOWN.
+#
+# On a database of its own, migrated to whatever precedes 0175. Each of the three
+# types moves with the front of its group key; another type is not touched.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0175 task run inbox types and their down migration on grid_taskruninbox"
+migrate_before grid_taskruninbox 0175_task_run_inbox_types
+sql_in grid_taskruninbox <<'SQL'
+INSERT INTO inbox_items (id, organization_id, recipient_user_id, type, resource_type, resource_id, group_key, actionable) VALUES
+  ('a1a1a1a1-0000-4000-8000-000000000175', 'org_0175', 'user_1', 'job.completed', 'project', 'p1', 'job.completed:project:p1:j1', false),
+  ('a2a2a2a2-0000-4000-8000-000000000175', 'org_0175', 'user_1', 'job.failed', 'project', 'p1', 'job.failed:project:p1:j2', false),
+  ('a3a3a3a3-0000-4000-8000-000000000175', 'org_0175', 'user_1', 'job.waiting', 'project', 'p1', 'job.waiting:project:p1:r3', true),
+  ('a4a4a4a4-0000-4000-8000-000000000175', 'org_0175', 'user_1', 'document.new_revision', 'document', 'd1', 'document.new_revision:document:d1:d2', false);
+SQL
+apply_in grid_taskruninbox 0175_task_run_inbox_types.sql
+check_in grid_taskruninbox "SELECT string_agg(type || '=' || group_key, ' ' ORDER BY id) FROM inbox_items" "task_run.completed=task_run.completed:project:p1:j1 task_run.failed=task_run.failed:project:p1:j2 task_run.waiting=task_run.waiting:project:p1:r3 document.new_revision=document.new_revision:document:d1:d2" "0175 renames the three task run types with their group keys and leaves the others"
+apply_in grid_taskruninbox 0175_task_run_inbox_types.down.sql
+check_in grid_taskruninbox "SELECT string_agg(type || '=' || group_key, ' ' ORDER BY id) FROM inbox_items" "job.completed=job.completed:project:p1:j1 job.failed=job.failed:project:p1:j2 job.waiting=job.waiting:project:p1:r3 document.new_revision=document.new_revision:document:d1:d2" "down restores the job types and their group keys"
+apply_in grid_taskruninbox 0175_task_run_inbox_types.sql
+apply_in grid_taskruninbox 0175_task_run_inbox_types.sql
+check_in grid_taskruninbox "SELECT count(*) FROM inbox_items WHERE type LIKE 'task_run.%'" "3" "0175 re-applies, twice"
+echo "==> 0175 task run inbox types and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose

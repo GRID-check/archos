@@ -564,7 +564,7 @@ describe('recordRunOutcome', () => {
     const [[emission]] = vi.mocked(emitInboxItems).mock.calls
     expect(emission[0]).toMatchObject({
       recipientUserId: 'user_owner',
-      type: 'job.completed',
+      type: 'task_run.completed',
       resourceType: 'project',
       resourceId: 'proj-1',
       // The work was Piloti's, and a row whose actor is its recipient is
@@ -684,7 +684,7 @@ describe('recordRunOutcome', () => {
     await recordRunOutcome(delegated(), { status: 'failure', error: 'Budget exhausted' })
 
     const [[emission]] = vi.mocked(emitInboxItems).mock.calls
-    expect(emission[0].type).toBe('job.failed')
+    expect(emission[0].type).toBe('task_run.failed')
     expect(fileAgentDocumentDraft).not.toHaveBeenCalled()
   })
 

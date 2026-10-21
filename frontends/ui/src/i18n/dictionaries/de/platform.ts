@@ -476,7 +476,7 @@ export const platform: typeof en.platform = {
     confirmDescription:
       'Jede wartende und laufende Tiefenrecherche der Plattform wird beendet und als abgebrochen geschlossen.',
     confirmWarning:
-      'Das wirkt in allen Organisationen zugleich und lässt sich nicht rückgängig machen. Laufende Arbeit wird verworfen, und alle Auftraggeber werden benachrichtigt, dass ihr Lauf abgebrochen wurde.',
+      'Das wirkt in allen Organisationen zugleich und lässt sich nicht rückgängig machen. Laufende Arbeit wird verworfen, und alle, die einen Lauf angestoßen haben, werden benachrichtigt, dass er abgebrochen wurde.',
     confirmCta: 'Alle Läufe abbrechen',
     cancel: 'Abbrechen',
     lastRunTitle: 'Letzter Abbruch',
@@ -764,7 +764,7 @@ export const platform: typeof en.platform = {
     orgsHeading: 'Nach Organisation',
     orgVotes: '{votes} Bewertungen',
     topicsHeading: 'Nach Thema',
-    topicsCaveat: 'Nur Unterhaltungen mit Themen-Schlagwort, daher ergeben sich die Summen oben nicht daraus.',
+    topicsCaveat: 'Nur Chats mit Themen-Schlagwort, daher ergeben sich die Summen oben nicht daraus.',
     topics: {
       fire_safety: 'Brandschutz',
       sound_insulation: 'Schallschutz',

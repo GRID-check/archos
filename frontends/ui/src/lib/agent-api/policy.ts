@@ -51,7 +51,7 @@ export function isReadOnly(op: AgentOperation): boolean {
 
 /** May `principal` see (and so name) `op`? */
 export function canSee(principal: AgentPrincipal, op: AgentOperation): boolean {
-  if (principal.kind === 'piloti') {
+  if (principal.actor === 'piloti') {
     // Piloti may not propose a sensitive operation (`proposeOperation` refuses it too),
     // so showing one would only teach the model a call that cannot succeed.
     return !op.sensitivity && !PILOTI_HIDDEN_DOMAINS.has(op.domain)
@@ -70,7 +70,7 @@ export function maySeeSensitive(
   sensitivity: Sensitivity,
   scopeEnforced: boolean = SENSITIVE_SCOPE_ENFORCED_BY_WORKOS,
 ): boolean {
-  if (principal.kind !== 'person') return false
+  if (principal.actor !== 'external_agent') return false
   return (
     (principal.sensitiveOptIns ?? []).includes(sensitivity) && scopeEnforced && principal.scopes.includes(SENSITIVE_SCOPE)
   )
@@ -92,14 +92,14 @@ export function findVisibleOperation(principal: AgentPrincipal, name: string): A
  * native tool and a second copy would bloat its context and blur its tool choice.
  */
 export function visibleBackendOperations(principal: AgentPrincipal): readonly BackendOperation[] {
-  return principal.kind === 'piloti' ? [] : BACKEND_OPERATIONS
+  return principal.actor === 'piloti' ? [] : BACKEND_OPERATIONS
 }
 
 export function findVisibleBackendOperation(principal: AgentPrincipal, name: string): BackendOperation | undefined {
-  return principal.kind === 'piloti' ? undefined : findBackendOperation(name)
+  return principal.actor === 'piloti' ? undefined : findBackendOperation(name)
 }
 
 export function callDecision(principal: AgentPrincipal, op: AgentOperation): CallDecision {
-  if (principal.kind === 'person') return 'run'
+  if (principal.actor === 'external_agent') return 'run'
   return isReadOnly(op) ? 'run' : 'propose'
 }

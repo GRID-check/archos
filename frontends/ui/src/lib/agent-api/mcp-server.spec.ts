@@ -18,7 +18,7 @@ import { visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 
 const principal: AgentPrincipal = {
-  kind: 'person',
+  actor: 'external_agent',
   clientId: 'c',
   scopes: ['piloti:sensitive'],
   session: {
@@ -41,7 +41,7 @@ beforeAll(() => {
 
 type ListedTool = { name: string; inputSchema: unknown; annotations?: Record<string, unknown> }
 
-async function listTools(mode: 'discovery' | 'tools'): Promise<ListedTool[]> {
+async function listTools(mode: 'search' | 'tools'): Promise<ListedTool[]> {
   const handler = createMcpHandler(() => buildMcpServer(principal, mode), { responseMode: 'json' })
   const response = await handler.fetch(
     new Request('https://app.piloti.test/api/mcp', {
@@ -56,13 +56,13 @@ async function listTools(mode: 'discovery' | 'tools'): Promise<ListedTool[]> {
 }
 
 describe('tools mode over the real catalog', () => {
-  it('publishes one tool per visible operation, plus report-missing-capability', async () => {
+  it('publishes one tool per visible operation, plus report-missing-operation', async () => {
     const tools = await listTools('tools')
     const names = tools.map((tool) => tool.name)
     expect(names).toEqual([
       ...visibleOperations(principal).map((op) => op.name),
       ...visibleBackendOperations(principal).map((op) => op.name),
-      'report-missing-capability',
+      'report-missing-operation',
     ])
     expect(new Set(names).size).toBe(names.length)
     expect(AGENT_OPERATIONS.length).toBeGreaterThan(0)
@@ -88,13 +88,13 @@ describe('backend read tools in tools mode', () => {
   })
 })
 
-describe('discovery mode', () => {
+describe('search mode', () => {
   it('stays four tools however large the catalog grows', async () => {
-    expect((await listTools('discovery')).map((tool) => tool.name)).toEqual([
+    expect((await listTools('search')).map((tool) => tool.name)).toEqual([
       'search-operations',
       'describe-operation',
       'call-operation',
-      'report-missing-capability',
+      'report-missing-operation',
     ])
   })
 })
@@ -102,11 +102,13 @@ describe('discovery mode', () => {
 describe('mode and instructions', () => {
   const at = (url: string, headers: Record<string, string> = {}) => new Request(url, { headers })
 
-  it('defaults to discovery and honours the header and the query', () => {
-    expect(resolveMode(at('https://x.test/api/mcp'))).toBe('discovery')
+  it('defaults to search and honours the header and the query', () => {
+    expect(resolveMode(at('https://x.test/api/mcp'))).toBe('search')
     expect(resolveMode(at('https://x.test/api/mcp?mode=tools'))).toBe('tools')
     expect(resolveMode(at('https://x.test/api/mcp', { 'x-piloti-mcp-mode': 'tools' }))).toBe('tools')
-    expect(resolveMode(at('https://x.test/api/mcp?mode=nonsense'))).toBe('discovery')
+    expect(resolveMode(at('https://x.test/api/mcp?mode=nonsense'))).toBe('search')
+    // The mode's name until October 2026, still accepted.
+    expect(resolveMode(at('https://x.test/api/mcp', { 'x-piloti-mcp-mode': 'discovery' }))).toBe('search')
   })
 
   it('introduces Piloti as the architects\' workspace and says where to start', () => {

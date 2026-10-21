@@ -29,7 +29,7 @@
     "refused_shared_conversation": {
       "status": 200,
       "contentType": "text/event-stream",
-      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"In einer geteilten Unterhaltung liest Piloti nichts aus dem Arbeitsbereich: Die Antwort wäre für alle sichtbar, die die Unterhaltung lesen, auch für Personen, die diese Inhalte nicht öffnen dürfen. Öffnen Sie es selbst in Piloti oder fragen Sie in einer Unterhaltung, die nur Ihnen gehört.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
+      "body": "event: message\ndata: {\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"This conversation is shared, so Piloti reads nothing from the workspace in it: the answer would be visible to everyone who reads the conversation, including people who may not open that content. Tell the person to open it themselves in Piloti, or to ask in a conversation that is theirs alone.\"}],\"isError\":true},\"jsonrpc\":\"2.0\",\"id\":1}\n\n"
     },
     "refused_wrong_token": {
       "status": 403,

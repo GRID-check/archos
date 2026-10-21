@@ -212,11 +212,11 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'conversation.activity': { icon: 'message-square', i18nKey: 'conversationActivity', tone: 'info' },
   'storage.quota_warning': { icon: 'hard-drive', i18nKey: 'storageQuotaWarning', tone: 'warning' },
   'document.assigned_to_you': { icon: 'user-plus', i18nKey: 'documentAssigned', tone: 'info' },
-  'job.completed': { icon: 'check-circle', i18nKey: 'jobCompleted', tone: 'info' },
-  'job.failed': { icon: 'alert-triangle', i18nKey: 'jobFailed', tone: 'warning' },
+  'task_run.completed': { icon: 'check-circle', i18nKey: 'taskRunCompleted', tone: 'info' },
+  'task_run.failed': { icon: 'alert-triangle', i18nKey: 'taskRunFailed', tone: 'warning' },
   // The clock is the run block's own glyph for `waiting`, so the row and the
   // block say "waiting for you" with one shape.
-  'job.waiting': { icon: 'clock', i18nKey: 'jobWaiting', tone: 'request' },
+  'task_run.waiting': { icon: 'clock', i18nKey: 'taskRunWaiting', tone: 'request' },
   'document.review_requested': {
     icon: 'check-circle',
     i18nKey: 'documentReviewRequested',
@@ -242,14 +242,19 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
 }
 
 /**
- * Types as they were stored before migration 0165. An older pod keeps writing
- * `document.new_fassung` until it is replaced, and the migration ran before it
- * was; the read path treats such a row as the current type
- * (`canonicalInboxType`, and `legacyInboxTypeAliases` for the SQL filter) and
- * nothing writes the old name again. Remove after one release.
+ * Types as they were stored before migrations 0165 (`document.new_fassung`) and
+ * 0175 (`job.*`, which named a task run "job"; a job is a claim-queue item, see
+ * `docs/glossary.md`). An older pod keeps writing the old name until it is
+ * replaced, and the migration ran before it was; the read path treats such a row
+ * as the current type (`canonicalInboxType`, and `legacyInboxTypeAliases` for
+ * the SQL filter) and nothing writes the old name again. Remove each after one
+ * release.
  */
 export const LEGACY_INBOX_TYPES: Readonly<Record<string, InboxItemType>> = {
   'document.new_fassung': 'document.new_revision',
+  'job.completed': 'task_run.completed',
+  'job.failed': 'task_run.failed',
+  'job.waiting': 'task_run.waiting',
 }
 
 /** The current type for a stored `type` that may be a legacy one; anything else passes through. */

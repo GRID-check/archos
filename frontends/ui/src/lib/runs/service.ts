@@ -313,7 +313,7 @@ export async function settleRunLedger(
  *
  * `waiting` is the one status with no column behind it: it exists only in the
  * ledger, so this fold is the only place that sees a run enter or leave it.
- * The row is `job.waiting`, actionable, anchored on the run — and resolved by
+ * The row is `task_run.waiting`, actionable, anchored on the run — and resolved by
  * the ledger's next status, which is what keeps an actionable row out of the
  * badge for good. The payload carries the same ids the outcome rows carry, so
  * the inbox lands the reader on the run block (`lib/inbox/targets.ts`).
@@ -326,11 +326,15 @@ async function notifyWaiting(run: TaskRun, before: RunLedger, after: RunLedger):
   const wasWaiting = runDisplayStatus(before) === 'waiting'
   const isWaiting = runDisplayStatus(after) === 'waiting'
   if (wasWaiting === isWaiting) return
-  const groupKey = inboxGroupKey('job.waiting', 'project', run.projectId, run.id)
+  const groupKey = inboxGroupKey('task_run.waiting', 'project', run.projectId, run.id)
   try {
     if (!isWaiting) {
+      // The row an older pod wrote before 0175 still carries `job.waiting` in its key; resolve it too
+      // for one release (`LEGACY_INBOX_TYPES`).
+      const legacyGroupKey = `job.waiting${groupKey.slice('task_run.waiting'.length)}`
       await resolveInboxItemsFor([
         { organizationId: run.organizationId, recipientUserId: run.requesterUserId, groupKey },
+        { organizationId: run.organizationId, recipientUserId: run.requesterUserId, groupKey: legacyGroupKey },
       ])
       return
     }
@@ -338,7 +342,7 @@ async function notifyWaiting(run: TaskRun, before: RunLedger, after: RunLedger):
       {
         organizationId: run.organizationId,
         recipientUserId: run.requesterUserId,
-        type: 'job.waiting',
+        type: 'task_run.waiting',
         resourceType: 'project',
         resourceId: run.projectId,
         anchorId: run.id,

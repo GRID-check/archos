@@ -1226,6 +1226,13 @@
       "when": 1792454416044,
       "tag": "0174_organization_operation_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 175,
+      "version": "7",
+      "when": 1792454417044,
+      "tag": "0175_task_run_inbox_types",
+      "breakpoints": true
     }
   ]
 }

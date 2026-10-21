@@ -49,7 +49,7 @@ const API_KEY = 'sk-or-v1-THIS-IS-THE-SECRET-0123456789abcdef'
 const CREDENTIAL_ID = '6a0c1f0e-6a52-4d7e-9a43-1b2f3c4d5e6f'
 
 const principal: AgentPrincipal = {
-  kind: 'person',
+  actor: 'external_agent',
   clientId: 'client_claude',
   scopes: ['piloti:sensitive'],
   sensitiveOptIns: ['secret'],
@@ -65,7 +65,7 @@ const principal: AgentPrincipal = {
     featureFlags: [FEATURE_FLAGS.byokLlm],
   },
 }
-const ctx = { principal, mode: 'discovery' as const }
+const ctx = { principal, mode: 'search' as const }
 
 function storedRow(): OrgLlmCredential {
   return {

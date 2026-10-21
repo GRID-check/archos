@@ -57,19 +57,19 @@ export const feedbackExport: typeof en.feedbackExport = {
       description: 'Anzeigename der Organisation der bewertenden Person; leer, wenn er nicht ermittelt werden konnte.',
     },
     organization_id: { label: 'Organisations-ID', description: 'WorkOS-Organisationskennung.' },
-    project_name: { label: 'Projekt', description: 'Das Projekt der Unterhaltung; leer bei einem Chat ohne Projekt.' },
+    project_name: { label: 'Projekt', description: 'Das Projekt des Chats; leer bei einem Chat ohne Projekt.' },
     project_id: { label: 'Projekt-ID', description: 'Projektkennung.' },
     bundesland: {
       label: 'Bundesland',
       description: 'Bundesland aus dem Projektprofil (Schlüssel, z. B. „tirol“); leer, wenn das Profil keines nennt.',
     },
     conversation_title: {
-      label: 'Unterhaltung',
-      description: 'Titel der Unterhaltung; leer, wenn sie gelöscht oder nie gespeichert wurde.',
+      label: 'Chat',
+      description: 'Titel des Chats; leer, wenn er gelöscht oder nie gespeichert wurde.',
     },
     conversation_id: {
-      label: 'Unterhaltungs-ID',
-      description: 'Die Unterhaltung der bewerteten Antwort. Aus der gespeicherten Antwort, wenn es sie gibt, sonst aus der Bewertung.',
+      label: 'Chat-ID',
+      description: 'Der Chat der bewerteten Antwort. Aus der gespeicherten Antwort, wenn es sie gibt, sonst aus der Bewertung.',
     },
     message_id: { label: 'Antwort-ID', description: 'Kennung der bewerteten Antwort.' },
     voter_key: {
@@ -77,14 +77,14 @@ export const feedbackExport: typeof en.feedbackExport = {
       description:
         'Dieselben 12 Zeichen für dieselbe Person in derselben Organisation, damit sich Bewertungen nach Person gruppieren lassen. Nicht auf Name oder E-Mail rückführbar; beides enthält der Export nicht.',
     },
-    topics: { label: 'Themen (Schlüssel)', description: 'Die OIB-Themen-Schlagworte der Unterhaltung.' },
+    topics: { label: 'Themen (Schlüssel)', description: 'Die OIB-Themen-Schlagworte des Chats.' },
     question: {
       label: 'Frage',
       description: 'Die Nachricht, auf die die Antwort geantwortet hat; leer, wenn die Antwort nicht gespeichert wurde.',
     },
     answer: {
       label: 'Antwort',
-      description: 'Text der bewerteten Antwort; leer, wenn sie nicht gespeichert oder ihre Unterhaltung gelöscht wurde. In Excel nach 32.767 Zeichen gekürzt (Grenze einer Zelle); answer_chars nennt die volle Länge.',
+      description: 'Text der bewerteten Antwort; leer, wenn sie nicht gespeichert oder ihr Chat gelöscht wurde. In Excel nach 32.767 Zeichen gekürzt (Grenze einer Zelle); answer_chars nennt die volle Länge.',
     },
     comment: { label: 'Kommentar', description: 'Was die Person zu einer nicht hilfreichen Bewertung geschrieben hat.' },
     expected_answer: {
@@ -134,14 +134,14 @@ export const feedbackExport: typeof en.feedbackExport = {
     },
     app_url: {
       label: 'In Piloti öffnen',
-      description: 'Link zur Antwort in ihrer Unterhaltung. Öffnet sich nur für Mitglieder dieser Organisation.',
+      description: 'Link zur Antwort in ihrem Chat. Öffnet sich nur für Mitglieder dieser Organisation.',
     },
     langfuse_trace_url: { label: 'In Langfuse öffnen', description: 'Der Trace der Antwort in Langfuse, falls es einen gibt.' },
     trace_id: { label: 'Trace-ID', description: 'Langfuse-/OpenTelemetry-Trace-Kennung der Antwort.' },
   },
   topicColumn: {
     label: 'Thema: {topic}',
-    description: '1, wenn die Unterhaltung mit „{topic}“ verschlagwortet ist, sonst 0.',
+    description: '1, wenn der Chat mit „{topic}“ verschlagwortet ist, sonst 0.',
   },
   weeklyColumns: {
     organization_name: { label: 'Organisation', description: 'Anzeigename der Organisation.' },
@@ -210,7 +210,7 @@ export const feedbackExport: typeof en.feedbackExport = {
     noteVoluntary:
       'Bewerten ist freiwillig: Diese Bewertungen beschreiben die Personen, die bewertet haben, nicht alle Antworten. Die Hilfreich-Quote immer neben der Abdeckung im Wochenblatt lesen.',
     noteErased:
-      'Frage und Antwort einer gelöschten Unterhaltung sind leer; die Bewertung selbst samt Kommentar ist weiterhin aufgeführt.',
+      'Frage und Antwort eines gelöschten Chats sind leer; die Bewertung selbst samt Kommentar ist weiterhin aufgeführt.',
     noteTimes: 'Alle Zeiten sind UTC.',
   },
   verdicts: {

@@ -67,14 +67,14 @@ export const INBOX_ITEM_TYPES = [
    * behalf while they were away, and until these existed a 03:00 run produced
    * a report that nobody was told about.
    */
-  'job.completed',
-  'job.failed',
+  'task_run.completed',
+  'task_run.failed',
   /**
    * Actionable: a run the reader asked for has stopped to ask them something
    * (the ledger's `waiting`, ADR-0062). Resolved by the run moving on — the
    * answer lands in the thread, and the ledger's next status settles the row.
    */
-  'job.waiting',
+  'task_run.waiting',
   /**
    * Actionable: a version of a document is waiting for your Freigabe
    * (ADR-0054). The FIRST actionable type outside mentions, and the reason the

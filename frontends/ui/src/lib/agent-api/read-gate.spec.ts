@@ -52,7 +52,7 @@ const session = {
 
 /** A fresh principal per call, as the route builds one per HTTP request. */
 const piloti = (): AgentPrincipal => ({
-  kind: 'piloti',
+  actor: 'piloti',
   session,
   clientId: null,
   scopes: [],
@@ -60,7 +60,7 @@ const piloti = (): AgentPrincipal => ({
   projectId: 'proj_1',
   answerMessageId: '6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e',
 })
-const ctx = (principal: AgentPrincipal) => ({ principal, mode: 'discovery' as const })
+const ctx = (principal: AgentPrincipal) => ({ principal, mode: 'search' as const })
 
 const text = (result: { content: unknown[] }) => (result.content[0] as { text: string }).text
 
@@ -109,8 +109,8 @@ describe('in a shared conversation', () => {
     expect(callOperation).not.toHaveBeenCalled()
   })
 
-  it('words the refusal in German, for the model to relay', () => {
-    expect(sharedConversationReadRefusal()).toMatch(/^In einer geteilten Unterhaltung/)
+  it('words the refusal in English whatever the locale, for the model to word for the reader', () => {
+    expect(sharedConversationReadRefusal()).toMatch(/^This conversation is shared/)
   })
 
   it('keeps every link-bearing read out even if its domain is ever listed as safe', async () => {
@@ -157,7 +157,7 @@ describe('in a conversation that is the requester’s alone', () => {
 describe('outside a conversation', () => {
   it('reads the audience of nothing and records nothing for an external agent', async () => {
     vi.mocked(conversationReachOf).mockResolvedValue('none')
-    const person: AgentPrincipal = { kind: 'person', session, clientId: 'c', scopes: [] }
+    const person: AgentPrincipal = { actor: 'external_agent', session, clientId: 'c', scopes: [] }
     const result = await runOperation(ctx(person), 'project-list', {})
     expect(result.isError).toBeUndefined()
     expect(recordSoloWorkspaceRead).not.toHaveBeenCalled()

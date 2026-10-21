@@ -6,8 +6,10 @@ import 'server-only'
  *
  * Two modes, chosen by the client (`x-piloti-mcp-mode` header or `?mode=`):
  *
- *  - `discovery` (default): four meta-tools. A client pays a few hundred tokens
- *    for the whole surface and finds operations by search.
+ *  - `search` (default): four meta-tools. A client pays a few hundred tokens
+ *    for the whole surface and finds operations by search. `discovery`, its
+ *    name until October 2026, is still accepted: MCP's own "discovery" is
+ *    `server/discover`, so the old name said something it was not.
  *  - `tools`: one tool per visible operation, for clients with their own tool
  *    search or a small catalog to show. Same catalog, same dispatch.
  */
@@ -21,7 +23,7 @@ import {
   callOperationTool,
   describeOperation,
   inputSchemaOf,
-  reportMissingCapability,
+  reportMissingOperation,
   runBackendOperation,
   runOperation,
   searchOperations,
@@ -38,13 +40,13 @@ export const MCP_INSTRUCTIONS = [
   'Piloti is the workspace for architects: a planning office runs its projects and processes in it, and Piloti, the agent, is a colleague in that office.',
   'Through this server you act for the signed-in person, with exactly the rights they have: their projects, documents, folders, review, conversations, tasks, skills and knowledge.',
   'Start with project-list to see which projects exist, then search-operations to find what you need, describe-operation for its input, and call-operation to run it.',
-  'Ask the person before a destructive operation. If nothing fits what they asked for, say so and call report-missing-capability.',
+  'Ask the person before a destructive operation. If nothing fits what they asked for, say so and call report-missing-operation.',
 ].join(' ')
 
-/** `discovery` unless the client asked for `tools`, by header or `?mode=`. */
+/** `search` unless the client asked for `tools`, by header or `?mode=`; anything else, `discovery` included, is `search`. */
 export function resolveMode(request: Request): McpMode {
   const asked = request.headers.get(MODE_HEADER) ?? new URL(request.url).searchParams.get('mode')
-  return asked?.toLowerCase() === 'tools' ? 'tools' : 'discovery'
+  return asked?.toLowerCase() === 'tools' ? 'tools' : 'search'
 }
 
 type JsonSchemaInput = Parameters<typeof fromJsonSchema>[0]
@@ -77,7 +79,7 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
     'search-operations': (args: unknown) => searchOperations(ctx, args),
     'describe-operation': (args: unknown) => describeOperation(ctx, args),
     'call-operation': (args: unknown) => callOperationTool(ctx, args),
-    'report-missing-capability': (args: unknown) => reportMissingCapability(ctx, args),
+    'report-missing-operation': (args: unknown) => reportMissingOperation(ctx, args),
   }
   for (const [name, tool] of Object.entries(META_TOOLS) as [keyof typeof META_TOOLS, (typeof META_TOOLS)[keyof typeof META_TOOLS]][]) {
     const annotations: ToolAnnotations = {
@@ -129,16 +131,16 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
     )
   }
   // The meta-tool that still matters when the whole catalog is listed.
-  const missing = META_TOOLS['report-missing-capability']
+  const missing = META_TOOLS['report-missing-operation']
   server.registerTool(
-    'report-missing-capability',
+    'report-missing-operation',
     {
       title: missing.title,
       description: missing.description,
       inputSchema: fromJsonSchema(missing.inputSchema as JsonSchemaInput),
       annotations: { title: missing.title, readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false },
     },
-    (args: unknown) => reportMissingCapability(ctx, args),
+    (args: unknown) => reportMissingOperation(ctx, args),
   )
 }
 

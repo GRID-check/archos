@@ -24,7 +24,7 @@ export const skillsOperations: readonly AgentOperation[] = [
     description:
       'The organization’s skill toolbox: platform-curated skills and the organization’s own, each with its name, ' +
       'description, category and whether it is enabled. Needs the skills feature on. Org skill ids from here feed ' +
-      'skill-update and skill-delete; names feed job-create.',
+      'skill-update and skill-delete; names feed task-create.',
     method: 'GET',
     path: '/api/skills',
     load: () => import('@/app/api/skills/route'),
@@ -32,9 +32,9 @@ export const skillsOperations: readonly AgentOperation[] = [
   {
     name: 'skill-invocable-list',
     domain: 'skills',
-    summary: 'List the skills a chat turn may invoke',
+    summary: 'List the skills a conversation turn may invoke',
     description:
-      'The skills this member may invoke in a chat turn, name and description only (no bodies): the catalogue ' +
+      'The skills this member may invoke in a conversation turn, name and description only (no bodies): the catalogue ' +
       'behind the composer’s "/" menu and the one the agent is given at turn start.',
     method: 'GET',
     path: '/api/skills/invocable',
@@ -73,7 +73,7 @@ export const skillsOperations: readonly AgentOperation[] = [
     domain: 'skills',
     summary: 'Delete an organization skill',
     description:
-      'Delete one of the organization’s own skills. Jobs that name it lose their attachment. Needs ' +
+      'Delete one of the organization’s own skills. Tasks that name it lose their attachment. Needs ' +
       'org:skills:manage. To switch a skill off while keeping it, use skill-update with `enabled: false`.',
     method: 'DELETE',
     path: '/api/skills/[skillId]',

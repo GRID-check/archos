@@ -688,13 +688,13 @@ export const platformOperations: readonly AgentOperation[] = [
     domain: 'platform',
     summary: 'Reclassify a base-corpus document',
     description:
-      'Sets the Dokumentart (`doc_class`) of a base-corpus document; it takes effect in retrieval at once with no re-ingest. ' +
+      'Sets the document type (`doc_class`) of a base-corpus document; it takes effect in retrieval at once with no re-ingest. ' +
       'Returns `{ fileName, docClass }`.',
     method: 'PATCH',
     path: '/api/platform/knowledge/documents/[fileName]/doc-class',
     params: fileNameParams,
     // The route reads the body by hand (no zod schema); it is the gate.
-    body: z.object({ doc_class: z.string().min(1).describe('The Dokumentart to set.') }),
+    body: z.object({ doc_class: z.string().min(1).describe('The document type to set.') }),
     idempotent: true,
     load: () => import('@/app/api/platform/knowledge/documents/[fileName]/doc-class/route'),
   },
@@ -772,13 +772,13 @@ export const platformOperations: readonly AgentOperation[] = [
     summary: 'Upload a PDF or ZIP to the base corpus',
     description:
       `Adds a PDF, or a ZIP of PDFs, to the shared building-law corpus every organization reads. Up to ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB per call ` +
-      'through the agent door. Send `body.files[0]` as { name, mimeType, contentBase64 }; `body.fields.doc_class` presets the Dokumentart ' +
+      'through the agent door. Send `body.files[0]` as { name, mimeType, contentBase64 }; `body.fields.doc_class` presets the document type ' +
       'of a single PDF. Ingestion runs in the background: the answer is `pending`, follow it with the corpus status operations. ' +
       'Platform owners only.',
     method: 'POST',
     path: '/api/platform/knowledge/documents',
     body: uploadBodySchemaWith({
-      doc_class: z.string().max(100).optional().describe('The Dokumentart for a single PDF; omit to let ingestion decide.'),
+      doc_class: z.string().max(100).optional().describe('The document type for a single PDF; omit to let ingestion decide.'),
     }),
     bodyEncoding: 'multipart',
     load: () => import('@/app/api/platform/knowledge/documents/route'),

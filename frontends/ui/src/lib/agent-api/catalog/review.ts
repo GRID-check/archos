@@ -61,7 +61,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'List a document’s versions',
     description:
-      'Every version (Fassung) of a document with its lifecycle state, author and content hash. ' +
+      'Every version of a document (the approval record of each revision) with its lifecycle state, author and content hash. ' +
       'Start here to get a `versionId` for the other document-version operations.',
     method: 'GET',
     path: '/api/documents/[id]/versions',
@@ -196,7 +196,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'Publish an approved version',
     description:
-      'Makes an approved version the document’s current published Fassung; the previous published version is superseded. Send no body.',
+      'Makes an approved version the document’s current published revision; the previous published version is superseded. Send no body.',
     method: 'POST',
     path: '/api/documents/[id]/versions/[versionId]/publish',
     params: versionParams,
@@ -209,7 +209,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'List the annotations on a document',
     description:
-      'Every Anmerkung (mark) on the document with its place, status, assignee and replies, including Piloti’s open proposals. ' +
+      'Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. ' +
       'The ids feed annotation-get, annotation-update and annotation-reply-create.',
     method: 'GET',
     path: '/api/documents/[id]/annotations',
@@ -221,7 +221,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'Place an annotation on a document',
     description:
-      'Sets a new mark at a place on the document (page position or text range, as the schema describes) with a kind and a body. ' +
+      'Sets a new annotation at a place on the document (page position or text range, as the schema describes) with a kind and a body. ' +
       'Returns the annotation with its number. Colleagues named in `mentions` are told.',
     method: 'POST',
     path: '/api/documents/[id]/annotations',
@@ -233,7 +233,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     name: 'annotation-get',
     domain: 'review',
     summary: 'Read one annotation with its thread',
-    description: 'One Anmerkung with its whole reply thread, status and carry links (id from annotation-list).',
+    description: 'One annotation with its whole reply thread, status and carry links (id from annotation-list).',
     method: 'GET',
     path: '/api/documents/[id]/annotations/[annotationId]',
     params: annotationParams,
@@ -244,8 +244,8 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'Change, resolve or reassign an annotation',
     description:
-      'Edits a mark: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. ' +
-      '`expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open mark onto the current Fassung.',
+      'Edits an annotation: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. ' +
+      '`expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open annotation onto the current revision.',
     method: 'PATCH',
     path: '/api/documents/[id]/annotations/[annotationId]',
     params: annotationParams,
@@ -257,7 +257,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'Delete one of your own annotations',
     description:
-      'Removes a mark its author set. A mark that has been discussed or carried to another Fassung is refused with a 409; resolve it instead ' +
+      'Removes an annotation its author set. One that has been discussed or carried to another revision is refused with a 409; resolve it instead ' +
       '(annotation-update). Deleting cannot be undone.',
     method: 'DELETE',
     path: '/api/documents/[id]/annotations/[annotationId]',
@@ -282,7 +282,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'Reword one of your own replies',
     description:
-      'Rewords a reply its author wrote, while the mark is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.',
+      'Rewords a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.',
     method: 'PATCH',
     path: '/api/documents/[id]/annotations/[annotationId]/replies/[replyId]',
     params: replyParams,
@@ -295,7 +295,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'Take back one of your own replies',
     description:
-      'Deletes a reply its author wrote, while the mark is live and Piloti has not taken it up (otherwise a 409). It cannot be undone.',
+      'Deletes a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). It cannot be undone.',
     method: 'DELETE',
     path: '/api/documents/[id]/annotations/[annotationId]/replies/[replyId]',
     params: replyParams,
@@ -305,7 +305,7 @@ export const reviewOperations: readonly AgentOperation[] = [
   {
     name: 'document-thread-ensure',
     domain: 'review',
-    summary: 'Open the caller’s chat thread about a document',
+    summary: 'Open the caller’s conversation about a document',
     description:
       'Returns the id of the caller’s own conversation about this document, creating it (with an optional `title`) the first time. ' +
       'Use the conversation operations with that id to read or post in it.',
@@ -321,21 +321,21 @@ export const reviewOperations: readonly AgentOperation[] = [
   {
     name: 'document-quarantine-get',
     domain: 'review',
-    summary: 'Read why a document is held and who may release it',
+    summary: 'Read why a document is held and who may allow it',
     description:
-      'For a document held by upload screening: the reason and what the caller may do (request release, or release it as a reviewer). ' +
-      'Next: document-quarantine-release-request or document-quarantine-release.',
+      'For a document held back by upload screening: the reason and what the caller may do (ask for it to be allowed, or allow it as a reviewer). ' +
+      'Next: document-quarantine-allow-request or document-quarantine-allow.',
     method: 'GET',
     path: '/api/documents/[id]/quarantine',
     params: documentParams,
     load: () => import('@/app/api/documents/[id]/quarantine/route'),
   },
   {
-    name: 'document-quarantine-release-request',
+    name: 'document-quarantine-allow-request',
     domain: 'review',
-    summary: 'Ask a reviewer to release a held upload',
+    summary: 'Ask a reviewer to allow a held upload',
     description:
-      'The uploader asks the project’s reviewers to release their held file. Notifies the reviewers; changes nothing about the file itself. Send no body.',
+      'The uploader asks the project’s reviewers to allow their held file through. Notifies the reviewers; changes nothing about the file itself. Send no body.',
     method: 'POST',
     path: '/api/documents/[id]/quarantine/request-release',
     params: documentParams,
@@ -343,12 +343,12 @@ export const reviewOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/documents/[id]/quarantine/request-release/route'),
   },
   {
-    name: 'document-quarantine-release',
+    name: 'document-quarantine-allow',
     domain: 'review',
-    summary: 'Release a quarantined document',
+    summary: 'Allow a held document through screening',
     description:
-      'A reviewer lets a held file through screening so it is read and shown like any other document. Needs the reviewer permission ' +
-      '(see document-quarantine-get). Send no body; the release is recorded and cannot be taken back.',
+      'A reviewer allows a held file through screening so it is read and shown like any other document. Needs the reviewer permission ' +
+      '(see document-quarantine-get). Send no body; the decision is recorded and cannot be taken back.',
     method: 'POST',
     path: '/api/documents/[id]/quarantine/release',
     params: documentParams,
@@ -356,7 +356,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     load: () => import('@/app/api/documents/[id]/quarantine/release/route'),
   },
 
-  // ---- Fassungen: how one document replaces another ----
+  // ---- Revisions: how one document replaces another ----
   {
     name: 'document-revision-compare',
     domain: 'review',
@@ -374,7 +374,7 @@ export const reviewOperations: readonly AgentOperation[] = [
   {
     name: 'document-revision-link-set',
     domain: 'review',
-    summary: 'Confirm or take back a Fassung link',
+    summary: 'Confirm or take back a revision link',
     description:
       'States that this document replaces `older` (`linked: true`) or takes that link back (`linked: false`). ' +
       'Both documents must be in the same collection and the caller needs write access.',
@@ -390,7 +390,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     summary: 'Find documents a new file could replace',
     description:
       'For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each ' +
-      'could be a new Fassung of. Read-only; feeds document-revision-link-set.',
+      'could be a new revision of. Read-only; feeds document-revision-link-set.',
     method: 'POST',
     path: '/api/documents/revision-candidates',
     body: projectRevisionCandidatesRequestSchema,
@@ -400,9 +400,9 @@ export const reviewOperations: readonly AgentOperation[] = [
   {
     name: 'document-annotations-export',
     domain: 'review',
-    summary: 'Export a document’s annotations as a Protokoll file',
+    summary: 'Export a document’s annotations as a minutes file',
     description:
-      'The document’s Anmerkungen as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current Fassung or ' +
+      'The document’s annotations as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current revision or ' +
       'every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. ' +
       'For the data itself use annotation-list. Needs read access to the document.',
     method: 'GET',
@@ -412,7 +412,7 @@ export const reviewOperations: readonly AgentOperation[] = [
     query: z.object({
       format: z.enum(ANNOTATION_EXPORT_FORMATS).optional().describe('pdf (default), docx or md.'),
       scope: z.enum(ANNOTATION_EXPORT_SCOPES).optional().describe('open (default): what still asks something; all: closed ones too.'),
-      revision: z.enum(ANNOTATION_EXPORT_REVISIONS).optional().describe('current (default), or all to include earlier Fassungen’s closed marks.'),
+      revision: z.enum(ANNOTATION_EXPORT_REVISIONS).optional().describe('current (default), or all to include earlier revisions’ closed annotations.'),
       includeProposals: z.enum(['0', '1']).optional().describe('1 adds Piloti’s untaken proposals under a heading of their own.'),
     }),
     binaryResponse: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
@@ -421,11 +421,11 @@ export const reviewOperations: readonly AgentOperation[] = [
   {
     name: 'project-annotations-export',
     domain: 'review',
-    summary: 'Export a project’s open points as a Protokoll file',
+    summary: 'Export a project’s open items as a minutes file',
     description:
-      'The project’s Offene Punkte as one Protokoll: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list ' +
+      'The project’s open items as one set of minutes: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list ' +
       '(`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. ' +
-      'Refused when more than 1000 marks match: narrow the filters. Records an audit event.',
+      'Refused when more than 1000 annotations match: narrow the filters. Records an audit event.',
     method: 'GET',
     path: '/api/projects/[id]/annotations/export',
     params: projectParams,

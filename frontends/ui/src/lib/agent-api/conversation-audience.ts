@@ -42,7 +42,7 @@ const tenantOf = (principal: AgentPrincipal) => ({
 
 export async function conversationReachOf(principal: AgentPrincipal): Promise<ConversationReach> {
   const conversationId = principal.conversationId
-  if (principal.kind !== 'piloti' || !conversationId) return 'none'
+  if (principal.actor !== 'piloti' || !conversationId) return 'none'
   const audience = await withTenant(tenantOf(principal), () =>
     readConversationAudience(getDb(), principal.session.organizationId, conversationId)
   )

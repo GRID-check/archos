@@ -43,10 +43,11 @@ MCP_PATH = "/api/mcp"
 #: certain to be answered in.
 PROTOCOL_VERSION = "2025-11-25"
 
-#: ``discovery`` exposes the four meta-tools; the full catalogue would cost every
-#: turn a tool list of hundreds (``docs/architecture/agent-tool-surface.md``).
+#: ``search`` exposes the four meta-tools; the full catalogue would cost every
+#: turn a tool list of hundreds (``docs/architecture/agent-surface.md``). The
+#: server still accepts ``discovery``, the mode's name until October 2026.
 MODE_HEADER = "x-piloti-mcp-mode"
-DISCOVERY_MODE = "discovery"
+SEARCH_MODE = "search"
 
 #: The answer the turn is writing (``turn_answer_message_id``), as the other internal tools send it in
 #: their bodies (``answerMessageId``): the BFF marks it in ``message_restricted_use`` when a read runs in
@@ -58,6 +59,10 @@ REQUEST_TIMEOUT_SECONDS = 30
 
 #: Cap on what is handed to the model; a longer answer says so (errors and truncation name the next call).
 MAX_RESULT_CHARS = 24_000
+
+#: How a tool-level error (``isError``) starts, so the model reads it as one. English, like everything
+#: the model reads from the workspace (AGENTS.md, "Industry standard first"); it words it for the reader.
+ERROR_PREFIX = "Error: "
 
 
 @dataclass(frozen=True)
@@ -100,7 +105,7 @@ def request_headers(token: str, envelope: SignedEnvelope, answer_message_id: str
         "Content-Type": "application/json",
         "Accept": "application/json, text/event-stream",
         "MCP-Protocol-Version": PROTOCOL_VERSION,
-        MODE_HEADER: DISCOVERY_MODE,
+        MODE_HEADER: SEARCH_MODE,
         "X-Grid-Internal-Token": token,
         # The two that decide WHO this is. Forwarded exactly as they arrived.
         "X-Grid-Request-Context": envelope.header,
@@ -159,8 +164,8 @@ def _result_text(message: dict[str, Any]) -> str:
     if not text and result.get("structuredContent") is not None:
         text = json.dumps(result["structuredContent"], ensure_ascii=False)
     if len(text) > MAX_RESULT_CHARS:
-        text = text[:MAX_RESULT_CHARS] + "\n[gekürzt: Antwort zu lang. Frage enger, mit `query` oder `limit`.]"
-    return f"Fehler: {text}" if result.get("isError") else text
+        text = text[:MAX_RESULT_CHARS] + "\n[Truncated: the answer is too long. Narrow it with `query` or `limit`.]"
+    return f"{ERROR_PREFIX}{text}" if result.get("isError") else text
 
 
 def call_tool(

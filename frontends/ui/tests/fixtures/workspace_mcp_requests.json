@@ -24,7 +24,7 @@
         "x-grid-internal-token": "<GRID_INTERNAL_API_TOKEN>",
         "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
         "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "discovery"
+        "x-piloti-mcp-mode": "search"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -51,7 +51,7 @@
         "x-grid-internal-token": "<GRID_INTERNAL_API_TOKEN>",
         "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
         "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "discovery"
+        "x-piloti-mcp-mode": "search"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -77,7 +77,7 @@
         "x-grid-internal-token": "<GRID_INTERNAL_API_TOKEN>",
         "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
         "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "discovery"
+        "x-piloti-mcp-mode": "search"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -112,7 +112,7 @@
         "x-grid-internal-token": "<GRID_INTERNAL_API_TOKEN>",
         "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
         "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "discovery"
+        "x-piloti-mcp-mode": "search"
       },
       "body": {
         "jsonrpc": "2.0",
@@ -139,16 +139,16 @@
         "x-grid-internal-token": "<GRID_INTERNAL_API_TOKEN>",
         "x-grid-request-context": "eyJvcmdhbml6YXRpb25JZCI6Im9yZ18xIiwidXNlcklkIjoidXNlcl8xIiwiY29udmVyc2F0aW9uSWQiOiJjb252XzEiLCJpc3N1ZWRBdCI6MH0",
         "x-grid-request-context-sig": "<ENVELOPE_SIGNATURE>",
-        "x-piloti-mcp-mode": "discovery"
+        "x-piloti-mcp-mode": "search"
       },
       "body": {
         "jsonrpc": "2.0",
         "id": 1,
         "method": "tools/call",
         "params": {
-          "name": "report-missing-capability",
+          "name": "report-missing-operation",
           "arguments": {
-            "description": "Ich möchte eine Frist im Kalender eintragen."
+            "description": "Add a deadline to the calendar."
           }
         }
       }

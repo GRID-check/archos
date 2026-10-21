@@ -158,7 +158,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     summary: 'Pause, resume or close a project',
     description:
       'Moves a project through its lifecycle. `{ status: "active" }` resumes or reopens, `{ status: "paused" }` pauses, ' +
-      '`{ status: "closed", outcome, endedOn }` closes it with how it ended and its Abschluss month (YYYY-MM). ' +
+      '`{ status: "closed", outcome, endedOn }` closes it with how it ended and its completion month (YYYY-MM). ' +
       'Needs project:manage and works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.',
     method: 'PUT',
     path: '/api/projects/[id]/status',
@@ -317,7 +317,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     summary: 'Change single profile entries',
     description:
       'Applies JSON-patch style operations (`add`, `replace`, `remove`) to the profile under /facts, /goals, /unknowns or /assumptions. ' +
-      'The safer way to edit one fact. Pass `conversationId` when the change came out of a chat. Needs project:edit. Answers the updated profile; read project-profile-get for paths.',
+      'The safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.',
     method: 'POST',
     path: '/api/projects/[id]/profile/patches',
     params: projectParams,
@@ -341,7 +341,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     domain: 'projects',
     summary: 'Read a project’s intake review',
     description:
-      'The Projekterfassung as the person sees it: what Piloti read from the documents, the suggestions waiting for a decision, reading progress and what is still open. ' +
+      'The project setup from the documents as the person sees it: what Piloti read from the documents, the suggestions waiting for a decision, reading progress and what is still open. ' +
       'Answers `{ intake }`. Decide on suggestions with project-intake-decide; finish with project-intake-complete.',
     method: 'GET',
     path: '/api/projects/[id]/intake',
@@ -380,7 +380,7 @@ export const projectsOperations: readonly AgentOperation[] = [
     domain: 'projects',
     summary: 'Finish the intake review',
     description:
-      'Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and Abschluss. ' +
+      'Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and completion month. ' +
       'Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.',
     method: 'POST',
     path: '/api/projects/[id]/intake/complete',
@@ -390,9 +390,9 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-record-get',
     domain: 'projects',
-    summary: 'Read the Steckbrief',
+    summary: 'Read the project record',
     description:
-      'The project’s Steckbrief: its period (Beginn, Abschluss) and the people on it, members and former members included, with their Funktion, Firma and months. ' +
+      'The project record: its period (start and completion month) and the people on it, members and former members included, with their function, company and months. ' +
       'people[].id feeds project-person-update and project-person-delete.',
     method: 'GET',
     path: '/api/projects/[id]/project-record',
@@ -402,10 +402,10 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-period-set',
     domain: 'projects',
-    summary: 'Set a project’s Beginn',
+    summary: 'Set a project’s start month',
     description:
       'Sets the project’s start month (`startedOn`, YYYY-MM, or null to clear). The end is not set here: closing the project names it (project-status-set). ' +
-      'Answers the updated Steckbrief.',
+      'Answers the updated project record.',
     method: 'PUT',
     path: '/api/projects/[id]/project-record',
     params: projectParams,
@@ -415,9 +415,9 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-person-add',
     domain: 'projects',
-    summary: 'Add a person to the Steckbrief',
+    summary: 'Add a person to the project record',
     description:
-      'Adds someone to the project’s Steckbrief by hand, such as an external planner: name, optional Funktion, Firma, start and end month. ' +
+      'Adds someone to the project record by hand, such as an external planner: name, optional function, company, start and end month. ' +
       'No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.',
     method: 'POST',
     path: '/api/projects/[id]/people',
@@ -428,7 +428,7 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-person-update',
     domain: 'projects',
-    summary: 'Change a person on the Steckbrief',
+    summary: 'Change a person on the project record',
     description:
       'Replaces one person’s entry with the body given, so send every field (name, function, company, startedOn, endedOn, userId), not only the changed one. ' +
       '`personId` is from project-record-get.',
@@ -442,9 +442,9 @@ export const projectsOperations: readonly AgentOperation[] = [
   {
     name: 'project-person-delete',
     domain: 'projects',
-    summary: 'Erase a person from the Steckbrief',
+    summary: 'Erase a person from the project record',
     description:
-      'Erases one person’s entry from the Steckbrief; this is the data-protection erasure and cannot be undone. ' +
+      'Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. ' +
       'Still possible in a closed project for whoever manages it. `personId` is from project-record-get.',
     method: 'DELETE',
     path: '/api/projects/[id]/people/[personId]',

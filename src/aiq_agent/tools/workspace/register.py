@@ -3,7 +3,7 @@
 Four tools (``workspace__search``, ``workspace__describe``, ``workspace__call``,
 ``workspace__report_missing``), one NAT function group, because they share the
 client and the refusal. They are the SAME four meta-tools an external agent
-(Claude, Cursor) gets from the server in ``discovery`` mode (ADR-0121): the
+(Claude, Cursor) gets from the server in ``search`` mode (ADR-0121): the
 model finds an operation by what it wants to do, reads its schema, then calls
 it. Reads run; a write comes back as a proposal the person accepts, so nothing
 here changes the workspace on its own authority (ADR-0105).
@@ -46,41 +46,44 @@ SERVER_TOOLS = {
     "search": "search-operations",
     "describe": "describe-operation",
     "call": "call-operation",
-    "report_missing": "report-missing-capability",
+    "report_missing": "report-missing-operation",
 }
 
+# Everything the model reads from these tools is English, one word per concept (AGENTS.md, "Industry
+# standard first"; the terms are in docs/glossary.md, "Agent surface and standard terms"). The model
+# answers the person in their language; it does not quote these sentences.
+
 _NO_ENVELOPE = (
-    "Fehler: Dieser Lauf hat keinen signierten Sitzungsnachweis, deshalb kann Piloti im Namen einer Person "
-    "nichts im Arbeitsbereich lesen oder tun. Nicht erneut versuchen."
+    "Error: this run carries no signed request context, so Piloti cannot read or do anything in the "
+    "workspace on a person's behalf. Do not retry."
 )
 
 DESCRIPTIONS = {
     "search": (
-        "Findet, was Piloti im Arbeitsbereich tun kann: Projekte, Mitglieder, Dokumente und Fassungen, "
-        "Eingang, Aufträge, Einstellungen. Aufrufen, wenn die Person etwas im Arbeitsbereich lesen oder "
-        "ändern will und kein anderes Werkzeug es abdeckt. `query` beschreibt das Ziel in einfachen "
-        "Worten („Mitglied zu Projekt hinzufügen“), `domain` grenzt optional auf einen Bereich ein, `limit` "
-        "(Standard 10) auf die Trefferzahl. Antwort: Namen von Operationen mit je einer Zeile. Danach "
-        "`workspace__describe` mit dem Namen, dann `workspace__call`. Nichts Passendes: "
-        "`workspace__report_missing`."
+        "Find what Piloti can do in the workspace: projects, members, documents and their revisions, the "
+        "inbox, tasks and task runs, settings. Call it when the person wants to read or change something in "
+        'the workspace and no other tool covers it. `query` states the goal in plain words ("add a member to '
+        'a project"), `domain` optionally narrows it to one area, `limit` (default 10) caps the hits. Answers '
+        "operation names with one line each. Then `workspace__describe` with the name, then "
+        "`workspace__call`. Nothing fits: `workspace__report_missing`."
     ),
     "describe": (
-        "Zeigt, wie eine Operation aufgerufen wird: Zweck, Parameter (`params` für Pfad-IDs, `query`, "
-        "`body`), Schreib- oder Lesezugriff und woher die IDs kommen. `name` ist ein Name aus "
-        "`workspace__search`, genau so geschrieben. Immer vor dem ersten `workspace__call` einer Operation "
-        "lesen; ein unbekannter Name kommt mit ähnlichen Namen zurück."
+        "Show how to call one operation: what it does, its input (`params` for path ids, `query`, `body`), "
+        "whether it reads or writes, and where its ids come from. `name` is a name from `workspace__search`, "
+        "spelled exactly. Read it before the first `workspace__call` of an operation; an unknown name comes "
+        "back with similar names."
     ),
     "call": (
-        "Führt eine Operation im Namen der Person aus, mit deren Rechten. `name` aus `workspace__search`, "
-        "`input` mit den Feldern `params`, `query` und `body`, wie `workspace__describe` sie zeigt. Lesen "
-        "läuft sofort. Ein Schreiben ändert NICHTS: es kommt als Vorschlag zurück, den die Person annimmt; "
-        "sage ihr in einem Satz, was vorgeschlagen ist, und behaupte nie, es sei erledigt. Eine Ablehnung "
-        "nennt den Grund und den nächsten Schritt; mach es nicht ein zweites Mal gleich."
+        "Run one operation on the person's behalf, with their rights. `name` from `workspace__search`, "
+        "`input` with the fields `params`, `query` and `body` as `workspace__describe` shows them. A read runs "
+        "at once. A write changes NOTHING: it comes back as a proposal the person accepts; tell them in one "
+        "sentence what is proposed, and never claim it is done. A refusal names the reason and the next "
+        "step; do not repeat the same call."
     ),
     "report_missing": (
-        "Meldet, dass die Person etwas im Arbeitsbereich will und es keine passende Operation gibt "
-        "(erst `workspace__search` mit zwei verschiedenen Formulierungen versucht). `description` sagt in "
-        "ein bis zwei Sätzen, was fehlt. Danach der Person ehrlich sagen, dass das (noch) nicht geht."
+        "Report that the person wants something in the workspace and no operation fits (after "
+        "`workspace__search` with two different phrasings). `description` says in one or two sentences what "
+        "is missing. Then tell the person honestly that it cannot be done (yet)."
     ),
 }
 
@@ -121,8 +124,8 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
     except WorkspaceError as exc:
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"error": str(exc), "status": exc.status})
         return (
-            f"Fehler beim Zugriff auf den Arbeitsbereich: {exc}. Es wurde nichts geändert; sage der Person, "
-            "dass es nicht geklappt hat, und versuche es nicht in derselben Antwort erneut."
+            f"Error reaching the workspace: {exc}. Nothing was changed. Tell the person it did not work, and do "
+            "not retry in the same answer."
         )
     text = result.text
     outcome: dict[str, Any] = {"chars": len(text)}
@@ -134,9 +137,7 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
 
 #: Appended when the server stored the proposal and this run has nowhere to draw its card. The person
 #: still finds it: the server told their inbox.
-_PROPOSED_WITHOUT_CARD = (
-    " Die Karte konnte in diesem Lauf nicht angezeigt werden; der Vorschlag wartet im Eingang der Person."
-)
+_PROPOSED_WITHOUT_CARD = " The card could not be shown in this run; the proposal waits in the person's inbox."
 
 
 def _show_proposal(

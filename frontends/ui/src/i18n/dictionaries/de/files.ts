@@ -1453,7 +1453,7 @@ export const files: typeof en.files = {
     emptyMine: 'Ihnen ist noch nichts zugewiesen',
     emptyDescription:
       'Ein anderer Filter zeigt Ihnen wieder alle Dateien dieses Ordners.',
-    responsible: 'Verantwortlich',
+    responsible: 'Zuständig',
     // EIN Wort für eine Geste, an allen drei Stellen: Dateiablage, Berichtskarte
     // und Posteingang. Vorher hieß derselbe Knopf „Piloti dazu fragen“ und war
     // ausgerechnet bei Entwürfen ausgegraut — genau den Dokumenten, über die man
@@ -1711,7 +1711,7 @@ export const files: typeof en.files = {
       // „Was behoben ist“: Piloti antwortet im Verlauf jeder Anmerkung, nicht in einer Liste.
       checkingFixed: 'Piloti prüft, was behoben ist …',
       checkFixedDone: 'Piloti hat in den Verläufen geantwortet',
-      openConversation: 'Gespräch',
+      openConversation: 'Chat',
       declined: 'Piloti hat das nicht übernommen. Den Grund lesen Sie oben.',
       handedOff: 'Piloti recherchiert das ausführlich. Das Ergebnis kommt im Chat.',
       stopped: 'Diese Antwort wurde angehalten.',

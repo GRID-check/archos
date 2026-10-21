@@ -111,12 +111,17 @@ describe('the operations', () => {
         ),
         'utf8'
       )
-    ) as { tools: { name: string; description: string }[] }
+    ) as { tools: { name: string; description: string; inputSchema: { properties?: Record<string, unknown> } }[] }
 
     expect(BACKEND_OPERATIONS.map((op) => op.tool)).toEqual(fixture.tools.map((tool) => tool.name))
     for (const tool of fixture.tools) {
       const op = BACKEND_OPERATIONS.find((candidate) => candidate.tool === tool.name)
-      expect(op?.description).toBe(tool.description)
+      // The description is the agent surface's own English one, not Piloti's native tool text
+      // (`backend-operations.ts`); the input is the tool's own, property for property.
+      expect(op?.description.length).toBeGreaterThan(200)
+      expect(op?.description).not.toBe(tool.description)
+      const own = Object.keys(op?.inputSchema.properties ?? {}).filter((key) => key !== 'projectId')
+      expect(own).toEqual(Object.keys(tool.inputSchema.properties ?? {}))
     }
   })
 

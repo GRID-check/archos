@@ -57,6 +57,54 @@ The `grid-fassung-link:` advisory-lock salt in `document_metadata_store.py` stay
 German for good: every running pod derives the same lock from it, so a rename
 would let two pods take different locks.
 
+## Agent surface and standard terms
+
+What an agent reads (operation names, descriptions, schemas, refusals, the MCP
+server's instructions) uses these words and no others, in English, one word per
+concept, with the standard's word where one exists (AGENTS.md, "Industry
+standard first"; ADR-0121). A person reads the German word in the last column,
+through i18n. `lib/agent-api/english-only.spec.ts` holds the agent surface to
+English.
+
+| Term | What it is | Standard equivalent | Code | German in the UI |
+|---|---|---|---|---|
+| Task (task definition) | Work handed to Piloti, standing (on a schedule) or one-off: a name, a prompt, an optional skill, data sources and a schedule or due time | A2A `Task` is one attempt; ours is the definition behind attempts | `task_definitions` (`lib/db/schema/task-model.ts`); route `/api/projects/[id]/jobs` (path not renamed: `/tasks` is taken); operations `task-list`, `task-get`, `task-create`, `task-update`, `task-delete` | Aufgabe |
+| Task run | One attempt at a task, or one commissioned deep research: queued, running, ended. Persisted in `task_runs`, shown as the run block | A2A `Task` (one unit of work with a lifecycle) | `task_runs` (`task-model.ts`), `lib/runs/`; operations `task-run-start`, `task-run-list` (one task's), `project-task-run-list` (the project's, with review state), `task-run-get`, `task-run-cancel`, `task-run-commission`, `task-run-document-add`, `task-run-write-now`, `task-run-review`; inbox types `task_run.completed`, `task_run.failed`, `task_run.waiting` | Lauf |
+| Job | A claim-queue item only: the row a worker claims and runs. Never a task or a task run | Queue job (any job queue) | `research_job_queue`, a run's `backendJobId`, `bff_job_queue`; the claim in `aiq_agent.common.claim_queue` | none |
+| Schedule | When a task runs: once at a due time, on a 5-field cron with an IANA time zone, or only by hand | cron, IANA tz | `lib/jobs/schedule.ts` (`cadenceOf`) | Zeitplan |
+| Run status | A task run's state. Four vocabularies today: `TASK_RUN_STATUSES` (`queued`, `running`, `succeeded`, `failed`, `interrupted`, `skipped`, `error`), the ledger's `RUN_STATUSES` (`created`, `running`, `waiting`, `done`, `failed`, `cancelled`, `interrupted`), the run block's and the backend job store's. A2A's states map as `submitted` = queued/created, `working` = running, `input-required` = waiting, `completed` = succeeded/done, `failed` = failed/error, `canceled` = cancelled/interrupted; one persisted vocabulary is a follow-up (ADR-0121) | A2A `TaskState` | `lib/tasks/task-vocabulary.ts`, `lib/runs/run-ledger-types.ts`, `lib/runs/run-vocabulary.ts` | angelegt, läuft, wartet, fertig, fehlgeschlagen, abgebrochen, unterbrochen |
+| Agent surface, MCP server | Everything a person can do, offered to agents through one MCP server at `/api/mcp` | MCP server (Model Context Protocol) | `lib/agent-api/`, `app/api/mcp/route.ts`; [`architecture/agent-surface.md`](architecture/agent-surface.md) | none |
+| Operation | One thing a person can do, as an agent sees it: a catalogued route method with a `<entity>-<verb>` name, a description and a zod input | MCP tool (in `tools` mode); OpenAPI operation (`operationId`) | `lib/agent-api/operation.ts` (`AgentOperation`) | none |
+| Backend operation | One of the Python agent's read tools offered as an operation (knowledge search, passage read, files, page image, IFC, RIS), with its own English description over Piloti's native one | MCP tool | `lib/agent-api/backend-operations.ts`; `/v1/internal/tools/{name}` (`aiq_api/routes/internal_tools.py`) | none |
+| Catalog | The list of every operation, one file per domain, held to the routes by the reachability ratchet | MCP `tools/list`; an OpenAPI document | `lib/agent-api/catalog/`, `agent-reachability.spec.ts`, `tests/fixtures/openapi.json` | none |
+| Search mode, tools mode | How the server presents the catalog: four meta-tools (`search-operations`, `describe-operation`, `call-operation`, `report-missing-operation`), or one MCP tool per operation. `search` was `discovery` until October 2026 and is still accepted | MCP `tools/list`; MCP's own discovery is `server/discover`, which is why the mode is not called that | `lib/agent-api/mcp-server.ts` (`resolveMode`), `discovery.ts` | none |
+| Principal | Who a call is: the subject (the person it acts for, a live-resolved session), the actor (`external_agent` or `piloti`) and the client (the OAuth client id) | OAuth token exchange (RFC 8693): subject, actor (`act`); OAuth client | `lib/agent-api/principal.ts` (`AgentPrincipal`, `AgentActor`) | none |
+| Acting session | The person's session bound to one dispatched operation call, so the route's `getGridSession()` answers with it; carries who reads the answer (`ActingReader`: an agent reads English) | none | `lib/agent-api/acting-session.ts`; entered only by `dispatch.ts` | none |
+| Pinned session | A person's session rebuilt from their id and organization, with membership, role and permissions as WorkOS states them now; what an agent and a background run act as | OAuth on-behalf-of (the subject's rights) | `lib/auth/pinned-session.ts` (`resolvePinnedRequesterSession`, ADR-0108) | none |
+| Signed request context | The HMAC-signed envelope the BFF mints per agent request, naming the person, organization, project and conversation; the backend and Piloti echo it, never sign it. Not the answer envelope | A signed token carrying claims (like a JWT, HMAC) | `lib/request-context.ts`; header `X-Grid-Request-Context` | none |
+| Requester, on behalf of | The person a task run, a proposal or a change acts for; `onBehalfOf` on a change record names them when Piloti made the change | RFC 8693 subject | `task_runs.requester_user_id`; `lib/changes/service.ts` (`onBehalfOf`) | „für Miriam“ |
+| Sensitivity | The class of an operation that widens access (`access`) or touches the organization's secrets (`secret`); extra guards apply | OAuth step-up scope | `lib/agent-api/operation.ts` (`Sensitivity`), `policy.ts` | none |
+| Call decision | What the server does with one call: `run` it, or `propose` it (Piloti's writes) | MCP tool annotations decide the client's confirmation; ours is server-side | `lib/agent-api/policy.ts` (`callDecision`) | none |
+| Wire module | A pure `lib/**/*-wire.ts` module holding a route's zod schema, imported by the route and the operation, so there is one contract | OpenAPI schema component | `lib/api/wire-modules.spec.ts` | none |
+| Proposal, kind `operation` | A write Piloti attempted through the agent surface, stored for a person to accept (it runs as them) or dismiss | none | `lib/agent-api/operation-proposals.ts`, `lib/proposals/kinds.ts`, `operation-applier.ts` (ADR-0105) | Vorschlag |
+| Change record | One row per change Piloti applied to an annotation or a thread, with its turn, for the turn's card and for undo | Audit record | `lib/changes/` (ADR-0109) | none |
+| Steering | A note the asker types into a running turn, read at its next tool round; not a new turn | none | chat wire `steer` ([`api/websocket-protocol.md`](api/websocket-protocol.md#steering-a-running-turn-steer)) | none |
+| Wake | Piloti answering in an annotation's thread when someone names it or answers its question, with nobody's chat open | none | `lib/annotations/wake*.ts` (ADR-0106) | weckt |
+| Mention request | An outstanding request for a named person's input in a conversation, until it is released | none | `mention_requests` (`lib/db/schema/mention-requests.ts`); operation `mention-request-release` | Erwähnung |
+| Skill | A packaged instruction Piloti loads into a turn (platform, office or project skill), named in a task by `/name` | Agent Skills (`SKILL.md`); not A2A's `AgentSkill`, which is an agent's advertised capability in its agent card | `lib/skills/`, `src/aiq_agent/skills/` (ADR-0060) | Skill |
+| Version | One revision's approval record: its lifecycle state (draft, in review, approved, published, …), author and content hash. Not a revision | none | `document_versions`; operations `document-version-*` | Freigabestatus |
+| Revision | One state of a document in its timeline | none | `revision` ([above](#german-domain-term-english-code-name)) | Fassung |
+| Annotation | A mark on one page of one revision, with its thread | W3C Web Annotation | `lib/annotations/` | Anmerkung |
+| Answer envelope | The JSON object a research answer is generated as (prose, kind, verdict, cards). Not the signed request context | none | `src/aiq_agent/common/answer_envelope.py` | none |
+| Allow (a held upload) | A reviewer lets an upload the content check held back through. Never "release", which collides with approval | none | operations `document-quarantine-allow`, `document-quarantine-allow-request` (routes still `…/release`, a follow-up) | zulassen |
+| Conversation | A thread with Piloti and people in it | A2A `contextId` | `conversations`; agents read "conversation" | Chat |
+| Assignee | The person an annotation is assigned to, who answers it and closes it | none | `assigneeUserId` (`lib/annotations/`) | Zuständig |
+
+Old names an agent may still send are accepted for one release
+(`RENAMED_OPERATIONS`, `lib/agent-api/catalog/index.ts`); PostHog's
+`agent_operation_called` carries the new names, and `agent_operation_missing`
+replaced `agent_capability_missing`.
+
 ## Architecture and runtime
 
 | Term | Meaning | Defined in |

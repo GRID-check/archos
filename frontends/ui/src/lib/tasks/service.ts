@@ -397,9 +397,9 @@ function announceRunFinished(run: TaskRun, outcome: TaskOutcome, closed: TaskRun
  * `job_runs`, `recordTaskOutcome` for a delegated task) whose only difference
  * was which lookup found the row — the row is one table now.
  *
- * The inbox type is the existing `job.completed` / `job.failed` pair: the
+ * The inbox type is the existing `task_run.completed` / `task_run.failed` pair: the
  * payload already carries the ids, and a second type would be a second
- * presentation for a row that says the same thing. (`job.waiting`, the third
+ * presentation for a row that says the same thing. (`task_run.waiting`, the third
  * of the family, is emitted where the ledger turns to `waiting` —
  * `lib/runs/service.ts` — because that is the only tier that sees it.)
  * `actorUserId: null` because the work was Piloti's, and because
@@ -433,7 +433,7 @@ export async function recordRunOutcome(
   // inbox; the event is sent once, for the report that found the run active.
   if (options.onlyIfActive || isActiveTaskRunStatus(run.status)) announceRunFinished(run, outcome, completed.run)
 
-  const type: InboxItemType = outcome.status === 'success' ? 'job.completed' : 'job.failed'
+  const type: InboxItemType = outcome.status === 'success' ? 'task_run.completed' : 'task_run.failed'
   const anchor = run.backendJobId ?? run.id
   const emitted = await emitInboxItems([
     {

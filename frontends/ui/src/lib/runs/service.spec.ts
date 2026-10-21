@@ -375,7 +375,7 @@ describe('applyRunLedgerOp', () => {
     expect(emission).toMatchObject({
       organizationId: 'org_1',
       recipientUserId: 'user_1',
-      type: 'job.waiting',
+      type: 'task_run.waiting',
       resourceType: 'project',
       resourceId: 'project-1',
       anchorId: RUN,
@@ -409,7 +409,13 @@ describe('applyRunLedgerOp', () => {
       {
         organizationId: 'org_1',
         recipientUserId: 'user_1',
-        groupKey: expect.stringContaining('job.waiting'),
+        groupKey: expect.stringMatching(/^task_run\.waiting:/),
+      },
+      // A row an older pod wrote before 0175 settles too.
+      {
+        organizationId: 'org_1',
+        recipientUserId: 'user_1',
+        groupKey: expect.stringMatching(/^job\.waiting:/),
       },
     ])
   })

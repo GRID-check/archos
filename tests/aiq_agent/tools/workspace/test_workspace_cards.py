@@ -173,8 +173,8 @@ async def test_without_a_card_channel_the_proposal_still_stands_and_the_model_is
     text = await workspace.run_call("folder-rename", CALL_INPUT)
 
     assert text.startswith(PROPOSED_TEXT)
-    assert "nicht angezeigt" in text
-    assert "Eingang" in text
+    assert "could not be shown" in text
+    assert "inbox" in text
 
 
 def test_proposal_from_reads_only_the_documented_shape() -> None:

@@ -71,7 +71,7 @@ export const documentUploadFields = {
     .string()
     .max(2_000)
     .optional()
-    .describe('Where the file sat before upload, e.g. "Pläne/EG/Grundriss.pdf". Only for a folder upload; it is screened by name.'),
+    .describe('Where the file sat before upload, e.g. "Drawings/GF/floor-plan.pdf". Only for a folder upload; it is screened by name.'),
   screeningRelease: z
     .literal('name')
     .optional()

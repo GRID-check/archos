@@ -4,7 +4,7 @@ import 'server-only'
  *
  * Properties are scalars the catalog and the route already know. The text of an
  * agent's request never goes in: an agent quotes documents and names, and the
- * server events are non-personal by rule, so `agent_capability_missing` sends
+ * server events are non-personal by rule, so `agent_operation_missing` sends
  * the length of the description only.
  */
 
@@ -12,14 +12,14 @@ import { captureServer } from '@/lib/analytics/posthog-server'
 import type { CallDecision } from './policy'
 import type { AgentPrincipal } from './principal'
 
-export type McpMode = 'discovery' | 'tools'
+export type McpMode = 'search' | 'tools'
 
 export interface McpCallContext {
   principal: AgentPrincipal
   mode: McpMode
 }
 
-const doorOf = (principal: AgentPrincipal) => (principal.kind === 'person' ? 'mcp' : 'piloti')
+const doorOf = (principal: AgentPrincipal) => (principal.actor === 'external_agent' ? 'mcp' : 'piloti')
 
 export function recordOperationCalled(
   { principal, mode }: McpCallContext,
@@ -49,9 +49,9 @@ export function recordOperationCalled(
   })
 }
 
-export function recordCapabilityMissing({ principal, mode }: McpCallContext, descriptionLength: number): void {
+export function recordOperationMissing({ principal, mode }: McpCallContext, descriptionLength: number): void {
   captureServer({
-    event: 'agent_capability_missing',
+    event: 'agent_operation_missing',
     distinctId: principal.session.userId,
     organizationId: principal.session.organizationId,
     properties: {

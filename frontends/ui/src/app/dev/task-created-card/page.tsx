@@ -62,7 +62,7 @@ export default function TaskCreatedCardPreview(): JSX.Element {
       >
         <Panel
           title="Auftrag mit Frist und laufendem Gespräch"
-          note="Die Form, in der ein Auftrag meistens ankommt. „läuft“ ist der wichtigste Text auf der Karte — die Antwort daneben darf nicht so klingen, als sei die Arbeit getan. „Unterhaltung öffnen“ ist ein echter Link auf den Gesprächsverlauf, den der Auftrag schreibt."
+          note="Die Form, in der eine Aufgabe meistens ankommt. „läuft“ ist der wichtigste Text auf der Karte — die Antwort daneben darf nicht so klingen, als sei die Arbeit getan. „Chat öffnen“ ist ein echter Link auf den Chat, den die Aufgabe schreibt."
         >
           <TaskCreatedCard
             taskId="00000000-0000-4000-8000-0000000000f1"

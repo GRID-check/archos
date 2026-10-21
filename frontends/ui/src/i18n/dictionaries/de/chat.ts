@@ -228,7 +228,7 @@ export const chat: typeof en.chat = {
     clarify: 'Klären',
     /** Unter der Matrix in einem abgeschlossenen Projekt, wo „Klären“ stünde (ADR-0090). */
     clarifyClosed: 'Abgeschlossenes Projekt: keine neue Recherche zu offenen Befunden.',
-    commissioned: 'Auftrag angelegt',
+    commissioned: 'Aufgabe angelegt',
     // Gegenüber dem vorigen Bericht zum selben Thema.
     change: {
       new: 'neu',
@@ -534,14 +534,14 @@ export const chat: typeof en.chat = {
       ersetzt: 'Ersetzt',
       error: 'Das Einreichen hat nicht geklappt. Bitte unter Dateien erneut versuchen.',
     },
-    // Ein Auftrag, den Piloti nach diesem Gespräch selbständig erledigt
+    // Eine Aufgabe, die Piloti nach diesem Chat selbständig erledigt
     // (ADR-0051). Die Karte bietet nichts an: die Zeile existiert schon, wenn
     // sie erscheint, und der Laufblock darunter sagt, wie es steht — die Karte
     // ist die Quittung (was, welcher Art, bis wann) und nennt keinen Status.
     taskCreated: {
-      eyebrow: 'Auftrag',
+      eyebrow: 'Aufgabe',
       due: 'bis {date}',
-      open: 'Unterhaltung öffnen',
+      open: 'Chat öffnen',
       // Die vier Arten, in den Worten, in denen die Nutzerin sie beauftragt hat.
       kind: {
         complianceCheck: 'Normprüfung',
@@ -975,7 +975,7 @@ export const chat: typeof en.chat = {
         documents: {
           officeShelf: 'Unterlagen aus der Büroablage werden gesichtet …',
           project: 'Unterlagen aus dem Projekt werden gesichtet …',
-          session: 'Unterlagen aus dieser Unterhaltung werden gesichtet …',
+          session: 'Unterlagen aus diesem Chat werden gesichtet …',
           several: 'Ihre Unterlagen werden gesichtet …',
           // Eine gerade hochgeladene Datei ist noch nicht fertig indiziert;
           // die Antwort wartet kurz darauf, statt ohne sie zu antworten.
@@ -1024,7 +1024,7 @@ export const chat: typeof en.chat = {
           // Dinge sind: das eine legt etwas hin, das andere bittet jemanden.
           draftFiled: 'Entwurf wird im Projekt abgelegt …',
           draftSubmitted: 'Entwurf wird zur Freigabe eingereicht …',
-          taskCreated: 'Auftrag wird angelegt …',
+          taskCreated: 'Aufgabe wird angelegt …',
           // Anmerkungen in einem Dokument. Eigene Befunde schlägt Piloti nur
           // vor: Erst eine Person übernimmt oder verwirft sie. Setzen, ändern
           // und löschen tut Piloti nur, worum die Person bittet.
@@ -1085,7 +1085,7 @@ export const chat: typeof en.chat = {
       // Der Entwurf verlässt das Arbeitsverzeichnis: als Projektdokument
       // abgelegt oder zur Freigabe eingereicht.
       filing: 'Ablage',
-      task: 'Auftrag',
+      task: 'Aufgabe',
       // Anmerkungen im Dokument: gelesen, vorgeschlagen oder beantwortet.
       annotations: 'Anmerkungen',
       // Die Dateiaktionen SCHLAGEN vor und schreiben nichts (ADR-0003).
@@ -1129,7 +1129,7 @@ export const chat: typeof en.chat = {
     // Laufblock darunter. Kein grünes Häkchen, kein „Fertig“.
     // Der Zug ist gescheitert; die Fehlerkarte darunter sagt wie.
     failed: 'Fehlgeschlagen',
-    handedOff: 'Auftrag angelegt',
+    handedOff: 'Aufgabe angelegt',
     // Piloti hat die Frage nicht bearbeitet (abgelehnt oder nicht angenommen):
     // das Banner darunter sagt warum. Neutral, kein „Fertig“.
     refused: 'Nicht bearbeitet',
@@ -1481,7 +1481,7 @@ export const chat: typeof en.chat = {
     chip: '{count, plural, one {Ein anderes Projekt} other {# andere Projekte}}',
     title: 'Dieser Chat stützt sich auf andere Projekte: {projects}.',
     gone: 'ein Projekt, das es nicht mehr gibt',
-    body: 'Er lässt sich nur mit Personen teilen, die diese Projekte öffnen dürfen. Aus ihm geht nichts ins Projektgedächtnis, in Aufträge, in eine Tiefenrecherche oder in die Projektablage.',
+    body: 'Er lässt sich nur mit Personen teilen, die diese Projekte öffnen dürfen. Aus ihm geht nichts ins Projektgedächtnis, in Aufgaben, in eine Tiefenrecherche oder in die Projektablage.',
   },
   screening: {
     title: 'Enthält {items} (Sensible Daten).',

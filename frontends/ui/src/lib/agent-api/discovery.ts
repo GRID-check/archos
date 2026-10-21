@@ -8,7 +8,7 @@ import 'server-only'
  * (`exec`) and Cloudflare (`search` + `execute`) settled on:
  *
  *   search-operations -> describe-operation -> call-operation
- *   report-missing-capability, for the day search finds nothing
+ *   report-missing-operation, for the day search finds nothing
  *
  * The handlers here are plain functions over an {@link McpCallContext};
  * `mcp-server.ts` registers them, and registers the per-operation tools of
@@ -44,7 +44,7 @@ import {
   visibleOperations,
 } from './policy'
 import { readGateFor, sharedConversationReadRefusal } from './read-gate'
-import { type McpCallContext, recordCapabilityMissing, recordOperationCalled } from './telemetry'
+import { type McpCallContext, recordOperationCalled, recordOperationMissing } from './telemetry'
 
 /** Longest text a result carries; beyond it the call must be narrowed. */
 export const MAX_RESULT_CHARS = 40_000
@@ -316,7 +316,8 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
       record(403)
       return failure(refused)
     }
-    const result = await callOperation(op, input, ctx.principal.session)
+    // An agent reads the answer: a route that words its refusal in the person's locale words it in English.
+    const result = await callOperation(op, input, ctx.principal.session, 'agent')
     record(result.status)
     // A link works for whoever holds it, with the requester's access: never into a transcript others read.
     if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return failure(sharedConversationReadRefusal())
@@ -437,7 +438,7 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
     operations: shown,
     next:
       shown.length === 0
-        ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-capability.'
+        ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
         : 'Call describe-operation for the input schema, then call-operation.',
   })
 }
@@ -514,11 +515,11 @@ export function callOperationTool(ctx: McpCallContext, args: unknown): Promise<C
 
 const missingInput = z.object({ description: z.string().min(1).max(2_000) })
 
-export function reportMissingCapability(ctx: McpCallContext, args: unknown): CallToolResult {
+export function reportMissingOperation(ctx: McpCallContext, args: unknown): CallToolResult {
   const parsed = missingInput.safeParse(args)
-  if (!parsed.success) return failure('report-missing-capability needs { description } of 1 to 2000 characters.')
+  if (!parsed.success) return failure('report-missing-operation needs { description } of 1 to 2000 characters.')
   // Only the length leaves this process: server events are non-personal by rule.
-  recordCapabilityMissing(ctx, parsed.data.description.length)
+  recordOperationMissing(ctx, parsed.data.description.length)
   return success({ status: 'recorded' })
 }
 
@@ -528,7 +529,7 @@ export const META_TOOLS = {
   'search-operations': {
     title: 'Search operations',
     description:
-      'Find Piloti operations by plain words (ranked over name, summary, description) or a regular expression. ' +
+      'Find Piloti operations by plain words, ranked over name, summary and description. ' +
       'Start here: results name the operation to describe and call. Optionally narrow by domain.',
     inputSchema: {
       type: 'object',
@@ -581,8 +582,8 @@ export const META_TOOLS = {
     },
     readOnly: false,
   },
-  'report-missing-capability': {
-    title: 'Report a missing capability',
+  'report-missing-operation': {
+    title: 'Report a missing operation',
     description:
       'Tell the Piloti team what you tried to do and could not find an operation for. Use it after search-operations came back empty. ' +
       'Describe the goal, not the person or the documents involved.',

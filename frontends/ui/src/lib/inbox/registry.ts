@@ -210,7 +210,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     collaboration off still schedules them. A failure is kept longer — it is
     the one the reader most needs to still find.
   */
-  'job.completed': {
+  'task_run.completed': {
     actionable: false,
     grouping: 'per-anchor',
     retentionDays: 30,
@@ -218,7 +218,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: IN_APP_ONLY,
     push: { category: 'results', urgency: 'low' },
   },
-  'job.failed': {
+  'task_run.failed': {
     actionable: false,
     grouping: 'per-anchor',
     retentionDays: 60,
@@ -234,7 +234,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     on the RUN: a second question from the same run folds into the row it
     already has, which is the row the reader is about to open anyway.
   */
-  'job.waiting': {
+  'task_run.waiting': {
     actionable: true,
     grouping: 'per-anchor',
     retentionDays: 30,
@@ -368,7 +368,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     answer is in the thread, nothing waits on the reader. Operational, like
     `document.review_requested`: marks are not a chat feature. Short retention:
     it announces work that is already visible on the mark. A failure is the one
-    worth keeping and mailing, as `job.failed` is: the person delegated the mark
+    worth keeping and mailing, as `task_run.failed` is: the person delegated the mark
     and may have left.
   */
   'piloti.work_done': {

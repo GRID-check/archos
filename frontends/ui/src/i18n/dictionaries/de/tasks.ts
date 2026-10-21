@@ -67,14 +67,14 @@ export const tasks: typeof en.tasks = {
     close: 'Details schließen',
     edit: 'Bearbeiten',
     result: 'Ergebnis',
-    request: 'Auftrag',
+    request: 'Aufgabe',
     schedule: 'Zeitplan',
     prompt: 'Prompt',
-    /** Die Läufe eines Zeitplans — jeder davon eine Aufgabe, also heißt es so. */
-    runs: 'Aufgaben',
+    /** Die Läufe einer stehenden Aufgabe: jeder davon ein Lauf (CONTEXT.md, „Lauf“). */
+    runs: 'Läufe',
     /** Macht aus einem Einmaligen eine stehende Aufgabe, vorausgefüllt. */
     promote: 'Als stehende Aufgabe speichern',
-    promoteHint: 'Öffnet den Aufgaben-Assistenten mit diesem Auftrag. Gespeichert wird erst im letzten Schritt, dieser Lauf bleibt unverändert.',
+    promoteHint: 'Öffnet den Aufgaben-Assistenten mit dieser Aufgabe. Gespeichert wird erst im letzten Schritt, dieser Lauf bleibt unverändert.',
     gone: 'Das gibt es nicht mehr — möglicherweise wurde es gelöscht.',
     /**
      * Ein Deep Link, der in diesem Projekt auf keine Zeile passt. Der Link zeigt

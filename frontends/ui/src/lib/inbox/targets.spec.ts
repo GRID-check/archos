@@ -164,7 +164,7 @@ describe('the project target', () => {
     vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access).not.toBeNull()
-    expect(access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1' })).toBe(
+    expect(access!.deepLink({ itemType: 'task_run.completed', anchorId: 'backend-job-1' })).toBe(
       '/app/projects/proj_1/automation?tab=jobs',
     )
     expect(requireProjectAccess).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user_1' }), 'proj_1', 'project:view')
@@ -175,7 +175,7 @@ describe('the project target', () => {
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access).not.toBeNull()
     expect(
-      access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1', taskId: 'task-1' }),
+      access!.deepLink({ itemType: 'task_run.completed', anchorId: 'backend-job-1', taskId: 'task-1' }),
     ).toBe('/app/projects/proj_1/automation?tab=tasks&task=task-1')
   })
 
@@ -183,14 +183,14 @@ describe('the project target', () => {
     vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access).not.toBeNull()
-    expect(access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1' })).toBe(
+    expect(access!.deepLink({ itemType: 'task_run.completed', anchorId: 'backend-job-1' })).toBe(
       '/app/projects/proj_1/automation?tab=jobs',
     )
     expect(
-      access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1', taskId: null }),
+      access!.deepLink({ itemType: 'task_run.completed', anchorId: 'backend-job-1', taskId: null }),
     ).toBe('/app/projects/proj_1/automation?tab=jobs')
     expect(
-      access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1', taskId: '   ' }),
+      access!.deepLink({ itemType: 'task_run.completed', anchorId: 'backend-job-1', taskId: '   ' }),
     ).toBe('/app/projects/proj_1/automation?tab=jobs')
   })
 

@@ -17,7 +17,7 @@ export const bimOperations: readonly AgentOperation[] = [
     domain: 'bim',
     summary: 'List the BIM models in scope for a project',
     description:
-      'The IFC models a project can use: its own uploads plus the organization Archiv’s, each with its id, name ' +
+      'The IFC models a project can use: its own uploads plus the office shelf’s, each with its id, name ' +
       'and revision. Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and ' +
       'bim-check-confirm.',
     method: 'GET',
@@ -99,7 +99,7 @@ export const bimOperations: readonly AgentOperation[] = [
     summary: 'File a drawn diagram into a project',
     description:
       'File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, ' +
-      'and `runId`, the id of the chat answer it was drawn in (filing the same diagram twice files nothing twice). ' +
+      'and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). ' +
       'Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only ' +
       'the SVG landed. Needs project:documents:write and project:documents:generate.',
     method: 'POST',
@@ -124,7 +124,7 @@ export const bimOperations: readonly AgentOperation[] = [
   {
     name: 'bim-checks-export',
     domain: 'bim',
-    summary: 'Export the Prüfbuch as a BCF archive',
+    summary: 'Export the check register as a BCF archive',
     description:
       'The project’s OIB rule check ledger for one model as a BCF 2.1 zip, one topic per finding. Name the model with `modelId` (a uuid) ' +
       'or `model` (its file name), and state `buildingClass` (1 to 5) and `mainUse` so rules that need them do not stand down. ' +
@@ -137,8 +137,8 @@ export const bimOperations: readonly AgentOperation[] = [
     query: z.object({
       modelId: z.string().uuid().optional().describe('The model (revision) id, from bim-model-list. Give this or `model`.'),
       model: z.string().max(255).optional().describe('The model’s file name. Give this or `modelId`.'),
-      buildingClass: z.number().int().min(1).max(5).optional().describe('The Gebäudeklasse, 1 to 5.'),
-      mainUse: z.string().max(100).optional().describe('The main use (Hauptnutzung) as in bim-model-query; an unknown value is treated as not stated.'),
+      buildingClass: z.number().int().min(1).max(5).optional().describe('The building class (OIB), 1 to 5.'),
+      mainUse: z.string().max(100).optional().describe('The main use as in bim-model-query; an unknown value is treated as not stated.'),
     }),
     binaryResponse: ['application/octet-stream'],
     load: () => import('@/app/api/projects/[id]/bim/checks/export/route'),

@@ -31,7 +31,7 @@ vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.
 vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 vi.mock('@/lib/agent-api/telemetry', () => ({
   recordOperationCalled: vi.fn(),
-  recordCapabilityMissing: vi.fn(),
+  recordOperationMissing: vi.fn(),
 }))
 vi.mock('@/lib/agent-api/operation-proposals', () => ({ proposeOperation: vi.fn() }))
 vi.mock('@/lib/agent-api/conversation-audience', () => ({
@@ -203,7 +203,7 @@ describe('what client.py sends, replayed against the real route', () => {
     }
   })
 
-  it('serves the discovery tools: search-operations, describe-operation, call-operation, report-missing-capability', async () => {
+  it('serves the search-mode tools: search-operations, describe-operation, call-operation, report-missing-operation', async () => {
     const list = {
       ...recorded('search'),
       body: { jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} },
@@ -216,7 +216,7 @@ describe('what client.py sends, replayed against the real route', () => {
       'search-operations',
       'describe-operation',
       'call-operation',
-      'report-missing-capability',
+      'report-missing-operation',
     ])
   })
 
@@ -258,7 +258,7 @@ describe('what client.py sends, replayed against the real route', () => {
     expect(vi.mocked(recordSoloWorkspaceRead)).toHaveBeenCalledTimes(1)
     const [principal] = vi.mocked(recordSoloWorkspaceRead).mock.calls[0]
     expect(principal).toMatchObject({
-      kind: 'piloti',
+      actor: 'piloti',
       conversationId: 'conv_1',
       answerMessageId: recorded('call_read').headers['x-grid-answer-message-id'],
     })
@@ -273,7 +273,7 @@ describe('what client.py sends, replayed against the real route', () => {
     answers.refused_shared_conversation = answer
     const result = messageOf<ToolResult>(answer).result
     expect(result.isError).toBe(true)
-    expect(result.content[0].text).toMatch(/^In einer geteilten Unterhaltung/)
+    expect(result.content[0].text).toMatch(/^This conversation is shared/)
     expect(vi.mocked(callOperation)).not.toHaveBeenCalled()
     expect(vi.mocked(recordSoloWorkspaceRead)).not.toHaveBeenCalled()
   })

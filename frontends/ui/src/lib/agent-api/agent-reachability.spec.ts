@@ -26,7 +26,7 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { toJsonSchema } from '@/lib/api/zod-json-schema'
-import { AGENT_OPERATIONS } from './catalog'
+import { AGENT_OPERATIONS, RENAMED_OPERATIONS, findOperation } from './catalog'
 import { type Sensitivity, pathParams } from './operation'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
@@ -256,6 +256,17 @@ describe('the catalog is well formed', () => {
       for (const schema of [op.params, op.query, op.body]) {
         if (schema) expect(() => toJsonSchema(schema), op.name).not.toThrow()
       }
+    }
+  })
+})
+
+describe('renamed operations (one release)', () => {
+  it('lead from a name no operation has to one that exists, and resolve to it', () => {
+    const names = new Set(AGENT_OPERATIONS.map((op) => op.name))
+    for (const [old, current] of Object.entries(RENAMED_OPERATIONS)) {
+      expect(names.has(current), `${old} -> ${current}`).toBe(true)
+      expect(names.has(old), old).toBe(false)
+      expect(findOperation(old)?.name).toBe(current)
     }
   })
 })

@@ -28,7 +28,7 @@ const SIZE_NOTE = `Up to ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB per call throug
 const revisionOfField = z
   .string()
   .optional()
-  .describe('The id of the older document this file is the new Fassung of; the service checks the pair.')
+  .describe('The id of the older document this file is the new revision of; the service checks the pair.')
 const projectUploadBody = uploadBodySchemaWith({
   projectId: z.string().min(1).describe('The project id, from project-list.'),
   folderId: z.string().optional().describe('The folder id, from project-folder-list; omit for the project root.'),
@@ -36,7 +36,7 @@ const projectUploadBody = uploadBodySchemaWith({
   ...documentUploadFields,
 })
 const officeShelfUploadBody = uploadBodySchemaWith({
-  folderId: z.string().optional().describe('The Büroablage folder id, from office-shelf-folder-list; omit for the root.'),
+  folderId: z.string().optional().describe('The office shelf folder id, from office-shelf-folder-list; omit for the root.'),
   revisionOf: revisionOfField,
   ...documentUploadFields,
 })
@@ -312,9 +312,9 @@ export const documentsOperations: readonly AgentOperation[] = [
   {
     name: 'document-version-file-get',
     domain: 'documents',
-    summary: 'Read one Fassung’s file bytes',
+    summary: 'Read the file bytes of one version',
     description:
-      'The bytes of one version (Fassung) of a document under its name, from document-version-list: returned as an attached resource ' +
+      'The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource ' +
       '(base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: "1"` marks it ' +
       'as an attachment. Only published or superseded versions are served.',
     method: 'GET',
@@ -332,7 +332,7 @@ export const documentsOperations: readonly AgentOperation[] = [
       `Stores one file in a project (optionally in a folder) and hands it to ingestion. ${SIZE_NOTE} ` +
       'Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). ' +
       'Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds ' +
-      'comes back held, and a reviewer releases it. Needs write access to the project’s documents.',
+      'comes back held, and a reviewer allows it. Needs write access to the project’s documents.',
     method: 'POST',
     path: '/api/documents/upload',
     body: projectUploadBody,
@@ -342,10 +342,10 @@ export const documentsOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-upload',
     domain: 'documents',
-    summary: 'Upload a file to the Büroablage',
+    summary: 'Upload a file to the office shelf',
     description:
-      `Stores one file in the office-wide Büroablage (optionally in one of its folders) and ingests it into the shared collection. ${SIZE_NOTE} ` +
-      'Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the Büroablage. Returns the stored document; ' +
+      `Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. ${SIZE_NOTE} ` +
+      'Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; ' +
       'follow ingestion with document-status.',
     method: 'POST',
     path: '/api/office-shelf/documents/upload',
@@ -358,7 +358,7 @@ export const documentsOperations: readonly AgentOperation[] = [
     domain: 'documents',
     summary: 'Attach a file to a conversation',
     description:
-      `Stores one file privately on one conversation (not in any project shelf) and ingests it for that chat. ${SIZE_NOTE} ` +
+      `Stores one file privately on one conversation (not in any project shelf) and ingests it for that conversation. ${SIZE_NOTE} ` +
       'Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created ' +
       'when it does not exist yet. Returns the stored document; follow ingestion with document-status.',
     method: 'POST',

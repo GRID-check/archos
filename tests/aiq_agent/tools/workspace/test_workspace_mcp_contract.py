@@ -65,7 +65,7 @@ CASES: list[tuple[str, str, dict[str, Any]]] = [
         },
     ),
     ("call_read", "call-operation", {"name": "project-list", "input": {}}),
-    ("report_missing", "report-missing-capability", {"description": "Ich möchte eine Frist im Kalender eintragen."}),
+    ("report_missing", "report-missing-operation", {"description": "Add a deadline to the calendar."}),
 ]
 
 
@@ -211,7 +211,7 @@ def test_client_reads_what_the_route_answers(case: str, monkeypatch: pytest.Monk
     tool, arguments = next((t, a) for n, t, a in CASES if n == case)
     monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
     text = client.call_tool(tool, arguments, _envelope())
-    assert not text.startswith("Fehler:"), text
+    assert not text.startswith("Error:"), text
     for needle in EXPECTED_TEXT[case]:
         assert needle in text
 
@@ -260,7 +260,7 @@ def test_a_tool_level_error_comes_back_as_text(monkeypatch: pytest.MonkeyPatch) 
     entry = _responses()["responses"]["unknown_operation"]
     monkeypatch.setattr(client, "_opener", _Opener(_reply_for(entry)))
     text = client.call_tool("describe-operation", {"name": "nope"}, _envelope())
-    assert text.startswith("Fehler: Unknown operation")
+    assert text.startswith("Error: Unknown operation")
 
 
 def test_a_read_refused_in_a_shared_conversation_reaches_the_model_as_the_servers_sentence(monkeypatch) -> None:
@@ -272,5 +272,5 @@ def test_a_read_refused_in_a_shared_conversation_reaches_the_model_as_the_server
 
     result = client.call_tool_result(tool, arguments, _envelope(), answer_message_id=ANSWER_MESSAGE_ID)
 
-    assert result.text.startswith("Fehler: In einer geteilten Unterhaltung")
+    assert result.text.startswith("Error: This conversation is shared")
     assert result.structured is None

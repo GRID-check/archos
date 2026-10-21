@@ -31,7 +31,10 @@ flowchart LR
 1. **The client calls `/api/mcp`.** An external agent presents a bearer token
    issued by WorkOS AuthKit. Piloti, inside a turn, echoes the turn's signed
    request-context envelope. Neither can reach a route any other way.
-2. **Principal.** `principal.ts` turns the credential into a person. A token is
+2. **Principal.** `principal.ts` turns the credential into a principal: the
+   person the call is for (the subject), the agent acting (the actor:
+   `external_agent` or `piloti`) and the OAuth client, in the words of token
+   exchange (RFC 8693). A token is
    checked for signature, issuer (`https://<WORKOS_AUTHKIT_DOMAIN>`) and audience
    (the MCP URL, RFC 8707). A token carries no permissions, so the person's
    membership, role and permissions are resolved on every call with
@@ -95,8 +98,9 @@ person's and does not say which folder or project its content came from, so
 
 - **Shared** (named grantees, or visible to the project or the office): no
   workspace read and no backend read runs. The model gets
-  `errors.agentSurface.sharedConversationRead` ("In einer geteilten Unterhaltung
-  liest Piloti nichts aus dem Arbeitsbereich …") to relay. A redirect or a
+  `SHARED_CONVERSATION_READ_REFUSAL` ("This conversation is shared, so Piloti
+  reads nothing from the workspace in it …"), in English whatever the person's
+  locale, and words it for the reader (see [English only](#english-only)). A redirect or a
   presigned link is never handed on there either. `AUDIENCE_SAFE_READ_DOMAINS`
   is empty: a domain belongs in it only when every reader of the conversation
   may read every answer of every operation in it.
@@ -130,11 +134,43 @@ a client that lists 300 tools pays for them in every conversation.
 
 | Mode | The client sees | Use it when |
 |---|---|---|
-| `discovery` (default) | `search-operations`, `describe-operation`, `call-operation`, `report-missing-capability` | Almost always. The agent searches, reads one schema, calls |
+| `search` (default) | `search-operations`, `describe-operation`, `call-operation`, `report-missing-operation` | Almost always. The agent searches, reads one schema, calls |
 | `tools` | One MCP tool per operation, each with its annotations | A client or model that copes with a long list |
 
-`report-missing-capability` is how an agent says "I wanted to do X and found
-nothing". It emits `agent_capability_missing`.
+`report-missing-operation` is how an agent says "I wanted to do X and found
+nothing". It emits `agent_operation_missing`.
+
+The mode was called `discovery` until October 2026, and the server still
+accepts that name (header `x-piloti-mcp-mode` or `?mode=`). MCP's own
+"discovery" is `server/discover`, so the old name said something it was not.
+
+## English only
+
+Everything an agent reads from this server is English, one word per concept:
+operation names, summaries, descriptions, schema descriptions, the meta-tools,
+the server instructions, refusals and proposal summaries (AGENTS.md, "Industry
+standard first"). German is for people, through i18n, and for domain data
+(document names, addresses, legal citations such as "OIB-Richtlinie 2"). The
+words are in [`../glossary.md`](../glossary.md#agent-surface-and-standard-terms).
+
+- A route that words a refusal in the person's locale (`getLocale()`) answers an
+  agent in English: `dispatch.ts` runs the call with the reader `agent`
+  (`ActingReader`, `acting-session.ts`), and `getLocale()` returns `en` for it.
+  A person applying a proposal reads the route's words in their own language.
+- The backend operations carry their own English descriptions
+  (`backend-operations.ts`), layered over the fixture's: those are Piloti's
+  native tool descriptions, written for a German office, and stay as they are
+  until the core-agent wave. Their input schemas keep the fixture's text with
+  `ENGLISH_GLOSSES` applied.
+- `english-only.spec.ts` reads what `initialize` and `tools/list` hand a client
+  in both modes, the OpenAPI document and every string literal under
+  `lib/agent-api/` and `app/api/mcp/`, and fails on a German word (an umlaut,
+  a stem or a prose word of `ci/german_stems.json`). Domain data passes only
+  through its `DOMAIN_DATA` list, each entry with a reason. Its Python half is
+  `tests/aiq_agent/tools/workspace/test_english_only.py`, for what the workspace
+  tools tell Piloti's model.
+- Not yet: the internal routes Piloti's native tools call still refuse in German
+  (`AGENT_REFUSAL_LOCALE`); see ADR-0121, "Follow-ups".
 
 ## What deserves a tool
 
@@ -198,9 +234,21 @@ Do this in the same change that adds or changes the route. The exemplar is
 
 `<entity>-<verb>`, kebab-case, at most 52 characters, unique: `project-member-add`,
 `document-version-approve`, `inbox-item-archive`. The verbs in use are list, get,
-create, update, delete, rename, move, add, remove, search, export, run, cancel,
-approve, reject, publish, submit, restore, archive and release. Pick one of them
-before inventing another. One operation per route method; never two on the same.
+create, update, delete, rename, move, add, remove, search, export, start, cancel,
+approve, reject, publish, submit, restore, archive, allow and release (a legal hold,
+a hand-off; a held upload is allowed, never released, because "release" collides
+with approval). Pick one of them before inventing another. One operation per route
+method; never two on the same.
+
+The entity is the glossary's word: a `task` is a task definition (standing or
+one-off) and a `task-run` one attempt at it; `job` names only a claim-queue item
+and is never an operation's entity. The renames of October 2026 (`job-*` to
+`task-*`, `run-*` and `task-review` to `task-run-*`,
+`document-quarantine-release*` to `document-quarantine-allow*`) are accepted under
+their old names for one release (`RENAMED_OPERATIONS`, `catalog/index.ts`), for
+proposals filed before and agents that remember them. PostHog's
+`agent_operation_called` carries the new names from then on: an insight over the
+history needs both.
 
 ### Descriptions
 
@@ -229,7 +277,7 @@ keeps it, so accepting later still refuses to overwrite a newer version.
 | Field | Set it when | Default |
 |---|---|---|
 | `readOnly: true` | A POST that only searches or computes. Read the route's service first: a row, a file, a grant or a credential is a write. Add the operation to `read-only-writes.spec.ts` with one line saying why it writes nothing | `method === 'GET'` |
-| `destructive: true` | A person confirms it in a dialog: delete, revoke, release, purge | `method === 'DELETE'` |
+| `destructive: true` | A person confirms it in a dialog: delete, revoke, allow, purge | `method === 'DELETE'` |
 | `idempotent: true` | Calling twice leaves the same state (a PUT-like PATCH) | GET, PUT, DELETE |
 
 A hard delete with no restore is still catalogued, `destructive: true`, and says
@@ -346,7 +394,7 @@ Two PostHog events, sent through the collector (ADR-0119):
 | Event | When | Use |
 |---|---|---|
 | `agent_operation_called` | Each call: operation name (null for a name no operation has: that is the agent's own text), client, status | Which operations agents use, and which fail |
-| `agent_capability_missing` | An agent calls `report-missing-capability` | The backlog of operations nobody has written |
+| `agent_operation_missing` | An agent calls `report-missing-operation` | The backlog of operations nobody has written |
 
 ## How Piloti uses it
 

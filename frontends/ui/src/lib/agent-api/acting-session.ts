@@ -23,14 +23,37 @@ import 'server-only'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
-const acting = new AsyncLocalStorage<AuthorizedSession>()
+/**
+ * Who reads the route's answer. `agent`: an agent called the operation (MCP), so
+ * whatever the route words (a refusal, a label) is read by a model and is
+ * English, whatever the person's saved locale; the model words it for the
+ * reader. `person`: a person applied a proposal, and reads the route's words in
+ * their own language. Read by `getLocale()` (`i18n/server.ts`).
+ */
+export type ActingReader = 'agent' | 'person'
+
+interface ActingCall {
+  readonly session: AuthorizedSession
+  readonly reader: ActingReader
+}
+
+const acting = new AsyncLocalStorage<ActingCall>()
 
 /** Run `fn` with `session` as the answer `getGridSession()` gives. */
-export function runAsActingSession<T>(session: AuthorizedSession, fn: () => Promise<T>): Promise<T> {
-  return acting.run(session, fn)
+export function runAsActingSession<T>(
+  session: AuthorizedSession,
+  fn: () => Promise<T>,
+  reader: ActingReader = 'person',
+): Promise<T> {
+  return acting.run({ session, reader }, fn)
 }
 
 /** The session bound by {@link runAsActingSession}, or `undefined` outside one. */
 export function currentActingSession(): AuthorizedSession | undefined {
-  return acting.getStore()
+  return acting.getStore()?.session
+}
+
+/** Whether the call in flight is an agent's, whose answer a model reads ({@link ActingReader}). */
+export function actingReaderIsAgent(): boolean {
+  return acting.getStore()?.reader === 'agent'
 }

@@ -40,10 +40,10 @@ const folderParams = projectParams.extend({
     .describe('The folder id, from project-folder-list or project-folder-bin-list.'),
 })
 const officeFolderParams = z.object({
-  folderId: z.string().describe('The Büroablage folder id, from office-shelf-folder-list.'),
+  folderId: z.string().describe('The office shelf folder id, from office-shelf-folder-list.'),
 })
 const officeDocumentParams = z.object({
-  id: z.string().describe('The Büroablage document id, from office-shelf-document-list.'),
+  id: z.string().describe('The office shelf document id, from office-shelf-document-list.'),
 })
 const bindingParams = projectParams.extend({
   bindingId: z.string().describe('The role binding id, from document-role-list.'),
@@ -62,7 +62,7 @@ export const foldersOperations: readonly AgentOperation[] = [
     domain: 'folders',
     summary: 'List a project’s folders',
     description:
-      "Every folder of the project's Dateien that the person may read, each with its id, name, parent, " +
+      "Every folder of the project's files that the person may read, each with its id, name, parent, " +
       "path and the person's own access, plus `rootAccess` (what they may do at the project root). " +
       'Folder ids from here feed project-folder-update, project-folder-delete, document filters ' +
       '(`folderId` of project-document-list) and the `parentId` of project-folder-create.',
@@ -173,9 +173,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-folder-list',
     domain: 'folders',
-    summary: 'List the Büroablage folders',
+    summary: 'List the office shelf folders',
     description:
-      'Every folder of the office-wide Büroablage (office shelf), in the same shape as ' +
+      'Every folder of the office shelf, in the same shape as ' +
       'project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, ' +
       'office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.',
     method: 'GET',
@@ -185,7 +185,7 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-folder-create',
     domain: 'folders',
-    summary: 'Create a Büroablage folder',
+    summary: 'Create an office shelf folder',
     description:
       'Creates one folder under `parentId` (null or absent: the shelf root). Needs ' +
       'org:office_shelf:manage. Refused when a sibling has the name; use office-shelf-folder-ensure to ' +
@@ -198,7 +198,7 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-folder-ensure',
     domain: 'folders',
-    summary: 'Resolve Büroablage folder paths, creating the missing',
+    summary: 'Resolve office shelf folder paths, creating the missing',
     description:
       'Takes directory paths (relative to `parentId`, null: the shelf root), returns the folders plus ' +
       '`folderIdByPath`, and creates whatever is missing. An existing folder counts as success. Needs ' +
@@ -212,7 +212,7 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-folder-update',
     domain: 'folders',
-    summary: 'Rename, move or describe a Büroablage folder',
+    summary: 'Rename, move or describe an office shelf folder',
     description:
       "Changes a folder's `name`, `parentId` (null moves it to the shelf root) or `description` (null " +
       'clears it); send only what changes. Folder ids come from office-shelf-folder-list. Needs ' +
@@ -227,7 +227,7 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-folder-delete',
     domain: 'folders',
-    summary: 'Delete a Büroablage folder',
+    summary: 'Delete an office shelf folder',
     description:
       'Deletes the folder; its documents and subfolders are re-filed one level up, not deleted. Returns ' +
       '`{ documentsMoved, foldersMoved }`. Folder ids come from office-shelf-folder-list. Needs ' +
@@ -254,9 +254,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-list',
     domain: 'documents',
-    summary: 'List Büroablage documents',
+    summary: 'List office shelf documents',
     description:
-      'One page of the office-wide Büroablage documents, same rows and filters as project-document-list ' +
+      'One page of the office shelf documents, same rows and filters as project-document-list ' +
       'but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, ' +
       '`authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here ' +
       'feed the document operations.',
@@ -268,9 +268,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-summary',
     domain: 'documents',
-    summary: 'Count Büroablage documents per folder',
+    summary: 'Count office shelf documents per folder',
     description:
-      'What the database can say about every Büroablage document at once: counts per folder by ' +
+      'What the database can say about every office shelf document at once: counts per folder by ' +
       'read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list ' +
       'when you need an overview.',
     method: 'GET',
@@ -281,9 +281,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-lookup',
     domain: 'documents',
-    summary: 'Find Büroablage documents by file name',
+    summary: 'Find office shelf documents by file name',
     description:
-      'Resolves exact file names (case-insensitive) to their Büroablage document rows. Use it when you ' +
+      'Resolves exact file names (case-insensitive) to their office shelf document rows. Use it when you ' +
       'have names, for example from a citation, and need ids. Names without a match are simply absent ' +
       'from `documents`.',
     method: 'POST',
@@ -295,9 +295,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-name-probe',
     domain: 'documents',
-    summary: 'Check which file names the Büroablage holds',
+    summary: 'Check which file names the office shelf holds',
     description:
-      'Given file names about to be uploaded, returns the Büroablage documents that already carry them. ' +
+      'Given file names about to be uploaded, returns the office shelf documents that already carry them. ' +
       'Call it before an upload to avoid duplicates. Changes nothing.',
     method: 'POST',
     path: '/api/office-shelf/documents/name-matches',
@@ -310,8 +310,8 @@ export const foldersOperations: readonly AgentOperation[] = [
     domain: 'documents',
     summary: 'Find documents a file name would revise',
     description:
-      'Given dropped file names, returns the Büroablage documents each would be the next Fassung of, so ' +
-      'the upload can file it as a new version instead of a second document. Changes nothing.',
+      'Given dropped file names, returns the office shelf documents each would be the next revision of, so ' +
+      'the upload can file it as a new revision instead of a second document. Changes nothing.',
     method: 'POST',
     path: '/api/office-shelf/documents/revision-candidates',
     body: officeShelfNameProbeRequestSchema,
@@ -321,9 +321,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-search',
     domain: 'documents',
-    summary: 'Search the Büroablage by meaning',
+    summary: 'Search the office shelf by meaning',
     description:
-      "Document-centric semantic search over the office's shared Büroablage. `q` is a natural-language " +
+      "Document-centric semantic search over the office shelf. `q` is a natural-language " +
       "query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's " +
       'own documents use the knowledge operations.',
     method: 'POST',
@@ -335,9 +335,9 @@ export const foldersOperations: readonly AgentOperation[] = [
   {
     name: 'office-shelf-document-delete',
     domain: 'documents',
-    summary: 'Delete a Büroablage document',
+    summary: 'Delete an office shelf document',
     description:
-      'Deletes one Büroablage document for good: its stored file, its search chunks and its record. ' +
+      'Deletes one office shelf document for good: its stored file, its search chunks and its record. ' +
       'This cannot be undone. Needs org:office_shelf:manage. Document ids come from ' +
       'office-shelf-document-list.',
     method: 'DELETE',
@@ -479,7 +479,7 @@ export const foldersOperations: readonly AgentOperation[] = [
     domain: 'documents',
     summary: 'List the quarantine queue',
     description:
-      'Documents the content check held back that the person may release or delete: org admins see the ' +
+      'Documents the content check held back that the person may allow or delete: org admins see the ' +
       "organization's queue, project admins their projects' part, everyone else an empty `items` list.",
     method: 'GET',
     path: '/api/quarantine',
@@ -538,7 +538,7 @@ export const foldersOperations: readonly AgentOperation[] = [
     domain: 'review',
     summary: 'List a project’s open points',
     description:
-      "The project's Offene Punkte: the live Anmerkungen across every document the person may see, a " +
+      "The project's open items: the live annotations across every document the person may see, a " +
       'page at a time. Filter with `status` (open, proposed, all-live), `assignee` (me or a user id), ' +
       '`due` (overdue, soon) and `order`; follow `nextCursor` (pass it as `cursor`).',
     method: 'GET',

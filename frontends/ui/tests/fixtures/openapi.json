@@ -823,7 +823,7 @@
       "post": {
         "operationId": "project-intake-complete",
         "summary": "Finish the intake review",
-        "description": "Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and Abschluss. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.",
+        "description": "Ends the review of the intake. For a past project created with a closing intent this also closes the project with its outcome and completion month. Call once project-intake-get shows nothing left to decide. Answers `{ intake }`.",
         "tags": [
           "projects"
         ],
@@ -1113,7 +1113,7 @@
       "get": {
         "operationId": "project-intake-get",
         "summary": "Read a project’s intake review",
-        "description": "The Projekterfassung as the person sees it: what Piloti read from the documents, the suggestions waiting for a decision, reading progress and what is still open. Answers `{ intake }`. Decide on suggestions with project-intake-decide; finish with project-intake-complete.",
+        "description": "The project setup from the documents as the person sees it: what Piloti read from the documents, the suggestions waiting for a decision, reading progress and what is still open. Answers `{ intake }`. Decide on suggestions with project-intake-decide; finish with project-intake-complete.",
         "tags": [
           "projects"
         ],
@@ -1849,8 +1849,8 @@
     "/api/projects/{id}/project-record": {
       "put": {
         "operationId": "project-period-set",
-        "summary": "Set a project’s Beginn",
-        "description": "Sets the project’s start month (`startedOn`, YYYY-MM, or null to clear). The end is not set here: closing the project names it (project-status-set). Answers the updated Steckbrief.",
+        "summary": "Set a project’s start month",
+        "description": "Sets the project’s start month (`startedOn`, YYYY-MM, or null to clear). The end is not set here: closing the project names it (project-status-set). Answers the updated project record.",
         "tags": [
           "projects"
         ],
@@ -1918,7 +1918,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Set a project’s Beginn",
+          "title": "Set a project’s start month",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -1927,8 +1927,8 @@
       },
       "get": {
         "operationId": "project-record-get",
-        "summary": "Read the Steckbrief",
-        "description": "The project’s Steckbrief: its period (Beginn, Abschluss) and the people on it, members and former members included, with their Funktion, Firma and months. people[].id feeds project-person-update and project-person-delete.",
+        "summary": "Read the project record",
+        "description": "The project record: its period (start and completion month) and the people on it, members and former members included, with their function, company and months. people[].id feeds project-person-update and project-person-delete.",
         "tags": [
           "projects"
         ],
@@ -1970,7 +1970,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Read the Steckbrief",
+          "title": "Read the project record",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -1981,8 +1981,8 @@
     "/api/projects/{id}/people": {
       "post": {
         "operationId": "project-person-add",
-        "summary": "Add a person to the Steckbrief",
-        "description": "Adds someone to the project’s Steckbrief by hand, such as an external planner: name, optional Funktion, Firma, start and end month. No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.",
+        "summary": "Add a person to the project record",
+        "description": "Adds someone to the project record by hand, such as an external planner: name, optional function, company, start and end month. No e-mail or phone is kept. Pass `userId` (an organization member’s user id from organization-member-list) to describe a member instead. Send all fields; use null for unknown.",
         "tags": [
           "projects"
         ],
@@ -2104,7 +2104,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Add a person to the Steckbrief",
+          "title": "Add a person to the project record",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -2115,8 +2115,8 @@
     "/api/projects/{id}/people/{personId}": {
       "delete": {
         "operationId": "project-person-delete",
-        "summary": "Erase a person from the Steckbrief",
-        "description": "Erases one person’s entry from the Steckbrief; this is the data-protection erasure and cannot be undone. Still possible in a closed project for whoever manages it. `personId` is from project-record-get.",
+        "summary": "Erase a person from the project record",
+        "description": "Erases one person’s entry from the project record; this is the data-protection erasure and cannot be undone. Still possible in a closed project for whoever manages it. `personId` is from project-record-get.",
         "tags": [
           "projects"
         ],
@@ -2168,7 +2168,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Erase a person from the Steckbrief",
+          "title": "Erase a person from the project record",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": true,
@@ -2177,7 +2177,7 @@
       },
       "patch": {
         "operationId": "project-person-update",
-        "summary": "Change a person on the Steckbrief",
+        "summary": "Change a person on the project record",
         "description": "Replaces one person’s entry with the body given, so send every field (name, function, company, startedOn, endedOn, userId), not only the changed one. `personId` is from project-record-get.",
         "tags": [
           "projects"
@@ -2310,7 +2310,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Change a person on the Steckbrief",
+          "title": "Change a person on the project record",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -3332,7 +3332,7 @@
       "post": {
         "operationId": "project-profile-patch",
         "summary": "Change single profile entries",
-        "description": "Applies JSON-patch style operations (`add`, `replace`, `remove`) to the profile under /facts, /goals, /unknowns or /assumptions. The safer way to edit one fact. Pass `conversationId` when the change came out of a chat. Needs project:edit. Answers the updated profile; read project-profile-get for paths.",
+        "description": "Applies JSON-patch style operations (`add`, `replace`, `remove`) to the profile under /facts, /goals, /unknowns or /assumptions. The safer way to edit one fact. Pass `conversationId` when the change came out of a conversation. Needs project:edit. Answers the updated profile; read project-profile-get for paths.",
         "tags": [
           "projects"
         ],
@@ -3610,7 +3610,7 @@
       "put": {
         "operationId": "project-status-set",
         "summary": "Pause, resume or close a project",
-        "description": "Moves a project through its lifecycle. `{ status: \"active\" }` resumes or reopens, `{ status: \"paused\" }` pauses, `{ status: \"closed\", outcome, endedOn }` closes it with how it ended and its Abschluss month (YYYY-MM). Needs project:manage and works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.",
+        "description": "Moves a project through its lifecycle. `{ status: \"active\" }` resumes or reopens, `{ status: \"paused\" }` pauses, `{ status: \"closed\", outcome, endedOn }` closes it with how it ended and its completion month (YYYY-MM). Needs project:manage and works on a closed project too. Answers the new status and dates. Before closing, consider project-cleanup-propose.",
         "tags": [
           "projects"
         ],
@@ -5402,7 +5402,7 @@
       "post": {
         "operationId": "document-upload",
         "summary": "Upload a file to a project",
-        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds comes back held, and a reviewer releases it. Needs write access to the project’s documents.",
+        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds comes back held, and a reviewer allows it. Needs write access to the project’s documents.",
         "tags": [
           "documents"
         ],
@@ -5429,12 +5429,12 @@
                   },
                   "revisionOf": {
                     "type": "string",
-                    "description": "The id of the older document this file is the new Fassung of; the service checks the pair."
+                    "description": "The id of the older document this file is the new revision of; the service checks the pair."
                   },
                   "originPath": {
                     "type": "string",
                     "maxLength": 2000,
-                    "description": "Where the file sat before upload, e.g. \"Pläne/EG/Grundriss.pdf\". Only for a folder upload; it is screened by name."
+                    "description": "Where the file sat before upload, e.g. \"Drawings/GF/floor-plan.pdf\". Only for a folder upload; it is screened by name."
                   },
                   "screeningRelease": {
                     "const": "name",
@@ -5491,8 +5491,8 @@
     "/api/documents/{id}/versions/{versionId}/file": {
       "get": {
         "operationId": "document-version-file-get",
-        "summary": "Read one Fassung’s file bytes",
-        "description": "The bytes of one version (Fassung) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
+        "summary": "Read the file bytes of one version",
+        "description": "The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
         "tags": [
           "documents"
         ],
@@ -5575,7 +5575,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Read one Fassung’s file bytes",
+          "title": "Read the file bytes of one version",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6221,8 +6221,8 @@
     "/api/office-shelf/documents/{id}": {
       "delete": {
         "operationId": "office-shelf-document-delete",
-        "summary": "Delete a Büroablage document",
-        "description": "Deletes one Büroablage document for good: its stored file, its search chunks and its record. This cannot be undone. Needs org:office_shelf:manage. Document ids come from office-shelf-document-list.",
+        "summary": "Delete an office shelf document",
+        "description": "Deletes one office shelf document for good: its stored file, its search chunks and its record. This cannot be undone. Needs org:office_shelf:manage. Document ids come from office-shelf-document-list.",
         "tags": [
           "documents"
         ],
@@ -6233,9 +6233,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The Büroablage document id, from office-shelf-document-list."
+              "description": "The office shelf document id, from office-shelf-document-list."
             },
-            "description": "The Büroablage document id, from office-shelf-document-list."
+            "description": "The office shelf document id, from office-shelf-document-list."
           }
         ],
         "responses": {
@@ -6264,7 +6264,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Delete a Büroablage document",
+          "title": "Delete an office shelf document",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": true,
@@ -6275,8 +6275,8 @@
     "/api/office-shelf/documents": {
       "get": {
         "operationId": "office-shelf-document-list",
-        "summary": "List Büroablage documents",
-        "description": "One page of the office-wide Büroablage documents, same rows and filters as project-document-list but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, `authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here feed the document operations.",
+        "summary": "List office shelf documents",
+        "description": "One page of the office shelf documents, same rows and filters as project-document-list but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, `authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here feed the document operations.",
         "tags": [
           "documents"
         ],
@@ -6404,7 +6404,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List Büroablage documents",
+          "title": "List office shelf documents",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6415,8 +6415,8 @@
     "/api/office-shelf/documents/by-name": {
       "post": {
         "operationId": "office-shelf-document-lookup",
-        "summary": "Find Büroablage documents by file name",
-        "description": "Resolves exact file names (case-insensitive) to their Büroablage document rows. Use it when you have names, for example from a citation, and need ids. Names without a match are simply absent from `documents`.",
+        "summary": "Find office shelf documents by file name",
+        "description": "Resolves exact file names (case-insensitive) to their office shelf document rows. Use it when you have names, for example from a citation, and need ids. Names without a match are simply absent from `documents`.",
         "tags": [
           "documents"
         ],
@@ -6471,7 +6471,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Find Büroablage documents by file name",
+          "title": "Find office shelf documents by file name",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6482,8 +6482,8 @@
     "/api/office-shelf/documents/name-matches": {
       "post": {
         "operationId": "office-shelf-document-name-probe",
-        "summary": "Check which file names the Büroablage holds",
-        "description": "Given file names about to be uploaded, returns the Büroablage documents that already carry them. Call it before an upload to avoid duplicates. Changes nothing.",
+        "summary": "Check which file names the office shelf holds",
+        "description": "Given file names about to be uploaded, returns the office shelf documents that already carry them. Call it before an upload to avoid duplicates. Changes nothing.",
         "tags": [
           "documents"
         ],
@@ -6538,7 +6538,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Check which file names the Büroablage holds",
+          "title": "Check which file names the office shelf holds",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6550,7 +6550,7 @@
       "post": {
         "operationId": "office-shelf-document-revision-probe",
         "summary": "Find documents a file name would revise",
-        "description": "Given dropped file names, returns the Büroablage documents each would be the next Fassung of, so the upload can file it as a new version instead of a second document. Changes nothing.",
+        "description": "Given dropped file names, returns the office shelf documents each would be the next revision of, so the upload can file it as a new revision instead of a second document. Changes nothing.",
         "tags": [
           "documents"
         ],
@@ -6616,8 +6616,8 @@
     "/api/office-shelf/documents/search": {
       "post": {
         "operationId": "office-shelf-document-search",
-        "summary": "Search the Büroablage by meaning",
-        "description": "Document-centric semantic search over the office's shared Büroablage. `q` is a natural-language query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's own documents use the knowledge operations.",
+        "summary": "Search the office shelf by meaning",
+        "description": "Document-centric semantic search over the office shelf. `q` is a natural-language query, `topK` (1 to 100) caps the hits. Returns the best matching documents. For the project's own documents use the knowledge operations.",
         "tags": [
           "documents"
         ],
@@ -6671,7 +6671,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Search the Büroablage by meaning",
+          "title": "Search the office shelf by meaning",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6682,8 +6682,8 @@
     "/api/office-shelf/documents/summary": {
       "get": {
         "operationId": "office-shelf-document-summary",
-        "summary": "Count Büroablage documents per folder",
-        "description": "What the database can say about every Büroablage document at once: counts per folder by read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list when you need an overview.",
+        "summary": "Count office shelf documents per folder",
+        "description": "What the database can say about every office shelf document at once: counts per folder by read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list when you need an overview.",
         "tags": [
           "documents"
         ],
@@ -6735,7 +6735,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Count Büroablage documents per folder",
+          "title": "Count office shelf documents per folder",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -6746,8 +6746,8 @@
     "/api/office-shelf/documents/upload": {
       "post": {
         "operationId": "office-shelf-document-upload",
-        "summary": "Upload a file to the Büroablage",
-        "description": "Stores one file in the office-wide Büroablage (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the Büroablage. Returns the stored document; follow ingestion with document-status.",
+        "summary": "Upload a file to the office shelf",
+        "description": "Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; follow ingestion with document-status.",
         "tags": [
           "documents"
         ],
@@ -6765,16 +6765,16 @@
                   },
                   "folderId": {
                     "type": "string",
-                    "description": "The Büroablage folder id, from office-shelf-folder-list; omit for the root."
+                    "description": "The office shelf folder id, from office-shelf-folder-list; omit for the root."
                   },
                   "revisionOf": {
                     "type": "string",
-                    "description": "The id of the older document this file is the new Fassung of; the service checks the pair."
+                    "description": "The id of the older document this file is the new revision of; the service checks the pair."
                   },
                   "originPath": {
                     "type": "string",
                     "maxLength": 2000,
-                    "description": "Where the file sat before upload, e.g. \"Pläne/EG/Grundriss.pdf\". Only for a folder upload; it is screened by name."
+                    "description": "Where the file sat before upload, e.g. \"Drawings/GF/floor-plan.pdf\". Only for a folder upload; it is screened by name."
                   },
                   "screeningRelease": {
                     "const": "name",
@@ -6819,7 +6819,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Upload a file to the Büroablage",
+          "title": "Upload a file to the office shelf",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -7043,7 +7043,7 @@
       "get": {
         "operationId": "quarantine-list",
         "summary": "List the quarantine queue",
-        "description": "Documents the content check held back that the person may release or delete: org admins see the organization's queue, project admins their projects' part, everyone else an empty `items` list.",
+        "description": "Documents the content check held back that the person may allow or delete: org admins see the organization's queue, project admins their projects' part, everyone else an empty `items` list.",
         "tags": [
           "documents"
         ],
@@ -7085,7 +7085,7 @@
       "post": {
         "operationId": "session-document-upload",
         "summary": "Attach a file to a conversation",
-        "description": "Stores one file privately on one conversation (not in any project shelf) and ingests it for that chat. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created when it does not exist yet. Returns the stored document; follow ingestion with document-status.",
+        "description": "Stores one file privately on one conversation (not in any project shelf) and ingests it for that conversation. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created when it does not exist yet. Returns the stored document; follow ingestion with document-status.",
         "tags": [
           "documents"
         ],
@@ -7113,7 +7113,7 @@
                   "originPath": {
                     "type": "string",
                     "maxLength": 2000,
-                    "description": "Where the file sat before upload, e.g. \"Pläne/EG/Grundriss.pdf\". Only for a folder upload; it is screened by name."
+                    "description": "Where the file sat before upload, e.g. \"Drawings/GF/floor-plan.pdf\". Only for a folder upload; it is screened by name."
                   },
                   "screeningRelease": {
                     "const": "name",
@@ -7443,7 +7443,7 @@
     "/api/office-shelf/folders": {
       "post": {
         "operationId": "office-shelf-folder-create",
-        "summary": "Create a Büroablage folder",
+        "summary": "Create an office shelf folder",
         "description": "Creates one folder under `parentId` (null or absent: the shelf root). Needs org:office_shelf:manage. Refused when a sibling has the name; use office-shelf-folder-ensure to get-or-create paths. Returns `{ folder }`.",
         "tags": [
           "folders"
@@ -7506,7 +7506,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Create a Büroablage folder",
+          "title": "Create an office shelf folder",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -7515,8 +7515,8 @@
       },
       "get": {
         "operationId": "office-shelf-folder-list",
-        "summary": "List the Büroablage folders",
-        "description": "Every folder of the office-wide Büroablage (office shelf), in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.",
+        "summary": "List the office shelf folders",
+        "description": "Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.",
         "tags": [
           "folders"
         ],
@@ -7546,7 +7546,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List the Büroablage folders",
+          "title": "List the office shelf folders",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -7557,7 +7557,7 @@
     "/api/office-shelf/folders/{folderId}": {
       "delete": {
         "operationId": "office-shelf-folder-delete",
-        "summary": "Delete a Büroablage folder",
+        "summary": "Delete an office shelf folder",
         "description": "Deletes the folder; its documents and subfolders are re-filed one level up, not deleted. Returns `{ documentsMoved, foldersMoved }`. Folder ids come from office-shelf-folder-list. Needs org:office_shelf:manage.",
         "tags": [
           "folders"
@@ -7569,9 +7569,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The Büroablage folder id, from office-shelf-folder-list."
+              "description": "The office shelf folder id, from office-shelf-folder-list."
             },
-            "description": "The Büroablage folder id, from office-shelf-folder-list."
+            "description": "The office shelf folder id, from office-shelf-folder-list."
           }
         ],
         "responses": {
@@ -7600,7 +7600,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Delete a Büroablage folder",
+          "title": "Delete an office shelf folder",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": true,
@@ -7609,7 +7609,7 @@
       },
       "patch": {
         "operationId": "office-shelf-folder-update",
-        "summary": "Rename, move or describe a Büroablage folder",
+        "summary": "Rename, move or describe an office shelf folder",
         "description": "Changes a folder's `name`, `parentId` (null moves it to the shelf root) or `description` (null clears it); send only what changes. Folder ids come from office-shelf-folder-list. Needs org:office_shelf:manage. Returns `{ folder }`.",
         "tags": [
           "folders"
@@ -7621,9 +7621,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The Büroablage folder id, from office-shelf-folder-list."
+              "description": "The office shelf folder id, from office-shelf-folder-list."
             },
-            "description": "The Büroablage folder id, from office-shelf-folder-list."
+            "description": "The office shelf folder id, from office-shelf-folder-list."
           }
         ],
         "requestBody": {
@@ -7692,7 +7692,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Rename, move or describe a Büroablage folder",
+          "title": "Rename, move or describe an office shelf folder",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -7703,7 +7703,7 @@
     "/api/office-shelf/folders/ensure": {
       "post": {
         "operationId": "office-shelf-folder-ensure",
-        "summary": "Resolve Büroablage folder paths, creating the missing",
+        "summary": "Resolve office shelf folder paths, creating the missing",
         "description": "Takes directory paths (relative to `parentId`, null: the shelf root), returns the folders plus `folderIdByPath`, and creates whatever is missing. An existing folder counts as success. Needs org:office_shelf:manage. Safe to repeat.",
         "tags": [
           "folders"
@@ -7770,7 +7770,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Resolve Büroablage folder paths, creating the missing",
+          "title": "Resolve office shelf folder paths, creating the missing",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -8180,7 +8180,7 @@
       "get": {
         "operationId": "project-folder-list",
         "summary": "List a project’s folders",
-        "description": "Every folder of the project's Dateien that the person may read, each with its id, name, parent, path and the person's own access, plus `rootAccess` (what they may do at the project root). Folder ids from here feed project-folder-update, project-folder-delete, document filters (`folderId` of project-document-list) and the `parentId` of project-folder-create.",
+        "description": "Every folder of the project's files that the person may read, each with its id, name, parent, path and the person's own access, plus `rootAccess` (what they may do at the project root). Folder ids from here feed project-folder-update, project-folder-delete, document filters (`folderId` of project-document-list) and the `parentId` of project-folder-create.",
         "tags": [
           "folders"
         ],
@@ -8554,7 +8554,7 @@
       "post": {
         "operationId": "annotation-create",
         "summary": "Place an annotation on a document",
-        "description": "Sets a new mark at a place on the document (page position or text range, as the schema describes) with a kind and a body. Returns the annotation with its number. Colleagues named in `mentions` are told.",
+        "description": "Sets a new annotation at a place on the document (page position or text range, as the schema describes) with a kind and a body. Returns the annotation with its number. Colleagues named in `mentions` are told.",
         "tags": [
           "review"
         ],
@@ -8734,7 +8734,7 @@
       "get": {
         "operationId": "annotation-list",
         "summary": "List the annotations on a document",
-        "description": "Every Anmerkung (mark) on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get, annotation-update and annotation-reply-create.",
+        "description": "Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. The ids feed annotation-get, annotation-update and annotation-reply-create.",
         "tags": [
           "review"
         ],
@@ -8788,7 +8788,7 @@
       "delete": {
         "operationId": "annotation-delete",
         "summary": "Delete one of your own annotations",
-        "description": "Removes a mark its author set. A mark that has been discussed or carried to another Fassung is refused with a 409; resolve it instead (annotation-update). Deleting cannot be undone.",
+        "description": "Removes an annotation its author set. One that has been discussed or carried to another revision is refused with a 409; resolve it instead (annotation-update). Deleting cannot be undone.",
         "tags": [
           "review"
         ],
@@ -8850,7 +8850,7 @@
       "get": {
         "operationId": "annotation-get",
         "summary": "Read one annotation with its thread",
-        "description": "One Anmerkung with its whole reply thread, status and carry links (id from annotation-list).",
+        "description": "One annotation with its whole reply thread, status and carry links (id from annotation-list).",
         "tags": [
           "review"
         ],
@@ -8912,7 +8912,7 @@
       "patch": {
         "operationId": "annotation-update",
         "summary": "Change, resolve or reassign an annotation",
-        "description": "Edits a mark: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. `expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open mark onto the current Fassung.",
+        "description": "Edits an annotation: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. `expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open annotation onto the current revision.",
         "tags": [
           "review"
         ],
@@ -9195,7 +9195,7 @@
       "delete": {
         "operationId": "annotation-reply-delete",
         "summary": "Take back one of your own replies",
-        "description": "Deletes a reply its author wrote, while the mark is live and Piloti has not taken it up (otherwise a 409). It cannot be undone.",
+        "description": "Deletes a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). It cannot be undone.",
         "tags": [
           "review"
         ],
@@ -9267,7 +9267,7 @@
       "patch": {
         "operationId": "annotation-reply-update",
         "summary": "Reword one of your own replies",
-        "description": "Rewords a reply its author wrote, while the mark is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.",
+        "description": "Rewords a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.",
         "tags": [
           "review"
         ],
@@ -9385,8 +9385,8 @@
     "/api/documents/{id}/annotations/export": {
       "get": {
         "operationId": "document-annotations-export",
-        "summary": "Export a document’s annotations as a Protokoll file",
-        "description": "The document’s Anmerkungen as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current Fassung or every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. For the data itself use annotation-list. Needs read access to the document.",
+        "summary": "Export a document’s annotations as a minutes file",
+        "description": "The document’s annotations as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current revision or every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. For the data itself use annotation-list. Needs read access to the document.",
         "tags": [
           "review"
         ],
@@ -9440,9 +9440,9 @@
                 "current",
                 "all"
               ],
-              "description": "current (default), or all to include earlier Fassungen’s closed marks."
+              "description": "current (default), or all to include earlier revisions’ closed annotations."
             },
-            "description": "current (default), or all to include earlier Fassungen’s closed marks."
+            "description": "current (default), or all to include earlier revisions’ closed annotations."
           },
           {
             "name": "includeProposals",
@@ -9500,61 +9500,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Export a document’s annotations as a Protokoll file",
-          "readOnlyHint": true,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/documents/{id}/quarantine": {
-      "get": {
-        "operationId": "document-quarantine-get",
-        "summary": "Read why a document is held and who may release it",
-        "description": "For a document held by upload screening: the reason and what the caller may do (request release, or release it as a reviewer). Next: document-quarantine-release-request or document-quarantine-release.",
-        "tags": [
-          "review"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The document id, from a project document listing or document-search."
-            },
-            "description": "The document id, from a project document listing or document-search."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Read why a document is held and who may release it",
+          "title": "Export a document’s annotations as a minutes file",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -9564,9 +9510,9 @@
     },
     "/api/documents/{id}/quarantine/release": {
       "post": {
-        "operationId": "document-quarantine-release",
-        "summary": "Release a quarantined document",
-        "description": "A reviewer lets a held file through screening so it is read and shown like any other document. Needs the reviewer permission (see document-quarantine-get). Send no body; the release is recorded and cannot be taken back.",
+        "operationId": "document-quarantine-allow",
+        "summary": "Allow a held document through screening",
+        "description": "A reviewer allows a held file through screening so it is read and shown like any other document. Needs the reviewer permission (see document-quarantine-get). Send no body; the decision is recorded and cannot be taken back.",
         "tags": [
           "review"
         ],
@@ -9608,7 +9554,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Release a quarantined document",
+          "title": "Allow a held document through screening",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": false,
@@ -9618,9 +9564,9 @@
     },
     "/api/documents/{id}/quarantine/request-release": {
       "post": {
-        "operationId": "document-quarantine-release-request",
-        "summary": "Ask a reviewer to release a held upload",
-        "description": "The uploader asks the project’s reviewers to release their held file. Notifies the reviewers; changes nothing about the file itself. Send no body.",
+        "operationId": "document-quarantine-allow-request",
+        "summary": "Ask a reviewer to allow a held upload",
+        "description": "The uploader asks the project’s reviewers to allow their held file through. Notifies the reviewers; changes nothing about the file itself. Send no body.",
         "tags": [
           "review"
         ],
@@ -9662,8 +9608,62 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Ask a reviewer to release a held upload",
+          "title": "Ask a reviewer to allow a held upload",
           "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/quarantine": {
+      "get": {
+        "operationId": "document-quarantine-get",
+        "summary": "Read why a document is held and who may allow it",
+        "description": "For a document held back by upload screening: the reason and what the caller may do (ask for it to be allowed, or allow it as a reviewer). Next: document-quarantine-allow-request or document-quarantine-allow.",
+        "tags": [
+          "review"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read why a document is held and who may allow it",
+          "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -9674,7 +9674,7 @@
       "post": {
         "operationId": "document-revision-candidates",
         "summary": "Find documents a new file could replace",
-        "description": "For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each could be a new Fassung of. Read-only; feeds document-revision-link-set.",
+        "description": "For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.",
         "tags": [
           "review"
         ],
@@ -9837,7 +9837,7 @@
     "/api/documents/{id}/revision": {
       "put": {
         "operationId": "document-revision-link-set",
-        "summary": "Confirm or take back a Fassung link",
+        "summary": "Confirm or take back a revision link",
         "description": "States that this document replaces `older` (`linked: true`) or takes that link back (`linked: false`). Both documents must be in the same collection and the caller needs write access.",
         "tags": [
           "review"
@@ -9904,7 +9904,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Confirm or take back a Fassung link",
+          "title": "Confirm or take back a revision link",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -9915,7 +9915,7 @@
     "/api/documents/{id}/thread": {
       "post": {
         "operationId": "document-thread-ensure",
-        "summary": "Open the caller’s chat thread about a document",
+        "summary": "Open the caller’s conversation about a document",
         "description": "Returns the id of the caller’s own conversation about this document, creating it (with an optional `title`) the first time. Use the conversation operations with that id to read or post in it.",
         "tags": [
           "review"
@@ -9975,7 +9975,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Open the caller’s chat thread about a document",
+          "title": "Open the caller’s conversation about a document",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -10362,7 +10362,7 @@
       "get": {
         "operationId": "document-version-list",
         "summary": "List a document’s versions",
-        "description": "Every version (Fassung) of a document with its lifecycle state, author and content hash. Start here to get a `versionId` for the other document-version operations.",
+        "description": "Every version of a document (the approval record of each revision) with its lifecycle state, author and content hash. Start here to get a `versionId` for the other document-version operations.",
         "tags": [
           "review"
         ],
@@ -10480,7 +10480,7 @@
       "post": {
         "operationId": "document-version-publish",
         "summary": "Publish an approved version",
-        "description": "Makes an approved version the document’s current published Fassung; the previous published version is superseded. Send no body.",
+        "description": "Makes an approved version the document’s current published revision; the previous published version is superseded. Send no body.",
         "tags": [
           "review"
         ],
@@ -10876,7 +10876,7 @@
       "get": {
         "operationId": "project-annotation-list",
         "summary": "List a project’s open points",
-        "description": "The project's Offene Punkte: the live Anmerkungen across every document the person may see, a page at a time. Filter with `status` (open, proposed, all-live), `assignee` (me or a user id), `due` (overdue, soon) and `order`; follow `nextCursor` (pass it as `cursor`).",
+        "description": "The project's open items: the live annotations across every document the person may see, a page at a time. Filter with `status` (open, proposed, all-live), `assignee` (me or a user id), `due` (overdue, soon) and `order`; follow `nextCursor` (pass it as `cursor`).",
         "tags": [
           "review"
         ],
@@ -10994,8 +10994,8 @@
     "/api/projects/{id}/annotations/export": {
       "get": {
         "operationId": "project-annotations-export",
-        "summary": "Export a project’s open points as a Protokoll file",
-        "description": "The project’s Offene Punkte as one Protokoll: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list (`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. Refused when more than 1000 marks match: narrow the filters. Records an audit event.",
+        "summary": "Export a project’s open items as a minutes file",
+        "description": "The project’s open items as one set of minutes: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list (`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. Refused when more than 1000 annotations match: narrow the filters. Records an audit event.",
         "tags": [
           "review"
         ],
@@ -11112,7 +11112,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Export a project’s open points as a Protokoll file",
+          "title": "Export a project’s open items as a minutes file",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -13463,7 +13463,7 @@
       "post": {
         "operationId": "inbox-item-mark-read",
         "summary": "Mark inbox items read",
-        "description": "Marks read by `itemIds` (from inbox-list), or everything with `{ all: true }`, or the news on one document mark (`resourceType`, `resourceId`, `anchorId`), or the “new marks” rows of a document (`marksSet: true`). Returns the recomputed badge count.",
+        "description": "Marks read by `itemIds` (from inbox-list), or everything with `{ all: true }`, or the news on one document annotation (`resourceType`, `resourceId`, `anchorId`), or the “new annotations” rows of a document (`marksSet: true`). Returns the recomputed badge count.",
         "tags": [
           "collaboration"
         ],
@@ -13767,8 +13767,8 @@
     "/api/inbox/unread-anchors": {
       "get": {
         "operationId": "inbox-unread-anchor-list",
-        "summary": "List unread marks inside a document",
-        "description": "The ids of the marks (anchors) in one document whose news the person has not read, as `{ anchorIds }`. resourceId is a document id from document-list. Opening a mark’s thread clears it (inbox-item-mark-read).",
+        "summary": "List unread annotations inside a document",
+        "description": "The ids of the annotations (anchors) in one document whose news the person has not read, as `{ anchorIds }`. resourceId is a document id from document-list. Opening an annotation’s thread clears it (inbox-item-mark-read).",
         "tags": [
           "collaboration"
         ],
@@ -13818,7 +13818,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List unread marks inside a document",
+          "title": "List unread annotations inside a document",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -15112,11 +15112,65 @@
         }
       }
     },
+    "/api/projects/{id}/tasks": {
+      "get": {
+        "operationId": "project-task-run-list",
+        "summary": "List every task run of a project",
+        "description": "The project’s delegated work, newest first: each task run with its status, the task it came from and its review state. Needs the skills and task-automation features on. A finished run awaits task-run-review.",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List every task run of a project",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/projects/{id}/jobs": {
       "post": {
-        "operationId": "job-create",
-        "summary": "Create a standing or one-off job",
-        "description": "Create a job in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs only by hand with job-run). Needs project:skills:manage. Returns `{ job }` with its id.",
+        "operationId": "task-create",
+        "summary": "Create a standing or one-off task",
+        "description": "Create a task in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: the task, with its id.",
         "tags": [
           "tasks"
         ],
@@ -15241,7 +15295,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Create a standing or one-off job",
+          "title": "Create a standing or one-off task",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -15249,9 +15303,9 @@
         }
       },
       "get": {
-        "operationId": "job-list",
-        "summary": "List a project’s standing jobs",
-        "description": "The jobs of one project: scheduled or one-off prompts Piloti runs as a research run that files a report, with their schedule, attached skill and next run. Needs the skills feature on. Take a job id from here for job-get, job-update, job-delete, job-run and job-run-list.",
+        "operationId": "task-list",
+        "summary": "List a project’s tasks",
+        "description": "The tasks of one project: standing (scheduled) or one-off prompts Piloti carries out as a task run that files a report, with their schedule, attached skill and next run. Needs the skills feature on. Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.",
         "tags": [
           "tasks"
         ],
@@ -15293,7 +15347,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List a project’s standing jobs",
+          "title": "List a project’s tasks",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -15303,9 +15357,9 @@
     },
     "/api/projects/{id}/jobs/{jobId}": {
       "delete": {
-        "operationId": "job-delete",
-        "summary": "Delete a job",
-        "description": "Delete a job and stop its schedule. Needs project:skills:manage. To keep the job but stop it firing, call job-update with `enabled: false` instead.",
+        "operationId": "task-delete",
+        "summary": "Delete a task",
+        "description": "Delete a task and stop its schedule. Needs project:skills:manage. To keep the task but stop it firing, call task-update with `enabled: false` instead.",
         "tags": [
           "tasks"
         ],
@@ -15326,9 +15380,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The job id, from job-list."
+              "description": "The task id, from task-list."
             },
-            "description": "The job id, from job-list."
+            "description": "The task id, from task-list."
           }
         ],
         "responses": {
@@ -15357,7 +15411,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Delete a job",
+          "title": "Delete a task",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": true,
@@ -15365,9 +15419,9 @@
         }
       },
       "get": {
-        "operationId": "job-get",
-        "summary": "Read one job",
-        "description": "One job by id: name, prompt, attached skill, data sources, schedule (cron and timezone, or a due time), enabled flag and next run. For what it produced, call job-run-list.",
+        "operationId": "task-get",
+        "summary": "Read one task",
+        "description": "One task by id: name, prompt, attached skill, data sources, schedule (cron and timezone, or a due time), enabled flag and next run. For what it produced, call task-run-list.",
         "tags": [
           "tasks"
         ],
@@ -15388,9 +15442,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The job id, from job-list."
+              "description": "The task id, from task-list."
             },
-            "description": "The job id, from job-list."
+            "description": "The task id, from task-list."
           }
         ],
         "responses": {
@@ -15419,7 +15473,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Read one job",
+          "title": "Read one task",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -15427,9 +15481,9 @@
         }
       },
       "patch": {
-        "operationId": "job-update",
-        "summary": "Change a job",
-        "description": "Patch any of a job’s name, prompt, attached skill, data sources, enabled flag, schedule or due time. Changing the skill re-resolves it and changing the schedule recomputes the next run. Set `enabled: false` to pause a job without deleting it. Needs project:skills:manage.",
+        "operationId": "task-update",
+        "summary": "Change a task",
+        "description": "Patch any of a task’s name, prompt, attached skill, data sources, enabled flag, schedule or due time. Changing the skill re-resolves it and changing the schedule recomputes the next run. Set `enabled: false` to pause a task without deleting it. Needs project:skills:manage.",
         "tags": [
           "tasks"
         ],
@@ -15450,9 +15504,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The job id, from job-list."
+              "description": "The task id, from task-list."
             },
-            "description": "The job id, from job-list."
+            "description": "The task id, from task-list."
           }
         ],
         "requestBody": {
@@ -15560,152 +15614,8 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Change a job",
+          "title": "Change a task",
           "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": true,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/projects/{id}/jobs/{jobId}/run": {
-      "post": {
-        "operationId": "job-run",
-        "summary": "Run a job now",
-        "description": "Fire a job immediately, outside its schedule (\"Run now\"). Fails with 409 when the job is disabled; when the backend is at capacity the run comes back as `skipped` rather than failing. Needs project:skills:manage. Follow the result with run-get using the run id it returns.",
-        "tags": [
-          "tasks"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The project id, from project-list."
-            },
-            "description": "The project id, from project-list."
-          },
-          {
-            "name": "jobId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The job id, from job-list."
-            },
-            "description": "The job id, from job-list."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Run a job now",
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": false,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/projects/{id}/jobs/{jobId}/runs": {
-      "get": {
-        "operationId": "job-run-list",
-        "summary": "List the runs of a job",
-        "description": "The submission history of one job, newest first, paginated with `limit` (1 to 200, default 50) and `offset`. Use it to see whether a scheduled job fired and how each run ended.",
-        "tags": [
-          "tasks"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The project id, from project-list."
-            },
-            "description": "The project id, from project-list."
-          },
-          {
-            "name": "jobId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The job id, from job-list."
-            },
-            "description": "The job id, from job-list."
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          },
-          {
-            "name": "offset",
-            "in": "query",
-            "required": false,
-            "schema": {
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "List the runs of a job",
-          "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -15714,9 +15624,9 @@
     },
     "/api/projects/{id}/runs/{runId}/cancel": {
       "post": {
-        "operationId": "run-cancel",
-        "summary": "Stop a running run",
-        "description": "Ask the backend to stop one run. Refuses with 409 when the run can no longer be stopped. Returns the run view as it stands; the ledger turns `cancelled` afterwards, so read it again with run-get.",
+        "operationId": "task-run-cancel",
+        "summary": "Stop a running task run",
+        "description": "Ask the backend to stop one run. Refuses with 409 when the run can no longer be stopped. Returns the run view as it stands; the ledger turns `cancelled` afterwards, so read it again with task-run-get.",
         "tags": [
           "tasks"
         ],
@@ -15737,9 +15647,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
+              "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
             },
-            "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
+            "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
           }
         ],
         "responses": {
@@ -15768,7 +15678,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Stop a running run",
+          "title": "Stop a running task run",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": false,
@@ -15778,9 +15688,9 @@
     },
     "/api/projects/{id}/runs": {
       "post": {
-        "operationId": "run-commission",
+        "operationId": "task-run-commission",
         "summary": "Commission a research run",
-        "description": "Start a deep research run for a question inside an existing conversation of the project: `conversationId` (from conversation-list), `question`, optional `context` and optional `documents` ({ basis, excluded } lists of document names) to carry forward. Needs the deep-research feature and collaborator access to the conversation. Returns `{ runId, runMessageId, conversationId, status }`; follow it with run-get.",
+        "description": "Start a deep research run for a question inside an existing conversation of the project: `conversationId` (from conversation-list), `question`, optional `context` and optional `documents` ({ basis, excluded } lists of document names) to carry forward. Needs the deep-research feature and collaborator access to the conversation. Returns `{ runId, runMessageId, conversationId, status }`; follow it with task-run-get.",
         "tags": [
           "tasks"
         ],
@@ -15924,7 +15834,7 @@
     },
     "/api/projects/{id}/runs/{runId}/documents": {
       "post": {
-        "operationId": "run-document-add",
+        "operationId": "task-run-document-add",
         "summary": "Add a document to a running run’s basis",
         "description": "Name one more document (`name` as the inventory lists it, optional `title` and `shelf`) for a running run to read in full. Documents from a restricted folder are refused. Returns the run view.",
         "tags": [
@@ -15947,9 +15857,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
+              "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
             },
-            "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
+            "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
           }
         ],
         "requestBody": {
@@ -16019,9 +15929,9 @@
     },
     "/api/projects/{id}/runs/{runId}": {
       "get": {
-        "operationId": "run-get",
-        "summary": "Read one run",
-        "description": "One run by its public id: where its message sits in the conversation and what its ledger says (phase, status, the documents it reads). Poll it after run-commission or job-run. Needs project:view.",
+        "operationId": "task-run-get",
+        "summary": "Read one task run",
+        "description": "One run by its public id: where its message sits in the conversation and what its ledger says (phase, status, the documents it reads). Poll it after task-run-commission or task-run-start. Needs project:view.",
         "tags": [
           "tasks"
         ],
@@ -16042,9 +15952,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
+              "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
             },
-            "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
+            "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
           }
         ],
         "responses": {
@@ -16073,7 +15983,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Read one run",
+          "title": "Read one task run",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -16081,75 +15991,11 @@
         }
       }
     },
-    "/api/projects/{id}/runs/{runId}/write-now": {
-      "post": {
-        "operationId": "run-write-now",
-        "summary": "Tell a run to write its report now",
-        "description": "Stop a research run gathering sources and make it write the report from what it has (\"Jetzt schreiben\"). Returns the run view; read it again with run-get to see the report arrive.",
-        "tags": [
-          "tasks"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The project id, from project-list."
-            },
-            "description": "The project id, from project-list."
-          },
-          {
-            "name": "runId",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "string",
-              "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
-            },
-            "description": "The run id (the public key of a run), from run-commission, job-run-list or task-list."
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
-            "content": {
-              "application/json": {
-                "schema": {}
-              }
-            }
-          },
-          "400": {
-            "$ref": "#/components/responses/Error400"
-          },
-          "401": {
-            "$ref": "#/components/responses/Error401"
-          },
-          "403": {
-            "$ref": "#/components/responses/Error403"
-          },
-          "404": {
-            "$ref": "#/components/responses/Error404"
-          },
-          "429": {
-            "$ref": "#/components/responses/Error429"
-          }
-        },
-        "x-mcp-annotations": {
-          "title": "Tell a run to write its report now",
-          "readOnlyHint": false,
-          "destructiveHint": false,
-          "idempotentHint": false,
-          "openWorldHint": false
-        }
-      }
-    },
-    "/api/projects/{id}/tasks": {
+    "/api/projects/{id}/jobs/{jobId}/runs": {
       "get": {
-        "operationId": "task-list",
-        "summary": "List a project’s delegated tasks",
-        "description": "The project’s delegated work, newest first: each task with its status, the job it came from and its review state. Needs the skills and task-automation features on. A finished task awaits task-review.",
+        "operationId": "task-run-list",
+        "summary": "List the runs of one task",
+        "description": "The run history of one task, newest first, paginated with `limit` (1 to 200, default 50) and `offset`. Use it to see whether a scheduled task fired and how each run ended. For every run in the project with its review state, call project-task-run-list.",
         "tags": [
           "tasks"
         ],
@@ -16163,6 +16009,32 @@
               "description": "The project id, from project-list."
             },
             "description": "The project id, from project-list."
+          },
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The task id, from task-list."
+            },
+            "description": "The task id, from task-list."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer"
+            }
           }
         ],
         "responses": {
@@ -16191,7 +16063,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List a project’s delegated tasks",
+          "title": "List the runs of one task",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -16201,9 +16073,9 @@
     },
     "/api/projects/{id}/tasks/{taskId}/review": {
       "post": {
-        "operationId": "task-review",
-        "summary": "Accept or reject a finished task",
-        "description": "Record a person’s verdict on a finished task: `decision` accepts or rejects it, and a rejection can carry a `reason` that the next run of the same job is told. Needs project:edit. Task ids come from task-list. Returns `{ task }`.",
+        "operationId": "task-run-review",
+        "summary": "Accept or reject a finished task run",
+        "description": "Record a person’s verdict on a finished task run: `decision` accepts or rejects it, and a rejection can carry a `reason` that the next run of the same task is told. Needs project:edit. Run ids come from project-task-run-list. Returns `{ task }`: the task run.",
         "tags": [
           "tasks"
         ],
@@ -16224,9 +16096,9 @@
             "required": true,
             "schema": {
               "type": "string",
-              "description": "The task id, from task-list."
+              "description": "The task run id, from project-task-run-list."
             },
-            "description": "The task id, from task-list."
+            "description": "The task run id, from project-task-run-list."
           }
         ],
         "requestBody": {
@@ -16282,7 +16154,135 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Accept or reject a finished task",
+          "title": "Accept or reject a finished task run",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/projects/{id}/jobs/{jobId}/run": {
+      "post": {
+        "operationId": "task-run-start",
+        "summary": "Run a task now",
+        "description": "Start a task run immediately, outside the task’s schedule (\"Run now\"). Fails with 409 when the task is disabled; when the backend is at capacity the run comes back as `skipped` rather than failing. Needs project:skills:manage. Follow the result with task-run-get using the run id it returns.",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "jobId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The task id, from task-list."
+            },
+            "description": "The task id, from task-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Run a task now",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/projects/{id}/runs/{runId}/write-now": {
+      "post": {
+        "operationId": "task-run-write-now",
+        "summary": "Tell a task run to write its report now",
+        "description": "Stop a research run gathering sources and make it write the report from what it has (the \"Write now\" button). Returns the run view; read it again with task-run-get to see the report arrive.",
+        "tags": [
+          "tasks"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The project id, from project-list."
+            },
+            "description": "The project id, from project-list."
+          },
+          {
+            "name": "runId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
+            },
+            "description": "The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Tell a task run to write its report now",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -16633,7 +16633,7 @@
       "get": {
         "operationId": "skill-list",
         "summary": "List the skills of the toolbox",
-        "description": "The organization’s skill toolbox: platform-curated skills and the organization’s own, each with its name, description, category and whether it is enabled. Needs the skills feature on. Org skill ids from here feed skill-update and skill-delete; names feed job-create.",
+        "description": "The organization’s skill toolbox: platform-curated skills and the organization’s own, each with its name, description, category and whether it is enabled. Needs the skills feature on. Org skill ids from here feed skill-update and skill-delete; names feed task-create.",
         "tags": [
           "skills"
         ],
@@ -16748,7 +16748,7 @@
       "delete": {
         "operationId": "skill-delete",
         "summary": "Delete an organization skill",
-        "description": "Delete one of the organization’s own skills. Jobs that name it lose their attachment. Needs org:skills:manage. To switch a skill off while keeping it, use skill-update with `enabled: false`.",
+        "description": "Delete one of the organization’s own skills. Tasks that name it lose their attachment. Needs org:skills:manage. To switch a skill off while keeping it, use skill-update with `enabled: false`.",
         "tags": [
           "skills"
         ],
@@ -16901,8 +16901,8 @@
     "/api/skills/invocable": {
       "get": {
         "operationId": "skill-invocable-list",
-        "summary": "List the skills a chat turn may invoke",
-        "description": "The skills this member may invoke in a chat turn, name and description only (no bodies): the catalogue behind the composer’s \"/\" menu and the one the agent is given at turn start.",
+        "summary": "List the skills a conversation turn may invoke",
+        "description": "The skills this member may invoke in a conversation turn, name and description only (no bodies): the catalogue behind the composer’s \"/\" menu and the one the agent is given at turn start.",
         "tags": [
           "skills"
         ],
@@ -16932,7 +16932,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List the skills a chat turn may invoke",
+          "title": "List the skills a conversation turn may invoke",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -17534,7 +17534,7 @@
     "/api/projects/{id}/bim/checks/export": {
       "get": {
         "operationId": "bim-checks-export",
-        "summary": "Export the Prüfbuch as a BCF archive",
+        "summary": "Export the check register as a BCF archive",
         "description": "The project’s OIB rule check ledger for one model as a BCF 2.1 zip, one topic per finding. Name the model with `modelId` (a uuid) or `model` (its file name), and state `buildingClass` (1 to 5) and `mainUse` so rules that need them do not stand down. Returned as an attached resource up to 5 MiB; a larger archive is not sent (ask for the findings with bim-check-list). The most expensive read in the product: it runs the whole catalogue and is rate limited. Needs the ifc-models feature.",
         "tags": [
           "bim"
@@ -17578,9 +17578,9 @@
             "required": false,
             "schema": {
               "type": "integer",
-              "description": "The Gebäudeklasse, 1 to 5."
+              "description": "The building class (OIB), 1 to 5."
             },
-            "description": "The Gebäudeklasse, 1 to 5."
+            "description": "The building class (OIB), 1 to 5."
           },
           {
             "name": "mainUse",
@@ -17589,9 +17589,9 @@
             "schema": {
               "type": "string",
               "maxLength": 100,
-              "description": "The main use (Hauptnutzung) as in bim-model-query; an unknown value is treated as not stated."
+              "description": "The main use as in bim-model-query; an unknown value is treated as not stated."
             },
-            "description": "The main use (Hauptnutzung) as in bim-model-query; an unknown value is treated as not stated."
+            "description": "The main use as in bim-model-query; an unknown value is treated as not stated."
           }
         ],
         "responses": {
@@ -17629,7 +17629,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Export the Prüfbuch as a BCF archive",
+          "title": "Export the check register as a BCF archive",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -17695,7 +17695,7 @@
       "get": {
         "operationId": "bim-model-list",
         "summary": "List the BIM models in scope for a project",
-        "description": "The IFC models a project can use: its own uploads plus the organization Archiv’s, each with its id, name and revision. Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and bim-check-confirm.",
+        "description": "The IFC models a project can use: its own uploads plus the office shelf’s, each with its id, name and revision. Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and bim-check-confirm.",
         "tags": [
           "bim"
         ],
@@ -18500,7 +18500,7 @@
       "post": {
         "operationId": "diagram-file",
         "summary": "File a drawn diagram into a project",
-        "description": "File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the chat answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.",
+        "description": "File a diagram as documents of the project: the `svg` and its `source` (mermaid or excalidraw), a `title`, and `runId`, the id of the answer it was drawn in (filing the same diagram twice files nothing twice). Optionally `conversationId` so restricted-folder rules apply. Returns `{ svg, pdf }`, `pdf` null when only the SVG landed. Needs project:documents:write and project:documents:generate.",
         "tags": [
           "bim"
         ],
@@ -18869,7 +18869,7 @@
       "get": {
         "operationId": "organization-deleted-folder-content-get",
         "summary": "Read the deleted-folder content policy",
-        "description": "Who may still see chats, answers and notes drawn from a folder once the folder is purged. Any member may read. Change with organization-deleted-folder-content-set.",
+        "description": "Who may still see conversations, answers and notes drawn from a folder once the folder is purged. Any member may read. Change with organization-deleted-folder-content-set.",
         "tags": [
           "organization"
         ],
@@ -22537,7 +22537,7 @@
       "patch": {
         "operationId": "platform-knowledge-doc-class-update",
         "summary": "Reclassify a base-corpus document",
-        "description": "Sets the Dokumentart (`doc_class`) of a base-corpus document; it takes effect in retrieval at once with no re-ingest. Returns `{ fileName, docClass }`.",
+        "description": "Sets the document type (`doc_class`) of a base-corpus document; it takes effect in retrieval at once with no re-ingest. Returns `{ fileName, docClass }`.",
         "tags": [
           "platform"
         ],
@@ -22563,7 +22563,7 @@
                   "doc_class": {
                     "type": "string",
                     "minLength": 1,
-                    "description": "The Dokumentart to set."
+                    "description": "The document type to set."
                   }
                 },
                 "required": [
@@ -22666,7 +22666,7 @@
       "post": {
         "operationId": "platform-knowledge-document-upload",
         "summary": "Upload a PDF or ZIP to the base corpus",
-        "description": "Adds a PDF, or a ZIP of PDFs, to the shared building-law corpus every organization reads. Up to 32 MiB per call through the agent door. Send `body.files[0]` as { name, mimeType, contentBase64 }; `body.fields.doc_class` presets the Dokumentart of a single PDF. Ingestion runs in the background: the answer is `pending`, follow it with the corpus status operations. Platform owners only.",
+        "description": "Adds a PDF, or a ZIP of PDFs, to the shared building-law corpus every organization reads. Up to 32 MiB per call through the agent door. Send `body.files[0]` as { name, mimeType, contentBase64 }; `body.fields.doc_class` presets the document type of a single PDF. Ingestion runs in the background: the answer is `pending`, follow it with the corpus status operations. Platform owners only.",
         "tags": [
           "platform"
         ],
@@ -22685,7 +22685,7 @@
                   "doc_class": {
                     "type": "string",
                     "maxLength": 100,
-                    "description": "The Dokumentart for a single PDF; omit to let ingestion decide."
+                    "description": "The document type for a single PDF; omit to let ingestion decide."
                   }
                 },
                 "required": [

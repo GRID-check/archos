@@ -160,7 +160,7 @@ describe('the answer-feedback workbook', () => {
       expect(text).toContain('Zeilenlimit | 5000')
       expect(text).toContain('Zeilenlimit erreicht (neueste Bewertungen behalten) | nein')
       expect(text).toContain('Bewerten ist freiwillig')
-      expect(text).toContain('gelöschten Unterhaltung')
+      expect(text).toContain('eines gelöschten Chats')
     })
 
     it('lists every filter by name, what the weekly sheet left out and why, and a cut', async () => {

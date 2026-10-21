@@ -337,9 +337,9 @@ export const collaboration: typeof en.collaboration = {
       },
       documentAssigned: {
         title: '{actor} hat Ihnen {subject} zugewiesen',
-        body: 'Sie sind für diese Datei verantwortlich.',
+        body: 'Sie sind für diese Datei zuständig.',
       },
-      // Ein Hintergrundauftrag ist zu Ende. {subject} ist der Name des Auftrags.
+      // Ein Lauf ist zu Ende. {subject} ist der Name der Aufgabe.
       // Kein {actor}: die Arbeit hat Piloti getan, nicht eine Person.
       // ADR-0086: alles, was ein Upload gebracht hat, ist gelesen. {subject}
       // ist der Projektname; ein Upload in die Büroablage oder einen Chat hat
@@ -400,7 +400,7 @@ export const collaboration: typeof en.collaboration = {
       },
       // Die Zeile führt zum Lauf selbst (seinem Block im Verlauf, sonst der
       // Aufgabe): dort stehen Ergebnis und Grund, nicht in einer „Laufhistorie“.
-      jobCompleted: {
+      taskRunCompleted: {
         title: 'Piloti hat „{subject}“ erledigt',
         body: 'Öffnen Sie den Eintrag, um das Ergebnis zu sehen.',
       },
@@ -413,11 +413,11 @@ export const collaboration: typeof en.collaboration = {
         title: 'Der Import von „{subject}“ wurde abgebrochen',
         body: 'Was bis dahin importiert war, bleibt im Projekt. Die Importliste unter Dateien nennt den Grund.',
       },
-      jobFailed: {
+      taskRunFailed: {
         title: 'Piloti konnte „{subject}“ nicht abschließen',
         body: 'Öffnen Sie den Eintrag: Dort steht, woran es lag.',
       },
-      jobWaiting: {
+      taskRunWaiting: {
         title: 'Piloti hat eine Rückfrage zu „{subject}“',
         body: 'Antworten Sie im Verlauf, dann arbeitet Piloti weiter.',
       },

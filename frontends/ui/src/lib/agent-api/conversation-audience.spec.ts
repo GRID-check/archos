@@ -49,7 +49,7 @@ const session = {
 }
 const ANSWER = '6f1c2b8e-3d4a-5b6c-8d7e-9f0a1b2c3d4e'
 const piloti = (extra: Partial<AgentPrincipal> = {}): AgentPrincipal => ({
-  kind: 'piloti',
+  actor: 'piloti',
   session,
   clientId: null,
   scopes: [],
@@ -73,7 +73,7 @@ beforeEach(() => {
 
 describe('conversationReachOf', () => {
   it('is none for an external agent and for a call in no conversation', async () => {
-    expect(await conversationReachOf({ kind: 'person', session, clientId: 'c', scopes: [] })).toBe('none')
+    expect(await conversationReachOf({ actor: 'external_agent', session, clientId: 'c', scopes: [] })).toBe('none')
     expect(await conversationReachOf(piloti({ conversationId: null }))).toBe('none')
     expect(readConversationAudience).not.toHaveBeenCalled()
   })
