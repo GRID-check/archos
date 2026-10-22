@@ -59,7 +59,10 @@ function envelope(event: CollaborationEvent): EventEnvelope {
  * its next fetch (spec RT-4).
  */
 export async function publishToUser(userId: string, event: CollaborationEvent): Promise<void> {
-  await hub.publish(userChannel(userId), envelope(event))
+  // Not awaited: this replica's listeners are served synchronously inside
+  // `hub.publish`, and the user action must not wait on Dragonfly, whose client
+  // queues while it is down (up to its command timeout).
+  void hub.publish(userChannel(userId), envelope(event))
 }
 
 /**

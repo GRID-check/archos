@@ -470,6 +470,19 @@ def test_deferred_download_retries_a_refused_connect():
     assert _DOWNLOAD_CONNECT_RETRIES >= 5
 
 
+def test_deferred_download_bounds_each_connect_attempt():
+    """Seven attempts at the 60 s read timeout would hold a worker for minutes
+    against a store that drops SYNs: each CONNECT has its own short bound."""
+    from aiq_api.routes.ingest import _DOWNLOAD_CONNECT_TIMEOUT_SECONDS
+
+    with patch("httpx.Client.get", return_value=_download(b"%PDF", "application/pdf")) as get:
+        path = DeferredObjectDownload(_SIGNED_REF)()
+    os.unlink(path)
+    timeout = get.call_args[1]["timeout"]
+    assert timeout.connect == _DOWNLOAD_CONNECT_TIMEOUT_SECONDS <= 10
+    assert timeout.read == 60.0
+
+
 def test_infer_suffix_office_types():
     """An office original whose presigned path has no extension keeps its
     type's extension rather than landing as `.bin`."""

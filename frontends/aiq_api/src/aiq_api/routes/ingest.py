@@ -343,7 +343,11 @@ class DeferredObjectDownload:
         # failed: ConnectError", 2026-10-19 and -22). A request that reached the
         # store is never repeated.
         with httpx.Client(transport=httpx.HTTPTransport(retries=_DOWNLOAD_CONNECT_RETRIES)) as client:
-            response = client.get(self._url, follow_redirects=False, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+            response = client.get(
+                self._url,
+                follow_redirects=False,
+                timeout=httpx.Timeout(_DOWNLOAD_TIMEOUT_SECONDS, connect=_DOWNLOAD_CONNECT_TIMEOUT_SECONDS),
+            )
         response.raise_for_status()
         suffix = self._suffix or _infer_suffix(response.headers.get("content-type", ""), self._url)
         fd, path = tempfile.mkstemp(suffix=suffix)
@@ -364,6 +368,9 @@ _DOWNLOAD_TIMEOUT_SECONDS = 60.0
 #: Connect attempts after the first, backing off 0, 0.5, 1, 2, 4, 8 s: about
 #: 15 s in all, longer than the object-store outages PostHog Logs has shown.
 _DOWNLOAD_CONNECT_RETRIES = 6
+#: Per connect attempt. The 60 s read timeout on every one of seven attempts
+#: would hold a worker for minutes against a store that drops SYNs.
+_DOWNLOAD_CONNECT_TIMEOUT_SECONDS = 5.0
 
 
 def _provenance_config(request: IngestRequest) -> dict[str, str]:

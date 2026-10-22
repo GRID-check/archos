@@ -1222,12 +1222,14 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       : enabledDataSources
     return {
       dataSourcesForMessage,
-      // On the wire, `[]` selects NO source. Until the source list has loaded
-      // (or when it failed to) the composer has selected nothing on purpose,
-      // so it states nothing: `null` is every source the organization allows.
-      // Sending the empty initial list refused every retrieval of the turn
+      // On the wire, `[]` selects NO source. Before the source list has loaded
+      // (or when it failed to), an empty selection is the store's initial
+      // value, not a choice, so it states nothing: `null` is every source the
+      // organization allows. Sending it refused every retrieval of the turn
       // ("Research turn has every data source switched off", PostHog Logs).
-      dataSourcesOnWire: layoutState.availableDataSources === null ? null : dataSourcesForMessage,
+      // A selection that does exist goes out as it is.
+      dataSourcesOnWire:
+        layoutState.availableDataSources === null && dataSourcesForMessage.length === 0 ? null : dataSourcesForMessage,
       // Prepare file metadata for display
       messageFiles: sessionFiles.map((f) => ({ id: f.id, fileName: f.fileName })),
     }

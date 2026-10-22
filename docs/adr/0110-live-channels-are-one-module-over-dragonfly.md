@@ -174,4 +174,4 @@ Migration, in phases:
    onto a `turn` topic that the same channel listens to; then
    `/api/conversations/:id/live` and its plumbing go.
 
-Not migrated here: `/api/stream`, typing and the conversation live route.
+Not migrated in phase 1: `/api/stream` (phase 2, since done), typing and the conversation live route.
