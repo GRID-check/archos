@@ -4,6 +4,7 @@ import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { getDb } from '@/lib/db'
 import { executeRows } from '@/lib/db/execute-rows'
 import { BadRequestError } from '@/lib/api/errors'
+import type { OffsetPage } from '@/lib/api/offset-page'
 import { sourceFoldersOfCollections } from '@/lib/authz/folder-access'
 import { isProjectClosed, projectClosedError } from './project-status'
 import { PROJECT_MEMORY_MAX_RESTRICTED_FOLDERS, projectMemory, projects } from '@/lib/db/schema'
@@ -408,6 +409,8 @@ export async function listProjectMemory(
      * Empty — the default — lists open memory only.
      */
     readableFolderIds?: readonly string[]
+    /** One page: `limit + 1` rows from `offset`, the extra one telling the caller there is more. */
+    page?: OffsetPage
   } = {}
 ): Promise<ProjectMemoryItem[]> {
   const db = getDb()
@@ -444,16 +447,17 @@ export async function listProjectMemory(
     // Used by the chat "Piloti noted N" chip to show only what this turn recorded.
     conditions.push(eq(projectMemory.sourceConversationId, options.sourceConversationId))
   }
-  return db
+  const query = db
     .select()
     .from(projectMemory)
     .where(and(...conditions))
-    .orderBy(desc(projectMemory.pinned), desc(projectMemory.updatedAt))
+    .orderBy(desc(projectMemory.pinned), desc(projectMemory.updatedAt), desc(projectMemory.id))
+  return options.page ? query.limit(options.page.limit + 1).offset(options.page.offset) : query
 }
 
 export async function listOrganizationMemory(
   organizationId: string,
-  options: { includeArchived?: boolean } = {}
+  options: { includeArchived?: boolean; page?: OffsetPage } = {}
 ): Promise<ProjectMemoryItem[]> {
   const db = getDb()
   const conditions = [
@@ -466,11 +470,12 @@ export async function listOrganizationMemory(
   if (!options.includeArchived) {
     conditions.push(eq(projectMemory.status, 'active'))
   }
-  return db
+  const query = db
     .select()
     .from(projectMemory)
     .where(and(...conditions))
-    .orderBy(desc(projectMemory.pinned), desc(projectMemory.updatedAt))
+    .orderBy(desc(projectMemory.pinned), desc(projectMemory.updatedAt), desc(projectMemory.id))
+  return options.page ? query.limit(options.page.limit + 1).offset(options.page.offset) : query
 }
 
 export interface CreateMemoryOptions {

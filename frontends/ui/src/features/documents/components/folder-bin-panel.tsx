@@ -1,10 +1,11 @@
 'use client'
 
 /**
- * A project's Papierkorb (ADR-0088): the folders deleted in it, who deleted
- * each and when, when its purge runs, and what the reader may do — restore
- * (with its access, its subfolders and documents), and „Endgültig löschen"
- * for project admins.
+ * A project's Papierkorb (ADR-0088): the folders deleted in it and the
+ * documents sent there on their own, who deleted each and when, when its purge
+ * runs, and what the reader may do — restore (a folder with its access, its
+ * subfolders and documents; a document to the folder it came from), and
+ * „Endgültig löschen" for project admins.
  *
  * Only folders the reader may read are listed; the server filters, and checks
  * every action again.
@@ -12,12 +13,13 @@
 
 import { useCallback, useState, type JSX } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, ArrowLeft, Folder, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, FileText, Folder, RefreshCw, RotateCcw, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
   FolderBinRequestError,
   listFolderBin,
   purgeFolderNow,
+  restoreDocument,
   restoreFolder,
   type FolderBinEntry,
   type FolderBinListing,
@@ -47,6 +49,8 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
 
   const date = (iso: string): string => formatCalendarDate(iso, locale)
 
+  const [loadingMore, setLoadingMore] = useState(false)
+
   const reload = useCallback(async () => {
     try {
       setListing(await listFolderBin(projectId))
@@ -56,10 +60,26 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
     }
   }, [projectId])
 
+  const loadMore = async (): Promise<void> => {
+    if (!listing?.nextCursor) return
+    setLoadingMore(true)
+    try {
+      const next = await listFolderBin(projectId, listing.nextCursor)
+      setListing({ ...next, entries: [...listing.entries, ...next.entries] })
+    } catch {
+      toast.error(t('bin.loadError'))
+    } finally {
+      setLoadingMore(false)
+    }
+  }
+
   const restore = async (entry: FolderBinEntry): Promise<void> => {
     setBusyId(entry.folderId)
     try {
-      const restored = await restoreFolder(projectId, entry.folderId)
+      // A document binned on its own goes back to its folder, not as a folder of its own.
+      const restored = entry.document
+        ? await restoreDocument(entry.document.id)
+        : await restoreFolder(projectId, entry.folderId)
       toast.success(
         restored.restoredTo === 'root'
           ? t('bin.restoredToRoot', { name: entry.name })
@@ -140,7 +160,11 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
             // rather than squeezing its name and dates to nothing.
             <Item key={entry.folderId} as="li" className="flex-wrap sm:flex-nowrap" data-testid={`bin-entry-${entry.folderId}`}>
               <ItemMedia>
-                <Folder className="text-muted-foreground size-5" aria-hidden />
+                {entry.document ? (
+                  <FileText className="text-muted-foreground size-5" aria-hidden />
+                ) : (
+                  <Folder className="text-muted-foreground size-5" aria-hidden />
+                )}
               </ItemMedia>
               <ItemContent className="basis-[calc(100%-2.75rem)] sm:basis-auto">
                 <ItemTitle title={entry.path}>{entry.name}</ItemTitle>
@@ -149,7 +173,7 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
                     „… 14 Do…" on a phone. Each fact its own line, wrapping
                     below `sm` instead of cutting. */}
                 <ItemDescription className="whitespace-normal sm:truncate">
-                  {t('bin.contents', { documents: entry.documents, folders: entry.folders })}
+                  {entry.document ? t('bin.document') : t('bin.contents', { documents: entry.documents, folders: entry.folders })}
                 </ItemDescription>
                 <ItemDescription className="whitespace-normal sm:truncate">
                   {entry.deletedBy.name
@@ -198,6 +222,11 @@ export function FolderBinPanel({ projectId, initial }: FolderBinPanelProps): JSX
             </Item>
           ))}
         </ItemList>
+      )}
+      {listing.nextCursor && (
+        <Button variant="outline" size="sm" className="self-center" disabled={loadingMore} onClick={() => void loadMore()}>
+          {t('bin.loadMore')}
+        </Button>
       )}
 
       <ConfirmDialog

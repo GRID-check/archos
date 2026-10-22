@@ -3288,11 +3288,20 @@
           "type": "string"
         },
         "data_sources": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Data Sources",
-          "type": "array"
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The composer's source selection. Absent means not stated, so every source the organization allows; an empty list selects none. Headless senders (the MCP ask, annotation wakes, the document check) leave it out.",
+          "title": "Data Sources"
         },
         "focus_document_id": {
           "anyOf": [

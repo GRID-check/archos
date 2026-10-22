@@ -15,6 +15,7 @@
 
 import { z } from 'zod'
 import type {
+  InboxItemType,
   InboxItemView,
   InboxListFilter,
   InboxListResponse,
@@ -69,6 +70,9 @@ export interface ListInboxQuery {
   filter?: InboxListFilter
   /** The previous page's `nextCursor`. */
   cursor?: string | null
+  type?: InboxItemType
+  projectId?: string
+  limit?: number
 }
 
 /** The mark whose news the reader just opened. */
@@ -112,9 +116,12 @@ export function createInboxClient(request: InboxFetch = defaultFetch): InboxClie
   const itemPath = (itemId: string) => `${BASE}/${encodeURIComponent(itemId)}/archive`
 
   return {
-    list: async ({ filter = 'all', cursor } = {}) => {
+    list: async ({ filter = 'all', cursor, type, projectId, limit } = {}) => {
       const params = new URLSearchParams({ filter })
       if (cursor) params.set('cursor', cursor)
+      if (type) params.set('type', type)
+      if (projectId) params.set('projectId', projectId)
+      if (limit) params.set('limit', String(limit))
       return call(`${BASE}?${params.toString()}`, undefined, listSchema)
     },
     summary: () => call(`${BASE}/summary`, undefined, summarySchema),

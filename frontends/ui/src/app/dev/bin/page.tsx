@@ -26,7 +26,22 @@ const PROJECT = 'dev-project'
 
 const LISTING: FolderBinListing = {
   canPurge: true,
+  nextCursor: null,
   entries: [
+    {
+      // One document sent to the bin on its own: restoring it files it back in „Pläne“.
+      folderId: 'f-grundriss',
+      name: 'Grundriss EG Index C.pdf',
+      path: 'Pläne/Grundriss EG Index C.pdf',
+      deletedAt: '2026-10-06T10:05:00Z',
+      deletedBy: { userId: 'user_gf', name: 'Gerda Fischer' },
+      purgeAfter: '2026-10-20T10:05:00Z',
+      status: 'pending',
+      documents: 1,
+      folders: 1,
+      canRestore: true,
+      document: { id: 'd-grundriss', name: 'Grundriss EG Index C.pdf' },
+    },
     {
       folderId: 'f-vertraege',
       name: 'Verträge',
@@ -38,6 +53,7 @@ const LISTING: FolderBinListing = {
       documents: 14,
       folders: 2,
       canRestore: true,
+      document: null,
     },
     {
       folderId: 'f-alt',
@@ -50,6 +66,7 @@ const LISTING: FolderBinListing = {
       documents: 3,
       folders: 1,
       canRestore: true,
+      document: null,
     },
     {
       folderId: 'f-honorare',
@@ -62,6 +79,7 @@ const LISTING: FolderBinListing = {
       documents: 6,
       folders: 0,
       canRestore: false,
+      document: null,
     },
     {
       folderId: 'f-statik',
@@ -74,6 +92,7 @@ const LISTING: FolderBinListing = {
       documents: 21,
       folders: 4,
       canRestore: false,
+      document: null,
     },
   ],
 }

@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import { pageQueryShape } from '@/lib/api/offset-page'
 
 /**
  * The assignable project roles, mirroring `ROLES` in `lib/authz/catalog.ts`.
@@ -18,4 +19,14 @@ export const addMemberSchema = z.object({
     z.enum(['project-viewer', 'project-contributor', 'project-editor', 'project-admin']),
     z.literal(''),
   ]),
+})
+
+/**
+ * `GET /api/projects/[id]/members`. `scope: "members"` (the default) lists the
+ * people who hold a project role; `"organization"` lists everyone in the
+ * organization, role null for those without one, to pick whom to add.
+ */
+export const listMembersQuerySchema = z.object({
+  scope: z.enum(['members', 'organization']).optional(),
+  ...pageQueryShape,
 })

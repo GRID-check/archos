@@ -41,6 +41,7 @@
  */
 
 import { z } from 'zod'
+import { TASK_RUN_STATUSES } from '@/lib/tasks/task-vocabulary'
 
 /**
  * The five phases a run walks, in order.
@@ -387,16 +388,36 @@ export const runLedgerResponseSchema = z
 
 export type RunLedgerResponse = z.infer<typeof runLedgerResponseSchema>
 
+/**
+ * What a run produced, as `GET /api/projects/[id]/runs/[runId]` answers it: the
+ * report text from the run's own message, cut at `RUN_REPORT_MAX_CHARS`
+ * (`lib/tasks/task-wire.ts`), and the document it was filed as.
+ */
+export const runReportSchema = z
+  .object({
+    /** Null while the run has written nothing, or when the reader may not open its conversation. */
+    text: z.string().nullable(),
+    /** True when `text` was cut; the whole report is the filed document's. */
+    truncated: z.boolean(),
+    filedDocumentId: z.string().nullable(),
+  })
+  .strict()
+
 /** `GET /api/projects/[id]/runs/[runId]` — one run, with its ledger. */
 export const runViewSchema = z
   .object({
     runId: z.string().min(1).max(MAX_RUN_ID_CHARS),
-    backendJobId: z.string().nullable(),
+    /** The task this is a run of; null for a run with no definition. */
+    taskId: z.string().nullable(),
     conversationId: z.string().nullable(),
     messageId: z.string().nullable(),
     /** The row's own lifecycle status, unmapped. The display state is derived. */
-    status: z.string(),
+    status: z.enum(TASK_RUN_STATUSES),
     ledger: runLedgerSchema.nullable(),
+    /** What the run produced. On the GET only; the controls answer without it. */
+    report: runReportSchema.optional(),
+    /** The key of the run's live event stream, with `include=stream` only. */
+    backendJobId: z.string().nullable().optional(),
   })
   .strict()
 

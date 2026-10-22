@@ -142,8 +142,9 @@ too, its observation `a2a.<operation>` (`piloti-ask-create`, `piloti-ask-get`,
 waits are not. A tool call on the platform door at `/api/platform/mcp`
 (ADR-0126) is the same trace, observation `mcp.<operation>`, door `platform`.
 Metadata on all: `operation`, `domain`, `door`
-(`mcp`, `piloti`, `a2a` or `platform`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`
-or `refused`), `status` (the route's HTTP status), `duration_ms`, `client_id`.
+(`mcp`, `piloti`, `a2a` or `platform`), `mode` (`search` or `tools`; null on the A2A door), `decision` (`run`, `propose`,
+`refused`, `confirm` when an outside agent's destructive call was put to the person in their own chat, `declined` when they did not
+confirm it), `decision_source` (`elicitation`, only on the round that runs a call the person confirmed), `status` (the route's HTTP status), `duration_ms`, `client_id`.
 Level `WARNING` for a 4xx, `ERROR` for a 5xx. Tags: `feature:agent-mcp`,
 `door:<door>`, `decision:<decision>`, `error:<status>` on a refusal, and
 `org:<id>` with identity attributes on. The session is the conversation when

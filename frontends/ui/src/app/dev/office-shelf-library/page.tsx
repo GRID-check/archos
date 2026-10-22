@@ -96,7 +96,7 @@ const json = (body: unknown, status = 200): Response =>
 function answer(url: string, method: string, state: { files: FileItem[]; folders: FolderItem[] }): Response | null {
   const path = new URL(url, window.location.origin).pathname
   if (/\/api\/documents\/.+\/thumbnail$/.test(path)) return new Response(null, { status: 404 })
-  if (path === '/api/office-shelf/documents' && method === 'GET') {
+  if (path === '/api/documents' && method === 'GET') {
     return json({ documents: state.files, collectionName: 'archiv_dev', canManage: true })
   }
   if (path === '/api/office-shelf/folders' && method === 'GET') return json({ folders: state.folders })

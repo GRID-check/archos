@@ -28,18 +28,15 @@ import { ForbiddenError } from '@/lib/api/errors'
 import { probeOfficeShelfRevisionCandidates } from '@/lib/office-shelf/service'
 import { probeProjectRevisionCandidates } from '@/lib/documents/revision-candidates'
 import {
-  OFFICE_SHELF_REVISION_CANDIDATES_PATH,
-  PROJECT_REVISION_CANDIDATES_PATH,
+  REVISION_CANDIDATES_PATH,
   NameProbeError,
   createDocumentNameProbeClient,
 } from '@/lib/documents/name-probe-client'
 import { NAME_PROBE_MAX_NAMES, type RevisionCandidateMatch } from '@/lib/documents/name-probe-types'
 import { POST as probeProject } from './route'
-import { POST as probeOfficeShelf } from '../../office-shelf/documents/revision-candidates/route'
 
 const handlers: Record<string, (request: Request) => Promise<Response>> = {
-  [PROJECT_REVISION_CANDIDATES_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
-  [OFFICE_SHELF_REVISION_CANDIDATES_PATH]: (request) => probeOfficeShelf(request, { params: Promise.resolve({}) }),
+  [REVISION_CANDIDATES_PATH]: (request) => probeProject(request, { params: Promise.resolve({}) }),
 }
 
 const client = createDocumentNameProbeClient(async (path, init) => {
@@ -104,7 +101,7 @@ describe('POST /api/documents/revision-candidates', () => {
   })
 
   it('refuses a body without names', async () => {
-    const response = await handlers[PROJECT_REVISION_CANDIDATES_PATH](
+    const response = await handlers[REVISION_CANDIDATES_PATH](
       new Request('https://grid.test/x', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -116,7 +113,7 @@ describe('POST /api/documents/revision-candidates', () => {
   })
 })
 
-describe('POST /api/office-shelf/documents/revision-candidates', () => {
+describe('POST /api/documents/revision-candidates on the office shelf', () => {
   it('answers what the names continue in the Archiv', async () => {
     expect(await client.officeShelfRevisions(['EG_Index_C.pdf'])).toEqual([MATCH])
     expect(probeOfficeShelfRevisionCandidates).toHaveBeenCalledWith(

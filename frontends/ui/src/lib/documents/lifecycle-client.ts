@@ -229,7 +229,7 @@ export function createDocumentLifecycleClient(
 export const documentLifecycleClient = createDocumentLifecycleClient()
 
 /**
- * Where one version's BYTES are served (`GET …/versions/[versionId]/file`): a
+ * Where one version's BYTES are served (`GET …/file?versionId=`): a
  * link for a tab or an `<a download>`, not a fetch, so it is a URL builder and
  * not a client method. Only a published or superseded version answers.
  */
@@ -238,6 +238,6 @@ export function versionFileUrl(
   versionId: string,
   { download = false }: { download?: boolean } = {},
 ): string {
-  const base = `/api/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/file`
-  return download ? `${base}?download=1` : base
+  const base = `/api/documents/${encodeURIComponent(documentId)}/file?versionId=${encodeURIComponent(versionId)}`
+  return download ? `${base}&download=1` : base
 }

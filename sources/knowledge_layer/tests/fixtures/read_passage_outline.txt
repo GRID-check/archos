@@ -1,4 +1,4 @@
-Found 2 relevant document(s):
+Read 2 passage(s) of oib-rl_2_ausgabe_mai_2023.pdf, in reading order:
 
 --- Result 1 ---
 Source: OIB-Richtlinie 2, Ausgabe Mai 2023

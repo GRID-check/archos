@@ -46,6 +46,7 @@ import {
   findProjectDocumentsByNames,
   findShelfDocumentListRow,
   listDocumentLevelPage,
+  listDocumentPage,
   listProjectDocumentPage,
   listShelfFailedDocuments,
   summarizeShelfFolders,
@@ -55,7 +56,6 @@ import {
   findOfficeShelfDocumentsByFilenames,
   findOfficeShelfDocumentsByNames,
   listOfficeShelfDocumentLevel,
-  listOfficeShelfDocuments,
 } from '@/lib/office-shelf/repository'
 import {
   decodeDocumentLevelCursor,
@@ -181,11 +181,11 @@ describe('listProjectDocumentPage', () => {
   })
 })
 
-describe('listOfficeShelfDocuments', () => {
+describe('listDocumentPage on the office shelf', () => {
   it('pages the Archiv with the same order, bound and cursor', async () => {
     const cursor = { createdAt: '2026-01-01T00:00:00.000001', id: '00000000-0000-4000-8000-000000000001' }
     answer = [wireRow(1), wireRow(2)]
-    const page = await listOfficeShelfDocuments('org-1', { reader, cursor, limit: 1 })
+    const page = await listDocumentPage({ kind: 'office_shelf' }, 'org-1', { reader, cursor, limit: 1 })
     const { sql, params } = onlyQuery()
     expect(sql).toMatch(/"documents"\."scope" = \$\d+/)
     expect(sql).toMatch(/order by "documents"\."created_at" desc, "documents"\."id" asc/i)

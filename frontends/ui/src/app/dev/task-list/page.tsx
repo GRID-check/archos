@@ -32,9 +32,9 @@ import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { Button } from '@/components/ui/button'
 import { TaskList } from '@/features/tasks/components/task-list'
-import type { TaskFilter, TaskWireRow } from '@/features/tasks/lib/task-view'
+import type { TaskFilter, TaskRunView } from '@/features/tasks/lib/task-view'
 
-const row = (overrides: Partial<TaskWireRow>): TaskWireRow => ({
+const row = (overrides: Partial<TaskRunView>): TaskRunView => ({
   id: 'task-0',
   kind: 'document',
   title: 'Aktenvermerk',
@@ -45,7 +45,7 @@ const row = (overrides: Partial<TaskWireRow>): TaskWireRow => ({
   filedDocumentId: null,
   conversationId: null,
   runMessageId: null,
-  backendJobId: null,
+  taskId: null,
   trigger: 'delegated',
   requesterUserId: 'user_anna',
   requesterName: 'Anna Berger',
@@ -55,7 +55,7 @@ const row = (overrides: Partial<TaskWireRow>): TaskWireRow => ({
   ...overrides,
 })
 
-const TASKS: TaskWireRow[] = [
+const TASKS: TaskRunView[] = [
   row({
     id: 'task-1',
     kind: 'revision',
@@ -71,7 +71,6 @@ const TASKS: TaskWireRow[] = [
     title: 'Wöchentlicher OIB-Brandschutz-Scan',
     goal: null,
     trigger: 'schedule',
-    backendJobId: 'bj-77',
     requesterName: null,
   }),
   row({
@@ -121,7 +120,7 @@ function FilterableList({
   loading,
   failed,
 }: {
-  tasks: TaskWireRow[]
+  tasks: TaskRunView[]
   loading?: boolean
   failed?: boolean
 }) {
@@ -156,7 +155,7 @@ const ARRIVING = row({
  * make room for it.
  */
 function GlidingList() {
-  const [tasks, setTasks] = useState<TaskWireRow[]>(TASKS)
+  const [tasks, setTasks] = useState<TaskRunView[]>(TASKS)
   const arrived = tasks.some((task) => task.id === ARRIVING.id)
   const aged = tasks.some((task) => task.id === 'task-2' && task.createdAt !== TASKS[2]?.createdAt)
 

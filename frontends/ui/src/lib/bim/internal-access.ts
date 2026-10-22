@@ -33,6 +33,7 @@ import { findDocumentInOrg } from '@/lib/documents/repository'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { getRestrictedFolderIds } from '@/lib/authz/folder-access'
 import { listBimModels, type BimModelHeader } from './repository'
+import { modelShelf } from './model-shelf'
 
 /**
  * The SAME gate the UI and every user-facing route apply, evaluated
@@ -56,6 +57,10 @@ export function describeModel(model: BimModelHeader) {
     modelId: model.id,
     filename: model.filename,
     status: model.status,
+    // Whose model it is: a project's own, or the office shelf's, which every
+    // project of the office sees and which is NOT this project's building.
+    shelf: modelShelf(model),
+    projectId: model.projectId,
     projectName: model.summary?.projectName ?? null,
     elements: model.summary?.totals.elements ?? model.elementCount,
     storeys: model.summary?.totals.storeys ?? 0,
@@ -65,7 +70,7 @@ export function describeModel(model: BimModelHeader) {
 /** Why a model could not be selected — reported, never thrown. */
 export interface UnresolvedModel {
   resolved: false
-  reason: 'no_match' | 'ambiguous' | 'not_ready' | 'no_models'
+  reason: 'no_match' | 'ambiguous' | 'not_ready' | 'no_models' | 'no_own_model'
   message: string
   models: ReturnType<typeof describeModel>[]
 }
@@ -182,7 +187,34 @@ export async function resolveInternalModel(
     return { resolved: true, model: matches[0], readable }
   }
 
-  if (readable.length === 1) return { resolved: true, model: readable[0], readable }
+  // A project asked without naming a model means ITS building. The office shelf
+  // is in `readable` so a model can be NAMED, never so that it is guessed: with
+  // one shelf sample and no upload, the single readable model used to be taken
+  // as the project's own.
+  const own = input.projectId ? readable.filter((model) => modelShelf(model) === 'project') : readable
+  if (own.length === 1) return { resolved: true, model: own[0], readable }
+
+  if (own.length === 0 && readable.length > 0) {
+    // The project's own IFC may simply not be ready yet: that is "still being
+    // read", not "has none", and the two must not be flattened into one answer.
+    const ownPending = input.projectId ? candidates.filter((model) => modelShelf(model) === 'project') : []
+    if (ownPending.length > 0) {
+      return {
+        resolved: false,
+        reason: 'not_ready',
+        message: 'This project has an IFC model that is still being processed. It is not ready to query yet.',
+        models: ownPending.map(describeModel),
+      }
+    }
+    return {
+      resolved: false,
+      reason: 'no_own_model',
+      message:
+        'This project has no IFC model of its own. The office shelf holds models that belong to no project; ' +
+        'they are read only with `model_name`.',
+      models: readable.map(describeModel),
+    }
+  }
 
   if (readable.length === 0) {
     return {
@@ -200,7 +232,7 @@ export async function resolveInternalModel(
     resolved: false,
     reason: 'ambiguous',
     message: 'Für dieses Projekt gibt es mehrere IFC-Modelle. Bitte eines auswählen.',
-    models: readable.map(describeModel),
+    models: own.map(describeModel),
   }
 }
 

@@ -87,6 +87,8 @@ export interface RunMessageRef {
  * authorization decision; `deepLink` is what the row renders as its href.
  */
 export interface InboxTargetAccess {
+  /** The project the target belongs to (itself, or the home of its conversation or document); null when none. */
+  projectId: string | null
   deepLink: (context: InboxTargetLinkContext) => string
 }
 
@@ -144,6 +146,7 @@ function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
       // line is content: the row renders redacted, like a revoked one.
       if (access.contentLocked) return null
       return {
+        projectId: access.container.projectId,
         deepLink: (context) => {
           // An anchor means different things by type: a message of a chat, a
           // mark of a document, a proposal or a Fassung. Only the first two are
@@ -185,6 +188,7 @@ const organizationTarget: InboxTargetDescriptor = {
   resolve: async (session, resourceId) => {
     if (resourceId !== session.organizationId) return null
     return {
+      projectId: null,
       deepLink: (context) =>
         // The office filing's sort: its anchor is the run.
         context.itemType.startsWith('root_sort.')
@@ -229,6 +233,7 @@ const projectTarget: InboxTargetDescriptor = {
       return null
     }
     return {
+      projectId: resourceId,
       deepLink: (context) => {
         // A mail import lands on the folder it filed into: the row's anchor,
         // unless the import ended before making one (anchored `import:<id>`).
@@ -281,6 +286,7 @@ const productFeedbackTarget: InboxTargetDescriptor = {
   resolve: async (session, resourceId) => {
     if (!(await hasPlatformPermission(session, PLATFORM_INBOX_PERMISSION))) return null
     return {
+      projectId: null,
       deepLink: () => `/app/platform/feedback?report=${encodeURIComponent(resourceId)}`,
     }
   },
@@ -299,7 +305,7 @@ const uploadBatchTarget: InboxTargetDescriptor = {
   resolve: async (session, resourceId) => {
     const batch = await findOwnUploadBatch(session, resourceId).catch(() => null)
     if (!batch) return null
-    return { deepLink: () => `/app/uploads/${encodeURIComponent(resourceId)}` }
+    return { projectId: null, deepLink: () => `/app/uploads/${encodeURIComponent(resourceId)}` }
   },
 }
 

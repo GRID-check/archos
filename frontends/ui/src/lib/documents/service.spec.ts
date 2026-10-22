@@ -6,6 +6,7 @@ import { createHash } from 'node:crypto'
  * records a version through the lifecycle; here that reduces to "it was asked
  * for", and the version table's own behaviour is `lifecycle.spec.ts`'s.
  */
+vi.mock('@/lib/office-shelf/service', () => ({ deleteOfficeShelfDocument: vi.fn() }))
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 // The log's own behaviour is `download-log/service.spec.ts`'s; here it is the
 // seam the byte-serving functions are held to: which of them call it, with
@@ -205,7 +206,6 @@ import {
   type ProjectFolderAccess,
 } from '@/lib/authz/folder-access'
 import {
-  listDocuments,
   listDocumentsPage,
   probeProjectDocumentNames,
   uploadDocument,
@@ -236,7 +236,8 @@ import {
   AgentAuthoredDocumentNotIndexableError,
   INGEST_DISPATCH_FAILED_MESSAGE,
 } from './service'
-import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
+import { deleteOfficeShelfDocument } from '@/lib/office-shelf/service'
+import { encodeDocumentLevelCursor } from './list-cursor'
 import {
   reconcileDocumentStatuses,
   describeBackendIngestState,
@@ -827,76 +828,30 @@ describe('uploadDocument ingest dispatch — backend fetch is time-bounded', () 
   })
 })
 
-describe('listDocuments', () => {
-  it('pushes the author filter down to the query instead of filtering the result', async () => {
-    // The „Von Piloti" chip asks for the small minority of rows a machine
-    // wrote, and migration 0063 gave that predicate its own partial index.
-    // Filtering after the fact would read the whole corpus — then reconcile and
-    // assignment-hydrate every row of it — to return a handful, so the
-    // parameter has to reach the repository. It also has to reach it in the
-    // right ARGUMENT SLOT: `limit` sits between, and passing the author there
-    // would silently cap the listing at zero rows instead of filtering it.
-    vi.mocked(listProjectDocumentPage).mockResolvedValue({ rows: [], nextCursor: null })
+describe('listDocumentsPage', () => {
+  const LEVEL = { folderId: undefined, sort: 'added', dir: 'desc', limit: 100 } as const
+
+  // The „Von Piloti" chip asks for the rows a machine wrote (partial index,
+  // migration 0063), and „archiviert" has to leave the default listing: both
+  // reach the query rather than filtering a page after the fact.
+  it.each([
+    [{ authoredBy: 'agent' as const }, { authoredBy: 'agent', includeArchived: undefined }],
+    [{}, { authoredBy: undefined, includeArchived: undefined }],
+    [{ includeArchived: true }, { includeArchived: true }],
+  ])('hands the filters %o down to the query', async (filters, expected) => {
+    vi.mocked(listDocumentLevelPage).mockResolvedValue({ rows: [], nextCursor: null })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
-
-    await listDocuments(session, 'proj-1', { authoredBy: 'agent' })
-
-    expect(listProjectDocumentPage).toHaveBeenCalledWith(
-      'proj-1',
+    await listDocumentsPage(session, 'proj-1', { ...filters, level: LEVEL })
+    expect(listDocumentLevelPage).toHaveBeenCalledWith(
+      { kind: 'project', projectId: 'proj-1' },
       session.organizationId,
-      expect.objectContaining({ authoredBy: 'agent' })
+      expect.objectContaining(expected)
     )
   })
 
-  it('leaves archived documents out of the default listing', async () => {
-    // „Archiviert" purged the chunks and wrote `documents.lifecycle`, and no
-    // listing read that column — so the file stayed exactly where it was in the
-    // Files pane and the whole gesture was an audit event nobody could see.
-    await listDocuments(session, 'proj-1')
-    expect(listProjectDocumentPage).toHaveBeenCalledWith(
-      'proj-1',
-      session.organizationId,
-      expect.objectContaining({ includeArchived: undefined })
-    )
-  })
-
-  it('widens to the archived ones when the caller asks', async () => {
-    await listDocuments(session, 'proj-1', { includeArchived: true })
-    expect(listProjectDocumentPage).toHaveBeenCalledWith(
-      'proj-1',
-      session.organizationId,
-      expect.objectContaining({ includeArchived: true })
-    )
-  })
-
-  // The listing is paged, not capped: the cursor reaches the query, and the
-  // next page's position leaves encoded (list-cursor.ts).
-  it('threads the cursor down and encodes the next one', async () => {
-    const cursor = { createdAt: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' }
-    const next = { createdAt: '2025-12-01T00:00:00.000001', id: '00000000-0000-4000-8000-000000000002' }
-    vi.mocked(listProjectDocumentPage).mockResolvedValueOnce({ rows: [], nextCursor: next })
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
-
-    const page = await listDocumentsPage(session, 'proj-1', { cursor })
-
-    expect(listProjectDocumentPage).toHaveBeenCalledWith(
-      'proj-1',
-      session.organizationId,
-      expect.objectContaining({ cursor })
-    )
-    expect(page.nextCursor).toBe(encodeDocumentListCursor(next))
-  })
-
-  it('reports no next page on the last one', async () => {
-    vi.mocked(listProjectDocumentPage).mockResolvedValue({ rows: [], nextCursor: null })
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
-    const page = await listDocumentsPage(session, 'proj-1')
-    expect(page.nextCursor).toBeNull()
-  })
-
-  // A folder level (ADR-0102): the same gate and reader, the level query in
-  // place of the drain, and the level cursor on the way out.
-  it('reads a level instead of draining, behind the same gate, and encodes the level cursor', async () => {
+  // A page (ADR-0102, ADR-0131): the gate and reader, the level query, and the
+  // level cursor on the way out.
+  it('reads one page behind the project gate and encodes the level cursor', async () => {
     const next = { sort: 'name', dir: 'asc', value: 'plan.pdf', id: '00000000-0000-4000-8000-000000000002' } as const
     vi.mocked(listDocumentLevelPage).mockResolvedValueOnce({ rows: [], nextCursor: next })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
@@ -910,25 +865,11 @@ describe('listDocuments', () => {
       session.organizationId,
       expect.objectContaining({ level, includeArchived: undefined })
     )
-    expect(listProjectDocumentPage).not.toHaveBeenCalled()
     expect(page.nextCursor).toBe(encodeDocumentLevelCursor(next))
   })
 
-  it('asks for every author when the caller states no filter', async () => {
-    vi.mocked(listProjectDocumentPage).mockResolvedValue({ rows: [], nextCursor: null })
-    vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
-
-    await listDocuments(session, 'proj-1')
-
-    expect(listProjectDocumentPage).toHaveBeenCalledWith(
-      'proj-1',
-      session.organizationId,
-      expect.objectContaining({ authoredBy: undefined })
-    )
-  })
-
   it('carries the curated metadata subset through and strips the internal metadata column', async () => {
-    vi.mocked(listProjectDocumentPage).mockResolvedValue({ rows: [], nextCursor: null })
+    vi.mocked(listDocumentLevelPage).mockResolvedValue({ rows: [], nextCursor: null })
     // reconcile returns rows with the internal `metadata` jsonb (ingestJobId)
     // plus the curated read-only fields layered on top.
     // The production instantiation of `reconcileDocumentStatuses`: repository
@@ -966,7 +907,7 @@ describe('listDocuments', () => {
     ]
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue(reconciled)
 
-    const [row] = await listDocuments(session, 'proj-1')
+    const [row] = (await listDocumentsPage(session, 'proj-1', { level: LEVEL })).documents
 
     // Internal metadata jsonb (with ingestJobId) never leaves the BFF.
     expect(row).not.toHaveProperty('metadata')
@@ -1980,16 +1921,17 @@ describe('deleteDocument', () => {
     expect(deleteProjectDocument).not.toHaveBeenCalled()
   })
 
-  it('404s for an org-wide Archiv document (NULL projectId) — not deletable via the project route', async () => {
+  it('hands an office shelf document to the office shelf delete, never through project access', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
       projectId: null,
       scope: 'office_shelf',
     })
+    const request = new Request('http://x')
 
-    await expect(deleteDocument(session, 'doc-1', new Request('http://x'))).rejects.toBeInstanceOf(
-      NotFoundError
-    )
+    await deleteDocument(session, 'doc-1', request)
+
+    expect(deleteOfficeShelfDocument).toHaveBeenCalledWith(session, 'doc-1', request)
     expect(requireProjectAccess).not.toHaveBeenCalled()
     expect(deleteProjectDocument).not.toHaveBeenCalled()
   })
@@ -3802,11 +3744,11 @@ describe('restricted folders (ADR-0087)', () => {
   })
 
   it('leaves a hidden folder out of the listing, the by-name resolve and the name probe', async () => {
-    await listDocumentsPage(session, 'proj-1')
+    await listDocumentsPage(session, 'proj-1', { level: { sort: 'added', dir: 'desc', limit: 100 } })
     await resolveProjectDocumentsByName(session, 'proj-1', ['Honorar.pdf'])
     await probeProjectDocumentNames(session, 'proj-1', ['Honorar.pdf'])
 
-    expect(vi.mocked(listProjectDocumentPage).mock.calls[0][2]).toMatchObject({ hiddenFolderIds: [HIDDEN] })
+    expect(vi.mocked(listDocumentLevelPage).mock.calls[0][2]).toMatchObject({ hiddenFolderIds: [HIDDEN] })
     expect(vi.mocked(findProjectDocumentsByFilenames).mock.calls[0][3]).toEqual({ hiddenFolderIds: [HIDDEN], reader: { kind: 'reviewer' } })
     expect(vi.mocked(findProjectDocumentsByNames).mock.calls[0][3]).toEqual({ hiddenFolderIds: [HIDDEN], reader: { kind: 'reviewer' } })
   })

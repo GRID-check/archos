@@ -35,6 +35,19 @@ function isDevEnvironment(): boolean {
 }
 
 /**
+ * The secret `tokenEnv` names, or null when it must not be used: unset, or the
+ * well-known dev default outside a dev environment. For a key DERIVED from it
+ * (an HMAC over a domain label), the same fail-closed rule the guard below
+ * applies to the token itself.
+ */
+export function usableInternalSecret(tokenEnv: InternalTokenEnv = 'GRID_INTERNAL_API_TOKEN'): string | null {
+  const secret = process.env[tokenEnv]
+  if (!secret) return null
+  if (secret === DEV_DEFAULT_TOKEN && !isDevEnvironment()) return null
+  return secret
+}
+
+/**
  * Returns a rejection Response, or null when the request is authorized.
  * Usage: `const denied = requireInternalToken(request); if (denied) return denied`
  */

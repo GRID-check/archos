@@ -17,6 +17,7 @@ import { resetThumbnailCache } from '@/features/documents/components/file-card'
 import { resetFilePeekBinding } from '@/features/documents/lib/open-file-peek'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import { useChatStore } from '@/features/chat/store'
+import { shelfPost } from '@/test-utils/shelf-handlers'
 
 function row(id: string, filename: string, extra: Record<string, unknown> = {}) {
   return {
@@ -48,12 +49,12 @@ afterEach(() => {
 describe('DocumentGridCard', () => {
   it('resolves surfaced files to project + Archiv rows and shows the human summary', async () => {
     server.use(
-      http.post('/api/documents/by-name', () =>
+      shelfPost('project', '/api/documents/by-name', () =>
         HttpResponse.json({
           documents: [row('p1', 'Fluchtwegplan.pdf', { summary: 'Fluchtwegplan EG mit zweitem Ausgang.' })],
         }),
       ),
-      http.post('/api/office-shelf/documents/by-name', () =>
+      shelfPost('office_shelf', '/api/documents/by-name', () =>
         HttpResponse.json({
           documents: [row('a1', 'Referenzprojekt.pdf', { summary: 'Vergleichbarer Grundriss aus dem Archiv.' })],
           collectionName: 'archiv_o',
@@ -103,9 +104,9 @@ describe('DocumentGridCard', () => {
 
   it('degrades an unresolvable file to an honest, actionable card (not a dead tile)', async () => {
     server.use(
-      http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [] })),
+      shelfPost('project', '/api/documents/by-name', () => HttpResponse.json({ documents: [] })),
       // 403 = feature gate, fail-open — NOT a fetch error, so no retry state.
-      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 }))
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({}, { status: 403 }))
     )
 
     render(
@@ -129,14 +130,14 @@ describe('DocumentGridCard', () => {
   it('shows a retry affordance (not dead tiles) when the resolve fetch genuinely fails', async () => {
     let projectCalls = 0
     server.use(
-      http.post('/api/documents/by-name', () => {
+      shelfPost('project', '/api/documents/by-name', () => {
         projectCalls += 1
         // First load fails (5xx = genuine error); the retry succeeds.
         return projectCalls === 1
           ? HttpResponse.json({}, { status: 500 })
           : HttpResponse.json({ documents: [row('p1', 'Fluchtwegplan.pdf')] })
       }),
-      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 }))
     )
 
@@ -167,10 +168,10 @@ describe('DocumentGridCard', () => {
 
   it('one file is a receipt that peeks; several files stay a choice', async () => {
     server.use(
-      http.post('/api/documents/by-name', () =>
+      shelfPost('project', '/api/documents/by-name', () =>
         HttpResponse.json({ documents: [row('p1', 'Plan.dwg', { contentType: 'application/acad' })] })
       ),
-      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({}, { status: 403 })),
       http.get('/api/documents/:id/thumbnail', () => HttpResponse.json({}, { status: 404 })),
       http.get('/api/documents/:id/preview', () => HttpResponse.json({ url: null })),
       http.get('/api/documents/:id/visual-details', () => HttpResponse.json({ details: [] }))
@@ -191,8 +192,8 @@ describe('DocumentGridCard', () => {
     // Same filename in BOTH corpora; the surfaced hit is tagged 'office' but the
     // Archiv list is empty — it must resolve to nothing, never the project file.
     server.use(
-      http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Bericht.pdf')] })),
-      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({ documents: [] }))
+      shelfPost('project', '/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Bericht.pdf')] })),
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({ documents: [] }))
     )
 
     render(

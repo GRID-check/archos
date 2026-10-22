@@ -15,9 +15,15 @@ vi.mock('@/lib/workos/client', () => ({
   getWorkOS: vi.fn(),
 }))
 
+// The roster resolves the project's FGA resource id from Postgres; here it is a fixed id.
+vi.mock('@/lib/projects/repository', () => ({
+  findProjectWorkosResourceId: vi.fn(),
+}))
+
 import { GET } from '@/app/api/projects/[id]/members/route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { findProjectWorkosResourceId } from '@/lib/projects/repository'
 import { getWorkOS } from '@/lib/workos/client'
 
 const mockRequireAuthorizedSession = vi.mocked(requireAuthorizedSession)
@@ -50,6 +56,7 @@ describe('/api/projects/[id]/members', () => {
     vi.clearAllMocks()
     mockRequireAuthorizedSession.mockResolvedValue(session)
     mockRequireProjectAccess.mockResolvedValue({ role: 'project-admin', closed: false, readsBecauseClosed: false })
+    vi.mocked(findProjectWorkosResourceId).mockResolvedValue('res_1')
   })
 
   it('lists project-resource memberships by effective project permissions and merges user details', async () => {
@@ -154,9 +161,20 @@ describe('/api/projects/[id]/members', () => {
       // project:manage
       .mockResolvedValueOnce(paginated([{ id: 'om_admin', userId: 'user_admin' }]))
 
+    // The admin holds a stale viewer assignment besides the admin one: the row must offer
+    // the assignment that grants the role it shows, not the first it finds. The others
+    // reach the project through a group or an org-wide right: nothing to remove here.
+    const listRoleAssignmentsForResource = vi.fn().mockResolvedValue(
+      paginated([
+        { id: 'ra_admin_old', organizationMembershipId: 'om_admin', role: { slug: 'project-viewer' } },
+        { id: 'ra_admin', organizationMembershipId: 'om_admin', role: { slug: 'project-admin' } },
+        { id: 'ra_viewer', organizationMembershipId: 'om_viewer', role: { slug: 'project-viewer' } },
+      ])
+    )
+
     mockGetWorkOS.mockReturnValue({
       userManagement: { listUsers, listOrganizationMemberships },
-      authorization: { listMembershipsForResourceByExternalId },
+      authorization: { listMembershipsForResourceByExternalId, listRoleAssignmentsForResource },
     } as never)
 
     const res = await GET(
@@ -169,6 +187,7 @@ describe('/api/projects/[id]/members', () => {
       'project:members:manage',
       'project:manage',
     ])
+    expect(listRoleAssignmentsForResource).toHaveBeenCalledWith({ resourceId: 'res_1' })
     expect(listUsers).toHaveBeenCalledWith({ organizationId: 'org_1' })
     expect(listOrganizationMemberships).toHaveBeenCalledWith({ organizationId: 'org_1' })
     expect(listMembershipsForResourceByExternalId).toHaveBeenNthCalledWith(1, {
@@ -196,28 +215,13 @@ describe('/api/projects/[id]/members', () => {
     await expect(res.json()).resolves.toEqual({
       members: [
         {
-          organizationMembershipId: 'om_viewer',
-          userId: 'user_viewer',
-          email: 'viewer@example.com',
-          name: 'View Only',
-          profilePictureUrl: 'https://cdn.example.com/viewer.png',
-          role: 'project-viewer',
-        },
-        {
-          organizationMembershipId: 'om_editor',
-          userId: 'user_editor',
-          email: 'editor@example.com',
-          name: 'Editor Person',
-          profilePictureUrl: null,
-          role: 'project-editor',
-        },
-        {
           organizationMembershipId: 'om_admin',
           userId: 'user_admin',
           email: 'admin@example.com',
           name: 'Admin Person',
           profilePictureUrl: 'https://cdn.example.com/admin.png',
           role: 'project-admin',
+          roleAssignmentId: 'ra_admin',
         },
         {
           organizationMembershipId: 'om_contributor',
@@ -226,6 +230,16 @@ describe('/api/projects/[id]/members', () => {
           name: 'Con Tributor',
           profilePictureUrl: null,
           role: 'project-contributor',
+          roleAssignmentId: null,
+        },
+        {
+          organizationMembershipId: 'om_editor',
+          userId: 'user_editor',
+          email: 'editor@example.com',
+          name: 'Editor Person',
+          profilePictureUrl: null,
+          role: 'project-editor',
+          roleAssignmentId: null,
         },
         {
           organizationMembershipId: 'om_narrow',
@@ -234,9 +248,56 @@ describe('/api/projects/[id]/members', () => {
           name: 'Narrow Writer',
           profilePictureUrl: null,
           role: 'project-editor',
+          roleAssignmentId: null,
         },
+        {
+          organizationMembershipId: 'om_viewer',
+          userId: 'user_viewer',
+          email: 'viewer@example.com',
+          name: 'View Only',
+          profilePictureUrl: 'https://cdn.example.com/viewer.png',
+          role: 'project-viewer',
+          roleAssignmentId: 'ra_viewer',
+        }
       ],
+      nextCursor: null,
       viewerUserId: 'user_1',
     })
+  })
+
+  it('answers one page with a nextCursor and, for scope=organization, people without a role', async () => {
+    const people = ['a', 'b', 'c'].map((n) => ({ id: `u_${n}`, email: `${n}@x.de`, name: `P ${n}` }))
+    mockGetWorkOS.mockReturnValue({
+      userManagement: {
+        listUsers: vi.fn().mockResolvedValue(paginated(people)),
+        listOrganizationMemberships: vi
+          .fn()
+          .mockResolvedValue(paginated(people.map((p) => ({ id: `om_${p.id}`, userId: p.id })))),
+      },
+      authorization: {
+        listMembershipsForResourceByExternalId: vi.fn().mockResolvedValue(paginated([])),
+        listRoleAssignmentsForResource: vi.fn().mockResolvedValue(paginated([])),
+      },
+    } as never)
+
+    const roleHolders = await GET(new Request('http://localhost/api/projects/proj_1/members'), makeParams('proj_1'))
+    await expect(roleHolders.json()).resolves.toMatchObject({ members: [], nextCursor: null })
+
+    const first = await GET(
+      new Request('http://localhost/api/projects/proj_1/members?scope=organization&limit=2'),
+      makeParams('proj_1')
+    )
+    const page = await first.json()
+    expect(page.members.map((m: { userId: string }) => m.userId)).toEqual(['u_a', 'u_b'])
+    expect(page.members[0]).toMatchObject({ role: null, roleAssignmentId: null })
+    expect(page.nextCursor).toBe('2')
+
+    const second = await GET(
+      new Request(`http://localhost/api/projects/proj_1/members?scope=organization&limit=2&cursor=${page.nextCursor}`),
+      makeParams('proj_1')
+    )
+    const last = await second.json()
+    expect(last.members.map((m: { userId: string }) => m.userId)).toEqual(['u_c'])
+    expect(last.nextCursor).toBeNull()
   })
 })

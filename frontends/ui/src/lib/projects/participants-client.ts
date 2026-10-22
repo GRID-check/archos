@@ -16,6 +16,7 @@
  * not cast. No `server-only`: the browser imports this.
  */
 
+import { collectPages } from '@/lib/api/offset-page'
 import { z } from 'zod'
 import { isMonth, type Month } from './month'
 import { PROJECT_STATUSES } from './project-status'
@@ -72,6 +73,7 @@ const rosterSchema = z.object({
   viewerUserId: z.string().nullable().catch(null),
 })
 export type ProjectRoster = z.infer<typeof rosterSchema>
+const rosterPageSchema = rosterSchema.extend({ nextCursor: z.string().nullable().catch(null) })
 
 export type ParticipantsFetch = (path: string, init?: RequestInit) => Promise<Response>
 
@@ -128,7 +130,18 @@ export function createParticipantsClient(fetchImpl: ParticipantsFetch = defaultF
     },
     async roster(projectId) {
       try {
-        return rosterSchema.parse(await request(fetchImpl, `${projectPath(projectId)}/members`, 'GET'))
+        // The whole organization, page by page: the setup picks whom to add as well.
+        let viewerUserId: string | null = null
+        const members = await collectPages<RosterMember>(async (cursor) => {
+          const query = new URLSearchParams({ scope: 'organization', limit: '200' })
+          if (cursor) query.set('cursor', cursor)
+          const page = rosterPageSchema.parse(
+            await request(fetchImpl, `${projectPath(projectId)}/members?${query}`, 'GET')
+          )
+          viewerUserId = page.viewerUserId
+          return { items: page.members, nextCursor: page.nextCursor }
+        })
+        return { members, viewerUserId }
       } catch (error) {
         if (error instanceof ParticipantsRequestError && error.status === 403) return null
         throw error

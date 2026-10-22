@@ -47,7 +47,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import type { TaskRunStatus } from '@/lib/tasks/task-vocabulary'
 import { cn } from '@/lib/utils'
-import { isActiveTask, taskResultTarget, type TaskWireRow } from '../lib/task-view'
+import { isActiveTask, taskResultTarget, type TaskRunView } from '../lib/task-view'
 
 /**
  * The chip tone per status — a `Record`, so a status added to the tuple has to
@@ -130,8 +130,8 @@ const RESULT_ICON: Record<'document' | 'conversation', LucideIcon> = {
 
 export interface TaskCardProps {
   projectId: string
-  task: TaskWireRow
-  onSelect: (task: TaskWireRow) => void
+  task: TaskRunView
+  onSelect: (task: TaskRunView) => void
 }
 
 const ABSOLUTE_AFTER_MS = 24 * 60 * 60 * 1000

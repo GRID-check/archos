@@ -1,6 +1,6 @@
 /**
  * Document item API — read one document as a listing row (GET), rename a
- * document (PATCH) and delete a project document (DELETE). Thin handlers;
+ * document (PATCH) and delete a document permanently (DELETE). Thin handlers;
  * authorization and all logic live in `@/lib/documents/service` and
  * `@/lib/documents/listed-document`.
  *
@@ -13,9 +13,9 @@
  * org-wide Archiv document alike, because `renameDocument` resolves which
  * permission applies from the row itself.
  *
- * DELETE is not, and stays project-only: deleting an Archiv document goes
- * through `/api/office-shelf/documents/[id]`, where the org-level `org:office_shelf:manage`
- * gate and the dark-launch feature flag live.
+ * DELETE is scope-aware too: `deleteDocument` erases a project document behind
+ * the folder's write access and an office shelf document behind
+ * `org:office_shelf:manage` (`deleteOfficeShelfDocument`).
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
@@ -59,5 +59,5 @@ export const DELETE = apiRoute<Params>(
     await deleteDocument(session, params.id, request)
     return null
   },
-  { authz: { enforcedBy: 'deleteDocument (requireProjectAccess project:documents:write)' } }
+  { authz: { enforcedBy: 'deleteDocument (requireFolderWrite project:documents:write | deleteOfficeShelfDocument canManageOfficeShelf)' } }
 )

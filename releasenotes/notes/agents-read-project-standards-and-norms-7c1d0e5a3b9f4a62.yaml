@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    An outside agent can now ask which OIB guidelines apply to a project and what
+    would settle the open ones, and read the register of laws Piloti knows by
+    number. It can also search the shared building-law corpus without choosing
+    a project first.
+fixes:
+  - >
+    An agent that lists a project's members now gets the people who hold a role,
+    with the id it needs to remove one, and long memory lists come in pages.

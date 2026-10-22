@@ -2,8 +2,8 @@
  * @vitest-environment node
  */
 /**
- * The two reads one listing URL carries (ADR-0102): the shelf drain, byte for
- * byte what it was, and a level read whenever a level parameter is named.
+ * The page one listing URL carries (ADR-0102, ADR-0131 rule 3): one folder
+ * level, or the whole shelf, always bounded.
  * These pin the parsing: defaults, the limit clamp, and the cursor of the
  * wrong kind or order refused rather than silently restarting at page one.
  */
@@ -22,19 +22,18 @@ const ID = '00000000-0000-4000-8000-000000000001'
 const FOLDER = '00000000-0000-4000-8000-0000000000f1'
 const parse = (query: Record<string, string>) => documentListOptions(documentListFilterSchema.parse(query))
 
-describe('documentListOptions — the shelf drain', () => {
-  it('is what a request without level parameters has always been', () => {
-    expect(parse({})).toEqual({ authoredBy: undefined, includeArchived: false, cursor: undefined })
+describe('documentListOptions — a request without level parameters', () => {
+  it('is a bounded page of the whole shelf, newest first', () => {
+    expect(parse({})).toEqual({
+      authoredBy: undefined,
+      includeArchived: false,
+      level: { folderId: undefined, sort: 'added', dir: 'desc', limit: DOCUMENT_LEVEL_PAGE_SIZE },
+    })
   })
 
-  it('takes its own cursor', () => {
-    const cursor = { createdAt: '2026-01-01T00:00:00.123456', id: ID }
-    expect(parse({ cursor: encodeDocumentListCursor(cursor) })).toMatchObject({ cursor })
-  })
-
-  it('refuses a level cursor rather than restarting at the first page', () => {
-    const level = encodeDocumentLevelCursor({ sort: 'added', dir: 'desc', value: '2026-01-01T00:00:00.123456', id: ID })
-    expect(() => parse({ cursor: level })).toThrow(BadRequestError)
+  it('refuses a cursor of the retired shelf drain rather than restarting at the first page', () => {
+    const cursor = encodeDocumentListCursor({ createdAt: '2026-01-01T00:00:00.123456', id: ID })
+    expect(() => parse({ cursor })).toThrow(BadRequestError)
   })
 })
 
@@ -65,10 +64,6 @@ describe('documentListOptions — a level read', () => {
 
   it('takes read-state families, each once', () => {
     expect(parse({ folderId: 'root', state: 'failed,reading,failed' }).level?.states).toEqual(['failed', 'reading'])
-  })
-
-  it('never carries the drain cursor beside a level', () => {
-    expect(parse({ folderId: 'root' })).not.toHaveProperty('cursor')
   })
 
   it('takes a cursor of its own order', () => {

@@ -29,6 +29,7 @@ import {
   describeModel,
   resolveInternalModel,
 } from '@/lib/bim/internal-access'
+import { modelShelf } from '@/lib/bim/model-shelf'
 
 const requestSchema = z
   .object({
@@ -126,7 +127,18 @@ export const POST = internalApiRoute(
     try {
       const result = await runBimQuery(resolvedQuery, { modelId: selected.id, organizationId })
       announce(true)
-      return { resolved: true, ...result }
+      // Whose building this is, stated on every answer. A shelf model read for
+      // a project is not the project's building, and the caller must not have
+      // to infer that from a missing project id.
+      return {
+        resolved: true,
+        ...result,
+        selection: {
+          shelf: modelShelf(selected),
+          projectId: selected.projectId,
+          projectHasOwnModel: readable.some((model) => modelShelf(model) === 'project'),
+        },
+      }
     } catch (error) {
       announce(false)
       if (error instanceof BimModelNotReadyError) {

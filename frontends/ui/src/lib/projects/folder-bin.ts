@@ -155,6 +155,8 @@ import { findProjectInOrg } from './repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { inPool } from '@/lib/utils/in-pool'
 import { FOLDER_NAME_TAKEN_REASON } from './folder-bin-codes'
+import { BIN_PAGE_SIZE, type BinListQuery } from './folder-bin-wire'
+import { decodeDocumentListCursor, encodeDocumentListCursor } from '@/lib/documents/list-cursor'
 
 /** The machine-readable reason a delete is refused because the folder holds content the person may not delete. */
 export const FOLDER_CONTENTS_PROTECTED_REASON = 'folder-contents-protected'
@@ -248,6 +250,12 @@ interface BinOptions {
    * file someone else put there meanwhile. Otherwise 409, and nothing moves.
    */
   onlyDocuments?: readonly string[]
+  /**
+   * The one document this entry is made for (`document-bin.ts`): recorded on
+   * the entry, so the listing names the document and a restore of it finds
+   * its holder. Give it with `onlyDocuments: [documentId]`.
+   */
+  documentId?: string
 }
 
 /** The 409 reason when a folder binned with `onlyDocuments` holds something else. */
@@ -302,6 +310,7 @@ export async function moveFolderToBin(
         projectId: project.id,
         folderIds: subtree,
         documents: 0,
+        ...(options.documentId ? { documentId: options.documentId } : {}),
       }
       const entryId = await insertFolderBinEntry(tx, {
         organizationId,
@@ -539,12 +548,16 @@ export interface FolderBinEntry {
   documents: number
   folders: number
   canRestore: boolean
+  /** The document of an entry made for one document (document-bin); `null` for a deleted folder. */
+  document: { id: string; name: string } | null
 }
 
 export interface FolderBinListing {
   entries: FolderBinEntry[]
   /** „Endgültig löschen": project admins (`project:manage`). */
   canPurge: boolean
+  /** Where the next page starts; `null` on the last. */
+  nextCursor: string | null
 }
 
 async function mayManageProject(session: AuthorizedSession, projectId: string): Promise<boolean> {
@@ -557,12 +570,25 @@ async function mayManageProject(session: AuthorizedSession, projectId: string): 
   }
 }
 
-/** The project's Papierkorb as the session may see it: the entries whose folder it may read. */
-export async function listFolderBin(session: AuthorizedSession, projectId: string): Promise<FolderBinListing> {
+/**
+ * One page of the project's bin as the session may see it: the entries whose
+ * folder it may read, newest first. A page can carry fewer than `limit` rows
+ * when some were not the reader's to see; `nextCursor` says whether more follow.
+ */
+export async function listFolderBin(
+  session: AuthorizedSession,
+  projectId: string,
+  query: BinListQuery = {}
+): Promise<FolderBinListing> {
   const { closed } = await requireProjectAccess(session, projectId, 'project:view')
   const project = await projectFor(session.organizationId, projectId)
-  const [rows, folders, projectWrite, canPurge, directory] = await Promise.all([
-    listBinEntries(session.organizationId, project.id, await shelfReaderFor(session, { scope: 'project', projectId: project.id })),
+  const cursor = query.cursor ? decodeDocumentListCursor(query.cursor) : null
+  const reader = await shelfReaderFor(session, { scope: 'project', projectId: project.id })
+  const [page, folders, projectWrite, canPurge, directory] = await Promise.all([
+    listBinEntries(session.organizationId, project.id, reader, {
+      limit: query.limit ?? BIN_PAGE_SIZE,
+      ...(cursor ? { cursor: { deletedAt: cursor.createdAt, folderId: cursor.id } } : {}),
+    }),
     listProjectFolderTree(session.organizationId, project.id),
     mayRestoreInProject(session, project.id, closed),
     mayManageProject(session, project.id),
@@ -570,7 +596,7 @@ export async function listFolderBin(session: AuthorizedSession, projectId: strin
   ])
   const tree = folderTree(folders)
   const clearance = await clearanceOf(session, project.id)
-  const entries = rows.flatMap((row): FolderBinEntry[] => {
+  const entries = page.rows.flatMap((row): FolderBinEntry[] => {
     const level = effectiveFolderLevel(tree, clearance, row.folderId)
     if (!atLeast(level, 'read')) return []
     const person = row.deletedBy ? directory.get(row.deletedBy) : undefined
@@ -582,7 +608,10 @@ export async function listFolderBin(session: AuthorizedSession, projectId: strin
       },
     ]
   })
-  return { entries, canPurge }
+  const nextCursor = page.nextCursor
+    ? encodeDocumentListCursor({ createdAt: page.nextCursor.deletedAt, id: page.nextCursor.folderId })
+    : null
+  return { entries, canPurge, nextCursor }
 }
 
 export interface FolderPurgeResult {

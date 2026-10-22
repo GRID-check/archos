@@ -73,13 +73,13 @@ describe('GET /api/documents', () => {
   // Paged, not capped: the oldest plans of a large project used to be absent
   // from a listing that never said it had stopped.
   it('passes a decoded cursor to the service and returns the next one', async () => {
-    const cursor = { createdAt: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' }
+    const cursor = { sort: 'added', dir: 'desc', value: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' } as const
     vi.mocked(listDocumentsPage).mockResolvedValueOnce({ documents: [], nextCursor: 'next-page' })
 
-    const response = await call(`?projectId=proj_1&cursor=${encodeDocumentListCursor(cursor)}`)
+    const response = await call(`?projectId=proj_1&cursor=${encodeDocumentLevelCursor(cursor)}`)
 
     expect(response.status).toBe(200)
-    expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({ cursor })
+    expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({ level: { cursor } })
     expect(await response.json()).toMatchObject({ documents: [], nextCursor: 'next-page' })
   })
 
@@ -92,14 +92,14 @@ describe('GET /api/documents', () => {
     expect((await call('?projectId=proj_1&cursor=not-a-cursor')).status).toBe(400)
   })
 
-  // A folder level, page by page (ADR-0102): the Files workspace's read. The
-  // drain above stays what it was, because four other readers follow it.
+  // Every read is a bounded page (ADR-0102, ADR-0131): one folder level, or the
+  // whole shelf when no folder is named. There is no unbounded drain any more.
   describe('a level read', () => {
     const FOLDER = '00000000-0000-4000-8000-0000000000f1'
 
-    it('passes no level for the drain', async () => {
+    it('reads the whole shelf as a bounded page when no folder is named', async () => {
       await call('?projectId=proj_1')
-      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).not.toHaveProperty('level')
+      expect(vi.mocked(listDocumentsPage).mock.calls.at(-1)?.[2]).toMatchObject({ level: { folderId: undefined, limit: 100 } })
     })
 
     it('passes the folder, order, search and families to the service', async () => {
@@ -140,16 +140,10 @@ describe('GET /api/documents', () => {
       expect((await call(`?projectId=proj_1&folderId=root&sort=size&cursor=${cursor}`)).status).toBe(400)
     })
 
-    it('refuses a drain cursor on a level read, and a level cursor on the drain', async () => {
+    it('refuses a cursor of the retired drain', async () => {
       const drain = encodeDocumentListCursor({ createdAt: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' })
       expect((await call(`?projectId=proj_1&folderId=root&cursor=${drain}`)).status).toBe(400)
-      const level = encodeDocumentLevelCursor({
-        sort: 'added',
-        dir: 'desc',
-        value: '2026-01-01T00:00:00.123456',
-        id: '00000000-0000-4000-8000-000000000001',
-      })
-      expect((await call(`?projectId=proj_1&cursor=${level}`)).status).toBe(400)
+      expect((await call(`?projectId=proj_1&cursor=${drain}`)).status).toBe(400)
     })
   })
 })

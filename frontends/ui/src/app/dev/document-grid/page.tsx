@@ -73,11 +73,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     const real = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      if (url.includes('scope=office_shelf') || String(init?.body ?? '').includes('office_shelf')) {
+        return Response.json({ documents: OFFICE_SHELF_ROWS, collectionName: 'archiv_org', canManage: false })
+      }
       if (url.startsWith('/api/documents?')) {
         return Response.json({ documents: PROJECT_ROWS })
-      }
-      if (url.startsWith('/api/office-shelf/documents')) {
-        return Response.json({ documents: OFFICE_SHELF_ROWS, collectionName: 'archiv_org', canManage: false })
       }
       if (/\/api\/documents\/.+\/thumbnail$/.test(url)) {
         return new Response(null, { status: 404 })

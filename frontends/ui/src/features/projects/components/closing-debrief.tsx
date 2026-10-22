@@ -27,6 +27,7 @@
  * Nothing here blocks closing: an incomplete fingerprint is said, not enforced.
  */
 
+import { collectPages } from '@/lib/api/offset-page'
 import { useCallback, useEffect, useState, type JSX } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -113,7 +114,9 @@ export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDe
   const memoryUrl = `/api/projects/${projectId}/memory`
 
   const loadMemory = useCallback(async () => {
-    const { items: loaded } = await send<{ items: DebriefItem[] }>(memoryUrl)
+    const loaded = await collectPages<DebriefItem>((cursor) =>
+      send(`${memoryUrl}?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`)
+    )
     setItems(loaded.filter((item) => KEPT_KINDS.has(item.kind) && item.status === 'active'))
   }, [memoryUrl])
 

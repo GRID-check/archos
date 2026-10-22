@@ -131,7 +131,7 @@ export function placeFileUrl(place: PagePlace): string | null {
   if (document.shelf === 'base') return `/api/knowledge-base/documents/${encodeURIComponent(document.name)}`
   if (!document.id) return null
   const id = encodeURIComponent(document.id)
-  return revisionId ? `/api/documents/${id}/versions/${encodeURIComponent(revisionId)}/file` : `/api/documents/${id}/file`
+  return revisionId ? `/api/documents/${id}/file?versionId=${encodeURIComponent(revisionId)}` : `/api/documents/${id}/file`
 }
 
 /** The stored document's preview route, which signs a URL for an image upload. */

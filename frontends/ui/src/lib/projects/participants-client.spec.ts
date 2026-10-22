@@ -16,7 +16,7 @@ describe('createParticipantsClient', () => {
       })
     )
     const roster = await createParticipantsClient(fetch).roster('p 1')
-    expect(fetch).toHaveBeenCalledWith('/api/projects/p%201/members', { method: 'GET' })
+    expect(fetch).toHaveBeenCalledWith('/api/projects/p%201/members?scope=organization&limit=200', { method: 'GET' })
     expect(roster?.viewerUserId).toBe('u1')
   })
 

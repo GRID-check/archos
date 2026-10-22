@@ -2878,6 +2878,10 @@
               "reason": {
                 "type": "string",
                 "maxLength": 1000
+              },
+              "decidingFact": {
+                "type": "string",
+                "maxLength": 100
               }
             },
             "required": [

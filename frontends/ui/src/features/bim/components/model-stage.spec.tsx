@@ -1223,7 +1223,7 @@ describe('ModelStage — a model from the Büroablage', () => {
     await user.click(await screen.findByTestId('document-delete-confirm'))
 
     await waitFor(() =>
-      expect(fetchMock).toHaveBeenCalledWith('/api/office-shelf/documents/doc-1', { method: 'DELETE' })
+      expect(fetchMock).toHaveBeenCalledWith('/api/documents/doc-1', { method: 'DELETE' })
     )
     vi.unstubAllGlobals()
   })

@@ -31,6 +31,7 @@ from aiq_agent.tools.bim.measurement_sources import note_model_read
 from aiq_agent.tools.bim.rendering import clipped
 from aiq_agent.tools.bim.rendering import listed
 from aiq_agent.tools.bim.rendering import render_unresolved
+from aiq_agent.tools.bim.rendering import shelf_notice
 from aiq_agent.tools.bim.trace import model_handle
 from aiq_agent.tools.bim.trace import record_ifc_call
 from nat.plugin_api import Builder
@@ -725,6 +726,7 @@ def _render(
     # operation. Only a RESOLVED result — an unresolved one read no file.
     note_model_read(ctx.filename, op)
     lines: _Lines = [
+        shelf_notice(result),
         f"Model: {ctx.filename}" if ctx.filename else None,
         str(result.get("summary") or ""),
         str(result.get("caveat") or ""),

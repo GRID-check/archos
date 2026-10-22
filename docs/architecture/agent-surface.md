@@ -92,9 +92,47 @@ is how old the answers about the person may be:
 
 | Client | A read | A write |
 |---|---|---|
-| External agent | Runs | The client asks its user, driven by the tool annotations |
+| External agent | Runs | The client asks its user, driven by the tool annotations. On a 2026-07-28 request from a client that declares form elicitation, the door asks the person itself before a destructive write (below) |
 | Piloti in-product, in a conversation that is the person's alone | Runs if what it names lies in a project the person may chat in, after what it may carry is recorded on the conversation (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
 | Piloti in-product, in a shared conversation | Runs only a document's content or a project's facts (`AUDIENCE_READS`), of the conversation's own project or one every reader may open, never of a restricted folder, recorded first; every other read is refused with a sentence the model relays | As above, refused when it names a project outside the audience's reach |
+
+#### The person confirms in their own chat
+
+An outside agent's destructive write (`destructiveHint`, never a read, never
+Piloti's) is put to the person before it runs when the request is of the
+2026-07-28 era and its client declares form elicitation in the request's
+`_meta` capabilities (`lib/agent-api/confirmation.ts`). The tool answers
+`inputRequired` with one `elicitation/create`: a plain English line built from
+the operation's summary and the names of the project or document it touches
+(`summaryOfOperation`, `describeTargets`), and a form with one boolean,
+`confirm`. The client shows it in the person's own chat and calls again with
+the answer in `inputResponses`. A yes runs the call through `runOperation`, the
+path every call takes; a no, a cancel or an unchecked box returns "nothing was
+changed" (`structuredContent.decision: 'declined'`). Either answer is an audit
+event `agent.operation.decided`, actor the person, `decisionSource:
+elicitation`, and a tool-call trace with `decision_source: elicitation`.
+
+The call travels between the two rounds in `requestState`, signed with the
+SDK's `createRequestStateCodec` under a key derived from
+`GRID_INTERNAL_API_TOKEN` (HMAC over `grid:mcp-request-state:v1`), bound to the
+organization, the person and the OAuth client, and valid for five minutes. The
+SDK refuses a state that fails verification before any handler runs; the
+second round must repeat the same call, or nothing runs. An answer without
+that state is not an answer: the person is asked again.
+
+What it does not change: a 2025-era request (Piloti's own client among them),
+Piloti on any era (its writes stay proposals), a client that does not declare
+elicitation, a write that is not destructive, and a deployment with no usable
+internal token all take the path they took before, byte for byte. The yes runs
+only what would have run without the question: visibility, the read gate, the
+sensitive-operation rule and the route's own `authz` all apply to the second
+round as to any call. Why a client's answer counts as the person's yes:
+[ADR-0122, amendment "the person confirms in their own chat"](../adr/0122-everything-a-person-can-do-an-agent-can-do.md#amendment-the-person-confirms-in-their-own-chat).
+
+Not built: picking a project by elicitation. Nothing in the catalog takes a
+project by name, the agent reads ids from `project-list` (`nameContains`), and
+the door prompts' `project` argument already completes by name
+(`completion/complete`); a picker would be a resolver no operation calls.
 
 ### Reads in a conversation
 
@@ -227,10 +265,21 @@ entry points carry `_meta["anthropic/alwaysLoad"]` so they stay loaded: the four
 meta-tools, and `project-list`, `knowledge-search` and `files-list` in `tools`
 mode.
 
-Both protocol eras answer one JSON body to a client that accepts JSON
-(`createAgentDoorHandler`, `mcp-server.ts`): the SDK's 2025-era fallback streams
-whatever the handler's `responseMode`, and refuses (406) a client that does not
-name both `application/json` and `text/event-stream`.
+Every call answers one JSON body to a client that accepts JSON
+(`createAgentDoorHandler`, `mcp-server.ts`), with one exception on the
+2026-07-28 era: the handler answers `responseMode: 'auto'`, which upgrades a
+call to SSE only when it sends a message before its result, and the only such
+call is `piloti-ask-create` with a `progressToken` ([Consulting Piloti](#consulting-piloti-and-the-a2a-door)).
+The server declares no `logging`, and asking for input is a result, not a
+message; `ask-calls.spec.ts` holds every other call to `application/json`. The
+2025-era path (Piloti's own client) is its own transport with
+`enableJsonResponse`: the SDK's fallback streams whatever the handler's
+`responseMode`, and refuses (406) a client that does not name both
+`application/json` and `text/event-stream`, so the door serves that era itself.
+The edge lets a stream through: the app route's Envoy policies give 3600 s
+(`requestTimeout`, `streamIdleTimeout`), no compressor sits on it, and the SDK's
+SSE headers (`Cache-Control: no-transform`, `X-Accel-Buffering: no`) keep
+Next.js from compressing it, as for `/api/stream`.
 
 The mode was called `discovery` until October 2026, and the server still
 accepts that name (header `x-piloti-mcp-mode` or `?mode=`). MCP's own
@@ -419,7 +468,7 @@ ceiling.
 | Piloti uses | Instead of |
 |---|---|
 | `remember` | `project-memory-create`, `organization-memory-create` |
-| `knowledge_search` | `document-search`, `office-shelf-document-search`, `knowledge-search` |
+| `knowledge_search` | `document-search`, `knowledge-search` |
 | `create_task` | `task-create`, `task-run-commission` |
 | `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | `annotation-create`, `annotation-update`, `annotation-delete`, `annotation-reply-create` |
 | `ifc_query`, `ifc_measure` | `bim-model-query`, `ifc-query`, `ifc-measure` |
@@ -459,7 +508,7 @@ entry names a tool Piloti is not bound to. Regenerate with
 |---|---|---|
 | 1. Atomic operations | One per route method. The layer the rule is checked on | `lib/agent-api/catalog/` |
 | 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `src/aiq_agent/tools/`, served through the MCP in phase 2 |
-| 3. Skills that teach composition | "To close out a project, do these five things" | Served as MCP prompts. Later |
+| 3. Workflows and skills | "Brief me on a project"; the office's own skills by name | MCP prompts, `lib/agent-api/door/` ([below](#resources-and-prompts)) |
 
 The Python-only reads (`knowledge_search`, `read_passage`, `list_files`,
 `look`, `ifc_query`, `ifc_measure`, `ris_lookup`) reach the
@@ -468,6 +517,85 @@ searches with the retrieval Piloti uses.
 
 A new workspace capability (a thing a person does) is a route and an operation.
 It is not a new Python tool.
+
+## Resources and prompts
+
+An outside agent's client also gets what it reads before its first call, and
+the workflows a person starts from it (`lib/agent-api/door/`). The prose is
+Markdown beside the module, embedded by `door/docs.spec.ts`
+(`UPDATE_FIXTURES=1` regenerates `docs.generated.ts`); edit the Markdown.
+
+| Resource | What |
+|---|---|
+| `piloti://guide` | How the workspace fits together, how ids flow, which operation reads what (`guide.md`) |
+| `piloti://glossary` | The office's German words and the catalog words they find: `glossary.md` and the search vocabulary |
+| `piloti://catalog` | Every operation this caller may run, by domain, read or write; generated per caller |
+
+Prompts: `project-briefing`, `building-law-check`, `my-day` (each
+`prompts/<name>.md`, its arguments its `{{placeholders}}`), and
+`office-skill`, which loads one of the office's enabled skills by name through
+the door, as the person. A prompt states the goal, the constraints and what a
+good answer is; it names no sequence of operations, so the agent finds them.
+Piloti's own client gets neither: it reads neither, and the guide names
+operations its door leaves to its native tools.
+
+### Output schemas and icons
+
+`search-operations`, `describe-operation` and `report-missing-operation` declare
+an `outputSchema` (`lib/agent-api/meta-output-schemas.ts`), so a client can
+validate and type what they answer. `call-operation` declares none: its result
+is whatever the operation answers. `success()` drops `structuredContent` when the
+text is cut at `MAX_RESULT_CHARS`, and the SDK turns a result without it into an
+error; `meta-output-schemas.spec.ts` holds that these three never get near the
+cap (every operation's description is run). The schemas are not part of
+`metaToolsFor`, so Piloti's own client fixture is unchanged. `tools` mode
+declares none: a catalog operation has no declared response wire type to derive
+one from (routes answer through service return types, not a shared zod schema).
+
+Icons (`lib/agent-api/icons.ts`) are small inline SVG `data:` URIs, a light and a
+dark variant each, in the brand's ink: the Piloti column on the server (with title
+`Piloti`, and `websiteUrl` from `configuredAppOrigin()` when the deployment pins
+one), one glyph per meaning on the four meta-tools, the resources and the
+prompts. They add about 4 KB to a `search` mode `tools/list`. `tools` mode lists
+none on its tools: per-operation or per-domain icons would repeat ~700 bytes on
+~300 tools against a 1,000 character budget a tool.
+
+### Listening
+
+A client of the 2026-07-28 revision that attached `piloti://project/{projectId}`
+can open `subscriptions/listen` (an SSE stream) and hear
+`notifications/resources/updated` for that URI when the project's overview
+changes (rename, status, profile, documents), and
+`notifications/resources/list_changed` when the office's projects do (created,
+renamed, deleted, restored, status). The tool and prompt lists change only with
+a deploy, so `tools.listChanged` and `prompts.listChanged` are advertised false.
+`resources.subscribe` and `resources.listChanged` are advertised only to an
+outside agent on the modern era and only where the project resource exists; a
+2025-era request is stateless and cannot hold a stream, so it is told false, and
+Piloti's own client and the platform door are offered no stream.
+
+- **One hook.** Every write in `projects/repository.ts` ends in
+  `announceProject`, and `publishShelfChanged` (every document write on a
+  project shelf) also publishes the project. Both go through
+  `realtime/door-events.ts`, after the commit, never throwing.
+- **Many pods.** The events travel on the hub (`realtime/hub.ts`): one topic,
+  `rt:door:events`, over Dragonfly, in-process without `REDIS_URL`.
+  `door/event-bus.ts` is the SDK's `ServerEventBus` over it. The handler is a
+  module singleton per door (`mcpDoorPost`), so its bus is shared by every
+  request of a pod.
+- **Tenancy.** The SDK filters a stream only by the URIs the client names and
+  checks no access. So `serveListen` (`mcp-server.ts`) cuts the named URIs to
+  the projects the person can read, by the read `resources/read` makes
+  (`readableProjectUris`, at most 50), before the SDK sees the request; the
+  acknowledgement shows what was honored. The stream is opened inside
+  `listeningAs(organizationId)`, and the bus delivers only events of that
+  organization. An event without one (the SDK's `handler.notify.*`) reaches
+  nobody; publish with `door-events.ts`.
+- **Not covered.** Access is checked when the stream opens: a person removed
+  from a project mid-stream still hears that it changed (a pointer, no content;
+  the read is refused) until the stream ends. Project membership changes do not
+  publish yet. The edge allows an hour of stream (`EDGE_TIMEOUT`); the client
+  reconnects after.
 
 ## Adding an operation
 
@@ -492,7 +620,7 @@ Do this in the same change that adds or changes the route. The exemplar is
    {
      name: 'project-member-add',
      domain: 'projects',
-     summary: 'Give someone a role on a project',
+     summary: 'Add a member to a project with a role',
      description:
        'Assigns a project role to an organization member, or an empty `roleSlug` to clear it. ' +
        '`organizationMembershipId` comes from organization-member-list, not a user id. ' +
@@ -532,11 +660,23 @@ method; never two on the same.
 
 The entity is the glossary's word: a `task` is a task definition (standing or
 one-off) and a `task-run` one attempt at it; `job` names only a claim-queue item
-and is never an operation's entity. The renames of October 2026 (`job-*` to
-`task-*`, `run-*` and `task-review` to `task-run-*`,
+and is never an operation's entity. The same holds on the wire (ADR-0131):
+tasks live at `/api/projects/[id]/tasks` and answer `task`/`tasks`, runs at
+`/api/projects/[id]/runs` and answer `run`/`runs`, a task is named by `taskId`
+and a run by `runId`, and a run's status is `TASK_RUN_STATUSES`, never a
+submission word. The renames of October 2026 (`job-*` to
+`task-*`, `run-*` and `task-review` to `task-run-*`, `task-run-list` merged into
+`project-task-run-list` as its `taskId` filter,
 `document-quarantine-release*` to `document-quarantine-allow*`) are accepted under
 their old names for one release (`RENAMED_OPERATIONS`, `catalog/index.ts`), for
-proposals filed before and agents that remember them. PostHog's
+proposals filed before and agents that remember them. A shelf is an argument,
+not a prefix (ADR-0131 rule 5): the `office-shelf-document-*` twins are the
+document operations with `scope: office_shelf` (`document-list`,
+`document-summary-get`, `document-by-name-resolve`, `document-name-match`,
+`document-revision-candidates`, `document-search`, `document-upload`,
+`document-delete`), and an old name that stood for a scope maps to
+`{ to, input }`: the input is a default under what the caller sends
+(`withInputDefaults`, `operation.ts`). PostHog's
 `agent_operation_called` carries the new names from then on: an insight over the
 history needs both.
 
@@ -592,7 +732,7 @@ read, with `binaryResponse` listing its media types for OpenAPI. `dispatch.ts` r
 to `MAX_INLINE_BYTES` (5 MiB) the result is an MCP `resource` content item (`blob` is the base64,
 `uri` is `piloti://operation/<name>/<file name or result>`) next to a one-line text summary. The
 base64 never enters `structuredContent` or the 40k text cap. Over the limit nothing is sent, and
-the text names the other ways in: `document-text-get` for the text in pages, `document-download` for
+the text names the other ways in: `passage-read` for the text in pages, `document-download` for
 a time-limited link. A route that redirects (3xx with `Location`) is handed on as a
 `resource_link` and never followed server-side; the link is a credential and expires.
 `document-download`, `document-preview-get`, `document-thumbnail-get` and `bim-model-source-get`
@@ -604,7 +744,10 @@ is read and the agent is told to narrow the call. The backend operations' answer
 same reader (`readResponseBody`), and their refusals are normalised once, in
 `callBackendOperation`, to the routes' error envelope (`{ error, code, details }`), so the agent
 reads a refusal from either the same way. The tool result shows `MAX_RESULT_CHARS` (40k
-characters) of compact JSON: the one cap, which Piloti's client does not cut again. Input that does
+characters) of compact JSON: the one cap, which Piloti's client does not cut again. A cut answer ends
+with a hint built from the operation's own input (`narrowingHint`): the query parameters it takes, or a
+plain statement that it has no filter and a narrower operation is needed. A list route returns lean rows
+by default (`project-list`: `view=summary`, `view=full` opts in) and never an embedding vector. Input that does
 not fit an operation comes back with the reason and, when it is short, the input schema itself.
 
 **In.** An operation says `bodyEncoding`:
@@ -809,6 +952,40 @@ A completed answer carries `answer.sources` (`documentId`, `name`, `page`, and a
 `url` that opens the cited page in Piloti for the asker) and `answer.confidence`,
 both as the answer's message stored them and absent where it stored none: an
 answer with neither is not grounded in a document.
+
+**The wait, on the 2026-07-28 era** (`ask-calls.ts`). The ask is the one door
+call whose wait is ours; `task-run-start`, the uploads and `document-reingest`
+queue work and answer at once, so they have nothing to report. A client chooses
+how to wait, per call, in standard MCP:
+
+- *Progress.* A `piloti-ask-create` call carrying `_meta.progressToken` starts
+  the ask without the route's wait, then reads it with `piloti-ask-get` in waits
+  of at most five seconds and sends `notifications/progress` between them:
+  `progress` is the elapsed seconds, `total` the wait budget (`waitSeconds`,
+  default 40), `message` the ask's state. The call ends with the ask as
+  `piloti-ask-create` would have answered it. Each read is recorded as a
+  `piloti-ask-get` call.
+- *Tasks.* The server advertises the `io.modelcontextprotocol/tasks` extension
+  (SEP-2663) in `server/discover` to a caller that runs the ask operations
+  itself. A call whose own `clientCapabilities` declares it gets a
+  `CreateTaskResult` (`resultType: "task"`) the moment the ask is stored, with
+  the ask id as `taskId`, `ttlMs: null` (the ask lives with its conversation)
+  and `pollIntervalMs` from `pollAfterSeconds`; an ask that ended at once
+  (budget, a busy thread) is answered as the plain call instead. `tasks/get`
+  reads the ask through `piloti-ask-get`: `submitted` and `working` are
+  `working`, `canceled` is `cancelled`, and every other end is `completed` with
+  the tool result inline (a `failed` or `rejected` ask is a tool result, as
+  today; the task status `failed` is for JSON-RPC errors). `tasks/cancel` runs
+  `piloti-ask-cancel` and acknowledges, also for an ask that had ended;
+  `tasks/update` acknowledges, since an ask never asks back. Each runs as the
+  person, so the route's own rule (the asker only) decides; an id that names
+  none of theirs is `-32602`, a request that does not declare the extension
+  `-32021`. The task store is the `piloti_asks` table, so any replica answers
+  and `Mcp-Name` routing is not needed. Task status notifications
+  (`subscriptions/listen` with `taskIds`) are not offered; clients poll.
+
+A client that asks for neither, and the 2025-era path, get the single call that
+waits up to 40 seconds.
 
 **The recursion lock.** In-product Piloti only proposes writes, and
 `lib/proposals/operation-applier.ts` neither files nor applies an ask, so no

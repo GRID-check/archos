@@ -26,6 +26,7 @@ vi.mock('@/lib/conversations/repository', () => ({
   writeMessageContent: vi.fn(),
 }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
+vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
 // The scope a run control signs: the project the service just authorized, as
 // the scope builder resolves it (its own checks are its spec's to pin).
 vi.mock('@/lib/collection-scope-request', () => ({
@@ -73,6 +74,8 @@ import { findProjectDocumentsByFilenames, type DocumentListRow } from '@/lib/doc
 import { internalRead } from '@/lib/documents/document-reader'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
+import { requireResourceAccess } from '@/lib/sharing/access'
+import { RUN_REPORT_MAX_CHARS } from '@/lib/tasks/task-wire'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import {
   findMessageInConversation,
@@ -509,13 +512,35 @@ describe('getRunView', () => {
   it('answers with the run’s pointers and its sanitised ledger', async () => {
     await expect(getRunView(session, 'project-1', RUN)).resolves.toEqual({
       runId: RUN,
-      backendJobId: 'job-9',
+      taskId: 'def-1',
       conversationId: CONVERSATION,
       messageId: runMessageId(RUN),
       status: 'running',
       ledger: emptyRunLedger(RUN, T0),
+      report: { text: null, truncated: false, filedDocumentId: null },
     })
     expect(requireProjectAccess).toHaveBeenCalledWith(session, 'project-1', 'project:view')
+  })
+
+  it('names the stream key only when asked for it', async () => {
+    await expect(getRunView(session, 'project-1', RUN, { include: 'stream' })).resolves.toMatchObject({
+      backendJobId: 'job-9',
+    })
+  })
+
+  it('answers what the run produced, cut at the bound, to a reader of its conversation only', async () => {
+    const long = 'Bericht '.repeat(RUN_REPORT_MAX_CHARS)
+    vi.mocked(findMessageInConversation).mockResolvedValue({ ...message(null), content: long } as Message)
+    vi.mocked(taskRepository.findRunInProject).mockResolvedValue({ ...run, filedDocumentId: 'doc-1' } as TaskRun)
+    vi.mocked(requireResourceAccess).mockResolvedValueOnce({} as never)
+
+    const { report } = await getRunView(session, 'project-1', RUN)
+    expect(report).toEqual({ text: long.trim().slice(0, RUN_REPORT_MAX_CHARS), truncated: true, filedDocumentId: 'doc-1' })
+    expect(requireResourceAccess).toHaveBeenCalledWith(session, 'conversation', CONVERSATION, 'viewer')
+
+    vi.mocked(requireResourceAccess).mockRejectedValueOnce(new NotFoundError())
+    const outsider = await getRunView(session, 'project-1', RUN)
+    expect(outsider.report).toEqual({ text: null, truncated: false, filedDocumentId: 'doc-1' })
   })
 
   it('answers with a null ledger for a run that has no message yet', async () => {
@@ -544,7 +569,7 @@ describe('cancelRun', () => {
   it('gates on project:view and the chat permissions, then cancels the backend job as the caller', async () => {
     await expect(cancelRun(session, 'project-1', RUN)).resolves.toMatchObject({
       runId: RUN,
-      backendJobId: 'job-9',
+      taskId: 'def-1',
       status: 'running',
       ledger: emptyRunLedger(RUN, T0),
     })
@@ -734,7 +759,7 @@ describe('addRunDocument', () => {
   it('gates on project:view and the chat permissions, then hands the document to the backend job', async () => {
     await expect(addRunDocument(session, 'project-1', RUN, doc)).resolves.toMatchObject({
       runId: RUN,
-      backendJobId: 'job-9',
+      taskId: 'def-1',
       status: 'running',
     })
 

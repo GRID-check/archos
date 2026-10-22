@@ -27,10 +27,9 @@ export class NameProbeError extends Error {
   }
 }
 
-export const PROJECT_NAME_PROBE_PATH = '/api/documents/name-matches'
-export const OFFICE_SHELF_NAME_PROBE_PATH = '/api/office-shelf/documents/name-matches'
-export const PROJECT_REVISION_CANDIDATES_PATH = '/api/documents/revision-candidates'
-export const OFFICE_SHELF_REVISION_CANDIDATES_PATH = '/api/office-shelf/documents/revision-candidates'
+export const NAME_PROBE_PATH = '/api/documents/name-matches'
+export const REVISION_CANDIDATES_PATH = '/api/documents/revision-candidates'
+const OFFICE_SHELF = { scope: 'office_shelf' } as const
 
 export interface DocumentNameProbeClient {
   /** Matches on a project's shelf. */
@@ -108,9 +107,9 @@ export function createDocumentNameProbeClient(
     return [...new Map(answers.flat().map((candidate) => [candidate.name, candidate])).values()]
   }
   return {
-    project: (projectId, names) => batched(PROJECT_NAME_PROBE_PATH, names, { projectId }),
-    officeShelf: (names) => batched(OFFICE_SHELF_NAME_PROBE_PATH, names, {}),
-    projectRevisions: (projectId, names, landsIn) => candidates(PROJECT_REVISION_CANDIDATES_PATH, names, { projectId }, landsIn),
-    officeShelfRevisions: (names) => candidates(OFFICE_SHELF_REVISION_CANDIDATES_PATH, names, {}),
+    project: (projectId, names) => batched(NAME_PROBE_PATH, names, { projectId }),
+    officeShelf: (names) => batched(NAME_PROBE_PATH, names, OFFICE_SHELF),
+    projectRevisions: (projectId, names, landsIn) => candidates(REVISION_CANDIDATES_PATH, names, { projectId }, landsIn),
+    officeShelfRevisions: (names) => candidates(REVISION_CANDIDATES_PATH, names, OFFICE_SHELF),
   }
 }
