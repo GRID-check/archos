@@ -28,7 +28,7 @@ team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/
 
 | Step | Code |
 |---|---|
-| The form (a pane of the „Mein Feedback" modal), and its entry points (avatar menu, org header, phone „Mehr") | `frontends/ui/src/features/product-feedback/components/feedback-form.tsx`, `feedback-threads.tsx`, `feedback-provider.tsx` |
+| The form (a pane of the „Mein Feedback" modal), and its entry points (org header; the avatar menu's and phone „Mehr"'s „Mein Feedback") | `frontends/ui/src/features/product-feedback/components/feedback-form.tsx`, `feedback-threads.tsx`, `feedback-provider.tsx` |
 | Submit route, rate limited by `FEEDBACK_REPORT_LIMIT` (10 an hour per person) | `frontends/ui/src/app/api/feedback/reports/route.ts` |
 | Store, announce, open the ticket | `frontends/ui/src/lib/product-feedback/service.ts`, `announce.ts` |
 | The PostHog Support client (open, list, read, change status) | `frontends/ui/src/lib/posthog-support/client.ts`, `config.ts`, `types.ts` |
@@ -156,12 +156,14 @@ new report. It is the same attributed message the shared chat renders
 right, and the same reply box the review threads use (`Composer`: Enter sends,
 the phone's action key says „Senden", a press on Send keeps the keyboard up).
 
-- **One modal, every door.** „Mein Feedback" (avatar menu, phone „Mehr"
-  sheet) opens it on the list; an inbox row, a push or a mail about a team
-  reply (`?feedback=<report id>`) opens it on that thread; every „Feedback
-  senden" (avatar menu, org header, phone „Mehr") opens it on the form, so
-  there is no standalone feedback dialog. All of them go through
-  `useOpenFeedback` / `useOpenFeedbackThreads` in `feedback-provider.tsx`.
+- **One modal, every door.** Giving and receiving feedback live in the
+  same place, so the avatar menu and the phone „Mehr" sheet carry one entry,
+  „Mein Feedback" (with the count of threads that have news), which opens it
+  on the list. An inbox row, a push or a mail about a team reply
+  (`?feedback=<report id>`) opens it on that thread; the org header's
+  „Feedback senden" opens it on the form. There is no standalone feedback
+  dialog. All of them go through `useOpenFeedback` /
+  `useOpenFeedbackThreads` in `feedback-provider.tsx`.
 - **„Neues Feedback" in the modal.** The list's header has the button; the
   form (`FeedbackForm`: kind, message, contact consent, the captured page and
   browser) opens in the right pane. After sending, the list is read again,

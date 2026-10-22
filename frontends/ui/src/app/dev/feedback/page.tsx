@@ -2,9 +2,9 @@
 
 /**
  * Dev preview for „Feedback senden" — the shell's own provider opening the
- * real „Mein Feedback" modal on its form, as the avatar menu and the org
- * header do, with a fake backend (`../_fixtures/feedback-threads.ts`) so the
- * form, the validation, the error and the hand-off to the new case's thread can
+ * real „Mein Feedback" modal on its form, as the org header's button does,
+ * with a fake backend (`../_fixtures/feedback-threads.ts`) so the form, the
+ * validation, the error and the hand-off to the new case's thread can
  * be reviewed and screenshotted without one. 404s outside development (see
  * `../layout.tsx`).
  *
@@ -76,7 +76,7 @@ function Preview(): JSX.Element {
   )
 }
 
-/** Opens the modal on its form once, as the avatar menu's „Feedback senden" would. */
+/** Opens the modal on its form once, as the org header's „Feedback senden" would. */
 function OpenOnMount({ kind }: { kind: ProductFeedbackKind }): null {
   const openFeedback = useOpenFeedback()
   React.useEffect(() => openFeedback(kind), [openFeedback, kind])

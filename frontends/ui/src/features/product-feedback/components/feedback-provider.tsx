@@ -7,7 +7,8 @@
  * `?feedback=<id>` link). There is no standalone feedback dialog any more: the
  * form is a pane of the modal, so a report just sent opens its own thread.
  *
- * The avatar menu, the org header, the phone's „Mehr" sheet and any later
+ * „Mein Feedback" in the avatar menu and the phone's „Mehr" sheet (one entry
+ * each, for giving and receiving alike), the org header's button and any later
  * entry point (a command in ⌘K, an error screen's "report this") call these
  * hooks instead of each mounting its own, so there is one form, one reset, and
  * one place the reporter's email reaches the contact hint. The same shape the
