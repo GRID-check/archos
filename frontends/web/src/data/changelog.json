@@ -301,6 +301,10 @@
               "de": "Dateien sind in einem geschlossenen Projekt wieder verfügbar. Sie können die Dateien wie bisher lesen; Änderungen bleiben gesperrt, bis Sie das Projekt erneut öffnen."
             },
             {
+              "en": "Piloti's web addresses now forward plain http links to the secure site instead of showing an empty page, which also lets Claude and other apps find the Piloti icon for the connector.",
+              "de": "Die Webadressen von Piloti leiten unverschlüsselte HTTP-Links jetzt auf die sichere Website weiter, statt eine leere Seite anzuzeigen. So können auch Claude und andere Apps das Piloti-Symbol für den Connector finden."
+            },
+            {
               "en": "When another AI assistant passes Piloti a setting an action does not have, such as a page size on the project list, Piloti now says so and names the settings it does take, instead of quietly ignoring it.",
               "de": "Wenn ein anderer KI-Assistent Piloti eine Einstellung übergibt, die eine Aktion nicht unterstützt, etwa eine Seitengröße für die Projektliste, weist Piloti jetzt darauf hin und nennt die unterstützten Einstellungen, statt sie stillschweigend zu ignorieren."
             },

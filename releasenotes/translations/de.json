@@ -2420,6 +2420,10 @@
     "de": "Der Projektspeicher von Piloti ruft jetzt ab, was für Ihre Frage relevant ist, statt nur die zwanzig neuesten Notizen. Außerdem erkennt er eine Notiz, die Sie schon gespeichert haben, auch wenn sie anders formuliert ist, sodass derselbe Sachverhalt meist nur einmal gespeichert wird. Genutzte Notizen bleiben aktuell, und Notizen, die niemand braucht, treten still in den Hintergrund."
   },
   {
+    "en": "Piloti's web addresses now forward plain http links to the secure site instead of showing an empty page, which also lets Claude and other apps find the Piloti icon for the connector.",
+    "de": "Die Webadressen von Piloti leiten unverschlüsselte HTTP-Links jetzt auf die sichere Website weiter, statt eine leere Seite anzuzeigen. So können auch Claude und andere Apps das Piloti-Symbol für den Connector finden."
+  },
+  {
     "en": "Piloti's word search can now also find the other forms of a German word, so a search for „Fluchtwegbreite“ finds „Fluchtwegbreiten“ as well. Without being asked to, it still finds exactly what was typed.",
     "de": "Die Wortsuche von Piloti findet jetzt auch andere Formen eines deutschen Wortes. Eine Suche nach „Fluchtwegbreite“ findet also auch „Fluchtwegbreiten“. Auch ohne explizite Aufforderung findet sie weiterhin genau den eingegebenen Begriff."
   },
