@@ -320,7 +320,8 @@ def render_grounding_block(block: GroundingBlock) -> str:
     from aiq_agent.knowledge.restricted_use import note_collections_read
 
     note_collections_read(hit.collection for hit in block.hits)
-    if block.lanes:
+    lanes = _nameable_lanes(block)
+    if lanes:
         round_index = current_retrieval_round()
         step_id = f"sources:{round_index}:{block.tool}:{uuid.uuid4().hex[:8]}"
         emit_step(
@@ -328,11 +329,42 @@ def render_grounding_block(block: GroundingBlock) -> str:
                 id=step_id,
                 round=round_index,
                 tool=block.tool,
-                lanes=list(block.lanes),
+                lanes=lanes,
                 call_id=current_action_call(),
             )
         )
     return rendered
+
+
+def _nameable_lanes(block: GroundingBlock) -> list[TraceLane]:
+    """The block's lanes as the ``sources`` step may show them: a document only once the model may be told of it.
+
+    The step is emitted inside the tool, before the round's results are
+    admitted, and a stored step is read by everyone the conversation is shared
+    with later. So a document of a restricted folder this turn has not admitted
+    (:func:`~aiq_agent.knowledge.restricted_use.may_name`) leaves the lane, and
+    its hits leave the lane's count: listing is not use (ADR-0088). The rows of
+    the same calls follow the same rule (``ActionOutcome.record``). A lane left
+    with no document goes; the ``## Trace-Lanes`` line in the text is untouched,
+    since the text itself is withheld by the admission.
+    """
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    withheld = [hit.file_name for hit in block.hits if not may_name(hit.collection)]
+    if not withheld:
+        return list(block.lanes)
+    named = {hit.file_name for hit in block.hits if may_name(hit.collection)}
+    unnamed = {name for name in withheld if name not in named}
+    lanes: list[TraceLane] = []
+    for lane in block.lanes:
+        kept = [source for source in lane.sources if source.name not in unnamed]
+        if not kept:
+            continue
+        names = {source.name for source in lane.sources}
+        dropped = sum(1 for name in withheld if name in names)
+        hit_count = max(len(kept), lane.hit_count - dropped)
+        lanes.append(lane.model_copy(update={"sources": kept, "hit_count": hit_count}))
+    return lanes
 
 
 def _lanes_line(lanes: tuple[TraceLane, ...]) -> str:

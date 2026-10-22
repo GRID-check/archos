@@ -157,6 +157,8 @@ def note_look(
         }
         item.update({key: value for key, value in optional.items() if value is not None})
         number = _hold(document, item, read=(read or "").strip())
+        if not _may_show(resolved):
+            return
         emit_look_step(
             number if number is not None else uuid4().hex[:8],
             document_name=document["name"],
@@ -172,6 +174,22 @@ def note_look(
         )
     except Exception:  # noqa: BLE001 - showing a look is never worth the look
         logger.warning("A look could not be recorded for the card and the Herleitung", exc_info=True)
+
+
+def _may_show(resolved: Any) -> bool:
+    """Whether the look's step may carry its document: the step is emitted before the round is admitted.
+
+    A stored step is read by everyone the conversation is shared with later, so
+    a page of a restricted folder this turn has not admitted
+    (:func:`~aiq_agent.knowledge.restricted_use.may_name`) leaves no step at
+    all: its name, id and reading are what the admission may still refuse
+    (listing is not use, ADR-0088). The held card item stays, since a card is
+    placed only for a document the answer cites, which the model read after
+    admission.
+    """
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    return may_name(getattr(resolved, "collection", "") or None)
 
 
 def note_reference(

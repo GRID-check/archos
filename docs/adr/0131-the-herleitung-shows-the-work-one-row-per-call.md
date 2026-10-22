@@ -174,7 +174,10 @@ answer by, and added what lets them check and reuse it:
   folder holds keeps the name the model asked for, with no resolved file name,
   no document id and no count; a search that found only such hits is `ok`
   without counts; a read that falls through to „unknown document“ is an error
-  row. `ActionOutcome.record` is the one place that decides it.
+  row. `ActionOutcome.record` is the one place that decides it. The `sources`
+  and `look` steps of the same calls follow the same rule: a lane omits such a
+  document and its hits (`render_grounding_block`), and a look at one leaves no
+  step (`note_look`).
 - `look` has its row (verb `look`, the document, `pages` = the page, the
   workspace `document_id` when the document is one); the row and the `look`
   step name the document the same way, so the row finds its crop. A read row

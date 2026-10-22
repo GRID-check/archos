@@ -320,6 +320,36 @@ class TestTheRow:
         finished = self._one_call(emitted)[1]
         assert lookups == [(restricted, "gehaltsliste.pdf")]  # the resolver knew the id; the row does not say it
         assert (finished.status, finished.target, finished.document_id) == ("ok", "gehaltsliste.pdf", None)
+        # Nor does a `look` step: its name, id and reading wait for the admission too.
+        assert [step for step in emitted.steps if step.kind == "look"] == []
+
+    async def test_an_admitted_restricted_file_is_named_with_its_id(
+        self, stored, monkeypatch, emitted, lookups
+    ) -> None:
+        """Once the turn admitted the folder, the row and the `look` step name the file and its id."""
+        from aiq_agent.knowledge.restricted_use import RestrictedUse
+        from aiq_agent.knowledge.restricted_use import bind_restricted_use
+        from aiq_agent.knowledge.restricted_use import reset_restricted_use
+
+        restricted = "proj_1_r0123456789ab"
+        monkeypatch.setattr(resolve, "probe_collections", lambda: [restricted])
+
+        async def locate(collection, file_name, organization_id=None, image_index=None):
+            return ("key", None) if collection == restricted else None
+
+        monkeypatch.setattr(view, "_resolve_storage_location", locate)
+        monkeypatch.setattr(view, "_may_read", lambda _collection: True)
+        use = RestrictedUse("org", "user", "conversation", "proj_1", drawable={restricted}, admitted={restricted})
+        token = bind_restricted_use(use)
+        try:
+            await run_look("gehaltsliste.pdf", page=1)
+        finally:
+            reset_restricted_use(token)
+
+        finished = self._one_call(emitted)[1]
+        (look,) = [step for step in emitted.steps if step.kind == "look"]
+        assert finished.document_id is not None
+        assert (look.document_name, look.document_id) == (finished.target, finished.document_id)
 
     async def test_a_look_that_raises_settles_error(self, stored, monkeypatch, emitted) -> None:
         async def boom(_document):
