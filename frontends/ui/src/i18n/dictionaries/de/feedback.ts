@@ -120,7 +120,7 @@ export const feedback: typeof en.feedback = {
       allKinds: 'Alle Arten',
       assigneeLabel: 'Nach Zuständigkeit filtern',
       assignees: {
-        all: 'Alle',
+        all: 'Alle Personen',
         mine: 'Meine',
         unassigned: 'Nicht zugewiesen',
       },
