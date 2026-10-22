@@ -592,7 +592,7 @@ read, with `binaryResponse` listing its media types for OpenAPI. `dispatch.ts` r
 to `MAX_INLINE_BYTES` (5 MiB) the result is an MCP `resource` content item (`blob` is the base64,
 `uri` is `piloti://operation/<name>/<file name or result>`) next to a one-line text summary. The
 base64 never enters `structuredContent` or the 40k text cap. Over the limit nothing is sent, and
-the text names the other ways in: `document-text-get` for the text in pages, `document-download` for
+the text names the other ways in: `passage-read` for the text in pages, `document-download` for
 a time-limited link. A route that redirects (3xx with `Location`) is handed on as a
 `resource_link` and never followed server-side; the link is a credential and expires.
 `document-download`, `document-preview-get`, `document-thumbnail-get` and `bim-model-source-get`

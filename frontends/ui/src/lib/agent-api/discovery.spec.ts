@@ -433,7 +433,7 @@ describe('call-operation with a file in the answer', () => {
     expect(result.content).toHaveLength(1)
     expect(text(result)).toMatch(/12\.0 MiB/)
     expect(text(result)).toMatch(/5\.0 MiB/)
-    expect(text(result)).toMatch(/document-text-get/)
+    expect(text(result)).toMatch(/passage reader/)
     expect(result.structuredContent).toBeUndefined()
   })
 

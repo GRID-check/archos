@@ -156,7 +156,7 @@ def _wire(result: Any) -> Any:
     """What a tool returned, as JSON: text stays text, content blocks stay blocks.
 
     The evidence tools end their text with a ``## Trace-Lanes`` JSON line. It is
-    the product's own trace (the Herleitung reads the records the renderer filed,
+    the product's own trace (the derivation reads the records the renderer filed,
     never this line) and noise to an outside agent, so the door drops it here;
     the in-product path never passes through this route and keeps it.
     """

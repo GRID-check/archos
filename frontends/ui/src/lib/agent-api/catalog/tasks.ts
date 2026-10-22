@@ -31,8 +31,8 @@ export const tasksOperations = [
     summary: 'List a project’s tasks',
     description:
       'The tasks of one project: standing (scheduled) or one-off prompts Piloti carries out as a task run that ' +
-      'files a report, with their schedule, attached skill and next run. Needs the skills feature on. ' +
-      'Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.',
+      'files a report, with their schedule, attached skill and next run. Each `jobs` entry’s `id` is the task’s `jobId`. ' +
+      'Needs the skills feature on. Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.',
     method: 'GET',
     path: '/api/projects/[id]/jobs',
     params: projectParams,
@@ -57,7 +57,8 @@ export const tasksOperations = [
     description:
       'Create a task in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and ' +
       'either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs ' +
-      'only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: the task, with its id.',
+      'only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: `job.id` is the task’s `jobId`; ' +
+      '`job.output` is `deep-research` (new tasks) or `chat` (older ones).',
     method: 'POST',
     path: '/api/projects/[id]/jobs',
     params: projectParams,
@@ -110,8 +111,9 @@ export const tasksOperations = [
     summary: 'List the runs of one task',
     description:
       'The run history of one task, newest first, paginated with `limit` (1 to 200, default 50) and ' +
-      '`offset`. Use it to see whether a scheduled task fired and how each run ended. For every run in the ' +
-      'project with its review state, call project-task-run-list.',
+      '`offset`. A run’s `scheduleId` is its task; its `jobId` is a queue job, not a task. ' +
+      'Use it to see whether a scheduled task fired and how each run ended. ' +
+      'For every run in the project with its review state, call project-task-run-list.',
     method: 'GET',
     path: '/api/projects/[id]/jobs/[jobId]/runs',
     params: taskParams,
