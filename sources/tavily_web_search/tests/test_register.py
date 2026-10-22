@@ -271,5 +271,5 @@ class TestStandaloneWithoutTheAgent:
         async with module.tavily_web_search(module.TavilyWebSearchToolConfig(max_results=5), MagicMock()) as info:
             result = await info.single_fn("Stellplatzschlüssel Wien")
 
-        assert "https://a.example" in result
+        assert "body a" in result  # the fake result came back through the standalone copy
         assert fake_langchain_tavily.call_args.kwargs["max_results"] == 5
