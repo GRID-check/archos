@@ -22,7 +22,7 @@
  */
 
 import { type FC, useEffect, useState } from 'react'
-import { AlertTriangle, FolderTree, Lock, X } from 'lucide-react'
+import { FolderTree, Lock, X } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { ApiRequestError } from '@/adapters/api/api-error'
@@ -47,6 +47,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Field, FieldDescription, FieldLabel } from '@/components/ui/field'
+import { LoadError } from '@/components/ui/load-error'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
@@ -235,15 +236,11 @@ const FolderAccessForm: FC<
       {custom && (
         <div className="flex flex-col gap-3">
           {failed ? (
-            <Alert variant="destructive" data-testid="folder-access-load-error">
-              <AlertTriangle />
-              <AlertDescription className="flex flex-wrap items-center gap-2">
-                {t('folders.access.loadError')}
-                <Button variant="outline" size="sm" onClick={retry}>
-                  {tc('actions.retry')}
-                </Button>
-              </AlertDescription>
-            </Alert>
+            <LoadError
+              title={t('folders.access.loadError')}
+              onRetry={retry}
+              data-testid="folder-access-load-error"
+            />
           ) : !loaded || !draft ? (
             <div
               className="flex flex-col gap-2"

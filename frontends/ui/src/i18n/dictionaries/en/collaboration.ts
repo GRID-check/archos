@@ -421,7 +421,6 @@ export const collaboration = {
        * archived) is precisely NOT up to date.
        */
       actionFailed: 'That action could not be completed. Your inbox is unchanged.',
-      tryAgain: 'Try again',
     },
     /**
      * One entry per registered item type. Adding a type means adding a `title`

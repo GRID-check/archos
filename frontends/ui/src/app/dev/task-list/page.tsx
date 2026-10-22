@@ -14,7 +14,12 @@
  *     headings that group the column, the filter row with its counts, and the
  *     one result link on the tray that is the only thing inside the card that
  *     is not the card's own click target.
- *  2. **Nothing yet.** The state most projects are in on day one, and the one
+ *  2. **A card that changes place.** Two buttons stand in for a poll: a new
+ *     run arrives at the top, or midnight moves a card from „Heute" to
+ *     „Gestern". The card that moved glides there on `springGlide` and the
+ *     cards around it make room; pressing a filter still only fades. Record it
+ *     slowed down (`Animation.setPlaybackRate`) to judge the glide.
+ *  3. **Nothing yet.** The state most projects are in on day one, and the one
  *     that has to read as an invitation rather than as a list that failed to
  *     load — the distinction the error panel underneath it depends on.
  *
@@ -25,6 +30,7 @@
 import { useState } from 'react'
 import { notFound } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
+import { Button } from '@/components/ui/button'
 import { TaskList } from '@/features/tasks/components/task-list'
 import type { TaskFilter, TaskWireRow } from '@/features/tasks/lib/task-view'
 
@@ -133,6 +139,58 @@ function FilterableList({
   )
 }
 
+const ARRIVING = row({
+  id: 'task-new',
+  kind: 'deep-research',
+  title: 'Recherche Lärmschutz Innenhof',
+  goal: 'Welche Grenzwerte gelten für den Innenhof zur Nachbarliegenschaft?',
+  status: 'running',
+  createdAt: new Date().toISOString(),
+  finishedAt: null,
+  runSummary: { status: 'running', rounds: 1, docs: 2 },
+})
+
+/**
+ * The poll, by hand. Each press changes what a poll would change and nothing
+ * else, so the only motion on screen is the card that moved and the cards that
+ * make room for it.
+ */
+function GlidingList() {
+  const [tasks, setTasks] = useState<TaskWireRow[]>(TASKS)
+  const arrived = tasks.some((task) => task.id === ARRIVING.id)
+  const aged = tasks.some((task) => task.id === 'task-2' && task.createdAt !== TASKS[2]?.createdAt)
+
+  const toggleArrival = () =>
+    setTasks((current) => (arrived ? current.filter((task) => task.id !== ARRIVING.id) : [ARRIVING, ...current]))
+  const toggleMidnight = () =>
+    setTasks((current) =>
+      current.map((task) =>
+        task.id === 'task-2'
+          ? {
+              ...task,
+              createdAt: aged
+                ? (TASKS[2]?.createdAt ?? task.createdAt)
+                : new Date(Date.now() - 30 * 60 * 60 * 1000).toISOString(),
+            }
+          : task
+      )
+    )
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex flex-wrap gap-2 border-b p-3">
+        <Button size="sm" variant="outline" onClick={toggleArrival} data-testid="glide-arrival">
+          {arrived ? 'Neuen Lauf wieder entfernen' : 'Ein neuer Lauf kommt an'}
+        </Button>
+        <Button size="sm" variant="outline" onClick={toggleMidnight} data-testid="glide-midnight">
+          {aged ? 'Zurück auf heute' : 'Mitternacht vergeht'}
+        </Button>
+      </div>
+      <FilterableList tasks={tasks} />
+    </div>
+  )
+}
+
 function Panel({ title, note, children }: { title: string; note: string; children: React.ReactNode }) {
   return (
     <section className="flex w-[720px] max-w-full flex-col gap-2">
@@ -157,6 +215,13 @@ export default function TaskListPreview() {
           note="Fünf Karten, fünf verschiedene Antworten auf „was ist daraus geworden“. Zu beurteilen: ob das Farbquadrat vor dem Titel beim Überfliegen einer Spalte trägt, ohne lauter zu sein als der Titel selbst; ob der Punkt rechts als „noch ungeprüft“ liest; ob „Zurückgeschickt“ und die Begründung darunter zusammengehören; und ob der eine Link in der Fußzeile als Ort liest — er ist das Einzige in der Karte, das nicht die Karte selbst anklickt."
         >
           <FilterableList tasks={TASKS} />
+        </Panel>
+
+        <Panel
+          title="Eine Karte wechselt ihren Platz"
+          note="Die zwei Knöpfe tun, was eine Abfrage täte. Zu beurteilen: ob die Karte, die sich bewegt hat, dorthin gleitet und die übrigen Platz machen, ohne zu springen; und ob ein Druck auf einen Filter weiterhin nur überblendet und nichts fliegen lässt."
+        >
+          <GlidingList />
         </Panel>
 
         <Panel

@@ -328,7 +328,9 @@ export function IfcSpatialTree({
                   )}
                 </span>
                 {row.elementCount > 0 && (
-                  <CountPill>{row.elementCount}</CountPill>
+                  // The exact figure is the row's content (a storey of 2,431
+                  // elements is not "99+"), and the tree row has the room.
+                  <CountPill count={row.elementCount} max={Number.POSITIVE_INFINITY} />
                 )}
               </button>
             </li>

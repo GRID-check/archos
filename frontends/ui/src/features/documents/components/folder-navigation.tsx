@@ -878,7 +878,7 @@ export function FolderRow({
         {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
         {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
         {/* The kit's numeric pill, not a fourth hand-rolled one. */}
-        <CountPill>{itemCount}</CountPill>
+        <CountPill count={itemCount} />
         {lastModified && (
           <>
             <span aria-hidden className="text-muted-foreground/40 text-xs phone:hidden">

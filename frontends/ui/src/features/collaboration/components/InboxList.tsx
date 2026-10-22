@@ -53,6 +53,7 @@ import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemContent, ItemList, ItemMedia } from '@/components/ui/item'
+import { LoadError } from '@/components/ui/load-error'
 import { LoadMore } from '@/components/ui/load-more'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
@@ -326,7 +327,7 @@ export function InboxList({
                 {t(`inbox.filters.${key}`)}
                 {/* Only when there is a number to say: an invisible pill kept
                     a blank tail after the label at zero. */}
-                {count > 0 && <CountPill className={cn(filter === key && 'bg-background/20 text-current')}>{count}</CountPill>}
+                {count > 0 && <CountPill count={count} className={cn(filter === key && 'bg-background/20 text-current')} />}
               </ToggleGroupItem>
             )
           })}
@@ -380,17 +381,7 @@ export function InboxList({
       {/* Focusable from code only: where the focus goes when the last row leaves with it. */}
       <div ref={listRef} data-testid="inbox-list" tabIndex={-1} className="outline-none">
         {error ? (
-          <Alert variant="destructive">
-            <AlertCircle />
-            {/* line-clamp-none: the default title clamps to one line, which
-                truncates this sentence at a phone width. */}
-            <AlertTitle className="line-clamp-none">{t('inbox.errors.loadFailed')}</AlertTitle>
-            <AlertDescription className="flex flex-col items-start gap-3 pt-1">
-              <Button variant="outline" size="sm" onClick={() => refresh()}>
-                {t('inbox.errors.tryAgain')}
-              </Button>
-            </AlertDescription>
-          </Alert>
+          <LoadError title={t('inbox.errors.loadFailed')} onRetry={() => refresh()} />
         ) : loading ? (
           <ItemList as="ul" data-testid="inbox-skeleton" aria-busy="true" className="bg-card shadow-xs">
             {Array.from({ length: 4 }).map((_, index) => (

@@ -61,7 +61,7 @@ describe('SectionCard', () => {
     )
 
     expect(screen.getByText('Could not load it.')).toBeDefined()
-    await userEvent.click(screen.getByRole('button', { name: /Retry/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Try again/i }))
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
@@ -71,7 +71,7 @@ describe('SectionCard', () => {
     render(<SectionCard title="Base knowledge" error loading onRetry={() => undefined} />)
 
     expect(screen.queryByTestId('section-loading')).toBeNull()
-    expect(screen.getByRole('button', { name: /Retry/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /Try again/i })).toBeDefined()
   })
 
   test('renders the empty state instead of children', () => {

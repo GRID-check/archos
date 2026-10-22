@@ -20,11 +20,35 @@
  * The filter row is not a convenience. `unreviewed` is the surface's real job —
  * a finished task nobody judged is an open loop, and an invisible open loop
  * never closes — and its count is the number a person should want at zero.
+ *
+ * A CARD THAT MOVES GLIDES; A FILTER PRESS DOES NOT. The list polls, so a card
+ * can change place under the reader: it lands in another bucket (a run from
+ * „Heute" is „Gestern" after midnight), it leaves a narrow filter (a running
+ * task finishing under „Aktiv"), a new run arrives at the top, or a card grows
+ * a failure line. Each card carries a `layoutId` and `layout="position"` on
+ * `springGlide` (travel is unbounded: the distance is whatever the list
+ * holds), so the card that moved travels from where it was and the cards
+ * around it make room on the same spring, all transform-based. Size is never
+ * animated; a card that grew takes its new height at once.
+ *
+ * A filter press replaces most of the list at once, and gliding the survivors
+ * into their new places would be motion the reader did not ask for. So the
+ * shared layout is SCOPED TO THE FILTER: the group is keyed by it, which
+ * remounts every card (nothing mounted carries a `layout` across the swap),
+ * and the filter is part of every `layoutId`, so a card in the new list has no
+ * namespace-mate in the old one to fly from. `useSwapFade` fades the new rows
+ * in, as before. The ids are per mounted list as well (`useId`), the
+ * design language's „a layoutId is global" rule, and each is mirrored onto
+ * `data-layout-id` so a collision is visible in a test.
+ *
+ * Under reduced motion the transition is `motionInstant`: the card is simply
+ * in its new place.
  */
 
-import { useRef, type JSX } from 'react'
+import { useId, useRef, type JSX } from 'react'
 import { CircleDashed, Inbox } from 'lucide-react'
 
+import { LayoutGroup, motion, springGlide, useMotionToken } from '@/components/motion'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -71,6 +95,9 @@ export function TaskList({
   const groups = groupByRecency(visible)
   const swapRef = useRef<HTMLDivElement>(null)
   useSwapFade(swapRef, filter)
+  const instanceId = useId()
+  const layoutScope = `${instanceId}-${filter}`
+  const glide = useMotionToken(springGlide)
 
   if (loading) {
     return (
@@ -142,9 +169,8 @@ export function TaskList({
             {t(`filters.${option}`)}
             <CountPill
               tone={option === 'unreviewed' && counts.unreviewed > 0 ? 'attention' : 'muted'}
-            >
-              {counts[option]}
-            </CountPill>
+              count={counts[option]}
+            />
           </ToggleGroupItem>
         ))}
       </ToggleGroup>
@@ -165,25 +191,41 @@ export function TaskList({
             }
           />
         ) : (
-          <div className="flex flex-col gap-6" data-testid="task-groups">
-            {groups.map((group) => (
-              <section key={group.bucket} aria-label={t(`buckets.${group.bucket}`)}>
-                <SectionLabel as="h2" className="mb-2">
-                  {t(`buckets.${group.bucket}`)}
-                </SectionLabel>
-                <div className="flex flex-col gap-3">
-                  {group.tasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      projectId={projectId}
-                      task={task}
-                      onSelect={onSelectTask}
-                    />
-                  ))}
-                </div>
-              </section>
-            ))}
-          </div>
+          // Keyed by the filter: a filter swap remounts the cards, so nothing
+          // glides across it (see the header).
+          <LayoutGroup key={filter}>
+            <div
+              className="flex flex-col gap-6"
+              data-testid="task-groups"
+              data-layout-scope={layoutScope}
+            >
+              {groups.map((group) => (
+                <motion.section
+                  key={group.bucket}
+                  layout="position"
+                  transition={glide}
+                  aria-label={t(`buckets.${group.bucket}`)}
+                >
+                  <SectionLabel as="h2" className="mb-2">
+                    {t(`buckets.${group.bucket}`)}
+                  </SectionLabel>
+                  <div className="flex flex-col gap-3">
+                    {group.tasks.map((task) => (
+                      <motion.div
+                        key={task.id}
+                        layout="position"
+                        layoutId={`${layoutScope}-${task.id}`}
+                        transition={glide}
+                        data-layout-id={`${layoutScope}-${task.id}`}
+                      >
+                        <TaskCard projectId={projectId} task={task} onSelect={onSelectTask} />
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.section>
+              ))}
+            </div>
+          </LayoutGroup>
         )}
       </div>
     </div>

@@ -10,7 +10,6 @@ export const skills = {
   title: 'Skills',
   subtitle:
     'Reusable instructions your organization writes once, then invokes with “/” in chat or attaches to a job. Editing one never changes a job that already uses it — the job keeps the snapshot it saved.',
-  tryAgain: 'Try again',
 
   toolbox: {
     ownHeading: 'Your skills',

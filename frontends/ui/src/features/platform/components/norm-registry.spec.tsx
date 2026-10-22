@@ -166,7 +166,7 @@ describe('NormRegistry', () => {
 
     expect(await screen.findByText('Could not load the norm catalog.')).toBeDefined()
 
-    await user().click(screen.getByRole('button', { name: /Retry/i }))
+    await user().click(screen.getByRole('button', { name: /Try again/i }))
 
     expect(await screen.findByText('Bauordnung für Wien')).toBeDefined()
   })

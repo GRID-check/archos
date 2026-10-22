@@ -21,8 +21,7 @@
 
 import { useCallback, useEffect, useState, type FC, type ReactNode } from 'react'
 import { AlertTriangle } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatBytes } from '@/lib/format'
 import { useLocale, useTranslations } from '@/i18n'
@@ -164,7 +163,6 @@ export const StorageUsageCard: FC<StorageUsageCardProps> = ({
   endpoint = STORAGE_ENDPOINT,
 }) => {
   const t = useTranslations('organization')
-  const tCommon = useTranslations('common')
   const { locale } = useLocale()
   const [data, setData] = useState<StorageResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -215,21 +213,13 @@ export const StorageUsageCard: FC<StorageUsageCardProps> = ({
 
   if (!data) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription className="flex flex-col items-start gap-3">
-          {t('storage.loadError')}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setLoading(true)
-              void load()
-            }}
-          >
-            {tCommon('actions.retry')}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <LoadError
+        title={t('storage.loadError')}
+        onRetry={() => {
+          setLoading(true)
+          return load()
+        }}
+      />
     )
   }
 

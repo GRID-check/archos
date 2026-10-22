@@ -80,7 +80,7 @@ describe('PlatformStorageTable', () => {
     const error = await screen.findByTestId('platform-storage-error')
     expect(error).toHaveAttribute('role', 'alert')
     expect(error).toHaveTextContent('Could not load storage usage.')
-    await userEvent.click(within(error).getByRole('button', { name: /Retry/ }))
+    await userEvent.click(within(error).getByRole('button', { name: /Try again/ }))
 
     expect(await screen.findByText('Acme Architektur')).toBeDefined()
   })

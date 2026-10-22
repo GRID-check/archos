@@ -28,6 +28,12 @@ export const common: typeof en.common = {
     empty: 'Noch nichts vorhanden',
     copyFailed: 'Kopieren nicht möglich',
   },
+  /** The shared „failed to load, retry" block (`components/ui/load-error.tsx`). */
+  loadError: {
+    retry: 'Erneut versuchen',
+    title: 'Konnte nicht geladen werden',
+    retrying: 'Wird erneut geladen…',
+  },
   codeBlock: {
     copy: 'Kopieren',
     copied: 'Kopiert',

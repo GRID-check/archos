@@ -26,6 +26,7 @@ import {
   useIconSwapTransition,
   useMotionToken,
 } from '@/components/motion'
+import { LoadError } from '@/components/ui/load-error'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -836,14 +837,7 @@ export function ProjectIntakeWizard({
   if (error && !definition) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-6 md:py-12">
-        <Alert variant="destructive">
-          <AlertDescription className="flex flex-col items-start gap-3">
-            <span>{error}</span>
-            <Button variant="outline" size="sm" onClick={retryLoad}>
-              {t('intake.tryAgain')}
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadError title={error} onRetry={retryLoad} />
       </div>
     )
   }

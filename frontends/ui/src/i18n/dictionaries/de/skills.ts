@@ -12,7 +12,6 @@ export const skills: typeof en.skills = {
   title: 'Skills',
   subtitle:
     'Wiederverwendbare Anweisungen, die Ihre Organisation einmal schreibt und danach im Chat mit „/“ aufruft oder an einen Job anhängt. Eine Bearbeitung ändert nie einen Job, der den Skill bereits verwendet — dieser behält seinen gespeicherten Stand.',
-  tryAgain: 'Erneut versuchen',
 
   toolbox: {
     ownHeading: 'Ihre Skills',
