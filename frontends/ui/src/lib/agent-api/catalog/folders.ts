@@ -232,6 +232,7 @@ export const foldersOperations = [
   {
     name: 'document-list',
     domain: 'documents',
+    links: 'document',
     summary: 'List the documents of a project or the office shelf',
     description:
       'One page of a shelf’s documents with name, folder, author, lifecycle and version state: a project’s (`projectId`, from ' +

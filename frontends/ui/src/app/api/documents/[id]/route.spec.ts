@@ -60,13 +60,13 @@ describe('GET /api/documents/[id]', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it("answers with the row the shelf's listing would carry, version state included", async () => {
-    vi.mocked(getListedDocument).mockResolvedValue(LISTED)
+    vi.mocked(getListedDocument).mockResolvedValue({ ...LISTED, projectId: 'proj-1' })
 
     const response = await read('doc-1')
 
     expect(response.status).toBe(200)
     expect((await response.json()).document).toEqual(
-      JSON.parse(JSON.stringify(toDocumentWireRow(LISTED, { versionCount: 3, state: 'published' }))),
+      JSON.parse(JSON.stringify({ ...toDocumentWireRow(LISTED, { versionCount: 3, state: 'published' }), projectId: 'proj-1' })),
     )
     expect(getListedDocument).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1' }), 'doc-1')
   })

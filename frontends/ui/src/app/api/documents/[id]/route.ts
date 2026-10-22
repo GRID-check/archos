@@ -30,7 +30,8 @@ export const GET = apiRoute<Params>(
   async ({ session, params }) => {
     const listed = await getListedDocument(session, params.id)
     const [document] = await toDocumentWireRows(session.organizationId, [listed])
-    return { document }
+    // The row and the shelf it is on: a caller with only the id learns the project here.
+    return { document: { ...document, projectId: listed.projectId } }
   },
   {
     authz: {

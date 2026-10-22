@@ -36,6 +36,8 @@ import {
 } from './dispatch'
 import { type BackendOperation, type JsonSchemaObject, callBackendOperation, toMcpContent } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
+import { configuredAppOrigin } from '@/lib/app-origin'
+import { withLinks } from './links'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
 import {
@@ -198,14 +200,22 @@ function refusalResult(result: OperationResult): CallToolResult {
   return failure(`${message} (HTTP ${result.status}${code})${details}`)
 }
 
-/** A route's answer as the tool result. */
-export function fromOperationResult(op: AgentOperation, result: OperationResult): CallToolResult {
+/**
+ * A route's answer as the tool result. `input` is the call's, for the project a
+ * link needs when the answer does not say it (a run under `/api/projects/[id]`).
+ */
+export function fromOperationResult(
+  op: AgentOperation,
+  result: OperationResult,
+  input: OperationInput = {},
+  origin: string | null = configuredAppOrigin(),
+): CallToolResult {
   const opName = op.name
   if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
   if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-  return success(result.body, narrowingHint(op))
+  return success(withLinks(op, input, result.body, origin), narrowingHint(op))
 }
 
 /**
@@ -423,7 +433,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
     }
   }
   const outcome = await executeOperation(ctx, op, input, startedAt)
-  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result)
+  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result, input)
 }
 
 /**
