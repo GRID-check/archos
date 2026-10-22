@@ -36,6 +36,10 @@ function Item({
         // prevent. A plain `div` row is gated out, since `:active` fires on
         // any element under a held pointer.
         '[&:is(a,button)]:active:bg-accent/70',
+        // THE SELECTED ROW of a list whose detail is open beside it (a
+        // two-pane inbox): `aria-current="true"` on the row, one tint past
+        // the hover so the pointer resting on another row never matches it.
+        'aria-[current=true]:bg-accent/60',
         className,
       )}
       {...props}

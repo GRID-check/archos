@@ -1,21 +1,22 @@
 'use client'
 
 /**
- * Dev preview for the feedback form — the real `FeedbackDialog`, open, with a
- * fake submit so the form, the validation, the error and the thank-you state
- * can be reviewed and screenshotted without a backend. 404s outside
- * development (see `../layout.tsx`).
+ * Dev preview for „Feedback senden" — the shell's own provider opening the
+ * real „Mein Feedback" modal on its form, as the avatar menu and the org
+ * header do, with a fake backend (`../_fixtures/feedback-threads.ts`) so the
+ * form, the validation, the error and the hand-off to the new case's thread can
+ * be reviewed and screenshotted without one. 404s outside development (see
+ * `../layout.tsx`).
  *
  *   /dev/feedback                  the form, a bug pre-selected
  *   /dev/feedback?kind=idea        another kind pre-selected
  *   /dev/feedback?variant=error    sending fails
- *   /dev/feedback?variant=sent     the thank-you state after a send
+ *   /dev/feedback?variant=sent     after a send: the new case selected, its thread open with the thanks
  *   /dev/feedback?lang=en          English (German is the default)
  *
  * Also renders the org header with the provider mounted, so the entry point
  * next to the inbox (and the avatar's dot for a waiting reply) is in the
- * capture, and „Chat öffnen" after sending opens the real „Mein Feedback"
- * sheet on the fake backend (`../_fixtures/feedback-threads.ts`).
+ * capture.
  */
 
 import type { JSX } from 'react'
@@ -25,9 +26,8 @@ import { useSearchParams } from 'next/navigation'
 import { I18nProvider } from '@/i18n'
 import { OrgHeader } from '@/components/shell/org-header'
 import { FeedbackProvider, useOpenFeedback } from '@/features/product-feedback/components'
-import type { SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
 import { PRODUCT_FEEDBACK_KINDS, type ProductFeedbackKind } from '@/lib/product-feedback/types'
-import { FEEDBACK_PREVIEW_REPORTS, feedbackPreviewApi } from '../_fixtures/feedback-threads'
+import { feedbackPreviewApi } from '../_fixtures/feedback-threads'
 
 const MESSAGE =
   'Beim Hochladen eines 80-MB-Plans bleibt der Fortschritt bei 99 % stehen. Nach einem Neuladen ist die Datei nicht im Projekt.'
@@ -39,15 +39,7 @@ function Preview(): JSX.Element {
   const kind: ProductFeedbackKind = PRODUCT_FEEDBACK_KINDS.includes(kindParam as ProductFeedbackKind)
     ? (kindParam as ProductFeedbackKind)
     : 'bug'
-  const threadsApi = React.useMemo(() => feedbackPreviewApi('thread'), [])
-
-  const submit = React.useCallback(async (): Promise<SubmitProductFeedbackResult> => {
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    return variant === 'error'
-      ? { ok: false, reason: 'failed' }
-      : // The report „Chat öffnen" then opens is one the fake thread knows.
-        { ok: true, report: { id: FEEDBACK_PREVIEW_REPORTS[0]!.id, kind, createdAt: new Date().toISOString() } }
-  }, [variant, kind])
+  const threadsApi = React.useMemo(() => feedbackPreviewApi('thread', { failSubmit: variant === 'error' }), [variant])
 
   // For the `sent` and `error` captures: fill and send once the dialog is up.
   React.useEffect(() => {
@@ -64,10 +56,10 @@ function Preview(): JSX.Element {
   }, [variant])
 
   return (
-    // The shell's own provider, with the fakes: the form is the provider's, so
-    // „Chat öffnen" after sending runs the real hand-off into „Mein Feedback",
-    // and the avatar carries the dot for the reply waiting there.
-    <FeedbackProvider userEmail="maria.huber@buero-nord.at" threadsApi={threadsApi} submit={submit}>
+    // The shell's own provider, with the fakes: sending runs the real hand-off
+    // to the new case's thread, and the avatar carries the dot for the reply
+    // waiting in „Mein Feedback".
+    <FeedbackProvider userEmail="maria.huber@buero-nord.at" threadsApi={threadsApi}>
       <OpenOnMount kind={kind} />
       <OrgHeader
         user={{ name: 'Maria Huber', email: 'maria.huber@buero-nord.at' }}
@@ -84,7 +76,7 @@ function Preview(): JSX.Element {
   )
 }
 
-/** Opens the provider's form once, as the avatar menu's „Feedback senden" would. */
+/** Opens the modal on its form once, as the avatar menu's „Feedback senden" would. */
 function OpenOnMount({ kind }: { kind: ProductFeedbackKind }): null {
   const openFeedback = useOpenFeedback()
   React.useEffect(() => openFeedback(kind), [openFeedback, kind])

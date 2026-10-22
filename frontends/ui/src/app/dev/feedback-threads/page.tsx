@@ -1,13 +1,15 @@
 'use client'
 
 /**
- * Dev preview for „Mein Feedback" — the real `FeedbackThreadsSheet`, open,
+ * Dev preview for „Mein Feedback" — the real `FeedbackThreadsDialog`, open,
  * with a fake API (`../_fixtures/feedback-threads.ts`) so the cases, a
- * conversation with the team, the reply, the office view and the degraded
- * states can be reviewed and screenshotted without PostHog. 404s outside
+ * conversation with the team, the reply, the form for a new report, the office
+ * view and the degraded states can be reviewed and screenshotted without
+ * PostHog. Two panes from `md:` up, one pane at a time on a phone. 404s outside
  * development (see `../layout.tsx`).
  *
  *   /dev/feedback-threads                  the member's cases, active first, one with news; the office switch shown
+ *   /dev/feedback-threads?view=compose     „Neues Feedback": the form in the modal; sending opens the new case
  *   /dev/feedback-threads?view=thread      the conversation on a bug report
  *   /dev/feedback-threads?view=long        a long conversation: the newest message in view
  *   /dev/feedback-threads?view=waiting     a case the team has not answered yet
@@ -18,7 +20,8 @@
  *   /dev/feedback-threads?view=colleague   a colleague's case, read-only
  *   /dev/feedback-threads?lang=en          English (German is the default)
  *
- * Sending a reply in the preview appends it to the fake thread.
+ * Sending a reply in the preview appends it to the fake thread; sending the
+ * form files a new case at the top of the list and opens its thread.
  */
 
 import type { JSX } from 'react'
@@ -26,7 +29,7 @@ import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
-import { FeedbackThreadsSheet } from '@/features/product-feedback/components'
+import { FeedbackThreadsDialog } from '@/features/product-feedback/components'
 import { feedbackPreviewApi, feedbackPreviewStart, parseFeedbackPreviewView } from '../_fixtures/feedback-threads'
 
 function Preview(): JSX.Element {
@@ -36,13 +39,14 @@ function Preview(): JSX.Element {
   return (
     <>
       <main className="text-muted-foreground p-8 text-sm">Projekte …</main>
-      <FeedbackThreadsSheet
+      <FeedbackThreadsDialog
         open={open}
         onOpenChange={setOpen}
         initialReportId={feedbackPreviewStart(view)}
+        initialCompose={view === 'compose' ? 'bug' : null}
         initialScope={view === 'office' ? 'office' : 'mine'}
+        userEmail="maria.huber@buero-nord.at"
         api={api}
-        onNewFeedback={() => undefined}
       />
     </>
   )

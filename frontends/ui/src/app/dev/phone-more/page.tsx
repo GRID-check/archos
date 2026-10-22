@@ -25,7 +25,7 @@ export default function PhoneMoreDevPage(): JSX.Element {
   const setOpen = useShellOverlays((s) => s.setMoreSheetOpen)
   useEffect(() => setOpen(true), [setOpen])
   // The shell's feedback provider with the fake backend: „Mein Feedback" shows
-  // with its count, the tab its dot, and a tap hands over to the real sheet.
+  // with its count, the tab its dot, and a tap hands over to the real modal.
   const threadsApi = useMemo(() => feedbackPreviewApi('list'), [])
   return (
     <FeedbackProvider threadsApi={threadsApi}>

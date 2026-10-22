@@ -1,19 +1,22 @@
 'use client'
 
 /**
- * One feedback dialog and one „Mein Feedback" sheet for the whole shell,
- * opened from anywhere.
+ * One „Mein Feedback" modal for the whole shell, opened from anywhere: on the
+ * form for a new report ({@link useOpenFeedback}, „Feedback senden") or on the
+ * list or one thread ({@link useOpenFeedbackThreads}, „Mein Feedback", the
+ * `?feedback=<id>` link). There is no standalone feedback dialog any more: the
+ * form is a pane of the modal, so a report just sent opens its own thread.
  *
- * The avatar menu, the org header and any later entry point (a command in ⌘K,
- * an error screen's "report this") call {@link useOpenFeedback} or
- * {@link useOpenFeedbackThreads} instead of each mounting its own, so there is
- * one form, one reset, and one place the reporter's email reaches the contact
- * hint. The same shape the product tour uses (`useStartProductTour`).
+ * The avatar menu, the org header, the phone's „Mehr" sheet and any later
+ * entry point (a command in ⌘K, an error screen's "report this") call these
+ * hooks instead of each mounting its own, so there is one form, one reset, and
+ * one place the reporter's email reaches the contact hint. The same shape the
+ * product tour uses (`useStartProductTour`).
  *
  * The provider also knows how many of the member's threads have news (the team
  * replied or moved the status), for the dot on the entry points: read once when
  * the shell mounts, again when the window regains focus after
- * {@link UPDATES_REFRESH_MS}, and whenever the sheet reads the list itself.
+ * {@link UPDATES_REFRESH_MS}, and whenever the modal reads the list itself.
  */
 
 import type { JSX } from 'react'
@@ -21,8 +24,7 @@ import * as React from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchOwnFeedback } from '@/lib/product-feedback/client'
 import { FEEDBACK_THREAD_PARAM, type OwnProductFeedbackListResponse, type ProductFeedbackKind } from '@/lib/product-feedback/types'
-import { FeedbackDialog, type FeedbackDialogProps } from './feedback-dialog'
-import { FeedbackThreadsSheet, type FeedbackThreadsApi } from './feedback-threads'
+import { FeedbackThreadsDialog, type FeedbackThreadsApi } from './feedback-threads'
 
 /** A focus sooner than this after the last read does not read again. */
 export const UPDATES_REFRESH_MS = 5 * 60 * 1000
@@ -41,7 +43,7 @@ const FeedbackContext = React.createContext<FeedbackContextValue | null>(null)
 
 const noop = (): void => undefined
 
-/** Opens the shell's feedback dialog; a no-op outside the provider. */
+/** Opens „Mein Feedback" on the form for a new report; a no-op outside the provider. */
 export function useOpenFeedback(): OpenFeedback {
   return React.useContext(FeedbackContext)?.openFeedback ?? noop
 }
@@ -56,7 +58,7 @@ export function useFeedbackUpdatedCount(): number {
   return React.useContext(FeedbackContext)?.updatedCount ?? 0
 }
 
-/** Whether a feedback dialog is mounted above — entry points hide themselves without one. */
+/** Whether the feedback modal is mounted above — entry points hide themselves without one. */
 export function useFeedbackAvailable(): boolean {
   return React.useContext(FeedbackContext) !== null
 }
@@ -64,9 +66,9 @@ export function useFeedbackAvailable(): boolean {
 /**
  * The count of threads with news, and a way to read it again now. Read when
  * the shell mounts, on focus after {@link UPDATES_REFRESH_MS}, whenever the
- * sheet reads the list itself (`remember`), and when the sheet closes
- * (`refresh`): opening a thread marks it seen on the server, and a sheet closed
- * from inside that thread never goes back through the list to say so.
+ * modal reads the list itself (`remember`), and when the modal closes
+ * (`refresh`): opening a thread marks it seen on the server, and a modal closed
+ * on that thread never reads the list again to say so.
  */
 function useUpdatedCount(
   list: () => Promise<OwnProductFeedbackListResponse>
@@ -131,35 +133,43 @@ function ThreadFromAddress({ onThread }: { onThread: (reportId: string) => void 
   return null
 }
 
+/** Where the modal opens: the form with a kind chosen, or a thread, or the list. */
+interface Start {
+  compose: ProductFeedbackKind | null
+  reportId: string | null
+}
+
 export function FeedbackProvider({
   userEmail = null,
   threadsApi,
-  submit,
   children,
 }: {
   userEmail?: string | null
-  /** Previews inject the sheet's calls (and with them the count); the app uses the live routes. */
+  /** Previews inject the modal's calls (and with them the count and the send); the app uses the live routes. */
   threadsApi?: FeedbackThreadsApi
-  /** Previews inject the form's send; the app uses the live route. */
-  submit?: FeedbackDialogProps['submit']
   children: React.ReactNode
 }): JSX.Element {
   const [open, setOpen] = React.useState(false)
-  const [kind, setKind] = React.useState<ProductFeedbackKind>('bug')
-  const [threadsOpen, setThreadsOpen] = React.useState(false)
-  const [threadId, setThreadId] = React.useState<string | null>(null)
+  const [start, setStart] = React.useState<Start>({ compose: null, reportId: null })
+  // The same start again keeps the same object: the address hands over its
+  // thread on every render until the router drops the parameter, and a fresh
+  // object each time would re-render the shell without end.
+  const startAt = React.useCallback((next: Start) => {
+    setStart((current) => (current.compose === next.compose && current.reportId === next.reportId ? current : next))
+    setOpen(true)
+  }, [])
   const list = threadsApi?.list ?? fetchOwnFeedback
   const { count: updatedCount, remember: setUpdatedCount, refresh: refreshUpdatedCount } = useUpdatedCount(list)
 
-  const openFeedback = React.useCallback<OpenFeedback>((next) => {
-    setKind(next ?? 'bug')
-    setOpen(true)
-  }, [])
+  const openFeedback = React.useCallback<OpenFeedback>(
+    (kind) => startAt({ compose: kind ?? 'bug', reportId: null }),
+    [startAt]
+  )
 
-  const openThreads = React.useCallback<OpenFeedbackThreads>((reportId) => {
-    setThreadId(reportId ?? null)
-    setThreadsOpen(true)
-  }, [])
+  const openThreads = React.useCallback<OpenFeedbackThreads>(
+    (reportId) => startAt({ compose: null, reportId: reportId ?? null }),
+    [startAt]
+  )
 
   const value = React.useMemo(
     () => ({ openFeedback, openThreads, updatedCount }),
@@ -172,30 +182,17 @@ export function FeedbackProvider({
       <React.Suspense fallback={null}>
         <ThreadFromAddress onThread={openThreads} />
       </React.Suspense>
-      <FeedbackDialog
+      <FeedbackThreadsDialog
         open={open}
-        onOpenChange={setOpen}
-        defaultKind={kind}
-        userEmail={userEmail}
-        submit={submit}
-        onViewThread={(reportId) => {
-          setOpen(false)
-          openThreads(reportId)
-        }}
-      />
-      <FeedbackThreadsSheet
-        open={threadsOpen}
         onOpenChange={(next) => {
-          setThreadsOpen(next)
+          setOpen(next)
           if (!next) refreshUpdatedCount()
         }}
-        initialReportId={threadId}
+        initialCompose={start.compose}
+        initialReportId={start.reportId}
+        userEmail={userEmail}
         api={threadsApi}
         onUpdatedCount={setUpdatedCount}
-        onNewFeedback={() => {
-          setThreadsOpen(false)
-          openFeedback()
-        }}
       />
     </FeedbackContext.Provider>
   )

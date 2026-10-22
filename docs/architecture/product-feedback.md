@@ -28,7 +28,7 @@ team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/
 
 | Step | Code |
 |---|---|
-| The form, and its entry points (avatar menu, org header) | `frontends/ui/src/features/product-feedback/components/feedback-dialog.tsx`, `feedback-provider.tsx` |
+| The form (a pane of the „Mein Feedback" modal), and its entry points (avatar menu, org header, phone „Mehr") | `frontends/ui/src/features/product-feedback/components/feedback-form.tsx`, `feedback-threads.tsx`, `feedback-provider.tsx` |
 | Submit route, rate limited by `FEEDBACK_REPORT_LIMIT` (10 an hour per person) | `frontends/ui/src/app/api/feedback/reports/route.ts` |
 | Store, announce, open the ticket | `frontends/ui/src/lib/product-feedback/service.ts`, `announce.ts` |
 | The PostHog Support client (open, list, read, change status) | `frontends/ui/src/lib/posthog-support/client.ts`, `config.ts`, `types.ts` |
@@ -148,13 +148,30 @@ or failing, and because the inbox announcement points at it.
 
 ## Mein Feedback: the member's side of the thread
 
-The team answers in PostHog Support. The member reads it under **Mein Feedback**
-(avatar menu, phone „More" sheet, and „Chat öffnen" after sending), a sheet that
-lists their own cases and holds the chat on each. It is the same attributed
-message the shared chat renders (`UserMessage` with an author), the team on the
-left and the reporter on the right, and the same reply box the review threads
-use (`Composer`: Enter sends, the phone's action key says „Senden", a press on
-Send keeps the keyboard up).
+The team answers in PostHog Support. The member reads it under **Mein Feedback**,
+a modal shaped like a support inbox (`FeedbackThreadsDialog`): their own cases
+on the left, and on the right the chat on the selected one or the form for a
+new report. It is the same attributed message the shared chat renders
+(`UserMessage` with an author), the team on the left and the reporter on the
+right, and the same reply box the review threads use (`Composer`: Enter sends,
+the phone's action key says „Senden", a press on Send keeps the keyboard up).
+
+- **One modal, every door.** „Mein Feedback" (avatar menu, phone „Mehr"
+  sheet) opens it on the list; an inbox row, a push or a mail about a team
+  reply (`?feedback=<report id>`) opens it on that thread; every „Feedback
+  senden" (avatar menu, org header, phone „Mehr") opens it on the form, so
+  there is no standalone feedback dialog. All of them go through
+  `useOpenFeedback` / `useOpenFeedbackThreads` in `feedback-provider.tsx`.
+- **„Neues Feedback" in the modal.** The list's header has the button; the
+  form (`FeedbackForm`: kind, message, contact consent, the captured page and
+  browser) opens in the right pane. After sending, the list is read again,
+  the new case is selected in it and its thread opens with the thanks where
+  the answer will arrive. The modal refuses to close while a send is in flight.
+- **Two panes where there is room.** From `md:` up (which a phone on its side
+  is not) the list and the detail sit side by side, the open case marked in
+  the list (`aria-current` on the row, `Item`'s selected tint). Below it one
+  pane shows at a time, the detail with a back step to the list, and on a
+  phone the dialog takes the whole screen (`fullScreenOnMobile`).
 
 - **Cases, active first.** The list is split into **Aktiv** (every PostHog
   status but `resolved`, and a report without a readable ticket) and
@@ -172,9 +189,10 @@ Send keeps the keyboard up).
   because the conversations session the ticket was opened in is theirs, and
   reading it marks nothing seen. Everybody else gets a 403 there and a 404 on a
   colleague's thread. Whether the switch shows is the list's `canViewOffice`.
-- **On a phone** the sheet follows the visual viewport
-  (`useFitToVisualViewport`), so the reply box sits on the iOS keyboard instead
-  of behind it, and the thread keeps its end in view as the pane shrinks.
+- **On a phone** the full-screen dialog follows the visual viewport
+  (`useFitToVisualViewport`, only under `phone:`, where it is full screen), so
+  the reply box sits on the iOS keyboard instead of behind it, and the thread
+  keeps its end in view as the pane shrinks.
 
 - **Read from the ticket, every time.** `GET /api/feedback/reports/<id>/messages`
   reads the ticket's messages through the REST API and keeps the reporter's own
@@ -193,7 +211,7 @@ Send keeps the keyboard up).
   `0183`) counts from when it was sent, past a minute for the ticket's own
   setup. The shell shows the count on the menu entry and a dot on the avatar
   and on the phone's „Mehr" tab, read when the shell mounts, on window focus
-  after five minutes, and when the sheet closes (a thread read inside it is no
+  after five minutes, and when the modal closes (a thread read inside it is no
   longer news). One PostHog call (tickets filtered by the distinct ids on the
   page, `date_from=all`) serves the whole list.
 - **Only one's own, or the office's.** Every query is keyed to the session's
@@ -209,7 +227,7 @@ Send keeps the keyboard up).
 
 ## The reply notice: PostHog pokes, Piloti reads
 
-A member learns that the team answered without opening the sheet: every team
+A member learns that the team answered without opening „Mein Feedback": every team
 reply becomes a `feedback.replied` row in their inbox, pushed like any inbox
 row the person has push on for, and never mailed (ADR-0118, second amendment).
 
@@ -245,7 +263,7 @@ team replies in PostHog ──▶ $conversation_message_sent
   the next message pokes again.
 - **Idempotent.** `product_feedback.reporter_notified_at` (migration `0184`) is
   the newest reply announced. A poke announces only replies after it and after
-  `reporter_seen_at` (a reply already read in the sheet needs no notice), and
+  `reporter_seen_at` (a reply already read in „Mein Feedback" needs no notice), and
   moves it with a compare-and-set, so a replayed or concurrent poke writes no
   second row. If the row cannot be written the watermark is put back.
 - **One row per report.** `feedback.replied` collapses on the report: several
