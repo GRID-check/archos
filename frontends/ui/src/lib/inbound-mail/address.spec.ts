@@ -176,6 +176,15 @@ describe('redactProjectAddresses', () => {
     expect(redactProjectAddresses(text, DOMAIN)).toBe(text)
   })
 
+  it('matches the domain as a whole host: a longer label is foreign, a trailing dot or subdomain keeps its rest', () => {
+    const lookalike = `nachbar.zzzzzzzzzzzz@${DOMAIN}x.com`
+    expect(redactProjectAddresses(lookalike, DOMAIN)).toBe(lookalike)
+    expect(redactProjectAddresses(`an ${other}.`, DOMAIN)).toBe(`an nachbar.${REDACTED_TOKEN}@${DOMAIN}.`)
+    expect(redactProjectAddresses(`nachbar.zzzzzzzzzzzz@${DOMAIN.toUpperCase()}.evil.example`, DOMAIN)).toBe(
+      `nachbar.${REDACTED_TOKEN}@${DOMAIN}.evil.example`
+    )
+  })
+
   it('never yields something that parses as a project address', () => {
     const redacted = redactProjectAddresses(other, DOMAIN)
     expect(parseInboundAddress(redacted, DOMAIN).kind).toBe('malformed')

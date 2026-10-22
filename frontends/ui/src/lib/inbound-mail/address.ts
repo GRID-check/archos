@@ -118,10 +118,15 @@ export function inboundMailDomain(env: Readonly<Record<string, string | undefine
   return domain ? asciiLower(domain) : null
 }
 
-/** Regex metacharacters escaped, so a domain matches only itself. */
-function escapeRegExp(value: string): string {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
+/**
+ * A local part, `@` and a host: the candidates {@link redactProjectAddresses}
+ * compares with the configured domain. A literal pattern, so no configured
+ * value is ever compiled into a regex; both bounds keep the scan linear.
+ */
+const ADDRESS_CANDIDATE = /("[^"\s@]{1,64}"|[A-Za-z0-9!#$%&'*+/=?^_`{|}~.-]{1,64})@([A-Za-z0-9.-]{1,255})/g
+
+/** A host character: the domain matches only when none follows it. */
+const HOST_CHARACTER = /[A-Za-z0-9-]/
 
 /**
  * Every project address in `text` with its token replaced by
@@ -140,12 +145,14 @@ function escapeRegExp(value: string): string {
  */
 export function redactProjectAddresses(text: string, domain: string, keep: string | null = null): string {
   if (!domain || !text.includes('@')) return text
-  const pattern = new RegExp(`("[^"\\s@]{1,64}"|[A-Za-z0-9!#$%&'*+/=?^_\`{|}~.-]{1,64})@${escapeRegExp(domain)}(?![A-Za-z0-9-])`, 'gi')
-  return text.replace(pattern, (whole: string, local: string) => {
+  const lowerDomain = asciiLower(domain)
+  return text.replace(ADDRESS_CANDIDATE, (whole: string, local: string, host: string) => {
+    const lowerHost = asciiLower(host)
+    if (!lowerHost.startsWith(lowerDomain) || HOST_CHARACTER.test(lowerHost.charAt(lowerDomain.length))) return whole
     const token = tokenOfLocalPart(local)
     if (!token || token === keep) return whole
     const bare = bareLocalPart(local)
     const slug = bare.slice(0, bare.lastIndexOf('.') + 1)
-    return `${slug}${REDACTED_TOKEN}@${asciiLower(domain)}`
+    return `${slug}${REDACTED_TOKEN}@${lowerDomain}${host.slice(lowerDomain.length)}`
   })
 }
