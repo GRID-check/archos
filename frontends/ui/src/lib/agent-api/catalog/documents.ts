@@ -56,9 +56,11 @@ export const documentsOperations = [
   {
     name: 'document-get',
     domain: 'documents',
+    links: 'document',
     summary: 'Read one document’s listing row',
     description:
-      'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. ' +
+      'One document by id, as the shelf lists it: name, folder, tags, reading status, version summary and `projectId` ' +
+      '(null on the office shelf). ' +
       'Use document-status to follow ingestion.',
     method: 'GET',
     path: '/api/documents/[id]',

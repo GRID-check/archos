@@ -49,6 +49,7 @@ export const conversationsOperations = [
   {
     name: 'conversation-list',
     domain: 'conversations',
+    links: 'conversation',
     summary: 'List the conversations the person can see',
     description:
       'The conversations the person may open, their own and shared ones, most recently active first, with id, title, project and ' +
@@ -63,6 +64,7 @@ export const conversationsOperations = [
   {
     name: 'conversation-create',
     domain: 'conversations',
+    links: 'conversation',
     summary: 'Start a new conversation',
     description:
       'Creates an empty private conversation, optionally in a project (projectId from project-list) or about one document. ' +
@@ -75,6 +77,7 @@ export const conversationsOperations = [
   {
     name: 'conversation-get',
     domain: 'conversations',
+    links: 'conversation',
     summary: 'Read one conversation',
     description:
       'One conversation: title, project, visibility, engagement mode (when Piloti answers) and the person’s role. Messages: conversation-message-list.',
@@ -86,6 +89,7 @@ export const conversationsOperations = [
   {
     name: 'conversation-update',
     domain: 'conversations',
+    links: 'conversation',
     summary: 'Rename a conversation or change when Piloti answers',
     description:
       'Sets `title` (owner role) and/or the `engagement` mode that decides when Piloti answers (collaborator role); at least one. Returns it.',

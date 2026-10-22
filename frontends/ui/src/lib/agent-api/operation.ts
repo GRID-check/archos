@@ -141,7 +141,16 @@ export interface AgentOperation {
    * `document-list` with `scope: office_shelf`. The caller's own values win.
    */
   readonly inputDefaults?: OperationExample
+  /**
+   * The kind of object the answer holds, when a person can open it in the app:
+   * the door adds `url`, that object's page, to the answer itself or to each
+   * row one level in (`links.ts`), where the deployment pins its origin.
+   */
+  readonly links?: LinkKind
 }
+
+/** What a door answer may link to: the objects with a page of their own in the app. */
+export type LinkKind = 'project' | 'document' | 'task-run' | 'conversation'
 
 export type SpansProjects = 'always' | 'unlessScoped'
 

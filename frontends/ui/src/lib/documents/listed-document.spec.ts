@@ -41,7 +41,7 @@ describe('getListedDocument', () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(makeDocument({ id: 'doc-1', projectId: 'proj-1', scope: 'project' }))
     vi.mocked(findShelfDocumentListRow).mockResolvedValue(ROW)
 
-    expect(await getListedDocument(session, 'doc-1')).toBe(ROW)
+    expect(await getListedDocument(session, 'doc-1')).toEqual({ ...ROW, projectId: 'proj-1' })
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, 'doc-1')
     expect(findShelfDocumentListRow).toHaveBeenCalledWith({ kind: 'project', projectId: 'proj-1' }, 'org-1', 'doc-1', {
       hiddenFolderIds: ['hidden-1'],

@@ -28,7 +28,7 @@ Quote what these return, with its place. The office relies on a citation being r
 
 ## How ids flow
 
-`project-list` gives the project id every project operation takes: in the path where an operation names one project, as `projectId` where a list spans projects. Each description says which operation its ids come from. Lists are pages: pass `limit`, and the previous page's `cursor`, where a list takes them.
+`project-list` gives the project id every project operation takes: in the path where an operation names one project, as `projectId` where a list spans projects. Each description says which operation its ids come from. Lists are pages: pass `limit`, and the previous page's `cursor`, where a list takes them. A project, document, task run or conversation in a result carries `url`, the page in Piloti where the person opens it: give them that link.
 
 ## Writing
 

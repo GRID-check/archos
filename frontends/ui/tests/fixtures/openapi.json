@@ -4360,7 +4360,7 @@
       "get": {
         "operationId": "document-get",
         "summary": "Read one document’s listing row",
-        "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion.",
+        "description": "One document by id, as the shelf lists it: name, folder, tags, reading status, version summary and `projectId` (null on the office shelf). Use document-status to follow ingestion.",
         "tags": [
           "documents"
         ],

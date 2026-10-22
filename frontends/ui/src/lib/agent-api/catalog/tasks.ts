@@ -96,6 +96,7 @@ export const tasksOperations = [
   {
     name: 'task-run-start',
     domain: 'tasks',
+    links: 'task-run',
     summary: 'Run a task now',
     description:
       'Run a task now. 409 when it is disabled; at capacity the run is `skipped`, the reason in `error`. ' +
@@ -108,6 +109,7 @@ export const tasksOperations = [
   {
     name: 'project-task-run-list',
     domain: 'tasks',
+    links: 'task-run',
     summary: 'List the task runs of a project',
     description:
       'A project’s task runs, newest first, with status, `taskId`, review and filed document. Filter by ' +
@@ -122,6 +124,7 @@ export const tasksOperations = [
   {
     name: 'task-run-review',
     domain: 'tasks',
+    links: 'task-run',
     summary: 'Accept or reject a finished task run',
     description:
       'Accept or reject a finished run (`decision`); a rejection’s `reason` is told to the task’s next run. ' +
@@ -135,6 +138,7 @@ export const tasksOperations = [
   {
     name: 'task-run-commission',
     domain: 'tasks',
+    links: 'task-run',
     summary: 'Commission a research run',
     description:
       'Start a deep research run in a project conversation (`conversationId`, conversation-list): `question`, ' +
@@ -149,6 +153,7 @@ export const tasksOperations = [
   {
     name: 'task-run-get',
     domain: 'tasks',
+    links: 'task-run',
     summary: 'Read one task run and what it produced',
     description:
       'One task run: status, `taskId`, its message, ledger (phase, documents read) and `report`: `text` (first ' +
@@ -163,6 +168,7 @@ export const tasksOperations = [
   {
     name: 'task-run-cancel',
     domain: 'tasks',
+    links: 'task-run',
     summary: 'Stop a running task run',
     description:
       'Stop a running run; 409 when it can no longer stop. Answers the run view; the ledger turns `cancelled` ' +

@@ -366,10 +366,10 @@
    "name": "document-get",
    "domain": "documents",
    "summary": "Read one document’s listing row",
-   "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion.",
+   "description": "One document by id, as the shelf lists it: name, folder, tags, reading status, version summary and `projectId` (null on the office shelf). Use document-status to follow ingestion.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-get\",\"domain\":\"documents\",\"summary\":\"Read one document’s listing row\",\"description\":\"One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion.\",\"annotations\":{\"title\":\"Read one document’s listing row\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-get\",\"domain\":\"documents\",\"summary\":\"Read one document’s listing row\",\"description\":\"One document by id, as the shelf lists it: name, folder, tags, reading status, version summary and `projectId` (null on the office shelf). Use document-status to follow ingestion.\",\"annotations\":{\"title\":\"Read one document’s listing row\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-ingest-cancel",

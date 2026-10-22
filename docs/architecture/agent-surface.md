@@ -784,6 +784,30 @@ size). The route's own parsing stays the gate, so name the real form fields in `
 Outlook archive is three operations: `mail-import-start`, `mail-import-part-upload` (once per
 part), `mail-import-complete`.
 
+### Links into the app
+
+An agent that found a project, a document, a task run or a conversation can hand the person a
+link to it, the way PostHog's MCP puts `_posthogUrl` on its rows. An operation whose answer holds
+such objects declares `links: 'project' | 'document' | 'task-run' | 'conversation'` in its catalog
+entry, and `fromOperationResult` adds `url`, the absolute page a person opens, through
+`withLinks` (`lib/agent-api/links.ts`). That module is the one table from kind to page: a project
+is `/app/projects/<id>`, a document and a conversation are the sharing registry's own deep links
+(`describeResource(…).deepLink`, the ones the inbox opens), a task run is its block in its thread
+(`chat?session=…&run=…`), or the project's task list when it never had a thread. The objects
+linked are the answer itself when it is one (it has the kind's id), else the rows one level in: a
+bare list, each array of a page, each wrapped object (`{ document }`, `{ run }`). Nothing deeper,
+so a nested object of another kind never gets this kind's link. The project comes from the row's
+own `projectId` when it has the key (null is the office shelf), else from the call: the path's
+`[id]` under `/api/projects/[id]`, then `projectId` in the query or body. `document-get` answers
+its `projectId` for that reason. An answer that already has `url` keeps it.
+
+The URL is absolute, from `configuredAppOrigin()`, never the request's Host; a deployment that
+pins no origin gets no `url` at all, rather than a path an agent cannot open. It is the door's
+own field, not the route's: the UI navigates with its own relative paths and reads no `url` from
+these routes, so ADR-0131's "fix the route" does not apply. A per-operation declaration rather
+than guessing from the shape, because `{ id }` is a project in one answer and a document in the
+next. The backend operations (`files-list`, `knowledge-search`) carry no links yet.
+
 ### Sensitive operations
 
 `sensitivity: 'access'` marks an operation that widens who may do what (sharing

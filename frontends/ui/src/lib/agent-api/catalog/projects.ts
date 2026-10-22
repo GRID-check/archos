@@ -64,6 +64,7 @@ export const projectsOperations = [
   {
     name: 'project-list',
     domain: 'projects',
+    links: 'project',
     summary: 'List the projects the person can see',
     description:
       'The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (the profile’s name for it), ' +
@@ -78,6 +79,7 @@ export const projectsOperations = [
   {
     name: 'project-get',
     domain: 'projects',
+    links: 'project',
     summary: 'Read one project',
     description: 'One project by id: name, status, dates and the person’s access to it.',
     method: 'GET',
@@ -88,6 +90,7 @@ export const projectsOperations = [
   {
     name: 'project-rename',
     domain: 'projects',
+    links: 'project',
     summary: 'Rename a project',
     description: 'Give a project a new name. Needs project:manage.',
     method: 'PATCH',
@@ -114,6 +117,7 @@ export const projectsOperations = [
   {
     name: 'project-create',
     domain: 'projects',
+    links: 'project',
     summary: 'Create a project',
     description:
       'Creates a project in the organization and returns it with its id. Give a name; optionally the address (typed `address`), ' +
