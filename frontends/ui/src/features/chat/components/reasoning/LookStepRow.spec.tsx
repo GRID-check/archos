@@ -1,8 +1,9 @@
 /**
  * The Herleitung's look rows (ADR-0128), from wire steps folded the way the
- * app folds them: „Angesehen: <document>, S. <page>, <where>“ with a
- * thumbnail, consecutive looks at one document as one row, a click opens the
- * document at the place. And the graph shows them under itself.
+ * app folds them: the row a `look` call draws („Betrachtet <document>, S.
+ * <page>, <where>“) with a thumbnail, consecutive looks at one document as one
+ * row, a click opens the document at the place. And the graph shows them under
+ * itself.
  */
 import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
@@ -71,8 +72,10 @@ describe('LookStepRows', () => {
     restore = installLayoutObservers({ frameWidth: 200 })
     const user = userEvent.setup()
     render(<LookStepRows steps={storedSteps([look(1)])} />)
-    const row = screen.getByTestId('look-step-row')
-    expect(row).toHaveTextContent('Looked at: Grundriss EG.pdf, p. 2, oben rechts')
+    const row = within(screen.getByTestId('look-step-rows')).getByTestId('work-row')
+    // The region comes German off the wire and reads in the reader's language.
+    expect(row).toHaveTextContent('Looks at Grundriss EG.pdf, p. 2, top right')
+    expect(row).toHaveTextContent('M 1:100')
     await waitFor(() => expect(within(row).getByTestId('region-mark')).toBeInTheDocument())
 
     await user.click(within(row).getByRole('button', { name: 'Open Grundriss EG.pdf at p. 2' }))
@@ -82,10 +85,10 @@ describe('LookStepRows', () => {
 
   test('several looks at one document: one row, a strip with each place named', () => {
     render(<LookStepRows steps={storedSteps([look(1), look(2, { region: null, where: null, page: 1 })])} />)
-    const row = screen.getByTestId('look-step-row')
-    expect(row).toHaveTextContent('Looked at: Grundriss EG.pdf, 2 places')
+    const row = within(screen.getByTestId('look-step-rows')).getByTestId('work-row')
+    expect(row).toHaveTextContent('Looks at Grundriss EG.pdf2 passages')
     expect(within(row).getAllByTestId('page-place-button')).toHaveLength(2)
-    expect(row).toHaveTextContent('p. 2, oben rechts')
+    expect(row).toHaveTextContent('p. 2, top right')
     expect(row).toHaveTextContent('p. 1')
   })
 
@@ -99,7 +102,8 @@ describe('LookStepRows', () => {
     expect(screen.getByTestId('look-step-rows')).toBeInTheDocument()
   })
 
-  test('the German wording', () => {
-    expect(de.chat.thinking.look.step).toBe('Angesehen: {document}, S. {page}, {where}')
+  test('the German wording: the verb of a look row, and the region as the backend words it', () => {
+    expect(de.chat.thinking.work.verb.look).toBe('Betrachtet')
+    expect(de.chat.thinking.look.region.topRight).toBe('oben rechts')
   })
 })

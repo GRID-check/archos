@@ -20,7 +20,7 @@
  */
 
 import type { StoredAction, StoredThinkingStep } from '@/lib/conversations/message-provenance'
-import { lookStepPlace, type LookStepPlace } from './look-steps'
+import { lookStepPlace, type LookStepGroup, type LookStepPlace } from './look-steps'
 import type { RetrievalRound } from './retrieval-rounds'
 import type { WorkFold } from './work-sentence'
 
@@ -46,7 +46,11 @@ export interface WorkRow {
 }
 
 export interface WorkRound {
-  /** The wire's round number; calls that carry none sit in the round before them (the first, at the start). */
+  /**
+   * The wire's round number. A call that carries none sits in the round before
+   * it; after the prefetch (which draws no row) it waits for the next round
+   * the wire announces, and gets a round of its own when none follows.
+   */
   round: number
   /** The rows in view, in the order the calls started, or worst first in a round over {@link MAX_ROWS}. */
   rows: WorkRow[]
@@ -65,6 +69,9 @@ const startOf = (step: StoredThinkingStep): number => {
 const isRunning = (step: StoredThinkingStep, action: StoredAction): boolean =>
   !step.isComplete && action.status === 'running'
 
+/** Stored as running and no longer live: the turn ended before the call settled. */
+export const isInterrupted = (row: WorkRow): boolean => !row.running && row.action.status === 'running'
+
 /** Whether a look at `place` is the one this `look` row made. */
 const isLookOf = (action: StoredAction, place: LookStepPlace): boolean => {
   if (action.documentId && place.place.document.id)
@@ -82,9 +89,12 @@ export const prefetchRounds = (steps: readonly StoredThinkingStep[]): Set<number
     )
   )
 
-/** How bad a row's outcome is, for „worst first“: failed, then empty, then running, then found. */
-const severity = (row: WorkRow): number =>
-  row.running ? 2 : row.action.status === 'error' ? 0 : row.action.status === 'empty' ? 1 : 3
+/** How bad a row's outcome is, for „worst first“: failed, then interrupted or empty, then running, then found. */
+const severity = (row: WorkRow): number => {
+  if (row.running) return 2
+  if (row.action.status === 'error') return 0
+  return row.action.status === 'empty' || isInterrupted(row) ? 1 : 3
+}
 
 const sum = (values: Array<number | undefined>): number | undefined =>
   values.some((value) => value !== undefined)
@@ -158,18 +168,16 @@ export function workRounds(steps: readonly StoredThinkingStep[]): WorkRound[] {
     byRound.set(round, created)
     return created
   }
-  let current = 0
-  for (const step of steps) {
-    if (step.scope === 'deep') continue
-    if (step.round !== undefined && (step.kind === 'action' || step.kind === 'look'))
-      current = step.round
-    if (prefetch.has(current) && (step.kind === 'action' || step.kind === 'look')) continue
+  // Calls without a round met while the current round is the prefetch: they
+  // are the model's, not the prefetch's, and wait for the next announced round.
+  let pending: StoredThinkingStep[] = []
+  const place = (round: number, step: StoredThinkingStep) => {
     if (step.kind === 'look') {
-      slot(current).looks.push(step)
-      continue
+      slot(round).looks.push(step)
+      return
     }
-    if (step.kind !== 'action' || !step.action) continue
-    slot(current).rows.push({
+    if (!step.action) return
+    slot(round).rows.push({
       start: startOf(step),
       row: {
         id: step.id,
@@ -180,6 +188,28 @@ export function workRounds(steps: readonly StoredThinkingStep[]): WorkRound[] {
       },
     })
   }
+  let current = 0
+  let latest = 0
+  for (const step of steps) {
+    if (step.scope === 'deep') continue
+    if (step.round !== undefined) latest = Math.max(latest, step.round)
+    const call = (step.kind === 'action' && step.action) || step.kind === 'look'
+    if (!call) continue
+    if (step.round !== undefined) {
+      current = step.round
+      // Only a call that carries the prefetch round is the prefetch's.
+      if (prefetch.has(current)) continue
+      for (const waiting of pending) place(current, waiting)
+      pending = []
+      place(current, step)
+      continue
+    }
+    if (prefetch.has(current)) pending.push(step)
+    else place(current, step)
+  }
+  // No round announced after them: the next one the wire has opened, else one of their own.
+  const own = prefetch.has(latest) ? latest + 1 : latest
+  for (const waiting of pending) place(own, waiting)
 
   const rounds: WorkRound[] = []
   for (const round of [...byRound.keys()].sort((a, b) => a - b)) {
@@ -204,6 +234,32 @@ export function workRounds(steps: readonly StoredThinkingStep[]): WorkRound[] {
     })
   }
   return rounds
+}
+
+/**
+ * Looks no action row explains (a turn stored before ADR-0131, a look of the
+ * prefetch) as the row a `look` call would have drawn: „Betrachtet
+ * Grundriss EG.pdf, S. 2, oben rechts“, or the document and how many places.
+ */
+export function lookGroupRow(group: LookStepGroup): WorkRow {
+  const [first] = group.looks
+  const { document } = group
+  return {
+    id: group.key,
+    action: {
+      verb: 'look',
+      status: 'ok',
+      target: document.name,
+      ...(document.id ? { documentId: document.id } : {}),
+      ...(document.shelf === 'base' ? { shelf: 'base' } : {}),
+      ...(group.looks.length === 1
+        ? { pages: String(first.place.page) }
+        : { counts: { hits: group.looks.length } }),
+    },
+    running: false,
+    callIds: [],
+    looks: group.looks,
+  }
 }
 
 /** Every row of a round, in view and folded. */

@@ -29,8 +29,20 @@ import {
   workRounds,
   type WorkRow,
 } from './work-list'
-import { breadcrumb, firstPage, pageRange, workParts, workPartsText } from './work-sentence'
+import {
+  breadcrumb,
+  firstPage,
+  pageRange,
+  quoteQuery,
+  regionWords,
+  settledHead,
+  workParts,
+  workPartsText,
+} from './work-sentence'
 import { normalizeFileName } from './citations'
+
+/** The no-break space the copy binds a number to its noun with. */
+const NB = '\u00A0'
 
 describe('the fold of an action', () => {
   test('STARTED makes the running row, FINISHED replaces it by id and keeps the start', () => {
@@ -146,6 +158,58 @@ describe('workRounds', () => {
         .flatMap(allRows)
         .map((row) => row.id)
     ).not.toContain('call:p0')
+  })
+
+  test('a call without a round after the prefetch stays visible: the next round takes it, else one of its own', () => {
+    const prefetch = [
+      { id: 'status:retrieval:0', kind: 'retrieval', round: 0, key: 'status.retrieval.withQuery', values: {}, prefetch: true },
+      { id: 'p0', call_id: 'p0', kind: 'action', verb: 'search', round: 0, query: 'x', status: 'ok' },
+    ]
+    const roundless = { id: 'w', call_id: 'w', kind: 'action', verb: 'workspace', target: 'task-list', status: 'ok' }
+    const alone = workRounds(storedSteps([...prefetch, roundless]))
+    expect(alone.map((round) => [round.round, round.rows.map((row) => row.id)])).toEqual([[1, ['w']]])
+    const followed = workRounds(
+      storedSteps([
+        ...prefetch,
+        roundless,
+        { id: 'r', call_id: 'r', kind: 'action', verb: 'read', round: 1, target: 'a.pdf', status: 'ok' },
+      ])
+    )
+    expect(followed.map((round) => [round.round, round.rows.map((row) => row.id)])).toEqual([
+      [1, ['w', 'r']],
+    ])
+    // Only the call that carries the prefetch round is the prefetch's.
+    expect(followed.flatMap(allRows).map((row) => row.id)).not.toContain('p0')
+  })
+
+  test('a call without a round after a model round sits in that round', () => {
+    const rounds = workRounds(
+      storedSteps([
+        { id: 'r', call_id: 'r', kind: 'action', verb: 'read', round: 1, target: 'a.pdf', status: 'ok' },
+        { id: 'w', call_id: 'w', kind: 'action', verb: 'workspace', target: 'task-list', status: 'ok' },
+      ])
+    )
+    expect(rounds.map((round) => [round.round, round.rows.map((row) => row.id)])).toEqual([[1, ['r', 'w']]])
+  })
+
+  test('a call left running when its turn ended ranks with the empty ones, not the found', () => {
+    const steps = storedSteps(
+      // Six calls of six kinds: nothing folds, the round is over five rows.
+      (['search', 'list', 'web', 'law', 'model', 'read'] as const).map((verb, index) => ({
+        id: index === 5 ? 'f' : verb,
+        call_id: verb,
+        kind: 'action',
+        verb,
+        round: 1,
+        query: 'x',
+        target: 'a.pdf',
+        status: index === 5 ? 'running' : 'ok',
+      }))
+    )
+    // storedSteps settles every step: the turn is over, `f` never finished.
+    const [round] = workRounds(steps)
+    expect(round.rows[0].id).toBe('f')
+    expect(round.rows[0].running).toBe(false)
   })
 
   test('every row carries its call id', () => {
@@ -265,12 +329,12 @@ describe('workParts', () => {
     ).toEqual({
       verb: 'Sucht wörtlich',
       object: '„Brandabschnitt“ im Projekt',
-      result: '14 Treffer · 3 Dokumente',
+      result: `14${NB}Treffer${NB}· 3${NB}Dokumente`,
       tone: 'ok',
     })
     // „von 41“ went by the value test: the place proves, the denominator does not.
     expect(text({ verb: 'search', status: 'ok', query: 'Fläche', counts: { hits: 1 } })).toBe(
-      'Sucht „Fläche“: 1 Treffer'
+      `Sucht „Fläche“: 1${NB}Treffer`
     )
   })
 
@@ -284,7 +348,8 @@ describe('workParts', () => {
       })
     ).toEqual({
       verb: 'Sucht in',
-      object: 'OIB-RL 2, Ausgabe 2023: „Brandabschnitt Tiefgarage“',
+      // „OIB‑RL“ never breaks at its hyphen (U+2011).
+      object: 'OIB\u2011RL 2, Ausgabe 2023: „Brandabschnitt Tiefgarage“',
       result: 'kein Treffer',
       tone: 'empty',
     })
@@ -298,23 +363,23 @@ describe('workParts', () => {
         target: '03 Einreichung/Pläne',
         counts: { files: 12, folders: 2 },
       })
-    ).toBe('Öffnet 03 Einreichung › Pläne: 12 Dateien, 2 Ordner')
+    ).toBe(`Öffnet 03 Einreichung › Pläne: 12${NB}Dateien, 2${NB}Ordner`)
     expect(breadcrumb('a\\b/c')).toBe('a › b › c')
   })
 
   test('read and look give pages typeset, or a Punkt; a look its place and its reading', () => {
     expect(
       text({ verb: 'read', status: 'ok', target: 'EG.pdf', pages: '2-3', counts: { hits: 2 } })
-    ).toBe('Liest EG.pdf, S. 2–3: 2 Stellen')
+    ).toBe(`Liest EG.pdf, S.${NB}2–3: 2${NB}Stellen`)
     expect(text({ verb: 'read', status: 'ok', target: 'OIB-RL 2', pages: 'Pkt. 3.5' })).toBe(
-      'Liest OIB-RL 2, Pkt. 3.5'
+      `Liest OIB\u2011RL 2, Pkt.${NB}3.5`
     )
     expect(
       text(
         { verb: 'look', status: 'ok', target: 'EG.pdf', pages: '2' },
         { where: 'oben rechts', reading: 'BA 2: 1.420 m²' }
       )
-    ).toBe('Sieht sich an EG.pdf, S. 2, oben rechts: BA 2: 1.420 m²')
+    ).toBe(`Betrachtet EG.pdf, S.${NB}2, oben rechts: BA 2: 1.420 m²`)
     // A long reading is no figure for the row's right edge.
     expect(
       workParts(t, { verb: 'look', status: 'ok', target: 'EG.pdf' }, { reading: 'x'.repeat(80) })
@@ -325,19 +390,34 @@ describe('workParts', () => {
     expect(firstPage('2-3')).toBe(2)
   })
 
-  test('the other verbs', () => {
+  test('the corpus verbs name where, then the query in quotes', () => {
     expect(text({ verb: 'law', status: 'ok', query: 'Wiener Garagengesetz' })).toBe(
-      'Sucht im RIS „Wiener Garagengesetz“'
+      'Sucht im RIS: „Wiener Garagengesetz“'
     )
     expect(text({ verb: 'web', status: 'ok', query: 'ÖNORM B 3806', counts: { hits: 6 } })).toBe(
-      'Sucht im Web „ÖNORM B 3806“: 6 Treffer'
+      `Sucht im Web: „ÖNORM B 3806“: 6${NB}Treffer`
     )
     expect(text({ verb: 'lookup', status: 'ok', query: 'Tiefgarage' })).toBe(
-      'Sucht in anderen Projekten „Tiefgarage“'
+      'Sucht in anderen Projekten: „Tiefgarage“'
     )
     expect(text({ verb: 'model', status: 'ok', query: 'Fläche' })).toBe(
-      'Fragt das Gebäudemodell Fläche'
+      'Fragt das Gebäudemodell ab: „Fläche“'
     )
+    const tEn = createTranslator(en, 'chat')
+    const textEn = (action: StoredAction) => workPartsText(workParts(tEn, action))
+    expect(textEn({ verb: 'law', status: 'ok', query: 'Garagengesetz' })).toBe(
+      'Searches the RIS for “Garagengesetz”'
+    )
+    expect(textEn({ verb: 'web', status: 'ok', query: 'ÖNORM' })).toBe('Searches the web for “ÖNORM”')
+    expect(textEn({ verb: 'lookup', status: 'ok', query: 'Tiefgarage' })).toBe(
+      'Searches other projects for “Tiefgarage”'
+    )
+    expect(textEn({ verb: 'model', status: 'ok', query: 'area' })).toBe(
+      'Queries the building model for “area”'
+    )
+  })
+
+  test('the other verbs', () => {
     expect(text({ verb: 'workspace', status: 'ok', target: 'task-list' })).toBe(
       'Arbeitsbereich: task-list'
     )
@@ -365,13 +445,76 @@ describe('workParts', () => {
     })
   })
 
+  test('a call stored as running whose turn ended is interrupted, never a result', () => {
+    expect(workParts(t, { verb: 'search', status: 'running', query: 'x' })).toMatchObject({
+      result: 'abgebrochen',
+      tone: 'interrupted',
+    })
+  })
+
   test('a folded row names how many, and sums what they found', () => {
     expect(
       text(
         { verb: 'read', status: 'ok', target: 'Plan 1.pdf' },
         { fold: { count: 7, counts: { hits: 18 } } }
       )
-    ).toBe('Liest 7 Dokumente: 18 Stellen')
+    ).toBe(`Liest 7${NB}Dokumente: 18${NB}Stellen`)
+  })
+
+  test('folded searches carry no verb: the count says what they were', () => {
+    const fold = { count: 4, counts: { hits: 9 } }
+    expect(
+      workParts(t, { verb: 'search', status: 'ok', mode: 'exact', query: 'x' }, { fold })
+    ).toMatchObject({ verb: '', object: `4${NB}Suchen` })
+    expect(workParts(t, { verb: 'law', status: 'ok', query: 'x' }, { fold })).toMatchObject({
+      verb: '',
+      object: `4${NB}Suchen im RIS`,
+    })
+    expect(workParts(t, { verb: 'model', status: 'ok', query: 'x' }, { fold })).toMatchObject({
+      verb: '',
+      object: `4${NB}Abfragen am Gebäudemodell`,
+    })
+    // Reading, looking and opening keep their verb: „Liest 7 Dokumente“ reads.
+    expect(workParts(t, { verb: 'list', status: 'ok', target: 'a' }, { fold })).toMatchObject({
+      verb: 'Öffnet',
+      object: `4${NB}Ordner`,
+    })
+  })
+
+  test('a query never nests its quotes', () => {
+    expect(quoteQuery(t, '„Brandabschnitt“')).toBe('Brandabschnitt')
+    expect(quoteQuery(t, '"Brandabschnitt"')).toBe('Brandabschnitt')
+    expect(quoteQuery(t, '„Brandabschnitt“ Tiefgarage')).toBe('‚Brandabschnitt‘ Tiefgarage')
+    expect(quoteQuery(t, 'Fluchtweg "max 40 m" GK4')).toBe('Fluchtweg ‚max 40 m‘ GK4')
+    // Two quoted parts are no wrapper: both turn inner.
+    expect(quoteQuery(t, '"a" und "b"')).toBe('‚a‘ und ‚b‘')
+    expect(text({ verb: 'search', status: 'ok', query: '„Brandabschnitt“ Tiefgarage' })).toBe(
+      'Sucht „‚Brandabschnitt‘ Tiefgarage“'
+    )
+    expect(quoteQuery(createTranslator(en, 'chat'), '"a" b')).toBe('‘a’ b')
+  })
+
+  test('a look’s region reads in the reader’s language; an unknown phrase stands', () => {
+    expect(regionWords(createTranslator(en, 'chat'), 'oben rechts')).toBe('top right')
+    expect(regionWords(createTranslator(en, 'chat'), 'in der Seitenmitte')).toBe('page center')
+    expect(regionWords(t, 'oben rechts')).toBe('oben rechts')
+    expect(regionWords(t, '25 %')).toBe('25 %')
+  })
+
+  test('the settled head of a one-call turn is in the past, for every verb', () => {
+    expect(settledHead(t, { verb: 'read', status: 'ok', target: 'b.pdf' }, 'Brandschutzkonzept')).toBe(
+      'Gelesen: Brandschutzkonzept'
+    )
+    expect(settledHead(t, { verb: 'search', status: 'ok', query: 'x', shelf: 'project' })).toBe(
+      'Gesucht: „x“ im Projekt'
+    )
+    expect(settledHead(t, { verb: 'read', status: 'ok' })).toBe('Ein Dokument gelesen')
+    const tEn = createTranslator(en, 'chat')
+    expect(settledHead(tEn, { verb: 'law', status: 'ok', query: 'x' })).toBe('Searched the RIS: “x”')
+    for (const verb of ['search', 'list', 'read', 'look', 'lookup', 'law', 'web', 'model', 'workspace'] as const) {
+      expect(de.chat.thinking.work.done[verb]).toMatch(/\{name\}/)
+      expect(en.chat.thinking.work.done[verb]).toMatch(/\{name\}/)
+    }
   })
 
   test('the English twin reads', () => {
@@ -387,6 +530,6 @@ describe('workParts', () => {
           counts: { hits: 2, documents: 1 },
         })
       )
-    ).toBe('Searches verbatim “x” in the project: 2 hits · 1 document')
+    ).toBe(`Searches for the exact phrase “x” in the project: 2${NB}hits${NB}· 1${NB}document`)
   })
 })

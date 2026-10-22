@@ -185,8 +185,15 @@ export function documentShortName(name: string, title?: string | null): string {
   const full = documentDisplayName(name, title)
   const trimmed = full.replace(/,\s*(Ausgabe\s+[^,]+|Rev\.\s*[\d.]+)(?=,|$)/g, '')
   const cleaned = trimmed.replace(/,\s*$/, '').trim()
-  return cleaned || full
+  return bindAbbreviations(cleaned || full)
 }
+
+/**
+ * An abbreviation that must not break at its hyphen, bound with a no-break
+ * hyphen (U+2011): „OIB‑RL 2“ never ends a line on „OIB-“. Display only: the
+ * result is no key to match a document by.
+ */
+export const bindAbbreviations = (text: string): string => text.replace(/\bOIB-RL\b/g, 'OIB\u2011RL')
 
 /**
  * The edition/revision tail {@link documentShortName} drops — „Ausgabe Mai

@@ -209,11 +209,15 @@ stands one row per call: the verb muted, then what it was done to, then what cam
 back on the right — „Sucht wörtlich „Brandabschnitt“ im Projekt · 14 Treffer ·
 3 Dokumente“, „Liest Einreichplan EG.pdf, S. 2–3 · 2 Stellen“. A search that
 found nothing says where it looked: „Sucht in OIB-RL 2: „Brandabschnitt
-Tiefgarage“ · kein Treffer“. A status is a shape and a word (a ring for no hit, a
-triangle for a failed call, a quiet dot for a call still running); colour is kept
-for where a source comes from. A look shows the crop it read, marked „abgelesen,
-nicht gemessen“. Three or more calls of one kind fold into one row („Liest
-7 Dokumente ×7“); a step of more than five rows shows the worst three and „+N
+Tiefgarage“ · kein Treffer“; a search of a corpus names it first („Sucht im
+RIS: „Wiener Garagengesetz““). A status is a shape and a word (a ring for no
+hit, a triangle for a failed call with what that means for the answer on a line
+under it, a quiet dot for a call still running, a hollow one and „abgebrochen“
+for a call the turn ended under); colour is kept for where a source comes from.
+A look („Betrachtet …“) shows the crop it read, marked „abgelesen, nicht
+gemessen“, and holds its place while it runs. Three or more calls of one kind
+fold into one row („Liest 7 Dokumente ×7“; searches carry no verb: „4 Suchen
+im RIS ×4“); a step of more than five rows shows the worst three and „+N
 weitere“. No row carries a time: no one checks an answer by its seconds.
 
 **The automatic first search has no row.** When Piloti searches before it
@@ -224,7 +228,7 @@ like any other.
 (OIB-Richtlinie, Projektwissen …), the name, the edition when the title states
 one („Ausgabe Mai 2023“), the place („Pkt. 3.1.1“, „S. 7“) and the answer's
 marker („[1]“). What a step retrieved and the answer did not cite folds into one
-dashed card, „+2 abgerufen, nicht zitiert“; tapping it opens those cards. While
+dashed card marked „Nicht zitiert“, „+2 abgerufen“; tapping it opens those cards. While
 the answer is still being written nothing is cited yet, so it reads „+2
 weitere“. „bereits abgerufen“ still marks a passage a step fetched again.
 
@@ -236,12 +240,12 @@ before calls carried an id link nothing; there a row about a document opens it.
 **„Grundlagen · Entwurf“ closes the graph.** „Rechtsgrundlage“ lists the cited
 law with its edition and place, „Belegt durch“ the cited project and office
 documents with theirs, and „Offen“ every call that failed or found nothing:
-„Nicht beurteilbar, weil OIB-RL 2 zu „Brandabschnitt Tiefgarage“ keine
-Fundstelle liefert.“ It is the basis of a draft, never a proof.
+„Nicht beurteilbar, weil die Suche in OIB-RL 2 nach „Brandabschnitt
+Tiefgarage“ keine Fundstelle ergab.“ It is the basis of a draft, never a proof.
 
 **Two turns need no graph.** A turn that looked nothing up says „Ohne Recherche
-beantwortet“ in one line. A turn of a single call is that call: „Liest
-Brandschutzkonzept · S. 7 · zitiert [1]“. Neither opens.
+beantwortet“ in one line. A turn of a single call is that call, in the past:
+„Gelesen: Brandschutzkonzept · S. 7 · zitiert [1]“. Neither opens.
 
 **Older turns fold by step.** A turn stored before the calls had rows draws its
 steps as before; clicking one (or Enter on it — a real button reporting

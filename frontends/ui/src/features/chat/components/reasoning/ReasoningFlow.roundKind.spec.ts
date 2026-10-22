@@ -8,7 +8,7 @@ const t = createTranslator(de, 'chat')
 
 describe('roundKind', () => {
   test('a list_files-only round is a folder opened, even when the ledger accounts for it', () => {
-    expect(roundKind(false, 0, ['list_files'], t, true)).toBe('Ordner geöffnet')
+    expect(roundKind(false, 0, ['list_files'], t, true)).toBe('Ordner öffnen')
   })
 
   test('a workspace or model round is no miss either', () => {

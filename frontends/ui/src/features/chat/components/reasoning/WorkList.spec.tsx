@@ -42,6 +42,9 @@ const render = (ui: ReactElement) =>
 
 const rounds = (steps: ReturnType<typeof foldScene>) => workRounds(steps)
 
+/** The no-break space the copy binds a number to its noun with. */
+const NB = '\u00A0'
+
 describe('RoundCalls', () => {
   test('a row is verb, object and result; no time and no bar', () => {
     const restore = installLayoutObservers()
@@ -94,9 +97,104 @@ describe('RoundCalls', () => {
     ])
     render(<RoundCalls round={rounds(steps)[0]} />)
     const result = screen.getByTestId('work-row-result')
-    expect(result).toHaveTextContent('fehlgeschlagen · die Antwort stützt sich nicht darauf')
+    // The right edge holds the word alone; what it means sits under the object.
+    expect(result.textContent).toBe('fehlgeschlagen')
     expect(result.querySelector('svg')).not.toBeNull()
-    expect(result.className).not.toMatch(/text-error/)
+    expect(result.querySelector('svg')!.getAttribute('class')).toMatch(/inline-block/)
+    expect(result.className).not.toMatch(/text-error|inline-flex|whitespace-nowrap/)
+    const note = screen.getByTestId('work-row-failed-note')
+    expect(note).toHaveTextContent('die Antwort stützt sich nicht darauf')
+    expect(result).not.toContainElement(note)
+    expect(screen.getByTestId('work-row')).toHaveTextContent(
+      'Sucht im RIS: „Wiener Garagengesetz 2008“die Antwort stützt sich nicht darauffehlgeschlagen'
+    )
+  })
+
+  test('a call stored as running after its turn ended reads as interrupted, not as found', () => {
+    const steps = storedSteps([
+      {
+        id: 'a',
+        call_id: 'c',
+        kind: 'action',
+        verb: 'search',
+        round: 1,
+        query: 'Fluchtweg',
+        status: 'running',
+      },
+    ]).map((step) => ({ ...step, isComplete: true }))
+    render(<RoundCalls round={rounds(steps)[0]} />)
+    const row = screen.getByTestId('work-row')
+    expect(row.dataset.status).toBe('interrupted')
+    expect(screen.getByTestId('work-row-result')).toHaveTextContent('abgebrochen')
+  })
+
+  test('a running look holds the crop’s place, so settling does not move the rows below', () => {
+    const steps = storedSteps([
+      {
+        id: 'a',
+        call_id: 'c',
+        kind: 'action',
+        verb: 'look',
+        round: 1,
+        target: 'Grundriss EG.pdf',
+        pages: '2',
+        status: 'running',
+      },
+    ]).map((step) => ({ ...step, isComplete: false }))
+    render(<RoundCalls round={rounds(steps)[0]} />)
+    const skeleton = screen.getByTestId('work-row-look-skeleton')
+    expect(skeleton.style.width).toBe('132px')
+    expect(skeleton.style.height).toBe('96px')
+  })
+
+  test('the rows are ruled off only under a sentence; without one the node edge parts them', () => {
+    const [first] = rounds(foldScene(northStarScene()))
+    const { unmount } = render(<RoundCalls round={first} />)
+    expect(screen.getByTestId('work-round').className).toMatch(/border-t/)
+    unmount()
+    render(<RoundCalls round={first} ruled={false} />)
+    expect(screen.getByTestId('work-round').className).not.toMatch(/border-t/)
+  })
+
+  test('„+N weitere“ turns its chevron when it opens', async () => {
+    const steps = storedSteps(
+      ['a', 'b', 'c', 'd', 'e', 'f'].map((id, index) => ({
+        id,
+        call_id: id,
+        kind: 'action',
+        verb: index % 2 ? 'web' : 'law',
+        round: 1,
+        query: `q${id}`,
+        status: index < 3 ? 'ok' : 'empty',
+      }))
+    )
+    render(<RoundCalls round={rounds(steps)[0]} />)
+    const more = screen.getByTestId('work-round-more')
+    const chevron = more.querySelector('svg')!
+    expect(chevron.getAttribute('class')).not.toMatch(/rotate-180/)
+    await userEvent.click(more)
+    expect(more.querySelector('svg')!.getAttribute('class')).toMatch(/rotate-180/)
+    expect(more.className).toMatch(/pointer-coarse:min-h-11/)
+  })
+
+  test('a look no call explains is drawn as a look row, not as a second kind of line', () => {
+    const steps = storedSteps([
+      { id: 'a', call_id: 'c', kind: 'action', verb: 'search', round: 1, query: 'x', status: 'ok' },
+      {
+        id: 'look:1',
+        kind: 'look',
+        round: 1,
+        document_name: 'Schnitt A-A.pdf',
+        page: 3,
+        where: 'oben rechts',
+      },
+    ])
+    render(<RoundCalls round={rounds(steps)[0]} />)
+    const look = screen.getAllByTestId('work-row').find((row) => row.dataset.verb === 'look')!
+    // toHaveTextContent reads a no-break space as a space.
+    expect(look).toHaveTextContent('Betrachtet Schnitt A-A.pdf, S. 3, oben rechts')
+    expect(look.textContent).toContain(`S.${NB}3`)
+    expect(screen.queryByTestId('look-step-row')).toBeNull()
   })
 
   test('a row with a call id is a button that links; its name is the sentence', async () => {
@@ -106,7 +204,7 @@ describe('RoundCalls', () => {
       <RoundCalls round={first} linking={{ selection: null, onSelect }} />
     )
     const button = screen.getByRole('button', {
-      name: 'Sucht wörtlich „Brandabschnitt“ im Projekt: 14 Treffer · 3 Dokumente',
+      name: `Sucht wörtlich „Brandabschnitt“ im Projekt: 14${NB}Treffer${NB}· 3${NB}Dokumente`,
     })
     expect(button).toHaveAttribute('aria-pressed', 'false')
     await userEvent.click(button)
@@ -137,7 +235,10 @@ describe('RoundCalls', () => {
     restore()
     const restoreSecond = installLayoutObservers()
     render(<RoundCalls round={rounds(old)[1]} />)
-    await userEvent.click(screen.getAllByRole('button', { name: 'Einreichplan EG.pdf öffnen' })[0])
+    // Its name is the row's own sentence, then what a tap does.
+    await userEvent.click(
+      screen.getAllByRole('button', { name: /^Liest Einreichplan EG\.pdf, S\.\u00A02–3.* – öffnen$/ })[0]
+    )
     expect(await screen.findByRole('dialog')).toBeInTheDocument()
     restoreSecond()
   })

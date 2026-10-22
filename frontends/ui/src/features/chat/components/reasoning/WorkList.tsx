@@ -6,20 +6,24 @@
  *
  * A status is a shape and a word, never a colour: a running call has a quiet
  * dot and „läuft“, a search that found nothing a ring and „kein Treffer“, a
- * failed call a triangle and „fehlgeschlagen“. Colour is kept for where a
- * source comes from, on the cards below.
+ * call the turn ended under a hollow dot and „abgebrochen“, a failed call a
+ * triangle and „fehlgeschlagen“, with what that means for the answer on a
+ * second line under the object. Colour is kept for where a source comes from,
+ * on the cards below.
  *
  * Tapping a row lights up the source cards its call returned and sets the
  * others back (`LinkSelection`, joined by `call_id`). A row stored before the
  * wire carried a call id links to nothing; when it names a document it opens
  * that document instead, as it always did. A look row carries its crop, marked
- * as read off rather than measured.
+ * as read off rather than measured; while the look runs, a quiet box of the
+ * crop's size holds its place, so settling does not move the rows below.
  */
 
 import { useMemo, useState, type FC } from 'react'
 import {
   BookOpen,
   Boxes,
+  ChevronDown,
   Circle,
   FolderOpen,
   FolderSearch,
@@ -38,9 +42,15 @@ import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { ActionVerb, StoredAction } from '@/lib/conversations/message-provenance'
 import { lookStepGroups } from '../../lib/look-steps'
-import { isLinked, type LinkSelection, type WorkRound, type WorkRow } from '../../lib/work-list'
+import {
+  isLinked,
+  lookGroupRow,
+  type LinkSelection,
+  type WorkRound,
+  type WorkRow,
+} from '../../lib/work-list'
 import { firstPage, workParts, workPartsText, type WorkParts } from '../../lib/work-sentence'
-import { LookStepRow, LookStrip } from './LookStepRow'
+import { LookStrip, STRIP_MAX_HEIGHT, STRIP_WIDTH } from './LookStrip'
 
 const VERB_ICONS: Record<ActionVerb, LucideIcon> = {
   search: Search,
@@ -82,16 +92,18 @@ export interface RowLinking {
   onSelect: (selection: LinkSelection | null) => void
 }
 
+/** The shape before a result word, inline with the text so a wrapped result keeps it. */
+const ICON_INLINE = 'mr-1.5 inline-block align-[-2px]'
+
 /** The result on the row's right edge (or its second line on a phone): shape + word. */
 const ResultWord: FC<{ parts: WorkParts }> = ({ parts }) => {
-  const t = useTranslations('chat')
   if (!parts.result) return null
   const strong = parts.tone === 'empty' || parts.tone === 'error'
   return (
     <span
       data-testid="work-row-result"
       className={cn(
-        'inline-flex items-center gap-1.5 tabular-nums',
+        'tabular-nums',
         strong || parts.tone === 'running' ? 'text-foreground' : 'text-muted-foreground',
         strong && 'font-semibold'
       )}
@@ -99,19 +111,36 @@ const ResultWord: FC<{ parts: WorkParts }> = ({ parts }) => {
       {parts.tone === 'running' && (
         <span
           aria-hidden
-          className="bg-foreground animate-caret-breathe size-1.5 rounded-full motion-reduce:animate-none"
+          className={cn(
+            ICON_INLINE,
+            'bg-foreground animate-caret-breathe size-1.5 rounded-full align-[1px] motion-reduce:animate-none'
+          )}
+        />
+      )}
+      {parts.tone === 'interrupted' && (
+        <span
+          aria-hidden
+          className={cn(ICON_INLINE, 'border-muted-foreground size-1.5 rounded-full border align-[1px]')}
         />
       )}
       {parts.tone === 'empty' && (
-        <Circle aria-hidden strokeWidth={2.4} className="size-3 shrink-0" />
+        <Circle aria-hidden strokeWidth={2.4} className={cn(ICON_INLINE, 'size-3')} />
       )}
       {parts.tone === 'error' && (
-        <TriangleAlert aria-hidden strokeWidth={2.4} className="size-3 shrink-0" />
+        <TriangleAlert aria-hidden strokeWidth={2.4} className={cn(ICON_INLINE, 'size-3')} />
       )}
       {parts.result}
-      {parts.tone === 'error' && (
-        <span className="text-muted-foreground font-normal">{` · ${t('thinking.work.failedNote')}`}</span>
-      )}
+    </span>
+  )
+}
+
+/** What a failed call means for the answer, on its own muted line under the object. */
+const FailedNote: FC<{ parts: WorkParts }> = ({ parts }) => {
+  const t = useTranslations('chat')
+  if (parts.tone !== 'error') return null
+  return (
+    <span data-testid="work-row-failed-note" className="text-muted-foreground block">
+      {t('thinking.work.failedNote')}
     </span>
   )
 }
@@ -143,7 +172,8 @@ export const WorkRowView: FC<{
     <span className="min-w-0 [overflow-wrap:anywhere] break-words">
       {parts.verb && <span className="text-muted-foreground">{parts.verb} </span>}
       <span className="text-foreground">{parts.object}</span>
-      {times && <span className="text-muted-foreground tabular-nums">{` ${times}`}</span>}
+      {times && <span className="text-muted-foreground tabular-nums">{`\u00A0${times}`}</span>}
+      {!compact && <FailedNote parts={parts} />}
     </span>
   )
   const body = (
@@ -157,11 +187,12 @@ export const WorkRowView: FC<{
         <span className="flex min-w-0 flex-col">
           {text}
           <ResultWord parts={parts} />
+          <FailedNote parts={parts} />
         </span>
       ) : (
         <>
           {text}
-          <span className="justify-self-end whitespace-nowrap">
+          <span className="justify-self-end text-right">
             <ResultWord parts={parts} />
           </span>
         </>
@@ -172,7 +203,7 @@ export const WorkRowView: FC<{
     '-mx-2 grid w-[calc(100%+1rem)] gap-x-2.5 rounded-lg px-2 text-left text-[13px] leading-[19px]',
     compact
       ? 'min-h-11 grid-cols-[16px_minmax(0,1fr)] items-start py-[7px]'
-      : 'min-h-10 grid-cols-[16px_minmax(0,1fr)_auto] items-center py-2'
+      : 'min-h-10 grid-cols-[16px_minmax(0,1fr)_auto] items-center py-2 pointer-coarse:min-h-11'
   )
   const interactive = cn(
     lineClass,
@@ -188,7 +219,7 @@ export const WorkRowView: FC<{
     <li
       data-testid="work-row"
       data-verb={action.verb}
-      data-status={row.running ? 'running' : action.status}
+      data-status={parts.tone === 'interrupted' ? 'interrupted' : row.running ? 'running' : action.status}
       className="flex min-w-0 flex-col"
     >
       {linkable && linking ? (
@@ -213,7 +244,7 @@ export const WorkRowView: FC<{
           <button
             type="button"
             data-testid="work-row-open"
-            aria-label={t('thinking.work.open', { target: place.document.name })}
+            aria-label={t('thinking.work.open', { target: sentence })}
             onClick={() => setOpen(true)}
             className={interactive}
           >
@@ -222,9 +253,7 @@ export const WorkRowView: FC<{
           {open && <PagePlaceDialog place={place} open={open} onOpenChange={setOpen} />}
         </>
       ) : (
-        <p aria-label={sentence} className={lineClass}>
-          {body}
-        </p>
+        <p className={lineClass}>{body}</p>
       )}
       {group && !row.running && (
         <div
@@ -234,15 +263,20 @@ export const WorkRowView: FC<{
           )}
         >
           <LookStrip group={group} eager={eager} className="flex gap-2" />
+          {/* The row already says where; the caption says only what a crop is not. */}
           <span className="text-muted-foreground pb-0.5 text-[13px] leading-[19px]">
-            {look?.where
-              ? t('thinking.look.place', { page: look.place.page, where: look.where })
-              : look
-                ? t('thinking.look.placeWhole', { page: look.place.page })
-                : ''}
-            <br />
             {t('thinking.work.readOff')}
           </span>
+        </div>
+      )}
+      {action.verb === 'look' && row.running && (
+        <div className="mb-2 ml-[26px]">
+          <div
+            aria-hidden
+            data-testid="work-row-look-skeleton"
+            className="bg-muted max-w-full rounded-md"
+            style={{ width: STRIP_WIDTH, height: STRIP_MAX_HEIGHT }}
+          />
         </div>
       )}
     </li>
@@ -260,7 +294,13 @@ export const RoundCalls: FC<{
   compact?: boolean
   linking?: RowLinking
   eager?: boolean
-}> = ({ round, compact, linking, eager }) => {
+  /**
+   * A rule above the rows, parting them from the step's sentence. Off for a
+   * step without one: the node's own top edge already parts it, and a rule
+   * there draws a double line.
+   */
+  ruled?: boolean
+}> = ({ round, compact, linking, eager, ruled = true }) => {
   const t = useTranslations('chat')
   const [showMore, setShowMore] = useState(false)
   const strays = useMemo(() => lookStepGroups(round.strayLooks), [round.strayLooks])
@@ -271,7 +311,10 @@ export const RoundCalls: FC<{
       data-testid="work-round"
       data-round={round.round}
       aria-label={t('thinking.work.label')}
-      className="border-base relative z-20 mt-2 flex flex-col border-t pt-1"
+      className={cn(
+        'relative z-20 flex flex-col',
+        ruled ? 'border-base mt-2 border-t pt-1' : 'mt-1'
+      )}
     >
       {rows.map((row) => (
         <WorkRowView key={row.id} row={row} compact={compact} linking={linking} eager={eager} />
@@ -284,10 +327,18 @@ export const RoundCalls: FC<{
             aria-expanded={showMore}
             onClick={() => setShowMore((value) => !value)}
             className={cn(
-              'text-foreground pointer-fine:hover:bg-muted/60 -mx-2 flex min-h-10 w-[calc(100%+1rem)] items-center rounded-lg px-2 pl-[34px] text-left text-[13px] outline-none',
+              'group text-muted-foreground pointer-fine:hover:text-foreground pointer-fine:hover:bg-muted/60 duration-snap -mx-2 flex min-h-10 w-[calc(100%+1rem)] items-center gap-2.5 rounded-lg px-2 text-left text-[13px] outline-none transition-[color,background-color,scale] ease-out active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
               FOCUS_RING
             )}
           >
+            <ChevronDown
+              aria-hidden
+              strokeWidth={1.8}
+              className={cn(
+                'duration-quick size-4 shrink-0 transition-transform ease-out motion-reduce:transition-none',
+                showMore && 'rotate-180'
+              )}
+            />
             {showMore
               ? t('thinking.work.fewer')
               : t(allFound ? 'thinking.work.moreAllFound' : 'thinking.work.more', {
@@ -297,7 +348,13 @@ export const RoundCalls: FC<{
         </li>
       )}
       {strays.map((group) => (
-        <LookStepRow key={group.key} group={group} eager={eager} />
+        <WorkRowView
+          key={group.key}
+          row={lookGroupRow(group)}
+          compact={compact}
+          linking={linking}
+          eager={eager}
+        />
       ))}
     </ul>
   )

@@ -1007,19 +1007,32 @@ export const chat = {
   thinking: {
     // One row per document Piloti looked at (ADR-0128); its thumbnails open the place.
     look: {
-      step: 'Looked at: {document}, p. {page}, {where}',
-      stepWhole: 'Looked at: {document}, p. {page}',
-      stepMany: 'Looked at: {document}, {count} places',
-      place: 'p. {page}, {where}',
-      placeWhole: 'p. {page}',
+      place: 'p.\u00A0{page}, {where}',
+      placeWhole: 'p.\u00A0{page}',
+      // A place on a page in words: the backend sends them in German
+      // (`page_region_words.py`); here they stand in the reader's language.
+      region: {
+        topLeft: 'top left',
+        topRight: 'top right',
+        topCenter: 'top center',
+        bottomLeft: 'bottom left',
+        bottomRight: 'bottom right',
+        bottomCenter: 'bottom center',
+        middleLeft: 'center left',
+        middleRight: 'center right',
+        pageCenter: 'page center',
+      },
     },
     // The Herleitung's work list (ADR-0131): one row per call, grouped into
     // rounds. Sentences are built from the call's typed values, never from a
     // tool's text.
     work: {
       label: 'Work steps',
-      open: 'Open {target}',
+      // The accessible name of a row that opens a document: the row's sentence.
+      open: '{target} – open',
       running: 'running',
+      // A call the turn ended under (Stop, an error, a lost connection): no result.
+      interrupted: 'interrupted',
       noHit: 'no hit',
       nothingFound: 'nothing found',
       failed: 'failed',
@@ -1031,12 +1044,14 @@ export const chat = {
       fewer: 'Show fewer',
       // Calls of one kind on one row.
       times: '×{count}',
+      // Quotes inside a query that itself stands in “…”.
+      innerQuote: '‘{text}’',
       // Under a look's crop: read off is not measured.
       readOff: 'read off, not measured',
       // What a step did, from the verbs of its calls.
       kind: {
         search: 'Search',
-        read: 'Read',
+        read: 'Reading',
         list: 'Open folder',
         look: 'Look',
         model: 'Query the model',
@@ -1049,35 +1064,67 @@ export const chat = {
         web: 'on the web',
         session: 'in this chat',
       },
-      // The verb sits muted before its object: „Searches verbatim“ „“Brandabschnitt” in the project“.
+      // The verb sits muted before its object: „Searches for the exact phrase“ „“Brandabschnitt” in the project“.
       verb: {
-        search: 'Searches',
-        searchExact: 'Searches verbatim',
-        searchRegex: 'Searches by pattern',
-        searchIn: 'Searches in',
+        search: 'Searches for',
+        searchExact: 'Searches for the exact phrase',
+        searchRegex: 'Searches for the pattern',
+        searchIn: 'Searches',
         searchExactIn: 'Searches verbatim in',
         searchRegexIn: 'Searches by pattern in',
         list: 'Opens',
         read: 'Reads',
         look: 'Looks at',
-        lookup: 'Searches other projects',
-        law: 'Searches the RIS',
-        web: 'Searches the web',
-        model: 'Queries the building model',
+        lookup: 'Searches other projects for',
+        law: 'Searches the RIS for',
+        web: 'Searches the web for',
+        model: 'Queries the building model for',
         workspace: 'Workspace:',
+      },
+      // The settled head of a turn of exactly one call: what WAS done.
+      done: {
+        search: 'Searched: {name}',
+        list: 'Opened: {name}',
+        read: 'Read: {name}',
+        look: 'Looked at: {name}',
+        lookup: 'Searched other projects: {name}',
+        law: 'Searched the RIS: {name}',
+        web: 'Searched the web: {name}',
+        model: 'Queried the building model: {name}',
+        workspace: 'In the workspace: {name}',
+      },
+      doneFallback: {
+        search: 'Searched the documents',
+        list: 'Opened a folder',
+        read: 'Read a document',
+        look: 'Looked at a document',
+        lookup: 'Searched other projects',
+        law: 'Searched the RIS',
+        web: 'Searched the web',
+        model: 'Queried the building model',
+        workspace: 'Worked in the workspace',
       },
       object: {
         query: '“{query}”',
         queryShelf: '“{query}” {shelf}',
-        queryIn: '{target}: “{query}”',
-        pages: '{target}, p. {pages}',
+        queryIn: '{target} for “{query}”',
+        pages: '{target}, p.\u00A0{pages}',
         clause: '{target}, {pages}',
-        where: '{target}, p. {pages}, {where}',
+        where: '{target}, p.\u00A0{pages}, {where}',
       },
+      // Calls of one kind on one row. Searches carry no verb: „4 RIS searches“.
       many: {
-        documents: '{count, plural, one {# document} other {# documents}}',
-        folders: '{count, plural, one {# folder} other {# folders}}',
-        searches: '{count, plural, one {# query} other {# queries}}',
+        documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
+        folders: '{count, plural, one {#\u00A0folder} other {#\u00A0folders}}',
+        searches: '{count, plural, one {#\u00A0search} other {#\u00A0searches}}',
+        lawSearches: '{count, plural, one {#\u00A0RIS search} other {#\u00A0RIS searches}}',
+        webSearches: '{count, plural, one {#\u00A0web search} other {#\u00A0web searches}}',
+        lookupSearches:
+          '{count, plural, one {#\u00A0search in other projects} other {#\u00A0searches in other projects}}',
+        modelQueries:
+          '{count, plural, one {#\u00A0building model query} other {#\u00A0building model queries}}',
+        workspaceCalls:
+          '{count, plural, one {#\u00A0workspace call} other {#\u00A0workspace calls}}',
       },
       fallback: {
         search: 'Searches the documents',
@@ -1091,15 +1138,15 @@ export const chat = {
         workspace: 'Works in the workspace',
       },
       found: {
-        hits: '{count, plural, one {# hit} other {# hits}}',
+        hits: '{count, plural, one {#\u00A0hit} other {#\u00A0hits}}',
         hitsDocuments:
-          '{hits, plural, one {# hit} other {# hits}} · {documents, plural, one {# document} other {# documents}}',
-        documents: '{count, plural, one {# document} other {# documents}}',
-        places: '{count, plural, one {# passage} other {# passages}}',
+          '{hits, plural, one {#\u00A0hit} other {#\u00A0hits}}\u00A0· {documents, plural, one {#\u00A0document} other {#\u00A0documents}}',
+        documents: '{count, plural, one {#\u00A0document} other {#\u00A0documents}}',
+        places: '{count, plural, one {#\u00A0passage} other {#\u00A0passages}}',
         listing:
-          '{files, plural, one {# file} other {# files}}, {folders, plural, one {# folder} other {# folders}}',
-        files: '{count, plural, one {# file} other {# files}}',
-        folders: '{count, plural, one {# folder} other {# folders}}',
+          '{files, plural, one {#\u00A0file} other {#\u00A0files}}, {folders, plural, one {#\u00A0folder} other {#\u00A0folders}}',
+        files: '{count, plural, one {#\u00A0file} other {#\u00A0files}}',
+        folders: '{count, plural, one {#\u00A0folder} other {#\u00A0folders}}',
       },
     },
     inProgress: 'Thinking in progress',
@@ -1144,7 +1191,8 @@ export const chat = {
       // preposition welded on, not a proper noun. The backend sends the id.
       // Each entry is the prepositional phrase the templates below slot in.
       corpus: {
-        knowledge: 'the knowledge base',
+        // The words the Herleitung's rows use („Searches the documents“).
+        knowledge: 'the documents',
         ris: 'RIS (Austrian law)',
         web: 'the web',
         documents: 'your documents',
@@ -1180,8 +1228,8 @@ export const chat = {
           // names the document instead of a corpus. `{document}` is the name
           // the publisher or the office gave it — a proper noun, sent as
           // itself and never translated.
-          clause: 'Reading {document}, Pkt. {clause} …',
-          page: 'Reading {document}, p. {page} …',
+          clause: 'Reading {document}, Sec.\u00A0{clause} …',
+          page: 'Reading {document}, p.\u00A0{page} …',
           // Other formulations are being tried — the action, not the verdict:
           // the line says what is happening NOW, replacing the round's search
           // line, so it must not open with a failure. That the first pool was
@@ -1302,11 +1350,11 @@ export const chat = {
     // there are none: "0 sources" is a true number that reads as a failure, and
     // an answer grounded in a measurement of the model rightly has no citations.
     // The Herleitung's header: steps, cited sources and at most ONE warning, the worst.
-    derivationSteps: '{count, plural, one {# step} other {# steps}}',
-    derivationCited: '{count, plural, one {# source cited} other {# sources cited}}',
+    derivationSteps: '{count, plural, one {#\u00A0step} other {#\u00A0steps}}',
+    derivationCited: '{count, plural, one {#\u00A0source cited} other {#\u00A0sources cited}}',
     derivationWarning: {
-      failed: '{count, plural, one {# call failed} other {# calls failed}}',
-      open: '{count, plural, one {# point open} other {# points open}}',
+      failed: '{count, plural, one {#\u00A0call failed} other {#\u00A0calls failed}}',
+      open: '{count, plural, one {#\u00A0open point} other {#\u00A0open points}}',
     },
     // A turn without any research: one line, nothing to expand.
     noResearch: 'Answered without research',
@@ -1314,7 +1362,7 @@ export const chat = {
     // A turn of exactly one call: the header is the Herleitung.
     singleCited: 'cited {markers}',
     derivationSummary: 'Trace',
-    derivationSummaryWithSources: 'Trace · {count, plural, one {# source} other {# sources}}',
+    derivationSummaryWithSources: 'Trace\u00A0· {count, plural, one {#\u00A0source} other {#\u00A0sources}}',
     // aria-label naming the reasoning graph as one region for screen readers.
     reasoningGraphLabel: 'Reasoning trace',
     stepsLabel: 'Thinking steps',
@@ -1342,21 +1390,21 @@ export const chat = {
         law: 'Legal basis',
         evidence: 'Supported by',
         open: 'Open',
-        clause: 'Sec. {clause}',
-        page: 'p. {page}',
+        clause: 'Sec.\u00A0{clause}',
+        page: 'p.\u00A0{page}',
         // From a call without a hit: where it looked and for what. Never "No information found".
-        openNoHitIn: 'Cannot be judged, because {target} has no passage on “{query}”.',
-        openNoHitShelf: 'Cannot be judged, because the search {shelf} has no passage on “{query}”.',
-        openNoHit: 'Cannot be judged, because the search has no passage on “{query}”.',
-        openEmpty: 'Cannot be judged, because a call returned nothing: {what}.',
-        openFailed: 'Cannot be judged, because a call failed: {what}.',
+        openNoHitIn: 'Cannot be judged: the search in {target} for “{query}” found no passage.',
+        openNoHitShelf: 'Cannot be judged: the search {shelf} for “{query}” found no passage.',
+        openNoHit: 'Cannot be judged: the search for “{query}” found no passage.',
+        openEmpty: 'Cannot be judged: a call returned nothing ({what}).',
+        openFailed: 'Cannot be judged: a call failed ({what}).',
       },
       // A step's uncited sources, in one dashed card. While the answer runs no
       // one knows what it cites: then "more".
       uncited: {
         pill: 'Not cited',
         pillLive: 'Retrieved',
-        name: '+{count} retrieved, not cited',
+        name: '+{count} retrieved',
         nameLive: '+{count} more',
         show: '{count, plural, one {Show # uncited source} other {Show # uncited sources}}',
         hide: 'Hide uncited sources',
@@ -1383,7 +1431,7 @@ export const chat = {
       stepKindNoHits: 'No hits',
       // A round that only opened folders: it looks for no documents, so coming
       // back without any is no miss (ADR-0131).
-      stepKindBrowse: 'Folder opened',
+      stepKindBrowse: 'Open folder',
       // A layer that only opened passages of files the turn already had: it
       // searched for nothing. Telling that round apart from a fresh fetch is
       // the whole reason the word exists.
@@ -1397,9 +1445,9 @@ export const chat = {
       roundFoldMany: '{count} files · {first} and others',
       // The locus half of `roundFoldOne`, in the answer's own words (cf.
       // `answerSources.punktPage`): the passage, not the mechanism.
-      roundFoldLocusPage: 'p. {page}',
-      roundFoldLocusClause: 'Pkt. {clause}',
-      roundFoldLocusClausePage: 'Pkt. {clause} · p. {page}',
+      roundFoldLocusPage: 'p.\u00A0{page}',
+      roundFoldLocusClause: 'Sec.\u00A0{clause}',
+      roundFoldLocusClausePage: 'Sec.\u00A0{clause}\u00A0· p.\u00A0{page}',
       // Accessible name of the control that folds and unfolds the layer. The
       // card's own text is a conclusion and makes a poor control name.
       roundFold: 'Collapse step {n}',

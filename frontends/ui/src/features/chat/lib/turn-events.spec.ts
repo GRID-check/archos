@@ -41,14 +41,14 @@ describe('liveLine', () => {
         query: 'Fluchtweglänge GK4',
       }),
     ]
-    expect(liveLine(steps, tDe)).toBe('Sucht im Wissen: „Fluchtweglänge GK4“')
-    expect(liveLine(steps, tEn)).toBe('Searching the knowledge base: “Fluchtweglänge GK4”')
+    expect(liveLine(steps, tDe)).toBe('Sucht in den Dokumenten: „Fluchtweglänge GK4“')
+    expect(liveLine(steps, tEn)).toBe('Searching the documents: “Fluchtweglänge GK4”')
   })
 
   test("two corpora are joined in the reader's language", () => {
     const steps = [retrieval(0, 'status.retrieval.plain', { corpus: 'knowledge,ris' })]
-    expect(liveLine(steps, tDe)).toBe('Sucht im Wissen und im RIS …')
-    expect(liveLine(steps, tEn)).toBe('Searching the knowledge base and RIS (Austrian law) …')
+    expect(liveLine(steps, tDe)).toBe('Sucht in den Dokumenten und im RIS …')
+    expect(liveLine(steps, tEn)).toBe('Searching the documents and RIS (Austrian law) …')
   })
 
   test('the newest phraseable step wins; a technical record says nothing', () => {
