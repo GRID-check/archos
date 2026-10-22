@@ -352,6 +352,29 @@ name, each labelled as what it is.
   several, or on another document): `openMarks`, `marksRevision` and the
   `variant` that picks the words (`openMarksFacts`). Each is carried on in the
   Prüfansicht ([`document-annotations.md`](document-annotations.md#a-mark-goes-on-with-a-new-fassung)).
+- **Who, for a quiet upload.** The upload batch that brought the newer
+  document can narrow that to the mark participants alone
+  (`upload_batches.revision_notice = 'marks_only'`, migration 0183):
+  `announceSettledVersions` looks up the batch each settled document carries
+  (`findMarksOnlyBatchIds`) and passes `audience: 'marks_only'`, which drops the
+  assignees and uploaders before the access cut. The next Fassung of an
+  E-Mail-Verlauf is news to nobody else, but a mark it leaves behind must not be
+  orphaned silently. With no open mark nobody is told, and the Fassung is still
+  claimed, so a later re-read does not announce it to everyone. A batch opened
+  by the browser or an agent is always `all`: only a server-side caller sets
+  the column. The `upload` transition's own announcement (`lifecycle.ts`)
+  carries no audience; for a person's upload it says nothing, because the new
+  bytes are held until screened, and the settle hook is the one that tells.
+  Piloti's notice of a cross-name Fassung and the document check
+  (ADR-0130) are not people being told and do not read the column.
+
+  | Upload batch | `upload.completed` | Filing reviews | Intake reading | `document.new_revision` |
+  |---|---|---|---|---|
+  | A person's upload (default) | yes | yes | yes | `all` |
+  | `announces_completion` off | no | | | |
+  | `reviews_filing` off | | no | | |
+  | `starts_intake` off | | | no | |
+  | `revision_notice = 'marks_only'` | | | | mark participants only |
 - **What.** The first line of the change summary, at most 200 characters, and
   only when the summary was written against the older document of THIS
   notification (its basis). A summary against the earlier upload under the
