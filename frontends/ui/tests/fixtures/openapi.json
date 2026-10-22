@@ -5429,7 +5429,7 @@
       "post": {
         "operationId": "document-upload",
         "summary": "Upload a file to a project",
-        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns `{ documentId, jobId, status, filename }`; status is pending, processing, quarantined, failed, uploaded or stored; jobId is an ingestion job, not a task. Follow it with document-status. Needs write access to the project’s documents.",
+        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns `{ documentId, jobId, status, filename }` (jobId: the ingestion job, not a task); follow it with document-status. Needs write access to the project’s documents.",
         "tags": [
           "documents"
         ],
@@ -13504,7 +13504,7 @@
       "post": {
         "operationId": "piloti-ask-create",
         "summary": "Ask Piloti a question and get its answer",
-        "description": "Asks Piloti, the office’s own agent, a question as the signed-in person: it answers from the office’s documents, the project’s files and building law, with the person’s rights, and may file a document. Waits up to 40 seconds (less with waitSeconds): state \"completed\" carries answer.text, the evidence the answer stored (answer.sources: documentId, name, page and a url that opens the cited page in Piloti for the signed-in person; answer.confidence: level and reason; each absent when the answer stored none, and an answer with neither is not grounded in a document) and any documents filed; state \"submitted\" or \"working\" means call piloti-ask-get with the id after pollAfterSeconds. Pass projectId (from project-list) to ask about one project: without it Piloti answers for the office as a whole and reads no project’s files. Pass conversationId from an earlier ask to follow up in the same conversation. \"rejected\" or \"failed\" carry the reason (a spent budget, a busy conversation). Uses the organization’s model budget, and needs the piloti-ask switch.",
+        "description": "Asks Piloti, the office’s own agent, as the signed-in person: it answers from the office’s documents, the project’s files and building law, and may file a document. Waits up to 40 s (less with waitSeconds). \"completed\" carries answer.text, answer.sources (documentId, name, page, a url opening the cited page) and answer.confidence (level, reason); an answer with neither is not grounded in a document. \"submitted\" or \"working\": call piloti-ask-get after pollAfterSeconds. \"rejected\" or \"failed\" say why (spent budget, busy conversation). projectId (from project-list) scopes it to one project; conversationId follows up an earlier ask. Uses the organization’s model budget.",
         "tags": [
           "conversations"
         ],

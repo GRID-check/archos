@@ -337,8 +337,8 @@ export const documentsOperations = [
     description:
       `Stores one file in a project (optionally in a folder) and hands it to ingestion. ${SIZE_NOTE} ` +
       'Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). ' +
-      'Returns `{ documentId, jobId, status, filename }`; status is pending, processing, quarantined, failed, ' +
-      'uploaded or stored; jobId is an ingestion job, not a task. Follow it with document-status. Needs write access to the project’s documents.',
+      'Returns `{ documentId, jobId, status, filename }` (jobId: the ingestion job, not a task); follow it with ' +
+      'document-status. Needs write access to the project’s documents.',
     method: 'POST',
     path: '/api/documents/upload',
     body: projectUploadBody,
