@@ -1,0 +1,6 @@
+---
+operators:
+  - >
+    The one-time legacy corpus import Job is no longer part of the Kubernetes
+    deployment; the next deploy deletes the completed Job and leaves its retained
+    volume untouched. Compose installs keep the importer service.
