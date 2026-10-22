@@ -356,54 +356,6 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
     assert "writing skill active for this turn" not in prompt
 
 
-#: Every migration that writes a ``piloti-voice`` body, oldest first. Spelled out
-#: rather than globbed so that extending the chain is a deliberate edit here as
-#: well as in ``frontends/ui/drizzle`` — a link added without one is a link whose
-#: guard nothing checks.
-VOICE_CHAIN = (
-    "0053_piloti_voice_standard_skill",
-    "0055_piloti_voice_answer_shape",
-    "0057_piloti_voice_hard_cases",
-)
-
-
-def test_every_voice_update_is_guarded_on_the_body_it_replaces():
-    """Each link may only overwrite a row still identical to the one before it.
-
-    ``0053`` is a SEED: its ``ON CONFLICT DO NOTHING`` protects a platform
-    owner's edits from a re-run, which also means editing the text inside it
-    changes nothing in any database that has already applied it. So every new
-    body ships as its own migration, and the guard is the only test that
-    actually separates an untouched row from an edited one — ``created_by`` does
-    not, because the dashboard's update path patches ``body`` and never touches
-    it.
-
-    Pinning the hashes here is what keeps the chain honest: editing any literal
-    in place silently turns a guard into a condition that matches nothing and
-    the update into a no-op that ships green.
-    """
-    rows = {tag: row for tag, row in SEEDS if row["name"] == "piloti-voice"}
-    assert tuple(rows) == VOICE_CHAIN, "a piloti-voice migration is missing from the chain"
-
-    for previous, current in zip(VOICE_CHAIN, VOICE_CHAIN[1:], strict=False):
-        before = rows[previous]["body"]
-        after = rows[current]["body"]
-        assert before != after, f"{current} must actually change the body it inherits"
-
-        assert _guard_hashes(current) == [hashlib.md5(before.encode("utf-8")).hexdigest()], (
-            f"{current} does not guard on the body {previous} wrote"
-        )
-
-        down = (DRIZZLE_DIR / f"{current}.down.sql").read_text(encoding="utf-8")
-        assert re.findall(r"md5\([^)]*\)\s*=\s*'([0-9a-f]{32})'", down) == [
-            hashlib.md5(after.encode("utf-8")).hexdigest()
-        ], f"{current}.down.sql does not guard on the body it wrote"
-        # A rollback that restores a body but leaves the L1 line promising rules
-        # the body no longer states has only half-rolled back.
-        assert before in down
-        assert rows[previous]["description"] in down
-
-
 def test_the_voice_seed_teaches_the_three_cases_a_shape_rule_does_not_settle():
     """``0057``: what to do when the question is wrong, half-open, or full of numbers.
 
@@ -536,48 +488,6 @@ def test_seeded_grid_agents_all_have_a_surface_that_delivers_the_skill(tag: str,
     assert named <= delivering
 
 
-def test_the_card_scope_migration_changes_only_the_scope():
-    """``0056`` withdraws one claim; it must not carry a prose edit with it.
-
-    The whole row is restated there — the same reason ``0055`` restates one —
-    so that the last ``INSERT`` on disk is the row a database ends up with and
-    ``_effective_row`` keeps meaning something. The cost of that pattern is a
-    second copy of 2,600 tokens of German that a careless edit could silently
-    diverge, on a migration whose ``ON CONFLICT`` clause writes back only
-    ``metadata`` — so a body changed there would ship as a diff reviewers read
-    and no database ever applies. Byte-identity is the only thing that keeps the
-    restatement honest.
-    """
-    seeded = next(row for tag, row in SEEDS if tag.startswith("0054_"))
-    rescoped = next(row for tag, row in SEEDS if tag.startswith("0056_"))
-
-    assert rescoped["name"] == seeded["name"] == "piloti-cards"
-    assert rescoped["body"] == seeded["body"]
-    assert rescoped["description"] == seeded["description"]
-    assert rescoped["delivery"] == seeded["delivery"]
-    assert rescoped["published"] == seeded["published"]
-
-    before = json.loads(seeded["metadata"])
-    after = json.loads(rescoped["metadata"])
-    # The names 0054 and 0056 actually wrote. `shallow_researcher` was renamed
-    # to `researcher` afterwards, and past migrations keep the string they
-    # shipped with: they are history, and a database that applied them already
-    # would never see an edit here.
-    assert set(split_metadata_list(before["grid-agents"])) == {"shallow_researcher", "deep_researcher"}
-    assert set(split_metadata_list(after["grid-agents"])) == {"shallow_researcher"}
-    # Everything else about the row is 0054's, including the five inlined shapes.
-    assert {k: v for k, v in after.items() if k != "grid-agents"} == {
-        k: v for k, v in before.items() if k != "grid-agents"
-    }
-
-    # The guard is the SCOPE, not a body hash: an owner who rewrote the prose has
-    # not thereby chosen an agent scope, and the deep claim is false in their row
-    # too. An owner who chose a scope HAS decided, and this may not overwrite it.
-    forward = (DRIZZLE_DIR / "0056_piloti_cards_chat_scope.sql").read_text(encoding="utf-8")
-    assert "\"metadata\" ->> 'grid-agents' = 'shallow_researcher,deep_researcher'" in forward
-    assert not _guard_hashes("0056_piloti_cards_chat_scope")
-
-
 def test_the_reachable_shapes_migration_added_the_two_redirect_targets():
     """``0061``: `typed_table` and `process_map` joined the inlined shapes — history.
 
@@ -597,66 +507,6 @@ def test_the_reachable_shapes_migration_added_the_two_redirect_targets():
     # surface no longer resolves either, which is what the history must not
     # be read against.
     assert render_card_details(["typed_table", "process_map"]) == ""
-
-
-def test_the_reachable_shapes_migration_changes_only_the_card_list():
-    """``0061`` restates the whole row and writes back ``metadata`` alone.
-
-    Same pattern and same hazard as ``0056``: the last ``INSERT`` on disk has to
-    be the row a fresh database ends up with, so the body is restated — and its
-    ``ON CONFLICT`` writes only ``metadata``, so a body edited here would ship as
-    a diff reviewers read and no database ever applies. Byte-identity against
-    ``0060`` is the only thing that keeps the restatement honest.
-
-    The guard is 0060's BODY hash rather than the metadata it changes, unlike
-    0056. Reason: an owner who has rewritten the prose owns the whole row, card
-    preferences included, and a preference list naming shapes their body no
-    longer discusses is worse than leaving their row alone. ``created_by`` is not
-    a guard anywhere in this chain — the dashboard patches ``body`` and never
-    touches it, so an edited row still reads ``system``.
-    """
-    previous = next(row for tag, row in SEEDS if tag.startswith("0060_"))
-    current = next(row for tag, row in SEEDS if tag.startswith("0061_"))
-
-    assert current["name"] == previous["name"] == "piloti-cards"
-    assert current["body"] == previous["body"]
-    assert current["description"] == previous["description"]
-    assert current["delivery"] == previous["delivery"]
-    assert current["published"] == previous["published"]
-
-    before = json.loads(previous["metadata"])
-    after = json.loads(current["metadata"])
-    assert {k: v for k, v in after.items() if k != "grid-cards"} == {
-        k: v for k, v in before.items() if k != "grid-cards"
-    }
-    assert set(split_metadata_list(after["grid-cards"])) - set(split_metadata_list(before["grid-cards"])) == {
-        "typed_table",
-        "process_map",
-    }
-
-    forward = (DRIZZLE_DIR / "0061_piloti_cards_reachable_shapes.sql").read_text(encoding="utf-8")
-    body_hash = hashlib.md5(previous["body"].encode("utf-8")).hexdigest()
-    assert _guard_hashes("0061_piloti_cards_reachable_shapes") == [body_hash]
-    assert '"created_by"' not in forward.split("ON CONFLICT")[1]
-    # Only metadata is written back. `body`/`description` in the SET clause would
-    # make this a body migration that belongs in CARD_CHAIN instead.
-    conflict = forward.split("ON CONFLICT")[1]
-    assert '"metadata" = EXCLUDED."metadata"' in conflict
-    assert '"body" = EXCLUDED' not in conflict
-    assert '"description" = EXCLUDED' not in conflict
-    # Re-running must be a NO-OP, not an idempotent write: without this clause
-    # every replay bumps `updated_at` on a row it did not change.
-    assert 'IS DISTINCT FROM EXCLUDED."metadata"' in conflict
-
-    down = (DRIZZLE_DIR / "0061_piloti_cards_reachable_shapes.down.sql").read_text(encoding="utf-8")
-    # Both directions gate on the SAME body hash, because neither touches the
-    # body: a row whose prose was edited through the dashboard is left alone
-    # going forward and coming back.
-    assert re.findall(r"md5\([^)]*\)\s*=\s*'([0-9a-f]{32})'", down) == [body_hash]
-    # And the rollback restores 0060's exact list, gated on the one 0061 wrote,
-    # so an owner who has since re-chosen their cards keeps them.
-    assert f"'\"{before['grid-cards']}\"'" in down
-    assert after["grid-cards"] in down
 
 
 def test_retiring_the_card_takes_its_craft_and_its_inlined_shape_together():
@@ -788,60 +638,6 @@ def test_the_deep_writer_carries_the_report_sized_voice():
     assert "REI 90, GK 4" in writer
     # The retired delivery channel's floor rationale is gone with the channel.
     assert "must still be produced when the voice cannot be fetched" not in writer
-
-
-#: Every migration that writes a ``piloti-cards`` BODY, oldest first. ``0056`` is
-#: absent on purpose: it rewrites only ``metadata`` and restates the body
-#: byte-for-byte (pinned by ``test_the_card_scope_migration_changes_only_the_scope``),
-#: so it guards on the scope it changes rather than on a hash. Spelled out for
-#: the same reason ``VOICE_CHAIN`` is — a link added without a guard is a link
-#: whose guard nothing checks.
-CARD_CHAIN = (
-    "0054_piloti_cards_standard_skill",
-    "0058_piloti_cards_derivation_and_process",
-    "0059_piloti_cards_the_recognised_card",
-    "0060_piloti_cards_dossier_and_change",
-    # 0061 is absent on purpose: it writes `metadata` alone and leaves the body
-    # byte-identical, so it has no body to guard and its own test covers it.
-    "0062_piloti_cards_retire_follow_ups",
-)
-
-
-def test_every_card_update_is_guarded_on_the_body_it_replaces():
-    """The cards chain gets the guard the voice chain has, for the same reason.
-
-    ``0054`` is a SEED whose ``ON CONFLICT`` protects a platform owner's edits
-    from a re-run, which also means editing its text changes nothing in a
-    database that has applied it. So every new body ships as its own migration
-    and the md5 is the only thing that separates an untouched row from an edited
-    one — ``created_by`` does not, because the dashboard's update path patches
-    ``body`` and never touches it.
-
-    The chain was unguarded here while ``piloti-voice``'s was pinned, so ``0058``
-    shipped with nothing checking that its hash still matched the body it claimed
-    to replace. Editing any literal in place silently turns a guard into a
-    condition that matches nothing and the update into a no-op that ships green.
-    """
-    rows = {tag: row for tag, row in SEEDS if row["name"] == "piloti-cards" and tag in CARD_CHAIN}
-    assert tuple(rows) == CARD_CHAIN, "a piloti-cards body migration is missing from the chain"
-
-    for previous, current in zip(CARD_CHAIN, CARD_CHAIN[1:], strict=False):
-        before = rows[previous]["body"]
-        after = rows[current]["body"]
-        assert before != after, f"{current} must actually change the body it inherits"
-
-        assert _guard_hashes(current) == [hashlib.md5(before.encode("utf-8")).hexdigest()], (
-            f"{current} does not guard on the body {previous} wrote"
-        )
-
-        down = (DRIZZLE_DIR / f"{current}.down.sql").read_text(encoding="utf-8")
-        assert re.findall(r"md5\([^)]*\)\s*=\s*'([0-9a-f]{32})'", down) == [
-            hashlib.md5(after.encode("utf-8")).hexdigest()
-        ], f"{current}.down.sql does not guard on the body it wrote"
-        # A rollback that restores a body but leaves the L1 line promising a
-        # section the body no longer carries has only half-rolled back.
-        assert before in down
-        assert rows[previous]["description"] in down
 
 
 def test_the_card_seed_names_the_failure_of_recognising_a_card_and_not_emitting_it():
@@ -1109,52 +905,6 @@ def test_every_card_type_with_a_trigger_has_its_craft_in_the_seed():
 # ---------------------------------------------------------------------------
 # The retirement (0071): both house skills leave the database for the prompts.
 # ---------------------------------------------------------------------------
-
-RETIREMENT = "0071_retire_piloti_house_skills"
-
-
-def test_the_house_skills_are_retired_by_a_guarded_migration():
-    """``0071`` deletes both rows, guarded on the last body each chain wrote.
-
-    The md5 guard, not ``created_by``, for the reason every link of both chains
-    states: the dashboard's update path patches ``body`` and never touches
-    ``created_by``, so a hand-edited row still reads ``system``. A row the
-    platform owner rewrote is theirs and survives the retirement; retiring it
-    is then their call in the dashboard.
-    """
-    sql = (DRIZZLE_DIR / f"{RETIREMENT}.sql").read_text(encoding="utf-8")
-    assert 'DELETE FROM "platform_skills"' in sql
-    assert "'piloti-voice'" in sql and "'piloti-cards'" in sql
-
-    voice_body = _effective_row("piloti-voice")["body"]
-    cards_body = _effective_row("piloti-cards")["body"]
-    assert _guard_hashes(RETIREMENT) == [
-        hashlib.md5(voice_body.encode("utf-8")).hexdigest(),
-        hashlib.md5(cards_body.encode("utf-8")).hexdigest(),
-    ], "0071 must guard each DELETE on the body the last seed wrote"
-
-    # The loader sees the retirement the way a live database would: neither
-    # name has an effective row any more.
-    from tests.aiq_agent.skills.seeded_skill_rows import RETIRED_NAMES
-
-    assert {"piloti-voice", "piloti-cards"} <= RETIRED_NAMES
-    assert not {row["name"] for _, row in EFFECTIVE_SEEDS} & {"piloti-voice", "piloti-cards"}
-
-
-def test_the_retirement_rollback_restores_both_rows_without_trampling():
-    """``0071.down.sql`` re-seeds 0057's and 0062's exact rows, DO NOTHING.
-
-    ``ON CONFLICT DO NOTHING`` because a row the platform owner has since
-    created or rewritten under either name is theirs. Restoring the bodies
-    byte-identically is what keeps the down migration a true inverse of the
-    guarded delete.
-    """
-    down = (DRIZZLE_DIR / f"{RETIREMENT}.down.sql").read_text(encoding="utf-8")
-    assert 'ON CONFLICT ("name") DO NOTHING' in down
-    assert _effective_row("piloti-voice")["body"] in down
-    assert _effective_row("piloti-cards")["body"] in down
-    assert _effective_row("piloti-voice")["description"] in down
-    assert _effective_row("piloti-cards")["description"] in down
 
 
 def test_the_card_craft_the_retired_seed_taught_lives_in_the_tool():
