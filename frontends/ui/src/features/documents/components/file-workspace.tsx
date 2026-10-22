@@ -83,6 +83,7 @@ import {
   type DocumentActionKind,
 } from './document-actions/action-entries'
 import { FileBrowserPane } from './file-browser-pane'
+import { InboundMailWaitingLine } from '@/features/inbound-mail/components/waiting-line'
 import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
@@ -782,6 +783,7 @@ export function FileWorkspace({
         folderId={selectedFolderId}
         onUpload={handleUpload}
         isUploading={isUploading}
+        onSendByMail={shelf.inboundMail?.openAddress}
         {...props}
       />
     ) : undefined
@@ -815,6 +817,7 @@ export function FileWorkspace({
       onViewChange={selectView}
       binHref={shelf.bin?.href}
       openPointsHref={shelf.openPoints?.href}
+      inboundMail={shelf.inboundMail ? { href: shelf.inboundMail.href, waiting: shelf.inboundMail.waiting } : undefined}
       renderFilter={(compact) => (
         <FileFilterMenu
           canCollaborate={canCollaborate}
@@ -965,6 +968,13 @@ export function FileWorkspace({
               <AlertCircle className="size-4" />
               <AlertDescription>{t('workspace.listTruncated', { count: listing.files.length })}</AlertDescription>
             </Alert>
+          </div>
+        )}
+
+        {/* Mail waiting in the E-Mail-Eingang, said once above the root of the shelf. */}
+        {shelf.inboundMail && selectedFolderId === null && (shelf.inboundMail.waiting ?? 0) > 0 && (
+          <div className="border-b px-4 py-2">
+            <InboundMailWaitingLine href={shelf.inboundMail.href} count={shelf.inboundMail.waiting ?? 0} more={shelf.inboundMail.more} />
           </div>
         )}
 

@@ -39,6 +39,8 @@ import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
 import { InboxBadge } from '@/features/collaboration/components'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
+import { InboundMailWaitingBadge } from '@/features/inbound-mail/components/waiting-badge'
+import { useInboundMailWaiting } from '@/features/inbound-mail/hooks/use-inbound-mail-waiting'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -50,6 +52,8 @@ export interface PhoneTabBarProps {
   projectId: string | null
   canAccessOfficeShelf: boolean
   canAccessInbox: boolean
+  /** The office receives project mail: the Dateien tab carries the muted waiting count (ADR-0134). */
+  inboundMailEnabled?: boolean
   className?: string
   /**
    * The route to light a tab for. The product omits it and the bar reads the
@@ -62,6 +66,7 @@ export function PhoneTabBar({
   projectId,
   canAccessOfficeShelf,
   canAccessInbox,
+  inboundMailEnabled = false,
   className,
   pathname: pinnedPathname,
 }: PhoneTabBarProps): JSX.Element {
@@ -73,6 +78,7 @@ export function PhoneTabBar({
   // or the org header already holds one, and the bar is `display: none`.
   const isMobile = useIsMobile()
   const { pending } = useInboxBadge(canAccessInbox && isMobile)
+  const inboundMail = useInboundMailWaiting(projectId, inboundMailEnabled && isMobile)
   const moreOpen = useShellOverlays((s) => s.moreSheetOpen)
   const setMoreOpen = useShellOverlays((s) => s.setMoreSheetOpen)
   // One shared-layout id per mounted bar, never a module constant: the scopes
@@ -111,6 +117,7 @@ export function PhoneTabBar({
               label={label(tab.label)}
               pillId={pillId}
               badgeCount={tab.key === 'inbox' ? pending : 0}
+              waitingCount={tab.key === 'files' ? inboundMail.count : null}
               expanded={tab.key === 'more' ? moreOpen : undefined}
               onOpenMore={() => setMoreOpen(true)}
             />
@@ -126,6 +133,7 @@ function PhoneTabItem({
   label,
   pillId,
   badgeCount,
+  waitingCount = null,
   expanded,
   onOpenMore,
 }: {
@@ -133,6 +141,8 @@ function PhoneTabItem({
   label: string
   pillId: string
   badgeCount: number
+  /** The muted count (mail waiting in Dateien), where no ink pill is. */
+  waitingCount?: number | null
   expanded?: boolean
   onOpenMore: () => void
 }): JSX.Element {
@@ -161,6 +171,7 @@ function PhoneTabItem({
         )}
         <Icon aria-hidden className="relative size-[1.125rem]" />
         <InboxBadge pending={badgeCount} className="absolute -right-0.5 -top-1.5" />
+        {badgeCount <= 0 && <InboundMailWaitingBadge count={waitingCount} className="absolute -right-0.5 -top-1.5" />}
       </span>
       <span
         data-slot="phone-tab-label"
