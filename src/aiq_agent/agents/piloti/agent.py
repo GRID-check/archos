@@ -1604,7 +1604,7 @@ class PilotiAgent:
         split = _split_round(announced, binding.disabled_sources, binding.max_calls_per_round)
         if not split.ran or not is_retrieval_round(split.ran):
             return {}
-        searched = emit_retrieval(split.ran, round_index=state.retrieval_round, conclusion=None)
+        searched = emit_retrieval(split.ran, round_index=state.retrieval_round, conclusion=None, prefetch=True)
         record = record_round_announcement(round_index=state.retrieval_round, calls=split.ran, conclusion=None)
         # The counter moves as the agent node moves it, so the tools node
         # derives round 0 for these calls (``_executing_retrieval_round``).

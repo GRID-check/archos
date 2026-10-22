@@ -261,3 +261,103 @@ class TestTheRoom:
         result = await run_look(page=1)
 
         assert isinstance(result, list) and _glows(calls) == []
+
+
+class TestTheRow:
+    """One ``look`` row per call (ADR-0132): started, then settled under the same id with the document it read."""
+
+    @staticmethod
+    def _one_call(emitted) -> tuple:
+        actions = [step for step in emitted.steps if step.kind == "action"]
+        assert len(actions) == 2
+        started, finished = actions
+        assert (started.id, started.status, started.verb) == (finished.id, "running", "look")
+        return started, finished
+
+    async def test_a_look_names_the_document_its_page_and_its_id(self, stored, emitted) -> None:
+        set_turn_intent(file_name="Grundriss_EG.pdf", document_id=DOCUMENT)
+
+        await run_look(page=1, region=[0.1, 0.1, 0.3, 0.2])
+
+        started, finished = self._one_call(emitted)
+        assert (started.pages, started.target) == ("1", None)
+        assert (finished.status, finished.target, finished.document_id) == ("ok", "Grundriss_EG.pdf", DOCUMENT)
+        # The row finds its crop: the same name and id as the `look` step.
+        look = next(step for step in emitted.steps if step.kind == "look")
+        assert look.document_name == finished.target and look.document_id == finished.document_id
+
+    async def test_a_base_corpus_look_has_no_document_id(self, stored, monkeypatch, emitted, tmp_path) -> None:
+        pdf = tmp_path / "OIB-RL2.pdf"
+        pdf.write_bytes(_pdf())
+        monkeypatch.setattr(view, "_find_pdf", lambda name: str(pdf) if name == "OIB-RL2.pdf" else None)
+
+        await run_look("OIB-RL2.pdf", page=1)
+
+        finished = self._one_call(emitted)[1]
+        assert (finished.status, finished.target, finished.document_id) == ("ok", "OIB-RL2.pdf", None)
+
+    async def test_a_refused_look_is_an_error_row(self, stored, monkeypatch, emitted) -> None:
+        monkeypatch.setattr(resolve, "probe_collections", lambda: ["proj_9"])
+
+        await run_look("Erfunden.pdf", page=1)
+
+        finished = self._one_call(emitted)[1]
+        assert (finished.status, finished.target) == ("error", "Erfunden.pdf")
+
+    async def test_an_unadmitted_restricted_file_carries_no_id(self, stored, monkeypatch, emitted, lookups) -> None:
+        """The row settles before the round is admitted: no resolved file name, no id (ADR-0088)."""
+        restricted = "proj_1_r0123456789ab"
+        monkeypatch.setattr(resolve, "probe_collections", lambda: [restricted])
+
+        async def locate(collection, file_name, organization_id=None, image_index=None):
+            return ("key", None) if collection == restricted else None
+
+        monkeypatch.setattr(view, "_resolve_storage_location", locate)
+        monkeypatch.setattr(view, "_may_read", lambda _collection: True)
+
+        await run_look("gehaltsliste.pdf", page=1)
+
+        finished = self._one_call(emitted)[1]
+        assert lookups == [(restricted, "gehaltsliste.pdf")]  # the resolver knew the id; the row does not say it
+        assert (finished.status, finished.target, finished.document_id) == ("ok", "gehaltsliste.pdf", None)
+        # Nor does a `look` step: its name, id and reading wait for the admission too.
+        assert [step for step in emitted.steps if step.kind == "look"] == []
+
+    async def test_an_admitted_restricted_file_is_named_with_its_id(
+        self, stored, monkeypatch, emitted, lookups
+    ) -> None:
+        """Once the turn admitted the folder, the row and the `look` step name the file and its id."""
+        from aiq_agent.knowledge.restricted_use import RestrictedUse
+        from aiq_agent.knowledge.restricted_use import bind_restricted_use
+        from aiq_agent.knowledge.restricted_use import reset_restricted_use
+
+        restricted = "proj_1_r0123456789ab"
+        monkeypatch.setattr(resolve, "probe_collections", lambda: [restricted])
+
+        async def locate(collection, file_name, organization_id=None, image_index=None):
+            return ("key", None) if collection == restricted else None
+
+        monkeypatch.setattr(view, "_resolve_storage_location", locate)
+        monkeypatch.setattr(view, "_may_read", lambda _collection: True)
+        use = RestrictedUse("org", "user", "conversation", "proj_1", drawable={restricted}, admitted={restricted})
+        token = bind_restricted_use(use)
+        try:
+            await run_look("gehaltsliste.pdf", page=1)
+        finally:
+            reset_restricted_use(token)
+
+        finished = self._one_call(emitted)[1]
+        (look,) = [step for step in emitted.steps if step.kind == "look"]
+        assert finished.document_id is not None
+        assert (look.document_name, look.document_id) == (finished.target, finished.document_id)
+
+    async def test_a_look_that_raises_settles_error(self, stored, monkeypatch, emitted) -> None:
+        async def boom(_document):
+            raise RuntimeError("boom")
+
+        monkeypatch.setattr("aiq_agent.tools.look.register.resolve_document", boom)
+
+        with pytest.raises(RuntimeError):
+            await run_look("Grundriss_EG.pdf", page=1)
+
+        assert self._one_call(emitted)[1].status == "error"

@@ -51,7 +51,12 @@ const spineSteps = (n: number) =>
   )
 
 const toggles = () => screen.queryAllByTestId('reasoning-round-toggle')
-const cards = () => document.querySelectorAll('[data-source-card]').length
+/**
+ * A fan's documents on screen: a card each, or — uncited, as every one here is —
+ * the one dashed card they fold into (one document per layer in these turns).
+ */
+const cards = () =>
+  document.querySelectorAll('[data-source-card], [data-testid="uncited-fold"]').length
 
 describe('the fold control', () => {
   test('is a button, named, and reports its state', () => {

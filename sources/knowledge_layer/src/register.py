@@ -21,6 +21,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic import model_validator
 
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.wire_v2 import TraceLane
 from aiq_agent.common.wire_v2 import TraceLaneSource
 from nat.plugin_api import Builder
@@ -1864,6 +1866,19 @@ def _citation_key_for_span(chunk) -> str | None:
         return None
 
 
+def _search_row_fields(
+    query: str, match: str | None, folder: str | None, file_name: str | None, shelf: str | None
+) -> dict[str, str | None]:
+    """The Herleitung row of a search call, from its own arguments: what, how, where (ADR-0132)."""
+    mode = (match or "meaning").strip().lower()
+    return {
+        "query": (query or "").strip(),
+        "mode": mode if mode in {"meaning", "exact", "regex"} else None,
+        "target": (folder or "").strip().strip("/") or (file_name or "").strip() or None,
+        "shelf": (shelf or "").strip().lower() or None,
+    }
+
+
 def _current_span_round() -> int | None:
     """The retrieval round this fetch runs in, or ``None`` when unstamped.
 
@@ -2056,6 +2071,44 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         Returns:
             str: Numbered excerpts with a Citation key to copy verbatim.
         """
+        outcome = ActionOutcome()
+        row = ActionRow("search", **_search_row_fields(query, match, folder, file_name, shelf))
+        try:
+            result = await _search_body(
+                outcome,
+                query,
+                filters,
+                doc_class,
+                title_contains,
+                file_name,
+                folder,
+                match,
+                context,
+                group_by,
+                stemmed,
+                shelf,
+            )
+        except BaseException:
+            row.finish("error")
+            raise
+        # A call that returned without searching (a refusal, a bad argument) counted nothing: an error row.
+        outcome.settle(row, default="error")
+        return result
+
+    async def _search_body(
+        outcome: ActionOutcome,
+        query: str,
+        filters: dict | None,
+        doc_class: str | None,
+        title_contains: str | None,
+        file_name: str | None,
+        folder: str | None,
+        match: str,
+        context: int | str | None,
+        group_by: str | None,
+        stemmed: bool,
+        shelf: str | None,
+    ) -> str:
         # `conclusion` is deliberately unread HERE. It is a checkpoint channel,
         # not a retrieval parameter: the researcher's agent node reads it off
         # the tool CALL (`turn_status.emit_retrieval`) before this coroutine
@@ -2168,6 +2221,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 context=context,
                 stemmed=bool(stemmed),
                 shelf=None,  # already applied to ``target_collections`` above
+                outcome=outcome,
             )
         if mode != "meaning":
             return (
@@ -2767,6 +2821,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             from aiq_agent.common.turn_status import lane_tool_scope
 
             folders_trailer = await folder_task if folder_task is not None else ""
+            outcome.record_chunks(merged.chunks)
+            outcome.failed = not merged.chunks and (not merged.success or bool(getattr(merged, "error_message", None)))
             if not merged.chunks:
                 if not merged.success or getattr(merged, "error_message", None):
                     with lane_tool_scope(KNOWLEDGE_SEARCH_TOOL):
@@ -2817,6 +2873,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
 
             logger.error(f"Knowledge search failed: {e}")
+            outcome.failed = True
             # The marker is load-bearing, not decoration: the agent's
             # duplicate-fetch guard reads it to tell a failed call from a
             # fetched one, so the retry this sentence asks for is not

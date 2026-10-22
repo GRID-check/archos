@@ -1784,6 +1784,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                                   userQuestion={message.content}
                                   answerConfidence={agentMsg?.answerConfidence}
                                   citations={agentMsg?.citations}
+                                  answerId={agentMsg?.id}
                                   escalationReason={agentMsg?.escalationReason}
                                   retrievalLedger={agentMsg?.retrievalLedger}
                                 />

@@ -26,6 +26,8 @@ from pathlib import Path
 from typing import Any
 
 from aiq_agent import project_context
+from aiq_agent.common.action_outcome import ActionOutcome
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.common.turn_status import record_lane_hit
 from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.retrieval_trace import emit_step_span
@@ -121,10 +123,15 @@ def _observe(step: str, request: dict[str, Any], outcome: dict[str, Any]) -> Non
     emit_step_span(f"workspace.{step}", request, outcome)
 
 
-async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
-    """One call to the server as the turn's person; every refusal comes back as text for the model."""
+async def run_workspace(step: str, arguments: dict[str, Any], outcome: ActionOutcome | None = None) -> str:
+    """One call to the server as the turn's person; every refusal comes back as text for the model.
+
+    ``outcome`` is told when the call was refused or failed, for the action row of ``workspace__call``.
+    """
+    outcome = outcome if outcome is not None else ActionOutcome()
     envelope = _envelope()
     if envelope is None:
+        outcome.failed = True
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"refused": "no_envelope"})
         return _NO_ENVELOPE
     try:
@@ -132,6 +139,7 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
             call_tool_result, SERVER_TOOLS[step], arguments, envelope, answer_message_id=_answer_message_id()
         )
     except WorkspaceError as exc:
+        outcome.failed = True
         _observe(step, {"tool": SERVER_TOOLS[step]}, {"error": str(exc), "status": exc.status})
         if exc.status == 429:
             return RATE_LIMITED
@@ -140,19 +148,21 @@ async def run_workspace(step: str, arguments: dict[str, Any]) -> str:
             "not retry in the same answer."
         )
     text = result.text
-    outcome: dict[str, Any] = {"chars": len(text)}
+    # `structured` is None for a tool-level refusal (`isError`): the call did not run.
+    outcome.failed = result.structured is None
+    observed: dict[str, Any] = {"chars": len(text)}
     if result.structured is None and _ROUTE_RATE_LIMITED.search(text):
         _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, {"status": 429})
         return RATE_LIMITED
     if step == "call":
-        text = _show_proposal(result.structured, arguments, text, outcome)
+        text = _show_proposal(result.structured, arguments, text, observed)
         if arguments.get("name") == REVISION_COMPARE_OPERATION:
             number = emit_revision_compare_card(result.structured, arguments.get("input"))
-            outcome["compare_card"] = number
+            observed["compare_card"] = number
             if number is not None:
                 text = f"{text}\n\nThe person sees both pages side by side, the changes boxed: [[card:{number}]]."
-        _record_read(result, arguments, outcome)
-    _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, outcome)
+        _record_read(result, arguments, observed)
+    _observe(step, {"tool": SERVER_TOOLS[step], "operation": arguments.get("name")}, observed)
     return text
 
 
@@ -204,7 +214,15 @@ async def run_describe(name: str) -> str:
 
 
 async def run_call(name: str, input: dict[str, Any] | None = None) -> str:  # noqa: A002 - the server's own argument name
-    return await run_workspace("call", {"name": name, "input": input or {}})
+    outcome = ActionOutcome()
+    row = ActionRow("workspace", target=name)
+    try:
+        result = await run_workspace("call", {"name": name, "input": input or {}}, outcome)
+    except BaseException:
+        row.finish("error")
+        raise
+    outcome.settle(row)
+    return result
 
 
 async def run_report_missing(description: str) -> str:

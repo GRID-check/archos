@@ -89,8 +89,13 @@ const columnToColumnEdges = (g: ReturnType<typeof buildGraph>) =>
   g.edges.filter((e) => isColumnId(e.source) && isColumnId(e.target))
 
 /** The fan slots one column node carries. */
+/**
+ * The documents a column stands for: its cards, and the ones folded into its
+ * dashed „+N abgerufen, nicht zitiert“ card, in that order.
+ */
+type Slot = { type: 'card'; fan: FanCard } | { type: 'fold'; folded: FanCard[] }
 const slotsOf = (node: { data: unknown }): FanCard[] =>
-  (node.data as { cards: FanCard[] }).cards
+  (node.data as { cards: Slot[] }).cards.flatMap((slot) => (slot.type === 'card' ? [slot.fan] : slot.folded))
 
 /**
  * What each column node carries, left→right: the card's id, or — for a ledger
@@ -105,10 +110,25 @@ const fanSlots = (g: ReturnType<typeof buildGraph>, i: number): FanCard[] =>
 
 describe('planFan — sources pack into columns, never a forced single column', () => {
   test('a desktop chat column fans out one column per source for a typical turn', () => {
-    for (const n of [1, 2, 3, 4]) {
+    for (const n of [1, 2, 3]) {
       const fan = planFan(DESKTOP_W, n)
       expect(fan.columns).toHaveLength(n)
       expect(fan.grouped).toBe(false)
+    }
+  })
+
+  test('a column never gets narrower than a hyphenated compound needs: 3 at 680px, 2 below 544px, then 1', () => {
+    // 172px: „Brandschutz-|konzept“ breaks at a syllable, where the old 146px
+    // cut a narrow column's names into shards.
+    expect(planFan(680, 4).columns).toHaveLength(3)
+    expect(planFan(544, 4).columns).toHaveLength(3)
+    expect(planFan(543, 4).columns).toHaveLength(2)
+    expect(planFan(421, 4).columns).toHaveLength(2)
+    expect(planFan(420, 4).columns).toHaveLength(1)
+    for (const width of [421, 500, 543, 544, 680, 900]) {
+      const fan = planFan(width, 6)
+      expect(fan.grouped).toBe(false)
+      expect(fan.colW).toBeGreaterThanOrEqual(172)
     }
   })
 
@@ -403,8 +423,9 @@ describe('buildGraph — parallel wiring (P1-4)', () => {
 
 describe('buildGraph — the fan splits from one line and merges back into one', () => {
   test('every column edge shares the framing exit and the assessment entry point', () => {
-    const fan = planFan(DESKTOP_W, 4)
-    const g = buildGraph({ ...base, answerConfidence: 'high' }, t, fan, [card('a'), card('b'), card('c'), card('d')])
+    // Three columns: the most the 680px chat column holds (MIN_COL_W).
+    const fan = planFan(DESKTOP_W, 3)
+    const g = buildGraph({ ...base, answerConfidence: 'high' }, t, fan, [card('a'), card('b'), card('c')])
 
     // A single centred anchor per banner in each direction: the connectors share
     // their first and last segment, so the graph reads as one line splitting
@@ -415,8 +436,8 @@ describe('buildGraph — the fan splits from one line and merges back into one',
 
     const out = g.edges.filter((e) => e.source === 'framing')
     const back = g.edges.filter((e) => e.target === 'findings')
-    expect(out).toHaveLength(4)
-    expect(back).toHaveLength(4)
+    expect(out).toHaveLength(3)
+    expect(back).toHaveLength(3)
     expect(new Set(out.map((e) => e.sourceHandle))).toEqual(new Set(['c-bottom']))
     expect(new Set(back.map((e) => e.targetHandle))).toEqual(new Set(['c-top']))
 
@@ -448,7 +469,24 @@ describe('buildGraph — the fan-in shares one centred anchor (P1-5)', () => {
 
 describe('buildGraph — only the handles a layout needs (P2-8)', () => {
   test('no sources: framing feeds the converge node from a single centre handle', () => {
-    const g = buildGraph({ ...base, answerConfidence: 'low' }, t, planFan(DESKTOP_W, 0), [])
+    // A verdict alone no longer earns the last card (it lists what the answer
+    // cites, and there is nothing); a limit of the answer does.
+    const g = buildGraph(
+      {
+        ...base,
+        answerConfidence: 'low',
+        steps: [
+          technicalStep('degraded', {
+            degraded: true,
+            agent: 'deep',
+            reasons: ['no_valid_citations'],
+          }),
+        ],
+      },
+      t,
+      planFan(DESKTOP_W, 0),
+      []
+    )
     expect(framingHandles(g)).toEqual(['c-bottom'])
     expect(targetHandles(g, 'findings')).toEqual(['c-top'])
     expect(g.edges).toContainEqual(
@@ -903,7 +941,10 @@ describe('a checkpoint layer folds its own fan (ledger 19)', () => {
         [paged, card('b')],
         { folded: new Set([0]), onToggle: () => {} }
       )
-      expect(roundData(g, 0).foldSummary).toBe(dictionary === de ? 'a · S. 3' : 'a · p. 3')
+      // A page's number stays with its „S.“ (a no-break space, read as a space here).
+      expect(roundData(g, 0).foldSummary.replace(/\u00A0/g, ' ')).toBe(
+        dictionary === de ? 'a · S. 3' : 'a · p. 3'
+      )
     }
   })
 

@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, test, expect } from 'vitest'
-import { oibDisplayTitle, documentDisplayName, documentShortName } from './document-names'
+import { oibDisplayTitle, documentDisplayName, documentEdition, documentShortName } from './document-names'
 
 describe('oibDisplayTitle — mirror of norm_registry.guess_display_title', () => {
   // Cases lifted from the backend docstring; both sides must agree or a card's
@@ -99,5 +99,17 @@ describe('documentShortName', () => {
 
   test('never returns an empty name', () => {
     expect(documentShortName('Ausgabe Mai 2023')).toBe('Ausgabe Mai 2023')
+  })
+})
+
+describe('documentEdition', () => {
+  test('is the tail the short name drops', () => {
+    expect(documentEdition('oib-rl_2_ausgabe_mai_2023.pdf')).toBe('Ausgabe Mai 2023')
+    expect(documentEdition('x', 'OIB-Richtlinie 2.1, Ausgabe Mai 2023, Rev. 1')).toBe('Ausgabe Mai 2023, Rev. 1')
+  })
+
+  test('is nothing for a name without one, and a comma with content is no edition', () => {
+    expect(documentEdition('Brandschutzkonzept.pdf')).toBeUndefined()
+    expect(documentEdition('Bauordnung für Wien, § 108')).toBeUndefined()
   })
 })

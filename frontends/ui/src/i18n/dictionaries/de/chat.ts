@@ -170,6 +170,26 @@ export const chat: typeof en.chat = {
       session: 'Private Sitzung',
       base: 'Basiswissen',
     },
+    // Die feine Spur eines Dokuments (`norm_registry`), in der Sprache der
+    // Lesenden: Das Backend schickt sie nur deutsch (`laneLabel`). Projekt,
+    // Büroablage und Web fehlen hier, sie sagt die Ablage oben.
+    lanes: {
+      building_law_oib: 'OIB-Richtlinie',
+      building_law_oib_guide: 'OIB-Leitfaden',
+      building_law_oib_explanatory_note: 'OIB-Erläuterung',
+      building_law_oib_definitions: 'OIB-Begriffsbestimmungen',
+      building_law_oib_reference: 'OIB-Referenzdokument',
+      building_law_oib_amendment: 'OIB-Änderungsdokument',
+      building_law_ris: 'Rechtsquelle (RIS)',
+      building_law_base: 'Basisdokument',
+      building_law_federal: 'Bundesrecht',
+      building_law_state: 'Landesrecht',
+      building_law_ordinance: 'Verordnung',
+      authority: 'Behördliche Information',
+      external_standard: 'Externe Norm',
+      office_piloti: 'Piloti-Dokument',
+      measurement: 'Modellmessung',
+    },
   },
   shortcuts: {
     label: 'Schnellzugriff',
@@ -988,11 +1008,147 @@ export const chat: typeof en.chat = {
     // Eine Zeile je Dokument, das Piloti angesehen hat (ADR-0128); die
     // Vorschaubilder öffnen die Stelle.
     look: {
-      step: 'Angesehen: {document}, S. {page}, {where}',
-      stepWhole: 'Angesehen: {document}, S. {page}',
-      stepMany: 'Angesehen: {document}, {count} Stellen',
-      place: 'S. {page}, {where}',
-      placeWhole: 'S. {page}',
+      place: 'S.\u00A0{page}, {where}',
+      placeWhole: 'S.\u00A0{page}',
+      // Die Stelle einer Seite in Worten: Das Backend schickt sie deutsch
+      // (`page_region_words.py`), hier steht sie in der Sprache der Lesenden.
+      region: {
+        topLeft: 'oben links',
+        topRight: 'oben rechts',
+        topCenter: 'oben in der Mitte',
+        bottomLeft: 'unten links',
+        bottomRight: 'unten rechts',
+        bottomCenter: 'unten in der Mitte',
+        middleLeft: 'in der Mitte links',
+        middleRight: 'in der Mitte rechts',
+        pageCenter: 'in der Seitenmitte',
+      },
+    },
+    // Die Arbeitsliste der Herleitung (ADR-0132): eine Zeile je Aufruf, in
+    // Runden gruppiert. Die Sätze setzen sich aus den getypten Werten des
+    // Aufrufs zusammen, nie aus dem Text des Werkzeugs.
+    work: {
+      label: 'Arbeitsschritte',
+      // Der barrierefreie Name einer Zeile, die ein Dokument öffnet: der Satz der Zeile.
+      open: '{target} – öffnen',
+      running: 'läuft',
+      // Ein Aufruf, unter dem der Zug endete (Stopp, Fehler, Verbindung weg): kein Ergebnis.
+      interrupted: 'abgebrochen',
+      noHit: 'kein Treffer',
+      nothingFound: 'nichts gefunden',
+      failed: 'fehlgeschlagen',
+      // Hinter „fehlgeschlagen“: was daraus für die Antwort folgt.
+      failedNote: 'die Antwort stützt sich nicht darauf',
+      // Mehr als fünf Aufrufe in einem Schritt: die schwersten zuerst, der Rest gefaltet.
+      more: '+{count} weitere',
+      moreAllFound: '+{count} weitere, alle mit Ergebnis',
+      fewer: 'Weniger anzeigen',
+      // Gleichartige Aufrufe in einer Zeile.
+      times: '×{count}',
+      // Anführungszeichen in einer Suchanfrage, die selbst in „…“ steht.
+      innerQuote: '‚{text}‘',
+      // Unter dem Ausschnitt eines Blicks: abgelesen ist keine Messung.
+      readOff: 'abgelesen, nicht gemessen',
+      // Die Art eines Schritts, aus den Verben seiner Aufrufe.
+      kind: {
+        search: 'Suchen',
+        read: 'Lesen',
+        list: 'Ordner öffnen',
+        look: 'Betrachten',
+        model: 'Modell abfragen',
+        workspace: 'Arbeitsbereich',
+      },
+      shelf: {
+        project: 'im Projekt',
+        office: 'in der Büroablage',
+        base: 'im Basiswissen',
+        web: 'im Web',
+        session: 'in diesem Chat',
+      },
+      // Das Verb steht gedämpft vor seinem Gegenstand: „Sucht wörtlich“ „„Brandabschnitt“ im Projekt“.
+      verb: {
+        search: 'Sucht',
+        searchExact: 'Sucht wörtlich',
+        searchRegex: 'Sucht nach Muster',
+        searchIn: 'Sucht in',
+        searchExactIn: 'Sucht wörtlich in',
+        searchRegexIn: 'Sucht nach Muster in',
+        list: 'Öffnet',
+        read: 'Liest',
+        look: 'Betrachtet',
+        lookup: 'Sucht in anderen Projekten:',
+        law: 'Sucht im RIS:',
+        web: 'Sucht im Web:',
+        model: 'Fragt das Gebäudemodell ab:',
+        workspace: 'Arbeitsbereich:',
+      },
+      // Der Kopf eines fertigen Zugs mit genau einem Aufruf: was getan WURDE.
+      done: {
+        search: 'Gesucht: {name}',
+        list: 'Geöffnet: {name}',
+        read: 'Gelesen: {name}',
+        look: 'Betrachtet: {name}',
+        lookup: 'In anderen Projekten gesucht: {name}',
+        law: 'Im RIS gesucht: {name}',
+        web: 'Im Web gesucht: {name}',
+        model: 'Gebäudemodell abgefragt: {name}',
+        workspace: 'Im Arbeitsbereich: {name}',
+      },
+      doneFallback: {
+        search: 'In den Dokumenten gesucht',
+        list: 'Einen Ordner geöffnet',
+        read: 'Ein Dokument gelesen',
+        look: 'Ein Dokument betrachtet',
+        lookup: 'In anderen Projekten gesucht',
+        law: 'Im RIS gesucht',
+        web: 'Im Web gesucht',
+        model: 'Gebäudemodell abgefragt',
+        workspace: 'Im Arbeitsbereich gearbeitet',
+      },
+      object: {
+        query: '„{query}“',
+        queryShelf: '„{query}“ {shelf}',
+        queryIn: '{target}: „{query}“',
+        pages: '{target}, S.\u00A0{pages}',
+        clause: '{target}, {pages}',
+        where: '{target}, S.\u00A0{pages}, {where}',
+      },
+      // Gleichartige Aufrufe in einer Zeile. Suchen tragen kein Verb: „4 Suchen im RIS“.
+      many: {
+        documents: '{count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
+        folders: '{count, plural, one {#\u00A0Ordner} other {#\u00A0Ordner}}',
+        searches: '{count, plural, one {#\u00A0Suche} other {#\u00A0Suchen}}',
+        lawSearches: '{count, plural, one {#\u00A0Suche im RIS} other {#\u00A0Suchen im RIS}}',
+        webSearches: '{count, plural, one {#\u00A0Suche im Web} other {#\u00A0Suchen im Web}}',
+        lookupSearches:
+          '{count, plural, one {#\u00A0Suche in anderen Projekten} other {#\u00A0Suchen in anderen Projekten}}',
+        modelQueries:
+          '{count, plural, one {#\u00A0Abfrage am Gebäudemodell} other {#\u00A0Abfragen am Gebäudemodell}}',
+        workspaceCalls:
+          '{count, plural, one {#\u00A0Aufruf im Arbeitsbereich} other {#\u00A0Aufrufe im Arbeitsbereich}}',
+      },
+      fallback: {
+        search: 'Sucht in den Dokumenten',
+        list: 'Öffnet einen Ordner',
+        read: 'Liest ein Dokument',
+        look: 'Betrachtet ein Dokument',
+        lookup: 'Sucht in anderen Projekten',
+        law: 'Sucht im RIS',
+        web: 'Sucht im Web',
+        model: 'Fragt das Gebäudemodell ab',
+        workspace: 'Arbeitet im Arbeitsbereich',
+      },
+      found: {
+        hits: '{count, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}}',
+        hitsDocuments:
+          '{hits, plural, one {#\u00A0Treffer} other {#\u00A0Treffer}}\u00A0· {documents, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
+        documents: '{count, plural, one {#\u00A0Dokument} other {#\u00A0Dokumente}}',
+        places: '{count, plural, one {#\u00A0Stelle} other {#\u00A0Stellen}}',
+        listing:
+          '{files, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}, {folders, plural, one {#\u00A0Ordner} other {#\u00A0Ordner}}',
+        files: '{count, plural, one {#\u00A0Datei} other {#\u00A0Dateien}}',
+        folders: '{count, plural, one {#\u00A0Ordner} other {#\u00A0Ordner}}',
+      },
     },
     inProgress: 'Denkvorgang läuft',
     working: 'Antwort wird erstellt …',
@@ -1013,7 +1169,8 @@ export const chat: typeof en.chat = {
       // Korpus-NAMEN: „im Wissen“ ist Produkttext mit angeschweißter
       // Präposition, kein Eigenname. Das Backend schickt die ID.
       corpus: {
-        knowledge: 'im Wissen',
+        // Dieselben Worte wie die Zeilen der Herleitung („Sucht in den Dokumenten“).
+        knowledge: 'in den Dokumenten',
         ris: 'im RIS',
         web: 'im Web',
         documents: 'in Ihren Unterlagen',
@@ -1049,8 +1206,8 @@ export const chat: typeof en.chat = {
           // die Zeile das Dokument statt eines Korpus. `{document}` ist der
           // Name, den Herausgeber oder Büro vergeben haben: ein Eigenname, der
           // unübersetzt durchgereicht wird.
-          clause: 'Liest {document}, Pkt. {clause} …',
-          page: 'Liest {document}, S. {page} …',
+          clause: 'Liest {document}, Pkt.\u00A0{clause} …',
+          page: 'Liest {document}, S.\u00A0{page} …',
           // Es wird mit anderen Formulierungen weitergesucht — die Aktion,
           // nicht das Urteil: Die Zeile sagt, was GERADE geschieht, und sie
           // ersetzt dabei die Suchzeile der Runde, also darf sie nicht mit
@@ -1094,7 +1251,7 @@ export const chat: typeof en.chat = {
           annotationsDelete: 'Anmerkung wird gelöscht …',
           annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
           // Piloti sieht sich eine Seite oder einen Ausschnitt an (ADR-0128).
-          look: 'Sieht sich das Dokument an …',
+          look: 'Betrachtet das Dokument …',
           // Ein Aufruf im Arbeitsbereich über Piloti selbst: Lesen läuft,
           // Schreiben kommt als Vorschlag zurück.
           workspaceCall: 'Arbeitet im Arbeitsbereich …',
@@ -1206,8 +1363,20 @@ export const chat: typeof en.chat = {
     // Quellen-Klausel FEHLT, wenn es keine gibt: „0 Quellen“ ist eine wahre
     // Zahl, die sich wie ein Fehlschlag liest, und eine Antwort aus einer
     // Messung am Modell hat zu Recht keine Zitate.
+    // Kopfzeile der Herleitung: Schritte, zitierte Quellen und höchstens EINE Warnung, die schwerste.
+    derivationSteps: '{count, plural, one {#\u00A0Schritt} other {#\u00A0Schritte}}',
+    derivationCited: '{count, plural, one {#\u00A0Quelle zitiert} other {#\u00A0Quellen zitiert}}',
+    derivationWarning: {
+      failed: '{count, plural, one {#\u00A0Abruf fehlgeschlagen} other {#\u00A0Abrufe fehlgeschlagen}}',
+      open: '{count, plural, one {#\u00A0Punkt offen} other {#\u00A0Punkte offen}}',
+    },
+    // Ein Zug ohne jede Recherche: eine Zeile, nichts zum Aufklappen.
+    noResearch: 'Ohne Recherche beantwortet',
+    noResearchNote: 'Allgemeines Fachwissen, keine Quelle zitiert',
+    // Ein Zug mit genau einem Aufruf: die Kopfzeile ist die Herleitung.
+    singleCited: 'zitiert {markers}',
     derivationSummary: 'Herleitung',
-    derivationSummaryWithSources: 'Herleitung · {count, plural, one {# Quelle} other {# Quellen}}',
+    derivationSummaryWithSources: 'Herleitung\u00A0· {count, plural, one {#\u00A0Quelle} other {#\u00A0Quellen}}',
     // aria-label naming the reasoning graph as one region for screen readers.
     reasoningGraphLabel: 'Herleitung',
     stepsLabel: 'Denkschritte',
@@ -1220,16 +1389,55 @@ export const chat: typeof en.chat = {
     // hat — ein echtes Rechercheergebnis, keine Lücke.
     readNotUsed: 'abgerufen, nicht zitiert',
     moreSources: '+{count} weitere',
-    // Die an DIESE Nachricht angehängten Dateien. Die im Composer aktivierten
-    // Datenquellen sind Verfügbarkeit, keine Aktivität, und stehen bewusst
-    // nicht hier — was gelaufen ist, zeigt die `executedSteps`-Zeile darüber.
-    attachedFiles: 'Angehängte Dateien:',
     // Einzeiler, wenn dieser Turn von der Kurz- zur Tiefenrecherche eskaliert ist.
     escalationNarration: 'Eskaliert zur Tiefenrecherche: {reason}',
     node: {
       framingTab: 'Einordnung',
       framingTitle: 'Frage verstanden',
       framingQuestion: 'Sie fragen: „{question}“',
+      // Die letzte Karte der Herleitung: worauf die Antwort steht, als Entwurf.
+      // Nie „nachgewiesen“: Piloti listet die Grundlagen, das Urteil bleibt beim Büro.
+      basis: {
+        label: 'Grundlagen · Entwurf',
+        pendingLabel: 'Grundlagen',
+        pending: 'entstehen mit der Antwort',
+        law: 'Rechtsgrundlage',
+        evidence: 'Belegt durch',
+        open: 'Offen',
+        clause: 'Pkt.\u00A0{clause}',
+        page: 'S.\u00A0{page}',
+        // Aus einem Aufruf ohne Treffer: wo gesucht wurde und wonach. Nie „Keine Informationen gefunden“.
+        openNoHitIn: 'Nicht beurteilbar, weil die Suche in {target} nach „{query}“ keine Fundstelle ergab.',
+        openNoHitShelf: 'Nicht beurteilbar, weil die Suche {shelf} nach „{query}“ keine Fundstelle ergab.',
+        openNoHit: 'Nicht beurteilbar, weil die Suche nach „{query}“ keine Fundstelle ergab.',
+        openEmpty: 'Nicht beurteilbar, weil ein Aufruf nichts ergab: {what}.',
+        // Aus einem fehlgeschlagenen oder abgebrochenen Aufruf: der Aufruf als Hauptwort.
+        openFailed: 'Nicht beurteilbar, weil {call} fehlgeschlagen ist.',
+        openInterrupted: 'Nicht beurteilbar, weil {call} abgebrochen wurde.',
+        callQuery: '{call} nach „{query}“',
+        callTarget: '{call} „{target}“',
+        call: {
+          search: 'die Suche',
+          list: 'das Öffnen des Ordners',
+          read: 'das Lesen des Dokuments',
+          look: 'das Betrachten des Dokuments',
+          lookup: 'die Suche in anderen Projekten',
+          law: 'die Abfrage im RIS',
+          web: 'die Suche im Web',
+          model: 'die Abfrage des Gebäudemodells',
+          workspace: 'ein Aufruf im Arbeitsbereich',
+        },
+      },
+      cardLink: 'Aufrufe zu {name} hervorheben',
+      // Die nicht zitierten Quellen eines Schritts, in einer gestrichelten Karte.
+      // Solange die Antwort läuft, weiß niemand, was sie zitiert: dann „weitere“.
+      uncited: {
+        pill: 'Nicht zitiert',
+        pillLive: 'Abgerufen',
+        name: '+{count} abgerufen',
+        nameLive: '+{count} weitere',
+        hide: 'Nicht zitierte Quellen ausblenden',
+      },
       // Jede Abrufschicht auf der Herleitungs-Achse, in Ausführungsreihenfolge:
       // ein Zähler, ein Wort. Die alte Zwei-Wort-Folge (`Suche 1`, dann
       // `Folgerung 2…`) las sich als ein Lauf, zählte aber zwei Dinge — die
@@ -1252,6 +1460,9 @@ export const chat: typeof en.chat = {
       // fand, und war oft nur eine, deren Treffer der alte Draht nie stempelte.
       // Erst das Ledger macht den Unterschied benennbar.
       stepKindNoHits: 'Kein Treffer',
+      // Eine Runde, die nur Ordner geöffnet hat: sie sucht keine Dokumente, also
+      // ist leer ausgehen kein Fehlschlag (ADR-0132).
+      stepKindBrowse: 'Ordner öffnen',
       // Eine Schicht, die ausschließlich Passagen bereits gefundener Dateien
       // aufgeschlagen hat: sie hat nichts Neues gesucht. Genau diese Runde von
       // einem frischen Abruf zu unterscheiden, ist der Sinn des Wortes.
@@ -1265,9 +1476,9 @@ export const chat: typeof en.chat = {
       roundFoldMany: '{count} Dateien · {first} u.a.',
       // Die Fundstellen-Hälfte von `roundFoldOne`, in den Worten der Antwort
       // (vgl. `answerSources.punktPage`): die Stelle, nicht der Mechanismus.
-      roundFoldLocusPage: 'S. {page}',
-      roundFoldLocusClause: 'Pkt. {clause}',
-      roundFoldLocusClausePage: 'Pkt. {clause} · S. {page}',
+      roundFoldLocusPage: 'S.\u00A0{page}',
+      roundFoldLocusClause: 'Pkt.\u00A0{clause}',
+      roundFoldLocusClausePage: 'Pkt.\u00A0{clause}\u00A0· S.\u00A0{page}',
       // Barrierefreier Name der Schaltfläche, die die Schicht auf- und zuklappt.
       // Der Kartentext selbst ist eine Folgerung und taugt nicht als Name.
       roundFold: 'Schritt {n} zuklappen',
@@ -1281,20 +1492,6 @@ export const chat: typeof en.chat = {
       contextLabel: 'Kontext',
       sourcesTab: 'Quellen',
       sourcesTitle: 'Geprüfte Quellen',
-      findingsTab: 'Stand',
-      // Reine Herleitungs-Info im Stand-Knoten: in welchen Quellenspuren
-      // es Treffer gab. NICHT das Vertrauensurteil (Konfidenz/Belege) — das
-      // steht einmal auf der Antwortkarte.
-      findingsHits: 'Treffer in: {lanes}',
-      // Die Beleg-Bilanz, dort genannt, wo der Fächer zusammenläuft: was
-      // tatsächlich gelesen wurde, bevor die Quellenarten aufgezählt werden.
-      findingsTally: '{hits} Treffer in {docs} Dokumenten',
-      findingsTallyOne: '{hits} Treffer in 1 Dokument',
-      // Während der Zug streamt gibt es noch keinen Stand, der Graph
-      // braucht seinen Zusammenführungspunkt aber trotzdem — sonst hängen die
-      // Quellenspalten in der Luft und die Form springt, sobald die Antwort da ist.
-      findingsPendingTab: 'Stand',
-      findingsPending: 'Quellen werden abgewogen …',
       // Die Recherche lief nicht zu Ende, sondern gegen ihre Iterationsgrenze.
       // Im Stand-Knoten, weil er die Frage „was lag der Antwort
       // zugrunde?“ beantwortet — und dazu gehört, wo die Kette abbrach.

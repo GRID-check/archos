@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from typing import Any
 
 from pydantic import Field
 from pydantic import SecretStr
@@ -11,6 +12,35 @@ from nat.plugin_api import FunctionInfo
 from nat.plugin_api import register_function
 
 logger = logging.getLogger(__name__)
+
+
+class _NoRow:
+    """The Herleitung row where there is no Grid agent to draw it: takes the calls, emits nothing."""
+
+    def __init__(self, *_args: Any, **_fields: Any) -> None:
+        pass
+
+    def finish(self, *_args: Any, **_fields: Any) -> None:
+        pass
+
+
+class _NoOutcome:
+    """What a call found, kept for a row nobody draws."""
+
+    def __init__(self) -> None:
+        self.hits: int | None = None
+        self.failed = False
+
+    def settle(self, *_args: Any, **_fields: Any) -> None:
+        pass
+
+
+try:  # the Grid agent draws one row per call (ADR-0132); the standalone dist has no agent package
+    from aiq_agent.common.action_outcome import ActionOutcome
+    from aiq_agent.common.turn_status import ActionRow
+except ImportError:
+    ActionOutcome = _NoOutcome  # type: ignore[assignment,misc]
+    ActionRow = _NoRow  # type: ignore[assignment,misc]
 
 # Track if we've already warned about missing API key to avoid duplicate warnings
 _missing_key_warned = False
@@ -108,6 +138,13 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
     # a one-off client so the shared one is never mutated under concurrency.
     settings_key = "web.advanced_max_results" if tool_config.advanced_search else "web.max_results"
 
+    def _max_results() -> int:
+        try:
+            from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        except ImportError:  # standalone dist: the configured count is the only one there is
+            return tool_config.max_results
+        return get_retrieval_setting(settings_key, tool_config.max_results)
+
     def _client_for(max_results: int):
         if max_results == tool_config.max_results:
             return tavily_search
@@ -122,9 +159,18 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
         Returns:
             str: The web search results containing relevant documents and their URLs.
         """
-        from aiq_agent.common.retrieval_settings import get_retrieval_setting
+        outcome = ActionOutcome()
+        row = ActionRow("web", query=question)
+        try:
+            result = await _search(question, outcome)
+        except BaseException:
+            row.finish("error")
+            raise
+        outcome.settle(row, default="error")
+        return result
 
-        client = _client_for(get_retrieval_setting(settings_key, tool_config.max_results))
+    async def _search(question: str, outcome: ActionOutcome) -> str:
+        client = _client_for(_max_results())
 
         # Tavily API requires queries under 400 characters
         if len(question) > 400:
@@ -157,6 +203,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
                 if not isinstance(results, list):
                     raise ValueError(f"Tavily API returned unexpected results format: {type(results)}")
 
+                outcome.hits = len(results)
                 try:
                     from aiq_agent.common.turn_status import record_lane_hit as capture_lane_hit
                 except ImportError:  # standalone dist without the Grid agent package
@@ -187,6 +234,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
 
             except Exception as e:
                 if attempt == tool_config.max_retries - 1:
+                    outcome.failed = True
                     # On final attempt, return a user-friendly error message
                     error_msg = str(e)
                     if isinstance(e, ValueError):
@@ -204,6 +252,7 @@ async def tavily_web_search(tool_config: TavilyWebSearchToolConfig, builder: Bui
 
         # Unreachable when max_retries >= 1 (enforced by config), but a tool
         # must always hand the agent a string, never None.
+        outcome.failed = True
         return "Error: Web search failed - no attempts were made"
 
     yield FunctionInfo.from_fn(

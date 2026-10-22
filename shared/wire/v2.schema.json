@@ -1,5 +1,277 @@
 {
   "$defs": {
+    "ActionCounts": {
+      "additionalProperties": false,
+      "description": "What one call found. Each count is absent when the call does not count it.",
+      "properties": {
+        "documents": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Distinct documents the hits are in.",
+          "title": "Documents"
+        },
+        "files": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Files a listing showed.",
+          "title": "Files"
+        },
+        "folders": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Folders a listing showed.",
+          "title": "Folders"
+        },
+        "hits": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Passages or matches returned.",
+          "title": "Hits"
+        },
+        "searched": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Documents searched, the denominator.",
+          "title": "Searched"
+        }
+      },
+      "required": [],
+      "title": "ActionCounts",
+      "type": "object"
+    },
+    "ActionStep": {
+      "additionalProperties": false,
+      "description": "One call of the agent's work, as the reader sees it (ADR-0132): verb, target, outcome, time.\n\nThe tool emits it itself, at start (``running``) and at end, under one id,\nfrom the values it already holds: typed and clipped, never its raw input or\nits text. ``elapsed_ms`` is set on the end row.",
+      "properties": {
+        "call_id": {
+          "description": "Shared with the sources step this call returned.",
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Call Id",
+          "type": "string"
+        },
+        "counts": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ActionCounts"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "document_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The workspace document a read or look opened.",
+          "title": "Document Id"
+        },
+        "elapsed_ms": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elapsed Ms"
+        },
+        "id": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "action",
+          "default": "action",
+          "title": "Kind",
+          "type": "string"
+        },
+        "mode": {
+          "anyOf": [
+            {
+              "enum": [
+                "meaning",
+                "exact",
+                "regex"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A search's match mode.",
+          "title": "Mode"
+        },
+        "pages": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The pages or Punkt read, e.g. '2-3', 'Pkt. 3.5'.",
+          "title": "Pages"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "maxLength": 160,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "What was searched for, the model's words.",
+          "title": "Query"
+        },
+        "round": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The retrieval round the call ran in.",
+          "title": "Round"
+        },
+        "scope": {
+          "default": "chat",
+          "enum": [
+            "chat",
+            "deep"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "shelf": {
+          "anyOf": [
+            {
+              "maxLength": 40,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Which shelf: project, office, base, web.",
+          "title": "Shelf"
+        },
+        "status": {
+          "default": "running",
+          "enum": [
+            "running",
+            "ok",
+            "empty",
+            "error"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "target": {
+          "anyOf": [
+            {
+              "maxLength": 300,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Folder path, document name, project or operation, in words.",
+          "title": "Target"
+        },
+        "verb": {
+          "enum": [
+            "search",
+            "list",
+            "read",
+            "look",
+            "lookup",
+            "law",
+            "web",
+            "model",
+            "workspace"
+          ],
+          "title": "Verb",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "call_id",
+        "verb",
+        "kind"
+      ],
+      "title": "ActionStep",
+      "type": "object"
+    },
     "AnswerRetracted": {
       "additionalProperties": false,
       "properties": {
@@ -1499,6 +1771,12 @@
           "title": "Kind",
           "type": "string"
         },
+        "prefetch": {
+          "default": false,
+          "description": "Round 0 run before the model's first call; the Herleitung draws no row for it.",
+          "title": "Prefetch",
+          "type": "boolean"
+        },
         "reason": {
           "anyOf": [
             {
@@ -1888,6 +2166,20 @@
       "additionalProperties": false,
       "description": "What one evidence tool returned, as lanes. Built from the grounding records, never from text.",
       "properties": {
+        "call_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The action row of the call that returned these (ADR-0132).",
+          "title": "Call Id"
+        },
         "id": {
           "maxLength": 200,
           "minLength": 1,
@@ -2435,6 +2727,7 @@
         "step": {
           "discriminator": {
             "mapping": {
+              "action": "#/$defs/ActionStep",
               "clarification": "#/$defs/ClarificationStep",
               "look": "#/$defs/LookStep",
               "retrieval": "#/$defs/RetrievalStep",
@@ -2466,6 +2759,9 @@
             },
             {
               "$ref": "#/$defs/LookStep"
+            },
+            {
+              "$ref": "#/$defs/ActionStep"
             }
           ],
           "title": "Step"
@@ -2521,6 +2817,7 @@
         "step": {
           "discriminator": {
             "mapping": {
+              "action": "#/$defs/ActionStep",
               "clarification": "#/$defs/ClarificationStep",
               "look": "#/$defs/LookStep",
               "retrieval": "#/$defs/RetrievalStep",
@@ -2552,6 +2849,9 @@
             },
             {
               "$ref": "#/$defs/LookStep"
+            },
+            {
+              "$ref": "#/$defs/ActionStep"
             }
           ],
           "title": "Step"

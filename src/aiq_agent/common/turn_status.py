@@ -92,6 +92,7 @@ from __future__ import annotations
 
 import json
 import logging
+import time
 from collections.abc import Iterator
 from collections.abc import Sequence
 from contextlib import contextmanager
@@ -106,6 +107,9 @@ from langchain_core.callbacks import AsyncCallbackHandler
 from langgraph.config import get_stream_writer
 
 from aiq_agent.common.source_kinds import canonical_shelf_value
+from aiq_agent.common.wire_v2 import ActionCounts
+from aiq_agent.common.wire_v2 import ActionStep
+from aiq_agent.common.wire_v2 import ActionVerb
 from aiq_agent.common.wire_v2 import Channel
 from aiq_agent.common.wire_v2 import EventBody
 from aiq_agent.common.wire_v2 import LookStep
@@ -536,6 +540,98 @@ def emit_status(
 def emit_technical(slot: str, **detail: Scalar | list[str] | None) -> None:
     """Emit one technical record: no key, no values, only detail an operator counts."""
     emit_status(slot, channel=CHANNEL_TECHNICAL, **detail)
+
+
+#: Step id prefix of an action row (ADR-0132); a fresh id per call follows.
+ACTION_STEP_PREFIX = "action:"
+
+
+#: The action row of the tool call running RIGHT NOW, so the sources it returns
+#: name the same call (ADR-0132). Each parallel call runs in its own task, so
+#: siblings never see each other's id.
+_action_call: ContextVar[str | None] = ContextVar("grid_action_call", default=None)
+
+
+def current_action_call() -> str | None:
+    """The call id of the action row open in this task, or ``None``."""
+    return _action_call.get()
+
+
+class ActionRow:
+    """One call's row in the Herleitung work list: emitted ``running`` now, settled by :meth:`finish`.
+
+    The tool holds the row for the length of its call and fills in what it
+    found from its own typed values. Fail-open everywhere: a row that does not
+    validate is logged and dropped, never raised into the tool.
+    """
+
+    def __init__(self, verb: ActionVerb, **fields: Any) -> None:
+        self.call_id = uuid4().hex[:16]
+        self._id = f"{ACTION_STEP_PREFIX}{self.call_id}"
+        self._started = time.monotonic()
+        self._fields: dict[str, Any] = {
+            "verb": verb,
+            "call_id": self.call_id,
+            "round": current_retrieval_round(),
+            **_clip_action(fields),
+        }
+        self._token: Token[str | None] | None = _action_call.set(self.call_id)
+        self._done = False
+        self._emit(started=True)
+
+    def finish(
+        self,
+        status: Literal["ok", "empty", "error"] = "ok",
+        *,
+        counts: dict[str, int | None] | None = None,
+        **fields: Any,
+    ) -> None:
+        """Settle the row once: its outcome, its counts and its time. A second call is ignored."""
+        if self._done:
+            return
+        self._done = True
+        self._release_call()
+        self._fields.update(_clip_action(fields))
+        self._fields["status"] = status
+        self._fields["elapsed_ms"] = max(0, round((time.monotonic() - self._started) * 1000))
+        kept = {k: v for k, v in (counts or {}).items() if v is not None}
+        if kept:
+            self._fields["counts"] = kept
+        self._emit(started=False)
+
+    def _release_call(self) -> None:
+        token, self._token = self._token, None
+        if token is None:
+            return
+        try:
+            _action_call.reset(token)
+        except ValueError:
+            # Settled from another context than the one that opened it: that
+            # context ends with its task, and the id goes with it.
+            pass
+
+    def _emit(self, *, started: bool) -> None:
+        try:
+            fields = dict(self._fields)
+            counts = fields.pop("counts", None)
+            step = ActionStep(id=self._id, counts=ActionCounts(**counts) if counts else None, **fields)
+        except ValueError:
+            logger.warning("An action row did not validate (%s)", self._fields.get("verb"), exc_info=True)
+            return
+        emit_step(step, started=started)
+
+
+_ACTION_CLIPS = {"query": 160, "target": 300, "pages": 40, "shelf": 40}
+
+
+def _clip_action(fields: dict[str, Any]) -> dict[str, Any]:
+    out: dict[str, Any] = {}
+    for key, value in fields.items():
+        if value is None or value == "":
+            continue
+        limit = _ACTION_CLIPS.get(key)
+        out[key] = clip(str(value), limit) if limit else value
+    return out
 
 
 #: Slot prefix of the technical record a literal-mode ``knowledge_search`` (``match="exact"`` or
@@ -1232,6 +1328,7 @@ def emit_retrieval(
     *,
     round_index: int,
     conclusion: str | None = None,
+    prefetch: bool = False,
 ) -> bool:
     """ONE line for a whole round of tool calls: where it looks, and for what.
 
@@ -1260,6 +1357,12 @@ def emit_retrieval(
     prose is the fallback, and :func:`emit_checkpoint` records which one it
     was — ranking them anywhere else would let the sentence the spine renders
     and the source it is counted under disagree.
+
+    ``prefetch`` marks the round the decision ran before the model's first
+    call (round 0 of ``PilotiAgent._prefetch_node``). The Herleitung draws no
+    row for it: its sources join the first fan like any other (ADR-0132). The
+    round index cannot say this, since a turn with nothing prefetched numbers
+    the model's own first search 0 too.
 
     Returns True when a retrieval round was emitted (search corpora), so the
     caller can increment the round counter. Action-only rounds return False.
@@ -1292,6 +1395,7 @@ def emit_retrieval(
                 values=values,
                 tools=tools,
                 reason=reason,
+                prefetch=prefetch,
             )
         )
         # Emitted HERE rather than by the caller so the two can never disagree:

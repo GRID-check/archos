@@ -185,5 +185,24 @@ export function documentShortName(name: string, title?: string | null): string {
   const full = documentDisplayName(name, title)
   const trimmed = full.replace(/,\s*(Ausgabe\s+[^,]+|Rev\.\s*[\d.]+)(?=,|$)/g, '')
   const cleaned = trimmed.replace(/,\s*$/, '').trim()
-  return cleaned || full
+  return bindAbbreviations(cleaned || full)
+}
+
+/**
+ * An abbreviation that must not break at its hyphen, bound with a no-break
+ * hyphen (U+2011): „OIB‑RL 2“ never ends a line on „OIB-“. Display only: the
+ * result is no key to match a document by.
+ */
+export const bindAbbreviations = (text: string): string => text.replace(/\bOIB-RL\b/g, 'OIB\u2011RL')
+
+/**
+ * The edition/revision tail {@link documentShortName} drops — „Ausgabe Mai
+ * 2023“, „Rev. 1“ — or undefined when the name carries none. Read off the
+ * display title, the only place the wire states an edition today: a project
+ * document's Fassung or plan index is not on a trace lane or a citation.
+ */
+export function documentEdition(name: string, title?: string | null): string | undefined {
+  const full = documentDisplayName(name, title)
+  const tails = [...full.matchAll(/,\s*(Ausgabe\s+[^,]+|Rev\.\s*[\d.]+)(?=,|$)/g)].map((match) => match[1].trim())
+  return tails.length > 0 ? tails.join(', ') : undefined
 }

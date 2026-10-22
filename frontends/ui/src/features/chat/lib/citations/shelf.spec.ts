@@ -16,7 +16,8 @@
  */
 
 import { describe, test, expect } from 'vitest'
-import { de } from '@/i18n/dictionaries'
+import { de, en } from '@/i18n/dictionaries'
+import { getByPath } from '@/i18n/translate'
 import { buildCitationModel, decodeCitations, documentShelfLabel, documentTabLabel } from './index'
 import { citationFromWire } from '../wire-citation'
 import { parseKbLocator } from './locator'
@@ -136,6 +137,23 @@ describe('a private session attachment is not project knowledge', () => {
 
     expect(doc.shelf).toBe('base')
     expect(documentTabLabel(doc, t)).toBe('OIB-Richtlinie')
+  })
+
+  test('the lane is named in the reader’s language, never in the wire’s German label', () => {
+    const tEn = (key: string) => getByPath(en.chat, key) as string
+    const oib = documentFor(
+      wire({ shelf: 'base', kind: 'building_law', lane: 'building_law_oib', lane_label: 'OIB-Richtlinie' })
+    )
+    expect(documentTabLabel(oib, tEn)).toBe('OIB guideline')
+    const federal = documentFor(
+      wire({ kind: 'building_law', lane: 'building_law_federal', lane_label: 'Bundesrecht' })
+    )
+    expect(documentTabLabel(federal, tEn)).toBe('Federal law')
+    // A lane the dictionary does not name says its shelf, not the German label.
+    const project = documentFor(
+      wire({ shelf: 'project', kind: 'project', lane: 'project', lane_label: 'Projektwissen' })
+    )
+    expect(documentTabLabel(project, tEn)).toBe('Project knowledge')
   })
 })
 

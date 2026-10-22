@@ -193,6 +193,7 @@ Consequences, where a reader looks for them.
 | [0129](0129-piloti-learns-the-office-conventions.md) | Piloti learns the office's conventions: folder skeleton, where each Dokumentart is filed, Plannummer, Index and date patterns, counted from the office's projects and stated as "usually" | Proposed |
 | [0130](0130-piloti-notices-a-new-fassung.md) | Piloti notices a new Fassung: it compares it unasked and leaves proposed marks where it changed | Proposed |
 | [0131](0131-the-agent-api-speaks-one-dialect.md) | The agent API speaks one dialect: one word, one id slot, lean pages, views not rows | Accepted |
+| [0132](0132-the-herleitung-shows-the-work-one-row-per-call.md) | The Herleitung shows the work: one row per call, grouped by round, with what it found | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

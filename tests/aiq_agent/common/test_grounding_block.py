@@ -337,6 +337,71 @@ class TestTheDerivationGetsTheRecords:
         assert emitted == []
 
 
+class TestTheSourcesStepNamesOnlyWhatTheModelMayBeTold:
+    """Emitted before the round is admitted: a restricted folder's document waits for admission (ADR-0088)."""
+
+    RESTRICTED = "proj_1_r0123456789ab"
+    LANE = TraceLane(
+        key="projekt",
+        label="Projekt",
+        kind="project",
+        hit_count=3,
+        sources=[
+            TraceLaneSource(name="grundriss.pdf", detail="p.1", shelf="project", round=0),
+            TraceLaneSource(name="gehaltsliste.pdf", detail="p.1", shelf="project", round=0),
+            TraceLaneSource(name="gehaltsliste.pdf", detail="p.2", shelf="project", round=0),
+        ],
+    )
+    SECRET = TraceLane(
+        key="projekt_intern",
+        label="Intern",
+        kind="project",
+        hit_count=1,
+        sources=[TraceLaneSource(name="vertrag.pdf", detail="p.1", shelf="project", round=0)],
+    )
+
+    def _render(self, admitted: set[str]) -> None:
+        from aiq_agent.knowledge.restricted_use import RestrictedUse
+        from aiq_agent.knowledge.restricted_use import bind_restricted_use
+        from aiq_agent.knowledge.restricted_use import reset_restricted_use
+
+        hits = (
+            _hit(file_name="grundriss.pdf", collection="proj_1"),
+            _hit(file_name="gehaltsliste.pdf", collection=self.RESTRICTED, page=1),
+            _hit(file_name="gehaltsliste.pdf", collection=self.RESTRICTED, page=2),
+            _hit(file_name="vertrag.pdf", collection=self.RESTRICTED),
+        )
+        use = RestrictedUse("org", "user", "conversation", "proj_1", drawable={self.RESTRICTED}, admitted=admitted)
+        token = bind_restricted_use(use)
+        try:
+            render_grounding_block(
+                GroundingBlock(
+                    preamble="Found 4",
+                    degraded_banner="",
+                    hits=hits,
+                    lanes=(self.LANE, self.SECRET),
+                    tool="knowledge_search",
+                )
+            )
+        finally:
+            reset_restricted_use(token)
+
+    def test_an_unadmitted_restricted_document_is_neither_named_nor_counted(self, emitted):
+        self._render(admitted=set())
+
+        (step,) = emitted.steps
+        (lane,) = step.lanes  # the lane holding only a restricted document goes
+        assert [source.name for source in lane.sources] == ["grundriss.pdf"]
+        assert lane.hit_count == 1
+        assert "gehaltsliste" not in step.model_dump_json() and "vertrag" not in step.model_dump_json()
+
+    def test_an_admitted_restricted_document_is_named(self, emitted):
+        self._render(admitted={self.RESTRICTED})
+
+        (step,) = emitted.steps
+        assert step.lanes == [self.LANE, self.SECRET]
+
+
 class TestAuthorshipIsDerivedFromProvenance:
     """``authored_by`` cannot disagree with the provenance it is read off."""
 

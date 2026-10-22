@@ -35,7 +35,7 @@ export const research = {
       // The turn failed; the error card below says how.
       failed: 'Failed',
       // The turn commissioned a run: its work has only begun.
-      handedOff: 'Run commissioned',
+      handedOff: 'Task created',
       // Piloti did not take the question on; the banner says why.
       refused: 'Not handled',
     },

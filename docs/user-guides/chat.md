@@ -195,36 +195,61 @@ brief, and „Klären“ on a single finding commissions a run about that one po
 The thread's history row shows a run going or a report ready; stopping a run is
 done from its block, or from the run's row in the history.
 
-## Herleitung: folding a search step
+## Herleitung: what Piloti looked up, and what the answer stands on
 
-Above the answer sits the *Herleitung* — a one-line bar that opens into the
-graph of how the turn got there. A turn that searched once draws a single fan of
-sources. A turn that searched **more than once** draws a spine instead: the
-conclusion that caused each fetch, the files *that* fetch returned, then the
-next conclusion. A step's body is always the model's own sentence, never the
-search query.
+Above the answer sits the *Herleitung*. Folded, it is one line: how many steps
+the turn took, how many sources the answer cites, and at most one warning, the
+worst there is — „1 Abruf fehlgeschlagen“ outranks „1 Punkt offen“. Opened, it
+is the graph of how the turn got there: the question, each step with its calls,
+the sources each step returned, and a last card, „Grundlagen · Entwurf“.
 
-**A step says what Piloti set out to do, then what it read.** The sentence under
-the step number is Piloti's own: why this fetch happened. Under it stands one
-card per document, listing the Punkte or pages that step read in it. Five
-Punkte of the OIB-Richtlinie 2 are one card with five addresses, not five cards.
-„bereits abgerufen“ marks a passage the step fetched again: either that exact
-page or Punkt had already come back, or the step went back into a file an
-earlier step had opened. A file an earlier search merely *listed* does not
-count. Opening it is new work, and carries no marker.
+**A step says what Piloti set out to do, then shows each call as a row.** The
+sentence under „Schritt 1 · Suchen“ is Piloti's own, when it wrote one. Under it
+stands one row per call: the verb muted, then what it was done to, then what came
+back on the right — „Sucht wörtlich „Brandabschnitt“ im Projekt · 14 Treffer ·
+3 Dokumente“, „Liest Einreichplan EG.pdf, S. 2–3 · 2 Stellen“. A search that
+found nothing says where it looked: „Sucht in OIB-RL 2: „Brandabschnitt
+Tiefgarage“ · kein Treffer“; a search of a corpus names it first („Sucht im
+RIS: „Wiener Garagengesetz““). A status is a shape and a word (a ring for no
+hit, a triangle for a failed call with what that means for the answer on a line
+under it, a quiet dot for a call still running, a hollow one and „abgebrochen“
+for a call the turn ended under); colour is kept for where a source comes from.
+A look („Betrachtet …“) shows the crop it read, marked „abgelesen, nicht
+gemessen“, and holds its place while it runs. Three or more calls of one kind
+fold into one row („Liest 7 Dokumente ×7“; searches carry no verb: „4 Suchen
+im RIS ×4“); a step of more than five rows shows the worst three and „+N
+weitere“. No row carries a time: no one checks an answer by its seconds.
 
-**Every step folds.** Clicking a step (or reaching it with Tab and pressing
-Enter — it is a real button and reports its state through `aria-expanded`)
-replaces its fan of file cards with the count of what that fetch returned,
-"3 Dateien". Clicking again brings the cards back. A step that fetched nothing
-has no fold: there is nothing to put away.
+**The automatic first search has no row.** When Piloti searches before it
+starts thinking (the prefetch), what it found joins the first step's sources
+like any other.
 
-**Three or more steps arrive folded**, all but the newest. Two steps are a
-comparison and folding half of one hides it; from the third the graph stops
-being a shape and starts being a scroll, so the older steps arrive as counts and
-the reader opens the one they want. A step opened by hand stays open as later
-steps stream in. The choice lives for as long as the panel is open — it is a
-reading preference for one Herleitung, not a saved setting.
+**Sources fan out under the step that found them.** Each card carries its kind
+(OIB-Richtlinie, Projektwissen …), the name, the edition when the title states
+one („Ausgabe Mai 2023“), the place („Pkt. 3.1.1“, „S. 7“) and the answer's
+marker („[1]“). What a step retrieved and the answer did not cite folds into one
+dashed card marked „Nicht zitiert“, „+2 abgerufen“; tapping it opens those cards. While
+the answer is still being written nothing is cited yet, so it reads „+2
+weitere“. „bereits abgerufen“ still marks a passage a step fetched again.
+
+**Tap a row and its sources stay bright; tap a source and its row lights up.**
+Everything else steps back until you tap again. Rows and cards are real buttons,
+reachable with Tab. A card still opens its document as before. Turns stored
+before calls carried an id link nothing; there a row about a document opens it.
+
+**„Grundlagen · Entwurf“ closes the graph.** „Rechtsgrundlage“ lists the cited
+law with its edition and place, „Belegt durch“ the cited project and office
+documents with theirs, and „Offen“ every call that failed or found nothing:
+„Nicht beurteilbar, weil die Suche in OIB-RL 2 nach „Brandabschnitt
+Tiefgarage“ keine Fundstelle ergab.“ It is the basis of a draft, never a proof.
+
+**Two turns need no graph.** A turn that looked nothing up says „Ohne Recherche
+beantwortet“ in one line. A turn of a single call is that call, in the past:
+„Gelesen: Brandschutzkonzept · S. 7 · zitiert [1]“. Neither opens.
+
+**Older turns fold by step.** A turn stored before the calls had rows draws its
+steps as before; clicking one (or Enter on it — a real button reporting
+`aria-expanded`) folds its fan to a count and back.
 
 Rendered evidence: capture `/dev/derivation`.
 

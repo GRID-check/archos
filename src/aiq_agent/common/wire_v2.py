@@ -216,6 +216,9 @@ class RetrievalStep(_StepBase):
     values: dict[str, str] = Field(default_factory=dict)
     tools: list[str] = Field(default_factory=list, description="Tool basenames this round called.")
     reason: str | None = Field(default=None, max_length=160, description="The model's conclusion, verbatim.")
+    prefetch: bool = Field(
+        default=False, description="Round 0 run before the model's first call; the Herleitung draws no row for it."
+    )
 
 
 class SourcesStep(_StepBase):
@@ -225,6 +228,9 @@ class SourcesStep(_StepBase):
     round: int | None = Field(default=None, ge=0)
     tool: str = Field(min_length=1)
     lanes: list[TraceLane]
+    call_id: str | None = Field(
+        default=None, max_length=64, description="The action row of the call that returned these (ADR-0132)."
+    )
 
 
 class ToolStep(_StepBase):
@@ -278,8 +284,48 @@ class LookStep(_StepBase):
     reading: str | None = Field(default=None, max_length=300, description="The first reading, when one was made.")
 
 
+ActionVerb = Literal["search", "list", "read", "look", "lookup", "law", "web", "model", "workspace"]
+
+
+class ActionCounts(_Model):
+    """What one call found. Each count is absent when the call does not count it."""
+
+    hits: int | None = Field(default=None, ge=0, description="Passages or matches returned.")
+    documents: int | None = Field(default=None, ge=0, description="Distinct documents the hits are in.")
+    searched: int | None = Field(default=None, ge=0, description="Documents searched, the denominator.")
+    files: int | None = Field(default=None, ge=0, description="Files a listing showed.")
+    folders: int | None = Field(default=None, ge=0, description="Folders a listing showed.")
+
+
+class ActionStep(_StepBase):
+    """One call of the agent's work, as the reader sees it (ADR-0132): verb, target, outcome, time.
+
+    The tool emits it itself, at start (``running``) and at end, under one id,
+    from the values it already holds: typed and clipped, never its raw input or
+    its text. ``elapsed_ms`` is set on the end row.
+    """
+
+    kind: Literal["action"] = "action"
+    call_id: str = Field(min_length=1, max_length=64, description="Shared with the sources step this call returned.")
+    round: int | None = Field(default=None, ge=0, description="The retrieval round the call ran in.")
+    verb: ActionVerb
+    status: Literal["running", "ok", "empty", "error"] = "running"
+    query: str | None = Field(default=None, max_length=160, description="What was searched for, the model's words.")
+    mode: Literal["meaning", "exact", "regex"] | None = Field(default=None, description="A search's match mode.")
+    target: str | None = Field(
+        default=None, max_length=300, description="Folder path, document name, project or operation, in words."
+    )
+    document_id: str | None = Field(default=None, description="The workspace document a read or look opened.")
+    pages: str | None = Field(
+        default=None, max_length=40, description="The pages or Punkt read, e.g. '2-3', 'Pkt. 3.5'."
+    )
+    shelf: str | None = Field(default=None, max_length=40, description="Which shelf: project, office, base, web.")
+    counts: ActionCounts | None = None
+    elapsed_ms: int | None = Field(default=None, ge=0)
+
+
 Step = Annotated[
-    StatusStep | RetrievalStep | SourcesStep | ToolStep | SkillStep | ClarificationStep | LookStep,
+    StatusStep | RetrievalStep | SourcesStep | ToolStep | SkillStep | ClarificationStep | LookStep | ActionStep,
     Field(discriminator="kind"),
 ]
 

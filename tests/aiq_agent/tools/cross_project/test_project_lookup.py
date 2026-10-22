@@ -1143,3 +1143,56 @@ class TestTheProjectFacts:
         await lookup.run_project_lookup("search", query="Traufe", project_facts=["Tirol", "GK 4"])
 
         assert seen[0]["projectFacts"] == {"federal_state": ["tyrol"], "building_class": [4]}
+
+
+class TestTheActionRow:
+    """One ``lookup`` row per call (ADR-0132), settled from the BFF's typed body."""
+
+    @staticmethod
+    def _call(emitted):
+        actions = [step for step in emitted.steps if step.kind == "action"]
+        assert [step.status for step in actions][0] == "running"
+        assert len(actions) == 2
+        assert actions[0].id == actions[1].id
+        return actions[0], actions[1]
+
+    async def test_a_search_states_its_query_and_counts(self, monkeypatch, calls, turn, emitted) -> None:
+        _answering(monkeypatch, calls, SEARCH_BODY)
+
+        await lookup.run_project_lookup("search", query="Traufe Holzbau")
+
+        started, finished = self._call(emitted)
+        assert (started.verb, started.query) == ("lookup", "Traufe Holzbau")
+        assert finished.status == "ok"
+        assert (finished.counts.hits, finished.counts.documents) == (2, 2)
+        assert finished.target == "Wohnbau Graz"
+
+    async def test_a_search_with_nothing_is_empty(self, monkeypatch, calls, turn, emitted) -> None:
+        _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": []})
+
+        await lookup.run_project_lookup("search", query="Traufe")
+
+        assert self._call(emitted)[1].status == "empty"
+
+    async def test_a_find_counts_projects(self, monkeypatch, calls, turn, emitted) -> None:
+        _answering(monkeypatch, calls, {"projects": [_listed_project()], "total": 1})
+
+        await lookup.run_project_lookup("find", query="Graz")
+
+        finished = self._call(emitted)[1]
+        assert finished.counts.hits == 1
+        assert finished.target == "Wohnbau Graz"
+
+    async def test_a_refusal_is_an_error_row(self, monkeypatch, calls, turn, emitted) -> None:
+        _answering(monkeypatch, calls, SEARCH_BODY)
+
+        await lookup.run_project_lookup("search", query="")
+
+        assert self._call(emitted)[1].status == "error"
+
+    async def test_an_unreachable_bff_is_an_error_row(self, monkeypatch, calls, turn, emitted) -> None:
+        _answering(monkeypatch, calls, CrossProjectLookupError("down", status=503))
+
+        await lookup.run_project_lookup("search", query="Traufe")
+
+        assert self._call(emitted)[1].status == "error"

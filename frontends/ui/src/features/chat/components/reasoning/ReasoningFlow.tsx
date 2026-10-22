@@ -107,6 +107,16 @@
  *     streaming, column re-packing) keep the graph visible — the old gate was
  *     keyed on orientation and fired a full fade-out/in on every flip.
  *
+ * ## The 2026-10 evolution (ADR-0132, amendment)
+ *
+ * A step with calls draws them as rows inside its node (`RoundCalls`), not as
+ * nodes of their own, and carries no fold: the rows are its controls. The
+ * decision's prefetch (round 0, `RetrievalStep.prefetch`) is no step; its
+ * documents join the first fan. Each fan shows the cited documents as cards and
+ * folds the rest into one dashed card (`partitionFan`). A tap on a row or a
+ * card links the two through `call_id` (`GraphInteraction`). The last node is
+ * „Grundlagen · Entwurf“ (`basisLines`, `openPoints`), not a tally.
+ *
  * ## What moves
  *
  * Only React Flow's own `animated` edge: while the turn is live, the
@@ -116,8 +126,9 @@
 
 'use client'
 
-import { type FC, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown } from 'lucide-react'
+import { type FC, useCallback, useId, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { ChevronDown, ChevronUp, Circle } from 'lucide-react'
+import { FOCUS_RING, FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import {
   ReactFlow,
   ReactFlowProvider,
@@ -141,14 +152,48 @@ import { cn } from '@/lib/utils'
 import { useLayoutStore } from '@/features/layout/store'
 import { TechnicalSteps } from './TechnicalSteps'
 import { LookStepRows } from './LookStepRow'
+import { RoundCalls, type RowLinking } from './WorkList'
+import { quoteQuery } from '../../lib/work-sentence'
+import {
+  callIdsByDocument,
+  isLinked,
+  placedLookIds,
+  prefetchRounds,
+  withActionRounds,
+  workKind,
+  workRounds,
+  type LinkSelection,
+  type WorkRound,
+} from '../../lib/work-list'
+import {
+  basisLines,
+  cardForTarget,
+  cardName,
+  openPoints,
+  type BasisLine,
+} from '../../lib/derivation-basis'
 import type { CitationSource } from '../../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { deriveTraceLanes } from '../../lib/trace-lanes'
-import { buildCitationModel, citedLoci, totalHits, type CitedDocument, type CitationLocus } from '../../lib/citations'
+import {
+  buildCitationModel,
+  citedLoci,
+  isCited,
+  normalizeFileName,
+  type CitedDocument,
+  type CitationLocus,
+} from '../../lib/citations'
 import { documentShortName } from '../../lib/document-names'
-import { BareSourceCard, SourceCard } from './SourceCard'
+import {
+  BareSourceCard,
+  FOLDER_TAB,
+  FOLDER_TAB_H,
+  RECEDED,
+  SourceCard,
+  type CardLink,
+} from './SourceCard'
+import { CitationMarkers } from '../CitationMarker'
 import { SectionLabel } from '@/components/ui/section-label'
-import { citationChips } from './citations'
 import {
   answerDegradations,
   deepResearchCutoff,
@@ -157,11 +202,24 @@ import {
   type DeepResearchCutoff,
 } from '../../lib/turn-events'
 import { stepNameLabel } from '../../lib/executed-steps'
-import { retrievalRounds, roundFan, type FanCard, type RetrievalRound } from '../../lib/retrieval-rounds'
+import {
+  retrievalRounds,
+  roundFan,
+  type FanCard,
+  type RetrievalRound,
+} from '../../lib/retrieval-rounds'
 import type { RetrievalLedger } from '@/lib/conversations/message-retrieval-ledger'
 
 /** Hidden connection handle (edges anchor to it; the dot itself is invisible). */
-const H = { opacity: 0, width: 1, height: 1, minWidth: 0, minHeight: 0, border: 'none', background: 'transparent' } as const
+const H = {
+  opacity: 0,
+  width: 1,
+  height: 1,
+  minWidth: 0,
+  minHeight: 0,
+  border: 'none',
+  background: 'transparent',
+} as const
 /**
  * The edge ink: foreground at 18%, mixed rather than a token so it sits on any
  * surface (muted, card, popover) in both themes without a second variable.
@@ -209,19 +267,24 @@ type FramingData = {
  */
 type SourceColumnData = {
   /**
-   * The slots this column carries. A slot is a card plus, when the backend's
+   * The slots this column carries: a document card (plus, when the backend's
    * ledger accounted for the round, what THAT round did with it — see
-   * `FanCard`. The turn-level fan passes plain card slots and reads exactly as
-   * it always did.
+   * `FanCard`), or the one dashed card the round's uncited documents fold
+   * into („+N abgerufen, nicht zitiert“).
    */
-  cards: FanCard[]
-  hitLabel: (count: number) => string
-  gapLabel: string
+  cards: ColumnSlot[]
   /** Single-column (phone) layout — the cards get the grouped container. */
   grouped: boolean
   groupLabel: string
   /** Packed column width for this fan. Falls back to `--source-w` when omitted. */
   colW?: number
+  /**
+   * How far down the column the incoming edge ends: the folder tab's height
+   * when the first slot wears one, so the connector meets the card's body as
+   * it does on every column, never the blank beside the tab. 0 for a bare
+   * first card and for the grouped box, whose own top is the body.
+   */
+  inTop: number
   /**
    * The turn is still running.
    *
@@ -231,19 +294,43 @@ type SourceColumnData = {
    * to cite. The card withholds the verdict until the turn lands.
    */
   live: boolean
+  /** A card was tapped: its calls' rows light up (`LinkSelection`). */
+  onSelect: (selection: LinkSelection | null) => void
+  /** The dashed fold card was tapped: its round's uncited cards open or close. */
+  onToggleFold: (key: string) => void
 }
+
+/** One slot of a fan column: a document, or the fold of a round's uncited documents. */
+type ColumnSlot =
+  | { type: 'card'; fan: FanCard; callIds: string[]; link?: CardLink }
+  | {
+      type: 'fold'
+      /** The fan this fold belongs to: what `onToggleFold` opens. */
+      key: string
+      count: number
+      /** Short names of the folded documents, in order. */
+      names: string[]
+      /** The folded documents themselves: what opens in place. */
+      folded: FanCard[]
+      live: boolean
+      expanded: boolean
+      receded: boolean
+    }
 type FindingsData = {
   label: string
-  /**
-   * Reasoning-specific detail: which lanes actually produced hits for this turn
-   * (deduped lane labels). This is NOT the answer's trust verdict — the
-   * confidence chip and provenance chips live once, on the answer card.
-   */
-  hitSummary?: string
-  /** "9 hits across 5 documents" — the tally, stated before the strata. */
-  tally?: string
-  /** Streaming: the verdict has not landed, so the node reads as in-flight. */
+  /** Streaming: the answer has not landed, so the node reads as in-flight. */
   pending?: boolean
+  /** While pending, what the node waits for. */
+  pendingNote?: string
+  /**
+   * What the answer stands on („Grundlagen · Entwurf“), each a labelled list:
+   * the cited law with its edition, the cited project and office sources with
+   * their place, and what stayed open (a call that failed or found nothing).
+   * Never „nachgewiesen“: this is the basis of a draft, not a verdict.
+   */
+  basis: Array<{ label: string; lines: BasisLine[]; open?: boolean }>
+  /** Phone width: each label sits over its lines instead of beside them. */
+  compact: boolean
   /**
    * The turn ran into its research ceiling. Rendered as the node's last line —
    * the assessment answers "what was this built on?", and "the chain stopped
@@ -292,6 +379,12 @@ type RoundData = {
   text: string
   /** Architect-facing names of the tools this checkpoint actually called. */
   actions: string[]
+  /** The calls of this round (`action` steps, ADR-0132): one row each, linked to the cards they returned. */
+  calls?: WorkRound
+  /** Phone width: a row's result goes under its object instead of beside it. */
+  compact: boolean
+  /** What links the rows to the cards: the reader's tap. */
+  linking: RowLinking
   targets: HandleSpec[]
   sources: HandleSpec[]
   /**
@@ -317,14 +410,22 @@ type RoundData = {
 
 // ── node components ───────────────────────────────────────────────────────────
 const FramingFlowNode: FC<NodeProps<Node<FramingData>>> = ({ data }) => (
-  <div className="w-[var(--banner-w)] max-w-full rounded-xl border bg-card px-4 py-3 text-left shadow-xs">
+  <div className="bg-card w-[var(--banner-w)] max-w-full rounded-xl border px-4 py-3 text-left shadow-xs">
     <Eyebrow>
       <span className="inline-flex items-center gap-1.5">{data.label}</span>
     </Eyebrow>
-    <p className="mt-1 text-sm leading-relaxed text-foreground">{data.question}</p>
-    {data.escalation && <p className="mt-1.5 text-xs leading-relaxed text-warning">{data.escalation}</p>}
+    <p className="text-foreground mt-1 text-sm leading-relaxed">{data.question}</p>
+    {data.escalation && (
+      <p className="text-warning mt-1.5 text-xs leading-relaxed">{data.escalation}</p>
+    )}
     {data.sources.map((h) => (
-      <Handle key={h.id} id={h.id} type="source" position={Position.Bottom} style={{ ...H, left: h.left }} />
+      <Handle
+        key={h.id}
+        id={h.id}
+        type="source"
+        position={Position.Bottom}
+        style={{ ...H, left: h.left }}
+      />
     ))}
   </div>
 )
@@ -346,9 +447,15 @@ const FramingFlowNode: FC<NodeProps<Node<FramingData>>> = ({ data }) => (
  * than pointing at nothing.
  */
 const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
-  <div className="relative w-[var(--banner-w)] max-w-full rounded-xl border bg-card px-4 py-3 text-left shadow-xs">
+  <div className="bg-card relative w-[var(--banner-w)] max-w-full rounded-xl border px-4 pt-3 pb-2 text-left shadow-xs">
     {data.targets.map((h) => (
-      <Handle key={h.id} id={h.id} type="target" position={Position.Top} style={{ ...H, left: h.left }} />
+      <Handle
+        key={h.id}
+        id={h.id}
+        type="target"
+        position={Position.Top}
+        style={{ ...H, left: h.left }}
+      />
     ))}
     {data.foldable && (
       <button
@@ -357,7 +464,12 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         aria-expanded={!data.folded}
         aria-label={data.toggleLabel}
         data-testid="reasoning-round-toggle"
-        className="absolute inset-0 z-10 cursor-pointer rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+        className={cn(
+          'absolute inset-0 z-10 cursor-pointer rounded-xl outline-none',
+          // Inset: the banner spans the content width, and an offset ring is
+          // clipped by the pane on both sides.
+          FOCUS_RING_INSET
+        )}
       />
     )}
     <div className="flex items-start justify-between gap-2">
@@ -368,35 +480,52 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         <ChevronDown
           aria-hidden="true"
           className={cn(
-            'mt-px size-3.5 shrink-0 text-muted-foreground transition-transform duration-quick ease-out motion-reduce:transition-none',
+            'text-muted-foreground duration-quick mt-px size-3.5 shrink-0 transition-transform ease-out motion-reduce:transition-none',
             data.folded && '-rotate-90'
           )}
         />
       )}
     </div>
-    {data.text ? <p className="mt-1 text-sm leading-relaxed text-foreground">{data.text}</p> : null}
-    {data.actions.length > 0 ? (
+    {/* The model's sentence, when it wrote one: it names the intent. A step
+        without one loses nothing — its rows say what it did. */}
+    {data.text ? <p className="text-foreground mt-1 text-sm leading-relaxed">{data.text}</p> : null}
+    {/* A step stored before the action rows (ADR-0132) still names its tools. */}
+    {!data.calls && data.actions.length > 0 ? (
       <ul className="mt-1.5 flex flex-wrap gap-1">
         {data.actions.map((action) => (
           <li
             key={action}
-            className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-snug text-muted-foreground pointer-coarse:text-xs"
+            className="bg-muted text-muted-foreground rounded-md px-1.5 py-0.5 text-[11px] leading-snug pointer-coarse:text-xs"
           >
             {action}
           </li>
         ))}
       </ul>
     ) : null}
+    {data.calls ? (
+      <RoundCalls
+        round={data.calls}
+        compact={data.compact}
+        linking={data.linking}
+        ruled={Boolean(data.text)}
+      />
+    ) : null}
     {/* Folded: the fan collapses to its scent — the count plus the top
         filename(s). Not the query (PF-12), and never a bare count: evidence
         hidden behind a number reads as no evidence. */}
     {data.foldable && data.folded ? (
-      <p className="mt-1.5 border-t border-base pt-1.5 text-xs leading-relaxed text-muted-foreground">
+      <p className="border-base text-muted-foreground mt-1.5 border-t pt-1.5 pb-1 text-xs leading-relaxed">
         {data.foldSummary}
       </p>
     ) : null}
     {data.sources.map((h) => (
-      <Handle key={h.id} id={h.id} type="source" position={Position.Bottom} style={{ ...H, left: h.left }} />
+      <Handle
+        key={h.id}
+        id={h.id}
+        type="source"
+        position={Position.Bottom}
+        style={{ ...H, left: h.left }}
+      />
     ))}
   </div>
 )
@@ -411,37 +540,27 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
 const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) => {
   const stack = (
     <div role="list" aria-label={data.groupLabel} className="flex w-full flex-col">
-      {data.cards.map((fanCard, i) => {
-        const card = fanCard.card
-        return (
-          <div key={fanCard.key} className="flex flex-col">
-            {i > 0 && (
-              <span
-                aria-hidden="true"
-                className="mx-auto h-2.5 w-px shrink-0"
-                style={{ backgroundColor: EDGE_STROKE }}
-              />
-            )}
-            <div>
-              {card ? (
-                <SourceCard
-                  document={card}
-                  hitLabel={data.hitLabel(card.loci.length)}
-                  gapLabel={data.gapLabel}
-                  live={data.live}
-                  {...(fanCard.loci ? { loci: fanCard.loci } : {})}
-                />
-              ) : (
-                <BareSourceCard
-                  name={fanCard.workspace ? fanCard.name : documentShortName(fanCard.name, fanCard.title)}
-                  {...(fanCard.workspace ? { workspace: true } : {})}
-                  {...(fanCard.loci ? { loci: fanCard.loci } : {})}
-                />
-              )}
-            </div>
-          </div>
-        )
-      })}
+      {data.cards.map((slot, i) => (
+        <div
+          key={slot.type === 'card' ? slot.fan.key : `fold:${slot.key}`}
+          className="flex flex-col"
+        >
+          {/* The hairline joins cards; the open fold is a text control under
+              the last uncited card, not a card, and hangs on nothing. */}
+          {i > 0 && !(slot.type === 'fold' && slot.expanded) && (
+            <span
+              aria-hidden="true"
+              className="mx-auto h-2.5 w-px shrink-0"
+              style={{ backgroundColor: EDGE_STROKE }}
+            />
+          )}
+          {slot.type === 'fold' ? (
+            <UncitedFoldCard slot={slot} onToggle={() => data.onToggleFold(slot.key)} />
+          ) : (
+            <FanSlotCard slot={slot} live={data.live} onSelect={data.onSelect} />
+          )}
+        </div>
+      ))}
     </div>
   )
 
@@ -450,9 +569,14 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
       className="max-w-full"
       style={{ width: data.colW !== undefined ? `${data.colW}px` : 'var(--source-w)' }}
     >
-      <Handle id="in" type="target" position={Position.Top} style={{ ...H, left: '50%' }} />
+      <Handle
+        id="in"
+        type="target"
+        position={Position.Top}
+        style={{ ...H, left: '50%', top: data.inTop }}
+      />
       {data.grouped ? (
-        <div className="rounded-xl border bg-muted px-3 py-3">
+        <div className="bg-muted rounded-xl border px-3 py-3">
           <Eyebrow>{data.groupLabel}</Eyebrow>
           <div className="mt-2">{stack}</div>
         </div>
@@ -464,51 +588,196 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
   )
 }
 
+/**
+ * One document of a fan. Tapping it (it opens its preview, as it always did)
+ * also lights up the rows of the calls that returned it; a card no call names
+ * (the prefetch's, or a turn stored before `call_id`) links to nothing.
+ */
+const FanSlotCard: FC<{
+  slot: Extract<ColumnSlot, { type: 'card' }>
+  live: boolean
+  onSelect: (selection: LinkSelection | null) => void
+}> = ({ slot, live, onSelect }) => {
+  const { fan, callIds, link } = slot
+  const select =
+    callIds.length > 0
+      ? () => onSelect(link === 'selected' ? null : { key: fan.key, callIds })
+      : undefined
+  return fan.card ? (
+    <SourceCard
+      document={fan.card}
+      live={live}
+      {...(fan.loci ? { loci: fan.loci } : {})}
+      {...(link ? { link } : {})}
+      {...(select ? { onSelect: select } : {})}
+    />
+  ) : (
+    <BareSourceCard
+      name={fan.workspace ? fan.name : documentShortName(fan.name, fan.title)}
+      {...(fan.workspace ? { workspace: true } : {})}
+      {...(fan.loci ? { loci: fan.loci } : {})}
+    />
+  )
+}
+
+/**
+ * The round's uncited documents as one dashed card: „+2 abgerufen, nicht
+ * zitiert“ with their names. While the answer runs nothing is cited yet, so it
+ * reads „+2 weitere“. A button: it opens the folded cards in place.
+ *
+ * Open, it is no longer a card: the cards it held stand above it, and what
+ * remains is the way back, a plain muted line under the last of them. The
+ * button's name is what it shows (the count and the names, never a label that
+ * hides them); the tab describes it.
+ */
+const UncitedFoldCard: FC<{
+  slot: Extract<ColumnSlot, { type: 'fold' }>
+  onToggle: () => void
+}> = ({ slot, onToggle }) => {
+  const t = useTranslations('chat')
+  const tabId = useId()
+  const U = 'thinking.node.uncited.'
+  if (slot.expanded) {
+    return (
+      <div role="listitem" data-testid="uncited-fold" className="mt-1.5 flex min-w-0">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded
+          className={cn(
+            'text-muted-foreground duration-snap pointer-fine:hover:text-foreground inline-flex min-h-8 items-center gap-1 rounded-md px-1 text-left text-[13px] leading-[19px] transition-[color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none pointer-coarse:min-h-11',
+            FOCUS_RING
+          )}
+        >
+          <ChevronUp aria-hidden="true" className="size-3.5 shrink-0" />
+          {t(`${U}hide`)}
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div
+      role="listitem"
+      data-testid="uncited-fold"
+      className={cn(
+        'duration-quick flex min-w-0 flex-col transition-opacity ease-out motion-reduce:transition-none',
+        slot.receded && RECEDED
+      )}
+    >
+      {/* Card-white on the muted panel and the phone's muted box alike: the
+          cited tabs carry their kind's tint, this one only its words. */}
+      <SectionLabel id={tabId} className={cn(FOLDER_TAB, 'bg-card text-muted-foreground')}>
+        {t(`${U}${slot.live ? 'pillLive' : 'pill'}`)}
+      </SectionLabel>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-expanded={false}
+        aria-describedby={tabId}
+        className={cn(
+          'bg-muted/40 duration-snap pointer-fine:hover:bg-muted flex min-h-11 w-full min-w-0 flex-col rounded-lg border border-dashed px-3 py-2.5 text-left transition-[background-color,scale] ease-out outline-none active:scale-[0.985] motion-reduce:transition-none',
+          FOCUS_RING
+        )}
+      >
+        <span className="text-foreground/80 text-sm leading-5 font-semibold">
+          {t(`${U}${slot.live ? 'nameLive' : 'name'}`, { count: slot.count })}
+        </span>
+        <span className="text-muted-foreground line-clamp-2 text-[13px] leading-[19px] hyphens-auto [overflow-wrap:break-word] [hyphenate-limit-chars:10_4_4]">
+          {slot.names.join(', ')}
+        </span>
+      </button>
+    </div>
+  )
+}
+
 const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
   <div
     className={cn(
-      'w-[var(--banner-w)] max-w-full rounded-xl border bg-card px-4 py-3 text-left shadow-xs',
+      'bg-card w-[var(--banner-w)] max-w-full rounded-xl border px-4 py-3 text-left shadow-xs',
       // Pending reads as in-flight rather than as an empty result: dashed
-      // hairline, no fill — the same visual grammar the gap source cards use.
+      // hairline, no fill — the same visual grammar the uncited fold uses.
       data.pending && 'border-dashed bg-transparent shadow-none'
     )}
   >
     {data.targets.map((h) => (
-      <Handle key={h.id} id={h.id} type="target" position={Position.Top} style={{ ...H, left: h.left }} />
+      <Handle
+        key={h.id}
+        id={h.id}
+        type="target"
+        position={Position.Top}
+        style={{ ...H, left: h.left }}
+      />
     ))}
-    <Eyebrow>
-      <span className="inline-flex items-center gap-1.5">
-        {/* Still: the connectors marching into this node are the graph's one
-            loop (see `renderedEdges`), and a pulse here would be a second. */}
-        {data.pending && <span aria-hidden="true" className="size-1.5 rounded-full bg-brand" />}
-        {data.label}
-      </span>
-    </Eyebrow>
-    {/* The tally leads: what was read is the checkable claim. The strata line
-        follows as "from where". The trust verdict (confidence + provenance
-        chips) is NOT restated here — it lives once on the answer card. */}
-    {data.tally && (
-      <p className="mt-1 text-sm font-semibold leading-snug tabular-nums text-foreground">
-        {data.tally}
-      </p>
+    <Eyebrow>{data.label}</Eyebrow>
+    {data.pendingNote && (
+      <p className="text-muted-foreground mt-1 text-sm leading-relaxed">{data.pendingNote}</p>
     )}
-    {data.hitSummary && (
-      <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">{data.hitSummary}</p>
+    {/* What the answer stands on, as two columns that become one on a phone:
+        a label on the left, its lines on the right. „Offen“ sits on its own
+        tinted band, with a ring for its shape — a gap, not an alarm. */}
+    {data.basis.length > 0 && (
+      <dl
+        className={cn(
+          'mt-2 grid gap-y-2 text-sm leading-[21px]',
+          data.compact ? 'grid-cols-1' : 'grid-cols-[124px_minmax(0,1fr)] gap-x-3'
+        )}
+      >
+        {data.basis.map((group) => (
+          <div
+            key={group.label}
+            data-testid={group.open ? 'basis-open' : 'basis-group'}
+            className={cn(
+              'col-span-full grid grid-cols-subgrid gap-y-0.5',
+              group.open && 'bg-muted -mx-3 mt-1 rounded-lg px-3 py-2.5'
+            )}
+          >
+            <dt
+              className={cn(
+                data.compact && 'text-[13px] leading-[19px]',
+                group.open
+                  ? 'text-foreground inline-flex items-start gap-1.5 font-semibold'
+                  : 'text-muted-foreground'
+              )}
+            >
+              {group.open && (
+                <Circle aria-hidden strokeWidth={2.4} className="mt-[5px] size-3 shrink-0" />
+              )}
+              {group.label}
+            </dt>
+            <dd className="min-w-0 [overflow-wrap:anywhere]">
+              {/* A cited line leads with the answer's own marker, so „1“
+                  here peeks and opens what „1“ in the prose does. */}
+              {group.lines.map((line) => (
+                <p key={line.text}>
+                  {line.numbers.length > 0 && (
+                    <>
+                      <CitationMarkers numbers={line.numbers} className="font-semibold tabular-nums" />{' '}
+                    </>
+                  )}
+                  {line.text}
+                </p>
+              ))}
+            </dd>
+          </div>
+        ))}
+      </dl>
     )}
     {data.truncation && (
       // Same muted register as the lines above it: this is a fact about the
       // evidence, not a warning — the node is not tinted, bordered or
       // iconified for it, because "the search stopped" is not an error.
-      <p className="mt-1.5 border-t border-base pt-1.5 text-xs leading-relaxed text-muted-foreground">
+      <p className="border-base text-muted-foreground mt-1.5 border-t pt-1.5 text-xs leading-relaxed">
         {data.truncation.before}
         {data.truncation.step && (
-          <span className={data.truncation.mono ? 'font-mono' : undefined}>{data.truncation.step}</span>
+          <span className={data.truncation.mono ? 'font-mono' : undefined}>
+            {data.truncation.step}
+          </span>
         )}
         {data.truncation.after}
       </p>
     )}
     {data.limits && (
-      <div className="mt-1.5 border-t border-base pt-1.5">
+      <div className="border-base mt-1.5 border-t pt-1.5">
         <Eyebrow>{data.limits.label}</Eyebrow>
         {data.limits.lines.map((line) => (
           <p
@@ -523,7 +792,12 @@ const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
         ))}
       </div>
     )}
-    <Handle id={data.source.id} type="source" position={Position.Bottom} style={{ ...H, left: data.source.left }} />
+    <Handle
+      id={data.source.id}
+      type="source"
+      position={Position.Bottom}
+      style={{ ...H, left: data.source.left }}
+    />
   </div>
 )
 
@@ -559,8 +833,14 @@ export interface ReasoningFlowProps {
 }
 
 // ── layout constants ──────────────────────────────────────────────────────────
-/** Narrowest a source card may get before we stack instead of adding a column. */
-const MIN_COL_W = 146
+/**
+ * Narrowest a source card may get before we stack instead of adding a column.
+ *
+ * 172: a hyphenated twelve-letter compound („Brandschutzkonzept“) keeps a
+ * syllable of four on each line, where 146 cut it into three-letter shards.
+ * Still three columns in the 680px chat column; two from 544px down, then one.
+ */
+const MIN_COL_W = 172
 /** Widest a single column grows to, so 2 sources don't become two half-pages. */
 const MAX_COL_W = 236
 /**
@@ -620,7 +900,9 @@ export function planFan(width: number, cardCount: number): FanLayout {
   if (cardCount <= 0) {
     return { columns: [], colW: contentW, gap: COL_GAP, fanX: 0, contentW, grouped: false }
   }
-  const capacity = grouped ? 1 : Math.max(1, Math.floor((contentW + COL_GAP) / (MIN_COL_W + COL_GAP)))
+  const capacity = grouped
+    ? 1
+    : Math.max(1, Math.floor((contentW + COL_GAP) / (MIN_COL_W + COL_GAP)))
   const count = Math.min(cardCount, capacity)
   const colW = grouped
     ? contentW
@@ -639,6 +921,22 @@ export function planFan(width: number, cardCount: number): FanLayout {
     columns.push(Array.from({ length: size }, () => next++))
   }
   return { columns, colW, gap: COL_GAP, fanX, contentW, grouped }
+}
+
+/**
+ * {@link planFan} over a fan's slots. An OPEN fold is no card: it is the way
+ * back, a line under the last uncited card, so it takes no column of its own
+ * and hangs under that card, which reading order puts in the last column.
+ */
+function packSlots(width: number, slots: readonly ColumnSlot[]): FanLayout {
+  const last = slots.at(-1)
+  const openFold = last?.type === 'fold' && last.expanded
+  if (!openFold) return planFan(width, slots.length)
+  const packed = planFan(width, slots.length - 1)
+  const columns = packed.columns.map((column, i, all) =>
+    i === all.length - 1 ? [...column, slots.length - 1] : column
+  )
+  return { ...packed, columns }
 }
 
 /** Corner rounding on every connector. */
@@ -840,7 +1138,11 @@ export function defaultFoldedRounds(_count: number): Set<number> {
 const READ_PASSAGE = 'read_passage'
 
 /** Tool basename as the round records it (`tool: read_passage` → `read_passage`). */
-const toolBase = (tool: string): string => tool.trim().replace(/^tool:\s*/i, '').toLowerCase()
+const toolBase = (tool: string): string =>
+  tool
+    .trim()
+    .replace(/^tool:\s*/i, '')
+    .toLowerCase()
 
 /** This layer only opened passages — it searched for nothing new. */
 const onlyOpened = (tools: string[]): boolean =>
@@ -863,14 +1165,47 @@ const onlyOpened = (tools: string[]): boolean =>
  * layer may be a miss or a hit the old wire never stamped, and `Suche` stays
  * the honest word for not knowing which.
  */
-function roundKind(
+/** Tools that list or open a folder: a round of only these fetched no documents, by design. */
+const BROWSE_TOOLS: ReadonlySet<string> = new Set(['list_files'])
+
+/**
+ * Tools whose round can come back empty. A round of tools outside this set
+ * (a listing, a workspace call, an IFC query) returns no documents by design,
+ * so „no documents“ is no miss there (ADR-0132).
+ */
+const SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  'knowledge_search',
+  'project_lookup',
+  'read_passage',
+  'surface_documents',
+  'web_search_tool',
+  'advanced_web_search_tool',
+  'ris_search_tool',
+  'ris_fetch_tool',
+  'ris_lookup_tool',
+  'ris_catalog_lookup_tool',
+])
+
+/** A round that called tools, and none of them looks for documents. */
+const searchedNothing = (tools: string[]): boolean =>
+  tools.length > 0 && !tools.some((tool) => SEARCH_TOOLS.has(toolBase(tool)))
+
+export function roundKind(
   hasThought: boolean,
   documentCount: number,
   tools: string[],
   t: Translator,
   accounted = false
 ): string {
-  if (documentCount === 0 && accounted) return t('thinking.node.stepKindNoHits')
+  if (
+    documentCount === 0 &&
+    tools.length > 0 &&
+    tools.every((tool) => BROWSE_TOOLS.has(toolBase(tool)))
+  ) {
+    return t('thinking.node.stepKindBrowse')
+  }
+  if (documentCount === 0 && accounted && !searchedNothing(tools))
+    return t('thinking.node.stepKindNoHits')
   if (documentCount > 0 && onlyOpened(tools)) return t('thinking.node.stepKindOpen')
   if (hasThought && documentCount > 0) return t('thinking.node.stepKindFinding')
   if (hasThought) return t('thinking.node.stepKindConclusion')
@@ -900,7 +1235,8 @@ function foldLocusLabel(doc: CitedDocument, t: Translator): string | undefined {
   if (!locus) return undefined
   const clause = locus.clause?.trim()
   const page = typeof locus.page === 'number' ? locus.page : undefined
-  if (clause && page !== undefined) return t('thinking.node.roundFoldLocusClausePage', { clause, page })
+  if (clause && page !== undefined)
+    return t('thinking.node.roundFoldLocusClausePage', { clause, page })
   if (clause) return t('thinking.node.roundFoldLocusClause', { clause })
   if (page !== undefined) return t('thinking.node.roundFoldLocusPage', { page })
   return undefined
@@ -941,7 +1277,8 @@ function foldSummary(roundCards: FanCard[], t: Translator): string {
       ? t('thinking.node.roundFoldOne', { name: names[0], locus })
       : t('thinking.node.roundFoldOneBare', { name: names[0] })
   }
-  if (names.length === 2) return t('thinking.node.roundFoldTwo', { first: names[0], second: names[1] })
+  if (names.length === 2)
+    return t('thinking.node.roundFoldTwo', { first: names[0], second: names[1] })
   return t('thinking.node.roundFoldMany', { count: names.length, first: names[0] })
 }
 
@@ -955,6 +1292,61 @@ function foldSummary(roundCards: FanCard[], t: Translator): string {
 export interface SpineFolding {
   folded: ReadonlySet<number>
   onToggle: (index: number) => void
+}
+
+/**
+ * What the reader has tapped, and how to change it: the link between rows and
+ * cards, and which rounds' uncited cards are open. Passed in rather than held
+ * here for the reason `SpineFolding` is: `buildGraph` is pure.
+ */
+export interface GraphInteraction {
+  selection: LinkSelection | null
+  onSelect: (selection: LinkSelection | null) => void
+  /** Fans (by key) whose uncited cards the reader opened. */
+  openFolds: ReadonlySet<string>
+  onToggleFold: (key: string) => void
+}
+
+const NO_INTERACTION: GraphInteraction = {
+  selection: null,
+  onSelect: () => {},
+  openFolds: new Set<string>(),
+  onToggleFold: () => {},
+}
+
+/** While the answer runs, a fan of more than this many shows its first {@link LIVE_SHOWN} and folds the rest. */
+const LIVE_FAN_MAX = 3
+const LIVE_SHOWN = 2
+
+/**
+ * Which of a fan's documents stand as cards and which fold into the dashed
+ * „+N abgerufen, nicht zitiert“ card. Settled, the cited ones stand; while the
+ * answer runs nothing is cited yet, so the first few stand and the rest fold
+ * as „+N weitere“. Exported for its spec.
+ */
+export function partitionFan(
+  slots: readonly FanCard[],
+  live: boolean
+): { shown: FanCard[]; folded: FanCard[] } {
+  if (live) {
+    if (slots.length <= LIVE_FAN_MAX) return { shown: [...slots], folded: [] }
+    return { shown: slots.slice(0, LIVE_SHOWN), folded: slots.slice(LIVE_SHOWN) }
+  }
+  const cited = (slot: FanCard) => Boolean(slot.card && isCited(slot.card))
+  return { shown: slots.filter(cited), folded: slots.filter((slot) => !cited(slot)) }
+}
+
+/** A fan's slots with the prefetch's merged in front, once each by document. */
+const mergeFans = (first: readonly FanCard[], second: readonly FanCard[]): FanCard[] => {
+  const seen = new Set<string>()
+  const out: FanCard[] = []
+  for (const slot of [...first, ...second]) {
+    const key = normalizeFileName(slot.card?.fileName ?? slot.name) || slot.key
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(slot)
+  }
+  return out
 }
 
 /**
@@ -974,103 +1366,112 @@ export function buildGraph(
    */
   folding: SpineFolding = { folded: new Set<number>(), onToggle: () => {} },
   /** `retrievalRounds(props.steps)`, when the caller has parsed it already. */
-  rounds: RetrievalRound[] = retrievalRounds(props.steps)
+  rounds: RetrievalRound[] = withActionRounds(retrievalRounds(props.steps), props.steps),
+  interaction: GraphInteraction = NO_INTERACTION
 ): BuiltGraph {
-  const { columns, colW, gap, fanX, grouped } = layout
-  const hasSources = cards.length > 0 && columns.length > 0
-  const hasVerdict = Boolean(props.answerConfidence) || (props.citations?.length ?? 0) > 0
-  /**
-   * While the turn streams there is no verdict yet, but the graph still gets
-   * its converge node — in a pending state. Without it the source columns end
-   * in mid-air (no merge trunk, no common point) and the whole shape jumps the
-   * instant the answer lands. A proof of work should look like work in
-   * progress, not like a broken diagram.
-   */
-  const pendingFindings = !hasVerdict && Boolean(props.live) && hasSources
-  /**
-   * The turn hit its research ceiling. Read from the step stream, which is
-   * where the process record lives — the answer frame carries the reader-facing
-   * half (`researchTruncated`), this carries where the chain stopped.
-   */
-  // Only once the turn has landed: while it streams, the graph already has its
-  // pending converge node, and the answer's own note does not exist yet — two
-  // surfaces disagreeing for a few hundred milliseconds about whether the
-  // search is over is worse than one arriving a moment later.
-  const truncation = props.live ? null : researchTruncation(props.steps)
-  /**
-   * The two records a DEEP run keeps about its own limits: it ran out of clock
-   * or steps, and the answer shipped in a known-weaker form. Same live gate as
-   * the truncation above and for the same reason — both are verdicts on a turn
-   * that is over, and a verdict that arrives while the turn is still running
-   * would be a claim about an answer that does not exist yet.
-   */
-  const cutoff = props.live ? null : deepResearchCutoff(props.steps)
-  const degradations = props.live ? [] : answerDegradations(props.steps)
-  const limitLines = limitations(cutoff, degradations, t)
-  /**
-   * A truncated turn EARNS the assessment node even with no verdict and no
-   * sources — which is exactly the case worth getting right, because a turn
-   * that was cut off before it found anything is otherwise a graph that just
-   * stops, with nothing anywhere saying why. A cut-off or degraded deep run is
-   * the same case, arrived at down a different road.
-   */
-  const hasFindings = hasVerdict || pendingFindings || Boolean(truncation) || limitLines.length > 0
+  const work = workRounds(props.steps)
+  const live = Boolean(props.live)
+  // Phone width, whether or not the turn has a fan to group: the rows and the
+  // last card stack their parts instead of setting them side by side.
+  const compact = layout.contentW <= GROUPED_MAX_W
+  const { selection } = interaction
+  // The decision's prefetch (round 0) is no step a reader sees: its documents
+  // join the first fan like any other source (ADR-0132).
+  const prefetch = prefetchRounds(props.steps)
+  const visible = rounds.filter((round) => !prefetch.has(round.index))
+  const prefetched = rounds.filter((round) => prefetch.has(round.index))
 
-  const columnIds = columns.map((_, i) => `col-${i}`)
-  const columnX = (i: number) => fanX + i * (colW + gap)
+  // The calls that returned each document, for the row↔card link.
+  const callsOf = callIdsByDocument(props.steps, normalizeFileName)
+  const slotCalls = (slot: FanCard): string[] => {
+    const names = [slot.name, slot.card?.fileName, slot.card?.title].filter(
+      (name): name is string => Boolean(name)
+    )
+    return [...new Set(names.flatMap((name) => callsOf.get(normalizeFileName(name)) ?? []))]
+  }
+  const linkOf = (key: string, callIds: string[]): CardLink | undefined => {
+    if (!selection) return undefined
+    if (selection.key === key) return 'selected'
+    return isLinked(selection, callIds) ? 'linked' : 'receded'
+  }
+
+  /** A fan's column slots: the standing cards, then the fold of the rest. */
+  const columnSlots = (fanKey: string, slots: readonly FanCard[]): ColumnSlot[] => {
+    const { shown, folded } = partitionFan(slots, live)
+    const open = interaction.openFolds.has(fanKey)
+    const standing = open ? [...shown, ...folded] : shown
+    const out: ColumnSlot[] = standing.map((fan) => {
+      const callIds = slotCalls(fan)
+      const link = linkOf(fan.key, callIds)
+      return { type: 'card', fan, callIds, ...(link ? { link } : {}) }
+    })
+    if (folded.length > 0) {
+      out.push({
+        type: 'fold',
+        key: fanKey,
+        count: folded.length,
+        names: folded.map((fan) =>
+          documentShortName(fan.card?.fileName ?? fan.name, fan.card?.title ?? fan.title)
+        ),
+        folded,
+        live,
+        expanded: open,
+        receded: selection !== null && !folded.some((fan) => isLinked(selection, slotCalls(fan))),
+      })
+    }
+    return out
+  }
+
+  // While the turn streams there is no answer yet, but the graph still gets its
+  // converge node — in a pending state. Without it the source columns end in
+  // mid-air and the whole shape jumps the instant the answer lands.
+  const spine = visible.length >= 2 || (visible.length === 1 && work.length > 0)
+  const pendingFindings = live && (cards.length > 0 || spine)
+  // Only once the turn has landed: while it streams, the graph already has its
+  // pending converge node, and the answer's own note does not exist yet.
+  const truncation = live ? null : researchTruncation(props.steps)
+  // The two records a DEEP run keeps about its own limits, under the same live gate.
+  const cutoff = live ? null : deepResearchCutoff(props.steps)
+  const degradations = live ? [] : answerDegradations(props.steps)
+  const limitLines = limitations(cutoff, degradations, t)
+  // „Grundlagen · Entwurf“: the cited law, the cited project and office
+  // sources, and what stayed open. Read off the turn, never invented.
+  const basis = live ? null : basisLines(t, cards)
+  const open = live ? [] : openPoints(t, work, cards)
+  const B = 'thinking.node.basis.'
+  const basisGroups: FindingsData['basis'] = basis
+    ? [
+        ...(basis.law.length > 0 ? [{ label: t(`${B}law`), lines: basis.law }] : []),
+        ...(basis.evidence.length > 0 ? [{ label: t(`${B}evidence`), lines: basis.evidence }] : []),
+        ...(open.length > 0
+          ? [{ label: t(`${B}open`), lines: open.map((text) => ({ numbers: [], text })), open: true }]
+          : []),
+      ]
+    : []
+  const hasFindings =
+    pendingFindings || basisGroups.length > 0 || Boolean(truncation) || limitLines.length > 0
 
   const convergeId = hasFindings ? 'findings' : null
 
-  // ONE centred anchor on each banner, both directions. Every column edge
-  // leaves the framing card from the same point and lands on the assessment at
-  // the same point, so the fan reads as a single line that SPLITS into the
-  // sources and MERGES back out of them — the connectors share their first and
-  // last segment instead of arriving as N separate parallel drops.
-  //
-  // Unconditional on purpose: gating these on `hasSources || convergeId` meant
-  // the framing card of a just-started turn was measured with no handles, and
-  // the anchor the first streamed source needs was then added to a node already
-  // on screen — which React Flow never re-measures, so the fan drew no
-  // connectors. See the module header.
+  // ONE centred anchor on each banner, both directions, unconditional: see the
+  // module header on structural handles.
   const framingSources: HandleSpec[] = [CENTRE_BOTTOM]
   const convergeTargets: HandleSpec[] = [CENTRE_TOP]
 
   const framingData: FramingData = {
     label: t('thinking.node.framingTab'),
     question: props.userQuestion.trim()
-      ? t('thinking.node.framingQuestion', { question: props.userQuestion.trim() })
+      ? t('thinking.node.framingQuestion', { question: quoteQuery(t, props.userQuestion) })
       : t('thinking.node.framingTitle'),
     escalation: props.escalationReason?.trim()
       ? t('thinking.escalationNarration', { reason: props.escalationReason.trim() })
       : undefined,
     sources: framingSources,
   }
-  // Which lanes actually produced hits (deduped) — reasoning detail, not the
-  // verdict. citationChips already collapses the flat citation list per lane.
-  const hitLanes = props.citations ? citationChips(props.citations).map((c) => c.label) : []
-  // The proof-of-work tally: what was actually read. Stated where the fan
-  // converges, ahead of the lane list, because "9 hits across 5 documents" is
-  // the claim a reader checks first — the strata answer "from where", not
-  // "how much". Gap cards contribute documents but no hits, so they are counted
-  // A document read but never cited contributes to the document count and to
-  // the hit total alike — it WAS read, which is what the tally claims.
-  const hitTotal = totalHits(cards)
-  const tally =
-    hasSources && hitTotal > 0
-      ? t(cards.length === 1 ? 'thinking.node.findingsTallyOne' : 'thinking.node.findingsTally', {
-          hits: hitTotal,
-          docs: cards.length,
-        })
-      : undefined
   /**
-   * The truncation sentence, split around the step name.
-   *
-   * The name is resolved through the SAME authority the "Ausgeführt:" chips
-   * use: a reader-facing noun where one exists, otherwise the bare tool id
-   * shown as an id (`mono`). What it never does is title-case `light_incidence`
-   * into "Light Incidence" — an identifier dressed as a noun is the one thing
-   * this trace is not allowed to invent, and half this product's tools have no
-   * reader-facing name at all.
+   * The truncation sentence, split around the step name, resolved through the
+   * SAME authority the "Ausgeführt:" chips use: a reader-facing noun where one
+   * exists, otherwise the bare tool id shown as an id (`mono`).
    */
   const truncationLine = (() => {
     if (!truncation) return undefined
@@ -1084,14 +1485,11 @@ export function buildGraph(
   })()
   const findingsData: FindingsData | null = hasFindings
     ? {
-        label: pendingFindings ? t('thinking.node.findingsPendingTab') : t('thinking.node.findingsTab'),
+        label: pendingFindings ? t(`${B}pendingLabel`) : t(`${B}label`),
         pending: pendingFindings,
-        tally,
-        hitSummary: pendingFindings
-          ? t('thinking.node.findingsPending')
-          : hitLanes.length > 0
-            ? t('thinking.node.findingsHits', { lanes: hitLanes.join(', ') })
-            : undefined,
+        ...(pendingFindings ? { pendingNote: t(`${B}pending`) } : {}),
+        basis: basisGroups,
+        compact,
         truncation: truncationLine,
         limits:
           limitLines.length > 0 ? { label: t(`${LIMIT}label`), lines: limitLines } : undefined,
@@ -1104,13 +1502,9 @@ export function buildGraph(
 
   // One retrieval stays the old fan. Two or more are a spine: each checkpoint
   // hangs the files THAT fetch returned, then the next conclusion. The body
-  // is the thought, never the query (PF-12). A missing Thought is an empty
-  // body, not a caption we invent. Tools sit on the checkpoint as the
-  // architect-facing names of what that round actually did.
-  const spine = rounds.length >= 2
-  const roundIds = spine ? rounds.map((_, i) => `round-${i}`) : []
-  const hitLabel = (count: number) =>
-    count === 1 ? t('thinking.hitCountOne') : t('thinking.hitCount', { count })
+  // is the thought, never the query (PF-12). A turn with calls drawn
+  // (ADR-0132) is a spine even in one round: the calls sit on its node.
+  const roundIds = spine ? visible.map((_, i) => `round-${i}`) : []
 
   const actionLabels = (tools: string[]): string[] => {
     const out: string[] = []
@@ -1124,17 +1518,23 @@ export function buildGraph(
     return out
   }
 
+  // The prefetch's documents, in front of the first step's own.
+  const prefetchSlots = prefetched.flatMap((round) => roundFan(round, cards, props.retrievalLedger))
+
   // A folded layer keeps its cards (the count is the whole point of the fold)
   // and contributes NO column nodes: the fan is gone from the graph, not merely
   // hidden with CSS, so the measured stacking pass reclaims its row and the
   // checkpoint wires straight into the next one.
   const fans = spine
-    ? rounds.map((round, i) => {
-        const roundCards = roundFan(round, cards, props.retrievalLedger)
-        const packed = planFan(layout.contentW, roundCards.length)
+    ? visible.map((round, i) => {
+        const own = roundFan(round, cards, props.retrievalLedger)
+        const roundCards = i === 0 ? mergeFans(prefetchSlots, own) : own
+        const slots = columnSlots(`round-${round.index}`, roundCards)
+        const packed = packSlots(layout.contentW, slots)
         const folded = folding.folded.has(i)
         return {
           roundCards,
+          slots,
           packed,
           folded,
           ids: folded ? [] : packed.columns.map((_, c) => `r${i}-col-${c}`),
@@ -1142,22 +1542,24 @@ export function buildGraph(
       })
     : []
 
-  const pushColumns = (ids: string[], packed: FanLayout, roundCards: FanCard[]) => {
+  const pushColumns = (ids: string[], packed: FanLayout, slots: ColumnSlot[]) => {
     // Driven by the ID list, not by the packing: a FOLDED layer keeps its
-    // packing (the cards are still its cards) and is given no ids, and walking
-    // the packing here would push column nodes with an `undefined` id that
-    // nothing can wire to and the measure pass silently strands.
+    // packing and is given no ids.
     if (ids.length === 0) return
     const xOf = (i: number) => packed.fanX + i * (packed.colW + packed.gap)
     packed.columns.slice(0, ids.length).forEach((indices, i) => {
+      const cards = indices.map((idx) => slots[idx]!)
+      const first = cards[0]
+      const tabbed = first?.type === 'fold' ? !first.expanded : Boolean(first?.fan.card)
       const columnData: SourceColumnData = {
-        cards: indices.map((idx) => roundCards[idx]!),
-        hitLabel,
-        gapLabel: t('thinking.gapHit'),
+        cards,
+        inTop: tabbed && !packed.grouped ? FOLDER_TAB_H : 0,
         grouped: packed.grouped,
         groupLabel: t('thinking.sourcesFanOut'),
-        live: Boolean(props.live),
+        live,
         colW: packed.colW,
+        onSelect: interaction.onSelect,
+        onToggleFold: interaction.onToggleFold,
       }
       nodes.push({
         id: ids[i]!,
@@ -1168,24 +1570,56 @@ export function buildGraph(
     })
   }
 
-  nodes.push({ id: 'framing', type: 'framing', position: { x: 0, y: 0 }, data: framingData as Record<string, unknown> })
+  const linking: RowLinking = {
+    selection,
+    onSelect: interaction.onSelect,
+    nameOf: (target) => {
+      const card = cardForTarget(target, cards)
+      return card ? cardName(card) : undefined
+    },
+  }
+  nodes.push({
+    id: 'framing',
+    type: 'framing',
+    position: { x: 0, y: 0 },
+    data: framingData as Record<string, unknown>,
+  })
+  const turnFan = spine
+    ? null
+    : (() => {
+        const slots = columnSlots(
+          'turn',
+          cards.map((card) => ({ key: card.id, card, name: card.fileName ?? card.title }))
+        )
+        return { slots, packed: packSlots(layout.contentW, slots) }
+      })()
+  const columnIds = turnFan ? turnFan.packed.columns.map((_, i) => `col-${i}`) : []
   if (spine) {
-    rounds.forEach((round, i) => {
+    visible.forEach((round, i) => {
       const text = round.reason?.trim() ?? ''
       const fan = fans[i]!
       // DOCUMENTS, not hits: a slot is one file with every passage this round
-      // read of it, so a round that opened five Punkte of one Richtlinie is
-      // one document — which is what „3 Dateien" has always claimed to count.
+      // read of it.
       const documentCount = fan.roundCards.length
       const accounted = props.retrievalLedger?.some((entry) => entry.index === round.index) ?? false
+      const calls = work.find((entry) => entry.round === round.index)
       const roundData: RoundData = {
         label: t('thinking.node.stepTab', { n: i + 1 }),
-        sub: roundKind(text.length > 0, documentCount, round.tools, t, accounted),
+        // A step with calls is named by what they did („Suchen“, „Lesen“); one
+        // stored before them by what its round's tools and files say.
+        sub: calls
+          ? t(`thinking.work.kind.${workKind(calls)}`)
+          : roundKind(text.length > 0, documentCount, round.tools, t, accounted),
         text,
         actions: actionLabels(round.tools),
+        ...(calls ? { calls } : {}),
+        compact,
+        linking,
         targets: [CENTRE_TOP],
         sources: [CENTRE_BOTTOM],
-        foldable: documentCount > 0,
+        // A step with rows has none of its own fold: the rows are its controls,
+        // and the Herleitung as a whole folds in its header.
+        foldable: !calls && documentCount > 0,
         folded: fan.folded,
         foldSummary: foldSummary(fan.roundCards, t),
         toggleLabel: t(fan.folded ? 'thinking.node.roundUnfold' : 'thinking.node.roundFold', {
@@ -1199,34 +1633,18 @@ export function buildGraph(
         position: { x: 0, y: 0 },
         data: roundData as unknown as Record<string, unknown>,
       })
-      pushColumns(fan.ids, fan.packed, fan.roundCards)
+      pushColumns(fan.ids, fan.packed, fan.slots)
     })
-  } else {
-    columns.forEach((indices, i) => {
-      const columnData: SourceColumnData = {
-        // The turn-level fan: a slot is just its card, with no round to speak
-        // for — the aggregate IS the claim there.
-        cards: indices.map((idx) => {
-          const card = cards[idx]!
-          return { key: card.id, card, name: card.fileName ?? card.title }
-        }),
-        hitLabel,
-        gapLabel: t('thinking.gapHit'),
-        grouped,
-        groupLabel: t('thinking.sourcesFanOut'),
-        live: Boolean(props.live),
-        colW,
-      }
-      nodes.push({
-        id: columnIds[i]!,
-        type: 'sourceColumn',
-        position: { x: columnX(i), y: 0 },
-        data: columnData as unknown as Record<string, unknown>,
-      })
-    })
+  } else if (turnFan) {
+    pushColumns(columnIds, turnFan.packed, turnFan.slots)
   }
   if (findingsData) {
-    nodes.push({ id: 'findings', type: 'findings', position: { x: 0, y: 0 }, data: findingsData as Record<string, unknown> })
+    nodes.push({
+      id: 'findings',
+      type: 'findings',
+      position: { x: 0, y: 0 },
+      data: findingsData as Record<string, unknown>,
+    })
   }
 
   // Wiring: a single retrieval still fans framing → columns → assessment
@@ -1235,10 +1653,10 @@ export function buildGraph(
   // hangs off that fan's merge.
   if (spine) {
     edges.push(edge('framing', 'c-bottom', roundIds[0]!, 'c-top'))
-    rounds.forEach((_, i) => {
+    visible.forEach((_, i) => {
       const roundId = roundIds[i]!
       const { ids } = fans[i]!
-      const next = i < rounds.length - 1 ? roundIds[i + 1]! : convergeId
+      const next = i < visible.length - 1 ? roundIds[i + 1]! : convergeId
       if (ids.length > 0) {
         ids.forEach((cid) => edges.push(edge(roundId, 'c-bottom', cid, 'in', 'split')))
         if (next) ids.forEach((cid) => edges.push(edge(cid, 'out', next, 'c-top', 'merge')))
@@ -1248,9 +1666,10 @@ export function buildGraph(
     })
   } else {
     const fanFrom = 'framing'
-    if (hasSources) {
+    if (columnIds.length > 0) {
       columnIds.forEach((cid) => edges.push(edge(fanFrom, 'c-bottom', cid, 'in', 'split')))
-      if (convergeId) columnIds.forEach((cid) => edges.push(edge(cid, 'out', convergeId, 'c-top', 'merge')))
+      if (convergeId)
+        columnIds.forEach((cid) => edges.push(edge(cid, 'out', convergeId, 'c-top', 'merge')))
     } else if (convergeId) {
       edges.push(edge(fanFrom, 'c-bottom', convergeId, 'c-top'))
     }
@@ -1265,7 +1684,7 @@ export function buildGraph(
       rows.push([roundIds[i]!])
       if (fan.ids.length > 0) rows.push(fan.ids)
     })
-  } else if (hasSources) {
+  } else if (columnIds.length > 0) {
     rows.push(columnIds)
   }
   if (findingsData) rows.push(['findings'])
@@ -1344,7 +1763,11 @@ export function keepEdgeIdentity(prev: readonly Edge[], next: Edge[]): Edge[] {
   return unchanged ? (prev as Edge[]) : kept
 }
 
-const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = ({ built, layout, live }) => {
+const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = ({
+  built,
+  layout,
+  live,
+}) => {
   const t = useTranslations('chat')
   const { nodes, edges, rows } = built
   const initialized = useNodesInitialized()
@@ -1358,7 +1781,10 @@ const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = (
   /** Last measured y per row index — seeds nodes that appear mid-stream. */
   const rowYRef = useRef<number[]>([])
 
-  const onNodesChange = useCallback((changes: NodeChange[]) => setRfNodes((nds) => applyNodeChanges(changes, nds)), [])
+  const onNodesChange = useCallback(
+    (changes: NodeChange[]) => setRfNodes((nds) => applyNodeChanges(changes, nds)),
+    []
+  )
 
   /** Row index a node belongs to, for seeding a newly-streamed node's y. */
   const rowIndexById = useMemo(() => {
@@ -1393,7 +1819,11 @@ const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = (
         // object on every step, and each arriving round re-rendered and
         // re-measured the whole graph: a 65–70 ms task per round on a 4×
         // throttled phone (Herleitung audit, 2026-09).
-        if (old.position.x === n.position.x && old.type === n.type && sameNodeData(old.data, n.data)) {
+        if (
+          old.position.x === n.position.x &&
+          old.type === n.type &&
+          sameNodeData(old.data, n.data)
+        ) {
           return old
         }
         return { ...old, ...n, position: { x: n.position.x, y: old.position.y } }
@@ -1413,9 +1843,17 @@ const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = (
   const handleSigs = useMemo(() => {
     const sigs = new Map<string, string>()
     for (const n of nodes) {
-      const d = n.data as { sources?: HandleSpec[]; targets?: HandleSpec[]; source?: HandleSpec }
+      const d = n.data as {
+        sources?: HandleSpec[]
+        targets?: HandleSpec[]
+        source?: HandleSpec
+        inTop?: number
+      }
       const specs = [...(d.sources ?? []), ...(d.targets ?? []), ...(d.source ? [d.source] : [])]
-      sigs.set(n.id, specs.map((h) => `${h.id}@${h.left}`).join(','))
+      // A column's `in` handle moves with its first slot's tab: a move is a
+      // changed handle too, and React Flow keeps the old bounds until told.
+      const moved = d.inTop !== undefined ? `;in@${d.inTop}` : ''
+      sigs.set(n.id, specs.map((h) => `${h.id}@${h.left}`).join(',') + moved)
     }
     return sigs
   }, [nodes])
@@ -1508,7 +1946,9 @@ const FlowInner: FC<{ built: BuiltGraph; layout: FanLayout; live: boolean }> = (
     // graph shrank 697 → 408 px and grew to 1009 px, and the page jumped with it
     // (Herleitung audit, 2026-09). Once the turn ends it takes its real height.
     const measuredHeight = Math.max(120, Math.ceil(Math.max(0, y - ROW_GAP)) + PAD)
-    setHeight((previous) => (live && previous !== null ? Math.max(previous, measuredHeight) : measuredHeight))
+    setHeight((previous) =>
+      live && previous !== null ? Math.max(previous, measuredHeight) : measuredHeight
+    )
     setLaidOut(true)
     // rows is covered by rowsKey (a stable string). contentW/colW are the widths
     // the nodes are sized against, so both edges of a reflow get a pass.
@@ -1626,8 +2066,14 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
   const [foldOverrides, setFoldOverrides] = useState<ReadonlyMap<number, boolean>>(new Map())
   // Parsed once per step change and handed to `buildGraph`, which needs the
   // rounds themselves; the fold state only needs how many there are.
-  const rounds = useMemo(() => retrievalRounds(steps), [steps])
+  const rounds = useMemo(() => withActionRounds(retrievalRounds(steps), steps), [steps])
   const roundCount = rounds.length
+  const unplacedSteps = useMemo(() => {
+    const placed = placedLookIds(workRounds(steps))
+    return placed.size === 0
+      ? steps
+      : steps.filter((step) => !(step.kind === 'look' && placed.has(step.id)))
+  }, [steps])
   // Read at click time, not captured: a node whose data did not change keeps
   // the handler it was built with (`sameNodeData`), across later rounds too.
   const roundCountRef = useRef(roundCount)
@@ -1652,6 +2098,29 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
     return { folded, onToggle: toggleFold }
   }, [foldOverrides, roundCount, toggleFold])
 
+  /**
+   * The reader's tap: a row or a card, and the calls it stands for. The other
+   * side of the link lights up and the rest recede; a second tap clears it.
+   * Component state for the reason the fold state is: its scope is one
+   * expanded Herleitung.
+   */
+  const [selection, setSelection] = useState<LinkSelection | null>(null)
+  /** Fans whose uncited cards the reader opened, by fan key. */
+  const [openFolds, setOpenFolds] = useState<ReadonlySet<string>>(new Set())
+  const toggleOpenFold = useCallback(
+    (key: string) =>
+      setOpenFolds((prev) => {
+        const next = new Set(prev)
+        if (!next.delete(key)) next.add(key)
+        return next
+      }),
+    []
+  )
+  const interaction = useMemo<GraphInteraction>(
+    () => ({ selection, onSelect: setSelection, openFolds, onToggleFold: toggleOpenFold }),
+    [selection, openFolds, toggleOpenFold]
+  )
+
   // Memoised on the fields that actually shape the graph — NOT on the props
   // object, whose identity changes on every parent render and would rebuild
   // (and re-measure) the whole graph each time.
@@ -1675,7 +2144,8 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
         layout,
         cards,
         folding,
-        rounds
+        rounds,
+        interaction
       ),
     [
       steps,
@@ -1690,6 +2160,7 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
       cards,
       folding,
       rounds,
+      interaction,
     ]
   )
 
@@ -1699,11 +2170,12 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
         <FlowInner built={built} layout={layout} live={live ?? false} />
       </ReactFlowProvider>
 
-      {/* Where Piloti looked (ADR-0128): a row per document, its thumbnails open the place. */}
-      <LookStepRows steps={steps} />
+      {/* Looks the graph's round nodes do not draw (ADR-0128): all of them in a turn
+          from before the action step, none in one that has it. */}
+      <LookStepRows steps={unplacedSteps} />
 
       {showTechnicalReasoning && steps.length > 0 && (
-        <div className="border-t border-base pt-2">
+        <div className="border-base border-t pt-2">
           <TechnicalSteps steps={steps} t={t} />
         </div>
       )}

@@ -34,6 +34,10 @@ export const technicalStepLabel = (step: StoredThinkingStep, t: Translator): str
       return step.skill ?? t('thinking.nodeName.skillSelection')
     case 'clarification':
       return t('thinking.nodeName.clarification')
+    case 'action':
+      return step.action
+        ? `${step.action.verb}${step.action.target ? `: ${step.action.target}` : ''}`
+        : step.kind
     case 'look':
       return typeof step.detail?.document === 'string' ? `look: ${step.detail.document}` : step.kind
   }
@@ -47,7 +51,7 @@ export const TechnicalSteps: FC<{ steps: StoredThinkingStep[]; t: Translator }> 
     <CollapsibleTrigger asChild>
       <button
         type="button"
-        className="focus-visible:ring-ring/60 group flex w-full items-center justify-between rounded-lg py-1 text-left outline-none focus-visible:ring-2"
+        className="focus-visible:ring-ring/60 group flex min-h-11 w-full items-center justify-between rounded-lg py-1 text-left outline-none focus-visible:ring-2 pointer-fine:min-h-8"
       >
         <SectionLabel>{t('thinking.stepsHeading')}</SectionLabel>
         <span className="text-muted-foreground flex items-center gap-1 text-xs">

@@ -31,8 +31,7 @@ const document = (shelf: Shelf | undefined): CitedDocument => ({
   loci: [{ key: 'p:2', page: 2, isCited: true, number: 1 }],
 })
 
-const renderCard = (shelf: Shelf | undefined) =>
-  render(<SourceCard document={document(shelf)} hitLabel="1 Treffer" gapLabel="0 Treffer" />)
+const renderCard = (shelf: Shelf | undefined) => render(<SourceCard document={document(shelf)} />)
 
 describe('SourceCard — provenance tab', () => {
   test('a private session attachment is not labelled Projektwissen', () => {

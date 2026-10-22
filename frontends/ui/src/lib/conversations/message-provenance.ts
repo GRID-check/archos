@@ -48,8 +48,61 @@ export const STEP_KINDS = [
   'skill',
   'clarification',
   'look',
+  'action',
 ] as const
 export type StepKind = (typeof STEP_KINDS)[number]
+
+/** What one call of the agent's work was (`ActionStep.verb`, ADR-0132). */
+export const ACTION_VERBS = [
+  'search',
+  'list',
+  'read',
+  'look',
+  'lookup',
+  'law',
+  'web',
+  'model',
+  'workspace',
+] as const
+export type ActionVerb = (typeof ACTION_VERBS)[number]
+
+export const ACTION_STATUSES = ['running', 'ok', 'empty', 'error'] as const
+export type ActionStatus = (typeof ACTION_STATUSES)[number]
+
+export const ACTION_MODES = ['meaning', 'exact', 'regex'] as const
+export type ActionMode = (typeof ACTION_MODES)[number]
+
+/** What one call found; each count is absent when the call does not count it. */
+export interface StoredActionCounts {
+  hits?: number
+  documents?: number
+  /** The denominator: documents searched. */
+  searched?: number
+  files?: number
+  folders?: number
+}
+
+/**
+ * One call of the agent's work, typed and clipped (`action` step, ADR-0132):
+ * the Herleitung's work list draws a row from it. The start is the step's own
+ * `timestamp`; the finish is that plus `elapsedMs`, once the call has ended.
+ */
+export interface StoredAction {
+  verb: ActionVerb
+  status: ActionStatus
+  query?: string
+  mode?: ActionMode
+  /** Folder path, document name, project or operation, in words. */
+  target?: string
+  /** The workspace document a read or look opened. */
+  documentId?: string
+  /** The pages or Punkt read, e.g. `2-3`, `Pkt. 3.5`. */
+  pages?: string
+  /** Which shelf: project, office, base, web. */
+  shelf?: string
+  counts?: StoredActionCounts
+  elapsedMs?: number
+}
 
 /**
  * What a step may say on the live line and the Herleitung spine: the key, its
@@ -125,6 +178,14 @@ export interface StoredThinkingStep {
   slot?: string
   /** Structured detail of a technical status record: scalars and short string lists. */
   detail?: Record<string, StepDetailValue>
+  /** One call of the agent's work (`action`); its start is `timestamp`. */
+  action?: StoredAction
+  /**
+   * The call an `action` row and the `sources` it returned share (ADR-0132):
+   * what links a Herleitung row to its source cards. Absent on rows stored
+   * before the wire carried it; those rows link to nothing.
+   */
+  callId?: string
 }
 
 export type StepDetailValue = string | number | boolean | string[]
@@ -268,8 +329,31 @@ export interface MessageProvenance {
   lookupFoundNothing?: true
 }
 
-/** One answer's Herleitung is tens of steps; a thousand is a runaway client. */
-const MAX_THINKING_STEPS = 200
+/**
+ * One answer's Herleitung is tens of steps, and a long one a few hundred: a
+ * call is up to three (its action, its sources, a status line), so forty calls
+ * pass two hundred. Over the bound, the oldest technical steps go first
+ * ({@link DROP_ORDER}); a call's own rows go last.
+ */
+export const MAX_THINKING_STEPS = 600
+/** What is read at all before the bound applies: anything longer is a runaway client. */
+const MAX_THINKING_STEPS_READ = 4 * MAX_THINKING_STEPS
+/**
+ * Which steps a list over {@link MAX_THINKING_STEPS} loses first, oldest first
+ * within each tier: status lines and tool rows (what the work list already
+ * says), then the rounds' framing and looks, and the rows of the calls
+ * themselves (`action`, `sources`) only when nothing else is left.
+ */
+const DROP_ORDER: Readonly<Record<StepKind, number>> = {
+  status: 0,
+  tool: 0,
+  skill: 1,
+  clarification: 1,
+  retrieval: 1,
+  look: 1,
+  action: 2,
+  sources: 2,
+}
 /** Reasons are one sentence. */
 const MAX_REASON_CHARS = 600
 /** `citationsRemoved.reasons` is a short list of short codes. */
@@ -289,6 +373,11 @@ const MAX_TURN_EVENT_VALUE_CHARS = 64
 /** A tool basename; the wire bounds a step id at 200. */
 const MAX_NAME_CHARS = 200
 /** A technical record's detail is a handful of counts and reasons. */
+const MAX_ACTION_QUERY_CHARS = 160
+const MAX_ACTION_TARGET_CHARS = 300
+const MAX_ACTION_PAGES_CHARS = 40
+/** The wire's own bound on `call_id` (`wire_v2.ActionStep`). */
+const MAX_CALL_ID_CHARS = 64
 const MAX_DETAIL_ENTRIES = 16
 const MAX_DETAIL_VALUE_CHARS = 200
 
@@ -370,6 +459,44 @@ function sanitizeDetail(input: unknown): Record<string, StepDetailValue> | undef
   return Object.keys(detail).length > 0 ? detail : undefined
 }
 
+const ACTION_COUNT_KEYS = ['hits', 'documents', 'searched', 'files', 'folders'] as const
+
+/** An action's counts: the five known ones, non-negative integers; nothing else survives. */
+function sanitizeActionCounts(input: unknown): StoredActionCounts | undefined {
+  if (!isRecord(input)) return undefined
+  const counts: StoredActionCounts = {}
+  for (const key of ACTION_COUNT_KEYS) {
+    const value = nonNegativeInt(input[key])
+    if (value !== undefined) counts[key] = value
+  }
+  return Object.keys(counts).length > 0 ? counts : undefined
+}
+
+/** An `action` step's typed payload, bounded like the wire bounds it; null without a known verb. */
+function sanitizeAction(input: unknown): StoredAction | null {
+  if (!isRecord(input)) return null
+  const verb = oneOf(input.verb, ACTION_VERBS)
+  if (!verb) return null
+  const action: StoredAction = { verb, status: oneOf(input.status, ACTION_STATUSES) ?? 'ok' }
+  const query = cap(input.query, MAX_ACTION_QUERY_CHARS)
+  if (query) action.query = query
+  const mode = oneOf(input.mode, ACTION_MODES)
+  if (mode) action.mode = mode
+  const target = cap(input.target, MAX_ACTION_TARGET_CHARS)
+  if (target) action.target = target
+  const documentId = cap(input.documentId, 128)
+  if (documentId) action.documentId = documentId
+  const pages = cap(input.pages, MAX_ACTION_PAGES_CHARS)
+  if (pages) action.pages = pages
+  const shelf = cap(input.shelf, MAX_ACTION_PAGES_CHARS)
+  if (shelf) action.shelf = shelf
+  const counts = sanitizeActionCounts(input.counts)
+  if (counts) action.counts = counts
+  const elapsedMs = nonNegativeInt(input.elapsedMs)
+  if (elapsedMs !== undefined) action.elapsedMs = elapsedMs
+  return action
+}
+
 /** A lane with the fields every reader dereferences; its hits are bounded by the lane cap above. */
 const isTraceLane = (value: unknown): value is TraceLaneCard =>
   isRecord(value) &&
@@ -427,6 +554,11 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
   if (slot) step.slot = slot
   const detail = sanitizeDetail(input.detail)
   if (detail) step.detail = detail
+  const action = input.kind === 'action' ? sanitizeAction(input.action) : null
+  if (action) step.action = action
+  const callId =
+    input.kind === 'action' || input.kind === 'sources' ? cap(input.callId, MAX_CALL_ID_CHARS) : undefined
+  if (callId) step.callId = callId
   return step
 }
 
@@ -437,11 +569,33 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
  */
 export function sanitizeThinkingSteps(input: unknown): StoredThinkingStep[] | undefined {
   if (!Array.isArray(input)) return undefined
-  const steps = input
-    .slice(0, MAX_THINKING_STEPS)
-    .map(sanitizeStep)
-    .filter((step): step is StoredThinkingStep => step !== null)
+  const steps = boundSteps(
+    input
+      .slice(0, MAX_THINKING_STEPS_READ)
+      .map(sanitizeStep)
+      .filter((step): step is StoredThinkingStep => step !== null)
+  )
   return steps.length > 0 ? steps : undefined
+}
+
+/**
+ * The steps within {@link MAX_THINKING_STEPS}, in their order: the excess
+ * dropped by {@link DROP_ORDER}, oldest first in each tier, so a long turn
+ * keeps its last rounds and every call row it can.
+ */
+export function boundSteps(steps: readonly StoredThinkingStep[]): StoredThinkingStep[] {
+  let excess = steps.length - MAX_THINKING_STEPS
+  if (excess <= 0) return [...steps]
+  const dropped = new Set<number>()
+  const tiers = [...new Set(Object.values(DROP_ORDER))].sort((a, b) => a - b)
+  for (const tier of tiers) {
+    for (let index = 0; index < steps.length && excess > 0; index += 1) {
+      if (DROP_ORDER[steps[index].kind] !== tier) continue
+      dropped.add(index)
+      excess -= 1
+    }
+  }
+  return steps.filter((_, index) => !dropped.has(index))
 }
 
 /** The hoisted turn event, whitelisted and capped like everything else here. */

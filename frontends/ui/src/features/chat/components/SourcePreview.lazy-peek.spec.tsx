@@ -205,11 +205,9 @@ describe('source chips mount their peek lazily', () => {
     const document = documentOf(projectDocument)
     render(
       <div role="list">
-        <SourceCard document={document} hitLabel="1 Treffer" gapLabel="0 Treffer" />
+        <SourceCard document={document} />
         <SourceCard
           document={documentOf({ ...projectDocument, id: 'c-2' })}
-          hitLabel="1 Treffer"
-          gapLabel="0 Treffer"
         />
       </div>
     )

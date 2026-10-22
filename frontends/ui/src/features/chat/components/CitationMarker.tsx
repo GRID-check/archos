@@ -214,6 +214,36 @@ export const CitationMarker: FC<{ href: string; fallback: ReactNode }> = ({ href
 }
 
 /**
+ * A row of `[N]` markers outside the prose: the Herleitung's source cards, its
+ * „Grundlagen“ lines, its one-call header. Each is the answer's own marker, read
+ * through the enclosing {@link CitationScope}, so the same citation peeks and
+ * opens the same way wherever it is named. Outside a scope (or for a number the
+ * scope does not hold) it is the plain `[N]` it used to be.
+ */
+export const CitationMarkers: FC<{ numbers: readonly number[]; className?: string }> = ({
+  numbers,
+  className,
+}) => {
+  const scope = useCitationScope()
+  if (numbers.length === 0) return null
+  return (
+    <span data-citation-markers="" className={cn('inline-flex flex-wrap items-baseline gap-1', className)}>
+      {numbers.map((number) =>
+        scope ? (
+          <CitationMarker
+            key={number}
+            href={`#${scope.anchorPrefix}${number}`}
+            fallback={<>{`[${number}]`}</>}
+          />
+        ) : (
+          <span key={number}>{`[${number}]`}</span>
+        )
+      )}
+    </span>
+  )
+}
+
+/**
  * The pinned peek on a phone: a bottom sheet.
  *
  * The popover it replaces was anchored to a 22px pill in the middle of the

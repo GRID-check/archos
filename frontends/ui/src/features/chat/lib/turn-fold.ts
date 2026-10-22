@@ -27,7 +27,11 @@
  */
 
 import type { ShownAnswer, TurnResult, WireEvent } from '@/adapters/api/wire-v2'
-import type { StoredThinkingStep, TraceLaneCard } from '@/lib/conversations/message-provenance'
+import type {
+  StoredActionCounts,
+  StoredThinkingStep,
+  TraceLaneCard,
+} from '@/lib/conversations/message-provenance'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
 import { KIND_TO_SIGNAL, asShelf } from './source-kinds'
 import { sharedPrefixChars, stoppedAnswer } from './stopped-answer'
@@ -158,9 +162,11 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
       return {
         round: step.round,
         turnEvent: { key: step.key, ...some('values', step.values), ...some('reason', step.reason), ...some('tools', step.tools) },
+        // The decision's round 0: the Herleitung draws no row for it (ADR-0132).
+        ...(step.prefetch ? { detail: { prefetch: true } } : {}),
       }
     case 'sources':
-      return { tool: step.tool, traceLanes: lanesOf(step), ...some('round', step.round) }
+      return { tool: step.tool, traceLanes: lanesOf(step), ...some('round', step.round), ...some('callId', step.call_id) }
     case 'tool':
       return { tool: step.tool, ...(step.status === 'error' ? { detail: { status: 'error' } } : {}) }
     case 'skill': {
@@ -203,9 +209,47 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
         },
       }
     }
+    case 'action':
+      return {
+        ...some('round', step.round),
+        callId: step.call_id,
+        action: {
+          verb: step.verb,
+          status: step.status,
+          ...some('query', step.query),
+          ...some('mode', step.mode),
+          ...some('target', step.target),
+          ...some('documentId', step.document_id),
+          ...some('pages', step.pages),
+          ...some('shelf', step.shelf),
+          ...some('counts', actionCountsOf(step.counts)),
+          ...(step.elapsed_ms === null ? {} : { elapsedMs: step.elapsed_ms }),
+        },
+      }
     default:
       return {}
   }
+}
+
+/** The counts a call reported, without the ones it does not count. */
+const actionCountsOf = (counts: StepOf<'action'>['counts']): StoredActionCounts => ({
+  ...some('hits', counts?.hits),
+  ...some('documents', counts?.documents),
+  ...some('searched', counts?.searched),
+  ...some('files', counts?.files),
+  ...some('folders', counts?.folders),
+})
+
+/**
+ * When the step began: the first event's time, kept by the row that replaces
+ * it. An action that arrives only as its end (a replay that missed the start)
+ * began `elapsed_ms` before it.
+ */
+const startedAt = (event: Extract<WireEvent, { type: 'STEP_STARTED' | 'STEP_FINISHED' }>, previous?: StoredThinkingStep): string => {
+  if (previous) return previous.timestamp
+  const { step } = event
+  const elapsed = step.kind === 'action' ? (step.elapsed_ms ?? 0) : 0
+  return new Date(event.ts - elapsed).toISOString()
 }
 
 const foldStep = (view: TurnView, event: Extract<WireEvent, { type: 'STEP_STARTED' | 'STEP_FINISHED' }>): TurnView => {
@@ -214,7 +258,7 @@ const foldStep = (view: TurnView, event: Extract<WireEvent, { type: 'STEP_STARTE
   const stored: StoredThinkingStep = {
     id: step.id,
     userMessageId: view.turnId,
-    timestamp: previous?.timestamp ?? new Date(event.ts).toISOString(),
+    timestamp: startedAt(event, previous),
     isComplete: event.type === 'STEP_FINISHED',
     kind: step.kind,
     ...(step.scope === 'deep' ? { scope: 'deep' } : {}),

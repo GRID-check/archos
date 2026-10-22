@@ -1267,7 +1267,7 @@ describe('ChatArea — the live derivation', () => {
     expect(settleNote(container)).not.toContain('Answer ready')
   })
 
-  test('a turn handed to a run says the run was commissioned, not the provisional message as the answer', () => {
+  test('a turn handed to a run says the task was created, not the provisional message as the answer', () => {
     const handedOff: ChatStoreFixture = {
       turns: { 'user-1': { ...initialTurnView('user-1', 'c1'), phase: 'finished', outcome: 'handed_off' } },
     }
@@ -1276,7 +1276,7 @@ describe('ChatArea — the live derivation', () => {
     use(turnState([question(), answer('Ich lege einen Auftrag an.')], false, handedOff))
     rerender(<ChatArea isAuthenticated={true} onSignIn={vi.fn()} />)
 
-    expect(settleNote(container)).toContain('Run commissioned')
+    expect(settleNote(container)).toContain('Task created')
     expect(settleNote(container)).not.toContain('Answer ready')
   })
 

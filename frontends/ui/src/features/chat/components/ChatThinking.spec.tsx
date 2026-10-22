@@ -2,9 +2,26 @@ import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import { ChatThinking } from './ChatThinking'
+import { createTranslator } from '@/i18n/translate'
+import { en } from '@/i18n/dictionaries/en'
 import { useLayoutStore } from '@/features/layout/store'
 import { storedStep } from '@/test-utils/wire-v2-steps'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
+import {
+  MOCKUP_QUESTION,
+  failedCallCitations,
+  failedCallScene,
+  foldScene,
+  mockupCitations,
+  mockupScene,
+  singleReadCitations,
+  singleReadScene,
+} from '@/test-utils/work-list-scenes'
+
+/** The copy as the English dictionary words it, so a retune of a phrase is not a broken spec. */
+const tEn = createTranslator(en, 'chat')
+/** Text as read, with the no-break spaces that hold a count to its noun as plain ones. */
+const plain = (text: string | null): string => (text ?? '').replace(/\u00A0/g, ' ')
 
 const motionPref = vi.hoisted(() => ({ reduced: false }))
 vi.mock('@/hooks/use-reduced-motion', () => ({ useReducedMotion: () => motionPref.reduced }))
@@ -73,27 +90,28 @@ describe('ChatThinking', () => {
   })
 
   describe('turn-driven autoOpen (live expands, done collapses)', () => {
-    // The expanded reasoning renders the "Attached files:" footer (moved inside
-    // the collapsible), so its presence is a proxy for "expanded".
+    // The expanded panel renders the graph, so its presence is the proxy for
+    // "expanded". (The attached-files footer that served before went by the
+    // 2026-10 value test: an attached file that was read is a source card.)
     const files = [{ id: 'file-1', fileName: 'plan.pdf' }]
 
     test('autoOpen expands the reasoning without a click (live turn)', () => {
       render(<ChatThinking steps={[createStep()]} autoOpen messageFiles={files} />)
-      expect(screen.getByText('Attached files:')).toBeVisible()
+      expect(screen.getByTestId('reasoning-flow')).toBeInTheDocument()
     })
 
     test('autoOpen=false keeps the reasoning collapsed (past/done turn)', () => {
       render(<ChatThinking steps={[createStep()]} autoOpen={false} messageFiles={files} />)
-      expect(screen.queryByText('Attached files:')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('reasoning-flow')).not.toBeInTheDocument()
     })
 
     test('a live→done autoOpen transition collapses the reasoning', async () => {
       const { rerender } = render(
         <ChatThinking steps={[createStep()]} autoOpen messageFiles={files} />
       )
-      expect(screen.getByText('Attached files:')).toBeVisible()
+      expect(screen.getByTestId('reasoning-flow')).toBeInTheDocument()
       rerender(<ChatThinking steps={[createStep()]} autoOpen={false} messageFiles={files} />)
-      await waitFor(() => expect(screen.queryByText('Attached files:')).not.toBeInTheDocument())
+      await waitFor(() => expect(screen.queryByTestId('reasoning-flow')).not.toBeInTheDocument())
     })
 
     test('the fold: the turn closes what it opened, in the render the prop changes', () => {
@@ -115,7 +133,7 @@ describe('ChatThinking', () => {
       rerender(
         <ChatThinking steps={[createStep()]} isThinking={false} isWaiting autoOpen={false} messageFiles={files} />
       )
-      expect(screen.queryByText('Attached files:')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('reasoning-flow')).not.toBeInTheDocument()
     })
 
     test('the live panel shows the whole graph: no capped, bottom-pinned window that cut its first steps off', async () => {
@@ -140,12 +158,12 @@ describe('ChatThinking', () => {
         <ChatThinking steps={[createStep()]} isThinking autoOpen={false} messageFiles={files} />
       )
       await user.click(screen.getByRole('button', { expanded: false }))
-      expect(screen.getByText('Attached files:')).toBeVisible()
+      expect(screen.getByTestId('reasoning-flow')).toBeInTheDocument()
       rerender(<ChatThinking steps={[createStep()]} isThinking autoOpen messageFiles={files} />)
       rerender(
         <ChatThinking steps={[createStep()]} isThinking answering autoOpen={false} messageFiles={files} />
       )
-      expect(screen.getByText('Attached files:')).toBeVisible()
+      expect(screen.getByTestId('reasoning-flow')).toBeInTheDocument()
     })
   })
 
@@ -174,13 +192,14 @@ describe('ChatThinking', () => {
       expect(screen.getByText('12s')).toBeInTheDocument()
     })
 
-    test('at the settle the timer freezes on the answer\'s own duration instead of vanishing', () => {
+    test('at the settle the figure goes: no one checks an answer by its seconds (2026-10 value test)', async () => {
       const since = new Date(Date.now() - 12_000)
       const { rerender } = render(<ChatThinking steps={[createStep()]} isThinking since={since} />)
+      expect(screen.getByText('12s')).toBeInTheDocument()
       rerender(
         <ChatThinking steps={[createStep()]} isThinking={false} since={since} answerDurationMs={12_400} />
       )
-      expect(screen.getByText('12s')).toBeInTheDocument()
+      await waitFor(() => expect(screen.queryByText('12s')).not.toBeInTheDocument())
     })
 
     test('the trigger is named by the phase, not the per-step phrase, which is never announced', () => {
@@ -196,7 +215,8 @@ describe('ChatThinking', () => {
       render(<ChatThinking steps={steps} isThinking />)
 
       const trigger = screen.getAllByRole('button')[0]
-      expect(trigger).toHaveAccessibleName('Thinking in progress · Trace')
+      // The header's own join holds the dot to the word before it (NBSP).
+      expect(trigger).toHaveAccessibleName(/^Thinking in progress · Trace\u00A0· 1\sstep$/)
       const status = screen.getAllByRole('status').find((el) => el.getAttribute('aria-live') === 'polite')
       expect(status).toHaveTextContent('Thinking in progress')
       expect(status).not.toHaveTextContent('Fluchtweg')
@@ -245,7 +265,9 @@ describe('ChatThinking', () => {
 
       render(<ChatThinking steps={steps} isThinking={true} />)
 
-      expect(screen.getByText('Searching the knowledge base: “Fluchtweg”')).toBeInTheDocument()
+      // The backend's event in the reader's words: the corpus phrase is the
+      // dictionary's, the query the reader's own.
+      expect(screen.getByText(/^Searching .+: “Fluchtweg”$/)).toBeInTheDocument()
     })
 
     test('settled, the label stays the summary: no „Done" word moves it', () => {
@@ -275,7 +297,7 @@ describe('ChatThinking', () => {
     })
 
     test.each([
-      ['handed_off', 'Run commissioned'],
+      ['handed_off', tEn('thinking.handedOff')],
       ['refused', 'Not handled'],
       ['failed', 'Failed'],
     ] as const)('a turn that ended %s is not „Done"', (endedAs, word) => {
@@ -284,25 +306,6 @@ describe('ChatThinking', () => {
       const trigger = screen.getByRole('button')
       expect(within(trigger).getByText(word)).toBeInTheDocument()
       expect(trigger).not.toHaveAccessibleName(/Done/)
-    })
-
-    test('the frozen figure is never below the last live one', () => {
-      vi.useFakeTimers()
-      try {
-        const since = new Date(Date.now() - 7_600)
-        const { rerender } = render(
-          <ChatThinking steps={[createStep()]} isThinking answering since={since} />
-        )
-        expect(screen.getByText('7s')).toBeInTheDocument()
-
-        // The footer's duration, measured from the send, a little shorter.
-        rerender(
-          <ChatThinking steps={[createStep()]} isThinking={false} answering since={since} answerDurationMs={6_900} />
-        )
-        expect(screen.getByText('7s')).toBeInTheDocument()
-      } finally {
-        vi.useRealTimers()
-      }
     })
 
     test('the trigger is marked for the lifecycle fixtures', () => {
@@ -463,12 +466,12 @@ describe('ChatThinking', () => {
 
       const { rerender } = render(<ChatThinking steps={steps} isThinking={true} />)
       await user.click(screen.getByText(/^Trace( ·|$)/))
-      expect(screen.queryByText('retrieved, not cited')).not.toBeInTheDocument()
+      expect(screen.queryByText(/retrieved, not cited/)).not.toBeInTheDocument()
 
       // Once the turn lands and the answer cited nothing from it, the verdict
-      // becomes true and is stated.
+      // becomes true and is stated: the document folds into the dashed card.
       rerender(<ChatThinking steps={steps} isThinking={false} />)
-      expect(screen.getByText('retrieved, not cited')).toBeInTheDocument()
+      expect(screen.getByText(tEn('thinking.node.uncited.name', { count: 1 }))).toBeInTheDocument()
     })
 
     test('renders per-document source cards from traceLanes', async () => {
@@ -486,14 +489,26 @@ describe('ChatThinking', () => {
 
       await user.click(screen.getByText(/^Trace( ·|$)/))
 
+      // Uncited, the document folds into the dashed card; opening it shows the card.
+      // The fold is named by what it shows (count and names), never a label
+      // that hides them; the tab („Not cited“) describes it.
+      const fold = screen.getByRole('button', {
+        name: `${tEn('thinking.node.uncited.name', { count: 1 })} OIB-Richtlinie 2`,
+      })
+      expect(fold).toHaveAttribute('aria-expanded', 'false')
+      expect(fold).toHaveAccessibleDescription(tEn('thinking.node.uncited.pill'))
+      await user.click(fold)
+
       // The card shows the DISPLAY name; the raw corpus filename only survives
       // on the tooltip, so a user never reads `oib-rl_2_ausgabe_mai_2023.pdf`.
       const name = screen.getByText('OIB-Richtlinie 2')
       expect(name).toBeVisible()
       expect(name).toHaveAttribute('title', expect.stringContaining('OIB-RL_2_Brandschutz.pdf'))
       expect(screen.queryByText('OIB-RL_2_Brandschutz.pdf')).not.toBeInTheDocument()
-      expect(screen.getByText('2 hits')).toBeVisible()
-      expect(screen.getByText('OIB-Richtlinie')).toBeVisible()
+      // A place, not a count: the hit tally went by the 2026-10 value test.
+      expect(screen.queryByText('2 hits')).not.toBeInTheDocument()
+      // The tab names the lane in the reader's language (the wire sends it in German).
+      expect(screen.getByText(/^OIB(-Richtlinie| guideline)$/)).toBeVisible()
     })
   })
 
@@ -553,11 +568,11 @@ describe('ChatThinking', () => {
     })
   })
 
-  describe('attached-files footer (in expanded reasoning)', () => {
-    // The basis footer (attached files as pills) lives INSIDE the expanded
-    // Herleitung so the collapsed turn stays compact and answer-first
-    // (P0/P2-4). It renders once the reasoning is open (`defaultOpen`).
-    test('shows files as chips', () => {
+  describe('no attached-files footer', () => {
+    // The footer listing the message's attachments went by the 2026-10 value
+    // test: an attachment the turn read is a source card in the graph, and one
+    // it did not read says nothing about the answer.
+    test('lists no attachment as a chip', () => {
       const steps = [createStep()]
       const messageFiles = [
         { id: 'file-1', fileName: 'document.pdf' },
@@ -566,17 +581,9 @@ describe('ChatThinking', () => {
 
       render(<ChatThinking steps={steps} defaultOpen messageFiles={messageFiles} />)
 
-      expect(screen.getByText('Attached files:')).toBeVisible()
-      expect(screen.getByText('document.pdf')).toBeVisible()
-      expect(screen.getByText('report.docx')).toBeVisible()
-    })
-
-    test('shows no footer when no files are attached', () => {
-      const steps = [createStep()]
-
-      render(<ChatThinking steps={steps} defaultOpen />)
-
-      expect(screen.queryByText('Attached files:')).not.toBeInTheDocument()
+      expect(screen.getByTestId('reasoning-flow')).toBeInTheDocument()
+      expect(screen.queryByText('document.pdf')).not.toBeInTheDocument()
+      expect(screen.queryByText('report.docx')).not.toBeInTheDocument()
     })
   })
 
@@ -614,7 +621,7 @@ describe('ChatThinking', () => {
       expect(screen.queryByText('Knowledge')).not.toBeInTheDocument()
       expect(screen.queryByText('OIB knowledge')).not.toBeInTheDocument()
       expect(screen.queryByText('Selected Data Sources:')).not.toBeInTheDocument()
-      expect(screen.queryByText('Attached files:')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('reasoning-flow')).not.toBeInTheDocument()
     })
 
     test('an executed web search IS reported — the fix removes the false claim, not the true one', () => {
@@ -745,37 +752,36 @@ describe('ChatThinking', () => {
       expect(screen.queryByText('Confidence: high')).not.toBeInTheDocument()
     })
 
-    test('assessment node summarizes hit lanes (reasoning detail, deduped by lane)', async () => {
-      const user = userEvent.setup()
-      const steps = [createStep()]
-      const citations = [
-        {
-          id: 'c1',
-          content: '',
-          timestamp: new Date(),
-          kind: 'building_law' as const,
-          lane: 'building_law_oib',
-          laneLabel: 'OIB-Richtlinie',
-        },
-        {
-          id: 'c2',
-          content: '',
-          timestamp: new Date(),
-          kind: 'building_law' as const,
-          lane: 'building_law_oib',
-          laneLabel: 'OIB-Richtlinie',
-        },
-      ]
-
-      render(<ChatThinking steps={steps} citations={citations} />)
-
-      await expandChain(user)
-
-      // The findings node ("Findings" eyebrow) now shows a reasoning-only
-      // hit-lane summary ("Hits in: <lane>"), deduped to a single lane — not a
-      // second copy of the answer's provenance chips.
-      expect(screen.getByText('Findings')).toBeVisible()
-      expect(screen.getByText('Hits in: OIB-Richtlinie')).toBeVisible()
+    test('the last card is „Grundlagen · Entwurf“: the cited law, what supports it, and what stayed open', () => {
+      render(
+        <ChatThinking
+          steps={foldScene(mockupScene())}
+          citations={mockupCitations()}
+          isThinking={false}
+          defaultOpen
+          userQuestion={MOCKUP_QUESTION}
+        />
+      )
+      expect(screen.getByText('Basis · Draft')).toBeVisible()
+      expect(screen.getByText('Legal basis')).toBeVisible()
+      // Each cited line leads with the answer's own marker, then the document.
+      const lines = screen.getAllByTestId('basis-group')
+      expect(lines[0]).toHaveTextContent('1 OIB-Richtlinie 2, Ausgabe Mai 2023, Sec. 3.1.1')
+      expect(
+        within(lines[0]!).getByRole('button', { name: /^Source 1:/ })
+      ).toHaveAttribute('data-citation-marker', '1')
+      expect(screen.getByText('Supported by')).toBeVisible()
+      expect(lines[1]).toHaveTextContent('2 Einreichplan EG, p. 2')
+      expect(within(lines[1]!).getByRole('button', { name: /^Source 2:/ })).toBeVisible()
+      // No text marker is left behind.
+      expect(lines[0]).not.toHaveTextContent('[1]')
+      // „Open“ names the document as its card does (B14): the call said
+      // „OIB-RL 2, Ausgabe 2023“, the card „OIB-Richtlinie 2, Ausgabe Mai 2023“.
+      const open = screen.getByTestId('basis-open')
+      expect(open).toHaveTextContent(/OIB.Richtlinie 2, Ausgabe Mai 2023\b.*Brandabschnitt Tiefgarage/)
+      expect(open).not.toHaveTextContent(/OIB.RL 2/)
+      // A draft's basis, never a verdict; a gap stated as the gap.
+      expect(document.body).not.toHaveTextContent(/proven|No information found/i)
     })
 
     test('assessment node is hidden without confidence or citations', async () => {
@@ -787,6 +793,205 @@ describe('ChatThinking', () => {
       await expandChain(user)
 
       expect(screen.queryByText('Backed by')).not.toBeInTheDocument()
+    })
+  })
+
+  describe("the Herleitung cites with the answer's marker", () => {
+    const renderSettled = () =>
+      render(
+        <ChatThinking
+          steps={foldScene(mockupScene())}
+          citations={mockupCitations()}
+          answerId="answer-1"
+          isThinking={false}
+          defaultOpen
+          userQuestion={MOCKUP_QUESTION}
+        />
+      )
+
+    test('a cited source card carries a marker button, not the text „[N]“', () => {
+      renderSettled()
+      const groups = Array.from(document.querySelectorAll('[data-source-card-markers]'))
+      expect(groups.length).toBeGreaterThan(0)
+      for (const group of groups) {
+        expect(group.querySelector('button[data-citation-marker]')).not.toBeNull()
+        expect(group).not.toHaveTextContent(/\[\d+\]/)
+      }
+    })
+
+    test('no button sits inside another button', () => {
+      renderSettled()
+      expect(document.querySelectorAll('button button')).toHaveLength(0)
+    })
+
+    test("a press on a card's marker is not a tap on the card", async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      const marker = document.querySelector<HTMLElement>(
+        '[data-source-card-markers] button[data-citation-marker]'
+      )!
+      const card = marker.closest<HTMLElement>('[data-source-card]')!
+      expect(card).not.toHaveAttribute('data-link')
+      await user.click(marker)
+      expect(card).not.toHaveAttribute('data-link', 'selected')
+      // The card's own tap still links it to the rows of its calls.
+      await user.click(card)
+      expect(card).toHaveAttribute('data-link', 'selected')
+    })
+
+    const conceptCard = () =>
+      Array.from(document.querySelectorAll<HTMLElement>('[data-source-card]')).find((el) =>
+        /Brandschutzkonzept/.test(el.textContent ?? '')
+      )!
+    const pressedRows = () =>
+      document.querySelectorAll('[data-testid="work-row-link"][aria-pressed="true"]')
+
+    test('a card is a keyboard control: Tab reaches it, Enter and Space toggle it and link its rows', async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      const card = conceptCard()
+      const toggle = card.querySelector<HTMLElement>('[data-source-card-toggle]')!
+      expect(toggle.tagName).toBe('BUTTON')
+      // Named by the document, as the card names it.
+      expect(toggle).toHaveAccessibleName(/Brandschutzkonzept/)
+      // It wraps nothing (not the chip, not the marker) and sits in no button.
+      expect(toggle.childElementCount).toBe(0)
+      expect(toggle.parentElement?.closest('button')).toBeNull()
+
+      for (let i = 0; i < 100 && document.activeElement !== toggle; i++) await user.tab()
+      expect(toggle).toHaveFocus()
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(pressedRows()).toHaveLength(0)
+
+      await user.keyboard('{Enter}')
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+      expect(card).toHaveAttribute('data-link', 'selected')
+      expect(pressedRows().length).toBeGreaterThan(0)
+
+      await user.keyboard(' ')
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      expect(card).not.toHaveAttribute('data-link')
+      expect(pressedRows()).toHaveLength(0)
+    })
+
+    test('a receded card is dimmed once, never on top of the uncited dimming', async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      // Open every fold, so the uncited cards stand too.
+      for (const fold of screen.getAllByTestId('uncited-fold'))
+        await user.click(within(fold).getByRole('button'))
+      expect(document.querySelectorAll('[data-source-card] .border-dashed').length).toBeGreaterThan(0)
+      await user.click(conceptCard().querySelector<HTMLElement>('[data-source-card-toggle]')!)
+      const receded = Array.from(document.querySelectorAll('[data-link="receded"]'))
+      expect(receded.length).toBeGreaterThan(0)
+      for (const el of receded) {
+        expect(el).toHaveClass('opacity-60')
+        expect(el.querySelector('.opacity-75, .opacity-40')).toBeNull()
+      }
+      // Nowhere does one dimming sit inside another.
+      for (const el of Array.from(document.querySelectorAll('.opacity-60, .opacity-75')))
+        expect(el.parentElement?.closest('.opacity-60, .opacity-75')).toBeNull()
+    })
+
+    test('the open fold is a plain text button under the last uncited card, with no tab', async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      const fold = screen.getAllByTestId('uncited-fold')[0]!
+      const column = fold.closest<HTMLElement>('[role="list"]')!
+      expect(fold.querySelector('.card-eyebrow')).not.toBeNull()
+      await user.click(within(fold).getByRole('button'))
+
+      const open = within(column).getByTestId('uncited-fold')
+      const hide = within(open).getByRole('button', { name: tEn('thinking.node.uncited.hide') })
+      expect(hide).toHaveAttribute('aria-expanded', 'true')
+      expect(hide).not.toHaveClass('border-dashed')
+      expect(open.querySelector('.card-eyebrow')).toBeNull()
+      const items = within(column).getAllByRole('listitem')
+      expect(items.at(-1)).toBe(open)
+      expect(items.at(-2)).toHaveAttribute('data-source-card')
+
+      await user.click(hide)
+      const closed = within(column).getByTestId('uncited-fold')
+      expect(within(closed).getByRole('button')).toHaveAttribute('aria-expanded', 'false')
+      expect(closed.querySelector('.card-eyebrow')).not.toBeNull()
+    })
+  })
+
+  describe('the header at a glance (2026-10)', () => {
+    test('settled: the steps, what the answer cites, and the one worst warning', () => {
+      render(
+        <ChatThinking
+          steps={foldScene(mockupScene())}
+          citations={mockupCitations()}
+          isThinking={false}
+        />
+      )
+      const trigger = screen.getByRole('button')
+      expect(within(trigger).getByText(/^Trace ·/)).toHaveTextContent(
+        'Trace · 2 steps · 3 sources cited'
+      )
+      expect(screen.getByTestId('derivation-warning')).toHaveTextContent(
+        plain(tEn('thinking.derivationWarning.open', { count: 1 }))
+      )
+      expect(trigger).toHaveAccessibleName(
+        new RegExp(
+          `^Done · Trace\u00A0· 2\\ssteps\u00A0· 3\\ssources cited · ${tEn('thinking.derivationWarning.open', { count: 1 })}$`
+        )
+      )
+      // The dot never starts a line: a no-break space holds it to the word before.
+      expect(within(trigger).getByText(/^Trace/).textContent).toMatch(/^Trace\u00A0· 2\ssteps\u00A0· /)
+    })
+
+    test('a failed call outranks an open point', () => {
+      render(
+        <ChatThinking
+          steps={foldScene(failedCallScene())}
+          citations={failedCallCitations()}
+          isThinking={false}
+        />
+      )
+      expect(screen.getByTestId('derivation-warning')).toHaveTextContent('1 call failed')
+    })
+
+    test('no warning while the turn works', () => {
+      render(<ChatThinking steps={foldScene(failedCallScene())} isThinking />)
+      expect(screen.queryByTestId('derivation-warning')).not.toBeInTheDocument()
+    })
+
+    test('a turn that looked nothing up is one line that opens nothing', () => {
+      render(
+        <ChatThinking
+          steps={[]}
+          isThinking={false}
+          userQuestion="Was ist eine Brandwand?"
+          answerConfidence="medium"
+        />
+      )
+      expect(screen.getByTestId('derivation-no-research')).toHaveTextContent(
+        'Answered without researchGeneral expertise, no source cited'
+      )
+      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+    })
+
+    test('a turn of one call is that call: no graph', () => {
+      render(
+        <ChatThinking
+          steps={foldScene(singleReadScene())}
+          citations={singleReadCitations()}
+          isThinking={false}
+        />
+      )
+      const single = screen.getByTestId('derivation-single')
+      expect(single).toHaveTextContent('Read: Brandschutzkonzeptp. 7 · cited 1')
+      // The one control is the answer's marker for [1]; nothing opens a panel.
+      expect(within(single).getByRole('button')).toHaveAttribute('data-citation-marker', '1')
+      expect(document.querySelector('[data-derivation-trigger]')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('reasoning-flow')).not.toBeInTheDocument()
+    })
+
+    test('a turn whose calls are rows has no tool chips beside them', () => {
+      render(<ChatThinking steps={foldScene(mockupScene())} isThinking defaultOpen />)
+      expect(screen.queryByText('Ran:')).not.toBeInTheDocument()
     })
   })
 
@@ -838,7 +1043,9 @@ describe('ChatThinking', () => {
 
       const during = labels(container).map((n) => n.textContent)
       expect(during).toHaveLength(2)
-      expect(during).toEqual(expect.arrayContaining(['Working on a response …', 'Trace · 2 sources']))
+      expect(during.map(plain)).toEqual(
+        expect.arrayContaining(['Working on a response …', 'Trace · 2 sources'])
+      )
       await waitFor(() => expect(labels(container)).toHaveLength(1))
       expect(labels(container)[0]).toHaveTextContent('Trace · 2 sources')
     })
@@ -848,7 +1055,7 @@ describe('ChatThinking', () => {
       expect(labels(container)[0].querySelector('.animate-shimmer-window')).not.toBeNull()
 
       rerender(<ChatThinking steps={withSources(2)} isThinking={false} />)
-      const summary = labels(container).find((n) => n.textContent === 'Trace · 2 sources')
+      const summary = labels(container).find((n) => plain(n.textContent) === 'Trace · 2 sources')
       expect(summary?.querySelector('.animate-shimmer-window')).toBeNull()
     })
 

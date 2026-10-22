@@ -159,6 +159,9 @@ class TestRoundZero:
         assert [r.get("index") for r in result.retrieval_rounds] == [0, 1]
         assert any(s.id == "status:retrieval:1" for s in steps.steps)
         assert result.tool_iterations == 1
+        # Only the decision's round is a prefetch: the Herleitung draws no row for it (ADR-0132).
+        prefetch = {s.id: s.prefetch for s in steps.steps if s.id.startswith("status:retrieval:")}
+        assert prefetch == {"status:retrieval:0": True, "status:retrieval:1": False}
 
 
 class TestAFollowUpRoundZero:
