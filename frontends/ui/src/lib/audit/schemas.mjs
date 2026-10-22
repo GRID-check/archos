@@ -1059,8 +1059,6 @@ export const RETIRED_AUDIT_ACTIONS = /** @type {const} */ ([
  * emitter fails until it is taken off this list, so the list only shrinks. It
  * must be empty before the change merges (the integrator's checklist).
  */
-export const AWAITING_EMITTER_AUDIT_ACTIONS = /** @type {const} */ ([
-  'inbound_mail.expired',
-])
+export const AWAITING_EMITTER_AUDIT_ACTIONS = /** @type {const} */ ([])
 
 export const AUDIT_ACTIONS = /** @type {AuditAction[]} */ (Object.keys(AUDIT_SCHEMAS))

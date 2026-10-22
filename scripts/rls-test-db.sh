@@ -2343,6 +2343,8 @@ refused_in grid_inbound "$ADDR184, 'AAAAAAAAAAAA', '', '$U184_A1', NULL, NULL, N
 refused_in grid_inbound "$ADDR184, 'dddddddddddd', 'a.b', '$U184_A1', NULL, NULL, NULL)" "inbound_mail_addresses_slug_shape" "a slug with a dot"
 refused_in grid_inbound "$ADDR184, 'dddddddddddd', '', '$U184_A1', now(), NULL, 'rotated')" "inbound_mail_addresses_revocation_attributed" "a revocation nobody made"
 refused_in grid_inbound "$ADDR184, 'dddddddddddd', '', '$U184_A1', now(), '$U184_A1', 'lost')" "inbound_mail_addresses_revoked_reason_known" "an unknown revocation reason"
+refused_in grid_inbound "UPDATE inbound_mail_addresses SET cap_notice = 'overflowing', cap_noticed_at = now() WHERE id = 'aa000000-0000-4000-8000-000000000184'" "inbound_mail_addresses_cap_notice_known" "a cap notice the sweep does not know"
+refused_in grid_inbound "UPDATE inbound_mail_addresses SET cap_notice = 'full' WHERE id = 'aa000000-0000-4000-8000-000000000184'" "inbound_mail_addresses_cap_noticed_at" "a cap notice without when it was told"
 refused_in grid_inbound "$ADDR184, 'dddddddddddd', '', '$U184_A1', NULL, NULL, NULL)" "uniq_inbound_mail_addresses_active_project" "a second active address for a project"
 sql_in grid_inbound <<<"UPDATE inbound_mail_addresses SET revoked_at = now(), revoked_by = '$U184_A1', revoked_reason = 'rotated' WHERE id = 'ac000000-0000-4000-8000-000000000184';"
 refused_in grid_inbound "INSERT INTO inbound_mail_addresses (organization_id, project_id, token, created_by) VALUES ('org_0184_b', 'b0000000-0000-4000-8000-000000000184', 'cccccccccccc', 'u')" "uniq_inbound_mail_addresses_token" "a revoked token minted again, even in another organization"

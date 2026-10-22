@@ -17,6 +17,7 @@ import {
 import type {
   DroppedReason,
   InboundMailAddressRevokedReason,
+  InboundMailCapNotice,
   InboundMailContentFinding,
   InboundMailDecisionAction,
   InboundMailDecisionVia,
@@ -70,6 +71,9 @@ export const inboundMailAddresses = pgTable(
     revokedAt: timestamp('revoked_at', { withTimezone: true }),
     revokedBy: text('revoked_by'),
     revokedReason: text('revoked_reason').$type<InboundMailAddressRevokedReason>(),
+    /** What the managers were last told about the staged-bytes caps; the sweep tells each rise once. */
+    capNotice: text('cap_notice').$type<InboundMailCapNotice>(),
+    capNoticedAt: timestamp('cap_noticed_at', { withTimezone: true }),
   },
   (table) => ({
     projectFk: foreignKey({

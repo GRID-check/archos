@@ -107,7 +107,13 @@ vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() })
 vi.mock('@/lib/auth/pinned-session', () => ({
   resolvePinnedRequesterSession: vi.fn(async () => null),
 }))
-vi.mock('./announce', () => ({ announceWaiting: vi.fn(async () => true) }))
+vi.mock('./announce', () => ({
+  announceWaiting: vi.fn(async () => true),
+  announceDecided: vi.fn(async () => true),
+  announceFilingFailed: vi.fn(async () => true),
+  settleFilingFailed: vi.fn(async () => undefined),
+  settleProjectNotices: vi.fn(async () => undefined),
+}))
 vi.mock('./quiet-batch', () => ({
   openQuietBatch: vi.fn(async () => crypto.randomUUID()),
   sealQuietBatch: vi.fn(async () => undefined),

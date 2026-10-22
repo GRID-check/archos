@@ -198,5 +198,46 @@ export const INBOX_ITEM_TYPES = [
    * Resolved when the mails are decided or expire.
    */
   'inbound_mail.waiting',
+  /**
+   * Actionable, operational tier: mail in a project's E-Mail-Eingang has five
+   * days left before it expires (day 25 of 30, D8; sweep 4). Told once per
+   * mail, to the same people `inbound_mail.waiting` told, collapsed per
+   * project; names the project and never the mail. Resolved once nothing that
+   * was told about still waits.
+   */
+  'inbound_mail.expiring',
+  /**
+   * Informational, operational tier: a person decided a member's own verified
+   * mail to the project (filed or dismissed, `variant`), told to that member
+   * only (D9, RT-S14). One row per mail. Names the folder only when every
+   * filed file went to one folder the member may open (`anchorId`).
+   */
+  'inbound_mail.decided',
+  /**
+   * Actionable, operational tier: filing a mail the reader decided made no
+   * document for some part (`variant` is the failure), and it waits again.
+   * One row per mail, to the decider. Resolved when the mail is filed again
+   * or dismissed.
+   */
+  'inbound_mail.filing_failed',
+  /**
+   * Actionable, operational tier: a project's address holds 80% (`nearly_full`)
+   * or all (`full`) of the bytes it, or its organization, may stage (D18).
+   * One row per address, to the project's managers; resolved once the address
+   * is below 80% again or replaced.
+   */
+  'inbound_mail.cap_reached',
+  /**
+   * Informational, operational tier: a later reply's text was appended to an
+   * E-Mail-Verlauf the reader follows (D31), as them. One counted row per
+   * Verlauf and day, pointing at the Verlauf document.
+   */
+  'inbound_mail.appended',
+  /**
+   * Actionable, operational tier: the reader's follow of an E-Mail-Verlauf
+   * ends in five days (day 55 of 60; sweep 12). One row per follow, pointing
+   * at the Verlauf document. Resolved when it is renewed or ends.
+   */
+  'mail_thread.follow_expiring',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]

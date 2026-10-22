@@ -85,7 +85,14 @@ An inbox type need not belong to a shareable resource; the steps are the same.
    would stay completed and its uploader never told.
 6. Settle it when what it announced is answered or gone:
    `resolveInboxItemsFor`, `resolveInboxItemsAnchoredOn`,
-   `markInboxItemsInertAnchoredOn` (`lib/inbox/service.ts`).
+   `markInboxItemsInertAnchoredOn` (`lib/inbox/service.ts`). A `collapse` row
+   takes the anchor of its NEWEST emission (`upsertInboxItems` sets
+   `anchor_id = excluded.anchor_id`), so settling it by the anchor of the
+   occurrence that just ended misses the row whenever a later one folded in.
+   Settle a collapsed row by its group key for every open recipient
+   (`openRecipientsOf`, then `resolveInboxItemsFor`), once nothing it counts is
+   left: `settleProjectNotices` in `lib/inbound-mail/announce.ts` does this for
+   `inbound_mail.waiting` and `.expiring`.
 7. Touch `lib/inbox/targets.ts` only for a new target kind (its deep link and
    access check).
 8. No migration: `inbox_items.type` is text with no CHECK (migration 0177).

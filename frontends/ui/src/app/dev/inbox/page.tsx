@@ -20,7 +20,8 @@
  * rather than a conversation), a row whose type this build does not know (the
  * runtime fallback that keeps one bad row from taking the page down), and an
  * INERT row whose target is gone — the last one is a security-visible state
- * (IB-13), so it must be in the evidence.
+ * (IB-13), so it must be in the evidence. `?variant=mail` serves the
+ * E-Mail-Eingang's seven types alone (ADR-0134).
  *
  * Pinned to German (`I18nProvider initialLocale="de" fixedLocale`): German is the product's
  * primary language, so the committed evidence must carry the copy most users
@@ -694,6 +695,85 @@ const ITEMS: InboxItemView[] = [
   },
 ]
 
+/**
+ * The E-Mail-Eingang's seven types (ADR-0134, DECISION §9), served alone under
+ * `?variant=mail`: what each row says, with the project's name and codes only
+ * (no sender, no subject, no file name ever reaches a row or a push).
+ */
+const mailRow = (
+  id: string,
+  type: InboxItemView['type'],
+  overrides: Partial<InboxItemView>,
+): InboxItemView => ({
+  id,
+  type,
+  state: 'unread',
+  archived: false,
+  actionable: false,
+  resourceType: 'project',
+  resourceId: 'p1',
+  anchorId: null,
+  actorName: null,
+  actorUserId: null,
+  count: 1,
+  href: '/app/projects/p1/files/mail',
+  subject: 'Wohnbau Hietzing',
+  related: null,
+  excerpt: null,
+  mentions: [],
+  variant: null,
+  answerIn: null,
+  createdAt: ago(30),
+  updatedAt: ago(30),
+  ...overrides,
+})
+
+const MAIL_ITEMS: InboxItemView[] = [
+  mailRow('m-waiting', 'inbound_mail.waiting', { actionable: true, count: 3, variant: 'unconfirmed', updatedAt: ago(4) }),
+  mailRow('m-expiring', 'inbound_mail.expiring', { actionable: true, updatedAt: ago(60) }),
+  mailRow('m-failed', 'inbound_mail.filing_failed', {
+    actionable: true,
+    variant: 'quota',
+    anchorId: 'mail-2',
+    href: '/app/projects/p1/files/mail/mail-2',
+    updatedAt: ago(90),
+  }),
+  mailRow('m-cap', 'inbound_mail.cap_reached', { actionable: true, variant: 'nearly_full', updatedAt: ago(120) }),
+  mailRow('m-decided', 'inbound_mail.decided', {
+    actorName: 'Petra Huber',
+    actorUserId: 'u-petra',
+    related: 'Behörde/Bescheide',
+    href: '/app/projects/p1/files?folder=f-bescheide',
+    updatedAt: ago(150),
+  }),
+  mailRow('m-dismissed', 'inbound_mail.decided', {
+    actorName: 'Petra Huber',
+    actorUserId: 'u-petra',
+    variant: 'dismissed',
+    state: 'read',
+    count: 0,
+    href: '/app/projects/p1/files',
+    updatedAt: ago(170),
+  }),
+  mailRow('m-appended', 'inbound_mail.appended', {
+    resourceType: 'document',
+    resourceId: 'd-verlauf',
+    count: 2,
+    href: '/app/projects/p1/files?doc=d-verlauf',
+    updatedAt: ago(200),
+  }),
+  mailRow('m-follow', 'mail_thread.follow_expiring', {
+    actionable: true,
+    resourceType: 'document',
+    resourceId: 'd-verlauf',
+    href: '/app/projects/p1/files?doc=d-verlauf',
+    updatedAt: ago(240),
+  }),
+]
+
+const isMailVariant = (): boolean =>
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('variant') === 'mail'
+
 /** Newest first, as the server orders a page. */
 const NEWEST_FIRST = [...ITEMS].sort((a, b) => Date.parse(b.updatedAt) - Date.parse(a.updatedAt))
 
@@ -752,7 +832,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         }
         if (empty) return Response.json({ items: [], pending: 0, counts, hasMore: false, nextCursor: null })
         const params = new URL(url, window.location.origin).searchParams
-        const rows = BY_FILTER[params.get('filter') ?? 'all'] ?? NEWEST_FIRST
+        const rows = isMailVariant() ? MAIL_ITEMS : (BY_FILTER[params.get('filter') ?? 'all'] ?? NEWEST_FIRST)
         const start = Number(params.get('cursor') ?? 0)
         const items = rows.slice(start, start + PAGE)
         const hasMore = start + PAGE < rows.length

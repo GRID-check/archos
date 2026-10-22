@@ -34,8 +34,6 @@ import type { InboundMailPartRow, InboundMailRow } from '@/lib/db/schema'
 import { acceptedTypesForOrganization } from '@/lib/documents/accepted-types'
 import { contentDisposition } from '@/lib/documents/content-disposition'
 import { decodeDocumentListCursor, encodeDocumentListCursor } from '@/lib/documents/list-cursor'
-import { bestEffortInbox } from '@/lib/inbox/best-effort'
-import { resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
 import { requesterOf } from '@/lib/jobs-queue/types'
 import { domainOf } from '@/lib/mail-thread/mail-threading'
 import { publishProjectChanged } from '@/lib/realtime/door-events'
@@ -43,7 +41,9 @@ import { chatScreeningRules, maskText, type ContentScreenRules } from '@/lib/upl
 import { screenUploadName } from '@/lib/upload-screening/name-screen'
 import { gatePolicy } from '@/lib/upload-screening/service'
 import { requireMailReviewer } from './access'
+import { announceDecided, settleFilingFailed, settleProjectNotices } from './announce'
 import { auditDecisions } from './audit'
+import { partStatesOf } from './notice-repository'
 import { candidatesFor, type ViewerCandidates } from './candidates'
 import { mailIfMatch, planMailDecision, refusal, requireDecisionRights, type DecisionContext } from './decision'
 import { forwardedOrigin } from './forwarded'
@@ -443,7 +443,13 @@ export async function readInboundMailOriginal(session: AuthorizedSession, projec
 // Decisions
 // ---------------------------------------------------------------------------
 
-/** After a decision committed: the trail, the live hint, the waiting notice of each mail nothing waits in any more. */
+/**
+ * After a decision committed: the trail, the live hint, the notices. The
+ * project's `waiting` and `expiring` rows settle once nothing they count waits
+ * (`settleProjectNotices`, by what the project holds, not by this mail, which
+ * may not be the row's anchor), and a failed filing of these mails is no
+ * longer anyone's to do: they were just decided again.
+ */
 async function afterDecisions(
   session: AuthorizedSession,
   projectId: string,
@@ -452,17 +458,32 @@ async function afterDecisions(
 ): Promise<void> {
   publishProjectChanged(session.organizationId, projectId)
   await auditDecisions(written.decisions)
-  for (const mailId of mailIds) {
-    if (await hasWaitingPart(mailId)) continue
-    await bestEffortInbox(`inbound_mail.waiting settled for mail ${mailId}`, session.organizationId, () =>
-      resolveInboxItemsAnchoredOn({ organizationId: session.organizationId, types: ['inbound_mail.waiting'], anchorId: mailId }),
-    )
-  }
+  await settleProjectNotices(session.organizationId, projectId)
+  await settleFilingFailed(session.organizationId, mailIds)
 }
 
-/** Whether a part of the mail still waits for a person (a part being filed was decided). */
-async function hasWaitingPart(mailId: string): Promise<boolean> {
-  return (await findMailParts([mailId])).some((part) => part.state === 'waiting')
+/**
+ * Tell each dismissed mail's member sender its outcome (D9), when this
+ * dismissal ended it: nothing of it waits or is being filed any more. A mail
+ * part of which was filed before reads as filed.
+ */
+async function tellDismissed(session: AuthorizedSession, mails: readonly InboundMailRow[], written: DecisionsWritten): Promise<void> {
+  const decided = mails.filter((mail) => written.decisions.some((row) => row.mailId === mail.id))
+  const states = await partStatesOf(decided.map((mail) => mail.id))
+  for (const mail of decided) {
+    const parts = states.get(mail.id) ?? []
+    if (parts.some((state) => state === 'waiting' || state === 'filing')) continue
+    await announceDecided({
+      organizationId: session.organizationId,
+      projectId: mail.projectId,
+      mailId: mail.id,
+      senderTrust: mail.senderTrust,
+      senderUserId: mail.senderUserId,
+      senderFlags: mail.senderFlags,
+      decidedBy: session.userId,
+      outcome: parts.includes('filed') ? 'filed' : 'dismissed',
+    })
+  }
 }
 
 /** The rows a request's decisions are checked against, loaded once (`DecisionContext`). */
@@ -637,6 +658,7 @@ export async function dismissInboundMails(
     })
   }
   await afterDecisions(session, projectId, written, body.mailIds)
+  await tellDismissed(session, mails, written)
   const fresh = await Promise.all(body.mailIds.map((mailId) => requireMail(projectId, mailId)))
   return { mails: await mailViews(session, projectId, fresh, closed) }
 }

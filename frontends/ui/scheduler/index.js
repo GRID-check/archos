@@ -195,7 +195,8 @@ async function reconcileRuns(config, fetchImpl, streak) {
  * owns the work (a stranded document gets a new `bff_job_queue` job or says why
  * it cannot; a report filing whose job is gone is ended), this container
  * supplies the clock. Logs only when it changed something or failed; never
- * throws. Returns the counts `{ documents, filings }`, or null.
+ * throws. Returns the counts `{ documents, filings, mailImports, inboundMail }`,
+ * or null.
  */
 async function reconcileBackgroundWork(config, fetchImpl, streak) {
   const counts = await postSweep(config, fetchImpl, streak, {
@@ -216,7 +217,28 @@ async function reconcileBackgroundWork(config, fetchImpl, streak) {
         `failed ${filings.failed}, waiting ${filings.waiting}, errors ${filings.errors}`,
     )
   }
+  for (const line of inboundMailSweepLines(counts?.inboundMail)) console.log(line)
   return counts
+}
+
+/**
+ * The log lines of the project mail sweeps (`lib/inbound-mail/sweep.ts`,
+ * ADR-0134): one per sweep that did something or failed, each count by name
+ * (`expired: checked 3, expired 2, parts 5, errors 0`). A sweep that only
+ * looked says nothing, as the halves above. Counts only: no id, no address.
+ * An older BFF sends no `inboundMail`, which logs nothing.
+ */
+function inboundMailSweepLines(inboundMail) {
+  if (!inboundMail || typeof inboundMail !== 'object') return []
+  const lines = []
+  for (const [sweep, counts] of Object.entries(inboundMail)) {
+    if (!counts || typeof counts !== 'object') continue
+    const acted = Object.entries(counts).some(([name, value]) => name !== 'checked' && Number(value) > 0)
+    if (!acted) continue
+    const parts = Object.entries(counts).map(([name, value]) => `${name} ${value}`)
+    lines.push(`${LOG} background work sweep, project mail ${sweep}: ${parts.join(', ')}`)
+  }
+  return lines
 }
 
 /**
@@ -720,6 +742,7 @@ module.exports = {
   fireOne,
   reconcileRuns,
   reconcileBackgroundWork,
+  inboundMailSweepLines,
   sweepUploads,
   sweepPlacement,
   sweepTraceRetention,

@@ -36,6 +36,14 @@ export function isPersonUserId(value: string): boolean {
 export const INBOUND_MAIL_ADDRESS_REVOKED_REASONS = ['rotated', 'switched_off'] as const
 export type InboundMailAddressRevokedReason = (typeof INBOUND_MAIL_ADDRESS_REVOKED_REASONS)[number]
 
+/**
+ * What an address's managers were last told about the staged-bytes caps (D18):
+ * `nearly_full` at 80% of the address's or its organization's cap, `full` at
+ * 100% (the webhook then answers 429). Ordered: a rise is told, a fall is not.
+ */
+export const INBOUND_MAIL_CAP_NOTICES = ['nearly_full', 'full'] as const
+export type InboundMailCapNotice = (typeof INBOUND_MAIL_CAP_NOTICES)[number]
+
 // ------------------------------------------------------------ mails
 
 /**

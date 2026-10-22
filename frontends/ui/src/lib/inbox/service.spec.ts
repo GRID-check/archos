@@ -157,6 +157,12 @@ const ALL_TYPES = [
   'root_sort.ready',
   'root_sort.failed',
   'inbound_mail.waiting',
+  'inbound_mail.expiring',
+  'inbound_mail.decided',
+  'inbound_mail.filing_failed',
+  'inbound_mail.cap_reached',
+  'inbound_mail.appended',
+  'mail_thread.follow_expiring',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -202,7 +208,14 @@ const OPERATIONAL_TYPES = [
   // A sort of a shelf's root is ready or has stopped (ADR-0121): documents are not a chat feature.
   'root_sort.ready',
   'root_sort.failed',
+  // Project mail (ADR-0134) is not a chat feature: every one of its notices is operational.
   'inbound_mail.waiting',
+  'inbound_mail.expiring',
+  'inbound_mail.decided',
+  'inbound_mail.filing_failed',
+  'inbound_mail.cap_reached',
+  'inbound_mail.appended',
+  'mail_thread.follow_expiring',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')

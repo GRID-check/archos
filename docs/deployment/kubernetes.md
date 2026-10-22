@@ -1299,7 +1299,10 @@ a project a slice at a time; the other three are one step each:
   one, a document whose job is dead is failed with its reason, and a report
   filing `queued` for 15 minutes whose job is gone ends as `filed` (the report
   is there after all) or `failed`. A row whose job is queued or running is left
-  alone however long it waits.
+  alone however long it waits. The same call runs project mail's retention
+  sweeps (`lib/inbound-mail/sweep.ts`, ADR-0134), and the scheduler logs one
+  line per sweep that acted or failed, counts by name:
+  `[job-scheduler] background work sweep, project mail expired: checked 3, errors 0, expired 2, parts 5`.
 - **Gotenberg's capacity is a ceiling on the pool.** Conversions are claimed
   from the queue, so the fleet-wide bound is arithmetic:
   `bffJobsMaxReplicas` times `bffJobsRenditionConcurrency` (the pod's

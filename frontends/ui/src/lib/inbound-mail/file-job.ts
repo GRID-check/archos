@@ -32,6 +32,10 @@ import 'server-only'
  *    erased by their keys (deferred under a legal hold) and the row is
  *    scrubbed to ids. A mail with a dismissed part is left to sweep 6: the part
  *    can be restored for seven days.
+ * 6. **Tell** (`announce.ts`): the decider when a part failed and waits again
+ *    (`inbound_mail.filing_failed`), the member sender when this run filed the
+ *    last of the mail (`inbound_mail.decided`, D9); the project's collapsed
+ *    rows settle once nothing they count waits.
  *
  * Retry-safe: every write is a compare-and-set on the part's claim, the
  * entry's and a new thread's ids are the decision's, and an upload whose answer
@@ -47,8 +51,6 @@ import type { InboundMailDecisionRow, InboundMailPartRow, InboundMailRow } from 
 import { memberReader } from '@/lib/documents/document-reader'
 import { uploadDocument } from '@/lib/documents/service'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
-import { bestEffortInbox } from '@/lib/inbox/best-effort'
-import { resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
 import type { InboundMailFilePayload, JobSliceResult } from '@/lib/jobs-queue/types'
 import {
   appendInboundMessage,
@@ -74,6 +76,7 @@ import { chatScreeningRules } from '@/lib/upload-screening/content-screen'
 import { gatePolicy } from '@/lib/upload-screening/service'
 import { findUserPreferences } from '@/lib/user-preferences/repository'
 import { isLocale } from '@/i18n/config'
+import { announceDecided, announceFilingFailed, settleFilingFailed, settleProjectNotices } from './announce'
 import { INBOUND_ATTACHMENT_EFFECTS, INBOUND_THREAD_APPEND_EFFECTS } from './batch-effects'
 import {
   findFilingWork,
@@ -86,6 +89,7 @@ import {
   type FilingWork,
 } from './filing-repository'
 import { scanForStorage } from './malware-scan'
+import { partOutcomesOf } from './notice-repository'
 import { openQuietBatch, sealQuietBatch } from './quiet-batch'
 import { mailReadSchema } from './read-client'
 import { FILING_CLAIM_MS } from './service'
@@ -196,7 +200,46 @@ async function fileMail(run: FilingRun, work: FilingWork): Promise<'done' | 'bus
   else await linkLateAttachments(run, work.mail, filedNow)
 
   await settleIfFiled(run, work.mail.id)
+  await tellOutcome(run, work)
   return outcome
+}
+
+/**
+ * Tell what this run did to the mail (D9, DECISION §9): its decider, once per
+ * run that failed a part (`inbound_mail.filing_failed`, the part waits again
+ * with its reason); its member sender, once, when this run filed the last of
+ * it (`inbound_mail.decided`). A run that found a thread busy tells nothing
+ * yet: its text is still being filed.
+ */
+async function tellOutcome(run: FilingRun, work: FilingWork): Promise<void> {
+  const claimed = work.parts.filter((part) => part.state === 'filing' && work.decisions.has(part.id))
+  if (claimed.length === 0) return
+  const now = new Map((await partOutcomesOf(work.mail.id)).map((part) => [part.id, part]))
+  const failed = claimed.find((part) => now.get(part.id)?.state === 'waiting' && now.get(part.id)?.lastFailure)
+  const failure = failed ? now.get(failed.id)?.lastFailure : null
+  if (failed && failure) {
+    await announceFilingFailed({
+      organizationId: run.session.organizationId,
+      projectId: run.projectId,
+      mailId: work.mail.id,
+      decidedBy: work.decisions.get(failed.id)?.decidedBy ?? run.session.userId,
+      failure,
+    })
+  }
+  const filedNow = claimed.some((part) => now.get(part.id)?.state === 'filed')
+  const open = [...now.values()].some((part) => part.state === 'waiting' || part.state === 'filing')
+  if (!filedNow || open) return
+  await settleFilingFailed(run.session.organizationId, [work.mail.id])
+  await announceDecided({
+    organizationId: run.session.organizationId,
+    projectId: run.projectId,
+    mailId: work.mail.id,
+    senderTrust: work.mail.senderTrust,
+    senderUserId: work.mail.senderUserId,
+    senderFlags: work.mail.senderFlags,
+    decidedBy: run.session.userId,
+    outcome: 'filed',
+  })
 }
 
 /** A mail whose text was filed while its raw message was still moving to the entry's original (originals.ts). */
@@ -471,14 +514,5 @@ async function settleIfFiled(run: FilingRun, mailId: string): Promise<void> {
   const deferred =
     (await held(run)) || (await eraseStagedObjects(mail.stagingBucket, keys)).length > 0
   if (!(await settleFiledMail(mail, deferred))) return
-  await bestEffortInbox(
-    `inbound_mail.waiting settled for mail ${mail.id}`,
-    run.session.organizationId,
-    () =>
-      resolveInboxItemsAnchoredOn({
-        organizationId: run.session.organizationId,
-        types: ['inbound_mail.waiting'],
-        anchorId: mail.id,
-      })
-  )
+  await settleProjectNotices(run.session.organizationId, run.projectId)
 }

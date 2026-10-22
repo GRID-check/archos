@@ -933,6 +933,61 @@ export const collaboration = {
           },
         },
       },
+      // Day 25 of 30: what nobody files expires (restorable for seven days).
+      inboundMailExpiring: {
+        titleOne: 'A mail to “{subject}” expires in five days',
+        titleMany: '{count} mails to “{subject}” expire in five days',
+        title: 'Mails to “{subject}” expire in five days',
+        titleResolved: 'No mail to “{subject}” is about to expire',
+        body: 'What nobody files by then expires, and can be restored for seven days after.',
+        variants: {
+          unconfirmed: {
+            body: 'Some of them come from a domain that is not verified, or were sent automatically. What nobody files expires.',
+          },
+        },
+      },
+      // To the member whose own mail was decided. The folder only when they may see it.
+      inboundMailDecided: {
+        title: 'Your mail to “{subject}” was filed',
+        titleRelated: 'Your mail to “{subject}” was filed in “{related}”',
+        body: 'Filed by {actor}.',
+        variants: {
+          dismissed: {
+            title: 'Your mail to “{subject}” was dismissed',
+            titleRelated: 'Your mail to “{subject}” was dismissed',
+            body: 'Dismissed by {actor}. It can be restored for seven days.',
+          },
+        },
+      },
+      inboundMailFilingFailed: {
+        title: 'A mail to “{subject}” was not filed completely',
+        titleResolved: 'The mail to “{subject}” is done',
+        body: 'What was not filed is waiting in Project mail again. Open the mail to see why.',
+      },
+      // 80% or 100% of the bytes an address or the office may hold staged.
+      inboundMailCapReached: {
+        title: 'The project mail address of “{subject}” is nearly full',
+        titleResolved: 'The project mail address of “{subject}” has room again',
+        body: 'File or dismiss waiting mail, or create a new address.',
+        variants: {
+          full: {
+            title: 'The project mail address of “{subject}” is full',
+            body: 'New mail arrives again once waiting mail is filed or dismissed. You can also create a new address.',
+          },
+        },
+      },
+      // Following a mail thread: a reply's text was appended as you; its attachments wait.
+      inboundMailAppended: {
+        titleOne: 'A reply was appended to a mail thread in “{subject}”',
+        titleMany: '{count} replies were appended to a mail thread in “{subject}”',
+        title: 'Replies were appended to a mail thread in “{subject}”',
+        body: 'As you, because you follow the mail thread. Attachments wait in Project mail.',
+      },
+      mailThreadFollowExpiring: {
+        title: 'You follow a mail thread in “{subject}” for five more days',
+        titleResolved: 'Your follow of a mail thread in “{subject}” was renewed or ended',
+        body: 'Renew it so later replies keep being appended.',
+      },
       rootSortFailed: {
         title: 'The sort of “{subject}” stopped',
         body: 'What was moved until then stays. Open the files to see the reason.',

@@ -82,9 +82,13 @@ vi.mock('@/lib/user-preferences/repository', () => ({
   findUserPreferences: vi.fn(async () => ({ locale: 'en' })),
 }))
 vi.mock('@/lib/organizations/repository', () => ({ findOrganization: vi.fn(async () => null) }))
-vi.mock('@/lib/inbox/service', () => ({
-  resolveInboxItemsAnchoredOn: vi.fn(async () => undefined),
+vi.mock('./announce', () => ({
+  announceDecided: vi.fn(async () => true),
+  announceFilingFailed: vi.fn(async () => true),
+  settleFilingFailed: vi.fn(async () => undefined),
+  settleProjectNotices: vi.fn(async () => undefined),
 }))
+vi.mock('./notice-repository', () => ({ partOutcomesOf: vi.fn(async () => []) }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
 
 import { createHash } from 'node:crypto'
@@ -92,7 +96,6 @@ import { FileTooLargeError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboundMailDecisionRow, InboundMailPartRow } from '@/lib/db/schema'
 import { uploadDocument } from '@/lib/documents/service'
-import { resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
 import type { InboundMailFilePayload } from '@/lib/jobs-queue/types'
 import { appendInboundMessage } from '@/lib/mail-thread/append'
 import { finishOriginalMove } from '@/lib/mail-thread/originals'
@@ -107,6 +110,7 @@ import {
   textPart,
   THREAD_ID,
 } from './__fixtures__/review'
+import { announceDecided, announceFilingFailed, settleFilingFailed, settleProjectNotices } from './announce'
 import { runInboundMailFiling } from './file-job'
 import {
   findFilingWork,
@@ -118,6 +122,7 @@ import {
   type FilingWork,
 } from './filing-repository'
 import { scanForStorage } from './malware-scan'
+import { partOutcomesOf } from './notice-repository'
 import { openQuietBatch, sealQuietBatch } from './quiet-batch'
 import { eraseStagedObjects, readStagedObject } from './staging'
 
@@ -500,9 +505,8 @@ describe('settling', () => {
       done.mail.readStorageKey,
     ])
     expect(settleFiledMail).toHaveBeenCalledWith(done.mail, false)
-    expect(resolveInboxItemsAnchoredOn).toHaveBeenCalledWith(
-      expect.objectContaining({ types: ['inbound_mail.waiting'], anchorId: MAIL_ID })
-    )
+    // By what the project still holds: the collapsed row anchors on its newest mail, not this one.
+    expect(settleProjectNotices).toHaveBeenCalledWith(session.organizationId, PROJECT_ID)
   })
 
   it('leaves a mail with a dismissed part to the sweep: it can be restored for seven days', async () => {
@@ -518,5 +522,43 @@ describe('settling', () => {
     expect(await runInboundMailFiling(session, payload)).toEqual({ done: true, payload })
     expect(openQuietBatch).not.toHaveBeenCalled()
     expect(sealQuietBatch).not.toHaveBeenCalled()
+  })
+})
+
+describe('telling (D9, DECISION §9)', () => {
+  it('tells the member sender once this run filed the last of their mail, and settles its failed filing', async () => {
+    const part = attachment()
+    vi.mocked(findFilingWork).mockResolvedValue([work([part], [[part, {}]])])
+    vi.mocked(partOutcomesOf).mockResolvedValueOnce([{ id: part.id, state: 'filed', lastFailure: null }])
+
+    await runInboundMailFiling(session, payload)
+
+    expect(announceDecided).toHaveBeenCalledWith(
+      expect.objectContaining({ mailId: MAIL_ID, projectId: PROJECT_ID, decidedBy: PERSON, outcome: 'filed' })
+    )
+    expect(settleFilingFailed).toHaveBeenCalledWith(session.organizationId, [MAIL_ID])
+    expect(announceFilingFailed).not.toHaveBeenCalled()
+  })
+
+  it('tells the decider a part waits again with its reason, and tells the sender nothing yet', async () => {
+    const part = attachment()
+    vi.mocked(findFilingWork).mockResolvedValue([work([part], [[part, {}]])])
+    vi.mocked(partOutcomesOf).mockResolvedValueOnce([{ id: part.id, state: 'waiting', lastFailure: 'quota' }])
+
+    await runInboundMailFiling(session, payload)
+
+    expect(announceFilingFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ mailId: MAIL_ID, decidedBy: PERSON, failure: 'quota' })
+    )
+    expect(announceDecided).not.toHaveBeenCalled()
+  })
+
+  it('tells nothing for a mail this run claimed nothing of', async () => {
+    vi.mocked(findFilingWork).mockResolvedValue([work([filed(text())])])
+
+    await runInboundMailFiling(session, payload)
+
+    expect(announceDecided).not.toHaveBeenCalled()
+    expect(announceFilingFailed).not.toHaveBeenCalled()
   })
 })
