@@ -357,7 +357,7 @@ name, each labelled as what it is.
   Prüfansicht ([`document-annotations.md`](document-annotations.md#a-mark-goes-on-with-a-new-fassung)).
 - **Who, for a quiet upload.** The upload batch that brought the newer
   document can narrow that to the mark participants alone
-  (`upload_batches.revision_notice = 'marks_only'`, migration 0183):
+  (`upload_batches.revision_notice = 'marks_only'`, migration 0185):
   `announceSettledVersions` looks up the batch each settled document carries
   (`findMarksOnlyBatchIds`) and passes `audience: 'marks_only'`, which drops the
   assignees and uploaders before the access cut. The next Fassung of an

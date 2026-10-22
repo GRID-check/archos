@@ -1209,13 +1209,49 @@
    "describe": "{\"name\":\"conversation-update\",\"domain\":\"conversations\",\"summary\":\"Rename a conversation or change when Piloti answers\",\"description\":\"Sets `title` (owner role) and/or the `engagement` mode that decides when Piloti answers (collaborator role); at least one. Returns it.\",\"annotations\":{\"title\":\"Rename a conversation or change when Piloti answers\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The conversation id (`s_` plus a UUID with underscores), from conversation-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\",\"minLength\":1},\"engagement\":{\"type\":\"string\",\"enum\":[\"ask\",\"mention\"]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
+   "name": "feedback-office-report-list",
+   "domain": "conversations",
+   "summary": "List every feedback report of the organization",
+   "description": "Every product feedback report filed by anyone in the organization, newest first, with the reporter’s name, ticket status (`resolved` is done, every other status is an active case), ticket number and last activity. Needs `org:settings:manage` (403 otherwise). `mine: false` marks a colleague’s report: its thread reads with feedback-thread-get but only the reporter can answer it. Page with `nextCursor`.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"feedback-office-report-list\",\"domain\":\"conversations\",\"summary\":\"List every feedback report of the organization\",\"description\":\"Every product feedback report filed by anyone in the organization, newest first, with the reporter’s name, ticket status (`resolved` is done, every other status is an active case), ticket number and last activity. Needs `org:settings:manage` (403 otherwise). `mine: false` marks a colleague’s report: its thread reads with feedback-thread-get but only the reporter can answer it. Page with `nextCursor`.\",\"annotations\":{\"title\":\"List every feedback report of the organization\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"description\":\"Reports per page, newest first (1 to 20).\"},\"cursor\":{\"type\":\"string\",\"maxLength\":200,\"description\":\"`nextCursor` of the previous page.\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+  },
+  {
+   "name": "feedback-report-list",
+   "domain": "conversations",
+   "summary": "List the person’s own feedback reports",
+   "description": "The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"feedback-report-list\",\"domain\":\"conversations\",\"summary\":\"List the person’s own feedback reports\",\"description\":\"The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.\",\"annotations\":{\"title\":\"List the person’s own feedback reports\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"description\":\"Reports per page, newest first (1 to 20).\"},\"cursor\":{\"type\":\"string\",\"maxLength\":200,\"description\":\"`nextCursor` of the previous page.\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+  },
+  {
    "name": "feedback-report-submit",
    "domain": "conversations",
    "summary": "Send product feedback to the Piloti team",
    "description": "Sends a bug report, idea, praise or question to the Piloti team and opens a ticket. Not an answer vote (that is answer-feedback-submit).",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"feedback-report-submit\",\"domain\":\"conversations\",\"summary\":\"Send product feedback to the Piloti team\",\"description\":\"Sends a bug report, idea, praise or question to the Piloti team and opens a ticket. Not an answer vote (that is answer-feedback-submit).\",\"annotations\":{\"title\":\"Send product feedback to the Piloti team\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"bug\",\"idea\",\"praise\",\"question\"]},\"message\":{\"type\":\"string\",\"minLength\":10,\"maxLength\":5000},\"pagePath\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":500},{\"type\":\"null\"}]},\"allowContact\":{\"type\":\"boolean\"},\"context\":{\"type\":\"object\",\"properties\":{\"userAgent\":{\"type\":\"string\",\"maxLength\":500},\"viewport\":{\"type\":\"string\",\"maxLength\":40},\"locale\":{\"type\":\"string\",\"maxLength\":40},\"timeZone\":{\"type\":\"string\",\"maxLength\":80},\"appVersion\":{\"type\":\"string\",\"maxLength\":80}}},\"posthog\":{\"anyOf\":[{\"type\":\"object\",\"properties\":{\"widgetSessionId\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":64},{\"type\":\"null\"}]},\"sessionId\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":64},{\"type\":\"null\"}]}}},{\"type\":\"null\"}]}},\"required\":[\"kind\",\"message\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+   "describe": "{\"name\":\"feedback-report-submit\",\"domain\":\"conversations\",\"summary\":\"Send product feedback to the Piloti team\",\"description\":\"Sends a bug report, idea, praise or question to the Piloti team and opens a ticket. Not an answer vote (that is answer-feedback-submit).\",\"annotations\":{\"title\":\"Send product feedback to the Piloti team\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"bug\",\"idea\",\"praise\",\"question\"]},\"message\":{\"type\":\"string\",\"minLength\":10,\"maxLength\":5000},\"pagePath\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":500},{\"type\":\"null\"}]},\"allowContact\":{\"type\":\"boolean\"},\"context\":{\"type\":\"object\",\"properties\":{\"userAgent\":{\"type\":\"string\",\"maxLength\":500},\"viewport\":{\"type\":\"string\",\"maxLength\":40},\"locale\":{\"type\":\"string\",\"maxLength\":40},\"timeZone\":{\"type\":\"string\",\"maxLength\":80},\"appVersion\":{\"type\":\"string\",\"maxLength\":80}}},\"posthog\":{\"anyOf\":[{\"type\":\"object\",\"properties\":{\"sessionId\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":64},{\"type\":\"null\"}]}}},{\"type\":\"null\"}]}},\"required\":[\"kind\",\"message\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+  },
+  {
+   "name": "feedback-thread-get",
+   "domain": "conversations",
+   "summary": "Read the conversation on one feedback report",
+   "description": "The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket could not be read and only the report is shown.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"feedback-thread-get\",\"domain\":\"conversations\",\"summary\":\"Read the conversation on one feedback report\",\"description\":\"The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket could not be read and only the report is shown.\",\"annotations\":{\"title\":\"Read the conversation on one feedback report\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"reportId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The feedback report id (a UUID), from feedback-report-list.\"}},\"required\":[\"reportId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
+   "name": "feedback-thread-reply",
+   "domain": "conversations",
+   "summary": "Answer the Piloti team on a feedback report",
+   "description": "Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"feedback-thread-reply\",\"domain\":\"conversations\",\"summary\":\"Answer the Piloti team on a feedback report\",\"description\":\"Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.\",\"annotations\":{\"title\":\"Answer the Piloti team on a feedback report\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"reportId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The feedback report id (a UUID), from feedback-report-list.\"}},\"required\":[\"reportId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"message\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":5000}},\"required\":[\"message\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "passage-similar-search",
@@ -1287,7 +1323,7 @@
    "description": "The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"inbox-list\",\"domain\":\"collaboration\",\"summary\":\"List the person’s inbox\",\"description\":\"The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.\",\"annotations\":{\"title\":\"List the person’s inbox\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"filter\":{\"type\":\"string\",\"enum\":[\"pending\",\"requests\",\"unread\",\"all\",\"archived\"],\"description\":\"The slice; `all` (unarchived) is the default.\"},\"type\":{\"type\":\"string\",\"enum\":[\"mention.requested\",\"mention.answered\",\"conversation.shared_with_you\",\"conversation.activity\",\"storage.quota_warning\",\"document.assigned_to_you\",\"task_run.completed\",\"task_run.failed\",\"task_run.waiting\",\"document.review_requested\",\"feedback.submitted\",\"upload.completed\",\"document.quarantined\",\"document.release_requested\",\"mail_import.completed\",\"mail_import.failed\",\"document.new_revision\",\"piloti.work_done\",\"piloti.work_failed\",\"piloti.asks_you\",\"piloti.proposal_waiting\",\"piloti.intake_ready\",\"piloti.revision_checked\",\"annotation.assigned_to_you\",\"annotation.activity\",\"annotation.mentioned\",\"root_sort.ready\",\"root_sort.failed\"],\"description\":\"Only this item type.\"},\"projectId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"Only items about this project or its conversations and documents.\"},\"limit\":{\"type\":\"integer\",\"description\":\"Page size (default and most 50).\"},\"cursor\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200,\"description\":\"The previous `nextCursor`.\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+   "describe": "{\"name\":\"inbox-list\",\"domain\":\"collaboration\",\"summary\":\"List the person’s inbox\",\"description\":\"The person’s own inbox, newest first. `filter`: `requests` (waits on them), `unread`, `pending` (unread OR open request), `archived`, `all` (default); `type` and `projectId` narrow it. Page with `nextCursor`.\",\"annotations\":{\"title\":\"List the person’s inbox\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"filter\":{\"type\":\"string\",\"enum\":[\"pending\",\"requests\",\"unread\",\"all\",\"archived\"],\"description\":\"The slice; `all` (unarchived) is the default.\"},\"type\":{\"type\":\"string\",\"enum\":[\"mention.requested\",\"mention.answered\",\"conversation.shared_with_you\",\"conversation.activity\",\"storage.quota_warning\",\"document.assigned_to_you\",\"task_run.completed\",\"task_run.failed\",\"task_run.waiting\",\"document.review_requested\",\"feedback.submitted\",\"feedback.replied\",\"upload.completed\",\"document.quarantined\",\"document.release_requested\",\"mail_import.completed\",\"mail_import.failed\",\"document.new_revision\",\"piloti.work_done\",\"piloti.work_failed\",\"piloti.asks_you\",\"piloti.proposal_waiting\",\"piloti.intake_ready\",\"piloti.revision_checked\",\"annotation.assigned_to_you\",\"annotation.activity\",\"annotation.mentioned\",\"root_sort.ready\",\"root_sort.failed\"],\"description\":\"Only this item type.\"},\"projectId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"Only items about this project or its conversations and documents.\"},\"limit\":{\"type\":\"integer\",\"description\":\"Page size (default and most 50).\"},\"cursor\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200,\"description\":\"The previous `nextCursor`.\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "inbox-summary-get",
@@ -1790,7 +1826,7 @@
    "project-annotation-list",
    "project-task-run-list",
    "document-list",
-   "document-role-list"
+   "project-person-add"
   ],
   "Projekte auflisten": [
    "project-list",
@@ -1802,7 +1838,7 @@
    "project-annotation-list",
    "project-task-run-list",
    "document-list",
-   "document-role-list"
+   "project-person-add"
   ],
   "create task": [
    "project-create",
@@ -2038,7 +2074,9 @@
    "annotation-list",
    "document-annotations-export",
    "project-annotation-list",
-   "project-annotations-export"
+   "project-annotations-export",
+   "feedback-thread-reply",
+   "feedback-thread-get"
   ],
   "Anmerkung beantworten": [
    "annotation-get",
@@ -2095,7 +2133,7 @@
    "project-annotation-list",
    "project-task-run-list",
    "document-list",
-   "document-role-list"
+   "project-person-add"
   ],
   "(a+)+$": []
  }

@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    When another AI assistant passes Piloti a setting an action does not have,
+    such as a page size on the project list, Piloti now says so and names the
+    settings it does take, instead of quietly ignoring it.

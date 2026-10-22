@@ -330,6 +330,16 @@ export const collaboration: typeof en.collaboration = {
         title: '{actor} hat Feedback gesendet',
         body: 'aus {subject} – zum Sichten öffnen.',
       },
+      // Das Team hat in PostHog auf eine eigene Meldung geantwortet. {subject} ist
+      // der Anfang der Meldung, {related} wer zuletzt geantwortet hat.
+      feedbackReplied: {
+        title: 'Das Piloti-Team hat auf Ihr Feedback geantwortet',
+        titleMany: '{count} neue Antworten auf Ihr Feedback',
+        titleRelated: '{related} vom Piloti-Team hat auf Ihr Feedback geantwortet',
+        titleRelatedMany: '{count} neue Antworten auf Ihr Feedback, zuletzt von {related}',
+        body: 'Zu „{subject}“ – in „Mein Feedback“ lesen und antworten.',
+        bodyNoSubject: 'In „Mein Feedback“ lesen und antworten.',
+      },
       storageQuotaWarning: {
         title: 'Der Speicherplatz Ihrer Organisation wird knapp',
         body: '{subject} des Speicherkontingents sind belegt. Sobald es voll ist, schlagen Uploads fehl – löschen Sie nicht mehr benötigte Dokumente oder bitten Sie den Betreiber Ihrer Piloti-Installation, das Kontingent zu erhöhen.',

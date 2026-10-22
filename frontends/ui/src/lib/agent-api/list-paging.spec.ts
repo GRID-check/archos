@@ -46,7 +46,6 @@ const BASELINE: readonly string[] = [
   'organization-model-config-version-list',
   'organization-role-list',
   'platform-card-list',
-  'platform-feedback-list',
   'platform-lesson-list',
   'platform-profiler-conversation-list',
   'platform-skill-category-list',

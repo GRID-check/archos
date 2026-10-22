@@ -15,7 +15,7 @@
  * (migration 0119): a status write lands only on the dispatch it resolved,
  * records one decision per dispatch, and the decision stays owed to the audit
  * trail, outliving its document, until it is marked once; then the retention
- * sweep, and only it, deletes it. And the batch's effects (migration 0183):
+ * sweep, and only it, deletes it. And the batch's effects (migration 0185):
  * a person's upload by default, quieter only where a caller said so.
  */
 
@@ -397,7 +397,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
     ).rejects.toThrow()
   })
 
-  // Migration 0183: the effects a settle sets off. A batch opened without
+  // Migration 0185: the effects a settle sets off. A batch opened without
   // them is a person's upload; only the server opens one quieter.
   it("opens a batch with every effect of a person's upload, and keeps the quieter ones a caller set", async () => {
     expect(await repo.findUploadBatch(ORG, BATCH)).toMatchObject({

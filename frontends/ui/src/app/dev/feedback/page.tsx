@@ -13,7 +13,9 @@
  *   /dev/feedback?lang=en          English (German is the default)
  *
  * Also renders the org header with the provider mounted, so the entry point
- * next to the inbox is in the capture.
+ * next to the inbox (and the avatar's dot for a waiting reply) is in the
+ * capture, and „Chat öffnen" after sending opens the real „Mein Feedback"
+ * sheet on the fake backend (`../_fixtures/feedback-threads.ts`).
  */
 
 import type { JSX } from 'react'
@@ -22,9 +24,10 @@ import { useSearchParams } from 'next/navigation'
 
 import { I18nProvider } from '@/i18n'
 import { OrgHeader } from '@/components/shell/org-header'
-import { FeedbackDialog, FeedbackProvider } from '@/features/product-feedback/components'
+import { FeedbackProvider, useOpenFeedback } from '@/features/product-feedback/components'
 import type { SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
 import { PRODUCT_FEEDBACK_KINDS, type ProductFeedbackKind } from '@/lib/product-feedback/types'
+import { FEEDBACK_PREVIEW_REPORTS, feedbackPreviewApi } from '../_fixtures/feedback-threads'
 
 const MESSAGE =
   'Beim Hochladen eines 80-MB-Plans bleibt der Fortschritt bei 99 % stehen. Nach einem Neuladen ist die Datei nicht im Projekt.'
@@ -36,13 +39,14 @@ function Preview(): JSX.Element {
   const kind: ProductFeedbackKind = PRODUCT_FEEDBACK_KINDS.includes(kindParam as ProductFeedbackKind)
     ? (kindParam as ProductFeedbackKind)
     : 'bug'
-  const [open, setOpen] = React.useState(true)
+  const threadsApi = React.useMemo(() => feedbackPreviewApi('thread'), [])
 
   const submit = React.useCallback(async (): Promise<SubmitProductFeedbackResult> => {
     await new Promise((resolve) => setTimeout(resolve, 400))
     return variant === 'error'
       ? { ok: false, reason: 'failed' }
-      : { ok: true, report: { id: 'f1', kind, createdAt: new Date().toISOString() } }
+      : // The report „Chat öffnen" then opens is one the fake thread knows.
+        { ok: true, report: { id: FEEDBACK_PREVIEW_REPORTS[0]!.id, kind, createdAt: new Date().toISOString() } }
   }, [variant, kind])
 
   // For the `sent` and `error` captures: fill and send once the dialog is up.
@@ -60,7 +64,11 @@ function Preview(): JSX.Element {
   }, [variant])
 
   return (
-    <FeedbackProvider userEmail="maria.huber@buero-nord.at">
+    // The shell's own provider, with the fakes: the form is the provider's, so
+    // „Chat öffnen" after sending runs the real hand-off into „Mein Feedback",
+    // and the avatar carries the dot for the reply waiting there.
+    <FeedbackProvider userEmail="maria.huber@buero-nord.at" threadsApi={threadsApi} submit={submit}>
+      <OpenOnMount kind={kind} />
       <OrgHeader
         user={{ name: 'Maria Huber', email: 'maria.huber@buero-nord.at' }}
         organizationName="Architekturbüro Nord"
@@ -72,15 +80,15 @@ function Preview(): JSX.Element {
         canAccessInbox={false}
       />
       <main className="text-muted-foreground p-8 text-sm">Projekte …</main>
-      <FeedbackDialog
-        open={open}
-        onOpenChange={setOpen}
-        defaultKind={kind}
-        userEmail="maria.huber@buero-nord.at"
-        submit={submit}
-      />
     </FeedbackProvider>
   )
+}
+
+/** Opens the provider's form once, as the avatar menu's „Feedback senden" would. */
+function OpenOnMount({ kind }: { kind: ProductFeedbackKind }): null {
+  const openFeedback = useOpenFeedback()
+  React.useEffect(() => openFeedback(kind), [openFeedback, kind])
+  return null
 }
 
 export default function FeedbackDevPage(): JSX.Element {

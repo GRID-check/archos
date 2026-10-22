@@ -1,0 +1,45 @@
+// Tells Piloti that the support team answered a feedback ticket, so the member
+// who filed it gets an inbox item. Trigger: $conversation_message_sent with
+// author_type = team.
+// The call is a poke: it carries the ticket id only, and Piloti reads the
+// ticket back with its own key before it notifies anyone, so the endpoint
+// needs no shared secret (ADR-0118, amendment). Which deployment to poke comes
+// from the ticket's "origin:<host>" tag, written when Piloti opened the ticket:
+// staging and production share this project.
+let ticketId := event.properties.ticket_id
+if (empty(ticketId)) {
+  print('No ticket_id on the event; nothing to tell')
+  return
+}
+
+let res := postHogGetTicket({'ticket_id': ticketId})
+if (res.status != 200) {
+  throw Error(f'Failed to fetch ticket ({res.status}): {res.body}')
+}
+
+let host := null
+let isFeedback := false
+for (let tag in (res.body.tags ?? [])) {
+  if (substring(tag, 1, 7) == 'origin:') {
+    host := substring(tag, 8, 200)
+  }
+  if (tag == 'piloti-feedback') {
+    isFeedback := true
+  }
+}
+if (not isFeedback or empty(host)) {
+  print(f'Ticket {ticketId} is not a Piloti report with an origin; nobody to tell')
+  return
+}
+if (not has(inputs.allowed_hosts, host)) {
+  throw Error(f'Ticket {ticketId} names origin {host}, which is not an allowed Piloti host')
+}
+
+let response := fetch(f'https://{host}/api/webhooks/posthog-support', {
+  'method': 'POST',
+  'headers': {'Content-Type': 'application/json'},
+  'body': {'ticketId': ticketId}
+})
+if (response.status >= 400) {
+  throw Error(f'{host} refused the poke: {response.status}: {response.body}')
+}

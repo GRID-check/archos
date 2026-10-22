@@ -1,0 +1,15 @@
+Die folgende Tabelle zeigt eine Zusammenstellung der Gebäudeklassen GK 1 bis GK 5.
+Anzahl der Flucht- Anzahl Wohnungen Brutto-Grundfläche der
+GK oberirdischen niveau bzw. Betriebs- oberirdischen Geschoße
+Geschoße (m) einheiten (m²)
+≤ 2 Wohnungen
+1 ≤ 3 ≤ 7 ≤ 400 (freistehend)
+1 Betriebseinheit
+≤ 400 (Reihenhäuser)
+2 ≤ 3 ≤ 7 --
+≤ 800 (Wohngebäude, freistehend)
+3 ≤ 3 ≤ 7 -- --
+1 --
+4 ≤ 4 ≤ 11
+-- je ≤ 400
+5 -- ≤ 22 -- --

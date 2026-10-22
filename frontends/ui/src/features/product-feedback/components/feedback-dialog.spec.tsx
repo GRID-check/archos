@@ -7,10 +7,7 @@ import { FeedbackDialog } from './feedback-dialog'
 
 vi.mock('@/lib/analytics/posthog', () => ({
   capturePosthog: vi.fn(),
-  getPosthogSupportContext: vi.fn(() => ({
-    widgetSessionId: '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c',
-    sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
-  })),
+  getPosthogSupportContext: vi.fn(() => ({ sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })),
 }))
 
 const ok: SubmitProductFeedbackResult = {
@@ -104,17 +101,14 @@ describe('FeedbackDialog', () => {
       vi.clearAllMocks()
     })
 
-    test('hands the server the PostHog widget and replay sessions, so it can open the ticket', async () => {
+    test('hands the server the PostHog replay session, so the ticket links the recording', async () => {
       const { submit, user } = setup()
 
       await user.type(message(), 'The upload stops at 99 percent.')
       await user.click(send())
 
       await waitFor(() => expect(submit).toHaveBeenCalledTimes(1))
-      expect(submit.mock.calls[0]![0].posthog).toEqual({
-        widgetSessionId: '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c',
-        sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
-      })
+      expect(submit.mock.calls[0]![0].posthog).toEqual({ sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })
     })
 
     test('sends the product event with the kind and never the words', async () => {
@@ -134,14 +128,14 @@ describe('FeedbackDialog', () => {
     })
 
     test('still sends with no PostHog state when PostHog is off in this browser', async () => {
-      vi.mocked(getPosthogSupportContext).mockReturnValueOnce({ widgetSessionId: null, sessionId: null })
+      vi.mocked(getPosthogSupportContext).mockReturnValueOnce({ sessionId: null })
       const { submit, user } = setup()
 
       await user.type(message(), 'The upload stops at 99 percent.')
       await user.click(send())
 
       expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
-      expect(submit.mock.calls[0]![0].posthog).toEqual({ widgetSessionId: null, sessionId: null })
+      expect(submit.mock.calls[0]![0].posthog).toEqual({ sessionId: null })
     })
 
     test('does not involve PostHog when the report was not stored', async () => {
@@ -190,5 +184,21 @@ describe('FeedbackDialog on a phone', () => {
   test('the keyboard-shortcut hint is not painted where there is no keyboard', () => {
     setup()
     expect(document.getElementById(`${message().id}-hint`)?.className).toMatch(/pointer-coarse:hidden/)
+  })
+})
+
+describe('FeedbackDialog → the conversation', () => {
+  test('after sending, offers to open the conversation on that report', async () => {
+    const submit = vi.fn<(request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>>()
+    submit.mockResolvedValue(ok)
+    const onViewThread = vi.fn()
+    render(<FeedbackDialog open onOpenChange={vi.fn()} submit={submit} onViewThread={onViewThread} />)
+    const user = userEvent.setup()
+
+    await user.type(screen.getByTestId('feedback-message'), 'The upload stops at 99 percent.')
+    await user.click(screen.getByTestId('feedback-send'))
+    await user.click(await screen.findByTestId('feedback-view-thread'))
+
+    expect(onViewThread).toHaveBeenCalledWith('r1')
   })
 })

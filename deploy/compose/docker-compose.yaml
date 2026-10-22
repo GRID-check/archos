@@ -1299,7 +1299,7 @@ services:
     # migrates in stages (kubernetes.md §9b, "Upgrading to Langfuse v4").
     # Pinned to the version the Pulumi digests carry (deploy/pulumi/src/config.ts);
     # web and worker must stay on the same one, so bump the two lines together.
-    image: ghcr.io/langfuse/langfuse:4.63.0
+    image: ghcr.io/langfuse/langfuse:4.68.0
     container_name: aiq-langfuse-web
     profiles: [langfuse]
     ports:
@@ -1367,7 +1367,7 @@ services:
     restart: unless-stopped
 
   langfuse-worker:
-    image: ghcr.io/langfuse/langfuse-worker:4.63.0
+    image: ghcr.io/langfuse/langfuse-worker:4.68.0
     container_name: aiq-langfuse-worker
     profiles: [langfuse]
     environment:

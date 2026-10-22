@@ -13,11 +13,13 @@ import { baseStackConfig } from "../test-support/stack-config";
 
 type Policy = { metadata: { name: string }; spec: Record<string, unknown> };
 const POLICIES: Policy[] = [];
+const ROUTES: Policy[] = [];
 
 pulumi.runtime.setMocks(
   {
     newResource: (args: pulumi.runtime.MockResourceArgs) => {
       if (args.inputs.kind === "BackendTrafficPolicy") POLICIES.push(args.inputs as Policy);
+      if (args.inputs.kind === "HTTPRoute") ROUTES.push(args.inputs as Policy);
       return { id: `${args.name}-id`, state: args.inputs };
     },
     call: () => ({}),
@@ -70,5 +72,15 @@ describe("BackendTrafficPolicies", () => {
       expect(policy(name)).not.toHaveProperty("compressor");
       expect(policy(name)).not.toHaveProperty("compression");
     }
+  });
+});
+
+describe("the plain-HTTP listener", () => {
+  it("redirects every host to HTTPS permanently, so a favicon fetch over http finds the site", () => {
+    const route = ROUTES.find((r) => r.metadata.name === "grid-https-redirect");
+    expect(route?.spec).toEqual({
+      parentRefs: [{ name: "grid-gateway", sectionName: "http" }],
+      rules: [{ filters: [{ type: "RequestRedirect", requestRedirect: { scheme: "https", statusCode: 301 } }] }],
+    });
   });
 });

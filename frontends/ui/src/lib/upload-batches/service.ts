@@ -7,7 +7,7 @@
  *   seal    → the browser, after its last request (`POST …/[id]/seal`)
  *   settle  → reconciliation, once no document of a sealed batch is in flight
  *             (`./settle`), which tells the uploader in their inbox — unless
- *             the batch was opened quiet (its effects, migration 0183)
+ *             the batch was opened quiet (its effects, migration 0185)
  *   summary → what arrived, where, what it is, what was held back and why
  *
  * The summary is the uploader's. It names what the office's screening kept on

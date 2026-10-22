@@ -143,6 +143,78 @@ Votes on answers (`answer_feedback`) are not product feedback and do not change.
   send on is a second hop for nothing, and a failure there is swallowed where
   nobody sees it (it hid the relay bug).
 
+## Amendment, 2026-10-22: the reporter's thread, in Piloti
+
+The decision stands; three things are added on top of it.
+
+* **The reporter reads and answers in Piloti, through the API, never the
+  widget.** PostHog's widget stays switched off. Under „Mein Feedback" the BFF
+  serves the thread from the ticket: the private REST API reads its messages
+  (`customer_message` and `sent_reply` only, never notes or AI drafts), and a
+  reply goes onto the ticket through the conversations endpoint the ticket was
+  opened through, because the REST API lets only the team author. That endpoint
+  accepts a later message only from the session that opened the ticket, so the
+  server now makes up a session per report and stores it
+  (`product_feedback.posthog_widget_session_id`, migration `0183`, never sent
+  to a browser). Reports filed before `0183` can be read but not answered. The
+  reply is masked like the report, and when the policy cannot be read nothing
+  is sent. `reporter_seen_at` marks when the reporter last looked; a ticket
+  PostHog updated after it shows as new.
+* **The browser hands over no widget session any more**, only the replay
+  session id. Tickets were opened in a server-made session already whenever the
+  browser had none, which, with the widget off, was always.
+* **Slack, through a PostHog workflow.** „Piloti feedback → Slack" posts every
+  customer message on a widget ticket to `#posthog-inbox`. A Slack reaction
+  cannot start a PostHog workflow (only a new message can), so taking a ticket
+  is a button: „Übernehmen" opens Platform → Feedback with `?claim=<ticket id>`,
+  and the BFF assigns the ticket to the PostHog member with the signed-in
+  person's email. The key needs `organization_member:read` for that lookup.
+
+## Amendment, 2026-10-22: the reporter is told when the team answers
+
+Until now a member learned about a reply only by opening „Mein Feedback".
+PostHog emits `$conversation_message_sent` when the team sends one, and a
+PostHog workflow (built in PostHog, not here) turns it into a call to Piloti.
+This adds the receiving end, and records why it is a `publicApiRoute` with no
+shared secret, which AGENTS.md asks an ADR for.
+
+* **The ticket says which deployment opened it.** Dev and prod share one
+  PostHog project (269895), so every ticket now carries `origin:<host>`, the
+  host of the deployment's pinned app origin (`origin:app.piloti.at`). The
+  workflow pokes `https://<host>/api/webhooks/posthog-support` with
+  `{"ticketId": "<uuid>"}`. A deployment that pins no origin tags none and is
+  never poked.
+* **A poke, not a payload.** The route trusts nothing in the body but the id.
+  It finds the report by `posthog_ticket_id`, reads the ticket's thread back
+  from PostHog with its own key (`listCustomerVisibleMessages`: `sent_reply`,
+  not private), and announces the team replies the reporter has neither read
+  (`reporter_seen_at`) nor been told about (`reporter_notified_at`, migration
+  `0184`, moved with a compare-and-set) as one `feedback.replied` inbox row for
+  them. The inbox's push policy does the rest; the type is never mailed, by
+  the product owner's decision.
+* **Why no shared secret.** A secret would authenticate the body, and the body
+  carries no fact Piloti uses. A forged poke can do one thing: make the server
+  re-read a real ticket's thread, which announces nothing that is not there and
+  nothing twice. Guessing a ticket id (a UUID) gains nothing either, because
+  the route answers `202` with no body whether or not a report exists. What
+  remains is load, which the route bounds per ticket and per deployment
+  (`lib/limits/rules.js`). A secret would also have to live in PostHog's
+  workflow and in every deployment's config, one more thing to rotate, for no
+  property the re-read does not already give.
+* **Tenancy without a session.** The one cross-tenant read, the report by its
+  ticket id, runs under `withPlatformAccess` with its reason; the watermark and
+  the inbox row are written as the report's organization (`withTenant`), so
+  RLS holds for every write.
+* **Considered: reading the reply from the event.** PostHog's event carries
+  `message_content` and `author_type`; using them would make the body the
+  source and require the secret this design avoids. Reading back costs one API
+  call per message and keeps PostHog the record.
+
+Confirmation: `lib/product-feedback/reply-notice.spec.ts` (unknown ticket,
+team reply, replay, read already, own message, PostHog unreadable) and
+`app/api/webhooks/posthog-support/route.spec.ts` (body, statuses, both rate
+limits); `scripts/rls-test-db.sh` checks `0184` and its compare-and-set.
+
 ## More Information
 
 * Amends ADR-0100: its Support row ("the product-feedback dialog also opens a

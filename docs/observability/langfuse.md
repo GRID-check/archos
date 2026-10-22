@@ -162,7 +162,7 @@ writes its facts once, when it ends, in `_record_trace`
 
 | Key | Meaning |
 |---|---|
-| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `no_model`, `refused`, `error` or `no_job` |
+| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `llm_budget` (the organization's usage budget is exhausted), `no_model`, `refused`, `error` or `no_job` |
 | `intake_mode` | the mode the intake was read in (`active` unless the intake's needs say otherwise) |
 | `intake_documents_read` | how many documents the run opened |
 | `intake_suggested` | values recorded as suggestions, which a person will check |

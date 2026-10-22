@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquarePlus,
+  MessagesSquare,
   Monitor,
   Moon,
   Sun,
@@ -17,7 +18,9 @@ import {
 } from 'lucide-react'
 
 import { useAuth } from '@/adapters/auth/use-auth'
+import { AttentionDot } from '@/components/ui/attention-dot'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { CountPill } from '@/components/ui/count-pill'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,7 +34,12 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { useLayoutStore } from '@/features/layout/store'
 import { useStartProductTour } from '@/features/onboarding/components/product-tour'
-import { useFeedbackAvailable, useOpenFeedback } from '@/features/product-feedback/components'
+import {
+  useFeedbackAvailable,
+  useFeedbackUpdatedCount,
+  useOpenFeedback,
+  useOpenFeedbackThreads,
+} from '@/features/product-feedback/components'
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -107,6 +115,8 @@ export function SidebarUserMenu({
   const ActiveThemeIcon = THEME_ICONS[theme]
   const startTour = useStartProductTour()
   const openFeedback = useOpenFeedback()
+  const openFeedbackThreads = useOpenFeedbackThreads()
+  const feedbackUpdatedCount = useFeedbackUpdatedCount()
   const feedbackAvailable = useFeedbackAvailable()
   const tFeedback = useTranslations('feedback')
 
@@ -137,10 +147,18 @@ export function SidebarUserMenu({
             ? 'w-auto rounded-full p-0 pointer-coarse:size-11 pointer-coarse:justify-center'
             : 'w-full rounded-lg py-1 pl-0 pr-2',
         )}
-        aria-label={t('userMenu.label', { name: displayName })}
+        aria-label={
+          feedbackUpdatedCount > 0
+            ? `${t('userMenu.label', { name: displayName })}, ${tFeedback('threads.newsDot')}`
+            : t('userMenu.label', { name: displayName })
+        }
         data-tour={tourAnchor}
       >
-        <span className="flex shrink-0">
+        <span className="relative flex shrink-0">
+          {/* A reply from the Piloti team waits under „Mein Feedback": the
+              count is on that row, one level down, and without a mark here
+              nobody opens the menu to find it. */}
+          <AttentionDot show={feedbackUpdatedCount > 0} className="absolute -top-0.5 -right-0.5 z-10" />
           {/* The hairline is not decoration. `AvatarFallback` fills with
               `bg-muted` (L 0.961), and the rail it sits on is
               `--background-color-surface-sunken` (L 0.958) — a 0.3% lightness
@@ -265,6 +283,23 @@ export function SidebarUserMenu({
           <DropdownMenuItem onSelect={() => openFeedback()} className="gap-2" data-testid="user-menu-feedback">
             <MessageSquarePlus className="size-4 text-muted-foreground" aria-hidden />
             {tFeedback('open')}
+          </DropdownMenuItem>
+        )}
+        {/* Where the team's replies arrive; the pill says how many threads
+            have news since the member last looked. */}
+        {feedbackAvailable && (
+          <DropdownMenuItem
+            onSelect={() => openFeedbackThreads()}
+            className="gap-2"
+            data-testid="user-menu-feedback-threads"
+          >
+            <MessagesSquare className="size-4 text-muted-foreground" aria-hidden />
+            <span className="flex-1">{tFeedback('threads.open')}</span>
+            {feedbackUpdatedCount > 0 && (
+              <CountPill tone="attention" aria-label={tFeedback('threads.newCount', { count: feedbackUpdatedCount })}>
+                {feedbackUpdatedCount}
+              </CountPill>
+            )}
           </DropdownMenuItem>
         )}
         {authRequired && (

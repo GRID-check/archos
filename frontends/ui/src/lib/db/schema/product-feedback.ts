@@ -67,6 +67,22 @@ export const productFeedback = pgTable(
     allowContact: boolean('allow_contact').notNull().default(true),
     /** The PostHog Support ticket this report opened (migration 0155). NULL: none opened. */
     posthogTicketId: text('posthog_ticket_id'),
+    /**
+     * The conversations session the server opened the ticket in (migration
+     * 0183), so the reporter's replies land on the same ticket. A bearer secret
+     * for that ticket on PostHog's public endpoint: server-side only, never in a
+     * response. NULL for reports filed before 0183, which cannot be answered.
+     */
+    posthogWidgetSessionId: text('posthog_widget_session_id'),
+    /** When the reporter last opened the thread; a ticket updated after it reads as new. */
+    reporterSeenAt: timestamp('reporter_seen_at', { withTimezone: true }),
+    /**
+     * The newest team reply the reporter was told about in their inbox
+     * (migration 0184). A poke from PostHog notifies only replies after it and
+     * after `reporter_seen_at`, and moves it in a compare-and-set, so a replayed
+     * poke tells nobody twice. NULL: no reply announced yet.
+     */
+    reporterNotifiedAt: timestamp('reporter_notified_at', { withTimezone: true }),
     /** Milliseconds, so the keyset cursor (a JS Date) is exact — see migration 0100. */
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),

@@ -67,6 +67,15 @@ fails if the database goes missing instead of skipping green; CI sets that
 variable (`.github/workflows/ci.yml`), the script does not, so a local run can
 still skip green.
 
+The per-migration sections at the end of that script prove a backfill, a data
+rewrite or a down migration on a clone of the chain. Once the migration has
+been on `prod` for a week (`git merge-base --is-ancestor <commit> origin/prod`
+and the promotion's date), retire its section: production can no longer hold
+the old shape, and nobody runs a down beneath the migrations that followed.
+Keep what the migration put into the database that is still refused today (a
+CHECK, a unique index, a guard trigger) unless a suite on the full chain
+already covers it.
+
 **Backend tests run against this checkout's `src/`.** Without a guard, pytest
 resolves `aiq_agent` from whatever the venv has installed, possibly another
 worktree, and validates the wrong code while appearing to pass. `pyproject.toml`'s
