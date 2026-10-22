@@ -17,8 +17,9 @@
 # The OpenTelemetry Collector block is boxed SHORT because contrib ships every
 # ~two weeks, and that is exactly how it emptied: the pin moved 0.157.0 ->
 # 0.160.0 and twelve of its thirteen entries went with it, and 0.161.0 took
-# the last (amqp091-go). It is empty now; keep it that way by bumping the pin,
-# not by boxing what a newer tag already fixes.
+# the last (amqp091-go). Three Go 1.26.8 boxes followed and went the same way,
+# with 0.163.2 (2026-10-22). It is empty now; keep it that way by bumping the
+# pin, not by boxing what a newer tag already fixes.
 vulnerabilities:
   # ── OpenTelemetry Collector contrib (ADR-0029) ────────────────────────────
   #
@@ -48,6 +49,14 @@ vulnerabilities:
   # `go version -m`) carries amqp091-go v1.13.0, which also clears the nine
   # CVE-2026-774xx advisories published against 1.12.0 on 2026-09-23. OSV over
   # the full build info shows no module with an advisory 0.160.0 lacked.
+  #
+  # 0.161.0's go1.26.8 then drew four HIGH advisories: CVE-2026-78667,
+  # -78669 (also against golang.org/x/net v0.58.0) and -97031, boxed here to
+  # 2026-10-23, and CVE-2026-111943, which was never boxed and turned the
+  # develop run red on 2026-10-22. The pin moved to 0.163.2
+  # (`sha256:7f22d2a6…`), whose amd64 binary reads go1.26.10 and x/net v0.61.0
+  # under `go version -m`, and a local trivy 0.61.1 scan of that digest with
+  # this file EMPTY reports no fixable HIGH/CRITICAL. The three boxes are gone.
 
   # ── Langfuse web/worker images (ADR-0044) ─────────────────────────────────
   #
@@ -55,7 +64,7 @@ vulnerabilities:
   # langfuse-worker, not a package this repo references. Langfuse 4.54.0
   # cleared the rest of this block (fast-uri, js-yaml, nanoid, sharp, undici,
   # next, nodemailer, and the Go standard library in `usr/bin/migrate`); the
-  # entry below is the one it did not, and 4.56.0 did not either.
+  # entry below is the one it did not, and no release through 4.68.0 has.
   #
   # 4.56.0 also moved both images from node:24-alpine to UBI 9 micro. Every
   # Alpine package finding is gone with that base, and any UBI 9 (RHEL)
@@ -63,11 +72,16 @@ vulnerabilities:
   # entries removed before boxing anything against the new base.
   #
   # The pin moved 4.56.0 -> 4.63.0 on 2026-10-18 (see the config.ts comment),
-  # which took the three unboxed pcre2 HIGH findings with it. The entries
-  # below were written against 4.54.0/4.56.0 and are NOT re-verified against
-  # the 4.63.0 digests. Re-verify by scanning 4.63.0 with the entry removed:
-  # with the entry in place, a green scan cannot tell a fixed finding from a
-  # boxed one. Drop what the bump cleared.
+  # which took the three unboxed pcre2 HIGH findings with it, and 4.63.0 ->
+  # 4.68.0 on 2026-10-22 for five more that landed in the DB unboxed:
+  # @modelcontextprotocol/sdk 1.31.0 (CVE-2026-111767/111768), follow-redirects
+  # 1.16.0 (CVE-2026-111755/111756), both images, and go1.26.9 in the web
+  # image's `usr/bin/migrate` (CVE-2026-111943). 4.64.0-4.67.0 carry all five.
+  # Re-verified on 2026-10-22 by a local trivy 0.61.1 scan of the 4.63.0 and
+  # 4.68.0 digests with this file EMPTY: 4.68.0 reports only CVE-2026-40345
+  # below (sdk 1.32.0, follow-redirects 1.16.1, migrate go1.26.10), and
+  # neither digest carries CVE-2026-104850 (sdk 1.29.0; 4.63.0 already shipped
+  # 1.31.0), so that box is gone.
   #
   # Shared context: the Langfuse UI is reachable only through the Envoy
   # Gateway behind an OIDC flow gated on `platform:organizations:view` or
@@ -109,6 +123,8 @@ vulnerabilities:
       4.55.0 (2026-10-08) still shipped Prisma 6.19.3, read from its layers, as
       does 4.56.0 (2026-10-09), read from its lockfile. Boxed a
       month because the exit is a Prisma major, then Langfuse adopting it.
+      Still present in 4.68.0, read from a scan of its digests on 2026-10-22:
+      the same three copies, under `prisma` and `@prisma/config` 6.19.3.
 
       Drop as soon as a Langfuse image ships `@prisma/config` >= 8 (deepmerge-ts
       >= 8.0.0).
@@ -118,6 +134,10 @@ vulnerabilities:
   # These landed in the trivy DB after the last green develop scan and turned
   # the job red on every PR that touches an image. Boxed SHORT: each one names
   # a fixed version, so the right exit is a pin bump, not a renewal.
+  #
+  # The ClickHouse entry below expires on 2026-10-22 and the pin still carries
+  # 3.0.2-0ubuntu1.29 (local scan, 2026-10-22): the weekly scan and the next
+  # change to that pin go red on it. It wants a ClickHouse bump of its own.
 
   - id: CVE-2026-84782
     expired_at: 2026-10-22
@@ -127,53 +147,6 @@ vulnerabilities:
       speaks TLS over TCP only and never negotiates DTLS, and the server is
       reachable solely by Langfuse inside the cluster. Fixed in Ubuntu's
       3.0.2-0ubuntu1.30; drop when the ClickHouse pin carries it.
-
-  - id: CVE-2026-104850
-    expired_at: 2026-10-22
-    statement: |
-      @modelcontextprotocol/sdk 1.29.0 bundled inside langfuse and
-      langfuse-worker — the SDK's OAuth CLIENT can send credentials to an
-      authorization server it should not trust. The defect lives in the
-      client-side OAuth discovery flow; Langfuse here makes no outbound MCP
-      OAuth connections, and its UI sits behind the Envoy Gateway's OIDC flow.
-      Fixed in 1.31.0; drop when a Langfuse image ships it. Langfuse 4.56.0 did
-      not: its pnpm-lock.yaml still resolved 1.29.0.
-
-  # OpenTelemetry Collector contrib 0.161.0 (the pin), Go 1.26.8 standard
-  # library, published after the 2026-10-08 scans (first red on PR #932).
-  # Both name Go 1.26.9 as the fix, and no contrib release carries it yet:
-  # 0.162.0 (2026-10-05, `sha256:39923a8e…`, amd64 binary read with
-  # `go version`) is still go1.26.8, and 0.163.0 exists only as a nightly.
-  # Shared context: the collector's OTLP receivers listen in plaintext inside
-  # the cluster, reachable from pods in the namespace and from no route, and
-  # its exporters speak plain HTTP to Langfuse.
-  # Bump the pin to the first contrib release built with go >= 1.26.9 and drop
-  # both.
-  - id: CVE-2026-78667
-    expired_at: 2026-10-23
-    statement: |
-      net/http denial of service through crafted Range headers. Range is
-      honoured by http.ServeContent / FileServer; the collector's OTLP/HTTP
-      receiver accepts POSTed telemetry and serves no ranged content, and no
-      route exposes it outside the namespace. See the block note.
-  - id: CVE-2026-97031
-    expired_at: 2026-10-23
-    statement: |
-      crypto/tls denial of service through repeated ECH outer-extension
-      references in a ClientHello. No TLS listener or TLS client is configured
-      on this collector (plaintext in-cluster receivers and exporters), so no
-      ClientHello reaches crypto/tls. See the block note.
-  - id: CVE-2026-78669
-    expired_at: 2026-10-23
-    statement: |
-      golang.org/x/net v0.58.0 and the Go 1.26.8 stdlib HTTP/2 server: denial
-      of service through a flood of SETTINGS frames. Unlike the two above this
-      code is reached: the OTLP gRPC receiver speaks HTTP/2. But only pods in
-      the namespace can dial it (NetworkPolicy, no route, no Gateway listener),
-      so an attacker needs a foothold in a pod first, and the worst outcome is
-      the collector restarting and dropping traces, never a user request.
-      Fixed in x/net 0.60.0 and Go 1.26.9, which no contrib release carries yet
-      (first red on PR #1012, 2026-10-12). Same exit as the block: bump the pin.
 
 secrets:
   - id: gcp-service-account
