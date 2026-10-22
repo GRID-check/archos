@@ -337,7 +337,13 @@ class DeferredObjectDownload:
         # (e.g. a cloud metadata endpoint), which would make the route's host
         # check a no-op. Presigned object-store GETs never redirect; a 3xx is
         # a failed download like any other.
-        response = httpx.get(self._url, follow_redirects=False, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
+        # The transport retries a refused or timed-out CONNECT only, with
+        # httpcore's backoff: a few seconds of object-store restart no longer
+        # fails every file in flight (PostHog Logs, "Download of the original
+        # failed: ConnectError", 2026-10-19 and -22). A request that reached the
+        # store is never repeated.
+        with httpx.Client(transport=httpx.HTTPTransport(retries=_DOWNLOAD_CONNECT_RETRIES)) as client:
+            response = client.get(self._url, follow_redirects=False, timeout=_DOWNLOAD_TIMEOUT_SECONDS)
         response.raise_for_status()
         suffix = self._suffix or _infer_suffix(response.headers.get("content-type", ""), self._url)
         fd, path = tempfile.mkstemp(suffix=suffix)
@@ -355,6 +361,9 @@ class DeferredObjectDownload:
 #: Per phase (connect, each read), not for the whole body: a large original
 #: streams for as long as bytes keep arriving.
 _DOWNLOAD_TIMEOUT_SECONDS = 60.0
+#: Connect attempts after the first, backing off 0, 0.5, 1, 2, 4, 8 s: about
+#: 15 s in all, longer than the object-store outages PostHog Logs has shown.
+_DOWNLOAD_CONNECT_RETRIES = 6
 
 
 def _provenance_config(request: IngestRequest) -> dict[str, str]:

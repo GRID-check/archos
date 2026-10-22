@@ -47,6 +47,7 @@ const FIXTURES = {
     'export const rollback = (tx: { rollback(): void }) => tx.rollback()',
     "export const isDuplicate = (error: { code: string }) => error.code === '23505'",
     'export const text = (page: { getTextContent(): void }) => page.getTextContent()',
+    "export const redis = require('ioredis')",
   ].join('\n'),
   // Specs may spell the tenant boundary's failure modes on purpose.
   'src/lib/canary.spec.ts': [
@@ -121,7 +122,7 @@ describe('.oxlintrc.json', () => {
 
   it('reports each restricted selector once', () => {
     const restricted = findings.filter(([f, r]) => f === 'src/lib/canary.ts' && r === 'grid(no-restricted-syntax)')
-    expect(restricted).toHaveLength(3)
+    expect(restricted).toHaveLength(4)
   })
 
   it('reports only the value import from the db in a route', () => {

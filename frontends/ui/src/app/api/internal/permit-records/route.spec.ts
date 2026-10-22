@@ -113,6 +113,14 @@ describe('POST /api/internal/permit-records', () => {
     expect(storePermitRecord).toHaveBeenCalledWith(body({ record: null }))
   })
 
+  it('accepts a delete with no model, as the worker sends it when a document is re-typed', async () => {
+    // Every such delete was a 400 (~320 a week in PostHog Logs), so a re-typed
+    // document kept its stale permit record.
+    const response = await POST(request(body({ record: null, model: '' })))
+    expect(response.status).toBe(200)
+    expect(storePermitRecord).toHaveBeenCalledWith(body({ record: null, model: '' }))
+  })
+
   it('answers an unknown document with 200 and stored: false', async () => {
     vi.mocked(storePermitRecord).mockResolvedValue({ stored: false, requirements: 0 })
     const response = await POST(request(body()))
@@ -130,6 +138,8 @@ describe('POST /api/internal/permit-records', () => {
       body({ collection: '' }),
       body({ fileName: undefined }),
       body({ model: undefined }),
+      body({ model: '' }),
+      body({ model: '   ' }),
       body({ record: undefined }),
       body({ record: { ...record, kind: 'bescheid' } }),
       body({ record: { ...record, authority: '' } }),
