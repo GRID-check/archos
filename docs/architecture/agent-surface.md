@@ -553,10 +553,13 @@ declares none: a catalog operation has no declared response wire type to derive
 one from (routes answer through service return types, not a shared zod schema).
 
 Icons (`lib/agent-api/icons.ts`) are small inline SVG `data:` URIs, a light and a
-dark variant each, in the brand's ink: the Piloti column on the server (with title
+dark variant each, in the brand's ink: one glyph per meaning on the four
+meta-tools, the resources and the prompts. The server's own icon (with title
 `Piloti`, and `websiteUrl` from `configuredAppOrigin()` when the deployment pins
-one), one glyph per meaning on the four meta-tools, the resources and the
-prompts. They add about 4 KB to a `search` mode `tools/list`. `tools` mode lists
+one) leads with the app's PNG tiles (`public/icons/icon-192.png`, `-512.png`) from
+that origin, then the SVG column: a client must render only PNG and JPEG, SVG is a
+SHOULD, and Claude's connector UI showed no icon for an SVG-only list. Without a
+pinned origin the server lists the SVG mark alone. They add about 4 KB to a `search` mode `tools/list`. `tools` mode lists
 none on its tools: per-operation or per-domain icons would repeat ~700 bytes on
 ~300 tools against a 1,000 character budget a tool.
 

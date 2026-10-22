@@ -50,7 +50,7 @@ import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOpera
 import type { AgentPrincipal } from './principal'
 import { offersDoorGuide, offersProjectResource, readableProjectUris, registerDoorGuide } from './door'
 import { DoorEventBus, listeningAs } from './door/event-bus'
-import { META_TOOL_ICONS, SERVER_ICONS } from './icons'
+import { META_TOOL_ICONS, serverIcons } from './icons'
 import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
 import { configuredAppOrigin } from '@/lib/app-origin'
 import { ASK_CREATE, TASKS_EXTENSION, offersAskTasks, registerAskTasks, runAskCreate } from './ask-calls'
@@ -280,7 +280,7 @@ export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: Mc
   const websiteUrl = configuredAppOrigin()
   const capabilities = capabilitiesFor(ctx, era)
   const server = new McpServer(
-    { name, title, version: '1.0.0', icons: SERVER_ICONS, ...(websiteUrl ? { websiteUrl } : {}) },
+    { name, title, version: '1.0.0', icons: serverIcons(websiteUrl), ...(websiteUrl ? { websiteUrl } : {}) },
     confirmation ? { instructions, capabilities, requestState: { verify: confirmation.codec.verify } } : { instructions, capabilities },
   )
   if (mode === 'tools') registerOperationTools(server, ctx, era)
