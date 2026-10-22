@@ -192,6 +192,18 @@ def fresh_qdrant_store(monkeypatch) -> Iterator[store_module.QdrantStore]:
         store_module.reset_store()
 
 
+#: The payload indexes a test of a collection's copy and length tuning filters on.
+FEW_INDEXES = frozenset({"scope", "kind", "file_name", "chunk_id", schema.TEXT_FIELD})
+
+
+@pytest.fixture
+def few_payload_indexes(monkeypatch) -> None:
+    """Collections made with :data:`FEW_INDEXES` instead of all 62: each index is
+    made on the server, about 70 ms, and a rebuild test makes a pair or more. The
+    index set itself is the store's tests' to pin (``test_qdrant_store.py``)."""
+    monkeypatch.setattr(schema, "INDEXED_FIELDS", FEW_INDEXES)
+
+
 def capture_indexed_documents(monkeypatch, into: list[list[Any]] | None = None) -> list[list[Any]]:
     """Record the documents each ingest hands to chunking and embedding, one list per file; the write still runs.
 
