@@ -16,7 +16,8 @@
  * - `parking-thread.md`, the rendition (`renderMailThread`);
  * - `parking-thread.facts.json`, what the BFF sends `POST /v1/ingest` beside
  *   it (`mail_thread` for the Verlauf, `mail_origin` for each filed
- *   attachment), in the ingest contract's snake_case.
+ *   attachment), in the ingest contract's snake_case, from the filing job's
+ *   own helpers (`./ingest-facts`).
  *
  * A change to the rendition's format fails here first;
  * `UPDATE_FIXTURES=1 bunx vitest run src/lib/mail-thread/files-eval-fixture.spec.ts`
@@ -30,7 +31,8 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chunkerReads } from '@/test-utils/markdown-chunker'
 import { describe, expect, it } from 'vitest'
-import { clampSentAt, VERIFIED_SENDER_TRUSTS } from './mail-threading'
+import { mailOriginIngestFacts, mailThreadIngestFacts } from './ingest-facts'
+import { VERIFIED_SENDER_TRUSTS } from './mail-threading'
 import { mailThreadEntryHeading, renderMailThread, type MailThreadRenderEntry } from './render'
 import type { MailThreadRenderInput } from './render'
 
@@ -75,35 +77,20 @@ function expectFixture(name: string, text: string) {
   expect(readFileSync(path, 'utf8')).toBe(text)
 }
 
-const iso = (at: Date) => at.toISOString().replace(/\.\d{3}Z$/, 'Z')
-
-/** What `POST /v1/ingest` carries beside the rendition (`aiq_api.models.requests.MailThreadFacts`, `MailOrigin`). */
+/**
+ * What `POST /v1/ingest` carries beside the rendition: the production helpers
+ * (`./ingest-facts`), `mail_origins` keyed by the attachment's name. Every
+ * named attachment of the fixture is a filed one.
+ */
 function ingestFacts(rows: readonly MailThreadRenderEntry[]) {
-  const sent = rows.map((row) => clampSentAt(row.sentAt, row.receivedAt).sentAt)
-  const mailOrigins: Record<string, Record<string, string>> = {}
+  const mailOrigins: Record<string, ReturnType<typeof mailOriginIngestFacts>> = {}
   for (const row of rows) {
-    for (const link of row.attachments) {
-      if (!link.documentId || !link.name) continue
-      mailOrigins[link.name] = {
-        sent_at: iso(clampSentAt(row.sentAt, row.receivedAt).sentAt),
-        received_at: iso(row.receivedAt),
-        ...(row.senderName ? { from_name: row.senderName } : {}),
-        ...(row.senderDomain ? { from_domain: row.senderDomain } : {}),
-        ...(row.signerDomain ? { signer_domain: row.signerDomain } : {}),
-        sender_trust: row.senderTrust,
-        thread_document_id: fixture.documentId,
-        locale: fixture.locale,
-      }
+    for (const attachment of row.attachments) {
+      if (!attachment.name) continue
+      mailOrigins[attachment.name] = mailOriginIngestFacts(row, { threadDocumentId: fixture.documentId, locale: fixture.locale })
     }
   }
-  return {
-    mail_thread: {
-      latest_sent_at: iso(new Date(Math.max(...sent.map((at) => at.getTime())))),
-      message_count: rows.length,
-      locale: fixture.locale,
-    },
-    mail_origins: mailOrigins,
-  }
+  return { mail_thread: mailThreadIngestFacts(rows, fixture.locale), mail_origins: mailOrigins }
 }
 
 describe('the files eval mail thread', () => {

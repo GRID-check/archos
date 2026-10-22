@@ -31,17 +31,20 @@ import {
   mailImportListQuerySchema,
   startMailImportSchema,
 } from '@/lib/mail-import/types'
-import { mailThreadListQuerySchema } from '@/lib/mail-thread/mail-thread-wire'
+import { mailThreadEntryDetachBodySchema, mailThreadListQuerySchema } from '@/lib/mail-thread/mail-thread-wire'
 import type { OperationInput } from '../dispatch'
 import type { AgentOperation } from '../operation'
 import { rawBodySchema } from '../upload-wire'
 
 const projectParams = z.object({ id: z.string().describe('The project id, from project-list.') })
 const mailParams = projectParams.extend({
-  mailId: z.string().describe('The mail id, from inbound-mail-list.'),
+  mailId: z.string().describe('From inbound-mail-list.'),
 })
 const threadParams = projectParams.extend({
-  threadId: z.string().describe('The mail thread id, from mail-thread-list or a mail’s `threadCandidates`.'),
+  threadId: z.string().describe('From mail-thread-list.'),
+})
+const entryParams = threadParams.extend({
+  entryId: z.string().describe('From mail-thread-get.'),
 })
 const mailImportParams = projectParams.extend({
   importId: z.string().describe('The mail import id, from mail-import-list.'),
@@ -178,7 +181,7 @@ export const mailOperations = [
     domain: 'mail',
     summary: 'File held email attachments and text into the project',
     description:
-      'Decides 1 to 20 mails with each `ifMatch` from inbound-mail-get: `parts` are filed into their folders (or as the next version of `revisionOf`), `message` puts the text into a mail thread, every other waiting part is dismissed. A refusal names its rule in `details.reason`; acknowledgements only for one mail. 202; the filing runs as you. Runs only on the person’s own yes.',
+      'Decides 1 to 20 mails (each `ifMatch` from inbound-mail-get): `parts` into folders or as the next version of `revisionOf`, `message` into a mail thread, the rest dismissed. A refusal names its rule in `details.reason`; acknowledgements for one mail only. 202; runs as you, on the person’s own yes.',
     method: 'POST',
     path: '/api/projects/[id]/inbound-mails/file',
     params: projectParams,
@@ -244,7 +247,7 @@ export const mailOperations = [
     domain: 'mail',
     summary: 'List a project’s email threads',
     description:
-      'Each email conversation filed into the project is one document; every filed message adds a section and a version. Lists those you may read, newest first; `documentId` finds one document’s thread. Then mail-thread-get.',
+      'Each email conversation filed into the project is one document; each filed message adds a section and a version. Those you may read, newest first; `documentId` finds a document’s thread.',
     method: 'GET',
     path: '/api/projects/[id]/mail-threads',
     params: projectParams,
@@ -256,11 +259,36 @@ export const mailOperations = [
     domain: 'mail',
     summary: 'Read one email thread with its messages and attachments',
     description:
-      'A thread’s messages in order (heading, sender trust, sent and received, first version) with each message’s `attachments` by position: `filed` (document and version), `already_present` or `not_filed`. From a document, document-get `mailOrigins` leads here.',
+      'A thread’s messages in order (heading, sender trust, sent and received, first version), each with its `attachments`: `filed` (document and version), `already_present` or `not_filed`. A document’s `mailOrigins` lead here.',
     method: 'GET',
     path: '/api/projects/[id]/mail-threads/[threadId]',
     params: threadParams,
     load: () => import('@/app/api/projects/[id]/mail-threads/[threadId]/route'),
+  },
+  {
+    name: 'mail-thread-entry-original-get',
+    domain: 'mail',
+    summary: 'Download the original .eml of a filed email',
+    description:
+      'A filed message as it arrived, kept as evidence; scanned per request, served only when clean, recorded.',
+    method: 'GET',
+    path: '/api/projects/[id]/mail-threads/[threadId]/entries/[entryId]/original',
+    params: entryParams,
+    binaryResponse: ['message/rfc822'],
+    load: () => import('@/app/api/projects/[id]/mail-threads/[threadId]/entries/[entryId]/original/route'),
+  },
+  {
+    name: 'mail-thread-entry-detach',
+    domain: 'mail',
+    summary: 'Move a filed email to another thread',
+    description:
+      'Moves a misfiled message to another thread or a new one; both get a new version.',
+    method: 'POST',
+    path: '/api/projects/[id]/mail-threads/[threadId]/entries/[entryId]/detach',
+    params: entryParams,
+    body: mailThreadEntryDetachBodySchema,
+    destructive: true,
+    load: () => import('@/app/api/projects/[id]/mail-threads/[threadId]/entries/[entryId]/detach/route'),
   },
   {
     name: 'mail-import-list',

@@ -5,8 +5,11 @@
  * Two choices travel with an upload's dispatch to `POST /v1/ingest`: the
  * document type (`ShelfUploadInput.documentType`, sent as `document_type`) and
  * the older document these bytes are the new Fassung of
- * (`ShelfUploadInput.revisionOf`, ADR-0099, sent as `revision_of`). The ingest
- * job stores both once it has read the file. A file the content screening holds
+ * (`ShelfUploadInput.revisionOf`, ADR-0099, sent as `revision_of`). A filed
+ * mail adds what the filing knew about it (ADR-0134, D36): an E-Mail-Verlauf
+ * Fassung's `mail_thread`, an attachment's `mail_origin`
+ * (`lib/mail-thread/ingest-facts`). The ingest job stores them once it has
+ * read the file. A file the content screening holds
  * (ADR-0086) is never stored: the job stops at the verdict. The reviewer's
  * release later sends the same bytes again (`releaseQuarantinedDocument`), and
  * without the choice the classifier types the file and no Fassung is linked.
@@ -26,6 +29,12 @@
  */
 
 import type { Document } from '@/lib/db/schema'
+import {
+  mailOriginIngestFactsSchema,
+  mailThreadIngestFactsSchema,
+  type MailOriginIngestFacts,
+  type MailThreadIngestFacts,
+} from '@/lib/mail-thread/ingest-facts'
 import { REVISION_MAX_NAME_LENGTH } from './revision-links'
 import { documentTypeOf, type DocumentTypeTag } from './tag-vocabulary'
 
@@ -36,16 +45,22 @@ export interface FilingChoice {
   documentType: DocumentTypeTag | null
   /** The FILE NAME of the older document in the same collection, as `resolveRevisionOf` checked it at upload. */
   revisionOf: string | null
+  /** A Fassung of an E-Mail-Verlauf: its messages' facts. Present only then. */
+  mailThread?: MailThreadIngestFacts
+  /** An attachment filed with a message: the message it came with. Present only then. */
+  mailOrigin?: MailOriginIngestFacts
 }
 
 /**
  * The JSON a dispatch records for its choice, or null when it carries none (and
  * then nothing is recorded). Keys are present only when chosen.
  */
-export function filingChoiceRecord(choice: Partial<FilingChoice>): Record<string, string> | null {
-  const record: Record<string, string> = {}
+export function filingChoiceRecord(choice: Partial<{ [K in keyof FilingChoice]: FilingChoice[K] | null }>): Record<string, unknown> | null {
+  const record: Record<string, unknown> = {}
   if (choice.documentType) record.documentType = choice.documentType
   if (choice.revisionOf) record.revisionOf = choice.revisionOf
+  if (choice.mailThread) record.mailThread = choice.mailThread
+  if (choice.mailOrigin) record.mailOrigin = choice.mailOrigin
   return Object.keys(record).length > 0 ? record : null
 }
 
@@ -64,7 +79,15 @@ export function storedFilingChoice(row: Pick<Document, 'metadata' | 'contentHash
     typeof stored.revisionOf === 'string' && stored.revisionOf.trim() && stored.revisionOf.length <= REVISION_MAX_NAME_LENGTH
       ? stored.revisionOf
       : null
-  return documentType || revisionOf ? { documentType, revisionOf } : null
+  // Parsed as the backend would: a record that no longer fits is no record, never a 422.
+  const mailThread = mailThreadIngestFactsSchema.safeParse(stored.mailThread)
+  const mailOrigin = mailOriginIngestFactsSchema.safeParse(stored.mailOrigin)
+  const mail = {
+    ...(mailThread.success ? { mailThread: mailThread.data } : {}),
+    // One document is a Verlauf or an attachment, never both (`IngestRequest`).
+    ...(mailOrigin.success && !mailThread.success ? { mailOrigin: mailOrigin.data } : {}),
+  }
+  return documentType || revisionOf || Object.keys(mail).length > 0 ? { documentType, revisionOf, ...mail } : null
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

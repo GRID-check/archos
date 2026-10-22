@@ -21,7 +21,8 @@
 -- new one after re-applying; every mail still waiting goes with the only record
 -- that it was waiting; the decisions go (those audited are in the audit trail).
 -- Filed documents, an E-Mail-Verlauf and its Fassungen included, are ordinary
--- documents and stay, without their entries: the thread's next reply starts a
+-- documents and stay, without their entries and without the record of which
+-- mail brought which Fassung (D36): the thread's next reply starts a
 -- new Verlauf, and nobody follows anything.
 --
 -- The inbox rows that announced mail and threads go (an older build has no
@@ -49,6 +50,10 @@ DELETE FROM "inbox_items" WHERE "type" LIKE 'inbound\_mail.%' OR "type" LIKE 'ma
 --> statement-breakpoint
 DELETE FROM "bff_job_queue" WHERE "kind" LIKE 'inbound\_mail\_%';
 --> statement-breakpoint
+DROP TRIGGER IF EXISTS "mail_thread_entry_attachments_legal_hold_guard" ON "mail_thread_entry_attachments";
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "mail_thread_entry_attachments_guard" ON "mail_thread_entry_attachments";
+--> statement-breakpoint
 DROP TRIGGER IF EXISTS "mail_thread_entries_legal_hold_guard" ON "mail_thread_entries";
 --> statement-breakpoint
 DROP TRIGGER IF EXISTS "inbound_mails_legal_hold_guard" ON "inbound_mails";
@@ -63,6 +68,8 @@ DROP FUNCTION IF EXISTS grid_inbound_mail_decisions_guard();
 --> statement-breakpoint
 DROP FUNCTION IF EXISTS grid_inbound_mail_parts_decision_guard();
 --> statement-breakpoint
+DROP FUNCTION IF EXISTS grid_mail_thread_entry_attachments_guard();
+--> statement-breakpoint
 -- Parts and decisions name each other; the key from parts goes first.
 ALTER TABLE IF EXISTS "inbound_mail_parts" DROP CONSTRAINT IF EXISTS "inbound_mail_parts_decision_fkey";
 --> statement-breakpoint
@@ -75,6 +82,8 @@ DROP TABLE IF EXISTS "inbound_mails";
 DROP TABLE IF EXISTS "inbound_mail_addresses";
 --> statement-breakpoint
 DROP TABLE IF EXISTS "mail_thread_message_ids";
+--> statement-breakpoint
+DROP TABLE IF EXISTS "mail_thread_entry_attachments";
 --> statement-breakpoint
 DROP TABLE IF EXISTS "mail_thread_entries";
 --> statement-breakpoint

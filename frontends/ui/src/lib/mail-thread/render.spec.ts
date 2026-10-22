@@ -18,12 +18,13 @@ import remarkGfm from 'remark-gfm'
 import remarkParse from 'remark-parse'
 import { unified } from 'unified'
 import { describe, expect, it } from 'vitest'
-import type { MailThreadAttachmentLink } from './mail-thread-wire'
 import {
   entryHeadingBase,
   mailThreadEntryHeading,
   MailThreadRenderError,
   renderMailThread,
+  sectionAttachment,
+  type MailThreadAttachmentFiling,
   type MailThreadHeadingFields,
   type MailThreadRenderEntry,
   type MailThreadRenderInput,
@@ -72,15 +73,7 @@ const BERGER = entry({
   ],
   ownText: BERGER_TEXT,
   maskedSpans: [{ kind: 'iban', start: IBAN_AT, end: IBAN_AT + 'AT61 1904 3002 3457 3201'.length }],
-  attachments: [
-    {
-      documentId: '00000000-0000-4000-8000-0000000000d1',
-      name: 'Stellplatznachweis_B.pdf',
-      folderPath: '/Behörde',
-      visibleWithThread: true,
-      nameReleased: false,
-    },
-  ],
+  attachments: [{ name: 'Stellplatznachweis_B.pdf', folderPath: '/Behörde' }],
 })
 
 const WEBER_TEXT = 'Die Tiefgarage trägt die geforderten zwölf Stellplätze ohne Verstärkung der Decke.'
@@ -396,8 +389,8 @@ describe('masked spans', () => {
 })
 
 describe('attachments (RT-S13)', () => {
-  const link = (overrides: Partial<MailThreadAttachmentLink>): MailThreadAttachmentLink => ({
-    documentId: '00000000-0000-4000-8000-0000000000d9',
+  const filing = (overrides: Partial<MailThreadAttachmentFiling>): MailThreadAttachmentFiling => ({
+    disposition: 'filed',
     name: 'Honorarnote_Mustermann.pdf',
     folderPath: '/Intern/Honorare',
     visibleWithThread: true,
@@ -405,12 +398,13 @@ describe('attachments (RT-S13)', () => {
     ...overrides,
   })
 
-  it.each<[string, Partial<MailThreadAttachmentLink>]>([
+  it.each<[string, Partial<MailThreadAttachmentFiling>]>([
     ['from a folder less visible than the thread', { visibleWithThread: false }],
     ['the Namensprüfung stopped and a person released', { nameReleased: true }],
-    ['that was not filed', { documentId: null }],
+    ['that was not filed', { disposition: 'not_filed' }],
+    ['that came without a name', { name: null }],
   ])('never names an attachment %s, only counts it', (_case, overrides) => {
-    const e = entry({ id: 'a', sentAt: at('2026-10-03T08:00:00Z'), attachments: [link(overrides)] })
+    const e = entry({ id: 'a', sentAt: at('2026-10-03T08:00:00Z'), attachments: [sectionAttachment(filing(overrides))] })
     const markdown = render([e]).markdown
     expect(markdown).not.toContain('Honorar')
     expect(markdown).not.toContain('/Intern')
@@ -418,8 +412,19 @@ describe('attachments (RT-S13)', () => {
   })
 
   it('names a filed attachment with its folder', () => {
-    const e = entry({ id: 'a', sentAt: at('2026-10-03T08:00:00Z'), attachments: [link({})] })
+    const e = entry({ id: 'a', sentAt: at('2026-10-03T08:00:00Z'), attachments: [sectionAttachment(filing({}))] })
     expect(render([e]).markdown).toContain('- **Anhänge:** Honorarnote\\_Mustermann.pdf (abgelegt in /Intern/Honorare)')
+  })
+
+  it('names one already in the project, and one at the root without a folder', () => {
+    const line = sectionAttachment(filing({ disposition: 'already_present', folderPath: '' }))
+    expect(line).toEqual({ name: 'Honorarnote_Mustermann.pdf', folderPath: null })
+    const e = entry({ id: 'a', sentAt: at('2026-10-03T08:00:00Z'), attachments: [line] })
+    expect(render([e]).markdown).toContain('- **Anhänge:** Honorarnote\\_Mustermann.pdf\n')
+  })
+
+  it('keeps a name on one line, so a file name opens no section', () => {
+    expect(sectionAttachment(filing({ name: 'a\n## 14.10.2026 · MA 37.pdf' })).name).toBe('a ## 14.10.2026 · MA 37.pdf')
   })
 })
 

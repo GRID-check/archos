@@ -3367,6 +3367,43 @@ sql_in grid_inbound <<<"UPDATE inbound_mail_decisions SET audited_at = now() WHE
 refused_in grid_inbound "${V184}UPDATE inbound_mail_decisions SET audited_at = now() + interval '1 hour' WHERE id = '3a000000-0000-4000-8000-000000000184'" "inbound_mail_decisions_immutable" "a decision audited twice"
 refused_in grid_inbound "${V184}DELETE FROM inbound_mail_decisions WHERE id = '3b000000-0000-4000-8000-000000000184'" "inbound_mail_decisions_audited_before_delete" "a decision deleted before the audit trail took it, even by the owner (RT-S8)"
 
+# A decision's Dokumentart is the shared vocabulary's, whose persisted keys are
+# still German today (D6 renames them later): the code checks membership, the
+# database bounds the value to one printable line.
+sql_in grid_inbound <<<"$DEC184, '2d000000-0000-4000-8000-000000000184', 'dismiss', '$U184_A2', 'app', NULL, NULL, NULL, NULL, NULL, NULL, NULL, false, false, false);"
+sql_in grid_inbound <<<"INSERT INTO inbound_mail_decisions (organization_id, project_id, mail_id, part_id, action, decided_by, folder_path, document_type, audited_at) VALUES ($PA184, '1a000000-0000-4000-8000-000000000184', '2d000000-0000-4000-8000-000000000184', 'file', '$U184_A2', 'Normen', 'Norm/Richtlinie', now());"
+refused_in grid_inbound "INSERT INTO inbound_mail_decisions (organization_id, project_id, mail_id, part_id, action, decided_by, folder_path, document_type) VALUES ($PA184, '1a000000-0000-4000-8000-000000000184', '2d000000-0000-4000-8000-000000000184', 'file', '$U184_A2', 'X', E'Bescheid\\nNorm')" "inbound_mail_decisions_lengths" "a Dokumentart that is not one printable line"
+refused_in grid_inbound "INSERT INTO inbound_mail_decisions (organization_id, project_id, mail_id, part_id, action, decided_by, folder_path, document_type) VALUES ($PA184, '1a000000-0000-4000-8000-000000000184', '2d000000-0000-4000-8000-000000000184', 'file', '$U184_A2', 'X', repeat('x', 65))" "inbound_mail_decisions_lengths" "a Dokumentart past its bound"
+
+# What came with a filed message (D36): one row per attachment, its document
+# and Fassung the live half of the link, what the section prints frozen.
+sql_in grid_inbound <<'SQL'
+INSERT INTO document_versions (id, organization_id, document_id, project_id, version_number, state, storage_key, created_by) VALUES
+  ('f1000000-0000-4000-8000-000000000184', 'org_0184_a', 'd1000000-0000-4000-8000-000000000184', 'a0000000-0000-4000-8000-000000000184', 1, 'superseded', 'k/0184/a', 'user_01J0MA1LUSERA00000000000A1');
+INSERT INTO mail_thread_entry_attachments (id, organization_id, project_id, entry_id, position, filename, disposition, not_filed_reason, document_id, document_version_id, section_name, section_folder_path) VALUES
+  ('fa100000-0000-4000-8000-000000000184', 'org_0184_a', 'a0000000-0000-4000-8000-000000000184', 'e1000000-0000-4000-8000-000000000184', 1, 'S-101.pdf', 'filed', NULL, 'd1000000-0000-4000-8000-000000000184', 'f1000000-0000-4000-8000-000000000184', 'S-101.pdf', 'Statik'),
+  ('fa200000-0000-4000-8000-000000000184', 'org_0184_a', 'a0000000-0000-4000-8000-000000000184', 'e1000000-0000-4000-8000-000000000184', 2, 'Rechnung.docm', 'not_filed', 'pending', NULL, NULL, NULL, NULL),
+  ('fa300000-0000-4000-8000-000000000184', 'org_0184_a', 'c0000000-0000-4000-8000-000000000184', 'e3000000-0000-4000-8000-000000000184', 1, 'Gehalten.pdf', 'not_filed', 'dismissed', NULL, NULL, NULL, NULL),
+  ('fa400000-0000-4000-8000-000000000184', 'org_0184_b', 'b0000000-0000-4000-8000-000000000184', 'e4000000-0000-4000-8000-000000000184', 1, NULL, 'not_filed', 'size', NULL, NULL, NULL, NULL);
+SQL
+ATT184="INSERT INTO mail_thread_entry_attachments (organization_id, project_id, entry_id, position, disposition, not_filed_reason, document_id, document_version_id, section_name, section_folder_path) VALUES ($PA184, 'e1000000-0000-4000-8000-000000000184'"
+refused_in grid_inbound "$ATT184, 1, 'not_filed', 'dismissed', NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_entry_position_key" "two rows for one attachment"
+refused_in grid_inbound "$ATT184, 3, 'kept', NULL, NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_disposition_known" "an unknown disposition"
+refused_in grid_inbound "$ATT184, 3, 'filed', 'dismissed', 'd1000000-0000-4000-8000-000000000184', NULL, NULL, NULL)" "mail_thread_entry_attachments_reason_iff_not_filed" "a filed attachment with a reason it was not filed"
+refused_in grid_inbound "$ATT184, 3, 'not_filed', NULL, NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_reason_iff_not_filed" "an attachment not filed for no reason"
+refused_in grid_inbound "$ATT184, 3, 'not_filed', 'forgotten', NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_reason_known" "an unknown reason"
+refused_in grid_inbound "$ATT184, 3, 'not_filed', 'dismissed', 'd1000000-0000-4000-8000-000000000184', NULL, NULL, NULL)" "mail_thread_entry_attachments_not_filed_has_no_document" "an attachment not filed that names a document"
+refused_in grid_inbound "$ATT184, 3, 'not_filed', 'dismissed', NULL, NULL, 'Gehaltsliste.xlsx', NULL)" "mail_thread_entry_attachments_section_named_when_filed" "a section that names an attachment nobody filed (RT-S13)"
+refused_in grid_inbound "$ATT184, 3, 'filed', NULL, 'd1000000-0000-4000-8000-000000000184', NULL, NULL, 'Intern')" "mail_thread_entry_attachments_section_folder_with_name" "a section that names a folder and no file"
+refused_in grid_inbound "$ATT184, 3, 'filed', NULL, 'd3000000-0000-4000-8000-000000000184', NULL, NULL, NULL)" "mail_thread_entry_attachments_document_fkey" "an attachment filed as another project's document"
+refused_in grid_inbound "INSERT INTO mail_thread_entry_attachments (organization_id, project_id, entry_id, position, disposition, not_filed_reason) VALUES ('org_0184_b', 'b0000000-0000-4000-8000-000000000184', 'e1000000-0000-4000-8000-000000000184', 5, 'not_filed', 'size')" "mail_thread_entry_attachments_entry_fkey" "an attachment row on another organization's entry"
+refused_in grid_inbound "${V184}UPDATE mail_thread_entry_attachments SET section_name = 'Gehaltsliste.xlsx' WHERE id = 'fa100000-0000-4000-8000-000000000184'" "mail_thread_entry_attachments_frozen" "a section's frozen words rewritten (the superset invariant)"
+refused_in grid_inbound "${V184}UPDATE mail_thread_entry_attachments SET disposition = 'not_filed', not_filed_reason = 'dismissed', document_id = NULL, document_version_id = NULL WHERE id = 'fa100000-0000-4000-8000-000000000184'" "mail_thread_entry_attachments_decided_once" "a filed attachment turned into one never filed"
+sql_in grid_inbound <<<"UPDATE mail_thread_entry_attachments SET disposition = 'filed', not_filed_reason = NULL, document_id = 'd1000000-0000-4000-8000-000000000184' WHERE id = 'fa200000-0000-4000-8000-000000000184';"
+check_in grid_inbound "SELECT disposition || ':' || coalesce(section_name, 'unnamed') FROM mail_thread_entry_attachments WHERE id = 'fa200000-0000-4000-8000-000000000184'" "filed:unnamed" "0184: an attachment that waited is filed later, and the section's words stay frozen"
+refused_in grid_inbound "${V184}UPDATE mail_thread_entry_attachments SET document_id = 'd1000000-0000-4000-8000-000000000184', disposition = 'already_present' WHERE id = 'fa200000-0000-4000-8000-000000000184'" "mail_thread_entry_attachments_decided_once" "an attachment decided twice"
+refused_in grid_inbound "UPDATE mail_threads SET render_lease_holder = gen_random_uuid() WHERE id = 'ea000000-0000-4000-8000-000000000184'" "mail_threads_render_lease_together" "a render lease without its end"
+
 # Threads, entries, message ids and follows.
 refused_in grid_inbound "$THREAD184, NULL, 'x', 'fr', '$U184_A1')" "mail_threads_locale_known" "a thread in a locale nobody renders"
 refused_in grid_inbound "$THREAD184, NULL, 'x', 'de', 'system:archive')" "mail_threads_creator_is_person" "a thread nobody created"
@@ -3399,8 +3436,8 @@ check_in grid_inbound "SELECT string_agg(state || '@' || thread_id::text, ',' OR
   "received@ed000000-0000-4000-8000-000000000184,referenced@ea000000-0000-4000-8000-000000000184" "0184: a detached entry's received id moves with it; another entry's reference stays"
 refused_in grid_inbound "UPDATE mail_thread_message_ids SET thread_id = 'ec000000-0000-4000-8000-000000000184', project_id = 'c0000000-0000-4000-8000-000000000184' WHERE entry_id = 'e1000000-0000-4000-8000-000000000184'" "mail_thread_message_ids_entry_fkey" "an entry's id moved to a thread the entry is not in"
 
-# The runtime role: its organization's rows only, in all eight tables, and no DELETE.
-for table in inbound_mail_addresses inbound_mails inbound_mail_parts inbound_mail_decisions mail_threads mail_thread_entries mail_thread_message_ids mail_thread_follows; do
+# The runtime role: its organization's rows only, in all nine tables, and no DELETE.
+for table in inbound_mail_addresses inbound_mails inbound_mail_parts inbound_mail_decisions mail_threads mail_thread_entries mail_thread_entry_attachments mail_thread_message_ids mail_thread_follows; do
   seen=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_inbound -qtA \
     -c "SET grid.organization_id = 'org_0184_b'" \
     -c "SELECT coalesce(string_agg(DISTINCT organization_id, ','), '') FROM $table")
@@ -3409,7 +3446,7 @@ for table in inbound_mail_addresses inbound_mails inbound_mail_parts inbound_mai
     exit 1
   fi
 done
-for table in inbound_mail_addresses inbound_mails inbound_mail_parts inbound_mail_decisions mail_threads mail_thread_entries mail_thread_follows; do
+for table in inbound_mail_addresses inbound_mails inbound_mail_parts inbound_mail_decisions mail_threads mail_thread_entries mail_thread_entry_attachments mail_thread_follows; do
   if out=$(PGPASSWORD="$RUNTIME_PASSWORD" $PGBIN/psql -h 127.0.0.1 -p "$PORT" -U grid_app_rw -d grid_inbound -qtA -v ON_ERROR_STOP=1 \
       -c "SET grid.organization_id = 'org_0184_b'" -c "DELETE FROM $table WHERE organization_id = 'org_0184_b'" 2>&1); then
     echo "MIGRATION ASSERTION FAILED on grid_inbound: the runtime role deleted from $table" >&2
@@ -3432,6 +3469,7 @@ fi
 sql_in grid_inbound <<<"INSERT INTO legal_holds (entity_type, entity_id, organization_id, reason, created_by) VALUES ('project', 'c0000000-0000-4000-8000-000000000184', 'org_0184_a', 'rls test', 'user_1');"
 refused_in grid_inbound "DELETE FROM inbound_mails WHERE id = '1c000000-0000-4000-8000-000000000184'" "legal hold" "a held project's mail deleted"
 refused_in grid_inbound "DELETE FROM mail_thread_entries WHERE id = 'e3000000-0000-4000-8000-000000000184'" "legal hold" "a held project's filed message deleted"
+refused_in grid_inbound "DELETE FROM mail_thread_entry_attachments WHERE id = 'fa300000-0000-4000-8000-000000000184'" "legal hold" "what came with a held project's filed message deleted"
 refused_in grid_inbound "DELETE FROM mail_threads WHERE id = 'ec000000-0000-4000-8000-000000000184'" "legal hold" "a held project's thread deleted with its entries"
 sql_in grid_inbound <<<"UPDATE legal_holds SET released_at = now() WHERE entity_id = 'c0000000-0000-4000-8000-000000000184';"
 
@@ -3440,18 +3478,20 @@ sql_in grid_inbound <<<"UPDATE legal_holds SET released_at = now() WHERE entity_
 sql_in grid_inbound <<<"DELETE FROM documents WHERE id = 'd1000000-0000-4000-8000-000000000184';"
 check_in grid_inbound "SELECT (SELECT coalesce(document_id::text, 'gone') FROM mail_threads WHERE id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT state || ':' || coalesce(document_id::text, 'gone') FROM inbound_mail_parts WHERE id = '2b000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_entries WHERE thread_id = 'ea000000-0000-4000-8000-000000000184')" \
   "gone,filed:gone,1" "0184: deleting the document keeps the filed part and the entries until the sweep"
+check_in grid_inbound "SELECT string_agg(position || ':' || disposition || ':' || coalesce(document_id::text, 'gone') || ':' || coalesce(document_version_id::text, 'gone') || ':' || coalesce(section_name, '-'), ',' ORDER BY position) FROM mail_thread_entry_attachments WHERE entry_id = 'e1000000-0000-4000-8000-000000000184'" \
+  "1:filed:gone:gone:S-101.pdf,2:filed:gone:gone:-" "0184: deleting the document keeps the record that it came, and the section's words (D36)"
 # Sweep 9 deletes the thread: it waits for the follower's decision to be audited (RT-S8) ...
 refused_in grid_inbound "${V184}DELETE FROM mail_threads WHERE id = 'ea000000-0000-4000-8000-000000000184'" "inbound_mail_decisions_audited_before_delete" "a thread deleted while its follow's decision is owed to the trail"
 sql_in grid_inbound <<<"UPDATE inbound_mail_decisions SET audited_at = now() WHERE id = '3d000000-0000-4000-8000-000000000184';"
 # ... and then takes its entries, ids and follows, the follow's decision and the text it filed.
 sql_in grid_inbound <<<"DELETE FROM mail_threads WHERE id = 'ea000000-0000-4000-8000-000000000184';"
-check_in grid_inbound "SELECT (SELECT count(*) FROM mail_thread_entries WHERE thread_id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_message_ids WHERE thread_id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_follows WHERE thread_id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM inbound_mail_decisions WHERE id = '3d000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM inbound_mail_parts WHERE id = '2a000000-0000-4000-8000-000000000184')" \
-  "0,0,0,0,0" "0184: deleting a thread takes its entries, ids, follows, the follow's decision and the text part it filed"
+check_in grid_inbound "SELECT (SELECT count(*) FROM mail_thread_entries WHERE thread_id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_message_ids WHERE thread_id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_follows WHERE thread_id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM inbound_mail_decisions WHERE id = '3d000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM inbound_mail_parts WHERE id = '2a000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_entry_attachments WHERE entry_id = 'e1000000-0000-4000-8000-000000000184')" \
+  "0,0,0,0,0,0" "0184: deleting a thread takes its entries, what came with them, ids, follows, the follow's decision and the text part it filed"
 # Sweep 8 deletes a mail only once its decisions are audited.
 refused_in grid_inbound "${V184}DELETE FROM inbound_mails WHERE id = '1a000000-0000-4000-8000-000000000184'" "inbound_mail_decisions_audited_before_delete" "a mail deleted while a decision about it is owed to the trail"
 refused_in grid_inbound "DELETE FROM inbound_mail_addresses WHERE id = 'aa000000-0000-4000-8000-000000000184'" "inbound_mails_address_fkey" "an address deleted from under its mail"
 
-# The purge: deleting the project takes all eight tables, unaudited decisions included.
+# The purge: deleting the project takes all nine tables, unaudited decisions included.
 sql_in grid_inbound <<<"DELETE FROM projects WHERE id = 'a0000000-0000-4000-8000-000000000184';"
 check_in grid_inbound "SELECT (SELECT count(*) FROM inbound_mail_addresses WHERE project_id = 'a0000000-0000-4000-8000-000000000184') + (SELECT count(*) FROM inbound_mails WHERE project_id = 'a0000000-0000-4000-8000-000000000184') + (SELECT count(*) FROM inbound_mail_parts WHERE project_id = 'a0000000-0000-4000-8000-000000000184') + (SELECT count(*) FROM inbound_mail_decisions WHERE project_id = 'a0000000-0000-4000-8000-000000000184') + (SELECT count(*) FROM mail_threads WHERE project_id = 'a0000000-0000-4000-8000-000000000184')" \
   "0" "0184: a project purge takes its addresses, mails, parts, decisions and threads"
@@ -3462,7 +3502,7 @@ apply_in grid_inbound 0184_inbound_mail.sql
 check_in grid_inbound "SELECT count(*) FROM inbound_mails" "2" "0184 re-applies and keeps the mail"
 sql_in grid_inbound <<<"UPDATE inbound_mails SET raw_storage_key = 'org/org_0184_b/project/b0000000-0000-4000-8000-000000000184/_inbound-mail/1b000000-0000-4000-8000-000000000184/raw.eml' WHERE id = '1b000000-0000-4000-8000-000000000184';"
 refused_in grid_inbound "$(cat drizzle/0184_inbound_mail.down.sql)" "reverse 0184 refused" "the down while a mail names its staged raw message"
-check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "8" "the refused down dropped nothing"
+check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "9" "the refused down dropped nothing"
 sql_in grid_inbound <<'SQL'
 INSERT INTO inbox_items (organization_id, recipient_user_id, type, resource_type, resource_id, group_key, actionable)
 VALUES ('org_0184_b', 'u', 'inbound_mail.waiting', 'project', 'b0000000-0000-4000-8000-000000000184', 'inbound_mail.waiting:p', true),
@@ -3470,10 +3510,10 @@ VALUES ('org_0184_b', 'u', 'inbound_mail.waiting', 'project', 'b0000000-0000-400
 UPDATE inbound_mails SET raw_storage_key = NULL;
 SQL
 apply_in grid_inbound 0184_inbound_mail.down.sql
-check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "0" "0184 down drops the eight tables"
+check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "0" "0184 down drops the nine tables"
 check_in grid_inbound "SELECT string_agg(type, ',') FROM inbox_items WHERE organization_id = 'org_0184_b'" "document.new_revision" "0184 down removes the mail notices and nothing else"
-check_in grid_inbound "SELECT count(*) FROM pg_proc WHERE proname IN ('grid_inbound_mail_decisions_guard', 'grid_inbound_mail_parts_decision_guard', 'grid_refuse_held_project_row_delete')" "0" "0184 down drops its functions"
+check_in grid_inbound "SELECT count(*) FROM pg_proc WHERE proname IN ('grid_inbound_mail_decisions_guard', 'grid_inbound_mail_parts_decision_guard', 'grid_refuse_held_project_row_delete', 'grid_mail_thread_entry_attachments_guard')" "0" "0184 down drops its functions"
 check_in grid_inbound "SELECT count(*) FROM documents WHERE id = 'd3000000-0000-4000-8000-000000000184'" "1" "0184 down leaves the documents"
 apply_in grid_inbound 0184_inbound_mail.sql
-check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "8" "0184 applies again after its down"
+check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "9" "0184 applies again after its down"
 echo "==> 0184 inbound mail, threads and follows and their down migration verified"

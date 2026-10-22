@@ -57,6 +57,12 @@ import { uploadExtensionOf } from '@/shared/config/file-upload'
 import { acceptedTypesForFlags } from './accepted-types'
 import { filingChoiceRecord } from './filing-choice'
 import {
+  mailOriginIngestFactsSchema,
+  mailThreadIngestFactsSchema,
+  type MailOriginIngestFacts,
+  type MailThreadIngestFacts,
+} from '@/lib/mail-thread/ingest-facts'
+import {
   buildDocumentImageUrl,
   DOCUMENT_IMAGE_CACHE_CONTROL,
   verifyDocumentImageUrl,
@@ -356,6 +362,19 @@ export interface DispatchIngestExtras {
    * not sent at all. `ingest-document-type-contract.spec.ts` pins the key.
    */
   documentType?: DocumentTypeTag | null
+  /**
+   * A Fassung of an E-Mail-Verlauf (ADR-0134): sent as `mail_thread`, which
+   * makes its chunks the `project_mail` lane and the newest message's date the
+   * document's. Absent for every other dispatch, and then not sent at all.
+   * `ingest-mail-contract.spec.ts` pins the key.
+   */
+  mailThread?: MailThreadIngestFacts | null
+  /**
+   * An attachment filed with a mail (ADR-0134): sent as `mail_origin`, the
+   * message it came with, which the knowledge layer prints beside the file.
+   * Never together with `mailThread` (the backend refuses both).
+   */
+  mailOrigin?: MailOriginIngestFacts | null
 }
 
 /**
@@ -502,6 +521,9 @@ export async function dispatchIngest(
     ...(extras.revisionOf ? { revision_of: extras.revisionOf } : {}),
     // Only a filing that said what the file is says so.
     ...(extras.documentType ? { document_type: extras.documentType } : {}),
+    // Only a filed mail says so: a Verlauf its thread, an attachment its message.
+    ...(extras.mailThread ? { mail_thread: extras.mailThread } : {}),
+    ...(extras.mailOrigin && !extras.mailThread ? { mail_origin: extras.mailOrigin } : {}),
     // Absent for every human document, and the Python side treats absent,
     // null and a non-agent author identically (`parse_agent_provenance`).
     // Spread so the four keys are the four keys, never a nested object the
@@ -522,7 +544,12 @@ export async function dispatchIngest(
   if (ingestJobId) {
     // The choice rides on the row with the job, so a reviewer's release of a
     // file this reading holds sends it again (`./filing-choice`).
-    const filingChoice = filingChoiceRecord({ documentType: extras.documentType, revisionOf: extras.revisionOf })
+    const filingChoice = filingChoiceRecord({
+      documentType: extras.documentType,
+      revisionOf: extras.revisionOf,
+      mailThread: extras.mailThread,
+      mailOrigin: extras.mailThread ? null : extras.mailOrigin,
+    })
     await setDocumentIngestJob(documentId, organizationId, ingestJobId, filingChoice)
     return { jobId: ingestJobId, status: 'pending' }
   }
@@ -1052,6 +1079,10 @@ export interface UploadDocumentInput {
   priority?: IngestPriority
   /** See `ShelfUploadInput.documentType`: what the file is, when the one filing it said so. */
   documentType?: DocumentTypeTag
+  /** See `ShelfUploadInput.mailThread`. */
+  mailThread?: MailThreadIngestFacts
+  /** See `ShelfUploadInput.mailOrigin`. */
+  mailOrigin?: MailOriginIngestFacts
 }
 
 export type { UploadDocumentResult }
@@ -1169,6 +1200,9 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
    * by the ingest paths only, like `revisionOf`.
    */
   documentType?: DocumentTypeTag | null
+  /** A filed mail's facts (`ShelfUploadInput.mailThread`, `.mailOrigin`). Read by the ingest paths only. */
+  mailThread?: MailThreadIngestFacts | null
+  mailOrigin?: MailOriginIngestFacts | null
 }
 
 export interface DispatchDocumentResult {
@@ -1321,6 +1355,8 @@ export async function dispatchDocument(
       priority: input.priority,
       revisionOf: input.revisionOf ?? null,
       documentType: input.documentType ?? null,
+      mailThread: input.mailThread ?? null,
+      mailOrigin: input.mailOrigin ?? null,
     }
   )
 }
@@ -1590,6 +1626,8 @@ export async function beginRenditionIngest(
     provenance: input.provenance ?? null,
     revisionOf: input.revisionOf ?? null,
     documentType: input.documentType ?? null,
+    mailThread: input.mailThread ?? null,
+    mailOrigin: input.mailOrigin ?? null,
   })
 }
 
@@ -1613,6 +1651,9 @@ export async function runOfficeRenditionJob(
     revisionOf: payload.revisionOf ?? payload.fassungOf ?? null,
     // Read through the vocabulary: a queued value it no longer holds is no choice.
     documentType: documentTypeOf([payload.documentType ?? '']) ?? null,
+    // Parsed as the backend parses them: a queued record that no longer fits is none.
+    mailThread: mailThreadIngestFactsSchema.safeParse(payload.mailThread).data ?? null,
+    mailOrigin: mailOriginIngestFactsSchema.safeParse(payload.mailOrigin).data ?? null,
   }
   if (!(await jobStillOwnsRow(input))) return
 
@@ -1653,6 +1694,8 @@ async function ingestThroughRendition(input: DispatchDocumentInput, fileName: st
       priority: input.priority,
       revisionOf: input.revisionOf ?? null,
       documentType: input.documentType ?? null,
+      mailThread: input.mailThread ?? null,
+      mailOrigin: input.mailOrigin ?? null,
     }
   )
 }

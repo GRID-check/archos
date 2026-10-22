@@ -20,6 +20,7 @@ import {
   inboundMailParts,
   inboundMails,
   mailThreadEntries,
+  mailThreadEntryAttachments,
   mailThreadFollows,
   mailThreads,
   projectFolders,
@@ -29,7 +30,7 @@ import {
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { CURSOR_TIMESTAMP_FORMAT } from '@/lib/documents/list-cursor'
 import { documentVisibleTo, SCREENED_ONLY } from '@/lib/documents/visibility'
-import { mailThreadAttachmentLinkSchema, type MailThreadAttachmentDisposition } from './mail-thread-wire'
+import type { MailThreadAttachmentDisposition, MailThreadAttachmentNotFiledReason } from './mail-thread-wire'
 import { MAIL_THREAD_MAX_ENTRIES } from './mail-thread-vocabulary'
 
 /** A thread as a list shows it, with its document's name and where it sits. */
@@ -180,7 +181,7 @@ export interface EntryAttachment {
   position: number
   filename: string | null
   disposition: MailThreadAttachmentDisposition
-  notFiledReason: string | null
+  notFiledReason: MailThreadAttachmentNotFiledReason | null
   documentId: string | null
   documentVersionId: string | null
   /** Where the document is filed now, when it is screened and live; null when it is not (or there is none). */
@@ -188,42 +189,105 @@ export interface EntryAttachment {
 }
 
 /**
- * Every attachment of these entries, by entry and position (D36), with where
- * each filed document is now. The one door to an entry's attachments, so the
- * thread view does not change when their storage does: today the entry's
- * frozen `attachment_links`; D36 moves them to `mail_thread_entry_attachments`
- * (disposition, the Fassung each brought), and only this function follows.
+ * Every attachment of these entries, by entry and position, with where each
+ * filed document is now: the one door to an entry's attachments
+ * (`mail_thread_entry_attachments`, D36), so the thread view asks nothing else.
+ * A document that is held, binned or gone answers `document: null`, which the
+ * view shows as not visible.
  */
 export async function entryAttachments(entries: readonly MailThreadEntryRow[]): Promise<EntryAttachment[]> {
-  const listed = entries.flatMap((entry) =>
-    (Array.isArray(entry.attachmentLinks) ? entry.attachmentLinks : []).flatMap((raw, index) => {
-      const parsed = mailThreadAttachmentLinkSchema.safeParse(raw)
-      if (!parsed.success) return []
-      const link = parsed.data
-      return [
-        {
-          entryId: entry.id,
-          position: index + 1,
-          filename: link.name,
-          disposition: (link.documentId ? 'filed' : 'not_filed') as MailThreadAttachmentDisposition,
-          notFiledReason: null,
-          documentId: link.documentId,
-          documentVersionId: null,
-          document: null,
-        } satisfies EntryAttachment,
-      ]
-    }),
-  )
-  const ids = [...new Set(listed.flatMap((attachment) => (attachment.documentId ? [attachment.documentId] : [])))]
-  if (ids.length === 0) return listed
-  const places = await getDb()
-    .select({ id: documents.id, folderId: documents.folderId })
-    .from(documents)
+  if (entries.length === 0) return []
+  const rows = await getDb()
+    .select({
+      entryId: mailThreadEntryAttachments.entryId,
+      position: mailThreadEntryAttachments.position,
+      filename: mailThreadEntryAttachments.filename,
+      disposition: mailThreadEntryAttachments.disposition,
+      notFiledReason: mailThreadEntryAttachments.notFiledReason,
+      documentId: mailThreadEntryAttachments.documentId,
+      documentVersionId: mailThreadEntryAttachments.documentVersionId,
+      liveDocumentId: documents.id,
+      folderId: documents.folderId,
+    })
+    .from(mailThreadEntryAttachments)
+    .leftJoin(
+      documents,
+      and(
+        eq(documents.id, mailThreadEntryAttachments.documentId),
+        documentVisibleTo(SCREENED_ONLY),
+        sql`(${documents.folderId} IS NULL OR NOT EXISTS (
+              SELECT 1 FROM ${projectFolders} f WHERE f.id = ${documents.folderId} AND f.deleted_at IS NOT NULL))`,
+      ),
+    )
+    .where(inArray(mailThreadEntryAttachments.entryId, entries.map((entry) => entry.id)))
+    .orderBy(mailThreadEntryAttachments.entryId, mailThreadEntryAttachments.position)
+    // An entry carries at most as many attachments as its mail had parts (100) and unstaged files (100).
+    .limit(entries.length * 200)
+  return rows.map((row) => ({
+    entryId: row.entryId,
+    position: row.position,
+    filename: row.filename,
+    disposition: row.disposition,
+    notFiledReason: row.notFiledReason,
+    documentId: row.documentId,
+    documentVersionId: row.documentVersionId,
+    document: row.liveDocumentId ? { folderId: row.folderId } : null,
+  }))
+}
+
+/** One mail that brought (a Fassung of) a document, through a thread the reader may read (D36). */
+export interface MailOriginRow {
+  documentVersionId: string | null
+  threadId: string
+  entryId: string
+  sentAt: Date
+  receivedAt: Date
+  senderName: string | null
+  signerDomain: string | null
+  senderTrust: MailThreadEntryRow['senderTrust']
+}
+
+/** The most mails one document names as its origins: far beyond any real Fassung history. */
+export const MAIL_ORIGINS_LIMIT = 100
+
+/**
+ * The mails that brought this document, one row per filed or already present
+ * attachment, oldest first: only through a thread whose document the reader
+ * may read (screened, live, outside `hiddenFolders`), so a restricted Verlauf
+ * names nothing. The caller already let the reader through to the document.
+ */
+export async function findMailOrigins(
+  projectId: string,
+  documentId: string,
+  hiddenFolders: readonly string[],
+): Promise<MailOriginRow[]> {
+  const rows = await getDb()
+    .select({
+      documentVersionId: mailThreadEntryAttachments.documentVersionId,
+      threadId: mailThreads.id,
+      entryId: mailThreadEntries.id,
+      sentAt: mailThreadEntries.sentAt,
+      receivedAt: mailThreadEntries.receivedAt,
+      senderName: mailThreadEntries.senderName,
+      signerDomain: mailThreadEntries.signerDomain,
+      senderTrust: mailThreadEntries.senderTrust,
+    })
+    .from(mailThreadEntryAttachments)
+    .innerJoin(mailThreadEntries, eq(mailThreadEntries.id, mailThreadEntryAttachments.entryId))
+    .innerJoin(mailThreads, eq(mailThreads.id, mailThreadEntries.threadId))
+    .innerJoin(documents, and(eq(documents.id, mailThreads.documentId), eq(documents.projectId, mailThreads.projectId)))
     .leftJoin(projectFolders, eq(projectFolders.id, documents.folderId))
-    .where(and(inArray(documents.id, ids), documentVisibleTo(SCREENED_ONLY), or(isNull(documents.folderId), isNull(projectFolders.deletedAt))))
-    .limit(ids.length)
-  const byId = new Map(places.map((place) => [place.id, { folderId: place.folderId }]))
-  return listed.map((attachment) => ({ ...attachment, document: attachment.documentId ? (byId.get(attachment.documentId) ?? null) : null }))
+    .where(
+      and(
+        eq(mailThreadEntryAttachments.projectId, projectId),
+        eq(mailThreadEntryAttachments.documentId, documentId),
+        inArray(mailThreadEntryAttachments.disposition, ['filed', 'already_present']),
+        visibleThreads(projectId, hiddenFolders),
+      ),
+    )
+    .orderBy(mailThreadEntries.sentAt, mailThreadEntries.id)
+    .limit(MAIL_ORIGINS_LIMIT)
+  return rows.map((row) => ({ ...row, sentAt: new Date(row.sentAt), receivedAt: new Date(row.receivedAt) }))
 }
 
 /** The running follows of a thread (D31), oldest first. */

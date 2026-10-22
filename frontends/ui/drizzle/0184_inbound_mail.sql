@@ -12,16 +12,17 @@
 -- each part. The text of a filed mail becomes a section of the conversation's
 -- one document, the E-Mail-Verlauf, whose next Fassung each later message is.
 --
--- ## Eight tables, one job each
+-- ## Nine tables, one job each
 --
---   inbound_mail_addresses   a project's address, and every address it had
---   inbound_mails            one delivery: who sent it, how far it got, where it is staged
---   inbound_mail_parts       what a person can file: the mail's text or one attachment
---   inbound_mail_decisions   append-only: every act of a person on a part
---   mail_threads             one conversation = one document of the project
---   mail_thread_entries      one filed message: the renderer's only input, and its original
---   mail_thread_message_ids  the Message-IDs a thread received or was referred to by
---   mail_thread_follows      a person's standing decision to append a thread's later replies
+--   inbound_mail_addresses         a project's address, and every address it had
+--   inbound_mails                  one delivery: who sent it, how far it got, where it is staged
+--   inbound_mail_parts             what a person can file: the mail's text or one attachment
+--   inbound_mail_decisions         append-only: every act of a person on a part
+--   mail_threads                   one conversation = one document of the project
+--   mail_thread_entries            one filed message: the renderer's only input, and its original
+--   mail_thread_entry_attachments  what came with a filed message, and which Fassung of which document it became
+--   mail_thread_message_ids        the Message-IDs a thread received or was referred to by
+--   mail_thread_follows            a person's standing decision to append a thread's later replies
 --
 -- ## No mail is filed without a person, and the database says who
 --
@@ -71,11 +72,11 @@
 --
 -- ## Legal hold
 --
--- A hold that covers the project stops the deletion of a mail and of a filed
--- message (`grid_legal_hold_blocks('project', …)`, SQLSTATE GLH01, the 0093
--- backstop). Ending a part under a hold still ends it for the person; the
--- erasure of its bytes waits, and `erasure_deferred_at` is the one way an ended
--- part or mail may still name an object.
+-- A hold that covers the project stops the deletion of a mail, of a filed
+-- message and of what came with it (`grid_legal_hold_blocks('project', …)`,
+-- SQLSTATE GLH01, the 0093 backstop). Ending a part under a hold still ends it
+-- for the person; the erasure of its bytes waits, and `erasure_deferred_at` is
+-- the one way an ended part or mail may still name an object.
 --
 -- ## Tenancy is structural
 --
@@ -154,6 +155,17 @@ CREATE TABLE IF NOT EXISTS "mail_threads" (
   "last_entry_at" timestamp with time zone,
   -- An archive slice wrote entries that are not rendered yet (D33).
   "render_pending_at" timestamp with time zone,
+  -- Who writes the thread's next Fassung now, and until when. Fassung N+1
+  -- must hold every section of Fassung N (the superset invariant), so two
+  -- appends may not render and upload side by side: the later upload of the
+  -- smaller set would drop the other's section. Every writer of a Fassung (a
+  -- filing, a follow, a detach, an archive render) takes this lease with a
+  -- compare-and-set, renders and uploads under it, and lets it go; a writer
+  -- that died leaves it to run out (`lib/mail-thread/append.ts`). A
+  -- transaction cannot hold it: the upload is object storage and HTTP, and a
+  -- pooled connection (PgBouncer, ADR-0083) keeps no session lock.
+  "render_lease_holder" uuid,
+  "render_lease_until" timestamp with time zone,
   -- The one locale the rendition's words are in, for the thread's life: Fassung
   -- N+1 repeats every section of Fassung N byte for byte.
   "locale" text NOT NULL,
@@ -177,7 +189,9 @@ CREATE TABLE IF NOT EXISTS "mail_threads" (
   CONSTRAINT "mail_threads_entry_count_bounded" CHECK ("entry_count" BETWEEN 0 AND 200),
   CONSTRAINT "mail_threads_rendered_bytes_bounded" CHECK ("rendered_bytes" BETWEEN 0 AND 2097152),
   CONSTRAINT "mail_threads_locale_known" CHECK ("locale" IN ('de', 'en')),
-  CONSTRAINT "mail_threads_creator_is_person" CHECK ("created_by" ~ '^user_[0-9A-Z]{26}$')
+  CONSTRAINT "mail_threads_creator_is_person" CHECK ("created_by" ~ '^user_[0-9A-Z]{26}$'),
+  CONSTRAINT "mail_threads_render_lease_together"
+    CHECK (("render_lease_holder" IS NULL) = ("render_lease_until" IS NULL))
 );
 --> statement-breakpoint
 -- A document is the Verlauf of one thread at most.
@@ -285,8 +299,6 @@ CREATE TABLE IF NOT EXISTS "mail_thread_entries" (
   "masked_spans" jsonb,
   "quoted" jsonb DEFAULT '[]'::jsonb NOT NULL,
   "calendar" jsonb DEFAULT '[]'::jsonb NOT NULL,
-  -- Frozen at insert, names included (the superset invariant).
-  "attachment_links" jsonb DEFAULT '[]'::jsonb NOT NULL,
   -- The Fassung the message first appeared in.
   "first_version_id" uuid,
   "filed_by" text NOT NULL,
@@ -345,8 +357,7 @@ CREATE TABLE IF NOT EXISTS "mail_thread_entries" (
        AND ("masked_spans" IS NULL
             OR (jsonb_typeof("masked_spans") = 'array' AND jsonb_array_length("masked_spans") <= 1000))
        AND jsonb_typeof("quoted") = 'array' AND jsonb_array_length("quoted") <= 50
-       AND jsonb_typeof("calendar") = 'array' AND jsonb_array_length("calendar") <= 20
-       AND jsonb_typeof("attachment_links") = 'array' AND jsonb_array_length("attachment_links") <= 100),
+       AND jsonb_typeof("calendar") = 'array' AND jsonb_array_length("calendar") <= 20),
   -- An archive entry has no original: the import never had the message's bytes.
   CONSTRAINT "mail_thread_entries_archive_has_no_original"
     CHECK (("source" = 'archive') <= ("original_storage_key" IS NULL)),
@@ -385,6 +396,128 @@ CREATE INDEX IF NOT EXISTS "mail_thread_entries_mail_import_idx"
 --> statement-breakpoint
 COMMENT ON TABLE "mail_thread_entries" IS
   'One filed message of an E-Mail-Verlauf, from the project address or an Outlook archive: the renderer''s only input, and, for inbound mail, the key of its original .eml (evidence: never indexed, never read by a model). Lives as long as the thread document. Tenant data (migration 0184).';
+--> statement-breakpoint
+-- D36: the attachment and its mail know each other, per Fassung. One row per
+-- attachment the message carried, written when the message is filed (inbound)
+-- or imported (archive), whatever became of it: filed as a document, already
+-- in the project as these bytes, or not filed (dismissed, blocked, not
+-- accepted: then its bytes live only in the original). So a thread names what
+-- came with each message, and a document names the mails that brought each of
+-- its Fassungen (`document-get`, `document-version-list` `mailOrigins`).
+CREATE TABLE IF NOT EXISTS "mail_thread_entry_attachments" (
+  "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+  "organization_id" text NOT NULL,
+  "project_id" uuid NOT NULL,
+  "entry_id" uuid NOT NULL,
+  -- The part's position in the mail (`inbound_mail_parts.position`); a file
+  -- that was never staged follows the staged ones.
+  "position" integer NOT NULL,
+  -- The name as it arrived, kept as the mail's own record of what it carried;
+  -- NULL for a file that came without one. Shown only to a reader who may see
+  -- the document it became (`mail-thread-get`).
+  "filename" text,
+  "disposition" text NOT NULL,
+  "not_filed_reason" text,
+  -- The document and the Fassung this attachment became (`filed`) or already
+  -- was (`already_present`). The live half of the link: SET NULL when either
+  -- goes, the row stays and says the attachment came.
+  "document_id" uuid,
+  "document_version_id" uuid,
+  -- What the thread's section prints for it, frozen at insert: the superset
+  -- invariant forbids a later Fassung to rename or newly name an attachment in
+  -- an earlier section (`lib/mail-thread/render.ts`). NULL is counted, never
+  -- named: not filed, filed into a folder less visible than the thread, or a
+  -- name the Namensprüfung stopped (RT-S13).
+  "section_name" text,
+  "section_folder_path" text,
+  "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+  CONSTRAINT "mail_thread_entry_attachments_entry_fkey"
+    FOREIGN KEY ("entry_id", "project_id", "organization_id")
+    REFERENCES "mail_thread_entries"("id", "project_id", "organization_id") ON DELETE CASCADE,
+  CONSTRAINT "mail_thread_entry_attachments_entry_position_key" UNIQUE ("entry_id", "position"),
+  -- The document in the SAME project; SET NULL on the one column.
+  CONSTRAINT "mail_thread_entry_attachments_document_fkey"
+    FOREIGN KEY ("document_id", "project_id")
+    REFERENCES "documents"("id", "project_id") ON DELETE SET NULL ("document_id"),
+  -- The Fassung belongs to THAT document.
+  CONSTRAINT "mail_thread_entry_attachments_version_fkey"
+    FOREIGN KEY ("document_version_id", "document_id")
+    REFERENCES "document_versions"("id", "document_id") ON DELETE SET NULL ("document_version_id"),
+  CONSTRAINT "mail_thread_entry_attachments_position_non_negative" CHECK ("position" >= 0),
+  CONSTRAINT "mail_thread_entry_attachments_disposition_known"
+    CHECK ("disposition" IN ('filed', 'already_present', 'not_filed')),
+  CONSTRAINT "mail_thread_entry_attachments_reason_iff_not_filed"
+    CHECK (("disposition" = 'not_filed') = ("not_filed_reason" IS NOT NULL)),
+  CONSTRAINT "mail_thread_entry_attachments_reason_known"
+    CHECK ("not_filed_reason" IS NULL OR "not_filed_reason" IN
+      ('pending', 'dismissed', 'expired', 'infected', 'scan_failed', 'type_not_accepted', 'encrypted', 'archive',
+       'size', 'limit', 'empty', 'screened', 'access', 'name_taken', 'unreadable')),
+  -- A file not filed is no document's.
+  CONSTRAINT "mail_thread_entry_attachments_not_filed_has_no_document"
+    CHECK ("disposition" <> 'not_filed' OR ("document_id" IS NULL AND "document_version_id" IS NULL)),
+  CONSTRAINT "mail_thread_entry_attachments_filename_length"
+    CHECK ("filename" IS NULL OR char_length("filename") BETWEEN 1 AND 500),
+  -- Only a file that is a document is named, and a folder only with a name.
+  CONSTRAINT "mail_thread_entry_attachments_section_named_when_filed"
+    CHECK ("section_name" IS NULL OR ("disposition" <> 'not_filed' AND char_length("section_name") BETWEEN 1 AND 500)),
+  CONSTRAINT "mail_thread_entry_attachments_section_folder_with_name"
+    CHECK ("section_folder_path" IS NULL
+       OR ("section_name" IS NOT NULL AND char_length("section_folder_path") <= 1000))
+);
+--> statement-breakpoint
+-- „Which mail brought this Fassung“: the document routes' `mailOrigins`.
+CREATE INDEX IF NOT EXISTS "mail_thread_entry_attachments_document_idx"
+  ON "mail_thread_entry_attachments" ("document_id") WHERE "document_id" IS NOT NULL;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "mail_thread_entry_attachments_version_idx"
+  ON "mail_thread_entry_attachments" ("document_version_id") WHERE "document_version_id" IS NOT NULL;
+--> statement-breakpoint
+COMMENT ON TABLE "mail_thread_entry_attachments" IS
+  'What came with a filed message (D36), one row per attachment, and what became of it: the document and Fassung it is, or why it was not filed (its bytes then live only in the original). What the thread''s section prints for it is frozen at insert. Lives as long as its entry. Tenant data (migration 0184).';
+--> statement-breakpoint
+-- What a row may still learn after its insert, and nothing else (the
+-- superset invariant keeps the section's words; the trail keeps the rest):
+--
+--   * its document or Fassung going (the keys' SET NULL; a Fassung goes with
+--     its document: once `document_id` is NULL the composite key to the
+--     version is no longer checked, and its SET NULL would never fire, so the
+--     guard nulls the version itself), and
+--   * an attachment that still waited when its message was filed (`pending`)
+--     being decided later: filed (with its document and Fassung), already
+--     present, or not filed for good (dismissed, expired, ...). Once.
+CREATE OR REPLACE FUNCTION grid_mail_thread_entry_attachments_guard() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+DECLARE
+  keeps constant text[] := ARRAY['document_id', 'document_version_id', 'disposition', 'not_filed_reason'];
+  was_pending boolean;
+BEGIN
+  was_pending := OLD.disposition = 'not_filed' AND OLD.not_filed_reason = 'pending';
+  IF NEW.document_id IS NULL THEN
+    NEW.document_version_id := NULL;
+  END IF;
+  IF (to_jsonb(NEW) - keeps) IS DISTINCT FROM (to_jsonb(OLD) - keeps) THEN
+    RAISE EXCEPTION 'what came with a filed message is never rewritten'
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'mail_thread_entry_attachments_frozen',
+            TABLE = 'mail_thread_entry_attachments';
+  END IF;
+  IF NOT was_pending AND (
+       NEW.disposition IS DISTINCT FROM OLD.disposition
+       OR NEW.not_filed_reason IS DISTINCT FROM OLD.not_filed_reason
+       OR (NEW.document_id IS DISTINCT FROM OLD.document_id AND NEW.document_id IS NOT NULL)
+       OR (NEW.document_version_id IS DISTINCT FROM OLD.document_version_id AND NEW.document_version_id IS NOT NULL)) THEN
+    RAISE EXCEPTION 'only an attachment that still waited is decided later, and only once'
+      USING ERRCODE = 'check_violation', CONSTRAINT = 'mail_thread_entry_attachments_decided_once',
+            TABLE = 'mail_thread_entry_attachments';
+  END IF;
+  RETURN NEW;
+END
+$$;
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "mail_thread_entry_attachments_guard" ON "mail_thread_entry_attachments";
+--> statement-breakpoint
+CREATE TRIGGER "mail_thread_entry_attachments_guard"
+  BEFORE UPDATE ON "mail_thread_entry_attachments"
+  FOR EACH ROW EXECUTE FUNCTION grid_mail_thread_entry_attachments_guard();
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "mail_thread_message_ids" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -889,7 +1022,13 @@ CREATE TABLE IF NOT EXISTS "inbound_mail_decisions" (
   CONSTRAINT "inbound_mail_decisions_lengths"
     CHECK (("folder_path" IS NULL OR char_length("folder_path") <= 1000)
        AND ("file_name" IS NULL OR char_length("file_name") BETWEEN 1 AND 255)
-       AND ("document_type" IS NULL OR "document_type" ~ '^[a-z][a-z0-9_]{0,63}$')),
+       -- A tag of the shared Dokumentart vocabulary (`lib/documents/tag-vocabulary.ts`),
+       -- which the decision's wire refines to and the filing job reads through
+       -- (`documentTypeOf`): membership is the code's, because the vocabulary
+       -- still holds persisted German keys („Norm/Richtlinie“) a token shape
+       -- would refuse. The database bounds the value and keeps it one printable line.
+       AND ("document_type" IS NULL
+            OR (char_length("document_type") BETWEEN 1 AND 64 AND "document_type" !~ '[[:cntrl:]]'))),
   -- A Piloti card files clean, unflagged parts only (RT-S5): every
   -- acknowledgement and release is a person's act in the app or as themselves.
   CONSTRAINT "inbound_mail_decisions_piloti_cards_file_clean"
@@ -1042,6 +1181,12 @@ CREATE TRIGGER "mail_thread_entries_legal_hold_guard"
   BEFORE DELETE ON "mail_thread_entries"
   FOR EACH ROW EXECUTE FUNCTION grid_refuse_held_project_row_delete();
 --> statement-breakpoint
+DROP TRIGGER IF EXISTS "mail_thread_entry_attachments_legal_hold_guard" ON "mail_thread_entry_attachments";
+--> statement-breakpoint
+CREATE TRIGGER "mail_thread_entry_attachments_legal_hold_guard"
+  BEFORE DELETE ON "mail_thread_entry_attachments"
+  FOR EACH ROW EXECUTE FUNCTION grid_refuse_held_project_row_delete();
+--> statement-breakpoint
 SELECT grid_secure_table('inbound_mail_addresses', 'organization_id = grid_current_org()');
 --> statement-breakpoint
 SELECT grid_secure_table('inbound_mails', 'organization_id = grid_current_org()');
@@ -1054,6 +1199,8 @@ SELECT grid_secure_table('mail_threads', 'organization_id = grid_current_org()')
 --> statement-breakpoint
 SELECT grid_secure_table('mail_thread_entries', 'organization_id = grid_current_org()');
 --> statement-breakpoint
+SELECT grid_secure_table('mail_thread_entry_attachments', 'organization_id = grid_current_org()');
+--> statement-breakpoint
 SELECT grid_secure_table('mail_thread_message_ids', 'organization_id = grid_current_org()');
 --> statement-breakpoint
 SELECT grid_secure_table('mail_thread_follows', 'organization_id = grid_current_org()');
@@ -1061,4 +1208,4 @@ SELECT grid_secure_table('mail_thread_follows', 'organization_id = grid_current_
 -- After `grid_secure_table`, which grants DELETE, so a re-run revokes again.
 -- See "Ending is a state" in the header.
 REVOKE DELETE ON "inbound_mail_addresses", "inbound_mails", "inbound_mail_parts", "inbound_mail_decisions",
-  "mail_threads", "mail_thread_entries", "mail_thread_follows" FROM grid_app_rw;
+  "mail_threads", "mail_thread_entries", "mail_thread_entry_attachments", "mail_thread_follows" FROM grid_app_rw;

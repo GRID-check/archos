@@ -323,6 +323,13 @@ export const officeRenditionPayloadSchema = documentWorkPayloadSchema.extend({
    * the file, rather than failing the job's parse or sending a type `POST /v1/ingest` refuses.
    */
   documentType: z.string().nullable().optional(),
+  /**
+   * A filed mail's facts (`ShelfUploadInput.mailThread`, `.mailOrigin`, ADR-0134); absent for every other.
+   * Unknown here, parsed by the consumer against `lib/mail-thread/ingest-facts`: a record a job queued
+   * before a contract change reads as none rather than failing the job or the backend's 422.
+   */
+  mailThread: z.unknown().optional(),
+  mailOrigin: z.unknown().optional(),
 })
 export type OfficeRenditionPayload = z.infer<typeof officeRenditionPayloadSchema>
 

@@ -54,11 +54,8 @@
       "calendar": [],
       "attachments": [
         {
-          "documentId": "6d1f0c4e-2b1a-4c3e-9a51-0000000000d1",
           "name": "Stellplatzberechnung_Hubergasse14.pdf",
-          "folderPath": "Korrespondenz/Behörde",
-          "visibleWithThread": true,
-          "nameReleased": false
+          "folderPath": "Korrespondenz/Behörde"
         }
       ]
     },

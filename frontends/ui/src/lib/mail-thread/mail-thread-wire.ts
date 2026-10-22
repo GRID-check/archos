@@ -14,10 +14,12 @@
 import { z } from 'zod'
 import { SCREENING_DETECTORS } from '@/lib/upload-screening/policy'
 import type { SenderTrust } from '@/lib/inbound-mail/inbound-mail-vocabulary'
+import type { MailOriginView } from '@/lib/inbound-mail/inbound-mail-wire'
 import {
   THREAD_MATCH_HEADERS,
   THREAD_MATCH_STRENGTHS,
-  type MailThreadAttachmentLink,
+  type MailThreadAttachmentDisposition,
+  type MailThreadAttachmentNotFiledReason,
   type MailThreadCalendarEvent,
   type MailThreadEntrySource,
   type MailThreadFiledVia,
@@ -33,6 +35,8 @@ const isoDateTime = z.string().datetime({ offset: true })
 // The tuples, bounds and JSON shapes the `mail_thread*` tables CHECK and type
 // are the vocabulary's (migration 0184); the schemas below parse that JSON.
 export {
+  MAIL_THREAD_ATTACHMENT_DISPOSITIONS,
+  MAIL_THREAD_ATTACHMENT_NOT_FILED_REASONS,
   MAIL_THREAD_ENTRY_SOURCES,
   MAIL_THREAD_FILED_VIA,
   MAIL_THREAD_FOLLOW_END_REASONS,
@@ -40,7 +44,8 @@ export {
   MAIL_THREAD_FOLLOW_MAX_DAYS,
   MAIL_THREAD_MAX_ENTRIES,
   MAIL_THREAD_MAX_RENDERED_BYTES,
-  type MailThreadAttachmentLink,
+  type MailThreadAttachmentDisposition,
+  type MailThreadAttachmentNotFiledReason,
   type MailThreadCalendarEvent,
   type MailThreadEntrySource,
   type MailThreadFiledVia,
@@ -48,6 +53,7 @@ export {
   type MailThreadMaskedSpan,
   type MailThreadParticipant,
   type MailThreadQuote,
+  type MailThreadSectionAttachment,
 } from './mail-thread-vocabulary'
 import { MAIL_THREAD_FOLLOW_DEFAULT_DAYS, MAIL_THREAD_FOLLOW_MAX_DAYS } from './mail-thread-vocabulary'
 
@@ -96,27 +102,6 @@ export const mailThreadCalendarEventSchema = z.object({
   status: z.string().max(40).nullable(),
 })
 mailThreadCalendarEventSchema satisfies z.ZodType<MailThreadCalendarEvent>
-
-/**
- * One attachment of the message (`attachment_links`), written once, when the
- * entry is inserted, so the section that names it never changes afterwards
- * (the superset invariant; renaming the attachment's document later does not
- * rewrite the conversation). `documentId` is null for an attachment that was
- * not filed with the message: it is counted, never named.
- *
- * The renderer names an attachment only when both hold (RT-S13): it was filed
- * into a folder at least as visible as the thread document's
- * (`visibleWithThread`, judged by the filing job), and its name passed the
- * Namensprüfung without a release (`nameReleased` false).
- */
-export const mailThreadAttachmentLinkSchema = z.object({
-  documentId: uuid.nullable(),
-  name: z.string().max(400).nullable(),
-  folderPath: z.string().max(2000).nullable(),
-  visibleWithThread: z.boolean(),
-  nameReleased: z.boolean(),
-})
-mailThreadAttachmentLinkSchema satisfies z.ZodType<MailThreadAttachmentLink>
 
 /** One thread a held mail matched (`inbound_mails.thread_match`): ids and strengths, never names (D9). */
 export const threadMatchSchema = z.object({
@@ -170,32 +155,47 @@ export const mailThreadUnfollowQuerySchema = z.object({
 export type MailThreadUnfollowQuery = z.infer<typeof mailThreadUnfollowQuerySchema>
 
 const detachTargetSchema = z.discriminatedUnion('action', [
-  z
-    .object({
-      action: z.literal('append'),
-      mailThreadId: uuid.describe('The thread to move the message into; mail-thread-list names them.'),
-    })
-    .strict(),
+  z.object({ action: z.literal('append'), mailThreadId: uuid.describe('From mail-thread-list.') }).strict(),
   z
     .object({
       action: z.literal('create'),
-      folderId: uuid.nullable().describe('The folder of the new thread document, or null with newFolderPath.'),
-      newFolderPath: z.string().min(1).max(1000).nullable().describe('A folder path to create, or null.'),
-      name: z.string().min(1).max(240).describe('The new thread document name. It is name-screened.'),
-      screeningRelease: z
-        .literal('name')
-        .optional()
-        .describe('File under a name the name check stopped; audited as an override.'),
+      folderId: uuid.optional(),
+      newFolderPath: z.string().min(1).max(1000).optional(),
+      name: z.string().min(1).max(240),
+      screeningRelease: z.literal('name').optional(),
     })
     .strict(),
 ])
 
+/**
+ * Why a write on a thread was refused (`details.reason` of a 409): the message
+ * is the thread's only one (`last_entry`: delete the document instead),
+ * another filing is writing the thread now (`busy`: try again), the target is
+ * nothing you may write (`target_unknown`) or full (`thread_full`), the new
+ * thread's name was stopped (`name_stop`) or taken (`name_taken`), the upload
+ * path refused a Fassung (`upload_refused`, its rule in `details.failure`), or
+ * an original is not there or not clean (`gone`, `original_not_clean`).
+ */
+export const MAIL_THREAD_REFUSALS = [
+  'last_entry',
+  'busy',
+  'target_unknown',
+  'thread_full',
+  'name_stop',
+  'name_taken',
+  'upload_refused',
+  'gone',
+  'original_not_clean',
+] as const
+export type MailThreadRefusal = (typeof MAIL_THREAD_REFUSALS)[number]
+
+/**
+ * Where a detached message goes (D34): an existing thread (`append`) or a new
+ * one in a folder, under a path to create, or at the root (`create`). The
+ * thread it leaves gets a new Fassung without it; earlier Fassungen keep it.
+ */
 export const mailThreadEntryDetachBodySchema = z
-  .object({
-    target: detachTargetSchema.describe(
-      'Where the message goes. The source thread gets a new Fassung without it; earlier Fassungen keep it.'
-    ),
-  })
+  .object({ target: detachTargetSchema })
   .strict()
 export type MailThreadEntryDetachBody = z.infer<typeof mailThreadEntryDetachBodySchema>
 
@@ -212,14 +212,6 @@ export interface MailThreadFollowView {
 }
 
 /**
- * What became of one attachment of a filed message (D36): filed as a document
- * (`filed`), already in the project as identical bytes (`already_present`), or
- * not filed (`not_filed`, with why; its bytes live only in the original).
- */
-export const MAIL_THREAD_ATTACHMENT_DISPOSITIONS = ['filed', 'already_present', 'not_filed'] as const
-export type MailThreadAttachmentDisposition = (typeof MAIL_THREAD_ATTACHMENT_DISPOSITIONS)[number]
-
-/**
  * One attachment of an entry, as the viewer may see it (D36). Every attachment
  * of the message is listed, by its position in the mail; a document in a
  * folder the viewer may not read is listed without its name and ids
@@ -231,7 +223,7 @@ export interface MailThreadAttachmentView {
   /** The name as it arrived; null when hidden from this viewer or the file came without one. */
   filename: string | null
   disposition: MailThreadAttachmentDisposition
-  notFiledReason?: string
+  notFiledReason?: MailThreadAttachmentNotFiledReason
   documentId?: string
   documentVersionId?: string
   visible: boolean
@@ -259,6 +251,15 @@ export interface MailThreadEntryView {
   filedAt: string
 }
 
+/** What a detach did (`mail-thread-entry-detach`): each thread's new Fassung, and the follows it ended. */
+export interface MailThreadEntryDetachResultView {
+  entryId: string
+  from: { threadId: string; documentId: string; versionId: string | null }
+  to: { threadId: string; documentId: string; versionId: string | null }
+  /** Follows of the thread the message left: a person followed the conversation as it was. */
+  followsEnded: number
+}
+
 /** A thread in a list. */
 export interface MailThreadSummaryView {
   id: string
@@ -283,4 +284,14 @@ export interface MailThreadView extends MailThreadSummaryView {
 export interface MailThreadListView {
   items: MailThreadSummaryView[]
   nextCursor: string | null
+}
+
+/**
+ * A mail that brought a Fassung of a document, as `document-get` lists them
+ * (`mailOrigins`, D36): the Verlauf's message and the Fassung it brought
+ * (null once that Fassung is gone). `document-version-list` carries the same
+ * per version, without `documentVersionId`.
+ */
+export interface DocumentMailOriginView extends MailOriginView {
+  documentVersionId: string | null
 }
