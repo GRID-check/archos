@@ -2806,9 +2806,15 @@ export function loadConfig(): GridConfig {
       enabled: bool(cfg, "geocoderEnabled", false),
       // Both official images, pinned by digest: there is no upstream Photon
       // image, and this pod sees every address a person types (ADR-0120).
+      // Temurin 21.0.12.1+1 on Ubuntu 24.04, the multi-arch index Docker Hub's
+      // `21.0.12.1_1-jre-noble` tag resolved to on 2026-10-22. Moved off
+      // 21.0.12_8 because its OpenSSL (libssl3t64 3.0.13-0ubuntu3.15) carried
+      // CVE-2026-84782; this one carries 0ubuntu3.16, read from its dpkg
+      // database by a local trivy scan, with the same entrypoint, JAVA_HOME and
+      // PATH, and still no fixed user.
       image:
         cfg.get("geocoderImage") ??
-        "eclipse-temurin:21.0.12_8-jre-noble@sha256:7739f0ffce786528961eea6bf46d9610ee968ac6127c9b2e93494757bdecce9f",
+        "eclipse-temurin:21.0.12.1_1-jre-noble@sha256:35501d3f93173b420ac9001658eb68157e813316b865087e345c187fca422c4c",
       fetchImage:
         cfg.get("geocoderFetchImage") ??
         "alpine:3.22.6@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
@@ -3131,11 +3137,15 @@ export function loadConfig(): GridConfig {
       domain: langfuseDomain,
       // Digest-pinned on the same terms as the ADR-0029 images, and scanned by
       // the same trivy gate: langfuse 4.68.0 (web + worker, which MUST be the
-      // same version) and ClickHouse 26.8.15.10 LTS, which v4 needs (>= 25.12).
+      // same version) and ClickHouse 26.8.33.10 LTS, which v4 needs (>= 25.12).
       // The langfuse digests are what GHCR's `4.68.0` tags resolve to (multi-arch
       // index, read anonymously from the registry on 2026-10-22, the day 4.68.0
       // was published); `26.8` is a moving tag upstream and this is the digest
-      // it resolved to when pinned. Moved off 4.63.0 because both images
+      // it resolved to when pinned (2026-10-22, 26.8.33.10; moved within the
+      // 26.8 line off 26.8.15.10, whose Ubuntu 22.04 base had OpenSSL
+      // 3.0.2-0ubuntu1.29, CVE-2026-84782; 26.8.33.10 carries 0ubuntu1.30, read
+      // from its dpkg database by a local trivy scan, and the same entrypoint,
+      // ports and TZ=UTC). Langfuse moved off 4.63.0 because both images
       // bundled @modelcontextprotocol/sdk 1.31.0 (CVE-2026-111767, -111768) and
       // follow-redirects 1.16.0 (CVE-2026-111755, -111756), and the web image's
       // `usr/bin/migrate` was built with go1.26.9 (CVE-2026-111943). 4.64.0
@@ -3156,7 +3166,7 @@ export function loadConfig(): GridConfig {
         "ghcr.io/langfuse/langfuse-worker@sha256:f3afef571845b2365a3b991aab4977a53d75862077e3c9e9e4d1e32949ab15f7",
       clickhouseImage:
         cfg.get("clickhouseImage") ??
-        "clickhouse/clickhouse-server@sha256:3043f691ec1a847f38b446ff43708893fcbf9815bd9bd88c0f84bfe064ce852f",
+        "clickhouse/clickhouse-server@sha256:1c0b76ac42e16b4eeb0be84013c67269b660701971d29bab9ad0d01b0ba6c10d",
       v4HistoricBackfill: bool(cfg, "langfuseV4HistoricBackfill", false),
       // 50 Gi: fourteen days of TTL-bounded system logs plus headroom for the
       // trace store itself, which still grows without bound (OSS has no

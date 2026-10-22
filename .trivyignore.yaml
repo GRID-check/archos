@@ -129,24 +129,16 @@ vulnerabilities:
       Drop as soon as a Langfuse image ships `@prisma/config` >= 8 (deepmerge-ts
       >= 8.0.0).
 
-  # ── Findings published after the 2026-10-07 bump (scan of PR #853) ────────
+  # ── ClickHouse (ADR-0044) ─────────────────────────────────────────────────
   #
-  # These landed in the trivy DB after the last green develop scan and turned
-  # the job red on every PR that touches an image. Boxed SHORT: each one names
-  # a fixed version, so the right exit is a pin bump, not a renewal.
-  #
-  # The ClickHouse entry below expires on 2026-10-22 and the pin still carries
-  # 3.0.2-0ubuntu1.29 (local scan, 2026-10-22): the weekly scan and the next
-  # change to that pin go red on it. It wants a ClickHouse bump of its own.
-
-  - id: CVE-2026-84782
-    expired_at: 2026-10-22
-    statement: |
-      OpenSSL 3.0.2 (libssl3/openssl) in clickhouse/clickhouse-server —
-      information disclosure via DTLS handshake retransmission. ClickHouse
-      speaks TLS over TCP only and never negotiates DTLS, and the server is
-      reachable solely by Langfuse inside the cluster. Fixed in Ubuntu's
-      3.0.2-0ubuntu1.30; drop when the ClickHouse pin carries it.
+  # Empty. Its one entry, OpenSSL 3.0.2-0ubuntu1.29 (CVE-2026-84782, boxed to
+  # 2026-10-22), went with the pin moving 26.8.15.10 -> 26.8.33.10 within the
+  # 26.8 LTS line: libssl3/openssl 3.0.2-0ubuntu1.30, and a local trivy 0.61.1
+  # scan of that digest with this file EMPTY reports no fixable HIGH/CRITICAL.
+  # The same box was silently covering the geocoder's eclipse-temurin
+  # 21.0.12_8-jre-noble (libssl3t64 3.0.13-0ubuntu3.15), found only by
+  # scanning every pin; it moved to 21.0.12.1_1-jre-noble (0ubuntu3.16),
+  # which scans clean the same way. An `id` box matches every image.
 
 secrets:
   - id: gcp-service-account
