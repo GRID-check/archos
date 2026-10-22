@@ -261,6 +261,36 @@ and where each lives in this repo, whenever a reviewer corrects you, something
 surprises you, or you correct yourself twice for one reason:
 [`correction-ratchet.md`](correction-ratchet.md).
 
+## Everything you learn is written down
+
+Reworking the project mail inbox (PR #831) in October 2026 began with eleven
+scouts and thirteen consultants reading the code for a day. Their reports turned
+up dozens of facts no doc held: an operation description that named the wrong
+status code, an ADR still „proposed“ for a feature in production, a processor
+register naming a database the platform had already left, the eight steps to add
+a notification type, the rule that a migration journal's `when` must exceed the
+last applied one. All of it sat in a scratch directory that dies with the
+session. The owner's verdict: everything we learn about the system is written
+down, and that is a hard rule, not a courtesy.
+
+Before, the obligation said "Nothing, once" in its failure column: a fact left
+unwritten cost nothing until the next person re-earned it. Now three layers hold
+it:
+
+- **The rule** in `AGENTS.md`, which counts a subagent's report as your own
+  research and asks for each fact to be re-checked in the code first. A
+  consultant can be confidently wrong, and a wrong note costs more than a
+  missing one.
+- **The PR section** *What we learned*, one line per fact and the file it went
+  to, or "Nothing new, because …".
+- **The `What we learned` job** in `.github/workflows/pr.yml`, which fails a PR
+  without that section. It cannot judge whether the list is complete; review
+  does that. What it removes is the option to forget the question.
+
+A discrepancy between a doc and the code is fixed in the same change, in
+whichever of the two is wrong. Writing "the doc says 400, the code says 409" in
+a PR body and moving on leaves the next agent to act on the wrong one.
+
 ## Slice work so it runs in parallel
 
 When a change is large enough to hand to several agents (or people), cut it
