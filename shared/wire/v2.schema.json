@@ -1771,6 +1771,12 @@
           "title": "Kind",
           "type": "string"
         },
+        "prefetch": {
+          "default": false,
+          "description": "Round 0 run before the model's first call; the Herleitung draws no row for it.",
+          "title": "Prefetch",
+          "type": "boolean"
+        },
         "reason": {
           "anyOf": [
             {

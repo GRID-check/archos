@@ -1340,6 +1340,7 @@ def emit_retrieval(
     *,
     round_index: int,
     conclusion: str | None = None,
+    prefetch: bool = False,
 ) -> bool:
     """ONE line for a whole round of tool calls: where it looks, and for what.
 
@@ -1368,6 +1369,12 @@ def emit_retrieval(
     prose is the fallback, and :func:`emit_checkpoint` records which one it
     was — ranking them anywhere else would let the sentence the spine renders
     and the source it is counted under disagree.
+
+    ``prefetch`` marks the round the decision ran before the model's first
+    call (round 0 of ``PilotiAgent._prefetch_node``). The Herleitung draws no
+    row for it: its sources join the first fan like any other (ADR-0131). The
+    round index cannot say this, since a turn with nothing prefetched numbers
+    the model's own first search 0 too.
 
     Returns True when a retrieval round was emitted (search corpora), so the
     caller can increment the round counter. Action-only rounds return False.
@@ -1400,6 +1407,7 @@ def emit_retrieval(
                 values=values,
                 tools=tools,
                 reason=reason,
+                prefetch=prefetch,
             )
         )
         # Emitted HERE rather than by the caller so the two can never disagree:

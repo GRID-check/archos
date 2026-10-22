@@ -216,6 +216,9 @@ class RetrievalStep(_StepBase):
     values: dict[str, str] = Field(default_factory=dict)
     tools: list[str] = Field(default_factory=list, description="Tool basenames this round called.")
     reason: str | None = Field(default=None, max_length=160, description="The model's conclusion, verbatim.")
+    prefetch: bool = Field(
+        default=False, description="Round 0 run before the model's first call; the Herleitung draws no row for it."
+    )
 
 
 class SourcesStep(_StepBase):
