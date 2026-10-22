@@ -31,6 +31,11 @@
  *   - spine-folded → THREE rounds, which is where the graph stops being a shape
  *     and becomes a scroll: the older two layers arrive folded to their counts
  *     and the newest is open. Neither folded caption names a query (PF-12).
+ *   - work     → the work list (ADR-0131), the north-star scene: round 1 runs a
+ *     literal search, a folder listing and a meaning search together on one
+ *     time axis; round 2 reads a sheet and looks at it.
+ *   - work-live → the same turn mid-round: round 2's read and look are still
+ *     running, so their rows breathe and the round has no time yet.
  */
 
 import { useEffect, useState } from 'react'
@@ -38,6 +43,7 @@ import { notFound } from 'next/navigation'
 import { ChatThinking } from '@/features/chat/components/ChatThinking'
 import type { CitationSource } from '@/features/chat/types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
+import { foldScene, northStarLiveScene, northStarScene } from '@/test-utils/work-list-scenes'
 
 const step: StoredThinkingStep = {
   id: 'kb',
@@ -332,6 +338,19 @@ const liveCommon = {
   enabledDataSources: defaultCommon.enabledDataSources,
 }
 
+// Work-list scenarios (ADR-0131): folded from wire steps by the app's own fold.
+const workCommon = {
+  ...defaultCommon,
+  steps: foldScene(northStarScene()),
+  citations: undefined,
+  userQuestion: 'Welche Brandabschnitte sind im Einreichplan eingetragen, und passt das zur OIB 2?',
+}
+const workLiveCommon = {
+  ...workCommon,
+  steps: foldScene(northStarLiveScene()),
+  isThinking: true as const,
+}
+
 export default function DerivationPreviewPage() {
   if (process.env.NODE_ENV !== 'development') {
     notFound()
@@ -345,29 +364,37 @@ export default function DerivationPreviewPage() {
   }, [])
 
   const common =
-    variant === 'branches'
-      ? branchesCommon
-      : variant === 'live'
-        ? liveCommon
-        : variant === 'dense'
-          ? denseCommon
-          : variant === 'spine'
-            ? spineCommon(2)
-            : variant === 'spine-folded'
-              ? spineCommon(3)
-              : defaultCommon
+    variant === 'work'
+      ? workCommon
+      : variant === 'work-live'
+        ? workLiveCommon
+        : variant === 'branches'
+          ? branchesCommon
+          : variant === 'live'
+            ? liveCommon
+            : variant === 'dense'
+              ? denseCommon
+              : variant === 'spine'
+                ? spineCommon(2)
+                : variant === 'spine-folded'
+                  ? spineCommon(3)
+                  : defaultCommon
   const label =
-    variant === 'branches'
-      ? '/dev/derivation?variant=branches — long question, sources without findings'
-      : variant === 'live'
-        ? '/dev/derivation?variant=live — mid-stream turn (live status + chips)'
-        : variant === 'dense'
-          ? '/dev/derivation?variant=dense — 9 sources, packed into stacked columns'
-          : variant === 'spine'
-            ? '/dev/derivation?variant=spine — two retrieval rounds, both layers open'
-            : variant === 'spine-folded'
-              ? '/dev/derivation?variant=spine-folded — three rounds, older layers folded'
-              : '/dev/derivation — reasoning graph (desktop + mobile)'
+    variant === 'work'
+      ? '/dev/derivation?variant=work — work list, two rounds on shared time axes'
+      : variant === 'work-live'
+        ? '/dev/derivation?variant=work-live — work list mid-round, running rows'
+        : variant === 'branches'
+          ? '/dev/derivation?variant=branches — long question, sources without findings'
+          : variant === 'live'
+            ? '/dev/derivation?variant=live — mid-stream turn (live status + chips)'
+            : variant === 'dense'
+              ? '/dev/derivation?variant=dense — 9 sources, packed into stacked columns'
+              : variant === 'spine'
+                ? '/dev/derivation?variant=spine — two retrieval rounds, both layers open'
+                : variant === 'spine-folded'
+                  ? '/dev/derivation?variant=spine-folded — three rounds, older layers folded'
+                  : '/dev/derivation — reasoning graph (desktop + mobile)'
 
   return (
     <main className="bg-background min-h-dvh px-4 py-10">

@@ -41,33 +41,47 @@ export const lookRowTitle = (t: Translator, group: LookStepGroup): string => {
     : t('thinking.look.stepWhole', { document, page: first.place.page })
 }
 
-export const LookStepRow: FC<{ group: LookStepGroup; eager?: boolean }> = ({ group, eager }) => {
+/** The thumbnails of one document's looks; each opens the place. */
+export const LookStrip: FC<{ group: LookStepGroup; eager?: boolean; className?: string }> = ({
+  group,
+  eager,
+  className,
+}) => {
   const t = useTranslations('chat')
   const color = colorOf(group)
+  return (
+    <div className={className ?? 'flex gap-2 overflow-x-auto pb-1 pl-5'}>
+      {group.looks.map((look) => (
+        <PagePlaceButton
+          key={look.id}
+          place={look.place}
+          color={color}
+          label={t('cards.look.open', { document: group.document.name, page: look.place.page })}
+          thumbnailWidth={STRIP_WIDTH}
+          thumbnailMaxHeight={STRIP_MAX_HEIGHT}
+          eager={eager}
+          className="shrink-0"
+        >
+          {group.looks.length > 1 && (
+            <span className="text-muted-foreground max-w-[132px] truncate px-0.5 text-xs">
+              {placeLine(t, look)}
+            </span>
+          )}
+        </PagePlaceButton>
+      ))}
+    </div>
+  )
+}
+
+export const LookStepRow: FC<{ group: LookStepGroup; eager?: boolean }> = ({ group, eager }) => {
+  const t = useTranslations('chat')
   return (
     <li data-testid="look-step-row" className="flex min-w-0 flex-col gap-1.5">
       <p className="text-foreground flex min-w-0 items-start gap-1.5 text-xs font-medium">
         <ScanSearch aria-hidden className="text-muted-foreground mt-px size-3.5 shrink-0" />
         <span className="min-w-0 break-words">{lookRowTitle(t, group)}</span>
       </p>
-      <div className="flex gap-2 overflow-x-auto pb-1 pl-5">
-        {group.looks.map((look) => (
-          <PagePlaceButton
-            key={look.id}
-            place={look.place}
-            color={color}
-            label={t('cards.look.open', { document: group.document.name, page: look.place.page })}
-            thumbnailWidth={STRIP_WIDTH}
-            thumbnailMaxHeight={STRIP_MAX_HEIGHT}
-            eager={eager}
-            className="shrink-0"
-          >
-            {group.looks.length > 1 && (
-              <span className="text-muted-foreground max-w-[132px] truncate px-0.5 text-xs">{placeLine(t, look)}</span>
-            )}
-          </PagePlaceButton>
-        ))}
-      </div>
+      <LookStrip group={group} eager={eager} />
     </li>
   )
 }

@@ -141,6 +141,8 @@ import { cn } from '@/lib/utils'
 import { useLayoutStore } from '@/features/layout/store'
 import { TechnicalSteps } from './TechnicalSteps'
 import { LookStepRows } from './LookStepRow'
+import { RoundCalls, RoundMeta } from './WorkList'
+import { placedLookIds, withActionRounds, workRounds, type WorkRound } from '../../lib/work-list'
 import type { CitationSource } from '../../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { deriveTraceLanes } from '../../lib/trace-lanes'
@@ -292,6 +294,8 @@ type RoundData = {
   text: string
   /** Architect-facing names of the tools this checkpoint actually called. */
   actions: string[]
+  /** The calls of this round (`action` steps, ADR-0131): rows with their sentences and time bars. */
+  calls?: WorkRound
   targets: HandleSpec[]
   sources: HandleSpec[]
   /**
@@ -363,6 +367,7 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
     <div className="flex items-start justify-between gap-2">
       <Eyebrow>
         {data.label} · {data.sub}
+        {data.calls ? <RoundMeta round={data.calls} /> : null}
       </Eyebrow>
       {data.foldable && (
         <ChevronDown
@@ -387,6 +392,7 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         ))}
       </ul>
     ) : null}
+    {data.calls ? <RoundCalls round={data.calls} /> : null}
     {/* Folded: the fan collapses to its scent — the count plus the top
         filename(s). Not the query (PF-12), and never a bare count: evidence
         hidden behind a number reads as no evidence. */}
@@ -863,14 +869,47 @@ const onlyOpened = (tools: string[]): boolean =>
  * layer may be a miss or a hit the old wire never stamped, and `Suche` stays
  * the honest word for not knowing which.
  */
-function roundKind(
+/** Tools that list or open a folder: a round of only these fetched no documents, by design. */
+const BROWSE_TOOLS: ReadonlySet<string> = new Set(['list_files'])
+
+/**
+ * Tools whose round can come back empty. A round of tools outside this set
+ * (a listing, a workspace call, an IFC query) returns no documents by design,
+ * so „no documents“ is no miss there (ADR-0131).
+ */
+const SEARCH_TOOLS: ReadonlySet<string> = new Set([
+  'knowledge_search',
+  'project_lookup',
+  'read_passage',
+  'surface_documents',
+  'web_search_tool',
+  'advanced_web_search_tool',
+  'ris_search_tool',
+  'ris_fetch_tool',
+  'ris_lookup_tool',
+  'ris_catalog_lookup_tool',
+])
+
+/** A round that called tools, and none of them looks for documents. */
+const searchedNothing = (tools: string[]): boolean =>
+  tools.length > 0 && !tools.some((tool) => SEARCH_TOOLS.has(toolBase(tool)))
+
+export function roundKind(
   hasThought: boolean,
   documentCount: number,
   tools: string[],
   t: Translator,
   accounted = false
 ): string {
-  if (documentCount === 0 && accounted) return t('thinking.node.stepKindNoHits')
+  if (
+    documentCount === 0 &&
+    tools.length > 0 &&
+    tools.every((tool) => BROWSE_TOOLS.has(toolBase(tool)))
+  ) {
+    return t('thinking.node.stepKindBrowse')
+  }
+  if (documentCount === 0 && accounted && !searchedNothing(tools))
+    return t('thinking.node.stepKindNoHits')
   if (documentCount > 0 && onlyOpened(tools)) return t('thinking.node.stepKindOpen')
   if (hasThought && documentCount > 0) return t('thinking.node.stepKindFinding')
   if (hasThought) return t('thinking.node.stepKindConclusion')
@@ -974,8 +1013,9 @@ export function buildGraph(
    */
   folding: SpineFolding = { folded: new Set<number>(), onToggle: () => {} },
   /** `retrievalRounds(props.steps)`, when the caller has parsed it already. */
-  rounds: RetrievalRound[] = retrievalRounds(props.steps)
+  rounds: RetrievalRound[] = withActionRounds(retrievalRounds(props.steps), props.steps)
 ): BuiltGraph {
+  const work = workRounds(props.steps)
   const { columns, colW, gap, fanX, grouped } = layout
   const hasSources = cards.length > 0 && columns.length > 0
   const hasVerdict = Boolean(props.answerConfidence) || (props.citations?.length ?? 0) > 0
@@ -1107,7 +1147,8 @@ export function buildGraph(
   // is the thought, never the query (PF-12). A missing Thought is an empty
   // body, not a caption we invent. Tools sit on the checkpoint as the
   // architect-facing names of what that round actually did.
-  const spine = rounds.length >= 2
+  // A turn with calls drawn (ADR-0131) is a spine even in one round: the calls sit on its node.
+  const spine = rounds.length >= 2 || (rounds.length === 1 && work.length > 0)
   const roundIds = spine ? rounds.map((_, i) => `round-${i}`) : []
   const hitLabel = (count: number) =>
     count === 1 ? t('thinking.hitCountOne') : t('thinking.hitCount', { count })
@@ -1183,6 +1224,9 @@ export function buildGraph(
         sub: roundKind(text.length > 0, documentCount, round.tools, t, accounted),
         text,
         actions: actionLabels(round.tools),
+        ...(work.find((entry) => entry.round === round.index)
+          ? { calls: work.find((entry) => entry.round === round.index) }
+          : {}),
         targets: [CENTRE_TOP],
         sources: [CENTRE_BOTTOM],
         foldable: documentCount > 0,
@@ -1626,8 +1670,12 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
   const [foldOverrides, setFoldOverrides] = useState<ReadonlyMap<number, boolean>>(new Map())
   // Parsed once per step change and handed to `buildGraph`, which needs the
   // rounds themselves; the fold state only needs how many there are.
-  const rounds = useMemo(() => retrievalRounds(steps), [steps])
+  const rounds = useMemo(() => withActionRounds(retrievalRounds(steps), steps), [steps])
   const roundCount = rounds.length
+  const unplacedSteps = useMemo(() => {
+    const placed = placedLookIds(workRounds(steps))
+    return placed.size === 0 ? steps : steps.filter((step) => !(step.kind === 'look' && placed.has(step.id)))
+  }, [steps])
   // Read at click time, not captured: a node whose data did not change keeps
   // the handler it was built with (`sameNodeData`), across later rounds too.
   const roundCountRef = useRef(roundCount)
@@ -1699,8 +1747,9 @@ export const ReasoningFlow: FC<ReasoningFlowProps> = (props) => {
         <FlowInner built={built} layout={layout} live={live ?? false} />
       </ReactFlowProvider>
 
-      {/* Where Piloti looked (ADR-0128): a row per document, its thumbnails open the place. */}
-      <LookStepRows steps={steps} />
+      {/* Looks the graph's round nodes do not draw (ADR-0128): all of them in a turn
+          from before the action step, none in one that has it. */}
+      <LookStepRows steps={unplacedSteps} />
 
       {showTechnicalReasoning && steps.length > 0 && (
         <div className="border-t border-base pt-2">
