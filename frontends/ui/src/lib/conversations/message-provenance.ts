@@ -180,6 +180,12 @@ export interface StoredThinkingStep {
   detail?: Record<string, StepDetailValue>
   /** One call of the agent's work (`action`); its start is `timestamp`. */
   action?: StoredAction
+  /**
+   * The call an `action` row and the `sources` it returned share (ADR-0131):
+   * what links a Herleitung row to its source cards. Absent on rows stored
+   * before the wire carried it; those rows link to nothing.
+   */
+  callId?: string
 }
 
 export type StepDetailValue = string | number | boolean | string[]
@@ -347,6 +353,8 @@ const MAX_NAME_CHARS = 200
 const MAX_ACTION_QUERY_CHARS = 160
 const MAX_ACTION_TARGET_CHARS = 300
 const MAX_ACTION_PAGES_CHARS = 40
+/** The wire's own bound on `call_id` (`wire_v2.ActionStep`). */
+const MAX_CALL_ID_CHARS = 64
 const MAX_DETAIL_ENTRIES = 16
 const MAX_DETAIL_VALUE_CHARS = 200
 
@@ -525,6 +533,9 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
   if (detail) step.detail = detail
   const action = input.kind === 'action' ? sanitizeAction(input.action) : null
   if (action) step.action = action
+  const callId =
+    input.kind === 'action' || input.kind === 'sources' ? cap(input.callId, MAX_CALL_ID_CHARS) : undefined
+  if (callId) step.callId = callId
   return step
 }
 

@@ -162,9 +162,11 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
       return {
         round: step.round,
         turnEvent: { key: step.key, ...some('values', step.values), ...some('reason', step.reason), ...some('tools', step.tools) },
+        // The decision's round 0: the Herleitung draws no row for it (ADR-0131).
+        ...(step.prefetch ? { detail: { prefetch: true } } : {}),
       }
     case 'sources':
-      return { tool: step.tool, traceLanes: lanesOf(step), ...some('round', step.round) }
+      return { tool: step.tool, traceLanes: lanesOf(step), ...some('round', step.round), ...some('callId', step.call_id) }
     case 'tool':
       return { tool: step.tool, ...(step.status === 'error' ? { detail: { status: 'error' } } : {}) }
     case 'skill': {
@@ -210,6 +212,7 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
     case 'action':
       return {
         ...some('round', step.round),
+        callId: step.call_id,
         action: {
           verb: step.verb,
           status: step.status,
