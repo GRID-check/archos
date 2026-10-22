@@ -14,7 +14,7 @@ import {
   forgetPendingUploadScreeningPolicyRead,
   UploadScreeningPolicyUnavailableError,
 } from '@/adapters/api/upload-screening-policy'
-import { createDocumentNameProbeClient, PROJECT_NAME_PROBE_PATH } from '@/lib/documents/name-probe-client'
+import { createDocumentNameProbeClient, NAME_PROBE_PATH } from '@/lib/documents/name-probe-client'
 import type { DocumentNameMatch } from '@/lib/documents/name-probe-types'
 import { SUGGESTED_SCREENING_POLICY, type UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { digestFiles } from '../lib/content-digest'
@@ -65,7 +65,7 @@ beforeEach(() => {
       const body = typeof init?.body === 'string' ? init.body : ''
       requests.push({ url, method: init?.method ?? 'GET', body })
       if (url === '/api/organization/upload-screening') return policyResponse()
-      if (url === PROJECT_NAME_PROBE_PATH) {
+      if (url === NAME_PROBE_PATH) {
         const names = (JSON.parse(body) as { names: string[] }).names
         return Response.json({ documents: shelf.filter((document) => names.includes(document.filename)) })
       }
@@ -97,7 +97,7 @@ describe('useUploadDecision: the name screening runs before the name probe', () 
       )
     })
 
-    const probes = requests.filter((request) => request.url === PROJECT_NAME_PROBE_PATH)
+    const probes = requests.filter((request) => request.url === NAME_PROBE_PATH)
     expect(probes).toHaveLength(1)
     expect(JSON.parse(probes[0].body)).toEqual({ projectId: 'p1', names: ['Grundriss EG.pdf'] })
     expect(everythingSent()).not.toContain('Lohnzettel')
@@ -152,7 +152,7 @@ describe('useUploadDecision: the name screening runs before the name probe', () 
       await result.current.setReleased(payslip, true)
     })
 
-    const probes = requests.filter((request) => request.url === PROJECT_NAME_PROBE_PATH)
+    const probes = requests.filter((request) => request.url === NAME_PROBE_PATH)
     expect(probes.map((request) => JSON.parse(request.body).names)).toEqual([['Lohnzettel_Mai_Huber.pdf']])
     expect(result.current.plan?.files[0]).toMatchObject({
       action: 'update',

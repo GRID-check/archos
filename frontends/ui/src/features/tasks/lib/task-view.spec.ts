@@ -14,28 +14,9 @@ import {
   filterCounts,
   groupByRecency,
   matchesFilter,
-  normalizeTaskStatus,
   taskResultTarget,
-  type TaskWireRow,
+  type TaskRunView,
 } from './task-view'
-
-describe('normalizeTaskStatus', () => {
-  test('folds submission words to the planner word', () => {
-    expect(normalizeTaskStatus('submitted')).toBe('queued')
-    expect(normalizeTaskStatus('pending')).toBe('queued')
-  })
-
-  test('is case- and whitespace-tolerant, like every other wire read', () => {
-    expect(normalizeTaskStatus(' Submitted ')).toBe('queued')
-    expect(normalizeTaskStatus('PENDING')).toBe('queued')
-  })
-
-  test('leaves planner words alone', () => {
-    for (const status of ['queued', 'running', 'succeeded', 'failed', 'interrupted']) {
-      expect(normalizeTaskStatus(status)).toBe(status)
-    }
-  })
-})
 
 /**
  * Where a finished task's result lives.
@@ -48,7 +29,7 @@ describe('normalizeTaskStatus', () => {
  * which is gone, so a row with neither destination says so.
  */
 describe('taskResultTarget', () => {
-  const row = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
+  const row = (overrides: Partial<TaskRunView> = {}): TaskRunView => ({
     id: 't1',
     kind: 'document',
     title: 'Aktenvermerk',
@@ -59,7 +40,7 @@ describe('taskResultTarget', () => {
     filedDocumentId: null,
     conversationId: null,
     runMessageId: null,
-    backendJobId: null,
+    taskId: null,
     trigger: 'delegated',
     requesterUserId: 'user_anna',
     requesterName: 'Anna Berger',
@@ -73,13 +54,12 @@ describe('taskResultTarget', () => {
     const target = taskResultTarget('p1', row({
       filedDocumentId: 'doc-9',
       conversationId: 'conv-1',
-      backendJobId: 'bj-1',
     }))
     expect(target).toEqual({ kind: 'document', href: '/app/projects/p1/files?doc=doc-9' })
   })
 
   test('a run with no message of its own still opens the thread it wrote into', () => {
-    const target = taskResultTarget('p1', row({ conversationId: 'conv-1', backendJobId: 'bj-1' }))
+    const target = taskResultTarget('p1', row({ conversationId: 'conv-1' }))
     expect(target).toEqual({ kind: 'conversation', href: '/app/projects/p1/chat?session=conv-1' })
   })
 
@@ -93,7 +73,7 @@ describe('taskResultTarget', () => {
   test('a run with its own message opens the thread AT that message', () => {
     const target = taskResultTarget(
       'p1',
-      row({ id: 'run-7', conversationId: 'conv-1', runMessageId: 'msg-7', backendJobId: 'bj-1' }),
+      row({ id: 'run-7', conversationId: 'conv-1', runMessageId: 'msg-7' }),
     )
     expect(target).toEqual({
       kind: 'conversation',
@@ -108,7 +88,7 @@ describe('taskResultTarget', () => {
    * message, and a run that has no thread has no destination at all.
    */
   test('a finished run that filed nothing and has no thread points nowhere', () => {
-    expect(taskResultTarget('p1', row({ backendJobId: 'bj-1' }))).toBeNull()
+    expect(taskResultTarget('p1', row({}))).toBeNull()
   })
 
   test('a failure points at its own message, where what it tried is written', () => {
@@ -151,7 +131,7 @@ describe('taskResultTarget', () => {
  * zero.
  */
 describe('task filters', () => {
-  const at = (overrides: Partial<TaskWireRow>): TaskWireRow => ({
+  const at = (overrides: Partial<TaskRunView>): TaskRunView => ({
     id: 'x',
     kind: 'document',
     title: 't',
@@ -162,7 +142,7 @@ describe('task filters', () => {
     filedDocumentId: null,
     conversationId: null,
     runMessageId: null,
-    backendJobId: null,
+    taskId: null,
     trigger: 'delegated',
     requesterUserId: 'u',
     requesterName: null,
@@ -212,7 +192,7 @@ describe('task filters', () => {
  */
 describe('groupByRecency', () => {
   const now = new Date('2026-09-15T14:00:00.000Z')
-  const at = (id: string, createdAt: string): TaskWireRow => ({
+  const at = (id: string, createdAt: string): TaskRunView => ({
     id,
     kind: 'document',
     title: id,
@@ -223,7 +203,7 @@ describe('groupByRecency', () => {
     filedDocumentId: null,
     conversationId: null,
     runMessageId: null,
-    backendJobId: null,
+    taskId: null,
     trigger: 'delegated',
     requesterUserId: 'u',
     requesterName: null,

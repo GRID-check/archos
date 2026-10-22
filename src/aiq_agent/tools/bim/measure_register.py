@@ -1901,7 +1901,7 @@ def _measure_row_fields(arguments: IfcMeasureInput) -> dict[str, str]:
 
 
 async def run_ifc_measure(arguments: IfcMeasureInput, default_limit: int) -> list[dict] | str:
-    """:func:`_measure` with its Herleitung row (ADR-0131): one row per call, settled on every path."""
+    """:func:`_measure` with its Herleitung row (ADR-0132): one row per call, settled on every path."""
     outcome = ActionOutcome()
     row = ActionRow("model", **_measure_row_fields(arguments))
     try:

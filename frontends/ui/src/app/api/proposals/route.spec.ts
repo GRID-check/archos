@@ -234,7 +234,8 @@ describe('GET /api/proposals', () => {
     expect(listShelfProposals).toHaveBeenCalledWith('org_1', { scope: 'project', projectId: PROJECT }, {
       statuses: ['proposed'],
       kind: undefined,
-      limit: 50,
+      after: undefined,
+      limit: 51,
     })
   })
 

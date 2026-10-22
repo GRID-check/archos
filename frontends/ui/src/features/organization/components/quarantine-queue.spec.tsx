@@ -133,7 +133,7 @@ describe('QuarantineQueue', () => {
 
   it.each([
     ['doc-1', '/api/documents/doc-1'],
-    ['doc-2', '/api/office-shelf/documents/doc-2'],
+    ['doc-2', '/api/documents/doc-2'],
     ['doc-3', '/api/session/documents/doc-3'],
   ])('delete of %s goes through its shelf route %s and removes the row', async (id, route) => {
     stubApi()

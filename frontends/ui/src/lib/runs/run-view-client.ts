@@ -71,6 +71,19 @@ export async function fetchRunView(
   return requestRunView(run, runViewPath(projectId, runId), 'GET')
 }
 
+/**
+ * The same read, with the key of the run's live event stream (`backendJobId`,
+ * `include=stream`): what the block in the thread needs to subscribe. No other
+ * reader acts on it, so the plain read leaves it out.
+ */
+export async function fetchLiveRunView(
+  projectId: string,
+  runId: string,
+  run: RunViewFetch = (input, init) => fetch(input, init)
+): Promise<RunView> {
+  return requestRunView(run, `${runViewPath(projectId, runId)}?include=stream`, 'GET')
+}
+
 export function runCancelPath(projectId: string, runId: string): string {
   return `${runViewPath(projectId, runId)}/cancel`
 }

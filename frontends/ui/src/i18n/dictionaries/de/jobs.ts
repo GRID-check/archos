@@ -225,19 +225,7 @@ export const jobs: typeof en.jobs = {
     trigger: {
       manual: 'Manuell',
       schedule: 'Geplant',
-    },
-    status: {
-      submitted: 'Übermittelt',
-      skipped: 'Übersprungen',
-      error: 'Fehler',
-    },
-    jobStatus: {
-      submitted: 'Eingereiht',
-      pending: 'Eingereiht',
-      running: 'Läuft',
-      completed: 'Abgeschlossen',
-      failed: 'Fehlgeschlagen',
-      cancelled: 'Abgebrochen',
+      delegated: 'Aus dem Chat',
     },
   },
 }

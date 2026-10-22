@@ -229,7 +229,7 @@ class SourcesStep(_StepBase):
     tool: str = Field(min_length=1)
     lanes: list[TraceLane]
     call_id: str | None = Field(
-        default=None, max_length=64, description="The action row of the call that returned these (ADR-0131)."
+        default=None, max_length=64, description="The action row of the call that returned these (ADR-0132)."
     )
 
 
@@ -298,7 +298,7 @@ class ActionCounts(_Model):
 
 
 class ActionStep(_StepBase):
-    """One call of the agent's work, as the reader sees it (ADR-0131): verb, target, outcome, time.
+    """One call of the agent's work, as the reader sees it (ADR-0132): verb, target, outcome, time.
 
     The tool emits it itself, at start (``running``) and at end, under one id,
     from the values it already holds: typed and clipped, never its raw input or
@@ -1004,7 +1004,14 @@ class UserMessage(_ClientBase):
     type: Literal["user_message"] = "user_message"
     message_id: str = Field(min_length=1, max_length=128, description="Becomes the turn_id.")
     text: str = Field(min_length=1)
-    data_sources: list[str] = Field(default_factory=list)
+    data_sources: list[str] | None = Field(
+        default=None,
+        description=(
+            "The composer's source selection. Absent means not stated, so every source the "
+            "organization allows; an empty list selects none. Headless senders (the MCP ask, "
+            "annotation wakes, the document check) leave it out."
+        ),
+    )
     context_only: Literal[True] | None = None
     author_name: str | None = None
     focus_file_name: str | None = None

@@ -135,7 +135,7 @@ export async function requestQuarantineRelease(documentId: string): Promise<{ no
 /** Where each shelf deletes one of its documents. */
 const DELETE_ROUTE: Record<QuarantineScope, (id: string) => string> = {
   project: (id) => `/api/documents/${encodeURIComponent(id)}`,
-  office_shelf: (id) => `/api/office-shelf/documents/${encodeURIComponent(id)}`,
+  office_shelf: (id) => `/api/documents/${encodeURIComponent(id)}`,
   session: (id) => `/api/session/documents/${encodeURIComponent(id)}`,
 }
 

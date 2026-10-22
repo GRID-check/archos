@@ -85,8 +85,10 @@ describe('/api/conversations', () => {
 
       expect(res.status).toBe(200)
       const json = await res.json()
-      expect(json).toHaveLength(2)
-      expect(json[0].id).toBe('s_conv_1')
+      // Paged (ADR-0131): an envelope, not a bare array. Two rows under the limit is the last page.
+      expect(json.conversations).toHaveLength(2)
+      expect(json.conversations[0].id).toBe('s_conv_1')
+      expect(json.nextCursor).toBeNull()
     })
 
     it('returns 401 when not authenticated', async () => {

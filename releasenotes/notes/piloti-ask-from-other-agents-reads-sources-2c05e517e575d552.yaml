@@ -1,0 +1,8 @@
+---
+fixes:
+  - >
+    Asked from your own agent (Claude, Cursor or another MCP client), Piloti
+    reads the building-law corpus, the project's documents and RIS again
+    instead of answering that these sources were switched off. Comment threads
+    that wake Piloti and the check of a new document read every source your
+    office allows as well.

@@ -1,30 +1,28 @@
 'use client'
 
 /**
- * Per-job run history. Lists this job's runs (newest first): a trigger badge
- * (manual/scheduled), a status badge, a relative timestamp and a link into the
- * thread the run wrote itself into.
+ * One task's run history, newest first: a trigger badge (manual, scheduled,
+ * delegated), the run's status, a timestamp and a link into the thread the run
+ * wrote itself into.
  *
- * The run row's own status only records how the SUBMISSION went — the run's
- * actual fate lives in the backend job store. So rows that produced a job are
- * joined against the project's research runs (`GET /api/jobs/async/jobs`, the
- * same list the History page uses) to show the live job status. The project
- * is the one the job proxy checks and signs, so a run somebody else on the
- * project fired shows its live status too (ADR-0084). The join is
- * best-effort — without it a row falls back to its submission badge.
+ * The status is the run's own (`TaskRunView.status`, the run lifecycle the
+ * Tasks timeline shows), read from `GET /api/projects/[id]/runs?taskId=`.
+ * This list used to read a submission-only word (`submitted`) that every run
+ * the worker took carried whatever became of it, and joined the backend's job
+ * list to find out; a failed run read „Übermittelt" whenever that join missed.
+ * The run row has known how a run ended since the definitions/runs collapse
+ * (migration 0086), so the row is now the one source, and the list polls
+ * itself while a run is still going.
  *
- * That status used to pick the row's DESTINATION as well: the report, the
- * thinking or the progress tab of the deep-research side panel, all of them
- * `?job=<backendJobId>`. There is one destination now, the run's message in
- * the thread that commissioned it (ADR-0062), and the status only picks the
- * words on the link. A run whose conversation this list cannot name gets no
- * link at all — see the row below for why that is the honest answer.
+ * There is one destination, the run's message in the thread that
+ * commissioned it (ADR-0062). A run whose conversation this list cannot name
+ * gets no link at all: the badge still says what became of it.
  */
 
 import type { JSX } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, CalendarClock, Hand } from 'lucide-react'
+import { ArrowRight, CalendarClock, Hand, MessageSquare } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -33,52 +31,30 @@ import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
-import { listResearchRuns } from '@/adapters/api/research-runs-client'
-import { listJobRuns, type JobRun, type JobRunStatus } from '@/adapters/api/jobs-client'
+import { isActiveTaskRunStatus, type TaskRunStatus } from '@/lib/tasks/task-vocabulary'
+import { listJobRuns, type JobRun } from '@/adapters/api/jobs-client'
+import { taskThreadHref } from '@/features/tasks/lib/task-view'
 
 interface JobRunHistoryProps {
-  /** The project the job belongs to; it also scopes the live job-status join. */
+  /** The project the task belongs to. */
   projectId: string
   jobId: string
 }
 
-const STATUS_VARIANT: Record<JobRunStatus, NonNullable<BadgeProps['variant']>> = {
-  submitted: 'info',
+const STATUS_VARIANT: Record<TaskRunStatus, NonNullable<BadgeProps['variant']>> = {
+  queued: 'info',
+  running: 'info',
+  succeeded: 'success',
+  failed: 'destructive',
+  interrupted: 'secondary',
   skipped: 'warning',
   error: 'destructive',
 }
 
-/** Backend job statuses the run history renders, with their badge variants. */
-const JOB_STATUS_VARIANT: Record<string, NonNullable<BadgeProps['variant']>> = {
-  submitted: 'info',
-  pending: 'info',
-  running: 'info',
-  completed: 'success',
-  failed: 'destructive',
-  cancelled: 'secondary',
-}
+const TRIGGER_ICON = { schedule: CalendarClock, manual: Hand, delegated: MessageSquare } as const
 
-/** Statuses that mean the job is still on its way to an outcome. */
-const ACTIVE_JOB_STATUSES = new Set(['submitted', 'pending', 'running'])
-
-/** How often live job statuses refresh while a run is still active. */
-const JOB_STATUS_POLL_MS = 10000
-
-/** Newest jobs to join against; runs older than this fall back to their badge. */
-const JOB_STATUS_LOOKUP_LIMIT = 200
-
-/**
- * The conversation this run is narrated in, or null when nothing named one.
- *
- * Two sources, because the run row and the job are written at different times:
- * the run row's `conversation_id` is recorded when the submission already knows
- * the conversation, and the joined job carries it when the conversation was
- * minted during the run. Either one is the thread the run's message lives in.
- */
-function conversationFor(run: JobRun, byJobId: Record<string, string>): string | null {
-  if (run.conversationId) return run.conversationId
-  return (run.jobId && byJobId[run.jobId]) || null
-}
+/** How often the list re-reads while a run is still going. */
+const ACTIVE_POLL_MS = 10000
 
 /** Runs older than this show their date, not "vor 12 Tagen": a date is what a person cross-checks. */
 const ABSOLUTE_AFTER_MS = 7 * 24 * 60 * 60 * 1000
@@ -92,12 +68,10 @@ export function runTimeLabel(iso: string, locale: string, now: number = Date.now
 
 export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Element {
   const t = useTranslations('jobs')
+  const tTasks = useTranslations('tasks')
   const { locale } = useLocale()
   const [runs, setRuns] = useState<JobRun[] | null>(null)
   const [error, setError] = useState(false)
-  const [jobStatuses, setJobStatuses] = useState<Record<string, string>>({})
-  /** Conversation minted by a run, by backend job id — see `conversationFor`. */
-  const [conversationIds, setConversationIds] = useState<Record<string, string>>({})
 
   const load = useCallback(() => {
     setRuns(null)
@@ -111,53 +85,18 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
     load()
   }, [load])
 
-  // Live job statuses for the listed runs. One request covers every row (the
-  // project's newest jobs), repeated while at least one run is still active.
+  // While a run is going, re-read quietly until none is: the row's own status
+  // is what changes, and it is the only thing this list shows.
+  const anyActive = runs?.some((run) => isActiveTaskRunStatus(run.status)) ?? false
   useEffect(() => {
-    if (!runs) return
-    const backendJobIds = new Set(
-      runs.map((run) => run.jobId).filter((id): id is string => Boolean(id)),
-    )
-    if (backendJobIds.size === 0) return
-
-    let cancelled = false
-    let timer: ReturnType<typeof setTimeout> | null = null
-
-    const poll = async (): Promise<void> => {
-      try {
-        const { jobs } = await listResearchRuns({
-          projectId,
-          limit: JOB_STATUS_LOOKUP_LIMIT,
-        })
-        if (cancelled) return
-
-        const next: Record<string, string> = {}
-        const conversations: Record<string, string> = {}
-        for (const job of jobs) {
-          if (!backendJobIds.has(job.job_id)) continue
-          next[job.job_id] = job.status
-          // The run row is written at submission time, so a conversation minted
-          // later is only knowable from the job itself.
-          if (job.conversation_id) conversations[job.job_id] = job.conversation_id
-        }
-        setJobStatuses(next)
-        setConversationIds(conversations)
-
-        if (Object.values(next).some((status) => ACTIVE_JOB_STATUSES.has(status))) {
-          timer = setTimeout(() => void poll(), JOB_STATUS_POLL_MS)
-        }
-      } catch {
-        // Best-effort: rows keep their submission badge when the join fails.
-      }
-    }
-
-    void poll()
-
-    return () => {
-      cancelled = true
-      if (timer) clearTimeout(timer)
-    }
-  }, [projectId, runs])
+    if (!anyActive) return
+    const timer = setTimeout(() => {
+      listJobRuns(projectId, jobId, { limit: 20 })
+        .then(setRuns)
+        .catch(() => undefined)
+    }, ACTIVE_POLL_MS)
+    return () => clearTimeout(timer)
+  }, [anyActive, runs, projectId, jobId])
 
   if (error) {
     return (
@@ -182,27 +121,9 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
   return (
     <ItemList as="ul" className="animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none">
       {runs.map((run) => {
-        const TriggerIcon = run.trigger === 'schedule' ? CalendarClock : Hand
-        const jobStatus = run.jobId ? jobStatuses[run.jobId] : undefined
-        const isActive = jobStatus !== undefined && ACTIVE_JOB_STATUSES.has(jobStatus)
-        // The thread, live run or finished one alike: progress, report and
-        // failure are all the run's own message now (ADR-0062), so there is
-        // nothing left for a status to choose between.
-        //
-        // `?session=` selects the conversation and `?run=` names the run inside
-        // it — the id this list already holds, which the chat page resolves
-        // through `GET /api/projects/[id]/runs/[runId]`. No `#message-` anchor:
-        // this wire shape carries no run message id, so the reader lands in the
-        // thread rather than ON the run. The `?job=` links that used to stand
-        // here are gone with the side panel that read them.
-        const conversationId = conversationFor(run, conversationIds)
-        // No conversation, no thread — and a run history that cannot say where
-        // a run went says nothing rather than offering a link that goes
-        // nowhere. The badge still states what became of it.
-        const link = conversationId
-          ? `/app/projects/${projectId}/chat?session=${encodeURIComponent(conversationId)}&run=${encodeURIComponent(run.id)}`
-          : null
-        const linkLabel = isActive ? t('history.viewProgress') : t('history.openChat')
+        const TriggerIcon = TRIGGER_ICON[run.trigger]
+        const link = taskThreadHref(projectId, run)
+        const linkLabel = isActiveTaskRunStatus(run.status) ? t('history.viewProgress') : t('history.openChat')
 
         return (
           <Item as="li" key={run.id} className="flex-wrap justify-between py-2.5 max-sm:gap-y-0">
@@ -215,17 +136,9 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
                 <TriggerIcon className="size-3" aria-hidden />
                 {t(`history.trigger.${run.trigger}`)}
               </Badge>
-              {jobStatus ? (
-                <Badge variant={JOB_STATUS_VARIANT[jobStatus] ?? 'secondary'} className="shrink-0">
-                  {/* An unrecognized backend status is shown verbatim rather
-                      than as a missing translation key. */}
-                  {jobStatus in JOB_STATUS_VARIANT ? t(`history.jobStatus.${jobStatus}`) : jobStatus}
-                </Badge>
-              ) : (
-                <Badge variant={STATUS_VARIANT[run.status]} className="shrink-0">
-                  {t(`history.status.${run.status}`)}
-                </Badge>
-              )}
+              <Badge variant={STATUS_VARIANT[run.status]} className="shrink-0" data-testid="run-status">
+                {tTasks(`status.${run.status}`)}
+              </Badge>
               <time
                 dateTime={run.createdAt}
                 className="text-xs text-muted-foreground whitespace-nowrap"
@@ -235,9 +148,9 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
               </time>
               {/* The reason is the part a person acts on, and a `title` does not
                   exist on a touch screen. */}
-              {run.detail && (
+              {run.error && (
                 <p className="text-muted-foreground basis-full text-xs" data-testid="run-detail">
-                  {run.detail}
+                  {run.error}
                 </p>
               )}
             </ItemContent>

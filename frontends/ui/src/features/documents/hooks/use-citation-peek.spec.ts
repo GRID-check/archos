@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { act } from '@testing-library/react'
 import { renderHook, waitFor } from '@/test-utils'
-import { http, HttpResponse } from 'msw'
+import { HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { useChatStore } from '@/features/chat/store'
 import type { ChatMessage, CitationSource, Conversation } from '@/features/chat/types'
@@ -9,6 +9,7 @@ import { useFilePreviewStore } from '../stores/file-preview-store'
 import { resetFilePeekBinding } from '../lib/open-file-peek'
 import { resetSurfacedDocumentsCache } from './use-surfaced-documents'
 import { useCitationPeek } from './use-citation-peek'
+import { shelfPost } from '@/test-utils/shelf-handlers'
 
 const cited = (overrides: Partial<CitationSource> = {}): CitationSource => ({
   id: overrides.id ?? 'c1',
@@ -65,7 +66,7 @@ function observe() {
   const asked: string[] = []
   const opened: string[] = []
   server.use(
-    http.post('/api/documents/by-name', async ({ request }) => {
+    shelfPost('project', '/api/documents/by-name', async ({ request }) => {
       const { names } = (await request.json()) as { names: string[] }
       asked.push(...names)
       return HttpResponse.json({
@@ -124,8 +125,8 @@ describe('useCitationPeek', () => {
       projectId: 'proj-1',
     })
     server.use(
-      http.post('/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
-      http.post('/api/office-shelf/documents/by-name', () => HttpResponse.json({ documents: [] })),
+      shelfPost('project', '/api/documents/by-name', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
+      shelfPost('office_shelf', '/api/documents/by-name', () => HttpResponse.json({ documents: [] })),
     )
   })
 

@@ -148,9 +148,9 @@ const ROUTES: Record<string, RouteDisposition> = {
   'documents/[id]/download/route.ts': { via: 'getDocumentDownload' },
   'documents/[id]/preview/route.ts': { via: 'getDocumentPreview' },
   'documents/[id]/file/route.ts': { via: 'streamDocumentFile' },
+  // The same route serves a version's bytes (`?versionId=`) through streamVersionFile.
   'documents/[id]/text/route.ts': { via: 'getDocumentTextPreview' },
   'documents/[id]/versions/[versionId]/content/route.ts': { via: 'readVersionContent' },
-  'documents/[id]/versions/[versionId]/file/route.ts': { via: 'streamVersionFile' },
   'documents/[id]/versions/diff/route.ts': { via: 'readVersionContent' },
   'bim/models/[modelId]/source/route.ts': { via: 'getModelSource' },
   'documents/[id]/thumbnail/route.ts': { exempt: 'a thumbnail, see OBJECT_READERS.getDocumentThumbnail' },

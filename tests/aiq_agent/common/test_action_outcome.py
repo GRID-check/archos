@@ -1,4 +1,4 @@
-"""``ActionOutcome``: what a tool call found, and the status that follows from it (ADR-0131)."""
+"""``ActionOutcome``: what a tool call found, and the status that follows from it (ADR-0132)."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def test_settle_finishes_the_row_once_with_its_counts(emitted) -> None:
 
 
 async def test_parallel_calls_keep_their_own_call_id_for_their_sources(monkeypatch):
-    """Sources a call returns carry that call's id, even beside a sibling call (ADR-0131)."""
+    """Sources a call returns carry that call's id, even beside a sibling call (ADR-0132)."""
     import asyncio
 
     from aiq_agent.common import turn_status

@@ -162,7 +162,7 @@ const storedFields = (step: StepOf<string>, previous?: StoredThinkingStep): Part
       return {
         round: step.round,
         turnEvent: { key: step.key, ...some('values', step.values), ...some('reason', step.reason), ...some('tools', step.tools) },
-        // The decision's round 0: the Herleitung draws no row for it (ADR-0131).
+        // The decision's round 0: the Herleitung draws no row for it (ADR-0132).
         ...(step.prefetch ? { detail: { prefetch: true } } : {}),
       }
     case 'sources':

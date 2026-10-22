@@ -39,12 +39,20 @@
           "key": "features",
           "notes": [
             {
+              "en": "An AI assistant connected to your workspace now asks you in its own chat before it deletes or overwrites something, when the assistant supports such questions. Nothing changes unless you confirm, and your answer is recorded in your organization's audit log.",
+              "de": "Ein mit Ihrem Workspace verbundener KI-Assistent fragt Sie jetzt in seinem eigenen Chat, bevor er etwas löscht oder überschreibt – sofern der Assistent solche Rückfragen unterstützt. Es wird erst etwas geändert, wenn Sie bestätigen, und Ihre Antwort wird im Audit-Log Ihrer Organisation protokolliert."
+            },
+            {
               "en": "Piloti now always uses its own tools to keep notes, search your documents, set up tasks, mark documents and answer in their threads, and count in your BIM model, so each of these works the same way every time. Assistants you connect to Piloti can still do all of them.",
               "de": "Piloti verwendet jetzt immer seine eigenen Tools, um Notizen zu machen, Ihre Dokumente zu durchsuchen, Aufgaben einzurichten, Dokumente zu markieren, in den jeweiligen Threads zu antworten und in Ihrem BIM-Modell zu zählen. So funktioniert all das jedes Mal gleich. Mit Piloti verbundene Assistenten können weiterhin all das erledigen."
             },
             {
               "en": "Your connected assistant now works with what only Piloti has: your office's projects, documents, reviews and tasks, Piloti's building-law knowledge and BIM analysis, and Piloti itself. Your organization's settings, models, budgets and policies, web search and your notifications stay with you in Piloti.",
               "de": "Ihr verbundener Assistent arbeitet jetzt mit dem, was es nur bei Piloti gibt: den Projekten, Dokumenten, Prüfungen und Aufgaben Ihres Büros, dem baurechtlichen Wissen und der BIM-Analyse von Piloti sowie Piloti selbst. Die Einstellungen, Modelle, Budgets und Richtlinien Ihrer Organisation, die Websuche und Ihre Benachrichtigungen bleiben bei Ihnen in Piloti."
+            },
+            {
+              "en": "An agent connected to Piloti, such as Claude or Cursor, now learns when a project it has open changes: a new name, status, profile or document. It hears only about projects the signed-in person may open.",
+              "de": "Ein mit Piloti verbundener Agent wie Claude oder Cursor wird jetzt informiert, wenn sich ein geöffnetes Projekt ändert – etwa Name, Status, Profil oder Dokument. Er erhält nur Informationen zu Projekten, die die angemeldete Person öffnen darf."
             },
             {
               "en": "Once your organization switches it on, your own AI assistant can also share documents, set folder access, edit roles and manage your provider keys for you, and it asks you before every one of these changes.",
@@ -57,6 +65,10 @@
             {
               "en": "Your own AI assistant, such as Claude or Cursor, can now work in Piloti: it does anything you can do in the workspace, in your name and with your rights, once your office switches the connection on. Changes still wait for your yes.",
               "de": "Ihr eigener KI-Assistent, etwa Claude oder Cursor, kann jetzt in Piloti arbeiten: Er erledigt im Arbeitsbereich alles, was Sie selbst tun können – in Ihrem Namen und mit Ihren Berechtigungen, sobald Ihr Büro die Verbindung aktiviert. Änderungen werden weiterhin erst nach Ihrer Zustimmung umgesetzt."
+            },
+            {
+              "en": "An outside agent can now ask which OIB guidelines apply to a project and what would settle the open ones, and read the register of laws Piloti knows by number. It can also search the shared building-law corpus without choosing a project first.",
+              "de": "Ein externer Agent kann jetzt abfragen, welche OIB-Richtlinien für ein Projekt gelten und was offene Fragen klären würde, sowie das nach Nummern geordnete Gesetzesverzeichnis lesen, das Piloti kennt. Außerdem kann er die gemeinsame Sammlung zum Baurecht durchsuchen, ohne zuerst ein Projekt auszuwählen."
             },
             {
               "en": "Creating a project asks for its name, its address, whether it is running or finished, and optionally its folder. The setup that follows has five short steps (Projekt, Ablage, Erfassung, Rückfragen, Steckbrief), each on one screen with one button to go on, and you can leave at any point with „Später fortsetzen“.",
@@ -87,6 +99,14 @@
               "de": "Wenn Ihr Büro die Funktion aktiviert hat, gleicht Piloti ein neu hochgeladenes Dokument jetzt mit den übrigen Projektdokumenten ab. Weicht eine Kennzahl ab, etwa die Anzahl der Wohneinheiten, markiert Piloti die betreffende Stelle als Vorschlag und nennt beide Quellen; stimmen alle Angaben überein, gibt es keinen Hinweis."
             },
             {
+              "en": "A single document can now go to the bin and come back from it: the bin lists it by name, and restoring it files it back in the folder it came from.",
+              "de": "Ein einzelnes Dokument kann jetzt in den Papierkorb verschoben und von dort wiederhergestellt werden: Im Papierkorb wird es mit Namen angezeigt und beim Wiederherstellen wieder in dem Ordner abgelegt, aus dem es stammt."
+            },
+            {
+              "en": "An archived document can be brought back into the working set, and Piloti reads it again so it answers questions as before.",
+              "de": "Ein archiviertes Dokument lässt sich wieder in den Arbeitsbestand aufnehmen, und Piloti liest es erneut ein, damit es Fragen wieder wie zuvor beantworten kann."
+            },
+            {
               "en": "An answer read from your workspace, such as who is on a project or which approvals are open, no longer shows as low confidence. The confidence tooltip now says what the answer rests on, for example „3 Aussagen belegt · 1 Rechtsaussage ohne Beleg\".",
               "de": "Eine Antwort aus Ihrem Workspace, etwa dazu, wer an einem Projekt arbeitet oder welche Freigaben offen sind, wird nicht mehr als wenig zuverlässig angezeigt. Der Tooltip zur Vertrauenswürdigkeit zeigt jetzt, worauf die Antwort basiert, zum Beispiel „3 Aussagen belegt · 1 Rechtsaussage ohne Beleg“."
             },
@@ -113,6 +133,10 @@
             {
               "en": "While Piloti reads a new project's documents, the setup shows how far it has got: the site, how many documents are read, and the values, contradictions and gaps found so far. You can leave and ask the project chat meanwhile; your Postfach tells you when Piloti is done.",
               "de": "Während Piloti die Dokumente eines neuen Projekts liest, zeigt das Setup den aktuellen Stand: das Grundstück, die Anzahl der bereits gelesenen Dokumente sowie die bisher gefundenen Werte, Widersprüche und Lücken. Sie können die Ansicht verlassen und in der Zwischenzeit den Projekt-Chat befragen; Ihr Postfach informiert Sie, wenn Piloti fertig ist."
+            },
+            {
+              "en": "When you connect Claude, Cursor or another agent to Piloti, it can now read a short guide to your workspace, a glossary of the office's terms and the list of what it may do. It also offers ready workflows (a project briefing, a building-law check, what is on your plate) and your office's own skills by name.",
+              "de": "Wenn Sie Claude, Cursor oder einen anderen Agenten mit Piloti verbinden, kann dieser jetzt einen kurzen Leitfaden zu Ihrem Arbeitsbereich, ein Glossar der bürointernen Begriffe und eine Liste der erlaubten Aktionen lesen. Außerdem stellt er fertige Workflows (Projektbriefing, baurechtliche Prüfung, Ihre anstehenden Aufgaben) sowie die Skills Ihres Büros unter ihren jeweiligen Namen bereit."
             },
             {
               "en": "Organization admins can now see what Piloti has learned about the office's filing and naming habits, and confirm or decline each line. Declined lines are never used again, and moves you accepted teach Piloti where documents belong.",
@@ -160,6 +184,10 @@
           "key": "improvements",
           "notes": [
             {
+              "en": "An assistant connected to your workspace that asks Piloti a question can now show that Piloti is still working on the answer, or come back for it later without waiting.",
+              "de": "Ein mit Ihrem Workspace verbundener Assistent, der Piloti eine Frage stellt, kann jetzt anzeigen, dass Piloti noch an der Antwort arbeitet, oder die Antwort später abrufen, ohne warten zu müssen."
+            },
+            {
               "en": "A question your connected assistant asks Piloti now always ends with an answer or a reason, and one Piloti could not take leaves no empty conversation behind. Stopping a question takes effect at once.",
               "de": "Eine Frage, die Ihr verbundener Assistent jetzt an Piloti stellt, endet immer mit einer Antwort oder einer Begründung. Kann Piloti eine Frage nicht bearbeiten, bleibt kein leerer Gesprächsverlauf zurück. Das Abbrechen einer Frage wird sofort wirksam."
             },
@@ -192,6 +220,10 @@
               "de": "Die Command-Palette öffnet sich sofort mit Cmd+K. Sobald ein Tooltip angezeigt wird, erscheint der nächste, sobald Sie mit dem Mauszeiger darüberfahren."
             },
             {
+              "en": "Claude, Cursor and other assistants now show Piloti with its own name and icon, and its search and lookup results come back in a structured form they can read reliably.",
+              "de": "Claude, Cursor und andere Assistenten zeigen Piloti jetzt mit eigenem Namen und Icon an und erhalten Such- und Abfrageergebnisse in einem strukturierten Format, das sie zuverlässig auslesen können."
+            },
+            {
               "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
               "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
             },
@@ -208,6 +240,10 @@
               "de": "Das Sortieren aller Dateien in Ordnern zeigt jetzt den Fortschritt live an: die vier Schritte, die Anzahl der erledigten Dateien, die ungefähre Restdauer und die zuletzt abgelegten Dateien. Außerdem ist der Vorgang spürbar schneller abgeschlossen. Sobald Sie eine Sortierung anwenden oder abbrechen, wird die entsprechende Benachrichtigung in Ihrem Posteingang entfernt."
             },
             {
+              "en": "Assistants connected to Piloti can now read what a task run produced before accepting or rejecting it, and page through all of a project's tasks and runs.",
+              "de": "Mit Piloti verbundene Assistenten können jetzt vor dem Annehmen oder Ablehnen die Ergebnisse eines Task-Runs lesen und alle Tasks und Runs eines Projekts durchblättern."
+            },
+            {
               "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
               "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
             },
@@ -220,6 +256,10 @@
         {
           "key": "fixes",
           "notes": [
+            {
+              "en": "An agent that lists a project's members now gets the people who hold a role, with the id it needs to remove one, and long memory lists come in pages.",
+              "de": "Ein Agent, der die Mitglieder eines Projekts auflistet, erhält jetzt Personen mit einer Rolle samt der zum Entfernen benötigten ID; lange Listen aus dem Langzeitgedächtnis werden seitenweise ausgegeben."
+            },
             {
               "en": "With no project yet, the projects page shows one button to create the first project instead of two.",
               "de": "Wenn noch kein Projekt vorhanden ist, wird auf der Projektseite statt zwei Schaltflächen nur eine zum Erstellen des ersten Projekts angezeigt."
@@ -281,6 +321,10 @@
               "de": "Die deutschen Oberflächen von Piloti verwenden jetzt einheitliche Begriffe: Eine Aufgabe heißt „Aufgabe“, ein einzelner Versuch „Lauf“, eine Unterhaltung „Chat“ und die zugewiesene Person ist „zuständig“."
             },
             {
+              "en": "Asked from your own agent (Claude, Cursor or another MCP client), Piloti reads the building-law corpus, the project's documents and RIS again instead of answering that these sources were switched off. Comment threads that wake Piloti and the check of a new document read every source your office allows as well.",
+              "de": "Wenn Sie Piloti über Ihren eigenen Agenten (Claude, Cursor oder einen anderen MCP-Client) fragen, greift Piloti wieder auf den Baurechtskorpus, die Projektdokumente und RIS zu, statt zu melden, dass diese Quellen deaktiviert sind. Auch Kommentar-Threads, die Piloti aktivieren, und die Prüfung neuer Dokumente berücksichtigen alle Quellen, die Ihr Büro freigegeben hat."
+            },
+            {
               "en": "Changes Piloti proposes are filed again in every chat, and a proposed action now shows every value it would set in full and names the project or document it changes, so you never apply text you were not shown.",
               "de": "Von Piloti vorgeschlagene Änderungen werden in jedem Chat erneut erfasst. Eine vorgeschlagene Aktion zeigt jetzt alle Werte, die sie festlegen würde, vollständig an und nennt das Projekt oder Dokument, das sie ändert – so wenden Sie nie Text an, der Ihnen nicht angezeigt wurde."
             },
@@ -295,6 +339,10 @@
             {
               "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
               "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+            },
+            {
+              "en": "A task's run history now shows how each run actually ended, so a failed run reads as failed with its reason instead of as submitted.",
+              "de": "Der Ausführungsverlauf einer Aufgabe zeigt jetzt, wie jeder Durchlauf tatsächlich geendet hat: Fehlgeschlagene Durchläufe werden mit ihrem Grund als fehlgeschlagen statt als übermittelt angezeigt."
             },
             {
               "en": "Settings, platform and project panels that fail to load now say what failed and offer the same Try again button, which keeps its place and focus while it works instead of greying out.",

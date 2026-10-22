@@ -292,6 +292,8 @@ export async function listShelfProposals(
     statuses: readonly ProposedChangeStatus[]
     kind?: ProposedChangeKind
     withoutConversation?: boolean
+    /** The id of the last row of the previous page: only older rows are read. */
+    after?: string
     limit: number
   }
 ): Promise<ProposedChangeRow[]> {
@@ -306,10 +308,13 @@ export async function listShelfProposals(
           onShelf(organizationId, shelf),
           inArray(proposedChanges.status, [...options.statuses]),
           options.kind ? eq(proposedChanges.kind, options.kind) : undefined,
-          options.withoutConversation ? isNull(proposedChanges.originConversationId) : undefined
+          options.withoutConversation ? isNull(proposedChanges.originConversationId) : undefined,
+          options.after
+            ? sql`(${proposedChanges.createdAt}, ${proposedChanges.id}) < (select p.created_at, p.id from proposed_changes p where p.id = ${options.after}::uuid)`
+            : undefined
         )
       )
-      .orderBy(desc(proposedChanges.createdAt))
+      .orderBy(desc(proposedChanges.createdAt), desc(proposedChanges.id))
       .limit(limit)
   )
 }

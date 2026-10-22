@@ -1024,7 +1024,7 @@ export const chat: typeof en.chat = {
         pageCenter: 'in der Seitenmitte',
       },
     },
-    // Die Arbeitsliste der Herleitung (ADR-0131): eine Zeile je Aufruf, in
+    // Die Arbeitsliste der Herleitung (ADR-0132): eine Zeile je Aufruf, in
     // Runden gruppiert. Die Sätze setzen sich aus den getypten Werten des
     // Aufrufs zusammen, nie aus dem Text des Werkzeugs.
     work: {
@@ -1461,7 +1461,7 @@ export const chat: typeof en.chat = {
       // Erst das Ledger macht den Unterschied benennbar.
       stepKindNoHits: 'Kein Treffer',
       // Eine Runde, die nur Ordner geöffnet hat: sie sucht keine Dokumente, also
-      // ist leer ausgehen kein Fehlschlag (ADR-0131).
+      // ist leer ausgehen kein Fehlschlag (ADR-0132).
       stepKindBrowse: 'Ordner öffnen',
       // Eine Schicht, die ausschließlich Passagen bereits gefundener Dateien
       // aufgeschlagen hat: sie hat nichts Neues gesucht. Genau diese Runde von

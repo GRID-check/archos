@@ -43,6 +43,8 @@ import type { ProjectSetup } from './create-project-schema'
 import { startProjectIntake } from './intake-seed'
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
+import { nextOffsetCursor, type OffsetPage } from '@/lib/api/offset-page'
+import { deriveProjectStandards, toStandardWire } from '@/lib/oib/project-standards'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { memberReader } from '@/lib/documents/visibility'
 import { withServedEvidence } from './memory-evidence'
@@ -646,6 +648,16 @@ export async function getProjectOverview(session: AuthorizedSession, projectId: 
   return data
 }
 
+/**
+ * The OIB guidelines that apply to a project and why, from its brief
+ * (`deriveProjectStandards`, the overview's own derivation).
+ */
+export async function getProjectStandards(session: AuthorizedSession, projectId: string) {
+  const project = await getProject(session, projectId)
+  const { applicableStandards, briefComplete } = deriveProjectStandards(project)
+  return { standards: applicableStandards.map(toStandardWire), briefComplete }
+}
+
 /** The fields a member may edit on an existing memory item. */
 export type ProjectMemoryItemPatch = Partial<
   Pick<ProjectMemoryItem, 'content' | 'kind' | 'status' | 'confidence' | 'verification' | 'pinned'>
@@ -718,19 +730,30 @@ export async function getProjectMemory(
   projectId: string,
   options: { includeArchived?: boolean; sourceConversationId?: string } = {}
 ): Promise<ProjectMemoryListItem[]> {
+  return (await getProjectMemoryPage(session, projectId, options)).items
+}
+
+/** {@link getProjectMemory}, one page at a time when `page` is given (pinned first, then newest). */
+export async function getProjectMemoryPage(
+  session: AuthorizedSession,
+  projectId: string,
+  options: { includeArchived?: boolean; sourceConversationId?: string; page?: OffsetPage } = {}
+): Promise<{ items: ProjectMemoryListItem[]; nextCursor: string | null }> {
   await requireProjectAccess(session, projectId, 'project:view')
   const { cleared } = await memoryClearance(session, projectId)
-  const listed = await listProjectMemory(projectId, {
+  const fetched = await listProjectMemory(projectId, {
     ...options,
     organizationId: session.organizationId,
     readableFolderIds: cleared,
   })
+  const nextCursor = options.page ? nextOffsetCursor(options.page, fetched.length) : null
+  const listed = options.page ? fetched.slice(0, options.page.limit) : fetched
   // An item's evidence names only the files this person may open now (memory-evidence.ts).
   const items = await withServedEvidence(session.organizationId, listed, {
     reader: memberReader(session.userId),
     clearanceIn: () => cleared,
   })
-  return labelRestrictions(session, projectId, items)
+  return { items: await labelRestrictions(session, projectId, items), nextCursor }
 }
 
 /**

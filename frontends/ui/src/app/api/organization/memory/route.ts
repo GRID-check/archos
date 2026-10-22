@@ -8,15 +8,25 @@
  * (`@/lib/projects/service`), the one an accepted memory proposal uses too.
  */
 
-import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { listOrganizationMemory } from '@/lib/projects/memory-service'
 import { createOrganizationMemoryItem } from '@/lib/projects/service'
 import { createOrgMemorySchema } from '@/lib/organizations/organization-wire'
+import { offsetPageOf, nextOffsetCursor } from '@/lib/api/offset-page'
+import { listOrganizationMemoryQuerySchema, toMemoryWireItem } from '@/lib/projects/project-memory-wire'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const includeArchived = new URL(request.url).searchParams.get('includeArchived') === 'true'
-    return { items: await listOrganizationMemory(session.organizationId, { includeArchived }) }
+    const query = parseQuery(request, listOrganizationMemoryQuerySchema)
+    const page = offsetPageOf(query)
+    const fetched = await listOrganizationMemory(session.organizationId, {
+      includeArchived: query.includeArchived === 'true',
+      page,
+    })
+    return {
+      items: fetched.slice(0, page.limit).map(toMemoryWireItem),
+      nextCursor: nextOffsetCursor(page, fetched.length),
+    }
   },
   {
     authz: {
@@ -30,7 +40,7 @@ export const POST = apiRoute(
   async ({ session, request }) => {
     const input = await parseJsonBody(request, createOrgMemorySchema)
     const item = await createOrganizationMemoryItem(session, input)
-    return { item }
+    return { item: toMemoryWireItem(item) }
   },
   {
     status: 201,

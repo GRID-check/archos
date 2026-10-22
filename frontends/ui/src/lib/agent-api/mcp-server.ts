@@ -17,17 +17,26 @@ import 'server-only'
 import {
   type AuthInfo,
   McpServer,
+  type ServerEventBus,
   WebStandardStreamableHTTPServerTransport,
   createMcpHandler,
   fromJsonSchema,
   isLegacyRequest,
 } from '@modelcontextprotocol/server'
-import type { StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server'
+import type {
+  CallToolResult,
+  InputRequiredResult,
+  ServerContext,
+  StandardSchemaWithJSON,
+  ToolAnnotations,
+} from '@modelcontextprotocol/server'
 import type { BackendOperation } from './backend-operations'
+import { confirmThenRun, confirmationFor } from './confirmation'
 import type { OperationInput } from './dispatch'
 import {
   type MetaToolName,
   callOperationTool,
+  catalogCallOf,
   describeOperation,
   inputSchemaOf,
   metaToolsFor,
@@ -39,6 +48,12 @@ import {
 import { type AgentOperation, annotationsOf } from './operation'
 import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
+import { offersDoorGuide, offersProjectResource, readableProjectUris, registerDoorGuide } from './door'
+import { DoorEventBus, listeningAs } from './door/event-bus'
+import { META_TOOL_ICONS, SERVER_ICONS } from './icons'
+import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
+import { configuredAppOrigin } from '@/lib/app-origin'
+import { ASK_CREATE, TASKS_EXTENSION, offersAskTasks, registerAskTasks, runAskCreate } from './ask-calls'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -47,6 +62,7 @@ export const MODE_HEADER = 'x-piloti-mcp-mode'
 export const MCP_INSTRUCTIONS = [
   'Piloti is the workspace for architects: a planning office runs its projects and processes in it, and Piloti, the agent, is a colleague in that office.',
   'Through this server you act for the signed-in person, with exactly the rights they have: their projects, documents, folders, review, conversations, tasks, skills and knowledge.',
+  'Read the resource piloti://guide once: how the workspace fits together and how ids flow; piloti://catalog lists every operation you may run, piloti://glossary the office\'s German words.',
   'Start with project-list to see which projects exist, then search-operations to find what you need and call-operation to run it (describe-operation shows an input you do not know).',
   'Ask the person before a destructive operation. If nothing fits what they asked for, say so and call report-missing-operation.',
 ].join(' ')
@@ -60,9 +76,9 @@ export const PLATFORM_MCP_INSTRUCTIONS = [
 ].join(' ')
 
 /** The server's name and instructions on each door. */
-const SERVER_IDENTITY: Readonly<Record<AgentDoor, { name: string; instructions: string }>> = {
-  office: { name: 'piloti', instructions: MCP_INSTRUCTIONS },
-  platform: { name: 'piloti-platform', instructions: PLATFORM_MCP_INSTRUCTIONS },
+const SERVER_IDENTITY: Readonly<Record<AgentDoor, { name: string; title: string; instructions: string }>> = {
+  office: { name: 'piloti', title: 'Piloti', instructions: MCP_INSTRUCTIONS },
+  platform: { name: 'piloti-platform', title: 'Piloti platform', instructions: PLATFORM_MCP_INSTRUCTIONS },
 }
 
 /**
@@ -126,11 +142,33 @@ export function listedAnnotations(annotations: ToolAnnotations): ToolAnnotations
   }
 }
 
-function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
-  const handlers: Record<MetaToolName, (args: unknown) => ReturnType<typeof callOperationTool> | ReturnType<typeof searchOperations>> = {
+/** The declared result shape of a meta-tool that has one (`call-operation` does not: its result varies by operation). */
+function outputSchemaOf(name: string): { outputSchema?: StandardSchemaWithJSON } {
+  const schema = (META_OUTPUT_SCHEMAS as Readonly<Record<string, unknown>>)[name]
+  return schema ? { outputSchema: fromJsonSchema(schema as JsonSchemaInput) } : {}
+}
+
+/**
+ * call-operation. Asking Piloti on the 2026-07-28 era may report progress or
+ * become a task (`ask-calls.ts`); it is no destructive write, so it is never put
+ * to the person first. Every other call goes through `confirmThenRun`.
+ */
+type ToolAnswer = CallToolResult | InputRequiredResult | Promise<CallToolResult | InputRequiredResult>
+
+function callOperationFor(ctx: McpCallContext, args: unknown, req: ServerContext, era: McpEra): ToolAnswer {
+  const asks = era === 'modern' && typeof args === 'object' && args !== null && (args as { name?: unknown }).name === ASK_CREATE
+  const input = asks ? (args as { input?: unknown }).input : undefined
+  if (asks && (input === undefined || (typeof input === 'object' && input !== null && !Array.isArray(input)))) {
+    return runAskCreate(ctx, (input ?? {}) as OperationInput, req)
+  }
+  return confirmThenRun(ctx, req, catalogCallOf(ctx.principal, args), (runCtx) => callOperationTool(runCtx, args))
+}
+
+function registerMetaTools(server: McpServer, ctx: McpCallContext, era: McpEra): void {
+  const handlers: Record<MetaToolName, (args: unknown, req: ServerContext) => ToolAnswer> = {
     'search-operations': (args) => searchOperations(ctx, args),
     'describe-operation': (args) => describeOperation(ctx, args),
-    'call-operation': (args) => callOperationTool(ctx, args),
+    'call-operation': (args, req) => callOperationFor(ctx, args, req, era),
     'report-missing-operation': (args) => reportMissingOperation(ctx, args),
   }
   for (const [name, tool] of Object.entries(metaToolsFor(ctx.principal)) as [MetaToolName, ReturnType<typeof metaToolsFor>[MetaToolName]][]) {
@@ -140,6 +178,8 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
         title: tool.title,
         description: tool.description,
         inputSchema: fromJsonSchema(tool.inputSchema as JsonSchemaInput),
+        ...outputSchemaOf(name),
+        icons: META_TOOL_ICONS[name],
         annotations: {
           readOnlyHint: tool.readOnly,
           // call-operation can run any operation, deletes included: the client asks the person.
@@ -149,12 +189,12 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
         },
         _meta: ALWAYS_LOAD_META,
       },
-      (args: unknown) => handlers[name](args),
+      (args: unknown, req: ServerContext) => handlers[name](args, req),
     )
   }
 }
 
-function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
+function registerOperationTools(server: McpServer, ctx: McpCallContext, era: McpEra): void {
   for (const op of visibleOperations(ctx.principal)) {
     server.registerTool(
       op.name,
@@ -165,7 +205,12 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
         annotations: listedAnnotations(annotationsOf(op)),
         ...(ALWAYS_LOAD.has(op.name) ? { _meta: ALWAYS_LOAD_META } : {}),
       },
-      (args: unknown) => runOperation(ctx, op.name, (args ?? {}) as OperationInput),
+      op.name === ASK_CREATE && era === 'modern'
+        ? (args: unknown, req: ServerContext) => runAskCreate(ctx, (args ?? {}) as OperationInput, req)
+        : (args: unknown, req: ServerContext) => {
+            const input = (args ?? {}) as OperationInput
+            return confirmThenRun(ctx, req, { operation: op.name, input }, (runCtx) => runOperation(runCtx, op.name, input))
+          },
     )
   }
   // The Python agent's read tools: flat arguments, read-only, and open-world only where they reach beyond the workspace.
@@ -196,12 +241,52 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
   )
 }
 
-export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpServer {
-  const { name, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
-  const server = new McpServer({ name, version: '1.0.0' }, { instructions })
-  const ctx: McpCallContext = { principal, mode }
-  if (mode === 'tools') registerOperationTools(server, ctx)
-  else registerMetaTools(server, ctx)
+/** The protocol era a server answers: only `modern` has `subscriptions/listen`; a 2025-era request is stateless and cannot hold a stream. */
+export type McpEra = 'modern' | 'legacy'
+
+/**
+ * What the server claims to support. The SDK defaults every `listChanged` to
+ * true, which would promise notifications nobody sends: the tool and prompt
+ * lists change only with a deploy, so they say false. The resource list
+ * (the person's projects) and a project's overview change at any time, and are
+ * announced to a modern client that listens.
+ */
+function capabilitiesFor(ctx: McpCallContext, era: McpEra) {
+  const live = era === 'modern' && offersProjectResource(ctx)
+  const tasks = era === 'modern' && offersAskTasks(ctx.principal)
+  return {
+    tools: { listChanged: false },
+    // The tasks extension, to a caller that may ask Piloti (`ask-calls.ts`).
+    ...(tasks ? { extensions: { [TASKS_EXTENSION]: {} } } : {}),
+    ...(offersDoorGuide(ctx)
+      ? { prompts: { listChanged: false }, resources: live ? { listChanged: true, subscribe: true } : { listChanged: false } }
+      : {}),
+  }
+}
+
+/**
+ * The server for one request. `era` is the request's protocol era: only a
+ * 2026-07-28 request can carry a question back to the person (`inputRequired`),
+ * so only there is an outside agent's destructive write put to them first
+ * (`confirmation.ts`), with `requestState` verified before any handler runs. A
+ * 2025-era server is built exactly as before. A modern server also reports a
+ * Piloti ask's progress and may hand it out as a task.
+ */
+export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: McpEra = 'legacy'): McpServer {
+  const { name, title, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
+  const confirmation = era === 'modern' ? confirmationFor(principal) : null
+  const ctx: McpCallContext = confirmation ? { principal, mode, confirmation } : { principal, mode }
+  // The deployment's pinned origin; omitted where none is configured (never the inbound Host header).
+  const websiteUrl = configuredAppOrigin()
+  const capabilities = capabilitiesFor(ctx, era)
+  const server = new McpServer(
+    { name, title, version: '1.0.0', icons: SERVER_ICONS, ...(websiteUrl ? { websiteUrl } : {}) },
+    confirmation ? { instructions, capabilities, requestState: { verify: confirmation.codec.verify } } : { instructions, capabilities },
+  )
+  if (mode === 'tools') registerOperationTools(server, ctx, era)
+  else registerMetaTools(server, ctx, era)
+  registerDoorGuide(server, ctx)
+  if (era === 'modern' && offersAskTasks(principal)) registerAskTasks(server, ctx)
   return server
 }
 
@@ -253,26 +338,71 @@ async function serveLegacyAsJson(request: Request, authInfo: AuthInfo | undefine
 }
 
 /**
- * The agent door's MCP handler: 2026-07-28 traffic through the SDK's handler,
- * JSON only; 2025-era traffic (Piloti's own client among it) through
- * {@link serveLegacyAsJson}, so both eras answer JSON to a client that accepts
- * it. The principal and mode travel in `authInfo.extra`, the SDK's documented
- * pass-through for keying a factory off the caller.
+ * The agent door's MCP handler: 2026-07-28 traffic through the SDK's handler;
+ * 2025-era traffic (Piloti's own client among it) through
+ * {@link serveLegacyAsJson}, which answers one JSON body.
+ *
+ * The modern handler answers `auto`: a call that sends no message before its
+ * result (every call but a `piloti-ask-create` that carries a progress token)
+ * is one JSON body; that one call is upgraded to an SSE stream carrying its
+ * `notifications/progress` and then the result. Nothing else here emits a
+ * message before a result: the server declares no `logging`, and asking for
+ * input is a result (`input_required`), not a message. The principal and mode
+ * travel in `authInfo.extra`, the SDK's documented pass-through for keying a
+ * factory off the caller.
  */
-export function createAgentDoorHandler(onerror: (error: Error) => void = (error) => console.error('[mcp]', error.message)) {
+export function createAgentDoorHandler(
+  onerror: (error: Error) => void = (error) => console.error('[mcp]', error.message),
+  bus: ServerEventBus = new DoorEventBus(),
+) {
   const modern = createMcpHandler(
     (context) => {
       const { principal, mode } = context.authInfo?.extra as unknown as AgentDoorRequest
-      return buildMcpServer(principal, mode)
+      return buildMcpServer(principal, mode, 'modern')
     },
-    { legacy: 'reject', responseMode: 'json', onerror },
+    { legacy: 'reject', responseMode: 'auto', onerror, bus },
   )
   return {
+    /** The bus listen streams hear; publish through `realtime/door-events.ts`, which stamps the organization. */
+    bus: modern.bus,
     async fetch(request: Request, options: { authInfo?: AuthInfo } = {}): Promise<Response> {
-      if (request.method.toUpperCase() === 'POST' && (await isLegacyRequest(request))) {
-        return serveLegacyAsJson(request, options.authInfo, onerror)
+      if (request.method.toUpperCase() !== 'POST') return modern.fetch(request, options)
+      if (await isLegacyRequest(request)) return serveLegacyAsJson(request, options.authInfo, onerror)
+      if (request.headers.get('mcp-method') === 'subscriptions/listen' && options.authInfo) {
+        return serveListen((r, o) => modern.fetch(r, o), request, options.authInfo)
       }
       return modern.fetch(request, options)
     },
   }
+}
+
+interface ListenBody {
+  params?: { notifications?: { resourceSubscriptions?: unknown } }
+}
+
+/**
+ * `subscriptions/listen`, as the person who listens: the URIs it names are cut
+ * to the ones that person may read (the SDK checks none), and the stream is
+ * opened in the person's organization, so it hears only that organization's
+ * events (`door/event-bus.ts`). A body that is not the shape of a listen request
+ * goes to the SDK unchanged, which answers it.
+ */
+async function serveListen(handle: (request: Request, options: { authInfo?: AuthInfo }) => Promise<Response>, request: Request, authInfo: AuthInfo): Promise<Response> {
+  const { principal, mode } = authInfo.extra as unknown as AgentDoorRequest
+  let body: ListenBody | null = null
+  try {
+    body = (await request.clone().json()) as ListenBody
+  } catch {
+    body = null
+  }
+  const asked = body?.params?.notifications?.resourceSubscriptions
+  let forwarded = request
+  if (body && Array.isArray(asked)) {
+    const allowed = await readableProjectUris({ principal, mode }, asked.filter((uri): uri is string => typeof uri === 'string'))
+    const headers = new Headers(request.headers)
+    headers.delete('content-length')
+    const narrowed = { ...body, params: { ...body.params, notifications: { ...body.params?.notifications, resourceSubscriptions: allowed } } }
+    forwarded = new Request(request.url, { method: 'POST', headers, body: JSON.stringify(narrowed), signal: request.signal })
+  }
+  return listeningAs(principal.session.organizationId, () => handle(forwarded, { authInfo }))
 }

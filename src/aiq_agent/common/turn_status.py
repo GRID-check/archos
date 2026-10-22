@@ -542,12 +542,12 @@ def emit_technical(slot: str, **detail: Scalar | list[str] | None) -> None:
     emit_status(slot, channel=CHANNEL_TECHNICAL, **detail)
 
 
-#: Step id prefix of an action row (ADR-0131); a fresh id per call follows.
+#: Step id prefix of an action row (ADR-0132); a fresh id per call follows.
 ACTION_STEP_PREFIX = "action:"
 
 
 #: The action row of the tool call running RIGHT NOW, so the sources it returns
-#: name the same call (ADR-0131). Each parallel call runs in its own task, so
+#: name the same call (ADR-0132). Each parallel call runs in its own task, so
 #: siblings never see each other's id.
 _action_call: ContextVar[str | None] = ContextVar("grid_action_call", default=None)
 
@@ -1360,7 +1360,7 @@ def emit_retrieval(
 
     ``prefetch`` marks the round the decision ran before the model's first
     call (round 0 of ``PilotiAgent._prefetch_node``). The Herleitung draws no
-    row for it: its sources join the first fan like any other (ADR-0131). The
+    row for it: its sources join the first fan like any other (ADR-0132). The
     round index cannot say this, since a turn with nothing prefetched numbers
     the model's own first search 0 too.
 

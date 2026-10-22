@@ -153,7 +153,7 @@ and gives the reader the same evidence on both surfaces.
   (`common/wire_v2.py`): document, page, the region in words ("oben rechts",
   the words the Fokusbereich block already computes), the question, the first
   reading. Rendered "Angesehen: Grundriss EG.pdf, S. 2, oben rechts" with a
-  thumbnail, through i18n. (Since ADR-0131 a look draws the work list's own
+  thumbnail, through i18n. (Since ADR-0132 a look draws the work list's own
   row, „Betrachtet Grundriss EG.pdf, S. 2, oben rechts“, with the region in
   the reader's language.)
 * **A `look` card per document per turn.** A system card

@@ -96,6 +96,27 @@ def render_unresolved(result: dict[str, Any], fallback: str) -> str:
     return f"{text} {advice}" if advice else text
 
 
+def _shelf_suffix(model: dict[str, Any]) -> str:
+    """Marks a model that belongs to no project; nothing for the project's own."""
+    return ", office shelf, not the project's" if model.get("shelf") == "office" else ""
+
+
+def shelf_notice(result: dict[str, Any]) -> str | None:
+    """The line a shelf model's answer must open with, or None for the project's own model."""
+    selection = result.get("selection")
+    if not isinstance(selection, dict) or selection.get("shelf") != "office":
+        return None
+    own = (
+        "This project has no IFC model of its own."
+        if selection.get("projectHasOwnModel") is False
+        else "The project's own model was not the one named."
+    )
+    return (
+        "NOTICE: this is an office-shelf model (Büroablage), not this project's building. "
+        f"{own} State this in the answer; do not describe these figures as the project's."
+    )
+
+
 def _unresolved_message(result: dict[str, Any], fallback: str) -> str:
     """The route's own sentence, plus the model list when there is one."""
     message = result.get("message") or fallback
@@ -103,11 +124,18 @@ def _unresolved_message(result: dict[str, Any], fallback: str) -> str:
     if not models:
         return str(message)
     listed_models = ", ".join(
-        f"{m.get('filename')} ({m.get('status')}, {m.get('elements', 0)} elements)" for m in models[:10]
+        f"{m.get('filename')} ({m.get('status')}, {m.get('elements', 0)} elements{_shelf_suffix(m)})"
+        for m in models[:10]
     )
-    heading = (
-        "Available models"
-        if result.get("reason") in {"no_match", "ambiguous"}
-        else "Models in this project (not yet queryable)"
-    )
+    reason = result.get("reason")
+    if reason == "no_own_model":
+        heading = (
+            "This project has NO IFC model of its own. Office-shelf models (they belong to no project, often "
+            "samples; read one only if the user names it, via model_name, and never present it as this "
+            "project's building)"
+        )
+    elif reason in {"no_match", "ambiguous"}:
+        heading = "Available models"
+    else:
+        heading = "Models in this project (not yet queryable)"
     return f"{message} {heading}: {listed_models}."

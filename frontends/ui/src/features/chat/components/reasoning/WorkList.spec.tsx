@@ -1,5 +1,5 @@
 /**
- * The work list as the Herleitung draws it (ADR-0131): one row per call, the
+ * The work list as the Herleitung draws it (ADR-0132): one row per call, the
  * verb muted before its object and the result beside it; status as a shape and
  * a word, never a colour; a tap that links a row to its cards; a row stored
  * before call ids opening its document as it did; no time anywhere.

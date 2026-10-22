@@ -95,7 +95,7 @@ function stubFetch({ memory: items = memory, experience }: StubOptions = {}) {
 }
 
 const memoryGets = (fetchMock: ReturnType<typeof stubFetch>) =>
-  fetchMock.mock.calls.filter(([url, init]) => url === '/api/projects/p1/memory' && !init?.method).length
+  fetchMock.mock.calls.filter(([url, init]) => String(url).startsWith('/api/projects/p1/memory') && !init?.method).length
 
 describe('ClosingDebrief', () => {
   afterEach(() => {

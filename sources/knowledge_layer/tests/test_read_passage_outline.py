@@ -334,7 +334,7 @@ class TestTheClauseOutline:
 
         out = await _read(document=OIB)
 
-        assert "Found 2 relevant document(s)" in out
+        assert "Read 2 passage(s) of" in out
         assert "--- Result 3 ---" not in out
 
     async def test_it_closes_by_saying_the_index_is_not_evidence(self, store):
@@ -357,7 +357,7 @@ class TestTheClauseOutline:
         out = await _read(document=OIB)
         head = out.split("## Gliederung", 1)[0]
 
-        assert "Found 1 relevant document(s)" in head
+        assert "Read 1 passage(s) of" in head
         assert "Erstens …" in head
         assert "Zweitens …" not in head
         assert _outline(out)[0] == "- Punkt 1: Begriffsbestimmungen (S. 3) — Erstens …"
@@ -421,7 +421,7 @@ class TestThePerPageFallback:
 
         out = await _read(document=PLAN)
 
-        assert "Found 3 relevant document(s)" in out
+        assert "Read 3 passage(s) of" in out
         assert f"Citation: {PLAN}, p.1" in out
         assert "Seite 3 des Konzepts" in out
 
@@ -448,7 +448,7 @@ class TestThePerPageFallback:
 
         out = await _read(document=PLAN)
 
-        assert f"Found {rp._MAX_PASSAGE_CHUNKS} relevant document(s)" in out
+        assert f"Read {rp._MAX_PASSAGE_CHUNKS} passage(s) of" in out
         assert "Seite 1" in out
         assert "Seite 40" not in out
 
@@ -533,7 +533,7 @@ class TestADocumentWhosePageLabelIsNotAPage:
 
         out = await _read(document=SHEET, conclusion="Ich weiß noch nicht, was die Datei enthält.")
 
-        assert "Found 2 relevant document(s)" in out
+        assert "Read 2 passage(s) of" in out
         assert "Position | Betrag …" in out
         assert "Preisbasis 2024 …" in out
         assert "no passage of it could be read" not in out

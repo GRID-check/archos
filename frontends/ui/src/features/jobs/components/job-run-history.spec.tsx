@@ -15,21 +15,25 @@ import { JobRunHistory, runTimeLabel } from './job-run-history'
 
 const listJobRuns = vi.hoisted(() => vi.fn())
 vi.mock('@/adapters/api/jobs-client', () => ({ listJobRuns }))
-vi.mock('@/adapters/api/research-runs-client', () => ({
-  listResearchRuns: vi.fn(async () => ({ jobs: [] })),
-}))
 
 const run = (overrides: Partial<JobRun> = {}): JobRun => ({
   id: 'run-1',
-  scheduleId: 'j1',
-  jobId: null,
+  taskId: 'j1',
+  kind: 'deep-research',
+  title: 'Wochencheck',
+  goal: null,
+  status: 'succeeded',
+  review: null,
+  reviewReason: null,
+  filedDocumentId: null,
   conversationId: 'conv-1',
+  runMessageId: null,
   trigger: 'schedule',
-  status: 'submitted',
-  detail: null,
-  skillSnapshot: {} as JobRun['skillSnapshot'],
-  triggeredBy: null,
+  requesterUserId: 'user_1',
+  requesterName: null,
   createdAt: new Date().toISOString(),
+  finishedAt: null,
+  error: null,
   ...overrides,
 })
 
@@ -52,13 +56,25 @@ describe('a run row', () => {
 
   test('says why a run was skipped, as text a finger can read', async () => {
     listJobRuns.mockResolvedValue([
-      run({ status: 'skipped', detail: 'The organization already had the maximum number of active jobs.' }),
+      run({ status: 'skipped', error: 'The organization already had the maximum number of active jobs.' }),
     ])
     render(<JobRunHistory projectId="p1" jobId="j1" />)
 
     expect(await screen.findByTestId('run-detail')).toHaveTextContent(
       'The organization already had the maximum number of active jobs.',
     )
+  })
+})
+
+describe('a run’s status', () => {
+  // The history used to show a submission word, and every run the worker took
+  // read „Submitted" whatever became of it, a failed one included.
+  test('is the run’s own: a failed run reads failed, with its reason', async () => {
+    listJobRuns.mockResolvedValue([run({ status: 'failed', error: 'Job timed out' })])
+    render(<JobRunHistory projectId="p1" jobId="j1" />)
+
+    expect(await screen.findByTestId('run-status')).toHaveTextContent('Failed')
+    expect(screen.getByTestId('run-detail')).toHaveTextContent('Job timed out')
   })
 })
 

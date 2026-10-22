@@ -250,21 +250,7 @@ export const jobs = {
     trigger: {
       manual: 'Manual',
       schedule: 'Scheduled',
-    },
-    // How the submission went (job_runs.status).
-    status: {
-      submitted: 'Submitted',
-      skipped: 'Skipped',
-      error: 'Error',
-    },
-    // How the run itself is going, read from the backend job store.
-    jobStatus: {
-      submitted: 'Queued',
-      pending: 'Queued',
-      running: 'Running',
-      completed: 'Completed',
-      failed: 'Failed',
-      cancelled: 'Cancelled',
+      delegated: 'From chat',
     },
   },
 }

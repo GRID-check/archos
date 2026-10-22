@@ -284,16 +284,20 @@ describe('in a conversation that is the requester’s alone', () => {
  * reason a reviewer can disagree with; a read that can carry another project's content
  * declares `spansProjects` instead, and is refused there.
  */
+const SHELF_SCOPED =
+  'a project only when its `projectId` names one, which the gate judges as any named project; else the office shelf, which belongs to no project'
+
 const READS_WITHOUT_PROJECT_CONTENT: Readonly<Record<string, string>> = {
   'inbox-summary-get': 'a count of waiting items, no item',
   'office-shelf-folder-list': 'the office shelf, which belongs to no project',
-  'office-shelf-document-list': 'the office shelf, which belongs to no project',
-  'office-shelf-document-summary': 'the office shelf, which belongs to no project',
-  'office-shelf-document-lookup': 'the office shelf, which belongs to no project',
-  'office-shelf-document-name-probe': 'the office shelf, which belongs to no project',
-  'office-shelf-document-revision-probe': 'the office shelf, which belongs to no project',
+  'document-list': SHELF_SCOPED,
+  'document-summary-get': SHELF_SCOPED,
+  'document-by-name-resolve': SHELF_SCOPED,
+  'document-name-match': SHELF_SCOPED,
+  'document-revision-candidates': SHELF_SCOPED,
   'office-shelf-root-sort-get': 'the office shelf, which belongs to no project',
   'knowledge-base-get': 'the platform’s base corpus, the same for every organization',
+  'norm-list': 'the platform’s norm register, public law pointers, the same for every organization',
   'organization-member-list': 'the organization’s members, which every member sees',
   'organization-role-list': 'the organization’s roles',
   'organization-memory-list': 'the knowledge shared by every project, which every member reads',

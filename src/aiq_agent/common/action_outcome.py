@@ -1,4 +1,4 @@
-"""What one tool call found, held while it runs so its Herleitung row can settle (ADR-0131).
+"""What one tool call found, held while it runs so its Herleitung row can settle (ADR-0132).
 
 A tool that emits an :class:`~aiq_agent.common.turn_status.ActionRow` fills one
 of these from the typed values it already holds (the chunks it ranked, the

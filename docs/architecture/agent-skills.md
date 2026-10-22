@@ -796,24 +796,16 @@ not a skill route, and here because it is where forcing went:
   review something not yet valid) and always 200 with `{ findings, error? }` —
   a review must never block a save.
 
-Project jobs (`…/api/projects/[id]/jobs/…`, read = `project:view`, mutate/run =
-`project:skills:manage` via `requireProjectAccess`):
-
-- `GET`/`POST /api/projects/{id}/jobs` — list / create. `prompt` is required
-  (1–8000 chars); `skillName` is optional — when given it is resolved (org row
-  first, builtin fallback; unknown name → 404) and snapshotted, and name +
-  snapshot are always written as a pair. The request carries no `output`: the
-  service writes `deep-research` for every job it creates. Validates the cron (5-field,
-  IANA timezone, minimum interval) and computes `next_run_at`. There is no
-  longer any veto from the attached skill: whether something may run on a timer
-  is a property of the job.
-- `GET`/`PATCH`/`DELETE /api/projects/{id}/jobs/{jobId}` — PATCH re-resolves
-  the snapshot and recomputes `next_run_at`. `skillName: null` detaches the
-  skill; omitting it leaves the attachment alone.
-- `POST …/{jobId}/run` — manual "Run now" through the shared fire path;
-  409 when the job is disabled; a backend 429 (job caps) comes back as a
-  `skipped` run rather than an error.
-- `GET  …/{jobId}/runs` — run history, newest first.
+Project tasks (`…/api/projects/[id]/tasks/…`, read = `project:view`,
+mutate/run = `project:skills:manage` via `requireProjectAccess`). The routes,
+their keyset pages and the run list (`…/runs?taskId=`) are in
+[`bff-routes.md`](../api/bff-routes.md#tasks-and-task-runs-adr-0051-adr-0131).
+`skillName` is resolved (org row first, builtin fallback; unknown → 404) and
+snapshotted with its name as a pair; the request carries no `output`, because
+every task the service creates files a report. Nothing about the attached skill
+vetoes a schedule: whether something may run on a timer is a property of the
+task. "Run now" shares the fire path, 409 when the task is disabled, and a
+backend 429 comes back as a `skipped` run rather than an error.
 
 Internal (shared-token, `internalApiRoute`, unreachable from outside the
 compose network):
@@ -1069,7 +1061,7 @@ organization, lacks `project:documents:generate`, or whose organization has
 agent-authored documents off is a `refused` filing recorded on the row — a
 permission the person does not hold is not one the scheduler may borrow.
 
-Review is a second axis on the row: `POST /api/projects/[id]/tasks/[taskId]/review`
+Review is a second axis on the row: `POST /api/projects/[id]/runs/[runId]/review`
 with `{ decision: accepted | rejected, reason? }` (`project:edit`). A rejection's
 reason is quoted into the next run of the same job as a `PREVIOUS_DECISIONS`
 block on the fire prompt (`previousDecisionsBlock`), so what a person told

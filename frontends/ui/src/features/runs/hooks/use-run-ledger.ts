@@ -33,7 +33,7 @@
  * ## How the stream is found
  *
  * The message holds the run id; the stream hangs off the backend job id. So a
- * live run costs one `GET /api/projects/[id]/runs/[runId]` (the session read
+ * live run costs one `GET /api/projects/[id]/runs/[runId]?include=stream` (the session read
  * door, `lib/runs/run-view-client.ts`) for `backendJobId`, then the existing
  * job-events proxy (`/api/jobs/async/job/[jobId]/stream`) through
  * `createDeepResearchClient` with NO last event id, so the stream replays from
@@ -64,7 +64,7 @@ import type { ChatMessage } from '@/features/chat/types'
 import { useChatStore } from '@/features/chat/store'
 import { sanitizeRunLedger } from '@/lib/runs/run-ledger'
 import { isTerminalRunStatus, type RunLedger } from '@/lib/runs/run-ledger-types'
-import { addRunDocument, cancelRun, fetchRunView, RunViewError, writeNowRun } from '@/lib/runs/run-view-client'
+import { addRunDocument, cancelRun, fetchLiveRunView, fetchRunView, RunViewError, writeNowRun } from '@/lib/runs/run-view-client'
 import type { PlanDocument } from '@/lib/runs/plan-documents'
 import { runDisplayStatus } from '@/lib/runs/run-vocabulary'
 
@@ -197,7 +197,7 @@ export function useRunLedger({
       setConnection(null)
     }
 
-    fetchRunView(projectId, runId)
+    fetchLiveRunView(projectId, runId)
       .then((view) => {
         if (cancelled) return
         const fetched = view.ledger

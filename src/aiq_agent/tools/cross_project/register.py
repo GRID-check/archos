@@ -977,7 +977,7 @@ def _observe(action: str, payload: dict[str, Any], outcome: dict[str, Any]) -> N
 
 
 # ---------------------------------------------------------------------------
-# The Herleitung row (ADR-0131)
+# The Herleitung row (ADR-0132)
 # ---------------------------------------------------------------------------
 
 

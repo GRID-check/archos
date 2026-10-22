@@ -22,6 +22,7 @@
 import { z } from 'zod'
 import { DOCUMENT_AUTHORS } from './document-authors'
 import { DOCUMENT_LIFECYCLES } from './lifecycle-types'
+import { shelfSelectorFields } from './shelf-scope'
 
 /**
  * Most names one probe carries — the folder-drop walker's own ceiling
@@ -31,8 +32,8 @@ export const NAME_PROBE_MAX_NAMES = 2000
 
 const names = z.array(z.string().min(1).max(1024)).min(1).max(NAME_PROBE_MAX_NAMES)
 
-export const officeShelfNameProbeRequestSchema = z.object({ names })
-export const projectNameProbeRequestSchema = z.object({ projectId: z.string().min(1), names })
+/** The shelf (`scope`, `projectId`) and the file names to probe on it. */
+export const nameProbeRequestSchema = z.object({ ...shelfSelectorFields, names })
 
 /**
  * The project's Fassung probe also says where each dropped name lands: the
@@ -43,13 +44,13 @@ export const projectNameProbeRequestSchema = z.object({ projectId: z.string().mi
  * collection the file goes to are offered. A name it does not mention lands at
  * the root.
  */
-export const projectRevisionCandidatesRequestSchema = projectNameProbeRequestSchema.extend({
+export const revisionCandidatesRequestSchema = nameProbeRequestSchema.extend({
   folders: z
     .record(z.string().min(1).max(1024), z.string().min(1).max(64).nullable())
     .refine((folders) => Object.keys(folders).length <= NAME_PROBE_MAX_NAMES, 'Too many names')
     .optional(),
 })
-export type ProjectRevisionCandidatesRequest = z.infer<typeof projectRevisionCandidatesRequestSchema>
+export type RevisionCandidatesRequest = z.infer<typeof revisionCandidatesRequestSchema>
 
 export const documentNameMatchSchema = z.object({
   id: z.string(),

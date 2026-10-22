@@ -1,4 +1,4 @@
-"""One Herleitung row per evidence call (ADR-0131): ``knowledge_search``, ``read_passage``, ``list_files``.
+"""One Herleitung row per evidence call (ADR-0132): ``knowledge_search``, ``read_passage``, ``list_files``.
 
 Each call emits one ``running`` step and settles it under the same id, from the values the tool holds
 (chunks ranked, groups counted, rows listed), never from its text.

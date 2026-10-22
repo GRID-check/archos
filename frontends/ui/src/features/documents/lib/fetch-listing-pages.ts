@@ -1,8 +1,9 @@
 /**
  * Read a paged document listing to its end.
  *
- * `GET /api/documents` and `GET /api/office-shelf/documents` answer one bounded
- * keyset page at a time and say where the next one starts (`nextCursor`). The
+ * `GET /api/documents` (a project's shelf, or `scope=office_shelf`) answers one
+ * bounded keyset page at a time and says where the next one starts (`nextCursor`);
+ * this asks for the largest page the route serves (`limit`). The
  * surfaces that read them — the Files pane, the Archiv — filter, search, count
  * folders and plan folder uploads over the corpus IN THE BROWSER, so for them
  * "the listing" has to be every row, not the newest page. They used to get the
@@ -23,8 +24,16 @@
  * the top would read that page twice.
  */
 
+import { DOCUMENT_LEVEL_LIMIT_MAX } from '@/lib/documents/list-query'
+
 /** Page ceiling for one drain — 20 pages of the server's 500 rows. */
 export const MAX_LISTING_PAGES = 20
+
+/** The listing asked for its largest page, unless the URL names a `limit` already. */
+function withLargestPage(url: string): string {
+  if (/[?&]limit=/.test(url)) return url
+  return `${url}${url.includes('?') ? '&' : '?'}limit=${DOCUMENT_LEVEL_LIMIT_MAX}`
+}
 
 /** A listing response body: the rows of one page and where the next starts. */
 export interface ListingPage<Row> {
@@ -81,6 +90,7 @@ export async function fetchListingPages<Row, Body extends ListingPage<Row> = Lis
   url: string,
   { maxPages = MAX_LISTING_PAGES, fetcher = fetch, from, onPage }: ListingReadOptions<Row, Body> = {},
 ): Promise<DrainedListing<Row, Body>> {
+  url = withLargestPage(url)
   let first: Body | null = null
   const documents: Row[] = []
   let cursor: string | null = from?.cursor ?? null

@@ -125,7 +125,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     const seen: string[] = []
     let cursor: import('./list-cursor').DocumentListCursor | undefined
     for (let guard = 0; guard < 10; guard++) {
-      const page = await inTenant(() => officeShelf.listOfficeShelfDocuments(ORG, { limit: 3, cursor, reader: REVIEWER_READER }))
+      const page = await inTenant(() => repo.listDocumentPage({ kind: 'office_shelf' }, ORG, { limit: 3, cursor, reader: REVIEWER_READER }))
       seen.push(...page.rows.map((row) => row.id))
       if (!page.nextCursor) break
       cursor = page.nextCursor

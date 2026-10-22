@@ -1,5 +1,5 @@
 /**
- * The words of one Herleitung row (ADR-0131), in three parts the row lays out
+ * The words of one Herleitung row (ADR-0132), in three parts the row lays out
  * apart: the verb („Sucht wörtlich“, muted), the object („„Brandabschnitt“
  * im Projekt“) and the result („14 Treffer · 3 Dokumente“, right-aligned).
  *

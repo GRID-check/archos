@@ -400,6 +400,7 @@ export const intakeViewSchema = z.object({
         oibUrl: z.string().max(500),
         status: z.enum(['required', 'likely', 'check'] as const satisfies readonly ApplicableStatus[]),
         reason: z.string().max(1000),
+        decidingFact: z.string().max(100).optional(),
       })
     )
     .max(40)

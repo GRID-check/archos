@@ -13,11 +13,11 @@ import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { listAssignmentsWithoutAccessCheck, type AssignedPerson } from '@/lib/assignments/service'
 import { tallyLiveMarks } from '@/lib/annotations/repository'
 import type { MarkTally } from '@/lib/annotations/types'
-import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
+import { encodeDocumentLevelCursor } from './list-cursor'
 import { reconcileDocumentStatuses, type DocumentMetadata } from './reconcile-status'
 import type { RevisionLinks } from './revision-links'
 import { loadRevisionLinks } from './revision-links-loader'
-import type { DocumentLevelPage, DocumentListPage, DocumentListRow } from './repository'
+import type { DocumentLevelPage, DocumentListRow } from './repository'
 import { keepReadable, type ListingReader, type ShelfReader } from './document-reader'
 import { canRetryRow } from './retry-policy'
 import { quarantineVerdictOf, type QuarantineVerdict } from '@/lib/upload-screening/quarantine'
@@ -161,21 +161,9 @@ export async function toListedDocuments(
   return listed.map((row) => ({ ...row, assignees: grouped[row.id] ?? [] }))
 }
 
-/** A keyset page as it leaves the service: hydrated rows and the opaque next cursor. */
-export async function toListedPage(
-  session: AuthorizedSession,
-  page: DocumentListPage,
-  reader: ShelfReader,
-): Promise<{ documents: ListedDocument[]; nextCursor: string | null }> {
-  return {
-    documents: await toListedDocuments(session, page.rows, reader),
-    nextCursor: page.nextCursor ? encodeDocumentListCursor(page.nextCursor) : null,
-  }
-}
-
 /**
- * A level page as it leaves the service (ADR-0102): the same hydration as the
- * drain's page, one page at a time, and the level cursor. The backend is asked
+ * A page as it leaves the service (ADR-0102): the rows hydrated, one page at a
+ * time, and the level cursor. The backend is asked
  * about the rows of THIS page only, which is the point of reading by level.
  */
 export async function toListedLevelPage(

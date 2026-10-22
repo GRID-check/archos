@@ -24,8 +24,9 @@ vi.mock('./backend-operations', async (importOriginal) => ({
 vi.mock('./operation-proposals', () => ({ proposeOperation: vi.fn() }))
 vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationMissing: vi.fn() }))
 
+import { z } from 'zod'
 import { callBackendOperation } from './backend-operations'
-import { callOperation, validateOperationInput } from './dispatch'
+import { OperationInputError, callOperation, validateOperationInput } from './dispatch'
 import {
   MAX_RESULT_CHARS,
   MAX_SEARCH_QUERY_LENGTH,
@@ -34,11 +35,14 @@ import {
   describeOperation,
   inputSchemaOf,
   metaToolsFor,
+  narrowingHint,
+  readOperationBody,
   nativeToolRefusal,
   reportMissingOperation,
   searchOperations,
 } from './discovery'
 import type { AgentOperation } from './operation'
+import { FAKE_OPERATIONS } from './test-operations'
 import { proposeOperation } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
 import { recordOperationCalled, recordOperationMissing } from './telemetry'
@@ -288,6 +292,39 @@ describe('call-operation', () => {
     expect(proposeOperation).not.toHaveBeenCalled()
   })
 
+  describe('readOperationBody', () => {
+    it('answers a refusal, not an exception, when the input is wrong, and records the read', async () => {
+      vi.mocked(callOperation).mockRejectedValue(new OperationInputError('query.nameContains is too long'))
+
+      const read = await readOperationBody(ctx(piloti), 'project-list', { query: { nameContains: 'x'.repeat(300) } })
+
+      expect(read).toEqual({ refusal: expect.stringContaining('query.nameContains is too long') })
+      expect(recordOperationCalled).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ operation: 'project-list', decision: 'run', status: 400 }),
+      )
+    })
+
+    it('answers a refusal for anything else that throws', async () => {
+      vi.mocked(callOperation).mockRejectedValue(new Error('boom'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(readOperationBody(ctx(piloti), 'project-list', {})).resolves.toEqual({
+        refusal: expect.stringContaining('failed'),
+      })
+    })
+
+    it('records a read that ran with its status', async () => {
+      const read = await readOperationBody(ctx(piloti), 'project-list', {})
+
+      expect(read).toEqual({ body: { projects: [] } })
+      expect(recordOperationCalled).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ operation: 'project-list', decision: 'run', status: 200 }),
+      )
+    })
+  })
+
   it('refuses a hidden operation as unknown and records the refusal', async () => {
     const result = await callOperationTool(ctx(person), { name: 'project-folder-access-set', input: { params: { id: 'f' }, body: { role: 'x' } } })
     expect(result.isError).toBe(true)
@@ -351,7 +388,7 @@ describe('call-operation', () => {
     })
     const result = await callOperationTool(ctx(person), { name: 'project-list' })
     expect(result.isError).toBe(true)
-    expect(text(result)).toMatch(/was not read\. Narrow the call/)
+    expect(text(result)).toMatch(/was not read\. This operation has no limit or filter/)
   })
 
   it('truncates a large result and says how to page', async () => {
@@ -363,9 +400,20 @@ describe('call-operation', () => {
     const result = await callOperationTool(ctx(person), { name: 'project-list' })
     expect(text(result).length).toBeLessThan(MAX_RESULT_CHARS + 500)
     expect(text(result)).toMatch(/Truncated/)
-    expect(text(result)).toMatch(/limit or filters/)
+    // project-list has no query in the fake catalog: the hint says so, not "pass a limit".
+    expect(text(result)).toMatch(/has no limit or filter/)
+    expect(text(result)).toMatch(/search-operations with this domain/)
     // The full payload must not slip through as structured content.
     expect(result.structuredContent).toBeUndefined()
+  })
+
+  it('names the query parameters an operation really has when it truncates', async () => {
+    const withQuery = { ...FAKE_OPERATIONS[0], query: z.object({ limit: z.string().optional(), cursor: z.string().optional() }) }
+    expect(narrowingHint(withQuery)).toMatch(/\(limit, cursor\) in input\.query/)
+    expect(narrowingHint(withQuery)).not.toMatch(/no limit or filter/)
+    expect(narrowingHint({ inputSchema: { type: 'object', properties: { projectId: {}, query: {}, top_k: {} } } })).toMatch(
+      /\(query, top_k\) in input,/
+    )
   })
 
   it('wraps a non-object body so structuredContent stays an object', async () => {
@@ -419,7 +467,7 @@ describe('call-operation with a file in the answer', () => {
     expect(result.content).toHaveLength(1)
     expect(text(result)).toMatch(/12\.0 MiB/)
     expect(text(result)).toMatch(/5\.0 MiB/)
-    expect(text(result)).toMatch(/document-text-get/)
+    expect(text(result)).toMatch(/passage reader/)
     expect(result.structuredContent).toBeUndefined()
   })
 
@@ -468,7 +516,8 @@ describe('the Python agent’s read tools', () => {
   it('are described with the fixture’s input schema and read-only annotations', () => {
     const result = describeOperation(ctx(person), { name: 'knowledge-search' })
     const described = result.structuredContent as { inputSchema: { required: string[] }; annotations: Record<string, unknown> }
-    expect(described.inputSchema.required[0]).toBe('projectId')
+    // The project is optional for the shared corpus (`shelf: "base"`), so the query leads the required ones.
+    expect(described.inputSchema.required).toEqual(['query'])
     expect(described.annotations).toMatchObject({ readOnlyHint: true, idempotentHint: true, openWorldHint: false })
   })
 

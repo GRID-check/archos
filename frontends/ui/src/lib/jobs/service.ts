@@ -9,11 +9,10 @@
  * lifecycle, filing and review live next door in `@/lib/tasks/service` over
  * the same `task_runs` table.
  *
- * The HTTP contract is deliberately unchanged: the project-scoped `/jobs`
- * routes still answer the shapes the UI's jobs client parses (`name`, `prompt`,
- * `output`, …), and this module projects a definition onto that shape. That
- * projection is the seam at which the old wire model meets the new storage
- * model; it disappears when the UI moves to definitions in the same release.
+ * On the wire a definition is a TASK and one attempt a TASK RUN (ADR-0131,
+ * `lib/tasks/task-wire.ts`), served at `/api/projects/[id]/tasks` and
+ * `/api/projects/[id]/runs`; this module projects a definition onto that view
+ * and answers a fire with the run's view, never the row.
  */
 
 import 'server-only'
@@ -45,7 +44,9 @@ import { nextOccurrence, validateCron, validateDueAt, minIntervalMinutesFromEnv 
 import { JobSubmitError, JobSubmitSkippedError, type JobPriority } from './backend-client'
 import * as repository from '@/lib/tasks/repository'
 import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
-import { previousDecisionsBlock } from '@/lib/tasks/service'
+import { decodeCursorParam, previousDecisionsBlock, toTaskRunViews } from '@/lib/tasks/service'
+import type { TaskListQuery, TaskPage, TaskRunView, TaskView } from '@/lib/tasks/task-wire'
+import { encodeDocumentListCursor } from '@/lib/documents/list-cursor'
 import { taskThreadConversationId } from '@/lib/tasks/task-thread'
 import { isActiveTaskRunStatus, submittedRunStatus } from '@/lib/tasks/task-vocabulary'
 import { createRunMessage } from '@/lib/runs/service'
@@ -69,7 +70,7 @@ import {
  */
 function assertJobsFeatureOn(session: AuthorizedSession): void {
   if (requireSkillsEnabled(session)) {
-    throw new ForbiddenError('Jobs are disabled.')
+    throw new ForbiddenError('Tasks are disabled.')
   }
 }
 
@@ -78,87 +79,30 @@ function assertJobsFeatureOn(session: AuthorizedSession): void {
 // ---------------------------------------------------------------------------
 
 /**
- * A definition as the `/jobs` wire has always described one. The UI's
- * `jobs-client.ts` parses exactly these fields, and `name`/`prompt`/`output`
- * are that model's words for `title`/`plan.prompt`/`kind`.
+ * A definition as the wire names it: a task (`lib/tasks/task-wire.ts`). The
+ * words are the wizard's (`name`, `prompt`, `output`) for the columns `title`,
+ * `plan.prompt` and `kind`. The attached skill is named, never carried: its
+ * body is the skill's own read.
  */
-export interface JobView {
-  id: string
-  projectId: string
-  name: string
-  prompt: string
-  skillName: string | null
-  skillSnapshot: SkillSnapshot | null
-  output: JobOutput
-  dataSources: string[] | null
-  enabled: boolean
-  scheduleCron: string | null
-  scheduleTimezone: string
-  /** When a one-shot is due; null on a recurring or manual task. */
-  dueAt: Date | null
-  nextRunAt: Date | null
-  lastRunAt: Date | null
-  createdBy: string
-  createdByEmail: string | null
-  createdAt: Date
-  updatedAt: Date
-}
-
-/** The `job_runs` words for a `task_runs` row (the run-history wire shape). */
-export interface JobRunView {
-  id: string
-  /** The parent's id. `schedule_id` on the wire, `definition_id` in storage. */
-  scheduleId: string
-  /** The BACKEND async-job id. Null when skipped/error. */
-  jobId: string | null
-  trigger: TaskRunTrigger
-  status: 'submitted' | 'skipped' | 'error'
-  detail: string | null
-  conversationId: string | null
-  skillSnapshot: SkillSnapshot
-  triggeredBy: string | null
-  createdAt: Date
-}
-
-function toJobView(definition: TaskDefinition): JobView {
+function toTaskView(definition: TaskDefinition): TaskView {
   const skill = definition.plan.skill
-  const hasSkill = Boolean(skill && skill.name)
   return {
     id: definition.id,
     projectId: definition.projectId,
     name: definition.title,
     prompt: definition.plan.prompt,
-    skillName: hasSkill ? skill.name : null,
-    skillSnapshot: hasSkill ? skill : null,
+    skillName: skill && skill.name ? skill.name : null,
     output: definition.kind === 'deep-research' ? 'deep-research' : 'chat',
     dataSources: definition.plan.dataSources,
     enabled: definition.enabled,
     scheduleCron: definition.scheduleCron,
     scheduleTimezone: definition.scheduleTimezone,
-    dueAt: definition.dueAt,
-    nextRunAt: definition.nextRunAt,
-    lastRunAt: definition.lastRunAt,
+    dueAt: definition.dueAt?.toISOString() ?? null,
+    nextRunAt: definition.nextRunAt?.toISOString() ?? null,
+    lastRunAt: definition.lastRunAt?.toISOString() ?? null,
     createdBy: definition.requesterUserId,
-    createdByEmail: definition.requesterEmail,
-    createdAt: definition.createdAt,
-    updatedAt: definition.updatedAt,
-  }
-}
-
-function toJobRunView(run: TaskRun): JobRunView {
-  return {
-    id: run.id,
-    scheduleId: run.definitionId ?? '',
-    jobId: run.backendJobId,
-    trigger: run.trigger,
-    // The old submission vocabulary: a worker outcome never reached this list,
-    // so every non-skip/non-error attempt reads `submitted`.
-    status: run.status === 'skipped' || run.status === 'error' ? run.status : 'submitted',
-    detail: run.error,
-    conversationId: run.conversationId,
-    skillSnapshot: run.skillSnapshot,
-    triggeredBy: run.triggeredBy,
-    createdAt: run.createdAt,
+    createdAt: definition.createdAt.toISOString(),
+    updatedAt: definition.updatedAt.toISOString(),
   }
 }
 
@@ -236,17 +180,6 @@ function triggerFor(scheduleCron: string | null, dueAt: Date | null): Definition
 }
 
 /**
- * Whether a `once` definition is a DELEGATION rather than a one-shot somebody
- * scheduled. Both are `trigger = 'once'`; the due date is the whole difference.
- * A delegation is dispatched the moment it is created and belongs to the run
- * list, so the standing-task list filters it out — by this, not by the trigger,
- * or a scheduled one-shot would be invisible in the list that created it.
- */
-function isDelegation(definition: TaskDefinition): boolean {
-  return definition.trigger === 'once' && definition.dueAt === null
-}
-
-/**
  * Permissions attach to the TRIGGER (the decision in the follow-up plan):
  * creating or editing work is `project:edit`; giving it a recurring trigger —
  * unattended, REPEATED spend against somebody's budget — additionally needs
@@ -277,39 +210,48 @@ async function requireDefinitionAccess(
 /**
  * A project's standing tasks — everything except a delegation.
  *
- * The filter is `isDelegation`, not `trigger !== 'once'`: since 0090 a `once`
- * definition may be a one-shot somebody scheduled for a date, and that belongs
- * in the list it was created from. Only the dateless kind — dispatched at
- * creation from a chat — belongs to the run list instead.
+ * The filter is "a `once` definition WITHOUT a due date", not `trigger !==
+ * 'once'`: since 0090 a `once` definition may be a one-shot somebody scheduled
+ * for a date, and that belongs in the list it was created from. Only the
+ * dateless kind — dispatched at creation from a chat — belongs to the run list
+ * instead. The repository filters in SQL, so a page is never short
+ * (`listDefinitionPage`).
  */
 export async function listJobs(
   session: AuthorizedSession,
   projectId: string,
-): Promise<{ jobs: JobView[] }> {
+  query: TaskListQuery,
+): Promise<TaskPage> {
   assertJobsFeatureOn(session)
   await requireProjectAccess(session, projectId, 'project:view')
-  const rows = await repository.listDefinitionsInProject(projectId, session.organizationId)
-  return { jobs: rows.filter((row) => !isDelegation(row)).map(toJobView) }
+  const page = await repository.listDefinitionPage(projectId, session.organizationId, {
+    limit: query.limit,
+    cursor: decodeCursorParam(query.cursor),
+  })
+  return {
+    tasks: page.rows.map(toTaskView),
+    nextCursor: page.next ? encodeDocumentListCursor(page.next) : null,
+  }
 }
 
 export async function getJob(
   session: AuthorizedSession,
   projectId: string,
   jobId: string,
-): Promise<JobView> {
+): Promise<TaskView> {
   assertJobsFeatureOn(session)
   await requireProjectAccess(session, projectId, 'project:view')
   const definition = await repository.findDefinition(jobId, session.organizationId)
-  if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
-  await requireMaySeeSubject(session, projectId, definition, 'Job not found.')
-  return toJobView(definition)
+  if (!definition || definition.projectId !== projectId) throw new NotFoundError('Task not found.')
+  await requireMaySeeSubject(session, projectId, definition, 'Task not found.')
+  return toTaskView(definition)
 }
 
 export async function createJob(
   session: AuthorizedSession,
   projectId: string,
   input: CreateJobInput,
-): Promise<JobView> {
+): Promise<TaskView> {
   assertJobsFeatureOn(session)
   const scheduleCron = input.scheduleCron ?? null
   const dueAt = input.dueAt ?? null
@@ -345,7 +287,7 @@ export async function createJob(
     dueAt,
     nextRunAt,
   })
-  return toJobView(definition)
+  return toTaskView(definition)
 }
 
 export async function updateJob(
@@ -353,10 +295,10 @@ export async function updateJob(
   projectId: string,
   jobId: string,
   patch: PatchJobInput,
-): Promise<JobView> {
+): Promise<TaskView> {
   assertJobsFeatureOn(session)
   const existing = await repository.findDefinition(jobId, session.organizationId)
-  if (!existing || existing.projectId !== projectId) throw new NotFoundError('Job not found.')
+  if (!existing || existing.projectId !== projectId) throw new NotFoundError('Task not found.')
 
   const scheduleCron = patch.scheduleCron !== undefined ? patch.scheduleCron : existing.scheduleCron
   // `undefined` keeps what the row has, an explicit `null` clears it — the same
@@ -411,8 +353,8 @@ export async function updateJob(
     nextRunAt,
     updatedAt: new Date(),
   })
-  if (!definition) throw new NotFoundError('Job not found.')
-  return toJobView(definition)
+  if (!definition) throw new NotFoundError('Task not found.')
+  return toTaskView(definition)
 }
 
 export async function deleteJob(
@@ -422,28 +364,11 @@ export async function deleteJob(
 ): Promise<{ deleted: true }> {
   assertJobsFeatureOn(session)
   const existing = await repository.findDefinition(jobId, session.organizationId)
-  if (!existing || existing.projectId !== projectId) throw new NotFoundError('Job not found.')
+  if (!existing || existing.projectId !== projectId) throw new NotFoundError('Task not found.')
   await requireDefinitionAccess(session, projectId, existing.scheduleCron !== null)
 
   await repository.deleteDefinition(jobId, session.organizationId)
   return { deleted: true }
-}
-
-export async function listJobRuns(
-  session: AuthorizedSession,
-  projectId: string,
-  jobId: string,
-  limit: number,
-  offset: number,
-): Promise<{ runs: JobRunView[] }> {
-  assertJobsFeatureOn(session)
-  await requireProjectAccess(session, projectId, 'project:view')
-
-  const definition = await repository.findDefinition(jobId, session.organizationId)
-  if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
-  await requireMaySeeSubject(session, projectId, definition, 'Job not found.')
-  const runs = await repository.listRunsForDefinition(jobId, session.organizationId, { limit, offset })
-  return { runs: runs.map(toJobRunView) }
 }
 
 // ---------------------------------------------------------------------------
@@ -455,14 +380,19 @@ export async function runJobNow(
   session: AuthorizedSession,
   projectId: string,
   jobId: string,
-): Promise<TaskRun> {
+): Promise<{ run: TaskRunView }> {
   assertJobsFeatureOn(session)
   await requireProjectAccess(session, projectId, 'project:skills:manage')
 
   const definition = await repository.findDefinition(jobId, session.organizationId)
-  if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
-  if (!definition.enabled) throw new ConflictError('This job is disabled.')
-  return fireJob(definition, 'manual', session.userId)
+  if (!definition || definition.projectId !== projectId) throw new NotFoundError('Task not found.')
+  if (!definition.enabled) throw new ConflictError('This task is disabled.')
+  // The run's VIEW, never the row: the row carries the composed prompt (a
+  // skill's whole body in a legacy plan), the backend's job id and the
+  // requester's email, none of which a caller acts on.
+  const run = await fireJob(definition, 'manual', session.userId)
+  const [view] = await toTaskRunViews(session.organizationId, [run])
+  return { run: view }
 }
 
 /** What `buildFirePrompt` needs. The prompt, and since ADR-0060 nothing else. */

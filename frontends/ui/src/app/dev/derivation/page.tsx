@@ -31,7 +31,7 @@
  *   - spine-folded → THREE rounds, which is where the graph stops being a shape
  *     and becomes a scroll: the older two layers arrive folded to their counts
  *     and the newest is open. Neither folded caption names a query (PF-12).
- *   - work     → the approved 2026-10 Herleitung (ADR-0131): the decision's
+ *   - work     → the approved 2026-10 Herleitung (ADR-0132): the decision's
  *     prefetch (no row, its OIB-RL 2 in the first fan), step 1 with a literal
  *     search, a folder and a search that found nothing, step 2 reading and
  *     looking at the plan sheet; uncited documents fold into one dashed card,
@@ -356,7 +356,7 @@ const liveCommon = {
   enabledDataSources: defaultCommon.enabledDataSources,
 }
 
-// Work-list scenarios (ADR-0131): folded from wire steps by the app's own fold.
+// Work-list scenarios (ADR-0132): folded from wire steps by the app's own fold.
 const workCommon = {
   ...defaultCommon,
   steps: foldScene(mockupScene()),

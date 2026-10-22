@@ -60,6 +60,8 @@ const SEES_EVERY_ROW: Record<string, string> = {
     "The sharing registry's `listIdsInProject`: a leaver's grants go on every document of the project, held ones included.",
   'lib/sharing/repository.ts#deleteOrphanedGrants': 'Orphan sweep: NOT EXISTS over every row, or a held document loses its grants.',
   'lib/inbox/repository.ts#deleteOrphanedInboxItems': 'Orphan sweep: NOT EXISTS over every row, or a held document loses its inbox rows.',
+  'lib/inbox/repository.ts#projectScopePredicate':
+    "Narrows the recipient's own inbox rows to one project; the row exists either way and is redacted at read time by its target's access check.",
   'lib/mentions/repository.ts#deleteOrphanedMentionRequests':
     'Orphan sweep: NOT EXISTS over every row, or a held document loses its mention requests.',
   'lib/documents/version-repository.ts#keyIsUnnamed':
@@ -119,6 +121,8 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The version list and the last refusers, after `getAccessibleDocument` / `findDocumentForSession` read the document.',
   'lib/documents/version-repository.ts#findDocumentVersion|documentVersions':
     'A version of a document the transition, the view or the content read loaded through its reader first.',
+  'lib/documents/version-repository.ts#listReviewQueue|documentVersions':
+    "The review queue's own cursor reads the submission time of the version the previous page ended on; the page itself joins `documents` behind `documentVisibleTo`.",
   'lib/documents/version-repository.ts#findPreviousVersion|documentVersions':
     "The version before the one a transition just moved, of the document that transition read.",
   'lib/documents/version-repository.ts#findDocumentVersionInOrg|documentVersions':

@@ -44,6 +44,7 @@ import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
 import backendTools from '../../../tests/fixtures/backend-tools.schema.json'
 import type { AgentDomain, ToolAnnotations } from './operation'
 import { type OperationResult, readResponseBody } from './dispatch'
+import { withOperationNames, withRankedOrderNote, type ToolNames } from './door-text'
 
 export type { OperationResult }
 
@@ -73,6 +74,11 @@ export interface BackendOperation {
   readonly annotations: BackendAnnotations
   /** The call is scoped to a project, which the person must be able to chat in. */
   readonly needsProject: boolean
+  /**
+   * With `shelf: "base"` the call reads the platform's shared corpus, which belongs to no project:
+   * `projectId` may then be left out (the schema does not require it).
+   */
+  readonly projectOptionalForBase?: true
 }
 
 interface FixtureTool {
@@ -91,6 +97,8 @@ interface Entry {
   /** The English description an outside agent reads, written for this surface (see the module comment). */
   readonly description: string
   readonly needsProject: boolean
+  /** See {@link BackendOperation.projectOptionalForBase}. */
+  readonly projectOptionalForBase?: true
   /** The tool reaches a public service outside the workspace. */
   readonly openWorld?: boolean
 }
@@ -115,18 +123,19 @@ const ENTRIES = [
       '`|` is alternation; for example `MA 37/\\d{6}`); it needs one literal whole word or number it must contain (`MA ?37` has ' +
       'none), or a `folder`, `file_name` or `doc_class` to read in, and a pattern that backtracks is refused. A regex answer also ' +
       'lists every distinct matched string with its count, files and pages. `shelf` (`project`, `office` or `base`) reads one shelf ' +
-      'only; omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
+      'only (`base` needs no `projectId`); omitted, every shelf is read, the OIB corpus included, so pass `project` for whether something is in the ' +
       'project’s own documents; an exact or regex answer states per shelf how many documents were searched and how many matched. `context` (0 to 3, exact and regex only) adds the lines around every hit as an index. ' +
       'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
-      'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
-      'Returns up to 16 excerpts across several documents, each with its source, citation key, document type, folder and page. ' +
+      'scope and outline. ' +
+      'Returns up to 16 excerpts by default (the header counts them), each with source, citation key, document type, folder and page. ' +
       'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
       'citation or a file name; an empty result says how to retry.',
     needsProject: true,
+    projectOptionalForBase: true,
   },
   {
     name: 'passage-read',
@@ -141,8 +150,8 @@ const ENTRIES = [
       'stopped early ends with a `cursor`, which you pass back with the same `document` to continue. With the page count from ' +
       'files-list, request every range you need in one round. A deterministic lookup, not a search. Pass ' +
       '`document` exactly as files-list or a previous hit printed it (a file name or a display title). Call it when you know which ' +
-      'document and want to know what it covers, or when a hit or a cross-reference points at a clause you have not read. Pass ' +
-      '`conclusion`: one sentence on what you know and what you still need. Returns passages in document order, each with its ' +
+      'document and want to know what it covers, or when a hit or a cross-reference points at a clause you have not read. ' +
+      'Returns passages in document order, each with its ' +
       'source, citation key (quote it verbatim), document type, clause and page; an outline is an index, not evidence. An unknown ' +
       'name is refused with up to three close names to pass back exactly. When you do not know which document holds the answer, ' +
       'call knowledge-search.',
@@ -202,7 +211,8 @@ const ENTRIES = [
       'sum, avg, min or max, optionally grouped). `filters` is a JSON object (`ifcTypes`, `storeys`, `nameContains`, `material`, ' +
       '`classification`, `properties` with operators eq, neq, contains, gt, gte, lt, lte, exists, missing); only elements, ' +
       'aggregate and takeoff take it, and an unknown key is rejected. Storey names match exactly: copy them from `overview`. ' +
-      '`model_name` picks one model when the project has several. A compliance result is never a statement that the building ' +
+      '`model_name` picks one model; without it only the project’s own is read, and an office-shelf model only when ' +
+      'named. A compliance result is never a statement that the building ' +
       'complies: it reads published values only. A missing value is a fact about the export, not the building. Report numbers and ' +
       'caveat lines as returned; never recompute them.',
     needsProject: true,
@@ -245,7 +255,7 @@ const ENTRIES = [
       'belongs here too. For the content of the OIB guidelines or the office’s documents, call knowledge-search. One call reads ' +
       'the address out of the question, finds the law, downloads at most two documents and cuts out the paragraphs that answer it. ' +
       '`question`: the legal question as the person means it, in German, the language of the law, not a list of search terms. ' +
-      '`conclusion`: one sentence on what you know and what you still need. `jurisdiction`: the federal state, when the person ' +
+      '`jurisdiction`: the federal state, when the person ' +
       'named one. `instrument`: an address when you have one (a law’s name or citation such as `§ 63 BO Wien`, a RIS document ' +
       'number or a ris.bka.gv.at URL); name every section you need in one call, up to six. `application`: only for case law, the ' +
       'gazettes or drafts; leave it empty for statute law. Returns numbered passages, each with its source, document type, clause, ' +
@@ -308,11 +318,21 @@ const PROJECT_ID_SCHEMA = {
     'The project this call reads from, from project-list. The person must be able to chat in it.',
 } as const
 
-function withProjectId(schema: JsonSchemaObject): JsonSchemaObject {
+const OPTIONAL_PROJECT_ID_SCHEMA = {
+  type: 'string',
+  description:
+    'The project this call reads from, from project-list. The person must be able to chat in it. ' +
+    'Optional only with `shelf: "base"`, the shared building-law corpus, which belongs to no project.',
+} as const
+
+function withProjectId(schema: JsonSchemaObject, optional: boolean): JsonSchemaObject {
   return {
     ...schema,
-    properties: { projectId: PROJECT_ID_SCHEMA, ...schema.properties },
-    required: ['projectId', ...(schema.required ?? [])],
+    properties: {
+      projectId: optional ? OPTIONAL_PROJECT_ID_SCHEMA : PROJECT_ID_SCHEMA,
+      ...schema.properties,
+    },
+    required: [...(optional ? [] : ['projectId']), ...(schema.required ?? [])],
   }
 }
 
@@ -330,14 +350,51 @@ function build(entry: Entry): BackendOperation {
     summary: entry.summary,
     description: entry.description,
     tool: entry.tool,
-    inputSchema: entry.needsProject ? withProjectId(inputSchema) : inputSchema,
+    inputSchema: entry.needsProject
+      ? withProjectId(inputSchema, entry.projectOptionalForBase === true)
+      : inputSchema,
     annotations: { title: entry.summary, ...tool.annotations, openWorldHint: entry.openWorld ?? false },
     needsProject: entry.needsProject,
+    ...(entry.projectOptionalForBase ? { projectOptionalForBase: true as const } : {}),
   }
 }
 
 /** Every read tool of the Python agent offered over MCP, in the contract's order. */
 export const BACKEND_OPERATIONS: readonly BackendOperation[] = ENTRIES.map(build)
+
+/** The operation each Python tool is over MCP, for the names its answers mention. */
+const OPERATION_NAMES: ToolNames = Object.fromEntries(ENTRIES.map((entry) => [entry.tool, entry.name]))
+
+/**
+ * A tool's text as an outside agent reads it: its next-call hints name the
+ * operations (not the Python functions), and a ranked search says what its order means.
+ */
+export function doorText(
+  op: Pick<BackendOperation, 'name'>,
+  args: Record<string, unknown>,
+  text: string,
+): string {
+  const named = withOperationNames(text, OPERATION_NAMES)
+  const literal = args.match === 'exact' || args.match === 'regex'
+  return op.name === 'knowledge-search' && !literal ? withRankedOrderNote(named) : named
+}
+
+/** `body` (the backend's `{ tool, result }`) with its text results put through {@link doorText}. */
+function withDoorText(op: BackendOperation, args: Record<string, unknown>, body: unknown): unknown {
+  if (typeof body !== 'object' || body === null || !('result' in body)) return body
+  const result = (body as { result: unknown }).result
+  const door = (text: string) => doorText(op, args, text)
+  if (typeof result === 'string') return { ...body, result: door(result) }
+  if (!Array.isArray(result)) return body
+  return {
+    ...body,
+    result: result.map((block) =>
+      block && typeof block === 'object' && block.type === 'text' && typeof block.text === 'string'
+        ? { ...block, text: door(block.text) }
+        : block,
+    ),
+  }
+}
 
 export function findBackendOperation(name: string): BackendOperation | undefined {
   return BACKEND_OPERATIONS.find((op) => op.name === name)
@@ -412,11 +469,13 @@ export async function callBackendOperation(
   if (!op) return refusal(404, 'unknown_operation', `${name} is not a backend operation`)
 
   const projectId = options.projectId?.trim() || undefined
-  if (op.needsProject && !projectId) {
+  const baseOnly = op.projectOptionalForBase === true && args.shelf === 'base'
+  if (op.needsProject && !projectId && !baseOnly) {
     return refusal(
       400,
       'project_required',
-      `${op.name} reads one project: pass projectId (from project-list)`
+      `${op.name} reads one project: pass projectId (from project-list)` +
+        (op.projectOptionalForBase ? ', or shelf "base" for the shared building-law corpus' : '')
     )
   }
 
@@ -461,7 +520,9 @@ export async function callBackendOperation(
     })
     // The routes' reader, with its 5 MiB cap: a tool's answer is read no further than a route's.
     const body = await readResponseBody(response)
-    return response.ok ? { status: response.status, ok: true, body } : backendRefusal(response.status, body)
+    return response.ok
+      ? { status: response.status, ok: true, body: withDoorText(op, toolArguments, body) }
+      : backendRefusal(response.status, body)
   } catch (error) {
     const timedOut =
       error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')

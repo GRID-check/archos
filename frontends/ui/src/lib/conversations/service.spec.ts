@@ -41,7 +41,7 @@ vi.mock('@/lib/conversations/repository', () => ({
   findMessageInConversation: vi.fn(),
   insertConversation: vi.fn(),
   insertMessages: vi.fn(),
-  listMessagesForConversation: vi.fn(),
+  listMessagePage: vi.fn(),
   listVisibleConversations: vi.fn(),
   markConversationDeleting: vi.fn(),
   recordConversationErased: vi.fn(),
@@ -57,6 +57,7 @@ vi.mock('@/lib/sharing/repository', () => ({
 }))
 
 vi.mock('@/lib/sharing/service', () => ({ resolveParticipants: vi.fn() }))
+vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: vi.fn(async () => new Map()) }))
 // Which people may read what a conversation recorded is judged against the
 // folder tree and WorkOS; `restricted-use.spec.ts` covers that. Here the default
 // is a conversation that recorded nothing restricting, and the tests of the
@@ -146,7 +147,7 @@ import {
   findMessageInConversation,
   insertConversation,
   insertMessages,
-  listMessagesForConversation,
+  listMessagePage,
   listVisibleConversations,
   markConversationDeleting,
   mergeMessageMetadata,
@@ -295,7 +296,7 @@ describe('reading a conversation — the access rules', () => {
 
     await expect(getConversation(session, CONVERSATION_ID)).rejects.toThrow(NotFoundError)
     await expect(listConversationMessages(session, CONVERSATION_ID)).rejects.toThrow(NotFoundError)
-    expect(listMessagesForConversation).not.toHaveBeenCalled()
+    expect(listMessagePage).not.toHaveBeenCalled()
   })
 
   it('lets another project member read a PROJECT-visible conversation', async () => {
@@ -376,6 +377,8 @@ describe('listing conversations', () => {
     expect(requireProjectAccess).toHaveBeenCalledWith(session, PROJECT_ID, 'project:view')
     expect(listVisibleConversations).toHaveBeenCalledWith('org_1', 'user_me', {
       projectId: PROJECT_ID,
+      limit: 201,
+      after: undefined,
     })
   })
 
@@ -394,6 +397,8 @@ describe('listing conversations', () => {
     expect(requireProjectAccess).not.toHaveBeenCalled()
     expect(listVisibleConversations).toHaveBeenCalledWith('org_1', 'user_me', {
       projectId: undefined,
+      limit: 201,
+      after: undefined,
     })
   })
 })
@@ -436,7 +441,7 @@ describe('a chat the reader may no longer read (ADR-0088)', () => {
       ])
       vi.mocked(lockedConversationIds).mockResolvedValue(new Set(['s_locked']))
 
-      const listed = await listConversations(session, { projectId: PROJECT_ID })
+      const { conversations: listed } = await listConversations(session, { projectId: PROJECT_ID })
 
       const locked = listed.find((entry) => entry.id === 's_locked')
       expect(locked).toMatchObject({
@@ -474,10 +479,10 @@ describe('a chat the reader may no longer read (ADR-0088)', () => {
     it('brings the real title back when the role is given back: nothing was rewritten', async () => {
       vi.mocked(listVisibleConversations).mockResolvedValue([row('s_locked', 'Brandschutz Stiegenhaus')])
       vi.mocked(lockedConversationIds).mockResolvedValueOnce(new Set(['s_locked']))
-      expect((await listConversations(session))[0]).toMatchObject({ contentLocked: true, title: null })
+      expect((await listConversations(session)).conversations[0]).toMatchObject({ contentLocked: true, title: null })
 
       vi.mocked(lockedConversationIds).mockResolvedValueOnce(new Set())
-      expect((await listConversations(session))[0]).toMatchObject({
+      expect((await listConversations(session)).conversations[0]).toMatchObject({
         contentLocked: false,
         title: 'Brandschutz Stiegenhaus',
       })
@@ -502,7 +507,7 @@ describe('a chat the reader may no longer read (ADR-0088)', () => {
 
     it('answers the typed 403 for the messages, and reads none of them', async () => {
       await expect(listConversationMessages(session, CONVERSATION_ID)).rejects.toBeInstanceOf(ResourceRightsLostError)
-      expect(listMessagesForConversation).not.toHaveBeenCalled()
+      expect(listMessagePage).not.toHaveBeenCalled()
     })
 
     it('refuses a message into it, and stores nothing', async () => {
@@ -523,10 +528,10 @@ describe('a chat the reader may no longer read (ADR-0088)', () => {
 
     it('opens again, whole, once the role is given back', async () => {
       lockFor()
-      vi.mocked(listMessagesForConversation).mockResolvedValue([messageRow()])
+      vi.mocked(listMessagePage).mockResolvedValue({ rows: [messageRow()], hasMore: false })
 
       await expect(getConversation(session, CONVERSATION_ID)).resolves.toMatchObject({ id: CONVERSATION_ID })
-      await expect(listConversationMessages(session, CONVERSATION_ID)).resolves.toHaveLength(1)
+      await expect(listConversationMessages(session, CONVERSATION_ID)).resolves.toMatchObject({ messages: [{}], nextCursor: null })
     })
   })
 
@@ -886,17 +891,20 @@ describe('message authorship (spec CC-3, MG-3)', () => {
 
   it('attributes a legacy authorless user message to the creator AT READ TIME', async () => {
     stubConversation({ createdBy: 'user_creator', visibility: 'project' })
-    vi.mocked(listMessagesForConversation).mockResolvedValue([
-      messageRow({ id: 'legacy_user', role: 'user', authorUserId: null }),
-      messageRow({ id: 'legacy_agent', role: 'assistant', authorUserId: null }),
-      messageRow({ id: 'stamped', role: 'user', authorUserId: 'user_me' }),
-    ])
+    vi.mocked(listMessagePage).mockResolvedValue({
+      rows: [
+        messageRow({ id: 'legacy_user', role: 'user', authorUserId: null }),
+        messageRow({ id: 'legacy_agent', role: 'assistant', authorUserId: null }),
+        messageRow({ id: 'stamped', role: 'user', authorUserId: 'user_me' }),
+      ],
+      hasMore: false,
+    })
 
-    const messages = await listConversationMessages(session, CONVERSATION_ID)
+    const { messages } = await listConversationMessages(session, CONVERSATION_ID)
 
     expect(messages[0].authorUserId).toBe('user_creator')
     // Not backfilled — the stored row is untouched (MG-3).
-    expect(vi.mocked(listMessagesForConversation).mock.results).toHaveLength(1)
+    expect(vi.mocked(listMessagePage).mock.results).toHaveLength(1)
     // An authorless assistant row is correct as it stands.
     expect(messages[1].authorUserId).toBeNull()
     // A real author is never overwritten.

@@ -91,10 +91,10 @@ import {
   type ProposedChangeRow,
 } from './repository'
 import {
-  MAX_LISTED_PROPOSALS,
   type ApplyProposalRequest,
   type ListedProposal,
-  type ProposalListQuery,
+  type ParsedProposalListQuery,
+  type ProposalListResponse,
   type ProposalScope,
   type ProposedChangeKind,
   type ProposedChangeResult,
@@ -493,7 +493,7 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
  * The organization's shelf (0176) lists the open organization-scoped operations
  * this reader may read.
  */
-export async function listOpenProposals(session: AuthorizedSession, query: ProposalListQuery): Promise<ListedProposal[]> {
+export async function listOpenProposals(session: AuthorizedSession, query: ParsedProposalListQuery): Promise<ProposalListResponse> {
   const shelf: ProposalShelf = query.projectId
     ? { scope: 'project', projectId: query.projectId }
     : { scope: query.shelf === 'organization' ? 'organization' : 'office_shelf' }
@@ -501,8 +501,12 @@ export async function listOpenProposals(session: AuthorizedSession, query: Propo
   const rows = await listShelfProposals(session.organizationId, shelf, {
     statuses: ['proposed'],
     kind: query.kind,
-    limit: MAX_LISTED_PROPOSALS,
+    after: query.cursor,
+    // One more than a page: the extra row says a further page exists, without a count.
+    limit: query.limit + 1,
   })
+  const hasMore = rows.length > query.limit
+  const page = hasMore ? rows.slice(0, query.limit) : rows
   const decidesByKind = new Map<ProposedChangeKind, Promise<boolean>>()
   const decides = (row: ProposedChangeRow): Promise<boolean> => {
     let pending = decidesByKind.get(row.kind)
@@ -513,7 +517,7 @@ export async function listOpenProposals(session: AuthorizedSession, query: Propo
     return pending
   }
   const listed = await Promise.all(
-    rows.map(async (row): Promise<ListedProposal | null> => {
+    page.map(async (row): Promise<ListedProposal | null> => {
       if (row.originConversationId && !(await readableBy(session, row))) return null
       if (hiddenFromOthers(session, row)) return null
       const documents = await documentsFor(session, row)
@@ -521,7 +525,11 @@ export async function listOpenProposals(session: AuthorizedSession, query: Propo
       return { proposal: await toView(session, row, decides), documents }
     })
   )
-  return listed.filter((entry): entry is ListedProposal => entry !== null)
+  return {
+    proposals: listed.filter((entry): entry is ListedProposal => entry !== null),
+    // The cursor follows the rows read, not the rows shown: a page of hidden proposals still moves on.
+    nextCursor: hasMore ? (page.at(-1)?.id ?? null) : null,
+  }
 }
 
 /** A proposal on a shelf as Piloti's own filing reads its record: its payload parsed, its state. */

@@ -264,7 +264,7 @@ class TestTheRoom:
 
 
 class TestTheRow:
-    """One ``look`` row per call (ADR-0131): started, then settled under the same id with the document it read."""
+    """One ``look`` row per call (ADR-0132): started, then settled under the same id with the document it read."""
 
     @staticmethod
     def _one_call(emitted) -> tuple:

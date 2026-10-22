@@ -1,4 +1,4 @@
-"""``ifc_query`` and ``ifc_measure``: one ``model`` row per call (ADR-0131), settled from the typed answer."""
+"""``ifc_query`` and ``ifc_measure``: one ``model`` row per call (ADR-0132), settled from the typed answer."""
 
 from __future__ import annotations
 

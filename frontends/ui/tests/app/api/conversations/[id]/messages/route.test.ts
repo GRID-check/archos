@@ -38,6 +38,11 @@ vi.mock('@/lib/conversations/restricted-use', async (importOriginal) => ({
   lockedConversationIds: vi.fn(async () => new Set<string>()),
 }))
 
+// Author names come from the directory (WorkOS); the route's contract is the id, not the name.
+vi.mock('@/lib/sharing/directory', () => ({
+  resolvePeople: vi.fn(async () => new Map()),
+}))
+
 vi.mock('@/lib/conversations/repository', () => ({
   deleteConversationInOrg: vi.fn(),
   findConversationInOrg: vi.fn(),
@@ -46,6 +51,7 @@ vi.mock('@/lib/conversations/repository', () => ({
   findMessageInConversation: vi.fn(),
   insertConversation: vi.fn(),
   insertMessages: vi.fn(),
+  listMessagePage: vi.fn(),
   listMessagesForConversation: vi.fn(),
   listVisibleConversations: vi.fn(),
   mergeMessageMetadata: vi.fn(),
@@ -57,7 +63,7 @@ vi.mock('@/lib/conversations/repository', () => ({
 import { GET } from '@/app/api/conversations/[id]/messages/route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { findConversationTenancy, listMessagesForConversation } from '@/lib/conversations/repository'
+import { findConversationTenancy, listMessagePage } from '@/lib/conversations/repository'
 import { findGrantForSubject } from '@/lib/sharing/repository'
 
 const PROJECT_ID = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
@@ -94,7 +100,7 @@ describe('/api/conversations/[id]/messages', () => {
   })
 
   it('lists messages for a conversation', async () => {
-    vi.mocked(listMessagesForConversation).mockResolvedValue([
+    vi.mocked(listMessagePage).mockResolvedValue({ hasMore: true, rows: [
       {
         id: '550e8400-e29b-41d4-a716-446655440000',
         organizationId: 'org_1',
@@ -118,7 +124,7 @@ describe('/api/conversations/[id]/messages', () => {
         metadata: null,
         createdAt: new Date(),
       },
-    ])
+    ] })
 
     const res = await GET(
       new Request('http://localhost:3000/api/conversations/s_conv_1/messages'),
@@ -127,12 +133,16 @@ describe('/api/conversations/[id]/messages', () => {
 
     expect(res.status).toBe(200)
     const json = await res.json()
-    expect(json).toHaveLength(2)
-    expect(json[0].role).toBe('user')
+    // Paged: a lean envelope, the newest page, with a cursor to the earlier ones.
+    expect(json.messages).toHaveLength(2)
+    expect(json.nextCursor).toBe('550e8400-e29b-41d4-a716-446655440000')
+    expect(json.messages[0].role).toBe('user')
+    expect(json.messages[0]).not.toHaveProperty('metadata')
+    expect(listMessagePage).toHaveBeenCalledWith('s_conv_1', { limit: 50, before: undefined })
     // The legacy human message is attributed to the creator; the assistant row
     // keeps its null author, because that is correct rather than missing.
-    expect(json[0].authorUserId).toBe('user_1')
-    expect(json[1].authorUserId).toBeNull()
+    expect(json.messages[0].authorUserId).toBe('user_1')
+    expect(json.messages[1].authorUserId).toBeNull()
   })
 
   it('returns 404 when conversation does not exist', async () => {
@@ -145,6 +155,6 @@ describe('/api/conversations/[id]/messages', () => {
 
     expect(res.status).toBe(404)
     // Access is refused before the history query is even attempted.
-    expect(listMessagesForConversation).not.toHaveBeenCalled()
+    expect(listMessagePage).not.toHaveBeenCalled()
   })
 })

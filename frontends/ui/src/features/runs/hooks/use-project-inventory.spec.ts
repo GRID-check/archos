@@ -5,9 +5,10 @@
 
 import { describe, expect, it } from 'vitest'
 import { renderHook, waitFor } from '@/test-utils'
-import { http, HttpResponse } from 'msw'
+import { HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
 import { useProjectInventory } from './use-project-inventory'
+import { shelfGet } from '@/test-utils/shelf-handlers'
 
 const row = (id: string, filename: string) => ({
   id,
@@ -21,12 +22,12 @@ const row = (id: string, filename: string) => ({
 describe('useProjectInventory', () => {
   it('offers every page of the project listing and the Archiv', async () => {
     server.use(
-      http.get('/api/documents', ({ request }) =>
+      shelfGet('project', '/api/documents', ({ request }) =>
         new URL(request.url).searchParams.get('cursor') === 'p2'
           ? HttpResponse.json({ documents: [row('p-old', 'Bestand.pdf')], nextCursor: null })
           : HttpResponse.json({ documents: [row('p-new', 'Statik.pdf')], nextCursor: 'p2' })
       ),
-      http.get('/api/office-shelf/documents', () =>
+      shelfGet('office_shelf', '/api/documents', () =>
         HttpResponse.json({ documents: [row('a1', 'Detail.pdf')], nextCursor: null })
       )
     )
@@ -43,8 +44,8 @@ describe('useProjectInventory', () => {
 
   it('lists no Archiv rows when the Archiv is gated off', async () => {
     server.use(
-      http.get('/api/documents', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
-      http.get('/api/office-shelf/documents', () => HttpResponse.json({}, { status: 403 }))
+      shelfGet('project', '/api/documents', () => HttpResponse.json({ documents: [row('p1', 'Plan.pdf')] })),
+      shelfGet('office_shelf', '/api/documents', () => HttpResponse.json({}, { status: 403 }))
     )
 
     const { result } = renderHook(() => useProjectInventory('proj-1', true))
@@ -54,7 +55,7 @@ describe('useProjectInventory', () => {
 
   it('marks a document indexed in a restricted folder’s collection, and only that one', async () => {
     server.use(
-      http.get('/api/documents', () =>
+      shelfGet('project', '/api/documents', () =>
         HttpResponse.json({
           documents: [
             { ...row('p1', 'Abmahnung.pdf'), collectionName: 'proj_3f8b0d2e_r0123456789ab' },
@@ -63,7 +64,7 @@ describe('useProjectInventory', () => {
           nextCursor: null,
         })
       ),
-      http.get('/api/office-shelf/documents', () =>
+      shelfGet('office_shelf', '/api/documents', () =>
         HttpResponse.json({ documents: [{ ...row('a1', 'Detail.pdf'), collectionName: 'archiv_org_1' }] })
       )
     )

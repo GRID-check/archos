@@ -43,7 +43,8 @@ describe('levelPageUrl', () => {
   it('leaves the folder out for a search across the shelf, and carries the filters the server answers', () => {
     const params = new URLSearchParams(
       levelPageUrl({
-        list: '/api/office-shelf/documents',
+        list: '/api/documents',
+        listParams: { scope: 'office_shelf' },
         sort: 'name',
         dir: 'asc',
         q: '  Grundriss ',
@@ -79,14 +80,14 @@ describe('shelfSummaryUrl', () => {
     expect(shelfSummaryUrl({ list: '/api/documents', listParams: { projectId: 'proj-1' } }, { includeArchived: true })).toBe(
       '/api/documents/summary?projectId=proj-1&includeArchived=true',
     )
-    expect(shelfSummaryUrl({ list: '/api/office-shelf/documents' }, {})).toBe('/api/office-shelf/documents/summary')
+    expect(shelfSummaryUrl({ list: '/api/documents', listParams: { scope: 'office_shelf' } }, {})).toBe('/api/documents/summary?scope=office_shelf')
   })
 })
 
 describe('fetchLevelPage', () => {
   it('passes the rows through and reads the cursor', async () => {
     const fetcher = vi.fn(async () => json({ documents: [{ id: 'd1' }], nextCursor: 'next', collectionName: 'archiv_o' }))
-    const page = await fetchLevelPage('/api/office-shelf/documents?folderId=root', { fetcher })
+    const page = await fetchLevelPage('/api/documents?scope=office_shelf&folderId=root', { fetcher })
     expect(page).toEqual({ documents: [{ id: 'd1' }], nextCursor: 'next', collectionName: 'archiv_o' })
   })
 

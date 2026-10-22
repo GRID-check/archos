@@ -1,136 +1,36 @@
 /**
- * Tasks repository — SQL only (ADR-0017). Every list is bounded.
- *
- * Two halves. The COLLAPSED MODEL (`task_definitions` + `task_runs`, migration
- * 0086) is the one the services read and write; the legacy half below (the
- * `tasks` and `job_runs` statements) survives only until migration 0087 drops
- * the old tables, and exists so the slice-01 characterization specs keep
- * pinning the behaviour that was moved rather than merely deleted.
+ * Tasks repository — SQL only (ADR-0017) over `task_definitions` (a task) and
+ * `task_runs` (one attempt at it), the model since migration 0086. Every list
+ * is bounded.
  */
 
 import 'server-only'
-import { and, desc, eq, inArray, isNotNull, lt, notInArray, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, lt, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
+import { CURSOR_TIMESTAMP_FORMAT, type DocumentListCursor } from '@/lib/documents/list-cursor'
 import { SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
+import type { TaskRunReviewFilter } from './task-wire'
 import {
   documents,
   taskDefinitions,
   taskRuns,
-  tasks,
-  type NewTask,
   type NewTaskDefinition,
   type NewTaskRun,
-  type Task,
   type TaskDefinition,
   type TaskRun,
   type TaskRunStatus,
 } from '@/lib/db/schema'
 
-/** Newest-first page size for a project's task list. */
-export const TASK_LIST_LIMIT = 100
-
 /** How many earlier rejections a new run of the same job is told about. */
 export const REJECTED_REVIEWS_CARRIED = 3
-
-// ---------------------------------------------------------------------------
-// Legacy tables (jobs/tasks era) — kept until 0087 drops them, so the slice-01
-// characterization specs pin what the collapse moved. Nothing new calls these.
-// ---------------------------------------------------------------------------
-
-export async function insertTask(values: NewTask): Promise<Task> {
-  const db = getDb()
-  const [row] = await db.insert(tasks).values(values).returning()
-  return row
-}
-
-export async function findTaskInProject(
-  taskId: string,
-  projectId: string,
-  organizationId: string,
-): Promise<Task | null> {
-  const db = getDb()
-  const [row] = await db
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.projectId, projectId), eq(tasks.organizationId, organizationId)))
-    .limit(1)
-  return row ?? null
-}
-
-export async function listTasksInProject(projectId: string, organizationId: string): Promise<Task[]> {
-  const db = getDb()
-  return db
-    .select()
-    .from(tasks)
-    .where(and(eq(tasks.projectId, projectId), eq(tasks.organizationId, organizationId)))
-    .orderBy(desc(tasks.createdAt))
-    .limit(TASK_LIST_LIMIT)
-}
-
-/**
- * The task a backend job id belongs to. NOT tenant-filtered, for the reason
- * `findJobRunByBackendJobId` gives: the worker that reports holds the backend
- * id and nothing else, so the caller runs this under platform access and
- * re-enters the task's own tenant for everything after.
- */
-export async function findTaskByBackendJobId(backendJobId: string): Promise<Task | null> {
-  const db = getDb()
-  const [row] = await db.select().from(tasks).where(eq(tasks.backendJobId, backendJobId)).limit(1)
-  return row ?? null
-}
-
-export async function updateTask(
-  taskId: string,
-  organizationId: string,
-  patch: Partial<Omit<NewTask, 'id' | 'organizationId' | 'projectId'>>,
-): Promise<Task | null> {
-  const db = getDb()
-  const [row] = await db
-    .update(tasks)
-    .set({ ...patch, updatedAt: new Date() })
-    .where(and(eq(tasks.id, taskId), eq(tasks.organizationId, organizationId)))
-    .returning()
-  return row ?? null
-}
-
-/**
- * The most recent rejected reviews of earlier tasks of one job, newest first —
- * what the next run is told. Only rejections with words: a rejection without
- * a reason is a decision the next run cannot act on.
- */
-export async function listRejectedReviewsForJob(
-  jobId: string,
-  organizationId: string,
-): Promise<Array<Pick<Task, 'id' | 'reviewReason' | 'reviewedAt' | 'reviewedBy'>>> {
-  const db = getDb()
-  return db
-    .select({ id: tasks.id, reviewReason: tasks.reviewReason, reviewedAt: tasks.reviewedAt, reviewedBy: tasks.reviewedBy })
-    .from(tasks)
-    .where(
-      and(
-        eq(tasks.jobId, jobId),
-        eq(tasks.organizationId, organizationId),
-        eq(tasks.review, 'rejected'),
-        isNotNull(tasks.reviewReason),
-      ),
-    )
-    .orderBy(desc(tasks.reviewedAt))
-    .limit(REJECTED_REVIEWS_CARRIED)
-}
 
 // ---------------------------------------------------------------------------
 // The collapsed model: task_definitions + task_runs (migration 0086).
 // ---------------------------------------------------------------------------
 
-/** Newest-first page size for a project's definition list. */
-export const DEFINITION_LIST_LIMIT = 100
 /** Newest-first page size for a project's run list. */
 export const RUN_LIST_LIMIT = 100
-/** Default page size for one definition's run history. */
-export const RUNS_DEFAULT_LIMIT = 50
-/** Hard cap for run-history pages. */
-export const RUNS_MAX_LIMIT = 200
 
 export async function insertDefinition(values: NewTaskDefinition): Promise<TaskDefinition> {
   const db = getDb()
@@ -160,23 +60,107 @@ export async function insertDefinitionWithRun(
   })
 }
 
-export async function listDefinitionsInProject(
+/**
+ * The keyset bound of a page in `created_at DESC, id DESC` order: rows strictly
+ * after the cursor. The cursor's time is the column's own microsecond text
+ * (`lib/documents/list-cursor.ts` says why a JS `Date` would skip rows).
+ */
+function afterCursor(
+  createdAt: typeof taskRuns.createdAt | typeof taskDefinitions.createdAt,
+  id: typeof taskRuns.id | typeof taskDefinitions.id,
+  cursor: DocumentListCursor | null,
+): SQL | undefined {
+  if (!cursor) return undefined
+  return sql`(${createdAt}, ${id}) < ((${cursor.createdAt})::timestamp AT TIME ZONE 'UTC', ${cursor.id}::uuid)`
+}
+
+/** A page of rows, and the position of its last row when another page follows. */
+export interface KeysetPage<T> {
+  rows: T[]
+  next: DocumentListCursor | null
+}
+
+function toPage<T extends { id: string }>(
+  fetched: Array<{ row: T; cursorAt: string }>,
+  limit: number,
+): KeysetPage<T> {
+  const rows = fetched.slice(0, limit)
+  const last = rows.at(-1)
+  return {
+    rows: rows.map((entry) => entry.row),
+    next: fetched.length > limit && last ? { createdAt: last.cursorAt, id: last.row.id } : null,
+  }
+}
+
+/**
+ * One page of a project's tasks, newest first: every definition except a
+ * delegation (`trigger = 'once'` with no due date), which is dispatched at
+ * creation and belongs to the run list. Filtered here, in SQL, so a page is
+ * never short because rows were dropped after the limit.
+ */
+export async function listDefinitionPage(
   projectId: string,
   organizationId: string,
-  limit = DEFINITION_LIST_LIMIT,
-): Promise<TaskDefinition[]> {
+  options: { limit: number; cursor: DocumentListCursor | null },
+): Promise<KeysetPage<TaskDefinition>> {
   const db = getDb()
-  return db
-    .select()
+  const fetched = await db
+    .select({
+      row: taskDefinitions,
+      cursorAt: sql<string>`to_char(${taskDefinitions.createdAt} AT TIME ZONE 'UTC', ${CURSOR_TIMESTAMP_FORMAT})`,
+    })
     .from(taskDefinitions)
     .where(
       and(
         eq(taskDefinitions.projectId, projectId),
         eq(taskDefinitions.organizationId, organizationId),
+        or(sql`${taskDefinitions.trigger} <> 'once'`, isNotNull(taskDefinitions.dueAt)),
+        afterCursor(taskDefinitions.createdAt, taskDefinitions.id, options.cursor),
       ),
     )
-    .orderBy(desc(taskDefinitions.createdAt))
-    .limit(limit)
+    .orderBy(desc(taskDefinitions.createdAt), desc(taskDefinitions.id))
+    .limit(options.limit + 1)
+  return toPage(fetched, options.limit)
+}
+
+/** What a run page may be narrowed by. */
+export interface RunPageFilter {
+  definitionId?: string
+  status?: TaskRunStatus
+  review?: TaskRunReviewFilter
+}
+
+function reviewCondition(review: TaskRunReviewFilter | undefined): SQL | undefined {
+  if (!review) return undefined
+  return review === 'none' ? isNull(taskRuns.review) : eq(taskRuns.review, review)
+}
+
+/** One page of a project's runs, newest first, narrowed by task, status and review state. */
+export async function listRunPage(
+  projectId: string,
+  organizationId: string,
+  options: { limit: number; cursor: DocumentListCursor | null } & RunPageFilter,
+): Promise<KeysetPage<TaskRun>> {
+  const db = getDb()
+  const fetched = await db
+    .select({
+      row: taskRuns,
+      cursorAt: sql<string>`to_char(${taskRuns.createdAt} AT TIME ZONE 'UTC', ${CURSOR_TIMESTAMP_FORMAT})`,
+    })
+    .from(taskRuns)
+    .where(
+      and(
+        eq(taskRuns.projectId, projectId),
+        eq(taskRuns.organizationId, organizationId),
+        options.definitionId ? eq(taskRuns.definitionId, options.definitionId) : undefined,
+        options.status ? eq(taskRuns.status, options.status) : undefined,
+        reviewCondition(options.review),
+        afterCursor(taskRuns.createdAt, taskRuns.id, options.cursor),
+      ),
+    )
+    .orderBy(desc(taskRuns.createdAt), desc(taskRuns.id))
+    .limit(options.limit + 1)
+  return toPage(fetched, options.limit)
 }
 
 export async function findDefinition(
@@ -422,12 +406,6 @@ export async function countActiveRunsInProject(projectId: string, organizationId
 }
 
 /**
- * The run a backend job id belongs to. NOT tenant-filtered, for the reason
- * `findTaskByBackendJobId` gives: the worker that reports holds the backend id
- * and nothing else, so the caller runs this under platform access and
- * re-enters the run's own tenant for everything after.
- */
-/**
  * One run by its own id, with no tenant filter — the same bargain
  * `findRunByBackendJobId` makes, for the same caller shape: the worker flushing
  * a run ledger holds the run id and nothing else, so the caller runs this under
@@ -440,6 +418,11 @@ export async function findRunById(runId: string): Promise<TaskRun | null> {
   return row ?? null
 }
 
+/**
+ * The run a backend job id belongs to. NOT tenant-filtered: the worker that
+ * reports holds the backend id and nothing else, so the caller runs this under
+ * platform access and re-enters the run's own tenant for everything after.
+ */
 export async function findRunByBackendJobId(backendJobId: string): Promise<TaskRun | null> {
   const db = getDb()
   const [row] = await db
@@ -675,28 +658,6 @@ export async function claimClosedRunsToHeal(limit: number): Promise<TaskRun[]> {
  */
 export async function releaseHealClaim(runId: string): Promise<void> {
   await getDb().update(taskRuns).set({ reconcileCheckedAt: null }).where(eq(taskRuns.id, runId))
-}
-
-export async function listRunsForDefinition(
-  definitionId: string,
-  organizationId: string,
-  options: { limit?: number; offset?: number } = {},
-): Promise<TaskRun[]> {
-  const db = getDb()
-  const limit = Math.min(options.limit ?? RUNS_DEFAULT_LIMIT, RUNS_MAX_LIMIT)
-  const offset = options.offset ?? 0
-  return db
-    .select()
-    .from(taskRuns)
-    .where(
-      and(
-        eq(taskRuns.definitionId, definitionId),
-        eq(taskRuns.organizationId, organizationId),
-      ),
-    )
-    .orderBy(desc(taskRuns.createdAt))
-    .limit(limit)
-    .offset(offset)
 }
 
 /**

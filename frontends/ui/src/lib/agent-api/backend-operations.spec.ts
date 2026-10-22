@@ -143,13 +143,23 @@ describe('the operations', () => {
       } else {
         expect(op.needsProject).toBe(true)
         expect(Object.keys(schema.properties ?? {})[0]).toBe('projectId')
-        expect(schema.required?.[0]).toBe('projectId')
+        // The shared corpus belongs to no project: the search may leave it out with `shelf: "base"`.
+        if (op.name === 'knowledge-search') expect(schema.required).not.toContain('projectId')
+        else expect(schema.required?.[0]).toBe('projectId')
       }
     }
   })
 })
 
 describe('callBackendOperation', () => {
+  it('searches the shared corpus without a project, and refuses any other search without one', async () => {
+    backendAnswers(200, { tool: 'knowledge_search', result: 'x' })
+    const base = await callBackendOperation('knowledge-search', { query: 'OIB 2', shelf: 'base' }, session, {})
+    expect(base.status).not.toBe(400)
+    const other = await callBackendOperation('knowledge-search', { query: 'OIB 2' }, session, {})
+    expect(other).toMatchObject({ status: 400, ok: false })
+  })
+
   it('signs the person’s turn context for the project and posts it with the internal token', async () => {
     const result = await callBackendOperation(
       'knowledge-search',
@@ -196,6 +206,30 @@ describe('callBackendOperation', () => {
 
     const [, init] = fetchMock.mock.calls[0] as [string, RequestInit]
     expect(JSON.parse(init.body as string)).toEqual({ arguments: { document: 'OIB 2' } })
+  })
+
+  it('puts the operations’ names in the tool’s hints and says what a ranked order means', async () => {
+    backendAnswers(200, {
+      tool: 'knowledge_search',
+      result: 'Found 3 relevant document(s):\n\nOpen with `read_passage(document=…, page=…)`.',
+    })
+
+    const ranked = await callBackendOperation('knowledge-search', { query: 'x' }, session, {
+      projectId: PROJECT,
+    })
+    const text = (ranked.body as { result: string }).result
+    expect(text).toContain('`passage-read` with input {document=…, page=…}')
+    expect(text).not.toContain('read_passage')
+    expect(text).toContain('final order')
+
+    backendAnswers(200, { tool: 'knowledge_search', result: 'Found 3 relevant document(s):\n' })
+    const literal = await callBackendOperation(
+      'knowledge-search',
+      { query: 'x', match: 'exact' },
+      session,
+      { projectId: PROJECT }
+    )
+    expect((literal.body as { result: string }).result).not.toContain('final order')
   })
 
   it('refuses a project the person may not chat in, before anything is signed or sent', async () => {

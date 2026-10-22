@@ -1,23 +1,27 @@
 /**
- * Documents API — what Postgres can say about every document of a project's
- * shelf, counted per folder by read-state family, and its failed documents
- * (ADR-0102). The folder tiles and the folder brief of a Files workspace that
- * reads a folder level page by page fold their numbers from this.
- *
- * Takes the listing's two server filters (`authoredBy`, `includeArchived`), so
- * the counts are of the listing the reader is looking at.
- *
- * Thin handler; all logic lives in `@/lib/documents/shelf-summary`.
+ * A shelf's summary (ADR-0102): counts per folder by read-state family and the
+ * failed documents, for `?projectId=` or `?scope=office_shelf`, with the same
+ * server filters as the listing. Thin handler; `@/lib/documents/shelf-summary`.
  */
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { documentSummaryQuerySchema } from '@/lib/documents/document-wire'
-import { summarizeProjectDocuments } from '@/lib/documents/shelf-summary'
+import { summarizeOfficeShelfDocuments, summarizeProjectDocuments } from '@/lib/documents/shelf-summary'
+import { shelfOf } from '@/lib/documents/shelf-scope'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const { projectId, authoredBy, includeArchived } = parseQuery(request, documentSummaryQuerySchema)
-    return summarizeProjectDocuments(session, projectId, { authoredBy, includeArchived: includeArchived === 'true' })
+    const { scope, projectId, authoredBy, includeArchived } = parseQuery(request, documentSummaryQuerySchema)
+    const shelf = shelfOf({ scope, projectId }, request)
+    const options = { authoredBy, includeArchived: includeArchived === 'true' }
+    return shelf.kind === 'project'
+      ? summarizeProjectDocuments(session, shelf.projectId, options)
+      : summarizeOfficeShelfDocuments(session, options)
   },
-  { authz: { enforcedBy: 'summarizeProjectDocuments (requireProjectAccess project:view)' } }
+  {
+    authz: {
+      enforcedBy:
+        'summarizeProjectDocuments (requireProjectAccess project:view) | summarizeOfficeShelfDocuments (any member, scoped to session.organizationId)',
+    },
+  }
 )

@@ -75,18 +75,22 @@ vi.mock('@/lib/skills/service', () => ({
 
 vi.mock('@/lib/tasks/service', () => ({
   previousDecisionsBlock: vi.fn(async () => ''),
+  decodeCursorParam: vi.fn(() => null),
+  // The projection itself is `list-projection.spec.ts`'s; here only that a fire answers it.
+  toTaskRunViews: vi.fn(async (_organizationId: string, runs: readonly TaskRun[]) =>
+    runs.map((run) => ({ id: run.id, status: run.status, trigger: run.trigger })),
+  ),
 }))
 
 vi.mock('@/lib/tasks/repository', () => ({
   insertDefinition: vi.fn(),
-  listDefinitionsInProject: vi.fn(),
+  listDefinitionPage: vi.fn(),
   findDefinition: vi.fn(),
   findDefinitionById: vi.fn(),
   updateDefinition: vi.fn(),
   deleteDefinition: vi.fn(),
   touchDefinitionLastRun: vi.fn(),
   insertRun: vi.fn(),
-  listRunsForDefinition: vi.fn(),
   findRunByBackendJobId: vi.fn(),
 }))
 
@@ -122,7 +126,6 @@ import {
   fireJob,
   fireScheduledJob,
   getJob,
-  listJobRuns,
   listJobs,
   runJobNow,
   submitAgentRun,
@@ -434,32 +437,19 @@ describe('deleteJob', () => {
 })
 
 describe('listJobs', () => {
-  it('drops a delegation — a dateless once definition is a run, not a standing intent', async () => {
-    vi.mocked(repository.listDefinitionsInProject).mockResolvedValue([
-      definitionRow(),
-      definitionRow({ id: 'delegated-1', trigger: 'once', dueAt: null }),
-    ])
-
-    const { jobs } = await listJobs(session, PROJECT)
-
-    expect(jobs).toHaveLength(1)
-    expect(jobs[0]).toMatchObject({ id: DEFINITION, name: 'Wochencheck', prompt: 'Prüf das' })
-  })
-
-  it('keeps a one-shot somebody scheduled, which shares the delegation trigger', async () => {
-    // The whole reason the filter is on the DUE DATE and not on the trigger: a
-    // task created from the wizard for a Friday is `once` too, and dropping it
-    // would make it vanish from the list it was created in.
+  it('answers one page of task views and the cursor of the next', async () => {
     const dueAt = new Date('2026-10-02T07:00:00.000Z')
-    vi.mocked(repository.listDefinitionsInProject).mockResolvedValue([
-      definitionRow({ id: 'one-shot-1', trigger: 'once', dueAt, nextRunAt: dueAt }),
-      definitionRow({ id: 'delegated-1', trigger: 'once', dueAt: null }),
-    ])
+    vi.mocked(repository.listDefinitionPage).mockResolvedValue({
+      rows: [definitionRow({ id: 'one-shot-1', trigger: 'once', dueAt, nextRunAt: dueAt })],
+      next: { createdAt: '2026-10-01T07:00:00.123456', id: '33333333-3333-4333-8333-333333333333' },
+    })
 
-    const { jobs } = await listJobs(session, PROJECT)
+    const page = await listJobs(session, PROJECT, { limit: 1 })
 
-    expect(jobs.map((job) => job.id)).toEqual(['one-shot-1'])
-    expect(jobs[0].dueAt).toEqual(dueAt)
+    expect(page.tasks).toEqual([expect.objectContaining({ id: 'one-shot-1', dueAt: dueAt.toISOString() })])
+    expect(page.tasks[0]).not.toHaveProperty('skillSnapshot')
+    expect(page.nextCursor).toEqual(expect.any(String))
+    expect(repository.listDefinitionPage).toHaveBeenCalledWith(PROJECT, 'org_1', { limit: 1, cursor: null })
   })
 })
 
@@ -485,24 +475,6 @@ describe('getJob', () => {
   })
 })
 
-describe('listJobRuns', () => {
-  it('maps a finished worker run back to the submission vocabulary of the wire', async () => {
-    vi.mocked(repository.findDefinition).mockResolvedValue(definitionRow())
-    vi.mocked(repository.listRunsForDefinition).mockResolvedValue([
-      runRow(),
-      runRow({ id: 'run-2', status: 'succeeded', backendJobId: 'backend-2' }),
-      runRow({ id: 'run-3', status: 'skipped', backendJobId: null, error: 'org cap' }),
-      runRow({ id: 'run-4', status: 'error', backendJobId: null, error: 'backend unreachable' }),
-    ])
-
-    const { runs } = await listJobRuns(session, PROJECT, DEFINITION, 50, 0)
-
-    expect(runs.map((run) => run.status)).toEqual(['submitted', 'submitted', 'skipped', 'error'])
-    expect(runs[2]).toMatchObject({ detail: 'org cap', jobId: null })
-    expect(runs[0].scheduleId).toBe(DEFINITION)
-  })
-})
-
 // ---------------------------------------------------------------------------
 // Fire path
 // ---------------------------------------------------------------------------
@@ -517,10 +489,11 @@ describe('runJobNow', () => {
   it('fires a manual run as the caller', async () => {
     vi.mocked(repository.findDefinition).mockResolvedValue(definitionRow())
 
-    const run = await runJobNow(session, PROJECT, DEFINITION)
+    const { run } = await runJobNow(session, PROJECT, DEFINITION)
 
-    expect(run.trigger).toBe('manual')
-    expect(run.triggeredBy).toBe('user_1')
+    // The run's view, never the row: no composed prompt, no backend id.
+    expect(run).toEqual({ id: expect.any(String), status: expect.any(String), trigger: 'manual' })
+    expect(vi.mocked(repository.insertRun).mock.calls.at(-1)?.[0]).toMatchObject({ triggeredBy: 'user_1' })
   })
 })
 

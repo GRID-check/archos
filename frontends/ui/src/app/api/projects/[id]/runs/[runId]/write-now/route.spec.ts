@@ -29,10 +29,10 @@ const RUN = '22222222-2222-4222-8222-222222222222'
 
 const view = {
   runId: RUN,
-  backendJobId: 'job-1',
+  taskId: null,
   conversationId: 's_conv',
   messageId: 'msg-1',
-  status: 'running',
+  status: 'running' as const,
   ledger: null,
 }
 

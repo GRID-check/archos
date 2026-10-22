@@ -1,23 +1,31 @@
 /**
- * Documents API — which documents of the project would these dropped names be
- * the next Fassung of?
- *
- * The upload dialog's „Als neue Fassung von X ablegen" (ADR-0099); the client is
- * `lib/documents/name-probe-client.ts`, the contract `name-probe-types.ts`. Asked
- * with the name probe's body, plus where each name lands (`folders`), and gated
- * like it. POST because a folder drop
- * carries up to two thousand names. Thin handler; the logic lives in
- * `@/lib/documents/revision-candidates`.
+ * The revision probe (ADR-0099): for dropped file names, the documents of one
+ * shelf (`projectId`, or `scope: office_shelf`) each would be the next revision
+ * of. A project's probe also takes `folders`, where each name lands; the office
+ * shelf has one collection and ignores it. Thin handler.
  */
 
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { probeProjectRevisionCandidates } from '@/lib/documents/revision-candidates'
-import { projectRevisionCandidatesRequestSchema, type RevisionCandidatesResponse } from '@/lib/documents/name-probe-types'
+import { revisionCandidatesRequestSchema, type RevisionCandidatesResponse } from '@/lib/documents/name-probe-types'
+import { shelfOf } from '@/lib/documents/shelf-scope'
+import { probeOfficeShelfRevisionCandidates } from '@/lib/office-shelf/service'
 
 export const POST = apiRoute(
   async ({ session, request }): Promise<RevisionCandidatesResponse> => {
-    const { projectId, names, folders } = await parseJsonBody(request, projectRevisionCandidatesRequestSchema)
-    return { candidates: await probeProjectRevisionCandidates(session, projectId, names, folders) }
+    const { names, folders, ...selector } = await parseJsonBody(request, revisionCandidatesRequestSchema)
+    const shelf = shelfOf(selector, request)
+    return {
+      candidates:
+        shelf.kind === 'project'
+          ? await probeProjectRevisionCandidates(session, shelf.projectId, names, folders)
+          : await probeOfficeShelfRevisionCandidates(session, names),
+    }
   },
-  { authz: { enforcedBy: 'probeProjectRevisionCandidates (requireProjectAccess project:view)' } }
+  {
+    authz: {
+      enforcedBy:
+        'probeProjectRevisionCandidates (requireProjectAccess project:view) | probeOfficeShelfRevisionCandidates (any member, scoped to session.organizationId)',
+    },
+  }
 )

@@ -6,7 +6,7 @@
  * They used to read the first page of each listing and look the name up in it.
  * The listing is paged, so a correct citation of a plan older than the newest
  * 500 resolved to nothing. This asks the server by name instead
- * (`POST /api/documents/by-name`, `POST /api/office-shelf/documents/by-name`).
+ * (`POST /api/documents/by-name`, with `scope: office_shelf` for the office shelf).
  *
  * ## One request per render, not per chip
  *

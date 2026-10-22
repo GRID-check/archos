@@ -17,7 +17,7 @@ import 'server-only'
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { type ActingReader, runAsActingSession } from './acting-session'
-import { type AgentOperation, pathParams } from './operation'
+import { type AgentOperation, pathParams, withInputDefaults } from './operation'
 import { type UploadBody, decodeBase64 } from './upload-wire'
 
 /** Where a dispatched request appears to come from. Never resolved; routes only parse it. */
@@ -250,7 +250,8 @@ export async function readResponseBody(response: Response): Promise<unknown> {
  * applied). A proposal stores this same original input for the same reason.
  * Throws {@link OperationInputError} for input the operation cannot take.
  */
-export function validateOperationInput(op: AgentOperation, input: OperationInput): OperationInput {
+export function validateOperationInput(op: AgentOperation, given: OperationInput): OperationInput {
+  const input = withInputDefaults(given, op.inputDefaults)
   const check = (schema: AgentOperation['params'] | AgentOperation['body'], value: unknown, label: string) => {
     if (!schema) return
     const result = schema.safeParse(value ?? {})

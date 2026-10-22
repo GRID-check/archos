@@ -331,6 +331,16 @@
    "withheld": null,
    "reason": null
   },
+  "project-standards-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "project-status-set": {
    "kind": "catalog",
    "domain": "projects",
@@ -388,6 +398,16 @@
    "reason": null
   },
   "document-archive": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-bin": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -457,6 +477,16 @@
    "withheld": null,
    "reason": null
   },
+  "document-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-model-get": {
    "kind": "catalog",
    "domain": "documents",
@@ -508,6 +538,16 @@
    "reason": null
   },
   "document-rename": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-restore": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -601,13 +641,16 @@
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
-   "external": true,
-   "piloti": true,
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "a link to the file grid’s thumbnail image, which an agent cannot look at; document-look shows a page"
+   },
    "reason": null
   },
-  "document-upload": {
+  "document-unarchive": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -617,7 +660,7 @@
    "withheld": null,
    "reason": null
   },
-  "document-version-file-get": {
+  "document-upload": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -718,96 +761,6 @@
    "reason": null
   },
   "mail-import-start": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-delete": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-list": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-lookup": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-name-probe": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-revision-probe": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-search": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": "native:knowledge_search",
-   "platform": false,
-   "withheld": null,
-   "reason": "a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages"
-  },
-  "office-shelf-document-summary": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-upload": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "project-document-list": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -1218,6 +1171,16 @@
    "reason": null
   },
   "document-quarantine-get": {
+   "kind": "catalog",
+   "domain": "review",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "document-review-list": {
    "kind": "catalog",
    "domain": "review",
    "sensitivity": null,
@@ -1723,10 +1686,13 @@
    "kind": "catalog",
    "domain": "collaboration",
    "sensitivity": null,
-   "external": true,
-   "piloti": true,
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "puts a request away from the person, who has not seen it; the same reason mark-read is withheld"
+   },
    "reason": null
   },
   "inbox-item-mark-read": {
@@ -1759,10 +1725,13 @@
    "kind": "catalog",
    "domain": "collaboration",
    "sensitivity": null,
-   "external": true,
-   "piloti": true,
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "the reverse of archive, which an agent cannot do; what the person put away is theirs to bring back"
+   },
    "reason": null
   },
   "inbox-list": {
@@ -2106,16 +2075,6 @@
    "withheld": null,
    "reason": null
   },
-  "task-run-list": {
-   "kind": "catalog",
-   "domain": "tasks",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
   "task-run-review": {
    "kind": "catalog",
    "domain": "tasks",
@@ -2305,17 +2264,14 @@
    "withheld": null,
    "reason": null
   },
-  "ris-document-get": {
+  "norm-list": {
    "kind": "catalog",
    "domain": "knowledge",
    "sensitivity": null,
-   "external": false,
-   "piloti": false,
+   "external": true,
+   "piloti": true,
    "platform": false,
-   "withheld": {
-    "category": "external-service",
-    "reason": "proxies the public RIS legal text service, which any agent can fetch itself"
-   },
+   "withheld": null,
    "reason": null
   },
   "widget-token-get": {

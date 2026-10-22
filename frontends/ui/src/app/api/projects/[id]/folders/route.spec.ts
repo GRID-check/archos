@@ -49,6 +49,18 @@ vi.mock('@/lib/projects/folder-service', () => ({
   }),
 }))
 
+vi.mock('@/lib/documents/shelf-summary', () => ({
+  summarizeProjectDocuments: vi.fn().mockResolvedValue({
+    folders: [
+      { folderId: 'folder-1', total: 4 },
+      { folderId: null, total: 2 },
+    ],
+    failed: [],
+    failedTruncated: false,
+  }),
+}))
+
+import { summarizeProjectDocuments } from '@/lib/documents/shelf-summary'
 import { GET, POST } from './route'
 
 describe('GET /api/projects/[id]/folders', () => {
@@ -62,6 +74,15 @@ describe('GET /api/projects/[id]/folders', () => {
     expect(body.folders[0].name).toBe('Plans')
     // What the reader may do at the project root rides along, for the UI's affordances (ADR-0088).
     expect(body.rootAccess).toBe('read')
+    expect(body.folders[0]).not.toHaveProperty('documentCount')
+    expect(summarizeProjectDocuments).not.toHaveBeenCalled()
+  })
+
+  it('counts each folder’s documents in the same call when asked', async () => {
+    const request = new NextRequest('https://grid.test/api/projects/proj-1/folders?counts=true')
+    const body = await (await GET(request, { params: Promise.resolve({ id: 'proj-1' }) })).json()
+    expect(body.folders[0].documentCount).toBe(4)
+    expect(body.rootDocumentCount).toBe(2)
   })
 })
 

@@ -81,6 +81,26 @@ describe('getApplicableStandards', () => {
 const verdictOf = (standards: ReturnType<typeof getApplicableStandards>, code: string) =>
   standards.find((s) => s.code === code)
 
+describe('a Haus-Josef-like brief (Vienna, GK5, residential, 12 storeys, timber)', () => {
+  const result = getApplicableStandards(
+    profileWith({ federal_state: 'vienna', building_class: 'GK5', main_use: 'residential', storeys_above_ground: 12 })
+  )
+
+  it('asks for the escape level to settle OIB 2.3, and names that fact', () => {
+    expect(result.map((s) => [s.code, s.status])).toEqual([
+      ['OIB 1', 'required'],
+      ['OIB 2', 'required'],
+      ['OIB 2.3', 'check'],
+      ['OIB 3', 'required'],
+      ['OIB 4', 'required'],
+      ['OIB 5', 'required'],
+      ['OIB 6', 'required'],
+    ])
+    expect(result.find((s) => s.code === 'OIB 2.3')?.decidingFact).toBe('escape_level')
+    expect(result.filter((s) => s.status !== 'check').every((s) => s.decidingFact === undefined)).toBe(true)
+  })
+})
+
 describe('escapeLevelBand', () => {
   it.each([
     [7, '<=7m'],

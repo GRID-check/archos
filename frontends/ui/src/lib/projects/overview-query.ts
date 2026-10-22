@@ -2,11 +2,9 @@ import { eq, and, desc, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { projects, documents } from '@/lib/db/schema'
 import type { ProjectOverviewData } from '@/features/projects/types'
-import { getApplicableStandards } from '@/lib/oib/applicable-standards'
+import { deriveProjectStandards } from '@/lib/oib/project-standards'
 import { outsideHiddenFolders } from '@/lib/documents/repository'
 import { documentVisibleTo, type ShelfReader } from '@/lib/documents/visibility'
-import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
-import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { lifecycleViewOf } from './project-status'
 
 export interface ProjectOverviewReader {
@@ -126,14 +124,9 @@ export async function getProjectOverviewData(
     .orderBy(desc(documents.createdAt))
     .limit(5)
 
-  // Derive which OIB-Richtlinien apply from the project's own brief, and whether
-  // that brief has enough captured facts to tailor the applicability.
-  // Salvaged like `findProjectInOrg`'s: a project whose intake was never saved
-  // stored `{}` before migration 0133, and the close dialog's debrief reads
-  // `profile.facts` (it crashed opening „Projekt abschließen").
-  const profile = salvageProjectProfile(project.profile).profile ?? emptyProjectProfile()
-  const applicableStandards = getApplicableStandards(profile)
-  const briefComplete = Boolean(project.profileDisplay?.keyFacts?.length)
+  // Which OIB-Richtlinien apply, and whether the brief has enough facts to tailor
+  // them: the derivation the standards route answers too.
+  const { profile, applicableStandards, briefComplete } = deriveProjectStandards(project)
 
   return {
     id: project.id,

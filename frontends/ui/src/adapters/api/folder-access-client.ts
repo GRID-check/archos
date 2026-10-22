@@ -14,6 +14,7 @@
  */
 
 import { z } from 'zod'
+import { collectPages } from '@/lib/api/offset-page'
 import { ApiRequestError } from './api-error'
 
 const FolderPersonSchema = z.object({
@@ -80,6 +81,7 @@ const ProjectMembersSchema = z.object({
       role: z.string().nullable(),
     })
   ),
+  nextCursor: z.string().nullable().optional(),
 })
 
 /** Someone a folder's own list may name: a member of the project. */
@@ -90,16 +92,22 @@ export interface ProjectPerson {
 }
 
 /**
- * The project's members, the people a folder's own list may name. The route
- * lists the whole organization; a member without a project role (`role: null`)
- * is left out, because the project gives them nothing to narrow. Needs
+ * The project's members, the people a folder's own list may name: the role
+ * holders, every page of the paged roster (a project past one page would
+ * otherwise lose people from the picker without a word). Needs
  * `project:members:manage` or `project:manage`, which whoever may change a
  * folder's list holds.
  */
 export async function listProjectPeople(projectId: string): Promise<ProjectPerson[]> {
-  const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members`)
-  if (!response.ok) throw await failure(response, 'Failed to load the project members')
-  return ProjectMembersSchema.parse(await response.json())
-    .members.filter((member) => member.role !== null)
+  const members = await collectPages(async (cursor) => {
+    const query = new URLSearchParams({ limit: '200' })
+    if (cursor) query.set('cursor', cursor)
+    const response = await fetch(`/api/projects/${encodeURIComponent(projectId)}/members?${query}`)
+    if (!response.ok) throw await failure(response, 'Failed to load the project members')
+    const page = ProjectMembersSchema.parse(await response.json())
+    return { items: page.members, nextCursor: page.nextCursor }
+  })
+  return members
+    .filter((member) => member.role !== null)
     .map(({ userId, name, email }) => ({ userId, name, email }))
 }

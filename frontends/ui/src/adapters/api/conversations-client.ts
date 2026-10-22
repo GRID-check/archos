@@ -1,4 +1,6 @@
 import type { Conversation, Message } from '@/lib/db/schema'
+import { fetchThreadHistory } from '@/lib/conversations/history-client'
+import type { MessageView } from '@/lib/conversations/message-view'
 
 export interface ConversationSummary {
   id: string
@@ -59,10 +61,12 @@ export const conversationsClient = {
    * every project scope) so users never lose sight of their history.
    */
   async list(projectId?: string): Promise<ListedConversation[]> {
-    const query = projectId ? `?projectId=${encodeURIComponent(projectId)}` : ''
-    const res = await fetch(`/api/conversations${query}`)
+    // The newest 200 are the sidebar's list; older ones are reached by search, not by scrolling.
+    const params = new URLSearchParams({ limit: '200' })
+    if (projectId) params.set('projectId', projectId)
+    const res = await fetch(`/api/conversations?${params.toString()}`)
     if (!res.ok) throw new Error('Failed to fetch conversations')
-    return res.json()
+    return ((await res.json()) as { conversations: ListedConversation[] }).conversations
   },
 
   async get(id: string): Promise<Conversation> {
@@ -173,13 +177,17 @@ export const conversationsClient = {
     if (!res.ok) throw new Error('Failed to delete conversation')
   },
 
-  async listMessages(conversationId: string): Promise<Message[]> {
-    const res = await fetch(
-      `/api/conversations/${encodeURIComponent(conversationId)}/messages`,
-    )
-    await throwIfRightsLost(res)
-    if (!res.ok) throw new Error('Failed to fetch messages')
-    return res.json()
+  /**
+   * The thread's history, oldest first, with everything the chat draws (citations, thinking
+   * steps and the stored metadata): see `fetchThreadHistory`.
+   */
+  async listMessages(conversationId: string): Promise<MessageView[]> {
+    const history = await fetchThreadHistory(conversationId)
+    if (!history.ok) {
+      await throwIfRightsLost(history.response)
+      throw new Error('Failed to fetch messages')
+    }
+    return history.messages
   },
 
   async createMessage(

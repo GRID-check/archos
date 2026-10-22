@@ -1023,7 +1023,7 @@ export const chat = {
         pageCenter: 'page center',
       },
     },
-    // The Herleitung's work list (ADR-0131): one row per call, grouped into
+    // The Herleitung's work list (ADR-0132): one row per call, grouped into
     // rounds. Sentences are built from the call's typed values, never from a
     // tool's text.
     work: {
@@ -1445,7 +1445,7 @@ export const chat = {
       // old wire never stamped. Only the ledger can tell the two apart.
       stepKindNoHits: 'No hits',
       // A round that only opened folders: it looks for no documents, so coming
-      // back without any is no miss (ADR-0131).
+      // back without any is no miss (ADR-0132).
       stepKindBrowse: 'Open folder',
       // A layer that only opened passages of files the turn already had: it
       // searched for nothing. Telling that round apart from a fresh fetch is

@@ -17,8 +17,8 @@ export const bimOperations = [
     domain: 'bim',
     summary: 'List the BIM models in scope for a project',
     description:
-      'The IFC models a project can use: its own uploads plus the office shelf’s, each with its id, name ' +
-      'and revision. Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and ' +
+      'The IFC models a project can use, each with id, name, revision and `shelf`: `project` (its own upload) or ' +
+      '`office` (the office shelf’s, never the project’s building). Needs the ifc-models feature. Model ids feed bim-model-get, bim-model-query and ' +
       'bim-check-confirm.',
     method: 'GET',
     path: '/api/projects/[id]/bim/models',

@@ -132,6 +132,19 @@ def test_it_runs_the_tool_for_the_person_the_envelope_names(client: TestClient, 
     ]
 
 
+def test_it_drops_the_trace_lanes_the_product_keeps_for_its_own_trace(client: TestClient, fake_function: _FakeFunction):
+    fake_function.result = (
+        "Found 1 relevant document(s):\n\n--- Result 1 ---\nbody\n\n"
+        '## Trace-Lanes\n{"lanes": []}\n\n## Gliederung\n1 A\n'
+    )
+
+    response = _post(client, "knowledge_search", {"arguments": {"query": "x"}}, _headers())
+
+    text = response.json()["result"]
+    assert "Trace-Lanes" not in text and '"lanes"' not in text
+    assert "--- Result 1 ---\nbody" in text and "## Gliederung\n1 A" in text
+
+
 def test_it_answers_content_blocks_as_blocks(client: TestClient, fake_function: _FakeFunction):
     blocks = [
         {"type": "text", "text": "page 3"},

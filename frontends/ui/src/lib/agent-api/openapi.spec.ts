@@ -85,8 +85,9 @@ describe('agent API OpenAPI document', () => {
     expect(Object.keys(upload.requestBody.content)).toEqual(['multipart/form-data'])
     const schema = upload.requestBody.content['multipart/form-data']?.schema
     expect(schema?.properties.file).toEqual({ type: 'string', format: 'binary' })
-    expect(Object.keys(schema?.properties ?? {})).toEqual(expect.arrayContaining(['projectId', 'folderId', 'uploadBatchId']))
-    expect(schema?.required).toEqual(['file', 'projectId'])
+    expect(Object.keys(schema?.properties ?? {})).toEqual(expect.arrayContaining(['scope', 'projectId', 'folderId', 'uploadBatchId']))
+    // The shelf is `projectId` or `scope: office_shelf`; the route refuses a request that names neither.
+    expect(schema?.required).toEqual(['file'])
   })
 
   it('describes the mail import part as raw application/octet-stream', () => {
@@ -100,7 +101,7 @@ describe('agent API OpenAPI document', () => {
     const exported = paths['/api/documents/{id}/file']?.get as unknown as {
       responses: { '200': { content: Record<string, unknown> } }
     }
-    expect(Object.keys(exported.responses['200'].content)).toEqual(['application/pdf', 'text/plain'])
+    expect(Object.keys(exported.responses['200'].content)).toEqual(['application/pdf', 'application/octet-stream', 'image/*', 'text/plain'])
   })
 
   it('leads with the workspace, and names the MCP door', () => {

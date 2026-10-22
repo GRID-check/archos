@@ -178,8 +178,8 @@ beforeEach(() => {
           : null,
       })
     }
-    if (url === `/api/conversations/${CONVERSATION_ID}/messages`) {
-      return Response.json(routes.messages)
+    if (url.startsWith(`/api/conversations/${CONVERSATION_ID}/messages`)) {
+      return Response.json({ messages: routes.messages, nextCursor: null })
     }
     if (url === `/api/sharing/conversation/${CONVERSATION_ID}`) {
       return Response.json(ROSTER)
@@ -389,9 +389,7 @@ describe('useSharedThread — reconciliation', () => {
       messageId: 'mine',
     })
 
-    expect(requested().slice(before)).toContain(
-      `/api/conversations/${CONVERSATION_ID}/messages`,
-    )
+    expect(requested().slice(before).some((url) => url.startsWith(`/api/conversations/${CONVERSATION_ID}/messages`))).toBe(true)
     await waitFor(() => expect(storedMessages()).toHaveLength(2))
     // …and the echo case stays a no-op on screen: one row, not two.
     expect(storedMessages().filter((m) => m.id === 'mine')).toHaveLength(1)
@@ -538,7 +536,7 @@ describe('useSharedThread — reconciliation', () => {
     ]
     fetchMock.mockImplementationOnce(async () => {
       await held
-      return Response.json(answered)
+      return Response.json({ messages: answered, nextCursor: null })
     })
     await emit({ kind: 'conversation.turn', conversationId: CONVERSATION_ID, phase: 'ended', actorUserId: ANNA })
 
@@ -619,8 +617,8 @@ describe('useSharedThread — reconciliation', () => {
             myReadState: null,
           })
         }
-        if (url === `/api/conversations/${CONVERSATION_ID}/messages`)
-          return Response.json({ messages: [] })
+        if (url.startsWith(`/api/conversations/${CONVERSATION_ID}/messages`))
+          return Response.json({ messages: [], nextCursor: null })
         if (url === `/api/sharing/conversation/${CONVERSATION_ID}`) return Response.json(ROSTER)
         throw new Error(`unexpected request: ${url}`)
       })
@@ -666,7 +664,7 @@ describe('useSharedThread — reconciliation', () => {
           myReadState: null,
         })
       }
-      if (url === `/api/conversations/${CONVERSATION_ID}/messages`) return Response.json([])
+      if (url.startsWith(`/api/conversations/${CONVERSATION_ID}/messages`)) return Response.json({ messages: [], nextCursor: null })
       if (url === `/api/sharing/conversation/${CONVERSATION_ID}`) return Response.json(ROSTER)
       throw new Error(`unexpected request: ${url}`)
     })
@@ -753,7 +751,7 @@ describe('useSharedThread — reconciliation', () => {
             myReadState: null,
           })
         }
-        if (url === `/api/conversations/${CONVERSATION_ID}/messages`) return Response.json([])
+        if (url.startsWith(`/api/conversations/${CONVERSATION_ID}/messages`)) return Response.json({ messages: [], nextCursor: null })
         if (url === `/api/sharing/conversation/${CONVERSATION_ID}`) return Response.json(ROSTER)
         throw new Error(`unexpected request: ${url}`)
       })
@@ -809,7 +807,7 @@ describe('useSharedThread — reconciliation', () => {
         }
         return new Response(null, { status: 403 })
       }
-      if (url === `/api/conversations/${CONVERSATION_ID}/messages`) {
+      if (url.startsWith(`/api/conversations/${CONVERSATION_ID}/messages`)) {
         return new Response(null, { status: 403 })
       }
       if (url === `/api/sharing/conversation/${CONVERSATION_ID}`) return Response.json(ROSTER)

@@ -1,5 +1,5 @@
 /**
- * The north-star scene of ADR-0131 as wire steps, for specs and the
+ * The north-star scene of ADR-0132 as wire steps, for specs and the
  * `/dev/derivation?variant=work` preview: round 1 runs a literal search, a
  * folder listing and a meaning search together; round 2 reads a plan sheet
  * and looks at it. Pure data (no `node:fs`), so a page can import it.

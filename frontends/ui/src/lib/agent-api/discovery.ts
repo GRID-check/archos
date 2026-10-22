@@ -19,7 +19,7 @@ import type { CallToolResult } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/errors'
 import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
-import { operationScorer } from '@/lib/text/operation-search'
+import { type SearchableOperation, operationScorer } from '@/lib/text/operation-search'
 import {
   type BinaryBody,
   MAX_INLINE_BYTES,
@@ -34,7 +34,7 @@ import {
   isRedirectBody,
   validateOperationInput,
 } from './dispatch'
-import { type BackendOperation, callBackendOperation, toMcpContent } from './backend-operations'
+import { type BackendOperation, type JsonSchemaObject, callBackendOperation, toMcpContent } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
@@ -72,22 +72,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const GENERIC_NARROWING_HINT = 'Narrow the call to page through it: pass a smaller limit or filters in input.query, or fetch one item by id.'
+
+/**
+ * How to narrow `op`'s answer, from the input it really takes: the query
+ * parameters it names, or, when it has none, a plain statement that it has no
+ * filter. A hint naming a parameter the operation lacks sends the agent into a
+ * refusal.
+ */
+export function narrowingHint(op: { readonly query?: z.ZodObject<z.ZodRawShape>; readonly inputSchema?: JsonSchemaObject }): string {
+  const names = op.inputSchema
+    ? Object.keys(op.inputSchema.properties ?? {}).filter((name) => name !== 'projectId')
+    : Object.keys(op.query?.shape ?? {})
+  if (names.length === 0) {
+    return (
+      'This operation has no limit or filter, so its answer cannot be narrowed here. ' +
+      'Use a narrower operation (search-operations with this domain lists them), or one that fetches a single item by id.'
+    )
+  }
+  const where = op.inputSchema ? 'in input' : 'in input.query'
+  return `Narrow the call with the parameters this operation takes (${names.join(', ')}) ${where}, or fetch one item by id with a narrower operation.`
+}
+
 /**
  * Text for a model, capped; whether it was cut. Compact JSON: indentation is a
  * third of a pretty-printed answer, and the model reads it as tokens it pays for.
  */
-function renderText(value: unknown): { text: string; truncated: boolean } {
+function renderText(value: unknown, hint = GENERIC_NARROWING_HINT): { text: string; truncated: boolean } {
   const full = typeof value === 'string' ? value : (JSON.stringify(value) ?? 'null')
   if (full.length <= MAX_RESULT_CHARS) return { text: full, truncated: false }
   const note =
     `\n\n[Truncated: showing ${MAX_RESULT_CHARS} of ${full.length} characters. ` +
-    'Narrow the call to page through it: pass a smaller limit or filters in input.query, ' +
-    'or fetch one item by id.]'
+    `${hint}]`
   return { text: full.slice(0, MAX_RESULT_CHARS) + note, truncated: true }
 }
 
-function success(value: unknown): CallToolResult {
-  const { text, truncated } = renderText(value)
+function success(value: unknown, hint?: string): CallToolResult {
+  const { text, truncated } = renderText(value, hint)
   const result: CallToolResult = { content: [{ type: 'text', text }] }
   // structuredContent must be an object; a client that reads it would bypass the cap.
   if (!truncated) result.structuredContent = isRecord(value) ? value : { result: value }
@@ -125,7 +146,7 @@ function binaryResult(opName: string, file: BinaryBody): CallToolResult {
           text:
             `The file (${label}${mimeType}, ${sizeText(file.bytes)}) is over the ${sizeText(MAX_INLINE_BYTES)} ` +
             'limit for sending a file in a tool result, so it was not sent. ' +
-            'For a document, read its text in pages with document-text-get, or call document-download for a ' +
+            'For a document, read its text in pages with the passage reader (named by its file name), or call document-download for a ' +
             'time-limited link the person can open. Otherwise ask the person to download it in Piloti.',
         },
       ],
@@ -154,11 +175,12 @@ function redirectResult(opName: string, location: string): CallToolResult {
 }
 
 /** An answer too large to read: the agent is told to narrow the call, as the text cap tells it. */
-function oversizedResult(opName: string, body: OversizedBody): CallToolResult {
+function oversizedResult(op: AgentOperation | BackendOperation, body: OversizedBody): CallToolResult {
+  const opName = op.name
   return failure(
     `${opName} answered with more than ${sizeText(MAX_TEXT_BYTES)} of ${body.contentType || 'text'}` +
       (body.bytes === null ? '' : ` (${sizeText(body.bytes)})`) +
-      ', so it was not read. Narrow the call: pass a smaller limit or filters in input.query, or fetch one item by id.'
+      `, so it was not read. ${narrowingHint(op)}`
   )
 }
 
@@ -177,12 +199,13 @@ function refusalResult(result: OperationResult): CallToolResult {
 }
 
 /** A route's answer as the tool result. */
-function fromOperationResult(opName: string, result: OperationResult): CallToolResult {
-  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
+export function fromOperationResult(op: AgentOperation, result: OperationResult): CallToolResult {
+  const opName = op.name
+  if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
   if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-  return success(result.body)
+  return success(result.body, narrowingHint(op))
 }
 
 /**
@@ -190,13 +213,14 @@ function fromOperationResult(opName: string, result: OperationResult): CallToolR
  * `{ tool, result }`: the result is capped text with structuredContent, except
  * the page-image tool's content blocks, which stay images.
  */
-function fromBackendResult(opName: string, result: OperationResult): CallToolResult {
-  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
+function fromBackendResult(op: BackendOperation, result: OperationResult): CallToolResult {
+  const hint = narrowingHint(op)
+  if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   const value = isRecord(result.body) && 'result' in result.body ? result.body.result : result.body
-  if (!Array.isArray(value)) return success(value)
+  if (!Array.isArray(value)) return success(value, hint)
   const content = toMcpContent(value).map((block) =>
-    block.type === 'text' ? { type: 'text' as const, text: renderText(block.text).text } : block,
+    block.type === 'text' ? { type: 'text' as const, text: renderText(block.text, hint).text } : block,
   )
   return { content }
 }
@@ -288,7 +312,7 @@ export async function runBackendOperation(
     }
     const result = await callBackendOperation(op.name, input, ctx.principal.session, { projectId })
     record(result.status)
-    return fromBackendResult(op.name, result)
+    return fromBackendResult(op, result)
   } catch (error) {
     console.error('[mcp] backend operation failed', op.name, error)
     record(500)
@@ -316,6 +340,51 @@ function unknownOperation(ctx: McpCallContext, name: string): CallToolResult {
 }
 
 /**
+ * The body of a read the door makes for itself (a prompt reading the office's
+ * skills), as `ctx.principal` and through the same gate and dispatch as
+ * call-operation, but whole: the 40,000-character cap is for what a model
+ * reads, and this body is read by code. Only a read that runs, never a write.
+ */
+export async function readOperationBody(
+  ctx: McpCallContext,
+  name: string,
+  input: OperationInput,
+): Promise<{ body: unknown } | { refusal: string }> {
+  const op = findVisibleOperation(ctx.principal, name)
+  if (!op || !annotationsOf(op).readOnlyHint || callDecision(ctx.principal, op) !== 'run') {
+    return { refusal: `${name} is not a read this connection may run.` }
+  }
+  const startedAt = Date.now()
+  const record = (status: number) =>
+    recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'run', status, startedAt })
+  // Code reads this, not a model: whatever goes wrong is a refusal the caller can answer
+  // with an empty result, never an exception out of a prompt completion.
+  try {
+    const refused = await readGateFor(ctx.principal).beforeRead(op, input)
+    if (refused) {
+      record(403)
+      return { refusal: refused }
+    }
+    const result = await callOperation(op, input, ctx.principal.session, 'agent')
+    record(result.status)
+    if (!result.ok) return { refusal: `${name} was refused (HTTP ${result.status}).` }
+    return { body: result.body }
+  } catch (error) {
+    if (error instanceof OperationInputError) {
+      record(400)
+      return { refusal: inputRefusal(op, error) }
+    }
+    if (error instanceof ApiError) {
+      record(error.status)
+      return { refusal: `${error.message} (HTTP ${error.status}, ${error.code})` }
+    }
+    console.error('[mcp] operation read failed', op.name, error)
+    record(500)
+    return { refusal: `${name} failed on the server.` }
+  }
+}
+
+/**
  * Run (or propose) one operation for `ctx.principal`. The one path both modes
  * share: visibility, the run/propose decision, the dispatch, the telemetry.
  */
@@ -333,8 +402,8 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
   const record = (status: number) =>
     recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision, status, startedAt })
 
-  try {
-    if (decision === 'propose') {
+  if (decision === 'propose') {
+    try {
       const parsed = validateOperationInput(op, input)
       const proposal = await proposeOperation({ principal: ctx.principal, op, input: parsed })
       record(202)
@@ -349,32 +418,60 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
           operation: op.name,
         },
       }
+    } catch (error) {
+      return operationFailure(op, error, record)
     }
+  }
+  const outcome = await executeOperation(ctx, op, input, startedAt)
+  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result)
+}
+
+/**
+ * Run `op`, which the caller may run (its decision is `run`): the read gate,
+ * the route as the person, the telemetry. The route's own answer, or the
+ * refusal the caller reads instead. {@link runOperation} renders the answer;
+ * the ask's progress and task (`ask-calls.ts`) read its state from the body,
+ * through this same path.
+ */
+export async function executeOperation(
+  ctx: McpCallContext,
+  op: AgentOperation,
+  input: OperationInput,
+  startedAt = Date.now(),
+): Promise<{ result: OperationResult } | { refusal: CallToolResult }> {
+  const record = (status: number) =>
+    recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'run', status, startedAt })
+  try {
     const gate = readGateFor(ctx.principal)
     const refused = await gate.beforeRead(op, input)
     if (refused) {
       record(403)
-      return failure(refused)
+      return { refusal: failure(refused) }
     }
     // An agent reads the answer: a route that words its refusal in the person's locale words it in English.
     const result = await callOperation(op, input, ctx.principal.session, 'agent')
     record(result.status)
     // A link works for whoever holds it, with the requester's access: never into a transcript others read.
-    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return failure(sharedConversationReadRefusal())
-    return fromOperationResult(op.name, result)
+    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return { refusal: failure(sharedConversationReadRefusal()) }
+    return { result }
   } catch (error) {
-    if (error instanceof OperationInputError) {
-      record(400)
-      return failure(inputRefusal(op, error))
-    }
-    if (error instanceof ApiError) {
-      record(error.status)
-      return failure(`${error.message} (HTTP ${error.status}, ${error.code})`)
-    }
-    console.error('[mcp] operation failed', op.name, error)
-    record(500)
-    return failure(`${op.name} failed on the server. Try again; if it persists, report it.`)
+    return { refusal: operationFailure(op, error, record) }
   }
+}
+
+/** What the caller reads when running `op` threw, recorded with its status. */
+function operationFailure(op: AgentOperation, error: unknown, record: (status: number) => void): CallToolResult {
+  if (error instanceof OperationInputError) {
+    record(400)
+    return failure(inputRefusal(op, error))
+  }
+  if (error instanceof ApiError) {
+    record(error.status)
+    return failure(`${error.message} (HTTP ${error.status}, ${error.code})`)
+  }
+  console.error('[mcp] operation failed', op.name, error)
+  record(500)
+  return failure(`${op.name} failed on the server. Try again; if it persists, report it.`)
 }
 
 /** Longest input schema quoted in a refusal; a larger one is a describe-operation away. */
@@ -400,11 +497,20 @@ interface Hit {
 }
 
 /**
+ * The scorer for `query` on `ctx`'s door: a word weighs by how rare it is among
+ * every operation this caller can see, so the weights do not move with a domain
+ * filter and a hidden operation is never part of them.
+ */
+function scorerFor(ctx: McpCallContext, query: string): (op: SearchableOperation) => number {
+  return operationScorer(query, [...visibleOperations(ctx.principal), ...visibleBackendOperations(ctx.principal)])
+}
+
+/**
  * Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0123).
  * `query` is at most {@link MAX_SEARCH_QUERY_LENGTH} characters: the search schema refuses a longer one.
  */
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {
-  const score = operationScorer(query)
+  const score = scorerFor(ctx, query)
   const catalog: Hit[] = visibleOperations(ctx.principal)
     .filter((op) => !domain || op.domain === domain)
     .map((op) => {
@@ -455,7 +561,7 @@ export const SENSITIVE_MATCH_NOTE =
   'is not offered to you: none of the operations listed does that. Tell the person to make that change in Piloti themselves.'
 
 function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: string | undefined, best: number): boolean {
-  const score = operationScorer(query)
+  const score = scorerFor(ctx, query)
   return AGENT_OPERATIONS.some(
     (op) =>
       op.sensitivity !== undefined &&
@@ -468,6 +574,32 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
   )
 }
 
+/**
+ * Where to go when no operation matched. The words of a question about what a
+ * document or the law SAYS (`Brandschutz Anforderungen Gebäudeklasse 5`) are
+ * in the documents, not in the catalog, so the search finds nothing and the
+ * agent concluded the door could not answer. It names the operations that read
+ * content, when this caller can see them.
+ */
+export function nothingMatched(ctx: McpCallContext): string {
+  const visible = new Set(visibleBackendOperations(ctx.principal).map((op) => op.name))
+  for (const op of visibleOperations(ctx.principal)) visible.add(op.name)
+  const readers = CONTENT_READERS.filter(({ name }) => visible.has(name)).map(({ name, what }) => `${name} (${what})`)
+  const retry = 'try other words (the catalog is English), drop the domain filter, or call report-missing-operation.'
+  if (readers.length === 0) return `Nothing matched. Try ${retry.slice(4)}`
+  return (
+    "Nothing matched. The catalog lists actions, not what documents say: for a question about a document's or " +
+    `the law's content, call ${readers.join(', or ')}. Otherwise ${retry}`
+  )
+}
+
+/** The operations that answer from content rather than act, in the order an agent should try them. */
+const CONTENT_READERS = [
+  { name: 'knowledge-search', what: 'quotable passages from the project, the office and the building-law corpus' },
+  { name: 'law-lookup', what: 'a provision of Austrian law' },
+  { name: 'piloti-ask-create', what: 'Piloti answers it with sources' },
+] as const
+
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
   const parsed = searchInput(ctx.principal).safeParse(args)
@@ -478,7 +610,7 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
   recordOperationCalled(ctx, { operation: 'search-operations', domain: domain ?? null, decision: 'run', status: 200, startedAt })
   const next =
     shown.length === 0
-      ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
+      ? nothingMatched(ctx)
       : 'Call call-operation with the name; call describe-operation first when you do not know its input.'
   const hidden = query.trim() !== '' && sensitiveMatchOutranks(ctx, query, domain, hits[0]?.score ?? 0)
   return success({ total: hits.length, operations: shown, next: hidden ? `${SENSITIVE_MATCH_NOTE} ${next}` : next })
@@ -537,6 +669,18 @@ const callInput = z.object({
 })
 
 const backendCallInput = z.object({ name: z.string().min(1), input: z.record(z.unknown()).optional() })
+
+/**
+ * The catalog call `args` of call-operation name, or null when they name a read
+ * tool, nothing `principal` may see, or do not parse: what the person would be
+ * asked about (`confirmation.ts`). Parsed as {@link callOperationTool} parses
+ * them, so both rounds of a confirmed call compare the same shape.
+ */
+export function catalogCallOf(principal: AgentPrincipal, args: unknown): { operation: string; input: OperationInput } | null {
+  const parsed = callInput.safeParse(args)
+  if (!parsed.success || !findVisibleOperation(principal, parsed.data.name)) return null
+  return { operation: parsed.data.name, input: parsed.data.input ?? {} }
+}
 
 export function callOperationTool(ctx: McpCallContext, args: unknown): Promise<CallToolResult> {
   // A backend operation takes its own flat arguments (projectId among them), not { params, query, body }.

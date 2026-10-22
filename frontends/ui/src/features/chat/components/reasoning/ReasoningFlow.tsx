@@ -107,7 +107,7 @@
  *     streaming, column re-packing) keep the graph visible — the old gate was
  *     keyed on orientation and fired a full fade-out/in on every flip.
  *
- * ## The 2026-10 evolution (ADR-0131, amendment)
+ * ## The 2026-10 evolution (ADR-0132, amendment)
  *
  * A step with calls draws them as rows inside its node (`RoundCalls`), not as
  * nodes of their own, and carries no fold: the rows are its controls. The
@@ -379,7 +379,7 @@ type RoundData = {
   text: string
   /** Architect-facing names of the tools this checkpoint actually called. */
   actions: string[]
-  /** The calls of this round (`action` steps, ADR-0131): one row each, linked to the cards they returned. */
+  /** The calls of this round (`action` steps, ADR-0132): one row each, linked to the cards they returned. */
   calls?: WorkRound
   /** Phone width: a row's result goes under its object instead of beside it. */
   compact: boolean
@@ -489,7 +489,7 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
     {/* The model's sentence, when it wrote one: it names the intent. A step
         without one loses nothing — its rows say what it did. */}
     {data.text ? <p className="text-foreground mt-1 text-sm leading-relaxed">{data.text}</p> : null}
-    {/* A step stored before the action rows (ADR-0131) still names its tools. */}
+    {/* A step stored before the action rows (ADR-0132) still names its tools. */}
     {!data.calls && data.actions.length > 0 ? (
       <ul className="mt-1.5 flex flex-wrap gap-1">
         {data.actions.map((action) => (
@@ -1171,7 +1171,7 @@ const BROWSE_TOOLS: ReadonlySet<string> = new Set(['list_files'])
 /**
  * Tools whose round can come back empty. A round of tools outside this set
  * (a listing, a workspace call, an IFC query) returns no documents by design,
- * so „no documents“ is no miss there (ADR-0131).
+ * so „no documents“ is no miss there (ADR-0132).
  */
 const SEARCH_TOOLS: ReadonlySet<string> = new Set([
   'knowledge_search',
@@ -1376,7 +1376,7 @@ export function buildGraph(
   const compact = layout.contentW <= GROUPED_MAX_W
   const { selection } = interaction
   // The decision's prefetch (round 0) is no step a reader sees: its documents
-  // join the first fan like any other source (ADR-0131).
+  // join the first fan like any other source (ADR-0132).
   const prefetch = prefetchRounds(props.steps)
   const visible = rounds.filter((round) => !prefetch.has(round.index))
   const prefetched = rounds.filter((round) => prefetch.has(round.index))
@@ -1503,7 +1503,7 @@ export function buildGraph(
   // One retrieval stays the old fan. Two or more are a spine: each checkpoint
   // hangs the files THAT fetch returned, then the next conclusion. The body
   // is the thought, never the query (PF-12). A turn with calls drawn
-  // (ADR-0131) is a spine even in one round: the calls sit on its node.
+  // (ADR-0132) is a spine even in one round: the calls sit on its node.
   const roundIds = spine ? visible.map((_, i) => `round-${i}`) : []
 
   const actionLabels = (tools: string[]): string[] => {

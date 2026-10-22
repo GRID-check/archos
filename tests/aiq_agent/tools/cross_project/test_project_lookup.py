@@ -1146,7 +1146,7 @@ class TestTheProjectFacts:
 
 
 class TestTheActionRow:
-    """One ``lookup`` row per call (ADR-0131), settled from the BFF's typed body."""
+    """One ``lookup`` row per call (ADR-0132), settled from the BFF's typed body."""
 
     @staticmethod
     def _call(emitted):

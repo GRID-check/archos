@@ -612,6 +612,10 @@
     "de": "Eine kurze Störung wird jetzt als vorübergehendes Problem mit der Bitte angezeigt, es erneut zu versuchen. Eine Aufgabe, die während einer Störung gestartet wurde, wird während ihres Laufs nicht mehr als fehlgeschlagen angezeigt."
   },
   {
+    "en": "A single document can now go to the bin and come back from it: the bin lists it by name, and restoring it files it back in the folder it came from.",
+    "de": "Ein einzelnes Dokument kann jetzt in den Papierkorb verschoben und von dort wiederhergestellt werden: Im Papierkorb wird es mit Namen angezeigt und beim Wiederherstellen wieder in dem Ordner abgelegt, aus dem es stammt."
+  },
+  {
     "en": "A single source that does not answer in time no longer ends a deep research; the run carries on without it.",
     "de": "Eine einzelne Quelle, die nicht rechtzeitig antwortet, beendet die Tiefenrecherche nicht mehr; der Lauf geht ohne sie weiter."
   },
@@ -670,6 +674,10 @@
   {
     "en": "A task you hand to Piloti now appears as a block in the conversation where you gave it: title, state, phases and running time, updating live, with the finished report beneath it.",
     "de": "Ein Auftrag, den Sie Piloti übergeben, erscheint jetzt als Block in der Unterhaltung, in der Sie ihn erteilt haben: Titel, Stand, Phasen und Laufzeit, laufend aktualisiert, mit dem fertigen Bericht darunter."
+  },
+  {
+    "en": "A task's run history now shows how each run actually ended, so a failed run reads as failed with its reason instead of as submitted.",
+    "de": "Der Ausführungsverlauf einer Aufgabe zeigt jetzt, wie jeder Durchlauf tatsächlich geendet hat: Fehlgeschlagene Durchläufe werden mit ihrem Grund als fehlgeschlagen statt als übermittelt angezeigt."
   },
   {
     "en": "A thumbs-down with a short note helps improve answers.",
@@ -752,6 +760,10 @@
     "de": "Praktisch jede Antwort beginnt jetzt mit einer Zusammenfassung in ein, zwei Sätzen, die das Ergebnis samt entscheidender Einschränkung vorwegnimmt, direkt unter dem Urteil, wenn es eines gibt."
   },
   {
+    "en": "An AI assistant connected to your workspace now asks you in its own chat before it deletes or overwrites something, when the assistant supports such questions. Nothing changes unless you confirm, and your answer is recorded in your organization's audit log.",
+    "de": "Ein mit Ihrem Workspace verbundener KI-Assistent fragt Sie jetzt in seinem eigenen Chat, bevor er etwas löscht oder überschreibt – sofern der Assistent solche Rückfragen unterstützt. Es wird erst etwas geändert, wenn Sie bestätigen, und Ihre Antwort wird im Audit-Log Ihrer Organisation protokolliert."
+  },
+  {
     "en": "An Anmerkung opened from the keyboard takes the focus, and closing it returns you to where you were, so Enter never resolves one by accident. A screen reader hears what colleagues and Piloti change on the drawing.",
     "de": "Eine per Tastatur geöffnete Anmerkung erhält den Fokus. Beim Schließen kehren Sie an die vorherige Stelle zurück, damit Sie nicht versehentlich mit Enter eine Anmerkung als erledigt markieren. Ein Screenreader gibt wieder, was Kolleginnen und Kollegen und Piloti in der Zeichnung ändern."
   },
@@ -766,6 +778,14 @@
   {
     "en": "An Outlook archive import ends with the same summary, once everything it filed has been read.",
     "de": "Ein Outlook-Archivimport endet mit derselben Zusammenfassung, sobald alles gelesen ist, was er abgelegt hat."
+  },
+  {
+    "en": "An agent connected to Piloti, such as Claude or Cursor, now learns when a project it has open changes: a new name, status, profile or document. It hears only about projects the signed-in person may open.",
+    "de": "Ein mit Piloti verbundener Agent wie Claude oder Cursor wird jetzt informiert, wenn sich ein geöffnetes Projekt ändert – etwa Name, Status, Profil oder Dokument. Er erhält nur Informationen zu Projekten, die die angemeldete Person öffnen darf."
+  },
+  {
+    "en": "An agent that lists a project's members now gets the people who hold a role, with the id it needs to remove one, and long memory lists come in pages.",
+    "de": "Ein Agent, der die Mitglieder eines Projekts auflistet, erhält jetzt Personen mit einer Rolle samt der zum Entfernen benötigten ID; lange Listen aus dem Langzeitgedächtnis werden seitenweise ausgegeben."
   },
   {
     "en": "An answer being written no longer stalls while someone in the office loads the document list, deletes files or starts a research with a follow-up question.",
@@ -832,12 +852,20 @@
     "de": "Die Details einer Antwort zeigen jetzt, was sie in Punkten gekostet hat, und bei Ihrem eigenen KI-Schlüssel, wie viel davon er verbraucht hat. Beim Überfahren der Zeile mit der Maus sehen Sie, wie viel auf Lesen, Schreiben und Denken entfällt."
   },
   {
+    "en": "An archived document can be brought back into the working set, and Piloti reads it again so it answers questions as before.",
+    "de": "Ein archiviertes Dokument lässt sich wieder in den Arbeitsbestand aufnehmen, und Piloti liest es erneut ein, damit es Fragen wieder wie zuvor beantworten kann."
+  },
+  {
     "en": "An archived document no longer shows as citable, and uploading a new version of it no longer puts it back into Piloti's answers while it stays archived.",
     "de": "Ein archiviertes Dokument wird nicht mehr als zitierfähig angezeigt, und auch das Hochladen einer neuen Version sorgt nicht dafür, dass es wieder in Piloti-Antworten aufgenommen wird, solange es archiviert bleibt."
   },
   {
     "en": "An archived document no longer turns up as a source in answers, whoever wrote it. The file and its versions stay where they were; archiving is not deleting.",
     "de": "Ein archiviertes Dokument taucht nicht mehr als Quelle in Antworten auf, gleich wer es verfasst hat. Die Datei und ihre Fassungen bleiben erhalten; Archivieren ist kein Löschen."
+  },
+  {
+    "en": "An assistant connected to your workspace that asks Piloti a question can now show that Piloti is still working on the answer, or come back for it later without waiting.",
+    "de": "Ein mit Ihrem Workspace verbundener Assistent, der Piloti eine Frage stellt, kann jetzt anzeigen, dass Piloti noch an der Antwort arbeitet, oder die Antwort später abrufen, ohne warten zu müssen."
   },
   {
     "en": "An empty Von Piloti filter explains what it would show: research reports and diagrams Piloti filed, not the documents you uploaded.",
@@ -874,6 +902,10 @@
   {
     "en": "An open file shows its summary, page count and tags as soon as Piloti has finished reading it, without closing and reopening it.",
     "de": "Eine geöffnete Datei zeigt ihre Zusammenfassung, Seitenzahl und Schlagwörter, sobald Piloti sie fertig gelesen hat, ohne dass Sie sie schließen und neu öffnen müssen."
+  },
+  {
+    "en": "An outside agent can now ask which OIB guidelines apply to a project and what would settle the open ones, and read the register of laws Piloti knows by number. It can also search the shared building-law corpus without choosing a project first.",
+    "de": "Ein externer Agent kann jetzt abfragen, welche OIB-Richtlinien für ein Projekt gelten und was offene Fragen klären würde, sowie das nach Nummern geordnete Gesetzesverzeichnis lesen, das Piloti kennt. Außerdem kann er die gemeinsame Sammlung zum Baurecht durchsuchen, ohne zuerst ein Projekt auszuwählen."
   },
   {
     "en": "An overview now shows its parts as a table or as a mindmap, never both. A mindmap that would only repeat the table is now rare, so a mindmap no longer appears on screen only to vanish when the answer finishes.",
@@ -1020,6 +1052,10 @@
     "de": "Bitten Sie um ein Diagramm, ein Schaubild oder eine Grafik, und Piloti antwortet mit einer echten Zeichnung statt mit Textkunst aus Strichen und Pfeilen."
   },
   {
+    "en": "Asked from your own agent (Claude, Cursor or another MCP client), Piloti reads the building-law corpus, the project's documents and RIS again instead of answering that these sources were switched off. Comment threads that wake Piloti and the check of a new document read every source your office allows as well.",
+    "de": "Wenn Sie Piloti über Ihren eigenen Agenten (Claude, Cursor oder einen anderen MCP-Client) fragen, greift Piloti wieder auf den Baurechtskorpus, die Projektdokumente und RIS zu, statt zu melden, dass diese Quellen deaktiviert sind. Auch Kommentar-Threads, die Piloti aktivieren, und die Prüfung neuer Dokumente berücksichtigen alle Quellen, die Ihr Büro freigegeben hat."
+  },
+  {
     "en": "Asked which OIB-Richtlinien it has, Piloti now lists every one of them, and it still names each of your own documents individually.",
     "de": "Auf die Frage, welche OIB-Richtlinien vorliegen, zählt Piloti jetzt alle vollständig auf und nennt Ihre eigenen Unterlagen weiterhin einzeln beim Namen."
   },
@@ -1046,6 +1082,10 @@
   {
     "en": "Assigning someone to a file now says when it did not work, names the person and offers to try again. A refused assignment used to change nothing on screen, which read as success.",
     "de": "Wenn das Zuweisen einer Datei scheitert, sagt Piloti das jetzt, nennt die Person und bietet einen neuen Versuch an. Bisher änderte sich dann nichts, was wie ein Erfolg aussah."
+  },
+  {
+    "en": "Assistants connected to Piloti can now read what a task run produced before accepting or rejecting it, and page through all of a project's tasks and runs.",
+    "de": "Mit Piloti verbundene Assistenten können jetzt vor dem Annehmen oder Ablehnen die Ergebnisse eines Task-Runs lesen und alle Tasks und Runs eines Projekts durchblättern."
   },
   {
     "en": "Austrian legal texts from the RIS are now part of every task, like your project documents; only web search remains optional. Existing tasks use the RIS the next time they run.",
@@ -1138,6 +1178,10 @@
   {
     "en": "Choosing the sign-in button on the Piloti website leads to the sign-in page again.",
     "de": "Wer auf der Piloti-Website die Anmeldung startet, landet wieder auf der Anmeldeseite."
+  },
+  {
+    "en": "Claude, Cursor and other assistants now show Piloti with its own name and icon, and its search and lookup results come back in a structured form they can read reliably.",
+    "de": "Claude, Cursor und andere Assistenten zeigen Piloti jetzt mit eigenem Namen und Icon an und erhalten Such- und Abfrageergebnisse in einem strukturierten Format, das sie zuverlässig auslesen können."
   },
   {
     "en": "Click a passage to open its document at that spot; only documents you may open are listed.",
@@ -3650,6 +3694,10 @@
   {
     "en": "When you close a project, Piloti now proposes which files it no longer needs, such as working copies, older versions, duplicates and temporary files. It is marked as an AI proposal, you decide about every file, and what you confirm goes to the Papierkorb for 14 days.",
     "de": "Wenn Sie ein Projekt abschließen, schlägt Piloti jetzt vor, welche Dateien es nicht mehr braucht, etwa Arbeitskopien, ältere Fassungen, Duplikate und temporäre Dateien. Der Vorschlag ist als KI-Vorschlag gekennzeichnet, Sie entscheiden über jede Datei, und was Sie bestätigen, kommt für 14 Tage in den Papierkorb."
+  },
+  {
+    "en": "When you connect Claude, Cursor or another agent to Piloti, it can now read a short guide to your workspace, a glossary of the office's terms and the list of what it may do. It also offers ready workflows (a project briefing, a building-law check, what is on your plate) and your office's own skills by name.",
+    "de": "Wenn Sie Claude, Cursor oder einen anderen Agenten mit Piloti verbinden, kann dieser jetzt einen kurzen Leitfaden zu Ihrem Arbeitsbereich, ein Glossar der bürointernen Begriffe und eine Liste der erlaubten Aktionen lesen. Außerdem stellt er fertige Workflows (Projektbriefing, baurechtliche Prüfung, Ihre anstehenden Aufgaben) sowie die Skills Ihres Büros unter ihren jeweiligen Namen bereit."
   },
   {
     "en": "When you draw a box and ask Piloti about it, Piloti answers about that box again, and an @Piloti question in an Anmerkung is answered in its thread. Everyone sees in the thread when Piloti is working on it, also after reloading, and the thread says why when Piloti could not answer.",

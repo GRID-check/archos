@@ -17,28 +17,12 @@ import {
   findDocumentsByFilenames,
   findDocumentsByNames,
   listDocumentLevelPage,
-  listDocumentPage,
   type DocumentLevelPage,
-  type DocumentListPage,
   type DocumentListRow,
   type DocumentNameMatchRow,
 } from '@/lib/documents/repository'
 import { OFFICE_SHELF } from '@/lib/documents/shelf'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
-
-/**
- * One keyset page of an organization's Archiv, most-recent first - the shared
- * shelf listing (`listDocumentPage`) on the Archiv shelf, so it filters by
- * lifecycle and author, orders, pages and cursors exactly as a project's does
- * (ADR-0078). Bounded per page; the whole Archiv is reachable by following
- * `nextCursor`.
- */
-export function listOfficeShelfDocuments(
-  organizationId: string,
-  options: Parameters<typeof listDocumentPage>[2],
-): Promise<DocumentListPage> {
-  return listDocumentPage(OFFICE_SHELF, organizationId, options)
-}
 
 /**
  * One page of a folder level of the Archiv, in the reader's order - the shared

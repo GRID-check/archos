@@ -172,7 +172,7 @@ async def run_look(
 
     With ``question`` the crop is also read by the office's vision model and the
     readings come back with it. One look either way: the budget counts the render.
-    The call is one Herleitung row (ADR-0131), beside the ``look`` step that
+    The call is one Herleitung row (ADR-0132), beside the ``look`` step that
     carries the crop.
     """
     row = ActionRow("look", target=(document or "").strip(), pages=str(page))

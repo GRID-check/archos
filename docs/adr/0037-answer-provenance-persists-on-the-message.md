@@ -98,7 +98,7 @@ restored from it.**
 
 - **Message rows get bigger.** Bounded (600 steps, 600-char reasons, 40 lanes per step;
   over the step bound the oldest status and tool steps go first and a call's own
-  `action` and `sources` rows last, so a long turn keeps its last rounds; amended 2026-10, ADR-0131),
+  `action` and `sources` rows last, so a long turn keeps its last rounds; amended 2026-10, ADR-0132),
   and the heavy fields were already being dropped for localStorage, so the ceiling is the
   one the browser already lives with.
 - **One extra PATCH per turn** (two when both messages carry provenance). Sequential, after

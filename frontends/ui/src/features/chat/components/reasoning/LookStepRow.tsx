@@ -2,7 +2,7 @@
 
 /**
  * The Herleitung's look rows (ADR-0128) for looks no call row explains: a
- * turn stored before the work list (ADR-0131), or a look of the prefetch.
+ * turn stored before the work list (ADR-0132), or a look of the prefetch.
  * Each is drawn as the row a `look` call draws („Betrachtet Grundriss EG.pdf,
  * S. 2, oben rechts“), with the thumbnails of its places under it, so a look
  * reads the same wherever it sits. Consecutive looks at one document fold into

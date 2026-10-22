@@ -45,6 +45,7 @@ vi.mock('./repository', () => ({
 // mocked so no connection is ever opened.
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
 vi.mock('@/lib/documents/can-write', () => ({ canWriteDocument: vi.fn() }))
+vi.mock('@/lib/projects/repository', () => ({ listProjectNamesInOrg: vi.fn(async () => new Map()) }))
 
 import { PgDialect } from 'drizzle-orm/pg-core'
 import { canWriteDocument } from '@/lib/documents/can-write'

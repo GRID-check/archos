@@ -1497,7 +1497,7 @@ async def outline_for(targets: list[PassageTarget], query: str) -> Outline:
 
 
 def _read_row_fields(arguments: ReadPassageInput) -> dict[str, str | None]:
-    """The Herleitung row of a read, from its own arguments: which document, which Punkt or pages (ADR-0131)."""
+    """The Herleitung row of a read, from its own arguments: which document, which Punkt or pages (ADR-0132)."""
     clause = str(arguments.clause if arguments.clause is not None else "").strip().strip(".")
     page = str(arguments.page if arguments.page is not None else "").strip()
     pages = str(arguments.pages if arguments.pages is not None else "").strip()
@@ -1696,7 +1696,13 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         chunks.sort(key=_clause_sort_key)
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
         _count(outcome, len(merged.chunks), targets)
-        formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_revision_notice(targets))
+        formatted = await asyncio.to_thread(
+            _format_results,
+            merged,
+            query,
+            notice=_older_revision_notice(targets),
+            reading_of=_locus_label(document, clause, page),
+        )
         logger.info("read_passage: %s returned %d chunk(s)", query, len(merged.chunks))
         return formatted
 
@@ -1761,7 +1767,12 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         merged = _passage_result(kept, label)
         _count(outcome, len(kept), targets)
         formatted = await asyncio.to_thread(
-            _format_results, merged, label, notice=_older_revision_notice(targets), trailer=trailer
+            _format_results,
+            merged,
+            label,
+            notice=_older_revision_notice(targets),
+            trailer=trailer,
+            reading_of=label,
         )
         logger.info("read_passage: %s returned %d chunk(s), cursor=%s", label, len(kept), bool(next_cursor))
         return formatted
@@ -1793,6 +1804,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             query,
             notice=_older_revision_notice(targets),
             trailer=_outline_block(entries),
+            reading_of=document,
         )
         logger.info("read_passage: %s outlined %d Punkt(e)", query, len(entries))
         return formatted
@@ -1826,7 +1838,12 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
         formatted = await asyncio.to_thread(
-            _format_results, merged, query, notice=_older_revision_notice(targets), trailer=_NO_CLAUSES_LINE
+            _format_results,
+            merged,
+            query,
+            notice=_older_revision_notice(targets),
+            trailer=_NO_CLAUSES_LINE,
+            reading_of=document,
         )
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))
         return formatted

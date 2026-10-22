@@ -6,6 +6,7 @@ The chat socket hands the turn the v2 `user_message` with flat, typed fields;
 
 import pytest
 
+from aiq_agent.common.data_sources import unavailable_source_ids
 from aiq_agent.common.focus_file import get_focused_file_name
 from aiq_agent.common.focus_file import get_turn_shelves
 from aiq_agent.common.focus_file import set_turn_intent
@@ -63,8 +64,17 @@ class TestExtractTurnInputs:
 
     def test_the_selection_of_data_sources_comes_through_even_when_empty(self):
         assert extract_turn_inputs(_message(data_sources=["web_search"])).data_sources == ["web_search"]
-        assert extract_turn_inputs(_message()).data_sources == []
+        assert extract_turn_inputs(_message(data_sources=[])).data_sources == []
         assert "skills" not in extract_turn_inputs(_message())._fields
+
+    def test_an_unstated_selection_switches_off_only_what_the_organization_did(self):
+        """A headless sender (the MCP ask, a wake, the document check) states no
+        selection. That is every source the organization allows, never none: the
+        MCP ask once answered that its knowledge base was switched off."""
+        inputs = extract_turn_inputs(_message())
+
+        assert inputs.data_sources is None
+        assert unavailable_source_ids(inputs.data_sources, disabled_sources=set()) == frozenset()
 
     def test_the_intent_is_set_for_retrieval_by_the_lift(self):
         extract_turn_inputs(_message(focus_file_name="Protokoll.pdf", focus_shelf="session"))

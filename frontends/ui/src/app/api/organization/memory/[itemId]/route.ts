@@ -9,6 +9,7 @@ import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { NotFoundError } from '@/lib/api/errors'
 import { deleteProjectMemoryItem, updateProjectMemoryItem } from '@/lib/projects/memory-service'
 import { patchOrgMemorySchema } from '@/lib/organizations/organization-wire'
+import { toMemoryWireItem } from '@/lib/projects/project-memory-wire'
 
 type Params = { itemId: string }
 
@@ -21,7 +22,7 @@ export const PATCH = apiRoute<Params>(
       patch
     )
     if (!item) throw new NotFoundError()
-    return { item }
+    return { item: toMemoryWireItem(item) }
   },
   {
     authz: {

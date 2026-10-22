@@ -35,7 +35,7 @@ import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 import { I18nProvider } from '@/i18n'
 import { TaskDetail } from '@/features/tasks/components/task-detail'
-import type { TaskWireRow } from '@/features/tasks/lib/task-view'
+import type { TaskRunView } from '@/features/tasks/lib/task-view'
 import { RUN_DONE } from '../_fixtures/run-ledgers'
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
@@ -48,7 +48,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (url.includes('/runs/task-1')) {
         return Response.json({
           runId: 'task-1',
-          backendJobId: 'bj-1',
+          taskId: null,
           conversationId: 'conv-1',
           messageId: 'msg-1',
           status: 'succeeded',
@@ -60,7 +60,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   }
 }
 
-const BASE: TaskWireRow = {
+const BASE: TaskRunView = {
   id: 'task-1',
   kind: 'deep-research',
   title: 'Brandschutzkonzept — Fluchtwege Haus A',
@@ -71,7 +71,7 @@ const BASE: TaskWireRow = {
   filedDocumentId: 'doc-brandschutz-fluchtwege',
   conversationId: 'conv-1',
   runMessageId: 'msg-1',
-  backendJobId: 'bj-1',
+  taskId: null,
   trigger: 'delegated',
   requesterUserId: 'user_anna',
   requesterName: 'Anna Berger',
@@ -82,7 +82,7 @@ const BASE: TaskWireRow = {
 }
 
 /** The same task as it arrived before run messages existed: no run to read. */
-const LEGACY: TaskWireRow = {
+const LEGACY: TaskRunView = {
   ...BASE,
   runMessageId: null,
   runSummary: null,

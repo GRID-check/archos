@@ -197,7 +197,7 @@ describe.skipIf(!url)('quarantined documents in listings, against Postgres', () 
   })
 
   it('narrows the Büroablage listing the same way', async () => {
-    const page = await officeShelf.listOfficeShelfDocuments(ORG, { reader: member })
+    const page = await repo.listDocumentPage({ kind: 'office_shelf' }, ORG, { reader: member })
     expect(names(page.rows)).toEqual(['office_shelf-ready.pdf'])
   })
 

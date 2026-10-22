@@ -52,7 +52,7 @@ export const STEP_KINDS = [
 ] as const
 export type StepKind = (typeof STEP_KINDS)[number]
 
-/** What one call of the agent's work was (`ActionStep.verb`, ADR-0131). */
+/** What one call of the agent's work was (`ActionStep.verb`, ADR-0132). */
 export const ACTION_VERBS = [
   'search',
   'list',
@@ -83,7 +83,7 @@ export interface StoredActionCounts {
 }
 
 /**
- * One call of the agent's work, typed and clipped (`action` step, ADR-0131):
+ * One call of the agent's work, typed and clipped (`action` step, ADR-0132):
  * the Herleitung's work list draws a row from it. The start is the step's own
  * `timestamp`; the finish is that plus `elapsedMs`, once the call has ended.
  */
@@ -181,7 +181,7 @@ export interface StoredThinkingStep {
   /** One call of the agent's work (`action`); its start is `timestamp`. */
   action?: StoredAction
   /**
-   * The call an `action` row and the `sources` it returned share (ADR-0131):
+   * The call an `action` row and the `sources` it returned share (ADR-0132):
    * what links a Herleitung row to its source cards. Absent on rows stored
    * before the wire carried it; those rows link to nothing.
    */

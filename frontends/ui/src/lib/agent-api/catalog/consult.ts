@@ -23,15 +23,14 @@ export const consultOperations = [
     domain: 'conversations',
     summary: 'Ask Piloti a question and get its answer',
     description:
-      'Asks Piloti, the office’s own agent, a question as the signed-in person: it answers from the office’s ' +
-      'documents, the project’s files and building law, with the person’s rights, and may file a document. ' +
-      `Waits up to ${ASK_WAIT_SECONDS} seconds (less with waitSeconds): state "completed" carries answer.text, ` +
-      'the evidence the answer stored (answer.sources: documentId, name, page and a url that opens the cited page ' +
-      'in Piloti for the signed-in person; answer.confidence: level and reason; each absent when the answer stored ' +
-      'none, and an answer with neither is not grounded in a document) and any documents filed; state "submitted" or "working" means call piloti-ask-get with the id after ' +
-      'pollAfterSeconds. Pass projectId (from project-list) to ask about one project: without it Piloti answers ' +
-      'for the office as a whole and reads no project’s files. Pass conversationId from an earlier ask to follow ' +
-      'up in the same conversation. "rejected" or "failed" carry the reason (a spent budget, a busy conversation). Uses the organization’s model budget, and needs the piloti-ask switch.',
+      'Asks Piloti, the office’s own agent, as the signed-in person: it answers from the office’s documents, ' +
+      'the project’s files and building law, and may file a document. ' +
+      `Waits up to ${ASK_WAIT_SECONDS} s (less with waitSeconds). "completed" carries answer.text, answer.sources ` +
+      '(documentId, name, page, a url opening the cited page) and answer.confidence (level, reason); an answer with ' +
+      'neither is not grounded in a document. "submitted" or "working": call piloti-ask-get after pollAfterSeconds. ' +
+      '"rejected" or "failed" say why (spent budget, busy conversation). Pass projectId (from project-list) to ask ' +
+      'about one project: without it Piloti answers for the office as a whole and reads no project’s files. ' +
+      'conversationId follows up an earlier ask. Uses the organization’s model budget.',
     method: 'POST',
     path: '/api/piloti-asks',
     body: createAskSchema,

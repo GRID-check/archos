@@ -380,7 +380,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   // either way (`features/skills/lib/skill-activity`), so the two can never
   // word it differently.
   //
-  // A turn whose calls are drawn as rows (ADR-0131) has no tool chips: each row
+  // A turn whose calls are drawn as rows (ADR-0132) has no tool chips: each row
   // already says what ran, where and with what result, and a chip beside it
   // would be the same claim with less to say. Skills keep theirs.
   const executedSteps = useMemo(() => {

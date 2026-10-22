@@ -117,31 +117,126 @@ export function searchWordGroups(query: string): string[][] {
 }
 
 /**
- * How well `op` answers the query; 0 when it answers no word. A blank query scores every operation 1; text
- * with no usable word in it (`a`, `(+)$`) scores every operation 0.
+ * Words that carry no meaning a catalog could match: the question's grammar
+ * (`which`, `what`, `der`) and the person asking (`me`, `my`, `mir`). Matched
+ * by substring they used to rank by accident (`to` inside `restore` put
+ * project-restore first for "which OIB guidelines apply to project"); matched
+ * whole they would still add a weight every operation shares. A query of
+ * nothing but these keeps them, so "what is new" still finds something.
  */
-export function operationScorer(query: string): (op: SearchableOperation) => number {
-  const groups = searchWordGroups(query)
+export const STOPWORDS: ReadonlySet<string> = new Set([
+  'a', 'about', 'all', 'am', 'an', 'and', 'any', 'are', 'as', 'at', 'be', 'by', 'can', 'do', 'does', 'for',
+  'from', 'get', 'give', 'has', 'have', 'how', 'i', 'in', 'into', 'is', 'it', 'its', 'me', 'my', 'of', 'on', 'or',
+  'our', 'please', 'show', 'some', 'tell', 'that', 'the', 'their', 'there', 'this', 'to', 'under', 'us', 'want',
+  'was', 'we', 'what', 'when', 'where', 'which', 'who', 'why', 'will', 'with', 'you', 'your',
+  'auf', 'aus', 'bei', 'bitte', 'das', 'dem', 'den', 'der', 'des', 'die', 'ein', 'eine', 'einem', 'einen', 'einer',
+  'eines', 'es', 'fuer', 'gibt', 'hat', 'ich', 'im', 'ist', 'mir', 'mit', 'sagt', 'sind', 'und', 'unser', 'unsere',
+  'von', 'vom', 'was', 'welche', 'welcher', 'welches', 'wer', 'wie', 'wir', 'zu', 'zum', 'zur',
+])
+
+/** A word with its common English endings removed, so `guidelines` meets `guideline` and `failed` meets `fail`. */
+export function stemSearchWord(word: string): string {
+  if (word.length <= 4) return word
+  if (word.endsWith('ies')) return `${word.slice(0, -3)}y`
+  if (word.endsWith('ing') && word.length >= 6) return word.slice(0, -3)
+  if (word.endsWith('ed') && word.length >= 5) return word.slice(0, -2)
+  // `-es` only where English adds it (`searches`, `boxes`); `guidelines` is `guideline` + `s`.
+  if (/(?:ss|x|z|ch|sh)es$/.test(word)) return word.slice(0, -2)
+  if (word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1)
+  return word
+}
+
+/** The words of catalog or query text, folded, as {@link searchWordGroups} splits them. */
+function wordsOf(text: string): string[] {
+  return foldSearchText(text)
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= MIN_WORD_LENGTH)
+}
+
+/** A query word this long also finds the longer words it begins: `ingest` finds `ingestion`. */
+export const WORD_PREFIX_MIN_LENGTH = 4
+
+/**
+ * Whether the query word `word` is the catalog word `token`: the same word, the
+ * same stem, or (for a word long enough to mean something on its own) the start
+ * of it. Never a fragment inside a word: `to` is not in `restore`.
+ */
+function wordMatches(word: string, token: string): boolean {
+  if (token === word) return true
+  if (word.length >= WORD_PREFIX_MIN_LENGTH && token.startsWith(word)) return true
+  return stemSearchWord(token) === stemSearchWord(word)
+}
+
+/** An operation's text split once into the fields ranking weighs. */
+interface IndexedOperation {
+  name: readonly string[]
+  summary: readonly string[]
+  description: readonly string[]
+}
+
+function indexOperation(op: SearchableOperation): IndexedOperation {
+  return { name: wordsOf(op.name), summary: wordsOf(op.summary), description: wordsOf(op.description) }
+}
+
+const contains = (words: readonly string[], word: string): boolean => words.some((token) => wordMatches(word, token))
+
+/**
+ * How much finding `word` says about an operation, from how few of `corpus` it
+ * occurs in (inverse document frequency, as BM25 weighs a term): `project`,
+ * in most of the catalog, says little; `oib`, in a handful, says a lot. Without
+ * a corpus every word weighs 1.
+ */
+function rarityOf(corpus: readonly IndexedOperation[]): (word: string) => number {
+  if (corpus.length === 0) return () => 1
+  const cache = new Map<string, number>()
+  return (word) => {
+    const known = cache.get(word)
+    if (known !== undefined) return known
+    const df = corpus.filter((op) => contains(op.name, word) || contains(op.summary, word) || contains(op.description, word)).length
+    const weight = Math.log(1 + corpus.length / (1 + df))
+    cache.set(word, weight)
+    return weight
+  }
+}
+
+/**
+ * How well `op` answers the query; 0 when it answers no word. A blank query
+ * scores every operation 1; text with no usable word in it (`a`, `(+)$`)
+ * scores every operation 0.
+ *
+ * Each word group scores by its best member: where the word occurs (name 3,
+ * summary 2, description 1, and 1 more when it opens the summary, the verb an
+ * operation is for: "Ask Piloti a question"), times its rarity across `corpus`.
+ * The sum is scaled by the share of groups the operation answers, so one
+ * answering every word beats one answering a common word often. Pass the
+ * operations being ranked as `corpus`; without it every word weighs the same.
+ */
+export function operationScorer(
+  query: string,
+  corpus: readonly SearchableOperation[] = [],
+): (op: SearchableOperation) => number {
+  const all = searchWordGroups(query)
+  const meaningful = all.filter((group) => !STOPWORDS.has(group[0]))
+  const groups = meaningful.length > 0 ? meaningful : all
   const listsAll = query.trim() === ''
+  const rarity = rarityOf(corpus.map(indexOperation))
   return (op) => {
     if (groups.length === 0) return listsAll ? 1 : 0
-    const name = foldSearchText(op.name)
-    const segments = name.split('-')
-    const summary = foldSearchText(op.summary)
-    const description = foldSearchText(op.description)
-    const scoreOf = (word: string): number =>
-      (name.includes(word) ? 3 : 0) +
-      (segments.includes(word) ? 1 : 0) +
-      (summary.includes(word) ? 2 : 0) +
-      (description.includes(word) ? 1 : 0)
+    const indexed = indexOperation(op)
+    const lead = indexed.summary[0]
+    const placeOf = (word: string): number =>
+      (contains(indexed.name, word) ? 3 : 0) +
+      (contains(indexed.summary, word) ? 2 : 0) +
+      (contains(indexed.description, word) ? 1 : 0) +
+      (lead !== undefined && wordMatches(word, lead) ? 1 : 0)
     let total = 0
     let matched = 0
     for (const group of groups) {
-      const score = Math.max(...group.map(scoreOf))
+      const score = Math.max(...group.map((word) => placeOf(word) * rarity(word)))
       if (score > 0) matched += 1
       total += score
     }
-    // An operation that answers every word beats one that answers a single word often.
-    return total + (matched === groups.length ? 5 : 0)
+    // Rounded so the eval's Python mirror, whose logarithm may differ in the last bit, orders ties the same.
+    return Math.round(total * (matched / groups.length) * 1e6) / 1e6
   }
 }

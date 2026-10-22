@@ -1,5 +1,5 @@
 /**
- * The Herleitung's work list (ADR-0131): the turn's `action` steps as rounds,
+ * The Herleitung's work list (ADR-0132): the turn's `action` steps as rounds,
  * one row per call, inside the round's node of the graph.
  *
  * Pure: the stored steps in, rounds and rows out. The words of a row are
@@ -237,7 +237,7 @@ export function workRounds(steps: readonly StoredThinkingStep[]): WorkRound[] {
 }
 
 /**
- * Looks no action row explains (a turn stored before ADR-0131, a look of the
+ * Looks no action row explains (a turn stored before ADR-0132, a look of the
  * prefetch) as the row a `look` call would have drawn: „Betrachtet
  * Grundriss EG.pdf, S. 2, oben rechts“, or the document and how many places.
  */

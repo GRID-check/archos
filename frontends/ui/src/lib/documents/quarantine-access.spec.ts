@@ -16,6 +16,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const PAGE = { level: { sort: 'added', dir: 'desc', limit: 100 } } as const
+
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
 vi.mock('@/lib/download-log/service', () => ({ recordDocumentAccess: vi.fn(async () => undefined) }))
@@ -36,7 +38,7 @@ vi.mock('@aws-sdk/s3-request-presigner', () => ({
 }))
 vi.mock('./repository', () => ({
   findDocumentInOrg: vi.fn(),
-  listProjectDocumentPage: vi.fn().mockResolvedValue({ rows: [], nextCursor: null }),
+  listDocumentLevelPage: vi.fn().mockResolvedValue({ rows: [], nextCursor: null }),
   findProjectDocumentsByFilenames: vi.fn().mockResolvedValue([]),
   findProjectDocumentsByNames: vi.fn().mockResolvedValue([]),
 }))
@@ -66,7 +68,7 @@ import {
   findDocumentInOrg,
   findProjectDocumentsByFilenames,
   findProjectDocumentsByNames,
-  listProjectDocumentPage,
+  listDocumentLevelPage,
   type DocumentListRow,
 } from './repository'
 import { reconcileDocumentStatuses } from './reconcile-status'
@@ -313,19 +315,19 @@ describe('a quarantined Büroablage document', () => {
 })
 
 describe('the project listing and a quarantined document', () => {
-  const readerOf = (call: number): unknown => vi.mocked(listProjectDocumentPage).mock.calls[call][2]?.reader
+  const readerOf = (call: number): unknown => vi.mocked(listDocumentLevelPage).mock.calls[call][2]?.reader
 
   it('keeps a member to the held files they uploaded themselves', async () => {
-    await listDocumentsPage(member, 'proj-1')
-    await listDocumentsPage(uploader, 'proj-1')
+    await listDocumentsPage(member, 'proj-1', PAGE)
+    await listDocumentsPage(uploader, 'proj-1', PAGE)
 
     expect(readerOf(0)).toEqual(memberReader('member-1'))
     expect(readerOf(1)).toEqual(memberReader('uploader-1'))
   })
 
   it('lists every held file to a reviewer', async () => {
-    await listDocumentsPage(projectAdmin, 'proj-1')
-    await listDocumentsPage(orgAdmin, 'proj-1')
+    await listDocumentsPage(projectAdmin, 'proj-1', PAGE)
+    await listDocumentsPage(orgAdmin, 'proj-1', PAGE)
 
     expect(readerOf(0)).toEqual(REVIEWER_READER)
     expect(readerOf(1)).toEqual(REVIEWER_READER)
@@ -392,7 +394,7 @@ describe('a verdict that lands during the listing', () => {
   })
 
   beforeEach(() => {
-    vi.mocked(listProjectDocumentPage).mockResolvedValue({
+    vi.mocked(listDocumentLevelPage).mockResolvedValue({
       rows: [pendingRow('mine', 'member-1'), pendingRow('theirs', 'uploader-1')],
       nextCursor: null,
     })
@@ -402,13 +404,13 @@ describe('a verdict that lands during the listing', () => {
   })
 
   it("leaves somebody else's out for a member, and keeps their own", async () => {
-    const { documents } = await listDocumentsPage(member, 'proj-1')
+    const { documents } = await listDocumentsPage(member, 'proj-1', PAGE)
     expect(documents.map((doc) => doc.id)).toEqual(['mine'])
     expect(documents[0]).not.toHaveProperty('createdBy')
   })
 
   it('keeps both for a reviewer', async () => {
-    const { documents } = await listDocumentsPage(projectAdmin, 'proj-1')
+    const { documents } = await listDocumentsPage(projectAdmin, 'proj-1', PAGE)
     expect(documents.map((doc) => doc.id)).toEqual(['mine', 'theirs'])
   })
 })

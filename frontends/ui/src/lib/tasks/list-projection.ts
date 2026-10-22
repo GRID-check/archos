@@ -20,7 +20,7 @@
  * the block's header in the thread reduced to its glyph, its word and its
  * tallies, so the index and the thread cannot disagree about one run. It is a
  * SECOND query, not a join: `task_runs` and `messages` are joined by an id the
- * run row holds, one page of runs is at most `RUN_LIST_LIMIT` rows, and every
+ * run row holds, one page of runs is at most `TASK_PAGE_MAX_LIMIT` rows, and every
  * row on it that has a run message is looked up — a finished row shows its
  * line too, because „Fertig · 3 Runden · 9 Dokumente" is how much work stands
  * behind the result. Three facts cross the wire per row, never the ledger: a
@@ -29,21 +29,21 @@
  */
 
 import 'server-only'
-import type { TaskRunSummary, TaskWireRow } from '@/features/tasks/lib/task-view'
+import { TASK_PAGE_MAX_LIMIT, type TaskRunSummary, type TaskRunView } from './task-wire'
 import { listRunLedgersByMessageIds } from '@/lib/conversations/repository'
 import type { TaskRun } from '@/lib/db/schema'
 import { sanitizeRunLedger } from '@/lib/runs/run-ledger'
 import type { RunLedger } from '@/lib/runs/run-ledger-types'
 import { runDisplayStatus, runTallies } from '@/lib/runs/run-vocabulary'
-import { RUN_LIST_LIMIT } from './repository'
 
-export function toTaskWireRow(
+export function toTaskRunView(
   task: TaskRun,
   requesterName: string | null,
   runSummary: TaskRunSummary | null = null,
-): TaskWireRow {
+): TaskRunView {
   return {
     id: task.id,
+    taskId: task.definitionId,
     kind: task.kind,
     title: task.title,
     // The requester's own sentence, when there was one. A job-fired run has the
@@ -58,11 +58,6 @@ export function toTaskWireRow(
     // reader ON the run rather than at the bottom of a thread that may hold a
     // year of them (ADR-0062).
     runMessageId: task.runMessageId,
-    // The handle on the run's own report. Added so a finished task that filed
-    // no document and minted no conversation still has somewhere to go — the
-    // dead end the Tasks list used to leave. Opaque, and already public in the
-    // URLs the run history builds, so it widens nothing this tier was keeping.
-    backendJobId: task.backendJobId,
     // How it started, so the drawer offers „als Zeitplan speichern" only on
     // work that is not already recurring. The trigger rather than the
     // definition id: since 0086 a delegated task has a definition too.
@@ -96,7 +91,7 @@ export function runSummaryOf(ledger: RunLedger | null): TaskRunSummary | null {
  */
 export async function loadRunSummaries(runs: readonly TaskRun[]): Promise<Map<string, TaskRunSummary>> {
   const messageIdByRun = new Map<string, string>()
-  for (const run of runs.slice(0, RUN_LIST_LIMIT)) {
+  for (const run of runs.slice(0, TASK_PAGE_MAX_LIMIT)) {
     if (run.runMessageId) messageIdByRun.set(run.id, run.runMessageId)
   }
   if (messageIdByRun.size === 0) return new Map()

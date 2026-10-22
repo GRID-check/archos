@@ -483,17 +483,17 @@ describe('an organization-scoped operation proposal (a turn in no project)', () 
     const withoutChat = await proposeInOrganization(null)
     await propose() // a project's, not on this shelf
 
-    const forColleague = await listOpenProposals(ACCEPTER, { shelf: 'organization' })
+    const forColleague = await listOpenProposals(ACCEPTER, { shelf: 'organization', limit: 50 })
     expect(listShelfProposals).toHaveBeenCalledWith(
       'org_1',
       { scope: 'organization' },
       expect.objectContaining({ statuses: ['proposed'] })
     )
-    expect(forColleague.map((entry) => entry.proposal.id)).toEqual([withChat.proposalId])
-    expect(forColleague[0]?.proposal).toMatchObject({ projectId: null, canDecide: true })
+    expect(forColleague.proposals.map((entry) => entry.proposal.id)).toEqual([withChat.proposalId])
+    expect(forColleague.proposals[0]?.proposal).toMatchObject({ projectId: null, canDecide: true })
 
-    const forRequester = await listOpenProposals(ASKER, { shelf: 'organization' })
-    expect(forRequester.map((entry) => entry.proposal.id).sort()).toEqual(
+    const forRequester = await listOpenProposals(ASKER, { shelf: 'organization', limit: 50 })
+    expect(forRequester.proposals.map((entry) => entry.proposal.id).sort()).toEqual(
       [withChat.proposalId, withoutChat.proposalId].sort()
     )
   })

@@ -146,7 +146,7 @@ async def test_a_live_hit_that_cannot_be_fetched_is_named_as_unread(lookup, monk
 
 
 class TestActionRow:
-    """One ``law`` row per call (ADR-0131): the question, the § asked for, how many passages were cut."""
+    """One ``law`` row per call (ADR-0132): the question, the § asked for, how many passages were cut."""
 
     @pytest.fixture
     def rows(self, monkeypatch):

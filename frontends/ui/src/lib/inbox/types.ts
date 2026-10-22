@@ -36,6 +36,13 @@ export interface InboxItemView {
   actionable: boolean
   resourceType: InboxTargetType
   resourceId: string
+  /**
+   * The project the item is about (itself, or the home of its conversation or document); null for
+   * the organization's, the platform's and an upload's, and for a redacted row.
+   */
+  projectId?: string | null
+  /** That project's name; null with `projectId`. */
+  projectName?: string | null
   anchorId: string | null
   /** Resolved display name of whoever caused it; null for system items. */
   actorName: string | null
@@ -135,9 +142,15 @@ export type InboxListFilter = (typeof INBOX_LIST_FILTERS)[number]
 /** `GET /api/inbox` */
 export interface InboxListResponse {
   items: InboxItemView[]
-  /** Count of things needing attention — the badge number. */
+  /**
+   * The badge number: items that are unread OR an open request, across the whole inbox. It does not
+   * follow `filter`, `type` or `projectId`.
+   */
   pending: number
-  /** The numbers beside the filters: requests still open, and rows not opened yet. */
+  /**
+   * The numbers beside the filters, across the whole inbox: `requests` is the items waiting on the
+   * person (an open request), `unread` the ones not opened yet. An item can be both.
+   */
   counts: { requests: number; unread: number }
   /** Whether a further page exists behind `nextCursor`. */
   hasMore: boolean
