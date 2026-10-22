@@ -485,8 +485,8 @@ class TestWhatIsSent:
     def test_the_prompt_asks_for_the_newer_page_in_page_coordinates_and_forbids_inventing(self):
         prompt = compare.COMPARE_PROMPT
 
-        assert "NEUEREN" in prompt and "0 und 1" in prompt
-        assert "Erfinde nichts" in prompt
+        assert "NEWER page" in prompt and "between 0 and 1" in prompt
+        assert "Invent nothing" in prompt
         assert compare.NO_CHANGE_TEXT in prompt
         assert str(compare.MAX_REGIONS) in prompt
 
