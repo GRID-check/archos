@@ -193,11 +193,12 @@ export async function listProjectMembers(
   })
 
   const userById = new Map(users.map((user) => [user.id, user]))
-  const assignmentByMembership = new Map<string, string>()
+  // Keyed by membership and role slug: the assignment that grants the role the
+  // row shows is the one to offer for removal, not whichever came first.
+  const assignmentByMembershipAndRole = new Map<string, string>()
   for (const assignment of assignments) {
-    if (!assignmentByMembership.has(assignment.organizationMembershipId)) {
-      assignmentByMembership.set(assignment.organizationMembershipId, assignment.id)
-    }
+    const key = `${assignment.organizationMembershipId}:${assignment.role.slug}`
+    if (!assignmentByMembershipAndRole.has(key)) assignmentByMembershipAndRole.set(key, assignment.id)
   }
 
   const rows = orgMemberships.map((organizationMembership) => {
@@ -214,7 +215,9 @@ export async function listProjectMembers(
           ? `${user.firstName} ${user.lastName ?? ''}`.trim()
           : user?.lastName || user?.email || organizationMembership.userId),
       role: projectMembership?.role ?? null,
-      roleAssignmentId: assignmentByMembership.get(organizationMembership.id) ?? null,
+      roleAssignmentId: projectMembership
+        ? (assignmentByMembershipAndRole.get(`${organizationMembership.id}:${projectMembership.role}`) ?? null)
+        : null,
     }
   })
 
