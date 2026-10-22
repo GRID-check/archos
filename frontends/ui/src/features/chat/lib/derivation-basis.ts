@@ -12,7 +12,7 @@
  */
 
 import type { Translator } from '@/i18n'
-import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
+import type { StoredAction, StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import {
   citationNumbers,
   citedLoci,
@@ -25,13 +25,14 @@ import { documentEdition, documentShortName } from './document-names'
 import { retrievalRounds } from './retrieval-rounds'
 import {
   allRows,
+  isInterrupted,
   prefetchRounds,
   withActionRounds,
   workRounds,
   type WorkRound,
   type WorkRow,
 } from './work-list'
-import { breadcrumb, workParts } from './work-sentence'
+import { breadcrumb, quoteQuery, workParts } from './work-sentence'
 
 const SHELF_KEYS: Record<string, string> = {
   project: 'project',
@@ -151,36 +152,60 @@ export function basisLines(t: Translator, cards: readonly CitedDocument[]): Basi
   }
 }
 
+/** Verbs whose call is known by the document or folder it opened, not by a query. */
+const TARGET_VERBS: ReadonlySet<string> = new Set(['list', 'read', 'look'])
+
 /**
- * One open point from a call that failed or found nothing; null for any other
- * row. A document the call named is named as its card names it (`cardName`),
- * so „Offen“ and the fan never call one document two things.
+ * A call as the subject of „… fehlgeschlagen ist“: „die Abfrage im RIS nach
+ * ‚Brandabschnitt‘“, „das Lesen des Dokuments „Brandschutzkonzept““. A noun,
+ * never the row's verb, so the sentence reads as one.
+ */
+const callNoun = (t: Translator, action: StoredAction): string => {
+  const call = t(`thinking.node.basis.call.${action.verb}`)
+  if (TARGET_VERBS.has(action.verb) && action.target)
+    return t('thinking.node.basis.callTarget', { call, target: breadcrumb(action.target) })
+  if (action.query)
+    return t('thinking.node.basis.callQuery', { call, query: quoteQuery(t, action.query) })
+  return call
+}
+
+/**
+ * One open point from a call that failed, broke off or found nothing; null for
+ * any other row. A document the call named is named as its card names it
+ * (`cardName`), so „Offen“ and the fan never call one document two things.
  */
 const openPoint = (
   t: Translator,
   row: WorkRow,
   cards: readonly CitedDocument[]
 ): string | null => {
-  if (row.running || (row.action.status !== 'error' && row.action.status !== 'empty')) return null
+  const interrupted = isInterrupted(row)
+  if (row.running || (!interrupted && row.action.status !== 'error' && row.action.status !== 'empty'))
+    return null
   const card = row.action.target ? cardForTarget(row.action.target, cards) : undefined
   const action = card ? { ...row.action, target: cardName(card) } : row.action
-  const parts = workParts(t, action)
-  const what = [parts.verb, parts.object].filter(Boolean).join(' ')
-  if (action.status === 'error') return t('thinking.node.basis.openFailed', { what })
+  if (action.status === 'error') return t('thinking.node.basis.openFailed', { call: callNoun(t, action) })
+  if (interrupted) return t('thinking.node.basis.openInterrupted', { call: callNoun(t, action) })
   const { query, target } = action
-  if (!query) return t('thinking.node.basis.openEmpty', { what })
+  if (!query) {
+    const parts = workParts(t, action)
+    return t('thinking.node.basis.openEmpty', {
+      what: [parts.verb, parts.object].filter(Boolean).join(' '),
+    })
+  }
+  const quoted = quoteQuery(t, query)
   if (target)
     return t('thinking.node.basis.openNoHitIn', {
       target: card ? target : breadcrumb(target),
-      query,
+      query: quoted,
     })
   const shelfKey = row.action.shelf ? SHELF_KEYS[row.action.shelf.toLowerCase()] : undefined
   return shelfKey
     ? t('thinking.node.basis.openNoHitShelf', {
         shelf: t(`thinking.work.shelf.${shelfKey}`),
-        query,
+        query: quoted,
       })
-    : t('thinking.node.basis.openNoHit', { query })
+    : t('thinking.node.basis.openNoHit', { query: quoted })
 }
 
 /**
@@ -195,7 +220,7 @@ export function openPoints(
   const rows = rounds.flatMap(allRows)
   const ordered = [
     ...rows.filter((row) => row.action.status === 'error'),
-    ...rows.filter((row) => row.action.status === 'empty'),
+    ...rows.filter((row) => row.action.status === 'empty' || isInterrupted(row)),
   ]
   return [...new Set(ordered.flatMap((row) => openPoint(t, row, cards) ?? []))]
 }
@@ -207,7 +232,7 @@ export interface DerivationOverview {
   cited: number
   /** Calls that failed. */
   failed: number
-  /** Calls that found nothing: an open point each. */
+  /** Calls that found nothing or broke off: an open point each. */
   open: number
   /** Whether the turn looked anything up, or ran any tool: only a turn that did neither is „ohne Recherche“. */
   researched: boolean
@@ -232,7 +257,7 @@ export function derivationOverview(
     steps: rounds.length,
     cited: cards.filter(isCited).length,
     failed: settled.filter((row) => row.action.status === 'error').length,
-    open: settled.filter((row) => row.action.status === 'empty').length,
+    open: settled.filter((row) => row.action.status === 'empty' || isInterrupted(row)).length,
     researched:
       cards.length > 0 ||
       rounds.length > 0 ||

@@ -982,7 +982,7 @@ describe('ChatThinking', () => {
         />
       )
       const single = screen.getByTestId('derivation-single')
-      expect(single).toHaveTextContent('Reads Brandschutzkonzeptp. 7 · cited 1')
+      expect(single).toHaveTextContent('Read: Brandschutzkonzeptp. 7 · cited 1')
       // The one control is the answer's marker for [1]; nothing opens a panel.
       expect(within(single).getByRole('button')).toHaveAttribute('data-citation-marker', '1')
       expect(document.querySelector('[data-derivation-trigger]')).not.toBeInTheDocument()

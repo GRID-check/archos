@@ -239,7 +239,9 @@ export const SourceCard: FC<{
           <button
             type="button"
             aria-pressed={link === 'selected'}
-            aria-label={[named.title, edition].filter(Boolean).join(', ')}
+            aria-label={t('thinking.node.cardLink', {
+              name: [named.title, edition].filter(Boolean).join(', '),
+            })}
             data-source-card-toggle=""
             className={cn('absolute inset-0 cursor-pointer rounded-lg outline-none', FOCUS_RING)}
           />

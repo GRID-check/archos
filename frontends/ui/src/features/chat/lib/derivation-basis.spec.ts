@@ -1,7 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import { createTranslator } from '@/i18n/translate'
 import { en } from '@/i18n/dictionaries/en'
-import { foldScene, mockupCitations, mockupScene } from '@/test-utils/work-list-scenes'
+import {
+  failedCallScene,
+  foldScene,
+  mockupCitations,
+  mockupScene,
+} from '@/test-utils/work-list-scenes'
 import { buildCitationModel, type CitedDocument } from './citations'
 import { basisLines, cardForTarget, cardName, openPoints } from './derivation-basis'
 import { workRounds } from './work-list'
@@ -56,5 +61,26 @@ describe('openPoints name a document as its card does', () => {
     // The explanatory notes to the same Richtlinie are not the Richtlinie.
     const notesOnly: CitedDocument[] = cards.filter((doc) => doc !== oib)
     expect(cardForTarget('OIB-RL 2, Ausgabe 2023', notesOnly)).toBeUndefined()
+  })
+})
+
+describe('openPoints say which call failed or broke off, as a noun', () => {
+  const t = createTranslator(en, 'chat')
+
+  test('a failed RIS lookup names the lookup and its query', () => {
+    const open = openPoints(t, workRounds(foldScene(failedCallScene())))
+    expect(open).toEqual(['Cannot be judged: the RIS lookup for “Wiener Garagengesetz 2008” failed.'])
+  })
+
+  test('a call left running by a stopped turn is an open point, never a silent success', () => {
+    const scene = failedCallScene().map((step) =>
+      step.step.kind === 'action' && step.step.status === 'error'
+        ? { ...step, step: { ...step.step, status: 'running' as const } }
+        : step
+    )
+    const open = openPoints(t, workRounds(foldScene(scene)))
+    expect(open).toEqual([
+      'Cannot be judged: the RIS lookup for “Wiener Garagengesetz 2008” was stopped.',
+    ])
   })
 })

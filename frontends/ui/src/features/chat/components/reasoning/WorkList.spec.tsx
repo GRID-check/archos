@@ -276,7 +276,8 @@ describe('the calls inside the graph', () => {
         citations={mockupCitations()}
       />
     )
-    const read = screen.getByRole('button', { name: /^Liest Einreichplan EG\.pdf/ })
+    // The row names the document as its card does, not by its file name.
+    const read = screen.getByRole('button', { name: /^Liest Einreichplan EG, S\./ })
     await userEvent.click(read)
     const cards = screen
       .getAllByRole('listitem')
@@ -342,5 +343,22 @@ describe('placeOfAction', () => {
     })
     expect(placeOfAction({ verb: 'list', status: 'ok', target: 'A', documentId: 'd1' })).toBeNull()
     expect(placeOfAction({ verb: 'read', status: 'ok', target: 'A.pdf' })).toBeNull()
+  })
+})
+
+describe('a row and its card call one document one thing', () => {
+  test('the search the model wrote as „OIB-RL 2, Ausgabe 2023“ reads as the card names it', () => {
+    const restore = installLayoutObservers()
+    render(
+      <ReasoningFlow
+        steps={foldScene(mockupScene())}
+        userQuestion="Frage?"
+        citations={mockupCitations()}
+      />
+    )
+    const rows = screen.getByTestId('reasoning-flow').textContent ?? ''
+    expect(rows).toContain('OIB-Richtlinie 2, Ausgabe Mai 2023')
+    expect(rows).not.toMatch(/OIB.RL 2, Ausgabe 2023/)
+    restore()
   })
 })

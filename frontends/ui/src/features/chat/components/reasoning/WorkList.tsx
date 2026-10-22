@@ -90,6 +90,12 @@ export function placeOfAction(action: StoredAction): PagePlace | null {
 export interface RowLinking {
   selection: LinkSelection | null
   onSelect: (selection: LinkSelection | null) => void
+  /**
+   * The name the turn's card gives the document a call named, when there is
+   * one: the row then says what the card and „Offen“ say („OIB-Richtlinie 2,
+   * Ausgabe Mai 2023“, never „OIB-RL 2, Ausgabe 2023“ beside it).
+   */
+  nameOf?: (target: string) => string | undefined
 }
 
 /** The shape before a result word, inline with the text so a wrapped result keeps it. */
@@ -156,7 +162,8 @@ export const WorkRowView: FC<{
   const { action } = row
   const Icon = VERB_ICONS[action.verb]
   const look = row.looks[0]
-  const parts = workParts(t, action, {
+  const named = action.target ? linking?.nameOf?.(action.target) : undefined
+  const parts = workParts(t, named ? { ...action, target: named } : action, {
     running: row.running,
     ...(row.fold ? { fold: row.fold } : {}),
     ...(look?.where ? { where: look.where } : {}),

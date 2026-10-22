@@ -1411,8 +1411,24 @@ export const chat: typeof en.chat = {
         openNoHitShelf: 'Nicht beurteilbar, weil die Suche {shelf} nach „{query}“ keine Fundstelle ergab.',
         openNoHit: 'Nicht beurteilbar, weil die Suche nach „{query}“ keine Fundstelle ergab.',
         openEmpty: 'Nicht beurteilbar, weil ein Aufruf nichts ergab: {what}.',
-        openFailed: 'Nicht beurteilbar, weil ein Abruf fehlgeschlagen ist: {what}.',
+        // Aus einem fehlgeschlagenen oder abgebrochenen Aufruf: der Aufruf als Hauptwort.
+        openFailed: 'Nicht beurteilbar, weil {call} fehlgeschlagen ist.',
+        openInterrupted: 'Nicht beurteilbar, weil {call} abgebrochen wurde.',
+        callQuery: '{call} nach „{query}“',
+        callTarget: '{call} „{target}“',
+        call: {
+          search: 'die Suche',
+          list: 'das Öffnen des Ordners',
+          read: 'das Lesen des Dokuments',
+          look: 'das Betrachten des Dokuments',
+          lookup: 'die Suche in anderen Projekten',
+          law: 'die Abfrage im RIS',
+          web: 'die Suche im Web',
+          model: 'die Abfrage des Gebäudemodells',
+          workspace: 'ein Aufruf im Arbeitsbereich',
+        },
       },
+      cardLink: 'Aufrufe zu {name} hervorheben',
       // Die nicht zitierten Quellen eines Schritts, in einer gestrichelten Karte.
       // Solange die Antwort läuft, weiß niemand, was sie zitiert: dann „weitere“.
       uncited: {
@@ -1420,7 +1436,6 @@ export const chat: typeof en.chat = {
         pillLive: 'Abgerufen',
         name: '+{count} abgerufen',
         nameLive: '+{count} weitere',
-        show: '{count, plural, one {# nicht zitierte Quelle zeigen} other {# nicht zitierte Quellen zeigen}}',
         hide: 'Nicht zitierte Quellen ausblenden',
       },
       // Jede Abrufschicht auf der Herleitungs-Achse, in Ausführungsreihenfolge:

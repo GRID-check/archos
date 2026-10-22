@@ -153,6 +153,7 @@ import { useLayoutStore } from '@/features/layout/store'
 import { TechnicalSteps } from './TechnicalSteps'
 import { LookStepRows } from './LookStepRow'
 import { RoundCalls, type RowLinking } from './WorkList'
+import { quoteQuery } from '../../lib/work-sentence'
 import {
   callIdsByDocument,
   isLinked,
@@ -164,7 +165,13 @@ import {
   type LinkSelection,
   type WorkRound,
 } from '../../lib/work-list'
-import { basisLines, openPoints, type BasisLine } from '../../lib/derivation-basis'
+import {
+  basisLines,
+  cardForTarget,
+  cardName,
+  openPoints,
+  type BasisLine,
+} from '../../lib/derivation-basis'
 import type { CitationSource } from '../../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { deriveTraceLanes } from '../../lib/trace-lanes'
@@ -496,7 +503,12 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
       </ul>
     ) : null}
     {data.calls ? (
-      <RoundCalls round={data.calls} compact={data.compact} linking={data.linking} />
+      <RoundCalls
+        round={data.calls}
+        compact={data.compact}
+        linking={data.linking}
+        ruled={Boolean(data.text)}
+      />
     ) : null}
     {/* Folded: the fan collapses to its scent — the count plus the top
         filename(s). Not the query (PF-12), and never a bare count: evidence
@@ -543,11 +555,7 @@ const SourceColumnFlowNode: FC<NodeProps<Node<SourceColumnData>>> = ({ data }) =
             />
           )}
           {slot.type === 'fold' ? (
-            <UncitedFoldCard
-              slot={slot}
-              grouped={data.grouped}
-              onToggle={() => data.onToggleFold(slot.key)}
-            />
+            <UncitedFoldCard slot={slot} onToggle={() => data.onToggleFold(slot.key)} />
           ) : (
             <FanSlotCard slot={slot} live={data.live} onSelect={data.onSelect} />
           )}
@@ -624,10 +632,8 @@ const FanSlotCard: FC<{
  */
 const UncitedFoldCard: FC<{
   slot: Extract<ColumnSlot, { type: 'fold' }>
-  /** The phone's grouped box is muted, so the tab is card-white there. */
-  grouped: boolean
   onToggle: () => void
-}> = ({ slot, grouped, onToggle }) => {
+}> = ({ slot, onToggle }) => {
   const t = useTranslations('chat')
   const tabId = useId()
   const U = 'thinking.node.uncited.'
@@ -658,10 +664,9 @@ const UncitedFoldCard: FC<{
         slot.receded && RECEDED
       )}
     >
-      <SectionLabel
-        id={tabId}
-        className={cn(FOLDER_TAB, grouped ? 'bg-card' : 'bg-muted', 'text-muted-foreground')}
-      >
+      {/* Card-white on the muted panel and the phone's muted box alike: the
+          cited tabs carry their kind's tint, this one only its words. */}
+      <SectionLabel id={tabId} className={cn(FOLDER_TAB, 'bg-card text-muted-foreground')}>
         {t(`${U}${slot.live ? 'pillLive' : 'pill'}`)}
       </SectionLabel>
       <button
@@ -1456,7 +1461,7 @@ export function buildGraph(
   const framingData: FramingData = {
     label: t('thinking.node.framingTab'),
     question: props.userQuestion.trim()
-      ? t('thinking.node.framingQuestion', { question: props.userQuestion.trim() })
+      ? t('thinking.node.framingQuestion', { question: quoteQuery(t, props.userQuestion) })
       : t('thinking.node.framingTitle'),
     escalation: props.escalationReason?.trim()
       ? t('thinking.escalationNarration', { reason: props.escalationReason.trim() })
@@ -1565,7 +1570,14 @@ export function buildGraph(
     })
   }
 
-  const linking: RowLinking = { selection, onSelect: interaction.onSelect }
+  const linking: RowLinking = {
+    selection,
+    onSelect: interaction.onSelect,
+    nameOf: (target) => {
+      const card = cardForTarget(target, cards)
+      return card ? cardName(card) : undefined
+    },
+  }
   nodes.push({
     id: 'framing',
     type: 'framing',

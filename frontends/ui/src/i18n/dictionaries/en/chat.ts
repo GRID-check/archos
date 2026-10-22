@@ -1396,9 +1396,25 @@ export const chat = {
         openNoHitIn: 'Cannot be judged: the search in {target} for “{query}” found no passage.',
         openNoHitShelf: 'Cannot be judged: the search {shelf} for “{query}” found no passage.',
         openNoHit: 'Cannot be judged: the search for “{query}” found no passage.',
-        openEmpty: 'Cannot be judged: a call returned nothing ({what}).',
-        openFailed: 'Cannot be judged: a call failed ({what}).',
+        openEmpty: 'Cannot be judged: a call found nothing ({what}).',
+        // From a call that failed or broke off: the call as a noun.
+        openFailed: 'Cannot be judged: {call} failed.',
+        openInterrupted: 'Cannot be judged: {call} was stopped.',
+        callQuery: '{call} for “{query}”',
+        callTarget: '{call} “{target}”',
+        call: {
+          search: 'the search',
+          list: 'opening the folder',
+          read: 'reading the document',
+          look: 'looking at the document',
+          lookup: 'the search in other projects',
+          law: 'the RIS lookup',
+          web: 'the web search',
+          model: 'the building model query',
+          workspace: 'a workspace call',
+        },
       },
+      cardLink: 'Highlight the calls for {name}',
       // A step's uncited sources, in one dashed card. While the answer runs no
       // one knows what it cites: then "more".
       uncited: {
@@ -1406,7 +1422,6 @@ export const chat = {
         pillLive: 'Retrieved',
         name: '+{count} retrieved',
         nameLive: '+{count} more',
-        show: '{count, plural, one {Show # uncited source} other {Show # uncited sources}}',
         hide: 'Hide uncited sources',
       },
       // Every retrieval layer on the Herleitung spine, in execution order:

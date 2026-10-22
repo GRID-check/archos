@@ -68,7 +68,7 @@ import { useElapsedSeconds, formatElapsed, type ElapsedSince } from '../hooks/us
 import { ReasoningFlow } from './reasoning/ReasoningFlow'
 import { derivationOverview, documentLocation } from '../lib/derivation-basis'
 import { hasActions } from '../lib/work-list'
-import { workParts } from '../lib/work-sentence'
+import { settledHead, workParts } from '../lib/work-sentence'
 import { answerSourceAnchorPrefix, citationNumbers, isCited } from '../lib/citations'
 import { CitationScope } from './CitationScope'
 import { CitationMarkers } from './CitationMarker'
@@ -485,11 +485,13 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
       : overview.failed > 0
         ? {
             kind: 'failed' as const,
+            count: overview.failed,
             text: t('thinking.derivationWarning.failed', { count: overview.failed }),
           }
         : overview.open > 0
           ? {
               kind: 'open' as const,
+              count: overview.open,
               text: t('thinking.derivationWarning.open', { count: overview.open }),
             }
           : null
@@ -566,7 +568,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     // edition and the marker: „Liest Brandschutzkonzept“ / „S. 7 · zitiert [1]“.
     // Without a card the call's own words and its result stand.
     const name = card ? documentShortName(card.fileName ?? card.title, card.title) : ''
-    const head = [parts.verb, name || parts.object].filter(Boolean).join(' ')
+    const head = settledHead(t, call.action, name)
     const detail = [
       card ? documentEdition(card.fileName ?? card.title, card.title) : undefined,
       card ? documentLocation(t, card) : parts.result || undefined,
@@ -694,7 +696,11 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
                   ) : (
                     <Circle aria-hidden strokeWidth={2.4} className="size-3" />
                   )}
-                  {warning.text}
+                  {/* A narrow panel keeps the summary whole and the pill to
+                      its shape and count; the trigger's `sr-only` name and
+                      the panel's „Offen“ carry the words. */}
+                  <span className="@sm:hidden">{warning.count}</span>
+                  <span className="hidden @sm:inline">{warning.text}</span>
                 </span>
               )}
             </span>
