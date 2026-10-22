@@ -48,6 +48,8 @@ from typing import Any
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
 
+from aiq_agent.common.budget_guard import RunBudgetExceededError
+from aiq_agent.common.cost_tracking import BudgetExceededError
 from aiq_agent.common.message_utils import content_to_text
 from aiq_agent.common.prompt_utils import load_prompt
 from aiq_agent.common.prompt_utils import render_prompt_template
@@ -140,6 +142,7 @@ def _last_words(messages: list[Any]) -> str:
 _ENDINGS = {
     "step_limit": "Die Erfassung wurde nach dem Schrittbudget beendet.",
     "time_budget": "Die Erfassung wurde nach dem Zeitbudget beendet.",
+    "llm_budget": "Die Erfassung wurde beendet: das Nutzungsbudget ist aufgebraucht.",
     "error": "Die Erfassung wurde nach einem Fehler beendet.",
     "no_model": "Die Erfassung konnte nicht starten: kein Modell konfiguriert.",
     "model": "Piloti hat die Erfassung ohne eigene Zusammenfassung beendet.",
@@ -234,6 +237,10 @@ class ProjectIntakeAgent:
         except TimeoutError:
             logger.warning("Project intake %s hit its time budget", session.job_id)
             return "time_budget", []
+        except (BudgetExceededError, RunBudgetExceededError) as error:
+            # Out of budget is the office's limit at work, not a fault: no ERROR, no error-tracking issue.
+            logger.info("Project intake %s stopped: %s", session.job_id, error)
+            return "llm_budget", []
         except Exception:  # noqa: BLE001 — the run still finishes, with what it recorded
             logger.exception("Project intake %s failed", session.job_id)
             return "error", []
