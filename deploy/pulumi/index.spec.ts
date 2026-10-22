@@ -362,6 +362,32 @@ describe("the program constructs in the split topology", () => {
     expect(named("kubernetes:core/v1:PersistentVolumeClaim")).toEqual([]);
   });
 
+  it("leaves project mail off while inboundMailDomain is unset", () => {
+    // Off means nothing at Cloudflare and no domain on the frontend, which is
+    // what hides the address in the UI. The key map is still wired (empty),
+    // so the signed route answers 503 rather than reading an unset variable.
+    expect(RESOURCES.filter((r) => r.type.startsWith("cloudflare:"))).toEqual([]);
+    const frontend = RESOURCES.find(
+      (r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend",
+    );
+    const spec = frontend?.inputs.spec as {
+      template: { spec: { containers: Array<{ env: Array<{ name: string }> }> } };
+    };
+    const names = spec.template.spec.containers[0].env.map((e) => e.name);
+    expect(names).not.toContain("GRID_INBOUND_MAIL_DOMAIN");
+    expect(names).toContain("GRID_INBOUND_MAIL_SIGNING_KEYS");
+  });
+
+  it("serves the signed internal routes on a route of their own, mail or not", () => {
+    // The family exists before any caller does (PR-C's routes), so its edge
+    // ceiling and its exemption from the app buckets do too.
+    expect(
+      RESOURCES.filter((r) => r.inputs.kind === "HTTPRoute").map(
+        (r) => (r.inputs.metadata as { name: string }).name,
+      ),
+    ).toContain("grid-app-signed");
+  });
+
   it("keeps the S3 endpoint on the name the app tier already uses", () => {
     // A rename here silently removes the `allow-edge-to-seaweedfs` NetworkPolicy
     // from the pods that serve S3, and breaks `SEAWEED_ENDPOINT` for every tier.
