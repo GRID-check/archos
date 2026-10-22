@@ -188,7 +188,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
   it("keeps the dispatch's filing choice through a quarantine, and drops it with the next dispatch that carries none", async () => {
     const { storedFilingChoice } = await import('@/lib/documents/filing-choice')
     const { DOCUMENT_TYPE_TAGS } = await import('@/lib/documents/tag-vocabulary')
-    const choice = { documentType: DOCUMENT_TYPE_TAGS[0], revisionOf: 'Index_B.pdf' }
+    const choice = { documentType: DOCUMENT_TYPE_TAGS[0], revisionOfId: '0b6c8a52-3f1e-4c7a-9d2b-5e8f1a2b3c4d' }
     const id = await insertDocument('index_c.pdf', 'uploaded', { hash: 'sha256:filed' })
     const row = async () => {
       const found = await documentsRepo.findDocumentInOrg(id, ORG, internalRead('quarantine-review'))

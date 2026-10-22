@@ -215,6 +215,8 @@ interface PlaceUploadInput {
   uploadBatchId: string | null
   /** The file name of the older document this is filed as the next Fassung of, checked; null for none. */
   revisionOf: string | null
+  /** The older document's id that name was checked for; null with it. */
+  revisionOfId: string | null
   /** Why the reader's Fassung choice was dropped, when it was. */
   revisionOfIgnored: RevisionOfIgnoredReason | null
   /** Whether the session may write into a folder of this shelf (a superseded document's). */
@@ -463,6 +465,8 @@ async function prepareUpload(
     storageBucket,
     uploadBatchId,
     revisionOf: revision.revisionOf,
+    // The id the name was checked for: what a release of a held upload re-resolves.
+    revisionOfId: revision.revisionOf ? (input.revisionOf ?? null) : null,
     revisionOfIgnored: revision.ignored,
     mayWriteFolder: gate.mayWriteFolder,
     screeningOverridden: nameGate.overridden,
@@ -572,6 +576,7 @@ export async function uploadToShelf(
     folderPath,
     priority: input.priority,
     revisionOf: upload.revisionOf,
+    revisionOfId: upload.revisionOfId,
     documentType: input.documentType,
   })
 
@@ -582,7 +587,7 @@ export async function uploadToShelf(
     collectionName,
     folderId: upload.folderId,
     replaced: placed.replaced,
-    revisionOf: input.revisionOf && upload.revisionOf ? input.revisionOf : null,
+    revisionOf: upload.revisionOfId,
     revisionOfIgnored: upload.revisionOfIgnored,
   })
   await auditScreeningOverride(

@@ -344,10 +344,14 @@ a person's edit in the tag editor does. The same bytes already filed
 verdict, before anything is stored, so its reading never stores the choice. The
 dispatch therefore records what it carried on the BFF row, beside the job id and
 the digest of the bytes that job reads: `documents.metadata.filingChoice`
-(`{documentType?, revisionOf?}`, `setDocumentIngestJob`). The reviewer's release
-(`releaseQuarantinedDocument`) reads it back from the row it loaded and sends it
-again, `revision_of` included, but only while that digest is the row's
-(`storedFilingChoice`, `lib/documents/filing-choice.ts`). Every later dispatch
+(`{documentType?, revisionOfId?}`, `setDocumentIngestJob`). The Fassung is the
+older document's id, never its name. The reviewer's release
+(`releaseQuarantinedDocument`) reads the choice back from the row it loaded and
+sends it again, but only while that digest is the row's (`storedFilingChoice`,
+`lib/documents/filing-choice.ts`); the id is first resolved again
+(`resolveReleasedRevisionOf`: active, past screening, same shelf and
+collection), `revision_of` carries the older file's name as it is then, and a
+choice that no longer resolves is dropped. Every later dispatch
 rewrites the metadata, and one that carries no choice (a re-index, a placement
 move) drops it: were a re-index to send the type again, it would overwrite a
 person's later edit in the tag editor, since the job treats it as the newest

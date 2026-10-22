@@ -3,16 +3,17 @@ import { FILING_CHOICE_METADATA_KEY, filingChoiceRecord, storedFilingChoice } fr
 import { DOCUMENT_TYPE_TAGS } from './tag-vocabulary'
 
 const TYPE = DOCUMENT_TYPE_TAGS[0]
+const OLDER = '0b6c8a52-3f1e-4c7a-9d2b-5e8f1a2b3c4d'
 const row = (metadata: unknown, contentHash: string | null = 'sha256:abc') => ({ metadata, contentHash })
 
 describe('filingChoiceRecord', () => {
   it('records only what was chosen, and nothing when nothing was', () => {
-    expect(filingChoiceRecord({ documentType: TYPE, revisionOf: 'Index_B.pdf' })).toEqual({
+    expect(filingChoiceRecord({ documentType: TYPE, revisionOfId: OLDER })).toEqual({
       documentType: TYPE,
-      revisionOf: 'Index_B.pdf',
+      revisionOfId: OLDER,
     })
-    expect(filingChoiceRecord({ documentType: TYPE, revisionOf: null })).toEqual({ documentType: TYPE })
-    expect(filingChoiceRecord({ documentType: null, revisionOf: null })).toBeNull()
+    expect(filingChoiceRecord({ documentType: TYPE, revisionOfId: null })).toEqual({ documentType: TYPE })
+    expect(filingChoiceRecord({ documentType: null, revisionOfId: null })).toBeNull()
     expect(filingChoiceRecord({})).toBeNull()
   })
 })
@@ -25,13 +26,13 @@ describe('storedFilingChoice', () => {
   })
 
   it('reads back what the dispatch of these bytes recorded', () => {
-    expect(storedFilingChoice(row(recorded({ documentType: TYPE, revisionOf: 'Index_B.pdf' })))).toEqual({
+    expect(storedFilingChoice(row(recorded({ documentType: TYPE, revisionOfId: OLDER })))).toEqual({
       documentType: TYPE,
-      revisionOf: 'Index_B.pdf',
+      revisionOfId: OLDER,
     })
-    expect(storedFilingChoice(row(recorded({ revisionOf: 'Index_B.pdf' })))).toEqual({
+    expect(storedFilingChoice(row(recorded({ revisionOfId: OLDER })))).toEqual({
       documentType: null,
-      revisionOf: 'Index_B.pdf',
+      revisionOfId: OLDER,
     })
   })
 
@@ -47,13 +48,15 @@ describe('storedFilingChoice', () => {
     expect(storedFilingChoice(row(recorded('Grundriss')))).toBeNull()
   })
 
-  it('drops a type outside the vocabulary and a name no file can have', () => {
+  it('drops a type outside the vocabulary and anything that is not a document id', () => {
     expect(storedFilingChoice(row(recorded({ documentType: 'retired-type' })))).toBeNull()
-    expect(storedFilingChoice(row(recorded({ documentType: 'retired-type', revisionOf: 'Index_B.pdf' })))).toEqual({
+    expect(storedFilingChoice(row(recorded({ documentType: 'retired-type', revisionOfId: OLDER })))).toEqual({
       documentType: null,
-      revisionOf: 'Index_B.pdf',
+      revisionOfId: OLDER,
     })
-    expect(storedFilingChoice(row(recorded({ revisionOf: 'x'.repeat(256) })))).toBeNull()
-    expect(storedFilingChoice(row(recorded({ revisionOf: '   ' })))).toBeNull()
+    expect(storedFilingChoice(row(recorded({ revisionOfId: 'Index_B.pdf' })))).toBeNull()
+    expect(storedFilingChoice(row(recorded({ revisionOfId: '   ' })))).toBeNull()
+    // A file name is no choice to re-send: the release re-resolves an id.
+    expect(storedFilingChoice(row(recorded({ revisionOf: 'Index_B.pdf' })))).toBeNull()
   })
 })
