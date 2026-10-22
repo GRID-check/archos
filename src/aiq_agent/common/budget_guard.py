@@ -69,6 +69,10 @@ class RunBudgetExceededError(RuntimeError):
     unclassified errors (see ``aiq_api.jobs.runner.sanitize_job_error``).
     """
 
+    #: A limit doing its job, not a fault: PostHog error tracking skips it
+    #: (``observability.posthog_exceptions``) even where a caller logs it at ERROR.
+    expected_outcome = True
+
     def __init__(self, ceiling: int, used: int) -> None:
         self.ceiling = ceiling
         self.used = used
