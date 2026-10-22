@@ -142,6 +142,17 @@ repos:
         pass_filenames: false
         files: ^docs/architecture/where-is-what\.md$|^scripts/check_doc_paths\.py$
 
+      - id: english-names
+        name: no Python file gains a German identifier
+        # CI's Backend core shard ran this and nothing local did, so a German
+        # test name (richtlinie, bescheids) reached CI twice on one branch. It
+        # reads `git ls-files`, which includes staged files, so it sees a new
+        # file at commit time. About five seconds, only when Python changed.
+        entry: .venv/bin/python -m pytest -q -p no:cacheprovider tests/test_english_names.py
+        language: system
+        pass_filenames: false
+        files: \.py$|^ci/(german_stems|english_names_baseline_py)\.json$
+
       - id: env-docs
         name: the queue workers' environment variables have a row in the env reference
         # AGENTS.md asks for a row per variable; nothing else checks it, and an
