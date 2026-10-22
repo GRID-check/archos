@@ -192,6 +192,10 @@
               "de": "Die Command-Palette öffnet sich sofort mit Cmd+K. Sobald ein Tooltip angezeigt wird, erscheint der nächste, sobald Sie mit dem Mauszeiger darüberfahren."
             },
             {
+              "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
+              "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
+            },
+            {
               "en": "Piloti can now look things up in your other projects through the workspace, not only through its project search: in a conversation that is yours alone, any project you may chat in; in a shared conversation, a document or the project facts of a closed project, or of one everyone in the conversation may open. The conversation then stays with the people allowed to see what it read.",
               "de": "Piloti kann jetzt über den Workspace auch in Ihren anderen Projekten nachsehen, nicht nur über die Projektsuche: In einer Unterhaltung nur für Sie kann Piloti in jedem Projekt nachsehen, in dem Sie chatten dürfen; in einer geteilten Unterhaltung in einem Dokument oder den Projektinformationen eines geschlossenen Projekts oder eines Projekts, das alle Beteiligten öffnen dürfen. Die Unterhaltung bleibt anschließend den Personen vorbehalten, die sehen dürfen, was Piloti gelesen hat."
             },
@@ -279,6 +283,10 @@
             {
               "en": "Changes Piloti proposes are filed again in every chat, and a proposed action now shows every value it would set in full and names the project or document it changes, so you never apply text you were not shown.",
               "de": "Von Piloti vorgeschlagene Änderungen werden in jedem Chat erneut erfasst. Eine vorgeschlagene Aktion zeigt jetzt alle Werte, die sie festlegen würde, vollständig an und nennt das Projekt oder Dokument, das sie ändert – so wenden Sie nie Text an, der Ihnen nicht angezeigt wurde."
+            },
+            {
+              "en": "Piloti's work steps say \"in the office filing\" where they still said \"in the office archive\".",
+              "de": "In Piloti steht in den Arbeitsschritten jetzt „in der Büroablage“ statt „im Büroarchiv“."
             },
             {
               "en": "A project's Übersicht opens again when your office has a closed project to compare it with. Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.",

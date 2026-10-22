@@ -2352,6 +2352,10 @@
     "de": "Piloti beginnt mit dem Lesen, bevor es zu denken beginnt: Bei einer Frage zu einer Vorschrift oder einer Projektdatei holt es zuerst die wahrscheinlich passenden Textstellen, sodass Fragen einen Schritt früher beantwortet werden können. Die Herleitung zeigt dies als ersten Suchschritt."
   },
   {
+    "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
+    "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
+  },
+  {
     "en": "Piloti's German screens now use one word for each thing: a task is an Aufgabe and one attempt at it a Lauf, a conversation is a Chat, and the person assigned to something is zuständig.",
     "de": "Die deutschen Oberflächen von Piloti verwenden jetzt einheitliche Begriffe: Eine Aufgabe heißt „Aufgabe“, ein einzelner Versuch „Lauf“, eine Unterhaltung „Chat“ und die zugewiesene Person ist „zuständig“."
   },
@@ -2362,6 +2366,10 @@
   {
     "en": "Piloti's word search can now also find the other forms of a German word, so a search for „Fluchtwegbreite“ finds „Fluchtwegbreiten“ as well. Without being asked to, it still finds exactly what was typed.",
     "de": "Die Wortsuche von Piloti findet jetzt auch andere Formen eines deutschen Wortes. Eine Suche nach „Fluchtwegbreite“ findet also auch „Fluchtwegbreiten“. Auch ohne explizite Aufforderung findet sie weiterhin genau den eingegebenen Begriff."
+  },
+  {
+    "en": "Piloti's work steps say \"in the office filing\" where they still said \"in the office archive\".",
+    "de": "In Piloti steht in den Arbeitsschritten jetzt „in der Büroablage“ statt „im Büroarchiv“."
   },
   {
     "en": "Previews of spreadsheets and text files saved on Windows show euro signs, dashes and curly quotes again instead of leaving them blank.",
