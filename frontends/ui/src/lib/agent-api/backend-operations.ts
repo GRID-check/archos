@@ -121,7 +121,7 @@ const ENTRIES = [
       'A search that stops at its limit says its counts are lower bounds. `group_by: "document"` (ranked search only) returns one ' +
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
-      'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
+      'scope and outline. ' +
       'Returns up to 16 excerpts by default (the header counts them), each with source, citation key, document type, folder and page. ' +
       'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
@@ -142,8 +142,8 @@ const ENTRIES = [
       'stopped early ends with a `cursor`, which you pass back with the same `document` to continue. With the page count from ' +
       'files-list, request every range you need in one round. A deterministic lookup, not a search. Pass ' +
       '`document` exactly as files-list or a previous hit printed it (a file name or a display title). Call it when you know which ' +
-      'document and want to know what it covers, or when a hit or a cross-reference points at a clause you have not read. Pass ' +
-      '`conclusion`: one sentence on what you know and what you still need. Returns passages in document order, each with its ' +
+      'document and want to know what it covers, or when a hit or a cross-reference points at a clause you have not read. ' +
+      'Returns passages in document order, each with its ' +
       'source, citation key (quote it verbatim), document type, clause and page; an outline is an index, not evidence. An unknown ' +
       'name is refused with up to three close names to pass back exactly. When you do not know which document holds the answer, ' +
       'call knowledge-search.',
@@ -247,7 +247,7 @@ const ENTRIES = [
       'belongs here too. For the content of the OIB guidelines or the office’s documents, call knowledge-search. One call reads ' +
       'the address out of the question, finds the law, downloads at most two documents and cuts out the paragraphs that answer it. ' +
       '`question`: the legal question as the person means it, in German, the language of the law, not a list of search terms. ' +
-      '`conclusion`: one sentence on what you know and what you still need. `jurisdiction`: the federal state, when the person ' +
+      '`jurisdiction`: the federal state, when the person ' +
       'named one. `instrument`: an address when you have one (a law’s name or citation such as `§ 63 BO Wien`, a RIS document ' +
       'number or a ris.bka.gv.at URL); name every section you need in one call, up to six. `application`: only for case law, the ' +
       'gazettes or drafts; leave it empty for statute law. Returns numbered passages, each with its source, document type, clause, ' +
