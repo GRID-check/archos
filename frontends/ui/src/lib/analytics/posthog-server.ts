@@ -70,6 +70,8 @@ export type ServerEvent =
   | 'organization_budget_snapshot'
   | 'agent_operation_called'
   | 'agent_operation_missing'
+  | 'product_feedback_ticket_opened'
+  | 'product_feedback_reply_sent'
 
 let client: PostHog | null = null
 let resolved = false

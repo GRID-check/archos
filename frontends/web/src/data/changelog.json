@@ -131,6 +131,14 @@
               "de": "Wenn Sie fragen, ob etwas in Ihren eigenen Dokumenten vorkommt, kann Piloti jetzt nur im Projekt oder nur in der Büroablage suchen. Die Antwort gibt an, wie viele Dokumente in jeder Ablage durchsucht wurden und wie viele Treffer es gab. Eine Mustersuche führt außerdem jeden eindeutigen Treffer samt Anzahl und Seiten auf, und Ordnerübersichten nennen bei kleinen Ordnern die Dateinamen."
             },
             {
+              "en": "When the Piloti team answers your feedback, you now read the answer in Piloti under My feedback and can reply right there in the chat; a count shows when something new arrived.",
+              "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, sehen Sie die Antwort jetzt in Piloti unter „Mein Feedback“ und können direkt im Chat darauf antworten. Ein Zähler zeigt an, wenn es etwas Neues gibt."
+            },
+            {
+              "en": "When the Piloti team answers feedback you sent, you now get a notification in your inbox and on your devices, and it opens the conversation under My feedback.",
+              "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, erhalten Sie jetzt eine Benachrichtigung in Ihrem Posteingang und auf Ihren Geräten. Sie öffnet die Unterhaltung unter „Mein Feedback“."
+            },
+            {
               "en": "When you set up a project, you see the project folder as a tree before anything is uploaded and switch whole folders on or off, with backups and old states proposed off. Beside it you see what the office's sensitive-data list holds back, can change that list for this project, and restrict a folder before its files arrive.",
               "de": "Beim Einrichten eines Projekts sehen Sie die Projektordner als Baumstruktur, bevor etwas hochgeladen wird, und können ganze Ordner aktivieren oder deaktivieren. Backups und ältere Versionen sind dabei standardmäßig deaktiviert. Daneben sehen Sie, welche Inhalte die Liste sensibler Daten des Büros zurückhält, können diese Liste für das Projekt anpassen und den Zugriff auf einen Ordner einschränken, bevor dessen Dateien eintreffen."
             },
@@ -145,6 +153,10 @@
             {
               "en": "When you connect Claude, Cursor or another agent to Piloti, it can now read a short guide to your workspace, a glossary of the office's terms and the list of what it may do. It also offers ready workflows (a project briefing, a building-law check, what is on your plate) and your office's own skills by name.",
               "de": "Wenn Sie Claude, Cursor oder einen anderen Agenten mit Piloti verbinden, kann dieser jetzt einen kurzen Leitfaden zu Ihrem Arbeitsbereich, ein Glossar der bürointernen Begriffe und eine Liste der erlaubten Aktionen lesen. Außerdem stellt er fertige Workflows (Projektbriefing, baurechtliche Prüfung, Ihre anstehenden Aufgaben) sowie die Skills Ihres Büros unter ihren jeweiligen Namen bereit."
+            },
+            {
+              "en": "My feedback now lists your open cases first, each with where it stands, its number and when it last moved. Office admins can switch to Our office and follow every case their colleagues reported.",
+              "de": "Mein Feedback zeigt jetzt zuerst Ihre offenen Fälle an – jeweils mit Status, Nummer und Zeitpunkt der letzten Änderung. Büro-Admins können zu „Unser Büro“ wechseln und alle Fälle verfolgen, die ihre Kolleginnen und Kollegen gemeldet haben."
             },
             {
               "en": "Organization admins can now see what Piloti has learned about the office's filing and naming habits, and confirm or decline each line. Declined lines are never used again, and moves you accepted teach Piloti where documents belong.",
@@ -248,6 +260,10 @@
               "de": "Claude, Cursor und andere Assistenten zeigen Piloti jetzt mit eigenem Namen und Icon an und erhalten Such- und Abfrageergebnisse in einem strukturierten Format, das sie zuverlässig auslesen können."
             },
             {
+              "en": "„Mein Feedback“ now opens as a window with your reports on the left and the chat with the Piloti team on the right, and on a phone it fills the screen. You write new feedback in the same window, so your menu has one feedback entry, and once a report is sent its chat opens right there.",
+              "de": "„Mein Feedback“ öffnet sich jetzt in einem Fenster: Ihre Berichte links, der Chat mit dem Piloti-Team rechts. Am Smartphone nimmt es den ganzen Bildschirm ein. Neues Feedback verfassen Sie im selben Fenster, sodass Ihr Menü nur einen Feedback-Eintrag enthält. Sobald Sie einen Bericht absenden, öffnet sich der zugehörige Chat direkt dort."
+            },
+            {
               "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
               "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
             },
@@ -301,6 +317,14 @@
               "de": "Dateien sind in einem geschlossenen Projekt wieder verfügbar. Sie können die Dateien wie bisher lesen; Änderungen bleiben gesperrt, bis Sie das Projekt erneut öffnen."
             },
             {
+              "en": "Piloti's web addresses now forward plain http links to the secure site instead of showing an empty page, which also lets Claude and other apps find the Piloti icon for the connector.",
+              "de": "Die Webadressen von Piloti leiten unverschlüsselte HTTP-Links jetzt auf die sichere Website weiter, statt eine leere Seite anzuzeigen. So können auch Claude und andere Apps das Piloti-Symbol für den Connector finden."
+            },
+            {
+              "en": "When another AI assistant passes Piloti a setting an action does not have, such as a page size on the project list, Piloti now says so and names the settings it does take, instead of quietly ignoring it.",
+              "de": "Wenn ein anderer KI-Assistent Piloti eine Einstellung übergibt, die eine Aktion nicht unterstützt, etwa eine Seitengröße für die Projektliste, weist Piloti jetzt darauf hin und nennt die unterstützten Einstellungen, statt sie stillschweigend zu ignorieren."
+            },
+            {
               "en": "A citation Piloti could not verify is now marked „Beleg nicht verifiziert\" where it stood, instead of disappearing unnoticed. Piloti no longer attaches a source the answer did not cite.",
               "de": "Eine Quellenangabe, die Piloti nicht verifizieren konnte, wird nun an ihrer Stelle als „Beleg nicht verifiziert“ markiert, statt unbemerkt zu verschwinden. Piloti fügt einer Antwort keine Quelle mehr hinzu, die in der Antwort nicht zitiert wurde."
             },
@@ -315,6 +339,10 @@
             {
               "en": "Suggested follow-up questions now appear under every answer when your office has chosen a model that always thinks before it answers. Before, those suggestions quietly went missing on such models.",
               "de": "Wenn Ihr Büro ein Modell ausgewählt hat, das vor jeder Antwort immer nachdenkt, erscheinen jetzt unter jeder Antwort Folgefragen. Bisher wurden diese Vorschläge bei solchen Modellen nicht angezeigt."
+            },
+            {
+              "en": "When the office's usage budget runs out while Piloti is reading a new project's documents, the reading now says the budget is used up instead of reporting an error.",
+              "de": "Wenn das Nutzungsbudget des Büros aufgebraucht ist, während Piloti die Dokumente eines neuen Projekts liest, wird nun angezeigt, dass das Budget aufgebraucht ist, statt einen Fehler zu melden."
             },
             {
               "en": "Going back in the browser returns a page to where you had scrolled it, instead of keeping the scroll position of the page you just left.",
@@ -345,8 +373,24 @@
               "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
             },
             {
+              "en": "A question sent the moment the chat opens now searches your sources like any other, instead of sometimes answering without consulting any of them.",
+              "de": "Eine Frage, die beim Öffnen des Chats sofort gesendet wird, durchsucht jetzt wie jede andere Frage Ihre Quellen, statt manchmal beantwortet zu werden, ohne dass eine davon herangezogen wird."
+            },
+            {
+              "en": "New Postfach entries, mentions and shares now reach colleagues right away again, without a reload.",
+              "de": "Neue Postfach-Einträge, Erwähnungen und geteilte Inhalte erreichen Kolleginnen und Kollegen jetzt wieder sofort – ohne Neuladen."
+            },
+            {
+              "en": "A document that is no longer a building permit no longer keeps showing the permit conditions read from it earlier.",
+              "de": "Ein Dokument, das nicht mehr als Baubewilligung gilt, zeigt die zuvor daraus ausgelesenen Bewilligungsauflagen nicht mehr an."
+            },
+            {
               "en": "Piloti's connector in Claude and other AI assistants now shows the Piloti icon instead of a blank tile.",
               "de": "Der Piloti-Connector in Claude und anderen KI-Assistenten zeigt jetzt das Piloti-Icon statt einer leeren Kachel."
+            },
+            {
+              "en": "Replying to the Piloti team on a phone works: the reply box stays above the keyboard, the keyboard stays up after sending, and a reply from the team now marks your avatar so you notice it.",
+              "de": "Wenn Sie dem Piloti-Team am Handy antworten, bleibt das Antwortfeld über der Tastatur, die Tastatur bleibt nach dem Senden geöffnet und eine Antwort des Teams hebt jetzt Ihren Avatar hervor, damit Sie sie bemerken."
             },
             {
               "en": "Piloti's German screens now use one word for each thing: a task is an Aufgabe and one attempt at it a Lauf, a conversation is a Chat, and the person assigned to something is zuständig.",

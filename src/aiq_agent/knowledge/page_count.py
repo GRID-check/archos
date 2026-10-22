@@ -1,9 +1,7 @@
 """How many pages a document has, read from the page numbers its chunks carry.
 
 Ingestion stamps ``page_label`` and ``page_end`` on every chunk; the highest one
-is the document's page count. Used at ingest time and by
-``scripts/backfill_page_counts.py`` for documents ingested before the count was
-stored.
+is the document's page count. Used at ingest time.
 """
 
 from __future__ import annotations

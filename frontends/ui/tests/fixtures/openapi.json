@@ -13002,7 +13002,135 @@
         }
       }
     },
+    "/api/feedback/office-reports": {
+      "get": {
+        "operationId": "feedback-office-report-list",
+        "summary": "List every feedback report of the organization",
+        "description": "Every product feedback report filed by anyone in the organization, newest first, with the reporter’s name, ticket status (`resolved` is done, every other status is an active case), ticket number and last activity. Needs `org:settings:manage` (403 otherwise). `mine: false` marks a colleague’s report: its thread reads with feedback-thread-get but only the reporter can answer it. Page with `nextCursor`.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page, newest first (1 to 20)."
+            },
+            "description": "Reports per page, newest first (1 to 20)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List every feedback report of the organization",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/feedback/reports": {
+      "get": {
+        "operationId": "feedback-report-list",
+        "summary": "List the person’s own feedback reports",
+        "description": "The person’s own product feedback reports, newest first, each with its ticket status (`resolved` is done, every other status is an active case), ticket number, last activity, and `hasUpdate` when the Piloti team replied or changed the status since the person last read the thread; `updatedCount` counts those on the page. `canViewOffice` says whether feedback-office-report-list is open to them. Page with `nextCursor`. Threads: feedback-thread-get.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page, newest first (1 to 20)."
+            },
+            "description": "Reports per page, newest first (1 to 20)."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "List the person’s own feedback reports",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
       "post": {
         "operationId": "feedback-report-submit",
         "summary": "Send product feedback to the Piloti team",
@@ -13076,17 +13204,6 @@
                       {
                         "type": "object",
                         "properties": {
-                          "widgetSessionId": {
-                            "anyOf": [
-                              {
-                                "type": "string",
-                                "maxLength": 64
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ]
-                          },
                           "sessionId": {
                             "anyOf": [
                               {
@@ -13143,6 +13260,135 @@
         },
         "x-mcp-annotations": {
           "title": "Send product feedback to the Piloti team",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/feedback/reports/{reportId}/messages": {
+      "get": {
+        "operationId": "feedback-thread-get",
+        "summary": "Read the conversation on one feedback report",
+        "description": "The thread on one feedback report, oldest first: the report as written, the Piloti team’s replies (`author: team`) and the reporter’s answers (`author: reporter`). The person’s own report, or, with `org:settings:manage`, a colleague’s (read-only, `report.mine: false`). Reading one’s own marks it as read. `live: false` means the ticket could not be read and only the report is shown.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The feedback report id (a UUID), from feedback-report-list."
+            },
+            "description": "The feedback report id (a UUID), from feedback-report-list."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read the conversation on one feedback report",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      },
+      "post": {
+        "operationId": "feedback-thread-reply",
+        "summary": "Answer the Piloti team on a feedback report",
+        "description": "Posts the person’s answer on one of their own feedback reports; the Piloti team sees it on the ticket. Refused (409) when the report has no ticket to answer on (`canReply: false` in feedback-report-list). Returns the updated thread.",
+        "tags": [
+          "conversations"
+        ],
+        "parameters": [
+          {
+            "name": "reportId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "description": "The feedback report id (a UUID), from feedback-report-list."
+            },
+            "description": "The feedback report id (a UUID), from feedback-report-list."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  }
+                },
+                "required": [
+                  "message"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Answer the Piloti team on a feedback report",
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": false,
@@ -14250,6 +14496,7 @@
                 "task_run.waiting",
                 "document.review_requested",
                 "feedback.submitted",
+                "feedback.replied",
                 "upload.completed",
                 "document.quarantined",
                 "document.release_requested",
@@ -23330,6 +23577,68 @@
         }
       }
     },
+    "/api/platform/feedback/claim": {
+      "post": {
+        "operationId": "platform-feedback-claim",
+        "summary": "Take a feedback ticket",
+        "description": "Assigns a report’s PostHog Support ticket to the person, found in PostHog by their email. Takes the ticket id (the Slack alert carries it; platform-feedback-list returns it as `ticket.id`). Returns the report.",
+        "tags": [
+          "platform"
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ticketId": {
+                    "type": "string",
+                    "description": "The PostHog Support ticket id (a UUID), as the Slack alert or platform-feedback-list names it."
+                  }
+                },
+                "required": [
+                  "ticketId"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Take a feedback ticket",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/platform/feedback/{reportId}": {
       "get": {
         "operationId": "platform-feedback-get",
@@ -23466,7 +23775,7 @@
       "get": {
         "operationId": "platform-feedback-list",
         "summary": "List product-feedback reports",
-        "description": "Product-feedback reports from every organization with the status of their PostHog Support ticket; filter by ticket status and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage.",
+        "description": "Product-feedback reports from every organization with their PostHog Support ticket: status, assignee, last activity and whether the team or the reporter owes the next answer. Filter by ticket status (`active` for every unresolved ticket), assignee (`mine`, `unassigned`) and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage; ticket ids feed platform-feedback-claim.",
         "tags": [
           "platform"
         ],
@@ -23482,9 +23791,12 @@
                 "open",
                 "pending",
                 "on_hold",
-                "resolved"
-              ]
-            }
+                "resolved",
+                "active"
+              ],
+              "description": "A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status."
+            },
+            "description": "A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status."
           },
           {
             "name": "kind",
@@ -23501,13 +23813,39 @@
             }
           },
           {
+            "name": "assignee",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "unassigned"
+              ],
+              "description": "`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s."
+            },
+            "description": "`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page (1 to 50, the default)."
+            },
+            "description": "Reports per page (1 to 50, the default)."
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "maxLength": 200
-            }
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
           }
         ],
         "responses": {

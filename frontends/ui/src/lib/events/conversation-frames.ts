@@ -41,6 +41,7 @@
  */
 
 import 'server-only'
+import { createRedisClient } from '@/lib/redis/connect.js'
 
 /** A frame the backend sent to the asker, on its way to an observer. */
 export interface ConversationFrame {
@@ -153,20 +154,9 @@ export async function subscribeConversationFrames(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createSubscriberClient(url: string): any {
-  // Lazy require keeps ioredis out of bundles that never set REDIS_URL, exactly
-  // as `./bus` does.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const IORedis = require('ioredis')
-  const client = new IORedis(url, {
-    connectTimeout: 1000,
-    maxRetriesPerRequest: 1,
-    enableOfflineQueue: false,
-    lazyConnect: false,
-  })
-  client.on('error', (error: unknown) => {
-    console.warn('[conversation-frames] redis error:', error)
-  })
-  return client
+  // A fresh client per subscription: its SUBSCRIBE is its first command, so it
+  // must queue until the connection is up rather than be refused.
+  return createRedisClient(url, 'conversation-frames', { commandTimeout: 2000 })
 }
 
 // ── Peek: is a turn still producing frames? ─────────────────────────────────
@@ -214,21 +204,8 @@ export async function peekNewestConversationFrame(
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function createCommandClient(url: string): any {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const IORedis = require('ioredis')
-  const client = new IORedis(url, {
-    connectTimeout: 1000,
-    commandTimeout: 2000,
-    maxRetriesPerRequest: 1,
-    // Queued, not refused, until the connection is up. The client is created
-    // on the first peek a process serves, and that peek is the one a tab with
-    // no socket is waiting on; with no queue it fails with "Stream isn't
-    // writeable" before the connect lands. `commandTimeout` still bounds it.
-    enableOfflineQueue: true,
-    lazyConnect: false,
-  })
-  client.on('error', (error: unknown) => {
-    console.warn('[conversation-frames] redis error:', error)
-  })
-  return client
+  // Queued, not refused, while the connection is down. The client is created
+  // on the first peek a process serves, and that peek is the one a tab with
+  // no socket is waiting on. `commandTimeout` still bounds it.
+  return createRedisClient(url, 'conversation-frames', { commandTimeout: 2000, queueWhileDown: true })
 }

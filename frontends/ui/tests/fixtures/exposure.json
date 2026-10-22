@@ -1572,7 +1572,47 @@
    "withheld": null,
    "reason": null
   },
+  "feedback-office-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "feedback-report-submit": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-thread-get": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
+  "feedback-thread-reply": {
    "kind": "catalog",
    "domain": "conversations",
    "sensitivity": null,
@@ -2959,6 +2999,16 @@
    "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
   },
   "platform-citation-health-get": {
+   "kind": "catalog",
+   "domain": "platform",
+   "sensitivity": null,
+   "external": false,
+   "piloti": false,
+   "platform": true,
+   "withheld": null,
+   "reason": "the operator console is GRID’s, not an office’s: every write there reaches every tenant"
+  },
+  "platform-feedback-claim": {
    "kind": "catalog",
    "domain": "platform",
    "sensitivity": null,

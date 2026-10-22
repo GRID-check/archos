@@ -24,6 +24,7 @@
  */
 
 import 'server-only'
+import { createRedisClient } from '@/lib/redis/connect.js'
 import type { RealtimePeer } from './types'
 
 /** The facts kept per peer. All but `peer` and `expiresAt` are optional. */
@@ -219,18 +220,8 @@ interface RedisCommands {
 
 /** Dragonfly: the record every replica shares. */
 export function createRedisRosterBackend(url: string): RosterBackend {
-  // Lazy require keeps ioredis out of bundles that never set REDIS_URL.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const IORedis = require('ioredis')
-  const client = new IORedis(url, {
-    connectTimeout: 1000,
-    commandTimeout: 1000,
-    maxRetriesPerRequest: 1,
-    // A roster write is a second late or not at all; queue the first rather than lose it to a cold connection.
-    enableOfflineQueue: true,
-    lazyConnect: false,
-  }) as RedisCommands
-  client.on('error', (error) => console.warn('[realtime] roster redis error:', error))
+  // A roster write is a second late or not at all; queue it rather than lose it to a dropped connection.
+  const client = createRedisClient(url, 'realtime roster', { commandTimeout: 1000, queueWhileDown: true }) as RedisCommands
   return {
     async write(key, set, remove, ttlMs, maxIds) {
       const fields = Object.entries(set)

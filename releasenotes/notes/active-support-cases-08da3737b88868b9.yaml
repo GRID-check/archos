@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    Platform → Feedback now opens on the active support cases: every unresolved
+    ticket with who has it, its last activity and whether the team owes the next
+    answer, filterable to your own or the unassigned ones, with „Übernehmen" on
+    each row.

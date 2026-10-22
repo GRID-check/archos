@@ -48,6 +48,8 @@ import {
   PROPOSAL_ANCHORED_INBOX_TYPES,
 } from './registry'
 import { findOwnUploadBatch } from '@/lib/upload-batches/service'
+import { getOwnProductFeedback } from '@/lib/product-feedback/repository'
+import { feedbackThreadHref } from '@/lib/product-feedback/types'
 
 /** Row-level context a deep link may use. */
 export interface InboxTargetLinkContext {
@@ -271,23 +273,38 @@ function runDeepLink(projectId: string, run: RunMessageRef): string {
 }
 
 /**
- * A product-feedback report — the target of `feedback.submitted`.
+ * A product-feedback report — the target of `feedback.submitted` (for the
+ * platform owners) and of `feedback.replied` (for its reporter).
  *
- * The report lives in the REPORTER's organization and the row in the platform
- * organization, so neither membership says anything here. Access is the
- * permission the platform lane itself opened on, re-asked at read time (spec
- * IB-13): an owner whose platform role was withdrawn sees a redacted row, not a
- * link into a page that would answer 403. Nothing is queried — the report's
- * existence is the triage page's question, and a deleted report renders there
- * as not found, which is the honest answer.
+ * Two readers, two rights, both re-asked at read time (spec IB-13):
+ *
+ *   - a platform owner reaches it by the permission the platform lane opened
+ *     on. The report lives in the REPORTER's organization and the row in the
+ *     platform organization, so no membership says anything; an owner whose
+ *     platform role was withdrawn sees a redacted row. Their link is the triage
+ *     page, where a deleted report renders as not found.
+ *   - the reporter reaches their OWN report: the row is in their organization
+ *     and the report must still be theirs there (`getOwnProductFeedback`, keyed
+ *     to the session's organization and user under RLS). Their link opens
+ *     „Mein Feedback" on the thread.
+ *
+ * The descriptor is per target, not per item type, so it answers for both and
+ * the link picks by the row's type; a reply row is only ever the reporter's.
  */
 const productFeedbackTarget: InboxTargetDescriptor = {
   type: 'product_feedback',
   resolve: async (session, resourceId) => {
-    if (!(await hasPlatformPermission(session, PLATFORM_INBOX_PERMISSION))) return null
+    const [platform, own] = await Promise.all([
+      hasPlatformPermission(session, PLATFORM_INBOX_PERMISSION),
+      getOwnProductFeedback(session.organizationId, session.userId, resourceId).catch(() => null),
+    ])
+    if (!platform && !own) return null
     return {
       projectId: null,
-      deepLink: () => `/app/platform/feedback?report=${encodeURIComponent(resourceId)}`,
+      deepLink: ({ itemType }) =>
+        own && (itemType === 'feedback.replied' || !platform)
+          ? feedbackThreadHref(resourceId)
+          : `/app/platform/feedback?report=${encodeURIComponent(resourceId)}`,
     }
   },
 }

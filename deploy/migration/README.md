@@ -225,5 +225,5 @@ against `chroma run`), and check the manifest and every record. The last test
 hands the export to `scripts/import_vectors.py` in the repository's venv
 (`.venv/bin/python`, or `PILOTI_VENV_PYTHON`) and checks every point in Qdrant;
 it skips without `AIQ_QDRANT_TEST_URL` locally and fails without it on CI. The
-importer's own tests, on hand-written exports, are
-`sources/knowledge_layer/tests/test_qdrant_import_vectors.py`.
+importer's own tests were deleted on 2026-10-22: the move ran on production on
+2026-10-18, and this end-to-end test is what still covers the importer.

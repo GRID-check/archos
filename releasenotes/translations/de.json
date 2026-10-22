@@ -184,6 +184,10 @@
     "de": "Ein Dokument, das nicht durchsuchbar gemacht werden konnte oder noch gelesen wird, bleibt jetzt mit seinem Status in der Projektdateiliste. So wird es nicht mehr mit einer Datei verwechselt, die nie hochgeladen wurde."
   },
   {
+    "en": "A document that is no longer a building permit no longer keeps showing the permit conditions read from it earlier.",
+    "de": "Ein Dokument, das nicht mehr als Baubewilligung gilt, zeigt die zuvor daraus ausgelesenen Bewilligungsauflagen nicht mehr an."
+  },
+  {
     "en": "A document that never became citable no longer carries the green badge that marks it as citable. It now shows a failure with a retry option, or a neutral status for documents filed before this change.",
     "de": "Ein Dokument, das nie zitierfähig wurde, trägt nicht mehr das grüne Abzeichen, das es als zitierfähig ausweist. Stattdessen zeigt es einen Fehler mit der Möglichkeit, es erneut zu versuchen, oder einen neutralen Status für Dokumente, die vor dieser Änderung abgelegt wurden."
   },
@@ -502,6 +506,10 @@
   {
     "en": "A question sent again after a short connection drop is no longer answered twice. The chat picks up the answer already being written.",
     "de": "Eine Frage, die nach einem kurzen Verbindungsabbruch erneut gesendet wird, wird nicht mehr doppelt beantwortet. Der Chat führt die bereits laufende Antwort fort."
+  },
+  {
+    "en": "A question sent the moment the chat opens now searches your sources like any other, instead of sometimes answering without consulting any of them.",
+    "de": "Eine Frage, die beim Öffnen des Chats sofort gesendet wird, durchsucht jetzt wie jede andere Frage Ihre Quellen, statt manchmal beantwortet zu werden, ohne dass eine davon herangezogen wird."
   },
   {
     "en": "A question that touches the Richtlinien, the RIS and the web now checks all three in its first round instead of saving one for later.",
@@ -1952,8 +1960,16 @@
     "de": "Beim Verschieben oder Umbenennen eines Ordners wird jetzt angezeigt, welcher Name am Zielort bereits vergeben ist, statt dass der Vorgang ohne Begründung fehlschlägt."
   },
   {
+    "en": "My feedback now lists your open cases first, each with where it stands, its number and when it last moved. Office admins can switch to Our office and follow every case their colleagues reported.",
+    "de": "Mein Feedback zeigt jetzt zuerst Ihre offenen Fälle an – jeweils mit Status, Nummer und Zeitpunkt der letzten Änderung. Büro-Admins können zu „Unser Büro“ wechseln und alle Fälle verfolgen, die ihre Kolleginnen und Kollegen gemeldet haben."
+  },
+  {
     "en": "Naming a skill with a slash now simply writes its name into your message, and Piloti picks that skill from there. What reaches Piloti is exactly the text you sent.",
     "de": "Einen Skill mit Schrägstrich zu nennen schreibt jetzt einfach seinen Namen in Ihre Nachricht, und Piloti greift von dort zum gemeinten Skill. Bei Piloti kommt genau der Text an, den Sie abgeschickt haben."
+  },
+  {
+    "en": "New Postfach entries, mentions and shares now reach colleagues right away again, without a reload.",
+    "de": "Neue Postfach-Einträge, Erwähnungen und geteilte Inhalte erreichen Kolleginnen und Kollegen jetzt wieder sofort – ohne Neuladen."
   },
   {
     "en": "New annotations on a document now reach the people responsible for it and the person who uploaded it, as one inbox entry per document and per person who set them, such as „Miriam hat 15 Anmerkungen in „Grundriss EG“ gesetzt“. Annotations Piloti sets for someone count the same way, and Piloti's proposals only once someone takes them over.",
@@ -2420,6 +2436,10 @@
     "de": "Der Projektspeicher von Piloti ruft jetzt ab, was für Ihre Frage relevant ist, statt nur die zwanzig neuesten Notizen. Außerdem erkennt er eine Notiz, die Sie schon gespeichert haben, auch wenn sie anders formuliert ist, sodass derselbe Sachverhalt meist nur einmal gespeichert wird. Genutzte Notizen bleiben aktuell, und Notizen, die niemand braucht, treten still in den Hintergrund."
   },
   {
+    "en": "Piloti's web addresses now forward plain http links to the secure site instead of showing an empty page, which also lets Claude and other apps find the Piloti icon for the connector.",
+    "de": "Die Webadressen von Piloti leiten unverschlüsselte HTTP-Links jetzt auf die sichere Website weiter, statt eine leere Seite anzuzeigen. So können auch Claude und andere Apps das Piloti-Symbol für den Connector finden."
+  },
+  {
     "en": "Piloti's word search can now also find the other forms of a German word, so a search for „Fluchtwegbreite“ finds „Fluchtwegbreiten“ as well. Without being asked to, it still finds exactly what was typed.",
     "de": "Die Wortsuche von Piloti findet jetzt auch andere Formen eines deutschen Wortes. Eine Suche nach „Fluchtwegbreite“ findet also auch „Fluchtwegbreiten“. Auch ohne explizite Aufforderung findet sie weiterhin genau den eingegebenen Begriff."
   },
@@ -2522,6 +2542,10 @@
   {
     "en": "Replaced versions keep their files and count towards your organization's storage quota.",
     "de": "Ersetzte Fassungen behalten ihre Dateien und zählen weiter auf das Speicherkontingent Ihrer Organisation."
+  },
+  {
+    "en": "Replying to the Piloti team on a phone works: the reply box stays above the keyboard, the keyboard stays up after sending, and a reply from the team now marks your avatar so you notice it.",
+    "de": "Wenn Sie dem Piloti-Team am Handy antworten, bleibt das Antwortfeld über der Tastatur, die Tastatur bleibt nach dem Senden geöffnet und eine Antwort des Teams hebt jetzt Ihren Avatar hervor, damit Sie sie bemerken."
   },
   {
     "en": "Reports Piloti writes are not cited as sources until someone approves and publishes them. To use one sooner, upload it yourself once you have checked it.",
@@ -3640,6 +3664,10 @@
     "de": "Nennt eine Antwort eine Datei beim Namen, etwa „Beginnen Sie mit pd8280-2.pdf“, ist der Name jetzt ein Link, der das Dokument neben der Antwort öffnet, im Fließtext wie in Tabellen."
   },
   {
+    "en": "When another AI assistant passes Piloti a setting an action does not have, such as a page size on the project list, Piloti now says so and names the settings it does take, instead of quietly ignoring it.",
+    "de": "Wenn ein anderer KI-Assistent Piloti eine Einstellung übergibt, die eine Aktion nicht unterstützt, etwa eine Seitengröße für die Projektliste, weist Piloti jetzt darauf hin und nennt die unterstützten Einstellungen, statt sie stillschweigend zu ignorieren."
+  },
+  {
     "en": "When another AI assistant searches your documents through Piloti, a long result now keeps every hit with its citation instead of losing the last ones, and the assistant is no longer asked for a note it never needed.",
     "de": "Wenn ein anderer KI-Assistent Ihre Dokumente über Piloti durchsucht, bleiben bei langen Ergebnissen jetzt alle Treffer samt Quellenangaben erhalten, statt dass die letzten verloren gehen, und der Assistent wird nicht mehr nach einer Notiz gefragt, die er nie benötigt hat."
   },
@@ -3664,6 +3692,14 @@
     "de": "Wenn die KI kurz überlastet ist, bricht Piloti Ihre Frage nicht mehr mit einem Fehler ab, sondern wartet einen Moment und versucht es erneut."
   },
   {
+    "en": "When the Piloti team answers feedback you sent, you now get a notification in your inbox and on your devices, and it opens the conversation under My feedback.",
+    "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, erhalten Sie jetzt eine Benachrichtigung in Ihrem Posteingang und auf Ihren Geräten. Sie öffnet die Unterhaltung unter „Mein Feedback“."
+  },
+  {
+    "en": "When the Piloti team answers your feedback, you now read the answer in Piloti under My feedback and can reply right there in the chat; a count shows when something new arrived.",
+    "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, sehen Sie die Antwort jetzt in Piloti unter „Mein Feedback“ und können direkt im Chat darauf antworten. Ein Zähler zeigt an, wenn es etwas Neues gibt."
+  },
+  {
     "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
     "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
   },
@@ -3678,6 +3714,10 @@
   {
     "en": "When the office's past projects hold nothing comparable, Piloti now says so. It used to answer that the search was unavailable and ask you to try again.",
     "de": "Wenn die bisherigen Projekte des Büros nichts Vergleichbares enthalten, sagt Piloti das jetzt. Bisher meldet es, dass die Suche nicht verfügbar ist, und bittet Sie, es erneut zu versuchen."
+  },
+  {
+    "en": "When the office's usage budget runs out while Piloti is reading a new project's documents, the reading now says the budget is used up instead of reporting an error.",
+    "de": "Wenn das Nutzungsbudget des Büros aufgebraucht ist, während Piloti die Dokumente eines neuen Projekts liest, wird nun angezeigt, dass das Budget aufgebraucht ist, statt einen Fehler zu melden."
   },
   {
     "en": "When the on-screen keyboard opens, the app now makes room for it instead of letting it cover the composer, so you can see what you are typing.",
@@ -4002,6 +4042,10 @@
   {
     "en": "„Erstelle ein Dokument über …“ now starts a deep research whose finished report is filed in the project under Berichte. If you only want a thorough answer, you still get it in the chat.",
     "de": "„Erstelle ein Dokument über …“ startet jetzt eine Tiefenrecherche, deren fertiger Bericht im Projekt unter „Berichte“ abgelegt wird. Wer nur eine gründliche Antwort will, bekommt sie weiterhin im Chat."
+  },
+  {
+    "en": "„Mein Feedback“ now opens as a window with your reports on the left and the chat with the Piloti team on the right, and on a phone it fills the screen. You write new feedback in the same window, so your menu has one feedback entry, and once a report is sent its chat opens right there.",
+    "de": "„Mein Feedback“ öffnet sich jetzt in einem Fenster: Ihre Berichte links, der Chat mit dem Piloti-Team rechts. Am Smartphone nimmt es den ganzen Bildschirm ein. Neues Feedback verfassen Sie im selben Fenster, sodass Ihr Menü nur einen Feedback-Eintrag enthält. Sobald Sie einen Bericht absenden, öffnet sich der zugehörige Chat direkt dort."
   },
   {
     "en": "„Mir zugewiesen“ in the Prüfansicht finds your Anmerkungen also while the connection to your colleagues is down.",

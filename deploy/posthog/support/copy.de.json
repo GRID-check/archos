@@ -1,0 +1,15 @@
+{
+  "title_bug": "Neuer Bug-Report",
+  "title_idea": "Neue Idee",
+  "title_praise": "Neues Lob",
+  "title_question": "Neue Frage",
+  "title_other": "Neues Feedback",
+  "no_text": "kein Text",
+  "no_contact": "möchte nicht kontaktiert werden",
+  "claim": "Übernehmen",
+  "open_ticket": "Ticket in PostHog öffnen",
+  "reply_in_posthog": "Antworten in PostHog",
+  "reporter_replied": "Antwort vom Reporter auf",
+  "taken_by": "Übernommen von",
+  "someone": "einem Teammitglied"
+}

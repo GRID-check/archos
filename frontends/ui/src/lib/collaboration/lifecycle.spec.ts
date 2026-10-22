@@ -72,6 +72,12 @@ vi.mock('@/lib/session-documents/repository', () => ({
   deleteSessionDocumentsByIds: vi.fn().mockResolvedValue(undefined),
   SESSION_DOCUMENT_LIST_LIMIT: 100,
 }))
+// The backend's session collection, dropped with the chat. Stubbed here: a
+// node spec has no MSW server, and `cleanup.spec.ts` pins the request itself.
+vi.mock('@/lib/session-documents/cleanup', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/session-documents/cleanup')>()),
+  deleteSessionCollection: vi.fn(async () => ({ ok: true })),
+}))
 
 // Which people may read what a conversation recorded is `restricted-use.spec.ts`'s
 // subject (ADR-0088); here nothing it recorded restricts anybody.

@@ -1,10 +1,18 @@
-import '@testing-library/jest-dom/vitest'
 import crypto from 'crypto'
 import { createElement } from 'react'
 import { beforeAll, afterEach, afterAll, vi } from 'vitest'
-import { server } from '../../src/mocks/server'
 import { resetDatabase } from '../../src/mocks/database'
 import { refuseNetwork } from './network-guard'
+
+// The DOM matchers and the MSW server, only where there is a DOM. This file
+// runs before every spec file, and the two imports were most of its cost:
+// ~0.16 s of a file's setup, ~0.17 s in all (measured 2026-10-22 on empty
+// specs). A `@vitest-environment node` spec renders nothing for a DOM matcher
+// to read, and none imports the MSW server: a node spec that fetches is
+// refused by the network guard below, which names the URL.
+const hasDom = typeof document !== 'undefined'
+if (hasDom) await import('@testing-library/jest-dom/vitest')
+const server = hasDom ? (await import('../../src/mocks/server')).server : null
 
 // Default mock for AuthKit components so tests that import `@/adapters/auth`
 // (or anything transitively pulling in `@workos-inc/authkit-nextjs/components`)
@@ -297,12 +305,12 @@ refuseNetwork()
 beforeAll(() => {
   localStorageMock.clear()
   sessionStorageMock.clear()
-  return server.listen({ onUnhandledRequest: 'bypass' })
+  return server?.listen({ onUnhandledRequest: 'bypass' })
 })
 
 afterEach(() => {
-  server.resetHandlers()
+  server?.resetHandlers()
   resetDatabase()
 })
 
-afterAll(() => server.close())
+afterAll(() => server?.close())

@@ -107,3 +107,69 @@ export function useVisualViewport(): void {
     }
   }, [])
 }
+
+/**
+ * The variable a fitted overlay sets for its bottom inset: `0px` while the
+ * keyboard covers the home indicator, absent otherwise, so a composer at the
+ * overlay's foot pads by `var(--overlay-inset-bottom, env(safe-area-inset-bottom))`.
+ */
+export const OVERLAY_INSET_BOTTOM_VAR = '--overlay-inset-bottom'
+
+/**
+ * Keeps one full-height overlay (a side sheet with a composer at its foot)
+ * exactly on the part of the screen the on-screen keyboard leaves visible.
+ *
+ * {@link useVisualViewport} fits the SHELL, and leaves Safari's pan alone for a
+ * field inside a dialog, because a fixed overlay does not move when the shell
+ * shrinks. That leaves the overlay as tall as the layout viewport: on an iPhone
+ * the keyboard covers its bottom third, the composer with it, and Safari pans
+ * the whole screen to reveal the field, the overlay's header off the top. This
+ * moves and sizes the overlay with the visual viewport (`top = offsetTop`,
+ * `height = height`), so the field sits on the keyboard's edge whether or not
+ * Safari pans, and the header stays in view.
+ *
+ * Inline styles on the node, coalesced to a frame, no React state (the keyboard
+ * fires a resize per animation frame). Nothing happens while the two viewports
+ * agree: desktop, Chromium under `resizes-content`, pinch zoom. Pass the node
+ * from a callback ref; `null` (the overlay closed) does nothing.
+ */
+export function useFitToVisualViewport(node: HTMLElement | null): void {
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport || !node) return
+
+    let frame = 0
+    const clear = (): void => {
+      node.style.removeProperty('top')
+      node.style.removeProperty('height')
+      node.style.removeProperty(OVERLAY_INSET_BOTTOM_VAR)
+    }
+    const apply = (): void => {
+      frame = 0
+      const occluded =
+        Math.abs(viewport.scale - 1) < ZOOM_EPSILON &&
+        document.documentElement.clientHeight - viewport.height > OCCLUSION_THRESHOLD_PX
+      if (!occluded) {
+        clear()
+        return
+      }
+      node.style.top = `${viewport.offsetTop}px`
+      node.style.height = `${viewport.height}px`
+      // The keyboard covers the home indicator: there is no inset left to clear.
+      node.style.setProperty(OVERLAY_INSET_BOTTOM_VAR, '0px')
+    }
+    const schedule = (): void => {
+      if (frame === 0) frame = requestAnimationFrame(apply)
+    }
+
+    apply()
+    viewport.addEventListener('resize', schedule)
+    viewport.addEventListener('scroll', schedule)
+    return () => {
+      viewport.removeEventListener('resize', schedule)
+      viewport.removeEventListener('scroll', schedule)
+      if (frame !== 0) cancelAnimationFrame(frame)
+      clear()
+    }
+  }, [node])
+}

@@ -391,27 +391,6 @@ export const motionSheetEnter: Transition = motionDeliberateEntrance
 /** The sheet's exit — one step shorter, on `--ease-exit`. */
 export const motionSheetExit: Transition = { duration: 0.24, ease: EASE_EXIT }
 
-/**
- * @deprecated Use `springPress`. Kept so existing call sites keep compiling.
- * The old value (380/32/0.55) was ζ = 1.107 — overdamped, so it was already a
- * tween; `springPress` is the same intent with the settle actually tuned.
- */
-export const springSnappy: SpringTransition = springPress
-
-/**
- * @deprecated Use `springDrawer` for large surfaces, or `motionBase` for small
- * ones. The old value (260/28) was ζ = 0.868 → 0.41% overshoot, which on this
- * kit's 8px rise is 0.03px: a spring nobody could see.
- */
-export const springGentle: SpringTransition = springDrawer
-
-/**
- * @deprecated Use `motionBase` (or `motionEntrance` for arrivals). The old
- * value was cubic-bezier(0.25, 0.1, 0.25, 1) — CSS's default `ease`, an ease-IN
- * ramp — and it was being used for entrances.
- */
-export const easeQuiet: Transition = motionBase
-
 /** Variants for a fade with a small vertical settle. */
 export const fadeRise: Variants = {
   hidden: { opacity: 0, y: 8 },

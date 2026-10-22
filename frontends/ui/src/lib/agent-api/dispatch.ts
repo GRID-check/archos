@@ -243,6 +243,21 @@ export async function readResponseBody(response: Response): Promise<unknown> {
 }
 
 /**
+ * A path or query key the operation does not take is refused, never dropped:
+ * zod strips it and the route never reads it, so an agent sending `limit` to an
+ * unpaged list was answered as though the limit held. Only plain object schemas
+ * are checked; a body may be a union and is left to the route.
+ */
+function refuseUnknownKeys(op: AgentOperation, schema: AgentOperation['params'] | AgentOperation['query'], value: unknown, label: string): void {
+  if (!schema || !('shape' in schema) || typeof value !== 'object' || value === null) return
+  const known = Object.keys((schema as { shape: Record<string, unknown> }).shape)
+  const unknown = Object.keys(value).filter((key) => !known.includes(key))
+  if (unknown.length === 0) return
+  const takes = known.length ? `it takes ${known.join(', ')}` : `it takes no ${label}`
+  throw new OperationInputError(`${op.name}: ${unknown.map((key) => `${label}.${key}`).join(', ')} is not an input; ${takes}`)
+}
+
+/**
  * Check `input` against the operation's schemas, and return it as it came:
  * NOT zod's parsed output. The route parses its own input with its own schema
  * and is the gate; forwarding the parsed copy would hand it what a transform
@@ -265,6 +280,8 @@ export function validateOperationInput(op: AgentOperation, given: OperationInput
   }
   check(op.params, input.params, 'params')
   check(op.query, input.query, 'query')
+  refuseUnknownKeys(op, op.params, input.params, 'params')
+  refuseUnknownKeys(op, op.query, input.query, 'query')
   if (op.body) check(op.body, input.body, 'body')
   const ifMatch = typeof input.ifMatch === 'string' ? input.ifMatch : undefined
   if (ifMatch !== undefined && !op.ifMatchHeader) {

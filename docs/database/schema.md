@@ -832,7 +832,7 @@ environment.
 Index `project_folder_grants_project_idx (project_id)`. Until `0128` it was
 written only by `setFolderAccess`, which replaced the list in one transaction.
 `0111`'s down drops every list, the tombstones and the columns: open every
-folder in the product first. Constraints and down are proven in
+folder in the product first. Its constraints are proven in
 `scripts/rls-test-db.sh`.
 
 `0128`'s down drops `everyone_reads` and is lossy on purpose: a folder `0128`
@@ -843,7 +843,7 @@ left alone.
 
 > **Applying `0063` to an existing deployment:** nothing ever stopped two sibling folders sharing a name, so the migration first fails loudly with the full list of offenders rather than letting `CREATE UNIQUE INDEX` report one key. It deliberately does not deduplicate — deleting a folder row cascades to `documents.folder_id` and would silently unfile real evidence. Rename or merge through the application, then re-run.
 
-> **Applying and reversing `0102`:** nothing to resolve before applying — every existing row is a project folder, `organization_id` is backfilled from its project, and the widened index rejects exactly what the old one did. The down migration **refuses while any Archiv folder exists** (the old schema has no place for one, and the backend still carries its path); delete them through the application first, which re-files their documents into the parent and mirrors the path rewrite. `scripts/rls-test-db.sh` applies `0102` to a seeded database, asserts the backfill and every new constraint, then proves the guard and the down path.
+> **Applying and reversing `0102`:** nothing to resolve before applying — every existing row is a project folder, `organization_id` is backfilled from its project, and the widened index rejects exactly what the old one did. The down migration **refuses while any Archiv folder exists** (the old schema has no place for one, and the backend still carries its path); delete them through the application first, which re-files their documents into the parent and mirrors the path rewrite.
 
 ---
 
@@ -965,7 +965,7 @@ every message written into the conversation is marked too, in
 revision task written into the conversation revises (ADR-0093), so the thread is
 judged like a chat that drew on that folder; nothing of that is stored here.
 Repository: `lib/conversations/restricted-use-repository.ts`; proven against
-Postgres in `restricted-use.integration.spec.ts`; its CHECK and down in
+Postgres in `restricted-use.integration.spec.ts`; its CHECK in
 `scripts/rls-test-db.sh`. `listRecentMessagesWithCardDecisions` also reads it:
 a conversation with a row here keeps its card decisions, and the
 `proposed_changes` it made, out of the project-wide `PROPOSAL_DECISIONS` block.
@@ -1078,8 +1078,8 @@ malformed or out of range means 365), written only by
 (`scheduler/db.js`, `pruneDownloadLog`) deletes once a day, in batches of 1000
 and at most 50 batches a run: first everything older than 365 days, then each
 organization's own shorter cutoff. Proven against Postgres in
-`lib/download-log/download-log.integration.spec.ts`; constraints, down and
-re-apply in `scripts/rls-test-db.sh`.
+`lib/download-log/download-log.integration.spec.ts`, constraints and guard
+included.
 
 ---
 
@@ -1126,8 +1126,8 @@ Indexes: the dispatch key, and `document_quarantine_decisions_due_idx
 (`grid_document_quarantine_decisions_guard`) refuses every UPDATE but
 `audited_at` going from NULL to a time, once, and every DELETE except by the
 platform role, which is the retention sweep. Proven against Postgres, the
-retention included, in `lib/upload-batches/upload-batches.integration.spec.ts`; constraints, guard,
-down and re-apply in `scripts/rls-test-db.sh`. The down drops the decisions
+retention included, in `lib/upload-batches/upload-batches.integration.spec.ts`; constraints and guard
+in `scripts/rls-test-db.sh`. The down drops the decisions
 not yet audited.
 
 ---
@@ -1173,7 +1173,7 @@ Index: `uniq_project_memory_project_content_active` keys on
 open and a restricted note with the same text can both be live; consolidation
 never crosses a restriction. The 0112 down DELETES restricted notes rather than
 opening them. Proven against Postgres in `memory-restricted.integration.spec.ts`;
-the index, the CHECK and the down in `scripts/rls-test-db.sh`.
+the index and the CHECK in `scripts/rls-test-db.sh`.
 The 0117 down drops `restriction_judge` and its CHECK; the verdicts stay in the
 audit trail.
 
@@ -1678,8 +1678,7 @@ conversation, the message id of every vote the rule answers yes for and of
 every vote 0120 had marked, dropped 0120's column and trigger, and withdrew the
 reports and lessons derived from marked messages, with the vectors of the
 withdrawn lessons (below). Proven in
-`lib/feedback/restricted-feedback.integration.spec.ts`; the backfill, the
-withdrawal and the down in `scripts/rls-test-db.sh`.
+`lib/feedback/restricted-feedback.integration.spec.ts`.
 
 0123 also adds `idx_task_runs_revision_conversation` on `task_runs`
 (`organization_id`, `conversation_id`) `WHERE kind = 'revision'`, the lookup

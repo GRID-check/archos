@@ -34,6 +34,14 @@
  * Herleitung spine. Two different colleagues separate on their headers — different
  * name, different identity-coloured disc — plus the spacing below.
  *
+ * **`side="start"` is for a conversation between two parties, not for this one.**
+ * The feedback thread („Mein Feedback") is a person talking to the Piloti team:
+ * there is no Piloti column to protect there, and the reading order a reporter
+ * expects is the messenger's — their own words on the right, the team's on the
+ * left, on a quieter surface. That thread passes `side="start"` for the team.
+ * No caller in the Piloti chat may pass it: there, every human stays on the
+ * right, for the reasons above.
+ *
  * **Consecutive messages from one author group** under a single header (the Slack
  * pattern, which is not messenger-specific — it is just not repeating a name three
  * times): the follow-ups drop the header and tuck up under it, which is the single
@@ -118,6 +126,16 @@ export interface UserMessageProps {
   mentions?: Array<{ targetId: string; display: string }>
   /** The reader, so a mention OF them can be highlighted differently. */
   currentUserId?: string | null
+  /**
+   * Which side of the column the attributed bubble sits on. `'end'` (the
+   * default) is every human in the Piloti chat. `'start'` is the other party of a
+   * two-party conversation (the team in a feedback thread): left-aligned,
+   * mirrored, on the muted surface. Passing `side` at all marks a two-party
+   * thread: both sides' bubbles then stop at 85% of the column, so the two
+   * sides still read on a phone, where a 400px bubble is the whole width.
+   * Never passed in the Piloti chat; ignored without `author`.
+   */
+  side?: 'end' | 'start'
 }
 
 /**
@@ -130,6 +148,7 @@ export const UserMessage: FC<UserMessageProps> = ({
   grouped = false,
   mentions,
   currentUserId,
+  side,
 }) => {
   const t = useTranslations('chat')
   const swap = useIconSwapTransition()
@@ -218,17 +237,21 @@ export const UserMessage: FC<UserMessageProps> = ({
 
   // ── Shared thread: the same bubble, in the same column, now attributed ──────
   const isYou = author.isYou === true
+  const start = side === 'start'
+  const twoParty = side !== undefined
 
   return (
     <div
       className={cn(
-        'flex w-full flex-col items-end',
+        'flex w-full flex-col',
+        start ? 'items-start' : 'items-end',
         // Rhythm carries the run: a grouped follow-up tucks up under its
         // predecessor, a new speaker gets a little more air than the thread's
         // default gap. That contrast is what replaces side-switching.
         grouped ? '-mt-2' : 'mt-1'
       )}
       data-shared-author={author.userId ?? 'unknown'}
+      data-side={side ?? 'end'}
     >
       <MessageAuthor
         userId={author.userId}
@@ -237,6 +260,7 @@ export const UserMessage: FC<UserMessageProps> = ({
         isYou={isYou}
         timestamp={timestamp}
         grouped={grouped}
+        side={side ?? 'end'}
         className="mb-1.5"
       />
 
@@ -246,21 +270,25 @@ export const UserMessage: FC<UserMessageProps> = ({
           // says who is speaking, the layout says "a person is asking Piloti".
           // Three corners are the token radius; the 4px top-right is the
           // bubble's tail-side notch — the one deliberate value.
-          'group relative w-[400px] max-w-full rounded-lg rounded-tr-[4px] border border-input bg-card',
+          'group relative w-[400px] max-w-full rounded-lg border border-input',
           'px-[14px] py-[11px] text-sm leading-[1.55] text-default shadow-xs',
+          // The notch points at the header, on whichever side the bubble sits;
+          // the other party of a two-party thread speaks on the muted surface.
+          start ? 'rounded-tl-[4px] bg-muted' : 'rounded-tr-[4px] bg-card',
+          twoParty && 'max-w-[85%]',
           // Room for the copy control, which is 44px and ALWAYS VISIBLE on a
           // coarse pointer (see COPY_BUTTON_CLASS). On a mouse it fades in over
           // the text and that is fine — it is only there while the cursor is —
           // but a permanent 44px square in the top-right corner of a bubble sits
           // on the first line of the message and makes it unreadable and
           // unselectable. The padding is the price of the control being present.
-          'pointer-coarse:pr-14',
+          start ? 'pointer-coarse:pl-14' : 'pointer-coarse:pr-14',
           // A grouped follow-up squares off the corner that pointed at the header
           // it no longer draws, so a run reads as one block of speech. It stays
           // flush with the bubble above — the header sits over the bubble here, not
           // in a left gutter, so indenting would break the column instead of
           // forming it.
-          grouped ? 'rounded-tr-lg' : ''
+          grouped ? (start ? 'rounded-tl-lg' : 'rounded-tr-lg') : ''
         )}
       >
         {body}
@@ -268,7 +296,7 @@ export const UserMessage: FC<UserMessageProps> = ({
           type="button"
           onClick={() => void handleCopyMessage()}
           aria-label={copied ? t('copyMessage.copied') : t('copyMessage.copy')}
-          className={COPY_BUTTON_CLASS}
+          className={start ? cn(COPY_BUTTON_CLASS, 'right-auto left-2') : COPY_BUTTON_CLASS}
         >
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.span
@@ -292,7 +320,9 @@ export const UserMessage: FC<UserMessageProps> = ({
       {/* The header carries the time; a grouped follow-up has no header, so it
           keeps the timestamp under the bubble as an unattributed message does. */}
       {grouped && timestamp && (
-        <span className="text-subtle mr-[14px] mt-1 text-xs">{formatTime(timestamp, locale)}</span>
+        <span className={cn('text-subtle mt-1 text-xs', start ? 'ml-[14px]' : 'mr-[14px]')}>
+          {formatTime(timestamp, locale)}
+        </span>
       )}
     </div>
   )

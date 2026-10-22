@@ -7,6 +7,8 @@ import { AppShellChrome } from './app-shell-chrome'
 let pathname = '/app/projects/p1/chat'
 vi.mock('next/navigation', () => ({
   usePathname: () => pathname,
+  useSearchParams: () => null,
+  useRouter: () => ({ replace: vi.fn() }),
 }))
 vi.mock('./app-sidebar', () => ({
   AppSidebar: ({ projectId }: { projectId: string }) => (

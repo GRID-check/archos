@@ -248,6 +248,11 @@ all. The rule it is held to, `streaming-markdown-equivalence.spec.tsx`: for
 every prefix of the recorded answers, the blocks render the same HTML as the
 whole text rendered at once, at the default size and with a cut at every
 permitted place. A cut, once made, stays where it is while the text grows.
+In CI the long recorded answers are checked at every prefix that ends at or
+next to punctuation or a line break, and every eighth one inside a run of
+letters, which cannot move a cut; the constructs that reach across blocks are
+checked at every prefix. `STREAM_EQUIVALENCE_EVERY_PREFIX=1` checks every
+prefix of everything (84 s against 20 s, measured 2026-10-22).
 
 Why a minimum size: every parse has a fixed cost. When the minimum was set,
 every block was parsed again at the end of the turn, because the chat's

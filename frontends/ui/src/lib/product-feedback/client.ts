@@ -4,10 +4,14 @@
  */
 
 import type {
+  OwnProductFeedbackListResponse,
+  OwnProductFeedbackThread,
   ProductFeedbackContext,
+  ProductFeedbackAssigneeFilter,
   ProductFeedbackKind,
   ProductFeedbackListResponse,
   ProductFeedbackReportView,
+  ProductFeedbackStatusFilter,
   SubmittedProductFeedbackView,
   SupportTicketStatus,
 } from './types'
@@ -18,11 +22,8 @@ export interface SubmitProductFeedbackRequest {
   pagePath: string | null
   allowContact: boolean
   context: ProductFeedbackContext
-  /**
-   * This browser's PostHog widget and replay sessions, so the Support ticket
-   * the server opens lands in the reporter's widget and links their recording.
-   */
-  posthog: { widgetSessionId: string | null; sessionId: string | null }
+  /** This browser's PostHog replay session, so the Support ticket links the recording. */
+  posthog: { sessionId: string | null }
 }
 
 export type SubmitProductFeedbackResult =
@@ -68,8 +69,9 @@ export function captureFeedbackContext(): { pagePath: string | null; context: Pr
 }
 
 export interface ListFeedbackFilters {
-  status?: SupportTicketStatus
+  status?: ProductFeedbackStatusFilter
   kind?: ProductFeedbackKind
+  assignee?: ProductFeedbackAssigneeFilter
   cursor?: string | null
 }
 
@@ -79,6 +81,7 @@ export async function fetchPlatformFeedback(
   const params = new URLSearchParams()
   if (filters.status) params.set('status', filters.status)
   if (filters.kind) params.set('kind', filters.kind)
+  if (filters.assignee) params.set('assignee', filters.assignee)
   if (filters.cursor) params.set('cursor', filters.cursor)
   const query = params.toString()
   const response = await fetch(`/api/platform/feedback${query ? `?${query}` : ''}`, {
@@ -109,4 +112,63 @@ export async function triagePlatformFeedback(
   })
   if (!response.ok) throw new Error(`triage failed: ${response.status}`)
   return (await response.json()) as ProductFeedbackReportView
+}
+
+/** Assign a feedback ticket to the signed-in platform owner in PostHog. */
+export async function claimPlatformFeedbackTicket(ticketId: string): Promise<ProductFeedbackReportView> {
+  const response = await fetch('/api/platform/feedback/claim', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticketId }),
+  })
+  if (!response.ok) throw new Error(`claim failed: ${response.status}`)
+  return (await response.json()) as ProductFeedbackReportView
+}
+
+// ---------------------------------------------------------------------------
+// The reporter's own threads
+// ---------------------------------------------------------------------------
+
+export async function fetchOwnFeedback(cursor?: string): Promise<OwnProductFeedbackListResponse> {
+  const query = cursor ? `?${new URLSearchParams({ cursor }).toString()}` : ''
+  const response = await fetch(`/api/feedback/reports${query}`, { credentials: 'same-origin' })
+  if (!response.ok) throw new Error(`own feedback failed: ${response.status}`)
+  return (await response.json()) as OwnProductFeedbackListResponse
+}
+
+/** The office view: every report of the organization. Throws on 403 like any other failure. */
+export async function fetchOfficeFeedback(cursor?: string): Promise<OwnProductFeedbackListResponse> {
+  const query = cursor ? `?${new URLSearchParams({ cursor }).toString()}` : ''
+  const response = await fetch(`/api/feedback/office-reports${query}`, { credentials: 'same-origin' })
+  if (!response.ok) throw new Error(`office feedback failed: ${response.status}`)
+  return (await response.json()) as OwnProductFeedbackListResponse
+}
+
+export async function fetchOwnFeedbackThread(id: string): Promise<OwnProductFeedbackThread> {
+  const response = await fetch(`/api/feedback/reports/${encodeURIComponent(id)}/messages`, {
+    credentials: 'same-origin',
+  })
+  if (!response.ok) throw new Error(`feedback thread failed: ${response.status}`)
+  return (await response.json()) as OwnProductFeedbackThread
+}
+
+export type ReplyToFeedbackResult =
+  | { ok: true; thread: OwnProductFeedbackThread }
+  | { ok: false; reason: 'rate-limited' | 'failed' }
+
+export async function replyToOwnFeedback(id: string, message: string): Promise<ReplyToFeedbackResult> {
+  try {
+    const response = await fetch(`/api/feedback/reports/${encodeURIComponent(id)}/messages`, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    })
+    if (response.status === 429) return { ok: false, reason: 'rate-limited' }
+    if (!response.ok) return { ok: false, reason: 'failed' }
+    return { ok: true, thread: (await response.json()) as OwnProductFeedbackThread }
+  } catch {
+    return { ok: false, reason: 'failed' }
+  }
 }

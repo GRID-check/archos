@@ -1,0 +1,76 @@
+OIB-Richtlinie 2 – Erläuterungen — Brandschutz
+
+5 -- ≤ 22 -- --
+Die folgenden Abbildungen stellen eine Unterstützung zur Einteilung der Gebäude nach den Gebäudeklassen GK 1 bis GK 5 aus brandschutztechnischer Sicht dar.
+n r
+3 ~ + 7,00
+2 WHG. / 1 BE :::,
+2 insgesamt s 400 m2 · < C >c U ll
+:E
+u
+:::,
+[i:
+~
+1 00
+LJ L
+GK1
+Abbildung 3: zu den Begriffsbestimmungen – Einteilung der Gebäudeklassen – GK 1
+Gebäude oder freistehendes
+Reihenhäuser Wohngebäude
+n r 7 1
+3 ~ + 7,00 3 ~ + 7,00
+2 i n n A sg n e z s . a W m H t G s . 4 / 0 0 B E m 2 · : c < C > : U : l , l 2 insgesamt s 800 m2 ·c < C : > : U : l , l
+:E :E
+u u
+:::, :::,
+[i: [i:
+n ...... unbegrenzt
+~ ~
+1 00 1 00
+LJ L _J L
+GK2 GK2
+Abbildung 4: zu den Begriffsbestimmungen – Einteilung der Gebäudeklassen – GK 2
+7 r
+n r 4 ~ + 11,00
+n Anz. WHG. / BE
+jeweils ,;; 400 m'
+3 ~ + 7,00 3
+::::,
+ro
+2 nAnz. W n m HG 2 . / BE · : Q> r c : o :: ) , 2 1 WH o n G d m e . 2 r / BE · : u : (
+Q>
+E c : : . : : : )
+)
+: ,
+:E
+(.)
+::::,
+u:::
+n ...... unbegrenzt n ...... unbegrenzt
+~
+1 00 1 ~o
+LJ L LJ L
+GK3 GK4
+und Gebäude, die nicht in GK 1 oder GK 2 fallen
+Abbildung 5: zu den Begriffsbestimmungen – Einteilung der Gebäudeklassen – GK 3 und GK 4
+7 r
+l=:=========::t--~-=-- +22,00
+::::,
+ro
+== = ·c
+Q>l
+:E
+u
+::::,
+u::: und
+Gebäude, die nicht
+in GK 1, 2, 3, oder GK 4 fallen
+~00
+_J L
+GK5
+Abbildung 6: zu den Begriffsbestimmungen – Einteilung der Gebäudeklassen – GK 5
+Zwecks Beseitigung von Unklarheiten hinsichtlich unterschiedlicher Auslegung von Keller-, Erdund Dachgeschoß werden in dieser Richtlinie ausschließlich die Begriffe oberirdisches und unterirdisches Geschoß verwendet. Daher entspricht das unterste oberirdische Geschoß dem bisher
+gebräuchlichen Begriff des Erdgeschoßes und das oberste unterirdische Geschoß jenem des ersten Kellergeschoßes. Außerdem werden Dachgeschoße den oberirdischen Geschoßen begrifflich
+gleichgestellt. Bei der Ermittlung der Zahl der oberirdischen Geschoße, die ein wesentliches Kriterium für die Einstufung in die entsprechende Gebäudeklasse darstellt, müssen beispielsweise nicht
+ausgebaute Dachräume, Triebwerksräume oder Räume für haustechnische Anlagen, aus denen
+üblicherweise keine Personen zu retten sind, nicht angerechnet werden.

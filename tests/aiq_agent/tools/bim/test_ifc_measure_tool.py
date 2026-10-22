@@ -21,7 +21,6 @@ from __future__ import annotations
 
 import io
 import json
-import os
 import pathlib
 import urllib.error
 
@@ -2205,33 +2204,30 @@ class TestTheSchemaIsWhatTheModelActuallySees:
             *PROFILE_KINDS,
         ]
 
-    def test_the_enum_order_is_stable_across_processes(self):
+    def test_the_enum_order_does_not_depend_on_string_hashing(self):
         """`VALID_OPERATIONS` was a set, and string hashing is randomised.
 
         A set-ordered enum reshuffles between restarts, which makes the tool
         schema a different string to every prefix cache in front of the model
-        for no reason at all. Two fresh interpreters have to agree.
+        for no reason at all. The test above holds each wire enum to its
+        vocabulary in order; this holds every vocabulary to a sequence, whose
+        order no hash seed can move. (It replaced three fresh interpreters,
+        50 s of every CI run, that proved the same.)
         """
-        import subprocess
-        import sys
+        from aiq_agent.tools.bim import measure_register
 
-        program = (
-            "from aiq_agent.tools.bim.measure_register import IfcMeasureInput;"
-            "import json;"
-            "print(json.dumps(IfcMeasureInput.model_json_schema()['properties']['operation']['enum']))"
-        )
-        runs = {
-            subprocess.run(
-                [sys.executable, "-c", program],
-                capture_output=True,
-                text=True,
-                check=True,
-                env={**os.environ, "PYTHONHASHSEED": seed},
-                timeout=120,
-            ).stdout.strip()
-            for seed in ("1", "2", "3")
-        }
-        assert len(runs) == 1, runs
+        for name in (
+            "OPERATIONS",
+            "MEASURES",
+            "RELATIONS",
+            "ROOM_KINDS",
+            "KINDS",
+            "FIRE_ASPECTS",
+            "ENVELOPE_ASPECTS",
+            "PROFILE_KINDS",
+        ):
+            vocabulary = getattr(measure_register, name)
+            assert isinstance(vocabulary, (tuple, list, dict)), (name, type(vocabulary))
 
     def test_every_parameter_carries_its_own_description(self):
         """The fact the prose used to carry, at the point where it is needed.

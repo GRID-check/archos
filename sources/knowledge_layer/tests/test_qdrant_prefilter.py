@@ -222,8 +222,11 @@ def test_ingest_keeps_the_jobs_folder_until_the_store_has_one(retriever, monkeyp
     assert store.count(PROJECT, {"folder_ancestors": "brandschutz"}) == 0
 
 
-def test_a_collection_made_before_the_field_gets_its_index_on_first_read(qdrant_env, monkeypatch):
-    """The migration: an old collection lacks ``folder_ancestors``; strict mode refuses it until a process adds it."""
+def test_a_collection_made_before_the_field_gets_its_index_on_first_read(fresh_qdrant_store, monkeypatch):
+    """The migration: an old collection lacks ``folder_ancestors``; strict mode refuses it until a process adds it.
+
+    On a collection of its own, since it makes the old shape.
+    """
     from qdrant_client import models
 
     store = store_module.get_store()

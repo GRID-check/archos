@@ -57,6 +57,12 @@ const middleware = authkitMiddleware({
       // in the GRID Platform organization; every operation's route still
       // checks its `platform:*` permission.
       '/api/platform/mcp',
+      // PostHog Support's poke that a feedback ticket has a new message
+      // (ADR-0118, second amendment). PostHog carries no session; the route
+      // reads nothing from the body but a ticket id and reads the thread back
+      // from PostHog with the server's key, so a forged poke can only make it
+      // re-read a real ticket. Rate limited in the route.
+      '/api/webhooks/posthog-support',
       '/.well-known/(.*)',
       // Signed document images. `_next/image` is excluded from the matcher
       // below, but the optimizer does not fetch the underlying route over the
