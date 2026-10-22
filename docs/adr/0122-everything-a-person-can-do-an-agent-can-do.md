@@ -412,6 +412,40 @@ operations still propose when Piloti calls them, because they act on a
 project document the turn did not draft, and the rule for those is the door's:
 a write needs the person's yes.
 
+### Amendment: the person confirms in their own chat
+
+*2026-10-22, product owner.* MCP 2026-07-28 lets a server ask the person
+through the client in the middle of a tool call (elicitation on the
+multi-round-trip flow, `inputRequired`). When an outside agent's client
+declares it, the door asks the person before an outside agent's destructive
+write runs, and **a client-side elicitation answer counts as the person's
+yes**: on accept with `confirm: true` the call runs as the person, and the
+decision is audited as theirs (`agent.operation.decided`, `decisionSource:
+elicitation`). Nothing is removed: every other client, Piloti and every
+2025-era request keep the rules above unchanged.
+
+Why it is safe:
+
+- **It only stops calls, never starts one.** The question is asked only where
+  the door would run the call today (`callDecision` is `run`, the operation is
+  visible to this caller). The yes runs the second round through the same
+  path, so visibility, the sensitive-operation rule, the read gate and the
+  route's own `authz` decide again; an operation that may never run for an
+  agent is refused as before, and Piloti, whose writes are proposals, is never
+  asked.
+- **The answer is no stronger than the client that carries it.** The client is
+  the one the person authorized with OAuth, and it could already run the call
+  without asking by not declaring elicitation; trusting its relay of the
+  person's answer gives it nothing it lacked. What the person gains is that
+  the question is worded by the server from the call itself (the operation's
+  summary and the names of what it touches), not by the agent.
+- **The call cannot be swapped.** The operation and its input travel in
+  `requestState`, HMAC-signed with a key derived from the internal secret,
+  bound to the person, the organization and the client, valid for five
+  minutes; the second round must repeat the same call. An unsigned, altered,
+  expired or foreign state is refused by the SDK before any handler runs, and
+  an answer without a state is not an answer.
+
 ### The app is a client of the same routes
 
 "One way of working" is held on the server: a capability has one route, one

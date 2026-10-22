@@ -22,12 +22,20 @@ import {
   fromJsonSchema,
   isLegacyRequest,
 } from '@modelcontextprotocol/server'
-import type { StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server'
+import type {
+  CallToolResult,
+  InputRequiredResult,
+  ServerContext,
+  StandardSchemaWithJSON,
+  ToolAnnotations,
+} from '@modelcontextprotocol/server'
 import type { BackendOperation } from './backend-operations'
+import { confirmThenRun, confirmationFor } from './confirmation'
 import type { OperationInput } from './dispatch'
 import {
   type MetaToolName,
   callOperationTool,
+  catalogCallOf,
   describeOperation,
   inputSchemaOf,
   metaToolsFor,
@@ -137,11 +145,14 @@ function outputSchemaOf(name: string): { outputSchema?: StandardSchemaWithJSON }
   return schema ? { outputSchema: fromJsonSchema(schema as JsonSchemaInput) } : {}
 }
 
+type ToolAnswer = CallToolResult | InputRequiredResult | Promise<CallToolResult | InputRequiredResult>
+
 function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
-  const handlers: Record<MetaToolName, (args: unknown) => ReturnType<typeof callOperationTool> | ReturnType<typeof searchOperations>> = {
+  const handlers: Record<MetaToolName, (args: unknown, req: ServerContext) => ToolAnswer> = {
     'search-operations': (args) => searchOperations(ctx, args),
     'describe-operation': (args) => describeOperation(ctx, args),
-    'call-operation': (args) => callOperationTool(ctx, args),
+    'call-operation': (args, req) =>
+      confirmThenRun(ctx, req, catalogCallOf(ctx.principal, args), (runCtx) => callOperationTool(runCtx, args)),
     'report-missing-operation': (args) => reportMissingOperation(ctx, args),
   }
   for (const [name, tool] of Object.entries(metaToolsFor(ctx.principal)) as [MetaToolName, ReturnType<typeof metaToolsFor>[MetaToolName]][]) {
@@ -162,7 +173,7 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
         },
         _meta: ALWAYS_LOAD_META,
       },
-      (args: unknown) => handlers[name](args),
+      (args: unknown, req: ServerContext) => handlers[name](args, req),
     )
   }
 }
@@ -178,7 +189,10 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
         annotations: listedAnnotations(annotationsOf(op)),
         ...(ALWAYS_LOAD.has(op.name) ? { _meta: ALWAYS_LOAD_META } : {}),
       },
-      (args: unknown) => runOperation(ctx, op.name, (args ?? {}) as OperationInput),
+      (args: unknown, req: ServerContext) => {
+        const input = (args ?? {}) as OperationInput
+        return confirmThenRun(ctx, req, { operation: op.name, input }, (runCtx) => runOperation(runCtx, op.name, input))
+      },
     )
   }
   // The Python agent's read tools: flat arguments, read-only, and open-world only where they reach beyond the workspace.
@@ -209,12 +223,23 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
   )
 }
 
-export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpServer {
+/**
+ * The server for one request. `era` is the request's protocol era: only a
+ * 2026-07-28 request can carry a question back to the person (`inputRequired`),
+ * so only there is an outside agent's destructive write put to them first
+ * (`confirmation.ts`), with `requestState` verified before any handler runs. A
+ * 2025-era server is built exactly as before.
+ */
+export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: 'modern' | 'legacy' = 'legacy'): McpServer {
   const { name, title, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
+  const confirmation = era === 'modern' ? confirmationFor(principal) : null
   // The deployment's pinned origin; omitted where none is configured (never the inbound Host header).
   const websiteUrl = configuredAppOrigin()
-  const server = new McpServer({ name, title, version: '1.0.0', icons: SERVER_ICONS, ...(websiteUrl ? { websiteUrl } : {}) }, { instructions })
-  const ctx: McpCallContext = { principal, mode }
+  const server = new McpServer(
+    { name, title, version: '1.0.0', icons: SERVER_ICONS, ...(websiteUrl ? { websiteUrl } : {}) },
+    confirmation ? { instructions, requestState: { verify: confirmation.codec.verify } } : { instructions },
+  )
+  const ctx: McpCallContext = confirmation ? { principal, mode, confirmation } : { principal, mode }
   if (mode === 'tools') registerOperationTools(server, ctx)
   else registerMetaTools(server, ctx)
   registerDoorGuide(server, ctx)
@@ -279,7 +304,7 @@ export function createAgentDoorHandler(onerror: (error: Error) => void = (error)
   const modern = createMcpHandler(
     (context) => {
       const { principal, mode } = context.authInfo?.extra as unknown as AgentDoorRequest
-      return buildMcpServer(principal, mode)
+      return buildMcpServer(principal, mode, 'modern')
     },
     { legacy: 'reject', responseMode: 'json', onerror },
   )

@@ -619,6 +619,18 @@ const callInput = z.object({
 
 const backendCallInput = z.object({ name: z.string().min(1), input: z.record(z.unknown()).optional() })
 
+/**
+ * The catalog call `args` of call-operation name, or null when they name a read
+ * tool, nothing `principal` may see, or do not parse: what the person would be
+ * asked about (`confirmation.ts`). Parsed as {@link callOperationTool} parses
+ * them, so both rounds of a confirmed call compare the same shape.
+ */
+export function catalogCallOf(principal: AgentPrincipal, args: unknown): { operation: string; input: OperationInput } | null {
+  const parsed = callInput.safeParse(args)
+  if (!parsed.success || !findVisibleOperation(principal, parsed.data.name)) return null
+  return { operation: parsed.data.name, input: parsed.data.input ?? {} }
+}
+
 export function callOperationTool(ctx: McpCallContext, args: unknown): Promise<CallToolResult> {
   // A backend operation takes its own flat arguments (projectId among them), not { params, query, body }.
   const backendName = isRecord(args) && typeof args.name === 'string' ? args.name : null

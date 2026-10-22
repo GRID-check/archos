@@ -92,9 +92,47 @@ is how old the answers about the person may be:
 
 | Client | A read | A write |
 |---|---|---|
-| External agent | Runs | The client asks its user, driven by the tool annotations |
+| External agent | Runs | The client asks its user, driven by the tool annotations. On a 2026-07-28 request from a client that declares form elicitation, the door asks the person itself before a destructive write (below) |
 | Piloti in-product, in a conversation that is the person's alone | Runs if what it names lies in a project the person may chat in, after what it may carry is recorded on the conversation (below) | Becomes an `operation` proposal. The person accepts it (it runs as them) or dismisses it (ADR-0105) |
 | Piloti in-product, in a shared conversation | Runs only a document's content or a project's facts (`AUDIENCE_READS`), of the conversation's own project or one every reader may open, never of a restricted folder, recorded first; every other read is refused with a sentence the model relays | As above, refused when it names a project outside the audience's reach |
+
+#### The person confirms in their own chat
+
+An outside agent's destructive write (`destructiveHint`, never a read, never
+Piloti's) is put to the person before it runs when the request is of the
+2026-07-28 era and its client declares form elicitation in the request's
+`_meta` capabilities (`lib/agent-api/confirmation.ts`). The tool answers
+`inputRequired` with one `elicitation/create`: a plain English line built from
+the operation's summary and the names of the project or document it touches
+(`summaryOfOperation`, `describeTargets`), and a form with one boolean,
+`confirm`. The client shows it in the person's own chat and calls again with
+the answer in `inputResponses`. A yes runs the call through `runOperation`, the
+path every call takes; a no, a cancel or an unchecked box returns "nothing was
+changed" (`structuredContent.decision: 'declined'`). Either answer is an audit
+event `agent.operation.decided`, actor the person, `decisionSource:
+elicitation`, and a tool-call trace with `decision_source: elicitation`.
+
+The call travels between the two rounds in `requestState`, signed with the
+SDK's `createRequestStateCodec` under a key derived from
+`GRID_INTERNAL_API_TOKEN` (HMAC over `grid:mcp-request-state:v1`), bound to the
+organization, the person and the OAuth client, and valid for five minutes. The
+SDK refuses a state that fails verification before any handler runs; the
+second round must repeat the same call, or nothing runs. An answer without
+that state is not an answer: the person is asked again.
+
+What it does not change: a 2025-era request (Piloti's own client among them),
+Piloti on any era (its writes stay proposals), a client that does not declare
+elicitation, a write that is not destructive, and a deployment with no usable
+internal token all take the path they took before, byte for byte. The yes runs
+only what would have run without the question: visibility, the read gate, the
+sensitive-operation rule and the route's own `authz` all apply to the second
+round as to any call. Why a client's answer counts as the person's yes:
+[ADR-0122, amendment "the person confirms in their own chat"](../adr/0122-everything-a-person-can-do-an-agent-can-do.md#amendment-the-person-confirms-in-their-own-chat).
+
+Not built: picking a project by elicitation. Nothing in the catalog takes a
+project by name, the agent reads ids from `project-list` (`nameContains`), and
+the door prompts' `project` argument already completes by name
+(`completion/complete`); a picker would be a resolver no operation calls.
 
 ### Reads in a conversation
 

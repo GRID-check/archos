@@ -39,7 +39,10 @@ export interface ToolCallRecord {
   door: 'mcp' | 'piloti' | 'a2a' | 'platform'
   /** The MCP server's mode; null on the A2A door. */
   mode: 'search' | 'tools' | null
-  decision: 'run' | 'propose' | 'refused'
+  /** `confirm`: put to the person in their own chat; `declined`: they did not confirm (`agent-api/confirmation.ts`). */
+  decision: 'run' | 'propose' | 'refused' | 'confirm' | 'declined'
+  /** `elicitation` when the person confirmed this call in their own chat; otherwise absent. */
+  decisionSource?: 'elicitation' | null
   status: number
   startedAt: number
   endedAt: number
@@ -77,6 +80,7 @@ export function toolCallBatch(call: ToolCallRecord, ids: { traceId: string; obse
     door: call.door,
     mode: call.mode,
     decision: call.decision,
+    ...(call.decisionSource ? { decision_source: call.decisionSource } : {}),
     status: call.status,
     duration_ms: call.endedAt - call.startedAt,
     client_id: call.clientId,
