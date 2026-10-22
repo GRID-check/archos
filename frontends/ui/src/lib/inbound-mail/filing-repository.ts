@@ -29,6 +29,7 @@ import type {
   InboundMailNotStaged,
 } from './inbound-mail-vocabulary'
 import type { StoredScan } from './repository'
+import { byFilingOrder } from './thread-groups'
 
 /** One mail the run files: the row, every part of it, and each filing or filed part's decision. */
 export interface FilingWork {
@@ -38,7 +39,12 @@ export interface FilingWork {
   decisions: Map<string, InboundMailDecisionRow>
 }
 
-/** The mails of the payload that are still held in this project, with their parts and decisions. */
+/**
+ * The mails of the payload that are still held in this project, with their
+ * parts and decisions, in filing order (`byFilingOrder`: sent, then received):
+ * several replies to one thread become its Fassungen in the order they were
+ * written, which is what the list promised („wird Fassung 4–7“).
+ */
 export async function findFilingWork(
   projectId: string,
   mailIds: readonly string[]
@@ -79,7 +85,7 @@ export async function findFilingWork(
           .where(inArray(inboundMailDecisions.id, decisionIds))
           .limit(decisionIds.length)
   const byId = new Map(decisions.map((decision) => [decision.id, decision]))
-  return mails.map((mail) => {
+  return [...mails].sort(byFilingOrder).map((mail) => {
     const own = parts.filter((part) => part.mailId === mail.id)
     const decided = new Map<string, InboundMailDecisionRow>()
     for (const part of own) {

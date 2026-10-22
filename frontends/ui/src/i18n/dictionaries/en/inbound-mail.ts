@@ -67,7 +67,7 @@ export const inboundMail = {
 
   group: {
     thread: 'Mail thread “{name}” · {count, plural, one {# new mail} other {# new mails}}',
-    threadAction: 'File {count} mails in mail thread “{name}” (becomes revision {version})',
+    threadAction: 'File {count} mails in mail thread “{name}” (becomes revisions {first}–{last})',
     quiet: 'Domain not verified or automatic ({count})',
     quietHint: 'These are listed in full. Piloti makes no suggestions for them, and they file nothing on their own.',
   },
@@ -86,6 +86,8 @@ export const inboundMail = {
         'The address is a member’s, but their domain did not sign this mail. Filing it needs your confirmation.',
       impersonation:
         'The signature of this mail failed, or the domain’s policy refused it. Someone may be using this name. Filing it needs your confirmation.',
+      impersonationMemberName:
+        'The name shown is a member’s, but the address is not theirs. Mails that try to divert a payment look like this. Piloti suggests nothing for it, and filing it needs your confirmation.',
       unverified: 'The sending domain did not sign this mail. Piloti suggests nothing for it and selects no mail thread.',
     },
   },
@@ -174,6 +176,7 @@ export const inboundMail = {
       not_addressed_to_project: 'The mail is addressed to other recipients',
       stale_date: 'The mail is dated more than 7 days back',
       date_out_of_range: 'The date of the mail is not plausible',
+      claims_member_name: 'The name is a member’s, the address is not',
     },
   },
 
@@ -305,7 +308,6 @@ export const inboundMail = {
     fileSuggested: 'File as suggested',
     fileSuggestedBusy: 'Filing …',
     dismiss: 'Dismiss',
-    checking: 'Checking the selection …',
     blocked: {
       not_waiting: 'Some of the selected mail is already handled.',
       project_closed: 'The project is closed – reopen it to file.',

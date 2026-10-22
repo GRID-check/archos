@@ -3,20 +3,18 @@
  * state, the facts the reader must see before filing it, and whether it is
  * offered checked (DECISION §9, the case table).
  *
- * The defaults are conservative on purpose. A part is offered checked only
- * when filing it needs nothing from the person: its bytes scanned clean, the
- * office files its type, nothing in the project holds the same bytes, the
- * name check passed, no risk flag, and, for a new Fassung of an earlier
- * document, a sender whose domain vouches for it. Everything else is offered
- * unchecked with its reason, or not offered at all when it cannot be filed
- * (still in the original `.eml`).
+ * Whether it is offered checked is the server's (`part.preselected`,
+ * `lib/inbound-mail/review-defaults.ts`): a part is offered checked only when
+ * filing it needs nothing from the person, and nothing of an impersonation
+ * is. This module says why a part is not, as notes the row words, or that it
+ * is not offered at all when it cannot be filed (still in the original `.eml`).
  *
  * Pure.
  */
 
 import type { InboundMailPartView, InboundMailView } from '@/lib/inbound-mail/inbound-mail-wire'
 import type { NotStagedReason, PartRiskFlag } from '@/lib/inbound-mail/inbound-mail-vocabulary'
-import { revisionNeedsAcknowledgement } from './sender'
+import { isImageInMail, revisionVouched, senderFactsOfView } from '@/lib/inbound-mail/review-defaults'
 
 /** Where the attachment stands. Only `waiting` can be decided. */
 export type AttachmentStatus =
@@ -50,7 +48,7 @@ export interface AttachmentCase {
   status: AttachmentStatus
   /** The person may check it: waiting, scanned clean, a type the office files, and the project open. */
   selectable: boolean
-  /** Offered checked. */
+  /** Offered checked: the server's `preselected`. */
   defaultChecked: boolean
   notes: AttachmentNote[]
   /** The risk filing it would need acknowledged, if any (beyond a chosen earlier Fassung). */
@@ -78,13 +76,12 @@ export function attachmentCase(
 ): AttachmentCase {
   const status = statusOf(part)
   const notes: AttachmentNote[] = []
-  const verifiedSender = mail.sender ? !revisionNeedsAcknowledgement(mail.sender) : false
 
   if (part.lastFailure) notes.push({ kind: 'last_failure', failure: part.lastFailure })
   if (part.duplicateOf) {
     notes.push({ kind: 'duplicate', name: part.duplicateOf.name, folderPath: part.duplicateOf.folderPath, documentId: part.duplicateOf.documentId })
   }
-  const revisionVerified = verifiedSender && !part.riskFlags.includes('unverified_thread')
+  const revisionVerified = revisionVouched(part, senderFactsOfView(mail))
   if (part.revisionCandidate) {
     notes.push({
       kind: 'revision',
@@ -106,23 +103,14 @@ export function attachmentCase(
   if (risk === 'macro' || risk === 'type_mismatch') notes.push({ kind: 'risk', flag: risk })
   if (part.riskFlags.includes('encrypted')) notes.push({ kind: 'encrypted' })
   if (part.riskFlags.includes('forwarded_inner')) notes.push({ kind: 'forwarded_inner' })
-  // A nameless image is a picture pasted into the mail that was big enough to
-  // offer („Bild in der E-Mail“); signature logos never become parts.
-  const imageInMail = part.filename === null && part.contentType.toLowerCase().startsWith('image/')
-  if (imageInMail) notes.push({ kind: 'image_in_mail' })
+  if (isImageInMail(part)) notes.push({ kind: 'image_in_mail' })
 
   const selectable = status === 'waiting' && !mail.projectClosed
-  const needsPerson =
-    part.duplicateOf !== null ||
-    part.riskFlags.includes('name_stop') ||
-    risk !== null ||
-    imageInMail ||
-    (part.revisionCandidate !== null && !revisionVerified)
   return {
     part,
     status,
     selectable,
-    defaultChecked: selectable && !needsPerson,
+    defaultChecked: selectable && part.preselected,
     notes,
     risk,
     previewable: part.scan === 'clean' && PREVIEW_TYPES.test(part.contentType) && part.sizeBytes <= PREVIEW_MAX_BYTES && status !== 'filed',

@@ -356,6 +356,11 @@ describe('senderPreselectionBlocks', () => {
   it('ignores flags it does not know', () => {
     expect(senderPreselectionBlocks(sender({ senderFlags: ['message_id_reused', 'something_new'] }))).toEqual([])
   })
+
+  it('keeps a member’s name on an outsider’s address from every candidate, however well its own domain signed', () => {
+    expect(senderPreselectionBlocks(sender({ senderFlags: ['claims_member_name'] }))).toEqual(['claims_member_name'])
+    expect(threadPreselection(referenceMatch, sender({ senderFlags: ['claims_member_name'] }))).toEqual({ preselected: false, blocks: ['claims_member_name'] })
+  })
 })
 
 describe('appendNeedsAcknowledgement (the unverified_thread rule)', () => {

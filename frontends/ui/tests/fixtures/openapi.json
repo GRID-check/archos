@@ -8890,7 +8890,7 @@
       "get": {
         "operationId": "inbound-mail-get",
         "summary": "Read one held email’s parts and placement options",
-        "description": "Its parts (text and attachments: state, scan, risk flags, suggestion, duplicate, earlier version), `threadCandidates` and the `ifMatch` for inbound-mail-file. No text, no bytes.",
+        "description": "Its parts (text and attachments: state, scan, risk flags, suggestion, `preselected`, duplicate, earlier version), `threadCandidates`, `riskLevel` (`impersonation`: propose nothing) and the `ifMatch` for inbound-mail-file. No text, no bytes.",
         "tags": [
           "mail"
         ],
@@ -8954,7 +8954,7 @@
       "get": {
         "operationId": "inbound-mail-list",
         "summary": "List incoming email waiting in a project",
-        "description": "Held until a person files or dismisses each part. Metadata only: masked subject, sender domain, `senderTrust` (about the domain, never a person). Then inbound-mail-get.",
+        "description": "Held until a person files or dismisses each part. Metadata only: masked subject, sender domain, `senderTrust` (about the domain, never a person), `riskLevel`, `incompleteReason` (null: filable as suggested). `threadGroups`: mails that file into one thread together. Then inbound-mail-get.",
         "tags": [
           "mail"
         ],

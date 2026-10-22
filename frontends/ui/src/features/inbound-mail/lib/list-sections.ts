@@ -3,19 +3,21 @@
  *
  * - mails that continue the same E-Mail-Verlauf and would be pre-selected
  *   into it are grouped, so the conversation is filed in one press
- *   („3 E-Mails in E-Mail-Verlauf „…“ ablegen (wird Fassung 10)“);
+ *   („3 E-Mails in E-Mail-Verlauf „…“ ablegen (wird Fassung 10–12)“). Which
+ *   mails group, in which order, and the Fassung each becomes are the
+ *   server's (`threadGroups` on the list, `lib/inbound-mail/thread-groups.ts`);
+ *   this only places them;
  * - mail whose domain is not confirmed, and automatic mail, sit in one
  *   collapsed group at the end. They are listed, never hidden (every held
- *   mail is announced, D3), but they do not crowd out the conversation;
+ *   mail is announced, D3), but they do not crowd out the conversation. A
+ *   mail that reads as an impersonation is never quiet: it is the one a
+ *   person must see;
  * - everything else keeps the server's order (newest first).
- *
- * A mail that is not pre-selectable never joins a thread group: the group's
- * one button carries no acknowledgement (RT-S5).
  *
  * Pure.
  */
 
-import type { InboundMailSummaryView } from '@/lib/inbound-mail/inbound-mail-wire'
+import type { InboundMailSummaryView, InboundMailThreadGroupView } from '@/lib/inbound-mail/inbound-mail-wire'
 
 export type ListSection =
   | { kind: 'mail'; mail: InboundMailSummaryView }
@@ -23,44 +25,56 @@ export type ListSection =
       kind: 'thread'
       threadId: string
       name: string
-      /** The Fassung the thread reaches once every mail of the group is filed. */
-      finalVersion: number
+      /** The Fassungen the thread goes through once every mail of the group is filed. */
+      firstVersion: number
+      lastVersion: number
+      /** In the order they would be filed. */
       mails: InboundMailSummaryView[]
     }
   | { kind: 'quiet'; mails: InboundMailSummaryView[] }
 
-/** Mail the list keeps quiet: an unconfirmed stranger, or a machine. */
-export function isQuietMail(mail: Pick<InboundMailSummaryView, 'senderTrust' | 'automatic'>): boolean {
+/** Mail the list keeps quiet: an unconfirmed stranger, or a machine; never an impersonation. */
+export function isQuietMail(mail: Pick<InboundMailSummaryView, 'senderTrust' | 'automatic' | 'riskLevel'>): boolean {
+  if (mail.riskLevel === 'impersonation') return false
   return mail.automatic || mail.senderTrust === 'external_unverified'
 }
 
-export function listSections(mails: readonly InboundMailSummaryView[], options: { grouped: boolean }): ListSection[] {
+export function listSections(
+  mails: readonly InboundMailSummaryView[],
+  options: { grouped: boolean; groups?: readonly InboundMailThreadGroupView[] },
+): ListSection[] {
   if (!options.grouped) return mails.map((mail) => ({ kind: 'mail', mail }))
   const quiet = mails.filter(isQuietMail)
   const loud = mails.filter((mail) => !isQuietMail(mail))
+  const byId = new Map(loud.map((mail) => [mail.id, mail]))
 
-  const byThread = new Map<string, InboundMailSummaryView[]>()
-  for (const mail of loud) {
-    if (mail.status !== 'waiting' || !mail.thread?.preselected) continue
-    const group = byThread.get(mail.thread.threadId) ?? []
-    group.push(mail)
-    byThread.set(mail.thread.threadId, group)
+  // A group stands where the first of its mails stands; a mail of it not on this page is not drawn.
+  const groupOf = new Map<string, ListSection & { kind: 'thread' }>()
+  for (const group of options.groups ?? []) {
+    const members = group.mails.map((entry) => byId.get(entry.mailId)).filter((mail): mail is InboundMailSummaryView => !!mail)
+    if (members.length < 2) continue
+    const section = {
+      kind: 'thread' as const,
+      threadId: group.threadId,
+      name: group.name,
+      firstVersion: group.firstVersion,
+      lastVersion: group.lastVersion,
+      mails: members,
+    }
+    for (const member of members) groupOf.set(member.id, section)
   }
 
   const sections: ListSection[] = []
   const placed = new Set<string>()
   for (const mail of loud) {
-    const threadId = mail.thread?.threadId
-    const group = threadId ? byThread.get(threadId) : undefined
-    // Only a member of the group goes with it: a mail of the same thread that is not pre-selectable stands alone.
-    if (group && group.length > 1 && group.includes(mail) && mail.thread) {
-      if (placed.has(mail.thread.threadId)) continue
-      placed.add(mail.thread.threadId)
-      const base = Math.min(...group.map((member) => member.thread?.nextVersion ?? 1))
-      sections.push({ kind: 'thread', threadId: mail.thread.threadId, name: mail.thread.name, finalVersion: base + group.length - 1, mails: group })
-    } else {
+    const group = groupOf.get(mail.id)
+    if (!group) {
       sections.push({ kind: 'mail', mail })
+      continue
     }
+    if (placed.has(group.threadId)) continue
+    placed.add(group.threadId)
+    sections.push(group)
   }
   if (quiet.length > 0) sections.push({ kind: 'quiet', mails: quiet })
   return sections

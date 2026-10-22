@@ -36,6 +36,7 @@ describe.skipIf(!url)('the E-Mail-Eingang’s receive SQL against Postgres', () 
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
   let repo: typeof import('./repository')
+  let findFilingWork: typeof import('./filing-repository').findFilingWork
   let projectId: string
   let otherProjectId: string
   let addressId: string
@@ -76,6 +77,7 @@ describe.skipIf(!url)('the E-Mail-Eingang’s receive SQL against Postgres', () 
     withPlatformAccess = context.withPlatformAccess
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')
+    findFilingWork = (await import('./filing-repository')).findFilingWork
 
     projectId = (
       await one<{ id: string }>(sql`
@@ -252,6 +254,21 @@ describe.skipIf(!url)('the E-Mail-Eingang’s receive SQL against Postgres', () 
       ])
       await inTenant(() => repo.markNotified(mailId))
       expect((await inTenant(() => repo.findMailForReceive(mailId)))?.notifiedAt).not.toBeNull()
+    })
+
+    it('holds an outsider’s mail that claims a member’s name, and refuses the claim on a member’s own address (the database)', async () => {
+      const claimed = await received()
+      await inTenant(() => repo.recordRawScan(claimed, { status: 'clean', engine: 'ClamAV 1.5.4/28157', signature: null, scannedAt: new Date() }))
+      expect(await inTenant(() => repo.holdMail(claimed, { ...fields(claimed), senderFlags: ['claims_member_name'] }, [textPart(claimed)]))).toBe(true)
+      expect((await inTenant(() => repo.findMailForReceive(claimed)))?.senderFlags).toEqual(['claims_member_name'])
+
+      const own = await received()
+      await inTenant(() => repo.recordRawScan(own, { status: 'clean', engine: 'ClamAV 1.5.4/28157', signature: null, scannedAt: new Date() }))
+      const member = { ...fields(own), senderTrust: 'member_unverified' as const, senderUserId: USER, senderReason: 'dkim_none' as const, senderFlags: ['claims_member_name' as const] }
+      await expect(inTenant(() => repo.holdMail(own, member, [textPart(own)]))).rejects.toSatisfy((error: unknown) => {
+        const cause = (error as { cause?: { constraint_name?: string } }).cause
+        return cause?.constraint_name === 'inbound_mails_member_name_claim_external'
+      })
     })
 
     it('drops an automatic mail scrubbed, its raw key kept only under a deferred erasure', async () => {
@@ -542,6 +559,25 @@ describe.skipIf(!url)('the E-Mail-Eingang’s receive SQL against Postgres', () 
         return cause?.constraint_name === 'inbound_mail_decisions_piloti_cards_file_clean'
       })
       expect((await inTenant(() => repo.findMailParts([mailId]))).map((part) => part.state)).toEqual(['waiting', 'waiting'])
+    })
+
+    it('counts the waiting mails per project as the waiting list lists them, and none of another organization', async () => {
+      const { mailId } = await heldMail()
+      const listed = await inTenant(() => repo.listProjectMails(projectId, { status: 'waiting', limit: 50 }, null))
+      const counts = await inTenant(() => repo.countWaitingMailsByProject([projectId, otherProjectId]))
+      expect(counts.get(projectId)).toBe(listed.length)
+      expect(counts.has(otherProjectId)).toBe(false)
+      await inTenant(() => repo.dismissMails(projectId, [mailId], actor))
+      expect((await inTenant(() => repo.countWaitingMailsByProject([projectId]))).get(projectId)).toBe(listed.length - 1)
+    })
+
+    it('hands the filing job its mails in the order they were written, whatever order the request named them in', async () => {
+      const newer = await heldMail()
+      const older = await heldMail()
+      await one(sql`UPDATE inbound_mails SET sent_at = now() - interval '2 days' WHERE id = ${older.mailId}::uuid RETURNING id`)
+      await one(sql`UPDATE inbound_mails SET sent_at = now() - interval '1 day' WHERE id = ${newer.mailId}::uuid RETURNING id`)
+      const work = await inTenant(() => findFilingWork(projectId, [newer.mailId, older.mailId]))
+      expect(work.map((entry) => entry.mail.id)).toEqual([older.mailId, newer.mailId])
     })
 
     it('dismisses and restores within the window, each act a decision, and a second restore finds nothing', async () => {

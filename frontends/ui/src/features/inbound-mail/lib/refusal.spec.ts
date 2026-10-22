@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest'
 import { ApiRequestError } from '@/adapters/api/api-error'
-import { refusalNeedsReload, refusalOf } from './refusal'
+import { refusalNeedsReload, refusalOf, refusalTerms } from './refusal'
 
 describe('refusalOf', () => {
   it('passes a known code through', () => {
@@ -24,5 +24,14 @@ describe('refusalNeedsReload', () => {
     expect(refusalNeedsReload('stale')).toBe(true)
     expect(refusalNeedsReload('part_not_waiting')).toBe(true)
     expect(refusalNeedsReload('name_stop')).toBe(false)
+  })
+})
+
+describe('refusalTerms', () => {
+  it('names the terms a name stop refused, and nothing for any other refusal', () => {
+    expect(refusalTerms(new ApiRequestError('x', 409, 'name_stop', { reason: 'name_stop', terms: ['Honorar', 7, ' '] }))).toEqual(['Honorar'])
+    expect(refusalTerms(new ApiRequestError('x', 409, 'name_stop'))).toEqual([])
+    expect(refusalTerms(new ApiRequestError('x', 409, 'stale', { reason: 'stale', terms: ['Honorar'] }))).toEqual([])
+    expect(refusalTerms(new TypeError('network'))).toEqual([])
   })
 })

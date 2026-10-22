@@ -19,6 +19,17 @@ export function refusalOf(error: unknown): RefusalCode {
   return (INBOUND_MAIL_REFUSALS as readonly string[]).includes(error.reason) ? (error.reason as InboundMailRefusal) : 'unknown'
 }
 
+/**
+ * The office's terms a `name_stop` refusal names (`details.terms`), so the
+ * row can say „Namensprüfung: „Honorar““ rather than only that something
+ * stopped; empty for any other refusal, or when the server named none.
+ */
+export function refusalTerms(error: unknown): string[] {
+  if (!(error instanceof ApiRequestError) || error.reason !== 'name_stop') return []
+  const terms = error.details?.terms
+  return Array.isArray(terms) ? terms.filter((term): term is string => typeof term === 'string' && term.trim() !== '') : []
+}
+
 /** A refusal after which the mail must be read again before anything else is decided. */
 export function refusalNeedsReload(code: RefusalCode): boolean {
   return code === 'stale' || code === 'part_not_waiting' || code === 'part_unknown' || code === 'gone'

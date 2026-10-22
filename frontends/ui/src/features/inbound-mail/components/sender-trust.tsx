@@ -17,7 +17,7 @@ import { Info, ShieldAlert, ShieldCheck, ShieldQuestion } from 'lucide-react'
 import { Toggletip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
 import type { InboundMailSenderView } from '@/lib/inbound-mail/inbound-mail-wire'
-import type { InboundSenderTrust, SenderFlag } from '@/lib/inbound-mail/inbound-mail-vocabulary'
+import type { ImpersonationBasis, InboundSenderTrust, SenderFlag } from '@/lib/inbound-mail/inbound-mail-vocabulary'
 import { cn } from '@/lib/utils'
 import { senderFlagLines, senderTone, senderTrustLine, type SenderTrustLine } from '../lib/sender'
 
@@ -28,6 +28,10 @@ const KEY: Record<SenderTrustLine['kind'], string> = {
   impersonation: 'impersonation',
   unverified: 'unverified',
 }
+
+/** The toggletip's key: an impersonation says why it reads as one. */
+const explainKey = (line: SenderTrustLine): string =>
+  line.kind === 'impersonation' && line.basis === 'member_name' ? 'impersonationMemberName' : KEY[line.kind]
 
 export function useTrustLabel(): (line: SenderTrustLine) => string {
   const t = useTranslations('inboundMail')
@@ -59,7 +63,15 @@ function TrustGlyph({ line, className }: { line: SenderTrustLine; className?: st
  * DKIM reason, so it says „Mitglied · Domain nicht bestätigt“ where the detail
  * may say more.
  */
-export function SenderTrustGlyph({ trust, flags }: { trust: InboundSenderTrust | null; flags: SenderFlag[] }): JSX.Element | null {
+export function SenderTrustGlyph({
+  trust,
+  flags,
+  impersonation,
+}: {
+  trust: InboundSenderTrust | null
+  flags: SenderFlag[]
+  impersonation: ImpersonationBasis | null
+}): JSX.Element | null {
   const label = useTrustLabel()
   const verified = trust === 'member_verified' || trust === 'external_verified'
   const line = senderTrustLine({
@@ -70,7 +82,7 @@ export function SenderTrustGlyph({ trust, flags }: { trust: InboundSenderTrust |
     address: '',
     domain: null,
     signerDomain: null,
-  })
+  }, impersonation)
   const tone = senderTone(line)
   if (tone === 'confirmed') return null
   return (
@@ -88,10 +100,10 @@ export function SenderTrustGlyph({ trust, flags }: { trust: InboundSenderTrust |
 }
 
 /** The detail's trust line, its flags under it, each a fact with its glyph; the explanation behind an info toggletip. */
-export function SenderTrustLines({ sender }: { sender: InboundMailSenderView }): JSX.Element {
+export function SenderTrustLines({ sender, impersonation }: { sender: InboundMailSenderView; impersonation: ImpersonationBasis | null }): JSX.Element {
   const t = useTranslations('inboundMail')
   const label = useTrustLabel()
-  const line = senderTrustLine(sender)
+  const line = senderTrustLine(sender, impersonation)
   const tone = senderTone(line)
   const flags = senderFlagLines(sender)
   return (
@@ -111,12 +123,12 @@ export function SenderTrustLines({ sender }: { sender: InboundMailSenderView }):
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground touch-target inline-flex size-4 shrink-0 items-center justify-center rounded-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/60"
-              aria-label={t(`trust.explain.${KEY[line.kind]}`)}
+              aria-label={t(`trust.explain.${explainKey(line)}`)}
             >
               <Info className="size-3.5" aria-hidden />
             </button>
           </TooltipTrigger>
-          <TooltipContent className="max-w-72">{t(`trust.explain.${KEY[line.kind]}`)}</TooltipContent>
+          <TooltipContent className="max-w-72">{t(`trust.explain.${explainKey(line)}`)}</TooltipContent>
         </Toggletip>
       </p>
       {flags.map((flag) => (

@@ -48,12 +48,12 @@ export interface MessageRowProps {
   draft: MessageDraft
   folders: readonly FolderOption[]
   copy: DraftCopy
-  /** The thread name was stopped by the name check (a `name_stop` refusal): offer „Trotzdem ablegen“. */
-  threadNameStopped: boolean
+  /** The terms the name check stopped the thread name for (a `name_stop` refusal), offering „Trotzdem ablegen“; null when it did not. */
+  threadNameStop: string[] | null
   onChange: (change: Partial<Omit<MessageDraft, 'partId'>>) => void
 }
 
-export function MessageRow({ projectId, view, draft, folders, copy, threadNameStopped, onChange }: MessageRowProps): JSX.Element {
+export function MessageRow({ projectId, view, draft, folders, copy, threadNameStop, onChange }: MessageRowProps): JSX.Element {
   const t = useTranslations('inboundMail')
   const id = useId()
   const [pickerOpen, setPickerOpen] = useState(false)
@@ -214,10 +214,10 @@ export function MessageRow({ projectId, view, draft, folders, copy, threadNameSt
                 />
               )}
             </div>
-            {threadNameStopped && (
+            {threadNameStop && (
               <>
-                <FactLine icon={AlertTriangle} tone="warning">
-                  {t('refusals.name_stop')}
+                <FactLine icon={AlertTriangle} tone="warning" testId="thread-name-stop">
+                  {threadNameStop.length > 0 ? t('message.nameStop', { terms: threadNameStop.join('“, „') }) : t('refusals.name_stop')}
                 </FactLine>
                 <CheckLine
                   checked={target.releaseName}

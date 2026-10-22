@@ -247,9 +247,10 @@ export function ProjectOverviewLink({
  * Mail waiting in the project's E-Mail-Eingang (ADR-0134): „2 E-Mails warten“,
  * a link straight into it, layered above `ProjectOpenLink` (`relative z-10`)
  * the way {@link ProjectOverviewLink} is. Rendered only with a count above
- * zero, and only for a reader who may file the project's mail: the caller's
- * count comes from the list operation, filtered per reader, so it is honest in
- * the `project-surfaces.md` sense. Quiet ink, never a badge colour.
+ * zero, and only for a reader who may file the project's mail: the projects
+ * home reads the count with `waitingMailCounts` (`lib/inbound-mail/waiting-counts.ts`),
+ * which counts only where the reader may open the E-Mail-Eingang, so it is
+ * honest in the `project-surfaces.md` sense. Quiet ink, never a badge colour.
  */
 export function ProjectMailWaiting({
   project,
