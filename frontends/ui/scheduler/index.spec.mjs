@@ -8,6 +8,7 @@ import {
   fireOne,
   reconcileRuns,
   reconcileBackgroundWork,
+  inboundMailSweepLines,
   sweepUploads,
   sweepPlacement,
   sweepTraceRetention,
@@ -233,6 +234,34 @@ describe('reconcileBackgroundWork (the background-work sweep’s clock)', () => 
     expect(log).toHaveBeenCalledWith(
       '[job-scheduler] background work sweep, report filings: checked 1, filed 0, failed 1, waiting 0, errors 0',
     )
+  })
+
+  it('logs each project mail sweep that acted or failed, counts by name, and stays quiet for one that only looked', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+
+    await reconcileBackgroundWork(
+      config,
+      reply({
+        documents: documents(),
+        filings: filings(),
+        inboundMail: {
+          expired: { checked: 3, errors: 0, expired: 2, parts: 5 },
+          keptMails: { checked: 0, errors: 0, deleted: 0 },
+          threads: { checked: 1, errors: 1, deleted: 0, entries: 0, originals: 0 },
+        },
+      }),
+      streak(),
+    )
+
+    expect(log.mock.calls.map(([line]) => line)).toEqual([
+      '[job-scheduler] background work sweep, project mail expired: checked 3, errors 0, expired 2, parts 5',
+      '[job-scheduler] background work sweep, project mail threads: checked 1, errors 1, deleted 0, entries 0, originals 0',
+    ])
+  })
+
+  it('reads an older BFF that sends no project mail counts as nothing to say', () => {
+    expect(inboundMailSweepLines(undefined)).toEqual([])
+    expect(inboundMailSweepLines({ expired: null })).toEqual([])
   })
 
   it('never throws: a refusal or a transport error is null', async () => {

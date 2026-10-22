@@ -104,6 +104,12 @@ CREATE TABLE IF NOT EXISTS "inbound_mail_addresses" (
   "revoked_at" timestamp with time zone,
   "revoked_by" text,
   "revoked_reason" text,
+  -- What the project's managers were last told about the staged-bytes caps
+  -- (D18): `nearly_full` at 80% of the address's or the organization's cap,
+  -- `full` at 100%. The sweep tells each rise once, and clears it (and
+  -- resolves the notice) once the address is below 80% again or revoked.
+  "cap_notice" text,
+  "cap_noticed_at" timestamp with time zone,
   CONSTRAINT "inbound_mail_addresses_project_fkey"
     FOREIGN KEY ("project_id", "organization_id")
     REFERENCES "projects"("id", "organization_id") ON DELETE CASCADE,
@@ -114,7 +120,11 @@ CREATE TABLE IF NOT EXISTS "inbound_mail_addresses" (
     CHECK (("revoked_at" IS NULL) = ("revoked_by" IS NULL)
        AND ("revoked_at" IS NULL) = ("revoked_reason" IS NULL)),
   CONSTRAINT "inbound_mail_addresses_revoked_reason_known"
-    CHECK ("revoked_reason" IS NULL OR "revoked_reason" IN ('rotated', 'switched_off'))
+    CHECK ("revoked_reason" IS NULL OR "revoked_reason" IN ('rotated', 'switched_off')),
+  CONSTRAINT "inbound_mail_addresses_cap_notice_known"
+    CHECK ("cap_notice" IS NULL OR "cap_notice" IN ('nearly_full', 'full')),
+  CONSTRAINT "inbound_mail_addresses_cap_noticed_at"
+    CHECK (("cap_notice" IS NULL) = ("cap_noticed_at" IS NULL))
 );
 --> statement-breakpoint
 -- Global, revoked rows included: a token is never minted twice, so an old
