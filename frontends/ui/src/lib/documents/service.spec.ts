@@ -646,7 +646,7 @@ describe('uploadDocument ingest dispatch', () => {
 
     expect(result.status).toBe('pending')
     expect(result.jobId).toBe('job-42')
-    expect(setDocumentIngestJob).toHaveBeenCalledWith(result.documentId, 'org-1', 'job-42')
+    expect(setDocumentIngestJob).toHaveBeenCalledWith(result.documentId, 'org-1', 'job-42', null)
     expect(markDocumentIngestFailed).not.toHaveBeenCalled()
     // Document is first inserted as 'uploaded' before the job id lands.
     expect(admitOrDiscard).toHaveBeenCalledWith(
@@ -1551,7 +1551,7 @@ describe('reingestDocument', () => {
     const result = await reingestDocument(session, 'doc-99')
 
     expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-77' })
-    expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-99', 'org-1', 'job-77')
+    expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-99', 'org-1', 'job-77', null)
     expect(markDocumentIngestFailed).not.toHaveBeenCalled()
   })
 
@@ -1653,7 +1653,7 @@ describe('reingestDocument', () => {
     const result = await reingestDocument(session, 'doc-99')
 
     expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-78' })
-    expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-99', 'org-1', 'job-78')
+    expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-99', 'org-1', 'job-78', null)
   })
 
   it('refuses while the backend is genuinely still working (409, no double dispatch)', async () => {
@@ -2826,7 +2826,7 @@ describe('runReindexSlice', () => {
     expect(mockFetch.mock.calls.map(([url]) => String(url))).toEqual([
       expect.stringContaining('/v1/ingest'),
     ])
-    expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-1', 'org-1', 'job-1')
+    expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-1', 'org-1', 'job-1', null)
   })
 
   it('dispatches every document with bulk priority, so a person’s upload goes first', async () => {

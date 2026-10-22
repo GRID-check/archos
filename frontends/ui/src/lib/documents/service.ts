@@ -55,6 +55,7 @@ import { canRetry, contentHashChanged, CURRENT_INGEST_READER_VERSION, type Retry
 import { normalizeDrawingStructured, type DrawingStructured } from './drawing-structured'
 import { uploadExtensionOf } from '@/shared/config/file-upload'
 import { acceptedTypesForFlags } from './accepted-types'
+import { filingChoiceRecord } from './filing-choice'
 import {
   buildDocumentImageUrl,
   DOCUMENT_IMAGE_CACHE_CONTROL,
@@ -519,7 +520,10 @@ export async function dispatchIngest(
   const ingestJobId = attempt.jobId
 
   if (ingestJobId) {
-    await setDocumentIngestJob(documentId, organizationId, ingestJobId)
+    // The choice rides on the row with the job, so a reviewer's release of a
+    // file this reading holds sends it again (`./filing-choice`).
+    const filingChoice = filingChoiceRecord({ documentType: extras.documentType, revisionOf: extras.revisionOf })
+    await setDocumentIngestJob(documentId, organizationId, ingestJobId, filingChoice)
     return { jobId: ingestJobId, status: 'pending' }
   }
   // No job id, failed or not. The backend answers 202 with a `job_id` on every

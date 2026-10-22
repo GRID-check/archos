@@ -183,6 +183,43 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
     expect((await decisions()).map((row) => row.job_id)).toEqual(['job-1', 'job-2'])
   })
 
+  // `lib/documents/filing-choice.ts`: the choice a dispatch carried rides on the
+  // row through the quarantine its reading ends in, for the release to send.
+  it("keeps the dispatch's filing choice through a quarantine, and drops it with the next dispatch that carries none", async () => {
+    const { storedFilingChoice } = await import('@/lib/documents/filing-choice')
+    const { DOCUMENT_TYPE_TAGS } = await import('@/lib/documents/tag-vocabulary')
+    const choice = { documentType: DOCUMENT_TYPE_TAGS[0], revisionOf: 'Index_B.pdf' }
+    const id = await insertDocument('index_c.pdf', 'uploaded', { hash: 'sha256:filed' })
+    const row = async () => {
+      const found = await documentsRepo.findDocumentInOrg(id, ORG, internalRead('quarantine-review'))
+      if (!found) throw new Error('the row is gone')
+      return found
+    }
+
+    expect(await documentsRepo.setDocumentIngestJob(id, ORG, 'job-filed', choice)).toBe(true)
+    expect((await row()).metadata).toEqual({ ingestJobId: 'job-filed', ingestContentHash: 'sha256:filed', filingChoice: choice })
+    const verdict = 'quarantined:' + JSON.stringify({ reasons: [{ kind: 'iban' }] })
+    expect(
+      await documentsRepo.setDocumentReconciledStatus(
+        id,
+        ORG,
+        { status: 'quarantined' as const, errorMessage: verdict, screeningOutcome: 'quarantined' as const },
+        { status: 'pending' as const, jobId: 'job-filed' }
+      )
+    ).toBe(true)
+    expect(storedFilingChoice(await row())).toEqual(choice)
+
+    expect(
+      await documentsRepo.markScreeningReleased(id, ORG, {
+        contentHash: 'sha256:filed',
+        releasedBy: USER,
+        releasedAt: new Date(),
+      })
+    ).toBe(true)
+    expect(await documentsRepo.setDocumentIngestJob(id, ORG, 'job-plain')).toBe(true)
+    expect((await row()).metadata).toEqual({ ingestJobId: 'job-plain', ingestContentHash: 'sha256:filed' })
+  })
+
   it('keeps a decision owed until it is marked audited, once, and never rewritten', async () => {
     const verdict = 'quarantined:' + JSON.stringify({ reasons: [{ kind: 'iban' }] })
     const id = await insertDocument('konto.pdf', 'pending', { jobId: 'job-owed' })

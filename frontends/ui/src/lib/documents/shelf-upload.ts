@@ -103,12 +103,13 @@ export interface ShelfUploadInput {
    * the ingest job writes, and anything set before the job ran would be
    * overwritten by its own classification.
    *
-   * Travels with THIS dispatch only, and is stored once that read writes the
+   * Travels with THIS dispatch, and is stored once that read writes the
    * document's metadata row; from then on it holds across every later read.
-   * Two cases never get there: the same bytes already filed (`unchanged`)
-   * dispatch nothing, and a file held by the screening (ADR-0086) is read
-   * again on its release by a dispatch that does not carry the choice, so the
-   * classifier types it. `docs/technical-reference/document-ingestion.md`.
+   * A file the screening holds (ADR-0086) is never stored by that read, so the
+   * dispatch also records the choice on the BFF row and the reviewer's release
+   * sends it again (`./filing-choice`). The same bytes already filed
+   * (`unchanged`) dispatch nothing and never store it.
+   * `docs/technical-reference/document-ingestion.md`.
    */
   documentType?: DocumentTypeTag
 }

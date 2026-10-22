@@ -175,7 +175,10 @@ is written when the summary model is off (then without a change line) and when n
 summary could be made (the new file's row comes later, from the listing's
 reconciliation backfill, and the link counts from then). An older file the
 collection no longer holds, or a link that would close a loop, falls back to the
-ordinary suggestion.
+ordinary suggestion. A file the screening holds (ADR-0086) is
+never read that far; the dispatch keeps the choice on the BFF row
+(`documents.metadata.filingChoice`, `lib/documents/filing-choice.ts`) and the
+reviewer's release sends the same `revision_of` again, for the same bytes only.
 
 **After reading.** `PUT /api/documents/[id]/revision` takes `{ older, linked }`.
 `setRevisionLink` loads both documents with write access and refuses a held

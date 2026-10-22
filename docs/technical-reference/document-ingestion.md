@@ -337,10 +337,22 @@ beside `_read_human_set_fields`:
 | every later read („Erneut lesen", a reindex) | no dispatch carries the choice again, and none needs to: `register` keeps a person's tags, so the classifier never overwrites the type. A person's later edit in the tag editor replaces it like any tag |
 
 The marker is the store's one person flag, so it also keeps the row's topics, as
-a person's edit in the tag editor does. Two cases never store the choice: the
-same bytes already filed (`unchanged`, nothing is dispatched), and a file the
-screening held (ADR-0086), which is read again on its release by a dispatch that
-does not carry it, so the classifier types it then.
+a person's edit in the tag editor does. The same bytes already filed
+(`unchanged`) never store the choice: nothing is dispatched.
+
+**A held file keeps it.** A file the screening holds (ADR-0086) stops at the
+verdict, before anything is stored, so its reading never stores the choice. The
+dispatch therefore records what it carried on the BFF row, beside the job id and
+the digest of the bytes that job reads: `documents.metadata.filingChoice`
+(`{documentType?, revisionOf?}`, `setDocumentIngestJob`). The reviewer's release
+(`releaseQuarantinedDocument`) reads it back from the row it loaded and sends it
+again, `revision_of` included, but only while that digest is the row's
+(`storedFilingChoice`, `lib/documents/filing-choice.ts`). Every later dispatch
+rewrites the metadata, and one that carries no choice (a re-index, a placement
+move) drops it: were a re-index to send the type again, it would overwrite a
+person's later edit in the tag editor, since the job treats it as the newest
+choice. A file stranded at `processing` on the rendition path still carries its
+choice in the queued job's payload, not on the row.
 
 `PATCH /api/documents/[id]/tags` (`document-tags-update`) cannot do this job:
 it needs the metadata row, which only the ingest job writes, and a type set
