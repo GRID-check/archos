@@ -1141,10 +1141,13 @@ async def run_agent_job(
 
     # Quiet NAT's per-parallel-step span-stack warnings in the worker too —
     # deep research's concurrent researcher/tool fan-out triggers them on
-    # essentially every parallel call (see logging_utils for details).
+    # essentially every parallel call (see logging_utils for details) — and
+    # keep LangGraph's steps parented, or their spans never reach Langfuse.
     from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
+    from aiq_agent.common.nat_step_repair import install_step_stack_repair
 
     suppress_noisy_dependency_logs()
+    install_step_stack_repair()
 
     job_store: JobStore | None = None
     cancellation_monitor: CancellationMonitor | None = None

@@ -49,15 +49,19 @@ from __future__ import annotations
 
 import logging
 import time
+import weakref
 from typing import Any
 from uuid import UUID
 
+from nat.builder.intermediate_step_manager import IntermediateStepManager
 from nat.data_models.intermediate_step import IntermediateStepPayload
+from nat.data_models.intermediate_step import IntermediateStepState
 from nat.data_models.intermediate_step import IntermediateStepType
 from nat.data_models.intermediate_step import StreamEventData
 from nat.data_models.intermediate_step import TraceMetadata
 from nat.data_models.intermediate_step import UsageInfo
 from nat.data_models.token_usage import TokenUsageBaseModel
+from nat.plugin_api import ContextState
 from nat.plugin_api import LLMFrameworkEnum
 from nat.plugins.langchain.callback_handler import LangchainProfilerHandler
 
@@ -185,3 +189,58 @@ class SpanClosingProfilerHandler(LangchainProfilerHandler):
         double-close; it must not push to ``step_manager``.
         """
         logger.debug("LangChain run %s retrying: %s", run_id, retry_state)
+
+
+# Steps that have ENDED, per run (keyed weakly by the run's event stream, so a
+# turn's set dies with the turn). See ``install_step_stack_repair``.
+_ENDED_STEPS: weakref.WeakKeyDictionary[object, set[str]] = weakref.WeakKeyDictionary()
+
+
+def _drop_ended_tail(state: ContextState) -> None:
+    """Pop step ids that already ENDED off the top of this context's span stack."""
+    stream = state.event_stream.get()
+    ended = _ENDED_STEPS.get(stream) if stream is not None else None
+    if not ended:
+        return
+    stack = state.active_span_id_stack.get()
+    keep = len(stack)
+    while keep > 1 and stack[keep - 1] in ended:
+        keep -= 1
+    if keep < len(stack):
+        state.active_span_id_stack.set(stack[:keep])
+
+
+def install_step_stack_repair() -> None:
+    """Keep NAT's span stack free of ended steps, so no START names a closed parent.
+
+    ``langchain_core`` runs ``on_chain_end``/``on_llm_end`` through ``@shielded``:
+    a NEW task on a COPY of the context. ``IntermediateStepManager``'s END then
+    restores the stack with ``set()`` (lost with the copy) and an in-place pop
+    of the list its START created, which misses whenever a later START in the
+    same context replaced that list. In a LangGraph node that is every time:
+    the node's chain START, then its conditional-edge router's START/END, then
+    the node's END leaves the node's id on the loop context's stack. The next
+    node STARTs under that dead id, ``SpanExporter`` drops it ("No parent span
+    found"), its END finds nothing ("No subspan found"), and every descendant
+    cascades: whole agent rounds, LLM generations included, never reach
+    Langfuse. Upstream in NAT 1.9.0 (``builder/intermediate_step_manager.py``);
+    remove this when NAT tracks the stack without relying on the context.
+
+    Idempotent; call once at process startup (API server and agent worker).
+    """
+    original = IntermediateStepManager.push_intermediate_step
+    if getattr(original, "_grid_stack_repair", False):
+        return
+
+    def push_intermediate_step(self: IntermediateStepManager, payload: IntermediateStepPayload) -> None:
+        state = self._context_state
+        if payload.event_state == IntermediateStepState.START:
+            _drop_ended_tail(state)
+        original(self, payload)
+        if payload.event_state == IntermediateStepState.END:
+            stream = state.event_stream.get()
+            if stream is not None:
+                _ENDED_STEPS.setdefault(stream, set()).add(payload.UUID)
+
+    push_intermediate_step._grid_stack_repair = True  # type: ignore[attr-defined]
+    IntermediateStepManager.push_intermediate_step = push_intermediate_step  # type: ignore[method-assign]
