@@ -28,6 +28,7 @@ import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import {
@@ -102,6 +103,34 @@ export function supportTicketText(
 }
 
 /**
+ * Tell the support automation in PostHog that a ticket opened or its reporter
+ * answered. PostHog's own ticket events cannot say which deployment the ticket
+ * came from (staging and production share one project); this event carries
+ * `app_host` like every server event, so the Slack alert links the „Übernehmen"
+ * button to the deployment that holds the report. Ids and the kind only: the
+ * alert reads the member's words from the ticket itself
+ * (`deploy/posthog/support/slack-alert.hog`). Fire-and-forget.
+ */
+function announceToSupport(
+  event: 'product_feedback_ticket_opened' | 'product_feedback_reply_sent',
+  session: AuthorizedSession,
+  report: ProductFeedback,
+  ticketId: string
+): void {
+  captureServer({
+    event,
+    distinctId: session.userId,
+    organizationId: session.organizationId,
+    properties: {
+      ticket_id: ticketId,
+      report_id: report.id,
+      kind: report.kind,
+      allow_contact: report.allowContact,
+    },
+  })
+}
+
+/**
  * Open the report's Support ticket and remember its id. Every report gets one,
  * a reporter who declined contact too (tagged so nobody replies). The words go
  * out masked against the office's „Sensible Daten" policy (ADR-0086), and when
@@ -128,6 +157,7 @@ async function openTicketFor(
       tags: [FEEDBACK_TICKET_TAG, kindTicketTag(report.kind), ...(report.allowContact ? [] : [NO_CONTACT_TICKET_TAG])],
     })
     await setProductFeedbackTicket(report.id, ticketId, widgetSessionId)
+    announceToSupport('product_feedback_ticket_opened', session, report, ticketId)
   } catch (error) {
     console.error(`[product-feedback] report ${report.id} stored, but no Support ticket opened:`, error)
   }
@@ -557,6 +587,7 @@ export async function replyToOwnProductFeedback(
     if (error instanceof PosthogSupportUnavailableError) throw new UpstreamError('Your reply could not be sent.')
     throw error
   }
+  announceToSupport('product_feedback_reply_sent', session, row, row.posthogTicketId)
   return getOwnProductFeedbackThread(session, id)
 }
 
