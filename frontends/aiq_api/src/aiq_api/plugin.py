@@ -417,8 +417,10 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
     @override
     def build_app(self) -> FastAPI:
         from aiq_agent.common.logging_utils import suppress_noisy_dependency_logs
+        from aiq_agent.common.nat_step_repair import install_step_stack_repair
 
         suppress_noisy_dependency_logs()
+        install_step_stack_repair()
 
         # What this process is, before it registers a single route (ledger item
         # 1): the deployed commit and the effective value of the four gates, on

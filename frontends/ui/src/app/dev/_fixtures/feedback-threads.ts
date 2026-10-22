@@ -2,7 +2,8 @@
  * A fake „Mein Feedback" backend for the dev previews: one member's cases
  * (active and done), their office's, a conversation with the team, and the
  * degraded states. `/dev/feedback-threads`, `/dev/feedback` and `/dev/phone-more`
- * share it, so the sheet looks the same from every door.
+ * share it, so the modal looks the same from every door. A report sent from its
+ * form joins the fake list, so the hand-off to the new thread can be reviewed.
  */
 
 import type { FeedbackThreadsApi } from '@/features/product-feedback/components'
@@ -12,6 +13,7 @@ import type {
   OwnProductFeedbackSummary,
   OwnProductFeedbackThread,
 } from '@/lib/product-feedback/types'
+import type { SubmitProductFeedbackRequest, SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
 
 const minutesAgo = (minutes: number): string => new Date(Date.now() - minutes * 60_000).toISOString()
 
@@ -26,6 +28,7 @@ export type FeedbackPreviewView =
   | 'office'
   | 'colleague'
   | 'long'
+  | 'compose'
 
 const mine = (summary: Omit<OwnProductFeedbackSummary, 'mine' | 'reporterName'>): OwnProductFeedbackSummary => ({
   ...summary,
@@ -198,26 +201,59 @@ function threadFor(id: string, view: FeedbackPreviewView, extra: OwnProductFeedb
 
 const wait = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
+/** A report the preview's form filed: a fresh case nobody has answered. */
+function filed(request: SubmitProductFeedbackRequest, index: number): OwnProductFeedbackSummary {
+  const now = new Date().toISOString()
+  return mine({
+    id: `0b1c2d3e-4f50-4617-8899-${String(index).padStart(12, '0')}`,
+    kind: request.kind,
+    excerpt: request.message,
+    createdAt: now,
+    status: 'new',
+    ticketNumber: 44 + index,
+    lastActivityAt: now,
+    hasUpdate: false,
+    canReply: true,
+  })
+}
+
 /**
- * The fake API for one view. Sending a reply appends it to the fake thread.
- * Build it once per view (`useMemo`): the provider re-reads its count whenever
- * the `list` function changes.
+ * The fake API for one view. Sending a reply appends it to the fake thread;
+ * sending the form files a new case at the top of the list (or fails, with
+ * `failSubmit`). Build it once per view (`useMemo`): the provider re-reads its
+ * count whenever the `list` function changes.
  */
-export function feedbackPreviewApi(view: FeedbackPreviewView): FeedbackThreadsApi {
+export function feedbackPreviewApi(
+  view: FeedbackPreviewView,
+  { failSubmit = false }: { failSubmit?: boolean } = {},
+): FeedbackThreadsApi {
   let extra: OwnProductFeedbackMessage[] = []
-  const office = view === 'office' || view === 'colleague'
+  let sent: OwnProductFeedbackSummary[] = []
+  const office = view === 'office' || view === 'colleague' || view === 'compose'
   return {
     list: async () => {
       await wait(250)
-      return listOf(view === 'empty' ? [] : FEEDBACK_PREVIEW_REPORTS, office || view === 'list')
+      return listOf([...sent, ...(view === 'empty' ? [] : FEEDBACK_PREVIEW_REPORTS)], office || view === 'list')
     },
     office: async () => {
       await wait(250)
-      return listOf([...COLLEAGUES, ...FEEDBACK_PREVIEW_REPORTS], true)
+      return listOf([...COLLEAGUES, ...sent, ...FEEDBACK_PREVIEW_REPORTS], true)
     },
     thread: async (id) => {
       await wait(250)
+      const own = sent.find((report) => report.id === id)
+      if (own) {
+        const first: OwnProductFeedbackMessage = { id: `${id}-1`, author: 'reporter', authorName: null, content: own.excerpt, createdAt: own.createdAt }
+        return { report: own, messages: [first], live: true }
+      }
       return threadFor(id, view, extra)
+    },
+    submit: async (request): Promise<SubmitProductFeedbackResult> => {
+      await wait(400)
+      if (failSubmit) return { ok: false, reason: 'failed' }
+      const report = filed(request, sent.length + 1)
+      sent = [report, ...sent]
+      return { ok: true, report: { id: report.id, kind: report.kind, createdAt: report.createdAt } }
     },
     reply: async (id, message) => {
       await wait(400)
@@ -239,6 +275,6 @@ export function feedbackPreviewStart(view: FeedbackPreviewView): string | null {
 }
 
 export function parseFeedbackPreviewView(value: string | null): FeedbackPreviewView {
-  const views: FeedbackPreviewView[] = ['list', 'thread', 'waiting', 'readonly', 'offline', 'empty', 'office', 'colleague', 'long']
+  const views: FeedbackPreviewView[] = ['list', 'thread', 'waiting', 'readonly', 'offline', 'empty', 'office', 'colleague', 'long', 'compose']
   return views.includes(value as FeedbackPreviewView) ? (value as FeedbackPreviewView) : 'list'
 }

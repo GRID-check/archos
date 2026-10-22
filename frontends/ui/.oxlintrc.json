@@ -175,6 +175,15 @@
             // unmarked there while the page rendered fine.
             "selector": "CallExpression[callee.property.name='getTextContent']",
             "message": "page.getTextContent() iterates a ReadableStream with for-await, which Safari before 27 cannot do. Use readPageTextItems(page) from features/knowledge/lib/pdfjs-runtime."
+          },
+          {
+            // Seven modules each built their own ioredis client: four refused
+            // their first command on a cold connection ("Stream isn't
+            // writeable"), the event bus opened one per open stream, and every
+            // one logged each reconnect attempt, so a ninety-second Dragonfly
+            // restart was three thousand warn lines.
+            "selector": "CallExpression[callee.name='require'][arguments.0.value='ioredis']",
+            "message": "Open Dragonfly connections through createRedisClient from @/lib/redis/connect.js: it queues a cold client's first command and logs an outage once, not every reconnect attempt."
           }
         ]
       }

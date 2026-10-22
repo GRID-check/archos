@@ -108,7 +108,7 @@ No-op until `initPosthogClient` ran, which needs the host and project token in
 | `skill_enabled_changed` | `scope`, `enabled` | `features/skills/components/skill-toolbox.tsx`, `curated-skills.tsx` |
 | `answer_retry_thorough` | `message_id`, `original_effort` | `features/chat/components/RetryThoroughButton.tsx` |
 | `answer_feedback_submitted` | `verdict`, `reason` | `features/chat/hooks/use-answer-feedback.ts` |
-| `product_feedback_submitted` | `kind` | `features/product-feedback/components/feedback-dialog.tsx` |
+| `product_feedback_submitted` | `kind` | `features/product-feedback/components/feedback-form.tsx` |
 | `document_uploaded` | `count`, `types` (comma-joined extensions), `shelf` | `features/documents/hooks/use-file-upload.ts` |
 | `chat_message_sent` | `has_attachments`, `effort`, `data_source_count` | `features/chat/hooks/use-websocket-chat.ts` |
 | `similar_passages_searched` | `entry` (`citation` or `selection`), `origin` (`point` or `embedded`), `groups`, `documents`, `projects_searched` | `features/similar-passages/lib/use-similar-passages.ts`, when an answer arrives |

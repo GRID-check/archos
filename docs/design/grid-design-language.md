@@ -324,7 +324,7 @@ trapping, Escape and scroll locking are identical; what differs is intent.
 
 | Use | When the content is | Example |
 |---|---|---|
-| `Dialog` | One question with an answer — confirm, rename, a short form — or one artifact you look at with full attention. What is behind it does not matter while it is open. | `ConfirmDialog`, `skill-editor-dialog.tsx`, the PDF viewer |
+| `Dialog` | One question with an answer — confirm, rename, a short form — or one artifact you look at with full attention. What is behind it does not matter while it is open. Also a self-contained conversation opened from the shell menu and closed again, with its own list beside it, when it belongs to no page: two panes from `md:` up, one with a back step below, full screen on a phone. | `ConfirmDialog`, `skill-editor-dialog.tsx`, the PDF viewer, „Mein Feedback" (`feedback-threads.tsx`) |
 | `Sheet` (side) | The DETAIL of a row the reader just selected. The list stays put behind it and keeps updating. | `task-detail.tsx`, `schedule-detail.tsx`, `skill-detail.tsx` |
 | `PageSheet` | A whole PLACE, independent of wherever the reader is standing. Route-backed, reached from the org nav. | Postfach, Archiv, chat history |
 | `Popover` | A transient choice attached to the control that opened it. Never a panel with its own header and scroll region. | the `/` command picker, filter menus |

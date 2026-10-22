@@ -13,17 +13,22 @@ import { useCallback, useSyncExternalStore } from 'react'
  * fresh `(max-width: …)`: those are what `md:` and `phone:` mean in CSS, and a
  * hand-written width forgets that a phone on its side is still a phone.
  *
- * The server renders `false`; the client corrects on hydration.
+ * The server renders `false`; the client corrects on hydration. Where there
+ * is no `matchMedia` at all (jsdom, an embedded browser) it stays `false`.
  */
 export function useMediaQuery(query: string): boolean {
   const subscribe = useCallback(
     (onStoreChange: () => void): (() => void) => {
+      if (typeof window.matchMedia !== 'function') return () => undefined
       const mql = window.matchMedia(query)
       mql.addEventListener('change', onStoreChange)
       return () => mql.removeEventListener('change', onStoreChange)
     },
     [query],
   )
-  const getSnapshot = useCallback((): boolean => window.matchMedia(query).matches, [query])
+  const getSnapshot = useCallback(
+    (): boolean => typeof window.matchMedia === 'function' && window.matchMedia(query).matches,
+    [query],
+  )
   return useSyncExternalStore(subscribe, getSnapshot, () => false)
 }

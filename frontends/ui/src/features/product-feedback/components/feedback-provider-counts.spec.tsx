@@ -9,7 +9,7 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ replace: vi.fn() }),
 }))
 
-import { FeedbackProvider, useFeedbackUpdatedCount, useOpenFeedbackThreads } from './feedback-provider'
+import { FeedbackProvider, useFeedbackUpdatedCount, useOpenFeedback, useOpenFeedbackThreads } from './feedback-provider'
 import type { FeedbackThreadsApi } from './feedback-threads'
 
 const empty = (updatedCount: number): OwnProductFeedbackListResponse => ({
@@ -23,26 +23,52 @@ const empty = (updatedCount: number): OwnProductFeedbackListResponse => ({
 function Probe(): JSX.Element {
   const count = useFeedbackUpdatedCount()
   const openThreads = useOpenFeedbackThreads()
+  const openFeedback = useOpenFeedback()
   return (
     <>
       <span data-testid="count">{count}</span>
       <button type="button" onClick={() => openThreads()}>
         open
       </button>
+      <button type="button" onClick={() => openFeedback('question')}>
+        compose
+      </button>
     </>
   )
 }
 
 describe('FeedbackProvider', () => {
-  test('reads the count when the shell mounts, and again when the sheet closes', async () => {
+  test('„Feedback senden" opens the same modal, on its form, with the kind asked for', async () => {
     const user = userEvent.setup()
-    // One reply waits; once the member has read it (inside the sheet) the server says none.
+    const api: FeedbackThreadsApi = {
+      list: vi.fn(async () => empty(0)),
+      office: vi.fn(),
+      thread: vi.fn(),
+      reply: vi.fn(),
+      submit: vi.fn(),
+    }
+    render(
+      <FeedbackProvider threadsApi={api}>
+        <Probe />
+      </FeedbackProvider>
+    )
+
+    await user.click(screen.getByRole('button', { name: 'compose' }))
+
+    expect(await screen.findByTestId('feedback-threads')).toContainElement(screen.getByTestId('feedback-form'))
+    expect(screen.getByRole('radio', { name: /Question/ })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  test('reads the count when the shell mounts, and again when the modal closes', async () => {
+    const user = userEvent.setup()
+    // One reply waits; once the member has read it (inside the modal) the server says none.
     const list = vi.fn().mockResolvedValueOnce(empty(1)).mockResolvedValue(empty(0))
     const api: FeedbackThreadsApi = {
       list,
       office: vi.fn(),
       thread: vi.fn(),
       reply: vi.fn(),
+      submit: vi.fn(),
     }
     render(
       <FeedbackProvider threadsApi={api}>

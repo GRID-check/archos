@@ -1,32 +1,41 @@
 'use client'
 
 /**
- * „Mein Feedback" — the reporter's side of every report they sent: their cases,
- * active ones first, each with where it stands, and the conversation on one of
- * them with the Piloti team. An office admin (`org:settings:manage`) also gets
- * „Unser Büro": every case anyone in the organization filed, each thread
- * read-only, because only the reporter's own conversations session can answer.
+ * „Mein Feedback" — the reporter's side of every report they sent, as a support
+ * inbox in a modal: their cases on the left, active ones first, each with where
+ * it stands, and on the right the conversation on one of them with the Piloti
+ * team, or the form for a new report („Neues Feedback", `FeedbackForm`). After
+ * sending, the new case is selected in the list with its thread open. An office
+ * admin (`org:settings:manage`) also gets „Unser Büro": every case anyone in the
+ * organization filed, each thread read-only, because only the reporter's own
+ * conversations session can answer.
+ *
+ * Two panes side by side where `md:` holds (a phone on its side does not); one
+ * pane at a time below it, the detail with a back step to the list. On a phone
+ * the dialog takes the whole screen (`fullScreenOnMobile`) and follows the
+ * visual viewport (`useFitToVisualViewport`), so the reply box sits on the iOS
+ * keyboard instead of under it.
  *
  * The team answers in PostHog Support; the BFF reads the ticket and hands the
  * thread over (`GET /api/feedback/reports/[id]/messages`), and the reporter's
  * answer goes back onto the ticket (ADR-0118, amended). No PostHog widget is
- * involved: this sheet is the whole conversation surface. While it shows a
+ * involved: this modal is the whole conversation surface. While it shows a
  * thread it re-reads it every {@link THREAD_POLL_MS}, so a reply sent while the
  * reporter is looking arrives without a reload.
  *
  * The thread is a two-party chat built from the chat's parts: `UserMessage`
  * with an author for each side (the team on the left), and the thread reply box
  * (`Composer`): Enter sends, the phone's action key says so, Send keeps the
- * keyboard up. On a phone the sheet follows the visual viewport
- * (`useFitToVisualViewport`), so the box sits on the keyboard instead of under it.
+ * keyboard up.
  */
 
 import type { JSX } from 'react'
 import * as React from 'react'
-import { ArrowLeft, ChevronRight, MessagesSquare } from 'lucide-react'
+import { ArrowLeft, ChevronRight, MessagesSquare, Plus } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { LoadError } from '@/components/ui/load-error'
@@ -34,12 +43,13 @@ import { LoadMore } from '@/components/ui/load-more'
 import { isCoarsePointer } from '@/components/ui/overlay-focus'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SectionLabel } from '@/components/ui/section-label'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { UserMessage } from '@/features/chat/components/UserMessage'
 import { Composer } from '@/features/documents/components/review/composer'
+import { PHONE_QUERY } from '@/hooks/use-is-mobile'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useFitToVisualViewport } from '@/hooks/use-visual-viewport'
 import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -48,7 +58,10 @@ import {
   fetchOwnFeedback,
   fetchOwnFeedbackThread,
   replyToOwnFeedback,
+  submitProductFeedback,
   type ReplyToFeedbackResult,
+  type SubmitProductFeedbackRequest,
+  type SubmitProductFeedbackResult,
 } from '@/lib/product-feedback/client'
 import {
   isActiveFeedbackCase,
@@ -57,24 +70,15 @@ import {
   type OwnProductFeedbackMessage,
   type OwnProductFeedbackSummary,
   type OwnProductFeedbackThread,
+  type ProductFeedbackKind,
 } from '@/lib/product-feedback/types'
 import { FeedbackCaseStatus, feedbackCaseState } from './feedback-atoms'
-import { FEEDBACK_KIND_ICONS } from './feedback-dialog'
-
-/**
- * Radix's scroll viewport wraps its children in a `display: table` box that
- * grows to its widest child, so a clamped excerpt or a 400px bubble pushed the
- * list and the thread past the sheet's right edge (cut off on desktop, the
- * whole bubble overflowing a 390px phone). Block layout makes the content take
- * the sheet's width. The cause is in `components/ui/scroll-area.tsx`; until the
- * atom does this itself, every vertical-only caller needs it.
- */
-const FIT_VIEWPORT = '[&>[data-radix-scroll-area-viewport]>div]:!block'
+import { FEEDBACK_KIND_ICONS, FeedbackForm, FIT_VIEWPORT } from './feedback-form'
 
 /** How often an open thread is re-read for a reply that arrived meanwhile. */
 export const THREAD_POLL_MS = 20_000
 
-/** The calls the sheet makes; previews and specs inject their own. */
+/** The calls the modal makes; previews and specs inject their own. */
 export interface FeedbackThreadsApi {
   /** One page of the member's own reports; `cursor` is the previous page's `nextCursor`. */
   list: (cursor?: string) => Promise<OwnProductFeedbackListResponse>
@@ -82,6 +86,8 @@ export interface FeedbackThreadsApi {
   office: (cursor?: string) => Promise<OwnProductFeedbackListResponse>
   thread: (id: string) => Promise<OwnProductFeedbackThread>
   reply: (id: string, message: string) => Promise<ReplyToFeedbackResult>
+  /** Files a new report from the „Neues Feedback" pane. */
+  submit: (request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>
 }
 
 const LIVE_API: FeedbackThreadsApi = {
@@ -89,103 +95,264 @@ const LIVE_API: FeedbackThreadsApi = {
   office: fetchOfficeFeedback,
   thread: fetchOwnFeedbackThread,
   reply: replyToOwnFeedback,
+  submit: submitProductFeedback,
 }
 
 /** Whose cases the list shows. */
 export type FeedbackScope = 'mine' | 'office'
 
-export interface FeedbackThreadsSheetProps {
+export interface FeedbackThreadsDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  /** A thread to open straight away (after sending, from a link); the list otherwise. */
+  /** A thread to open straight away (from a link, an inbox row); the list otherwise. */
   initialReportId?: string | null
+  /** Open on the form for a new report, with this kind chosen („Feedback senden"). Beats `initialReportId`. */
+  initialCompose?: ProductFeedbackKind | null
   /** Whose cases the list opens on; one's own unless asked. */
   initialScope?: FeedbackScope
-  /** „Feedback senden" from the empty list. */
-  onNewFeedback?: () => void
-  /** Told whenever the sheet learns how many threads have news, so the shell's dot follows. */
+  /** Shown in the form's contact hint, so the reporter knows where a reply goes. */
+  userEmail?: string | null
+  /** Told whenever the modal learns how many threads have news, so the shell's dot follows. */
   onUpdatedCount?: (count: number) => void
   api?: FeedbackThreadsApi
 }
 
 type Load<T> = { kind: 'loading' } | { kind: 'error' } | { kind: 'ready'; value: T }
 
-export function FeedbackThreadsSheet({
+/**
+ * What the detail pane shows. `draft` numbers each new form, so a second
+ * „Neues Feedback" starts blank and captures the page anew.
+ */
+type Pane =
+  | { view: 'none' }
+  | { view: 'thread'; reportId: string; justSent: boolean }
+  | { view: 'compose'; kind: ProductFeedbackKind; draft: number }
+
+let drafts = 0
+
+function startPane(reportId: string | null, compose: ProductFeedbackKind | null): Pane {
+  if (compose) return { view: 'compose', kind: compose, draft: ++drafts }
+  if (reportId) return { view: 'thread', reportId, justSent: false }
+  return { view: 'none' }
+}
+
+export function FeedbackThreadsDialog({
   open,
   onOpenChange,
   initialReportId = null,
+  initialCompose = null,
   initialScope = 'mine',
-  onNewFeedback,
+  userEmail = null,
   onUpdatedCount,
   api = LIVE_API,
-}: FeedbackThreadsSheetProps): JSX.Element {
+}: FeedbackThreadsDialogProps): JSX.Element {
   const t = useTranslations('feedback')
-  const [selected, setSelected] = React.useState<string | null>(initialReportId)
+  const tCommon = useTranslations('common')
+  const [pane, setPane] = React.useState<Pane>(() => startPane(initialReportId, initialCompose))
   const [scope, setScope] = React.useState<FeedbackScope>(initialScope)
+  // Bumped after a send, so the list reads again and holds the new case.
+  const [listVersion, setListVersion] = React.useState(0)
+  const [sending, setSending] = React.useState(false)
   // Learned from the first page of one's own: the server decides, the switch follows.
   const [canViewOffice, setCanViewOffice] = React.useState(false)
   const [panel, setPanel] = React.useState<HTMLDivElement | null>(null)
-  useFitToVisualViewport(open ? panel : null)
+  // Only the full-screen phone dialog is moved with the keyboard; the centred
+  // card on a tablet would be pushed half off the top by it.
+  const phone = useMediaQuery(PHONE_QUERY)
+  useFitToVisualViewport(open && phone ? panel : null)
 
-  // Every opening starts where the caller asked: a named thread or a list.
+  // Every opening starts where the caller asked: the form, a named thread or a list.
   React.useEffect(() => {
     if (!open) return
-    setSelected(initialReportId)
+    setPane(startPane(initialReportId, initialCompose))
     setScope(initialScope)
-  }, [open, initialReportId, initialScope])
+  }, [open, initialReportId, initialCompose, initialScope])
+
+  const compose = React.useCallback((): void => setPane({ view: 'compose', kind: 'bug', draft: ++drafts }), [])
+  const back = React.useCallback((): void => setPane({ view: 'none' }), [])
+  const select = React.useCallback(
+    (reportId: string): void => setPane({ view: 'thread', reportId, justSent: false }),
+    [],
+  )
+  const sent = (reportId: string): void => {
+    setScope('mine')
+    setListVersion((version) => version + 1)
+    setPane({ view: 'thread', reportId, justSent: true })
+  }
 
   const office = scope === 'office'
+  const detailOpen = pane.view !== 'none'
+  const selectedId = pane.view === 'thread' ? pane.reportId : null
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        // Closing mid-send would drop the only confirmation the reporter gets.
+        if (!next && sending) return
+        onOpenChange(next)
+      }}
+    >
+      <DialogContent
         ref={setPanel}
-        side="right"
-        className="flex flex-col gap-0 p-0 pr-[env(safe-area-inset-right)] sm:max-w-lg"
+        fullScreenOnMobile
+        closeLabel={tCommon('actions.close')}
+        // `p-0` and `flex` hand the layout to the panes, so the dialog's own
+        // safe area is stated here and in each pane's header and foot.
+        className="flex h-[min(48rem,calc(100dvh-2rem))] flex-col gap-0 overflow-hidden p-0 phone:pr-[env(safe-area-inset-right)] phone:pl-[env(safe-area-inset-left)] sm:max-w-xl md:max-w-5xl"
         data-testid="feedback-threads"
       >
-        {selected ? (
-          <ThreadView
-            key={selected}
-            reportId={selected}
-            api={api}
-            onBack={() => setSelected(null)}
-            onNewFeedback={onNewFeedback}
-          />
-        ) : (
-          <>
-            <SheetHeader className="gap-3 border-b px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4">
-              <div className="flex flex-col gap-1.5 pr-8">
-                <SheetTitle>{office ? t('threads.officeTitle') : t('threads.title')}</SheetTitle>
-                <SheetDescription>{office ? t('threads.officeDescription') : t('threads.description')}</SheetDescription>
+        <div className="flex min-h-0 flex-1 flex-col md:grid md:grid-cols-[20rem_minmax(0,1fr)] md:grid-rows-[minmax(0,1fr)] lg:grid-cols-[24rem_minmax(0,1fr)]">
+          <section
+            className={cn('flex min-h-0 min-w-0 flex-1 flex-col md:border-r', detailOpen && 'max-md:hidden')}
+            data-testid="feedback-list-pane"
+          >
+            <PaneHeader
+              heading={<DialogTitle className="text-base leading-tight">{office ? t('threads.officeTitle') : t('threads.title')}</DialogTitle>}
+              description={
+                <DialogDescription className="text-xs text-pretty">
+                  {office ? t('threads.officeDescription') : t('threads.description')}
+                </DialogDescription>
+              }
+              // On the phone's single pane the close button sits over this header.
+              className="max-md:pr-14"
+            >
+              <div className="flex items-center gap-2">
+                {canViewOffice && (
+                  <Tabs value={scope} onValueChange={(next) => setScope(next as FeedbackScope)} className="min-w-0 flex-1">
+                    <TabsList className="w-full" aria-label={t('threads.scopeLabel')}>
+                      <TabsTrigger value="mine" data-testid="feedback-scope-mine">
+                        {t('threads.scope.mine')}
+                      </TabsTrigger>
+                      <TabsTrigger value="office" data-testid="feedback-scope-office">
+                        {t('threads.scope.office')}
+                      </TabsTrigger>
+                    </TabsList>
+                  </Tabs>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={compose}
+                  className={cn(!canViewOffice && 'flex-1')}
+                  aria-current={pane.view === 'compose' || undefined}
+                  data-testid="feedback-new"
+                >
+                  <Plus className="size-4" aria-hidden />
+                  {t('threads.new')}
+                </Button>
               </div>
-              {canViewOffice && (
-                <Tabs value={scope} onValueChange={(next) => setScope(next as FeedbackScope)}>
-                  <TabsList className="w-full" aria-label={t('threads.scopeLabel')}>
-                    <TabsTrigger value="mine" data-testid="feedback-scope-mine">
-                      {t('threads.scope.mine')}
-                    </TabsTrigger>
-                    <TabsTrigger value="office" data-testid="feedback-scope-office">
-                      {t('threads.scope.office')}
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              )}
-            </SheetHeader>
+            </PaneHeader>
             {open && (
               <CaseList
-                key={scope}
+                key={`${scope}:${listVersion}`}
                 scope={scope}
                 api={api}
-                onSelect={setSelected}
-                onNewFeedback={onNewFeedback}
+                selectedId={selectedId}
+                onSelect={select}
+                onNewFeedback={compose}
                 onUpdatedCount={office ? undefined : onUpdatedCount}
                 onCanViewOffice={setCanViewOffice}
               />
             )}
-          </>
+          </section>
+          <section
+            className={cn('flex min-h-0 min-w-0 flex-1 flex-col', !detailOpen && 'max-md:hidden')}
+            data-testid="feedback-detail-pane"
+          >
+            {pane.view === 'thread' && (
+              <ThreadView
+                key={pane.reportId}
+                reportId={pane.reportId}
+                justSent={pane.justSent}
+                api={api}
+                onBack={back}
+                onNewFeedback={compose}
+              />
+            )}
+            {pane.view === 'compose' && (
+              <>
+                <PaneHeader
+                  onBack={back}
+                  heading={<h2 className="text-base leading-tight font-semibold">{t('threads.new')}</h2>}
+                  description={<p className="text-muted-foreground text-xs text-pretty">{t('dialog.description')}</p>}
+                />
+                <FeedbackForm
+                  key={pane.draft}
+                  defaultKind={pane.kind}
+                  userEmail={userEmail}
+                  submit={api.submit}
+                  onSent={sent}
+                  onCancel={back}
+                  onSendingChange={setSending}
+                />
+              </>
+            )}
+            {pane.view === 'none' && (
+              // Only beside the list (`md:`): below it the list is the screen.
+              <div className="flex flex-1 items-center justify-center p-6">
+                <EmptyState
+                  icon={MessagesSquare}
+                  title={t('threads.pick.title')}
+                  description={t('threads.pick.description')}
+                  action={<Button onClick={compose}>{t('threads.new')}</Button>}
+                />
+              </div>
+            )}
+          </section>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * The bar on top of a pane: a back step on the single-pane phone layout, the
+ * heading and a line under it, and whatever the pane adds below. Its row is
+ * centred on the dialog's close button (32px from the top), so back, title and
+ * close read as one bar; on the right pane it keeps clear of that button.
+ */
+function PaneHeader({
+  heading,
+  description,
+  onBack,
+  className,
+  children,
+}: {
+  heading: React.ReactNode
+  description: React.ReactNode
+  onBack?: () => void
+  className?: string
+  children?: React.ReactNode
+}): JSX.Element {
+  const t = useTranslations('feedback')
+  return (
+    <header
+      className={cn(
+        'flex shrink-0 flex-col gap-3 border-b px-4 py-3 phone:pt-[max(0.75rem,env(safe-area-inset-top))]',
+        onBack && 'pr-14',
+        className,
+      )}
+    >
+      <div className="flex min-h-10 items-center gap-1.5">
+        {onBack && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onBack}
+            aria-label={t('threads.back')}
+            className="-ml-1 md:hidden"
+            data-testid="feedback-pane-back"
+          >
+            <ArrowLeft className="size-4" aria-hidden />
+          </Button>
         )}
-      </SheetContent>
-    </Sheet>
+        <div className="flex min-w-0 flex-col gap-1">
+          {heading}
+          {description}
+        </div>
+      </div>
+      {children}
+    </header>
   )
 }
 
@@ -198,6 +365,7 @@ const byActivity = (a: OwnProductFeedbackSummary, b: OwnProductFeedbackSummary):
 function CaseList({
   scope,
   api,
+  selectedId,
   onSelect,
   onNewFeedback,
   onUpdatedCount,
@@ -205,8 +373,10 @@ function CaseList({
 }: {
   scope: FeedbackScope
   api: FeedbackThreadsApi
+  /** The case whose thread is open beside the list. */
+  selectedId: string | null
   onSelect: (id: string) => void
-  onNewFeedback?: () => void
+  onNewFeedback: () => void
   onUpdatedCount?: (count: number) => void
   onCanViewOffice?: (can: boolean) => void
 }): JSX.Element {
@@ -250,7 +420,7 @@ function CaseList({
 
   if (load.kind === 'loading') {
     return (
-      <div className="flex flex-col gap-3 p-6" aria-busy>
+      <div className="flex flex-col gap-3 p-4" aria-busy>
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
         <Skeleton className="h-14 w-full" />
@@ -259,7 +429,7 @@ function CaseList({
   }
   if (load.kind === 'error') {
     return (
-      <div className="p-6">
+      <div className="p-4">
         <LoadError title={office ? t('threads.officeLoadError') : t('threads.loadError')} onRetry={reload} />
       </div>
     )
@@ -268,27 +438,26 @@ function CaseList({
     return (
       // The padding is the wrapper's: `EmptyState` is `w-full`, and a margin
       // on it pushed the card 48px past a phone's right edge.
-      <div className="p-6">
+      <div className="p-4">
         <EmptyState
           icon={MessagesSquare}
           title={office ? t('threads.officeEmpty.title') : t('threads.empty.title')}
           description={office ? t('threads.officeEmpty.description') : t('threads.empty.description')}
-          action={onNewFeedback && !office ? <Button onClick={onNewFeedback}>{t('threads.send')}</Button> : undefined}
+          action={office ? undefined : <Button onClick={onNewFeedback}>{t('threads.send')}</Button>}
         />
       </div>
     )
   }
   const active = load.value.reports.filter((report) => isActiveFeedbackCase(report.status)).sort(byActivity)
   const done = load.value.reports.filter((report) => !isActiveFeedbackCase(report.status)).sort(byActivity)
+  const group = (label: string, reports: OwnProductFeedbackSummary[], testId: string): JSX.Element => (
+    <CaseGroup label={label} reports={reports} scope={scope} selectedId={selectedId} onSelect={onSelect} testId={testId} />
+  )
   return (
     <ScrollArea className={cn('min-h-0 flex-1', FIT_VIEWPORT)}>
-      <div className="flex flex-col gap-5 p-4">
-        {active.length > 0 && (
-          <CaseGroup label={t('threads.groups.active')} reports={active} scope={scope} onSelect={onSelect} testId="active" />
-        )}
-        {done.length > 0 && (
-          <CaseGroup label={t('threads.groups.done')} reports={done} scope={scope} onSelect={onSelect} testId="done" />
-        )}
+      <div className="flex flex-col gap-5 p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        {active.length > 0 && group(t('threads.groups.active'), active, 'active')}
+        {done.length > 0 && group(t('threads.groups.done'), done, 'done')}
         <LoadMore
           hasMore={load.value.nextCursor !== null}
           loading={more.loading}
@@ -307,12 +476,14 @@ function CaseGroup({
   label,
   reports,
   scope,
+  selectedId,
   onSelect,
   testId,
 }: {
   label: string
   reports: OwnProductFeedbackSummary[]
   scope: FeedbackScope
+  selectedId: string | null
   onSelect: (id: string) => void
   testId: string
 }): JSX.Element {
@@ -327,7 +498,13 @@ function CaseGroup({
       </div>
       <ItemList as="ul">
         {reports.map((report) => (
-          <CaseRow key={report.id} report={report} scope={scope} onSelect={() => onSelect(report.id)} />
+          <CaseRow
+            key={report.id}
+            report={report}
+            scope={scope}
+            selected={report.id === selectedId}
+            onSelect={() => onSelect(report.id)}
+          />
         ))}
       </ItemList>
     </section>
@@ -337,10 +514,12 @@ function CaseGroup({
 function CaseRow({
   report,
   scope,
+  selected,
   onSelect,
 }: {
   report: OwnProductFeedbackSummary
   scope: FeedbackScope
+  selected: boolean
   onSelect: () => void
 }): JSX.Element {
   const t = useTranslations('feedback')
@@ -349,7 +528,14 @@ function CaseRow({
   return (
     <li>
       <Item asChild>
-        <button type="button" onClick={onSelect} className="w-full" data-testid={`feedback-thread-${report.id}`}>
+        <button
+          type="button"
+          onClick={onSelect}
+          className="w-full"
+          // The open thread beside the list (`Item`'s selected tint).
+          aria-current={selected || undefined}
+          data-testid={`feedback-thread-${report.id}`}
+        >
           <ItemMedia>
             <Icon className="text-muted-foreground size-4" aria-hidden />
           </ItemMedia>
@@ -371,7 +557,7 @@ function CaseRow({
           </ItemContent>
           <ItemActions>
             {report.hasUpdate && <CountPill tone="attention">{t('threads.hasUpdate')}</CountPill>}
-            <ChevronRight className="text-muted-foreground size-4" aria-hidden />
+            <ChevronRight className="text-muted-foreground size-4 md:hidden" aria-hidden />
           </ItemActions>
         </button>
       </Item>
@@ -398,14 +584,17 @@ interface Echo {
 
 function ThreadView({
   reportId,
+  justSent,
   api,
   onBack,
   onNewFeedback,
 }: {
   reportId: string
+  /** The report was filed from the form a moment ago: the thread says it arrived. */
+  justSent: boolean
   api: FeedbackThreadsApi
   onBack: () => void
-  onNewFeedback?: () => void
+  onNewFeedback: () => void
 }): JSX.Element {
   const t = useTranslations('feedback')
   const { locale } = useLocale()
@@ -457,14 +646,10 @@ function ThreadView({
 
   return (
     <>
-      {/* One row, centred on the sheet's close button (32px from the top), so
-          back, title and close read as one bar rather than three heights. */}
-      <SheetHeader className="min-h-16 flex-row items-center gap-1.5 border-b pt-[max(0.75rem,env(safe-area-inset-top))] pr-14 pb-3 pl-3">
-        <Button variant="ghost" size="icon" onClick={onBack} aria-label={t('threads.back')} data-testid="feedback-thread-back">
-          <ArrowLeft className="size-4" aria-hidden />
-        </Button>
-        <div className="flex min-w-0 flex-col gap-1">
-          <SheetTitle className="truncate text-base leading-tight">
+      <PaneHeader
+        onBack={onBack}
+        heading={
+          <h2 className="truncate text-base leading-tight font-semibold" data-testid="feedback-thread-title">
             {thread ? (
               <>
                 {t(`kinds.${thread.report.kind}.label`)}
@@ -478,31 +663,31 @@ function ThreadView({
             ) : (
               t('threads.title')
             )}
-          </SheetTitle>
-          {/* Where the case stands and when it last moved; on a colleague's
-              case, whose it is. Never the list's generic blurb. */}
-          <SheetDescription asChild>
-            <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              {thread ? (
-                <>
-                  <FeedbackCaseStatus
-                    state={feedbackCaseState(thread.live ? thread.report.status : null, thread.live && teamSpokeLast)}
-                    mine={thread.report.mine}
-                  />
-                  {!thread.report.mine && thread.report.reporterName && <span>{thread.report.reporterName}</span>}
-                  {/* Without a status the chip already says „Gesendet": the time alone follows it. */}
-                  <span className="truncate">
-                    {thread.report.status && <>{t('threads.updated')} </>}
-                    <TimeAgo date={thread.report.status ? thread.report.lastActivityAt : thread.report.createdAt} locale={locale} />
-                  </span>
-                </>
-              ) : (
-                <span aria-hidden>&nbsp;</span>
-              )}
-            </div>
-          </SheetDescription>
-        </div>
-      </SheetHeader>
+          </h2>
+        }
+        // Where the case stands and when it last moved; on a colleague's
+        // case, whose it is. Never the list's generic blurb.
+        description={
+          <div className="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+            {thread ? (
+              <>
+                <FeedbackCaseStatus
+                  state={feedbackCaseState(thread.live ? thread.report.status : null, thread.live && teamSpokeLast)}
+                  mine={thread.report.mine}
+                />
+                {!thread.report.mine && thread.report.reporterName && <span>{thread.report.reporterName}</span>}
+                {/* Without a status the chip already says „Gesendet": the time alone follows it. */}
+                <span className="truncate">
+                  {thread.report.status && <>{t('threads.updated')} </>}
+                  <TimeAgo date={thread.report.status ? thread.report.lastActivityAt : thread.report.createdAt} locale={locale} />
+                </span>
+              </>
+            ) : (
+              <span aria-hidden>&nbsp;</span>
+            )}
+          </div>
+        }
+      />
       {load.kind === 'loading' && (
         <div className="flex flex-1 flex-col gap-3 p-6" aria-busy>
           <Skeleton className="h-16 w-3/4 self-end" />
@@ -515,7 +700,13 @@ function ThreadView({
         </div>
       )}
       {thread && (
-        <ThreadMessages thread={thread} messages={messages} onNewFeedback={onNewFeedback} onReply={reply} />
+        <ThreadMessages
+          thread={thread}
+          messages={messages}
+          justSent={justSent}
+          onNewFeedback={onNewFeedback}
+          onReply={reply}
+        />
       )}
     </>
   )
@@ -531,14 +722,16 @@ class ReplyNotSent extends Error {
 function ThreadMessages({
   thread,
   messages,
+  justSent,
   onReply,
   onNewFeedback,
 }: {
   thread: OwnProductFeedbackThread
   /** The thread's messages and any reply PostHog does not list yet. */
   messages: OwnProductFeedbackMessage[]
+  justSent: boolean
   onReply: (message: string) => Promise<ReplyToFeedbackResult>
-  onNewFeedback?: () => void
+  onNewFeedback: () => void
 }): JSX.Element {
   const t = useTranslations('feedback')
   const contentRef = React.useRef<HTMLDivElement>(null)
@@ -622,7 +815,13 @@ function ThreadMessages({
             )
           })}
           {!thread.live && <ThreadNote>{t('threads.notLive')}</ThreadNote>}
-          {thread.live && !answered && <ThreadNote>{t('threads.waiting')}</ThreadNote>}
+          {/* A report sent from the form a moment ago: the thanks the dialog's
+              success panel used to say, where the answer will arrive. */}
+          {thread.live && !answered && (
+            <ThreadNote testId={justSent ? 'feedback-sent' : undefined}>
+              {justSent ? t('threads.sent') : t('threads.waiting')}
+            </ThreadNote>
+          )}
         </div>
       </ScrollArea>
       <div className="border-t px-4 pt-3 pb-[max(0.75rem,var(--overlay-inset-bottom,env(safe-area-inset-bottom)))]">
@@ -646,11 +845,9 @@ function ThreadMessages({
         ) : mine ? (
           <div className="flex flex-col items-start gap-3 px-2 py-1">
             <p className="text-muted-foreground text-sm text-pretty">{t('threads.cannotReply')}</p>
-            {onNewFeedback && (
-              <Button variant="outline" size="sm" onClick={onNewFeedback}>
-                {t('threads.send')}
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={onNewFeedback}>
+              {t('threads.send')}
+            </Button>
           </div>
         ) : (
           <p className="text-muted-foreground px-2 py-1 text-sm text-pretty" data-testid="feedback-thread-readonly">
@@ -665,6 +862,6 @@ function ThreadMessages({
 }
 
 /** A line about the thread rather than in it: the waiting and offline notes. */
-function ThreadNote({ children }: { children: string }): JSX.Element {
-  return <p className="text-muted-foreground mx-auto max-w-xs py-2 text-center text-xs text-pretty">{children}</p>
+function ThreadNote({ children, testId }: { children: string; testId?: string }): JSX.Element {
+  return <p data-testid={testId} className="text-muted-foreground mx-auto max-w-xs py-2 text-center text-xs text-pretty">{children}</p>
 }

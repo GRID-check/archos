@@ -9,7 +9,6 @@ import {
   Globe,
   LayoutDashboard,
   LogOut,
-  MessageSquarePlus,
   MessagesSquare,
   Monitor,
   Moon,
@@ -37,7 +36,6 @@ import { useStartProductTour } from '@/features/onboarding/components/product-to
 import {
   useFeedbackAvailable,
   useFeedbackUpdatedCount,
-  useOpenFeedback,
   useOpenFeedbackThreads,
 } from '@/features/product-feedback/components'
 import type { ThemeMode } from '@/features/layout/types'
@@ -114,7 +112,6 @@ export function SidebarUserMenu({
   const { locale, setLocale, localeNames } = useLocale()
   const ActiveThemeIcon = THEME_ICONS[theme]
   const startTour = useStartProductTour()
-  const openFeedback = useOpenFeedback()
   const openFeedbackThreads = useOpenFeedbackThreads()
   const feedbackUpdatedCount = useFeedbackUpdatedCount()
   const feedbackAvailable = useFeedbackAvailable()
@@ -277,16 +274,10 @@ export function SidebarUserMenu({
           <Compass className="size-4 text-muted-foreground" aria-hidden />
           {t('userMenu.productTour')}
         </DropdownMenuItem>
-        {/* The door to the people who build Piloti: a bug, an idea, praise.
-            Next to the tour because both are "help with Piloti itself". */}
-        {feedbackAvailable && (
-          <DropdownMenuItem onSelect={() => openFeedback()} className="gap-2" data-testid="user-menu-feedback">
-            <MessageSquarePlus className="size-4 text-muted-foreground" aria-hidden />
-            {tFeedback('open')}
-          </DropdownMenuItem>
-        )}
-        {/* Where the team's replies arrive; the pill says how many threads
-            have news since the member last looked. */}
+        {/* The one door to the people who build Piloti, next to the tour
+            because both are "help with Piloti itself": „Mein Feedback" holds
+            the replies and „Neues Feedback" alike. The pill says how many
+            threads have news since the member last looked. */}
         {feedbackAvailable && (
           <DropdownMenuItem
             onSelect={() => openFeedbackThreads()}
