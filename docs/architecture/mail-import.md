@@ -91,6 +91,18 @@ so a name is probed project-wide (`findProjectCollectionsHoldingFilename`) and
 one held anywhere but the mail's own folder is numbered (`… – Plan (2).pdf`).
 The import never supersedes a document it did not file into that folder.
 
+**The note is text, not Markdown the sender wrote.** Its frame (the subject
+as its one `#` heading, the labelled headers, a rule, the body) is the only
+structure in it: the subject, every header value and the body pass through
+`escapeMarkdown` (`lib/text/markdown-escape.ts`), and each header is folded
+onto one line. The knowledge layer cuts a `.md` into one section per `#`
+heading outside a code fence, and a section is what an answer cites, so a body
+line such as `## 14.10.2026 · MA 37` would otherwise be a section of the note
+under a heading the Behörde never sent, and an unclosed fence in a body would
+hide everything after it. The escape counts a line start where the chunker
+does, after every terminator Python's `splitlines()` honours (a form feed, a
+NEL, `\u2028` among them), not only where JavaScript's `^` does.
+
 **Not filed, and named in the import's list:** attached mails (a forward's
 original), files the upload path refuses (type, size, and the office's name
 screening,
@@ -185,11 +197,7 @@ there (`purger/storage.js`, `abortMultipartUploads`).
   `completeMailImportUpload`). An upload already started still receives parts
   and can be cancelled; it never completes, and the sweep cancels it
   (`upload_expired`) after 48 h.
-- A mail's text is filed as written (`mailNote` in `lib/mail-import/naming.ts`).
-  The Markdown reader cuts a section at every `#` heading outside a code fence,
-  so a body line such as `## 14.10.2026 · MA 37` becomes a citable section of
-  the note, and an unclosed code fence in a body hides the sections after it.
-  The To and Cc addresses are in the note, and so in the index.
+- The To and Cc addresses are in the note, and so in the index.
 - The BFF carries the archive's bytes; twenty gigabytes is twenty gigabytes
   through the frontend pods.
 - `libpff-python` is pinned to its first cp314 release and is labelled alpha
