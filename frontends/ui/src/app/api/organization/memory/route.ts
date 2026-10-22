@@ -12,11 +12,13 @@ import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { listOrganizationMemory } from '@/lib/projects/memory-service'
 import { createOrganizationMemoryItem } from '@/lib/projects/service'
 import { createOrgMemorySchema } from '@/lib/organizations/organization-wire'
+import { toMemoryWireItem } from '@/lib/projects/project-memory-wire'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
     const includeArchived = new URL(request.url).searchParams.get('includeArchived') === 'true'
-    return { items: await listOrganizationMemory(session.organizationId, { includeArchived }) }
+    const items = await listOrganizationMemory(session.organizationId, { includeArchived })
+    return { items: items.map(toMemoryWireItem) }
   },
   {
     authz: {
@@ -30,7 +32,7 @@ export const POST = apiRoute(
   async ({ session, request }) => {
     const input = await parseJsonBody(request, createOrgMemorySchema)
     const item = await createOrganizationMemoryItem(session, input)
-    return { item }
+    return { item: toMemoryWireItem(item) }
   },
   {
     status: 201,
