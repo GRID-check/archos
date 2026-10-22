@@ -220,6 +220,18 @@
               "de": "Wenn Piloti vorschlägt, eine Datei zu verschieben, umzubenennen oder zuzuweisen, nennt Piloti jetzt auch den Grund dafür – etwa, dass die Datei zum Bescheid vom 12. März gehört. Piloti behält den Grund auch im weiteren Gesprächsverlauf im Gedächtnis."
             },
             {
+              "en": "The Herleitung now shows each search, folder and document Piloti opened as one line saying what came back, and ends with the basis of the draft: the cited regulation with its edition, the documents that support it, and what stayed open.",
+              "de": "Die Herleitung zeigt jetzt jede Suche, jeden Ordner und jedes Dokument, die Piloti geöffnet hat, jeweils in einer Zeile mit dem Ergebnis und endet mit der Grundlage des Entwurfs: der zitierten Vorschrift samt Fassung, den sie stützenden Dokumenten und den noch offenen Punkten."
+            },
+            {
+              "en": "Tap a line in the Herleitung to see which sources it found, or a source to see where it came from; when folded, the Herleitung names the steps, the cited sources and its one most important warning.",
+              "de": "Tippen Sie auf eine Zeile in der Herleitung, um zu sehen, welche Quellen sie gefunden hat, oder auf eine Quelle, um zu sehen, woher sie stammt; im eingeklappten Zustand nennt die Herleitung die Schritte, die zitierten Quellen und ihren einen wichtigsten Warnhinweis."
+            },
+            {
+              "en": "The source numbers in the Herleitung are the same markers the answer uses: hover or tap one to preview the passage, and open the document at the cited page.",
+              "de": "Die Quellenzahlen in der Herleitung sind dieselben Markierungen wie in der Antwort: Bewegen Sie den Mauszeiger darüber oder tippen Sie darauf, um die Passage in der Vorschau anzuzeigen und das Dokument auf der zitierten Seite zu öffnen."
+            },
+            {
               "en": "Uploads finish sooner. A document the content check turns away no longer spends time reading its tables first.",
               "de": "Uploads sind schneller abgeschlossen. Wird ein Dokument von der Inhaltsprüfung abgelehnt, werden seine Tabellen nicht mehr zuerst ausgelesen."
             },

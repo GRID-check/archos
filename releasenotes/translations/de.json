@@ -2708,6 +2708,10 @@
     "de": "Tabellen ohne Beschriftung in einem hochgeladenen PDF werden nun als Tabellen statt als unstrukturierter Seitentext erkannt. Auch Diagramme in PDFs werden nun gefunden: Bisher werden sie zwar gelesen, aber bei der Suche ausgelassen."
   },
   {
+    "en": "Tap a line in the Herleitung to see which sources it found, or a source to see where it came from; when folded, the Herleitung names the steps, the cited sources and its one most important warning.",
+    "de": "Tippen Sie auf eine Zeile in der Herleitung, um zu sehen, welche Quellen sie gefunden hat, oder auf eine Quelle, um zu sehen, woher sie stammt; im eingeklappten Zustand nennt die Herleitung die Schritte, die zitierten Quellen und ihren einen wichtigsten Warnhinweis."
+  },
+  {
     "en": "Tapping a source number in an answer opens the passage in a sheet with a button to open it at that place, long answers offer a list of their sections, and charts and tables fit the width of the phone.",
     "de": "Wenn Sie in einer Antwort auf eine Quellennummer tippen, öffnet sich die Passage in einem Sheet mit einer Schaltfläche, über die Sie sie an der entsprechenden Stelle öffnen können. Lange Antworten bieten eine Liste ihrer Abschnitte, und Diagramme und Tabellen passen sich an die Breite des Smartphones an."
   },
@@ -2802,6 +2806,10 @@
   {
     "en": "The Herleitung no longer shows empty \"Search\" steps for answers that read the building model or put files on screen. Those steps now list the model or the files they read, and a step that found nothing says \"No hits\" instead of looking like an unfinished search.",
     "de": "Die Herleitung zeigt keine leeren Schritte „Suche“ mehr für Antworten, die das Gebäudemodell auswerten oder Dateien einblenden. Diese Schritte nennen jetzt das Modell oder die Dateien, die sie gelesen haben, und ein Schritt ohne Treffer zeigt „Keine Treffer“, statt wie eine unfertige Suche auszusehen."
+  },
+  {
+    "en": "The Herleitung now shows each search, folder and document Piloti opened as one line saying what came back, and ends with the basis of the draft: the cited regulation with its edition, the documents that support it, and what stayed open.",
+    "de": "Die Herleitung zeigt jetzt jede Suche, jeden Ordner und jedes Dokument, die Piloti geöffnet hat, jeweils in einer Zeile mit dem Ergebnis und endet mit der Grundlage des Entwurfs: der zitierten Vorschrift samt Fassung, den sie stützenden Dokumenten und den noch offenen Punkten."
   },
   {
     "en": "The Herleitung now shows what Piloti read from your workspace, such as a project's member list, as its own step beside the documents it read.",
@@ -3238,6 +3246,10 @@
   {
     "en": "The source list of a research report now uses the same numbers as the text, so [3] in the text points to the third entry.",
     "de": "Die Quellenliste eines Rechercheberichts nutzt jetzt dieselben Nummern wie der Text, sodass [3] im Text auf den dritten Eintrag verweist."
+  },
+  {
+    "en": "The source numbers in the Herleitung are the same markers the answer uses: hover or tap one to preview the passage, and open the document at the cited page.",
+    "de": "Die Quellenzahlen in der Herleitung sind dieselben Markierungen wie in der Antwort: Bewegen Sie den Mauszeiger darüber oder tippen Sie darauf, um die Passage in der Vorschau anzuzeigen und das Dokument auf der zitierten Seite zu öffnen."
   },
   {
     "en": "The source picker in the message box is hidden for now. Piloti draws on every available source, and the Herleitung still shows which ones it used.",
