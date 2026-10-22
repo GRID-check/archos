@@ -18,6 +18,7 @@ import 'server-only'
 
 import { captureServer } from '@/lib/analytics/posthog-server'
 import { recordToolCallTrace } from '@/lib/langfuse/tool-call-trace'
+import type { Confirmation } from './confirmation'
 import type { CallDecision } from './policy'
 import type { AgentPrincipal } from './principal'
 
@@ -35,7 +36,21 @@ export interface McpCallContext {
   mode: McpMode | null
   /** Set by a door that is not the MCP server (`a2a`); otherwise read from the principal. */
   door?: CallDoor
+  /**
+   * Set on a 2026-07-28 request of an outside agent when a signing key exists:
+   * a destructive write is put to the person first (`confirmation.ts`). Absent,
+   * every call takes its path unchanged.
+   */
+  confirmation?: Confirmation | null
+  /** `elicitation` on the round that runs a call the person confirmed in their own chat. */
+  decisionSource?: 'elicitation'
 }
+
+/**
+ * What became of a call: run or proposed (`CallDecision`), refused, put to the
+ * person to confirm (`confirm`), or not confirmed by them (`declined`).
+ */
+export type RecordedDecision = CallDecision | 'refused' | 'confirm' | 'declined'
 
 function doorOf({ principal, door }: McpCallContext): CallDoor {
   if (door) return door
@@ -49,7 +64,7 @@ export function recordOperationCalled(
     /** A catalog name, or null for a name no operation has: that is the agent's own text. */
     operation: string | null
     domain: string | null
-    decision: CallDecision | 'refused'
+    decision: RecordedDecision
     status: number
     startedAt: number
   },
@@ -63,6 +78,7 @@ export function recordOperationCalled(
     door: doorOf(ctx),
     mode,
     decision: call.decision,
+    ...(ctx.decisionSource ? { decisionSource: ctx.decisionSource } : {}),
     status: call.status,
     startedAt: call.startedAt,
     endedAt,
@@ -81,6 +97,7 @@ export function recordOperationCalled(
       door: doorOf(ctx),
       mode,
       decision: call.decision,
+      ...(ctx.decisionSource ? { decision_source: ctx.decisionSource } : {}),
       status: call.status,
       duration_ms: endedAt - call.startedAt,
       client_id: principal.clientId,

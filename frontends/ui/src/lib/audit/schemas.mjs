@@ -819,6 +819,16 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       changeId: 'string',
     },
   },
+  // A person answered an outside agent's destructive call in their own chat
+  // (MCP elicitation, ADR-0122 amendment; `lib/agent-api/confirmation.ts`).
+  // Actor: the person. `decision` applied, failed (the route refused it) or
+  // declined; `decisionSource` elicitation; `operation` the catalog name;
+  // `clientId` the OAuth client that asked. Targets: the organization, and the
+  // projects and documents the call names.
+  'agent.operation.decided': {
+    targets: [{ type: 'organization' }, { type: 'project' }, { type: 'document' }],
+    metadata: { operation: 'string', decision: 'string', decisionSource: 'string', clientId: 'string' },
+  },
   // Piloti filed a proposed change (ADR-0105) in a person's name. Once per
   // card: the same card again files nothing new and emits nothing. `kind` is
   // file_operation, memory, project_profile or operation; `operation` the file

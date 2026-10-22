@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    An AI assistant connected to your workspace now asks you in its own chat
+    before it deletes or overwrites something, when the assistant supports
+    such questions. Nothing changes unless you confirm, and your answer is
+    recorded in your organization's audit log.
