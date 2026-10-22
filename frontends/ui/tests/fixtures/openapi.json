@@ -23688,7 +23688,7 @@
       "get": {
         "operationId": "platform-feedback-list",
         "summary": "List product-feedback reports",
-        "description": "Product-feedback reports from every organization with the status of their PostHog Support ticket; filter by ticket status and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage.",
+        "description": "Product-feedback reports from every organization with their PostHog Support ticket: status, assignee, last activity and whether the team or the reporter owes the next answer. Filter by ticket status (`active` for every unresolved ticket), assignee (`mine`, `unassigned`) and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage; ticket ids feed platform-feedback-claim.",
         "tags": [
           "platform"
         ],
@@ -23704,9 +23704,12 @@
                 "open",
                 "pending",
                 "on_hold",
-                "resolved"
-              ]
-            }
+                "resolved",
+                "active"
+              ],
+              "description": "A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status."
+            },
+            "description": "A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status."
           },
           {
             "name": "kind",
@@ -23723,13 +23726,39 @@
             }
           },
           {
+            "name": "assignee",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "mine",
+                "unassigned"
+              ],
+              "description": "`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s."
+            },
+            "description": "`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Reports per page (1 to 50, the default)."
+            },
+            "description": "Reports per page (1 to 50, the default)."
+          },
+          {
             "name": "cursor",
             "in": "query",
             "required": false,
             "schema": {
               "type": "string",
-              "maxLength": 200
-            }
+              "maxLength": 200,
+              "description": "`nextCursor` of the previous page."
+            },
+            "description": "`nextCursor` of the previous page."
           }
         ],
         "responses": {

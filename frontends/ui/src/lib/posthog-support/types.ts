@@ -25,6 +25,18 @@ export const NO_CONTACT_TICKET_TAG = 'no-contact'
 /** `kind:bug`, `kind:idea`, … — the report's kind, filterable in PostHog. */
 export const kindTicketTag = (kind: string): string => `kind:${kind}`
 
+/** The statuses of a case that is still being worked on: everything but `resolved`. */
+export const ACTIVE_SUPPORT_TICKET_STATUSES = ['new', 'open', 'pending', 'on_hold'] as const satisfies readonly SupportTicketStatus[]
+
+/**
+ * Who a ticket is assigned to, as PostHog serves it: a PostHog user (with the
+ * email of their PostHog login) or a role. PostHog's list carries no name; the
+ * members list does (`listPosthogMembers`).
+ */
+export type SupportTicketAssignee =
+  | { type: 'user'; id: number; email: string | null }
+  | { type: 'role'; id: string; name: string | null }
+
 /** One Support ticket, reduced to what the app reads. */
 export interface SupportTicket {
   /** PostHog's ticket UUID. */
@@ -35,8 +47,27 @@ export interface SupportTicket {
   tags: string[]
   createdAt: string
   updatedAt: string
+  /** `null` while nobody has the ticket. */
+  assignee: SupportTicketAssignee | null
+  /**
+   * When the last message was written, falling back to `updatedAt` when the
+   * response carries no `last_message_at`.
+   */
+  lastActivityAt: string
+  /** Messages on the thread, notes included, when PostHog says. */
+  messageCount: number | null
+  /** The reporter's messages the team has not read yet. */
+  unreadTeamCount: number
   /** The ticket in the PostHog app. */
   url: string
+}
+
+/** One member of the PostHog organization, for naming a ticket's assignee. */
+export interface PosthogMember {
+  id: number
+  email: string
+  /** First and last name as PostHog holds them; `null` when both are empty. */
+  name: string | null
 }
 
 export interface SupportTicketPage {

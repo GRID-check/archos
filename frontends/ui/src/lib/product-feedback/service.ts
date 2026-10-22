@@ -36,19 +36,26 @@ import {
   countFeedbackTicketsByStatus,
   findPosthogUserIdByEmail,
   getSupportTicket,
+  lastVisibleMessageAuthor,
   listCustomerVisibleMessages,
   listFeedbackTickets,
   listFeedbackTicketsOf,
+  listPosthogMembers,
+  memberByEmail,
   openFeedbackTicket,
   replyAsCustomer,
   updateSupportTicketStatus,
+  type SupportTicketAssigneeFilter,
 } from '@/lib/posthog-support/client'
 import { posthogSupportConfigFromEnv } from '@/lib/posthog-support/config'
 import {
+  ACTIVE_SUPPORT_TICKET_STATUSES,
   FEEDBACK_TICKET_TAG,
   kindTicketTag,
   NO_CONTACT_TICKET_TAG,
   PosthogSupportUnavailableError,
+  SUPPORT_TICKET_STATUSES,
+  type PosthogMember,
   type PosthogSupportConfig,
   type SupportMessage,
   type SupportTicket,
@@ -76,9 +83,12 @@ import type {
   OwnProductFeedbackMessage,
   OwnProductFeedbackSummary,
   OwnProductFeedbackThread,
+  ProductFeedbackAssigneeView,
+  ProductFeedbackAwaiting,
   ProductFeedbackKind,
   ProductFeedbackListResponse,
   ProductFeedbackReportView,
+  ProductFeedbackTicketView,
   SubmitProductFeedbackInput,
   SubmittedProductFeedbackView,
 } from './types'
@@ -203,15 +213,116 @@ function personUrl(config: PosthogSupportConfig | null, userId: string): string 
   return config ? `${config.appHost}/project/${config.projectId}/person/${encodeURIComponent(userId)}` : null
 }
 
+// ── A ticket as the platform reads it: who has it, whose move it is ─────────
+
+/** What naming an assignee needs: the PostHog members (when readable) and who is reading. */
+interface ViewerContext {
+  members: readonly PosthogMember[] | null
+  viewerEmail: string | null
+}
+
+const sameEmail = (a: string | null, b: string | null): boolean =>
+  Boolean(a && b && a.trim().toLowerCase() === b.trim().toLowerCase())
+
+/**
+ * The PostHog members, or `null` when they cannot be read: names are a
+ * nicety, and without them the assignee shows by email.
+ */
+async function membersOrNull(config: PosthogSupportConfig): Promise<PosthogMember[] | null> {
+  try {
+    return await listPosthogMembers(config)
+  } catch (error) {
+    if (!(error instanceof PosthogSupportUnavailableError)) throw error
+    console.warn('[product-feedback] PostHog members unreadable; assignees by email:', error.message)
+    return null
+  }
+}
+
+async function viewerContext(config: PosthogSupportConfig, session: GridSession | null): Promise<ViewerContext> {
+  return { members: await membersOrNull(config), viewerEmail: session?.email?.trim() || null }
+}
+
+function assigneeView(ticket: SupportTicket, context: ViewerContext): ProductFeedbackAssigneeView | null {
+  const { assignee } = ticket
+  if (!assignee) return null
+  if (assignee.type === 'role') return { type: 'role', name: assignee.name, email: null, isViewer: false }
+  const member = context.members?.find((candidate) => candidate.id === assignee.id) ?? null
+  const email = assignee.email ?? member?.email ?? null
+  return { type: 'user', name: member?.name ?? null, email, isViewer: sameEmail(email, context.viewerEmail) }
+}
+
+/**
+ * Whose move it is. A resolved ticket owes nobody; otherwise the last message
+ * the reporter can see decides, and a thread that cannot be read leaves it
+ * unknown rather than failing the list.
+ */
+async function awaitingOf(config: PosthogSupportConfig, ticket: SupportTicket): Promise<ProductFeedbackAwaiting | null> {
+  if (ticket.status === 'resolved') return null
+  try {
+    const author = await lastVisibleMessageAuthor(config, ticket)
+    if (author === 'customer') return 'team'
+    if (author === 'team') return 'reporter'
+    return null
+  } catch (error) {
+    if (!(error instanceof PosthogSupportUnavailableError)) throw error
+    return null
+  }
+}
+
+/** How many thread tails are read at once: a page of 50 must not open 50 sockets to PostHog. */
+const THREAD_READ_CONCURRENCY = 8
+
+async function inBatches<T, R>(items: readonly T[], size: number, map: (item: T) => Promise<R>): Promise<R[]> {
+  const out: R[] = []
+  for (let start = 0; start < items.length; start += size) {
+    out.push(...(await Promise.all(items.slice(start, start + size).map(map))))
+  }
+  return out
+}
+
+/** The tickets as the page shows them, keyed by ticket id. */
+async function ticketViews(
+  config: PosthogSupportConfig,
+  tickets: readonly SupportTicket[],
+  context: ViewerContext
+): Promise<Map<string, ProductFeedbackTicketView>> {
+  const awaiting = await inBatches(tickets, THREAD_READ_CONCURRENCY, (ticket) => awaitingOf(config, ticket))
+  return new Map(
+    tickets.map((ticket, index) => [
+      ticket.id,
+      {
+        id: ticket.id,
+        number: ticket.ticketNumber,
+        status: ticket.status,
+        url: ticket.url,
+        assignee: assigneeView(ticket, context),
+        lastActivityAt: ticket.lastActivityAt,
+        awaiting: awaiting[index] ?? null,
+      },
+    ])
+  )
+}
+
+/** One ticket as the page shows it, for the single-report paths. */
+async function oneTicketView(
+  config: PosthogSupportConfig,
+  ticket: SupportTicket | null,
+  session: GridSession | null
+): Promise<ProductFeedbackTicketView | null> {
+  if (!ticket) return null
+  const views = await ticketViews(config, [ticket], await viewerContext(config, session))
+  return views.get(ticket.id) ?? null
+}
+
 function toReportView(
   row: ProductFeedbackRow,
-  ticket: SupportTicket | null,
+  ticket: ProductFeedbackTicketView | null,
   config: PosthogSupportConfig | null
 ): ProductFeedbackReportView {
   return {
     id: row.id,
     kind: row.kind,
-    ticket: ticket ? { id: ticket.id, number: ticket.ticketNumber, status: ticket.status, url: ticket.url } : null,
+    ticket,
     posthogPersonUrl: personUrl(config, row.userId),
     message: row.message,
     pagePath: row.pagePath,
@@ -259,6 +370,10 @@ export function decodeCursor(cursor: string | undefined): { createdAt: Date; id:
 /** `o:<offset>` — the ticket list's cursor. Anything else starts at the top. */
 const OFFSET_CURSOR = /^o:(\d{1,6})$/
 
+/** The page size asked for, never above the repository's bound. */
+const pageLimit = (query: ListProductFeedbackQuery): number =>
+  Math.min(query.limit ?? PRODUCT_FEEDBACK_LIST_LIMIT, PRODUCT_FEEDBACK_LIST_LIMIT)
+
 function decodeOffset(cursor: string | undefined): number {
   const match = cursor ? OFFSET_CURSOR.exec(cursor) : null
   return match ? Number(match[1]) : 0
@@ -272,7 +387,7 @@ async function listLocal(
   const rows = await listProductFeedback({
     kind: query.kind,
     before: decodeCursor(query.cursor),
-    limit: PRODUCT_FEEDBACK_LIST_LIMIT,
+    limit: pageLimit(query),
   })
   const last = rows.at(-1)
   return {
@@ -280,27 +395,57 @@ async function listLocal(
     reports: (await withOrganizationNames(rows)).map((row) => toReportView(row, null, config)),
     counts: null,
     unticketed: [],
-    nextCursor: rows.length === PRODUCT_FEEDBACK_LIST_LIMIT && last ? encodeCursor(last) : null,
+    nextCursor: rows.length === pageLimit(query) && last ? encodeCursor(last) : null,
+    viewerNotInPosthog: false,
   }
+}
+
+const zeroCounts = (): Record<SupportTicketStatus, number> =>
+  Object.fromEntries(SUPPORT_TICKET_STATUSES.map((status) => [status, 0])) as Record<SupportTicketStatus, number>
+
+/**
+ * The PostHog side of the assignee filter. `mine` needs the reader's PostHog
+ * id, found by their email in the members list; a members list that cannot be
+ * read makes the whole list unreadable (the local log answers), and a reader
+ * nobody in PostHog has is `'nobody'`: nothing is theirs.
+ */
+function assigneeFilterOf(
+  query: ListProductFeedbackQuery,
+  context: ViewerContext
+): SupportTicketAssigneeFilter | 'nobody' | undefined {
+  if (query.assignee === 'unassigned') return 'unassigned'
+  if (query.assignee !== 'mine') return undefined
+  if (!context.members) throw new PosthogSupportUnavailableError('PostHog Support: members unreadable for `mine`')
+  const viewer = context.viewerEmail ? memberByEmail(context.members, context.viewerEmail) : null
+  return viewer ? { userId: viewer.id } : 'nobody'
 }
 
 /** One page of PostHog tickets joined to their reports, and the reports that have none. */
 async function listFromPosthog(
   query: ListProductFeedbackQuery,
-  config: PosthogSupportConfig
+  config: PosthogSupportConfig,
+  session: GridSession | null
 ): Promise<ProductFeedbackListResponse> {
   const offset = decodeOffset(query.cursor)
+  const context = await viewerContext(config, session)
+  const assignee = assigneeFilterOf(query, context)
+  if (assignee === 'nobody') {
+    return { source: 'posthog', reports: [], counts: zeroCounts(), unticketed: [], nextCursor: null, viewerNotInPosthog: true }
+  }
+  const status = query.status === 'active' ? ACTIVE_SUPPORT_TICKET_STATUSES : query.status
   const [page, counts] = await Promise.all([
-    listFeedbackTickets(config, { status: query.status, kind: query.kind, limit: PRODUCT_FEEDBACK_LIST_LIMIT, offset }),
-    countFeedbackTicketsByStatus(config),
+    listFeedbackTickets(config, { status, kind: query.kind, assignee, limit: pageLimit(query), offset }),
+    countFeedbackTicketsByStatus(config, fetch, { assignee }),
   ])
   const since = new Date(Date.now() - UNTICKETED_WINDOW_DAYS * 24 * 60 * 60 * 1000)
-  const [byTicket, unticketedRows] = await Promise.all([
+  const [byTicket, unticketedRows, views] = await Promise.all([
     getProductFeedbackByTicketIds(page.tickets.map((ticket) => ticket.id)),
     // On the first page only: there are few, and every page would repeat them.
-    offset === 0
+    // A report without a ticket is nobody's, so an assignee filter leaves it out.
+    offset === 0 && !assignee
       ? listProductFeedback({ kind: query.kind, unticketed: true, since, limit: PRODUCT_FEEDBACK_LIST_LIMIT })
       : Promise.resolve([]),
+    ticketViews(config, page.tickets, context),
   ])
   // A tagged ticket without a local row lost its report (deleted with its
   // organization); there is nothing of ours to show for it.
@@ -312,11 +457,14 @@ async function listFromPosthog(
   const nextOffset = offset + page.tickets.length
   return {
     source: 'posthog',
-    reports: joined.map((entry, index) => toReportView(named[index] ?? entry.row, entry.ticket, config)),
+    reports: joined.map((entry, index) =>
+      toReportView(named[index] ?? entry.row, views.get(entry.ticket.id) ?? null, config)
+    ),
     counts,
     unticketed: named.slice(joined.length).map((row) => toReportView(row, null, config)),
     nextCursor:
-      page.tickets.length === PRODUCT_FEEDBACK_LIST_LIMIT && nextOffset < page.count ? `o:${nextOffset}` : null,
+      page.tickets.length === pageLimit(query) && nextOffset < page.count ? `o:${nextOffset}` : null,
+    viewerNotInPosthog: false,
   }
 }
 
@@ -334,7 +482,7 @@ export async function listProductFeedbackForPlatform(
   return withPlatformAccess('product feedback: triage list', async () => {
     if (!config) return listLocal(query, null)
     try {
-      return await listFromPosthog(query, config)
+      return await listFromPosthog(query, config, session)
     } catch (error) {
       if (!(error instanceof PosthogSupportUnavailableError)) throw error
       console.warn('[product-feedback] PostHog Support unreadable; listing the local log:', error.message)
@@ -365,7 +513,7 @@ export async function getProductFeedbackForPlatform(
   if (!row) throw new NotFoundError('Unknown feedback report.')
   const config = supportConfig()
   const [[named], ticket] = await Promise.all([withOrganizationNames([row]), ticketFor(row, config)])
-  return toReportView(named ?? row, ticket, config)
+  return toReportView(named ?? row, config ? await oneTicketView(config, ticket, session) : null, config)
 }
 
 /**
@@ -392,7 +540,7 @@ export async function triageProductFeedback(
     throw error
   }
   const [named] = await withOrganizationNames([row])
-  return toReportView(named ?? row, ticket, config)
+  return toReportView(named ?? row, await oneTicketView(config, ticket, session), config)
 }
 
 // ---------------------------------------------------------------------------
@@ -626,5 +774,5 @@ export async function claimProductFeedbackTicket(
     throw error
   }
   const [named] = await withOrganizationNames([row])
-  return toReportView(named ?? row, ticket, config)
+  return toReportView(named ?? row, await oneTicketView(config, ticket, session), config)
 }

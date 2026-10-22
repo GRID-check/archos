@@ -15,9 +15,19 @@ import {
   type ProductFeedbackContext,
   type ProductFeedbackKind,
 } from '@/lib/db/schema/product-feedback'
-import { SUPPORT_TICKET_STATUSES, type SupportTicketStatus } from '@/lib/posthog-support/types'
+import {
+  ACTIVE_SUPPORT_TICKET_STATUSES,
+  SUPPORT_TICKET_STATUSES,
+  type SupportTicketStatus,
+} from '@/lib/posthog-support/types'
 
-export { PRODUCT_FEEDBACK_KINDS, PRODUCT_FEEDBACK_MESSAGE_MAX, PRODUCT_FEEDBACK_PAGE_MAX, SUPPORT_TICKET_STATUSES }
+export {
+  ACTIVE_SUPPORT_TICKET_STATUSES,
+  PRODUCT_FEEDBACK_KINDS,
+  PRODUCT_FEEDBACK_MESSAGE_MAX,
+  PRODUCT_FEEDBACK_PAGE_MAX,
+  SUPPORT_TICKET_STATUSES,
+}
 export type { ProductFeedbackContext, ProductFeedbackKind, SupportTicketStatus }
 
 /** The shortest message worth sending: "Bug" says nothing a platform owner can act on. */
@@ -86,13 +96,38 @@ export interface SubmittedProductFeedbackView {
   createdAt: string
 }
 
+/** The longest page of the platform triage list (the repository's `PRODUCT_FEEDBACK_LIST_LIMIT`). */
+export const PLATFORM_FEEDBACK_PAGE_MAX = 50
+
+/** `active`: every ticket that is not resolved, the open support cases. */
+export const PRODUCT_FEEDBACK_STATUS_FILTERS = [...SUPPORT_TICKET_STATUSES, 'active'] as const
+export type ProductFeedbackStatusFilter = (typeof PRODUCT_FEEDBACK_STATUS_FILTERS)[number]
+
+/** `mine`: assigned to the caller (their PostHog login has their email). `unassigned`: nobody has it. */
+export const PRODUCT_FEEDBACK_ASSIGNEE_FILTERS = ['mine', 'unassigned'] as const
+export type ProductFeedbackAssigneeFilter = (typeof PRODUCT_FEEDBACK_ASSIGNEE_FILTERS)[number]
+
 /** GET /api/platform/feedback */
 export const listProductFeedbackQuerySchema = z.object({
-  /** A PostHog ticket status. Ignored while the page reads the local log. */
-  status: z.enum(SUPPORT_TICKET_STATUSES).optional(),
+  /** A PostHog ticket status, or `active`. Ignored while the page reads the local log. */
+  status: z
+    .enum(PRODUCT_FEEDBACK_STATUS_FILTERS)
+    .optional()
+    .describe('A PostHog ticket status, or `active` for every ticket that is not resolved. Absent lists every status.'),
   kind: z.enum(PRODUCT_FEEDBACK_KINDS).optional(),
+  assignee: z
+    .enum(PRODUCT_FEEDBACK_ASSIGNEE_FILTERS)
+    .optional()
+    .describe('`mine`: tickets assigned to the person. `unassigned`: tickets nobody has. Absent lists everyone’s.'),
+  limit: z.coerce
+    .number()
+    .int()
+    .min(1)
+    .max(PLATFORM_FEEDBACK_PAGE_MAX)
+    .optional()
+    .describe(`Reports per page (1 to ${PLATFORM_FEEDBACK_PAGE_MAX}, the default).`),
   /** Opaque cursor from the previous page's `nextCursor`. */
-  cursor: z.string().max(200).optional(),
+  cursor: z.string().max(200).optional().describe('`nextCursor` of the previous page.'),
 })
 
 export type ListProductFeedbackQuery = z.infer<typeof listProductFeedbackQuerySchema>
@@ -114,12 +149,36 @@ export const claimProductFeedbackSchema = z.object({
     .describe('The PostHog Support ticket id (a UUID), as the Slack alert or platform-feedback-list names it.'),
 })
 
+/** Who has a ticket. */
+export interface ProductFeedbackAssigneeView {
+  /** A PostHog user, or a PostHog role (a team). */
+  type: 'user' | 'role'
+  /** The member's name in PostHog, or the role's; `null` when PostHog names none. */
+  name: string | null
+  /** The PostHog login of a user; `null` for a role. */
+  email: string | null
+  /** The ticket is the reader's own: its assignee's email is the reader's. */
+  isViewer: boolean
+}
+
+/**
+ * Whose move it is on an open ticket: `team` when the reporter wrote last (or
+ * nobody has answered yet), `reporter` when the team did. `null` for a
+ * resolved ticket, and when the thread could not be read.
+ */
+export type ProductFeedbackAwaiting = 'team' | 'reporter'
+
 /** The report's PostHog Support ticket, read live from PostHog. */
 export interface ProductFeedbackTicketView {
   id: string
   number: number | null
   status: SupportTicketStatus
   url: string
+  /** `null` while nobody has the ticket. */
+  assignee: ProductFeedbackAssigneeView | null
+  /** When the last message on the ticket was written. */
+  lastActivityAt: string
+  awaiting: ProductFeedbackAwaiting | null
 }
 
 /**
@@ -166,6 +225,11 @@ export interface ProductFeedbackListResponse {
    */
   unticketed: ProductFeedbackReportView[]
   nextCursor: string | null
+  /**
+   * `assignee=mine` was asked, and nobody in PostHog has the reader's email:
+   * nothing can be theirs, and the page says why the list is empty.
+   */
+  viewerNotInPosthog: boolean
 }
 
 // ---------------------------------------------------------------------------
