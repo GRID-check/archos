@@ -55,9 +55,12 @@ MAX_ATTACHMENT_BYTES = 512 * 1024 * 1024
 
 
 class ArchiveRef(BaseModel):
-    #: The object's storage key: identifies the archive across requests.
-    key: str = Field(min_length=1, max_length=1024)
-    #: A presigned GET for that object, against the in-network endpoint.
+    #: The object's storage key, as the BFF names it. Read by nothing: the open
+    #: archive is found by the object ``url`` names (``archives.object_of``), so a
+    #: caller cannot reach an archive it holds no URL for. Still accepted because
+    #: the BFF sends it; drop it here after the BFF stops, one release on.
+    key: str | None = Field(default=None, max_length=1024)
+    #: A presigned GET for the archive, against the in-network endpoint.
     url: ObjectStoreUrl
     size: int = Field(gt=0)
 
@@ -116,7 +119,7 @@ async def _read(operation, ref: ArchiveRef):  # noqa: ANN001, ANN202 - a closure
     """Run ``operation`` on the open archive, off the event loop, with errors as HTTP answers."""
 
     def run():  # noqa: ANN202
-        with use_archive(ref.key, ref.url, ref.size) as archive:
+        with use_archive(ref.url, ref.size) as archive:
             return operation(archive)
 
     try:

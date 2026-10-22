@@ -68,7 +68,7 @@ def client(monkeypatch):
     holder = {"archive": FakeArchive(), "opened": []}
 
     @contextmanager
-    def use_archive(key, url, size):
+    def use_archive(url, size):
         holder["opened"].append(url)
         yield holder["archive"]
 

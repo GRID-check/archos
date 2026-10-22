@@ -4,8 +4,15 @@ Opening an archive reads its header and B-tree roots, and a slice of the BFF's
 import asks for a page of messages and then each of their attachments: a dozen
 requests against the same archive within seconds. Each would otherwise reopen
 it and refill the block cache. So an archive stays open between requests,
-keyed by its storage key, for a few minutes after its last use, and at most
-:data:`MAX_OPEN` idle ones per process. A replica that never saw the archive
+for a few minutes after its last use, and at most :data:`MAX_OPEN` idle ones
+per process.
+
+An open archive is found again by the OBJECT its URL names (origin and path,
+:func:`object_of`), never by a name the caller states beside the URL. A
+presigned URL is the capability: whoever holds one for an object may read it.
+Keyed on a caller-stated name, a request carrying another tenant's name and a
+URL for any object of its own (with the same size) was handed the other
+tenant's open archive, whose blocks are cached. A replica that never saw the archive
 simply opens it; nothing depends on landing on the same one.
 
 An archive in use is never closed under its reader: :func:`use_archive` holds a
@@ -22,6 +29,7 @@ from collections import OrderedDict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -53,10 +61,16 @@ _lock = threading.Lock()
 _janitor: threading.Thread | None = None
 
 
+def object_of(url: str) -> str:
+    """The object a presigned URL names: its origin and path, without the signature in the query."""
+    parts = urlsplit(url)
+    return f"{parts.scheme}://{parts.netloc}{parts.path}"
+
+
 @contextmanager
-def use_archive(key: str, url: str, size: int) -> Iterator[Archive]:
-    """The archive stored at ``key``, read through ``url``, held open for the block."""
-    entry = _acquire(key, url, size)
+def use_archive(url: str, size: int) -> Iterator[Archive]:
+    """The archive ``url`` names, read through it, held open for the block."""
+    entry = _acquire(object_of(url), url, size)
     try:
         with entry.archive.lock:
             entry.file.clear_error()

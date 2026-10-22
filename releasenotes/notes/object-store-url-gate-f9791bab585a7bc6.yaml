@@ -9,6 +9,11 @@ security:
     Every address the backend fetches or uploads to on a caller's behalf is
     now checked in one place, against the storage's scheme, host and port,
     and refused when its text could be read as two different hosts.
+  - >
+    The mail-archive reading service finds an archive it already has open only
+    by the file its address names. Before, it went by a name the caller stated
+    beside the address, so a caller holding the internal service token could
+    have read another office's open archive.
 operators:
   - >
     The backend accepts a storage URL only when its scheme, host and port
