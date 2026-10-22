@@ -433,12 +433,12 @@ _SIGNED_ORIGINAL = "http://seaweed/bucket/doc/object?X-Amz-Signature=secret-orig
 
 
 def _object_store_get(content: bytes, content_type: str, *, gate: threading.Event | None = None):
-    """An ``httpx.get`` stand-in for the object store, optionally held until ``gate`` is set."""
+    """An ``httpx.Client.get`` stand-in for the object store, optionally held until ``gate`` is set."""
     import httpx
 
     calls: list[str] = []
 
-    def _get(url, **kwargs):
+    def _get(_client, url, **kwargs):
         calls.append(url)
         assert kwargs["follow_redirects"] is False
         if gate is not None:
@@ -460,7 +460,7 @@ class TestDeferredOriginal:
         from aiq_api.routes.ingest import DeferredObjectDownload
 
         get, calls = _object_store_get(b"%PDF-1.4\n% original\n", "application/pdf")
-        monkeypatch.setattr("httpx.get", get)
+        monkeypatch.setattr("httpx.Client.get", get)
         drawn: list[str] = []
         monkeypatch.setattr(
             LlamaIndexIngestor, "_generate_and_upload_thumbnail", staticmethod(lambda path, url: drawn.append(path))
@@ -523,7 +523,7 @@ class TestDeferredOriginal:
 
         gate = threading.Event()
         get, calls = _object_store_get(b"%PDF-1.4\n", "application/pdf", gate=gate)
-        monkeypatch.setattr("httpx.get", get)
+        monkeypatch.setattr("httpx.Client.get", get)
 
         job_id = ingestor.submit_job(
             [DeferredObjectDownload(_SIGNED_ORIGINAL)],
