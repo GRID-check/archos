@@ -15,6 +15,7 @@ const REPORT_ID = '7b6a2c1e-0000-4000-8000-000000000001'
 
 vi.mock('@/lib/product-feedback/client', () => ({
   fetchOwnFeedback: vi.fn(async () => ({ reports: [], updatedCount: 0, live: true, nextCursor: null })),
+  fetchOfficeFeedback: vi.fn(async () => ({ reports: [], live: true, nextCursor: null })),
   fetchOwnFeedbackThread: vi.fn(async () => ({
     report: {
       id: REPORT_ID,
