@@ -18,6 +18,7 @@ from aiq_agent.agents.piloti.decisions import TurnDecisions
 from aiq_agent.agents.piloti.decisions import TurnFacts
 from aiq_agent.agents.piloti.decisions import attached_card_types
 from aiq_agent.agents.piloti.decisions import decide_turn
+from aiq_agent.agents.piloti.decisions import literal_terms
 from aiq_agent.agents.piloti.decisions import prefetch_calls
 from aiq_agent.agents.piloti.decisions import prefetch_query
 from aiq_agent.agents.piloti.decisions import questions_for
@@ -255,6 +256,32 @@ class TestThePrefetch:
     def test_a_family_question_is_its_own_overview_and_prefetches_once(self):
         calls = prefetch_calls(self._decided("baurecht"), "Was weißt du über die OIB 2?")
         assert calls == [{"name": "knowledge_search", "args": {"query": "Was weißt du über die OIB 2?"}}]
+
+    def test_a_quoted_term_in_a_project_question_adds_an_exact_search_on_the_project_shelf(self):
+        q = "Wo steht „Rauchabzug“ im Gutachten?"
+        calls = prefetch_calls(self._decided("projekt"), q)
+        assert calls == [
+            {"name": "knowledge_search", "args": {"query": q}},
+            {"name": "knowledge_search", "args": {"query": "Rauchabzug", "match": "exact", "shelf": "project"}},
+        ]
+
+    def test_codes_and_file_names_are_literal_terms_at_most_two_and_the_office_shelf_follows_the_corpus(self):
+        q = "Vergleiche A-101, EG_02, 04-112 und Grundriss_EG.pdf"
+        assert literal_terms(q) == ["A-101", "EG_02"]
+        assert literal_terms("Was steht in Grundriss_EG.pdf, 04-112?") == ["Grundriss_EG.pdf", "04-112"]
+        calls = prefetch_calls(self._decided("buero"), q)
+        assert [c["args"].get("shelf") for c in calls] == [None, "office", "office"]
+        assert all(c["args"]["match"] == "exact" for c in calls[1:])
+
+    def test_a_law_question_or_a_plain_one_gets_no_literal_search(self):
+        assert literal_terms("Wie breit ist der Gang? Es gilt die OIB 2 von 2023.") == []
+        calls = prefetch_calls(self._decided("baurecht"), "Was heißt „Fluchtweg“?")
+        assert all("match" not in c["args"] for c in calls)
+
+    def test_straight_quotes_count_but_an_apostrophe_does_not(self):
+        assert literal_terms('Steht "BA-03" drin?') == ["BA-03"]
+        assert literal_terms("Steht 'Rauchabzug' drin?") == ["Rauchabzug"]
+        assert literal_terms("Das ist Peters Haus, l'état n'est pas") == []
 
     def test_a_project_question_prefetches_the_question_only(self):
         assert prefetch_calls(self._decided("projekt"), "Was steht im Bescheid?") == [
