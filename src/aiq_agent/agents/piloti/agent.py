@@ -237,10 +237,9 @@ _TURN_BINDING_KEY = "piloti_turn"
 STEERED_TAG = "steered"
 
 _SYNTHESIS_ANCHOR = (
-    "You have exhausted your research budget. Synthesize the final answer now "
-    "as your ```answer_json envelope object, "
-    "using the citations [1], [2] and the '## References' format. "
-    "Do not attempt any further tool calls."
+    "The research limit for this turn is reached; answer from what you have and say what you could not check. "
+    "Answer as your ```answer_json envelope object, using the citations [1], [2] and the '## References' format. "
+    "No further tool calls."
 )
 
 
@@ -980,12 +979,10 @@ def _bind_registry() -> tuple[SourceRegistry, Any]:
     return registry, set_session_registry(registry)
 
 
-#: What the model reads beside the round-0 calls: the prefetch is a first search on the question, never the
-#: last. Without it a model that sees a search it did not issue treats retrieval as done (the "RAG comes
-#: first, then never again" report, 2026-10).
+#: What the model reads beside the round-0 calls: their provenance, the one place it is said.
 PREFETCH_NOTE = (
-    "Initial context, run for you before your first round: a first search on the question, not an exhaustive one. "
-    "Search again whenever a new sub-question, concept or cross-reference comes up, beside any reads."
+    "Passages retrieved automatically for this message follow. Use them if they answer the question; "
+    "search further if they don't."
 )
 
 

@@ -362,7 +362,20 @@ class TestTheRoundCostIsStatedAsAFact:
     def test_the_prompt_says_a_round_costs_one_whatever_it_holds(self):
         rendered = FIXTURE.read_text(encoding="utf-8")
 
-        assert "a round costs one however many calls it holds" in rendered
+        assert "a round is one decision, however many calls it holds" in rendered
+
+    def test_the_prompt_names_the_round_budget_the_config_sets(self):
+        """The model cannot see its budget, so the prompt states it: a number that drifts from the config lies."""
+        import re
+
+        config = (Path(__file__).resolve().parents[4] / "configs" / "config_oib_openrouter.yml").read_text(
+            encoding="utf-8"
+        )
+        configured = re.search(r"^\s*max_tool_iterations:\s*(\d+)", config, re.MULTILINE)
+        assert configured, "the production config no longer sets max_tool_iterations"
+        rendered = FIXTURE.read_text(encoding="utf-8")
+
+        assert f"You have up to {configured.group(1)} tool rounds this turn" in rendered
 
     def test_the_family_search_is_stated_as_the_members_opened(self):
         """
@@ -372,11 +385,10 @@ class TestTheRoundCostIsStatedAsAFact:
         spent the round after the family result re-opening the same three
         documents and read back what it was already holding.
         """
-        rendered = FIXTURE.read_text(encoding="utf-8")
+        from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION as description
 
-        assert "every member the corpus holds, each with that same scope passage and Gliederung" in rendered
-        assert "what is left to open is a Punkt by number" in rendered
-        assert "was opened, in one round" not in rendered
+        assert "every member is then open at the level `read_passage(document=…)` opens it" in description
+        assert "what is left to open is a Punkt by number" in description
 
 
 class _FakeStore:
