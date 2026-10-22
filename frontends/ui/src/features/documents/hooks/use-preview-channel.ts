@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import { MAIL_ENTRY_PARAM } from '../components/mail-thread/mail-thread-model'
 import type { FileItem } from '../file-types'
 import { refreshedFileFields } from '../lib/file-item'
 import type { FileShelf } from '../lib/file-shelf'
@@ -140,6 +141,8 @@ export function useDocParamSync({
       // The review belongs to the document that was open: a different one,
       // or none, starts without it (`lib/open-review.ts`).
       const params = clearReviewParams(new URLSearchParams(searchParams?.toString() ?? ''))
+      // So does the mail a link pointed at in a thread document (`?mailEntry=`).
+      params.delete(MAIL_ENTRY_PARAM)
       const path = pathname ?? ''
       if (openId === null) {
         params.delete('doc')

@@ -126,6 +126,15 @@ import { ToolbarTextButton } from '@/components/ui/floating-toolbar'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useCurrentProject } from '@/features/projects/lib/current-project'
 import { ProjectClosedChip } from '@/components/projects/project-status'
+import {
+  MAIL_ENTRY_PARAM,
+  MailProvenanceRow,
+  MailThreadTab,
+  ThreadRailViews,
+  mailThreadClient,
+  useMailThreadOfDocument,
+  type RailView,
+} from './mail-thread'
 
 interface FilePreviewPaneProps {
   file: FileItem
@@ -345,6 +354,15 @@ export function FilePreviewPane({
   const [peekView, setPeekView] = useState<PeekView>('document')
   useEffect(() => {
     setPeekView('document')
+  }, [file.id])
+  /**
+   * A thread document's rail is two tabs, „E-Mails“ and „Details“
+   * (`ThreadRailViews`); the mails are up whenever a thread document arrives.
+   */
+  const mailThread = useMailThreadOfDocument(projectId, file, mailThreadClient)
+  const [railView, setRailView] = useState<RailView>('mail')
+  useEffect(() => {
+    setRailView('mail')
   }, [file.id])
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   /**
@@ -729,6 +747,19 @@ export function FilePreviewPane({
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
+  /**
+   * A link into one mail of the thread (`?mailEntry=`, from a Fassung's
+   * provenance or a citation): the „E-Mails“ tab, scrolled to it, wherever
+   * the rail is (the peek's Details face, the phone's details sheet).
+   */
+  const mailEntryParam = searchParams?.get(MAIL_ENTRY_PARAM) ?? null
+  const mailFocus = useMemo(() => (mailEntryParam ? { entryId: mailEntryParam } : undefined), [mailEntryParam])
+  useEffect(() => {
+    if (!mailThread || !mailEntryParam) return
+    setRailView('mail')
+    if (peeking) setPeekView('details')
+    if (reader) setDetailsOpen(true)
+  }, [mailThread, mailEntryParam, peeking, reader])
   /**
    * THE REVIEW HAS AN ADDRESS while it is open: `review=1`, with `mark` and
    * `tool` following the selection and the tool in hand
@@ -1305,6 +1336,11 @@ export function FilePreviewPane({
         </div>
       )}
 
+      {/* Which mail brought the Fassung in front of the reader (D36): under the
+          header, so the header keeps its one shape on every document. A thread
+          document's own mails are its „E-Mails“ tab. */}
+      {projectId && !mailThread && <MailProvenanceRow key={file.id} projectId={projectId} documentId={file.id} />}
+
       {actions.downloadFailed && (
         <div
           role="alert"
@@ -1716,6 +1752,25 @@ export function FilePreviewPane({
                 : 'scroll-fade-bottom bg-surface-sunken @2xl:w-[280px] @2xl:shrink-0 @2xl:min-h-0 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:border-l @2xl:border-t-0 @2xl:pb-4 flex w-full flex-col border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'
             }
           >
+            <ThreadRailViews
+              mail={
+                mailThread && projectId ? (
+                  <MailThreadTab
+                    key={mailThread.id}
+                    projectId={projectId}
+                    documentId={file.id}
+                    threadId={mailThread.id}
+                    folderId={file.folderId}
+                    viewerUserId={viewerUserId ?? null}
+                    focus={mailFocus}
+                  />
+                ) : null
+              }
+              mailCount={mailThread?.entryCount ?? 0}
+              value={railView}
+              onValueChange={setRailView}
+              detailsLabel={t('preview.peekViews.details')}
+            >
             {/* WHO OWNS THIS DOCUMENT, AND WHAT YOU CAN ASK OF IT.
 
               The byline, who is responsible and „Piloti dazu fragen" all used
@@ -1871,6 +1926,7 @@ export function FilePreviewPane({
               <DocumentRevisions
                 key={file.id}
                 file={file}
+                projectId={projectId}
                 canManage={canManage}
                 viewer={reviewViewer}
                 names={assigneeNames}
@@ -2054,6 +2110,8 @@ export function FilePreviewPane({
               expanded in place, pushing the rest of the rail down. Both moved
               into the header's actions menu, beside the other controls that act
               on this file. */}
+
+            </ThreadRailViews>
 
             <div className="flex-1" />
           </div>
