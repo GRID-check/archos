@@ -17547,6 +17547,60 @@
         }
       }
     },
+    "/api/skills/by-name/{name}": {
+      "get": {
+        "operationId": "skill-get",
+        "summary": "Read one of the office’s procedures",
+        "description": "One enabled skill by name (from skill-search): its description and its full Markdown body, the steps to follow. Load it before doing the work it describes.",
+        "tags": [
+          "skills"
+        ],
+        "parameters": [
+          {
+            "name": "name",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The skill name, from skill-search."
+            },
+            "description": "The skill name, from skill-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Read one of the office’s procedures",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/skills/invocable": {
       "get": {
         "operationId": "skill-invocable-list",
@@ -17649,6 +17703,71 @@
         },
         "x-mcp-annotations": {
           "title": "Have the reviewer critique a skill draft",
+          "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/skills/search": {
+      "get": {
+        "operationId": "skill-search",
+        "summary": "Find the office’s procedures for a task",
+        "description": "The office’s skills are its written procedures: search them before acting on office work. Ranks the enabled skills by your words (name, description, then body) and answers each hit’s name, description and up to three matching body lines with their line numbers. Empty `query` lists them all. Read one with skill-get.",
+        "tags": [
+          "skills"
+        ],
+        "parameters": [
+          {
+            "name": "query",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Plain words for the task at hand, German or English; empty lists every skill."
+            },
+            "description": "Plain words for the task at hand, German or English; empty lists every skill."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Most hits (default 10, most 25)."
+            },
+            "description": "Most hits (default 10, most 25)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Find the office’s procedures for a task",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,

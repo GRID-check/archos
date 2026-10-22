@@ -109,7 +109,9 @@ const MEMORY =
   'Piloti keeps a note with its own `remember`, which records where the finding came from and keeps a restricted one in its project'
 const SEARCH = 'a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages'
 const TASK = 'Piloti proposes a task, or commissions a run, with its own `create_task`, whose card the person confirms'
-const CANVAS = 'Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
+const SKILL_READ =
+  'Piloti is given the office’s skills at turn start and loads one with its own `use_skill`, which the turn records; the door offers them to outside agents'
+const CANVAS ='Piloti marks a document, and answers in a mark’s thread, with its own canvas tools, anchored where it looked'
 
 /**
  * Every operation, in catalog order (domain, then name), then the read tools.
@@ -423,8 +425,10 @@ export const EXPOSURE = {
     withheld: { category: 'product-config', reason: 'switches a platform-curated skill of Piloti’s on or off; product configuration' },
   },
   'skill-delete': OFFERED,
+  'skill-get': { external: true, piloti: false, reason: SKILL_READ },
   'skill-invocable-list': OFFERED,
   'skill-list': OFFERED,
+  'skill-search': { external: true, piloti: false, reason: SKILL_READ },
   'skill-review': {
     external: false,
     piloti: false,
