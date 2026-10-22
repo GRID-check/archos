@@ -230,9 +230,14 @@ shows 10“. That is option 1, and it is built as a second job kind,
   in `SCORE_DEFINITIONS`, carries the number of marks on that trace (0 is written).
   A decision on each mark is a `piloti-decision` on the same trace.
 
-Still open: a judge row `flags_mismatch` in the north-star eval
-(`ns-notice-new-document`) before the flag is switched on anywhere but a test
-office.
+The north-star eval now has the rows (`ns-notice-new-document`: the Konzept's 11
+Wohnungen against Index B's 10, asked as the check's own instruction; `ns-notice-agrees`:
+no mark when the documents agree), run through the headless turn with the fixture BFF
+recording the proposed marks. They have not been run with a model: the check is
+`flags_mismatch` (a proposed mark naming both values) plus the judge of that name.
+Still open: a first paid run (`task be:eval:answer-suite -- --set north-star --only
+ns-notice-new-document ns-notice-agrees`) before the flag is switched on anywhere
+but a test office.
 
 ### Consequences
 

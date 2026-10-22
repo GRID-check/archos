@@ -23,6 +23,7 @@ taken without it and says so.
 from __future__ import annotations
 
 import json
+import re
 import statistics
 from pathlib import Path
 from typing import Any
@@ -37,7 +38,7 @@ QUESTIONS = ROOT / "tests" / "fixtures" / "files_eval" / "files_questions.yaml"
 MEANING_CHECKS = ("none_found",)
 #: The keys an ``expect`` block may hold: the suite's own (``suite.check``) and this set's.
 CHECK_KEYS = frozenset(
-    {"tools", "max_research_calls", "mentions", "not_mentions", "at_least", "judge", "no_repeat", "proposals"}
+    {"tools", "max_research_calls", "mentions", "not_mentions", "at_least", "judge", "no_repeat", "proposals", "marks"}
 )
 TOOL_KEYS = frozenset({"must", "any", "must_not"})
 ARMS = ("search", "navigate", "both")
@@ -151,7 +152,8 @@ def called(item: Any, calls: list[dict[str, Any]]) -> bool:
     """Whether the turn made a call ``item`` names: a tool name, or ``{tool: {argument: value | [values]}}``."""
     tool, wanted = next(iter(item.items())) if isinstance(item, dict) else (str(item), {})
     return any(
-        _basename(call["name"]) == tool and all(_matches(v, call["arguments"].get(k)) for k, v in wanted.items())
+        tool in (call["name"], _basename(call["name"]))
+        and all(_matches(v, call["arguments"].get(k)) for k, v in wanted.items())
         for call in calls
     )
 
@@ -175,6 +177,31 @@ def proposed(item: dict[str, Any], filed: list[dict[str, Any]]) -> bool:
     return False
 
 
+def _states(mark: dict[str, Any], options: list[str]) -> bool:
+    """Whether a proposed mark's body or basis holds one of ``options`` as a whole word or number."""
+    text = f"{mark.get('body') or ''} {mark.get('basis') or ''}"
+    return any(re.search(rf"(?<![\w,.]){re.escape(str(option))}(?![\w]|[,.]\d)", text) for option in options)
+
+
+def marked(item: dict[str, Any] | str, marks: list[dict[str, Any]]) -> bool:
+    """Whether the proposed marks meet ``expect.marks``.
+
+    ``none`` (the string): no mark at all. A dict: ``mentions`` is a list of option lists, and ONE mark must
+    state something of every list (a finding names both values, so a mark naming one does not hold it).
+    """
+    if item == "none":
+        return not marks
+    wanted = [o if isinstance(o, list) else [o] for o in item.get("mentions") or []]
+    return any(all(_states(mark, options) for options in wanted) for mark in marks) if marks else False
+
+
+def _marks_label(item: dict[str, Any] | str) -> str:
+    if item == "none":
+        return "marked:none"
+    lists = [o if isinstance(o, list) else [o] for o in item.get("mentions") or []]
+    return "marked:" + "&".join("|".join(map(str, options)) for options in lists)
+
+
 def _proposal_label(item: dict[str, Any]) -> str:
     return ",".join(f"{key}={value}" for key, value in item.items())
 
@@ -189,14 +216,19 @@ def files_checks(
     research_calls: int,
     filed: list[dict[str, Any]] | None = None,
     writes: list[str] | None = None,
+    marks: list[dict[str, Any]] | None = None,
 ) -> dict[str, bool]:
     """This set's checks for one run; ``mentions`` and ``not_mentions`` are the suite's own.
 
     ``filed`` and ``writes`` are what the fixture BFF saw (``fixture_bff.proposals_filed`` and
     ``writes_attempted``): ``expect.proposals`` asks that each named proposal was filed and, with them,
     that no direct write route was called, because a proposal that was also written is not a proposal.
+    ``marks`` is what the turn proposed on a document (``fixture_bff.marks_proposed``): ``expect.marks`` is
+    ``none`` (the turn proposed nothing) or ``{mentions: [[...], [...]]}`` (one mark states every list).
     """
     checks: dict[str, bool] = {}
+    if (wanted_marks := expect.get("marks")) is not None:
+        checks[_marks_label(wanted_marks)] = marked(wanted_marks, marks or [])
     for item in expect.get("proposals") or []:
         checks[f"proposed:{_proposal_label(item)}"] = proposed(item, filed or [])
     if expect.get("proposals"):

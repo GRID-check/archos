@@ -18,7 +18,25 @@
 #   horizon:    true for a scene that is the next horizon; listed in the report, never run
 #   region:     with `box: given`, the box the person drew, in shares of the page
 #
+#   trigger:    `new_document`: the row is the headless turn an upload starts, asked with `focus_document`
+#               open (`turn_input.py`); its `question` is the fixed instruction below
+#   expect.marks: `none`, or `{mentions: [[...], [...]]}` (one mark proposed on the document states something
+#               of every list); the marks are what the fixture BFF recorded (`fixture_bff.marks_proposed`)
+#
 # Every check below is the exemplar's, not today's behaviour: a failing row is the gap to the star.
+
+# The instruction of the document check, as `checkInstruction` in
+# frontends/ui/src/lib/document-check/check.ts words it. `${document.name}` and `${document.id}` are filled
+# from the row's `focus_document`; `${MAX_FINDINGS}` is already 4. `tests/test_north_star_rows.py` fails when
+# this text and check.ts differ.
+document_check_instruction: &document_check_instruction |-
+  A new document was just uploaded to this project and indexed: "${document.name}" (document id ${document.id}).
+  Check it against the project's other documents, as a careful colleague would.
+  1. Read the new document (list_files, read_passage) and find the 2 to 4 load-bearing facts it states: counts, areas, heights, classes, dates, named standards or approvals, anything other documents also depend on.
+  2. Check each fact against the project's other documents: knowledge_search for where the fact is stated elsewhere, read_passage to read the passage itself. Compare with the newest Fassung of each document.
+  3. Only where a fact contradicts another document, propose a mark on the new document with canvas__mark (kind hint, on the place that states the fact, at most 4 marks). The body names both values; the basis cites both sources by file name and page. Never open a mark and never say a deviation is allowed or forbidden.
+  4. Where everything agrees, or nothing comparable exists, propose nothing and answer with the single word "Agrees".
+  Nobody watches this turn and nobody answers questions: do not ask anything, and do not change anything except by proposing marks.
 
 questions:
   # --- scene 1: it knows every project the way the project lead does -------------------
@@ -229,18 +247,38 @@ questions:
       max_research_calls: 2
       mentions: [EP-02_Schnitt_A-A.pdf]
 
-  # --- the next horizon: listed, never run ---------------------------------------------
+  # --- noticing: the headless turn an upload starts (ADR-0130) --------------------------
+  # Scene 5 as the check runs it today: the Konzept (11 Wohnungen) against Index B (10), asked as
+  # `checkTurnMessage` asks it. The answer is not the check: the proposed marks are (`expect.marks`).
   - id: ns-notice-new-document
     scene: [5]
     capability: notice without being asked
     fixture: files
-    horizon: true
-    needs: [upload]
-    question: "(kein Auftrag: Brandschutzkonzept_Hubergasse14.pdf wurde hochgeladen)"
+    trigger: new_document
+    focus_document: Brandschutzkonzept_Hubergasse14.pdf
+    needs: [trigger, marks]
+    question: *document_check_instruction
     expect:
-      tools: {must: [{read_passage: {pages: "*"}}, canvas__mark]}
+      tools: {must: [read_passage, canvas__mark], must_not: [look]}
+      marks: {mentions: [["11"], ["10"]]}
       judge: [flags_mismatch]
 
+  # Silence is a result: a document whose facts agree with the others gets no mark and the word „Agrees“.
+  # The letter's Geschäftszahl is the Bescheid's; it states nothing else the project contradicts.
+  - id: ns-notice-agrees
+    scene: [5]
+    capability: stay silent when everything agrees
+    fixture: files
+    trigger: new_document
+    focus_document: Schreiben_MA37_Baubeginn.pdf
+    needs: [trigger, marks]
+    question: *document_check_instruction
+    expect:
+      tools: {must_not: [canvas__mark, look]}
+      marks: none
+      mentions: [Agrees]
+
+  # --- the next horizon: listed, never run ---------------------------------------------
   - id: ns-learn-office
     scene: [7]
     capability: learn the office's conventions

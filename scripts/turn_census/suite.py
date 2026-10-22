@@ -95,6 +95,7 @@ from census import timed_out  # noqa: E402
 from census import tree_pythonpath  # noqa: E402
 from files_eval import recorded_calls  # noqa: E402
 from fixture_bff import lookups_served  # noqa: E402
+from fixture_bff import marks_proposed  # noqa: E402
 from fixture_bff import proposals_filed  # noqa: E402
 from fixture_bff import writes_attempted  # noqa: E402
 from workspace_eval import run_conversation  # noqa: E402
@@ -391,6 +392,7 @@ def observe(
                 run.research_calls,
                 proposals_filed(requests, record.stem),
                 writes_attempted(requests, record.stem),
+                marks_proposed(requests, record.stem),
             )
         )
     if question.get("set") == "visual":
@@ -1135,6 +1137,8 @@ def start_files_bff(out: Path) -> tuple[Any, Any]:
             "GRID_INTERNAL_API_TOKEN": token,
             "GRID_EVAL_ENVELOPE": header,
             "GRID_EVAL_ENVELOPE_SIG": signature,
+            # A row an upload starts carries its trigger and open document, as the headless turn does.
+            **turn_input.env_for(question),
         }
 
     return bff, env_for

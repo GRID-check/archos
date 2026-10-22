@@ -21,7 +21,7 @@ match what ships today: lower it only when the star itself was wrong.
   [`tests/fixtures/north_star/north_star_questions.yaml`](../../tests/fixtures/north_star/north_star_questions.yaml),
   asked against the existing office-file and visual fixture projects:
   `task be:eval:answer-suite -- --set north-star`. A row that needs something
-  the harness lacks (an upload, a second project) is
+  the harness lacks (an upload through the real path, a second project) is
   reported as not applicable on this commit, and a horizon row is listed but
   never run. `tests/test_north_star_rows.py` keeps this document and the rows
   in step.
@@ -102,11 +102,12 @@ Grundrisse's is planted: a row that reads the Schnitt must not answer 1:100.
 | [ns-drawn-box](#ns-drawn-box) | 3, 4 | a box the person drew | visual | none (`box: given`) |
 | [ns-parity](#ns-parity) | 4 | chat and canvas as mirrors | visual | pv-dim-galerie |
 | [ns-escape-route-law](#ns-escape-route-law) | 2 | project fact against OIB-RL 2 | files | pf-mixed-law |
-| [ns-gk-unstated](#ns-gk-unstated) | 2, 1 | the decisive fact no document states | files | none |
-| [ns-propose-move](#ns-propose-move) | 1 | a write as a proposal | files | none |
-| [ns-piloti-ask](#ns-piloti-ask) | 4 | an outside agent asks Piloti | files | none |
+| [ns-gk-unstated](#ns-gk-unstated) | 2, 1 | the decisive fact no document states | files | ns-gk-unstated |
+| [ns-propose-move](#ns-propose-move) | 1 | a write as a proposal | files | ns-propose-move (`proposals`) |
+| [ns-piloti-ask](#ns-piloti-ask) | 4 | an outside agent asks Piloti | files | ns-piloti-ask (the chat turn the ask starts; the door is `service.spec.ts`) |
 | [ns-trivial](#ns-trivial) | restraint | a trivial question stays fast | files | pf-locate-name |
-| [ns-notice-new-document](#ns-notice-new-document) | 5 | notice unasked (**horizon**) | files | horizon |
+| [ns-notice-new-document](#ns-notice-new-document) | 5 | notice unasked | files | ns-notice-new-document, ns-notice-agrees (`trigger`, `marks`) |
+| [ns-notice-agrees](#ns-notice-agrees) | 5 | stay silent when all agrees | files | ns-notice-agrees (`trigger`, `marks`) |
 | [ns-learn-office](#ns-learn-office) | 7 | learn the office (**horizon**) | files | horizon |
 
 Scene 6, the Herleitung as a lab notebook, is in every exemplar.
@@ -1079,7 +1080,7 @@ the suite's distribution; `file-tools-used` = `none` or `navigate`.
 
 ### ns-notice-new-document
 
-**Horizon.** **Scene** 5 · **Capability** notice without being asked · **Fixture** files · **Row** `ns-notice-new-document` (horizon, not run)
+**Scene** 5 · **Capability** notice without being asked · **Fixture** files · **Rows** `ns-notice-new-document` and `ns-notice-agrees` (needs `trigger`, `marks`)
 
 **Setting.** No question. On 02.06.2026 Brandschutzkonzept_Hubergasse14.pdf
 is uploaded into Gutachten/Brandschutz. Piloti reads every upload anyway; at
@@ -1131,10 +1132,43 @@ On the Konzept, two marks in Piloti's colour, each „Vorschlag, noch nicht
 - Raise the same finding again after a person dismissed it, unless a new
   Fassung changes it.
 
-**Checks.** Row `ns-notice-new-document` (horizon): the run would be the
-upload trigger, judge `flags_mismatch`, `canvas__mark` called. Langfuse at the
-star: `piloti-decision` on each mark (übernommen or verworfen) is the
-precision of noticing.
+**Checks.** Row `ns-notice-new-document` runs the headless turn the upload
+starts, not a question: the message is `checkTurnMessage`'s (the fixed
+instruction of `lib/document-check/check.ts`, word for word, with the
+Brandschutzkonzept open and `trigger: new_document`). The fixture BFF records
+the marks the turn proposes (`/api/internal/document-annotations`, op
+`propose`). Held when: the Konzept was read (`read_passage`), `canvas__mark` was
+called, no look, one proposed mark states both „11“ and „10“ (its body or its
+basis), and the judge `flags_mismatch` says the answer points the disagreement
+out. Today's check marks the first of the two findings above (Wohnungen);
+the GK 4 / Fluchtniveau finding needs the legal corpus and is not a row.
+Langfuse at the star: `piloti-decision` on each mark (übernommen or verworfen)
+is the precision of noticing, and `document-check` carries the number of marks.
+
+---
+
+### ns-notice-agrees
+
+**Scene** 5 · **Capability** stay silent when everything agrees · **Fixture** files · **Row** `ns-notice-agrees` (needs `trigger`, `marks`)
+
+**Setting.** The same upload turn as [ns-notice-new-document](#ns-notice-new-document),
+on a document that agrees with the others: the MA 37's Schreiben
+(Schreiben_MA37_Baubeginn.pdf), which repeats the Bescheid's Geschäftszahl and
+states nothing else the project contradicts. It is a different document, not a
+different fixture: the project has one Brandschutzkonzept, and it says 11.
+
+**Trajectory.** Read the document, check its facts against the others, find
+nothing to propose.
+
+**Answer.** `Agrees`. No Eingang entry, no mark: silence means it checked.
+
+**Must not.**
+
+- Propose a mark for a value that matches, or to say the check was done.
+- Open a mark, or change anything.
+
+**Checks.** Row `ns-notice-agrees`: no proposed mark at all, `canvas__mark`
+not called, no look, the answer holds „Agrees“.
 
 ---
 

@@ -65,9 +65,10 @@ class TestTheDocumentAndTheRows:
     def test_horizon_is_marked_the_same_in_both(self):
         assert {i for i, horizon in EXEMPLARS.items() if horizon} == {r["id"] for r in ROWS if r.get("horizon")}
 
-    def test_the_horizon_covers_scenes_five_and_seven(self):
+    def test_the_horizon_is_scene_seven_and_scene_five_runs(self):
         scenes = {s for row in ROWS if row.get("horizon") for s in row["scene"]}
-        assert {5, 7} <= scenes
+        assert scenes == {7}
+        assert {r["id"] for r in ROWS if 5 in r["scene"]} == {"ns-notice-new-document", "ns-notice-agrees"}
 
     def test_the_exemplars_cover_every_scene_and_the_restraint(self):
         assert {s for row in ROWS for s in row["scene"]} >= {1, 2, 3, 4, 5, 7, "restraint"}
@@ -159,16 +160,17 @@ class TestWhatRunsOnThisCommit:
         runnable, waiting, horizon = north_star_eval.split(ROWS, everything)
         assert {r["id"] for r in runnable} == {r["id"] for r in ROWS if not r.get("horizon")}
         assert waiting == []
-        assert set(horizon) == {"ns-notice-new-document", "ns-learn-office"}
+        assert set(horizon) == {"ns-learn-office"}
         _, waiting, _ = north_star_eval.split(ROWS, set())
         assert any(w.startswith("ns-drawn-box (") and "given_box" in w for w in waiting)
 
     def test_the_drawn_box_and_the_proposal_run_now(self):
-        assert north_star_eval.harness_available() == {"given_box", "canvas", "proposals"}
+        assert north_star_eval.harness_available() == {"given_box", "canvas", "proposals", "trigger", "marks"}
         runnable, waiting, _ = north_star_eval.split(ROWS)
         ids = {r["id"] for r in runnable}
-        assert {"ns-drawn-box", "ns-propose-move"} <= ids
-        assert not {w.split(" ", 1)[0] for w in waiting} & {"ns-drawn-box", "ns-propose-move"}
+        now = {"ns-drawn-box", "ns-propose-move", "ns-notice-new-document", "ns-notice-agrees"}
+        assert now <= ids
+        assert not {w.split(" ", 1)[0] for w in waiting} & now
 
     def test_a_row_needing_an_ability_the_harness_lacks_still_waits(self):
         row = {"id": "ns-x", "fixture": "files", "needs": ["upload"]}
@@ -199,7 +201,11 @@ class TestWhatRunsOnThisCommit:
             "focus_shelf": "project",
             "focus_region": {"page": 1, "x": 0.30, "y": 0.60, "w": 0.10, "h": 0.16},
         }
-        assert {r["id"] for r in ROWS if turn_input.message_fields(r)} == {"ns-drawn-box"}
+        assert {r["id"] for r in ROWS if turn_input.message_fields(r)} == {
+            "ns-drawn-box",
+            "ns-notice-new-document",
+            "ns-notice-agrees",
+        }
 
     def test_the_rows_run_files_first_each_behind_its_fixture(self):
         groups = north_star_eval.by_fixture(ROWS)
@@ -305,3 +311,87 @@ class TestTheSuiteWiring:
         assert "No run finished." in text
         assert "Not applicable on this commit: ns-drawn-box (given_box)." in text
         assert "Horizon, not run: ns-learn-office." in text
+
+
+CHECK_TS = REPO_ROOT / "frontends/ui/src/lib/document-check/check.ts"
+
+
+def _check_instruction_lines() -> list[str]:
+    """The lines ``checkInstruction`` joins, read off check.ts with its constants and placeholders filled."""
+    source = CHECK_TS.read_text(encoding="utf-8")
+    findings = re.search(r"export const MAX_FINDINGS = (\d+)", source).group(1)
+    body = source.split("export function checkInstruction", 1)[1].split("].join('\\n')", 1)[0]
+    lines = [m.group(2) for m in re.finditer(r"^    ([`'\"])(.*)\1,\s*$", body, re.MULTILINE)]
+    return [line.replace("${MAX_FINDINGS}", findings) for line in lines]
+
+
+class TestTheNoticeRows:
+    NOTICE = BY_ID["ns-notice-new-document"]
+    AGREES = BY_ID["ns-notice-agrees"]
+
+    @pytest.mark.parametrize("row", [NOTICE, AGREES], ids=lambda row: row["id"])
+    def test_the_question_is_the_document_checks_own_instruction_word_for_word(self, row):
+        document = {"name": row["focus_document"], "id": turn_input.trigger_fields(row)["focus_document_id"]}
+        expected = "\n".join(_check_instruction_lines())
+        expected = expected.replace("${document.name}", document["name"]).replace("${document.id}", document["id"])
+        assert len(_check_instruction_lines()) == 7
+        assert row["question"] == expected
+
+    def test_the_fixture_plants_the_mismatch_the_row_expects(self):
+        pages = {file.name: "\n".join(file.pages) for file in FILES_PROJECT.files}
+        assert "Wohnungen: 11" in pages["Brandschutzkonzept_Hubergasse14.pdf"]
+        assert "Wohnungen gesamt: 10" in pages["EP-01_Grundrisse_Index-B.pdf"]
+        assert "Wohnungen gesamt: 11" in pages["EP-01_Grundrisse_Index-A.pdf"], "Index A is the older Fassung"
+
+    def test_the_agreeing_row_asks_about_a_letter_that_repeats_the_bescheids_number(self):
+        pages = {file.name: "\n".join(file.pages) for file in FILES_PROJECT.files}
+        zahl = "MA 37/567812-2026-1"
+        assert zahl in pages["Schreiben_MA37_Baubeginn.pdf"] and zahl in pages["Bescheid_MA37_Baubewilligung.pdf"]
+
+    def test_the_turn_is_the_one_the_upload_starts(self):
+        fields = turn_input.message_fields(self.NOTICE)
+        assert fields["focus_file_name"] == "Brandschutzkonzept_Hubergasse14.pdf"
+        assert fields["trigger"]["kind"] == "new_document"
+        message = turn_input.user_message(self.NOTICE["question"], fields)
+        assert message.trigger.kind == "new_document"
+        assert message.focus_document_id == fields["focus_document_id"]
+        assert message.focus_region is None
+
+    def _checks(self, row: dict, marks: list[dict], calls: list[dict], answer: str = "") -> dict[str, bool]:
+        expect = {**row["expect"], "judge": []}
+        return files_eval.files_checks(expect, calls, answer, row["question"], None, [], 3, None, None, marks)
+
+    def test_the_ideal_notice_holds_every_check(self):
+        mark = {
+            "page": 2,
+            "kind": "hint",
+            "body": "Das Konzept nennt 11 Wohnungen; Index B hat 10.",
+            "basis": "Brandschutzkonzept_Hubergasse14.pdf S. 2; EP-01_Grundrisse_Index-B.pdf S. 2",
+        }
+        calls = [call("read_passage", document="Brandschutzkonzept_Hubergasse14.pdf"), call("canvas__mark")]
+        assert all(self._checks(self.NOTICE, [mark], calls).values())
+
+    @pytest.mark.parametrize(
+        "marks",
+        [
+            [],
+            [{"page": 2, "body": "Das Konzept nennt 11 Wohnungen."}],
+            [{"page": 2, "body": "Seite 2 nennt 111 Wohnungen und 100 m."}],
+            [{"page": 2, "body": "Das Konzept nennt 11 Wohnungen."}, {"page": 3, "body": "Index B hat 10 Wohnungen."}],
+        ],
+        ids=["no-mark", "one-value", "similar-numbers", "values-split-over-two-marks"],
+    )
+    def test_a_notice_without_a_mark_naming_both_values_fails(self, marks):
+        calls = [call("read_passage"), call("canvas__mark")]
+        checks = self._checks(self.NOTICE, marks, calls)
+        assert not checks["marked:11&10"]
+
+    def test_the_notice_must_read_and_mark_by_the_canvas_tool(self):
+        checks = self._checks(self.NOTICE, [], [call("knowledge_search")])
+        assert not checks["must:canvas__mark"] and not checks["must:read_passage"]
+
+    def test_silence_holds_when_nothing_was_proposed_and_fails_on_any_mark(self):
+        held = self._checks(self.AGREES, [], [call("read_passage")], "Agrees")
+        assert all(held.values())
+        marked = self._checks(self.AGREES, [{"page": 1, "body": "x"}], [call("canvas__mark")], "Agrees")
+        assert not marked["marked:none"] and not marked["must_not:canvas__mark"]

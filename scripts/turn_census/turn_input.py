@@ -12,6 +12,9 @@ turn's own parse (``aiq_agent.turn.payload.extract_turn_inputs``) read the strin
 What a row's two harness needs mean here:
 
 - ``given_box``: the turn carries the drawn box (``focus_region``: page, x, y, w, h);
+- ``trigger``: the turn is the headless one an upload starts (``frontends/ui/src/lib/document-check/job.ts``,
+  ``checkTurnMessage``): the row's question is the fixed instruction, and the message carries the open
+  document (``focus_file_name``, ``focus_shelf``, ``focus_document_id``) and ``trigger: new_document``;
 - ``canvas``: the turn is asked with a document open (``focus_file_name``, on the project's shelf), the
   way the canvas chat is, so the turn's surface is ``review_canvas`` and ``canvas__*`` is in play.
 """
@@ -25,7 +28,7 @@ from typing import Any
 
 ENV = "GRID_EVAL_USER_MESSAGE"
 #: The harness abilities this module gives a row (``north_star_eval.HARNESS``).
-ABILITIES = frozenset({"given_box", "canvas"})
+ABILITIES = frozenset({"given_box", "canvas", "trigger"})
 #: The ids the wire frame requires; the turn's own ids come from the run's conversation (`--conversation_id`).
 MESSAGE_ID = "eval-turn"
 CONVERSATION_ID = "eval-conversation"
@@ -37,6 +40,8 @@ def message_fields(row: dict[str, Any]) -> dict[str, Any] | None:
     A ``box: given`` row names the box in ``region`` (x, y, w, h as shares of the page) and the page and
     document in its gold; the document is the one open on the canvas.
     """
+    if row.get("trigger"):
+        return trigger_fields(row)
     if row.get("box") != "given":
         return None
     gold = row.get("gold") or []
@@ -49,6 +54,27 @@ def message_fields(row: dict[str, Any]) -> dict[str, Any] | None:
         "focus_file_name": str(gold[0]["document"]),
         "focus_shelf": "project",
         "focus_region": {"page": int(gold[0]["page"]), "x": x, "y": y, "w": w, "h": h},
+    }
+
+
+def trigger_fields(row: dict[str, Any]) -> dict[str, Any]:
+    """The fields of the turn an upload starts: the open document by its fixture id, and the trigger.
+
+    Mirrors ``checkTurnMessage``; ``event_id`` is the row's id (the BFF's is the check's id).
+    """
+    import fixture_files
+
+    if row["trigger"] != "new_document" or not row.get("focus_document"):
+        raise ValueError(f"{row.get('id')}: trigger: new_document needs `focus_document`, the uploaded file")
+    name = str(row["focus_document"])
+    project = fixture_files.load_project()
+    if name not in project.names:
+        raise ValueError(f"{row.get('id')}: {name} is not in the fixture project")
+    return {
+        "focus_file_name": name,
+        "focus_shelf": "project",
+        "focus_document_id": fixture_files.document_id(project, name),
+        "trigger": {"kind": "new_document", "event_id": str(row["id"]), "annotation_id": None},
     }
 
 

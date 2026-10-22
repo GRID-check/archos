@@ -77,7 +77,10 @@ _TOKEN = re.compile(r"[a-z0-9]+")
 
 #: The route a tool files a proposal at, and the harness ability it gives a row (``north_star_eval.HARNESS``).
 PROPOSALS_PATH = "/api/internal/proposals"
-ABILITIES = frozenset({"proposals"})
+ANNOTATIONS_PATH = "/api/internal/document-annotations"
+#: ``proposals``: a write filed as a proposal. ``marks``: the canvas ``mark`` tool's proposals, recorded
+#: (:func:`marks_proposed`).
+ABILITIES = frozenset({"proposals", "marks"})
 #: The kinds the route accepts (``lib/proposals/types.ts``), and the routes by which an agent could write instead.
 PROPOSAL_KINDS = frozenset({"file_operation", "memory", "project_profile"})
 WRITE_PATHS = ("/api/internal/document-versions", "/api/internal/document-annotations", "/api/internal/tasks")
@@ -446,11 +449,30 @@ def proposals_filed(log_path: Path, conversation_id: str) -> list[dict[str, Any]
 
 def writes_attempted(log_path: Path, conversation_id: str) -> list[str]:
     """The paths of the direct write routes this conversation's turn called, served or not (a proposal is not one)."""
-    return [str(e["path"]) for e in _served(log_path, conversation_id, only_served=False) if _is_write(str(e["path"]))]
+    return [
+        str(e["path"])
+        for e in _served(log_path, conversation_id, only_served=False)
+        if _is_write(str(e["path"])) and (e.get("body") or {}).get("op") != "propose"
+    ]
 
 
 def _is_write(path: str) -> bool:
     return any(path == route or path.startswith(route + "/") for route in WRITE_PATHS)
+
+
+def marks_proposed(log_path: Path, conversation_id: str) -> list[dict[str, Any]]:
+    """The marks a conversation's turn proposed on a document (canvas ``propose``), in order.
+
+    A proposal is a suggestion the person takes over, not a write: it is read here and is not in
+    :func:`writes_attempted`.
+    """
+    return [
+        mark
+        for entry in _served(log_path, conversation_id)
+        if entry.get("path") == ANNOTATIONS_PATH and (entry.get("body") or {}).get("op") == "propose"
+        for mark in (entry.get("body") or {}).get("proposals") or []
+        if isinstance(mark, dict)
+    ]
 
 
 def _served(log_path: Path, conversation_id: str, *, only_served: bool = True) -> list[dict[str, Any]]:
@@ -549,11 +571,35 @@ class FixtureBFF:
                 self._proposals[key] = made
         return 200, {"id": made["id"], "status": made["status"]}
 
+    def annotations(self, body: dict[str, Any]) -> tuple[int, dict[str, Any]] | None:
+        """``POST /api/internal/document-annotations``: a ``list`` finds no marks, a ``propose`` is numbered back.
+
+        Only these two ops are served (the rest of the canvas, presence included, is dropped as before), and
+        nothing is stored on a document: the proposals are read from the request log (:func:`marks_proposed`).
+        """
+        if body.get("op") == "list":
+            return 200, {"annotations": []}
+        proposals = body.get("proposals")
+        if body.get("op") != "propose" or not isinstance(proposals, list) or not proposals:
+            return None
+        proposed = [
+            {
+                "id": str(uuid.uuid5(uuid.NAMESPACE_URL, f"fixture-mark/{number}/{json.dumps(item, sort_keys=True)}")),
+                "number": number,
+                **item,
+            }
+            for number, item in enumerate(proposals, 1)
+            if isinstance(item, dict)
+        ]
+        return 200, {"proposed": proposed}
+
     def _answer(
         self, path: str, body: dict[str, Any], office: FixtureOffice, conversation: str | None = None
     ) -> tuple[int, dict[str, Any]] | None:
         if path == PROPOSALS_PATH:
             return self.proposal(body, conversation)
+        if path == ANNOTATIONS_PATH:
+            return self.annotations(body)
         if self.workspace is not None:
             if path == "/api/mcp":
                 return 200, self.workspace.handle(body, conversation)

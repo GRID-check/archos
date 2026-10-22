@@ -29,6 +29,8 @@ from jsonschema import Draft202012Validator  # noqa: E402
 from aiq_agent.agents.piloti.prompt import focus_region_block  # noqa: E402
 from aiq_agent.common.wire_v2 import FocusRegion  # noqa: E402
 from aiq_agent.tools import proposals_client  # noqa: E402
+from aiq_agent.tools.canvas import client as canvas_client  # noqa: E402
+from aiq_agent.tools.canvas.marks import propose_payload  # noqa: E402
 from aiq_agent.tools.documents.filing import SignedEnvelope  # noqa: E402
 from aiq_agent.turn import payload  # noqa: E402
 
@@ -176,3 +178,51 @@ class TestTheFixtureFilesProposals:
         bff._log({"path": "/api/internal/document-versions", "served": False, "conversation": "conv-1"})
         assert fixture_bff.writes_attempted(bff.log_path, "conv-1") == ["/api/internal/document-versions"]
         assert fixture_bff.writes_attempted(bff.log_path, "conv-2") == []
+
+
+class TestTheFixtureRecordsProposedMarks:
+    """The canvas ``mark`` tool's own request, against the fixture BFF: a proposal is recorded, not written."""
+
+    MARK = {
+        "page": 2,
+        "shape": "point",
+        "x": 0.2,
+        "y": 0.3,
+        "kind": "hint",
+        "body": "11 Wohnungen, Index B hat 10",
+        "basis": "EP-01 S. 2",
+    }
+
+    def _post(self, bff, conversation: str, monkeypatch, payload: dict) -> dict:
+        monkeypatch.setenv("FRONTEND_INTERNAL_URL", bff.url)
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", TOKEN)
+        return canvas_client.post_canvas(payload, _envelope(bff, conversation))
+
+    def test_a_proposal_is_numbered_back_and_read_from_the_log_for_its_conversation(self, bff, monkeypatch):
+        payload = propose_payload([self.MARK])
+        answer = self._post(bff, "conv-1", monkeypatch, payload)
+        assert [item["number"] for item in answer["proposed"]] == [1]
+        assert answer["proposed"][0]["body"] == self.MARK["body"]
+        self._post(bff, "conv-2", monkeypatch, propose_payload([{**self.MARK, "body": "other"}]))
+        marks = fixture_bff.marks_proposed(bff.log_path, "conv-1")
+        assert [m["body"] for m in marks] == [self.MARK["body"]]
+        assert fixture_bff.marks_proposed(bff.log_path, "conv-3") == []
+
+    def test_a_proposal_is_not_a_direct_write(self, bff, monkeypatch):
+        self._post(bff, "conv-1", monkeypatch, propose_payload([self.MARK]))
+        assert fixture_bff.writes_attempted(bff.log_path, "conv-1") == []
+        bff._log(
+            {"path": fixture_bff.ANNOTATIONS_PATH, "body": {"op": "create"}, "served": False, "conversation": "conv-1"}
+        )
+        assert fixture_bff.writes_attempted(bff.log_path, "conv-1") == [fixture_bff.ANNOTATIONS_PATH]
+
+    def test_a_list_finds_no_marks_and_an_op_the_set_does_not_serve_is_dropped(self, bff, monkeypatch):
+        assert self._post(bff, "conv-1", monkeypatch, {"op": "list"}) == {"annotations": []}
+        with pytest.raises(canvas_client.CanvasRequestError):
+            self._post(bff, "conv-1", monkeypatch, {"op": "room"})
+        assert fixture_bff.marks_proposed(bff.log_path, "conv-1") == []
+
+    def test_the_files_run_carries_the_upload_trigger_and_reads_the_marks(self):
+        source = (REPO_ROOT / "scripts/turn_census/suite.py").read_text(encoding="utf-8")
+        assert source.count("**turn_input.env_for(question)") == 2
+        assert "marks_proposed(requests, record.stem)" in source

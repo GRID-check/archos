@@ -47,7 +47,7 @@ SCENES = frozenset({1, 2, 3, 4, 5, 6, 7, "restraint"})
 #: The keys a row may hold beyond ``id``, ``question`` / ``turns`` and ``expect``.
 ROW_KEYS = frozenset(
     {"id", "question", "turns", "expect", "scene", "capability", "fixture", "maps_to", "needs", "horizon"}
-    | {"box", "gold", "region"}
+    | {"box", "gold", "region", "trigger", "focus_document"}
 )
 #: What a row may need from the harness, beyond a tool argument (``files_eval.NEEDS``): what the ability is.
 #: ``harness_available`` says which of them the harness has; the others wait.
@@ -55,7 +55,9 @@ HARNESS: dict[str, str] = {
     "given_box": "a turn that carries a drawn box (`turn_input.py`; `visual_eval` refuses `box: given`)",
     "canvas": "a turn sent from the canvas with a document open (`turn_input.py`)",
     "proposals": "the fixture BFF filing a proposal (POST /api/internal/proposals, `fixture_bff.py`)",
-    "upload": "a turn an upload starts",
+    "trigger": "a turn an upload starts: `trigger: new_document` and the open document (`turn_input.py`)",
+    "marks": "the fixture BFF recording the marks a turn proposes (`fixture_bff.py`, document-annotations)",
+    "upload": "a turn an upload starts through the real upload path (not fixture-driven)",
     "second_project": "a second project of the same fixture office",
 }
 _EXEMPLAR = re.compile(r"^### (ns-[a-z0-9-]+)\s*$", re.MULTILINE)
@@ -72,6 +74,17 @@ def _region_ok(value: Any) -> bool:
     return 0 <= x and 0 <= y and w > 0 and h > 0 and x + w <= 1 and y + h <= 1
 
 
+def _filled(row: dict[str, Any]) -> str:
+    """The row's question; for an upload row, the instruction with its document named (``checkInstruction``)."""
+    question = str(row["question"])
+    if not row.get("trigger"):
+        return question
+    fields = turn_input.trigger_fields(row)
+    return question.replace("${document.name}", fields["focus_file_name"]).replace(
+        "${document.id}", fields["focus_document_id"]
+    )
+
+
 def _checked(row: dict[str, Any], elements: dict[tuple[str, int, str], list[float]]) -> dict[str, Any]:
     """One row, validated, with ``set`` its fixture and the gold resolved to boxes for a visual row."""
     rid = str(row.get("id"))
@@ -85,8 +98,10 @@ def _checked(row: dict[str, Any], elements: dict[tuple[str, int, str], list[floa
         raise ValueError(f"{rid}: gold, box and region are for a visual row")
     if row.get("box") == "given" and ("given_box" not in (row.get("needs") or []) or not _region_ok(row.get("region"))):
         raise ValueError(f"{rid}: box: given needs `needs: [given_box]` and a region inside the page")
+    if row.get("trigger") and row["fixture"] != "files":
+        raise ValueError(f"{rid}: trigger is for a files row")
     gold = resolve_gold(row, elements) if row["fixture"] == "visual" else []
-    return {**row, "set": row["fixture"], "north_star": True, "gold": gold}
+    return {**row, "set": row["fixture"], "north_star": True, "gold": gold, "question": _filled(row)}
 
 
 def load_questions(path: Path = QUESTIONS, spec: dict[str, Any] | None = None) -> list[dict]:
