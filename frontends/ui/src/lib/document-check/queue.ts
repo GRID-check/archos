@@ -58,7 +58,7 @@ export async function queueDocumentCheck(request: DocumentCheckRequest, now = ne
     // Fail-open like every limit (ADR-0040): a counter that cannot be read does not stop checks.
     const spent = await consumeLimit({ name: 'document-check-daily', limit: dailyLimit, windowMs: DAY_MS }, organizationId)
     if (!spent.allowed) {
-      console.info(`[document-check] the daily cap of ${dailyLimit} is reached for ${organizationId}; skipping ${documentId}`)
+      console.warn(`[document-check] the daily cap of ${dailyLimit} is reached for ${organizationId}; skipping ${documentId}`)
       return false
     }
     const queued = await withTenant({ organizationId }, () =>

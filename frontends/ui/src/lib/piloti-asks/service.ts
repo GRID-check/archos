@@ -26,7 +26,6 @@
 
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import { v5 as uuidv5 } from 'uuid'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { isAuthzError } from '@/lib/auth-utils'
 import type { AuthorizedSession } from '@/lib/auth/types'
