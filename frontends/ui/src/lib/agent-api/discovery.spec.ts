@@ -24,6 +24,7 @@ vi.mock('./backend-operations', async (importOriginal) => ({
 vi.mock('./operation-proposals', () => ({ proposeOperation: vi.fn() }))
 vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationMissing: vi.fn() }))
 
+import { z } from 'zod'
 import { callBackendOperation } from './backend-operations'
 import { callOperation, validateOperationInput } from './dispatch'
 import {
@@ -34,11 +35,13 @@ import {
   describeOperation,
   inputSchemaOf,
   metaToolsFor,
+  narrowingHint,
   nativeToolRefusal,
   reportMissingOperation,
   searchOperations,
 } from './discovery'
 import type { AgentOperation } from './operation'
+import { FAKE_OPERATIONS } from './test-operations'
 import { proposeOperation } from './operation-proposals'
 import type { AgentPrincipal } from './principal'
 import { recordOperationCalled, recordOperationMissing } from './telemetry'
@@ -351,7 +354,7 @@ describe('call-operation', () => {
     })
     const result = await callOperationTool(ctx(person), { name: 'project-list' })
     expect(result.isError).toBe(true)
-    expect(text(result)).toMatch(/was not read\. Narrow the call/)
+    expect(text(result)).toMatch(/was not read\. This operation has no limit or filter/)
   })
 
   it('truncates a large result and says how to page', async () => {
@@ -363,9 +366,20 @@ describe('call-operation', () => {
     const result = await callOperationTool(ctx(person), { name: 'project-list' })
     expect(text(result).length).toBeLessThan(MAX_RESULT_CHARS + 500)
     expect(text(result)).toMatch(/Truncated/)
-    expect(text(result)).toMatch(/limit or filters/)
+    // project-list has no query in the fake catalog: the hint says so, not "pass a limit".
+    expect(text(result)).toMatch(/has no limit or filter/)
+    expect(text(result)).toMatch(/describe-operation/)
     // The full payload must not slip through as structured content.
     expect(result.structuredContent).toBeUndefined()
+  })
+
+  it('names the query parameters an operation really has when it truncates', async () => {
+    const withQuery = { ...FAKE_OPERATIONS[0], query: z.object({ limit: z.string().optional(), cursor: z.string().optional() }) }
+    expect(narrowingHint(withQuery)).toMatch(/\(limit, cursor\) in input\.query/)
+    expect(narrowingHint(withQuery)).not.toMatch(/no limit or filter/)
+    expect(narrowingHint({ inputSchema: { type: 'object', properties: { projectId: {}, query: {}, top_k: {} } } })).toMatch(
+      /\(query, top_k\) in input,/
+    )
   })
 
   it('wraps a non-object body so structuredContent stays an object', async () => {

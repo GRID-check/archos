@@ -114,10 +114,10 @@
    "name": "project-list",
    "domain": "projects",
    "summary": "List the projects the person can see",
-   "description": "Every project the person may open in this organization, with its id, name and lifecycle status. Start here: most other operations take a project id from this list.",
+   "description": "The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (what people call it, from the profile; may differ from `name`), `siteAddress` and dates. `nameContains` finds one by either name; `view: \"full\"` adds the profile (large). Start here: most other operations take a project id from this list.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-list\",\"domain\":\"projects\",\"summary\":\"List the projects the person can see\",\"description\":\"Every project the person may open in this organization, with its id, name and lifecycle status. Start here: most other operations take a project id from this list.\",\"annotations\":{\"title\":\"List the projects the person can see\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
+   "describe": "{\"name\":\"project-list\",\"domain\":\"projects\",\"summary\":\"List the projects the person can see\",\"description\":\"The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (what people call it, from the profile; may differ from `name`), `siteAddress` and dates. `nameContains` finds one by either name; `view: \\\"full\\\"` adds the profile (large). Start here: most other operations take a project id from this list.\",\"annotations\":{\"title\":\"List the projects the person can see\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"view\":{\"type\":\"string\",\"enum\":[\"summary\",\"full\"]},\"nameContains\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "project-member-list",
@@ -1818,24 +1818,24 @@
    "project-member-list",
    "project-same-address-list",
    "project-create",
+   "project-list",
    "project-record-get",
    "assignment-candidate-list",
    "project-delete",
    "project-experience-extract",
-   "project-get",
-   "project-intake-get"
+   "project-get"
   ],
   "Mitglied zu Projekt hinzufügen": [
    "project-person-add",
    "project-member-list",
    "project-same-address-list",
    "project-create",
+   "project-list",
    "project-record-get",
    "project-delete",
    "project-experience-extract",
    "project-get",
-   "project-intake-get",
-   "project-list"
+   "project-intake-get"
   ],
   "list project members": [
    "project-member-list",

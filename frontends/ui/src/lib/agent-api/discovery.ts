@@ -34,7 +34,7 @@ import {
   isRedirectBody,
   validateOperationInput,
 } from './dispatch'
-import { type BackendOperation, callBackendOperation, toMcpContent } from './backend-operations'
+import { type BackendOperation, type JsonSchemaObject, callBackendOperation, toMcpContent } from './backend-operations'
 import { AGENT_OPERATIONS } from './catalog'
 import { type AgentOperation, annotationsOf } from './operation'
 import { proposeOperation } from './operation-proposals'
@@ -72,22 +72,43 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
+const GENERIC_NARROWING_HINT = 'Narrow the call to page through it: pass a smaller limit or filters in input.query, or fetch one item by id.'
+
+/**
+ * How to narrow `op`'s answer, from the input it really takes: the query
+ * parameters it names, or, when it has none, a plain statement that it has no
+ * filter. A hint naming a parameter the operation lacks sends the agent into a
+ * refusal.
+ */
+export function narrowingHint(op: { readonly query?: z.ZodObject<z.ZodRawShape>; readonly inputSchema?: JsonSchemaObject }): string {
+  const names = op.inputSchema
+    ? Object.keys(op.inputSchema.properties ?? {}).filter((name) => name !== 'projectId')
+    : Object.keys(op.query?.shape ?? {})
+  if (names.length === 0) {
+    return (
+      'This operation has no limit or filter, so its answer cannot be narrowed here. ' +
+      'Use a narrower operation (describe-operation lists the others in its domain), or one that fetches a single item by id.'
+    )
+  }
+  const where = op.inputSchema ? 'in input' : 'in input.query'
+  return `Narrow the call with the parameters this operation takes (${names.join(', ')}) ${where}, or fetch one item by id with a narrower operation.`
+}
+
 /**
  * Text for a model, capped; whether it was cut. Compact JSON: indentation is a
  * third of a pretty-printed answer, and the model reads it as tokens it pays for.
  */
-function renderText(value: unknown): { text: string; truncated: boolean } {
+function renderText(value: unknown, hint = GENERIC_NARROWING_HINT): { text: string; truncated: boolean } {
   const full = typeof value === 'string' ? value : (JSON.stringify(value) ?? 'null')
   if (full.length <= MAX_RESULT_CHARS) return { text: full, truncated: false }
   const note =
     `\n\n[Truncated: showing ${MAX_RESULT_CHARS} of ${full.length} characters. ` +
-    'Narrow the call to page through it: pass a smaller limit or filters in input.query, ' +
-    'or fetch one item by id.]'
+    `${hint}]`
   return { text: full.slice(0, MAX_RESULT_CHARS) + note, truncated: true }
 }
 
-function success(value: unknown): CallToolResult {
-  const { text, truncated } = renderText(value)
+function success(value: unknown, hint?: string): CallToolResult {
+  const { text, truncated } = renderText(value, hint)
   const result: CallToolResult = { content: [{ type: 'text', text }] }
   // structuredContent must be an object; a client that reads it would bypass the cap.
   if (!truncated) result.structuredContent = isRecord(value) ? value : { result: value }
@@ -154,11 +175,12 @@ function redirectResult(opName: string, location: string): CallToolResult {
 }
 
 /** An answer too large to read: the agent is told to narrow the call, as the text cap tells it. */
-function oversizedResult(opName: string, body: OversizedBody): CallToolResult {
+function oversizedResult(op: AgentOperation | BackendOperation, body: OversizedBody): CallToolResult {
+  const opName = op.name
   return failure(
     `${opName} answered with more than ${sizeText(MAX_TEXT_BYTES)} of ${body.contentType || 'text'}` +
       (body.bytes === null ? '' : ` (${sizeText(body.bytes)})`) +
-      ', so it was not read. Narrow the call: pass a smaller limit or filters in input.query, or fetch one item by id.'
+      `, so it was not read. ${narrowingHint(op)}`
   )
 }
 
@@ -177,12 +199,13 @@ function refusalResult(result: OperationResult): CallToolResult {
 }
 
 /** A route's answer as the tool result. */
-function fromOperationResult(opName: string, result: OperationResult): CallToolResult {
-  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
+function fromOperationResult(op: AgentOperation, result: OperationResult): CallToolResult {
+  const opName = op.name
+  if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   if (isBinaryBody(result.body)) return binaryResult(opName, result.body)
   if (isRedirectBody(result.body)) return redirectResult(opName, result.body.location)
-  return success(result.body)
+  return success(result.body, narrowingHint(op))
 }
 
 /**
@@ -190,13 +213,14 @@ function fromOperationResult(opName: string, result: OperationResult): CallToolR
  * `{ tool, result }`: the result is capped text with structuredContent, except
  * the page-image tool's content blocks, which stay images.
  */
-function fromBackendResult(opName: string, result: OperationResult): CallToolResult {
-  if (isOversizedBody(result.body)) return oversizedResult(opName, result.body)
+function fromBackendResult(op: BackendOperation, result: OperationResult): CallToolResult {
+  const hint = narrowingHint(op)
+  if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
   const value = isRecord(result.body) && 'result' in result.body ? result.body.result : result.body
-  if (!Array.isArray(value)) return success(value)
+  if (!Array.isArray(value)) return success(value, hint)
   const content = toMcpContent(value).map((block) =>
-    block.type === 'text' ? { type: 'text' as const, text: renderText(block.text).text } : block,
+    block.type === 'text' ? { type: 'text' as const, text: renderText(block.text, hint).text } : block,
   )
   return { content }
 }
@@ -288,7 +312,7 @@ export async function runBackendOperation(
     }
     const result = await callBackendOperation(op.name, input, ctx.principal.session, { projectId })
     record(result.status)
-    return fromBackendResult(op.name, result)
+    return fromBackendResult(op, result)
   } catch (error) {
     console.error('[mcp] backend operation failed', op.name, error)
     record(500)
@@ -361,7 +385,7 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
     record(result.status)
     // A link works for whoever holds it, with the requester's access: never into a transcript others read.
     if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return failure(sharedConversationReadRefusal())
-    return fromOperationResult(op.name, result)
+    return fromOperationResult(op, result)
   } catch (error) {
     if (error instanceof OperationInputError) {
       record(400)

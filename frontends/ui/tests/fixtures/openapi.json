@@ -528,9 +528,33 @@
       "get": {
         "operationId": "project-list",
         "summary": "List the projects the person can see",
-        "description": "Every project the person may open in this organization, with its id, name and lifecycle status. Start here: most other operations take a project id from this list.",
+        "description": "The projects the person may open, one short row each: `id`, `name`, `status`, `projectName` (what people call it, from the profile; may differ from `name`), `siteAddress` and dates. `nameContains` finds one by either name; `view: \"full\"` adds the profile (large). Start here: most other operations take a project id from this list.",
         "tags": [
           "projects"
+        ],
+        "parameters": [
+          {
+            "name": "view",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "summary",
+                "full"
+              ]
+            }
+          },
+          {
+            "name": "nameContains",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
         ],
         "responses": {
           "200": {

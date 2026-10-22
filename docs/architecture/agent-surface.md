@@ -604,7 +604,10 @@ is read and the agent is told to narrow the call. The backend operations' answer
 same reader (`readResponseBody`), and their refusals are normalised once, in
 `callBackendOperation`, to the routes' error envelope (`{ error, code, details }`), so the agent
 reads a refusal from either the same way. The tool result shows `MAX_RESULT_CHARS` (40k
-characters) of compact JSON: the one cap, which Piloti's client does not cut again. Input that does
+characters) of compact JSON: the one cap, which Piloti's client does not cut again. A cut answer ends
+with a hint built from the operation's own input (`narrowingHint`): the query parameters it takes, or a
+plain statement that it has no filter and a narrower operation is needed. A list route returns lean rows
+by default (`project-list`: `view=summary`, `view=full` opts in) and never an embedding vector. Input that does
 not fit an operation comes back with the reason and, when it is short, the input schema itself.
 
 **In.** An operation says `bodyEncoding`:
