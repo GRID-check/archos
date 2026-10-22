@@ -26,6 +26,7 @@ import { type McpServer, ResourceTemplate, completable, fromJsonSchema } from '@
 import vocabulary from '@/lib/text/operation-search-vocabulary.json'
 import { readOperationBody } from '../discovery'
 import { audienceOf } from '../exposure'
+import { PROMPT_ICONS, RESOURCE_ICONS } from '../icons'
 import { AGENT_DOMAINS, annotationsOf } from '../operation'
 import { doorOfPrincipal, findVisibleOperation, visibleBackendOperations, visibleOperations } from '../policy'
 import type { McpCallContext } from '../telemetry'
@@ -195,25 +196,25 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
   server.registerResource(
     'guide',
     GUIDE_URI,
-    { title: 'Working in Piloti', description: 'How the workspace fits together, how ids flow, and which operation reads what.', mimeType: 'text/markdown' },
+    { title: 'Working in Piloti', description: 'How the workspace fits together, how ids flow, and which operation reads what.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.guide },
     async () => markdown(GUIDE_URI, DOOR_DOCS['guide.md']),
   )
   server.registerResource(
     'glossary',
     GLOSSARY_URI,
-    { title: 'Piloti glossary', description: 'The office’s German words and the catalog’s English ones.', mimeType: 'text/markdown' },
+    { title: 'Piloti glossary', description: 'The office’s German words and the catalog’s English ones.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.glossary },
     async () => markdown(GLOSSARY_URI, glossaryText()),
   )
   server.registerResource(
     'catalog',
     CATALOG_URI,
-    { title: 'Operations you can run', description: 'Every operation this connection may run, by domain, and whether it reads or writes.', mimeType: 'text/markdown' },
+    { title: 'Operations you can run', description: 'Every operation this connection may run, by domain, and whether it reads or writes.', mimeType: 'text/markdown', icons: RESOURCE_ICONS.catalog },
     async () => markdown(CATALOG_URI, catalogText(ctx)),
   )
   if (findVisibleOperation(ctx.principal, 'project-overview-get')) registerProjectResource(server, ctx)
   for (const prompt of DOOR_PROMPTS) {
     const doc = promptDoc(prompt.name)
-    const config = { title: prompt.title, description: prompt.description }
+    const config = { title: prompt.title, description: prompt.description, icons: PROMPT_ICONS[prompt.name as keyof typeof PROMPT_ICONS] }
     if (Object.keys(prompt.args).length === 0) {
       server.registerPrompt(prompt.name, config, () => userMessage(fillDoc(doc, {})))
     } else {
@@ -228,6 +229,7 @@ export function registerDoorGuide(server: McpServer, ctx: McpCallContext): void 
       {
         title: 'Use one of the office’s skills',
         description: 'Follow one of the office’s own written procedures, by its name.',
+        icons: PROMPT_ICONS['office-skill'],
         argsSchema: argsSchema({ skill: 'The skill’s name, as the skills page in Piloti shows it.' }, completers),
       },
       async (args) => userMessage(await officeSkillText(ctx, String((args as { skill?: unknown }).skill ?? ''))),
@@ -258,7 +260,7 @@ function registerProjectResource(server: McpServer, ctx: McpCallContext): void {
   server.registerResource(
     'project',
     template,
-    { title: 'A project', description: 'One project’s overview: its profile summary, counts and latest activity.', mimeType: 'application/json' },
+    { title: 'A project', description: 'One project’s overview: its profile summary, counts and latest activity.', mimeType: 'application/json', icons: RESOURCE_ICONS.project },
     async (uri, variables) => {
       const id = String(variables.projectId ?? '')
       const read = await readOperationBody(ctx, 'project-overview-get', { params: { id } })

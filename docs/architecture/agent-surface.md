@@ -490,6 +490,27 @@ good answer is; it names no sequence of operations, so the agent finds them.
 Piloti's own client gets neither: it reads neither, and the guide names
 operations its door leaves to its native tools.
 
+### Output schemas and icons
+
+`search-operations`, `describe-operation` and `report-missing-operation` declare
+an `outputSchema` (`lib/agent-api/meta-output-schemas.ts`), so a client can
+validate and type what they answer. `call-operation` declares none: its result
+is whatever the operation answers. `success()` drops `structuredContent` when the
+text is cut at `MAX_RESULT_CHARS`, and the SDK turns a result without it into an
+error; `meta-output-schemas.spec.ts` holds that these three never get near the
+cap (every operation's description is run). The schemas are not part of
+`metaToolsFor`, so Piloti's own client fixture is unchanged. `tools` mode
+declares none: a catalog operation has no declared response wire type to derive
+one from (routes answer through service return types, not a shared zod schema).
+
+Icons (`lib/agent-api/icons.ts`) are small inline SVG `data:` URIs, a light and a
+dark variant each, in the brand's ink: the Piloti column on the server (with title
+`Piloti`, and `websiteUrl` from `configuredAppOrigin()` when the deployment pins
+one), one glyph per meaning on the four meta-tools, the resources and the
+prompts. They add about 4 KB to a `search` mode `tools/list`. `tools` mode lists
+none on its tools: per-operation or per-domain icons would repeat ~700 bytes on
+~300 tools against a 1,000 character budget a tool.
+
 ## Adding an operation
 
 Do this in the same change that adds or changes the route. The exemplar is

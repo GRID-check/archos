@@ -40,6 +40,9 @@ import { type AgentOperation, annotationsOf } from './operation'
 import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import { registerDoorGuide } from './door'
+import { META_TOOL_ICONS, SERVER_ICONS } from './icons'
+import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
+import { configuredAppOrigin } from '@/lib/app-origin'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -62,9 +65,9 @@ export const PLATFORM_MCP_INSTRUCTIONS = [
 ].join(' ')
 
 /** The server's name and instructions on each door. */
-const SERVER_IDENTITY: Readonly<Record<AgentDoor, { name: string; instructions: string }>> = {
-  office: { name: 'piloti', instructions: MCP_INSTRUCTIONS },
-  platform: { name: 'piloti-platform', instructions: PLATFORM_MCP_INSTRUCTIONS },
+const SERVER_IDENTITY: Readonly<Record<AgentDoor, { name: string; title: string; instructions: string }>> = {
+  office: { name: 'piloti', title: 'Piloti', instructions: MCP_INSTRUCTIONS },
+  platform: { name: 'piloti-platform', title: 'Piloti platform', instructions: PLATFORM_MCP_INSTRUCTIONS },
 }
 
 /**
@@ -128,6 +131,12 @@ export function listedAnnotations(annotations: ToolAnnotations): ToolAnnotations
   }
 }
 
+/** The declared result shape of a meta-tool that has one (`call-operation` does not: its result varies by operation). */
+function outputSchemaOf(name: string): { outputSchema?: StandardSchemaWithJSON } {
+  const schema = (META_OUTPUT_SCHEMAS as Readonly<Record<string, unknown>>)[name]
+  return schema ? { outputSchema: fromJsonSchema(schema as JsonSchemaInput) } : {}
+}
+
 function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
   const handlers: Record<MetaToolName, (args: unknown) => ReturnType<typeof callOperationTool> | ReturnType<typeof searchOperations>> = {
     'search-operations': (args) => searchOperations(ctx, args),
@@ -142,6 +151,8 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
         title: tool.title,
         description: tool.description,
         inputSchema: fromJsonSchema(tool.inputSchema as JsonSchemaInput),
+        ...outputSchemaOf(name),
+        icons: META_TOOL_ICONS[name],
         annotations: {
           readOnlyHint: tool.readOnly,
           // call-operation can run any operation, deletes included: the client asks the person.
@@ -199,8 +210,10 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
 }
 
 export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpServer {
-  const { name, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
-  const server = new McpServer({ name, version: '1.0.0' }, { instructions })
+  const { name, title, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
+  // The deployment's pinned origin; omitted where none is configured (never the inbound Host header).
+  const websiteUrl = configuredAppOrigin()
+  const server = new McpServer({ name, title, version: '1.0.0', icons: SERVER_ICONS, ...(websiteUrl ? { websiteUrl } : {}) }, { instructions })
   const ctx: McpCallContext = { principal, mode }
   if (mode === 'tools') registerOperationTools(server, ctx)
   else registerMetaTools(server, ctx)
