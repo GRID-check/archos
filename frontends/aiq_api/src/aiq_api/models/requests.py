@@ -18,6 +18,8 @@ from pydantic import model_validator
 
 from aiq_agent.profile_names import normalize_profile_token
 
+from ..object_store_url import ObjectStoreUrl
+
 logger = logging.getLogger(__name__)
 
 #: Bounds of an office's screening terms. The ingest job applies the same ones
@@ -155,7 +157,7 @@ class ProjectFactsUpdate(BaseModel):
 class IngestRequest(BaseModel):
     """Request body for URL-based ingestion."""
 
-    file_ref: str = Field(..., description="Presigned URL or file reference to download")
+    file_ref: ObjectStoreUrl = Field(..., description="Presigned GET of the original in the object store")
     collection: str = Field(..., description="Target collection name")
     document_id: str | None = Field(None, description="Optional document tracking ID")
     project_id: str | None = Field(
@@ -213,8 +215,10 @@ class IngestRequest(BaseModel):
             "decides, whatever the priority."
         ),
     )
-    thumbnail_upload_url: str | None = Field(None, description="Presigned URL for uploading a generated thumbnail")
-    preview_ref: str | None = Field(
+    thumbnail_upload_url: ObjectStoreUrl | None = Field(
+        None, description="Presigned PUT in the object store for the generated thumbnail"
+    )
+    preview_ref: ObjectStoreUrl | None = Field(
         None,
         description=(
             "Presigned GET of the document's PDF rendition (`<dir>/_render.pdf`, ADR-0070), sent "
@@ -224,7 +228,7 @@ class IngestRequest(BaseModel):
             "stored in the job config and never logged: a presigned URL is a bearer credential."
         ),
     )
-    extraction_ref: str | None = Field(
+    extraction_ref: ObjectStoreUrl | None = Field(
         None,
         description=(
             "Presigned GET of the document's PDF rendition to EXTRACT from (ADR-0071), sent by the "
