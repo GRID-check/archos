@@ -56,7 +56,6 @@ const BASELINE: readonly string[] = [
   'platform-profiler-conversation-list',
   'platform-skill-category-list',
   'platform-skill-list',
-  'project-folder-bin-list',
   'project-folder-list',
   'project-list',
   'project-member-list',

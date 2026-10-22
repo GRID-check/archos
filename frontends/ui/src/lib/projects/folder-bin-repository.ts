@@ -369,6 +369,12 @@ export interface FolderBinPayload {
   derivedRemoval?: DerivedRemovalRecord
   /** What a purge removed, counted. */
   purged?: FolderPurgeCounts
+  /**
+   * The document this entry was made for, when one document went to the bin
+   * on its own (`document-bin.ts`): the folder is the document's holder, and
+   * restoring the document takes it back out.
+   */
+  documentId?: string
 }
 
 export interface FolderPurgeCounts {
@@ -617,28 +623,52 @@ export interface BinEntryRow {
   status: string
   documents: number
   folders: number
+  /** The document of a single-document entry, when this reader may see it. */
+  document: { id: string; name: string } | null
 }
 
-/** Most bin entries one listing returns. */
-export const BIN_LIST_LIMIT = 200
+/** The `to_char` pattern of {@link BinEntryCursor.deletedAt}. */
+const BIN_CURSOR_TIMESTAMP_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.US'
+
+/** Where a bin page starts: the last entry of the page before, in `deleted_at DESC, id DESC` order. */
+export interface BinEntryCursor {
+  /** `YYYY-MM-DDTHH:MM:SS.ffffff`, UTC, as `to_char` wrote it. */
+  deletedAt: string
+  folderId: string
+}
+
+export interface BinEntryPage {
+  rows: BinEntryRow[]
+  nextCursor: BinEntryCursor | null
+}
 
 /**
- * The project's bin entries, newest first: each deleted folder's root, with
- * what it holds as the reader may count it. A held file of somebody else is
- * not in the number (ADR-0086): a count that moves when a colleague's upload
- * lands in a binned folder says it is there.
+ * One page of the project's bin entries, newest first: each deleted folder's
+ * root, with what it holds as the reader may count it. A held file of somebody
+ * else is not in the number (ADR-0086): a count that moves when a colleague's
+ * upload lands in a binned folder says it is there. An entry made for one
+ * document names it, through the same visibility.
  */
 export async function listBinEntries(
   organizationId: string,
   projectId: string,
-  reader: DocumentReader
-): Promise<BinEntryRow[]> {
+  reader: DocumentReader,
+  page: { limit: number; cursor?: BinEntryCursor }
+): Promise<BinEntryPage> {
   const db = getDb()
   const visible = documentVisibleTo(reader) ?? sql`true`
+  const after = page.cursor
+    ? sql`AND (f.deleted_at, f.id) < ((${page.cursor.deletedAt}::timestamp AT TIME ZONE 'UTC'), ${page.cursor.folderId}::uuid)`
+    : sql``
   const rows = await withTenant({ organizationId }, () =>
     db.execute(sql`
       SELECT f.id AS folder_id, f.name, f.path, f.deleted_at, f.deleted_by,
-             q.purge_after, q.status,
+             to_char(f.deleted_at AT TIME ZONE 'UTC', ${BIN_CURSOR_TIMESTAMP_FORMAT}) AS deleted_cursor,
+             q.purge_after, q.status, q.payload->>'documentId' AS document_id,
+             (SELECT coalesce(${documents.displayName}, ${documents.filename}) FROM ${documents}
+               WHERE ${documents.organizationId} = ${organizationId}
+                 AND ${documents.id}::text = q.payload->>'documentId'
+                 AND ${visible}) AS document_name,
              (SELECT count(*) FROM project_folders s
                WHERE s.bin_root_id = f.id AND s.purged_at IS NULL) AS folders,
              (SELECT count(*) FROM ${documents}
@@ -655,21 +685,33 @@ export async function listBinEntries(
         AND f.bin_root_id = f.id
         AND f.deleted_at IS NOT NULL
         AND f.purged_at IS NULL
-      ORDER BY f.deleted_at DESC
-      LIMIT ${BIN_LIST_LIMIT}
+        ${after}
+      ORDER BY f.deleted_at DESC, f.id DESC
+      LIMIT ${page.limit + 1}
     `)
   )
-  return executeRows<Record<string, unknown>>(rows).map((row) => ({
-    folderId: String(row.folder_id),
-    name: String(row.name),
-    path: String(row.path),
-    deletedAt: new Date(String(row.deleted_at)),
-    deletedBy: row.deleted_by === null ? null : String(row.deleted_by),
-    purgeAfter: new Date(String(row.purge_after)),
-    status: String(row.status),
-    documents: Number(row.documents),
-    folders: Number(row.folders),
-  }))
+  const all = executeRows<Record<string, unknown>>(rows)
+  const more = all.length > page.limit
+  const kept = more ? all.slice(0, page.limit) : all
+  const last = kept.at(-1)
+  return {
+    rows: kept.map((row) => ({
+      folderId: String(row.folder_id),
+      name: String(row.name),
+      path: String(row.path),
+      deletedAt: new Date(String(row.deleted_at)),
+      deletedBy: row.deleted_by === null ? null : String(row.deleted_by),
+      purgeAfter: new Date(String(row.purge_after)),
+      status: String(row.status),
+      documents: Number(row.documents),
+      folders: Number(row.folders),
+      document:
+        row.document_id && row.document_name !== null && row.document_name !== undefined
+          ? { id: String(row.document_id), name: String(row.document_name) }
+          : null,
+    })),
+    nextCursor: more && last ? { deletedAt: String(last.deleted_cursor), folderId: String(last.folder_id) } : null,
+  }
 }
 
 /** A living folder of the project, for a restore that keeps its parent. */

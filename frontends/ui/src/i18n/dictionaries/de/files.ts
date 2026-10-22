@@ -635,6 +635,8 @@ export const files: typeof en.files = {
     cancel: 'Abbrechen',
     loadError: 'Der Papierkorb konnte nicht geladen werden.',
     retry: 'Erneut versuchen',
+    document: 'Dokument · kommt beim Wiederherstellen in seinen Ordner zurück',
+    loadMore: 'Weitere laden',
   },
   workspace: {
     more: 'Mehr',

@@ -25,6 +25,7 @@ import { officeShelfNameProbeRequestSchema } from '@/lib/documents/name-probe-ty
 import { searchOfficeShelfSchema } from '@/lib/office-shelf/search-wire'
 import { applyRootSortRequestSchema } from '@/lib/filing/root-sort-wire'
 import { folderAccessSchema } from '@/lib/projects/folder-access-wire'
+import { binListQuerySchema } from '@/lib/projects/folder-bin-wire'
 import {
   openUploadBatchSchema,
   sealUploadBatchSchema,
@@ -125,7 +126,7 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Move a project folder to the bin',
     description:
-      "Moves the folder with its subfolders and documents to the project's Papierkorb. It stays " +
+      "Moves the folder with its subfolders and documents to the project's bin. It stays " +
       'restorable (project-folder-restore) until the `purgeAfter` date the response names, then is ' +
       'purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the ' +
       'folder and everything below it.',
@@ -137,14 +138,16 @@ export const foldersOperations = [
   {
     name: 'project-folder-bin-list',
     domain: 'folders',
-    summary: 'List a project’s deleted folders',
+    summary: 'List a project’s bin: deleted folders and documents',
     description:
-      "The project's Papierkorb: the deleted folders the person may read, who deleted each and when, " +
-      'when its purge runs, and what the person may do about it (restore, purge now). Folder ids from ' +
-      'here feed project-folder-restore and project-folder-bin-purge.',
+      "The project's bin, newest first, a page at a time: each deleted folder the person may read, who deleted it and when, " +
+      'when its purge runs, and whether they may restore it. An entry with `document` holds one document sent there with ' +
+      'document-bin: restore it with document-restore. Folder ids feed project-folder-restore and project-folder-bin-purge. ' +
+      'Follow `nextCursor` (pass it as `cursor`) until it is null.',
     method: 'GET',
     path: '/api/projects/[id]/bin',
     params: projectParams,
+    query: binListQuerySchema,
     load: () => import('@/app/api/projects/[id]/bin/route'),
   },
   {

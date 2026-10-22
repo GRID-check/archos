@@ -29,6 +29,7 @@ export const DOCUMENT_NAME_ACTIONS = [
   'document.quarantine_released',
   'document.deleted',
   'document.archived',
+  'document.unarchived',
   'document.generated',
   'document.renamed',
 ] as const satisfies readonly AuditAction[]

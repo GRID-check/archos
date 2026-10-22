@@ -1,33 +1,23 @@
 /**
- * The Papierkorb client (ADR-0088): a project's deleted folders, restoring one,
- * purging one now, and the organization's setting for content derived from
- * deleted folders.
+ * The bin client (ADR-0088): a project's deleted folders and binned documents,
+ * restoring one, purging one now, and the organization's setting for content
+ * derived from deleted folders. The listing's shape is the route's own
+ * (`@/lib/projects/folder-bin-wire`).
  */
 
 import { z } from 'zod'
+import {
+  BIN_PAGE_MAX,
+  binListingSchema,
+  documentRestoreResultSchema,
+  type BinEntryWire,
+  type BinListingWire,
+  type DocumentRestoreResult,
+} from '@/lib/projects/folder-bin-wire'
 import { ApiRequestError } from './api-error'
 
-const BinEntrySchema = z.object({
-  folderId: z.string(),
-  name: z.string(),
-  path: z.string(),
-  deletedAt: z.string(),
-  deletedBy: z.object({ userId: z.string().nullable(), name: z.string().nullable() }),
-  purgeAfter: z.string(),
-  status: z.string(),
-  documents: z.number(),
-  folders: z.number(),
-  canRestore: z.boolean(),
-})
-
-export type FolderBinEntry = z.infer<typeof BinEntrySchema>
-
-const BinListingSchema = z.object({
-  entries: z.array(BinEntrySchema),
-  canPurge: z.boolean(),
-})
-
-export type FolderBinListing = z.infer<typeof BinListingSchema>
+export type FolderBinEntry = BinEntryWire
+export type FolderBinListing = BinListingWire
 
 const RestoreSchema = z.object({
   restoredTo: z.enum(['original', 'root']),
@@ -79,8 +69,15 @@ async function request<T>(url: string, init: RequestInit, schema: z.ZodType<T>):
 
 const project = (projectId: string): string => `/api/projects/${encodeURIComponent(projectId)}`
 
-export function listFolderBin(projectId: string): Promise<FolderBinListing> {
-  return request(`${project(projectId)}/bin`, { method: 'GET' }, BinListingSchema)
+/** One page of the bin, as large as the route serves; `cursor` continues after the page before. */
+export function listFolderBin(projectId: string, cursor?: string): Promise<FolderBinListing> {
+  const query = new URLSearchParams({ limit: String(BIN_PAGE_MAX), ...(cursor ? { cursor } : {}) })
+  return request(`${project(projectId)}/bin?${query.toString()}`, { method: 'GET' }, binListingSchema)
+}
+
+/** Take a document that went to the bin on its own back out, to the folder it came from. */
+export function restoreDocument(documentId: string): Promise<DocumentRestoreResult> {
+  return request(`/api/documents/${encodeURIComponent(documentId)}/restore`, { method: 'POST' }, documentRestoreResultSchema)
 }
 
 export function restoreFolder(projectId: string, folderId: string): Promise<RestoreFolderResult> {

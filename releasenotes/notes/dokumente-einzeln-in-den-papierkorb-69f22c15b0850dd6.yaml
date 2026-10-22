@@ -1,0 +1,9 @@
+---
+features:
+  - >
+    A single document can now go to the bin and come back from it: the bin
+    lists it by name, and restoring it files it back in the folder it came
+    from.
+  - >
+    An archived document can be brought back into the working set, and Piloti
+    reads it again so it answers questions as before.

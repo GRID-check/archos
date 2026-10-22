@@ -75,7 +75,8 @@ All list/get queries for projects and conversations gain `WHERE deleted_at IS NU
 | Entity | Confirm UX | Grace period | Restorable |
 |---|---|---|---|
 | Folder | simple confirm; „Endgültig löschen" (project admins) confirms again | 14 days (config `FOLDER_PURGE_GRACE_DAYS`) in the Papierkorb | yes, with its access, subfolders and documents |
-| Document | simple confirm dialog | 0 (purged on next reaper tick, ≤~60s) | no |
+| Document, deleted | simple confirm dialog | 0 (purged on next reaper tick, ≤~60s) | no |
+| Document, to the bin (`POST /api/documents/[id]/bin`) | none; restorable | the folder grace period: it goes to the Papierkorb in a folder of its own, made in its folder and named after it (as „Ausmisten" does, ADR-0092), and the entry records the document | yes, to the folder it came from (`POST /api/documents/[id]/restore`) |
 | Conversation | simple confirm (existing modal flow, upgraded) | 0 | no |
 | Project | **type-to-confirm** (project name) | 7 days (config `PROJECT_PURGE_GRACE_DAYS`) | yes |
 | Organization | **type-to-confirm** (org name), org owner only | 14 days (config `ORG_PURGE_GRACE_DAYS`) | yes |
@@ -321,7 +322,8 @@ Beside it, `POST /v1/maintenance/reconcile-summaries` (same guard) forgets summa
 - `DELETE /api/projects/[id]` — reworked: permission check → set `projects.deleted_at` → insert `deletion_queue` row. No hard deletes, no WorkOS call here.
 - `POST /api/projects/[id]/restore` — org admin; within grace; clears `deleted_at`, sets queue row `restored`.
 - `DELETE /api/projects/[id]/folders/[folderId]` — the folder, its subfolders and documents to the Papierkorb; enqueue (grace `FOLDER_PURGE_GRACE_DAYS`).
-- `GET /api/projects/[id]/bin`, `POST /api/projects/[id]/bin/[folderId]/restore`, `DELETE /api/projects/[id]/bin/[folderId]` („Endgültig löschen", `project:manage`).
+- `GET /api/projects/[id]/bin` (paged: `limit`, `cursor`; an entry made for one document names it in `document`), `POST /api/projects/[id]/bin/[folderId]/restore`, `DELETE /api/projects/[id]/bin/[folderId]` („Endgültig löschen", `project:manage`).
+- `POST /api/documents/[id]/bin` and `POST /api/documents/[id]/restore` — one project document to the Papierkorb and back (`lib/projects/document-bin.ts`). A document that went with its folder is restored with the folder (409 `binned-with-folder` names it).
 - `POST /api/internal/folders/[id]/purge` — token-guarded; the purger's purge of a bin entry, in the queue row's organization.
 - `GET`/`PUT /api/organization/deleted-folder-content` — the setting; `PUT` needs `org:settings:manage`.
 - `DELETE /api/documents/[id]` — new; soft-delete + enqueue (grace 0).

@@ -4005,7 +4005,7 @@
       "post": {
         "operationId": "document-archive",
         "summary": "Archive a document",
-        "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Needs write access on the document’s project.",
+        "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.",
         "tags": [
           "documents"
         ],
@@ -4063,6 +4063,60 @@
           "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/bin": {
+      "post": {
+        "operationId": "document-bin",
+        "summary": "Move a project document to the bin",
+        "description": "Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. Needs write access on its folder. An office shelf document has no bin (409).",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Move a project document to the bin",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
           "openWorldHint": false
         }
       }
@@ -4143,7 +4197,7 @@
       "delete": {
         "operationId": "document-delete",
         "summary": "Permanently delete a project document",
-        "description": "Erases a project document, its versions and its indexed text. This cannot be undone, and a legal hold refuses it with a 409. To only take a document out of the working set, call document-archive instead.",
+        "description": "Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.",
         "tags": [
           "documents"
         ],
@@ -4810,6 +4864,60 @@
         }
       }
     },
+    "/api/documents/{id}/restore": {
+      "post": {
+        "operationId": "document-restore",
+        "summary": "Restore a document from the bin",
+        "description": "Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: \"root\"` when that folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Restore a document from the bin",
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "idempotentHint": false,
+          "openWorldHint": false
+        }
+      }
+    },
     "/api/projects/{id}/document-roles/{bindingId}": {
       "delete": {
         "operationId": "document-role-clear",
@@ -5419,6 +5527,60 @@
         "x-mcp-annotations": {
           "title": "Get a document’s thumbnail link",
           "readOnlyHint": true,
+          "destructiveHint": false,
+          "idempotentHint": true,
+          "openWorldHint": false
+        }
+      }
+    },
+    "/api/documents/{id}/unarchive": {
+      "post": {
+        "operationId": "document-unarchive",
+        "summary": "Bring an archived document back",
+        "description": "The reverse of document-archive: the document is back in the default listings and is read into the index again. Answers `{ documentId, lifecycle, ingest }`; follow `ingest: \"queued\"` with document-status. A document that was not archived is answered `ingest: \"unchanged\"`. Needs write access on the document’s project.",
+        "tags": [
+          "documents"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "The document id, from a project document listing or document-search."
+            },
+            "description": "The document id, from a project document listing or document-search."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Success. The body is the route’s JSON answer; no response schema is declared for it yet, so read the operation description for what it contains.",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/Error400"
+          },
+          "401": {
+            "$ref": "#/components/responses/Error401"
+          },
+          "403": {
+            "$ref": "#/components/responses/Error403"
+          },
+          "404": {
+            "$ref": "#/components/responses/Error404"
+          },
+          "429": {
+            "$ref": "#/components/responses/Error429"
+          }
+        },
+        "x-mcp-annotations": {
+          "title": "Bring an archived document back",
+          "readOnlyHint": false,
           "destructiveHint": false,
           "idempotentHint": true,
           "openWorldHint": false
@@ -8087,8 +8249,8 @@
     "/api/projects/{id}/bin": {
       "get": {
         "operationId": "project-folder-bin-list",
-        "summary": "List a project’s deleted folders",
-        "description": "The project's Papierkorb: the deleted folders the person may read, who deleted each and when, when its purge runs, and what the person may do about it (restore, purge now). Folder ids from here feed project-folder-restore and project-folder-bin-purge.",
+        "summary": "List a project’s bin: deleted folders and documents",
+        "description": "The project's bin, newest first, a page at a time: each deleted folder the person may read, who deleted it and when, when its purge runs, and whether they may restore it. An entry with `document` holds one document sent there with document-bin: restore it with document-restore. Folder ids feed project-folder-restore and project-folder-bin-purge. Follow `nextCursor` (pass it as `cursor`) until it is null.",
         "tags": [
           "folders"
         ],
@@ -8102,6 +8264,27 @@
               "description": "The project id, from project-list."
             },
             "description": "The project id, from project-list."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "description": "Entries per page, 1 to 200; default 50."
+            },
+            "description": "Entries per page, 1 to 200; default 50."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "The `nextCursor` of the previous page."
+            },
+            "description": "The `nextCursor` of the previous page."
           }
         ],
         "responses": {
@@ -8130,7 +8313,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "List a project’s deleted folders",
+          "title": "List a project’s bin: deleted folders and documents",
           "readOnlyHint": true,
           "destructiveHint": false,
           "idempotentHint": true,
@@ -8344,7 +8527,7 @@
       "delete": {
         "operationId": "project-folder-delete",
         "summary": "Move a project folder to the bin",
-        "description": "Moves the folder with its subfolders and documents to the project's Papierkorb. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.",
+        "description": "Moves the folder with its subfolders and documents to the project's bin. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.",
         "tags": [
           "folders"
         ],

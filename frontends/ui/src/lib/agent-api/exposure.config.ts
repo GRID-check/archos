@@ -166,6 +166,7 @@ export const EXPOSURE = {
   // documents
   'deletion-list': OFFERED,
   'document-archive': OFFERED,
+  'document-bin': OFFERED,
   'document-by-name-resolve': OFFERED,
   'document-delete': OFFERED,
   'document-download': OFFERED,
@@ -178,6 +179,7 @@ export const EXPOSURE = {
   'document-preview-get': OFFERED,
   'document-reingest': OFFERED,
   'document-rename': OFFERED,
+  'document-restore': OFFERED,
   'document-role-clear': OFFERED,
   'document-role-declare': OFFERED,
   'document-role-list': OFFERED,
@@ -187,6 +189,7 @@ export const EXPOSURE = {
   'document-tags-update': OFFERED,
   'document-text-get': OFFERED,
   'document-thumbnail-get': OFFERED,
+  'document-unarchive': OFFERED,
   'document-upload': OFFERED,
   'document-version-file-get': OFFERED,
   'document-visual-details-get': OFFERED,

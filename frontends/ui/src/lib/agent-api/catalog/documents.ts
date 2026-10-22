@@ -88,13 +88,39 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Permanently delete a project document',
     description:
-      'Erases a project document, its versions and its indexed text. This cannot be undone, and a legal hold refuses it with a 409. ' +
-      'To only take a document out of the working set, call document-archive instead.',
+      'Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses ' +
+      'it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.',
     method: 'DELETE',
     path: '/api/documents/[id]',
     params: documentParams,
     destructive: true,
     load: () => import('@/app/api/documents/[id]/route'),
+  },
+  {
+    name: 'document-bin',
+    domain: 'documents',
+    summary: 'Move a project document to the bin',
+    description:
+      'Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the ' +
+      'project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. ' +
+      'Needs write access on its folder. An office shelf document has no bin (409).',
+    method: 'POST',
+    path: '/api/documents/[id]/bin',
+    params: documentParams,
+    load: () => import('@/app/api/documents/[id]/bin/route'),
+  },
+  {
+    name: 'document-restore',
+    domain: 'documents',
+    summary: 'Restore a document from the bin',
+    description:
+      'Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: "root"` when that ' +
+      'folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the ' +
+      'folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.',
+    method: 'POST',
+    path: '/api/documents/[id]/restore',
+    params: documentParams,
+    load: () => import('@/app/api/documents/[id]/restore/route'),
   },
   {
     name: 'document-move',
@@ -130,13 +156,27 @@ export const documentsOperations = [
     summary: 'Archive a document',
     description:
       'Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file ' +
-      'and every version stay. Send an empty body. Needs write access on the document’s project.',
+      'and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.',
     method: 'POST',
     path: '/api/documents/[id]/archive',
     params: documentParams,
     body: archiveRequestSchema,
     idempotent: true,
     load: () => import('@/app/api/documents/[id]/archive/route'),
+  },
+  {
+    name: 'document-unarchive',
+    domain: 'documents',
+    summary: 'Bring an archived document back',
+    description:
+      'The reverse of document-archive: the document is back in the default listings and is read into the index again. ' +
+      'Answers `{ documentId, lifecycle, ingest }`; follow `ingest: "queued"` with document-status. A document that was not ' +
+      'archived is answered `ingest: "unchanged"`. Needs write access on the document’s project.',
+    method: 'POST',
+    path: '/api/documents/[id]/unarchive',
+    params: documentParams,
+    idempotent: true,
+    load: () => import('@/app/api/documents/[id]/unarchive/route'),
   },
   {
     name: 'document-status',

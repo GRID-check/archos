@@ -303,10 +303,19 @@
    "name": "document-archive",
    "domain": "documents",
    "summary": "Archive a document",
-   "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Needs write access on the document’s project.",
+   "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-archive\",\"domain\":\"documents\",\"summary\":\"Archive a document\",\"description\":\"Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Archive a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"document-archive\",\"domain\":\"documents\",\"summary\":\"Archive a document\",\"description\":\"Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Archive a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+  },
+  {
+   "name": "document-bin",
+   "domain": "documents",
+   "summary": "Move a project document to the bin",
+   "description": "Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. Needs write access on its folder. An office shelf document has no bin (409).",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"document-bin\",\"domain\":\"documents\",\"summary\":\"Move a project document to the bin\",\"description\":\"Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. Needs write access on its folder. An office shelf document has no bin (409).\",\"annotations\":{\"title\":\"Move a project document to the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-by-name-resolve",
@@ -321,10 +330,10 @@
    "name": "document-delete",
    "domain": "documents",
    "summary": "Permanently delete a project document",
-   "description": "Erases a project document, its versions and its indexed text. This cannot be undone, and a legal hold refuses it with a 409. To only take a document out of the working set, call document-archive instead.",
+   "description": "Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"document-delete\",\"domain\":\"documents\",\"summary\":\"Permanently delete a project document\",\"description\":\"Erases a project document, its versions and its indexed text. This cannot be undone, and a legal hold refuses it with a 409. To only take a document out of the working set, call document-archive instead.\",\"annotations\":{\"title\":\"Permanently delete a project document\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-delete\",\"domain\":\"documents\",\"summary\":\"Permanently delete a project document\",\"description\":\"Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.\",\"annotations\":{\"title\":\"Permanently delete a project document\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-download",
@@ -417,6 +426,15 @@
    "describe": "{\"name\":\"document-rename\",\"domain\":\"documents\",\"summary\":\"Rename a document\",\"description\":\"Set the name Piloti shows for a document (`displayName`); `null` clears it so the file name shows again. The stored file name never changes. Needs write access to the document’s project or shelf.\",\"annotations\":{\"title\":\"Rename a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"displayName\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"displayName\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
+   "name": "document-restore",
+   "domain": "documents",
+   "summary": "Restore a document from the bin",
+   "description": "Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: \"root\"` when that folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"document-restore\",\"domain\":\"documents\",\"summary\":\"Restore a document from the bin\",\"description\":\"Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: \\\"root\\\"` when that folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.\",\"annotations\":{\"title\":\"Restore a document from the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
    "name": "document-role-clear",
    "domain": "documents",
    "summary": "Clear a document-role binding",
@@ -487,6 +505,15 @@
    "readOnly": true,
    "destructive": false,
    "describe": "{\"name\":\"document-thumbnail-get\",\"domain\":\"documents\",\"summary\":\"Get a document’s thumbnail link\",\"description\":\"A time-limited URL of the document’s first-page thumbnail image, `{ url }`, with `url: null` when it has none (not drawn yet, or the file is held by the upload screening). The link expires; no bytes are sent here.\",\"annotations\":{\"title\":\"Get a document’s thumbnail link\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
+   "name": "document-unarchive",
+   "domain": "documents",
+   "summary": "Bring an archived document back",
+   "description": "The reverse of document-archive: the document is back in the default listings and is read into the index again. Answers `{ documentId, lifecycle, ingest }`; follow `ingest: \"queued\"` with document-status. A document that was not archived is answered `ingest: \"unchanged\"`. Needs write access on the document’s project.",
+   "readOnly": false,
+   "destructive": false,
+   "describe": "{\"name\":\"document-unarchive\",\"domain\":\"documents\",\"summary\":\"Bring an archived document back\",\"description\":\"The reverse of document-archive: the document is back in the default listings and is read into the index again. Answers `{ documentId, lifecycle, ingest }`; follow `ingest: \\\"queued\\\"` with document-status. A document that was not archived is answered `ingest: \\\"unchanged\\\"`. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Bring an archived document back\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-upload",
@@ -788,11 +815,11 @@
   {
    "name": "project-folder-bin-list",
    "domain": "folders",
-   "summary": "List a project’s deleted folders",
-   "description": "The project's Papierkorb: the deleted folders the person may read, who deleted each and when, when its purge runs, and what the person may do about it (restore, purge now). Folder ids from here feed project-folder-restore and project-folder-bin-purge.",
+   "summary": "List a project’s bin: deleted folders and documents",
+   "description": "The project's bin, newest first, a page at a time: each deleted folder the person may read, who deleted it and when, when its purge runs, and whether they may restore it. An entry with `document` holds one document sent there with document-bin: restore it with document-restore. Folder ids feed project-folder-restore and project-folder-bin-purge. Follow `nextCursor` (pass it as `cursor`) until it is null.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-folder-bin-list\",\"domain\":\"folders\",\"summary\":\"List a project’s deleted folders\",\"description\":\"The project's Papierkorb: the deleted folders the person may read, who deleted each and when, when its purge runs, and what the person may do about it (restore, purge now). Folder ids from here feed project-folder-restore and project-folder-bin-purge.\",\"annotations\":{\"title\":\"List a project’s deleted folders\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-folder-bin-list\",\"domain\":\"folders\",\"summary\":\"List a project’s bin: deleted folders and documents\",\"description\":\"The project's bin, newest first, a page at a time: each deleted folder the person may read, who deleted it and when, when its purge runs, and whether they may restore it. An entry with `document` holds one document sent there with document-bin: restore it with document-restore. Folder ids feed project-folder-restore and project-folder-bin-purge. Follow `nextCursor` (pass it as `cursor`) until it is null.\",\"annotations\":{\"title\":\"List a project’s bin: deleted folders and documents\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"description\":\"Entries per page, 1 to 200; default 50.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":200,\"description\":\"The `nextCursor` of the previous page.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "project-folder-bin-purge",
@@ -816,10 +843,10 @@
    "name": "project-folder-delete",
    "domain": "folders",
    "summary": "Move a project folder to the bin",
-   "description": "Moves the folder with its subfolders and documents to the project's Papierkorb. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.",
+   "description": "Moves the folder with its subfolders and documents to the project's bin. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"project-folder-delete\",\"domain\":\"folders\",\"summary\":\"Move a project folder to the bin\",\"description\":\"Moves the folder with its subfolders and documents to the project's Papierkorb. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.\",\"annotations\":{\"title\":\"Move a project folder to the bin\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"folderId\":{\"type\":\"string\",\"description\":\"The folder id, from project-folder-list or project-folder-bin-list.\"}},\"required\":[\"id\",\"folderId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-folder-delete\",\"domain\":\"folders\",\"summary\":\"Move a project folder to the bin\",\"description\":\"Moves the folder with its subfolders and documents to the project's bin. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.\",\"annotations\":{\"title\":\"Move a project folder to the bin\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"folderId\":{\"type\":\"string\",\"description\":\"The folder id, from project-folder-list or project-folder-bin-list.\"}},\"required\":[\"id\",\"folderId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "project-folder-ensure",
@@ -1938,10 +1965,10 @@
    "project-folder-update",
    "conversation-update",
    "document-archive",
+   "document-bin",
    "document-delete",
    "document-download",
-   "document-get",
-   "document-ingest-cancel"
+   "document-get"
   ],
   "Dokument umbenennen": [
    "document-rename",
@@ -1950,34 +1977,34 @@
    "project-folder-update",
    "conversation-update",
    "document-archive",
+   "document-bin",
    "document-delete",
    "document-download",
-   "document-get",
-   "document-ingest-cancel"
+   "document-get"
   ],
   "move document folder": [
    "document-move",
    "project-folder-delete",
+   "document-bin",
    "office-shelf-folder-update",
    "project-folder-update",
+   "project-folder-bin-list",
    "office-shelf-document-summary",
    "office-shelf-folder-delete",
    "office-shelf-folder-list",
-   "project-folder-bin-purge",
-   "project-folder-ensure",
-   "project-folder-list"
+   "project-folder-bin-purge"
   ],
   "Datei in Ordner verschieben": [
    "document-move",
    "project-folder-delete",
+   "document-bin",
    "office-shelf-root-sort-start",
    "project-root-sort-start",
    "office-shelf-folder-update",
    "project-folder-update",
    "root-sort-run-undo",
-   "diagram-file",
-   "office-shelf-folder-delete",
-   "project-folder-list"
+   "project-folder-bin-list",
+   "diagram-file"
   ],
   "create folder": [
    "office-shelf-folder-create",
@@ -2104,8 +2131,8 @@
    "assignment-remove",
    "project-annotation-list",
    "document-archive",
-   "document-delete",
-   "document-download"
+   "document-bin",
+   "document-delete"
   ],
   "Verantwortlich zuweisen": [
    "assignment-add",
