@@ -21,7 +21,7 @@ member ── Feedback senden ──▶ POST /api/feedback/reports
                                         └──▶ product_feedback.posthog_ticket_id
 owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id>
 Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH status on the ticket
-BFF server event ──▶ PostHog destination ──▶ #posthog-inbox ──▶ „Übernehmen" ──▶ <app_host>/app/platform/feedback?claim=<ticket id>
+BFF server event ──▶ PostHog destination ──▶ #support-tickets ──▶ „Übernehmen" ──▶ <app_host>/app/platform/feedback?claim=<ticket id>
 team answers in PostHog ──▶ Mein Feedback (GET …/reports/<id>/messages) ──▶ member replies (POST, onto the ticket)
 team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/posthog-support ──▶ feedback.replied inbox row for the reporter
 ```
@@ -285,10 +285,14 @@ member with the signed-in owner's email (`organization_member:read` on the
 key). A Slack reaction cannot start PostHog automation, so the button is the
 claim.
 
-The alert's ts is stored on the ticket as the tag `slack-ts:<ts>`. A second
-destination, [`claim-update.hog`](../../deploy/posthog/support/claim-update.hog),
-listens to `$conversation_ticket_assigned` and rewrites the alert: the claim
-button goes and „✅ Übernommen von <Name>" appears. The name comes from the
+A second destination, [`claim-update.hog`](../../deploy/posthog/support/claim-update.hog),
+listens to `$conversation_ticket_assigned` and rewrites every alert of the
+ticket: the claim button goes and „✅ Übernommen von <Name>" appears. It finds
+the alerts in the channel's recent history (`conversations.history`, the last
+200 messages) by the ticket id their links carry. The first design wrote the
+alert's ts onto the ticket as a tag, but `postHogUpdateTicket` does not run in
+PostHog's live destination runtime (it does in the test runner), so the tag was
+never written and no alert was ever marked. The name comes from the
 destination's `assignee_names` map, else from the assignee's PostHog profile.
 
 ## No GitHub issues
