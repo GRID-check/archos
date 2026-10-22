@@ -459,7 +459,7 @@ entry names a tool Piloti is not bound to. Regenerate with
 |---|---|---|
 | 1. Atomic operations | One per route method. The layer the rule is checked on | `lib/agent-api/catalog/` |
 | 2. Task-shaped tools | Where an agent needs more than CRUD: retrieval, IFC, canvas | `src/aiq_agent/tools/`, served through the MCP in phase 2 |
-| 3. Skills that teach composition | "To close out a project, do these five things" | Served as MCP prompts. Later |
+| 3. Workflows and skills | "Brief me on a project"; the office's own skills by name | MCP prompts, `lib/agent-api/door/` ([below](#resources-and-prompts)) |
 
 The Python-only reads (`knowledge_search`, `read_passage`, `list_files`,
 `look`, `ifc_query`, `ifc_measure`, `ris_lookup`) reach the
@@ -468,6 +468,27 @@ searches with the retrieval Piloti uses.
 
 A new workspace capability (a thing a person does) is a route and an operation.
 It is not a new Python tool.
+
+## Resources and prompts
+
+An outside agent's client also gets what it reads before its first call, and
+the workflows a person starts from it (`lib/agent-api/door/`). The prose is
+Markdown beside the module, embedded by `door/docs.spec.ts`
+(`UPDATE_FIXTURES=1` regenerates `docs.generated.ts`); edit the Markdown.
+
+| Resource | What |
+|---|---|
+| `piloti://guide` | How the workspace fits together, how ids flow, which operation reads what (`guide.md`) |
+| `piloti://glossary` | The office's German words and the catalog words they find: `glossary.md` and the search vocabulary |
+| `piloti://catalog` | Every operation this caller may run, by domain, read or write; generated per caller |
+
+Prompts: `project-briefing`, `building-law-check`, `my-day` (each
+`prompts/<name>.md`, its arguments its `{{placeholders}}`), and
+`office-skill`, which loads one of the office's enabled skills by name through
+the door, as the person. A prompt states the goal, the constraints and what a
+good answer is; it names no sequence of operations, so the agent finds them.
+Piloti's own client gets neither: it reads neither, and the guide names
+operations its door leaves to its native tools.
 
 ## Adding an operation
 

@@ -340,6 +340,28 @@ function unknownOperation(ctx: McpCallContext, name: string): CallToolResult {
 }
 
 /**
+ * The body of a read the door makes for itself (a prompt reading the office's
+ * skills), as `ctx.principal` and through the same gate and dispatch as
+ * call-operation, but whole: the 40,000-character cap is for what a model
+ * reads, and this body is read by code. Only a read that runs, never a write.
+ */
+export async function readOperationBody(
+  ctx: McpCallContext,
+  name: string,
+  input: OperationInput,
+): Promise<{ body: unknown } | { refusal: string }> {
+  const op = findVisibleOperation(ctx.principal, name)
+  if (!op || !annotationsOf(op).readOnlyHint || callDecision(ctx.principal, op) !== 'run') {
+    return { refusal: `${name} is not a read this connection may run.` }
+  }
+  const refused = await readGateFor(ctx.principal).beforeRead(op, input)
+  if (refused) return { refusal: refused }
+  const result = await callOperation(op, input, ctx.principal.session, 'agent')
+  if (!result.ok) return { refusal: `${name} was refused (HTTP ${result.status}).` }
+  return { body: result.body }
+}
+
+/**
  * Run (or propose) one operation for `ctx.principal`. The one path both modes
  * share: visibility, the run/propose decision, the dispatch, the telemetry.
  */

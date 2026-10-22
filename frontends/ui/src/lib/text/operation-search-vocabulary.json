@@ -107,6 +107,12 @@
     "entwuerf": ["draft"],
     "einreich": ["submit"],
     "abschliess": ["status", "archive"],
-    "schliess": ["status"]
+    "schliess": ["status"],
+    "papierkorb": ["bin"],
+    "richtlinie": ["guideline"],
+    "punkt": ["passage"],
+    "aktenvermerk": ["document"],
+    "gebaeudeklasse": ["profile"],
+    "bundesland": ["profile"]
   }
 }

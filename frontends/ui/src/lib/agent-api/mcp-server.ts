@@ -39,6 +39,7 @@ import {
 import { type AgentOperation, annotationsOf } from './operation'
 import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
+import { registerDoorGuide } from './door'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -47,6 +48,7 @@ export const MODE_HEADER = 'x-piloti-mcp-mode'
 export const MCP_INSTRUCTIONS = [
   'Piloti is the workspace for architects: a planning office runs its projects and processes in it, and Piloti, the agent, is a colleague in that office.',
   'Through this server you act for the signed-in person, with exactly the rights they have: their projects, documents, folders, review, conversations, tasks, skills and knowledge.',
+  'Read the resource piloti://guide once: how the workspace fits together and how ids flow; piloti://catalog lists every operation you may run, piloti://glossary the office\'s German words.',
   'Start with project-list to see which projects exist, then search-operations to find what you need and call-operation to run it (describe-operation shows an input you do not know).',
   'Ask the person before a destructive operation. If nothing fits what they asked for, say so and call report-missing-operation.',
 ].join(' ')
@@ -202,6 +204,7 @@ export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpSer
   const ctx: McpCallContext = { principal, mode }
   if (mode === 'tools') registerOperationTools(server, ctx)
   else registerMetaTools(server, ctx)
+  registerDoorGuide(server, ctx)
   return server
 }
 
