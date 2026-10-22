@@ -41,19 +41,15 @@ def _server_url() -> str:
 
 
 @pytest.fixture
-def store(monkeypatch):
-    """A store on fresh, uniquely named collections, deleted afterwards."""
-    from qdrant_client import QdrantClient
+def store(qdrant_store):
+    """A store on the collections this module shares, emptied after each test (``qdrant_testing``)."""
+    return qdrant_store
 
-    client = QdrantClient(url=_server_url(), cloud_inference=True, timeout=30, check_compatibility=False)
-    suffix = uuid.uuid4().hex[:8]
-    monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"test_corpus_{suffix}")
-    monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"test_office_{suffix}")
-    yield QdrantStore(client, IDENTITY)
-    for physical in schema.Physical:
-        name = schema.ALIASES[physical] + schema.FIRST_VERSION
-        if client.collection_exists(name):
-            client.delete_collection(name)
+
+@pytest.fixture
+def fresh_store(fresh_qdrant_store):
+    """A store on collections of the test's own, for a test of how a collection comes to be."""
+    return fresh_qdrant_store
 
 
 def _vector(seed: str) -> list[float]:
@@ -358,7 +354,8 @@ def test_phrases_on_numbers_match_exactly_the_chunks_that_contain_them(store):
         assert files(phrase(spelling)) == {"3.pdf"}, spelling
 
 
-def test_a_text_index_built_with_another_tokenizer_is_reported_loudly(store, caplog):
+def test_a_text_index_built_with_another_tokenizer_is_reported_loudly(fresh_store, caplog):
+    store = fresh_store
     from qdrant_client import models
 
     name = schema.ALIASES[schema.Physical.OFFICE] + schema.FIRST_VERSION
@@ -392,8 +389,9 @@ def test_a_text_index_built_with_another_tokenizer_is_reported_loudly(store, cap
 # ---------------------------------------------------------------- creating the collection
 
 
-def test_a_collection_left_without_its_alias_is_finished_not_wedged(store):
+def test_a_collection_left_without_its_alias_is_finished_not_wedged(fresh_store):
     """A writer died between create_collection and the alias; every later writer used to fail on the conflict."""
+    store = fresh_store
     from qdrant_client import models
 
     alias = schema.ALIASES[schema.Physical.OFFICE]
@@ -447,8 +445,9 @@ def test_concurrent_creators_both_succeed(store, monkeypatch):
     assert aliased == [alias + schema.FIRST_VERSION]
 
 
-def test_writes_are_acknowledged_by_one_replica(store, monkeypatch):
+def test_writes_are_acknowledged_by_one_replica(fresh_store, monkeypatch):
     """At RF 2 a write consistency of 2 failed every write to a shard whose second peer was down."""
+    store = fresh_store
     monkeypatch.setenv("AIQ_QDRANT_REPLICATION_FACTOR", "2")
     store.upsert("proj_a", [_record("x", "a.pdf")])
     assert store.client.get_collection(store.alias("proj_a")).config.params.replication_factor == 2
