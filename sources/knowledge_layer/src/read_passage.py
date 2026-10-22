@@ -134,50 +134,22 @@ _MIN_OVERLAP_CHARS = 40
 #: 80 lines is roughly one search result in tokens.
 _MAX_OUTLINE_LINES = 80
 
-# Agent-facing contract. Anthropic: the description IS the prompt — when to
-# call, when not to, and what a miss means. Deliberately paired with
-# `_KNOWLEDGE_SEARCH_DESCRIPTION`: each names the other as the wrong tool.
+# Agent-facing contract: what it does, its inputs, what it returns and where it stops.
 _READ_PASSAGE_DESCRIPTION = (
-    "Open a document you can already NAME: `document=` alone returns its OUTLINE — the "
-    "document's opening passage plus a Gliederung of its top-level Punkte — and `document=` "
-    "with `clause=` or `page=` returns exactly that passage. "
-    "Deterministic lookup, not a search — no ranking, no second guess at your wording. Read only once a search or "
-    "a listing has located the passage; a NEW sub-question or concept needs a new `knowledge_search`, which "
-    "you can issue in the same round as the reads. "
-    "Returns the same quotable excerpts with a Citation key that `knowledge_search` returns.\n"
-    "WHEN TO CALL — you know WHICH document and want to know what it covers ('worum geht es "
-    "in der OIB 2?', 'was regelt das Brandschutzkonzept?'): pass `document=` alone and read "
-    "the Gliederung, rather than guessing a Punkt number that may not exist. Or your own "
-    "conclusion named a document and a Punkt (or a page) you have not read this turn: a hit's "
-    "`Punkt:` line pointed at a neighbouring requirement, a Richtlinie cross-refers ('siehe "
-    "Pkt. 3.5.2'), or the user named chapter and verse. "
-    "Pass `document=` the exact name or display title as the inventory or a previous hit "
-    "printed it (e.g. 'OIB-Richtlinie 2, Ausgabe Mai 2023' or 'oib-rl_2_ausgabe_mai_2023.pdf'), "
-    "and `clause=` the number alone ('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3') — "
-    "for a project document, exactly what a hit's `Punkt:` line printed ('§ 4', 'Geschoße', "
-    "'Zeilen 2-41'), "
-    "or `page=` the page number. With `clause=`, `page=` is ignored: the Punkt alone names "
-    "the passage.\n"
-    "READ PAGES — `pages=` a range ('4-6', or one page '4', at most 30 pages) returns those pages in "
-    "reading order without the overlap between neighbouring chunks, up to about 6k tokens. A read "
-    "that stopped early ends with a `cursor`: pass it back with the same `document=` to continue. "
-    "With the page count from list_files, request every range you need in ONE round.\n"
-    "ALWAYS pass `conclusion=` — one sentence saying what you now know and what you still "
-    "need, which is why you are opening THIS passage. It is the Herleitung checkpoint the "
-    "reader sees above the fetch; it changes nothing about what is opened and never appears "
-    "in `answer`.\n"
-    "WHEN NOT TO CALL — you do not know WHICH document holds the answer, or you have only a "
-    "topic: that is `knowledge_search`, and this tool cannot search for you. To put a file "
-    "on screen it is `surface_documents`. Do not call it twice for the same Punkt, and do not "
-    "ask a second time for an outline you already have.\n"
-    "RETURNS — with `clause=` or `page=`, the passages under that Punkt or page, in document "
-    "order. With neither, the document's opening passage plus a `## Gliederung` listing its "
-    "Punkte with their pages: that list is an index, not evidence — only the passages carry a "
-    "Citation, and a listed Punkt is read by calling again with `clause=`. Every passage "
-    "carries Source, Citation (copy verbatim), Dokumentart, Punkt and page. An unknown "
-    "document name is REFUSED with up to three verbatim guesses from this turn's readable "
-    "inventory when anything is close (labelled as guesses — pass one back exactly, or "
-    "resolve the name with `knowledge_search` first) rather than inventing one."
+    "Opens a document by name: `document=` alone returns its OUTLINE, the document's opening passage plus a "
+    "Gliederung of its top-level Punkte, and `document=` with `clause=` or `page=` returns exactly that passage. "
+    "A lookup, not a search: no ranking, and it cannot find a document from a topic (`knowledge_search` does).\n"
+    "Inputs: `document`, the exact name or display title as the inventory or a hit printed it "
+    "(e.g. 'OIB-Richtlinie 2, Ausgabe Mai 2023' or 'oib-rl_2_ausgabe_mai_2023.pdf'). `clause`, the number alone "
+    "('3.5.2', no 'Pkt.') or a table's caption ('Tabelle 3'), or for a project document what a hit's `Punkt:` "
+    "line printed ('§ 4', 'Zeilen 2-41'); with `clause=`, `page=` is ignored. `page`, one page number. "
+    "`pages`, a range ('4-6', at most 30 pages) in reading order without the overlap between neighbouring "
+    "chunks, up to about 6k tokens; a read that stopped early ends with a `cursor` to pass back with the same "
+    "`document=`.\n"
+    "Returns: the passages, each with Source, Citation (copy verbatim), Dokumentart, Punkt and page. The "
+    "Gliederung is an index, not evidence: only passages carry a Citation. An unknown document name is refused, "
+    "with up to three labelled guesses from this turn's readable inventory when anything is close.\n"
+    "`conclusion=` is optional: one line on what you are looking for; it has no effect on the call."
 )
 
 
@@ -1617,11 +1589,8 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
                 `clause` is given. Request every range you need in one round.
             cursor: Optional. The `cursor` a ranged read ended with, passed back with
                 the same `document` to continue where it stopped. Opaque: copy it.
-            conclusion: ONE sentence: what you now know and what you still
-                need, which is why you are opening this passage. It is the
-                Herleitung checkpoint the reader sees above this fetch; it
-                does not change what is opened and does not belong in your
-                answer.
+            conclusion: Optional. One line on what you are looking for;
+                no effect on the call.
 
         Returns:
             str: The passages, in the same grounding-block format

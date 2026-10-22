@@ -103,7 +103,7 @@ class TestPilotiPromptNamesTheSubject:
         rendered = _render(agent, focus_file_name=SUBJECT, focus_shelf_label="Projektwissen")
 
         assert f'file_name="{SUBJECT}"' not in rendered
-        assert "`file_name=` that" in _KNOWLEDGE_SEARCH_DESCRIPTION
+        assert "`file_name=` (an indexed name" in _KNOWLEDGE_SEARCH_DESCRIPTION
 
     def test_shelf_is_omitted_rather_than_invented(self, mock_llm_provider, real_tool):
         """An unknown shelf names the file alone — never a guessed shelf."""

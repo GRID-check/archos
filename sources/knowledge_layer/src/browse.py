@@ -2082,41 +2082,28 @@ def _in_flight(collections: Sequence[str]) -> list[str]:
 # ---------------------------------------------------------------------------
 
 _LIST_FILES_DESCRIPTION = (
-    "Browse the reader's OWN files the way they would in the Files pane: which files exist, in which "
-    "folder, of which Dokumentart, uploaded when. Deterministic listing, paged, never capped by the "
-    "prompt inventory — the inventory in your prompt shows at most a few dozen names, this shows all.\n"
-    "WHEN TO CALL — the question is about WHICH files there are, not what they say: „welche Unterlagen "
-    "haben wir“, „was liegt im Ordner Brandschutz“, „was ist diese Woche neu“, „gibt es schon ein "
-    "Protokoll zur Baubesprechung“, „wie heißt die Datei mit dem Schnitt genau“. Also first, when you "
-    "need an exact file name for `read_passage`, `knowledge_search(file_name=…)` or a file operation "
-    "and the inventory does not show it. It runs beside `knowledge_search` in the same round, "
-    "not before it: a listing says where, a search says what is written.\n"
-    "- no arguments: every file on Projektwissen, Büroablage and Private Sitzung, paged and ordered "
-    "by folder, after an overview of the top-level folders with their file counts. `folder=` narrows "
-    "that to one folder and everything below it.\n"
-    "- `name_contains=` words that must all appear in the file name or title („brandschutz eg“); "
-    "case and umlaut spelling do not matter.\n"
-    "- `doc_class=` one Dokumentart key; `added_since=` YYYY-MM-DD; `sort=newest` for recent uploads.\n"
-    "- `topic=` a Thema Piloti recognised (Attika, Holzrahmenbau); matches part of a topic.\n"
-    "- `shelf=` project | office_shelf | session | base (base = the platform OIB corpus, listed only when asked).\n"
-    "- `offset=` the next page, as the result says.\n"
-    '- `view="tree"` (`depth=` 1-4, default 2): a card per folder instead of file lines: counts, Dokumentart mix, '
-    "pages, dates, the current Fassung. Call it for „was liegt in diesem Projekt“, „wie viele Einreichunterlagen, "
-    "welcher Index gilt“, then open what you need. Filters apply; no paging.\n"
-    "- `revisions_of=` a file name: that document's whole chain of Fassungen, newest first, each with Index/Datum, "
-    "upload date and what changed against the one before. Call it for „welche Fassungen gibt es von X“; "
-    "every other filter is ignored.\n"
-    '- `revisions_of=` plus `compare_to=` another Fassung of that chain (its file name, or "previous" for the one '
-    "before): what changed, page by page, in the printed text and in your reading of the drawings, with the "
-    "Plankopf's Index and Stand. Call it for „was hat sich zwischen Index B und C geändert“.\n"
-    "WHEN NOT TO CALL — to learn what a file SAYS: that is `read_passage` / `knowledge_search`. To "
-    'find which files MENTION a term: `knowledge_search(match="exact")`.\n'
-    "RETURNS — a count, the subfolders, then one line per file: exact file name, title, folder, "
-    "Dokumentart, page count, topics, the date a photo was taken, a Fassung mark (read from the name, or a replacement "
-    "a person confirmed with what changed), upload date, a one-line summary. "
-    "An index, not a source: never cite it and never "
-    "answer what a file contains from its summary. Write file names exactly as returned — each "
-    "becomes a link the reader can open."
+    "Lists the reader's OWN files the way the Files pane shows them: which files exist, in which folder, of "
+    "which Dokumentart, uploaded when. A deterministic listing, paged, not capped by the prompt inventory. "
+    "It says which files exist, not what they say: use `read_passage` or `knowledge_search` for that, and "
+    '`knowledge_search(match="exact")` to find which files mention a term.\n'
+    "Inputs, all optional: with none, every file on Projektwissen, Büroablage and Private Sitzung, ordered by "
+    "folder, after an overview of the top-level folders with file counts. `folder=` one folder and everything "
+    "below it. `name_contains=` words that must all appear in the file name or title (case and umlaut spelling "
+    "do not matter). `doc_class=` a Dokumentart key. `added_since=` YYYY-MM-DD. `sort=newest`. `topic=` a Thema "
+    "Piloti recognised (Attika, Holzrahmenbau). `shelf=` project | office_shelf | session | base (base, the "
+    "platform OIB corpus, is listed only when asked). `offset=` the next page, as the result says.\n"
+    '`view="tree"` (`depth=` 1-4, default 2) returns a card per folder instead of file lines: counts, '
+    "Dokumentart mix, pages, dates, the current Fassung; filters apply, no paging.\n"
+    "`revisions_of=` a file name returns that document's whole chain of Fassungen, newest first, each with "
+    "Index/Datum, upload date and what changed against the one before; every other filter is ignored. With "
+    '`compare_to=` another Fassung of the chain (its file name, or "previous"), it returns what changed, page by '
+    "page, in the printed text and in the reading of the drawings, with the Plankopf's Index and Stand "
+    "(„was hat sich zwischen Index B und C geändert“).\n"
+    "Returns: a count, the subfolders, then one line per file: exact file name, title, folder, Dokumentart, page "
+    "count, topics, the date a photo was taken, a Fassung mark (read from the name, or a replacement a person "
+    "confirmed, with what changed), upload date, a one-line summary. An index, not a source: it is never cited, "
+    "and a summary does not say what a file contains. File names are written exactly as returned; each becomes "
+    "a link the reader can open."
 )
 
 # ---------------------------------------------------------------------------

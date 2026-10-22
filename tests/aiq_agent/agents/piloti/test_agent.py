@@ -1000,7 +1000,7 @@ class TestPilotiAgent:
         # Check that synthesis instruction was added
         last_call_messages = captured_messages[0]
         synthesis_instruction_found = any(
-            "synthesize" in str(msg.content).lower() for msg in last_call_messages if hasattr(msg, "content")
+            "research limit" in str(msg.content).lower() for msg in last_call_messages if hasattr(msg, "content")
         )
         assert synthesis_instruction_found
 
@@ -2477,7 +2477,7 @@ class TestClarificationGuidance:
         assert "Folgefrage" in rendered
         # It must explicitly extend push-back to the shallow/quick path.
         lowered = rendered.lower()
-        assert "shallow" in lowered
+        assert "quick answers" in lowered
         # And it must teach the "state your assumption" alternative, not only asking.
         assert "assumption" in lowered
 
@@ -2645,19 +2645,12 @@ class TestADirectReplyMayStillEmitACard:
         assert "at most 2 calls" not in rendered
         assert "not every question is a legal question" in rendered
         assert "commit to it; re-plan only" not in rendered
-        rules = rendered.split("<research_rules>")[1].split("</research_rules>")[0]
-        assert "measured this turn, or retrieved this turn or in the previous one" in rules
-        assert "never describe a document you did not open" in rules
-        assert "Herleitung checkpoint" in rules
-        assert "`conclusion` argument" in rules
-        assert "empty on your first call" in rules.lower()
-        assert "not run a second time" in rules
-        # The family search RETURNS the members opened; the only open left is a
-        # Punkt. Told instead that an overview needs every member opened, the
-        # model re-opened the three it had just been handed.
-        assert "every member the corpus holds" in rules
-        assert "what is left to open is a Punkt by number" in rules
-        assert "`read_passage(document=…)`" in rules
+        rules = rendered.split("<working>")[1].split("</working>")[0]
+        assert "evidence you saw this turn" in rules
+        assert "A file you did not open is not described" in rules
+        assert '„nicht gelesen"' in rules
+        assert "Abdeckung: unzureichend" in rules
+        assert "`conclusion`" not in rules
         procedures = (
             "at most two searches",
             "ONE parallel round",
@@ -2667,8 +2660,6 @@ class TestADirectReplyMayStillEmitACard:
         )
         for procedure in procedures:
             assert procedure not in rendered, procedure
-        assert "every member the knowledge-base inventory lists" not in rules
-        assert "nicht gelesen" in rules
         stimme = rendered.split("<stimme>")[1].split("</stimme>")[0]
         assert "a conclusion of the derivation" in stimme
 

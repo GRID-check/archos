@@ -65,7 +65,7 @@ def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
     """The contract, not the prose: English queries, proposals not claimed done, records not cited."""
     static = (ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
     section = static.split("<workspace>")[1].split("</workspace>")[0]
-    assert "write the query in English" in section
+    assert "write the search query in English" in section
     assert "never that it is done" in section
     assert "never with `[N]`" in section
     assert "`kind` to one of `direct`, `walkthrough`, `ruling`, `handoff`, `work`" in static

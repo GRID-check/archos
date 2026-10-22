@@ -261,7 +261,7 @@ class GroundingBlock(BaseModel):
 
 
 #: The line that says a block's passages do not answer the question. The
-#: prompt names it (``piloti_static.md`` <research_rules>), so it is one
+#: prompt names it (``piloti_static.md`` <working>), so it is one
 #: constant rather than a spelling each producer picks.
 COVERAGE_GAP_LABEL = "Abdeckung: unzureichend —"
 
