@@ -292,3 +292,159 @@ class TestListFilesRow:
         await self._list(sort="sideways")
 
         assert _one_call(rows)[1].status == "error"
+
+
+#: A restricted folder's collection (``proj_<id>_r<12 hex>``), drawable but not admitted unless a test admits it.
+RESTRICTED = "proj_a_r0123456789ab"
+SECRET = "Gehaltsliste.pdf"
+
+
+@pytest.fixture
+def restricted(corpus, monkeypatch):
+    """Scope the turn to one restricted folder holding :data:`SECRET`; ``admit()`` admits it for the turn."""
+
+    def install(chunks: list[Chunk]) -> _Store:
+        store = corpus(
+            [chunk.model_copy(update={"metadata": {**chunk.metadata, "collection": RESTRICTED}}) for chunk in chunks]
+        )
+
+        async def _documents(collection: str):
+            if collection != RESTRICTED:
+                return []
+            return [SimpleNamespace(file_name=SECRET, display_title=None, summary=None, tags=None)]
+
+        monkeypatch.setattr("aiq_agent.knowledge.factory.get_available_documents_async", _documents)
+        monkeypatch.setattr(
+            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            lambda: [ScopedCollection(RESTRICTED, Shelf.PROJECT)],
+        )
+        return store
+
+    return install
+
+
+@pytest.fixture
+def admit(monkeypatch):
+    """Call it to admit :data:`RESTRICTED` for the turn."""
+    from aiq_agent.knowledge.restricted_use import RestrictedUse
+
+    def _admit() -> None:
+        use = RestrictedUse("org", "user", "conv", "proj", drawable={RESTRICTED}, admitted={RESTRICTED})
+        monkeypatch.setattr("aiq_agent.knowledge.restricted_use.current_restricted_use", lambda: use)
+
+    return _admit
+
+
+class TestRestrictedFoldersStayUnnamedOnTheRow:
+    """A row settles before the round is admitted: it names and counts only what the model may be told (ADR-0088)."""
+
+    async def _read(self, **kwargs) -> str:
+        return await TestReadPassageRow._read(self, **kwargs)
+
+    async def test_a_search_does_not_count_unadmitted_hits(self, restricted, rows) -> None:
+        restricted([_chunk(SECRET, 1), _chunk(SECRET, 2, "3.6")])
+
+        await _search(query="Gehalt")
+
+        finished = _one_call(rows)[1]
+        assert finished.status == "ok"
+        assert finished.counts is None
+
+    async def test_a_search_counts_once_the_folder_is_admitted(self, restricted, rows, admit) -> None:
+        restricted([_chunk(SECRET, 1), _chunk(SECRET, 2, "3.6")])
+        admit()
+
+        await _search(query="Gehalt")
+
+        assert _one_call(rows)[1].counts.hits == 2
+
+    async def test_an_exact_search_does_not_count_unadmitted_matches(self, restricted, rows, monkeypatch) -> None:
+        store = restricted([])
+        chunk = _chunk(SECRET, 3).model_copy(
+            update={"content": "Gehalt hier. Gehalt dort.", "metadata": {"collection": RESTRICTED}}
+        )
+
+        async def _find_text(collection, pattern, filters=None, limit=None, **options):
+            return [chunk.model_copy(deep=True)]
+
+        async def _reads(search_config, narrowed, folder):
+            return {}
+
+        store.find_text = _find_text
+        monkeypatch.setattr(browse, "_searched_documents", _reads)
+
+        await _search(query="Gehalt", match="exact")
+
+        finished = _one_call(rows)[1]
+        assert finished.status == "ok"
+        assert finished.counts is None
+
+    async def test_a_read_that_finds_nothing_names_no_file(self, restricted, rows) -> None:
+        restricted([])
+
+        await self._read(document="gehaltsliste.pdf", clause="1")
+
+        started, finished = _one_call(rows)
+        assert finished.status == "error"
+        assert finished.target == started.target == "gehaltsliste.pdf"
+        assert finished.counts is None
+
+    async def test_a_read_keeps_the_asked_name_and_counts_nothing(self, restricted, rows) -> None:
+        restricted([_chunk(SECRET, 12, "3.5")])
+
+        await self._read(document="gehaltsliste.pdf", clause="3.5")
+
+        finished = _one_call(rows)[1]
+        assert finished.status == "ok"
+        assert finished.target == "gehaltsliste.pdf"
+        assert finished.counts is None
+
+    async def test_an_outline_of_an_unadmitted_document_names_no_file(self, restricted, rows) -> None:
+        restricted([])
+
+        await self._read(document="gehaltsliste.pdf")
+
+        finished = _one_call(rows)[1]
+        assert (finished.status, finished.target, finished.counts) == ("error", "gehaltsliste.pdf", None)
+
+    async def test_a_page_range_of_an_unadmitted_document_names_no_file(self, restricted, rows) -> None:
+        restricted([])
+
+        await self._read(document="gehaltsliste.pdf", pages="2-3")
+
+        finished = _one_call(rows)[1]
+        assert (finished.status, finished.target, finished.counts) == ("error", "gehaltsliste.pdf", None)
+
+    async def test_an_admitted_read_names_the_file_and_counts(self, restricted, rows, admit) -> None:
+        restricted([_chunk(SECRET, 12, "3.5")])
+        admit()
+
+        await self._read(document="gehaltsliste.pdf", clause="3.5")
+
+        finished = _one_call(rows)[1]
+        assert (finished.status, finished.target, finished.counts.hits) == ("ok", SECRET, 1)
+
+
+class TestExactSearchPartialFailure:
+    async def test_no_match_while_a_collection_failed_is_an_error(self, corpus, rows, monkeypatch) -> None:
+        store = corpus([])
+        monkeypatch.setattr(
+            "aiq_agent.knowledge.scoping.get_scoped_collections_from_context",
+            lambda: [ScopedCollection(BASE, Shelf.BASE), ScopedCollection("proj_1", Shelf.PROJECT)],
+        )
+
+        async def _find_text(collection, pattern, filters=None, limit=None, **options):
+            if collection == "proj_1":
+                raise RuntimeError("store down")
+            return []
+
+        async def _reads(search_config, narrowed, folder):
+            return {}
+
+        store.find_text = _find_text
+        monkeypatch.setattr(browse, "_searched_documents", _reads)
+
+        result = await _search(query="Brandabschnitt", match="exact")
+
+        assert "NOT a no" in result
+        assert _one_call(rows)[1].status == "error"

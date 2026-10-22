@@ -21,6 +21,15 @@ def test_chunks_count_hits_and_distinct_documents() -> None:
     assert (outcome.hits, outcome.documents) == (4, 3)
 
 
+def test_hits_from_an_unadmitted_restricted_folder_are_not_counted() -> None:
+    """The row settles before the round is admitted: no count the model could be refused (ADR-0088)."""
+    outcome = ActionOutcome()
+    outcome.record_chunks([_chunk("a.pdf"), _chunk("geheim.pdf", "proj_a_r0123456789ab")])
+
+    assert (outcome.hits, outcome.documents, outcome.unnamed) == (None, None, True)
+    assert outcome.status(default="error") == "ok"
+
+
 @pytest.mark.parametrize(
     ("outcome", "default", "expected"),
     [

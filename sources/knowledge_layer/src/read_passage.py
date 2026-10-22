@@ -1507,6 +1507,28 @@ def _read_row_fields(arguments: ReadPassageInput) -> dict[str, str | None]:
     }
 
 
+def _nameable(targets: Sequence[PassageTarget]) -> PassageTarget | None:
+    """The first target whose document may be named to the model this turn (:func:`may_name`), or ``None``."""
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    return next((target for target in targets if may_name(target.collection)), None)
+
+
+def _note_target(outcome: ActionOutcome, targets: Sequence[PassageTarget]) -> None:
+    """Put the resolved file name on the read's row, only where the model may be told it (ADR-0088).
+
+    The row settles before the round's results are admitted. A file only an
+    unadmitted restricted folder holds keeps the name the model asked for.
+    """
+    target = _nameable(targets)
+    outcome.target = target.file_name if target is not None else None
+
+
+def _count(outcome: ActionOutcome, hits: int, targets: Sequence[PassageTarget]) -> None:
+    """The passages a read returned, counted on its row unless the document may not be named yet."""
+    outcome.record(hits, collections=[target.collection for target in targets])
+
+
 @register_function(config_type=ReadPassageConfig)
 async def read_passage(config: ReadPassageConfig, _builder: Builder):
     """Open a named passage of a named document, or its outline. Deterministic; no LLM."""
@@ -1546,17 +1568,18 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             return targets, ""
         return [], await _unknown(document)
 
-    async def _miss(document: str, targets: list[PassageTarget], message: str) -> str:
+    async def _miss(document: str, targets: list[PassageTarget], message: str, outcome: ActionOutcome) -> str:
         """``message`` for a read that returned no passage, unless it would confirm a hidden document.
 
         A document only restricted folders hold, none of them admitted this
         turn, is answered as if it did not exist: "no such Punkt" or "registered
-        but empty" would tell the model it is there (ADR-0088).
+        but empty" would tell the model it is there (ADR-0088). Its row says the
+        same: an error over the name the model asked for, no file name, no count.
         """
-        from aiq_agent.knowledge.restricted_use import may_name
-
-        if any(may_name(target.collection) for target in targets):
+        if _nameable(targets) is not None:
             return message
+        outcome.hits = None
+        outcome.target = None
         return await _unknown(document)
 
     async def _read(arguments: ReadPassageInput) -> str:
@@ -1656,7 +1679,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         if refusal:
             return refusal
 
-        outcome.target = targets[0].file_name
+        _note_target(outcome, targets)
         query = _fetch_query(document, clause, page)
         # A page read fetches the window's chunks and keeps those covering the
         # page, so it may not stop at the passage bound before filtering.
@@ -1665,14 +1688,14 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         chunks = [chunk for chunk in fetched.chunks if _addresses(chunk, clause, page)]
         if fetched.failures and not chunks:
             logger.warning("read_passage: every fetch failed for %r", query, exc_info=fetched.failures[0])
-            return await _miss(document, targets, _store_silent_message(query))
+            return await _miss(document, targets, _store_silent_message(query), outcome)
         if not chunks:
             outcome.hits = 0
-            return await _miss(document, targets, _no_passage_message(document, clause, page))
+            return await _miss(document, targets, _no_passage_message(document, clause, page), outcome)
 
         chunks.sort(key=_clause_sort_key)
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
-        outcome.hits = len(merged.chunks)
+        _count(outcome, len(merged.chunks), targets)
         formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_revision_notice(targets))
         logger.info("read_passage: %s returned %d chunk(s)", query, len(merged.chunks))
         return formatted
@@ -1689,7 +1712,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         if refusal_text:
             return refusal_text
 
-        outcome.target = targets[0].file_name
+        _note_target(outcome, targets)
         cursor = decode_cursor(cursor_token) if (cursor_token or "").strip() else None
         if (cursor_token or "").strip():
             targets = [
@@ -1722,13 +1745,13 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         label = _locus_label(document, None, None, (first, last) if last is not None else (first, first))
         if fetched.failures and not chunks:
             logger.warning("read_passage: every fetch failed for %r", label, exc_info=fetched.failures[0])
-            return await _miss(document, targets, _store_silent_message(label))
+            return await _miss(document, targets, _store_silent_message(label), outcome)
         if not chunks:
             outcome.hits = 0
         if not chunks and start is not None:
             return f"Nothing is left after that cursor in {document}: the read is complete."
         if not chunks:
-            return await _miss(document, targets, _no_passage_message(document, None, None, span))
+            return await _miss(document, targets, _no_passage_message(document, None, None, span), outcome)
 
         ordered = await asyncio.to_thread(lambda: _without_overlap(_range_order(chunks)))
         kept, more = _within_budget(ordered, _MAX_READ_CHARS)
@@ -1736,7 +1759,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         next_cursor = _next_cursor(kept, last, kind) if more or capped else None
         trailer = _range_trailer(document, kept, first, last, next_cursor)
         merged = _passage_result(kept, label)
-        outcome.hits = len(kept)
+        _count(outcome, len(kept), targets)
         formatted = await asyncio.to_thread(
             _format_results, merged, label, notice=_older_revision_notice(targets), trailer=trailer
         )
@@ -1752,14 +1775,14 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
             return refusal
 
         query = _fetch_query(document, None, None)
-        outcome.target = targets[0].file_name
+        _note_target(outcome, targets)
         outline = await outline_for(targets, query)
         entries = outline.entries
         if not outline.chunks:
             return await _opening_passages(document, targets, query, outline.failures, outcome)
 
         passages = _scope_chunks(outline.chunks)[:_MAX_PASSAGE_CHUNKS]
-        outcome.hits = len(passages)
+        _count(outcome, len(passages), targets)
         # The Gliederung travels as the block's trailer rather than being glued
         # on here: the renderer files the records under the hash of the bytes it
         # returns, and a byte added afterwards costs this tool the structured
@@ -1793,13 +1816,13 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         broke = failures + whole.failures
         if not fetched and broke:
             logger.warning("read_passage: every outline fetch failed for %r", query, exc_info=broke[0])
-            return await _miss(document, targets, _store_silent_message(query))
+            return await _miss(document, targets, _store_silent_message(query), outcome)
         if not fetched:
             outcome.hits = 0
-            return await _miss(document, targets, _empty_document_message(document))
+            return await _miss(document, targets, _empty_document_message(document), outcome)
 
         merged = _passage_result(sorted(fetched, key=_clause_sort_key)[:_MAX_PASSAGE_CHUNKS], query)
-        outcome.hits = len(merged.chunks)
+        _count(outcome, len(merged.chunks), targets)
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
         formatted = await asyncio.to_thread(

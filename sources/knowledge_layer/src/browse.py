@@ -2710,9 +2710,15 @@ async def _search(
     except TimeoutError:
         return _TOO_COSTLY_SCAN if deadline is not None and time.monotonic() >= deadline else _TOO_COSTLY
     if outcome is not None:
-        # Hits are the literal matches (the table's count); documents are the files holding them.
-        outcome.hits = sum(group.occurrences for group in groups)
-        outcome.documents = len(groups)
+        # Hits are the literal matches (the table's count); documents are the files holding them, counted
+        # only where the model may be told about them yet (ADR-0088). No match while a collection failed is
+        # not a no, the message says so, and neither does the row: an error, never „keine Fundstelle“.
+        outcome.record(
+            sum(group.occurrences for group in groups),
+            documents=len(groups),
+            collections=[group.collection for group in groups],
+        )
+        outcome.failed = bool(failed) and not groups
     if not groups:
         return no_match_message(phrases, answered, failed, regex_mode=regex_mode, scopes=scopes)
     # The match table names every matching file and counts its matches, which
