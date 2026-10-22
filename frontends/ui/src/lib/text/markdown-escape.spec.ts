@@ -161,4 +161,31 @@ describe('escapeInline and escapeLineStarts', () => {
   it('leaves inline marks alone, so Markdown that is meant stays Markdown', () => {
     expect(escapeLineStarts('**fett** und *kursiv*')).toBe('**fett** und *kursiv*')
   })
+
+  it('keeps each line start to its own line, so blank lines before a marker change nothing', () => {
+    expect(escapeLineStarts('  \n \t\n  # a\n\n\n- b')).toBe('  \n \t\n  \\# a\n\n\n\\- b')
+    expect(escapeLineStarts(' \f \v 1. c\u2028\u2029 + d')).toBe(' \f \v 1\\. c\u2028\u2029 \\+ d')
+    expect(escapeLineStarts('Text\n===  \n\n  \nweiter')).toBe('Text\n\\===  \n\n  \nweiter')
+    expect(escapeLineStarts('=\n\n= x')).toBe('\\=\n\n= x')
+  })
+})
+
+/**
+ * A mail body is untrusted, and one of whitespace-only lines is cheap to send.
+ * An indent that crossed line ends ran on over every blank line after each line
+ * start, so 20,000 such lines took seconds; within one line it is milliseconds.
+ * The bound is generous, so a slow runner does not fail it and quadratic time
+ * still does.
+ */
+describe('escapeMarkdown on hostile input', () => {
+  it.each([
+    ['spaces', '   \n'],
+    ['tabs and form feeds', '\t \f'],
+    ['line separators', ' \u2028 \u2029'],
+  ])('stays linear over 20,000 lines of %s', (_name, line) => {
+    const body = `${line.repeat(20_000)}x`
+    const started = performance.now()
+    escapeMarkdown(body)
+    expect(performance.now() - started).toBeLessThan(1_000)
+  })
 })
