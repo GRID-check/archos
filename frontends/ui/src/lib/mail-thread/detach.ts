@@ -9,7 +9,7 @@ import 'server-only'
  *   quote of it, or answered it, shows the quote again or loses its „Antwort
  *   auf“ line, `./render.ts`). Earlier Fassungen keep it: a citation into them
  *   stays true, and the confirmation names them.
- * - **A move, never a delete** (migration 0184, DELETE is revoked). The entry's
+ * - **A move, never a delete** (migration 0186, DELETE is revoked). The entry's
  *   row changes thread: its Message-IDs move with it (`ON UPDATE CASCADE`), its
  *   original keeps its key, what came with it stays its (D36). Its heading is
  *   made again against the new thread's, and it counts as filed now, after

@@ -6,7 +6,7 @@ import 'server-only'
  * filing job, the follow job and the detach service decide who may, and
  * row-level security is the backstop. Every list is bounded.
  *
- * The rules the rows keep are the migration's (0184): an entry is a person's,
+ * The rules the rows keep are the migration's (0186): an entry is a person's,
  * its heading unique in its thread, its original under exactly its own key;
  * what came with a message is frozen once written (the guard on
  * `mail_thread_entry_attachments`); DELETE is revoked, so a detach MOVES an

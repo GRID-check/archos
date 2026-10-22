@@ -242,7 +242,7 @@ describe('audit schema coverage', () => {
 
   it('keeps a stranger\'s mail out of the E-Mail-Eingang\'s trail: ids, codes, counts and flags only', () => {
     // Anyone may write to a project's address, and the trail outlives the scrub
-    // of a settled mail (migration 0184). A key that could carry a sender, a
+    // of a settled mail (migration 0186). A key that could carry a sender, a
     // subject, a file name, an address, a token or text is refused here, before
     // an emitter can fill it; the receive job's PII canary checks the values.
     const PERSONAL = /body|content|text|note|title|label|name|summary|subject|address|token|domain|email|file|path/i

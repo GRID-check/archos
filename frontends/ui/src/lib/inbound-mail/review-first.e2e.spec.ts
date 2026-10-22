@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * The dynamic ratchet of review-first (DECISION §10, ratchet 3, its no-follow
- * half), against a REAL Postgres with migration 0184 through the restricted
+ * half), against a REAL Postgres with migration 0186 through the restricted
  * runtime role (`scripts/rls-test-db.sh`):
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \

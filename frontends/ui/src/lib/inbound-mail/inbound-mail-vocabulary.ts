@@ -1,8 +1,8 @@
 /**
- * The vocabulary of the E-Mail-Eingang (ADR-0134, migration 0184), free of
+ * The vocabulary of the E-Mail-Eingang (ADR-0134, migration 0186), free of
  * drizzle and of zod.
  *
- * Every tuple here is also a CHECK in `drizzle/0184_inbound_mail.sql`: the
+ * Every tuple here is also a CHECK in `drizzle/0186_inbound_mail.sql`: the
  * database refuses a value this file does not list, so a new value is a change
  * to both, in one migration. The drizzle schema (`db/schema/inbound-mail.ts`),
  * the wire module, the jobs and the browser import the tuples from here, so a

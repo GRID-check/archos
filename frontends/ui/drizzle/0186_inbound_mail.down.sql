@@ -1,4 +1,4 @@
--- Reverse 0184. ORDER: roll the frontend back first; the newer build receives
+-- Reverse 0186. ORDER: roll the frontend back first; the newer build receives
 -- mail, runs the filing and follow jobs and sweeps these tables.
 --
 -- REFUSED while any row still names a staged object or a kept original: the
@@ -39,9 +39,9 @@ BEGIN
       AND EXISTS (SELECT 1 FROM inbound_mail_parts WHERE storage_key IS NOT NULL))
   OR (to_regclass('public.mail_thread_entries') IS NOT NULL
       AND EXISTS (SELECT 1 FROM mail_thread_entries WHERE original_storage_key IS NOT NULL)) THEN
-    RAISE EXCEPTION 'reverse 0184 refused: rows still name staged mail or kept originals in object storage'
+    RAISE EXCEPTION 'reverse 0186 refused: rows still name staged mail or kept originals in object storage'
       USING ERRCODE = 'object_in_use',
-            HINT = 'Erase each object by the key its row names, set the column NULL, then run this again; the listing queries are in the header of 0184_inbound_mail.down.sql.';
+            HINT = 'Erase each object by the key its row names, set the column NULL, then run this again; the listing queries are in the header of 0186_inbound_mail.down.sql.';
   END IF;
 END
 $$;

@@ -102,7 +102,7 @@ trigger refuse UPDATE only.
 
 A delete guard may still ask about the PARENT. Inside the cascade from a
 deleted row, the child's `BEFORE DELETE` trigger no longer sees that row
-(PostgreSQL 16, checked 2026-10-22). `inbound_mail_decisions` (0184) uses this:
+(PostgreSQL 16, checked 2026-10-22). `inbound_mail_decisions` (0186) uses this:
 a decision the audit trail has not taken yet is refused deletion while
 `EXISTS (SELECT 1 FROM projects WHERE id = OLD.project_id)`, so a retention
 sweep or a thread's cascade waits for the audit, and a project purge, which

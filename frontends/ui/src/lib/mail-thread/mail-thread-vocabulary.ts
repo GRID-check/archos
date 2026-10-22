@@ -1,5 +1,5 @@
 /**
- * The vocabulary of the E-Mail-Verlauf (ADR-0134, migration 0184), free of
+ * The vocabulary of the E-Mail-Verlauf (ADR-0134, migration 0186), free of
  * drizzle and of zod: the tuples the `mail_thread*` tables CHECK, their bounds,
  * and the shapes of the JSON a filed message carries.
  *

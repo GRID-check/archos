@@ -378,15 +378,15 @@ describe.skipIf(!url)('tenant isolation against live Postgres', () => {
   })
 
   /**
-   * The E-Mail-Eingang and the E-Mail-Verlauf (migration 0184, ADR-0134), as
+   * The E-Mail-Eingang and the E-Mail-Verlauf (migration 0186, ADR-0134), as
    * the runtime role: each tenant sees its own mail, threads and follows, and
    * the database refuses every way of filing mail without a person's decision.
-   * `scripts/rls-test-db.sh` proves each of 0184's refusals as the owner; this
+   * `scripts/rls-test-db.sh` proves each of 0186's refusals as the owner; this
    * proves the ones the review-first promise rests on through the app's own
    * connection (DECISION §10, ratchet 1).
    */
   it('keeps inbound mail inside its tenant, and refuses a filing no person decided', async () => {
-    // People are WorkOS user ids: 0184 refuses every other shape.
+    // People are WorkOS user ids: 0186 refuses every other shape.
     const person = (org: string) => `user_01J0TENANT${org === ORG_A ? 'A' : 'B'}${'0'.repeat(15)}`
     type Seeded = { project: string; mail: string; text: string; file: string; thread: string; follow: string }
     const seeded = new Map<string, Seeded>()

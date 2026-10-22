@@ -40,7 +40,7 @@ import type { ThreadMatch } from '@/lib/mail-thread/mail-thread-vocabulary'
 import { projects } from './projects'
 
 /**
- * The E-Mail-Eingang (ADR-0134, migration 0184): a project's mail address, the
+ * The E-Mail-Eingang (ADR-0134, migration 0186): a project's mail address, the
  * mail that reached it, its parts, and what a person decided about each part.
  * Nothing that arrives is a document; a part becomes one only when a person
  * files it, and the mail's text becomes a section of its E-Mail-Verlauf
@@ -196,7 +196,7 @@ export const inboundMails = pgTable(
  * The mail's own text, or one attachment, and where it stands. NOTE: the
  * composite keys to `documents`, `document_versions` and `mail_thread_entries`
  * set only their own column NULL, and the key to the part's decision is added
- * after both tables exist; all four live in migration 0184 alone.
+ * after both tables exist; all four live in migration 0186 alone.
  */
 export const inboundMailParts = pgTable(
   'inbound_mail_parts',
@@ -278,7 +278,7 @@ export const inboundMailParts = pgTable(
  * (`auditedAt`). Only `auditedAt` ever changes, once. NOTE: the composite key
  * that makes a follow decision the follower's own references
  * `mail_thread_follows`, declared in `./mail-thread.ts`; it lives in migration
- * 0184 alone so this file does not import that one.
+ * 0186 alone so this file does not import that one.
  */
 export const inboundMailDecisions = pgTable(
   'inbound_mail_decisions',

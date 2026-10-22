@@ -200,7 +200,7 @@ const BOUNDARY_MIGRATIONS = [
   // its Message-IDs and follows. Eight tables keyed by their organization;
   // composite foreign keys tie each to its project's, and DELETE is revoked
   // from the runtime role on all but the Message-ID index.
-  '0184_inbound_mail.sql',
+  '0186_inbound_mail.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>
