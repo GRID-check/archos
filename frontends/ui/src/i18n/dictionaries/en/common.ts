@@ -28,6 +28,7 @@ export const common = {
   },
   /** The shared „failed to load, retry" block (`components/ui/load-error.tsx`). */
   loadError: {
+    retry: 'Try again',
     title: 'Could not be loaded',
     retrying: 'Retrying…',
   },

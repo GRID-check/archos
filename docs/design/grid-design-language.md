@@ -284,7 +284,7 @@ a rule and not a filing convention.
 | Layer | Where it lives | What it is |
 |---|---|---|
 | Atom | `components/ui/` for the product-wide kit; a local `*-atoms.tsx` or a `viewer/`-style kit folder for a surface's own | One decision each: a shape, a control, a piece of material. Knows no domain |
-| Molecule | `components/ui/`, `components/<area>/` | A few atoms with one job. `SearchField`, `PageHeader`, `RaisedCard` |
+| Molecule | `components/ui/`, `components/<area>/` | A few atoms with one job. `SearchField`, `PageHeader`, `RaisedCard`, `LoadError` |
 | Organism | `components/<area>/`, `features/<domain>/components/` | A meaningful chunk of a screen. `ProjectCard`, the viewer rail, the model stage |
 | Route | `app/**` | Composition and data, not markup |
 
@@ -516,7 +516,7 @@ surface that already has a border.
 
 **Loading** — Skeletons matched to the real content's shape (never a spinner for page-level loads; spinner only for inline/button-level). Match row heights and counts to the eventual layout.
 
-**Error** — `Alert variant="destructive"` for load failures with a helpful message + retry; `sonner` toast for transient action failures; inline field errors for forms (already handled by the TanStack Form FieldShell). Error red (`--signal-error`) is for errors only — never for emphasis.
+**Error** — a load that failed where its content should be is `LoadError` (`components/ui/load-error.tsx`): a destructive `Alert` with the warning glyph, the failure in the surface's own words as its title, an optional hint, and a retry that is a `BusyButton` (busy is not disabled; it stays busy while the promise `onRetry` returns is in flight, or while the caller's `retrying` says so), plus any further `actions` (Answer feedback's „clear filters"). Never compose `Alert` + `Button` for this by hand: the twenty-one copies it replaced had drifted on glyph, title-vs-description and `disabled`. A pane the failure empties entirely (the task list, the file workspace) keeps `EmptyState tone="destructive"` with a retry action. `sonner` toast for transient action failures; inline field errors for forms (already handled by the TanStack Form FieldShell). Error red (`--signal-error`) is for errors only — never for emphasis.
 
 **Counts** — `CountPill` (`components/ui/count-pill.tsx`) is the one rounded-full numeric pill. `tone="muted"` (default) for a quiet number beside a heading or tab label; `tone="attention"` — near-black action ink — only when the count *is* the signal that something waits for the reader (the inbox badge). Never hand-roll a third shape; never reach for chroma here (ink, because chroma belongs to provenance). A number goes in as `count={n}`, never as children: the pill caps it at `max` (default 99) and shows `99+`, so a big figure cannot widen a filter segment or a nav row, and the exact figure stays in the pill's `title` and in a screen-reader-only span. `children` is for words and ratios the caller composed („3/8 erfasst", `+4`, a locale-formatted analytics figure), which the pill shows as given. `max={Number.POSITIVE_INFINITY}` only where the exact number is the content and the row has room (the IFC explorer's element counts).
 

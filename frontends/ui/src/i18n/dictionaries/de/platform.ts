@@ -10,7 +10,6 @@ export const platform: typeof en.platform = {
     title: 'Hier gibt es noch nichts',
   },
   loadErrorHint: 'Beim Laden der Daten ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',
-  retry: 'Erneut versuchen',
   refreshing: 'Wird aktualisiert…',
   numberField: {
     notANumber: 'Geben Sie eine Zahl ein, etwa 2,5.',
@@ -1203,7 +1202,6 @@ export const platform: typeof en.platform = {
     description:
       'Ausführungs-Zeitleiste pro Konversation — wie lange der Agent für jeden Schritt (Graph-Knoten, LLM-Aufruf, Tool-Aufruf) gebraucht hat, organisationsübergreifend.',
     loadError: 'Die Profiler-Daten konnten nicht geladen werden.',
-    retry: 'Erneut versuchen',
     search: 'Konversation suchen…',
     empty: 'Keine profilierten Konversationen in diesem Zeitraum.',
     capped: 'Zeigt die {count} zuletzt aktiven Konversationen.',

@@ -30,6 +30,7 @@ export const common: typeof en.common = {
   },
   /** The shared „failed to load, retry" block (`components/ui/load-error.tsx`). */
   loadError: {
+    retry: 'Erneut versuchen',
     title: 'Konnte nicht geladen werden',
     retrying: 'Wird erneut geladen…',
   },

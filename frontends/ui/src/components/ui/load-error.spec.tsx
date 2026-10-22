@@ -29,14 +29,14 @@ describe('LoadError', () => {
   test('retries on a press', async () => {
     const onRetry = vi.fn()
     render(<LoadError onRetry={onRetry} />)
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(onRetry).toHaveBeenCalledTimes(1)
   })
 
   test('busy is not disabled: a running retry keeps focus and swallows a second press', async () => {
     const onRetry = vi.fn()
     render(<LoadError onRetry={onRetry} retrying />)
-    const button = screen.getByRole('button', { name: 'Retry' })
+    const button = screen.getByRole('button', { name: 'Try again' })
     expect(button).not.toBeDisabled()
     expect(button).toHaveAttribute('aria-disabled', 'true')
     expect(button).toHaveAttribute('aria-busy', 'true')
@@ -55,7 +55,7 @@ describe('LoadError', () => {
         }),
     )
     render(<LoadError onRetry={onRetry} />)
-    const button = screen.getByRole('button', { name: 'Retry' })
+    const button = screen.getByRole('button', { name: 'Try again' })
     await userEvent.click(button)
     expect(button).toHaveAttribute('aria-busy', 'true')
     await userEvent.click(button)
@@ -76,7 +76,7 @@ describe('LoadError', () => {
         }
       />,
     )
-    const button = screen.getByRole('button', { name: 'Retry' })
+    const button = screen.getByRole('button', { name: 'Try again' })
     await userEvent.click(button)
     await act(async () => fail())
     expect(button).not.toHaveAttribute('aria-busy')

@@ -90,5 +90,4 @@ export const members: typeof en.members = {
       '{name} hat bereits {from}-Zugriff auf dieses Projekt. „Mitglied hinzufügen" würde die Rolle auf {to} ändern, anstatt jemand Neuen hinzuzufügen.',
     roleChangeConfirm: 'Rolle zu {role} ändern',
   },
-  tryAgain: 'Erneut versuchen',
 }

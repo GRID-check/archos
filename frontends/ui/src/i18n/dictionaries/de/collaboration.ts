@@ -293,7 +293,6 @@ export const collaboration: typeof en.collaboration = {
     errors: {
       loadFailed: 'Ihr Postfach konnte nicht geladen werden.',
       actionFailed: 'Die Aktion konnte nicht ausgeführt werden. Ihr Postfach ist unverändert.',
-      tryAgain: 'Erneut versuchen',
     },
     types: {
       // `titleResolved`, sobald die Frage beantwortet ist: dann ist die Zeile

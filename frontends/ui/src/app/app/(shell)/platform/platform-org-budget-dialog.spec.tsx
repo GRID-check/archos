@@ -129,7 +129,7 @@ describe('platform organization allowance editor', () => {
     fetchMock.mockResolvedValueOnce(response({}, 500)).mockResolvedValueOnce(response(budget))
     render(<PlatformOrgBudgetDialog organization={organization} onClose={onClose} />)
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load')
-    await userEvent.click(screen.getByRole('button', { name: 'Retry' }))
+    await userEvent.click(screen.getByRole('button', { name: 'Try again' }))
     expect(await screen.findByLabelText('Monthly allowance (credits)')).toHaveValue('10000')
   })
 

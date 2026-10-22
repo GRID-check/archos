@@ -78,7 +78,7 @@ export const LoadError = React.forwardRef<HTMLDivElement, LoadErrorProps>(
                     onClick={retry}
                     data-testid="load-error-retry"
                   >
-                    {t('actions.retry')}
+                    {t('loadError.retry')}
                   </BusyButton>
                 ) : null}
                 {actions}

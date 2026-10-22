@@ -27,6 +27,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from '@/components/ui/item'
+import { LoadError } from '@/components/ui/load-error'
 import { SearchField } from '@/components/ui/search-field'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
 import {
@@ -542,15 +543,7 @@ export function ProjectMembersForm({
 
   if (loadError) {
     return (
-      <Alert variant="destructive">
-        <AlertTitle>{t('errors.loadTitle')}</AlertTitle>
-        <AlertDescription className="flex flex-col items-start gap-3">
-          <span>{loadError}</span>
-          <Button variant="outline" size="sm" onClick={() => void load()}>
-            {t('tryAgain')}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <LoadError title={t('errors.loadTitle')} description={loadError} onRetry={load} />
     )
   }
 

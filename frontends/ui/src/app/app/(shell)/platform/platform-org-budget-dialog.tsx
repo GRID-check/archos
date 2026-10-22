@@ -14,9 +14,8 @@
 
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { LoadError } from '@/components/ui/load-error'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -169,21 +168,10 @@ export function PlatformOrgBudgetDialog({
   const body = (): JSX.Element => {
     if (error) {
       return (
-        <Alert variant="destructive">
-          <AlertTriangle aria-hidden />
-          <AlertTitle className="line-clamp-none">{t('orgBudgets.loadError')}</AlertTitle>
-          <AlertDescription>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-2"
-              onClick={() => setRetry((value) => value + 1)}
-            >
-              <RefreshCw className="size-3.5" aria-hidden />
-              {t('retry')}
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadError
+          title={t('orgBudgets.loadError')}
+          onRetry={() => setRetry((value) => value + 1)}
+        />
       )
     }
     if (!budget) {

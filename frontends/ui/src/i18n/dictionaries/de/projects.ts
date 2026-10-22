@@ -423,7 +423,6 @@ export const projects: typeof en.projects = {
     purgeAfter: 'Endgültig gelöscht nach {date}',
     restore: 'Wiederherstellen',
     loadError: 'Kürzlich gelöschte Projekte konnten nicht geladen werden.',
-    retry: 'Erneut versuchen',
   },
   researchRuns: {
     hint: {
@@ -462,7 +461,6 @@ export const projects: typeof en.projects = {
       saveFailed:
         'Wir konnten das Projekt-Briefing nicht speichern. Bitte versuchen Sie es erneut.',
     },
-    tryAgain: 'Erneut versuchen',
     conflictReload: 'Aktualisieren',
     draftSaved: 'Entwurf auf diesem Gerät gespeichert',
     salvage: {
@@ -645,7 +643,6 @@ export const projects: typeof en.projects = {
     addPlaceholder: 'Eine prägnante, in sich geschlossene Erkenntnis zu diesem Projekt…',
     cancel: 'Abbrechen',
     add: 'Hinzufügen',
-    tryAgain: 'Erneut versuchen',
     emptyTitle: 'Noch nichts erfasst',
     emptyDescription:
       'Piloti hat zu diesem Projekt noch nichts erfasst. Das geschieht, während Sie chatten — oder fügen Sie selbst etwas hinzu.',

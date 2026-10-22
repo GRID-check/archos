@@ -24,12 +24,12 @@
 import type { JSX } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, ArrowRight, CalendarClock, Hand } from 'lucide-react'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { ArrowRight, CalendarClock, Hand } from 'lucide-react'
 import { Badge, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
+import { LoadError } from '@/components/ui/load-error'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
@@ -161,15 +161,7 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
 
   if (error) {
     return (
-      <Alert variant="destructive" className="mt-1">
-        <AlertCircle className="size-4" aria-hidden />
-        <AlertDescription className="flex flex-col items-start gap-2">
-          {t('history.loadError')}
-          <Button variant="outline" size="sm" onClick={load}>
-            {t('tryAgain')}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <LoadError className="mt-1" title={t('history.loadError')} onRetry={load} />
     )
   }
 

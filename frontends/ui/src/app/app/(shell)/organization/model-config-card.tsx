@@ -25,7 +25,6 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { ChevronDown, History, RotateCcw, ShieldAlert } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
@@ -34,6 +33,7 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Item } from '@/components/ui/item'
+import { LoadError } from '@/components/ui/load-error'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { SearchField } from '@/components/ui/search-field'
@@ -381,14 +381,7 @@ export const ModelConfigCard: FC = () => {
 
   if (loadFailed) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription className="flex flex-col items-start gap-3">
-          {t('models.loadError')}
-          <Button variant="outline" size="sm" onClick={() => void load()}>
-            {tc('actions.retry')}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <LoadError title={t('models.loadError')} onRetry={load} />
     )
   }
 
@@ -544,14 +537,7 @@ export const ModelConfigCard: FC = () => {
           <div className="mt-3 flex flex-col gap-2">
             {versions === null && !versionsFailed && <Spinner className="mx-auto my-4" />}
             {versions === null && versionsFailed && (
-              <Alert variant="destructive">
-                <AlertDescription className="flex flex-col items-start gap-3">
-                  {t('models.loadError')}
-                  <Button variant="outline" size="sm" onClick={() => void loadVersions()}>
-                    {tc('actions.retry')}
-                  </Button>
-                </AlertDescription>
-              </Alert>
+              <LoadError title={t('models.loadError')} onRetry={loadVersions} />
             )}
             {versions !== null && versions.length === 0 && (
               <EmptyState variant="bare" title={t('models.historyEmpty')} />
