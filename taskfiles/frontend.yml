@@ -79,7 +79,10 @@ tasks:
       # adds it on its own only while no reporter is named, and this task names
       # two, so without it a failing test is a log line instead of an
       # annotation on the pull request's diff.
-      - bun run test:shard -- --shard={{.SHARD}} --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}} --outputFile=.vitest-reports/blob-{{.SHARD | replace "/" "-"}}.json
+      #
+      # COVERAGE=false leaves the instrumentation out: CI's push runs, whose
+      # blobs nothing merges (the coverage comment is a pull request's).
+      - bun run test:shard -- --shard={{.SHARD}} --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}} --outputFile=.vitest-reports/blob-{{.SHARD | replace "/" "-"}}.json{{if eq .COVERAGE "false"}} --coverage.enabled=false{{end}}
 
   fe:test:related:
     desc: 'One shard of the UI specs that reach the given files (CI on a pull request: SHARD=1/6 FILES="...")'

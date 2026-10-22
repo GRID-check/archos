@@ -99,8 +99,9 @@ describe('the write boundary', () => {
     expect(orgInstructionsSchema.safeParse({ instructions: text }).success).toBe(true)
   })
 
-  it('is the number the backend and the SQL CHECK use', () => {
-    expect(ORG_INSTRUCTIONS_MAX_CHARS).toBe(1500)
+  it('is the number the backend uses (the SQL CHECK is held to it below)', () => {
+    const backend = readFileSync(join(process.cwd(), '..', '..', 'src', 'aiq_agent', 'project_context.py'), 'utf8')
+    expect(backend).toContain(`ORG_INSTRUCTIONS_MAX_CHARS = ${ORG_INSTRUCTIONS_MAX_CHARS}\n`)
   })
 })
 

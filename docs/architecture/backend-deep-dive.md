@@ -502,8 +502,8 @@ WebSocket handshake.
 
 ## 5. Project summary / fact-sheet
 
-The Project Overview "Project Brief" panel (`project-brief.tsx`, mounted by
-`project-overview.tsx`) renders the AI `summary` from `projects.profile_display`
+The project brief (no panel renders it any more: `project-brief.tsx`, mounted
+by nothing, was removed on 2026-10-22) is the AI `summary` from `projects.profile_display`
 plus a fact sheet derived **at render time from the raw `projects.profile`** via
 `buildProjectBriefView` (`lib/project-profile/brief-view.ts`): facts grouped in
 intake-stage order with question/option labels ("Main use: Residential", not
@@ -691,8 +691,7 @@ to the shelves retrieval may keep; the knowledge layer **subtracts** other
 shelves from the ceiling at the retrieve site and, when the focused file has
 hits, does not pad the merge with Archiv/project leftovers (#429, #436).
 A subject shelf wins over a preset. Absence of both leaves the signed scope
-intact (ADR-0024: Archiv stays in every unscoped project turn). The TS twin
-is `includeShelvesForTurn` in `frontends/ui/src/features/layout/lib/retrieval-scope.ts`.
+intact (ADR-0024: Archiv stays in every unscoped project turn).
 
 **A subject file never subtracts `base`.** A subject narrows which *documents*
 a turn reads, which is what #429 and #436 asked for; neither was about the
