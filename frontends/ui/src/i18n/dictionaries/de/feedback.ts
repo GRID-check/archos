@@ -114,10 +114,35 @@ export const feedback: typeof en.feedback = {
   platform: {
     filters: {
       label: 'Nach Status filtern',
+      active: 'Aktiv',
       all: 'Alle',
       kindLabel: 'Art',
       allKinds: 'Alle Arten',
+      assigneeLabel: 'Nach Zuständigkeit filtern',
+      assignees: {
+        all: 'Alle',
+        mine: 'Meine',
+        unassigned: 'Nicht zugewiesen',
+      },
     },
+    case: {
+      unassigned: 'Nicht zugewiesen',
+      assignedToYou: 'Ihnen zugewiesen',
+      assignedTo: 'Bei {name}',
+      unnamedAssignee: 'jemandem im Team',
+      lastActivity: 'Zuletzt aktiv',
+      awaiting: {
+        team: 'Unsere Antwort fehlt',
+        reporter: 'Wartet auf Rückmeldung',
+      },
+      claim: 'Übernehmen',
+    },
+    viewerNotInPosthog: {
+      title: 'Ihnen ist in PostHog nichts zugewiesen.',
+      description:
+        'Niemand in PostHog hat Ihre Piloti-E-Mail. Melden Sie sich mit derselben Adresse bei PostHog an, dann erscheinen Ihre Tickets hier.',
+    },
+    openInPosthog: 'In PostHog öffnen',
     empty: {
       title: 'Hier ist kein Feedback',
       description: 'Sobald ein Mitglied Feedback sendet, erscheint es hier und in Ihrem Postfach.',
@@ -140,8 +165,6 @@ export const feedback: typeof en.feedback = {
     details: 'Browserdetails',
     listTitle: 'Meldungen',
     linked: 'Aus dem Postfach',
-    ticketLink: 'Ticket #{number} in PostHog',
-    ticketLinkUnnumbered: 'Ticket in PostHog',
     recordingsLink: 'Aufzeichnungen in PostHog',
     localSource: {
       title: 'PostHog Support kann gerade nicht gelesen werden.',

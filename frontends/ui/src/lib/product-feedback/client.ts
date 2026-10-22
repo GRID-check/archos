@@ -7,9 +7,11 @@ import type {
   OwnProductFeedbackListResponse,
   OwnProductFeedbackThread,
   ProductFeedbackContext,
+  ProductFeedbackAssigneeFilter,
   ProductFeedbackKind,
   ProductFeedbackListResponse,
   ProductFeedbackReportView,
+  ProductFeedbackStatusFilter,
   SubmittedProductFeedbackView,
   SupportTicketStatus,
 } from './types'
@@ -67,8 +69,9 @@ export function captureFeedbackContext(): { pagePath: string | null; context: Pr
 }
 
 export interface ListFeedbackFilters {
-  status?: SupportTicketStatus
+  status?: ProductFeedbackStatusFilter
   kind?: ProductFeedbackKind
+  assignee?: ProductFeedbackAssigneeFilter
   cursor?: string | null
 }
 
@@ -78,6 +81,7 @@ export async function fetchPlatformFeedback(
   const params = new URLSearchParams()
   if (filters.status) params.set('status', filters.status)
   if (filters.kind) params.set('kind', filters.kind)
+  if (filters.assignee) params.set('assignee', filters.assignee)
   if (filters.cursor) params.set('cursor', filters.cursor)
   const query = params.toString()
   const response = await fetch(`/api/platform/feedback${query ? `?${query}` : ''}`, {

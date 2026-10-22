@@ -8,11 +8,15 @@ import {
   assignSupportTicket,
   findPosthogUserIdByEmail,
   getSupportTicket,
+  lastVisibleMessageAuthor,
   listCustomerVisibleMessages,
   listFeedbackTickets,
   listFeedbackTicketsOf,
+  listPosthogMembers,
   openFeedbackTicket,
   replyAsCustomer,
+  resetLastAuthorCacheForTests,
+  resetMembersCacheForTests,
   resetWidgetTokenCacheForTests,
   updateSupportTicketStatus,
 } from './client'
@@ -104,10 +108,62 @@ describe('listFeedbackTickets', () => {
           tags: ['piloti-feedback', 'kind:bug'],
           createdAt: '2026-10-20T08:00:00Z',
           updatedAt: '2026-10-20T09:00:00Z',
+          assignee: null,
+          lastActivityAt: '2026-10-20T09:00:00Z',
+          messageCount: null,
+          unreadTeamCount: 0,
           url: 'https://eu.posthog.com/project/269895/support/tickets/0b6c3b1e-1111-4000-8000-000000000001',
         },
       ],
     })
+  })
+
+  test('asks for several statuses at once, and for one assignee or the unassigned', async () => {
+    const { impl, calls } = fakeFetch(() => json(200, { count: 0, results: [] }))
+
+    await listFeedbackTickets(
+      config,
+      { status: ['new', 'open', 'pending', 'on_hold'], assignee: { userId: 388858 }, limit: 10, offset: 0 },
+      impl
+    )
+    await listFeedbackTickets(config, { assignee: 'unassigned', limit: 10, offset: 0 }, impl)
+
+    const [mine, unassigned] = calls.map((call) => new URL(call.url).searchParams)
+    expect(mine!.get('status')).toBe('new,open,pending,on_hold')
+    expect(mine!.get('assignee')).toBe('user:388858')
+    expect(unassigned!.get('assignee')).toBe('unassigned')
+    expect(unassigned!.has('status')).toBe(false)
+  })
+
+  test('reads the assignee and the activity as PostHog serves them', async () => {
+    const { impl } = fakeFetch(() =>
+      json(200, {
+        count: 3,
+        results: [
+          // The shape seen in real data.
+          row({
+            assignee: { id: 388858, type: 'user', user: { email: 'matthias@piloti.test' }, role: null },
+            message_count: 2,
+            unread_team_count: 1,
+            last_message_at: '2026-10-20T09:30:00Z',
+          }),
+          row({ assignee: { id: 'role-1', type: 'role', role: { name: 'Support' } } }),
+          row({ assignee: { type: 'robot' } }),
+        ],
+      })
+    )
+
+    const { tickets } = await listFeedbackTickets(config, { limit: 10, offset: 0 }, impl)
+
+    expect(tickets[0]).toMatchObject({
+      assignee: { type: 'user', id: 388858, email: 'matthias@piloti.test' },
+      messageCount: 2,
+      unreadTeamCount: 1,
+      lastActivityAt: '2026-10-20T09:30:00Z',
+    })
+    expect(tickets[1]?.assignee).toEqual({ type: 'role', id: 'role-1', name: 'Support' })
+    // An assignee it cannot read is unassigned, never a lost row.
+    expect(tickets[2]?.assignee).toBeNull()
   })
 
   test('without status or kind, filters on the feedback tag alone', async () => {
@@ -199,6 +255,14 @@ describe('countFeedbackTicketsByStatus', () => {
     expect(counts).toEqual({ new: 1, open: 2, pending: 3, on_hold: 4, resolved: 5 })
     expect(calls).toHaveLength(SUPPORT_TICKET_STATUSES.length)
     for (const call of calls) expect(new URL(call.url).searchParams.get('limit')).toBe('1')
+  })
+
+  test('counts one assignee’s tickets when asked', async () => {
+    const { impl, calls } = fakeFetch(() => json(200, { count: 0, results: [] }))
+
+    await countFeedbackTicketsByStatus(config, impl, { assignee: 'unassigned' })
+
+    for (const call of calls) expect(new URL(call.url).searchParams.get('assignee')).toBe('unassigned')
   })
 })
 
@@ -461,7 +525,112 @@ describe('listFeedbackTicketsOf', () => {
   })
 })
 
+describe('the PostHog members', () => {
+  beforeEach(() => resetMembersCacheForTests())
+
+  const members = (results: unknown[]) => json(200, { count: results.length, results })
+
+  test('names each member from their first and last name, and reads the list once for a while', async () => {
+    const { impl, calls } = fakeFetch(() =>
+      members([
+        { id: 'm-1', user: { id: 1, email: 'anna@posthog.test', first_name: 'Anna', last_name: 'Wallner' } },
+        { id: 'm-2', user: { id: 2, email: 'bot@posthog.test', first_name: '', last_name: null } },
+        { id: 'm-3', user: { email: 'broken' } },
+      ])
+    )
+
+    const first = await listPosthogMembers(config, impl)
+    await listPosthogMembers(config, impl)
+
+    expect(first).toEqual([
+      { id: 1, email: 'anna@posthog.test', name: 'Anna Wallner' },
+      { id: 2, email: 'bot@posthog.test', name: null },
+    ])
+    expect(calls).toHaveLength(1)
+  })
+
+  test('a miss in the cached list reads it afresh before saying nobody has the email', async () => {
+    let joined = false
+    const { impl, calls } = fakeFetch(() =>
+      members([
+        { id: 'm-1', user: { id: 1, email: 'anna@posthog.test' } },
+        ...(joined ? [{ id: 'm-2', user: { id: 2, email: 'new@posthog.test' } }] : []),
+      ])
+    )
+    await listPosthogMembers(config, impl)
+    joined = true
+
+    expect(await findPosthogUserIdByEmail(config, 'new@posthog.test', impl)).toBe(2)
+    expect(calls).toHaveLength(2)
+  })
+})
+
+describe('lastVisibleMessageAuthor', () => {
+  beforeEach(() => resetLastAuthorCacheForTests())
+
+  const message = (message_type: string, is_private = false) => ({
+    id: `m-${message_type}`,
+    message_type,
+    content: 'x',
+    is_private,
+    created_at: '2026-10-20T09:00:00Z',
+  })
+  const thread = { id: 'ticket-1', updatedAt: '2026-10-20T09:00:00Z', messageCount: 8 }
+
+  test('reads only the tail of the thread, and skips notes and AI drafts', async () => {
+    const { impl, calls } = fakeFetch(() =>
+      json(200, {
+        count: 8,
+        results: [message('sent_reply'), message('customer_message'), message('internal_note', true), message('ai_draft', true)],
+      })
+    )
+
+    expect(await lastVisibleMessageAuthor(config, thread, impl)).toBe('customer')
+    const url = new URL(calls[0]!.url)
+    expect(url.pathname).toBe('/api/projects/269895/conversations/tickets/ticket-1/messages/')
+    expect(url.searchParams.get('offset')).toBe('3')
+    expect(url.searchParams.get('limit')).toBe('5')
+  })
+
+  test('a team reply last means the reporter owes the answer', async () => {
+    const { impl } = fakeFetch(() => json(200, { count: 2, results: [message('customer_message'), message('sent_reply')] }))
+
+    expect(await lastVisibleMessageAuthor(config, { ...thread, messageCount: 2 }, impl)).toBe('team')
+  })
+
+  test('remembers the answer until the ticket changes', async () => {
+    const { impl, calls } = fakeFetch(() => json(200, { count: 1, results: [message('customer_message')] }))
+    const one = { ...thread, messageCount: 1 }
+
+    await lastVisibleMessageAuthor(config, one, impl)
+    await lastVisibleMessageAuthor(config, one, impl)
+    expect(calls).toHaveLength(1)
+
+    await lastVisibleMessageAuthor(config, { ...one, updatedAt: '2026-10-20T10:00:00Z' }, impl)
+    expect(calls).toHaveLength(2)
+  })
+
+  test('reads the real tail when the thread grew past the count the ticket carried', async () => {
+    const { impl, calls } = fakeFetch((call) =>
+      new URL(call.url).searchParams.get('offset') === '0'
+        ? json(200, { count: 9, results: [message('customer_message')] })
+        : json(200, { count: 9, results: [message('sent_reply')] })
+    )
+
+    expect(await lastVisibleMessageAuthor(config, { ...thread, messageCount: 1 }, impl)).toBe('team')
+    expect(new URL(calls[1]!.url).searchParams.get('offset')).toBe('4')
+  })
+
+  test('an unreadable thread is PosthogSupportUnavailableError', async () => {
+    const { impl } = fakeFetch(() => json(500, {}))
+
+    await expect(lastVisibleMessageAuthor(config, thread, impl)).rejects.toBeInstanceOf(PosthogSupportUnavailableError)
+  })
+})
+
 describe('taking a ticket', () => {
+  beforeEach(() => resetMembersCacheForTests())
+
   test('finds the PostHog user id by email, case-insensitively, through the members list', async () => {
     const { impl, calls } = fakeFetch(() =>
       json(200, {

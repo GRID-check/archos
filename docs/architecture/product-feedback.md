@@ -104,10 +104,39 @@ The page reads PostHog live and keeps no status of its own.
 - **Each report links to its ticket.** The list is the tickets tagged
   `piloti-feedback`, newest first, joined to their local rows for the words,
   the reporter and the organization.
+- **It opens on the active support cases:** every ticket that is not resolved
+  (`status=active`, sent to PostHog as `new,open,pending,on_hold`). The status
+  chips narrow to one status; „Alle" and „Erledigt" bring the resolved back.
+  A second row narrows by assignee: „Meine" (the ticket's PostHog assignee is
+  the reader, found by their email in the PostHog members list) or „Nicht
+  zugewiesen". Counts follow the assignee filter.
+- **Each row is a case:** ticket number, kind, the first lines of the report,
+  who has it (the member's PostHog name, or their email when the members list
+  cannot be read; „Nicht zugewiesen" otherwise), the last activity, and whose
+  move it is. „Unsere Antwort fehlt" when the last message the reporter can see
+  is theirs, „Wartet auf Rückmeldung" when it is the team's. Notes and AI drafts
+  do not count. The client reads only the last few messages of each open
+  ticket's thread (`lastVisibleMessageAuthor`), eight at a time, and keeps the
+  answer per ticket until its `updated_at` moves. A thread it cannot read leaves
+  the move unknown and does not fail the page.
+- **„Übernehmen" on a row** assigns its ticket to the reader through the same
+  `claimProductFeedbackTicket` the Slack button uses, offered while the ticket
+  is open and not the reader's yet. „In PostHog öffnen" links the ticket.
+  Answering stays in PostHog: Piloti does not reply for the team.
+- **The members list** (`/api/organizations/@current/members/`, which needs
+  `organization_member:read`) is cached in the server process for five
+  minutes, keyed by PostHog host and project: it is the personal key's own
+  organization, the same for every Piloti tenant. A claim that misses the cache
+  reads the list again. „Meine" without a readable members list falls back to
+  the local log; a reader nobody in PostHog has gets an empty list that says
+  so (`viewerNotInPosthog`).
 - **Reports without a ticket** from the last 30 days are listed apart, as not in
-  PostHog yet, with a link to the reporter's PostHog person page instead.
+  PostHog yet, with a link to the reporter's PostHog person page instead. They
+  belong to nobody, so an assignee filter leaves them out.
+- **Paged:** at most 50 per page (`limit`), with an offset cursor.
 - **Fallback.** While Support is not configured, or PostHog cannot be read, the
-  page lists the local log, read-only: no statuses, no status change.
+  page lists the local log, read-only: no statuses, no assignees, no status
+  change.
 
 `product_feedback` is the intake log: what was sent, by whom, from where, and
 the ticket id. Its `status`, `triaged_by` and `triaged_at` columns were dropped

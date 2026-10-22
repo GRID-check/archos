@@ -115,10 +115,35 @@ export const feedback = {
   platform: {
     filters: {
       label: 'Filter by status',
+      active: 'Active',
       all: 'All',
       kindLabel: 'Kind',
       allKinds: 'All kinds',
+      assigneeLabel: 'Filter by assignee',
+      assignees: {
+        all: 'Everyone',
+        mine: 'Mine',
+        unassigned: 'Unassigned',
+      },
     },
+    case: {
+      unassigned: 'Unassigned',
+      assignedToYou: 'Assigned to you',
+      assignedTo: 'With {name}',
+      unnamedAssignee: 'someone on the team',
+      lastActivity: 'Last activity',
+      awaiting: {
+        team: 'We owe an answer',
+        reporter: 'Waiting on the reporter',
+      },
+      claim: 'Take it',
+    },
+    viewerNotInPosthog: {
+      title: 'Nothing is assigned to you in PostHog.',
+      description:
+        'Nobody in PostHog has your Piloti email. Sign in to PostHog with the same address and your tickets show up here.',
+    },
+    openInPosthog: 'Open in PostHog',
     empty: {
       title: 'No feedback here',
       description: 'When a member sends feedback, it shows up here and in your inbox.',
@@ -141,8 +166,6 @@ export const feedback = {
     details: 'Browser details',
     listTitle: 'Reports',
     linked: 'From your inbox',
-    ticketLink: 'Ticket #{number} in PostHog',
-    ticketLinkUnnumbered: 'Ticket in PostHog',
     recordingsLink: 'Recordings in PostHog',
     localSource: {
       title: 'PostHog Support cannot be read right now.',

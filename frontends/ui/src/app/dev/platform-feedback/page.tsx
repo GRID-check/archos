@@ -11,6 +11,13 @@
  *   /dev/platform-feedback?readonly=1    Platform Support: view only
  *   /dev/platform-feedback?empty=1       nothing new
  *   /dev/platform-feedback?source=local  PostHog not configured or unreachable: the local log
+ *   /dev/platform-feedback?stranger=1    the reader has no PostHog login: „Meine" says why it is empty
+ *   /dev/platform-feedback?lang=en       English (German is the default)
+ *
+ * The page opens on the active cases: one unassigned bug the team owes an
+ * answer on, one idea with a colleague waiting on the reporter, one question
+ * assigned to the reader. „Übernehmen" assigns the row to the reader. The
+ * reader is `you@piloti.test`.
  *
  * The PostHog list always carries one report whose ticket failed to open
  * (`unticketed`), so the "not in PostHog yet" section is in every capture.
@@ -27,9 +34,13 @@ import {
   type FeedbackTriageClient,
 } from '@/features/product-feedback/components/feedback-triage'
 import {
+  ACTIVE_SUPPORT_TICKET_STATUSES,
   SUPPORT_TICKET_STATUSES,
+  type ProductFeedbackAssigneeView,
+  type ProductFeedbackAwaiting,
   type ProductFeedbackListResponse,
   type ProductFeedbackReportView,
+  type ProductFeedbackTicketView,
   type SupportTicketStatus,
 } from '@/lib/product-feedback/types'
 
@@ -46,11 +57,27 @@ const CONTEXT = {
 
 const POSTHOG = 'https://eu.posthog.com/project/12345'
 
-const ticket = (id: string, number: number, status: SupportTicketStatus) => ({
+const YOU: ProductFeedbackAssigneeView = { type: 'user', name: 'Matthias Bigl', email: 'you@piloti.test', isViewer: true }
+const COLLEAGUE: ProductFeedbackAssigneeView = {
+  type: 'user',
+  name: 'Anna Wallner',
+  email: 'anna@piloti.test',
+  isViewer: false,
+}
+
+const ticket = (
+  id: string,
+  number: number,
+  status: SupportTicketStatus,
+  options: { assignee?: ProductFeedbackAssigneeView | null; awaiting?: ProductFeedbackAwaiting | null; lastActivity?: number } = {}
+): ProductFeedbackTicketView => ({
   id,
   number,
   status,
   url: `${POSTHOG}/support/tickets/${id}`,
+  assignee: options.assignee ?? null,
+  lastActivityAt: ago(options.lastActivity ?? 5),
+  awaiting: status === 'resolved' ? null : (options.awaiting ?? 'team'),
 })
 
 const person = (userId: string): string => `${POSTHOG}/person/${userId}`
@@ -59,7 +86,7 @@ const SEED: ProductFeedbackReportView[] = [
   {
     id: 'f1',
     kind: 'bug',
-    ticket: ticket('5b1f0c2e-1d4a-4c7e-9f3b-2a6d8e0c4b11', 41, 'new'),
+    ticket: ticket('5b1f0c2e-1d4a-4c7e-9f3b-2a6d8e0c4b11', 41, 'new', { lastActivity: 4 }),
     posthogPersonUrl: person('u1'),
     message:
       'Beim Hochladen eines 80-MB-Plans bleibt der Fortschritt bei 99 % stehen, auch nach 10 Minuten. Nach einem Neuladen ist die Datei nicht im Projekt.',
@@ -75,7 +102,7 @@ const SEED: ProductFeedbackReportView[] = [
   {
     id: 'f2',
     kind: 'idea',
-    ticket: ticket('7c2e1d3f-2e5b-4d8f-8a4c-3b7e9f1d5c22', 40, 'new'),
+    ticket: ticket('7c2e1d3f-2e5b-4d8f-8a4c-3b7e9f1d5c22', 40, 'pending', { assignee: COLLEAGUE, awaiting: 'reporter', lastActivity: 40 }),
     posthogPersonUrl: person('u2'),
     message:
       'Es wäre großartig, wenn ich eine Antwort direkt als Aktennotiz ins Archiv legen könnte, mit Quellenangaben.\n\nDerzeit kopiere ich alles händisch in Word.',
@@ -91,7 +118,7 @@ const SEED: ProductFeedbackReportView[] = [
   {
     id: 'f3',
     kind: 'praise',
-    ticket: ticket('9d3f2e4a-3f6c-4e9a-9b5d-4c8f0a2e6d33', 39, 'pending'),
+    ticket: ticket('9d3f2e4a-3f6c-4e9a-9b5d-4c8f0a2e6d33', 39, 'resolved', { assignee: COLLEAGUE, lastActivity: 60 * 25 }),
     posthogPersonUrl: person('u3'),
     message:
       'Die Herleitung der OIB-2-Anforderungen hat uns heute einen halben Tag gespart. Danke!',
@@ -107,7 +134,7 @@ const SEED: ProductFeedbackReportView[] = [
   {
     id: 'f4',
     kind: 'question',
-    ticket: ticket('1e4a3f5b-4a7d-4fab-8c6e-5d9a1b3f7e44', 37, 'open'),
+    ticket: ticket('1e4a3f5b-4a7d-4fab-8c6e-5d9a1b3f7e44', 37, 'open', { assignee: YOU, lastActivity: 60 * 20 }),
     posthogPersonUrl: person('u4'),
     message:
       'Kann ich eigene Normen (z. B. ÖNORM B 1600) hochladen, damit Piloti sie berücksichtigt?',
@@ -147,18 +174,35 @@ const byNewest = (a: ProductFeedbackReportView, b: ProductFeedbackReportView): n
  * unticketed report apart; `local` is the fallback, every report newest first
  * with no ticket and no counts.
  */
-function memoryClient(empty: boolean, source: ProductFeedbackListResponse['source']): FeedbackTriageClient {
+function memoryClient(
+  empty: boolean,
+  source: ProductFeedbackListResponse['source'],
+  stranger: boolean
+): FeedbackTriageClient {
   let reports = empty ? [] : SEED.map((report) => ({ ...report }))
   const unticketed = empty ? [] : [UNTICKETED]
-  const counts = () =>
-    reports.reduce<Record<SupportTicketStatus, number>>(
+  const local = (report: ProductFeedbackReportView): ProductFeedbackReportView => ({ ...report, ticket: null })
+  const matchesStatus = (ticketStatus: SupportTicketStatus | undefined, status: string | undefined): boolean =>
+    !status ||
+    (status === 'active'
+      ? (ACTIVE_SUPPORT_TICKET_STATUSES as readonly string[]).includes(ticketStatus ?? '')
+      : ticketStatus === status)
+  const matchesAssignee = (report: ProductFeedbackReportView, assignee: string | undefined): boolean =>
+    !assignee ||
+    (assignee === 'mine' ? Boolean(report.ticket?.assignee?.isViewer) : report.ticket?.assignee === null)
+  const counts = (pool: ProductFeedbackReportView[]) =>
+    pool.reduce<Record<SupportTicketStatus, number>>(
       (acc, report) => (report.ticket ? { ...acc, [report.ticket.status]: acc[report.ticket.status] + 1 } : acc),
       Object.fromEntries(SUPPORT_TICKET_STATUSES.map((status) => [status, 0])) as Record<SupportTicketStatus, number>
     )
-  const local = (report: ProductFeedbackReportView): ProductFeedbackReportView => ({ ...report, ticket: null })
   return {
-    list: async ({ status, kind }) =>
-      source === 'local'
+    list: async ({ status, kind, assignee }) => {
+      await new Promise((resolve) => setTimeout(resolve, 200))
+      if (source === 'posthog' && assignee === 'mine' && stranger) {
+        return { source, reports: [], counts: counts([]), unticketed: [], nextCursor: null, viewerNotInPosthog: true }
+      }
+      const mine = reports.filter((report) => matchesAssignee(report, assignee))
+      return source === 'local'
         ? {
             source,
             reports: [...reports, ...unticketed]
@@ -168,16 +212,28 @@ function memoryClient(empty: boolean, source: ProductFeedbackListResponse['sourc
             counts: null,
             unticketed: [],
             nextCursor: null,
+            viewerNotInPosthog: false,
           }
         : {
             source,
-            reports: reports.filter(
-              (report) => (!status || report.ticket?.status === status) && (!kind || report.kind === kind)
+            reports: mine.filter(
+              (report) => matchesStatus(report.ticket?.status, status) && (!kind || report.kind === kind)
             ),
-            counts: counts(),
-            unticketed: unticketed.filter((report) => !kind || report.kind === kind),
+            counts: counts(mine),
+            unticketed: assignee ? [] : unticketed.filter((report) => !kind || report.kind === kind),
             nextCursor: null,
-          },
+            viewerNotInPosthog: false,
+          }
+    },
+    claim: async (ticketId) => {
+      await new Promise((resolve) => setTimeout(resolve, 400))
+      reports = reports.map((report) =>
+        report.ticket?.id === ticketId ? { ...report, ticket: { ...report.ticket, assignee: YOU } } : report
+      )
+      const updated = reports.find((report) => report.ticket?.id === ticketId)
+      if (!updated) throw new Error('unknown')
+      return updated
+    },
     get: async (id) => {
       const found = [...reports, ...unticketed].find((report) => report.id === id) ?? null
       return found && source === 'local' ? local(found) : found
@@ -207,7 +263,8 @@ function Preview(): JSX.Element {
   const params = useSearchParams()
   const empty = params.get('empty') === '1'
   const source = params.get('source') === 'local' ? 'local' : 'posthog'
-  const client = React.useMemo(() => memoryClient(empty, source), [empty, source])
+  const stranger = params.get('stranger') === '1'
+  const client = React.useMemo(() => memoryClient(empty, source, stranger), [empty, source, stranger])
   return (
     <I18nProvider initialLocale={params.get('lang') === 'en' ? 'en' : 'de'} fixedLocale>
       <div className="bg-background min-h-dvh px-4 py-8 md:px-8">

@@ -27,6 +27,10 @@ vi.mock('@/lib/posthog-support/client', () => ({
   replyAsCustomer: vi.fn(),
   findPosthogUserIdByEmail: vi.fn(),
   assignSupportTicket: vi.fn(),
+  listPosthogMembers: vi.fn(),
+  lastVisibleMessageAuthor: vi.fn(),
+  memberByEmail: (members: Array<{ email: string }>, email: string) =>
+    members.find((member) => member.email.toLowerCase() === email.toLowerCase()) ?? null,
 }))
 vi.mock('./repository', () => ({
   PRODUCT_FEEDBACK_LIST_LIMIT: 2,
@@ -52,9 +56,11 @@ import {
   countFeedbackTicketsByStatus,
   findPosthogUserIdByEmail,
   getSupportTicket,
+  lastVisibleMessageAuthor,
   listCustomerVisibleMessages,
   listFeedbackTickets,
   listFeedbackTicketsOf,
+  listPosthogMembers,
   openFeedbackTicket,
   replyAsCustomer,
   updateSupportTicketStatus,
@@ -136,6 +142,10 @@ function ticket(overrides: Partial<SupportTicket> = {}): SupportTicket {
     tags: ['piloti-feedback', 'kind:bug'],
     createdAt: at.toISOString(),
     updatedAt: at.toISOString(),
+    assignee: null,
+    lastActivityAt: at.toISOString(),
+    messageCount: 1,
+    unreadTeamCount: 0,
     url: 'https://eu.posthog.com/project/269895/support/tickets/ticket-1',
     ...overrides,
   }
@@ -157,6 +167,8 @@ beforeEach(() => {
   vi.mocked(openFeedbackTicket).mockResolvedValue('ticket-1')
   vi.mocked(listFeedbackTickets).mockResolvedValue({ tickets: [], count: 0 })
   vi.mocked(countFeedbackTicketsByStatus).mockResolvedValue(NO_COUNTS)
+  vi.mocked(listPosthogMembers).mockResolvedValue([])
+  vi.mocked(lastVisibleMessageAuthor).mockResolvedValue('customer')
 })
 
 describe('submitProductFeedback', () => {
@@ -324,11 +336,26 @@ describe('the triage list reads PostHog', () => {
 
     const list = await listProductFeedbackForPlatform(session, { status: 'open', kind: 'bug' })
 
-    expect(listFeedbackTickets).toHaveBeenCalledWith(config, { status: 'open', kind: 'bug', limit: 2, offset: 0 })
+    expect(listFeedbackTickets).toHaveBeenCalledWith(config, {
+      status: 'open',
+      kind: 'bug',
+      assignee: undefined,
+      limit: 2,
+      offset: 0,
+    })
     expect(list.source).toBe('posthog')
     expect(list.counts).toEqual(counts)
+    expect(list.viewerNotInPosthog).toBe(false)
     expect(list.reports).toHaveLength(1)
-    expect(list.reports[0]?.ticket).toEqual({ id: 'ticket-1', number: 42, status: 'open', url: ticket().url })
+    expect(list.reports[0]?.ticket).toEqual({
+      id: 'ticket-1',
+      number: 42,
+      status: 'open',
+      url: ticket().url,
+      assignee: null,
+      lastActivityAt: at.toISOString(),
+      awaiting: 'team',
+    })
     expect(list.reports[0]?.posthogPersonUrl).toBe('https://eu.posthog.com/project/269895/person/user_reporter')
   })
 
@@ -384,6 +411,147 @@ describe('the triage list reads PostHog', () => {
     expect(listFeedbackTickets).not.toHaveBeenCalled()
     expect(list.source).toBe('local')
     expect(list.reports[0]?.posthogPersonUrl).toBeNull()
+  })
+})
+
+describe('the active support cases', () => {
+  const ANNA = { id: 7, email: 'anna@piloti.test', name: 'Anna Wallner' }
+  const MARIA = { id: 9, email: 'Maria@Buero.test', name: 'Maria Huber' }
+
+  function withTicket(...tickets: SupportTicket[]): void {
+    vi.mocked(listFeedbackTickets).mockResolvedValue({ tickets, count: tickets.length })
+    vi.mocked(repository.getProductFeedbackByTicketIds).mockResolvedValue(
+      new Map(tickets.map((t, index) => [t.id, stored({ id: `${REPORT_ID.slice(0, -1)}${index}`, posthogTicketId: t.id })]))
+    )
+  }
+
+  it('pages by the size asked for, never above the bound', async () => {
+    await listProductFeedbackForPlatform(session, { limit: 1 })
+    expect(listFeedbackTickets).toHaveBeenLastCalledWith(config, expect.objectContaining({ limit: 1 }))
+
+    await listProductFeedbackForPlatform(session, { limit: 50 })
+    expect(listFeedbackTickets).toHaveBeenLastCalledWith(config, expect.objectContaining({ limit: 2 }))
+  })
+
+  it('`active` asks PostHog for every status but resolved', async () => {
+    await listProductFeedbackForPlatform(session, { status: 'active' })
+
+    expect(listFeedbackTickets).toHaveBeenCalledWith(
+      config,
+      expect.objectContaining({ status: ['new', 'open', 'pending', 'on_hold'] })
+    )
+  })
+
+  it('`unassigned` narrows the list and the counts, and leaves the ticketless reports out', async () => {
+    vi.mocked(repository.listProductFeedback).mockResolvedValue([stored()])
+
+    const list = await listProductFeedbackForPlatform(session, { assignee: 'unassigned' })
+
+    expect(listFeedbackTickets).toHaveBeenCalledWith(config, expect.objectContaining({ assignee: 'unassigned' }))
+    expect(countFeedbackTicketsByStatus).toHaveBeenCalledWith(config, expect.any(Function), { assignee: 'unassigned' })
+    expect(repository.listProductFeedback).not.toHaveBeenCalled()
+    expect(list.unticketed).toEqual([])
+  })
+
+  it('`mine` finds the reader in PostHog by email and lists their tickets', async () => {
+    vi.mocked(listPosthogMembers).mockResolvedValue([ANNA, MARIA])
+
+    const list = await listProductFeedbackForPlatform(session, { assignee: 'mine' })
+
+    expect(listFeedbackTickets).toHaveBeenCalledWith(config, expect.objectContaining({ assignee: { userId: 9 } }))
+    expect(countFeedbackTicketsByStatus).toHaveBeenCalledWith(config, expect.any(Function), { assignee: { userId: 9 } })
+    expect(list.viewerNotInPosthog).toBe(false)
+  })
+
+  it('`mine` for a reader nobody in PostHog has is empty and says why, without listing anyone else’s', async () => {
+    vi.mocked(listPosthogMembers).mockResolvedValue([ANNA])
+
+    const list = await listProductFeedbackForPlatform(session, { assignee: 'mine' })
+
+    expect(listFeedbackTickets).not.toHaveBeenCalled()
+    expect(list).toMatchObject({ source: 'posthog', reports: [], viewerNotInPosthog: true, counts: NO_COUNTS })
+  })
+
+  it('`mine` falls back to the local log when the members cannot be read', async () => {
+    vi.mocked(listPosthogMembers).mockRejectedValue(new PosthogSupportUnavailableError('HTTP 403', 403))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const list = await listProductFeedbackForPlatform(session, { assignee: 'mine' })
+
+    expect(listFeedbackTickets).not.toHaveBeenCalled()
+    expect(list.source).toBe('local')
+  })
+
+  it('names each assignee from the PostHog members, and marks the reader’s own', async () => {
+    vi.mocked(listPosthogMembers).mockResolvedValue([ANNA, MARIA])
+    withTicket(
+      ticket({ id: 't-anna', assignee: { type: 'user', id: 7, email: 'anna@piloti.test' } }),
+      ticket({ id: 't-mine', assignee: { type: 'user', id: 9, email: 'maria@buero.test' } }),
+      ticket({ id: 't-team', assignee: { type: 'role', id: 'r-1', name: 'Support' } })
+    )
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(list.reports.map((report) => report.ticket?.assignee)).toEqual([
+      { type: 'user', name: 'Anna Wallner', email: 'anna@piloti.test', isViewer: false },
+      { type: 'user', name: 'Maria Huber', email: 'maria@buero.test', isViewer: true },
+      { type: 'role', name: 'Support', email: null, isViewer: false },
+    ])
+  })
+
+  it('shows an assignee by email while the members cannot be read, and still lists', async () => {
+    vi.mocked(listPosthogMembers).mockRejectedValue(new PosthogSupportUnavailableError('HTTP 403', 403))
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    withTicket(ticket({ assignee: { type: 'user', id: 7, email: 'anna@piloti.test' } }))
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(list.source).toBe('posthog')
+    expect(list.reports[0]?.ticket?.assignee).toEqual({
+      type: 'user',
+      name: null,
+      email: 'anna@piloti.test',
+      isViewer: false,
+    })
+  })
+
+  it('says whose move it is from the last message the reporter can see', async () => {
+    withTicket(ticket({ id: 't-1' }), ticket({ id: 't-2' }), ticket({ id: 't-3', status: 'resolved' }))
+    vi.mocked(lastVisibleMessageAuthor).mockImplementation(async (_config, t) =>
+      t.id === 't-1' ? 'customer' : 'team'
+    )
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(list.reports.map((report) => report.ticket?.awaiting)).toEqual(['team', 'reporter', null])
+    // A resolved ticket owes nobody: its thread is not read.
+    expect(lastVisibleMessageAuthor).toHaveBeenCalledTimes(2)
+  })
+
+  it('leaves whose move it is unknown when a thread cannot be read, and still lists', async () => {
+    withTicket(ticket())
+    vi.mocked(lastVisibleMessageAuthor).mockRejectedValue(new PosthogSupportUnavailableError('down', 502))
+
+    const list = await listProductFeedbackForPlatform(session, {})
+
+    expect(list.source).toBe('posthog')
+    expect(list.reports[0]?.ticket?.awaiting).toBeNull()
+  })
+
+  it('a claimed ticket comes back as the reader’s', async () => {
+    vi.mocked(listPosthogMembers).mockResolvedValue([MARIA])
+    vi.mocked(repository.getProductFeedbackByTicketIds).mockResolvedValue(
+      new Map([['ticket-1', stored({ posthogTicketId: 'ticket-1' })]])
+    )
+    vi.mocked(findPosthogUserIdByEmail).mockResolvedValue(9)
+    vi.mocked(assignSupportTicket).mockResolvedValue(
+      ticket({ assignee: { type: 'user', id: 9, email: 'maria@buero.test' } })
+    )
+
+    const view = await claimProductFeedbackTicket(session, 'ticket-1')
+
+    expect(view.ticket?.assignee).toMatchObject({ name: 'Maria Huber', isViewer: true })
+    expect(view.ticket?.awaiting).toBe('team')
   })
 })
 

@@ -521,8 +521,10 @@ export const platformOperations = [
     domain: 'platform',
     summary: 'List product-feedback reports',
     description:
-      'Product-feedback reports from every organization with the status of their PostHog Support ticket; filter by ticket ' +
-      'status and kind, and page with the returned `nextCursor`. Report ids feed platform-feedback-get and platform-feedback-triage.',
+      'Product-feedback reports from every organization with their PostHog Support ticket: status, assignee, last activity ' +
+      'and whether the team or the reporter owes the next answer. Filter by ticket status (`active` for every unresolved ' +
+      'ticket), assignee (`mine`, `unassigned`) and kind, and page with the returned `nextCursor`. Report ids feed ' +
+      'platform-feedback-get and platform-feedback-triage; ticket ids feed platform-feedback-claim.',
     method: 'GET',
     path: '/api/platform/feedback',
     query: listProductFeedbackQuerySchema,
