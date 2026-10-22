@@ -194,7 +194,7 @@ describe('PlatformOverview', () => {
     render(<PlatformOverview />)
 
     expect(await screen.findByText(/Could not load the platform overview/i)).toBeDefined()
-    const retry = screen.getByRole('button', { name: /Retry/i })
+    const retry = screen.getByRole('button', { name: /Try again/i })
 
     await userEvent.click(retry)
 
@@ -481,7 +481,7 @@ describe('PlatformOverview', () => {
     // The figures are still there under the warning.
     expect(screen.getByText('7')).toBeDefined()
 
-    await userEvent.click(within(stale).getByRole('button', { name: /Retry/i }))
+    await userEvent.click(within(stale).getByRole('button', { name: /Try again/i }))
     await waitFor(() => expect(screen.queryByTestId('platform-overview-stale')).toBeNull())
   })
 

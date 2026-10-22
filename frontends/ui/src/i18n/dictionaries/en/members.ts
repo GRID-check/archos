@@ -90,5 +90,4 @@ export const members = {
       '{name} already has {from} access to this project. "Add member" would change their role to {to} rather than adding someone new.',
     roleChangeConfirm: 'Change role to {role}',
   },
-  tryAgain: 'Try again',
 }

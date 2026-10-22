@@ -1,0 +1,15 @@
+---
+improvements:
+  - >
+    When the Tasks list updates while you read it, a card that changes place
+    now glides there and the cards around it make room, instead of jumping.
+    Switching the filter still simply fades the new list in.
+  - >
+    Large counts on filters, tabs and the inbox now read 99+ so they never
+    stretch the row, while the exact number stays available on hover and to
+    screen readers.
+fixes:
+  - >
+    Settings, platform and project panels that fail to load now say what
+    failed and offer the same Try again button, which keeps its place and
+    focus while it works instead of greying out.

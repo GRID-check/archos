@@ -5,7 +5,7 @@ import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
 
 import { cn } from '@/lib/utils'
-import { CountPill } from '@/components/ui/count-pill'
+import { CountPill, type CountPillProps } from '@/components/ui/count-pill'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 
 /**
@@ -127,16 +127,14 @@ Chip.displayName = 'Chip'
  * own ink at 10% and inherits the chip's text colour, and it therefore reads on
  * every chip variant instead of only the ones that happen not to be muted.
  */
-const ChipCount = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLSpanElement>>(
-  ({ className, ...props }, ref) => (
-    <CountPill
-      ref={ref}
-      data-slot="chip-count"
-      className={cn('bg-foreground/10 font-semibold text-inherit', className)}
-      {...props}
-    />
-  )
-)
+const ChipCount = React.forwardRef<HTMLSpanElement, CountPillProps>(({ className, ...props }, ref) => (
+  <CountPill
+    ref={ref}
+    data-slot="chip-count"
+    className={cn('bg-foreground/10 font-semibold text-inherit', className)}
+    {...props}
+  />
+))
 ChipCount.displayName = 'ChipCount'
 
 /**

@@ -421,7 +421,6 @@ export const projects = {
     purgeAfter: 'Permanently purged after {date}',
     restore: 'Restore',
     loadError: 'Could not load recently deleted projects.',
-    retry: 'Retry',
   },
   researchRuns: {
     hint: {
@@ -458,7 +457,6 @@ export const projects = {
       saveConflict: 'This brief was changed elsewhere. Please refresh and try again.',
       saveFailed: 'We could not save the project brief. Please try again.',
     },
-    tryAgain: 'Try again',
     conflictReload: 'Refresh',
     draftSaved: 'Draft saved on this device',
     salvage: {
@@ -638,7 +636,6 @@ export const projects = {
     addPlaceholder: 'One concise, self-contained finding about this project…',
     cancel: 'Cancel',
     add: 'Add',
-    tryAgain: 'Try again',
     emptyTitle: 'Nothing recorded yet',
     emptyDescription:
       "Piloti hasn't recorded anything about this project yet. It will as you chat — or add something yourself.",

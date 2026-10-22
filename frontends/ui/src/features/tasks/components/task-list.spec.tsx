@@ -306,3 +306,82 @@ describe('when a card says it was made', () => {
     expect(cardTimeLabel('2026-10-12T09:00:00Z', 'de', now)).toMatch(/12\.10\.2026/)
   })
 })
+
+/**
+ * The glide's contract, asserted on what the DOM can carry: motion's
+ * `layoutId` never reaches it, so the list mirrors each one onto
+ * `data-layout-id`. A card whose place changed keeps its id (motion flies it
+ * from its old box); a filter press re-keys the whole group (nothing flies).
+ */
+describe('when a card moves, and when the filter changes', () => {
+  const props = (tasks: TaskWireRow[], filter: TaskFilter = 'all') => ({
+    projectId: 'p1',
+    tasks,
+    filter,
+    onFilterChange: vi.fn(),
+    onSelectTask: vi.fn(),
+  })
+  const cardFor = (title: string): HTMLElement =>
+    screen.getByRole('button', { name: new RegExp(title) }).closest('[data-layout-id]') as HTMLElement
+  const sectionOf = (element: HTMLElement): string | null =>
+    element.closest('section')?.getAttribute('aria-label') ?? null
+
+  test('a card that changes bucket keeps its layoutId, so it glides rather than blinks', () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    try {
+      vi.setSystemTime(new Date(2026, 9, 15, 23, 50))
+      const running = task({ id: 'run-1', status: 'running', createdAt: new Date(2026, 9, 15, 23, 0).toISOString() })
+      const { rerender } = render(<TaskList {...props([running])} />)
+      const before = cardFor('Aktenvermerk')
+      expect(sectionOf(before)).toBe('Today')
+      const id = before.getAttribute('data-layout-id')
+
+      // The poll after midnight: the run finished, and „today" is now „yesterday".
+      vi.setSystemTime(new Date(2026, 9, 16, 0, 10))
+      rerender(<TaskList {...props([{ ...running, status: 'succeeded' }])} />)
+      const after = cardFor('Aktenvermerk')
+      expect(sectionOf(after)).toBe('Yesterday')
+      expect(after.getAttribute('data-layout-id')).toBe(id)
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  test('a status change inside a bucket keeps the very same element: nothing remounts', () => {
+    const running = task({ id: 'run-1', status: 'running' })
+    const { rerender } = render(<TaskList {...props([running, task({ id: 'other', title: 'Zweiter Auftrag' })])} />)
+    const before = cardFor('Aktenvermerk')
+    rerender(<TaskList {...props([{ ...running, status: 'succeeded' }, task({ id: 'other', title: 'Zweiter Auftrag' })])} />)
+    expect(cardFor('Aktenvermerk')).toBe(before)
+  })
+
+  test('a filter change re-keys the group: new scope, new ids, new elements, so nothing glides', () => {
+    const tasks = [task({ id: 'a', status: 'running' }), task({ id: 'b', status: 'succeeded', title: 'Zweiter Auftrag' })]
+    const { rerender } = render(<TaskList {...props(tasks, 'all')} />)
+    const scopeBefore = screen.getByTestId('task-groups').getAttribute('data-layout-scope')
+    const before = cardFor('Aktenvermerk')
+    const idBefore = before.getAttribute('data-layout-id')
+
+    rerender(<TaskList {...props(tasks, 'active')} />)
+    const scopeAfter = screen.getByTestId('task-groups').getAttribute('data-layout-scope')
+    const after = cardFor('Aktenvermerk')
+    expect(scopeAfter).not.toBe(scopeBefore)
+    expect(after.getAttribute('data-layout-id')).not.toBe(idBefore)
+    expect(after.getAttribute('data-layout-id')?.startsWith(scopeAfter ?? '')).toBe(true)
+    expect(after).not.toBe(before)
+  })
+
+  test('two lists on one page never share a layoutId (a layoutId is global)', () => {
+    render(
+      <>
+        <TaskList {...props([task()])} />
+        <TaskList {...props([task()])} />
+      </>,
+    )
+    const ids = Array.from(document.querySelectorAll('[data-layout-id]')).map((node) =>
+      node.getAttribute('data-layout-id'),
+    )
+    expect(ids).toHaveLength(2)
+    expect(new Set(ids).size).toBe(2)
+  })
+})

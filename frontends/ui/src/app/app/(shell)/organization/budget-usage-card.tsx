@@ -83,11 +83,11 @@ import { type FC, useCallback, useEffect, useMemo, useRef, useState } from 'reac
 import { Pencil } from 'lucide-react'
 import { toast } from 'sonner'
 
-import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
 import { Item, ItemList } from '@/components/ui/item'
+import { LoadError } from '@/components/ui/load-error'
 import {
   Select,
   SelectContent,
@@ -134,7 +134,6 @@ const policyLimitLabel = (
 
 export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
   const t = useTranslations('organization')
-  const tCommon = useTranslations('common')
   const { locale } = useLocale()
   const [usage, setUsage] = useState<UsageResponse | null>(null)
   const [policies, setPolicies] = useState<PolicyDto[]>([])
@@ -254,22 +253,14 @@ export const BudgetUsageCard: FC<{ isAdmin: boolean }> = ({ isAdmin }) => {
 
   if (loadFailed && !usage) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription className="flex flex-col items-start gap-3">
-          {t('budgets.loadError')}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setLoadFailed(false)
-              setLoading(true)
-              void load()
-            }}
-          >
-            {tCommon('actions.retry')}
-          </Button>
-        </AlertDescription>
-      </Alert>
+      <LoadError
+        title={t('budgets.loadError')}
+        onRetry={() => {
+          setLoadFailed(false)
+          setLoading(true)
+          return load()
+        }}
+      />
     )
   }
 

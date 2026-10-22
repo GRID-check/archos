@@ -9,6 +9,18 @@ import { cn } from '@/lib/utils'
  * non-interactive label; the shape lives here once so the surfaces that need it
  * cannot drift apart on padding.
  *
+ * ## A number, or words
+ *
+ * - **`count`** — a plain number. The pill caps it at `max` (default 99) and
+ *   shows `99+` above that, so a project with 12,345 elements cannot widen a
+ *   filter segment or a nav row. The exact figure is never lost: it is the
+ *   pill's `title` and the text a screen reader reads, while the visible `99+`
+ *   is hidden from it. Pass `max={Number.POSITIVE_INFINITY}` only where the
+ *   exact number IS the content and the row has room for it.
+ * - **`children`** — words or a ratio the caller has already composed
+ *   ("3/8 erfasst", "+4", a locale-formatted analytics figure). No cap: the pill
+ *   cannot know what a string means.
+ *
  * ## Which tone
  *
  * - **`muted` (default)** — a quiet numeric companion to a heading or a tab
@@ -45,19 +57,59 @@ const countPillVariants = cva(
   }
 )
 
-export interface CountPillProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof countPillVariants> {}
+/** Above this a `count` shows as `99+`. */
+export const COUNT_PILL_MAX = 99
+
+type CountPillBaseProps = Omit<React.HTMLAttributes<HTMLSpanElement>, 'children'> &
+  VariantProps<typeof countPillVariants>
+
+/** A number, capped at `max`. */
+interface CountPillCountProps extends CountPillBaseProps {
+  count: number
+  /** The largest count shown as itself; anything above reads `{max}+`. */
+  max?: number
+  children?: never
+}
+
+/** Words or a ratio the caller composed; shown as given. */
+interface CountPillTextProps extends CountPillBaseProps {
+  count?: never
+  max?: never
+  children: React.ReactNode
+}
+
+export type CountPillProps = CountPillCountProps | CountPillTextProps
+
+/** The integer a count stands for: a fraction or a negative is a caller's slip, not a count. */
+const wholeCount = (value: number): number => (Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0)
 
 const CountPill = React.forwardRef<HTMLSpanElement, CountPillProps>(
-  ({ className, tone, ...props }, ref) => (
-    <span
-      ref={ref}
-      data-slot="count-pill"
-      className={cn(countPillVariants({ tone }), className)}
-      {...props}
-    />
-  )
+  ({ className, tone, count, max = COUNT_PILL_MAX, children, title, ...props }, ref) => {
+    const exact = count === undefined ? null : wholeCount(count)
+    const capped = exact !== null && exact > max
+    return (
+      <span
+        ref={ref}
+        data-slot="count-pill"
+        data-count={exact ?? undefined}
+        title={capped ? (title ?? String(exact)) : title}
+        className={cn(countPillVariants({ tone }), className)}
+        {...props}
+      >
+        {exact === null ? (
+          children
+        ) : capped ? (
+          <>
+            {/* The visible cap is shorthand; a screen reader gets the figure. */}
+            <span aria-hidden>{`${max}+`}</span>
+            <span className="sr-only">{exact}</span>
+          </>
+        ) : (
+          exact
+        )}
+      </span>
+    )
+  }
 )
 CountPill.displayName = 'CountPill'
 

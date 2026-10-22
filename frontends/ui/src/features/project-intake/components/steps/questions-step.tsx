@@ -91,7 +91,7 @@ export function QuestionsStep({ view, canDecide, busy, canUpload, onDecide, onFi
         onClick={() => setMoreOpen(true)}
       >
         {t('more')}
-        <CountPill>{round.more.length}</CountPill>
+        <CountPill count={round.more.length} />
       </Button>
     ) : null
 

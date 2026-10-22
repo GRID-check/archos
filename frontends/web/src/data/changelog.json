@@ -192,6 +192,10 @@
               "de": "Die Command-Palette öffnet sich sofort mit Cmd+K. Sobald ein Tooltip angezeigt wird, erscheint der nächste, sobald Sie mit dem Mauszeiger darüberfahren."
             },
             {
+              "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
+              "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
+            },
+            {
               "en": "Piloti can now look things up in your other projects through the workspace, not only through its project search: in a conversation that is yours alone, any project you may chat in; in a shared conversation, a document or the project facts of a closed project, or of one everyone in the conversation may open. The conversation then stays with the people allowed to see what it read.",
               "de": "Piloti kann jetzt über den Workspace auch in Ihren anderen Projekten nachsehen, nicht nur über die Projektsuche: In einer Unterhaltung nur für Sie kann Piloti in jedem Projekt nachsehen, in dem Sie chatten dürfen; in einer geteilten Unterhaltung in einem Dokument oder den Projektinformationen eines geschlossenen Projekts oder eines Projekts, das alle Beteiligten öffnen dürfen. Die Unterhaltung bleibt anschließend den Personen vorbehalten, die sehen dürfen, was Piloti gelesen hat."
             },
@@ -202,6 +206,14 @@
             {
               "en": "Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.",
               "de": "Das Sortieren aller Dateien in Ordnern zeigt jetzt den Fortschritt live an: die vier Schritte, die Anzahl der erledigten Dateien, die ungefähre Restdauer und die zuletzt abgelegten Dateien. Außerdem ist der Vorgang spürbar schneller abgeschlossen. Sobald Sie eine Sortierung anwenden oder abbrechen, wird die entsprechende Benachrichtigung in Ihrem Posteingang entfernt."
+            },
+            {
+              "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
+              "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
+            },
+            {
+              "en": "Large counts on filters, tabs and the inbox now read 99+ so they never stretch the row, while the exact number stays available on hover and to screen readers.",
+              "de": "Hohe Zahlen in Filtern, Tabs und Inbox werden jetzt als 99+ angezeigt, damit sie die Zeile nicht mehr verbreitern; die genaue Zahl bleibt beim Hover und für Screenreader verfügbar."
             }
           ]
         },
@@ -273,12 +285,20 @@
               "de": "Von Piloti vorgeschlagene Änderungen werden in jedem Chat erneut erfasst. Eine vorgeschlagene Aktion zeigt jetzt alle Werte, die sie festlegen würde, vollständig an und nennt das Projekt oder Dokument, das sie ändert – so wenden Sie nie Text an, der Ihnen nicht angezeigt wurde."
             },
             {
+              "en": "Piloti's work steps say \"in the office filing\" where they still said \"in the office archive\".",
+              "de": "In Piloti steht in den Arbeitsschritten jetzt „in der Büroablage“ statt „im Büroarchiv“."
+            },
+            {
               "en": "A project's Übersicht opens again when your office has a closed project to compare it with. Before, the similar-projects tile failed to load and took the whole Übersicht down with an error page.",
               "de": "Die Übersicht eines Projekts öffnet sich wieder, wenn Ihr Büro ein abgeschlossenes Projekt zum Vergleich hat. Zuvor konnte die Kachel für ähnliche Projekte nicht geladen werden und brachte die gesamte Übersicht mit einer Fehlerseite zum Absturz."
             },
             {
               "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
               "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+            },
+            {
+              "en": "Settings, platform and project panels that fail to load now say what failed and offer the same Try again button, which keeps its place and focus while it works instead of greying out.",
+              "de": "Einstellungs-, Plattform- und Projektbereiche, die nicht geladen werden, zeigen jetzt an, was fehlgeschlagen ist, und bieten dieselbe Schaltfläche „Erneut versuchen“, die während des Vorgangs an ihrer Stelle und im Fokus bleibt, statt ausgegraut zu werden."
             }
           ]
         },

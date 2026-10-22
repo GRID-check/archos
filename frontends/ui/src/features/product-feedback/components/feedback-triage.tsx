@@ -395,7 +395,7 @@ function StatusFilterChip({
     <Chip asChild interactive variant={active ? 'default' : 'outline'}>
       <button type="button" aria-pressed={active} onClick={onClick}>
         {children}
-        {count === undefined ? null : <ChipCount>{count}</ChipCount>}
+        {count === undefined ? null : <ChipCount count={count} />}
       </button>
     </Chip>
   )

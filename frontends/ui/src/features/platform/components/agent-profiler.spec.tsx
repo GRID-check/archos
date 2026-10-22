@@ -282,7 +282,7 @@ describe('AgentProfiler', () => {
     expect(alert.textContent).toContain('Could not load the profiler data.')
     expect(screen.getByRole('textbox', { name: /Search conversations/ })).toBeDefined()
 
-    await userEvent.click(within(alert).getByRole('button', { name: 'Retry' }))
+    await userEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
     expect(await screen.findByText('Recovered')).toBeDefined()
   })
 

@@ -1828,6 +1828,10 @@
     "de": "Jobs und Skills liegen jetzt gemeinsam im Bereich Automation, als zwei Tabs statt an zwei Stellen in der Seitenleiste. Jobs steht vorn, weil ein Job die Anweisung ist, die dieses Projekt zeitgesteuert ausführt, und Skills ist mit einem Klick erreichbar."
   },
   {
+    "en": "Large counts on filters, tabs and the inbox now read 99+ so they never stretch the row, while the exact number stays available on hover and to screen readers.",
+    "de": "Hohe Zahlen in Filtern, Tabs und Inbox werden jetzt als 99+ angezeigt, damit sie die Zeile nicht mehr verbreitern; die genaue Zahl bleibt beim Hover und für Screenreader verfügbar."
+  },
+  {
     "en": "Large files full of CAD drawings, such as a project's collected documents or a fire safety concept with many drawing sheets, now upload and become searchable. Before, such a file could fail every time it was read, and a retry failed the same way.",
     "de": "Große Dateien mit CAD-Zeichnungen, etwa gesammelte Projektunterlagen oder ein Brandschutzkonzept mit vielen Planblättern, lassen sich jetzt hochladen und durchsuchen. Bisher schlägt das Einlesen solcher Dateien jedes Mal fehl, und auch ein erneuter Versuch scheitert."
   },
@@ -2348,6 +2352,10 @@
     "de": "Piloti beginnt mit dem Lesen, bevor es zu denken beginnt: Bei einer Frage zu einer Vorschrift oder einer Projektdatei holt es zuerst die wahrscheinlich passenden Textstellen, sodass Fragen einen Schritt früher beantwortet werden können. Die Herleitung zeigt dies als ersten Suchschritt."
   },
   {
+    "en": "Piloti works from a shorter set of standing instructions, and what changes from one question to the next, such as your project's details and the files, now reaches it separately from them.",
+    "de": "Piloti arbeitet mit einem kürzeren Satz dauerhafter Anweisungen. Informationen, die sich von einer Frage zur nächsten ändern, etwa Projektdetails und Dateien, werden nun getrennt davon übermittelt."
+  },
+  {
     "en": "Piloti's German screens now use one word for each thing: a task is an Aufgabe and one attempt at it a Lauf, a conversation is a Chat, and the person assigned to something is zuständig.",
     "de": "Die deutschen Oberflächen von Piloti verwenden jetzt einheitliche Begriffe: Eine Aufgabe heißt „Aufgabe“, ein einzelner Versuch „Lauf“, eine Unterhaltung „Chat“ und die zugewiesene Person ist „zuständig“."
   },
@@ -2358,6 +2366,10 @@
   {
     "en": "Piloti's word search can now also find the other forms of a German word, so a search for „Fluchtwegbreite“ finds „Fluchtwegbreiten“ as well. Without being asked to, it still finds exactly what was typed.",
     "de": "Die Wortsuche von Piloti findet jetzt auch andere Formen eines deutschen Wortes. Eine Suche nach „Fluchtwegbreite“ findet also auch „Fluchtwegbreiten“. Auch ohne explizite Aufforderung findet sie weiterhin genau den eingegebenen Begriff."
+  },
+  {
+    "en": "Piloti's work steps say \"in the office filing\" where they still said \"in the office archive\".",
+    "de": "In Piloti steht in den Arbeitsschritten jetzt „in der Büroablage“ statt „im Büroarchiv“."
   },
   {
     "en": "Previews of spreadsheets and text files saved on Windows show euro signs, dashes and curly quotes again instead of leaving them blank.",
@@ -2546,6 +2558,10 @@
   {
     "en": "Sending a version back for changes now has a second form: „Piloti überarbeiten lassen\" stands beside „Änderungen anfordern\" in Freigabe und Fassungen and asks for the same written reason, and Piloti then drafts the next version and submits it for approval instead of leaving the work with whoever wrote it.",
     "de": "Wenn Sie eine Fassung zur Überarbeitung zurücksenden, gibt es dafür jetzt eine zweite Möglichkeit: „Piloti überarbeiten lassen“ steht in Freigabe und Fassungen neben „Änderungen anfordern“, fragt nach derselben schriftlichen Begründung und lässt Piloti anschließend die nächste Fassung erstellen und zur Freigabe einreichen, statt die Arbeit der Person zu überlassen, die sie verfasst hat."
+  },
+  {
+    "en": "Settings, platform and project panels that fail to load now say what failed and offer the same Try again button, which keeps its place and focus while it works instead of greying out.",
+    "de": "Einstellungs-, Plattform- und Projektbereiche, die nicht geladen werden, zeigen jetzt an, was fehlgeschlagen ist, und bieten dieselbe Schaltfläche „Erneut versuchen“, die während des Vorgangs an ihrer Stelle und im Fokus bleibt, statt ausgegraut zu werden."
   },
   {
     "en": "Several annotations reaching you at once, such as the morning's due date reminders or a batch handed over to you, now arrive as one notification on your devices that says how many are due and how many are overdue.",
@@ -3574,6 +3590,10 @@
   {
     "en": "When the AI is briefly overloaded, Piloti no longer ends your question with an error; it waits a moment and tries again.",
     "de": "Wenn die KI kurz überlastet ist, bricht Piloti Ihre Frage nicht mehr mit einem Fehler ab, sondern wartet einen Moment und versucht es erneut."
+  },
+  {
+    "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
+    "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
   },
   {
     "en": "When the building-regulation search finds nothing that answers your question, Piloti now tells you it found no supporting passage, instead of answering from loosely related text.",

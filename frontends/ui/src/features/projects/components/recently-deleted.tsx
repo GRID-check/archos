@@ -1,9 +1,9 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, RefreshCw } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { toast } from 'sonner'
+import { LoadError } from '@/components/ui/load-error'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
 
@@ -109,14 +109,7 @@ export function RecentlyDeleted({ canManageCompliance = false }: RecentlyDeleted
         <h2 className="text-muted-foreground text-sm font-semibold">
           {t('recentlyDeleted.heading')}
         </h2>
-        <div className="border-destructive/30 bg-destructive/5 mt-2 flex flex-wrap items-center gap-3 rounded-lg border p-3">
-          <AlertTriangle className="text-destructive size-4 shrink-0" aria-hidden />
-          <p className="text-muted-foreground flex-1 text-sm">{t('recentlyDeleted.loadError')}</p>
-          <Button variant="outline" size="sm" onClick={() => void refresh()}>
-            <RefreshCw className="size-3.5" aria-hidden />
-            {t('recentlyDeleted.retry')}
-          </Button>
-        </div>
+        <LoadError className="mt-2" title={t('recentlyDeleted.loadError')} onRetry={refresh} />
       </section>
     )
   }

@@ -295,7 +295,7 @@ describe('AnswerFeedbackHealth — states', () => {
     expect(screen.queryByText('No feedback yet')).toBeNull()
 
     const before = healthUrls().length
-    await user.click(within(alert).getByRole('button', { name: /Retry/ }))
+    await user.click(within(alert).getByRole('button', { name: /Try again/ }))
     await waitFor(() => expect(healthUrls().length).toBe(before + 1))
   })
 

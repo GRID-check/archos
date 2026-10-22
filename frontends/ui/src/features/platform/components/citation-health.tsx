@@ -51,7 +51,8 @@ import {
   Timer,
   type LucideIcon,
 } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { LoadError } from '@/components/ui/load-error'
+import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -1071,35 +1072,19 @@ export function CitationHealth({ scope }: { scope: QualityScope }): JSX.Element 
     </div>
   )
 
-  const retryButton = (
-    <Button
-      variant="outline"
-      size="sm"
-      onClick={() => load(scopeQuery)}
-      disabled={loading}
-      className="mt-2 w-fit"
-    >
-      <RefreshCw
-        className={cn('size-3.5', loading && 'animate-spin motion-reduce:animate-none')}
-        aria-hidden
-      />
-      {t('retry')}
-    </Button>
-  )
+  const retry = (): unknown => load(scopeQuery)
 
   if (!snapshot) {
     return (
       <div data-testid="citation-health" className="flex flex-col gap-4">
         {toolbar}
         {error ? (
-          <Alert variant="destructive">
-            <AlertTriangle aria-hidden />
-            <AlertTitle>{t('citations.loadError')}</AlertTitle>
-            <AlertDescription>
-              <p>{t('loadErrorHint')}</p>
-              {retryButton}
-            </AlertDescription>
-          </Alert>
+          <LoadError
+            title={t('citations.loadError')}
+            description={t('loadErrorHint')}
+            onRetry={retry}
+            retrying={loading}
+          />
         ) : (
           <LoadingState />
         )}
@@ -1117,18 +1102,18 @@ export function CitationHealth({ scope }: { scope: QualityScope }): JSX.Element 
       {toolbar}
 
       {error ? (
-        <Alert variant="destructive">
-          <AlertTriangle aria-hidden />
-          <AlertTitle className="line-clamp-none">
-            {staleWindow
+        <LoadError
+          title={
+            staleWindow
               ? t('citations.windowStale', {
                   requested: scopeLabel(scope),
                   shown: shownLabel,
                 })
-              : t('citations.loadError')}
-          </AlertTitle>
-          <AlertDescription>{retryButton}</AlertDescription>
-        </Alert>
+              : t('citations.loadError')
+          }
+          onRetry={retry}
+          retrying={loading}
+        />
       ) : null}
 
       {(shownScope?.scope ?? scope).projectIds.length > 0 ? (

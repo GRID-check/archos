@@ -739,7 +739,7 @@ describe('BaseKnowledge', () => {
     render(<BaseKnowledge />)
 
     expect(await screen.findByText('The knowledge base could not be loaded.')).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /Retry/i }))
+    await user.click(screen.getByRole('button', { name: /Try again/i }))
 
     expect(await screen.findByText('oib-richtlinie-2.pdf')).toBeInTheDocument()
   })

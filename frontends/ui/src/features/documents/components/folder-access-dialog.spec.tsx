@@ -182,7 +182,7 @@ describe('FolderAccessDialog (ADR-0088, ADR-0097)', () => {
     expect(alert).toHaveTextContent('The access list could not be loaded.')
     expect(within(dialog).getByTestId('folder-access-save')).toBeDisabled()
 
-    fireEvent.click(within(alert).getByRole('button', { name: 'Retry' }))
+    fireEvent.click(within(alert).getByRole('button', { name: 'Try again' }))
     expect(await within(dialog).findByTestId('folder-access-person-u-claudia')).toBeInTheDocument()
     expect(client.getFolderAccess).toHaveBeenCalledTimes(2)
   })

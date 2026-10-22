@@ -31,9 +31,9 @@
 
 import type { JSX } from 'react'
 import { useCallback, useEffect, useRef, useState, type FC, type FormEvent } from 'react'
-import { AlertTriangle, Check, HardDrive, Pencil, RefreshCw, X } from 'lucide-react'
+import { AlertTriangle, Check, HardDrive, Pencil, X } from 'lucide-react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { LoadError } from '@/components/ui/load-error'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
@@ -328,32 +328,15 @@ export const PlatformStorageTable: FC = () => {
     )
   }
 
-  const retryButton = (
-    <Button
-      variant="outline"
-      size="sm"
-      className="mt-2"
-      onClick={() => void load()}
-      disabled={loading}
-    >
-      <RefreshCw
-        className={loading ? 'size-3.5 animate-spin motion-reduce:animate-none' : 'size-3.5'}
-        aria-hidden
-      />
-      {t('retry')}
-    </Button>
-  )
-
   if (!data) {
     return (
-      <Alert variant="destructive" data-testid="platform-storage-error">
-        <AlertTriangle aria-hidden />
-        <AlertTitle className="line-clamp-none">{t('storage.loadError')}</AlertTitle>
-        <AlertDescription>
-          <p>{t('loadErrorHint')}</p>
-          {retryButton}
-        </AlertDescription>
-      </Alert>
+      <LoadError
+        title={t('storage.loadError')}
+        description={t('loadErrorHint')}
+        onRetry={load}
+        retrying={loading}
+        data-testid="platform-storage-error"
+      />
     )
   }
 
@@ -368,11 +351,7 @@ export const PlatformStorageTable: FC = () => {
       aria-busy={loading || undefined}
     >
       {loadFailed ? (
-        <Alert variant="destructive">
-          <AlertTriangle aria-hidden />
-          <AlertTitle className="line-clamp-none">{t('storage.refreshError')}</AlertTitle>
-          <AlertDescription>{retryButton}</AlertDescription>
-        </Alert>
+        <LoadError title={t('storage.refreshError')} onRetry={load} retrying={loading} />
       ) : null}
 
       <p className="text-muted-foreground text-sm tabular-nums">
