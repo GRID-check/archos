@@ -34,6 +34,7 @@ from pydantic import Field
 
 from aiq_agent.common.image_view_budget import MAX_IMAGE_VIEWS_PER_TURN
 from aiq_agent.common.image_view_budget import MAX_OVERVIEW_VIEWS_PER_TURN
+from aiq_agent.common.turn_status import ActionRow
 from aiq_agent.observability.retrieval_trace import emit_step_span
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
@@ -43,6 +44,7 @@ from nat.plugin_api import register_function
 from ..canvas.calls import Refused
 from ..canvas.presence import current_canvas_presence
 from ..canvas.presence import show_reading
+from .cards import looked_document
 from .cards import note_look
 from .place import PlaceFacts
 from .place import place_facts
@@ -170,7 +172,45 @@ async def run_look(
 
     With ``question`` the crop is also read by the office's vision model and the
     readings come back with it. One look either way: the budget counts the render.
+    The call is one Herleitung row (ADR-0131), beside the ``look`` step that
+    carries the crop.
     """
+    row = ActionRow("look", target=(document or "").strip(), pages=str(page))
+    try:
+        result, resolved = await _run_look(document, page, region, image_index, question, limits=limits)
+    except BaseException:
+        row.finish("error")
+        raise
+    row.finish("ok" if isinstance(result, list) else "error", **_row_document(resolved))
+    return result
+
+
+def _row_document(resolved: Resolved | str | None) -> dict[str, str]:
+    """The document a look's row names: the file and its workspace id, once the model may be told them.
+
+    The row settles before the round's results are admitted, so a file only an
+    unadmitted restricted folder holds keeps the name the model asked for
+    (listing is not use, ADR-0088). The name is the one the ``look`` step
+    carries, so the row finds its crop.
+    """
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    if not isinstance(resolved, Resolved) or not may_name(resolved.collection):
+        return {}
+    document = looked_document(resolved)
+    return {"target": document["name"], **({"document_id": document["id"]} if document.get("id") else {})}
+
+
+async def _run_look(
+    document: str,
+    page: int,
+    region: list[float] | None,
+    image_index: int | None,
+    question: str,
+    *,
+    limits: Any,
+) -> tuple[list[dict] | str, Resolved | str | None]:
+    """:func:`run_look`'s work: the result, and the document it resolved (or the refusal, or nothing)."""
     from knowledge_layer.view_image import View
     from knowledge_layer.view_image import render_view
     from knowledge_layer.view_image import turn_sees
@@ -212,7 +252,7 @@ async def run_look(
     except Refused as refused:
         result = refused.message
     _observe(document, page, region, image_index, result, resolved, asked=bool((question or "").strip()))
-    return result
+    return result, resolved
 
 
 @register_function(config_type=LookToolConfig)

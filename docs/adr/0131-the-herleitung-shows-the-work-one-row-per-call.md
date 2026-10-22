@@ -168,6 +168,22 @@ answer by, and added what lets them check and reuse it:
   outside the turn's audience reaches the row.
 - Deep research (`scope: deep`) emits no action rows in this slice; it keeps its
   own report.
+- A row settles inside the tool, before the round's results are admitted
+  (`admit_tool_results`), so it names and counts only what the model may be told
+  (`may_name`, ADR-0088). A read or look of a file only an unadmitted restricted
+  folder holds keeps the name the model asked for, with no resolved file name,
+  no document id and no count; a search that found only such hits is `ok`
+  without counts; a read that falls through to „unknown document“ is an error
+  row. `ActionOutcome.record` is the one place that decides it.
+- `look` has its row (verb `look`, the document, `pages` = the page, the
+  workspace `document_id` when the document is one); the row and the `look`
+  step name the document the same way, so the row finds its crop. A read row
+  carries no `document_id`: the inventory row a read resolves against
+  (`AvailableDocument`) has no workspace document id, and the row names the
+  file only.
+- Not yet rows: `workspace__search` and `workspace__describe` (the door's
+  reads, beside `workspace__call`, which has one), the `canvas` group, and
+  `file_draft`. They keep their `tool` step and chips.
 
 ### Confirmation
 

@@ -634,18 +634,6 @@ def _clip_action(fields: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-@contextmanager
-def action_row(verb: ActionVerb, **fields: Any) -> Iterator[ActionRow]:
-    """An :class:`ActionRow` that settles as ``error`` when the block raises and ``ok`` when it never settled."""
-    row = ActionRow(verb, **fields)
-    try:
-        yield row
-    except BaseException:
-        row.finish("error")
-        raise
-    row.finish("ok")
-
-
 #: Slot prefix of the technical record a literal-mode ``knowledge_search`` (``match="exact"`` or
 #: ``"regex"``) leaves. A tool step carries the tool's name and never its arguments, so this record is
 #: how a reader of the turn (the ``file-tools-used`` score) tells a literal search, which the eval's

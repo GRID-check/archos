@@ -109,7 +109,8 @@ def _hold(document: dict[str, Any], item: dict[str, Any], read: str = "") -> int
     return registry.hold(HELD, entry)
 
 
-def _looked_document(resolved: Any) -> dict[str, Any]:
+def looked_document(resolved: Any) -> dict[str, Any]:
+    """The looked-at document as the `look` step and its row name it: file name, shelf, workspace id when known."""
     target = getattr(resolved, "target", None)
     document_id = getattr(target, "document_id", None) if target is not None else None
     base = target is None and not getattr(resolved, "collection", "")
@@ -137,7 +138,7 @@ def note_look(
     (every line), for the claim provenance; ``reading`` is the card's short one.
     """
     try:
-        document = _looked_document(resolved)
+        document = looked_document(resolved)
         box = clamp_region(region)
         frame = "image" if image_index is not None else "page"
         item: dict[str, Any] = {
