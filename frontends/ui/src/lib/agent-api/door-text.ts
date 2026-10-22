@@ -14,38 +14,34 @@ export interface ToolNames {
   readonly [pythonTool: string]: string
 }
 
-/** Only these are replaced when they stand bare: `look` is also an English word. */
-const BARE_SAFE = /^[a-z]+(_[a-z]+)+$/
-
-const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-
-const longestFirst = (names: string[]) =>
-  names.sort((a, b) => b.length - a.length).map(escapeRegExp)
-
-function mentionPatterns(names: ToolNames): { call: RegExp; ticked: RegExp; bare: RegExp | null } {
-  const all = longestFirst(Object.keys(names))
-  const bareNames = longestFirst(Object.keys(names).filter((tool) => BARE_SAFE.test(tool)))
-  return {
-    // `tool(args)`, with or without the backticks around it
-    call: new RegExp('`?\\b(' + all.join('|') + ')\\(([^()`]*)\\)`?', 'g'),
-    ticked: new RegExp('`(' + all.join('|') + ')`', 'g'),
-    bare: bareNames.length ? new RegExp('\\b(' + bareNames.join('|') + ')\\b', 'g') : null,
-  }
-}
+/**
+ * A tool's name as Python spells it, called (`read_passage(document=…)`, with or
+ * without backticks), backticked, or bare. Fixed patterns that match any such
+ * identifier; only one the map names is replaced. A bare name must have an
+ * underscore: `look` is also an English word.
+ */
+const CALLED = /`?\b([a-z][a-z0-9]*(?:_[a-z0-9]+)*)\(([^()`]*)\)`?/g
+const TICKED = /`([a-z][a-z0-9]*(?:_[a-z0-9]+)*)`/g
+const BARE = /\b([a-z][a-z0-9]*(?:_[a-z0-9]+)+)\b/g
 
 /**
  * `text` with every Python tool name replaced by its operation name, and each
  * call spelled the way the door takes it: `passage-read` with input {document=…, page=…}.
  */
 export function withOperationNames(text: string, names: ToolNames): string {
-  const { call, ticked, bare } = mentionPatterns(names)
-  const renamed = text
-    .replace(call, (_m, tool: string, args: string) => {
+  const known = (tool: string): string | undefined => (Object.hasOwn(names, tool) ? names[tool] : undefined)
+  return text
+    .replace(CALLED, (match, tool: string, args: string) => {
+      const op = known(tool)
+      if (!op) return match
       const input = args.trim()
-      return input ? `\`${names[tool]}\` with input {${input}}` : `\`${names[tool]}\``
+      return input ? `\`${op}\` with input {${input}}` : `\`${op}\``
     })
-    .replace(ticked, (_m, tool: string) => `\`${names[tool]}\``)
-  return bare ? renamed.replace(bare, (tool) => names[tool] ?? tool) : renamed
+    .replace(TICKED, (match, tool: string) => {
+      const op = known(tool)
+      return op ? `\`${op}\`` : match
+    })
+    .replace(BARE, (match, tool: string) => known(tool) ?? match)
 }
 
 const COUNT_LINE = /^(Found \d+ (?:relevant )?document\(s\)[^\n]*)$/m

@@ -11,17 +11,12 @@
 import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { createProjectSchema } from '@/lib/projects/create-project-schema'
-import { listProjectsQuerySchema, projectNameMatches, toProjectSummary } from '@/lib/projects/project-wire'
-import { createProject, listProjects } from '@/lib/projects/service'
+import { listProjectsQuerySchema } from '@/lib/projects/project-wire'
+import { createProject, listProjectsView } from '@/lib/projects/service'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const query = parseQuery(request, listProjectsQuerySchema)
-    const needle = query.nameContains
-    const projects = (await listProjects(session)).filter(
-      (project) => !needle || projectNameMatches(toProjectSummary(project), needle)
-    )
-    return query.view === 'full' ? projects : projects.map(toProjectSummary)
+    return listProjectsView(session, parseQuery(request, listProjectsQuerySchema))
   },
   { authz: { enforcedBy: 'listProjects (per-project FGA filter, ADR-0038)' } }
 )
