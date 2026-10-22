@@ -21,7 +21,7 @@ member ── Feedback senden ──▶ POST /api/feedback/reports
                                         └──▶ product_feedback.posthog_ticket_id
 owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id>
 Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH status on the ticket
-PostHog workflow ──▶ #posthog-inbox ──▶ „Übernehmen" ──▶ /app/platform/feedback?claim=<ticket id>
+BFF server event ──▶ PostHog destination ──▶ #posthog-inbox ──▶ „Übernehmen" ──▶ <app_host>/app/platform/feedback?claim=<ticket id>
 team answers in PostHog ──▶ Mein Feedback (GET …/reports/<id>/messages) ──▶ member replies (POST, onto the ticket)
 ```
 
@@ -143,26 +143,34 @@ message the shared chat renders (`UserMessage` with an author), one column.
 
 ## The Slack alert
 
-A PostHog workflow, „Piloti feedback → Slack" (tag `piloti-feedback`), posts to
-`#posthog-inbox` on every `$conversation_message_received` from the widget
-channel, which only the BFF uses. It routes on the message:
+The alert is a PostHog destination, „Piloti feedback → Slack (per deployment)",
+whose source is [`deploy/posthog/support/slack-alert.hog`](../../deploy/posthog/support/slack-alert.hog)
+(the directory's README lists every destination and how to apply a change). It
+does not listen to PostHog's own ticket events: staging and production share
+one PostHog project, and `$conversation_message_received` cannot say which
+deployment a ticket came from, so a claim link built from it pointed at
+production for every ticket. Instead the BFF sends two server events, which
+carry `app_host` like every server event (`docs/observability/posthog-events.md`):
 
-| Message starts with | Posts |
-|---|---|
-| `[bug] #` | „🐞 Neuer Bug-Report", paging the channel (`@here`) |
-| `[idea] #` | „💡 Neue Idee", quietly |
-| `[praise] #` | „❤️ Neues Lob", quietly |
-| `[question] #` | „❓ Neue Frage (wartet auf eine Antwort)", quietly, with „Antworten in PostHog" |
-| anything else (a member's reply in Mein Feedback) | „↩️ Antwort vom Reporter" |
+| Event | Sent by | Posts |
+|---|---|---|
+| `product_feedback_ticket_opened` | `openTicketFor`, once the ticket is open and tagged | a new alert per kind: „🐞 Neuer Bug-Report" (pages `@here` on production only), „💡 Neue Idee", „❤️ Neues Lob", „❓ Neue Frage"; the words come from the ticket, without the header line |
+| `product_feedback_reply_sent` | `replyToOwnProductFeedback`, after PostHog took the reply | „↩️ Antwort vom Reporter" in the alert's thread |
 
-Each carries the masked text, a link to the ticket and **„Übernehmen"**. A Slack
-reaction cannot start a PostHog workflow (only a new message can, and SupportHog's
-emoji only creates tickets), so taking a ticket is that button: it opens
-Platform → Feedback with `?claim=<ticket id>`, and the page posts
-`/api/platform/feedback/claim`, which assigns the ticket to the PostHog member
-with the signed-in owner's email (`organization_member:read` on the key). The
-button links production; staging shares the PostHog project, and its tickets
-answer „not found" there.
+The events carry ids and the kind only (server events are non-personal); the
+destination reads the member's masked words back from the ticket. A staging
+alert says so („🧪 app.dev.piloti.at"), and its **„Übernehmen"** opens that
+deployment's Platform → Feedback with `?claim=<ticket id>`, where the page
+posts `/api/platform/feedback/claim` and the ticket is assigned to the PostHog
+member with the signed-in owner's email (`organization_member:read` on the
+key). A Slack reaction cannot start PostHog automation, so the button is the
+claim.
+
+The alert's ts is stored on the ticket as the tag `slack-ts:<ts>`. A second
+destination, [`claim-update.hog`](../../deploy/posthog/support/claim-update.hog),
+listens to `$conversation_ticket_assigned` and rewrites the alert: the claim
+button goes and „✅ Übernommen von <Name>" appears. The name comes from the
+destination's `assignee_names` map, else from the assignee's PostHog profile.
 
 ## No GitHub issues
 

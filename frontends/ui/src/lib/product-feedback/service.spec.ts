@@ -13,6 +13,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
 vi.mock('@/lib/organizations/service', () => ({ getOrganizationDisplayName: vi.fn() }))
 vi.mock('@/lib/organizations/display-names', () => ({ getOrganizationDisplayNames: vi.fn() }))
 vi.mock('./announce', () => ({ announceProductFeedback: vi.fn() }))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/upload-screening/service', () => ({ maskChatText: vi.fn() }))
 vi.mock('@/lib/posthog-support/config', () => ({ posthogSupportConfigFromEnv: vi.fn() }))
 vi.mock('@/lib/posthog-support/client', () => ({
@@ -40,6 +41,7 @@ vi.mock('./repository', () => ({
   markOwnProductFeedbackSeen: vi.fn(),
 }))
 
+import { captureServer } from '@/lib/analytics/posthog-server'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
@@ -201,6 +203,25 @@ describe('submitProductFeedback', () => {
     })
     // The session the ticket was opened in is the one later replies must use.
     expect(repository.setProductFeedbackTicket).toHaveBeenCalledWith(REPORT_ID, 'ticket-1', opened?.widgetSessionId)
+  })
+
+  it('tells the support automation the ticket opened, with ids and the kind and never the words', async () => {
+    await submitProductFeedback(session, input)
+
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'product_feedback_ticket_opened',
+      distinctId: 'user_reporter',
+      organizationId: 'org_tenant',
+      properties: { ticket_id: 'ticket-1', report_id: REPORT_ID, kind: 'bug', allow_contact: true },
+    })
+  })
+
+  it('announces no ticket that did not open', async () => {
+    vi.mocked(openFeedbackTicket).mockRejectedValue(new PosthogSupportUnavailableError('down', 503))
+
+    await submitProductFeedback(session, input)
+
+    expect(captureServer).not.toHaveBeenCalled()
   })
 
   it('opens every report in a fresh session, never one shared between reports', async () => {
@@ -588,6 +609,9 @@ describe("the reporter's own threads", () => {
       distinctId: 'user_reporter',
       message: 'Seit Version [maskiert]',
     })
+    expect(captureServer).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'product_feedback_reply_sent', properties: expect.objectContaining({ ticket_id: 'ticket-1' }) }),
+    )
   })
 
   it('sends nothing when the policy cannot mask the reply', async () => {
