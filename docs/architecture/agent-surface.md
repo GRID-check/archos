@@ -490,6 +490,43 @@ good answer is; it names no sequence of operations, so the agent finds them.
 Piloti's own client gets neither: it reads neither, and the guide names
 operations its door leaves to its native tools.
 
+### Listening
+
+A client of the 2026-07-28 revision that attached `piloti://project/{projectId}`
+can open `subscriptions/listen` (an SSE stream) and hear
+`notifications/resources/updated` for that URI when the project's overview
+changes (rename, status, profile, documents), and
+`notifications/resources/list_changed` when the office's projects do (created,
+renamed, deleted, restored, status). The tool and prompt lists change only with
+a deploy, so `tools.listChanged` and `prompts.listChanged` are advertised false.
+`resources.subscribe` and `resources.listChanged` are advertised only to an
+outside agent on the modern era and only where the project resource exists; a
+2025-era request is stateless and cannot hold a stream, so it is told false, and
+Piloti's own client and the platform door are offered no stream.
+
+- **One hook.** Every write in `projects/repository.ts` ends in
+  `announceProject`, and `publishShelfChanged` (every document write on a
+  project shelf) also publishes the project. Both go through
+  `realtime/door-events.ts`, after the commit, never throwing.
+- **Many pods.** The events travel on the hub (`realtime/hub.ts`): one topic,
+  `rt:door:events`, over Dragonfly, in-process without `REDIS_URL`.
+  `door/event-bus.ts` is the SDK's `ServerEventBus` over it. The handler is a
+  module singleton per door (`mcpDoorPost`), so its bus is shared by every
+  request of a pod.
+- **Tenancy.** The SDK filters a stream only by the URIs the client names and
+  checks no access. So `serveListen` (`mcp-server.ts`) cuts the named URIs to
+  the projects the person can read, by the read `resources/read` makes
+  (`readableProjectUris`, at most 50), before the SDK sees the request; the
+  acknowledgement shows what was honored. The stream is opened inside
+  `listeningAs(organizationId)`, and the bus delivers only events of that
+  organization. An event without one (the SDK's `handler.notify.*`) reaches
+  nobody; publish with `door-events.ts`.
+- **Not covered.** Access is checked when the stream opens: a person removed
+  from a project mid-stream still hears that it changed (a pointer, no content;
+  the read is refused) until the stream ends. Project membership changes do not
+  publish yet. The edge allows an hour of stream (`EDGE_TIMEOUT`); the client
+  reconnects after.
+
 ## Adding an operation
 
 Do this in the same change that adds or changes the route. The exemplar is

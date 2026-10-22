@@ -10,6 +10,7 @@ import 'server-only'
  * shelf and has no reason to ask again.
  */
 
+import { publishProjectChanged } from '@/lib/realtime/door-events'
 import { publish } from '@/lib/realtime/hub'
 import { shelfEventSchema, shelfTopic, type LiveShelf } from './shelf-live-events'
 
@@ -29,6 +30,8 @@ export function publishShelfChanged(
 ): void {
   // A chat attachment is on no shelf: nobody lists it in a workspace.
   if (!shelf) return
+  // A project's overview counts its documents: the agent door's listeners hear it too.
+  if (shelf.kind === 'project') publishProjectChanged(organizationId, shelf.projectId)
   try {
     void publish(shelfTopic(organizationId, shelf), shelfEventSchema.parse({ kind: 'shelf.changed', folders })).catch(
       (error: unknown) => console.warn('[documents] could not announce a shelf change:', error)

@@ -17,6 +17,7 @@ import 'server-only'
 import {
   type AuthInfo,
   McpServer,
+  type ServerEventBus,
   WebStandardStreamableHTTPServerTransport,
   createMcpHandler,
   fromJsonSchema,
@@ -39,7 +40,8 @@ import {
 import { type AgentOperation, annotationsOf } from './operation'
 import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
-import { registerDoorGuide } from './door'
+import { offersDoorGuide, offersProjectResource, readableProjectUris, registerDoorGuide } from './door'
+import { DoorEventBus, listeningAs } from './door/event-bus'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -198,10 +200,30 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
   )
 }
 
-export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpServer {
+/** The protocol era a server answers: only `modern` has `subscriptions/listen`; a 2025-era request is stateless and cannot hold a stream. */
+export type McpEra = 'modern' | 'legacy'
+
+/**
+ * What the server claims to support. The SDK defaults every `listChanged` to
+ * true, which would promise notifications nobody sends: the tool and prompt
+ * lists change only with a deploy, so they say false. The resource list
+ * (the person's projects) and a project's overview change at any time, and are
+ * announced to a modern client that listens.
+ */
+function capabilitiesFor(ctx: McpCallContext, era: McpEra) {
+  const live = era === 'modern' && offersProjectResource(ctx)
+  return {
+    tools: { listChanged: false },
+    ...(offersDoorGuide(ctx)
+      ? { prompts: { listChanged: false }, resources: live ? { listChanged: true, subscribe: true } : { listChanged: false } }
+      : {}),
+  }
+}
+
+export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: McpEra = 'legacy'): McpServer {
   const { name, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
-  const server = new McpServer({ name, version: '1.0.0' }, { instructions })
   const ctx: McpCallContext = { principal, mode }
+  const server = new McpServer({ name, version: '1.0.0' }, { instructions, capabilities: capabilitiesFor(ctx, era) })
   if (mode === 'tools') registerOperationTools(server, ctx)
   else registerMetaTools(server, ctx)
   registerDoorGuide(server, ctx)
@@ -262,20 +284,58 @@ async function serveLegacyAsJson(request: Request, authInfo: AuthInfo | undefine
  * it. The principal and mode travel in `authInfo.extra`, the SDK's documented
  * pass-through for keying a factory off the caller.
  */
-export function createAgentDoorHandler(onerror: (error: Error) => void = (error) => console.error('[mcp]', error.message)) {
+export function createAgentDoorHandler(
+  onerror: (error: Error) => void = (error) => console.error('[mcp]', error.message),
+  bus: ServerEventBus = new DoorEventBus(),
+) {
   const modern = createMcpHandler(
     (context) => {
       const { principal, mode } = context.authInfo?.extra as unknown as AgentDoorRequest
-      return buildMcpServer(principal, mode)
+      return buildMcpServer(principal, mode, 'modern')
     },
-    { legacy: 'reject', responseMode: 'json', onerror },
+    { legacy: 'reject', responseMode: 'json', onerror, bus },
   )
   return {
+    /** The bus listen streams hear; publish through `realtime/door-events.ts`, which stamps the organization. */
+    bus: modern.bus,
     async fetch(request: Request, options: { authInfo?: AuthInfo } = {}): Promise<Response> {
-      if (request.method.toUpperCase() === 'POST' && (await isLegacyRequest(request))) {
-        return serveLegacyAsJson(request, options.authInfo, onerror)
+      if (request.method.toUpperCase() !== 'POST') return modern.fetch(request, options)
+      if (await isLegacyRequest(request)) return serveLegacyAsJson(request, options.authInfo, onerror)
+      if (request.headers.get('mcp-method') === 'subscriptions/listen' && options.authInfo) {
+        return serveListen((r, o) => modern.fetch(r, o), request, options.authInfo)
       }
       return modern.fetch(request, options)
     },
   }
+}
+
+interface ListenBody {
+  params?: { notifications?: { resourceSubscriptions?: unknown } }
+}
+
+/**
+ * `subscriptions/listen`, as the person who listens: the URIs it names are cut
+ * to the ones that person may read (the SDK checks none), and the stream is
+ * opened in the person's organization, so it hears only that organization's
+ * events (`door/event-bus.ts`). A body that is not the shape of a listen request
+ * goes to the SDK unchanged, which answers it.
+ */
+async function serveListen(handle: (request: Request, options: { authInfo?: AuthInfo }) => Promise<Response>, request: Request, authInfo: AuthInfo): Promise<Response> {
+  const { principal, mode } = authInfo.extra as unknown as AgentDoorRequest
+  let body: ListenBody | null = null
+  try {
+    body = (await request.clone().json()) as ListenBody
+  } catch {
+    body = null
+  }
+  const asked = body?.params?.notifications?.resourceSubscriptions
+  let forwarded = request
+  if (body && Array.isArray(asked)) {
+    const allowed = await readableProjectUris({ principal, mode }, asked.filter((uri): uri is string => typeof uri === 'string'))
+    const headers = new Headers(request.headers)
+    headers.delete('content-length')
+    const narrowed = { ...body, params: { ...body.params, notifications: { ...body.params?.notifications, resourceSubscriptions: allowed } } }
+    forwarded = new Request(request.url, { method: 'POST', headers, body: JSON.stringify(narrowed), signal: request.signal })
+  }
+  return listeningAs(principal.session.organizationId, () => handle(forwarded, { authInfo }))
 }

@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    An agent connected to Piloti, such as Claude or Cursor, now learns when a
+    project it has open changes: a new name, status, profile or document. It
+    hears only about projects the signed-in person may open.
