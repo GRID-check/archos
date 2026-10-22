@@ -9,7 +9,11 @@ per process.
 
 An open archive is found again by the OBJECT its URL names (origin and path,
 :func:`object_of`), never by a name the caller states beside the URL. A
-presigned URL is the capability: whoever holds one for an object may read it.
+presigned URL is the capability: whoever holds one for an object may read it,
+and holding one means the store honours it. So a URL that finds an open archive
+is first proven with a one-byte read of the object (``RangeFile.prove``): a
+URL with a missing, wrong or expired signature is refused (502) before any
+cached block is served, and the open archive keeps the URL it had.
 Keyed on a caller-stated name, a request carrying another tenant's name and a
 URL for any object of its own (with the same size) was handed the other
 tenant's open archive, whose blocks are cached. A replica that never saw the archive
@@ -89,13 +93,9 @@ def reset_open_archives() -> None:
 
 
 def _acquire(key: str, url: str, size: int) -> _Open:
-    with _lock:
-        entry = _open.get(key)
-        if entry is not None and entry.size == size:
-            entry.file.renew(url)
-            entry.holders += 1
-            _open.move_to_end(key)
-            return entry
+    cached = _hold_cached(key, size)
+    if cached is not None:
+        return _proven(cached, url)
     remote = RangeFile(url, size, _CLIENT)
     opened = _Open(archive=open_archive(remote), file=remote, size=size, used_at=time.monotonic(), holders=1)
     with _lock:
@@ -118,6 +118,32 @@ def _acquire(key: str, url: str, size: int) -> _Open:
         dropped.archive.close()
     for stale in closable:
         stale.archive.close()
+    return entry
+
+
+def _hold_cached(key: str, size: int) -> _Open | None:
+    """The open archive for ``key``, held so it outlives the proof; ``None`` on a miss."""
+    with _lock:
+        entry = _open.get(key)
+        if entry is None or entry.size != size:
+            return None
+        entry.holders += 1
+        _open.move_to_end(key)
+        return entry
+
+
+def _proven(entry: _Open, url: str) -> _Open:
+    """``entry``, read through ``url`` from now on, once the store has honoured ``url``.
+
+    Outside ``_lock``: the proof is a request. A URL the store refuses raises
+    :class:`RemoteFileError` and leaves the entry as it was for its other holders.
+    """
+    try:
+        entry.file.prove(url)
+    except BaseException:
+        _release(entry)
+        raise
+    entry.file.renew(url)
     return entry
 
 

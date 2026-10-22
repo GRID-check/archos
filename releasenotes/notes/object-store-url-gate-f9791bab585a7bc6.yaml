@@ -15,6 +15,11 @@ security:
     beside the address, so a caller holding the internal service token could
     have read another office's open archive.
   - >
+    An archive the reading service already has open is served only to an
+    address the file storage itself honours: the storage is asked for one
+    byte first. Before, an address naming the same file without a valid
+    signature was served the open archive's cached parts.
+  - >
     The backend now sends every request to the office's file storage to the
     storage's configured address, taking only the file's path and signature
     from the address it is handed, so no spelling of an address can steer a
