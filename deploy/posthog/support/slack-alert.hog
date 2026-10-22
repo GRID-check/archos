@@ -24,13 +24,16 @@ if (res.status != 200) {
 let ticket := res.body
 let number := ticket.ticket_number ?? ticket.number
 let kind := props.kind
+// Every word a person reads comes from the `copy` input, keyed in English, the
+// way the app reads its i18n dictionaries: no German in the code.
+let copy := inputs.copy
 let titles := {
-  'bug': '🐞 Neuer Bug-Report',
-  'idea': '💡 Neue Idee',
-  'praise': '❤️ Neues Lob',
-  'question': '❓ Neue Frage'
+  'bug': f'🐞 {copy.title_bug}',
+  'idea': f'💡 {copy.title_idea}',
+  'praise': f'❤️ {copy.title_praise}',
+  'question': f'❓ {copy.title_question}'
 }
-let title := titles[kind] ?? '📝 Neues Feedback'
+let title := titles[kind] ?? f'📝 {copy.title_other}'
 let ticketUrl := f'https://eu.posthog.com/project/{project.id}/support/tickets/{ticketId}'
 let claimUrl := f'https://{host}/app/platform/feedback?claim={ticketId}'
 let where := isProd ? '' : f' · 🧪 {host}'
@@ -102,8 +105,8 @@ if (event.event == 'product_feedback_ticket_opened') {
     return
   }
   let words := substring(withoutHeader(ticket.first_customer_message_text), 1, 2500)
-  let quote := empty(words) ? '(kein Text)' : words
-  let noContact := props.allow_contact == false ? ' · ⚠️ möchte nicht kontaktiert werden' : ''
+  let quote := empty(words) ? f'({copy.no_text})' : words
+  let noContact := props.allow_contact == false ? f' · ⚠️ {copy.no_contact}' : ''
   let pageTeam := kind == 'bug' and isProd
   let blocks := []
   if (kind == 'bug') {
@@ -114,8 +117,8 @@ if (event.event == 'product_feedback_ticket_opened') {
   }
   blocks := arrayPushBack(blocks, {'type': 'context', 'elements': [{'type': 'mrkdwn', 'text': f'{host}{noContact}'}]})
   let buttons := [
-    {'type': 'button', 'style': 'primary', 'text': {'type': 'plain_text', 'text': '🙋 Übernehmen'}, 'url': claimUrl},
-    {'type': 'button', 'text': {'type': 'plain_text', 'text': 'Ticket in PostHog öffnen'}, 'url': ticketUrl}
+    {'type': 'button', 'style': 'primary', 'text': {'type': 'plain_text', 'text': f'🙋 {copy.claim}'}, 'url': claimUrl},
+    {'type': 'button', 'text': {'type': 'plain_text', 'text': copy.open_ticket}, 'url': ticketUrl}
   ]
   if (not empty(person) and not empty(person.url)) {
     buttons := arrayPushBack(buttons, {'type': 'button', 'text': {'type': 'plain_text', 'text': 'Person & Replays'}, 'url': person.url})
@@ -133,15 +136,15 @@ if (event.event == 'product_feedback_ticket_opened') {
 
 if (event.event == 'product_feedback_reply_sent') {
   let words := substring(ticket.last_message_text ?? '', 1, 2500)
-  let quote := empty(words) ? '(kein Text)' : words
+  let quote := empty(words) ? f'({copy.no_text})' : words
   let message := {
     'channel': inputs.channel,
     'username': 'Piloti Feedback',
-    'text': f'↩️ Antwort vom Reporter auf #{number}{where}',
+    'text': f'↩️ {copy.reporter_replied} #{number}{where}',
     'blocks': [
-      {'type': 'section', 'text': {'type': 'mrkdwn', 'text': f'*↩️ Antwort vom Reporter auf #{number}*{where}\n>>> {quote}'}},
+      {'type': 'section', 'text': {'type': 'mrkdwn', 'text': f'*↩️ {copy.reporter_replied} #{number}*{where}\n>>> {quote}'}},
       {'type': 'actions', 'elements': [
-        {'type': 'button', 'style': 'primary', 'text': {'type': 'plain_text', 'text': 'Antworten in PostHog'}, 'url': ticketUrl}
+        {'type': 'button', 'style': 'primary', 'text': {'type': 'plain_text', 'text': copy.reply_in_posthog}, 'url': ticketUrl}
       ]}
     ]
   }

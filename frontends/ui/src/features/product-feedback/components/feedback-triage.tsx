@@ -83,7 +83,7 @@ import {
   type SupportTicketStatus,
 } from '@/lib/product-feedback/types'
 import { cn } from '@/lib/utils'
-import { FEEDBACK_KIND_ICONS } from './feedback-dialog'
+import { FEEDBACK_KIND_ICONS } from './feedback-form'
 
 export interface FeedbackTriageClient {
   list: (filters: ListFeedbackFilters) => Promise<ProductFeedbackListResponse>
