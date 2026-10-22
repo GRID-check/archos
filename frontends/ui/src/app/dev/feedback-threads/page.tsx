@@ -92,7 +92,9 @@ function threadFor(id: string, view: string | null, extra: OwnProductFeedbackMes
   if (view === 'readonly') {
     return { report: { ...report, canReply: false, hasUpdate: false }, messages: CONVERSATION, live: true }
   }
-  return { report: { ...report, hasUpdate: false }, messages: [...CONVERSATION, ...extra], live: true }
+  // Once the reporter has answered, the ticket is the team's move again.
+  const status = extra.length > 0 ? 'open' : report.status
+  return { report: { ...report, status, hasUpdate: false }, messages: [...CONVERSATION, ...extra], live: true }
 }
 
 function Preview(): JSX.Element {

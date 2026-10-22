@@ -71,8 +71,8 @@ export const feedback: typeof en.feedback = {
   /** Die eigenen Meldungen: was gesendet wurde und was das Team geantwortet hat. */
   threads: {
     open: 'Mein Feedback',
-    title: 'Ihr Feedback',
-    description: 'Antworten des Piloti-Teams kommen hier an, und Sie können direkt im Chat antworten.',
+    title: 'Mein Feedback',
+    description: 'Was Sie gemeldet haben und was das Piloti-Team antwortet. Sie können direkt hier zurückschreiben.',
     newCount: '{count} neu',
     empty: {
       title: 'Noch kein Feedback',
@@ -87,15 +87,18 @@ export const feedback: typeof en.feedback = {
     loadMoreFailed: 'Konnte nicht mehr laden. Erneut versuchen',
     back: 'Alle Meldungen',
     hasUpdate: 'Neu',
-    sentOn: 'Gesendet {date}',
+    /** Vor einer relativen Zeit: „Gesendet vor 3 Stunden“. */
+    sent: 'Gesendet',
     me: 'Sie',
     team: 'Piloti-Team',
+    teamMember: '{name}, Piloti-Team',
     notLive: 'Die Antworten des Teams können gerade nicht geladen werden. Ihre Meldung ist angekommen und sicher.',
     cannotReply: 'Auf diese Meldung kann hier nicht geantwortet werden. Senden Sie neues Feedback, um den Chat fortzusetzen.',
     waiting: 'Das Team hat noch nicht geantwortet. Die Antwort erscheint hier.',
     replyLabel: 'Ihre Antwort',
     replyPlaceholder: 'Antwort schreiben …',
     replySend: 'Senden',
+    replyHint: 'sendet, Umschalt + ↵ für eine neue Zeile',
     replySending: 'Wird gesendet …',
     replyError: 'Ihre Antwort konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
     replyRateLimited: 'Sie haben in der letzten Stunde schon viele Antworten gesendet. Bitte versuchen Sie es später erneut.',

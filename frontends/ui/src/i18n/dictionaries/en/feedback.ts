@@ -72,8 +72,8 @@ export const feedback = {
   /** The reporter's own threads: what they sent and what the team answered. */
   threads: {
     open: 'My feedback',
-    title: 'Your feedback',
-    description: 'Replies from the Piloti team arrive here, and you can answer right in the chat.',
+    title: 'My feedback',
+    description: 'What you reported and what the Piloti team answered. You can reply right here.',
     newCount: '{count} new',
     empty: {
       title: 'No feedback yet',
@@ -88,15 +88,18 @@ export const feedback = {
     loadMoreFailed: 'Could not load more. Try again',
     back: 'All feedback',
     hasUpdate: 'New',
-    sentOn: 'Sent {date}',
+    /** Before a relative time: “Sent 3 hours ago”. */
+    sent: 'Sent',
     me: 'You',
     team: 'Piloti team',
+    teamMember: '{name}, Piloti team',
     notLive: 'The team’s replies cannot be loaded right now. Your report is safe and has been received.',
     cannotReply: 'Replies to this report are not possible here. Send new feedback to continue the chat.',
     waiting: 'The team has not replied yet. You will see their answer here.',
     replyLabel: 'Your reply',
     replyPlaceholder: 'Write a reply …',
     replySend: 'Send',
+    replyHint: 'to send, Shift + ↵ for a new line',
     replySending: 'Sending …',
     replyError: 'Your reply could not be sent. Please try again.',
     replyRateLimited: 'You have sent a lot of replies in the last hour. Please try again later.',

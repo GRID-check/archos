@@ -32,6 +32,7 @@ const MESSAGE =
 function Preview(): JSX.Element {
   const params = useSearchParams()
   const variant = params.get('variant')
+  const lang = params.get('lang')
   const kindParam = params.get('kind')
   const kind: ProductFeedbackKind = PRODUCT_FEEDBACK_KINDS.includes(kindParam as ProductFeedbackKind)
     ? (kindParam as ProductFeedbackKind)
@@ -78,6 +79,8 @@ function Preview(): JSX.Element {
         defaultKind={kind}
         userEmail="maria.huber@buero-nord.at"
         submit={submit}
+        // The sent state's „Chat öffnen": straight into the threads preview.
+        onViewThread={() => window.location.assign(`/dev/feedback-threads?view=thread${lang === 'en' ? '&lang=en' : ''}`)}
       />
     </FeedbackProvider>
   )

@@ -65,7 +65,7 @@ describe('FeedbackThreadsSheet', () => {
     expect(
       screen.getByText('The upload stops at 99 percent.').closest('[data-shared-author]'),
     ).toHaveAttribute('data-shared-author', 'feedback-reporter')
-    expect(screen.getByText(/Matthias · Piloti team/)).toBeInTheDocument()
+    expect(screen.getByText(/Matthias, Piloti team/)).toBeInTheDocument()
   })
 
   test('sends a reply with Enter and shows it in the thread', async () => {

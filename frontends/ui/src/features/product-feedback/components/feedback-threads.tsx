@@ -20,6 +20,7 @@ import { BusyButton } from '@/components/ui/busy-button'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Kbd } from '@/components/ui/kbd'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, ItemTitle } from '@/components/ui/item'
 import { LoadError } from '@/components/ui/load-error'
 import { LoadMore } from '@/components/ui/load-more'
@@ -30,6 +31,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { UserMessage } from '@/features/chat/components/UserMessage'
 import { useLocale, useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
 import {
   fetchOwnFeedback,
   fetchOwnFeedbackThread,
@@ -43,6 +45,16 @@ import {
   type OwnProductFeedbackThread,
 } from '@/lib/product-feedback/types'
 import { FEEDBACK_KIND_ICONS } from './feedback-dialog'
+
+/**
+ * Radix's scroll viewport wraps its children in a `display: table` box that
+ * grows to its widest child, so a clamped excerpt or a 400px bubble pushed the
+ * list and the thread past the sheet's right edge (cut off on desktop, the
+ * whole bubble overflowing a 390px phone). Block layout makes the content take
+ * the sheet's width. The cause is in `components/ui/scroll-area.tsx`; until the
+ * atom does this itself, every vertical-only caller needs it.
+ */
+const FIT_VIEWPORT = '[&>[data-radix-scroll-area-viewport]>div]:!block'
 
 /** How often an open thread is re-read for a reply that arrived meanwhile. */
 export const THREAD_POLL_MS = 20_000
@@ -93,17 +105,19 @@ export function FeedbackThreadsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="flex flex-col gap-0 p-0 sm:max-w-lg" data-testid="feedback-threads">
+      <SheetContent side="right" className="flex flex-col gap-0 p-0 pr-[env(safe-area-inset-right)] sm:max-w-lg"
+        data-testid="feedback-threads">
         {selected ? (
           <ThreadView
             key={selected}
             reportId={selected}
             api={api}
             onBack={() => setSelected(null)}
+            onNewFeedback={onNewFeedback}
           />
         ) : (
           <>
-            <SheetHeader className="border-b px-6 pt-6 pb-4">
+            <SheetHeader className="border-b px-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-4">
               <SheetTitle>{t('threads.title')}</SheetTitle>
               <SheetDescription>{t('threads.description')}</SheetDescription>
             </SheetHeader>
@@ -193,7 +207,7 @@ function ThreadList({
     )
   }
   return (
-    <ScrollArea className="min-h-0 flex-1">
+    <ScrollArea className={cn('min-h-0 flex-1', FIT_VIEWPORT)}>
       <ItemList as="ul" className="m-4">
         {load.value.reports.map((report) => (
           <ThreadRow key={report.id} report={report} onSelect={() => onSelect(report.id)} />
@@ -230,7 +244,9 @@ function ThreadRow({ report, onSelect }: { report: OwnProductFeedbackSummary; on
           <Icon className="text-muted-foreground size-4" aria-hidden />
         </ItemMedia>
         <ItemContent>
-          <ItemTitle className="line-clamp-2 font-normal">{report.excerpt}</ItemTitle>
+          {/* `truncate` is the atom's default; two lines of the report is what
+              tells one bug from the next, so it wraps and clamps instead. */}
+          <ItemTitle className="line-clamp-2 font-normal whitespace-normal">{report.excerpt}</ItemTitle>
           <ItemDescription className="flex flex-wrap items-center gap-x-2">
             <span>{t(`kinds.${report.kind}.label`)}</span>
             <span aria-hidden>·</span>
@@ -259,12 +275,15 @@ function ThreadView({
   reportId,
   api,
   onBack,
+  onNewFeedback,
 }: {
   reportId: string
   api: FeedbackThreadsApi
   onBack: () => void
+  onNewFeedback?: () => void
 }): JSX.Element {
   const t = useTranslations('feedback')
+  const { locale } = useLocale()
   const [load, setLoad] = React.useState<Load<OwnProductFeedbackThread>>({ kind: 'loading' })
 
   const read = React.useCallback(
@@ -289,16 +308,28 @@ function ThreadView({
   const thread = load.kind === 'ready' ? load.value : null
   return (
     <>
-      <SheetHeader className="flex-row items-center gap-2 border-b px-4 pt-5 pb-3">
+      {/* One row, centred on the sheet's close button (32px from the top), so
+          back, title and close read as one bar rather than three heights. */}
+      <SheetHeader className="min-h-16 flex-row items-center gap-1.5 border-b pt-[max(0.75rem,env(safe-area-inset-top))] pr-14 pb-3 pl-3">
         <Button variant="ghost" size="icon" onClick={onBack} aria-label={t('threads.back')} data-testid="feedback-thread-back">
           <ArrowLeft className="size-4" aria-hidden />
         </Button>
-        <div className="flex min-w-0 flex-col">
-          <SheetTitle className="text-base">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <SheetTitle className="text-base leading-tight">
             {thread ? t(`kinds.${thread.report.kind}.label`) : t('threads.title')}
           </SheetTitle>
-          <SheetDescription>
-            {thread?.report.status ? t(`threads.statuses.${thread.report.status}`) : t('threads.description')}
+          {/* Where the report stands; without a status (PostHog unreadable)
+              at least when it went out, never the list's generic blurb. */}
+          <SheetDescription className="truncate text-xs">
+            {thread?.report.status ? (
+              t(`threads.statuses.${thread.report.status}`)
+            ) : thread ? (
+              <>
+                {t('threads.sent')} <TimeAgo date={thread.report.createdAt} locale={locale} />
+              </>
+            ) : (
+              <span aria-hidden>&nbsp;</span>
+            )}
           </SheetDescription>
         </div>
       </SheetHeader>
@@ -316,6 +347,7 @@ function ThreadView({
       {thread && (
         <ThreadMessages
           thread={thread}
+          onNewFeedback={onNewFeedback}
           onReply={async (message) => {
             const result = await api.reply(reportId, message)
             if (result.ok) setLoad({ kind: 'ready', value: result.thread })
@@ -330,9 +362,11 @@ function ThreadView({
 function ThreadMessages({
   thread,
   onReply,
+  onNewFeedback,
 }: {
   thread: OwnProductFeedbackThread
   onReply: (message: string) => Promise<ReplyToFeedbackResult>
+  onNewFeedback?: () => void
 }): JSX.Element {
   const t = useTranslations('feedback')
   const endRef = React.useRef<HTMLDivElement>(null)
@@ -345,7 +379,7 @@ function ThreadMessages({
 
   return (
     <>
-      <ScrollArea className="min-h-0 flex-1">
+      <ScrollArea className={cn('min-h-0 flex-1', FIT_VIEWPORT)}>
         <div className="flex flex-col gap-4 p-4" data-testid="feedback-thread-messages" data-chat-surface="feedback">
           {/* The chat's own attributed message: the header names who spoke
               (you, or the team member), and every message keeps the chat's
@@ -365,24 +399,40 @@ function ThreadMessages({
                     ? { isYou: true, userId: 'feedback-reporter' }
                     : {
                         userId: `piloti-team:${message.authorName ?? ''}`,
-                        name: message.authorName ? `${message.authorName} · ${t('threads.team')}` : t('threads.team'),
+                        // „Matthias, Piloti-Team": the comma keeps the disc's
+                        // initials on the person (MP), where „·" made them „M·".
+                        name: message.authorName
+                          ? t('threads.teamMember', { name: message.authorName })
+                          : t('threads.team'),
                       }
                 }
               />
             )
           })}
-          {!thread.live && <p className="text-muted-foreground text-center text-xs">{t('threads.notLive')}</p>}
-          {thread.live && !answered && <p className="text-muted-foreground text-center text-xs">{t('threads.waiting')}</p>}
+          {!thread.live && <ThreadNote>{t('threads.notLive')}</ThreadNote>}
+          {thread.live && !answered && <ThreadNote>{t('threads.waiting')}</ThreadNote>}
           <div ref={endRef} />
         </div>
       </ScrollArea>
       {thread.report.canReply ? (
         <ReplyComposer onReply={onReply} />
       ) : (
-        <p className="text-muted-foreground border-t px-6 py-4 text-sm">{t('threads.cannotReply')}</p>
+        <div className="flex flex-col items-start gap-3 border-t px-6 pt-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+          <p className="text-muted-foreground text-sm text-pretty">{t('threads.cannotReply')}</p>
+          {onNewFeedback && (
+            <Button variant="outline" size="sm" onClick={onNewFeedback}>
+              {t('threads.send')}
+            </Button>
+          )}
+        </div>
       )}
     </>
   )
+}
+
+/** A line about the thread rather than in it: the waiting and offline notes. */
+function ThreadNote({ children }: { children: string }): JSX.Element {
+  return <p className="text-muted-foreground mx-auto max-w-xs py-2 text-center text-xs text-pretty">{children}</p>
 }
 
 function ReplyComposer({ onReply }: { onReply: (message: string) => Promise<ReplyToFeedbackResult> }): JSX.Element {
@@ -408,7 +458,7 @@ function ReplyComposer({ onReply }: { onReply: (message: string) => Promise<Repl
 
   return (
     <form
-      className="flex flex-col gap-2 border-t p-4"
+      className="flex flex-col gap-2 border-t px-4 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]"
       onSubmit={(event) => {
         event.preventDefault()
         void send()
@@ -417,29 +467,36 @@ function ReplyComposer({ onReply }: { onReply: (message: string) => Promise<Repl
       <label htmlFor={inputId} className="sr-only">
         {t('threads.replyLabel')}
       </label>
-      <div className="flex items-end gap-2">
-        <Textarea
-          id={inputId}
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            // Enter sends, Shift+Enter breaks the line: the chat convention.
-            if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
-              event.preventDefault()
-              void send()
-            }
-          }}
-          placeholder={t('threads.replyPlaceholder')}
-          maxLength={PRODUCT_FEEDBACK_MESSAGE_MAX}
-          rows={2}
-          className="max-h-40 min-h-11 flex-1 resize-none"
-          data-testid="feedback-reply-input"
-        />
+      <Textarea
+        id={inputId}
+        value={draft}
+        onChange={(event) => setDraft(event.target.value)}
+        onKeyDown={(event) => {
+          // Enter sends, Shift+Enter breaks the line: the chat convention.
+          if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) {
+            event.preventDefault()
+            void send()
+          }
+        }}
+        placeholder={t('threads.replyPlaceholder')}
+        maxLength={PRODUCT_FEEDBACK_MESSAGE_MAX}
+        rows={2}
+        className="max-h-40 min-h-16 resize-none"
+        data-testid="feedback-reply-input"
+      />
+      {/* The send sits under the field, as a comment box's does: the field
+          keeps the sheet's full width on a phone, and the key hint says what
+          Enter does before anybody finds out by accident. */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-muted-foreground flex items-center gap-1 text-xs pointer-coarse:invisible" aria-hidden>
+          <Kbd>↵</Kbd> {t('threads.replyHint')}
+        </p>
         <BusyButton
           type="submit"
           busy={sending}
           busyLabel={t('threads.replySending')}
           icon={<Send className="size-4" aria-hidden />}
+          size="sm"
           disabled={draft.trim().length === 0}
           data-testid="feedback-reply-send"
         >
