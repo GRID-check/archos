@@ -38,6 +38,9 @@ describe('AuthKit v4 proxy', () => {
             '/api/a2a',
             // The platform door checks a bearer token for its own audience (ADR-0126).
             '/api/platform/mcp',
+            // PostHog's poke carries only a ticket id; the route re-reads the
+            // thread with its own key and rate-limits (ADR-0118, second amendment).
+            '/api/webhooks/posthog-support',
             '/.well-known/(.*)',
             // The image optimizer re-enters the router in-process, so
             // middleware runs on this route with a cookie-less mocked request.

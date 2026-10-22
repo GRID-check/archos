@@ -53,6 +53,7 @@ import {
   FEEDBACK_TICKET_TAG,
   kindTicketTag,
   NO_CONTACT_TICKET_TAG,
+  originTicketTag,
   PosthogSupportUnavailableError,
   SUPPORT_TICKET_STATUSES,
   type PosthogMember,
@@ -141,6 +142,24 @@ function announceToSupport(
 }
 
 /**
+ * The tags a report's ticket carries: the feedback tag, its kind, `no-contact`
+ * when the reporter declined contact, and the deployment it came from, which
+ * the PostHog workflow reads to know whom to tell about a team reply.
+ */
+export function ticketTagsFor(
+  report: Pick<ProductFeedback, 'kind' | 'allowContact'>,
+  config: Pick<PosthogSupportConfig, 'appOrigin'>
+): string[] {
+  const origin = originTicketTag(config.appOrigin)
+  return [
+    FEEDBACK_TICKET_TAG,
+    kindTicketTag(report.kind),
+    ...(report.allowContact ? [] : [NO_CONTACT_TICKET_TAG]),
+    ...(origin ? [origin] : []),
+  ]
+}
+
+/**
  * Open the report's Support ticket and remember its id. Every report gets one,
  * a reporter who declined contact too (tagged so nobody replies). The words go
  * out masked against the office's „Sensible Daten" policy (ADR-0086), and when
@@ -164,7 +183,7 @@ async function openTicketFor(
       distinctId: session.userId,
       widgetSessionId,
       sessionId: input.posthog.sessionId,
-      tags: [FEEDBACK_TICKET_TAG, kindTicketTag(report.kind), ...(report.allowContact ? [] : [NO_CONTACT_TICKET_TAG])],
+      tags: ticketTagsFor(report, config),
     })
     await setProductFeedbackTicket(report.id, ticketId, widgetSessionId)
     announceToSupport('product_feedback_ticket_opened', session, report, ticketId)

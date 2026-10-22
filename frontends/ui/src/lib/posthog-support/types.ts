@@ -37,6 +37,23 @@ export type SupportTicketAssignee =
   | { type: 'user'; id: number; email: string | null }
   | { type: 'role'; id: string; name: string | null }
 
+/**
+ * `origin:app.piloti.at` — the deployment that opened the ticket, by its app
+ * origin's host. Dev and prod share one PostHog project, so the workflow that
+ * tells Piloti about a team reply reads this tag to know which deployment to
+ * poke (`POST https://<host>/api/webhooks/posthog-support`). `null` when the
+ * deployment pins no origin: the ticket then carries no origin tag and no
+ * deployment is poked for it.
+ */
+export function originTicketTag(appOrigin: string | null): string | null {
+  if (!appOrigin) return null
+  try {
+    return `origin:${new URL(appOrigin).host}`
+  } catch {
+    return null
+  }
+}
+
 /** One Support ticket, reduced to what the app reads. */
 export interface SupportTicket {
   /** PostHog's ticket UUID. */

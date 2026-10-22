@@ -128,6 +128,7 @@ function stored(overrides: Partial<ProductFeedback> = {}): ProductFeedback & { o
     posthogTicketId: null,
     posthogWidgetSessionId: null,
     reporterSeenAt: null,
+    reporterNotifiedAt: null,
     createdAt: at,
     updatedAt: at,
     ...overrides,
@@ -211,7 +212,7 @@ describe('submitProductFeedback', () => {
       distinctId: 'user_reporter',
       widgetSessionId: expect.stringMatching(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/),
       sessionId: 's-0199',
-      tags: ['piloti-feedback', 'kind:bug'],
+      tags: ['piloti-feedback', 'kind:bug', 'origin:app.piloti.at'],
     })
     // The session the ticket was opened in is the one later replies must use.
     expect(repository.setProductFeedbackTicket).toHaveBeenCalledWith(REPORT_ID, 'ticket-1', opened?.widgetSessionId)
@@ -264,7 +265,17 @@ describe('submitProductFeedback', () => {
 
     await submitProductFeedback(session, { ...input, allowContact: false })
 
-    expect(vi.mocked(openFeedbackTicket).mock.calls[0]?.[1].tags).toEqual(['piloti-feedback', 'kind:bug', 'no-contact'])
+    expect(vi.mocked(openFeedbackTicket).mock.calls[0]?.[1].tags).toEqual(['piloti-feedback', 'kind:bug', 'no-contact', 'origin:app.piloti.at'])
+  })
+
+  it('tags the deployment the ticket came from by its host, and no origin where none is pinned', async () => {
+    vi.mocked(posthogSupportConfigFromEnv).mockReturnValue({ ...config, appOrigin: 'https://app.dev.piloti.at' })
+    await submitProductFeedback(session, input)
+    expect(vi.mocked(openFeedbackTicket).mock.calls[0]?.[1].tags).toContain('origin:app.dev.piloti.at')
+
+    vi.mocked(posthogSupportConfigFromEnv).mockReturnValue({ ...config, appOrigin: null })
+    await submitProductFeedback(session, input)
+    expect(vi.mocked(openFeedbackTicket).mock.calls[1]?.[1].tags).toEqual(['piloti-feedback', 'kind:bug'])
   })
 
   it('opens no ticket, rather than sending the raw text, when the policy cannot be read', async () => {

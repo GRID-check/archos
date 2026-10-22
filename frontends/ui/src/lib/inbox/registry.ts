@@ -265,14 +265,6 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     push: { category: 'requests', urgency: 'normal' },
   },
   /*
-    A member sent product feedback (Platform → Feedback). Informational: the
-    triage status on the report is the work queue, and an actionable row would
-    need every owner's copy resolved when one of them triages it. `collapse` on
-    the REPORT, so each report is one row per owner. Kept a quarter: a report
-    nobody opened for three months is still on the triage page, which is the
-    record; the inbox row is only the announcement.
-  */
-  /*
     An Outlook archive import ended (ADR-0085). The `job.*` shapes, and for the
     same reasons: informational, one row per import (anchored on its folder),
     operational because an office without collaboration imports mail too. A
@@ -295,6 +287,14 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: { send: 'if-unread', afterMinutes: 30 },
     push: { category: 'results', urgency: 'normal' },
   },
+  /*
+    A member sent product feedback (Platform → Feedback). Informational: the
+    triage status on the report is the work queue, and an actionable row would
+    need every owner's copy resolved when one of them triages it. `collapse` on
+    the REPORT, so each report is one row per owner. Kept a quarter: a report
+    nobody opened for three months is still on the triage page, which is the
+    record; the inbox row is only the announcement.
+  */
   'feedback.submitted': {
     actionable: false,
     grouping: 'collapse',
@@ -302,6 +302,26 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     gate: 'platform',
     email: { send: 'if-unread', afterMinutes: 0 },
     push: { category: 'office', urgency: 'low' },
+  },
+  /*
+    The team answered the reader's own feedback in PostHog Support (ADR-0118,
+    second amendment). `collapse` on the REPORT: a conversation is one row that
+    counts the replies since it was last read, and opens the thread, where all
+    of them are. Informational: nothing waits on the reader, and the thread is
+    the record. Operational, not collaboration: a member of an office without a
+    chat feature sends feedback too, and must hear back. Pushed as a result,
+    as `mention.answered` is (it answers something they asked). In-app only,
+    by the product owner's decision: the inbox and the push are the notice, and
+    a reply to feedback does not earn mail. Kept a quarter, like the report's
+    announcement.
+  */
+  'feedback.replied': {
+    actionable: false,
+    grouping: 'collapse',
+    retentionDays: 90,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+    push: { category: 'results', urgency: 'normal' },
   },
   /*
     An upload of yours has been read (ADR-0086). `per-anchor` on the batch id:

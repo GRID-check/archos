@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    When the Piloti team answers feedback you sent, you now get a notification
+    in your inbox and on your devices, and it opens the conversation
+    under My feedback.
+operators:
+  - >
+    Feedback tickets are now tagged with the deployment they came from, and the
+    PostHog Support workflow pokes that deployment when the team replies, so the
+    reporter is notified.

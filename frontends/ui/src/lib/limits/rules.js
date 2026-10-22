@@ -287,6 +287,29 @@ const DEFAULT_MUTATION_LIMIT = {
 }
 
 /**
+ * PostHog's poke that a feedback ticket has a new message
+ * (`POST /api/webhooks/posthog-support`, ADR-0118, second amendment).
+ *
+ * The route has no session, so there is no member to charge. Two buckets
+ * instead: one per ticket, which bounds how often a real ticket is re-read
+ * from PostHog (a forged poke can do nothing else), and one for the whole
+ * deployment, which bounds the lookups a flood of made-up ids costs. A team
+ * answers at human pace: thirty messages on one ticket in ten minutes is a
+ * lively exchange, six hundred pokes in ten minutes across every ticket is
+ * far past the team's whole day, and sixty in five seconds is a script.
+ * @type {LimitRule}
+ */
+const POSTHOG_SUPPORT_POKE_TICKET_LIMIT = { name: 'posthog-support-poke-ticket', limit: 30, windowMs: 10 * 60 * 1000 }
+
+/** @type {LimitRule} */
+const POSTHOG_SUPPORT_POKE_LIMIT = {
+  name: 'posthog-support-poke',
+  limit: 600,
+  windowMs: 10 * 60 * 1000,
+  burst: { limit: 60, windowMs: 5 * 1000 },
+}
+
+/**
  * Sending product feedback to the platform owners.
  *
  * Every report becomes an inbox item for every platform owner (and, once a
@@ -351,6 +374,8 @@ module.exports = {
   DICTATION_LIMIT,
   FEEDBACK_REPORT_LIMIT,
   FEEDBACK_REPLY_LIMIT,
+  POSTHOG_SUPPORT_POKE_LIMIT,
+  POSTHOG_SUPPORT_POKE_TICKET_LIMIT,
   BIM_QUERY_LIMIT,
   BIM_EXPORT_LIMIT,
   RIS_DOCUMENT_LIMIT,

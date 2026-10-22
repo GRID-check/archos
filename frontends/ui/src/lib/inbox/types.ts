@@ -236,6 +236,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
     tone: 'request',
   },
   'feedback.submitted': { icon: 'megaphone', i18nKey: 'feedbackSubmitted', tone: 'info' },
+  'feedback.replied': { icon: 'message-square', i18nKey: 'feedbackReplied', tone: 'info' },
   'upload.completed': { icon: 'check-circle', i18nKey: 'uploadCompleted', tone: 'info' },
   'document.quarantined': { icon: 'shield-alert', i18nKey: 'documentQuarantined', tone: 'warning' },
   'document.release_requested': { icon: 'shield-alert', i18nKey: 'documentReleaseRequested', tone: 'request' },

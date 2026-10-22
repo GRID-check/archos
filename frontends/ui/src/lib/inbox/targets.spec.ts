@@ -17,9 +17,14 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/sharing/access', () => ({ resolveResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/registry', () => ({ describeResource: vi.fn() }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
+vi.mock('@/lib/authz/platform', () => ({ hasPlatformPermission: vi.fn(async () => false) }))
+vi.mock('@/lib/product-feedback/repository', () => ({ getOwnProductFeedback: vi.fn(async () => null) }))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { hasPlatformPermission } from '@/lib/authz/platform'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import type { ProductFeedback } from '@/lib/db/schema'
+import { getOwnProductFeedback } from '@/lib/product-feedback/repository'
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { describeResource } from '@/lib/sharing/registry'
 import { INBOX_TARGET_REGISTRY, findInboxTarget, type InboxTargetLinkContext } from './targets'
@@ -287,5 +292,41 @@ describe('where an anchor lands (marks, proposals and Fassungen anchor rows too)
 
     vi.mocked(requireProjectAccess).mockRejectedValueOnce(new Error('forbidden'))
     expect(await INBOX_TARGET_REGISTRY.project.resolve(makeSession(), 'proj_1')).toBeNull()
+  })
+})
+
+describe('the product-feedback target', () => {
+  const target = INBOX_TARGET_REGISTRY.product_feedback
+  const REPORT = '7b6a2c1e-0000-4000-8000-000000000001'
+  const own = { id: REPORT } as ProductFeedback
+
+  it('opens the reporter\'s own thread in Mein Feedback for a reply row', async () => {
+    vi.mocked(getOwnProductFeedback).mockResolvedValueOnce(own)
+    const access = await target.resolve(makeSession('org_tenant'), REPORT)
+    expect(getOwnProductFeedback).toHaveBeenCalledWith('org_tenant', 'user_1', REPORT)
+    expect(access!.deepLink({ itemType: 'feedback.replied' })).toBe(`/app/projects?feedback=${REPORT}`)
+  })
+
+  it('sends a platform owner to the triage page for an announcement', async () => {
+    vi.mocked(hasPlatformPermission).mockResolvedValueOnce(true)
+    const access = await target.resolve(makeSession(), REPORT)
+    expect(access!.deepLink({ itemType: 'feedback.submitted' })).toBe(`/app/platform/feedback?report=${REPORT}`)
+  })
+
+  it('a platform owner who filed the report reads its reply in Mein Feedback, its announcement on the triage page', async () => {
+    vi.mocked(hasPlatformPermission).mockResolvedValueOnce(true)
+    vi.mocked(getOwnProductFeedback).mockResolvedValueOnce(own)
+    const access = await target.resolve(makeSession(), REPORT)
+    expect(access!.deepLink({ itemType: 'feedback.replied' })).toBe(`/app/projects?feedback=${REPORT}`)
+    expect(access!.deepLink({ itemType: 'feedback.submitted' })).toBe(`/app/platform/feedback?report=${REPORT}`)
+  })
+
+  it('is unreachable for anyone else, so the row is redacted', async () => {
+    expect(await target.resolve(makeSession(), REPORT)).toBeNull()
+  })
+
+  it('treats a failed ownership read as not theirs', async () => {
+    vi.mocked(getOwnProductFeedback).mockRejectedValueOnce(new Error('db down'))
+    expect(await target.resolve(makeSession(), REPORT)).toBeNull()
   })
 })

@@ -136,6 +136,56 @@ export async function markOwnProductFeedbackSeen(
     )
 }
 
+/**
+ * Move the report's reply watermark (`reporter_notified_at`) forward to `to`,
+ * in its own organization's tenant context. A compare-and-set: it writes only
+ * while the stored value is older (or none), and says whether it did, so of two
+ * pokes racing on one reply exactly one announces it.
+ */
+export async function advanceReporterNotifiedAt(
+  organizationId: string,
+  id: string,
+  to: Date
+): Promise<boolean> {
+  const db = getDb()
+  const moved = await db
+    .update(productFeedback)
+    .set({ reporterNotifiedAt: to })
+    .where(
+      and(
+        eq(productFeedback.id, id),
+        eq(productFeedback.organizationId, organizationId),
+        or(isNull(productFeedback.reporterNotifiedAt), lt(productFeedback.reporterNotifiedAt, to))
+      )
+    )
+    .returning({ id: productFeedback.id })
+  return moved.length > 0
+}
+
+/**
+ * Put the watermark back to `previous` after the notice it was moved for could
+ * not be written, so the next poke tries again. Only while it still stands
+ * where this poke put it: a later poke's move is never undone.
+ */
+export async function rewindReporterNotifiedAt(
+  organizationId: string,
+  id: string,
+  from: Date,
+  previous: Date | null
+): Promise<void> {
+  const db = getDb()
+  await db
+    .update(productFeedback)
+    .set({ reporterNotifiedAt: previous })
+    .where(
+      and(
+        eq(productFeedback.id, id),
+        eq(productFeedback.organizationId, organizationId),
+        eq(productFeedback.reporterNotifiedAt, from)
+      )
+    )
+}
+
 // ---------------------------------------------------------------------------
 // Platform side — cross-tenant, guarded by the service
 // ---------------------------------------------------------------------------
@@ -198,6 +248,21 @@ export async function getProductFeedback(id: string): Promise<ProductFeedbackRow
     .where(eq(productFeedback.id, id))
     .limit(1)
   return row ? { ...row.report, organizationName: row.organizationName ?? null } : null
+}
+
+/**
+ * The report a Support ticket was opened for, across organizations, or `null`
+ * when no report names it. For the reply poke, which knows only the ticket id
+ * and finds the report's organization here before doing anything as it.
+ */
+export async function findProductFeedbackByTicketId(ticketId: string): Promise<ProductFeedback | null> {
+  const db = getDb()
+  const [row] = await db
+    .select()
+    .from(productFeedback)
+    .where(eq(productFeedback.posthogTicketId, ticketId))
+    .limit(1)
+  return row ?? null
 }
 
 /**
