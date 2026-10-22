@@ -220,7 +220,7 @@ export const inboundMail: typeof en.inboundMail = {
     notStaged: {
       tnef: '{name} · Outlook-eigener Anhang, nicht geöffnet · im Original enthalten',
       encrypted: '{name} · verschlüsselt · im Original enthalten',
-      archive: '{name} · Archiv, nicht entpackt · im Original enthalten',
+      archive: '{name} · Archivdatei, nicht entpackt · im Original enthalten',
       calendar: '{name} · Termin, im Text angezeigt',
       size: '{name} · zu groß zum Ablegen · im Original enthalten',
       limit: '{name} · über der Anzahl an Anhängen, die eine E-Mail haben darf · im Original enthalten',
