@@ -136,9 +136,7 @@ export const mailThreadFollowBodySchema = z
       .max(MAIL_THREAD_FOLLOW_MAX_DAYS)
       .optional()
       .describe(
-        `How long the follow holds, in days (default ${MAIL_THREAD_FOLLOW_DEFAULT_DAYS}). Calling again renews it. ` +
-          'While it holds, a later reply from a verified domain already in the thread has its text appended as you; ' +
-          'attachments always wait for review.'
+        `Days it holds (default ${MAIL_THREAD_FOLLOW_DEFAULT_DAYS}, at most ${MAIL_THREAD_FOLLOW_MAX_DAYS} from its start).`
       ),
   })
   .strict()
@@ -211,6 +209,19 @@ export interface MailThreadFollowView {
   dailyCap: number
 }
 
+/** What `mail-thread-follow` answers: the caller's follow as it stands now. */
+export interface MailThreadFollowResultView {
+  follow: MailThreadFollowView
+  /** True when the call renewed a running follow, false when it started one. */
+  renewed: boolean
+}
+
+/** What `mail-thread-unfollow` answers. Ending a follow that is not running changes nothing. */
+export interface MailThreadUnfollowResultView {
+  /** The follow that ended now; null when none was running. */
+  endedFollowId: string | null
+}
+
 /**
  * One attachment of an entry, as the viewer may see it (D36). Every attachment
  * of the message is listed, by its position in the mail; a document in a
@@ -277,6 +288,8 @@ export interface MailThreadView extends MailThreadSummaryView {
   continuesThreadId: string | null
   entries: MailThreadEntryView[]
   follows: MailThreadFollowView[]
+  /** Whether the viewer may end other people's follows (`project:manage`); everyone may end their own. */
+  managesFollows: boolean
   /** Mails waiting in the E-Mail-Eingang that matched this thread; null unless the viewer may file. */
   waitingCount: number | null
 }

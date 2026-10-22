@@ -290,13 +290,22 @@ export async function findMailOrigins(
   return rows.map((row) => ({ ...row, sentAt: new Date(row.sentAt), receivedAt: new Date(row.receivedAt) }))
 }
 
-/** The running follows of a thread (D31), oldest first. */
+/**
+ * The running follows of a thread (D31), oldest first: not ended, and not run
+ * out either, though sweep 12 may not have ended one that did yet.
+ */
 export async function findActiveFollows(threadIds: readonly string[]): Promise<MailThreadFollowRow[]> {
   if (threadIds.length === 0) return []
   return getDb()
     .select()
     .from(mailThreadFollows)
-    .where(and(inArray(mailThreadFollows.threadId, [...threadIds]), isNull(mailThreadFollows.endedAt)))
+    .where(
+      and(
+        inArray(mailThreadFollows.threadId, [...threadIds]),
+        isNull(mailThreadFollows.endedAt),
+        sql`${mailThreadFollows.expiresAt} > now()`,
+      ),
+    )
     .orderBy(mailThreadFollows.createdAt)
     .limit(threadIds.length * 50)
 }

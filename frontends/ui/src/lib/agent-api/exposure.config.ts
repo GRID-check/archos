@@ -298,8 +298,17 @@ export const EXPOSURE = {
       reason: 'a filed message as received, kept as proof of what was sent; no model reads it, a person downloads it in the app',
     },
   },
+  // A person's standing decision to let replies' text in without a click (D31):
+  // it turns review down for one conversation, so it is never Piloti's to make,
+  // and an outside agent's only under the office's opt-in and the step-up scope.
+  'mail-thread-follow': SENSITIVE,
   'mail-thread-get': OFFERED,
   'mail-thread-list': OFFERED,
+  'mail-thread-unfollow': {
+    external: true,
+    piloti: false,
+    reason: 'a standing decision is the person’s own; Piloti neither makes nor ends it',
+  },
 
   // review
   'annotation-create': { external: true, piloti: 'native:canvas__mark', reason: CANVAS },

@@ -2595,6 +2595,8 @@ check_in grid_inbound "SELECT count(*) FROM inbound_mails WHERE organization_id 
 # Down: refused while a row names an object, clean once none does; 0186 applies again.
 apply_in grid_inbound 0186_inbound_mail.sql
 check_in grid_inbound "SELECT count(*) FROM inbound_mails" "2" "0186 re-applies and keeps the mail"
+# The follow job counts a project's follow appends of the last day under a lock (D31 condition 8).
+check_in grid_inbound "SELECT count(*) FROM pg_indexes WHERE indexname = 'inbound_mail_decisions_project_follow_idx'" "1" "0186 builds the project follow-cap index"
 sql_in grid_inbound <<<"UPDATE inbound_mails SET raw_storage_key = 'org/org_0184_b/project/b0000000-0000-4000-8000-000000000184/_inbound-mail/1b000000-0000-4000-8000-000000000184/raw.eml' WHERE id = '1b000000-0000-4000-8000-000000000184';"
 refused_in grid_inbound "$(cat drizzle/0186_inbound_mail.down.sql)" "reverse 0186 refused" "the down while a mail names its staged raw message"
 check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "9" "the refused down dropped nothing"
@@ -2609,6 +2611,7 @@ check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbo
 check_in grid_inbound "SELECT string_agg(type, ',') FROM inbox_items WHERE organization_id = 'org_0184_b'" "document.new_revision" "0186 down removes the mail notices and nothing else"
 check_in grid_inbound "SELECT count(*) FROM pg_proc WHERE proname IN ('grid_inbound_mail_decisions_guard', 'grid_inbound_mail_parts_decision_guard', 'grid_inbound_mail_parts_document_guard', 'grid_refuse_held_project_row_delete', 'grid_mail_thread_entry_attachments_guard')" "0" "0186 down drops its functions"
 check_in grid_inbound "SELECT count(*) FROM documents WHERE id = 'd3000000-0000-4000-8000-000000000184'" "1" "0186 down leaves the documents"
+check_in grid_inbound "SELECT count(*) FROM pg_indexes WHERE indexname = 'inbound_mail_decisions_project_follow_idx'" "0" "0186 down drops the project follow-cap index"
 apply_in grid_inbound 0186_inbound_mail.sql
 check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "9" "0186 applies again after its down"
 echo "==> 0186 inbound mail, threads and follows and their down migration verified"

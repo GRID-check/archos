@@ -189,3 +189,10 @@ export const MAIL_THREAD_FOLLOW_MAX_DAYS = 180
 /** Appends one follow makes per day by default, and the most a follow may allow. */
 export const MAIL_THREAD_FOLLOW_DEFAULT_DAILY_CAP = 20
 export const MAIL_THREAD_FOLLOW_MAX_DAILY_CAP = 50
+
+/**
+ * Appends every follow of one project makes per day together (D31 condition 8):
+ * a leaked thread cannot flood a project however many people follow it. A day
+ * is the last 24 hours, so the cap holds in every time zone.
+ */
+export const MAIL_THREAD_FOLLOW_PROJECT_DAILY_CAP = 100

@@ -61,6 +61,9 @@ const FOUND_IN_THE_FIRST_THREE: ReadonlyArray<readonly [string, string]> = [
   ['project email address', 'inbound-mail-address-get'],
   ['E-Mail-Anhang ablegen', 'inbound-mail-file'],
   ['email thread of the project', 'mail-thread-list'],
+  // `mail-thread-follow` is `control`-sensitive: no outside agent sees it until the step-up scope is
+  // enforced (`SENSITIVE_SCOPE_ENFORCED_BY_WORKOS`), so no query can find it yet. Its way back out is.
+  ['stop following email thread', 'mail-thread-unfollow'],
 ]
 
 describe('search-operations for the requests agents typed', () => {
