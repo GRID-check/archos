@@ -42,6 +42,8 @@ vi.mock('./repository', () => ({
   OWN_PRODUCT_FEEDBACK_LIMIT: 20,
   listOwnProductFeedback: vi.fn(),
   getOwnProductFeedback: vi.fn(),
+  listOrganizationProductFeedback: vi.fn(),
+  getOrganizationProductFeedback: vi.fn(),
   markOwnProductFeedbackSeen: vi.fn(),
 }))
 
@@ -80,6 +82,7 @@ import {
   encodeCursor,
   getOwnProductFeedbackThread,
   getProductFeedbackForPlatform,
+  listOfficeProductFeedbackThreads,
   listOwnProductFeedbackThreads,
   listProductFeedbackForPlatform,
   replyToOwnProductFeedback,
@@ -99,6 +102,9 @@ const session: AuthorizedSession = {
   permissions: [],
   featureFlags: null,
 }
+
+/** An office admin: may manage the organization's settings, so sees the office view. */
+const admin: AuthorizedSession = { ...session, permissions: ['org:settings:manage'] }
 
 const config: PosthogSupportConfig = {
   appHost: 'https://eu.posthog.com',
@@ -662,6 +668,61 @@ describe('paging the local log', () => {
   })
 })
 
+describe("the office view: every case of the caller's organization", () => {
+  const mineRow = stored({ posthogTicketId: 'ticket-1', posthogWidgetSessionId: '0b1c2d3e-4f50-4617-8899-aabbccddeeff' })
+  const colleagueRow = stored({
+    id: '7b6a2c1e-0000-4000-8000-000000000002',
+    userId: 'user_colleague',
+    userName: 'Jakob Steiner',
+    posthogTicketId: 'ticket-2',
+    posthogWidgetSessionId: '0b1c2d3e-4f50-4617-8899-aabbccddee00',
+    reporterSeenAt: null,
+  })
+
+  beforeEach(() => {
+    vi.mocked(repository.listOrganizationProductFeedback).mockResolvedValue([colleagueRow, mineRow])
+    vi.mocked(listFeedbackTicketsOf).mockResolvedValue([
+      ticket({ id: 'ticket-1', status: 'open' }),
+      ticket({ id: 'ticket-2', ticketNumber: 43, status: 'pending', updatedAt: '2026-09-30T08:00:00Z' }),
+    ])
+  })
+
+  it('is refused (403) to a member who may not manage the organization', async () => {
+    await expect(listOfficeProductFeedbackThreads(session)).rejects.toMatchObject({ status: 403 })
+    expect(repository.listOrganizationProductFeedback).not.toHaveBeenCalled()
+  })
+
+  it("lists the organization's rows with who filed each, in one PostHog call for everybody on the page", async () => {
+    const list = await listOfficeProductFeedbackThreads(admin)
+
+    expect(repository.listOrganizationProductFeedback).toHaveBeenCalledWith('org_tenant', { limit: 20, before: undefined })
+    expect(listFeedbackTicketsOf).toHaveBeenCalledOnce()
+    expect(listFeedbackTicketsOf).toHaveBeenCalledWith(config, ['user_colleague', 'user_reporter'], 100)
+    expect(list.canViewOffice).toBe(true)
+    expect(list.reports[0]).toEqual(
+      expect.objectContaining({
+        reporterName: 'Jakob Steiner',
+        mine: false,
+        status: 'pending',
+        ticketNumber: 43,
+        // A colleague's news is theirs; a colleague's ticket is not the admin's to answer.
+        hasUpdate: false,
+        canReply: false,
+      })
+    )
+    expect(list.reports[1]).toEqual(expect.objectContaining({ mine: true, canReply: true }))
+  })
+
+  it('still lists the cases while PostHog cannot be read, without statuses', async () => {
+    vi.mocked(listFeedbackTicketsOf).mockRejectedValue(new PosthogSupportUnavailableError('down', 503))
+
+    const list = await listOfficeProductFeedbackThreads(admin)
+
+    expect(list.live).toBe(false)
+    expect(list.reports.map((report) => report.status)).toEqual([null, null])
+  })
+})
+
 describe("the reporter's own threads", () => {
   const SESSION_ID = '0b1c2d3e-4f50-4617-8899-aabbccddeeff'
   const seen = new Date('2026-09-29T09:00:00Z')
@@ -693,15 +754,47 @@ describe("the reporter's own threads", () => {
       limit: 20,
       before: undefined,
     })
-    expect(listFeedbackTicketsOf).toHaveBeenCalledWith(config, 'user_reporter', 100)
+    expect(listFeedbackTicketsOf).toHaveBeenCalledWith(config, ['user_reporter'], 100)
     expect(list).toEqual({
       reports: [
-        expect.objectContaining({ id: REPORT_ID, status: 'pending', hasUpdate: true, canReply: true }),
+        expect.objectContaining({
+          id: REPORT_ID,
+          status: 'pending',
+          ticketNumber: 42,
+          lastActivityAt: '2026-09-29T10:00:00.000Z',
+          hasUpdate: true,
+          canReply: true,
+          mine: true,
+          reporterName: 'Maria Huber',
+        }),
       ],
       updatedCount: 1,
       live: true,
       nextCursor: null,
+      canViewOffice: false,
     })
+  })
+
+  it('tells an office admin the office view is open to them', async () => {
+    const list = await listOwnProductFeedbackThreads(admin)
+    expect(list.canViewOffice).toBe(true)
+  })
+
+  it('a report never looked at counts from when it was sent: a team reply on it is news', async () => {
+    vi.mocked(repository.listOwnProductFeedback).mockResolvedValue([answerable({ reporterSeenAt: null })])
+
+    const list = await listOwnProductFeedbackThreads(session)
+
+    expect(list.reports[0]?.hasUpdate).toBe(true)
+  })
+
+  it("the ticket's own setup right after sending is not news on a report never looked at", async () => {
+    vi.mocked(repository.listOwnProductFeedback).mockResolvedValue([answerable({ reporterSeenAt: null })])
+    vi.mocked(listFeedbackTicketsOf).mockResolvedValue([ticket({ updatedAt: '2026-09-29T08:00:00.300Z' })])
+
+    const list = await listOwnProductFeedbackThreads(session)
+
+    expect(list.reports[0]?.hasUpdate).toBe(false)
   })
 
   it('pages with a keyset cursor once a page is full', async () => {
@@ -746,7 +839,7 @@ describe("the reporter's own threads", () => {
 
     expect(repository.getOwnProductFeedback).toHaveBeenCalledWith('org_tenant', 'user_reporter', REPORT_ID)
     expect(thread.messages).toEqual([
-      expect.objectContaining({ author: 'me', content: 'Der Upload bleibt bei 99 % stehen.' }),
+      expect.objectContaining({ author: 'reporter', content: 'Der Upload bleibt bei 99 % stehen.' }),
       expect.objectContaining({ author: 'team', authorName: 'Matthias', content: 'Seit wann?' }),
     ])
     expect(thread.live).toBe(true)
@@ -761,9 +854,34 @@ describe("the reporter's own threads", () => {
 
   it("is a 404 for a report that is not the caller's own", async () => {
     vi.mocked(repository.getOwnProductFeedback).mockResolvedValue(null)
+    vi.mocked(repository.getOrganizationProductFeedback).mockResolvedValue(answerable({ userId: 'user_colleague' }))
 
     await expect(getOwnProductFeedbackThread(session, REPORT_ID)).rejects.toMatchObject({ status: 404 })
+    expect(repository.getOrganizationProductFeedback).not.toHaveBeenCalled()
     expect(listCustomerVisibleMessages).not.toHaveBeenCalled()
+  })
+
+  it("lets an office admin read a colleague's thread, read-only, without marking it seen", async () => {
+    vi.mocked(repository.getOwnProductFeedback).mockResolvedValue(null)
+    vi.mocked(repository.getOrganizationProductFeedback).mockResolvedValue(
+      answerable({ userId: 'user_colleague', userName: 'Jakob Steiner' })
+    )
+
+    const thread = await getOwnProductFeedbackThread(admin, REPORT_ID)
+
+    expect(repository.getOrganizationProductFeedback).toHaveBeenCalledWith('org_tenant', REPORT_ID)
+    expect(thread.report).toEqual(
+      expect.objectContaining({ mine: false, canReply: false, hasUpdate: false, reporterName: 'Jakob Steiner' })
+    )
+    expect(thread.messages[0]).toEqual(expect.objectContaining({ author: 'reporter' }))
+    expect(repository.markOwnProductFeedbackSeen).not.toHaveBeenCalled()
+  })
+
+  it("refuses an office admin's reply on a colleague's report: only the reporter's session answers", async () => {
+    vi.mocked(repository.getOwnProductFeedback).mockResolvedValue(null)
+
+    await expect(replyToOwnProductFeedback(admin, REPORT_ID, 'Danke')).rejects.toMatchObject({ status: 404 })
+    expect(replyAsCustomer).not.toHaveBeenCalled()
   })
 
   it('shows the report alone, unmarked, while the ticket cannot be read', async () => {

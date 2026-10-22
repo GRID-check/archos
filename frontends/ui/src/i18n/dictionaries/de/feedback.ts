@@ -87,28 +87,56 @@ export const feedback: typeof en.feedback = {
     loadMoreFailed: 'Konnte nicht mehr laden. Erneut versuchen',
     back: 'Alle Meldungen',
     hasUpdate: 'Neu',
-    /** Vor einer relativen Zeit: „Gesendet vor 3 Stunden“. */
-    sent: 'Gesendet',
     me: 'Sie',
     team: 'Piloti-Team',
     teamMember: '{name}, Piloti-Team',
     notLive: 'Die Antworten des Teams können gerade nicht geladen werden. Ihre Meldung ist angekommen und sicher.',
     cannotReply: 'Auf diese Meldung kann hier nicht geantwortet werden. Senden Sie neues Feedback, um den Chat fortzusetzen.',
     waiting: 'Das Team hat noch nicht geantwortet. Die Antwort erscheint hier.',
-    replyLabel: 'Ihre Antwort',
     replyPlaceholder: 'Antwort schreiben …',
     replySend: 'Senden',
-    replyHint: 'sendet, Umschalt + ↵ für eine neue Zeile',
-    replySending: 'Wird gesendet …',
     replyError: 'Ihre Antwort konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
     replyRateLimited: 'Sie haben in der letzten Stunde schon viele Antworten gesendet. Bitte versuchen Sie es später erneut.',
-    /** Der Ticketstatus, aus Sicht der Person, die gemeldet hat. */
+    /** Der Punkt auf dem Avatar und auf „Mehr“, für Screenreader. */
+    newsDot: 'Neue Antworten auf Ihr Feedback',
+    /** Umschalter über der Liste, nur für Büro-Admins. */
+    scopeLabel: 'Ansicht',
+    scope: {
+      mine: 'Meine',
+      office: 'Unser Büro',
+    },
+    officeTitle: 'Feedback unseres Büros',
+    officeDescription: 'Alle Meldungen aus Ihrem Büro und wo sie stehen. Antworten kann nur, wer gemeldet hat.',
+    officeEmpty: {
+      title: 'Noch kein Feedback aus Ihrem Büro',
+      description: 'Sobald jemand aus Ihrem Büro Feedback sendet, steht es hier.',
+    },
+    officeLoadError: 'Das Feedback Ihres Büros konnte nicht geladen werden.',
+    /** Die zwei Gruppen der Liste: offene Fälle zuerst. */
+    groups: {
+      active: 'Aktiv',
+      done: 'Erledigt',
+    },
+    /** Die Nummer, unter der das Team den Fall führt. */
+    ticketNumber: 'Nr. {number}',
+    /** Vor einer relativen Zeit: „Aktualisiert vor 3 Stunden“. */
+    updated: 'Aktualisiert',
+    unknownReporter: 'Unbekannt',
+    readOnly: 'Nur {name} kann auf diese Meldung antworten.',
+    readOnlyUnnamed: 'Nur die Person, die gemeldet hat, kann hier antworten.',
+    /** Der Stand eines Falls, in einfachen Worten, aus Sicht der Person, die gemeldet hat. */
     statuses: {
       new: 'Eingegangen',
       open: 'In Bearbeitung',
-      pending: 'Wartet auf Ihre Antwort',
+      pending: 'Wartet auf Sie',
       on_hold: 'Pausiert',
       resolved: 'Erledigt',
+      /** Ohne lesbares Ticket: gesendet, aber kein Stand bekannt. */
+      unknown: 'Gesendet',
+    },
+    /** Derselbe Stand in der Büroansicht, wo „Sie“ die falsche Person wäre. */
+    officeStatuses: {
+      pending: 'Wartet auf Rückmeldung',
     },
   },
   platform: {

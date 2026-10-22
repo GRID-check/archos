@@ -1,6 +1,11 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
-import { useVisualViewport, VISUAL_VIEWPORT_HEIGHT_VAR } from './use-visual-viewport'
+import {
+  OVERLAY_INSET_BOTTOM_VAR,
+  useFitToVisualViewport,
+  useVisualViewport,
+  VISUAL_VIEWPORT_HEIGHT_VAR,
+} from './use-visual-viewport'
 
 // A minimal VisualViewport: the hook reads height, scale and offsetTop and
 // listens for resize/scroll. jsdom has none, which is also the "browser without
@@ -146,5 +151,66 @@ describe('useVisualViewport', () => {
     vi.stubGlobal('visualViewport', undefined)
     expect(() => renderHook(() => useVisualViewport())).not.toThrow()
     expect(published()).toBe('')
+  })
+})
+
+describe('useFitToVisualViewport', () => {
+  let viewport: FakeVisualViewport
+  let frames: FrameRequestCallback[]
+  let node: HTMLDivElement
+
+  beforeEach(() => {
+    viewport = new FakeVisualViewport()
+    vi.stubGlobal('visualViewport', viewport)
+    frames = []
+    vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => frames.push(cb))
+    vi.stubGlobal('cancelAnimationFrame', vi.fn())
+    Object.defineProperty(document.documentElement, 'clientHeight', { configurable: true, value: LAYOUT_HEIGHT })
+    node = document.createElement('div')
+  })
+
+  afterEach(() => vi.unstubAllGlobals())
+
+  const keyboard = (visibleHeight: number, offsetTop = 0): void => {
+    viewport.height = visibleHeight
+    viewport.offsetTop = offsetTop
+    viewport.dispatchEvent(new Event('resize'))
+    frames.splice(0).forEach((cb) => cb(0))
+  }
+
+  test('leaves the overlay alone while nothing covers the screen', () => {
+    renderHook(() => useFitToVisualViewport(node))
+    expect(node.style.height).toBe('')
+    expect(node.style.top).toBe('')
+  })
+
+  test("the iOS keyboard: the overlay covers exactly what is visible, Safari's pan included", () => {
+    renderHook(() => useFitToVisualViewport(node))
+    keyboard(460, 120)
+    expect(node.style.height).toBe('460px')
+    expect(node.style.top).toBe('120px')
+    expect(node.style.getPropertyValue(OVERLAY_INSET_BOTTOM_VAR)).toBe('0px')
+  })
+
+  test('closing the keyboard, or the overlay, takes every inline style back', () => {
+    const { unmount } = renderHook(() => useFitToVisualViewport(node))
+    keyboard(460)
+    keyboard(LAYOUT_HEIGHT)
+    expect(node.style.height).toBe('')
+    keyboard(460)
+    unmount()
+    expect(node.style.height).toBe('')
+    expect(node.style.getPropertyValue(OVERLAY_INSET_BOTTOM_VAR)).toBe('')
+  })
+
+  test('pinch zoom is not a keyboard', () => {
+    renderHook(() => useFitToVisualViewport(node))
+    viewport.scale = 2
+    keyboard(400)
+    expect(node.style.height).toBe('')
+  })
+
+  test('no node, no work', () => {
+    expect(() => renderHook(() => useFitToVisualViewport(null))).not.toThrow()
   })
 })

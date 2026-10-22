@@ -1572,6 +1572,16 @@
    "withheld": null,
    "reason": null
   },
+  "feedback-office-report-list": {
+   "kind": "catalog",
+   "domain": "conversations",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "feedback-report-list": {
    "kind": "catalog",
    "domain": "conversations",

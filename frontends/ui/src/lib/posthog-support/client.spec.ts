@@ -521,7 +521,47 @@ describe('listFeedbackTicketsOf', () => {
     expect(JSON.parse(url.searchParams.get('tags_all') ?? '')).toEqual(['piloti-feedback'])
     expect(url.searchParams.get('order_by')).toBe('-updated_at')
     expect(url.searchParams.get('limit')).toBe('20')
+    // An old open case keeps its status whatever window the list defaults to.
+    expect(url.searchParams.get('date_from')).toBe('all')
     expect(tickets.map((t) => t.id)).toEqual(['0b6c3b1e-1111-4000-8000-000000000001'])
+  })
+
+  test('asks once for everybody on an office page, each person once', async () => {
+    const { impl, calls } = fakeFetch(() => json(200, { count: 0, next: null, previous: null, results: [] }))
+
+    await listFeedbackTicketsOf(config, ['user_01', 'user_02', 'user_01'], 100, impl)
+
+    expect(calls).toHaveLength(1)
+    expect(new URL(calls[0].url).searchParams.get('distinct_ids')).toBe('user_01,user_02')
+  })
+
+  test('asks nothing for nobody', async () => {
+    const { impl, calls } = fakeFetch(() => json(200, { count: 0, next: null, previous: null, results: [] }))
+
+    expect(await listFeedbackTicketsOf(config, [], 100, impl)).toEqual([])
+    expect(calls).toHaveLength(0)
+  })
+
+  test("reads the list's real shape: tags absent there, assignee an object", async () => {
+    // What PostHog's list served on 2026-10-22: no `tags` key, `assignee` an object or null.
+    const listed = {
+      id: '01a16472-681c-0000-78ba-36da14503edf',
+      ticket_number: 4,
+      status: 'new',
+      priority: null,
+      channel_source: 'widget',
+      assignee: { id: 388858, type: 'user', user: { email: 'owner@piloti.test' }, role: null },
+      last_message_text: 'hmm wir schauen uns das genauer an',
+      message_count: 2,
+      unread_team_count: 0,
+      created_at: '2026-10-22T16:29:41.789026Z',
+      updated_at: '2026-10-22T16:36:04.829870Z',
+    }
+    const { impl } = fakeFetch(() => json(200, { count: 1, next: null, previous: null, results: [listed] }))
+
+    const [read] = await listFeedbackTicketsOf(config, 'user_01', 100, impl)
+
+    expect(read).toEqual(expect.objectContaining({ id: listed.id, ticketNumber: 4, status: 'new', tags: [] }))
   })
 })
 
