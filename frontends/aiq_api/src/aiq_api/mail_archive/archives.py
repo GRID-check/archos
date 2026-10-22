@@ -4,8 +4,17 @@ Opening an archive reads its header and B-tree roots, and a slice of the BFF's
 import asks for a page of messages and then each of their attachments: a dozen
 requests against the same archive within seconds. Each would otherwise reopen
 it and refill the block cache. So an archive stays open between requests,
-keyed by its storage key, for a few minutes after its last use, and at most
-:data:`MAX_OPEN` idle ones per process. A replica that never saw the archive
+keyed by the object its URL names, for a few minutes after its last use, and
+at most :data:`MAX_OPEN` idle ones per process.
+
+**The key is the URL's object, never the caller's word for it.** A presigned
+URL is the proof that the caller may read that object; the storage key beside
+it is only a label. Keyed by the label, a caller holding the internal token
+could name another office's archive key with a URL to any object of its own,
+and be served the other archive from this cache. Keyed by the origin and path
+of the URL (the query, which carries the signature, changes with every
+presign and is left out), a hit is only ever the object the URL itself can
+read. A replica that never saw the archive
 simply opens it; nothing depends on landing on the same one.
 
 An archive in use is never closed under its reader: :func:`use_archive` holds a
@@ -22,6 +31,7 @@ from collections import OrderedDict
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
+from urllib.parse import urlsplit
 
 import httpx
 
@@ -54,15 +64,21 @@ _janitor: threading.Thread | None = None
 
 
 @contextmanager
-def use_archive(key: str, url: str, size: int) -> Iterator[Archive]:
-    """The archive stored at ``key``, read through ``url``, held open for the block."""
-    entry = _acquire(key, url, size)
+def use_archive(url: str, size: int) -> Iterator[Archive]:
+    """The archive ``url`` names, held open for the block."""
+    entry = _acquire(object_identity(url), url, size)
     try:
         with entry.archive.lock:
             entry.file.clear_error()
             yield entry.archive
     finally:
         _release(entry)
+
+
+def object_identity(url: str) -> str:
+    """What names the object behind a presigned ``url``: its origin and path, not its signature."""
+    parts = urlsplit(url)
+    return f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path}"
 
 
 def reset_open_archives() -> None:

@@ -55,7 +55,9 @@ MAX_ATTACHMENT_BYTES = 512 * 1024 * 1024
 
 
 class ArchiveRef(BaseModel):
-    #: The object's storage key: identifies the archive across requests.
+    #: The object's storage key, as a label for the log. The open-archive
+    #: cache is keyed by the object ``url`` names, never by this
+    #: (:func:`~aiq_api.mail_archive.archives.object_identity`).
     key: str = Field(min_length=1, max_length=1024)
     #: A presigned GET for that object, against the in-network endpoint.
     url: ObjectStoreUrl
@@ -116,7 +118,7 @@ async def _read(operation, ref: ArchiveRef):  # noqa: ANN001, ANN202 - a closure
     """Run ``operation`` on the open archive, off the event loop, with errors as HTTP answers."""
 
     def run():  # noqa: ANN202
-        with use_archive(ref.key, ref.url, ref.size) as archive:
+        with use_archive(ref.url, ref.size) as archive:
             return operation(archive)
 
     try:
@@ -150,9 +152,13 @@ def _message_json(message: ArchiveMessage) -> dict:
         "sender": _address(message.sender),
         "to": [_address(item) for item in message.to],
         "cc": [_address(item) for item in message.cc],
+        "bcc": [_address(item) for item in message.bcc],
         "sent_at": message.sent_at.isoformat() if message.sent_at else None,
         "received_at": message.received_at.isoformat() if message.received_at else None,
         "message_id": message.message_id,
+        "in_reply_to": message.in_reply_to,
+        "references": message.references,
+        "conversation_index": message.conversation_index,
         "body": {
             "text": message.body.text if message.body else "",
             "source": message.body.source if message.body else "none",
