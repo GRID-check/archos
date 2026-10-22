@@ -152,9 +152,10 @@ Each step adds its own gate as it lands:
   volume mounted at `/app/data`, and `config.spec.ts` that the Pulumi config refuses to run without the shared
   Chroma server (`chromaEnabled=false`), since a tier with no volume cannot keep an embedded store.
   `housekeeping.spec.ts` asserts that the CronJobs and the Compose clock call the four routes the backend
-  registers, `base-corpus` among them. `index-legacy-corpus.spec.ts` asserts that the import Job mounts
-  the named claim read-only and runs the importer on it, and `tests/test_legacy_corpus_import.py` that it
-  honours the old exclusions, lets an upload win and stores nothing on a rerun.
+  registers, `base-corpus` among them. `tests/test_legacy_corpus_import.py` asserts that the importer
+  honours the old exclusions, lets an upload win and stores nothing on a rerun. The Kubernetes import Job
+  and its `index-legacy-corpus.spec.ts` were removed once both stacks had run it (2026-10); the Compose
+  service remains.
 - B: `frontends/aiq_api/tests/test_roles.py` builds the real app for each
   `GRID_ROLE` and asserts that the two route sets overlap only in `/health` and
   FastAPI's documentation routes, and that their union equals a baseline mounted
