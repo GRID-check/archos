@@ -10,6 +10,6 @@ improvements:
     screen readers.
 fixes:
   - >
-    Every place that fails to load now says what failed and offers the same
-    Try again button, which keeps its place and focus while it works instead
-    of greying out.
+    Settings, platform and project panels that fail to load now say what
+    failed and offer the same Try again button, which keeps its place and
+    focus while it works instead of greying out.
