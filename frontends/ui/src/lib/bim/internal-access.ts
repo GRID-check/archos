@@ -195,12 +195,23 @@ export async function resolveInternalModel(
   if (own.length === 1) return { resolved: true, model: own[0], readable }
 
   if (own.length === 0 && readable.length > 0) {
+    // The project's own IFC may simply not be ready yet: that is "still being
+    // read", not "has none", and the two must not be flattened into one answer.
+    const ownPending = input.projectId ? candidates.filter((model) => modelShelf(model) === 'project') : []
+    if (ownPending.length > 0) {
+      return {
+        resolved: false,
+        reason: 'not_ready',
+        message: 'This project has an IFC model that is still being processed. It is not ready to query yet.',
+        models: ownPending.map(describeModel),
+      }
+    }
     return {
       resolved: false,
       reason: 'no_own_model',
       message:
-        'Dieses Projekt hat kein eigenes IFC-Modell. Die Büroablage enthält Modelle, die zu keinem Projekt gehören; ' +
-        'sie werden nur mit `model_name` gelesen.',
+        'This project has no IFC model of its own. The office shelf holds models that belong to no project; ' +
+        'they are read only with `model_name`.',
       models: readable.map(describeModel),
     }
   }

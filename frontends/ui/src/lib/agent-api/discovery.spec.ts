@@ -26,7 +26,7 @@ vi.mock('./telemetry', () => ({ recordOperationCalled: vi.fn(), recordOperationM
 
 import { z } from 'zod'
 import { callBackendOperation } from './backend-operations'
-import { callOperation, validateOperationInput } from './dispatch'
+import { OperationInputError, callOperation, validateOperationInput } from './dispatch'
 import {
   MAX_RESULT_CHARS,
   MAX_SEARCH_QUERY_LENGTH,
@@ -36,6 +36,7 @@ import {
   inputSchemaOf,
   metaToolsFor,
   narrowingHint,
+  readOperationBody,
   nativeToolRefusal,
   reportMissingOperation,
   searchOperations,
@@ -289,6 +290,39 @@ describe('call-operation', () => {
     await callOperationTool(ctx(piloti), { name: 'project-list' })
     expect(callOperation).toHaveBeenCalled()
     expect(proposeOperation).not.toHaveBeenCalled()
+  })
+
+  describe('readOperationBody', () => {
+    it('answers a refusal, not an exception, when the input is wrong, and records the read', async () => {
+      vi.mocked(callOperation).mockRejectedValue(new OperationInputError('query.nameContains is too long'))
+
+      const read = await readOperationBody(ctx(piloti), 'project-list', { query: { nameContains: 'x'.repeat(300) } })
+
+      expect(read).toEqual({ refusal: expect.stringContaining('query.nameContains is too long') })
+      expect(recordOperationCalled).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ operation: 'project-list', decision: 'run', status: 400 }),
+      )
+    })
+
+    it('answers a refusal for anything else that throws', async () => {
+      vi.mocked(callOperation).mockRejectedValue(new Error('boom'))
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+
+      await expect(readOperationBody(ctx(piloti), 'project-list', {})).resolves.toEqual({
+        refusal: expect.stringContaining('failed'),
+      })
+    })
+
+    it('records a read that ran with its status', async () => {
+      const read = await readOperationBody(ctx(piloti), 'project-list', {})
+
+      expect(read).toEqual({ body: { projects: [] } })
+      expect(recordOperationCalled).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.objectContaining({ operation: 'project-list', decision: 'run', status: 200 }),
+      )
+    })
   })
 
   it('refuses a hidden operation as unknown and records the refusal', async () => {

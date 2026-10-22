@@ -354,11 +354,34 @@ export async function readOperationBody(
   if (!op || !annotationsOf(op).readOnlyHint || callDecision(ctx.principal, op) !== 'run') {
     return { refusal: `${name} is not a read this connection may run.` }
   }
-  const refused = await readGateFor(ctx.principal).beforeRead(op, input)
-  if (refused) return { refusal: refused }
-  const result = await callOperation(op, input, ctx.principal.session, 'agent')
-  if (!result.ok) return { refusal: `${name} was refused (HTTP ${result.status}).` }
-  return { body: result.body }
+  const startedAt = Date.now()
+  const record = (status: number) =>
+    recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'run', status, startedAt })
+  // Code reads this, not a model: whatever goes wrong is a refusal the caller can answer
+  // with an empty result, never an exception out of a prompt completion.
+  try {
+    const refused = await readGateFor(ctx.principal).beforeRead(op, input)
+    if (refused) {
+      record(403)
+      return { refusal: refused }
+    }
+    const result = await callOperation(op, input, ctx.principal.session, 'agent')
+    record(result.status)
+    if (!result.ok) return { refusal: `${name} was refused (HTTP ${result.status}).` }
+    return { body: result.body }
+  } catch (error) {
+    if (error instanceof OperationInputError) {
+      record(400)
+      return { refusal: inputRefusal(op, error) }
+    }
+    if (error instanceof ApiError) {
+      record(error.status)
+      return { refusal: `${error.message} (HTTP ${error.status}, ${error.code})` }
+    }
+    console.error('[mcp] operation read failed', op.name, error)
+    record(500)
+    return { refusal: `${name} failed on the server.` }
+  }
 }
 
 /**
