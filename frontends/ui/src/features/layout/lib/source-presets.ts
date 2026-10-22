@@ -13,7 +13,7 @@
  * and "Büroablage" presets resolve to an empty *external*-source subset
  * (RIS/web off). The chip itself (`source_preset`) is what the agent
  * maps to shelves via `shelves_for_turn` — otherwise both chips still
- * searched every corpus (#436). The TS twin lives in `lib/retrieval-scope.ts`.
+ * searched every corpus (#436).
  */
 
 import type { DataSourceFromAPI } from '@/adapters/api'

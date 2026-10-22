@@ -1,6 +1,7 @@
 import path from 'path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
+import DurationSequencer from './config/vitest/duration-sequencer'
 
 export default defineConfig({
   plugins: [react()],
@@ -44,6 +45,8 @@ export default defineConfig({
     exclude: ['**/mocks/**', '**/node_modules/**'],
     setupFiles: ['./config/vitest/polyfills.ts', './config/vitest/vitest.setup.ts'],
     clearMocks: true,
+    // Shards by recorded time (tests/vitest-durations.json), not file count.
+    sequence: { sequencer: DurationSequencer },
     server: {
       deps: {
         // `@workos-inc/authkit-nextjs` is inlined so Vite resolves its imports

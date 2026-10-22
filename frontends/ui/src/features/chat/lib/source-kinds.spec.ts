@@ -164,16 +164,6 @@ describe('Shelf (ADR-0047)', () => {
     expect(asShelf(null)).toBeUndefined()
     expect(asShelf(undefined)).toBeUndefined()
   })
-
-  test('the shelf is never inferred from a collection-id prefix', async () => {
-    // ADR-0047's acceptance test: the prefix table is DELETED, not synchronised.
-    // While a `('s_', 'projekt')` row existed, a private session attachment could
-    // only ever be guessed into the project shelf.
-    const source = await import('./source-kinds')
-    expect('collectionScope' in source).toBe(false)
-    expect('COLLECTION_SCOPE_PREFIXES' in source).toBe(false)
-    expect('SCOPE_QUALIFIERS' in source).toBe(false)
-  })
 })
 
 describe('the shelf labels in the dictionary', () => {

@@ -61,6 +61,12 @@ vi.mock('@/lib/session-documents/repository', () => ({
   deleteSessionDocumentsByIds: vi.fn().mockResolvedValue(undefined),
   SESSION_DOCUMENT_LIST_LIMIT: 100,
 }))
+// The backend's session collection, dropped with the chat. Stubbed here: a
+// node spec has no MSW server, and `cleanup.spec.ts` pins the request itself.
+vi.mock('@/lib/session-documents/cleanup', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/session-documents/cleanup')>()),
+  deleteSessionCollection: vi.fn(async () => ({ ok: true })),
+}))
 vi.mock('@/lib/inbox/repository', () => ({ deleteItemsForResource: vi.fn() }))
 vi.mock('@/lib/conversations/repository', () => ({
   deleteConversationInOrg: vi.fn(),

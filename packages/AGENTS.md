@@ -18,7 +18,7 @@ tier's install can run them.
 task pkg:install    # both toolchains; `task setup` now does this too
 task pkg:test       # both suites
 task pkg:test:ts    # ifc-spatial: 194 tests + BOTH tsconfigs, ~10s
-task pkg:test:py    # ifc-spatial-py: 636 tests, 3m55s measured 2026-09-10
+task pkg:test:py    # ifc-spatial-py: 636 tests, 1m40s on four workers, measured 2026-10-22
 ```
 
 `task verify` does **not** run them, and the Python suite's four minutes is the

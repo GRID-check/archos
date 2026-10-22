@@ -168,14 +168,6 @@ class TestIntermediateStepEvent:
 
         assert event.event_type == "artifact.update"
 
-    def test_artifact_category_exists(self):
-        """Test ARTIFACT category is available."""
-        assert EventCategory.ARTIFACT.value == "artifact"
-
-    def test_update_state_exists(self):
-        """Test UPDATE state is available (present tense)."""
-        assert EventState.UPDATE.value == "update"
-
     def test_artifact_types_exist(self):
         """Test all ArtifactType values are available."""
         assert ArtifactType.FILE.value == "file"

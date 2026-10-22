@@ -30,7 +30,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 
 > **Zero data retention.** Every model the platform fixes (embeddings, the reranker, the decision model, `summary_llm`, `rerank_llm`, `card_repair_llm`) is pinned to zero-data-retention endpoints on every request, so any model named here must have one: check `GET https://openrouter.ai/api/v1/endpoints/zdr`. A model without one fails every call rather than send unpinned. `common/openrouter.py` is the one place this is applied.
 
-> **Unified LLM credential resolution.** The bespoke (non-NAT) LLM call sites — the VLM captioner, the embeddings client, the tag-backfill script, and the BFF-invoked `/v1/consistency-check` and `/v1/generate-summary` routes — resolve credentials through one shared resolver (`aiq_agent.common.credential_resolution.resolve_llm_credential`). Resolution order: (1) **org BYOK** credential when an organization id is supplied (the two BFF routes forward `x-grid-organization-id`; a BYOK swap changes the api key + base URL only, never the model); (2) the call site's explicit key env var; (3) its fallback env vars; (4) **provider inference** — the conventional key env for whatever provider the resolved base URL points at (`openrouter.ai`→`OPENROUTER_API_KEY`, `api.openai.com`→`OPENAI_API_KEY`). All env reads treat a literal, uninterpolated `${...}` placeholder (a docker compose `env_file` non-interpolation) as unset. BYOK is **not** wired for embeddings/VLM: ingestion is org-agnostic today (no org id crosses `/v1/ingest`) — a known follow-up.
+> **Unified LLM credential resolution.** The bespoke (non-NAT) LLM call sites — the VLM captioner, the embeddings client, the permit-fixture renderer (`scripts/turn_census/render_fixture_permits.py`), and the BFF-invoked `/v1/consistency-check` and `/v1/generate-summary` routes — resolve credentials through one shared resolver (`aiq_agent.common.credential_resolution.resolve_llm_credential`). Resolution order: (1) **org BYOK** credential when an organization id is supplied (the two BFF routes forward `x-grid-organization-id`; a BYOK swap changes the api key + base URL only, never the model); (2) the call site's explicit key env var; (3) its fallback env vars; (4) **provider inference** — the conventional key env for whatever provider the resolved base URL points at (`openrouter.ai`→`OPENROUTER_API_KEY`, `api.openai.com`→`OPENAI_API_KEY`). All env reads treat a literal, uninterpolated `${...}` placeholder (a docker compose `env_file` non-interpolation) as unset. BYOK is **not** wired for embeddings/VLM: ingestion is org-agnostic today (no org id crosses `/v1/ingest`) — a known follow-up.
 
 ---
 
@@ -233,17 +233,17 @@ The platform-owner base corpus (`oib_knowledge`) is the PDFs admins upload. They
 
 ---
 
-## Tag Backfill Script (`scripts/backfill_document_tags.py`)
+## Permit-fixture renderer (`scripts/turn_census/render_fixture_permits.py`, development only)
 
-The one-off tag-backfill script runs **outside** the NAT runtime, so it builds an OpenAI-compatible client directly from these env vars, which must match the `summary_llm` block in `configs/config_oib_openrouter.yml`.
+The renderer runs the production permit pen over the precedent fixture office, **outside** the NAT runtime, so it builds an OpenAI-compatible client directly from these env vars, which must match the `summary_llm` block in `configs/config_oib_openrouter.yml`.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `BACKFILL_SUMMARY_API_KEY` | Yes* | provider inference (`OPENROUTER_API_KEY` for the default base URL) | API key for the tagging LLM, resolved through the shared resolver: `BACKFILL_SUMMARY_API_KEY` → the provider key inferred from `BACKFILL_SUMMARY_BASE_URL`. If none resolves the script exits with code `2` (LLM could not be constructed). The script runs outside NAT, so BYOK does not apply. |
-| `BACKFILL_SUMMARY_BASE_URL` | No | `https://openrouter.ai/api/v1` | Base URL for the tagging LLM. Drives provider inference for the tagging key. |
-| `BACKFILL_SUMMARY_MODEL` | No | `GRID_DEFAULT_MODEL`, then `openai/gpt-6-luna` | Tagging model id. Match the config's `summary_llm` model. |
+| `BACKFILL_SUMMARY_API_KEY` | Yes* | provider inference (`OPENROUTER_API_KEY` for the default base URL) | API key for the extraction LLM, resolved through the shared resolver: `BACKFILL_SUMMARY_API_KEY` → the provider key inferred from `BACKFILL_SUMMARY_BASE_URL`. The script runs outside NAT, so BYOK does not apply. |
+| `BACKFILL_SUMMARY_BASE_URL` | No | `https://openrouter.ai/api/v1` | Base URL for the extraction LLM. Drives provider inference for its key. |
+| `BACKFILL_SUMMARY_MODEL` | No | `GRID_DEFAULT_MODEL`, then `openai/gpt-6-luna` | Extraction model id. Match the config's `summary_llm` model. |
 
-*Required only when running the backfill script; not needed by the running services. The store comes from `AIQ_SUMMARY_DB` (or `--summary-db`), the chunk text from the Qdrant at `AIQ_QDRANT_URL` (summaries only when it is unset). Exit codes: `0` success (or nothing to do; `--dry-run` always `0`), `1` a real run finished with per-document classification failures, `2` missing LLM key.
+*Required only when rendering the fixture; not needed by the running services.
 
 ---
 
