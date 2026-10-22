@@ -21,7 +21,7 @@ member ── Feedback senden ──▶ POST /api/feedback/reports
                                         └──▶ product_feedback.posthog_ticket_id
 owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id>
 Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH status on the ticket
-BFF server event ──▶ PostHog destination ──▶ #posthog-inbox ──▶ „Übernehmen" ──▶ <app_host>/app/platform/feedback?claim=<ticket id>
+BFF server event ──▶ PostHog destination ──▶ #support-tickets ──▶ „Übernehmen" ──▶ <app_host>/app/platform/feedback?claim=<ticket id>
 team answers in PostHog ──▶ Mein Feedback (GET …/reports/<id>/messages) ──▶ member replies (POST, onto the ticket)
 team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/posthog-support ──▶ feedback.replied inbox row for the reporter
 ```
