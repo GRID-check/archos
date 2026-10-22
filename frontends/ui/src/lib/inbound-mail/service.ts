@@ -488,7 +488,7 @@ async function decisionContext(
 }
 
 /** The PostHog bucket of how long a mail waited, never the exact time. */
-function hoursWaitingBucket(receivedAt: Date | string, now: number): string {
+export function hoursWaitingBucket(receivedAt: Date | string, now: number): string {
   const hours = (now - new Date(receivedAt).getTime()) / 3_600_000
   if (hours < 1) return 'lt_1h'
   if (hours < 24) return 'lt_1d'
