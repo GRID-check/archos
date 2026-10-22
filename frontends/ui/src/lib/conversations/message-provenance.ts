@@ -329,8 +329,31 @@ export interface MessageProvenance {
   lookupFoundNothing?: true
 }
 
-/** One answer's Herleitung is tens of steps; a thousand is a runaway client. */
-const MAX_THINKING_STEPS = 200
+/**
+ * One answer's Herleitung is tens of steps, and a long one a few hundred: a
+ * call is up to three (its action, its sources, a status line), so forty calls
+ * pass two hundred. Over the bound, the oldest technical steps go first
+ * ({@link DROP_ORDER}); a call's own rows go last.
+ */
+export const MAX_THINKING_STEPS = 600
+/** What is read at all before the bound applies: anything longer is a runaway client. */
+const MAX_THINKING_STEPS_READ = 4 * MAX_THINKING_STEPS
+/**
+ * Which steps a list over {@link MAX_THINKING_STEPS} loses first, oldest first
+ * within each tier: status lines and tool rows (what the work list already
+ * says), then the rounds' framing and looks, and the rows of the calls
+ * themselves (`action`, `sources`) only when nothing else is left.
+ */
+const DROP_ORDER: Readonly<Record<StepKind, number>> = {
+  status: 0,
+  tool: 0,
+  skill: 1,
+  clarification: 1,
+  retrieval: 1,
+  look: 1,
+  action: 2,
+  sources: 2,
+}
 /** Reasons are one sentence. */
 const MAX_REASON_CHARS = 600
 /** `citationsRemoved.reasons` is a short list of short codes. */
@@ -546,11 +569,33 @@ function sanitizeStep(input: unknown): StoredThinkingStep | null {
  */
 export function sanitizeThinkingSteps(input: unknown): StoredThinkingStep[] | undefined {
   if (!Array.isArray(input)) return undefined
-  const steps = input
-    .slice(0, MAX_THINKING_STEPS)
-    .map(sanitizeStep)
-    .filter((step): step is StoredThinkingStep => step !== null)
+  const steps = boundSteps(
+    input
+      .slice(0, MAX_THINKING_STEPS_READ)
+      .map(sanitizeStep)
+      .filter((step): step is StoredThinkingStep => step !== null)
+  )
   return steps.length > 0 ? steps : undefined
+}
+
+/**
+ * The steps within {@link MAX_THINKING_STEPS}, in their order: the excess
+ * dropped by {@link DROP_ORDER}, oldest first in each tier, so a long turn
+ * keeps its last rounds and every call row it can.
+ */
+export function boundSteps(steps: readonly StoredThinkingStep[]): StoredThinkingStep[] {
+  let excess = steps.length - MAX_THINKING_STEPS
+  if (excess <= 0) return [...steps]
+  const dropped = new Set<number>()
+  const tiers = [...new Set(Object.values(DROP_ORDER))].sort((a, b) => a - b)
+  for (const tier of tiers) {
+    for (let index = 0; index < steps.length && excess > 0; index += 1) {
+      if (DROP_ORDER[steps[index].kind] !== tier) continue
+      dropped.add(index)
+      excess -= 1
+    }
+  }
+  return steps.filter((_, index) => !dropped.has(index))
 }
 
 /** The hoisted turn event, whitelisted and capped like everything else here. */

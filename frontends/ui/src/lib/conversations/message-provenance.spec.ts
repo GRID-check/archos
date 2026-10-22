@@ -10,7 +10,12 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { sanitizeProvenance } from './message-provenance'
+import {
+  boundSteps,
+  MAX_THINKING_STEPS,
+  sanitizeProvenance,
+  sanitizeThinkingSteps,
+} from './message-provenance'
 
 const step = (overrides: Record<string, unknown> = {}) => ({
   id: 's1',
@@ -107,12 +112,45 @@ describe('sanitizeProvenance', () => {
     const result = sanitizeProvenance({
       answerConfidenceReason: 'a'.repeat(5_000),
       escalationReason: 'c'.repeat(5_000),
-      thinkingSteps: Array.from({ length: 500 }, (_, index) => step({ id: `s${index}` })),
+      thinkingSteps: Array.from({ length: 5_000 }, (_, index) => step({ id: `s${index}` })),
     })
 
     expect(result!.answerConfidenceReason).toHaveLength(600)
     expect(result!.escalationReason).toHaveLength(600)
-    expect(result!.thinkingSteps).toHaveLength(200)
+    expect(result!.thinkingSteps).toHaveLength(MAX_THINKING_STEPS)
+  })
+
+  it('at the cap, drops the oldest technical steps first and keeps every call row and the last round', () => {
+    // A long turn: per call a status line, its action and its sources, past the cap.
+    const calls = Math.ceil(MAX_THINKING_STEPS / 3) + 40
+    const steps = Array.from({ length: calls }, (_, n) => [
+      step({ id: `status:${n}`, kind: 'status', slot: 'status.retrieval' }),
+      step({ id: `call:${n}`, kind: 'action', round: n, action: { verb: 'search', status: 'ok' } }),
+      step({ id: `sources:${n}`, kind: 'sources', round: n, tool: 'knowledge_search' }),
+    ]).flat()
+    const kept = sanitizeThinkingSteps(steps)!
+    expect(kept).toHaveLength(MAX_THINKING_STEPS)
+    const ids = new Set(kept.map((s) => s.id))
+    // Every call row survives, the last round's included…
+    for (let n = 0; n < calls; n += 1) {
+      expect(ids.has(`call:${n}`)).toBe(true)
+      expect(ids.has(`sources:${n}`)).toBe(true)
+    }
+    // …and the status lines that went are the oldest ones; the order stands.
+    const excess = steps.length - MAX_THINKING_STEPS
+    expect(ids.has(`status:${excess - 1}`)).toBe(false)
+    expect(ids.has(`status:${excess}`)).toBe(true)
+    expect(kept.map((s) => s.id)).toEqual(steps.map((s) => s.id).filter((id) => ids.has(id)))
+  })
+
+  it('drops a call row only when nothing technical is left, oldest first', () => {
+    const steps = Array.from({ length: MAX_THINKING_STEPS + 5 }, (_, n) =>
+      step({ id: `call:${n}`, kind: 'action', action: { verb: 'read', status: 'ok' } })
+    )
+    const kept = boundSteps(sanitizeThinkingSteps(steps)!)
+    expect(kept).toHaveLength(MAX_THINKING_STEPS)
+    expect(kept[0].id).toBe('call:5')
+    expect(kept.at(-1)!.id).toBe(`call:${MAX_THINKING_STEPS + 4}`)
   })
 
   it('bounds citationsRemoved, and coerces its count', () => {
