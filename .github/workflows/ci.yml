@@ -230,7 +230,11 @@ jobs:
           key: pre-commit-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
             pre-commit-${{ runner.os }}-${{ env.pythonLocation }}-
+      # Ruff runs once, in `Backend lint` below, where its findings become
+      # annotations on the diff.
       - name: Pre-commit (all hooks, all files)
+        env:
+          SKIP: ruff-check,ruff-format
         run: |
           . .venv/bin/activate
           pre-commit run --all-files
@@ -401,14 +405,19 @@ jobs:
           title: Backend coverage (src/aiq_agent)
           unique-id-for-comment: backend-coverage
 
-  # Every Python suite but the core one: they share the environment and fit
-  # beside a core shard.
+  # Every Python suite but the core one, one job each. Run back to back in one
+  # job they took 4:50 (sources 2:32, aiq_api 1:00, the rest 0:36), the
+  # longest job of a full pull request; side by side the longest is sources.
   backend-suites:
-    name: Backend suites (aiq_api, sources, migration, claim queues)
+    name: Backend suites (${{ matrix.suite }})
     needs: changes
     if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [aiq_api, sources, migration and claim queues]
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -425,10 +434,13 @@ jobs:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
       - name: aiq_api plugin suite
+        if: matrix.suite == 'aiq_api'
         run: task be:test:api
       - name: sources/ package suites
+        if: matrix.suite == 'sources'
         run: task be:test:sources
       - name: Chroma exporter and the one-time migration, end to end
+        if: matrix.suite == 'migration and claim queues'
         run: task be:test:migration
 
       # The suites above run each claim queue on SQLite only: their Postgres
@@ -436,6 +448,7 @@ jobs:
       # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script
       # builds the throwaway cluster, as in the frontend job.
       - name: Claim queues on real Postgres
+        if: matrix.suite == 'migration and claim queues'
         run: task be:test:postgres
         env:
           # Turns "the Postgres branch skipped" into a failure for THIS step only.

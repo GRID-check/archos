@@ -11,6 +11,11 @@ task verify:fast   # the same, minus the slow production build
 task setup         # first-time toolchain install
 ```
 
+Both run `lint:repo` first, then the tiers side by side (`task --parallel
+--output=group`), so a tier's output arrives whole when it finishes. They skip
+the hooks a tier repeats (ruff, the English-names test: `VERIFY_SKIP` in
+`Taskfile.yml`) and run the UI suite without coverage, which CI only comments.
+
 `Taskfile.yml` and the per-tier files in `taskfiles/` (included flat, so task names
 are unchanged) are the source of truth for what each check actually runs, and
 `task --list` prints the full set with descriptions. This page holds only what

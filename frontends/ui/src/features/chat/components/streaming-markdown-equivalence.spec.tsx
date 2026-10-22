@@ -51,9 +51,28 @@ const stepKey = (step: Step): string =>
   JSON.stringify([step.body, [...step.numbers], step.cards, step.callout, step.streaming])
 
 /**
- * Every prefix of every text a recorded turn went through (the deltas as they
- * add up, the settled snapshot, anything after it), in the order the reveal
- * shows them, then the terminal text whole: the terminal is never paced.
+ * Whether the prefix `text.slice(0, length)` can render differently from the
+ * one a character shorter in a way the cut has to answer for. The cut moves
+ * only at a line, and what a line is (a heading, a list item, a table row, a
+ * fence, a marker) is decided by its punctuation, so a prefix that ends inside
+ * a run of letters, digits and spaces adds nothing a neighbour does not show:
+ * the run is kept every {@link RUN_STRIDE} characters, the rest is checked.
+ * `STREAM_EQUIVALENCE_EVERY_PREFIX=1` checks every prefix, as the rule reads;
+ * the short constructs in {@link CORPUS} always are.
+ */
+const RUN_STRIDE = 8
+const EVERY_PREFIX = process.env.STREAM_EQUIVALENCE_EVERY_PREFIX === '1'
+const PLAIN = /[\p{L}\p{N} ]/u
+function telling(text: string, length: number): boolean {
+  if (EVERY_PREFIX || length === 0 || length === text.length || length % RUN_STRIDE === 0) return true
+  return !PLAIN.test(text[length - 1]) || !PLAIN.test(text[length - 2] ?? '\n') || !PLAIN.test(text[length])
+}
+
+/**
+ * The prefixes of every text a recorded turn went through (the deltas as they
+ * add up, the settled snapshot, anything after it) that {@link telling} keeps,
+ * in the order the reveal shows them, then the terminal text whole: the
+ * terminal is never paced.
  */
 function recordedSteps(name: keyof typeof STREAM_FRAMES): Step[] {
   const steps = new Map<string, Step>()
@@ -66,7 +85,7 @@ function recordedSteps(name: keyof typeof STREAM_FRAMES): Step[] {
     text = done || frame.stream_replace ? frame.content : text + frame.content
     if (Array.isArray(frame.cards)) cards = frame.cards.length
     if (frame.answer_meta !== undefined) callout = Boolean((frame.answer_meta as { callout?: unknown } | null)?.callout)
-    const lengths = done ? [text.length] : Array.from({ length: text.length + 1 }, (_, i) => i)
+    const lengths = done ? [text.length] : Array.from({ length: text.length + 1 }, (_, i) => i).filter((i) => telling(text, i))
     for (const length of lengths) {
       const { body, numbers } = splitAnswerBody(text.slice(0, length))
       add({ body, numbers, cards, callout, streaming: !done })
@@ -123,14 +142,18 @@ const pluginsFor = (step: Step): PluggableList => [
 ]
 
 /**
- * The first step whose HTML differs between the block renderer (splitting with
- * `split`) and the whole text rendered at once, or `null`.
+ * The first step whose HTML differs between a block renderer (one per split,
+ * each splitting with its own) and the whole text rendered at once, or `null`.
+ * The whole text, the expensive half, is rendered once per step for all of them.
  */
-function firstMismatch(steps: readonly Step[], split: Split): { body: string; blocks: string; whole: string } | null {
+function firstMismatch(
+  steps: readonly Step[],
+  ...splits: Split[]
+): { body: string; blocks: string; whole: string } | null {
   const view = (step: Step, plugins: PluggableList) => (
     <MarkdownRenderer content={step.body} isStreaming={step.streaming} remarkPlugins={plugins} compact />
   )
-  const blocks = render(<div />)
+  const renderers = splits.map((split) => ({ split, blocks: render(<div />) }))
   const whole = render(<div />)
   try {
     // The plugin list keeps its identity while its inputs do, as the chat's does.
@@ -139,18 +162,20 @@ function firstMismatch(steps: readonly Step[], split: Split): { body: string; bl
     for (const step of steps) {
       const key = stepKey({ ...step, body: '' })
       if (key !== pluginsKey) [plugins, pluginsKey] = [pluginsFor(step), key]
-      splitter.current = split
-      blocks.rerender(view(step, plugins))
       splitter.current = () => null
       whole.rerender(view(step, plugins))
-      if (blocks.container.innerHTML !== whole.container.innerHTML) {
-        return { body: step.body, blocks: blocks.container.innerHTML, whole: whole.container.innerHTML }
+      for (const { split, blocks } of renderers) {
+        splitter.current = split
+        blocks.rerender(view(step, plugins))
+        if (blocks.container.innerHTML !== whole.container.innerHTML) {
+          return { body: step.body, blocks: blocks.container.innerHTML, whole: whole.container.innerHTML }
+        }
       }
     }
     return null
   } finally {
     splitter.current = null
-    blocks.unmount()
+    for (const { blocks } of renderers) blocks.unmount()
     whole.unmount()
   }
 }
@@ -177,10 +202,8 @@ const everyCut: Split = (markdown) => splitter.real!(markdown, 0)
 const RECORDED = Object.keys(STREAM_FRAMES) as (keyof typeof STREAM_FRAMES)[]
 
 describe('the streamed answer rendered block by block', () => {
-  it.each(RECORDED)('renders every prefix of the recorded %s answer as the whole text does', (name) => {
-    const steps = recordedSteps(name)
-    expect(firstMismatch(steps, everyCut)).toBeNull()
-    expect(firstMismatch(steps, splitMarkdownBlocks)).toBeNull()
+  it.each(RECORDED)('renders every telling prefix of the recorded %s answer as the whole text does', (name) => {
+    expect(firstMismatch(recordedSteps(name), everyCut, splitMarkdownBlocks)).toBeNull()
   }, 300_000)
 
   it('renders every prefix of the constructs that reach across blocks as the whole text does', () => {

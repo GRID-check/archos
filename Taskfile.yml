@@ -44,6 +44,8 @@ vars:
   # A test that only passes after another one ran will fail under it; fix the
   # test, do not drop the flag.
   XDIST: -n logical
+  # The pre-commit hooks `verify` skips, because a tier it runs checks the same.
+  VERIFY_SKIP: ruff-check,ruff-format,english-names
   # Release-note tooling runs OUTSIDE the project environment on purpose. reno is
   # needed by two tasks and one workflow, never by the product, so putting it in
   # `[dependency-groups]` would add a resolver constraint (and uv.lock churn) to
@@ -112,27 +114,45 @@ tasks:
       # the fastest way to get people to stop running `task verify`. Run
       # `task pkg:test` when you change `packages/`, the same discipline
       # `db:test:rls` asks for at the tenant boundary.
-      - task: lint:repo
-      - task: be:verify
-      - task: fe:verify
-      - task: web:verify
-      - task: infra:types
-      - task: infra:test
+      #
+      # lint:repo first and alone: its card and wire-schema hooks rewrite
+      # generated files the type checks and the suites then read. After it the
+      # tiers share nothing and run side by side, each tier's output printed
+      # whole when it finishes. Ruff and the English-names test are skipped in
+      # the hooks because be:verify runs both (be:lint, the core suite).
+      - 'SKIP={{.VERIFY_SKIP}} {{.TASK_EXE}} lint:repo'
+      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:fe verify:web infra:types infra:test'
 
   verify:fast:
     desc: Everything CI runs except the production builds (the slow step)
     cmds:
-      - task: lint:repo
-      - task: be:verify
-      # `fe:verify` minus `fe:build` — the only UI check this task omits.
+      - 'SKIP={{.VERIFY_SKIP}} {{.TASK_EXE}} lint:repo'
+      - '{{.TASK_EXE}} --parallel --output=group be:verify verify:fe:fast verify:web:fast infra:types infra:test'
+
+  # The tiers as `verify` runs them, once lint:repo has checked the generated
+  # card schemas (its card-schemas hook), so that check does not run twice.
+  verify:fe:
+    cmds:
+      - task: verify:fe:fast
+      - task: fe:build
+
+  verify:fe:fast:
+    cmds:
       - task: fe:lint
       - task: fe:types
-      - task: fe:test:ci
-      # `web:verify` minus `web:build` — the only web check this task omits.
+      # Without coverage: CI's coverage is a comment, not a gate, and the
+      # instrumentation only slows the suite down.
+      - task: fe:test
+
+  verify:web:
+    cmds:
+      - task: verify:web:fast
+      - task: web:build
+
+  verify:web:fast:
+    cmds:
       - task: web:install
       - task: web:check
-      - task: infra:types
-      - task: infra:test
 
   setup:
     desc: Install every toolchain this repo needs (backend venv + UI + web + infra)

@@ -66,7 +66,7 @@ It also lists the third-party image pins the change adds or moves
 | Backend test database (`backend-testmon`) | every push to `develop` | records which test runs which code (`task be:test:testmon`) and caches it when green. Not a check |
 | Backend core (`backend`) | backend tier: pushes, and PRs testmon cannot select for | the core suite in 4 shards (`task be:test:shard`), each writing coverage data |
 | Backend coverage gate (`backend-coverage`) | backend tier | combines the shards' data, the 65% gate, the PR comment |
-| Backend suites (`backend-suites`) | backend tier | the aiq_api suite, the `sources/` suites, the migration test, and the claim-queue suites on a real Postgres (`task be:test:postgres`) |
+| Backend suites (`backend-suites`) | backend tier | three jobs side by side: the aiq_api suite, the `sources/` suites, and the migration test with the claim-queue suites on a real Postgres (`task be:test:postgres`) |
 | Frontend (`frontend`) | frontend tier | card schema check, lint, types, and the tenant-isolation suite against a real Postgres |
 | Frontend tests (`frontend-test`) | frontend tier; on a PR, unless nothing a UI spec reads changed | the vitest suite in 6 shards; on a PR whose change a selection can see, only the specs it reaches (`task fe:test:related`) |
 | Frontend coverage | PRs, frontend tier | merges the shards' coverage into the PR comment. Not in `CI OK` |
