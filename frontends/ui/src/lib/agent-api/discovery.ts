@@ -146,7 +146,7 @@ function binaryResult(opName: string, file: BinaryBody): CallToolResult {
           text:
             `The file (${label}${mimeType}, ${sizeText(file.bytes)}) is over the ${sizeText(MAX_INLINE_BYTES)} ` +
             'limit for sending a file in a tool result, so it was not sent. ' +
-            'For a document, read its text in pages with document-text-get, or call document-download for a ' +
+            'For a document, read its text in pages with passage-read (named by its file name), or call document-download for a ' +
             'time-limited link the person can open. Otherwise ask the person to download it in Piloti.',
         },
       ],

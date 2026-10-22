@@ -58,8 +58,8 @@
     "/api/projects/{id}/cleanup": {
       "post": {
         "operationId": "project-cleanup-confirm",
-        "summary": "Move the chosen documents to the Papierkorb",
-        "description": "Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.",
+        "summary": "Move the chosen documents to the bin",
+        "description": "Puts the documents the person chose (`documentIds`) into the bin, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.",
         "tags": [
           "projects"
         ],
@@ -138,7 +138,7 @@
           }
         },
         "x-mcp-annotations": {
-          "title": "Move the chosen documents to the Papierkorb",
+          "title": "Move the chosen documents to the bin",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": false,
@@ -4195,7 +4195,7 @@
       "get": {
         "operationId": "document-get",
         "summary": "Read one document’s listing row",
-        "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion and document-text-get for what the file says.",
+        "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and passage-read for what the file says.",
         "tags": [
           "documents"
         ],
@@ -4328,7 +4328,7 @@
       "get": {
         "operationId": "document-download",
         "summary": "Get a time-limited download link for a document",
-        "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.",
+        "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use passage-read. Records the access.",
         "tags": [
           "documents"
         ],
@@ -4382,7 +4382,7 @@
       "get": {
         "operationId": "document-file-get",
         "summary": "Read a stored PDF’s bytes",
-        "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with document-download. Only PDFs are served here.",
+        "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with passage-read or get a link with document-download. Only PDFs are served here.",
         "tags": [
           "documents"
         ],
@@ -5106,7 +5106,7 @@
       "get": {
         "operationId": "document-status",
         "summary": "Read a document’s ingestion status",
-        "description": "Where the document is in reading and indexing (queued, processing, ready, failed, held). Poll it after an upload; on a failure call document-reingest, on a stuck run document-ingest-cancel.",
+        "description": "The ingestion state in `status`: `pending` or `processing` (poll again), `completed` (citable), `quarantined` (a reviewer decides), `failed` (call document-reingest), `cancelled`. `uploaded` and `stored` are not read.",
         "tags": [
           "documents"
         ],
@@ -5321,7 +5321,7 @@
       "get": {
         "operationId": "document-text-get",
         "summary": "Read the extracted text of a document",
-        "description": "A preview of the text Piloti extracted from the document. Use it to see what a file says without opening the file; it is empty until document-status reports the document as read.",
+        "description": "The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. Other types, PDFs and scans included, answer 415: use passage-read by `filename`.",
         "tags": [
           "documents"
         ],
@@ -5429,7 +5429,7 @@
       "post": {
         "operationId": "document-upload",
         "summary": "Upload a file to a project",
-        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds comes back held, and a reviewer allows it. Needs write access to the project’s documents.",
+        "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns `{ documentId, jobId, status, filename }`; status is pending, processing, quarantined, failed, uploaded or stored; jobId is an ingestion job, not a task. Follow it with document-status. Needs write access to the project’s documents.",
         "tags": [
           "documents"
         ],
@@ -5519,7 +5519,7 @@
       "get": {
         "operationId": "document-version-file-get",
         "summary": "Read the file bytes of one version",
-        "description": "The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
+        "description": "The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
         "tags": [
           "documents"
         ],
@@ -6775,7 +6775,7 @@
       "post": {
         "operationId": "office-shelf-document-upload",
         "summary": "Upload a file to the office shelf",
-        "description": "Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; follow ingestion with document-status.",
+        "description": "Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns `{ documentId, jobId, status, filename }`; follow ingestion with document-status.",
         "tags": [
           "documents"
         ],
@@ -6949,8 +6949,10 @@
             "required": false,
             "schema": {
               "type": "string",
-              "maxLength": 100
-            }
+              "maxLength": 100,
+              "description": "Read-state families, comma-separated: readable, reading, failed, held, unindexed. Held files await a reviewer (quarantine-list); review requests are in inbox-list, filter `requests`."
+            },
+            "description": "Read-state families, comma-separated: readable, reading, failed, held, unindexed. Held files await a reviewer (quarantine-list); review requests are in inbox-list, filter `requests`."
           },
           {
             "name": "limit",
@@ -7113,7 +7115,7 @@
       "post": {
         "operationId": "session-document-upload",
         "summary": "Attach a file to a conversation",
-        "description": "Stores one file privately on one conversation (not in any project shelf) and ingests it for that conversation. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created when it does not exist yet. Returns the stored document; follow ingestion with document-status.",
+        "description": "Stores one file privately on one conversation (not in any project shelf) and ingests it for that conversation. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created when it does not exist yet. Returns `{ documentId, jobId, status, filename }`; follow ingestion with document-status.",
         "tags": [
           "documents"
         ],
@@ -8088,7 +8090,7 @@
       "get": {
         "operationId": "project-folder-bin-list",
         "summary": "List a project’s deleted folders",
-        "description": "The project's Papierkorb: the deleted folders the person may read, who deleted each and when, when its purge runs, and what the person may do about it (restore, purge now). Folder ids from here feed project-folder-restore and project-folder-bin-purge.",
+        "description": "The project's bin: the deleted folders the person may read, who deleted each and when, when its purge runs, and what the person may do about it (restore, purge now). Folder ids from here feed project-folder-restore and project-folder-bin-purge.",
         "tags": [
           "folders"
         ],
@@ -8344,7 +8346,7 @@
       "delete": {
         "operationId": "project-folder-delete",
         "summary": "Move a project folder to the bin",
-        "description": "Moves the folder with its subfolders and documents to the project's Papierkorb. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.",
+        "description": "Moves the folder with its subfolders and documents to the project's bin. It stays restorable (project-folder-restore) until the `purgeAfter` date the response names, then is purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the folder and everything below it.",
         "tags": [
           "folders"
         ],
@@ -15858,7 +15860,7 @@
       "post": {
         "operationId": "task-create",
         "summary": "Create a standing or one-off task",
-        "description": "Create a task in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: the task, with its id.",
+        "description": "Create a task in a project: a name, a prompt, optionally an attached skill (skill-list), data sources and either a 5-field cron schedule with an IANA timezone or a one-time `dueAt` (not both; neither means it runs only by hand with task-run-start). Needs project:skills:manage. Returns `{ job }`: `job.id` is the task’s `jobId`; `job.output` is `deep-research` (new tasks) or `chat` (older ones).",
         "tags": [
           "tasks"
         ],
@@ -15993,7 +15995,7 @@
       "get": {
         "operationId": "task-list",
         "summary": "List a project’s tasks",
-        "description": "The tasks of one project: standing (scheduled) or one-off prompts Piloti carries out as a task run that files a report, with their schedule, attached skill and next run. Needs the skills feature on. Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.",
+        "description": "The tasks of one project: standing (scheduled) or one-off prompts Piloti carries out as a task run that files a report, with their schedule, attached skill and next run. Each `jobs` entry’s `id` is the task’s `jobId`. Needs the skills feature on. Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.",
         "tags": [
           "tasks"
         ],
@@ -16683,7 +16685,7 @@
       "get": {
         "operationId": "task-run-list",
         "summary": "List the runs of one task",
-        "description": "The run history of one task, newest first, paginated with `limit` (1 to 200, default 50) and `offset`. Use it to see whether a scheduled task fired and how each run ended. For every run in the project with its review state, call project-task-run-list.",
+        "description": "The run history of one task, newest first, paginated with `limit` (1 to 200, default 50) and `offset`. A run’s `scheduleId` is its task; its `jobId` is a queue job, not a task. Use it to see whether a scheduled task fired and how each run ended. For every run in the project with its review state, call project-task-run-list.",
         "tags": [
           "tasks"
         ],

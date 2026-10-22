@@ -62,8 +62,7 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Read one document’s listing row',
     description:
-      'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. ' +
-      'Use document-status to follow ingestion and document-text-get for what the file says.',
+      'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion, and passage-read for what the file says.',
     method: 'GET',
     path: '/api/documents/[id]',
     params: documentParams,
@@ -143,8 +142,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Read a document’s ingestion status',
     description:
-      'Where the document is in reading and indexing (queued, processing, ready, failed, held). Poll it after an upload; ' +
-      'on a failure call document-reingest, on a stuck run document-ingest-cancel.',
+      'The ingestion state in `status`: `pending` or `processing` (poll again), `completed` (citable), `quarantined` (a reviewer decides), ' +
+      '`failed` (call document-reingest), `cancelled`. `uploaded` and `stored` are not read.',
     method: 'GET',
     path: '/api/documents/[id]/status',
     params: documentParams,
@@ -155,8 +154,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Read the extracted text of a document',
     description:
-      'A preview of the text Piloti extracted from the document. Use it to see what a file says without opening the file; ' +
-      'it is empty until document-status reports the document as read.',
+      'The text of a plain-text, Markdown or CSV file: `{ text, truncated, contentType, filename }`, at most 256 KiB. ' +
+      'Other types, PDFs and scans included, answer 415: use passage-read by `filename`.',
     method: 'GET',
     path: '/api/documents/[id]/text',
     params: documentParams,
@@ -271,7 +270,7 @@ export const documentsOperations = [
     description:
       'Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. ' +
       'The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. ' +
-      'The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.',
+      'The bytes are not sent here; for a PDF use document-file-get, for the text use passage-read. Records the access.',
     method: 'GET',
     path: '/api/documents/[id]/download',
     params: documentParams,
@@ -283,7 +282,7 @@ export const documentsOperations = [
     summary: 'Read a stored PDF’s bytes',
     description:
       'The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource ' +
-      '(base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with ' +
+      '(base64 `blob`) up to 5 MiB. A larger file is not sent: read its pages with passage-read or get a link with ' +
       'document-download. Only PDFs are served here.',
     method: 'GET',
     path: '/api/documents/[id]/file',
@@ -322,7 +321,7 @@ export const documentsOperations = [
     summary: 'Read the file bytes of one version',
     description:
       'The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource ' +
-      '(base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: "1"` marks it ' +
+      '(base64 `blob`) up to 5 MiB; a larger file is not sent. `download: "1"` marks it ' +
       'as an attachment. Only published or superseded versions are served.',
     method: 'GET',
     path: '/api/documents/[id]/versions/[versionId]/file',
@@ -338,8 +337,8 @@ export const documentsOperations = [
     description:
       `Stores one file in a project (optionally in a folder) and hands it to ingestion. ${SIZE_NOTE} ` +
       'Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). ' +
-      'Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds ' +
-      'comes back held, and a reviewer allows it. Needs write access to the project’s documents.',
+      'Returns `{ documentId, jobId, status, filename }`; status is pending, processing, quarantined, failed, ' +
+      'uploaded or stored; jobId is an ingestion job, not a task. Follow it with document-status. Needs write access to the project’s documents.',
     method: 'POST',
     path: '/api/documents/upload',
     body: projectUploadBody,
@@ -353,8 +352,8 @@ export const documentsOperations = [
     summary: 'Upload a file to the office shelf',
     description:
       `Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. ${SIZE_NOTE} ` +
-      'Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; ' +
-      'follow ingestion with document-status.',
+      'Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. ' +
+      'Returns `{ documentId, jobId, status, filename }`; follow ingestion with document-status.',
     method: 'POST',
     path: '/api/office-shelf/documents/upload',
     body: officeShelfUploadBody,
@@ -368,7 +367,7 @@ export const documentsOperations = [
     description:
       `Stores one file privately on one conversation (not in any project shelf) and ingests it for that conversation. ${SIZE_NOTE} ` +
       'Send `body.files[0]` as { name, mimeType, contentBase64 } and `body.fields.conversationId`; the conversation is created ' +
-      'when it does not exist yet. Returns the stored document; follow ingestion with document-status.',
+      'when it does not exist yet. Returns `{ documentId, jobId, status, filename }`; follow ingestion with document-status.',
     method: 'POST',
     path: '/api/session/documents/upload',
     body: sessionUploadBody,

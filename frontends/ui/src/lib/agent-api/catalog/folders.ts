@@ -125,7 +125,7 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'Move a project folder to the bin',
     description:
-      "Moves the folder with its subfolders and documents to the project's Papierkorb. It stays " +
+      "Moves the folder with its subfolders and documents to the project's bin. It stays " +
       'restorable (project-folder-restore) until the `purgeAfter` date the response names, then is ' +
       'purged. Returns `{ documentsBinned, foldersBinned, purgeAfter }`. Needs write access on the ' +
       'folder and everything below it.',
@@ -139,7 +139,7 @@ export const foldersOperations = [
     domain: 'folders',
     summary: 'List a project’s deleted folders',
     description:
-      "The project's Papierkorb: the deleted folders the person may read, who deleted each and when, " +
+      "The project's bin: the deleted folders the person may read, who deleted each and when, " +
       'when its purge runs, and what the person may do about it (restore, purge now). Folder ids from ' +
       'here feed project-folder-restore and project-folder-bin-purge.',
     method: 'GET',
