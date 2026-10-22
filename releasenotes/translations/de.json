@@ -4044,6 +4044,10 @@
     "de": "„Erstelle ein Dokument über …“ startet jetzt eine Tiefenrecherche, deren fertiger Bericht im Projekt unter „Berichte“ abgelegt wird. Wer nur eine gründliche Antwort will, bekommt sie weiterhin im Chat."
   },
   {
+    "en": "„Mein Feedback“ now opens as a window with your reports on the left and the chat with the Piloti team on the right, and on a phone it fills the screen. You write new feedback in the same window, so your menu has one feedback entry, and once a report is sent its chat opens right there.",
+    "de": "„Mein Feedback“ öffnet sich jetzt in einem Fenster: Ihre Berichte links, der Chat mit dem Piloti-Team rechts. Am Smartphone nimmt es den ganzen Bildschirm ein. Neues Feedback verfassen Sie im selben Fenster, sodass Ihr Menü nur einen Feedback-Eintrag enthält. Sobald Sie einen Bericht absenden, öffnet sich der zugehörige Chat direkt dort."
+  },
+  {
     "en": "„Mir zugewiesen“ in the Prüfansicht finds your Anmerkungen also while the connection to your colleagues is down.",
     "de": "Unter „Mir zugewiesen“ finden Sie in der Prüfansicht Ihre Anmerkungen auch dann, wenn die Verbindung zu Ihren Kolleginnen und Kollegen unterbrochen ist."
   },
