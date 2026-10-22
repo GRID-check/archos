@@ -62,9 +62,9 @@ _janitor: threading.Thread | None = None
 
 
 def object_of(url: str) -> str:
-    """The object a presigned URL names: its origin and path, without the signature in the query."""
+    """The object a presigned URL names: its origin, case-folded as hosts are, and path, never the query."""
     parts = urlsplit(url)
-    return f"{parts.scheme}://{parts.netloc}{parts.path}"
+    return f"{parts.scheme.lower()}://{parts.netloc.lower()}{parts.path}"
 
 
 @contextmanager

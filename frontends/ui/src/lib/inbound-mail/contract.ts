@@ -14,8 +14,6 @@
  * dictionaries.
  */
 
-import type { SenderTrust } from '@/lib/mail-thread/mail-threading'
-
 // ---------------------------------------------------------------------------
 // The Worker ↔ webhook contract
 // ---------------------------------------------------------------------------
@@ -30,8 +28,26 @@ export const INBOUND_MAIL_WEBHOOK_PATH = '/api/internal/signed/inbound-mail'
 /** The envelope recipient (RFC 5321 RCPT TO) the Worker was invoked for. */
 export const ENVELOPE_TO_HEADER = 'x-envelope-to'
 
-/** The envelope sender (RFC 5321 MAIL FROM), empty for a null reverse-path. */
+/**
+ * The envelope sender (RFC 5321 MAIL FROM), `NULL_SENDER` for a null reverse-path. Both envelope headers carry
+ * every UTF-8 byte outside 0x21–0x7E, and `%`, as `%XX` (shared/inbound-mail-contract.json `envelopeEncoding`).
+ */
 export const ENVELOPE_FROM_HEADER = 'x-envelope-from'
+
+/**
+ * The envelope sender header for a null reverse-path, RFC 5321's own spelling. An empty header value is
+ * fragile across Envoy and the signature library, so the Worker never sends one.
+ */
+export const NULL_SENDER = '<>'
+
+/**
+ * An envelope header as the Worker wrote it, back to the SMTP address (`''` for the null sender). Throws a
+ * `URIError` on a malformed escape, which the Worker never writes: the route answers it 400 without the
+ * verdict, so the sender retries.
+ */
+export function decodeEnvelopeAddress(header: string): string {
+  return header === NULL_SENDER ? '' : decodeURIComponent(header)
+}
 
 /**
  * The Worker bounces a mail ONLY when the answer is a 4xx carrying
@@ -91,127 +107,24 @@ export function deliveryOutcome(status: number, verdict: string | null): Deliver
 // ---------------------------------------------------------------------------
 
 /**
- * Who a mail at the project's address is from, as far as the bytes and DNS can
- * tell (`./sender-auth`, `inbound_mails.sender_trust`). `verified` is an
- * aligned DKIM pass that also meets our hygiene rules; `member` is a From
- * address equal to a directory member's address. DKIM proves a domain, never a
- * person, which is why no label claims more than the domain.
- *
- * The thread core's `SenderTrust` adds `not_checked`, an archive entry's; this
- * is its four inbound values, held to it by the type.
+ * The closed vocabularies `./sender-auth`, `./mime` and `./automatic-mail`
+ * produce: sender trust and its reason, the sender flags, an attachment's risk
+ * flags, why a part was not staged, why a mail was dropped. Declared once
+ * beside the CHECKs that hold them (`./inbound-mail-vocabulary`, migration
+ * 0184) and re-exported here, so the transport modules and the Worker contract
+ * read as one module.
  */
-export const INBOUND_SENDER_TRUSTS = [
-  'member_verified',
-  'member_unverified',
-  'external_verified',
-  'external_unverified',
-] as const satisfies readonly SenderTrust[]
-export type InboundSenderTrust = (typeof INBOUND_SENDER_TRUSTS)[number]
-
-/**
- * Why the sender is or is not verified, one code per mail (`sender_reason`).
- * `dkim_pass` is the only verified one. The others are ordered as
- * `./sender-auth` ranks them when several signatures disagree: the most
- * specific explanation first.
- */
-export const SENDER_REASONS = [
-  'dkim_pass',
-  // The raw header block (checked before any signature, against parser differentials).
-  'header_malformed',
-  'header_duplicate',
-  'from_count',
-  'from_not_ascii',
-  'dkim_too_many',
-  // An aligned signature that verified but breaks a hygiene rule.
-  'dkim_body_length',
-  'dkim_testing',
-  'dkim_expired',
-  'dkim_unsigned_fields',
-  'dkim_weak_algorithm',
-  'dkim_short_key',
-  // An aligned signature that did not verify.
-  'dkim_temperror',
-  'dkim_fail',
-  'dkim_policy',
-  'dkim_permerror',
-  // No aligned signature at all.
-  'dkim_unaligned',
-  'dkim_none',
-  // The verifier itself.
-  'verifier_timeout',
-  'verifier_error',
-] as const
-export type SenderReason = (typeof SENDER_REASONS)[number]
-
-/**
- * Facts about one mail's sender that shape defaults (`sender_flags`). The
- * first four come from `./sender-auth`; `message_id_reused` and
- * `already_filed` from the receive job's Message-ID lookup.
- *
- * - `not_addressed_to_project`: a verified mail whose signed To and Cc do not
- *   name the project's address: a member's mail to someone else, replayed.
- * - `bcc_own`: set TOGETHER with `not_addressed_to_project` when the mail is
- *   `member_verified` with a signed Date within a day of receipt: the
- *   member's own Bcc copy. The pair errs safe: whoever forgets the exception
- *   asks for one acknowledgement too many and never offers a follow it should not.
- * - `stale_date`: the signed Date is more than seven days before receipt.
- * - `date_out_of_range`: the Date is missing or outside the clamp window, and
- *   the receipt time stands in for it.
- */
-export const SENDER_FLAGS = [
-  'not_addressed_to_project',
-  'bcc_own',
-  'stale_date',
-  'date_out_of_range',
-  'message_id_reused',
-  'already_filed',
-] as const
-export type SenderFlag = (typeof SENDER_FLAGS)[number]
-
-/**
- * Facts about one attachment (`risk_flags`). `./mime` sets `macro`,
- * `type_mismatch`, `encrypted`, `forwarded_inner` and `type_not_accepted`;
- * the receive job and the decision set the rest.
- */
-export const PART_RISK_FLAGS = [
-  'macro',
-  'type_mismatch',
-  'encrypted',
-  'name_stop',
-  'duplicate_of',
-  'forwarded_inner',
-  'unreadable',
-  'unverified_thread',
-  'type_not_accepted',
-] as const
-export type PartRiskFlag = (typeof PART_RISK_FLAGS)[number]
-
-/**
- * Why a MIME part was not staged as a part a person decides on (`./mime`).
- * Every one of them is still in the original `.eml`.
- */
-export const NOT_STAGED_REASONS = [
-  /** Part of the message's own layout: a `cid:` image, an auto-named pasted image, a tracking pixel. */
-  'embedded',
-  /** An S/MIME or PGP signature. */
-  'signature',
-  /** `winmail.dat`: Outlook's own container, not a file anybody sent. */
-  'tnef',
-  /** S/MIME or PGP encryption: nothing in it is readable here. */
-  'encrypted',
-  /** A calendar invitation; the Python reader renders it into the text. */
-  'calendar',
-  /** No bytes. */
-  'empty',
-  /** An archive the office does not accept as a file; it is never expanded. */
-  'archive',
-  /** Larger than one part may be. */
-  'size',
-  /** Past the number of parts one mail may stage, or a forward nested too deep. */
-  'limit',
-] as const
-export type NotStagedReason = (typeof NOT_STAGED_REASONS)[number]
-
-/** Why a mail was accepted and then dropped unseen (`./automatic-mail`, `dropped_reason`). */
-export const DROPPED_REASONS = ['auto_reply', 'delivery_report', 'self_loop'] as const
-export type DroppedReason = (typeof DROPPED_REASONS)[number]
+export {
+  DROPPED_REASONS,
+  INBOUND_SENDER_TRUSTS,
+  NOT_STAGED_REASONS,
+  PART_RISK_FLAGS,
+  SENDER_FLAGS,
+  SENDER_REASONS,
+  type DroppedReason,
+  type InboundSenderTrust,
+  type NotStagedReason,
+  type PartRiskFlag,
+  type SenderFlag,
+  type SenderReason,
+} from './inbound-mail-vocabulary'

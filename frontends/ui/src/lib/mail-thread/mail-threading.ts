@@ -26,27 +26,20 @@
  * reviewers that project A holds the conversation.
  */
 
+import { VERIFIED_SENDER_TRUSTS, type SenderTrust } from '@/lib/inbound-mail/inbound-mail-vocabulary'
+import { type ThreadMatchHeader, type ThreadMatchStrength } from './mail-thread-vocabulary'
+
 /**
- * A sender's trust, as the receive job stores it (DECISION D4): DKIM-aligned
- * or not, member or not. `not_checked` is an archive entry's (D33).
- *
- * Mirrored by D2's `inbound-mail-vocabulary.ts` once it lands; the
- * integration hunk re-exports it from there (handoff D5-to-D2).
+ * A sender's trust (DECISION D4), and the trusts that are an aligned DKIM pass.
+ * Declared beside the CHECK they mirror (`inbound-mail-vocabulary.ts`,
+ * migration 0184), re-exported here so the thread core reads as one module.
  */
-export const SENDER_TRUSTS = [
-  'member_verified',
-  'member_unverified',
-  'external_verified',
-  'external_unverified',
-  'not_checked',
-] as const
-export type SenderTrust = (typeof SENDER_TRUSTS)[number]
-
-/** The trusts that are an aligned DKIM pass. */
-export const VERIFIED_SENDER_TRUSTS: readonly SenderTrust[] = ['member_verified', 'external_verified']
+export { SENDER_TRUSTS, VERIFIED_SENDER_TRUSTS, type SenderTrust } from '@/lib/inbound-mail/inbound-mail-vocabulary'
 
 /**
- * How strongly a mail matched a thread, strongest first.
+ * How strongly a mail matched a thread, strongest first, and the headers a
+ * match can rest on (`./mail-thread-vocabulary.ts`, the column
+ * `inbound_mails.thread_match` holds them).
  *
  * - `reference`: In-Reply-To or References names a message the thread
  *   received, and the base subjects are equal.
@@ -59,12 +52,12 @@ export const VERIFIED_SENDER_TRUSTS: readonly SenderTrust[] = ['member_verified'
  *   active within {@link SUBJECT_MATCH_WINDOW_DAYS} days; or an equal subject
  *   with a reference only to a message the thread knows by citation.
  */
-export const THREAD_MATCH_STRENGTHS = ['reference', 'thread_index', 'reference_subject_changed', 'subject'] as const
-export type ThreadMatchStrength = (typeof THREAD_MATCH_STRENGTHS)[number]
-
-/** The headers a match can rest on, lower-case as mailauth lists signed headers. */
-export const THREAD_MATCH_HEADERS = ['in-reply-to', 'references', 'thread-index', 'subject'] as const
-export type ThreadMatchHeader = (typeof THREAD_MATCH_HEADERS)[number]
+export {
+  THREAD_MATCH_HEADERS,
+  THREAD_MATCH_STRENGTHS,
+  type ThreadMatchHeader,
+  type ThreadMatchStrength,
+} from './mail-thread-vocabulary'
 
 /** The strengths a thread can be pre-selected on. The others are always offered unchecked. */
 export const PRESELECTABLE_STRENGTHS: readonly ThreadMatchStrength[] = ['reference', 'thread_index']
@@ -418,17 +411,33 @@ export function appendNeedsAcknowledgement(sender: SenderEvidence, match: Thread
 export const SENT_AT_WINDOW_DAYS = 30
 
 /**
+ * How far after its receipt a mail's Date may lie and still be an honest clock
+ * that runs fast (a laptop off NTP, a drifting Exchange server) rather than a
+ * forged position: such a Date is put at the receipt WITHOUT `outOfRange`.
+ */
+export const SENT_AT_CLOCK_SKEW_MINUTES = 15
+
+const MINUTE_MS = 60_000
+
+/**
  * The send time a thread orders and headings by: the Date header, believed
- * only within `[receivedAt − 30 days, receivedAt]`. Outside that window, or
+ * only within `[receivedAt − 30 days, receivedAt]`. A Date up to
+ * {@link SENT_AT_CLOCK_SKEW_MINUTES} after the receipt is a fast clock: the
+ * receipt time is used, and nothing is flagged, so a member's genuine reply
+ * keeps its pre-selection and its follow. Further out, before the window, or
  * without a Date, the receipt time is used and `outOfRange` is set, which is
  * the `date_out_of_range` flag. A future Date is the commonest forgery of
- * position in a thread; a very old one is the replay's.
+ * position in a thread, a very old one the replay's; the skew allowance gives a
+ * forger nothing, because the time shown is the receipt's either way.
  */
 export function clampSentAt(sentAt: Date | null, receivedAt: Date): { sentAt: Date; outOfRange: boolean } {
   const time = sentAt?.getTime()
   if (time === undefined || Number.isNaN(time)) return { sentAt: receivedAt, outOfRange: true }
-  const earliest = receivedAt.getTime() - SENT_AT_WINDOW_DAYS * DAY_MS
-  if (time < earliest || time > receivedAt.getTime()) return { sentAt: receivedAt, outOfRange: true }
+  const received = receivedAt.getTime()
+  if (time < received - SENT_AT_WINDOW_DAYS * DAY_MS) return { sentAt: receivedAt, outOfRange: true }
+  if (time > received) {
+    return { sentAt: receivedAt, outOfRange: time > received + SENT_AT_CLOCK_SKEW_MINUTES * MINUTE_MS }
+  }
   return { sentAt: new Date(time), outOfRange: false }
 }
 

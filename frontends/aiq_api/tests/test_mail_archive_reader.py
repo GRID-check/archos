@@ -10,6 +10,7 @@ run by hand when its version moves.
 from __future__ import annotations
 
 import base64
+import json
 import os
 from dataclasses import dataclass
 from dataclasses import field
@@ -233,9 +234,12 @@ def test_a_mail_reads_its_headers_recipients_and_attachments():
     assert forwarded.embedded_message is True
 
 
+#: One conversation as both sources carry it (``shared/thread-index.json``): the
+#: BFF's ``threadIndexGuid`` spec reads the same vector, so the archive and an
+#: inbound ``Thread-Index`` header cannot drift apart.
+THREAD_INDEX = json.loads((Path(__file__).resolve().parents[3] / "shared" / "thread-index.json").read_text())
 #: A conversation index as Outlook writes it: reserved byte, FILETIME, GUID, one child block.
-GUID = bytes.fromhex("01c9a1b2c3d4e5f60718293a4b5c6d7e")
-CONVERSATION_INDEX = b"\x01" + bytes.fromhex("d9c2a1b3c4") + GUID + bytes.fromhex("0000112233")
+CONVERSATION_INDEX = bytes.fromhex(THREAD_INDEX["bytesHex"])
 
 
 def test_a_mail_reads_the_properties_a_thread_is_matched_on():
@@ -259,7 +263,7 @@ def test_a_mail_reads_the_properties_a_thread_is_matched_on():
     # As stored: the BFF parses the ids and derives the GUID, once for both sources.
     assert (mail.message_id, mail.in_reply_to) == ("<b@buero.at>", "<a@wien.gv.at>")
     assert mail.references == "<root@buero.at>\r\n <a@wien.gv.at>"
-    assert base64.b64decode(mail.conversation_index) == CONVERSATION_INDEX
+    assert mail.conversation_index == THREAD_INDEX["conversationIndexBase64"]
     assert mail.to == (reader.Address(name="Bauamt", address="bauamt@wien.gv.at"),)
     assert mail.bcc == (reader.Address(name="Ablage", address="ablage@buero.at"),)
 

@@ -43,7 +43,7 @@ export type AutomaticMailVerdict =
 export interface AutomaticMailInput {
   /** The raw header block (`rawHeaderFields`); null when it could not be read. */
   headers: readonly HeaderField[] | null
-  /** The envelope sender (`x-envelope-from`); empty for the null reverse-path. */
+  /** The envelope sender, decoded (`decodeEnvelopeAddress` of `x-envelope-from`); empty for the null reverse-path. */
   envelopeFrom: string | null
   /** The deployment's inbound domain (`inboundMailDomain`). */
   inboundDomain: string

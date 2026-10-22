@@ -153,9 +153,13 @@ def _message_json(message: ArchiveMessage) -> dict:
         "sender": _address(message.sender),
         "to": [_address(item) for item in message.to],
         "cc": [_address(item) for item in message.cc],
+        "bcc": [_address(item) for item in message.bcc],
         "sent_at": message.sent_at.isoformat() if message.sent_at else None,
         "received_at": message.received_at.isoformat() if message.received_at else None,
         "message_id": message.message_id,
+        "in_reply_to": message.in_reply_to,
+        "references": message.references,
+        "conversation_index": message.conversation_index,
         "body": {
             "text": message.body.text if message.body else "",
             "source": message.body.source if message.body else "none",

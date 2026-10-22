@@ -9,6 +9,8 @@
  * stranger may write.
  */
 
+import { existsSync, readFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import {
   appendNeedsAcknowledgement,
@@ -23,6 +25,7 @@ import {
   PRESELECTION_BLOCKS,
   senderPreselectionBlocks,
   SENDER_TRUSTS,
+  SENT_AT_CLOCK_SKEW_MINUTES,
   threadIndexGuid,
   threadIndexGuidFromBytes,
   threadPreselection,
@@ -117,6 +120,25 @@ function threadIndex(guid: number[], children = 0): string {
 }
 const GUID = Array.from({ length: 16 }, (_, i) => i + 0xa0)
 
+interface ThreadIndexVector {
+  bytesHex: string
+  conversationIndexBase64: string
+  childOfBase64: string
+  guid: string
+}
+
+/**
+ * The vector the mail archive reader's test reads too (`test_mail_archive_reader.py`). Read at runtime, because
+ * `shared/` is outside the UI image's build context.
+ */
+function loadThreadIndexVector(): ThreadIndexVector {
+  for (let dir = process.cwd(); ; dir = dirname(dir)) {
+    const candidate = join(dir, 'shared', 'thread-index.json')
+    if (existsSync(candidate)) return JSON.parse(readFileSync(candidate, 'utf8')) as ThreadIndexVector
+    if (dirname(dir) === dir) throw new Error(`shared/thread-index.json not found above ${process.cwd()}`)
+  }
+}
+
 describe('threadIndexGuid', () => {
   it('reads the conversation GUID in byte order', () => {
     expect(threadIndexGuid(threadIndex(GUID))).toBe('a0a1a2a3-a4a5-a6a7-a8a9-aaabacadaeaf')
@@ -129,6 +151,14 @@ describe('threadIndexGuid', () => {
   it('agrees with the archive bytes of PR_CONVERSATION_INDEX', () => {
     const bytes = Uint8Array.from(atob(threadIndex(GUID, 1)), (c) => c.charCodeAt(0))
     expect(threadIndexGuidFromBytes(bytes)).toBe(threadIndexGuid(threadIndex(GUID, 1)))
+  })
+
+  it('gives the archive and the header of one conversation the same GUID (shared/thread-index.json)', () => {
+    const vector = loadThreadIndexVector()
+    const archived = Uint8Array.from(vector.bytesHex.match(/../g) ?? [], (pair) => Number.parseInt(pair, 16))
+    expect(threadIndexGuid(vector.conversationIndexBase64)).toBe(vector.guid)
+    expect(threadIndexGuid(vector.childOfBase64)).toBe(vector.guid)
+    expect(threadIndexGuidFromBytes(archived)).toBe(vector.guid)
   })
 
   it('is null for anything malformed, never an error', () => {
@@ -359,9 +389,22 @@ describe('clampSentAt', () => {
     expect(clampSentAt(early, received)).toEqual({ sentAt: early, outOfRange: false })
   })
 
-  it('puts a future Date at the receipt', () => {
+  it('puts a Date from a clock up to fifteen minutes fast at the receipt, without flagging it', () => {
+    const minute = 60_000
+    expect(SENT_AT_CLOCK_SKEW_MINUTES).toBe(15)
+    expect(clampSentAt(new Date(received.getTime() + 1), received)).toEqual({ sentAt: received, outOfRange: false })
+    expect(clampSentAt(new Date(received.getTime() + 15 * minute), received)).toEqual({
+      sentAt: received,
+      outOfRange: false,
+    })
+  })
+
+  it('puts a Date further in the future at the receipt, flagged', () => {
     expect(clampSentAt(new Date('2027-01-01T00:00:00Z'), received)).toEqual({ sentAt: received, outOfRange: true })
-    expect(clampSentAt(new Date(received.getTime() + 1), received)).toEqual({ sentAt: received, outOfRange: true })
+    expect(clampSentAt(new Date(received.getTime() + 15 * 60_000 + 1), received)).toEqual({
+      sentAt: received,
+      outOfRange: true,
+    })
   })
 
   it('puts a Date older than thirty days at the receipt', () => {

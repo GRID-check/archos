@@ -421,7 +421,10 @@ export interface SenderVerdict {
   signerDomain: string | null
   signedHeaders: string[]
   authenticationResults: string
-  /** The Date header clamped by the thread core's `clampSentAt` (`[received − 30 days, received]`, else the receipt time). */
+  /**
+   * The Date header clamped by the thread core's `clampSentAt` (`[received − 30 days, received]`, else the receipt
+   * time; up to 15 minutes fast is the receipt time without `date_out_of_range`).
+   */
   sentAt: Date
   /** The Date header as sent, unclamped, or null. */
   sentAtHeader: Date | null

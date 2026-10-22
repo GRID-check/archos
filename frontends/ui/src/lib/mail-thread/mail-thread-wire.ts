@@ -13,38 +13,43 @@
 
 import { z } from 'zod'
 import { SCREENING_DETECTORS } from '@/lib/upload-screening/policy'
-import { SENDER_TRUSTS, THREAD_MATCH_HEADERS, THREAD_MATCH_STRENGTHS } from './mail-threading'
+import type { SenderTrust } from '@/lib/inbound-mail/inbound-mail-vocabulary'
+import {
+  THREAD_MATCH_HEADERS,
+  THREAD_MATCH_STRENGTHS,
+  type MailThreadAttachmentLink,
+  type MailThreadCalendarEvent,
+  type MailThreadEntrySource,
+  type MailThreadFiledVia,
+  type MailThreadMaskedSpan,
+  type MailThreadParticipant,
+  type MailThreadQuote,
+  type ThreadMatch,
+} from './mail-thread-vocabulary'
 
 const uuid = z.string().uuid()
 const isoDateTime = z.string().datetime({ offset: true })
 
-/** Where a filed message came from: the project's address, or a person's Outlook archive (D33). */
-export const MAIL_THREAD_ENTRY_SOURCES = ['inbound', 'archive'] as const
-export type MailThreadEntrySource = (typeof MAIL_THREAD_ENTRY_SOURCES)[number]
-
-/** How a message was filed: decided in the app, by an outside agent as the person, through a Piloti card, or by a follow. */
-export const MAIL_THREAD_FILED_VIA = ['app', 'agent', 'piloti_proposal', 'follow', 'archive_import'] as const
-export type MailThreadFiledVia = (typeof MAIL_THREAD_FILED_VIA)[number]
-
-/** Why a follow ended (`mail_thread_follows.ended_reason`, D31). */
-export const MAIL_THREAD_FOLLOW_END_REASONS = [
-  'unfollowed',
-  'expired',
-  'access_lost',
-  'address_rotated',
-  'detached',
-  'document_gone',
-  'revoked_by_manager',
-] as const
-export type MailThreadFollowEndReason = (typeof MAIL_THREAD_FOLLOW_END_REASONS)[number]
-
-/** A follow's length unless the person asks for another, and the most it may run (D31). */
-export const MAIL_THREAD_FOLLOW_DEFAULT_DAYS = 60
-export const MAIL_THREAD_FOLLOW_MAX_DAYS = 180
-
-/** A thread's bounds (D11): past either, the next message is offered as „Als Fortsetzung ablegen“. */
-export const MAIL_THREAD_MAX_ENTRIES = 200
-export const MAIL_THREAD_MAX_RENDERED_BYTES = 2 * 1024 * 1024
+// The tuples, bounds and JSON shapes the `mail_thread*` tables CHECK and type
+// are the vocabulary's (migration 0184); the schemas below parse that JSON.
+export {
+  MAIL_THREAD_ENTRY_SOURCES,
+  MAIL_THREAD_FILED_VIA,
+  MAIL_THREAD_FOLLOW_END_REASONS,
+  MAIL_THREAD_FOLLOW_DEFAULT_DAYS,
+  MAIL_THREAD_FOLLOW_MAX_DAYS,
+  MAIL_THREAD_MAX_ENTRIES,
+  MAIL_THREAD_MAX_RENDERED_BYTES,
+  type MailThreadAttachmentLink,
+  type MailThreadCalendarEvent,
+  type MailThreadEntrySource,
+  type MailThreadFiledVia,
+  type MailThreadFollowEndReason,
+  type MailThreadMaskedSpan,
+  type MailThreadParticipant,
+  type MailThreadQuote,
+} from './mail-thread-vocabulary'
+import { MAIL_THREAD_FOLLOW_DEFAULT_DAYS, MAIL_THREAD_FOLLOW_MAX_DAYS } from './mail-thread-vocabulary'
 
 export const MAIL_THREAD_LIST_LIMIT = 50
 
@@ -60,7 +65,7 @@ export const mailThreadParticipantSchema = z.object({
   name: z.string().max(300).nullable(),
   address: z.string().min(1).max(320),
 })
-export type MailThreadParticipant = z.infer<typeof mailThreadParticipantSchema>
+mailThreadParticipantSchema satisfies z.ZodType<MailThreadParticipant>
 
 /**
  * A span of the own text masked when the person chose „Unkenntlich ablegen“
@@ -74,11 +79,11 @@ export const mailThreadMaskedSpanSchema = z
     end: z.number().int().nonnegative(),
   })
   .refine((span) => span.end > span.start, { message: 'A masked span ends after it starts' })
-export type MailThreadMaskedSpan = z.infer<typeof mailThreadMaskedSpanSchema>
+mailThreadMaskedSpanSchema satisfies z.ZodType<MailThreadMaskedSpan>
 
 /** One quoted block the reader split off the own text (`quoted`), in the order it appeared. */
 export const mailThreadQuoteSchema = z.object({ text: z.string().max(524_288) })
-export type MailThreadQuote = z.infer<typeof mailThreadQuoteSchema>
+mailThreadQuoteSchema satisfies z.ZodType<MailThreadQuote>
 
 /** One calendar invitation the message carried (`calendar`), as the Python reader gives it, in UTC. */
 export const mailThreadCalendarEventSchema = z.object({
@@ -90,7 +95,7 @@ export const mailThreadCalendarEventSchema = z.object({
   location: z.string().max(500).nullable(),
   status: z.string().max(40).nullable(),
 })
-export type MailThreadCalendarEvent = z.infer<typeof mailThreadCalendarEventSchema>
+mailThreadCalendarEventSchema satisfies z.ZodType<MailThreadCalendarEvent>
 
 /**
  * One attachment of the message (`attachment_links`), written once, when the
@@ -111,7 +116,7 @@ export const mailThreadAttachmentLinkSchema = z.object({
   visibleWithThread: z.boolean(),
   nameReleased: z.boolean(),
 })
-export type MailThreadAttachmentLink = z.infer<typeof mailThreadAttachmentLinkSchema>
+mailThreadAttachmentLinkSchema satisfies z.ZodType<MailThreadAttachmentLink>
 
 /** One thread a held mail matched (`inbound_mails.thread_match`): ids and strengths, never names (D9). */
 export const threadMatchSchema = z.object({
@@ -119,6 +124,7 @@ export const threadMatchSchema = z.object({
   strength: z.enum(THREAD_MATCH_STRENGTHS),
   headers: z.array(z.enum(THREAD_MATCH_HEADERS)).max(THREAD_MATCH_HEADERS.length),
 })
+threadMatchSchema satisfies z.ZodType<ThreadMatch>
 export const threadMatchListSchema = z.array(threadMatchSchema).max(50)
 
 // ------------------------------------------------------------ requests
@@ -220,7 +226,7 @@ export interface MailThreadEntryView {
   senderName: string | null
   senderDomain: string | null
   signerDomain: string | null
-  senderTrust: (typeof SENDER_TRUSTS)[number]
+  senderTrust: SenderTrust
   sentAt: string
   receivedAt: string
   /** The Fassung the message first appeared in. */
