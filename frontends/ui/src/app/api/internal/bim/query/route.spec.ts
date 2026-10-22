@@ -251,4 +251,55 @@ describe('POST /api/internal/bim/query', () => {
       expect(runBimQuery).not.toHaveBeenCalled()
     })
   })
+
+  // The office shelf (Büroablage) is in every project's model scope so a model can
+  // be named. It is never the project's own building: a project with no upload
+  // used to be answered with the shelf's single sample model.
+  describe('a project with no IFC model of its own', () => {
+    const SAMPLE = model({
+      id: '55555555-5555-5555-5555-555555555555',
+      filename: 'Ifc2x3_SampleCastle.ifc',
+      projectId: null,
+    })
+    const overview = { organizationId: 'org-1', projectId: PROJECT, query: { op: 'overview' } }
+
+    beforeEach(() => {
+      vi.mocked(listBimModels).mockResolvedValue([SAMPLE])
+    })
+
+    it('does not read the shelf model unasked, and lists it as the shelf’s', async () => {
+      const body = await (await post(overview)).json()
+
+      expect(runBimQuery).not.toHaveBeenCalled()
+      expect(body).toMatchObject({
+        resolved: false,
+        reason: 'no_own_model',
+        models: [{ filename: SAMPLE.filename, shelf: 'office', projectId: null }],
+      })
+    })
+
+    it('reads a shelf model that is named, and states that it is not the project’s', async () => {
+      vi.mocked(runBimQuery).mockResolvedValue({
+        op: 'overview',
+        model: { id: SAMPLE.id, filename: SAMPLE.filename, schema: 'IFC2X3', elementCount: 12 },
+        summary: 'ok',
+      })
+
+      const body = await (await post({ ...overview, modelName: 'castle' })).json()
+
+      expect(body).toMatchObject({
+        resolved: true,
+        selection: { shelf: 'office', projectId: null, projectHasOwnModel: false },
+      })
+    })
+
+    it('prefers the project’s own model over a shelf model when none is named', async () => {
+      vi.mocked(listBimModels).mockResolvedValue([SAMPLE, NEW])
+
+      const body = await (await post(overview)).json()
+
+      expect(vi.mocked(runBimQuery).mock.calls[0][1]).toMatchObject({ modelId: NEW.id })
+      expect(body).toMatchObject({ resolved: true, selection: { shelf: 'project', projectHasOwnModel: true } })
+    })
+  })
 })

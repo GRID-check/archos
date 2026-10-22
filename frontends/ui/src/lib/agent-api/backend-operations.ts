@@ -202,7 +202,8 @@ const ENTRIES = [
       'sum, avg, min or max, optionally grouped). `filters` is a JSON object (`ifcTypes`, `storeys`, `nameContains`, `material`, ' +
       '`classification`, `properties` with operators eq, neq, contains, gt, gte, lt, lte, exists, missing); only elements, ' +
       'aggregate and takeoff take it, and an unknown key is rejected. Storey names match exactly: copy them from `overview`. ' +
-      '`model_name` picks one model when the project has several. A compliance result is never a statement that the building ' +
+      '`model_name` picks one model. Without it only the project’s own model is read; with none, the call says so and ' +
+      'lists office-shelf models (no project’s, often samples), read only when named, and the answer then says so. A compliance result is never a statement that the building ' +
       'complies: it reads published values only. A missing value is a fact about the export, not the building. Report numbers and ' +
       'caveat lines as returned; never recompute them.',
     needsProject: true,

@@ -179,6 +179,45 @@ class TestRender:
         assert "Mehrere Modelle." in rendered
         assert "haus-a.ifc (ready, 120 elements)" in rendered
 
+    def test_a_project_without_its_own_model_is_told_so_before_the_shelf_is_listed(self):
+        rendered = _render(
+            {
+                "resolved": False,
+                "reason": "no_own_model",
+                "message": "Dieses Projekt hat kein eigenes IFC-Modell.",
+                "models": [{"filename": "Castle.ifc", "status": "ready", "elements": 120, "shelf": "office"}],
+            }
+        )
+        assert "NO IFC model of its own" in rendered
+        assert "Castle.ifc (ready, 120 elements, office shelf, not the project's)" in rendered
+        assert "never present it as this project's building" in rendered
+
+    def test_an_answer_from_a_shelf_model_opens_with_a_notice(self):
+        rendered = _render(
+            {
+                "resolved": True,
+                "op": "overview",
+                "model": {"filename": "Castle.ifc"},
+                "summary": "6 storeys",
+                "selection": {"shelf": "office", "projectId": None, "projectHasOwnModel": False},
+            }
+        )
+        first = rendered.splitlines()[0]
+        assert first.startswith("NOTICE: this is an office-shelf model")
+        assert "no IFC model of its own" in first
+
+    def test_an_answer_from_the_projects_own_model_has_no_notice(self):
+        rendered = _render(
+            {
+                "resolved": True,
+                "op": "overview",
+                "model": {"filename": "Haus.ifc"},
+                "summary": "3 storeys",
+                "selection": {"shelf": "project", "projectId": "p", "projectHasOwnModel": True},
+            }
+        )
+        assert "NOTICE" not in rendered
+
     def test_an_unresolved_result_with_no_models_is_just_the_message(self):
         assert _render({"resolved": False, "message": "Kein Modell hinterlegt."}) == "Kein Modell hinterlegt."
 
