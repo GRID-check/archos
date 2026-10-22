@@ -165,6 +165,10 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
     revision_of = (request.revision_of or "").strip()
     if revision_of:
         config["revision_of"] = revision_of
+    # A person's choice at filing: what this document is (its type tag). The
+    # job stores it as their type tag, which no classifier pass replaces.
+    if request.document_type:
+        config["document_type"] = request.document_type
     # The org id, so the detached ingest thread resolves the tenant's BYOK
     # VLM credential and runtime model override.
     if organization_id:

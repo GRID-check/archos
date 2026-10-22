@@ -87,6 +87,7 @@ import {
 } from './repository'
 import { makeDocument } from '@/test-utils/db-fixtures'
 import { internalRead } from '@/lib/documents/document-reader'
+import { DOCUMENT_TYPE_TAGS } from './tag-vocabulary'
 import {
   INGEST_DISPATCH_FAILED_MESSAGE,
   RENDITION_REQUIRED_MESSAGE,
@@ -533,6 +534,22 @@ describe('the ingest dispatch sends the document folder path', () => {
     expect(bodyOf(1)).not.toHaveProperty('revision_of')
   })
 
+  it('sends the document type the filing chose, as document_type', async () => {
+    // The backend twin is `frontends/aiq_api/tests/test_ingest_document_type.py`; the key is
+    // pinned across the seam by `ingest-document-type-contract.spec.ts`.
+    await dispatchDocument({ ...input('letter.pdf'), documentType: DOCUMENT_TYPE_TAGS[7] })
+
+    expect(bodyOf(0).document_type).toBe(DOCUMENT_TYPE_TAGS[7])
+  })
+
+  it('sends no document_type at all for a filing that chose none', async () => {
+    await dispatchDocument(input('plan.pdf'))
+    await dispatchDocument({ ...input('plan.pdf'), documentType: null })
+
+    expect(bodyOf(0)).not.toHaveProperty('document_type')
+    expect(bodyOf(1)).not.toHaveProperty('document_type')
+  })
+
   it('sends null for a document at the project root', async () => {
     // Explicitly null rather than omitted: the backend reads absent and null the
     // same way, and stating it keeps the body shape stable across shelves.
@@ -655,6 +672,30 @@ describe('an office file is converted, by a job, before it is ingested', () => {
     await ingested()
 
     expect(bodyOf(0).revision_of).toBe('Baubeschreibung_Index_A.docx')
+  })
+
+  it('carries the chosen document type through the conversion to the ingest', async () => {
+    await dispatchDocument({ ...input('Baubeschreibung.docx'), documentType: DOCUMENT_TYPE_TAGS[6] })
+
+    expect(queuedJob()).toMatchObject({
+      kind: 'office_rendition',
+      payload: expect.objectContaining({ documentType: DOCUMENT_TYPE_TAGS[6] }),
+    })
+    await runQueuedJob()
+    await ingested()
+
+    expect(bodyOf(0).document_type).toBe(DOCUMENT_TYPE_TAGS[6])
+  })
+
+  it('reads a queued type the vocabulary no longer holds as no choice, and still ingests', async () => {
+    // A job queued before a vocabulary change: the classifier types the file,
+    // where sending the stale value would be a 422 and a failed document.
+    await dispatchDocument({ ...input('Baubeschreibung.docx'), documentType: DOCUMENT_TYPE_TAGS[6] })
+    queuedJob().payload.documentType = 'a-retired-token'
+    await runQueuedJob()
+    await ingested()
+
+    expect(bodyOf(0)).not.toHaveProperty('document_type')
   })
 
   it('keeps a workbook on its own extractor: preview_ref only', async () => {

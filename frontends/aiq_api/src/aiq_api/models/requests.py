@@ -247,6 +247,27 @@ class IngestRequest(BaseModel):
             "(e.g. 'Brandschutz/Fluchtwege'). Omit or null for the project root."
         ),
     )
+    document_type: str | None = Field(
+        None,
+        description=(
+            "The document type a person chose for this file when it was filed: one of the controlled "
+            "document-type tags (`DOCUMENT_TYPE_TAGS`). The ingest job stores it as the person's type "
+            "tag, beside the discipline tags the classifier reads, so neither this read nor a later one "
+            "replaces it; a person's later edit of the tags still does. Anything outside the vocabulary "
+            "is a 422. Omit to let the classifier decide, as for every upload before this field existed."
+        ),
+    )
+
+    @field_validator("document_type")
+    @classmethod
+    def _known_document_type(cls, value: str | None) -> str | None:
+        """Only a tag of the controlled vocabulary: the store keeps whatever it is handed."""
+        from aiq_agent.knowledge.document_classification import DOCUMENT_TYPE_TAGS
+
+        if value is not None and value not in DOCUMENT_TYPE_TAGS:
+            raise ValueError(f"document_type must be one of {', '.join(DOCUMENT_TYPE_TAGS)}")
+        return value
+
     file_name: str | None = Field(
         None,
         description=(
