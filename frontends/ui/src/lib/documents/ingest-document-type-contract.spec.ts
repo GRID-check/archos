@@ -46,6 +46,27 @@ const ingestRequest = (): string => {
   return body![1]!
 }
 
+/**
+ * The strings of a Python tuple literal, in order. An element is a string
+ * literal or the name of a module-level string constant (`CORRESPONDENCE_TAG`,
+ * which the classifier prompt names too), resolved from the same module; an
+ * element of any other shape fails the spec rather than being skipped.
+ */
+const tupleValues = (body: string): string[] =>
+  body
+    .split('\n')
+    .map((line) => line.replace(/#.*$/, '').trim().replace(/,$/, ''))
+    .filter((element) => element !== '')
+    .map((element) => {
+      const literal = /^"([^"]+)"$/.exec(element)
+      if (literal) return literal[1]!
+      const constant = /^[A-Z][A-Z0-9_]*$/.test(element)
+        ? new RegExp(`^${element}(?::\\s*str)?\\s*=\\s*"([^"]+)"`, 'm').exec(VOCABULARY)
+        : null
+      expect(constant, `${element} in DOCUMENT_TYPE_TAGS is neither a string nor a string constant`).not.toBeNull()
+      return constant![1]!
+    })
+
 describe('ingest document type contract', () => {
   it('sends the key IngestRequest declares', () => {
     expect(ingestRequest()).toMatch(new RegExp(`^\\s{4}${sentKey()}: str \\| None = Field\\(`, 'm'))
@@ -63,8 +84,7 @@ describe('ingest document type contract', () => {
     // Python side of the same pin.
     const tuple = /^DOCUMENT_TYPE_TAGS: tuple\[str, \.\.\.\] = \(([\s\S]*?)^\)/m.exec(VOCABULARY)
     expect(tuple, 'DOCUMENT_TYPE_TAGS not found in document_classification.py').not.toBeNull()
-    const backend = Array.from(tuple![1]!.matchAll(/"([^"]+)"/g), (match) => match[1])
-    expect([...DOCUMENT_TYPE_TAGS]).toEqual(backend)
+    expect([...DOCUMENT_TYPE_TAGS]).toEqual(tupleValues(tuple![1]!))
   })
 
   it('carries the key from the request into the job config the ingest job reads', () => {
