@@ -189,7 +189,13 @@ slice makes the folder again and files the mail into it.
 
 The archive is staged under the project's prefix, so deleting the project
 mid-import erases it with the project, and the purge aborts an upload still open
-there (`purger/storage.js`, `abortMultipartUploads`).
+there (`purger/storage.js`, `abortMultipartUploads`). The stage is
+`org/<org>/project/<project>/mail-imports/<import id>/archive`, and
+`mail-imports` is a reserved key segment (`RESERVED_DERIVED_SEGMENTS` in
+`lib/s3.ts`): a person's folder of that name is stored as `_mail-imports`, so
+no document ever sits under the stage. The archive is deleted by its exact
+key; the reservation is what would keep a delete by prefix from reaching a
+document.
 
 ## Switching it on
 
