@@ -227,10 +227,21 @@ entry points carry `_meta["anthropic/alwaysLoad"]` so they stay loaded: the four
 meta-tools, and `project-list`, `knowledge-search` and `files-list` in `tools`
 mode.
 
-Both protocol eras answer one JSON body to a client that accepts JSON
-(`createAgentDoorHandler`, `mcp-server.ts`): the SDK's 2025-era fallback streams
-whatever the handler's `responseMode`, and refuses (406) a client that does not
-name both `application/json` and `text/event-stream`.
+Every call answers one JSON body to a client that accepts JSON
+(`createAgentDoorHandler`, `mcp-server.ts`), with one exception on the
+2026-07-28 era: the handler answers `responseMode: 'auto'`, which upgrades a
+call to SSE only when it sends a message before its result, and the only such
+call is `piloti-ask-create` with a `progressToken` ([Consulting Piloti](#consulting-piloti-and-the-a2a-door)).
+The server declares no `logging`, and asking for input is a result, not a
+message; `ask-calls.spec.ts` holds every other call to `application/json`. The
+2025-era path (Piloti's own client) is its own transport with
+`enableJsonResponse`: the SDK's fallback streams whatever the handler's
+`responseMode`, and refuses (406) a client that does not name both
+`application/json` and `text/event-stream`, so the door serves that era itself.
+The edge lets a stream through: the app route's Envoy policies give 3600 s
+(`requestTimeout`, `streamIdleTimeout`), no compressor sits on it, and the SDK's
+SSE headers (`Cache-Control: no-transform`, `X-Accel-Buffering: no`) keep
+Next.js from compressing it, as for `/api/stream`.
 
 The mode was called `discovery` until October 2026, and the server still
 accepts that name (header `x-piloti-mcp-mode` or `?mode=`). MCP's own
@@ -833,6 +844,40 @@ A completed answer carries `answer.sources` (`documentId`, `name`, `page`, and a
 `url` that opens the cited page in Piloti for the asker) and `answer.confidence`,
 both as the answer's message stored them and absent where it stored none: an
 answer with neither is not grounded in a document.
+
+**The wait, on the 2026-07-28 era** (`ask-calls.ts`). The ask is the one door
+call whose wait is ours; `task-run-start`, the uploads and `document-reingest`
+queue work and answer at once, so they have nothing to report. A client chooses
+how to wait, per call, in standard MCP:
+
+- *Progress.* A `piloti-ask-create` call carrying `_meta.progressToken` starts
+  the ask without the route's wait, then reads it with `piloti-ask-get` in waits
+  of at most five seconds and sends `notifications/progress` between them:
+  `progress` is the elapsed seconds, `total` the wait budget (`waitSeconds`,
+  default 40), `message` the ask's state. The call ends with the ask as
+  `piloti-ask-create` would have answered it. Each read is recorded as a
+  `piloti-ask-get` call.
+- *Tasks.* The server advertises the `io.modelcontextprotocol/tasks` extension
+  (SEP-2663) in `server/discover` to a caller that runs the ask operations
+  itself. A call whose own `clientCapabilities` declares it gets a
+  `CreateTaskResult` (`resultType: "task"`) the moment the ask is stored, with
+  the ask id as `taskId`, `ttlMs: null` (the ask lives with its conversation)
+  and `pollIntervalMs` from `pollAfterSeconds`; an ask that ended at once
+  (budget, a busy thread) is answered as the plain call instead. `tasks/get`
+  reads the ask through `piloti-ask-get`: `submitted` and `working` are
+  `working`, `canceled` is `cancelled`, and every other end is `completed` with
+  the tool result inline (a `failed` or `rejected` ask is a tool result, as
+  today; the task status `failed` is for JSON-RPC errors). `tasks/cancel` runs
+  `piloti-ask-cancel` and acknowledges, also for an ask that had ended;
+  `tasks/update` acknowledges, since an ask never asks back. Each runs as the
+  person, so the route's own rule (the asker only) decides; an id that names
+  none of theirs is `-32602`, a request that does not declare the extension
+  `-32021`. The task store is the `piloti_asks` table, so any replica answers
+  and `Mcp-Name` routing is not needed. Task status notifications
+  (`subscriptions/listen` with `taskIds`) are not offered; clients poll.
+
+A client that asks for neither, and the 2025-era path, get the single call that
+waits up to 40 seconds.
 
 **The recursion lock.** In-product Piloti only proposes writes, and
 `lib/proposals/operation-applier.ts` neither files nor applies an ask, so no

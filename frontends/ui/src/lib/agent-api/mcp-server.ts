@@ -22,7 +22,7 @@ import {
   fromJsonSchema,
   isLegacyRequest,
 } from '@modelcontextprotocol/server'
-import type { StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server'
+import type { ServerContext, StandardSchemaWithJSON, ToolAnnotations } from '@modelcontextprotocol/server'
 import type { BackendOperation } from './backend-operations'
 import type { OperationInput } from './dispatch'
 import {
@@ -40,6 +40,7 @@ import { type AgentOperation, annotationsOf } from './operation'
 import { type AgentDoor, doorOfPrincipal, visibleBackendOperations, visibleOperations } from './policy'
 import type { AgentPrincipal } from './principal'
 import { registerDoorGuide } from './door'
+import { ASK_CREATE, TASKS_EXTENSION, offersAskTasks, registerAskTasks, runAskCreate } from './ask-calls'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -128,11 +129,30 @@ export function listedAnnotations(annotations: ToolAnnotations): ToolAnnotations
   }
 }
 
-function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
-  const handlers: Record<MetaToolName, (args: unknown) => ReturnType<typeof callOperationTool> | ReturnType<typeof searchOperations>> = {
+/**
+ * The era a server instance answers. Only the 2026-07-28 era can stream a
+ * call's progress or hand out a task; the 2025-era path answers one JSON body.
+ */
+export type DoorEra = 'modern' | 'legacy'
+
+type ToolCall = ServerContext | null
+
+/** call-operation, except that asking Piloti may report progress or become a task (`ask-calls.ts`). */
+function callOperationFor(ctx: McpCallContext, args: unknown, call: ToolCall) {
+  const asks = call && typeof args === 'object' && args !== null && (args as { name?: unknown }).name === ASK_CREATE
+  const input = asks ? (args as { input?: unknown }).input : undefined
+  if (asks && (input === undefined || (typeof input === 'object' && input !== null && !Array.isArray(input)))) {
+    return runAskCreate(ctx, (input ?? {}) as OperationInput, call)
+  }
+  return callOperationTool(ctx, args)
+}
+
+function registerMetaTools(server: McpServer, ctx: McpCallContext, era: DoorEra): void {
+  type Handler = (args: unknown, call: ToolCall) => ReturnType<typeof callOperationTool> | ReturnType<typeof searchOperations>
+  const handlers: Record<MetaToolName, Handler> = {
     'search-operations': (args) => searchOperations(ctx, args),
     'describe-operation': (args) => describeOperation(ctx, args),
-    'call-operation': (args) => callOperationTool(ctx, args),
+    'call-operation': (args, call) => callOperationFor(ctx, args, call),
     'report-missing-operation': (args) => reportMissingOperation(ctx, args),
   }
   for (const [name, tool] of Object.entries(metaToolsFor(ctx.principal)) as [MetaToolName, ReturnType<typeof metaToolsFor>[MetaToolName]][]) {
@@ -151,12 +171,12 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
         },
         _meta: ALWAYS_LOAD_META,
       },
-      (args: unknown) => handlers[name](args),
+      (args: unknown, call: ServerContext) => handlers[name](args, era === 'modern' ? call : null),
     )
   }
 }
 
-function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
+function registerOperationTools(server: McpServer, ctx: McpCallContext, era: DoorEra): void {
   for (const op of visibleOperations(ctx.principal)) {
     server.registerTool(
       op.name,
@@ -167,7 +187,9 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
         annotations: listedAnnotations(annotationsOf(op)),
         ...(ALWAYS_LOAD.has(op.name) ? { _meta: ALWAYS_LOAD_META } : {}),
       },
-      (args: unknown) => runOperation(ctx, op.name, (args ?? {}) as OperationInput),
+      op.name === ASK_CREATE && era === 'modern'
+        ? (args: unknown, call: ServerContext) => runAskCreate(ctx, (args ?? {}) as OperationInput, call)
+        : (args: unknown) => runOperation(ctx, op.name, (args ?? {}) as OperationInput),
     )
   }
   // The Python agent's read tools: flat arguments, read-only, and open-world only where they reach beyond the workspace.
@@ -198,13 +220,24 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
   )
 }
 
-export function buildMcpServer(principal: AgentPrincipal, mode: McpMode): McpServer {
+/**
+ * The server for one request. `era` is the protocol era the request was
+ * classified as: a 2026-07-28 server also offers the tasks extension (to a
+ * caller that may ask Piloti) and reports progress, which the 2025-era JSON
+ * path cannot carry.
+ */
+export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: DoorEra = 'legacy'): McpServer {
   const { name, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
-  const server = new McpServer({ name, version: '1.0.0' }, { instructions })
+  const tasks = era === 'modern' && offersAskTasks(principal)
+  const server = new McpServer(
+    { name, version: '1.0.0' },
+    { instructions, ...(tasks ? { capabilities: { extensions: { [TASKS_EXTENSION]: {} } } } : {}) },
+  )
   const ctx: McpCallContext = { principal, mode }
-  if (mode === 'tools') registerOperationTools(server, ctx)
-  else registerMetaTools(server, ctx)
+  if (mode === 'tools') registerOperationTools(server, ctx, era)
+  else registerMetaTools(server, ctx, era)
   registerDoorGuide(server, ctx)
+  if (tasks) registerAskTasks(server, ctx)
   return server
 }
 
@@ -256,19 +289,26 @@ async function serveLegacyAsJson(request: Request, authInfo: AuthInfo | undefine
 }
 
 /**
- * The agent door's MCP handler: 2026-07-28 traffic through the SDK's handler,
- * JSON only; 2025-era traffic (Piloti's own client among it) through
- * {@link serveLegacyAsJson}, so both eras answer JSON to a client that accepts
- * it. The principal and mode travel in `authInfo.extra`, the SDK's documented
- * pass-through for keying a factory off the caller.
+ * The agent door's MCP handler: 2026-07-28 traffic through the SDK's handler;
+ * 2025-era traffic (Piloti's own client among it) through
+ * {@link serveLegacyAsJson}, which answers one JSON body.
+ *
+ * The modern handler answers `auto`: a call that sends no message before its
+ * result (every call but a `piloti-ask-create` that carries a progress token)
+ * is one JSON body; that one call is upgraded to an SSE stream carrying its
+ * `notifications/progress` and then the result. Nothing else here emits a
+ * message before a result: the server declares no `logging`, and asking for
+ * input is a result (`input_required`), not a message. The principal and mode
+ * travel in `authInfo.extra`, the SDK's documented pass-through for keying a
+ * factory off the caller.
  */
 export function createAgentDoorHandler(onerror: (error: Error) => void = (error) => console.error('[mcp]', error.message)) {
   const modern = createMcpHandler(
     (context) => {
       const { principal, mode } = context.authInfo?.extra as unknown as AgentDoorRequest
-      return buildMcpServer(principal, mode)
+      return buildMcpServer(principal, mode, 'modern')
     },
-    { legacy: 'reject', responseMode: 'json', onerror },
+    { legacy: 'reject', responseMode: 'auto', onerror },
   )
   return {
     async fetch(request: Request, options: { authInfo?: AuthInfo } = {}): Promise<Response> {

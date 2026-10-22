@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    An assistant connected to your workspace that asks Piloti a question can now
+    show that Piloti is still working on the answer, or come back for it later
+    without waiting.
