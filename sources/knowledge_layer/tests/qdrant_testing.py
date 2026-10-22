@@ -152,24 +152,30 @@ def qdrant_store(monkeypatch, request) -> Iterator[store_module.QdrantStore]:
     """The process-wide store, on collections its test module shares; emptied after the test.
 
     One pair per module, not per process: a module writes with one embedder
-    identity, which the collection then carries. What the first test left
-    (config, metadata, indexes) is what every later one is held to; a test
-    that changed more than the points leaves a pair the next must not inherit,
-    so the pair is then deleted and the next test makes it again.
+    identity, which the collection then carries. A pair the first test made is
+    held to the indexes the schema asks for; what it left (config, metadata,
+    indexes) is what every later test is held to. A test that changed more
+    than the points leaves a pair the next must not inherit, so the pair is
+    then deleted and the next test makes it again.
     """
     suffix = _SHARED_SUFFIXES.setdefault(request.module.__name__, uuid.uuid4().hex[:10])
     store = _point_at(monkeypatch, suffix)
     client = store_module.make_client()
+    names = _collections()
+    # Read before the test runs: a test may monkeypatch the list itself.
+    wanted_indexes = set(schema.INDEXED_FIELDS)
     try:
         yield store
     finally:
         aliases = {alias.alias_name: alias.collection_name for alias in client.get_aliases().aliases}
-        moved = any(aliases.get(name.removesuffix(schema.FIRST_VERSION)) not in (None, name) for name in _collections())
-        for name in _collections():
+        moved = any(aliases.get(name.removesuffix(schema.FIRST_VERSION)) not in (None, name) for name in names)
+        for name in names:
             before, after = _SIGNATURES.get(name), _signature(client, name)
             if after is None:
                 _SIGNATURES.pop(name, None)
-            elif moved or before not in (None, after):
+                continue
+            reshaped = set(after[1]) != wanted_indexes if before is None else before != after
+            if moved or reshaped:
                 client.delete_collection(name)
                 _SIGNATURES.pop(name, None)
             else:

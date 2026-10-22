@@ -502,17 +502,17 @@ WebSocket handshake.
 
 ## 5. Project summary / fact-sheet
 
-The project brief (no panel renders it any more: `project-brief.tsx`, mounted
-by nothing, was removed on 2026-10-22) is the AI `summary` from `projects.profile_display`
-plus a fact sheet derived **at render time from the raw `projects.profile`** via
-`buildProjectBriefView` (`lib/project-profile/brief-view.ts`): facts grouped in
-intake-stage order with question/option labels ("Main use: Residential", not
-"hauptnutzung: wohnen"), goal focus areas, unanswered questions as links back
-into the wizard, a completeness count, and agent-suggested `assumptions` with
-confirm/dismiss actions (confirm graduates the value into a `user_confirmed`
-fact through the same patches endpoint the agent's `project_profile_patch`
-cards use). `buildProjectProfileDisplay` (the stored `profile_display`
-projection) uses the same labels.
+The project brief is the AI `summary` from `projects.profile_display` plus a
+fact sheet derived from the raw `projects.profile` via `buildProjectBriefView`
+(`lib/project-profile/brief-view.ts`): facts grouped in intake-stage order with
+question/option labels ("Main use: Residential", not "hauptnutzung: wohnen"),
+goal focus areas, the unanswered questions, a completeness count, and the
+agent-suggested `assumptions`. The prompt view, the patch preview, the profile
+service and the research report read it; no panel shows it any longer (the
+overview's brief panel, `project-brief.tsx`, was mounted by nothing and was
+removed on 2026-10-22, with its wizard links and confirm/dismiss actions).
+`buildProjectProfileDisplay` (the stored `profile_display` projection) uses the
+same labels.
 
 ### Agent-driven brief updates (project_profile_patch)
 
