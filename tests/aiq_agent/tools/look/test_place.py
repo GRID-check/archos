@@ -121,7 +121,7 @@ class TestTheWireDrawsAPlaceAndNeverLaw:
         assert wire["regions"] == [{"box": [0.1, 0.2, 0.4, 0.6]}]
         assert "Gangbreite 1,10 m" in wire["snippet"]
 
-    def test_a_file_named_like_a_richtlinie_is_still_a_project_document(self, capture):
+    def test_a_file_named_like_a_guideline_is_still_a_project_document(self, capture):
         resolved = SimpleNamespace(file_name="OIB-RL 2 Ausgabe 2023.pdf", collection="proj_1", target=None)
         facts = place_facts(resolved, 1, (0.1, 0.1, 0.2, 0.2), None)
         [entry] = extract_sources_from_tool_result(

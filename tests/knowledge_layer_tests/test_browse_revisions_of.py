@@ -431,7 +431,7 @@ class TestComparing:
         text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
         assert "„Plan_Index_A.pdf“ (older) → „Plan_Index_B.pdf“ (newer)" in text
-        assert "Seite 2: Werte: Fluchtweglänge 38 m → 42 m." in text
+        assert "Page 2: Values: Fluchtweglänge 38 m → 42 m." in text
         # The stored change line was written against exactly this older file, so it rides along.
         assert "Wand neu" in text
 
@@ -474,8 +474,8 @@ class TestComparing:
 
         text = await self._call(revisions_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
 
-        assert "Seiten: 1 → 1; 1 unverändert, 0 geändert." in text
-        assert "Im gelesenen Inhalt unterscheiden sich die beiden Dateien nicht." in text
+        assert "Pages: 1 → 1; 1 unchanged, 0 changed." in text
+        assert "In the read content the two files do not differ." in text
 
     async def test_an_unreachable_index_is_said_as_one_never_as_not_in_the_index(self, scope, stored, monkeypatch):
         from knowledge_layer.qdrant import store as store_module
