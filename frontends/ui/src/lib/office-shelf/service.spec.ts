@@ -128,7 +128,7 @@ vi.mock('@/lib/compliance/repository', () => ({
 }))
 
 vi.mock('./repository', () => ({
-  listOfficeShelfDocuments: vi.fn(),
+  listOfficeShelfDocumentLevel: vi.fn(),
   findOfficeShelfDocumentsByFilenames: vi.fn(),
   findOfficeShelfDocumentsByNames: vi.fn().mockResolvedValue([]),
   findOfficeShelfDocument: vi.fn(),
@@ -147,13 +147,15 @@ import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admissi
 import { findDocumentInOrg, findFolderPathInOfficeShelf, findLiveDocumentByFilename } from '@/lib/documents/repository'
 import { LiveFilenameTakenError, ReplacedDocumentGoneError } from '@/lib/documents/unique-conflicts'
 import {
-  listOfficeShelfDocuments,
+  listOfficeShelfDocumentLevel,
   findOfficeShelfDocument,
   findOfficeShelfDocumentsByFilenames,
   findOfficeShelfDocumentsByNames,
   deleteOfficeShelfDocument as deleteOfficeShelfDocumentRow,
 } from './repository'
-import { decodeDocumentListCursor, encodeDocumentListCursor } from '@/lib/documents/list-cursor'
+import { encodeDocumentLevelCursor } from '@/lib/documents/list-cursor'
+
+const LEVEL = { folderId: undefined, sort: 'added', dir: 'desc', limit: 100 } as const
 import {
   listOfficeShelf,
   uploadOfficeShelfDocument,
@@ -203,31 +205,27 @@ afterEach(() => {
 
 describe('listOfficeShelf', () => {
   it('returns the org archive collection name and the caller manage flag', async () => {
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [], nextCursor: null })
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [], nextCursor: null })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
     vi.mocked(canManageOfficeShelf).mockReturnValue(true)
 
-    const result = await listOfficeShelf(session)
+    const result = await listOfficeShelf(session, { level: LEVEL })
 
     expect(result.collectionName).toBe('archiv_org-1')
     expect(result.canManage).toBe(true)
-    expect(listOfficeShelfDocuments).toHaveBeenCalledWith('org-1', { cursor: undefined, reader: { kind: 'reviewer' } })
+    expect(listOfficeShelfDocumentLevel).toHaveBeenCalledWith('org-1', { level: LEVEL, reader: { kind: 'reviewer' } })
     expect(result.nextCursor).toBeNull()
   })
 
-  // The Archiv is paged, not capped: the next page's position leaves as an
-  // opaque cursor and comes back decoded to the repository.
-  it('encodes the next page position and passes a decoded cursor through', async () => {
-    const next = { createdAt: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' }
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [], nextCursor: next })
+  // The Archiv is paged, not capped: the next page's position leaves as an opaque level cursor.
+  it('encodes the next page position', async () => {
+    const next = { sort: 'added', dir: 'desc', value: '2026-01-01T00:00:00.123456', id: '00000000-0000-4000-8000-000000000001' } as const
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [], nextCursor: next })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
-    const cursor = { createdAt: '2026-02-01T00:00:00.000001', id: '00000000-0000-4000-8000-000000000002' }
 
-    const result = await listOfficeShelf(session, { cursor })
+    const result = await listOfficeShelf(session, { level: LEVEL })
 
-    expect(listOfficeShelfDocuments).toHaveBeenCalledWith('org-1', { cursor, reader: { kind: 'reviewer' } })
-    expect(result.nextCursor).toBe(encodeDocumentListCursor(next))
-    expect(decodeDocumentListCursor(result.nextCursor ?? '')).toEqual(next)
+    expect(result.nextCursor).toBe(encodeDocumentLevelCursor(next))
   })
 
   // The query keeps a `pending` row; the reconcile on the way out may turn it
@@ -235,19 +233,19 @@ describe('listOfficeShelf', () => {
   it('narrows again after the reconcile turns a row quarantined (ADR-0086)', async () => {
     const row = (id: string, createdBy: string) =>
       ({ id, filename: `${id}.pdf`, status: 'pending', createdBy, metadata: null }) as never
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [row('mine', 'user-1'), row('theirs', 'user-2')], nextCursor: null })
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [row('mine', 'user-1'), row('theirs', 'user-2')], nextCursor: null })
     vi.mocked(reconcileDocumentStatuses).mockImplementation(async (rows) =>
       rows.map((r) => ({ ...r, status: 'quarantined' }))
     )
     vi.mocked(canManageOfficeShelf).mockReturnValue(false)
 
-    const result = await listOfficeShelf(session)
+    const result = await listOfficeShelf(session, { level: LEVEL })
 
     expect(result.documents.map((doc) => doc.id)).toEqual(['mine'])
   })
 
   it('strips the internal metadata jsonb from every returned row', async () => {
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [], nextCursor: null })
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [], nextCursor: null })
     const reconciled: Array<ReconcilableDocument & DocumentMetadata> = [
       {
         id: 'd1',
@@ -264,7 +262,7 @@ describe('listOfficeShelf', () => {
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue(reconciled)
     vi.mocked(canManageOfficeShelf).mockReturnValue(false)
 
-    const result = await listOfficeShelf(session)
+    const result = await listOfficeShelf(session, { level: LEVEL })
 
     expect(result.canManage).toBe(false)
     expect(result.documents[0]).not.toHaveProperty('metadata')
@@ -275,35 +273,36 @@ describe('listOfficeShelf', () => {
   // the shared shelf query unchanged — it is not a second place that decides what
   // an archived or agent-written document is.
   it('passes the lifecycle and author filters to the shelf listing', async () => {
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [], nextCursor: null })
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [], nextCursor: null })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
     vi.mocked(canManageOfficeShelf).mockReturnValue(false)
 
-    await listOfficeShelf(session, { includeArchived: true, authoredBy: 'agent' })
+    await listOfficeShelf(session, { includeArchived: true, authoredBy: 'agent', level: LEVEL })
 
     // A member who does not curate the Büroablage is listed only the
     // held files they uploaded (ADR-0086).
-    expect(listOfficeShelfDocuments).toHaveBeenCalledWith('org-1', {
+    expect(listOfficeShelfDocumentLevel).toHaveBeenCalledWith('org-1', {
       includeArchived: true,
       authoredBy: 'agent',
+      level: LEVEL,
       reader: { kind: 'member', userId: 'user-1' },
     })
   })
 
   it('lists every quarantined file to a curator of the Büroablage (ADR-0086)', async () => {
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [], nextCursor: null })
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [], nextCursor: null })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
     vi.mocked(canManageOfficeShelf).mockReturnValue(true)
 
-    await listOfficeShelf(session)
+    await listOfficeShelf(session, { level: LEVEL })
 
-    expect(vi.mocked(listOfficeShelfDocuments).mock.calls[0][1]).toEqual({ reader: { kind: 'reviewer' } })
+    expect(vi.mocked(listOfficeShelfDocumentLevel).mock.calls[0][1]).toEqual({ level: LEVEL, reader: { kind: 'reviewer' } })
   })
 
   // Every row carries the fields a project's listing carries, assignees
   // included: it is the same hydration (`toListedDocuments`).
   it('hydrates rows exactly as a project listing does', async () => {
-    vi.mocked(listOfficeShelfDocuments).mockResolvedValue({ rows: [], nextCursor: null })
+    vi.mocked(listOfficeShelfDocumentLevel).mockResolvedValue({ rows: [], nextCursor: null })
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([
       {
         id: 'd1',
@@ -317,7 +316,7 @@ describe('listOfficeShelf', () => {
       },
     ])
 
-    const result = await listOfficeShelf(session)
+    const result = await listOfficeShelf(session, { level: LEVEL })
 
     expect(result.documents[0]).toMatchObject({ id: 'd1', assignees: [] })
   })
@@ -357,7 +356,7 @@ describe('searchOfficeShelfDocuments', () => {
     // The join reads the hit names directly, not the paged listing — a hit on
     // a document past the first page must still resolve.
     expect(findOfficeShelfDocumentsByFilenames).toHaveBeenCalledWith('org-1', ['plan.pdf'], { reader: { kind: 'member', userId: 'user-1' } })
-    expect(listOfficeShelfDocuments).not.toHaveBeenCalled()
+    expect(listOfficeShelfDocumentLevel).not.toHaveBeenCalled()
     // Joined against the Archiv's own reconciled rows (not the raw backend hits).
     expect(joinHitsToFiles).toHaveBeenCalledWith(backendHits, expect.arrayContaining([expect.objectContaining({ id: 'd1' })]))
     // The service returns the join result untouched — the document row plus
@@ -399,7 +398,7 @@ describe('resolveOfficeShelfDocumentsByName', () => {
     const documents = await resolveOfficeShelfDocumentsByName(session, ['alt.pdf'])
 
     expect(findOfficeShelfDocumentsByFilenames).toHaveBeenCalledWith('org-1', ['alt.pdf'], { reader: { kind: 'member', userId: 'user-1' } })
-    expect(listOfficeShelfDocuments).not.toHaveBeenCalled()
+    expect(listOfficeShelfDocumentLevel).not.toHaveBeenCalled()
     expect(documents.map((doc) => doc.id)).toEqual(['d9'])
     expect(documents[0]).not.toHaveProperty('metadata')
   })

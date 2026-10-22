@@ -21,8 +21,7 @@ export class ByNameResolveError extends Error {
   }
 }
 
-export const PROJECT_BY_NAME_PATH = '/api/documents/by-name'
-export const OFFICE_SHELF_BY_NAME_PATH = '/api/office-shelf/documents/by-name'
+export const BY_NAME_PATH = '/api/documents/by-name'
 
 /** A listing row as the resolve returns it: the listing's own wire row. */
 export type ResolvedDocumentRow = DocumentWireRow & { collectionName?: string; updatedAt?: string }
@@ -65,7 +64,7 @@ export function createDocumentByNameClient(
   const batched = async (path: string, names: readonly string[], extra: Record<string, unknown>) =>
     (await Promise.all(chunks(names).map((batch) => post(path, { ...extra, names: batch })))).flat()
   return {
-    project: (projectId, names) => batched(PROJECT_BY_NAME_PATH, names, { projectId }),
-    officeShelf: (names) => batched(OFFICE_SHELF_BY_NAME_PATH, names, {}),
+    project: (projectId, names) => batched(BY_NAME_PATH, names, { projectId }),
+    officeShelf: (names) => batched(BY_NAME_PATH, names, { scope: 'office_shelf' }),
   }
 }

@@ -25,14 +25,12 @@ export const binListQuerySchema = z.object({
     .int()
     .min(1)
     .max(BIN_PAGE_MAX)
-    .optional()
-    .describe(`Entries per page, 1 to ${BIN_PAGE_MAX}; default ${BIN_PAGE_SIZE}.`),
+    .optional(),
   cursor: z
     .string()
     .max(200)
     .refine((value) => decodeDocumentListCursor(value) !== null, { message: 'Invalid cursor' })
-    .optional()
-    .describe('The `nextCursor` of the previous page.'),
+    .optional(),
 })
 export type BinListQuery = z.infer<typeof binListQuerySchema>
 

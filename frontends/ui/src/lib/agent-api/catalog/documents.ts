@@ -2,25 +2,25 @@
 
 import { z } from 'zod'
 import { archiveRequestSchema } from '@/lib/documents/lifecycle-types'
-import { projectByNameRequestSchema } from '@/lib/documents/by-name-types'
+import { byNameRequestSchema } from '@/lib/documents/by-name-types'
 import {
+  documentFileQuerySchema,
   documentSummaryQuerySchema,
   moveDocumentSchema,
   renameDocumentSchema,
   searchDocumentsSchema,
   updateTagsSchema,
 } from '@/lib/documents/document-wire'
-import { projectNameProbeRequestSchema } from '@/lib/documents/name-probe-types'
+import { nameProbeRequestSchema } from '@/lib/documents/name-probe-types'
+import { DOCUMENT_STATUSES } from '@/lib/documents/document-status'
+import { SHELF_SCOPES } from '@/lib/documents/shelf-scope'
 import type { AgentOperation } from '../operation'
 import { MAX_UPLOAD_BYTES, documentUploadFields, uploadBodySchemaWith } from '../upload-wire'
 
 const documentParams = z.object({
-  id: z.string().describe('The document id, from a project document listing or document-search.'),
+  id: z.string().describe('The document id, from document-list or document-search.'),
 })
 
-const versionFileParams = documentParams.extend({
-  versionId: z.string().describe('The version id, from document-version-list.'),
-})
 
 /** The cap every upload operation shares (`upload-wire.ts`). */
 const SIZE_NOTE = `Up to ${MAX_UPLOAD_BYTES / (1024 * 1024)} MiB per call through the agent door; the document limit of the office applies too.`
@@ -29,9 +29,10 @@ const revisionOfField = z
   .string()
   .optional()
   .describe('The id of the older document this file is the new revision of; the service checks the pair.')
-const projectUploadBody = uploadBodySchemaWith({
-  projectId: z.string().min(1).describe('The project id, from project-list.'),
-  folderId: z.string().optional().describe('The folder id, from project-folder-list; omit for the project root.'),
+const uploadBody = uploadBodySchemaWith({
+  scope: z.enum(SHELF_SCOPES).optional(),
+  projectId: z.string().optional(),
+  folderId: z.string().optional().describe('From project-folder-list or office-shelf-folder-list; omit for the root.'),
   revisionOf: revisionOfField,
   ...documentUploadFields,
 })
@@ -42,11 +43,6 @@ const projectUploadExample = {
     fields: { projectId: '0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11' },
   },
 }
-const officeShelfUploadBody = uploadBodySchemaWith({
-  folderId: z.string().optional().describe('The office shelf folder id, from office-shelf-folder-list; omit for the root.'),
-  revisionOf: revisionOfField,
-  ...documentUploadFields,
-})
 const sessionUploadBody = uploadBodySchemaWith({
   conversationId: z
     .string()
@@ -63,7 +59,7 @@ export const documentsOperations = [
     summary: 'Read one document’s listing row',
     description:
       'One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. ' +
-      'Use document-status to follow ingestion and document-text-get for what the file says.',
+      'Use document-status to follow ingestion.',
     method: 'GET',
     path: '/api/documents/[id]',
     params: documentParams,
@@ -101,9 +97,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Move a project document to the bin',
     description:
-      'Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the ' +
-      'project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. ' +
-      'Needs write access on its folder. An office shelf document has no bin (409).',
+      'Deletes a project document restorably: out of every listing and every answer, in the project’s bin until `purgeAfter`. ' +
+      'Undo with document-restore. The office shelf has no bin (409).',
     method: 'POST',
     path: '/api/documents/[id]/bin',
     params: documentParams,
@@ -114,9 +109,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Restore a document from the bin',
     description:
-      'Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: "root"` when that ' +
-      'folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the ' +
-      'folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.',
+      'Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that ' +
+      'went with its folder is refused (409, `details.folderId`): use project-folder-restore.',
     method: 'POST',
     path: '/api/documents/[id]/restore',
     params: documentParams,
@@ -169,9 +163,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Bring an archived document back',
     description:
-      'The reverse of document-archive: the document is back in the default listings and is read into the index again. ' +
-      'Answers `{ documentId, lifecycle, ingest }`; follow `ingest: "queued"` with document-status. A document that was not ' +
-      'archived is answered `ingest: "unchanged"`. Needs write access on the document’s project.',
+      'The reverse of document-archive: back in the default listings and read into the index again. Follow ' +
+      '`ingest: "queued"` with document-status.',
     method: 'POST',
     path: '/api/documents/[id]/unarchive',
     params: documentParams,
@@ -183,8 +176,8 @@ export const documentsOperations = [
     domain: 'documents',
     summary: 'Read a document’s ingestion status',
     description:
-      'Where the document is in reading and indexing (queued, processing, ready, failed, held). Poll it after an upload; ' +
-      'on a failure call document-reingest, on a stuck run document-ingest-cancel.',
+      `Where the document is in reading and indexing: \`status\` is one of ${DOCUMENT_STATUSES.join(', ')}. Poll it after ` +
+      'an upload; on `failed` call document-reingest, on a stuck run document-ingest-cancel.',
     method: 'GET',
     path: '/api/documents/[id]/status',
     params: documentParams,
@@ -193,10 +186,10 @@ export const documentsOperations = [
   {
     name: 'document-text-get',
     domain: 'documents',
-    summary: 'Read the extracted text of a document',
+    summary: 'Read a text file’s contents',
     description:
-      'A preview of the text Piloti extracted from the document. Use it to see what a file says without opening the file; ' +
-      'it is empty until document-status reports the document as read.',
+      'The stored text of a plain text, Markdown or CSV document, up to a preview limit (`truncated` says when cut). Any other ' +
+      'type answers 415 with where to read it instead.',
     method: 'GET',
     path: '/api/documents/[id]/text',
     params: documentParams,
@@ -254,10 +247,10 @@ export const documentsOperations = [
   {
     name: 'document-search',
     domain: 'documents',
-    summary: 'Search a project’s documents by meaning',
+    summary: 'Search a shelf’s documents by meaning',
     description:
-      'Semantic search over the documents of one project (`projectId`, from project-list) for a question or phrase `q`. ' +
-      'Returns the best matching passages with their documents, up to `topK` (default set by the server). Read-only.',
+      'Semantic search over one shelf, a project’s (`projectId`, from project-list) or the office shelf (`scope: office_shelf`), ' +
+      'for a question or phrase `q`. Returns the best matching documents with a snippet, page and score, up to `topK` (1 to 100). Read-only.',
     method: 'POST',
     path: '/api/documents/search',
     body: searchDocumentsSchema,
@@ -267,10 +260,10 @@ export const documentsOperations = [
   {
     name: 'document-summary-get',
     domain: 'documents',
-    summary: 'Count a project’s documents by state',
+    summary: 'Count a shelf’s documents per folder and state',
     description:
-      'Totals for a project’s shelf (how many documents, in which reading state), matching what the listing shows. ' +
-      'Optionally filter by author kind or include archived documents.',
+      'Counts per folder by reading state for a project (`projectId`) or the office shelf (`scope: office_shelf`), matching ' +
+      'what document-list shows, plus the failed documents. Optionally filter by author kind or include archived documents.',
     method: 'GET',
     path: '/api/documents/summary',
     query: documentSummaryQuerySchema,
@@ -279,26 +272,26 @@ export const documentsOperations = [
   {
     name: 'document-by-name-resolve',
     domain: 'documents',
-    summary: 'Find a project’s documents by file name',
+    summary: 'Find documents by file name',
     description:
-      'Resolves exact file names to the project’s listing rows (`projectId` from project-list, up to the server’s name limit). ' +
-      'Use it when you know the file name but not the id. Read-only.',
+      'Resolves exact file names (case-insensitive) to listing rows on a project (`projectId`) or the office shelf ' +
+      '(`scope: office_shelf`). Use it when you know the file name but not the id; names without a match are absent. Read-only.',
     method: 'POST',
     path: '/api/documents/by-name',
-    body: projectByNameRequestSchema,
+    body: byNameRequestSchema,
     readOnly: true,
     load: () => import('@/app/api/documents/by-name/route'),
   },
   {
     name: 'document-name-match',
     domain: 'documents',
-    summary: 'Check which file names already exist in a project',
+    summary: 'Check which file names a shelf already holds',
     description:
-      'Before adding files, asks which of the given names a project already holds, with the existing document’s id, size and ' +
-      'content hash so identical bytes can be skipped. Read-only.',
+      'Before adding files, asks which of the given names a project (`projectId`) or the office shelf (`scope: office_shelf`) ' +
+      'already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.',
     method: 'POST',
     path: '/api/documents/name-matches',
-    body: projectNameProbeRequestSchema,
+    body: nameProbeRequestSchema,
     readOnly: true,
     load: () => import('@/app/api/documents/name-matches/route'),
   },
@@ -311,7 +304,7 @@ export const documentsOperations = [
     description:
       'Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. ' +
       'The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. ' +
-      'The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.',
+      'The bytes are not sent here; for a PDF use document-file-get. Records the access.',
     method: 'GET',
     path: '/api/documents/[id]/download',
     params: documentParams,
@@ -320,15 +313,16 @@ export const documentsOperations = [
   {
     name: 'document-file-get',
     domain: 'documents',
-    summary: 'Read a stored PDF’s bytes',
+    summary: 'Read a document’s or a version’s bytes',
     description:
-      'The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource ' +
-      '(base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with ' +
-      'document-download. Only PDFs are served here.',
+      'The document’s current PDF (a stored PDF, or the PDF rendition of an office document), or with `versionId` that version’s ' +
+      'own bytes of any type, as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent; ' +
+      'document-download gives a link.',
     method: 'GET',
     path: '/api/documents/[id]/file',
     params: documentParams,
-    binaryResponse: ['application/pdf'],
+    query: documentFileQuerySchema,
+    binaryResponse: ['application/pdf', 'application/octet-stream', 'image/*'],
     load: () => import('@/app/api/documents/[id]/file/route'),
   },
   {
@@ -357,49 +351,18 @@ export const documentsOperations = [
     load: () => import('@/app/api/documents/[id]/thumbnail/route'),
   },
   {
-    name: 'document-version-file-get',
-    domain: 'documents',
-    summary: 'Read the file bytes of one version',
-    description:
-      'The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource ' +
-      '(base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: "1"` marks it ' +
-      'as an attachment. Only published or superseded versions are served.',
-    method: 'GET',
-    path: '/api/documents/[id]/versions/[versionId]/file',
-    params: versionFileParams,
-    query: z.object({ download: z.literal('1').optional().describe('Send 1 to ask for the file as a download.') }),
-    binaryResponse: ['application/octet-stream', 'application/pdf', 'image/*'],
-    load: () => import('@/app/api/documents/[id]/versions/[versionId]/file/route'),
-  },
-  {
     name: 'document-upload',
     domain: 'documents',
-    summary: 'Upload a file to a project',
+    summary: 'Upload a file to a project or the office shelf',
     description:
-      `Stores one file in a project (optionally in a folder) and hands it to ingestion. ${SIZE_NOTE} ` +
-      'Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). ' +
-      'Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds ' +
-      'comes back held, and a reviewer allows it. Needs write access to the project’s documents.',
+      `Stores one file on a shelf, optionally in a folder, and ingests it. ${SIZE_NOTE} Send \`body.files[0]\` as ` +
+      '{ name, mimeType, contentBase64 } and in `body.fields` `projectId` or `scope: office_shelf`. Follow it with document-status.',
     method: 'POST',
     path: '/api/documents/upload',
-    body: projectUploadBody,
+    body: uploadBody,
     bodyEncoding: 'multipart',
     examples: [projectUploadExample],
     load: () => import('@/app/api/documents/upload/route'),
-  },
-  {
-    name: 'office-shelf-document-upload',
-    domain: 'documents',
-    summary: 'Upload a file to the office shelf',
-    description:
-      `Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. ${SIZE_NOTE} ` +
-      'Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; ' +
-      'follow ingestion with document-status.',
-    method: 'POST',
-    path: '/api/office-shelf/documents/upload',
-    body: officeShelfUploadBody,
-    bodyEncoding: 'multipart',
-    load: () => import('@/app/api/office-shelf/documents/upload/route'),
   },
   {
     name: 'session-document-upload',

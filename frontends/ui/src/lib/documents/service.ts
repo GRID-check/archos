@@ -77,7 +77,7 @@ import {
   describeBackendIngestState,
   extractIngestJobId,
 } from './reconcile-status'
-import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
+import { toListedDocuments, toListedLevelPage, type ListedDocument } from './shelf-listing'
 import { loadRevisionLinks } from './revision-links-loader'
 import { documentShelf, projectShelf } from './shelf'
 import { publishShelfChanged } from './shelf-live'
@@ -113,7 +113,6 @@ import {
 } from './repository'
 import { documentDisplayName, validateDocumentName } from './display-name'
 import { decodeTextBytes } from '@/lib/text/decode-text'
-import type { DocumentListCursor } from './list-cursor'
 import { withTenant } from '@/lib/db/tenant-context'
 import { runBimExtraction } from '@/lib/bim/service'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
@@ -529,64 +528,34 @@ export async function dispatchIngest(
 }
 
 /**
- * List one page of a project's documents (bounded, keyset-paginated), lazily
- * reconciling in-flight ingestion statuses with the backend and merging the
- * backend's read-only document metadata (summary, page/chunk counts, content
- * types). The internal `metadata` jsonb column (which carries `ingestJobId`)
- * never leaves the BFF; the curated metadata fields ride alongside as
- * top-level properties.
+ * One page of a project's documents (ADR-0102, ADR-0131): one folder level, or
+ * the whole shelf, in the reader's order, lazily reconciling in-flight
+ * ingestion statuses with the backend and merging the backend's read-only
+ * document metadata (summary, page/chunk counts, content types). The internal
+ * `metadata` jsonb column (which carries `ingestJobId`) never leaves the BFF.
  *
- * `nextCursor` is where the next page starts, `null` on the last one. The
- * listing used to be one page of 500 with nothing saying so: in a big project
- * the oldest plans were simply absent, so search, filters and the folder-upload
- * planner (which labelled them „Neu") worked on a corpus that was not the
- * project's. A client that needs the whole corpus follows the cursor.
+ * `authoredBy` is pushed down to the query rather than filtered here: the
+ * „Von Piloti" chip asks for the small minority of rows a machine wrote, and
+ * migration 0063 gave that predicate its own partial index. Archived documents
+ * have LEFT the working set, so they are absent unless the caller says
+ * otherwise (ADR-0054).
  */
 export async function listDocumentsPage(
   session: AuthorizedSession,
   projectId: string,
-  /**
-   * Narrowing options. `authoredBy` is pushed down to the query rather than
-   * filtered here: the „Von Piloti" chip asks for the small minority of rows a
-   * machine wrote, migration 0063 gave that predicate its own partial index,
-   * and filtering after the fact would read the whole project's corpus — plus
-   * reconcile and assignment-hydrate every row of it — to return a handful.
-   */
-  options: {
-    authoredBy?: DocumentAuthor
-    includeArchived?: boolean
-    cursor?: DocumentListCursor
-    /**
-     * Read one folder level in the reader's order instead of draining the
-     * shelf (ADR-0102). The same gate, reader and hydration; `cursor` is
-     * ignored beside it (the level carries its own).
-     */
-    level?: DocumentLevelQuery
-  } = {}
+  options: { authoredBy?: DocumentAuthor; includeArchived?: boolean; level: DocumentLevelQuery }
 ): Promise<{ documents: ListedDocument[]; nextCursor: string | null }> {
   await requireProjectAccess(session, projectId, 'project:view')
-
-  // `limit` is deliberately not passed: the repository's own default is the
-  // page size, and a second copy of it here could drift from the real one.
   // A file in quarantine is listed for its uploader and its reviewers only (ADR-0086).
   const reader = await shelfReaderFor(session, { scope: 'project', projectId })
-  const filters = {
+  const levelPage = await listDocumentLevelPage(projectShelf(projectId), session.organizationId, {
     hiddenFolderIds: await getHiddenFolderIds(session, projectId),
     reader,
     authoredBy: options.authoredBy,
-    // Archived documents have LEFT the working set, so they are absent unless
-    // the caller says otherwise (ADR-0054).
     includeArchived: options.includeArchived,
-  }
-  if (options.level) {
-    const levelPage = await listDocumentLevelPage(projectShelf(projectId), session.organizationId, {
-      ...filters,
-      level: options.level,
-    })
-    return toListedLevelPage(session, levelPage, reader)
-  }
-  const page = await listProjectDocumentPage(projectId, session.organizationId, { ...filters, cursor: options.cursor })
-  return toListedPage(session, page, reader)
+    level: options.level,
+  })
+  return toListedLevelPage(session, levelPage, reader)
 }
 
 /**
@@ -611,19 +580,6 @@ export async function resolveProjectDocumentsByName(
     reader,
   })
   return toListedDocuments(session, rows, reader)
-}
-
-/**
- * The FIRST page of a project's documents — {@link listDocumentsPage} without
- * the cursor. Kept for the server-side callers that want a bounded sample
- * rather than the corpus; anything that must see every document pages.
- */
-export async function listDocuments(
-  session: AuthorizedSession,
-  projectId: string,
-  options: { authoredBy?: DocumentAuthor; includeArchived?: boolean } = {}
-): Promise<ListedDocument[]> {
-  return (await listDocumentsPage(session, projectId, options)).documents
 }
 
 /**
@@ -2633,20 +2589,18 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
 }
 
 /**
- * Delete a project document: purge its RAG chunks (best-effort), remove the
- * SeaweedFS object, delete the row, and audit. Requires `project:edit` on the
- * owning project — the same permission the upload path checks. A legal hold on
- * the document, its project, its uploader or the organization refuses it with
- * a 409 before anything is erased (`@/lib/compliance/holds`). Mirrors
- * {@link import('@/lib/office-shelf/service').deleteOfficeShelfDocument}, differing only in
- * scope: per-project FGA instead of org-level `org:office_shelf:manage`.
+ * Delete a document permanently: purge its RAG chunks (best-effort), remove the
+ * SeaweedFS object, delete the row, and audit. A project document needs write
+ * on its folder; an office shelf document goes to
+ * {@link import('@/lib/office-shelf/service').deleteOfficeShelfDocument}, behind
+ * `org:office_shelf:manage`. A legal hold on the document, its project, its
+ * uploader or the organization refuses it with a 409 before anything is erased
+ * (`@/lib/compliance/holds`).
  *
- * Only `project` documents are deletable here. An Archiv id goes through the
- * org-scoped `/api/office-shelf/documents/[id]` route and a session attachment
- * through `/api/session/documents/[id]`, each with its own authorization — so
- * either surfaces as a 404 rather than being force-fit through project FGA.
- * The scope is asked for by name: "has no project" used to mean "is an Archiv
- * document" and stopped meaning that when session documents became rows.
+ * A session attachment goes through `/api/session/documents/[id]` with its own
+ * authorization, so it surfaces here as a 404. The scope is asked for by name:
+ * "has no project" used to mean "is an Archiv document" and stopped meaning that
+ * when session documents became rows.
  */
 export async function deleteDocument(
   session: AuthorizedSession,
@@ -2656,6 +2610,11 @@ export async function deleteDocument(
   // Through the hold (ADR-0086): a member who may not see a held file is told
   // it does not exist, rather than allowed to delete it.
   const doc = await findDocumentForSession(session, documentId)
+  if (doc?.scope === 'office_shelf') {
+    // Imported here: the office shelf's service imports this module.
+    const { deleteOfficeShelfDocument } = await import('@/lib/office-shelf/service')
+    return deleteOfficeShelfDocument(session, documentId, request)
+  }
   if (!doc || doc.scope !== 'project' || doc.projectId === null) throw new NotFoundError()
 
   // A delete is a write in the document's folder (ADR-0088): the project's
@@ -3041,7 +3000,13 @@ export async function getDocumentTextPreview(
 
   const contentType = doc.contentType || 'application/octet-stream'
   if (!TEXT_PREVIEW_CONTENT_TYPES.includes(contentType)) {
-    throw new ApiError(415, 'UNSUPPORTED_MEDIA_TYPE', 'Not a text document', { contentType })
+    throw new ApiError(
+      415,
+      'UNSUPPORTED_MEDIA_TYPE',
+      'Not a text document: only plain text, Markdown and CSV files are served as text. Read a PDF or an office ' +
+        'document by its pages with passage-read, or a version’s text with document-version-content-get.',
+      { contentType }
+    )
   }
 
   let bytes: Uint8Array

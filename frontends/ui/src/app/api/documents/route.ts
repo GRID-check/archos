@@ -1,25 +1,39 @@
 /**
- * Documents API — list a project's documents, one keyset page at a time
+ * Documents API — list one shelf's documents, one keyset page at a time
  * (`?cursor=` from the previous page's `nextCursor`, `null` on the last page).
+ * The shelf is `?projectId=` or `?scope=office_shelf` (`@/lib/documents/shelf-scope`);
+ * the office shelf's page also says `collectionName` and `canManage`.
  *
- * Without level parameters it is the shelf drain (`created_at DESC`, 500 a
- * page). With any of `folderId`, `sort`, `dir`, `q`, `state` or `limit` it is
- * a level read: one folder level in the reader's order, `limit` a page
- * (ADR-0102, `@/lib/documents/list-query`).
+ * Every request is a bounded page: one folder level (`folderId`) or the whole
+ * shelf, in the reader's order, `limit` a page (default 100, at most 500;
+ * ADR-0102, ADR-0131, `@/lib/documents/list-query`).
  *
- * Thin handler; all logic lives in `@/lib/documents/service`.
+ * Thin handler; the logic lives in `@/lib/documents/service` and
+ * `@/lib/office-shelf/service`.
  */
 
 import { apiRoute, parseQuery } from '@/lib/api/handler'
 import { listDocumentsPage } from '@/lib/documents/service'
 import { toDocumentWireRows } from '@/lib/documents/list-projection'
-import { documentListOptions, projectDocumentListQuerySchema } from '@/lib/documents/list-query'
+import { documentListOptions, documentListQuerySchema } from '@/lib/documents/list-query'
+import { shelfOf } from '@/lib/documents/shelf-scope'
+import { listOfficeShelf } from '@/lib/office-shelf/service'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const { projectId, ...filter } = parseQuery(request, projectDocumentListQuerySchema)
-    const { documents, nextCursor } = await listDocumentsPage(session, projectId, documentListOptions(filter))
-    return { documents: await toDocumentWireRows(session.organizationId, documents), nextCursor }
+    const { scope, projectId, ...filter } = parseQuery(request, documentListQuerySchema)
+    const shelf = shelfOf({ scope, projectId }, request)
+    const options = documentListOptions(filter)
+    const { documents, ...page } =
+      shelf.kind === 'project'
+        ? await listDocumentsPage(session, shelf.projectId, options)
+        : await listOfficeShelf(session, options)
+    return { ...page, documents: await toDocumentWireRows(session.organizationId, documents) }
   },
-  { authz: { enforcedBy: 'listDocumentsPage (requireProjectAccess project:view)' } }
+  {
+    authz: {
+      enforcedBy:
+        'listDocumentsPage (requireProjectAccess project:view) | listOfficeShelf (any member: the office shelf is org-wide shared knowledge, scoped to session.organizationId)',
+    },
+  }
 )

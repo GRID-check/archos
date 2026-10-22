@@ -26,10 +26,10 @@ import { dirname, join, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 import { toJsonSchema } from '@/lib/api/zod-json-schema'
-import { AGENT_OPERATIONS, RENAMED_OPERATIONS, findOperation } from './catalog'
+import { AGENT_OPERATIONS, RENAMED_OPERATIONS, findOperation, renamedTo } from './catalog'
 import { isOnDoor } from './exposure'
 import { EXPOSURE, type Exposure, type WithheldCategory } from './exposure.config'
-import { type Sensitivity, pathParams } from './operation'
+import { type Sensitivity, pathParams, withInputDefaults } from './operation'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const API_DIR = join(HERE, '../../app/api')
@@ -420,10 +420,26 @@ describe('the catalog is well formed', () => {
 describe('renamed operations (one release)', () => {
   it('lead from a name no operation has to one that exists, and resolve to it', () => {
     const names = new Set(AGENT_OPERATIONS.map((op) => op.name))
-    for (const [old, current] of Object.entries(RENAMED_OPERATIONS)) {
+    for (const old of Object.keys(RENAMED_OPERATIONS)) {
+      const current = renamedTo(old) ?? ''
       expect(names.has(current), `${old} -> ${current}`).toBe(true)
       expect(names.has(old), old).toBe(false)
       expect(findOperation(old)?.name).toBe(current)
     }
+  })
+
+  it('carry the input an old name stood for, under what the caller sends', () => {
+    const list = findOperation('office-shelf-document-list')
+    expect(list?.inputDefaults).toEqual({ query: { scope: 'office_shelf' } })
+    expect(findOperation('document-list')?.inputDefaults).toBeUndefined()
+    const withDefaults = (op: typeof list, input: Parameters<typeof withInputDefaults>[0]) =>
+      withInputDefaults(input, op?.inputDefaults)
+    expect(withDefaults(list, { query: { limit: 10 } })).toEqual({ query: { scope: 'office_shelf', limit: 10 } })
+    expect(withDefaults(list, { query: { scope: 'project', projectId: 'p1' } }).query).toEqual({ scope: 'project', projectId: 'p1' })
+    const upload = findOperation('office-shelf-document-upload')
+    expect(withDefaults(upload, { body: { files: [], fields: { folderId: 'f1' } } }).body).toEqual({
+      files: [],
+      fields: { scope: 'office_shelf', folderId: 'f1' },
+    })
   })
 })

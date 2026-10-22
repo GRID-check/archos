@@ -186,11 +186,8 @@ export function useDocumentActions({
   const remove = useCallback(async (): Promise<boolean> => {
     setIsDeleting(true)
     try {
-      const url =
-        scope === 'officeShelf'
-          ? `/api/office-shelf/documents/${document.id}`
-          : `/api/documents/${document.id}`
-      const res = await fetch(url, { method: 'DELETE' })
+      // One delete for both shelves: the route reads the shelf from the row.
+      const res = await fetch(`/api/documents/${document.id}`, { method: 'DELETE' })
       if (res.status === 409 && (await isLegalHoldRefusal(res))) {
         // Not a failure to retry: the file is preserved on purpose, and the
         // person needs to know that rather than try again.
@@ -210,7 +207,7 @@ export function useDocumentActions({
     } finally {
       setIsDeleting(false)
     }
-  }, [document.id, name, onDeleted, scope, t])
+  }, [document.id, name, onDeleted, t])
 
   /**
    * Shared with the citation surface — see `lib/documents/download.ts`, which

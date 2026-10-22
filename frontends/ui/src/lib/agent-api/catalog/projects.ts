@@ -499,7 +499,7 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'Have Piloti propose what to clear out',
     description:
-      'Before a project closes („Ausmisten"): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. ' +
+      'Before a project closes (the clear-out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. ' +
       'Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.',
     method: 'POST',
     path: '/api/projects/[id]/cleanup/proposal',
@@ -511,9 +511,9 @@ export const projectsOperations = [
   {
     name: 'project-cleanup-confirm',
     domain: 'projects',
-    summary: 'Move the chosen documents to the Papierkorb',
+    summary: 'Move the chosen documents to the bin',
     description:
-      'Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. ' +
+      'Puts the documents the person chose (`documentIds`) into the project’s bin, all or nothing; they can be restored for 14 days. ' +
       '`proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.',
     method: 'POST',
     path: '/api/projects/[id]/cleanup',

@@ -5,20 +5,20 @@
   {
    "name": "project-cleanup-confirm",
    "domain": "projects",
-   "summary": "Move the chosen documents to the Papierkorb",
-   "description": "Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.",
+   "summary": "Move the chosen documents to the bin",
+   "description": "Puts the documents the person chose (`documentIds`) into the project’s bin, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"project-cleanup-confirm\",\"domain\":\"projects\",\"summary\":\"Move the chosen documents to the Papierkorb\",\"description\":\"Puts the documents the person chose (`documentIds`) into the Papierkorb, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.\",\"annotations\":{\"title\":\"Move the chosen documents to the Papierkorb\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"documentIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"proposedIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"aiUsed\":{\"type\":\"boolean\"}},\"required\":[\"documentIds\",\"proposedIds\",\"aiUsed\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-cleanup-confirm\",\"domain\":\"projects\",\"summary\":\"Move the chosen documents to the bin\",\"description\":\"Puts the documents the person chose (`documentIds`) into the project’s bin, all or nothing; they can be restored for 14 days. `proposedIds` is what project-cleanup-propose suggested and `aiUsed` says whether a proposal was used. Never send ids the person did not approve.\",\"annotations\":{\"title\":\"Move the chosen documents to the bin\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"documentIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"proposedIds\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"format\":\"uuid\"},\"maxItems\":2000},\"aiUsed\":{\"type\":\"boolean\"}},\"required\":[\"documentIds\",\"proposedIds\",\"aiUsed\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-cleanup-propose",
    "domain": "projects",
    "summary": "Have Piloti propose what to clear out",
-   "description": "Before a project closes („Ausmisten\"): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.",
+   "description": "Before a project closes (the clear-out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-cleanup-propose\",\"domain\":\"projects\",\"summary\":\"Have Piloti propose what to clear out\",\"description\":\"Before a project closes („Ausmisten\\\"): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.\",\"annotations\":{\"title\":\"Have Piloti propose what to clear out\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"enum\":[\"de\",\"en\"]}},\"required\":[\"locale\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-cleanup-propose\",\"domain\":\"projects\",\"summary\":\"Have Piloti propose what to clear out\",\"description\":\"Before a project closes (the clear-out): Piloti proposes which documents the finished project no longer needs, among those the person may read and write. Starts a paid model call, so call it once. Nothing is removed. Show the proposal to the person, then send their choice with project-cleanup-confirm.\",\"annotations\":{\"title\":\"Have Piloti propose what to clear out\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"locale\":{\"type\":\"string\",\"enum\":[\"de\",\"en\"]}},\"required\":[\"locale\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-consistency-check",
@@ -306,25 +306,25 @@
    "description": "Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-archive\",\"domain\":\"documents\",\"summary\":\"Archive a document\",\"description\":\"Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Archive a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"document-archive\",\"domain\":\"documents\",\"summary\":\"Archive a document\",\"description\":\"Takes a document out of the working set: it leaves the default listings and stops answering questions, but the file and every version stay. Send an empty body. Undo with document-unarchive. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Archive a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "document-bin",
    "domain": "documents",
    "summary": "Move a project document to the bin",
-   "description": "Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. Needs write access on its folder. An office shelf document has no bin (409).",
+   "description": "Deletes a project document restorably: out of every listing and every answer, in the project’s bin until `purgeAfter`. Undo with document-restore. The office shelf has no bin (409).",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-bin\",\"domain\":\"documents\",\"summary\":\"Move a project document to the bin\",\"description\":\"Deletes a project document restorably: it leaves every listing and stops answering questions, and stays in the project’s bin until `purgeAfter`. Answers `{ documentId, binEntryId, purgeAfter }`; undo with document-restore. Needs write access on its folder. An office shelf document has no bin (409).\",\"annotations\":{\"title\":\"Move a project document to the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-bin\",\"domain\":\"documents\",\"summary\":\"Move a project document to the bin\",\"description\":\"Deletes a project document restorably: out of every listing and every answer, in the project’s bin until `purgeAfter`. Undo with document-restore. The office shelf has no bin (409).\",\"annotations\":{\"title\":\"Move a project document to the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-by-name-resolve",
    "domain": "documents",
-   "summary": "Find a project’s documents by file name",
-   "description": "Resolves exact file names to the project’s listing rows (`projectId` from project-list, up to the server’s name limit). Use it when you know the file name but not the id. Read-only.",
+   "summary": "Find documents by file name",
+   "description": "Resolves exact file names (case-insensitive) to listing rows on a project (`projectId`) or the office shelf (`scope: office_shelf`). Use it when you know the file name but not the id; names without a match are absent. Read-only.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-by-name-resolve\",\"domain\":\"documents\",\"summary\":\"Find a project’s documents by file name\",\"description\":\"Resolves exact file names to the project’s listing rows (`projectId` from project-list, up to the server’s name limit). Use it when you know the file name but not the id. Read-only.\",\"annotations\":{\"title\":\"Find a project’s documents by file name\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1},\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":200}},\"required\":[\"projectId\",\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+   "describe": "{\"name\":\"document-by-name-resolve\",\"domain\":\"documents\",\"summary\":\"Find documents by file name\",\"description\":\"Resolves exact file names (case-insensitive) to listing rows on a project (`projectId`) or the office shelf (`scope: office_shelf`). Use it when you know the file name but not the id; names without a match are absent. Read-only.\",\"annotations\":{\"title\":\"Find documents by file name\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\"],\"description\":\"Default `project` (with `projectId`).\"},\"projectId\":{\"type\":\"string\",\"minLength\":1},\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":200}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "document-delete",
@@ -333,34 +333,34 @@
    "description": "Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"document-delete\",\"domain\":\"documents\",\"summary\":\"Permanently delete a project document\",\"description\":\"Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.\",\"annotations\":{\"title\":\"Permanently delete a project document\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-delete\",\"domain\":\"documents\",\"summary\":\"Permanently delete a project document\",\"description\":\"Erases a project document, its versions and its indexed text permanently. This cannot be undone, and a legal hold refuses it with a 409. To delete it restorably, call document-bin; to only take it out of the working set, document-archive.\",\"annotations\":{\"title\":\"Permanently delete a project document\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-download",
    "domain": "documents",
    "summary": "Get a time-limited download link for a document",
-   "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.",
+   "description": "Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get. Records the access.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-download\",\"domain\":\"documents\",\"summary\":\"Get a time-limited download link for a document\",\"description\":\"Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get, for the text use document-text-get. Records the access.\",\"annotations\":{\"title\":\"Get a time-limited download link for a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-download\",\"domain\":\"documents\",\"summary\":\"Get a time-limited download link for a document\",\"description\":\"Mints a presigned URL for the document’s current file and answers `{ downloadUrl, filename, contentType, fileSize }`. The link expires after a few minutes and was minted for this person: hand it on at once, and call this again for a fresh one. The bytes are not sent here; for a PDF use document-file-get. Records the access.\",\"annotations\":{\"title\":\"Get a time-limited download link for a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-file-get",
    "domain": "documents",
-   "summary": "Read a stored PDF’s bytes",
-   "description": "The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with document-download. Only PDFs are served here.",
+   "summary": "Read a document’s or a version’s bytes",
+   "description": "The document’s current PDF (a stored PDF, or the PDF rendition of an office document), or with `versionId` that version’s own bytes of any type, as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent; document-download gives a link.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-file-get\",\"domain\":\"documents\",\"summary\":\"Read a stored PDF’s bytes\",\"description\":\"The document’s PDF itself (a stored PDF, or the PDF rendition of an office document), returned as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent: read it in pages with document-text-get or get a link with document-download. Only PDFs are served here.\",\"annotations\":{\"title\":\"Read a stored PDF’s bytes\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-file-get\",\"domain\":\"documents\",\"summary\":\"Read a document’s or a version’s bytes\",\"description\":\"The document’s current PDF (a stored PDF, or the PDF rendition of an office document), or with `versionId` that version’s own bytes of any type, as an attached resource (base64 `blob`) up to 5 MiB. A larger file is not sent; document-download gives a link.\",\"annotations\":{\"title\":\"Read a document’s or a version’s bytes\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"versionId\":{\"type\":\"string\",\"description\":\"A published or superseded version, from document-version-list.\"},\"download\":{\"type\":\"string\",\"maxLength\":8}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "document-get",
    "domain": "documents",
    "summary": "Read one document’s listing row",
-   "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion and document-text-get for what the file says.",
+   "description": "One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-get\",\"domain\":\"documents\",\"summary\":\"Read one document’s listing row\",\"description\":\"One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion and document-text-get for what the file says.\",\"annotations\":{\"title\":\"Read one document’s listing row\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-get\",\"domain\":\"documents\",\"summary\":\"Read one document’s listing row\",\"description\":\"One document by id, as the shelf lists it: name, folder, tags, reading status and version summary. Use document-status to follow ingestion.\",\"annotations\":{\"title\":\"Read one document’s listing row\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-ingest-cancel",
@@ -369,7 +369,16 @@
    "description": "Stops a document that is still queued or being read. The document and its file stay; call document-reingest to start over.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-ingest-cancel\",\"domain\":\"documents\",\"summary\":\"Cancel a document’s running ingestion\",\"description\":\"Stops a document that is still queued or being read. The document and its file stay; call document-reingest to start over.\",\"annotations\":{\"title\":\"Cancel a document’s running ingestion\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-ingest-cancel\",\"domain\":\"documents\",\"summary\":\"Cancel a document’s running ingestion\",\"description\":\"Stops a document that is still queued or being read. The document and its file stay; call document-reingest to start over.\",\"annotations\":{\"title\":\"Cancel a document’s running ingestion\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+  },
+  {
+   "name": "document-list",
+   "domain": "documents",
+   "summary": "List the documents of a project or the office shelf",
+   "description": "One page of a shelf’s documents with name, folder, author, lifecycle and version state: a project’s (`projectId`, from project-list) or the office shelf’s (`scope: office_shelf`). 100 a page by default, `limit` up to 500; `folderId` (a folder id or `root`) reads one folder level, else the whole shelf. Filter with `q`, `state`, `authoredBy`; order with `sort` and `dir`. Follow `nextCursor` (pass it as `cursor`) until it is null.",
+   "readOnly": true,
+   "destructive": false,
+   "describe": "{\"name\":\"document-list\",\"domain\":\"documents\",\"summary\":\"List the documents of a project or the office shelf\",\"description\":\"One page of a shelf’s documents with name, folder, author, lifecycle and version state: a project’s (`projectId`, from project-list) or the office shelf’s (`scope: office_shelf`). 100 a page by default, `limit` up to 500; `folderId` (a folder id or `root`) reads one folder level, else the whole shelf. Filter with `q`, `state`, `authoredBy`; order with `sort` and `dir`. Follow `nextCursor` (pass it as `cursor`) until it is null.\",\"annotations\":{\"title\":\"List the documents of a project or the office shelf\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"authoredBy\":{\"type\":\"string\",\"enum\":[\"user\",\"agent\"]},\"includeArchived\":{\"const\":\"true\"},\"cursor\":{\"type\":\"string\",\"maxLength\":6000},\"folderId\":{\"anyOf\":[{\"const\":\"root\"},{\"type\":\"string\",\"format\":\"uuid\"}]},\"sort\":{\"type\":\"string\",\"enum\":[\"added\",\"name\",\"size\"]},\"dir\":{\"type\":\"string\",\"enum\":[\"asc\",\"desc\"]},\"q\":{\"type\":\"string\",\"maxLength\":200},\"state\":{\"type\":\"string\",\"maxLength\":100,\"description\":\"Comma-separated read-state families.\"},\"limit\":{\"type\":\"integer\"},\"scope\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\"],\"description\":\"Default `project` (with `projectId`).\"},\"projectId\":{\"type\":\"string\",\"minLength\":1}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "document-model-get",
@@ -378,7 +387,7 @@
    "description": "The model record behind an IFC document (processing state and summary), or null when the document is not a model or the IFC feature is off. For model contents use the bim operations.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-model-get\",\"domain\":\"documents\",\"summary\":\"Read the building model of an IFC document\",\"description\":\"The model record behind an IFC document (processing state and summary), or null when the document is not a model or the IFC feature is off. For model contents use the bim operations.\",\"annotations\":{\"title\":\"Read the building model of an IFC document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-model-get\",\"domain\":\"documents\",\"summary\":\"Read the building model of an IFC document\",\"description\":\"The model record behind an IFC document (processing state and summary), or null when the document is not a model or the IFC feature is off. For model contents use the bim operations.\",\"annotations\":{\"title\":\"Read the building model of an IFC document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-move",
@@ -387,16 +396,16 @@
    "description": "File a document in a folder (`folderId`, from folder-list) or at its shelf’s root with `folderId: null`. Needs write access on the document and on the target folder.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-move\",\"domain\":\"documents\",\"summary\":\"Move a document to another folder\",\"description\":\"File a document in a folder (`folderId`, from folder-list) or at its shelf’s root with `folderId: null`. Needs write access on the document and on the target folder.\",\"annotations\":{\"title\":\"Move a document to another folder\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"folderId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]}},\"required\":[\"folderId\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"document-move\",\"domain\":\"documents\",\"summary\":\"Move a document to another folder\",\"description\":\"File a document in a folder (`folderId`, from folder-list) or at its shelf’s root with `folderId: null`. Needs write access on the document and on the target folder.\",\"annotations\":{\"title\":\"Move a document to another folder\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"folderId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]}},\"required\":[\"folderId\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "document-name-match",
    "domain": "documents",
-   "summary": "Check which file names already exist in a project",
-   "description": "Before adding files, asks which of the given names a project already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.",
+   "summary": "Check which file names a shelf already holds",
+   "description": "Before adding files, asks which of the given names a project (`projectId`) or the office shelf (`scope: office_shelf`) already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-name-match\",\"domain\":\"documents\",\"summary\":\"Check which file names already exist in a project\",\"description\":\"Before adding files, asks which of the given names a project already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.\",\"annotations\":{\"title\":\"Check which file names already exist in a project\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1},\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000}},\"required\":[\"projectId\",\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+   "describe": "{\"name\":\"document-name-match\",\"domain\":\"documents\",\"summary\":\"Check which file names a shelf already holds\",\"description\":\"Before adding files, asks which of the given names a project (`projectId`) or the office shelf (`scope: office_shelf`) already holds, with the existing document’s id, size and content hash so identical bytes can be skipped. Read-only.\",\"annotations\":{\"title\":\"Check which file names a shelf already holds\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\"],\"description\":\"Default `project` (with `projectId`).\"},\"projectId\":{\"type\":\"string\",\"minLength\":1},\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "document-preview-get",
@@ -405,7 +414,7 @@
    "description": "Presigns an inline preview of the document: `{ url, contentType, filename, imageUrl, rendition }`. An office document is previewed through its PDF rendition. The URL expires (an hour at most); call again for a fresh one. 415 for content that cannot be previewed, 502 `RENDITION_FAILED` when the conversion failed. No bytes are sent here.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-preview-get\",\"domain\":\"documents\",\"summary\":\"Get a time-limited preview link for a document\",\"description\":\"Presigns an inline preview of the document: `{ url, contentType, filename, imageUrl, rendition }`. An office document is previewed through its PDF rendition. The URL expires (an hour at most); call again for a fresh one. 415 for content that cannot be previewed, 502 `RENDITION_FAILED` when the conversion failed. No bytes are sent here.\",\"annotations\":{\"title\":\"Get a time-limited preview link for a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-preview-get\",\"domain\":\"documents\",\"summary\":\"Get a time-limited preview link for a document\",\"description\":\"Presigns an inline preview of the document: `{ url, contentType, filename, imageUrl, rendition }`. An office document is previewed through its PDF rendition. The URL expires (an hour at most); call again for a fresh one. 415 for content that cannot be previewed, 502 `RENDITION_FAILED` when the conversion failed. No bytes are sent here.\",\"annotations\":{\"title\":\"Get a time-limited preview link for a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-reingest",
@@ -414,7 +423,7 @@
    "description": "Queues the document for ingestion once more, for example after a failed read. Follow it with document-status. Needs write access on the document’s project.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-reingest\",\"domain\":\"documents\",\"summary\":\"Read a document again\",\"description\":\"Queues the document for ingestion once more, for example after a failed read. Follow it with document-status. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Read a document again\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-reingest\",\"domain\":\"documents\",\"summary\":\"Read a document again\",\"description\":\"Queues the document for ingestion once more, for example after a failed read. Follow it with document-status. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Read a document again\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-rename",
@@ -423,16 +432,16 @@
    "description": "Set the name Piloti shows for a document (`displayName`); `null` clears it so the file name shows again. The stored file name never changes. Needs write access to the document’s project or shelf.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-rename\",\"domain\":\"documents\",\"summary\":\"Rename a document\",\"description\":\"Set the name Piloti shows for a document (`displayName`); `null` clears it so the file name shows again. The stored file name never changes. Needs write access to the document’s project or shelf.\",\"annotations\":{\"title\":\"Rename a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"displayName\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"displayName\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"document-rename\",\"domain\":\"documents\",\"summary\":\"Rename a document\",\"description\":\"Set the name Piloti shows for a document (`displayName`); `null` clears it so the file name shows again. The stored file name never changes. Needs write access to the document’s project or shelf.\",\"annotations\":{\"title\":\"Rename a document\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"displayName\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":200},{\"type\":\"null\"}]}},\"required\":[\"displayName\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "document-restore",
    "domain": "documents",
    "summary": "Restore a document from the bin",
-   "description": "Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: \"root\"` when that folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.",
+   "description": "Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-restore\",\"domain\":\"documents\",\"summary\":\"Restore a document from the bin\",\"description\":\"Brings back a document sent to the bin with document-bin: filed in the folder it came from (`restoredTo: \\\"root\\\"` when that folder is gone) and read into the index again. A document that went with its folder is refused with 409 and the folder’s id; restore that with project-folder-restore. Binned documents are listed by project-folder-bin-list.\",\"annotations\":{\"title\":\"Restore a document from the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-restore\",\"domain\":\"documents\",\"summary\":\"Restore a document from the bin\",\"description\":\"Brings back a document sent to the bin with document-bin, to the folder it came from, and reads it again. One that went with its folder is refused (409, `details.folderId`): use project-folder-restore.\",\"annotations\":{\"title\":\"Restore a document from the bin\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-role-clear",
@@ -447,10 +456,10 @@
    "name": "document-role-declare",
    "domain": "documents",
    "summary": "Declare a document’s role in a project",
-   "description": "Binds `documentId` to a `role` of the project's vocabulary (optionally for one `scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document ids come from project-document-list.",
+   "description": "Binds `documentId` to a `role` of the project's vocabulary (optionally for one `scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document ids come from document-list.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-role-declare\",\"domain\":\"documents\",\"summary\":\"Declare a document’s role in a project\",\"description\":\"Binds `documentId` to a `role` of the project's vocabulary (optionally for one `scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document ids come from project-document-list.\",\"annotations\":{\"title\":\"Declare a document’s role in a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"documentId\":{\"type\":\"string\",\"format\":\"uuid\"},\"role\":{\"type\":\"string\",\"enum\":[\"development_plan\",\"zoning_plan\",\"land_register_extract\",\"site_plan\",\"existing_plans\",\"existing_photos\",\"expert_report_ground\",\"expert_report_noise\",\"expert_report_pollutants\",\"preliminary_design_study\",\"authority_correspondence\",\"preliminary_decision\",\"other_project_basis\"]},\"scopeInstanceId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]}},\"required\":[\"documentId\",\"role\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"document-role-declare\",\"domain\":\"documents\",\"summary\":\"Declare a document’s role in a project\",\"description\":\"Binds `documentId` to a `role` of the project's vocabulary (optionally for one `scopeInstanceId`). Your call counts as a person's confirmation. Returns the binding. Document ids come from document-list.\",\"annotations\":{\"title\":\"Declare a document’s role in a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"documentId\":{\"type\":\"string\",\"format\":\"uuid\"},\"role\":{\"type\":\"string\",\"enum\":[\"development_plan\",\"zoning_plan\",\"land_register_extract\",\"site_plan\",\"existing_plans\",\"existing_photos\",\"expert_report_ground\",\"expert_report_noise\",\"expert_report_pollutants\",\"preliminary_design_study\",\"authority_correspondence\",\"preliminary_decision\",\"other_project_basis\"]},\"scopeInstanceId\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]}},\"required\":[\"documentId\",\"role\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "document-role-list",
@@ -465,19 +474,19 @@
    "name": "document-status",
    "domain": "documents",
    "summary": "Read a document’s ingestion status",
-   "description": "Where the document is in reading and indexing (queued, processing, ready, failed, held). Poll it after an upload; on a failure call document-reingest, on a stuck run document-ingest-cancel.",
+   "description": "Where the document is in reading and indexing: `status` is one of uploaded, pending, processing, completed, failed, quarantined, stored, cancelled. Poll it after an upload; on `failed` call document-reingest, on a stuck run document-ingest-cancel.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-status\",\"domain\":\"documents\",\"summary\":\"Read a document’s ingestion status\",\"description\":\"Where the document is in reading and indexing (queued, processing, ready, failed, held). Poll it after an upload; on a failure call document-reingest, on a stuck run document-ingest-cancel.\",\"annotations\":{\"title\":\"Read a document’s ingestion status\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-status\",\"domain\":\"documents\",\"summary\":\"Read a document’s ingestion status\",\"description\":\"Where the document is in reading and indexing: `status` is one of uploaded, pending, processing, completed, failed, quarantined, stored, cancelled. Poll it after an upload; on `failed` call document-reingest, on a stuck run document-ingest-cancel.\",\"annotations\":{\"title\":\"Read a document’s ingestion status\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-summary-get",
    "domain": "documents",
-   "summary": "Count a project’s documents by state",
-   "description": "Totals for a project’s shelf (how many documents, in which reading state), matching what the listing shows. Optionally filter by author kind or include archived documents.",
+   "summary": "Count a shelf’s documents per folder and state",
+   "description": "Counts per folder by reading state for a project (`projectId`) or the office shelf (`scope: office_shelf`), matching what document-list shows, plus the failed documents. Optionally filter by author kind or include archived documents.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-summary-get\",\"domain\":\"documents\",\"summary\":\"Count a project’s documents by state\",\"description\":\"Totals for a project’s shelf (how many documents, in which reading state), matching what the listing shows. Optionally filter by author kind or include archived documents.\",\"annotations\":{\"title\":\"Count a project’s documents by state\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"authoredBy\":{\"type\":\"string\",\"enum\":[\"user\",\"agent\"]},\"includeArchived\":{\"const\":\"true\"},\"projectId\":{\"type\":\"string\",\"minLength\":1}},\"required\":[\"projectId\"]}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+   "describe": "{\"name\":\"document-summary-get\",\"domain\":\"documents\",\"summary\":\"Count a shelf’s documents per folder and state\",\"description\":\"Counts per folder by reading state for a project (`projectId`) or the office shelf (`scope: office_shelf`), matching what document-list shows, plus the failed documents. Optionally filter by author kind or include archived documents.\",\"annotations\":{\"title\":\"Count a shelf’s documents per folder and state\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"authoredBy\":{\"type\":\"string\",\"enum\":[\"user\",\"agent\"]},\"includeArchived\":{\"const\":\"true\"},\"scope\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\"],\"description\":\"Default `project` (with `projectId`).\"},\"projectId\":{\"type\":\"string\",\"minLength\":1}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
   },
   {
    "name": "document-tags-update",
@@ -486,52 +495,34 @@
    "description": "Replaces the tags of a document with the given list (an empty list clears them); tags must come from the fixed vocabulary. `topics` is optional: leave it out and the model’s topics stay as they are.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-tags-update\",\"domain\":\"documents\",\"summary\":\"Set a document’s tags and topics\",\"description\":\"Replaces the tags of a document with the given list (an empty list clears them); tags must come from the fixed vocabulary. `topics` is optional: leave it out and the model’s topics stay as they are.\",\"annotations\":{\"title\":\"Set a document’s tags and topics\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"maxItems\":5},\"topics\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":40},\"maxItems\":6}},\"required\":[\"tags\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"document-tags-update\",\"domain\":\"documents\",\"summary\":\"Set a document’s tags and topics\",\"description\":\"Replaces the tags of a document with the given list (an empty list clears them); tags must come from the fixed vocabulary. `topics` is optional: leave it out and the model’s topics stay as they are.\",\"annotations\":{\"title\":\"Set a document’s tags and topics\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":128},\"maxItems\":5},\"topics\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":40},\"maxItems\":6}},\"required\":[\"tags\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "document-text-get",
    "domain": "documents",
-   "summary": "Read the extracted text of a document",
-   "description": "A preview of the text Piloti extracted from the document. Use it to see what a file says without opening the file; it is empty until document-status reports the document as read.",
+   "summary": "Read a text file’s contents",
+   "description": "The stored text of a plain text, Markdown or CSV document, up to a preview limit (`truncated` says when cut). Any other type answers 415 with where to read it instead.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-text-get\",\"domain\":\"documents\",\"summary\":\"Read the extracted text of a document\",\"description\":\"A preview of the text Piloti extracted from the document. Use it to see what a file says without opening the file; it is empty until document-status reports the document as read.\",\"annotations\":{\"title\":\"Read the extracted text of a document\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "document-thumbnail-get",
-   "domain": "documents",
-   "summary": "Get a document’s thumbnail link",
-   "description": "A time-limited URL of the document’s first-page thumbnail image, `{ url }`, with `url: null` when it has none (not drawn yet, or the file is held by the upload screening). The link expires; no bytes are sent here.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"document-thumbnail-get\",\"domain\":\"documents\",\"summary\":\"Get a document’s thumbnail link\",\"description\":\"A time-limited URL of the document’s first-page thumbnail image, `{ url }`, with `url: null` when it has none (not drawn yet, or the file is held by the upload screening). The link expires; no bytes are sent here.\",\"annotations\":{\"title\":\"Get a document’s thumbnail link\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-text-get\",\"domain\":\"documents\",\"summary\":\"Read a text file’s contents\",\"description\":\"The stored text of a plain text, Markdown or CSV document, up to a preview limit (`truncated` says when cut). Any other type answers 415 with where to read it instead.\",\"annotations\":{\"title\":\"Read a text file’s contents\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-unarchive",
    "domain": "documents",
    "summary": "Bring an archived document back",
-   "description": "The reverse of document-archive: the document is back in the default listings and is read into the index again. Answers `{ documentId, lifecycle, ingest }`; follow `ingest: \"queued\"` with document-status. A document that was not archived is answered `ingest: \"unchanged\"`. Needs write access on the document’s project.",
+   "description": "The reverse of document-archive: back in the default listings and read into the index again. Follow `ingest: \"queued\"` with document-status.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-unarchive\",\"domain\":\"documents\",\"summary\":\"Bring an archived document back\",\"description\":\"The reverse of document-archive: the document is back in the default listings and is read into the index again. Answers `{ documentId, lifecycle, ingest }`; follow `ingest: \\\"queued\\\"` with document-status. A document that was not archived is answered `ingest: \\\"unchanged\\\"`. Needs write access on the document’s project.\",\"annotations\":{\"title\":\"Bring an archived document back\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-unarchive\",\"domain\":\"documents\",\"summary\":\"Bring an archived document back\",\"description\":\"The reverse of document-archive: back in the default listings and read into the index again. Follow `ingest: \\\"queued\\\"` with document-status.\",\"annotations\":{\"title\":\"Bring an archived document back\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "document-upload",
    "domain": "documents",
-   "summary": "Upload a file to a project",
-   "description": "Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds comes back held, and a reviewer allows it. Needs write access to the project’s documents.",
+   "summary": "Upload a file to a project or the office shelf",
+   "description": "Stores one file on a shelf, optionally in a folder, and ingests it. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and in `body.fields` `projectId` or `scope: office_shelf`. Follow it with document-status.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"document-upload\",\"domain\":\"documents\",\"summary\":\"Upload a file to a project\",\"description\":\"Stores one file in a project (optionally in a folder) and hands it to ingestion. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and the route’s text parts in `body.fields` (`projectId` required). Returns the stored document; ingestion runs in the background, follow it with document-status. A file the screening holds comes back held, and a reviewer allows it. Needs write access to the project’s documents.\",\"annotations\":{\"title\":\"Upload a file to a project\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"files\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255,\"description\":\"The file name, with its extension, e.g. \\\"Grundriss EG.pdf\\\".\"},\"mimeType\":{\"type\":\"string\",\"maxLength\":255,\"description\":\"The media type, e.g. \\\"application/pdf\\\". Defaults to application/octet-stream.\"},\"contentBase64\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":44739244,\"description\":\"The file's bytes as standard base64 (RFC 4648, with padding), at most 33554432 bytes decoded.\"}},\"required\":[\"name\",\"contentBase64\"]},\"maxItems\":1,\"description\":\"The file to upload. Exactly one file.\"},\"fields\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1,\"description\":\"The project id, from project-list.\"},\"folderId\":{\"type\":\"string\",\"description\":\"The folder id, from project-folder-list; omit for the project root.\"},\"revisionOf\":{\"type\":\"string\",\"description\":\"The id of the older document this file is the new revision of; the service checks the pair.\"},\"originPath\":{\"type\":\"string\",\"maxLength\":2000,\"description\":\"Where the file sat before upload, e.g. \\\"Drawings/GF/floor-plan.pdf\\\". Only for a folder upload; it is screened by name.\"},\"screeningRelease\":{\"const\":\"name\",\"description\":\"Send \\\"name\\\" only when a reviewer released this file’s name from the upload screening.\"},\"uploadBatchId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The batch uuid given to upload-batch-open, to file this upload under that batch.\"}},\"required\":[\"projectId\"],\"additionalProperties\":false,\"description\":\"The route’s text fields, sent beside the file as form parts.\"}},\"required\":[\"files\",\"fields\"]}},\"additionalProperties\":false,\"required\":[\"body\"],\"examples\":[{\"body\":{\"files\":[{\"name\":\"site-notes.txt\",\"mimeType\":\"text/plain\",\"contentBase64\":\"U2l0ZSB2aXNpdCAyMSBPY3RvYmVy\"}],\"fields\":{\"projectId\":\"0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11\"}}}]}}"
-  },
-  {
-   "name": "document-version-file-get",
-   "domain": "documents",
-   "summary": "Read the file bytes of one version",
-   "description": "The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: \"1\"` marks it as an attachment. Only published or superseded versions are served.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"document-version-file-get\",\"domain\":\"documents\",\"summary\":\"Read the file bytes of one version\",\"description\":\"The bytes of one version (the approval record of one revision) of a document under its name, from document-version-list: returned as an attached resource (base64 `blob`) up to 5 MiB; a larger file is not sent, read its text with document-text-get instead. `download: \\\"1\\\"` marks it as an attachment. Only published or superseded versions are served.\",\"annotations\":{\"title\":\"Read the file bytes of one version\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"},\"versionId\":{\"type\":\"string\",\"description\":\"The version id, from document-version-list.\"}},\"required\":[\"id\",\"versionId\"]},\"query\":{\"type\":\"object\",\"properties\":{\"download\":{\"const\":\"1\",\"description\":\"Send 1 to ask for the file as a download.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
+   "describe": "{\"name\":\"document-upload\",\"domain\":\"documents\",\"summary\":\"Upload a file to a project or the office shelf\",\"description\":\"Stores one file on a shelf, optionally in a folder, and ingests it. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 } and in `body.fields` `projectId` or `scope: office_shelf`. Follow it with document-status.\",\"annotations\":{\"title\":\"Upload a file to a project or the office shelf\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"files\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255,\"description\":\"The file name, with its extension, e.g. \\\"Grundriss EG.pdf\\\".\"},\"mimeType\":{\"type\":\"string\",\"maxLength\":255,\"description\":\"The media type, e.g. \\\"application/pdf\\\". Defaults to application/octet-stream.\"},\"contentBase64\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":44739244,\"description\":\"The file's bytes as standard base64 (RFC 4648, with padding), at most 33554432 bytes decoded.\"}},\"required\":[\"name\",\"contentBase64\"]},\"maxItems\":1,\"description\":\"The file to upload. Exactly one file.\"},\"fields\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\"]},\"projectId\":{\"type\":\"string\"},\"folderId\":{\"type\":\"string\",\"description\":\"From project-folder-list or office-shelf-folder-list; omit for the root.\"},\"revisionOf\":{\"type\":\"string\",\"description\":\"The id of the older document this file is the new revision of; the service checks the pair.\"},\"originPath\":{\"type\":\"string\",\"maxLength\":2000,\"description\":\"Where the file sat before upload, e.g. \\\"Drawings/GF/floor-plan.pdf\\\". Only for a folder upload; it is screened by name.\"},\"screeningRelease\":{\"const\":\"name\",\"description\":\"Send \\\"name\\\" only when a reviewer released this file’s name from the upload screening.\"},\"uploadBatchId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The batch uuid given to upload-batch-open, to file this upload under that batch.\"}},\"additionalProperties\":false,\"description\":\"The route’s text fields, sent beside the file as form parts.\"}},\"required\":[\"files\"]}},\"additionalProperties\":false,\"required\":[\"body\"],\"examples\":[{\"body\":{\"files\":[{\"name\":\"site-notes.txt\",\"mimeType\":\"text/plain\",\"contentBase64\":\"U2l0ZSB2aXNpdCAyMSBPY3RvYmVy\"}],\"fields\":{\"projectId\":\"0d7b3a5e-7c1c-4a4e-9a63-6a4a1f5f1c11\"}}}]}}"
   },
   {
    "name": "document-visual-details-get",
@@ -540,7 +531,7 @@
    "description": "The visual reading of a drawing or image document: what the vision model found on its pages. Empty for documents that have no visual reading.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-visual-details-get\",\"domain\":\"documents\",\"summary\":\"Read what Piloti saw on a drawing or image\",\"description\":\"The visual reading of a drawing or image document: what the vision model found on its pages. Empty for documents that have no visual reading.\",\"annotations\":{\"title\":\"Read what Piloti saw on a drawing or image\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from a project document listing or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"document-visual-details-get\",\"domain\":\"documents\",\"summary\":\"Read what Piloti saw on a drawing or image\",\"description\":\"The visual reading of a drawing or image document: what the vision model found on its pages. Empty for documents that have no visual reading.\",\"annotations\":{\"title\":\"Read what Piloti saw on a drawing or image\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The document id, from document-list or document-search.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "hold-create",
@@ -600,91 +591,19 @@
    "name": "mail-import-part-upload",
    "domain": "documents",
    "summary": "Send one part of an Outlook archive",
-   "description": "Sends the raw bytes of part `partNumber` (1-based) of the archive started with mail-import-start, as `body.contentBase64`. Every part must be exactly the plan’s `partSize` bytes, the last one the remainder, or the route answers 400 with the size it expected. Sending a part again replaces it, so a broken send resumes: read mail-import-get for `uploadedParts` and send the rest. Only the person who started the import may send. Returns `{ partNumber }`.",
+   "description": "Sends part `partNumber` (1-based) of the archive started with mail-import-start as `body.contentBase64`, exactly `partSize` bytes (the last the remainder). Sending a part again replaces it: resume from mail-import-get `uploadedParts`.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"mail-import-part-upload\",\"domain\":\"documents\",\"summary\":\"Send one part of an Outlook archive\",\"description\":\"Sends the raw bytes of part `partNumber` (1-based) of the archive started with mail-import-start, as `body.contentBase64`. Every part must be exactly the plan’s `partSize` bytes, the last one the remainder, or the route answers 400 with the size it expected. Sending a part again replaces it, so a broken send resumes: read mail-import-get for `uploadedParts` and send the rest. Only the person who started the import may send. Returns `{ partNumber }`.\",\"annotations\":{\"title\":\"Send one part of an Outlook archive\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"},\"partNumber\":{\"type\":\"string\",\"description\":\"The part number, 1-based, up to the plan’s `partCount`.\"}},\"required\":[\"id\",\"importId\",\"partNumber\"]},\"body\":{\"type\":\"object\",\"properties\":{\"contentBase64\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":44739244,\"description\":\"The file's bytes as standard base64 (RFC 4648, with padding), at most 33554432 bytes decoded.\"}},\"required\":[\"contentBase64\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"mail-import-part-upload\",\"domain\":\"documents\",\"summary\":\"Send one part of an Outlook archive\",\"description\":\"Sends part `partNumber` (1-based) of the archive started with mail-import-start as `body.contentBase64`, exactly `partSize` bytes (the last the remainder). Sending a part again replaces it: resume from mail-import-get `uploadedParts`.\",\"annotations\":{\"title\":\"Send one part of an Outlook archive\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"},\"partNumber\":{\"type\":\"string\",\"description\":\"The part number, 1-based, up to the plan’s `partCount`.\"}},\"required\":[\"id\",\"importId\",\"partNumber\"]},\"body\":{\"type\":\"object\",\"properties\":{\"contentBase64\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":44739244,\"description\":\"The file's bytes as standard base64 (RFC 4648, with padding), at most 33554432 bytes decoded.\"}},\"required\":[\"contentBase64\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "mail-import-start",
    "domain": "documents",
    "summary": "Start an Outlook archive import",
-   "description": "Registers a .pst or .ost archive for import into the project (`filename`, `sizeBytes`) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Then send the archive in `partCount` parts of exactly `partSize` bytes (the last one shorter) with mail-import-part-upload, and finish with mail-import-complete. Needs the mail-import feature and write access to the project’s documents. Archives are large (up to 25 GB); each part is a 32 MiB call.",
+   "description": "Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"mail-import-start\",\"domain\":\"documents\",\"summary\":\"Start an Outlook archive import\",\"description\":\"Registers a .pst or .ost archive for import into the project (`filename`, `sizeBytes`) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Then send the archive in `partCount` parts of exactly `partSize` bytes (the last one shorter) with mail-import-part-upload, and finish with mail-import-complete. Needs the mail-import feature and write access to the project’s documents. Archives are large (up to 25 GB); each part is a 32 MiB call.\",\"annotations\":{\"title\":\"Start an Outlook archive import\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"filename\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"sizeBytes\":{\"type\":\"integer\"}},\"required\":[\"filename\",\"sizeBytes\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
-  },
-  {
-   "name": "office-shelf-document-delete",
-   "domain": "documents",
-   "summary": "Delete an office shelf document",
-   "description": "Deletes one office shelf document for good: its stored file, its search chunks and its record. This cannot be undone. Needs org:office_shelf:manage. Document ids come from office-shelf-document-list.",
-   "readOnly": false,
-   "destructive": true,
-   "describe": "{\"name\":\"office-shelf-document-delete\",\"domain\":\"documents\",\"summary\":\"Delete an office shelf document\",\"description\":\"Deletes one office shelf document for good: its stored file, its search chunks and its record. This cannot be undone. Needs org:office_shelf:manage. Document ids come from office-shelf-document-list.\",\"annotations\":{\"title\":\"Delete an office shelf document\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The office shelf document id, from office-shelf-document-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "office-shelf-document-list",
-   "domain": "documents",
-   "summary": "List office shelf documents",
-   "description": "One page of the office shelf documents, same rows and filters as project-document-list but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, `authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here feed the document operations.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-list\",\"domain\":\"documents\",\"summary\":\"List office shelf documents\",\"description\":\"One page of the office shelf documents, same rows and filters as project-document-list but without `projectId`: `folderId`, `sort`, `dir`, `q`, `state`, `limit`, `includeArchived`, `authoredBy`. Follow `nextCursor` (pass it as `cursor`) until it is null. Document ids from here feed the document operations.\",\"annotations\":{\"title\":\"List office shelf documents\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"authoredBy\":{\"type\":\"string\",\"enum\":[\"user\",\"agent\"]},\"includeArchived\":{\"const\":\"true\"},\"cursor\":{\"type\":\"string\",\"maxLength\":6000},\"folderId\":{\"anyOf\":[{\"const\":\"root\"},{\"type\":\"string\",\"format\":\"uuid\"}]},\"sort\":{\"type\":\"string\",\"enum\":[\"added\",\"name\",\"size\"]},\"dir\":{\"type\":\"string\",\"enum\":[\"asc\",\"desc\"]},\"q\":{\"type\":\"string\",\"maxLength\":200},\"state\":{\"type\":\"string\",\"maxLength\":100},\"limit\":{\"type\":\"integer\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
-   "name": "office-shelf-document-lookup",
-   "domain": "documents",
-   "summary": "Find office shelf documents by file name",
-   "description": "Resolves exact file names (case-insensitive) to their office shelf document rows. Use it when you have names, for example from a citation, and need ids. Names without a match are simply absent from `documents`.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-lookup\",\"domain\":\"documents\",\"summary\":\"Find office shelf documents by file name\",\"description\":\"Resolves exact file names (case-insensitive) to their office shelf document rows. Use it when you have names, for example from a citation, and need ids. Names without a match are simply absent from `documents`.\",\"annotations\":{\"title\":\"Find office shelf documents by file name\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":200}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "office-shelf-document-name-probe",
-   "domain": "documents",
-   "summary": "Check which file names the office shelf holds",
-   "description": "Given file names about to be uploaded, returns the office shelf documents that already carry them. Call it before an upload to avoid duplicates. Changes nothing.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-name-probe\",\"domain\":\"documents\",\"summary\":\"Check which file names the office shelf holds\",\"description\":\"Given file names about to be uploaded, returns the office shelf documents that already carry them. Call it before an upload to avoid duplicates. Changes nothing.\",\"annotations\":{\"title\":\"Check which file names the office shelf holds\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "office-shelf-document-revision-probe",
-   "domain": "documents",
-   "summary": "Find documents a file name would revise",
-   "description": "Given dropped file names, returns the office shelf documents each would be the next revision of, so the upload can file it as a new revision instead of a second document. Changes nothing.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-revision-probe\",\"domain\":\"documents\",\"summary\":\"Find documents a file name would revise\",\"description\":\"Given dropped file names, returns the office shelf documents each would be the next revision of, so the upload can file it as a new revision instead of a second document. Changes nothing.\",\"annotations\":{\"title\":\"Find documents a file name would revise\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "office-shelf-document-summary",
-   "domain": "documents",
-   "summary": "Count office shelf documents per folder",
-   "description": "What the database can say about every office shelf document at once: counts per folder by read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list when you need an overview.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-summary\",\"domain\":\"documents\",\"summary\":\"Count office shelf documents per folder\",\"description\":\"What the database can say about every office shelf document at once: counts per folder by read-state family, plus the failed documents. Cheaper than paging office-shelf-document-list when you need an overview.\",\"annotations\":{\"title\":\"Count office shelf documents per folder\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"authoredBy\":{\"type\":\"string\",\"enum\":[\"user\",\"agent\"]},\"includeArchived\":{\"const\":\"true\"}}}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
-  },
-  {
-   "name": "office-shelf-document-upload",
-   "domain": "documents",
-   "summary": "Upload a file to the office shelf",
-   "description": "Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; follow ingestion with document-status.",
-   "readOnly": false,
-   "destructive": false,
-   "describe": "{\"name\":\"office-shelf-document-upload\",\"domain\":\"documents\",\"summary\":\"Upload a file to the office shelf\",\"description\":\"Stores one file in the office shelf (optionally in one of its folders) and ingests it into the shared collection. Up to 32 MiB per call through the agent door; the document limit of the office applies too. Send `body.files[0]` as { name, mimeType, contentBase64 }. Needs the right to manage the office shelf. Returns the stored document; follow ingestion with document-status.\",\"annotations\":{\"title\":\"Upload a file to the office shelf\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"files\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255,\"description\":\"The file name, with its extension, e.g. \\\"Grundriss EG.pdf\\\".\"},\"mimeType\":{\"type\":\"string\",\"maxLength\":255,\"description\":\"The media type, e.g. \\\"application/pdf\\\". Defaults to application/octet-stream.\"},\"contentBase64\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":44739244,\"description\":\"The file's bytes as standard base64 (RFC 4648, with padding), at most 33554432 bytes decoded.\"}},\"required\":[\"name\",\"contentBase64\"]},\"maxItems\":1,\"description\":\"The file to upload. Exactly one file.\"},\"fields\":{\"type\":\"object\",\"properties\":{\"folderId\":{\"type\":\"string\",\"description\":\"The office shelf folder id, from office-shelf-folder-list; omit for the root.\"},\"revisionOf\":{\"type\":\"string\",\"description\":\"The id of the older document this file is the new revision of; the service checks the pair.\"},\"originPath\":{\"type\":\"string\",\"maxLength\":2000,\"description\":\"Where the file sat before upload, e.g. \\\"Drawings/GF/floor-plan.pdf\\\". Only for a folder upload; it is screened by name.\"},\"screeningRelease\":{\"const\":\"name\",\"description\":\"Send \\\"name\\\" only when a reviewer released this file’s name from the upload screening.\"},\"uploadBatchId\":{\"type\":\"string\",\"format\":\"uuid\",\"description\":\"The batch uuid given to upload-batch-open, to file this upload under that batch.\"}},\"additionalProperties\":false,\"description\":\"The route’s text fields, sent beside the file as form parts.\"}},\"required\":[\"files\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
-  },
-  {
-   "name": "project-document-list",
-   "domain": "documents",
-   "summary": "List a project’s documents",
-   "description": "One page of the project's documents with name, folder, author, lifecycle and version state. Pass `projectId` (from project-list). Without level parameters it drains the whole shelf, 500 a page; `folderId` (a folder id or `root`), `sort`, `dir`, `q`, `state` or `limit` read one folder level instead. Follow `nextCursor` (pass it as `cursor`) until it is null.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"project-document-list\",\"domain\":\"documents\",\"summary\":\"List a project’s documents\",\"description\":\"One page of the project's documents with name, folder, author, lifecycle and version state. Pass `projectId` (from project-list). Without level parameters it drains the whole shelf, 500 a page; `folderId` (a folder id or `root`), `sort`, `dir`, `q`, `state` or `limit` read one folder level instead. Follow `nextCursor` (pass it as `cursor`) until it is null.\",\"annotations\":{\"title\":\"List a project’s documents\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"query\":{\"type\":\"object\",\"properties\":{\"authoredBy\":{\"type\":\"string\",\"enum\":[\"user\",\"agent\"]},\"includeArchived\":{\"const\":\"true\"},\"cursor\":{\"type\":\"string\",\"maxLength\":6000},\"folderId\":{\"anyOf\":[{\"const\":\"root\"},{\"type\":\"string\",\"format\":\"uuid\"}]},\"sort\":{\"type\":\"string\",\"enum\":[\"added\",\"name\",\"size\"]},\"dir\":{\"type\":\"string\",\"enum\":[\"asc\",\"desc\"]},\"q\":{\"type\":\"string\",\"maxLength\":200},\"state\":{\"type\":\"string\",\"maxLength\":100},\"limit\":{\"type\":\"integer\"},\"projectId\":{\"type\":\"string\",\"minLength\":1}},\"required\":[\"projectId\"]}},\"additionalProperties\":false,\"required\":[\"query\"]}}"
+   "describe": "{\"name\":\"mail-import-start\",\"domain\":\"documents\",\"summary\":\"Start an Outlook archive import\",\"description\":\"Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.\",\"annotations\":{\"title\":\"Start an Outlook archive import\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"filename\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"sizeBytes\":{\"type\":\"integer\"}},\"required\":[\"filename\",\"sizeBytes\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-upload-list",
@@ -771,19 +690,19 @@
    "name": "office-shelf-folder-list",
    "domain": "folders",
    "summary": "List the office shelf folders",
-   "description": "Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.",
+   "description": "Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of document-list.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"office-shelf-folder-list\",\"domain\":\"folders\",\"summary\":\"List the office shelf folders\",\"description\":\"Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of office-shelf-document-list.\",\"annotations\":{\"title\":\"List the office shelf folders\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
+   "describe": "{\"name\":\"office-shelf-folder-list\",\"domain\":\"folders\",\"summary\":\"List the office shelf folders\",\"description\":\"Every folder of the office shelf, in the same shape as project-folder-list. Any member may read. Folder ids feed office-shelf-folder-update, office-shelf-folder-delete and the `folderId` filter of document-list.\",\"annotations\":{\"title\":\"List the office shelf folders\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{},\"additionalProperties\":false}}"
   },
   {
    "name": "office-shelf-folder-update",
    "domain": "folders",
    "summary": "Rename, move or describe an office shelf folder",
-   "description": "Changes a folder's `name`, `parentId` (null moves it to the shelf root) or `description` (null clears it); send only what changes. Folder ids come from office-shelf-folder-list. Needs org:office_shelf:manage. Returns `{ folder }`.",
+   "description": "Changes a folder's `name`, `parentId` (null: the shelf root) or `description` (null clears it); send only what changes. Needs org:office_shelf:manage.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"office-shelf-folder-update\",\"domain\":\"folders\",\"summary\":\"Rename, move or describe an office shelf folder\",\"description\":\"Changes a folder's `name`, `parentId` (null moves it to the shelf root) or `description` (null clears it); send only what changes. Folder ids come from office-shelf-folder-list. Needs org:office_shelf:manage. Returns `{ folder }`.\",\"annotations\":{\"title\":\"Rename, move or describe an office shelf folder\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"folderId\":{\"type\":\"string\",\"description\":\"The office shelf folder id, from office-shelf-folder-list.\"}},\"required\":[\"folderId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"parentId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]},\"description\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":2000},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"office-shelf-folder-update\",\"domain\":\"folders\",\"summary\":\"Rename, move or describe an office shelf folder\",\"description\":\"Changes a folder's `name`, `parentId` (null: the shelf root) or `description` (null clears it); send only what changes. Needs org:office_shelf:manage.\",\"annotations\":{\"title\":\"Rename, move or describe an office shelf folder\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"folderId\":{\"type\":\"string\",\"description\":\"The office shelf folder id, from office-shelf-folder-list.\"}},\"required\":[\"folderId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"parentId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]},\"description\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":2000},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "office-shelf-root-sort-get",
@@ -816,10 +735,10 @@
    "name": "project-folder-bin-list",
    "domain": "folders",
    "summary": "List a project’s bin: deleted folders and documents",
-   "description": "The project's bin, newest first, a page at a time: each deleted folder the person may read, who deleted it and when, when its purge runs, and whether they may restore it. An entry with `document` holds one document sent there with document-bin: restore it with document-restore. Folder ids feed project-folder-restore and project-folder-bin-purge. Follow `nextCursor` (pass it as `cursor`) until it is null.",
+   "description": "The project's bin, newest first, paged (`nextCursor`): deleted folders, who deleted each, when it is purged. An entry with `document` is one document: restore it with document-restore; a folder with project-folder-restore.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-folder-bin-list\",\"domain\":\"folders\",\"summary\":\"List a project’s bin: deleted folders and documents\",\"description\":\"The project's bin, newest first, a page at a time: each deleted folder the person may read, who deleted it and when, when its purge runs, and whether they may restore it. An entry with `document` holds one document sent there with document-bin: restore it with document-restore. Folder ids feed project-folder-restore and project-folder-bin-purge. Follow `nextCursor` (pass it as `cursor`) until it is null.\",\"annotations\":{\"title\":\"List a project’s bin: deleted folders and documents\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"description\":\"Entries per page, 1 to 200; default 50.\"},\"cursor\":{\"type\":\"string\",\"maxLength\":200,\"description\":\"The `nextCursor` of the previous page.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
+   "describe": "{\"name\":\"project-folder-bin-list\",\"domain\":\"folders\",\"summary\":\"List a project’s bin: deleted folders and documents\",\"description\":\"The project's bin, newest first, paged (`nextCursor`): deleted folders, who deleted each, when it is purged. An entry with `document` is one document: restore it with document-restore; a folder with project-folder-restore.\",\"annotations\":{\"title\":\"List a project’s bin: deleted folders and documents\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\"},\"cursor\":{\"type\":\"string\",\"maxLength\":200}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "project-folder-bin-purge",
@@ -852,19 +771,19 @@
    "name": "project-folder-ensure",
    "domain": "folders",
    "summary": "Resolve folder paths, creating the missing",
-   "description": "Takes directory paths (relative to `parentId`, null: the project root) and returns the folders plus `folderIdByPath`, creating whatever is missing. Unlike project-folder-create it treats an existing folder as success, so call it before filing documents into a tree. Safe to repeat.",
+   "description": "Takes directory paths (relative to `parentId`, null: the root) and returns the folders plus `folderIdByPath`, creating what is missing; an existing folder is success. Safe to repeat.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-folder-ensure\",\"domain\":\"folders\",\"summary\":\"Resolve folder paths, creating the missing\",\"description\":\"Takes directory paths (relative to `parentId`, null: the project root) and returns the folders plus `folderIdByPath`, creating whatever is missing. Unlike project-folder-create it treats an existing folder as success, so call it before filing documents into a tree. Safe to repeat.\",\"annotations\":{\"title\":\"Resolve folder paths, creating the missing\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"parentId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]},\"paths\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"maxItems\":300}},\"required\":[\"paths\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-folder-ensure\",\"domain\":\"folders\",\"summary\":\"Resolve folder paths, creating the missing\",\"description\":\"Takes directory paths (relative to `parentId`, null: the root) and returns the folders plus `folderIdByPath`, creating what is missing; an existing folder is success. Safe to repeat.\",\"annotations\":{\"title\":\"Resolve folder paths, creating the missing\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"parentId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]},\"paths\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":4096},\"maxItems\":300}},\"required\":[\"paths\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-folder-list",
    "domain": "folders",
    "summary": "List a project’s folders",
-   "description": "Every folder of the project's files that the person may read, each with its id, name, parent, path and the person's own access, plus `rootAccess` (what they may do at the project root). Folder ids from here feed project-folder-update, project-folder-delete, document filters (`folderId` of project-document-list) and the `parentId` of project-folder-create.",
+   "description": "The project's folder tree in one call: every folder the person may read, with its id, name, parent, path and the person's own access, plus `rootAccess`. `counts: true` adds each folder's `documentCount` and `rootDocumentCount`. Folder ids feed project-folder-update, project-folder-delete and `folderId` of document-list.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-folder-list\",\"domain\":\"folders\",\"summary\":\"List a project’s folders\",\"description\":\"Every folder of the project's files that the person may read, each with its id, name, parent, path and the person's own access, plus `rootAccess` (what they may do at the project root). Folder ids from here feed project-folder-update, project-folder-delete, document filters (`folderId` of project-document-list) and the `parentId` of project-folder-create.\",\"annotations\":{\"title\":\"List a project’s folders\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-folder-list\",\"domain\":\"folders\",\"summary\":\"List a project’s folders\",\"description\":\"The project's folder tree in one call: every folder the person may read, with its id, name, parent, path and the person's own access, plus `rootAccess`. `counts: true` adds each folder's `documentCount` and `rootDocumentCount`. Folder ids feed project-folder-update, project-folder-delete and `folderId` of document-list.\",\"annotations\":{\"title\":\"List a project’s folders\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"counts\":{\"const\":\"true\",\"description\":\"Adds `documentCount` (filed directly in it) per folder.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "project-folder-restore",
@@ -879,10 +798,10 @@
    "name": "project-folder-update",
    "domain": "folders",
    "summary": "Rename, move or describe a project folder",
-   "description": "Changes a folder's `name`, its `parentId` (null moves it to the project root) or its `description` (null clears it); send only what changes. Folder ids come from project-folder-list. A move that changes who can open the subtree also needs project:manage. Returns `{ folder }`.",
+   "description": "Changes a folder's `name`, `parentId` (null: the project root) or `description` (null clears it); send only what changes. A move that changes who can open the subtree needs project:manage.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-folder-update\",\"domain\":\"folders\",\"summary\":\"Rename, move or describe a project folder\",\"description\":\"Changes a folder's `name`, its `parentId` (null moves it to the project root) or its `description` (null clears it); send only what changes. Folder ids come from project-folder-list. A move that changes who can open the subtree also needs project:manage. Returns `{ folder }`.\",\"annotations\":{\"title\":\"Rename, move or describe a project folder\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"folderId\":{\"type\":\"string\",\"description\":\"The folder id, from project-folder-list or project-folder-bin-list.\"}},\"required\":[\"id\",\"folderId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"parentId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]},\"description\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":2000},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"project-folder-update\",\"domain\":\"folders\",\"summary\":\"Rename, move or describe a project folder\",\"description\":\"Changes a folder's `name`, `parentId` (null: the project root) or `description` (null clears it); send only what changes. A move that changes who can open the subtree needs project:manage.\",\"annotations\":{\"title\":\"Rename, move or describe a project folder\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"folderId\":{\"type\":\"string\",\"description\":\"The folder id, from project-folder-list or project-folder-bin-list.\"}},\"required\":[\"id\",\"folderId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"parentId\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"uuid\"},{\"type\":\"null\"}]},\"description\":{\"anyOf\":[{\"type\":\"string\",\"maxLength\":2000},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-root-sort-get",
@@ -897,10 +816,10 @@
    "name": "project-root-sort-start",
    "domain": "folders",
    "summary": "Sort a project root’s loose files into its folders",
-   "description": "Starts a server run that proposes a folder for every loose file in the project's root, from the folders the project already has, plus new folders for the files none fits. Nothing moves yet. Returns the run (`status: judging`); follow it with root-sort-run-get until `status` is `ready`, then send what to keep with root-sort-run-apply. Refused when the project has no folder, the root holds no file, or a sort of the same root is already running. A new run cancels the person’s earlier runs that still wait for review.",
+   "description": "Starts a server run that proposes a folder for every loose file in the project's root (existing folders, or new ones). Nothing moves yet. Follow the run with root-sort-run-get until `ready`, then send what to keep with root-sort-run-apply. Refused when there is no folder, no loose file, or a sort already running.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"project-root-sort-start\",\"domain\":\"folders\",\"summary\":\"Sort a project root’s loose files into its folders\",\"description\":\"Starts a server run that proposes a folder for every loose file in the project's root, from the folders the project already has, plus new folders for the files none fits. Nothing moves yet. Returns the run (`status: judging`); follow it with root-sort-run-get until `status` is `ready`, then send what to keep with root-sort-run-apply. Refused when the project has no folder, the root holds no file, or a sort of the same root is already running. A new run cancels the person’s earlier runs that still wait for review.\",\"annotations\":{\"title\":\"Sort a project root’s loose files into its folders\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-root-sort-start\",\"domain\":\"folders\",\"summary\":\"Sort a project root’s loose files into its folders\",\"description\":\"Starts a server run that proposes a folder for every loose file in the project's root (existing folders, or new ones). Nothing moves yet. Follow the run with root-sort-run-get until `ready`, then send what to keep with root-sort-run-apply. Refused when there is no folder, no loose file, or a sort already running.\",\"annotations\":{\"title\":\"Sort a project root’s loose files into its folders\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "root-sort-run-apply",
@@ -924,10 +843,10 @@
    "name": "root-sort-run-get",
    "domain": "folders",
    "summary": "Read one root-sort run",
-   "description": "The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready` it carries `review`: the shelf’s folders, the files, one placement per file (`folderId`, or `newFolderPath` for a folder the run proposes, with its `reason` and `confidence`) and the proposed new folders. Only the person who started the run can read it. Next: root-sort-run-apply, or root-sort-run-cancel. In a project’s own conversation read the run through project-root-sort-get, which names the project.",
+   "description": "The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready`, `review` holds one placement per file (`folderId` or `newFolderPath`, with `reason` and `confidence`). Only its starter reads it. Next: root-sort-run-apply or root-sort-run-cancel.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"root-sort-run-get\",\"domain\":\"folders\",\"summary\":\"Read one root-sort run\",\"description\":\"The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready` it carries `review`: the shelf’s folders, the files, one placement per file (`folderId`, or `newFolderPath` for a folder the run proposes, with its `reason` and `confidence`) and the proposed new folders. Only the person who started the run can read it. Next: root-sort-run-apply, or root-sort-run-cancel. In a project’s own conversation read the run through project-root-sort-get, which names the project.\",\"annotations\":{\"title\":\"Read one root-sort run\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"runId\":{\"type\":\"string\",\"description\":\"The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get.\"}},\"required\":[\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"root-sort-run-get\",\"domain\":\"folders\",\"summary\":\"Read one root-sort run\",\"description\":\"The run’s `status` (judging, grouping, ready, applying, applied, undoing, undone, cancelled, failed) and `progress`. Once `ready`, `review` holds one placement per file (`folderId` or `newFolderPath`, with `reason` and `confidence`). Only its starter reads it. Next: root-sort-run-apply or root-sort-run-cancel.\",\"annotations\":{\"title\":\"Read one root-sort run\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"runId\":{\"type\":\"string\",\"description\":\"The root-sort run id, from project-root-sort-start, office-shelf-root-sort-start or their -get.\"}},\"required\":[\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "root-sort-run-undo",
@@ -1005,10 +924,10 @@
    "name": "document-revision-candidates",
    "domain": "review",
    "summary": "Find documents a new file could replace",
-   "description": "For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.",
+   "description": "For file names about to be added to a project (`projectId`, `names`, optional target `folders`) or the office shelf (`scope: office_shelf`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"document-revision-candidates\",\"domain\":\"review\",\"summary\":\"Find documents a new file could replace\",\"description\":\"For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.\",\"annotations\":{\"title\":\"Find documents a new file could replace\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"projectId\":{\"type\":\"string\",\"minLength\":1},\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000},\"folders\":{\"type\":\"object\",\"additionalProperties\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]}}},\"required\":[\"projectId\",\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
+   "describe": "{\"name\":\"document-revision-candidates\",\"domain\":\"review\",\"summary\":\"Find documents a new file could replace\",\"description\":\"For file names about to be added to a project (`projectId`, `names`, optional target `folders`) or the office shelf (`scope: office_shelf`), lists existing documents each could be a new revision of. Read-only; feeds document-revision-link-set.\",\"annotations\":{\"title\":\"Find documents a new file could replace\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"body\":{\"type\":\"object\",\"properties\":{\"scope\":{\"type\":\"string\",\"enum\":[\"project\",\"office_shelf\"],\"description\":\"Default `project` (with `projectId`).\"},\"projectId\":{\"type\":\"string\",\"minLength\":1},\"names\":{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":1024},\"maxItems\":2000},\"folders\":{\"type\":\"object\",\"additionalProperties\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]}}},\"required\":[\"names\"]}},\"additionalProperties\":false,\"required\":[\"body\"]}}"
   },
   {
    "name": "document-revision-compare",
@@ -1849,8 +1768,8 @@
    "task-run-document-add",
    "organization-member-list",
    "project-profile-patch",
-   "document-name-match",
-   "conversation-message-add"
+   "conversation-message-add",
+   "assignment-add"
   ],
   "Mitglied zu Projekt hinzufügen": [
    "project-person-add",
@@ -1861,8 +1780,8 @@
    "task-run-document-add",
    "organization-member-list",
    "project-profile-patch",
-   "document-name-match",
-   "conversation-message-add"
+   "conversation-message-add",
+   "assignment-add"
   ],
   "list project members": [
    "project-member-list",
@@ -1874,7 +1793,7 @@
    "office-conventions-list",
    "organization-memory-list",
    "project-list",
-   "project-document-list"
+   "project-folder-list"
   ],
   "Projektmitglieder anzeigen": [
    "project-member-list",
@@ -1890,7 +1809,6 @@
   ],
   "list projects": [
    "project-list",
-   "project-document-list",
    "project-folder-list",
    "project-member-list",
    "project-memory-list",
@@ -1898,11 +1816,11 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
+   "document-list",
    "task-list"
   ],
   "Projekte auflisten": [
    "project-list",
-   "project-document-list",
    "project-folder-list",
    "project-member-list",
    "project-memory-list",
@@ -1910,6 +1828,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
+   "document-list",
    "task-list"
   ],
   "create task": [
@@ -1968,7 +1887,7 @@
    "document-bin",
    "document-delete",
    "document-download",
-   "document-get"
+   "document-file-get"
   ],
   "Dokument umbenennen": [
    "document-rename",
@@ -1980,16 +1899,16 @@
    "document-bin",
    "document-delete",
    "document-download",
-   "document-get"
+   "document-file-get"
   ],
   "move document folder": [
    "document-move",
    "project-folder-delete",
-   "document-bin",
-   "office-shelf-folder-update",
    "project-folder-update",
+   "office-shelf-folder-update",
+   "document-bin",
    "project-folder-bin-list",
-   "office-shelf-document-summary",
+   "document-summary-get",
    "office-shelf-folder-delete",
    "office-shelf-folder-list",
    "project-folder-bin-purge"
@@ -1997,12 +1916,12 @@
   "Datei in Ordner verschieben": [
    "document-move",
    "project-folder-delete",
-   "document-bin",
    "office-shelf-root-sort-start",
    "project-root-sort-start",
-   "office-shelf-folder-update",
    "project-folder-update",
    "root-sort-run-undo",
+   "office-shelf-folder-update",
+   "document-bin",
    "project-folder-bin-list",
    "diagram-file"
   ],
@@ -2010,29 +1929,28 @@
    "office-shelf-folder-create",
    "project-folder-create",
    "office-shelf-folder-ensure",
-   "project-folder-ensure",
-   "project-folder-list",
    "hold-create",
    "project-create",
    "skill-category-create",
    "office-shelf-folder-delete",
-   "office-shelf-folder-list"
+   "office-shelf-folder-list",
+   "office-shelf-folder-update",
+   "project-folder-access-get"
   ],
   "Ordner anlegen": [
    "office-shelf-folder-create",
    "project-folder-create",
    "office-shelf-folder-ensure",
-   "project-folder-ensure",
-   "project-folder-list",
    "hold-create",
    "project-create",
    "skill-category-create",
    "office-shelf-folder-delete",
-   "office-shelf-folder-list"
+   "office-shelf-folder-list",
+   "office-shelf-folder-update",
+   "project-folder-access-get"
   ],
   "document versions": [
    "document-version-list",
-   "document-version-file-get",
    "document-version-approve",
    "document-version-content-get",
    "document-version-content-replace",
@@ -2040,11 +1958,11 @@
    "document-version-fork",
    "document-version-get",
    "document-version-publish",
-   "document-version-submit"
+   "document-version-submit",
+   "document-version-reject"
   ],
   "Fassungen eines Dokuments": [
    "document-version-list",
-   "document-version-file-get",
    "document-version-approve",
    "document-version-content-get",
    "document-version-content-replace",
@@ -2052,7 +1970,8 @@
    "document-version-fork",
    "document-version-get",
    "document-version-publish",
-   "document-version-submit"
+   "document-version-submit",
+   "document-revision-link-set"
   ],
   "request review release": [
    "mention-request-release",
@@ -2107,12 +2026,12 @@
    "annotation-list",
    "proposal-get",
    "project-list",
-   "office-shelf-document-list",
-   "project-document-list",
+   "document-list",
    "quarantine-list",
    "office-shelf-folder-list",
    "project-folder-list",
-   "conversation-list"
+   "conversation-list",
+   "session-document-list"
   ],
   "offene Vorschläge": [
    "proposal-get",
@@ -2199,7 +2118,6 @@
   ],
   "a project list": [
    "project-list",
-   "project-document-list",
    "project-folder-list",
    "project-member-list",
    "project-memory-list",
@@ -2207,6 +2125,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
+   "document-list",
    "task-list"
   ],
   "(a+)+$": []

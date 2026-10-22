@@ -1,36 +1,29 @@
 /**
- * The query a document listing accepts — shared by `GET /api/documents` and
- * `GET /api/office-shelf/documents`, because a shelf's listing is one thing
- * (ADR-0078) and the Files workspace builds the same URL for both.
+ * The query a document listing accepts — `GET /api/documents` for every shelf,
+ * named by `scope` and `projectId` (`./shelf-scope`), because a shelf's listing
+ * is one thing (ADR-0078) and the Files workspace builds the same URL for both.
  *
- * Two reads share the URL (ADR-0102):
- *
- * - The SHELF DRAIN, the request without level parameters: every document of
- *   the shelf, `created_at DESC, id ASC`, 500 a page, the listing cursor. Its
- *   readers (the surfaced documents, the knowledge panel, document roles, the
- *   project inventory, the Files workspace's own fallback) follow `nextCursor`
- *   to the end, and its answer is byte for byte what it was before levels
- *   existed.
- * - A LEVEL READ, any request naming `folderId`, `sort`, `dir`, `q`, `state` or
- *   `limit`: one folder level (or, without `folderId`, the shelf filtered by
- *   `q`), in the order asked for, `limit` a page (default
- *   {@link DOCUMENT_LEVEL_PAGE_SIZE}), with a level cursor.
+ * Every request is a bounded page (ADR-0102, ADR-0131 rule 3): one folder level
+ * (`folderId`), or without it the whole shelf, filtered by `q` and `state`, in
+ * the order asked for (default `added`, newest first), `limit` a page (default
+ * {@link DOCUMENT_LEVEL_PAGE_SIZE}, at most {@link DOCUMENT_LEVEL_LIMIT_MAX}),
+ * with a level cursor. A reader that needs the whole shelf in the browser
+ * (`fetchListingPages`) asks for the largest page and follows `nextCursor`.
  */
 
 import { z } from 'zod'
 import { BadRequestError } from '@/lib/api/errors'
 import { DOCUMENT_AUTHORS, type DocumentAuthor } from './document-authors'
 import { DOCUMENT_READ_FAMILIES, type DocumentReadFamily } from './document-status'
+import { shelfSelectorFields } from './shelf-scope'
 import {
   DOCUMENT_LEVEL_DIRECTIONS,
   DOCUMENT_LEVEL_SORTS,
   decodeDocumentLevelCursor,
-  decodeDocumentListCursor,
   documentListCursorParam,
   type DocumentLevelCursor,
   type DocumentLevelDirection,
   type DocumentLevelSort,
-  type DocumentListCursor,
 } from './list-cursor'
 
 /** Rows a level page carries when the request does not say (`?limit=`). */
@@ -77,15 +70,20 @@ export const documentListFilterSchema = z.object({
   /** A case-insensitive substring of the document's file name or its rename. */
   q: z.string().max(DOCUMENT_LEVEL_QUERY_MAX_LENGTH).optional(),
   /** Read-state families to keep (`documentReadFamily`); absent keeps every one. */
-  state: z.string().max(100).regex(STATE_LIST).optional(),
+  state: z
+    .string()
+    .max(100)
+    .regex(STATE_LIST)
+    .optional()
+    .describe('Comma-separated read-state families.'),
   /** Rows per page, clamped to 1..500. Not a number is a 400. */
   limit: z.coerce.number().int().optional(),
 })
 
 export type DocumentListFilter = z.infer<typeof documentListFilterSchema>
 
-/** `GET /api/documents`: the shelf's filters, and the project whose documents they read. */
-export const projectDocumentListQuerySchema = documentListFilterSchema.extend({ projectId: z.string().min(1) })
+/** `GET /api/documents`: the shelf's filters, and the shelf they read. */
+export const documentListQuerySchema = documentListFilterSchema.extend(shelfSelectorFields)
 
 /** The filters a shelf summary takes: the two the server answers, so its counts match the listing they sit above. */
 export const documentSummaryFilterSchema = documentListFilterSchema.pick({ authoredBy: true, includeArchived: true })
@@ -111,40 +109,20 @@ export interface DocumentLevelQuery {
 export interface DocumentListOptions {
   authoredBy?: DocumentAuthor
   includeArchived: boolean
-  /** The shelf drain's position; never set beside {@link level}. */
-  cursor?: DocumentListCursor
-  /** Present for a level read (see the module header). */
-  level?: DocumentLevelQuery
+  level: DocumentLevelQuery
 }
 
 /** The service options a parsed listing query stands for. A cursor of the wrong kind or order is a 400. */
 export function documentListOptions(query: DocumentListFilter): DocumentListOptions {
-  const base = { authoredBy: query.authoredBy, includeArchived: query.includeArchived === 'true' }
-  const level = documentLevelQuery(query)
-  if (level) return { ...base, level }
-  if (!query.cursor) return { ...base, cursor: undefined }
-  const cursor = decodeDocumentListCursor(query.cursor)
-  // The schema let it through as a LEVEL cursor; read without level
-  // parameters it would silently restart at the first page.
-  if (!cursor) throw new BadRequestError('Invalid cursor: this cursor belongs to a level read')
-  return { ...base, cursor }
+  return {
+    authoredBy: query.authoredBy,
+    includeArchived: query.includeArchived === 'true',
+    level: documentLevelQuery(query),
+  }
 }
 
-/** Whether the request names any level parameter. */
-function isLevelRead(query: DocumentListFilter): boolean {
-  return (
-    query.folderId !== undefined ||
-    query.sort !== undefined ||
-    query.dir !== undefined ||
-    query.q !== undefined ||
-    query.state !== undefined ||
-    query.limit !== undefined
-  )
-}
-
-/** The level read a query asks for, or `null` for the shelf drain. */
-export function documentLevelQuery(query: DocumentListFilter): DocumentLevelQuery | null {
-  if (!isLevelRead(query)) return null
+/** The page a query asks for: one folder level, or the whole shelf without `folderId`. */
+export function documentLevelQuery(query: DocumentListFilter): DocumentLevelQuery {
   const sort = query.sort ?? 'added'
   const dir = query.dir ?? (sort === 'name' ? 'asc' : 'desc')
   const q = query.q?.trim() ?? ''

@@ -58,7 +58,7 @@ describe('resolveDocumentsByName', () => {
 
     expect(a.get('a.pdf')?.project[0]?.id).toBe('p1')
     expect(b.get('b.pdf')?.project[0]?.id).toBe('p2')
-    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name', '/api/office-shelf/documents/by-name'])
+    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name', '/api/documents/by-name'])
     expect(calls[0].body).toEqual({ projectId: 'proj-1', names: ['A.pdf', 'B.pdf'] })
   })
 
@@ -94,7 +94,7 @@ describe('resolveDocumentsByName', () => {
     const result = await resolveDocumentsByName(null, ['A.pdf'])
 
     expect(result.get('a.pdf')?.officeShelf[0]?.id).toBe('a1')
-    expect(calls.map((call) => call.path)).toEqual(['/api/office-shelf/documents/by-name'])
+    expect(calls.map((call) => call.path)).toEqual(['/api/documents/by-name'])
   })
 
   it('asks nothing for no names', async () => {

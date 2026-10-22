@@ -134,6 +134,13 @@ export interface AgentOperation {
    * solo conversation of a project: the record there covers that project only.
    */
   readonly spansProjects?: SpansProjects
+  /**
+   * Input the call is given when the caller does not say otherwise: set only on
+   * the operation an old name resolves to (`RENAMED_OPERATIONS` with `input`),
+   * so `office-shelf-document-list` still reads the office shelf as
+   * `document-list` with `scope: office_shelf`. The caller's own values win.
+   */
+  readonly inputDefaults?: OperationExample
 }
 
 export type SpansProjects = 'always' | 'unlessScoped'
@@ -179,4 +186,30 @@ export function annotationsOf(op: AgentOperation): ToolAnnotations {
 /** The `[name]` segments of a route path, in order. */
 export function pathParams(path: string): string[] {
   return [...path.matchAll(/\[(?:\.\.\.)?([^\]]+)\]/g)].map((match) => match[1] as string)
+}
+
+const isPlainObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Two input slots merged, the caller's values over the defaults, one level into nested objects (`body.fields`). */
+function mergeSlot(defaults: unknown, given: unknown): unknown {
+  if (!isPlainObject(defaults)) return given
+  if (given === undefined) return defaults
+  if (!isPlainObject(given)) return given
+  const merged: Record<string, unknown> = { ...defaults, ...given }
+  for (const [key, value] of Object.entries(defaults)) {
+    if (isPlainObject(value) && isPlainObject(given[key])) merged[key] = { ...value, ...given[key] }
+  }
+  return merged
+}
+
+/** `input` with an operation's {@link AgentOperation.inputDefaults} under it. */
+export function withInputDefaults<T extends OperationExample>(input: T, defaults: OperationExample | undefined): T {
+  if (!defaults) return input
+  return {
+    ...input,
+    ...(defaults.params ? { params: mergeSlot(defaults.params, input.params) as Record<string, string> } : {}),
+    ...(defaults.query ? { query: mergeSlot(defaults.query, input.query) as Record<string, unknown> } : {}),
+    ...(defaults.body ? { body: mergeSlot(defaults.body, input.body) } : {}),
+  }
 }

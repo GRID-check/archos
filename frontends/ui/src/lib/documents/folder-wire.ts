@@ -8,6 +8,14 @@
 import { z } from 'zod'
 
 /** `POST …/folders`. */
+/** `GET /api/projects/[id]/folders`: `counts=true` adds each folder's `documentCount` and the root's. */
+export const folderListQuerySchema = z.object({
+  counts: z
+    .literal('true')
+    .optional()
+    .describe('Adds `documentCount` (filed directly in it) per folder.'),
+})
+
 export const createFolderSchema = z.object({
   name: z.string().min(1).max(255),
   parentId: z.string().uuid().nullable().optional(),

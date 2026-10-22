@@ -419,7 +419,7 @@ ceiling.
 | Piloti uses | Instead of |
 |---|---|
 | `remember` | `project-memory-create`, `organization-memory-create` |
-| `knowledge_search` | `document-search`, `office-shelf-document-search`, `knowledge-search` |
+| `knowledge_search` | `document-search`, `knowledge-search` |
 | `create_task` | `task-create`, `task-run-commission` |
 | `canvas__mark`, `canvas__update`, `canvas__delete`, `canvas__reply` | `annotation-create`, `annotation-update`, `annotation-delete`, `annotation-reply-create` |
 | `ifc_query`, `ifc_measure` | `bim-model-query`, `ifc-query`, `ifc-measure` |
@@ -536,7 +536,14 @@ and is never an operation's entity. The renames of October 2026 (`job-*` to
 `task-*`, `run-*` and `task-review` to `task-run-*`,
 `document-quarantine-release*` to `document-quarantine-allow*`) are accepted under
 their old names for one release (`RENAMED_OPERATIONS`, `catalog/index.ts`), for
-proposals filed before and agents that remember them. PostHog's
+proposals filed before and agents that remember them. A shelf is an argument,
+not a prefix (ADR-0131 rule 5): the `office-shelf-document-*` twins are the
+document operations with `scope: office_shelf` (`document-list`,
+`document-summary-get`, `document-by-name-resolve`, `document-name-match`,
+`document-revision-candidates`, `document-search`, `document-upload`,
+`document-delete`), and an old name that stood for a scope maps to
+`{ to, input }`: the input is a default under what the caller sends
+(`withInputDefaults`, `operation.ts`). PostHog's
 `agent_operation_called` carries the new names from then on: an insight over the
 history needs both.
 

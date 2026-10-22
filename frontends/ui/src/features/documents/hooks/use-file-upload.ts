@@ -56,10 +56,10 @@ interface UploadDocumentResponse {
   unchanged?: boolean
 }
 
-/** Where each shelf deletes one of its documents. */
+/** Where each shelf deletes one of its documents: one route, which reads the shelf from the row. */
 const DELETE_ROUTE: Record<'project' | 'office_shelf', (id: string) => string> = {
   project: (id) => `/api/documents/${encodeURIComponent(id)}`,
-  office_shelf: (id) => `/api/office-shelf/documents/${encodeURIComponent(id)}`,
+  office_shelf: (id) => `/api/documents/${encodeURIComponent(id)}`,
 }
 
 /** Delete one document through its shelf's first-party route. Already gone is success. */
@@ -491,12 +491,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         // object storage, checks the org quota and dispatches to the ingest
         // API, so a serial loop left the connection idle for most of every
         // file and made the batch take the SUM of all of them.
-        const uploadUrl =
-          shelf === 'office_shelf'
-            ? '/api/office-shelf/documents/upload'
-            : shelf === 'session'
-              ? '/api/session/documents/upload'
-              : '/api/documents/upload'
+        const uploadUrl = shelf === 'session' ? '/api/session/documents/upload' : '/api/documents/upload'
         const results = await runWithConcurrency(entries, UPLOAD_CONCURRENCY, async ({ file, tracked }) => {
           const controller = new AbortController()
           abortControllersRef.current.set(tracked.id, controller)
@@ -510,6 +505,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             if (conversationProjectId) formData.append('projectId', conversationProjectId)
           }
           if (projectId) formData.append('projectId', projectId)
+          if (shelf === 'office_shelf') formData.append('scope', 'office_shelf')
           // Both durable shelves are filed into folders now (the Archiv's
           // are the office's own).
           if (shelf !== 'session') {

@@ -20,14 +20,15 @@ vi.mock('@/lib/auth/require-auth', () => ({
   }),
 }))
 vi.mock('@/lib/documents/version-content', () => ({ streamVersionFile: vi.fn() }))
+vi.mock('@/lib/documents/service', () => ({ streamDocumentFile: vi.fn() }))
 
 import { NotFoundError } from '@/lib/api/errors'
 import { streamVersionFile } from '@/lib/documents/version-content'
 import { GET } from './route'
 
 const call = (query = '') =>
-  GET(new Request(`https://grid.test/api/documents/doc_1/versions/ver_1/file${query}`) as unknown as NextRequest, {
-    params: Promise.resolve({ id: 'doc_1', versionId: 'ver_1' }),
+  GET(new Request(`https://grid.test/api/documents/doc_1/file?versionId=ver_1${query}`) as unknown as NextRequest, {
+    params: Promise.resolve({ id: 'doc_1' }),
   })
 
 beforeEach(() => {
@@ -35,7 +36,7 @@ beforeEach(() => {
   vi.mocked(streamVersionFile).mockResolvedValue(new Response('bytes', { headers: { 'Content-Type': 'application/pdf' } }))
 })
 
-describe('GET /api/documents/[id]/versions/[versionId]/file', () => {
+describe('GET /api/documents/[id]/file?versionId=', () => {
   it('streams the version the service resolved, for the session, inline by default', async () => {
     const response = await call()
 
@@ -50,10 +51,10 @@ describe('GET /api/documents/[id]/versions/[versionId]/file', () => {
   })
 
   it('asks for an attachment only with download=1', async () => {
-    await call('?download=1')
+    await call('&download=1')
     expect(streamVersionFile).toHaveBeenLastCalledWith(expect.anything(), 'doc_1', 'ver_1', { download: true })
 
-    await call('?download=true')
+    await call('&download=true')
     expect(streamVersionFile).toHaveBeenLastCalledWith(expect.anything(), 'doc_1', 'ver_1', { download: false })
   })
 

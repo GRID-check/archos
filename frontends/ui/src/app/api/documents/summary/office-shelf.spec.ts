@@ -29,9 +29,9 @@ import { summarizeOfficeShelfDocuments } from '@/lib/documents/shelf-summary'
 import { GET } from './route'
 
 const get = (query = '') =>
-  GET(new NextRequest(`https://grid.test/api/office-shelf/documents/summary${query}`), { params: Promise.resolve({}) })
+  GET(new NextRequest(`https://grid.test/api/documents/summary?scope=office_shelf${query.replace(/^\?/, '&')}`), { params: Promise.resolve({}) })
 
-describe('GET /api/office-shelf/documents/summary', () => {
+describe('GET /api/documents/summary?scope=office_shelf', () => {
   it("serves the Archiv's summary for the working set by default", async () => {
     const body = await (await get()).json()
 

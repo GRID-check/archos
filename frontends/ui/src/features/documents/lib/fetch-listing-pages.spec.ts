@@ -18,18 +18,24 @@ describe('fetchListingPages', () => {
     const { fetcher, urls } = pages({ documents: ['a'], nextCursor: null })
     const result = await fetchListingPages<string>('/api/documents?projectId=p', { fetcher })
     expect(result).toMatchObject({ documents: ['a'], truncated: false })
-    expect(urls).toEqual(['/api/documents?projectId=p'])
+    expect(urls).toEqual(['/api/documents?projectId=p&limit=500'])
+  })
+
+  it('keeps a limit the caller named', async () => {
+    const { fetcher, urls } = pages({ documents: [], nextCursor: null })
+    await fetchListingPages<string>('/api/documents?limit=20', { fetcher })
+    expect(urls).toEqual(['/api/documents?limit=20'])
   })
 
   it('follows the cursor, appending it to an existing query or starting one', async () => {
     const withQuery = pages({ documents: ['a'], nextCursor: 'x/y' }, { documents: ['b'] })
     const result = await fetchListingPages<string>('/api/documents?projectId=p', { fetcher: withQuery.fetcher })
     expect(result.documents).toEqual(['a', 'b'])
-    expect(withQuery.urls[1]).toBe('/api/documents?projectId=p&cursor=x%2Fy')
+    expect(withQuery.urls[1]).toBe('/api/documents?projectId=p&limit=500&cursor=x%2Fy')
 
     const bare = pages({ documents: [], nextCursor: 'c' }, { documents: [] })
-    await fetchListingPages<string>('/api/office-shelf/documents', { fetcher: bare.fetcher })
-    expect(bare.urls[1]).toBe('/api/office-shelf/documents?cursor=c')
+    await fetchListingPages<string>('/api/documents', { fetcher: bare.fetcher })
+    expect(bare.urls[1]).toBe('/api/documents?limit=500&cursor=c')
   })
 
   it('keeps the first body for the fields beside the rows', async () => {

@@ -726,13 +726,13 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
 
     const rows = await screen.findAllByTestId('revision-timeline-row')
     expect(within(rows[0]).queryByTestId('revision-version-open')).toBeNull()
-    expect(within(rows[1]).getByTestId('revision-version-open')).toHaveAttribute('href', '/api/documents/doc_1/versions/ver_1/file')
+    expect(within(rows[1]).getByTestId('revision-version-open')).toHaveAttribute('href', '/api/documents/doc_1/file?versionId=ver_1')
     expect(screen.queryByTestId('revision-version-download')).toBeNull()
 
     await openRowMenu(rows[1])
     expect(await screen.findByTestId('revision-version-download')).toHaveAttribute(
       'href',
-      '/api/documents/doc_1/versions/ver_1/file?download=1',
+      '/api/documents/doc_1/file?versionId=ver_1&download=1',
     )
   })
 
@@ -770,11 +770,11 @@ describe('DocumentRevisions — one visible action per row, the rest behind ⋯'
     expect(rows).toHaveLength(3)
     // Newest first: the current upload, the unread one, the screened first upload.
     expect(within(rows[1]).queryByTestId('revision-version-open')).toBeNull()
-    expect(within(rows[2]).getByTestId('revision-version-open')).toHaveAttribute('href', '/api/documents/doc_1/versions/ver_1/file')
+    expect(within(rows[2]).getByTestId('revision-version-open')).toHaveAttribute('href', '/api/documents/doc_1/file?versionId=ver_1')
     await openRowMenu(rows[2])
     expect(await screen.findByTestId('revision-version-download')).toHaveAttribute(
       'href',
-      '/api/documents/doc_1/versions/ver_1/file?download=1',
+      '/api/documents/doc_1/file?versionId=ver_1&download=1',
     )
   })
 

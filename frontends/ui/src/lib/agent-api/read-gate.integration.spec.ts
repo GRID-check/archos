@@ -236,7 +236,7 @@ describe.skipIf(!url)('Piloti’s workspace reads against Postgres', () => {
     it('records every restricted folder of another project for a read of the whole project', async () => {
       const chat = await conversation(ids.own)
       const reads = gate.readGateFor(principal(chat, ids.own))
-      expect(await reads.beforeRead(op('project-document-list'), { query: { projectId: ids.other } })).toBeNull()
+      expect(await reads.beforeRead(op('document-list'), { query: { projectId: ids.other } })).toBeNull()
       expect(await recordedProjects(chat)).toEqual([ids.other])
       expect(await recordedFolders(chat)).toEqual([ids.otherFolder])
       // A project's facts carry no folder.
@@ -331,7 +331,7 @@ describe.skipIf(!url)('Piloti’s workspace reads against Postgres', () => {
       const chat = await conversation(ids.own, [COLLEAGUE])
       const reads = gate.readGateFor(principal(chat, ids.own))
       expect(await reads.beforeRead(op('project-member-list'), { params: { id: ids.closed } })).toBe(audience.READ_REFUSALS.shared)
-      expect(await reads.beforeRead(op('project-document-list'), { query: { projectId: ids.own } })).toBe(
+      expect(await reads.beforeRead(op('document-list'), { query: { projectId: ids.own } })).toBe(
         audience.READ_REFUSALS.shared
       )
       expect(await reads.beforeRead(op('project-get'), { params: { id: ids.own } })).toBeNull()

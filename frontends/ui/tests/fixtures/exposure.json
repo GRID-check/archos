@@ -467,6 +467,16 @@
    "withheld": null,
    "reason": null
   },
+  "document-list": {
+   "kind": "catalog",
+   "domain": "documents",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "document-model-get": {
    "kind": "catalog",
    "domain": "documents",
@@ -621,10 +631,13 @@
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
-   "external": true,
-   "piloti": true,
+   "external": false,
+   "piloti": false,
    "platform": false,
-   "withheld": null,
+   "withheld": {
+    "category": "ui-state",
+    "reason": "a link to the file grid’s thumbnail image, which an agent cannot look at; document-look shows a page"
+   },
    "reason": null
   },
   "document-unarchive": {
@@ -638,16 +651,6 @@
    "reason": null
   },
   "document-upload": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "document-version-file-get": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,
@@ -748,96 +751,6 @@
    "reason": null
   },
   "mail-import-start": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-delete": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-list": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-lookup": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-name-probe": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-revision-probe": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-search": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": "native:knowledge_search",
-   "platform": false,
-   "withheld": null,
-   "reason": "a hit of this search is no citable source; Piloti’s own `knowledge_search` returns quotable passages"
-  },
-  "office-shelf-document-summary": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "office-shelf-document-upload": {
-   "kind": "catalog",
-   "domain": "documents",
-   "sensitivity": null,
-   "external": true,
-   "piloti": true,
-   "platform": false,
-   "withheld": null,
-   "reason": null
-  },
-  "project-document-list": {
    "kind": "catalog",
    "domain": "documents",
    "sensitivity": null,

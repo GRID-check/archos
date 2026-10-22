@@ -226,7 +226,7 @@ function loadSurfacedIndex(
         : Promise.resolve({ rows: null, failed: false }),
       // Büroablage is org-scoped (no projectId) — a 403 (a session without an
       // organization) or a 404 is fail-open (no Archiv resolutions), NOT an error.
-      fetchCorpus('/api/office-shelf/documents', [403, 404]),
+      fetchCorpus('/api/documents?scope=office_shelf', [403, 404]),
       // This conversation's private attachments. A caller that names no
       // conversation gets an empty session corpus and no extra request.
       conversationId
