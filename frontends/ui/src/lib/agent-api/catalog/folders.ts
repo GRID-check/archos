@@ -312,7 +312,8 @@ export const foldersOperations = [
     domain: 'documents',
     summary: 'Cancel a mail import',
     description:
-      'Cancels an import and discards the parts already sent. Only the person who started it, or an org ' +
+      'Cancels an import for good: the parts already sent and the staged archive are discarded, and it cannot be resumed. ' +
+      'Mails already filed stay in the project (move them to the bin with document-bin). Only the person who started it, or an org ' +
       'project administrator, may cancel. Import ids come from mail-import-list.',
     method: 'DELETE',
     path: '/api/projects/[id]/mail-imports/[importId]',
@@ -456,7 +457,9 @@ export const foldersOperations = [
     summary: 'Start an Outlook archive import',
     description:
       'Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, ' +
-      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.',
+      'partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. The mails are ' +
+      'then filed with no proposal to approve, into the project folder "E-Mail-Import/<archive name>" as the person who started ' +
+      'the import, each file through the same checks as any upload.',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports',
     params: projectParams,
@@ -486,7 +489,8 @@ export const foldersOperations = [
     summary: 'Finish sending an Outlook archive',
     description:
       'Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its ' +
-      'status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 400 when a part is missing.',
+      'status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 409 and ' +
+      'details.missingParts (the first 50) while a part is absent or the wrong size: send those with mail-import-part-upload and call again.',
     method: 'POST',
     path: '/api/projects/[id]/mail-imports/[importId]/complete',
     params: mailImportParams,

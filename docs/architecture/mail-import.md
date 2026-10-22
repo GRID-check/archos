@@ -37,6 +37,12 @@ browser                     BFF (frontend)                     object store     
 - **Reading.** `aiq_api.mail_archive` opens the staged object through
   `RangeFile`, a file object over presigned range GETs with a 64 MiB block cache.
   Items are numbered depth-first over the mail tree, so a position is a cursor.
+  The folder tree and each folder's message count are read once when the
+  archive opens (`Archive._folders`, `total` in `mail_archive/reader.py`), so
+  they cost no message reads; no route returns them yet. A slice reads pages of
+  20 messages, and one read of the archive (a page, an attachment) may take
+  90 s (`MAIL_IMPORT_PAGE_SIZE`, `MAIL_ARCHIVE_READ_TIMEOUT_MS` in
+  `lib/mail-import/config.ts`).
 - **Filing.** `lib/mail-import/job.ts` runs on the BFF job queue as the person
   who started the import, 120 s of filing per slice, checked before every
   attachment. `filing.ts` files one mail: its folder, its attachments through
@@ -58,7 +64,12 @@ browser                     BFF (frontend)                     object store     
   (`projectRootAccess`), because the import files its folder at the root.
 - **Retries.** A passing failure hands the import to a fresh job that waits 1,
   5, 15, 30, 60, then 120 minutes; filing a mail resets the streak. The
-  background-work sweep gives an import whose job vanished a new one.
+  background-work sweep (`sweepStaleMailImports`) gives an import that has made
+  no progress for 30 minutes and has no live job a new one, counted on the same
+  streak; past the sixth the import ends `failed` with `stalled`. These retries
+  are the import's own (`mailImportHandler`, `handOn` in `job.ts`): the failed
+  job ends `done` and a new one is queued, so the queue never spends an attempt
+  on them.
 - **Sharing the job pool.** An import runs for hours, so its claim yields its
   slot every ten minutes between slices (`workers/jobs/runner.js`), and the
   fair claim lets other organizations' work in before it continues.
@@ -84,10 +95,17 @@ The import never supersedes a document it did not file into that folder.
 original), files the upload path refuses (type, size, and the office's name
 screening,
 [ADR-0086](../adr/0086-uploads-are-screened-locally-and-matches-wait-in-quarantine.md),
-which reads the Outlook folder path as part of the name), files into a folder
+which reads the path of the project folder the file goes into; those folders
+mirror the Outlook folders and the mail's own folder, so a term in either
+counts), files into a folder
 that turned read-only for the person under the import (`access`), a name another
 document claimed between the probe and the upload (`name_taken`), and messages
-or attachments damaged in the archive. The import never releases a screened
+or attachments damaged in the archive. The backend reader's status becomes the
+reason (`lib/mail-import/archive-client.ts`): `422` ends the import as an
+unreadable archive, `413` skips an attachment as too large, `409` skips one as
+unreadable. An item the archive cannot read is named by its position (`#412`),
+and the row keeps the first 20 names (`SKIPPED_SAMPLES_KEPT`); the counts are
+exact. The import never releases a screened
 file: that release is a person's per-file decision in the upload dialog, and a
 job has no person to ask. Every such refusal is a skip, never a failed slice: a
 refusal left to throw is retried until the import ends `stopped`. Counted but
@@ -162,8 +180,27 @@ there (`purger/storage.js`, `abortMultipartUploads`).
 ## Known limits
 
 - An attached mail is skipped, not unpacked into its own folder.
+- Switching the `mail-import` flag off stops new imports and the completion of
+  an upload (`requireEnabled` in `startMailImport` and
+  `completeMailImportUpload`). An upload already started still receives parts
+  and can be cancelled; it never completes, and the sweep cancels it
+  (`upload_expired`) after 48 h.
+- A mail's text is filed as written (`mailNote` in `lib/mail-import/naming.ts`).
+  The Markdown reader cuts a section at every `#` heading outside a code fence,
+  so a body line such as `## 14.10.2026 · MA 37` becomes a citable section of
+  the note, and an unclosed code fence in a body hides the sections after it.
+  The To and Cc addresses are in the note, and so in the index.
 - The BFF carries the archive's bytes; twenty gigabytes is twenty gigabytes
   through the frontend pods.
 - `libpff-python` is pinned to its first cp314 release and is labelled alpha
   upstream; `GRID_PST_FIXTURE_DIR` runs `test_mail_archive_reader.py` over real
   archives when it moves.
+- `mail-import-list` and the project's import list show the newest 20 imports
+  (`MAIL_IMPORT_LIST_LIMIT`, `lib/mail-import/repository.ts`); older ones have
+  no cursor to reach them. The operation is in the `list-paging.spec.ts`
+  baseline.
+- The import emits no PostHog event and no Langfuse trace (it makes no model
+  call). What happened is on the `mail_imports` row (counts, `skipped_samples`,
+  `error_code`), in the inbox item, and in the `bff` queue meters, which count
+  slices, not imports. The import requeues itself after a failure instead of
+  throwing, so a failing import never reaches `grid.queue.dead_total`.

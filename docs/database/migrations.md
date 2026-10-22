@@ -35,14 +35,19 @@ export default defineConfig({
 
 Edit or create `.ts` files in `src/lib/db/schema/`. The barrel export in `index.ts` re-exports all tables.
 
-### 2. Generate Migration SQL
+### 2. Write the Migration SQL
 
-```bash
-cd frontends/ui
-npx drizzle-kit generate
-```
+Migrations are written by hand; `drizzle-kit generate` has not been used since
+0011, and the snapshots in `drizzle/meta/` stop there. For a new migration:
 
-This reads the current schema, diffs against the last snapshot in `drizzle/meta/`, and produces a new `.sql` file in `drizzle/` (e.g., `0004_next_migration.sql`) plus a snapshot JSON.
+- Take the number from `drizzle/meta/_journal.json`: the highest `idx` plus one.
+  Look it up, do not remember it.
+- Write `drizzle/NNNN_name.sql`, and its hand-run rollback
+  `drizzle/NNNN_name.down.sql`.
+- Add the journal entry, with a `when` greater than the last entry's (see
+  Safety Notes).
+- Add a verification block for it to `scripts/rls-test-db.sh` when it touches
+  the tenant boundary or carries an invariant worth proving against PostgreSQL.
 
 ### 3. Apply Migration
 
@@ -255,7 +260,5 @@ The migration reports success/failure: the store URL is added to the in-memory `
 ## Safety Notes
 
 - **A migration file without a journal entry is never applied.** `drizzle-kit migrate` executes what `drizzle/meta/_journal.json` lists, not what is on disk — so a hand-written `NNNN_*.sql` added without its entry is inert, and every check passes while reporting success: the file is in the diff, review sees it, and the migrate step "succeeds" having skipped it. The first symptom is a 500 from the route that queries the table (issue #283, `relation "platform_retrieval_settings" does not exist`). `frontends/ui/tests/db/migrations-journal.test.ts` now fails the build on that mismatch in both directions; `*.down.sql` companions are hand-run rollbacks and deliberately stay out of the journal.
-- **Generated migrations are idempotent** — `drizzle-kit generate` always produces SQL that can be safely reapplied (though `drizzle-kit migrate` only applies pending ones).
-- **Snapshot diffing** — Drizzle stores snapshots in `drizzle/meta/` for each migration. These are used to compute the diff for the next `generate` run.
-- **Never edit generated SQL manually** — always modify the schema `.ts` file and re-generate. Manual edits will be overwritten on the next `generate` run.
-- **Rollbacks** — Drizzle Kit does not support down migrations. To revert, create a new migration that reverses the change.
+- **An entry whose `when` is not greater than the last applied one is skipped, silently.** Drizzle compares only `when` (`lastDbMigration.created_at < migration.folderMillis`), not `idx` and not the hash, and `migrate()` still reports success. The journal carries hand-picked round values rather than `Date.now()`, so two migrations written on one day collide easily. Give a new entry a `when` above the last entry's; `migrations-journal.test.ts` fails the build on a duplicate or an out-of-order value.
+- **Rollbacks** — Drizzle Kit does not run down migrations. Each recent migration ships a hand-run `NNNN_name.down.sql`, kept out of the journal; to revert in production, write a new migration that reverses the change.

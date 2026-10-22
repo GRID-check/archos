@@ -160,7 +160,10 @@ German, and explains each verdict.
 - **What is not screened.** Files with no local text (images, scanned pages,
   plans without a text layer) pass on the name gate alone, and the upload
   summary says the content was not checked. The product owner chose this over
-  quarantining every scan or adding local OCR.
+  quarantining every scan or adding local OCR. Scanned pages are screened after
+  all, once the vision model has transcribed them: see „A transcript is
+  screened" in the amendment below. Name-only now means files with no text at
+  all, such as photos and other images.
 
 ### Consequences
 
@@ -177,6 +180,10 @@ German, and explains each verdict.
 * Bad, because the name check in the browser is the only one that keeps bytes off our servers;
   the server-side repeat can only refuse to store, after the bytes arrived.
 * Bad, because a quarantined file occupies storage quota until someone acts on it.
+* Bad, because the reviewers' inbox notice is sent once, by the read that moved
+  the row, and is not retried when its write fails; the audit entry is retried
+  by the sweep (`lib/upload-batches/settle.ts`). A held file nobody was told
+  about waits in Organisation → Quarantäne until someone opens that queue.
 
 ### Confirmation
 

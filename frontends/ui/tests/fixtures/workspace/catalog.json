@@ -564,19 +564,19 @@
    "name": "mail-import-cancel",
    "domain": "documents",
    "summary": "Cancel a mail import",
-   "description": "Cancels an import and discards the parts already sent. Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.",
+   "description": "Cancels an import for good: the parts already sent and the staged archive are discarded, and it cannot be resumed. Mails already filed stay in the project (move them to the bin with document-bin). Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"mail-import-cancel\",\"domain\":\"documents\",\"summary\":\"Cancel a mail import\",\"description\":\"Cancels an import and discards the parts already sent. Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.\",\"annotations\":{\"title\":\"Cancel a mail import\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"}},\"required\":[\"id\",\"importId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"mail-import-cancel\",\"domain\":\"documents\",\"summary\":\"Cancel a mail import\",\"description\":\"Cancels an import for good: the parts already sent and the staged archive are discarded, and it cannot be resumed. Mails already filed stay in the project (move them to the bin with document-bin). Only the person who started it, or an org project administrator, may cancel. Import ids come from mail-import-list.\",\"annotations\":{\"title\":\"Cancel a mail import\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"}},\"required\":[\"id\",\"importId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "mail-import-complete",
    "domain": "documents",
    "summary": "Finish sending an Outlook archive",
-   "description": "Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 400 when a part is missing.",
+   "description": "Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 409 and details.missingParts (the first 50) while a part is absent or the wrong size: send those with mail-import-part-upload and call again.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"mail-import-complete\",\"domain\":\"documents\",\"summary\":\"Finish sending an Outlook archive\",\"description\":\"Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 400 when a part is missing.\",\"annotations\":{\"title\":\"Finish sending an Outlook archive\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"}},\"required\":[\"id\",\"importId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"mail-import-complete\",\"domain\":\"documents\",\"summary\":\"Finish sending an Outlook archive\",\"description\":\"Call once every part is sent: the parts are joined and the filing job is queued (HTTP 202). Answers the import with its status; follow it with mail-import-get. Refused with 409 when the import was cancelled meanwhile, and with 409 and details.missingParts (the first 50) while a part is absent or the wrong size: send those with mail-import-part-upload and call again.\",\"annotations\":{\"title\":\"Finish sending an Outlook archive\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"importId\":{\"type\":\"string\",\"description\":\"The mail import id, from mail-import-list.\"}},\"required\":[\"id\",\"importId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "mail-import-get",
@@ -609,10 +609,10 @@
    "name": "mail-import-start",
    "domain": "documents",
    "summary": "Start an Outlook archive import",
-   "description": "Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.",
+   "description": "Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. The mails are then filed with no proposal to approve, into the project folder \"E-Mail-Import/<archive name>\" as the person who started the import, each file through the same checks as any upload.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"mail-import-start\",\"domain\":\"documents\",\"summary\":\"Start an Outlook archive import\",\"description\":\"Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete.\",\"annotations\":{\"title\":\"Start an Outlook archive import\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"filename\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"sizeBytes\":{\"type\":\"integer\"}},\"required\":[\"filename\",\"sizeBytes\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"mail-import-start\",\"domain\":\"documents\",\"summary\":\"Start an Outlook archive import\",\"description\":\"Registers a .pst or .ost archive (`filename`, `sizeBytes`, up to 25 GB) and answers the upload plan `{ import, partSize, partCount, uploadedParts }`. Send the parts with mail-import-part-upload, then call mail-import-complete. The mails are then filed with no proposal to approve, into the project folder \\\"E-Mail-Import/<archive name>\\\" as the person who started the import, each file through the same checks as any upload.\",\"annotations\":{\"title\":\"Start an Outlook archive import\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"body\":{\"type\":\"object\",\"properties\":{\"filename\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":255},\"sizeBytes\":{\"type\":\"integer\"}},\"required\":[\"filename\",\"sizeBytes\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "project-upload-list",
@@ -2037,6 +2037,7 @@
    "proposal-list",
    "project-cleanup-confirm",
    "project-cleanup-propose",
+   "mail-import-start",
    "annotation-list",
    "conversation-message-update"
   ],

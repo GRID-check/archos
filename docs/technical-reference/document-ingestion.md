@@ -307,6 +307,23 @@ Three things change for an uploaded image.
   `[IMAGE from page N]` marker (`_strip_visual_marker`). The marker is for
   retrieval, which cites a page. People read the summary, so it starts with the
   description.
+- **Photo facts.** The EXIF of the original image is read before the JPEG
+  re-encode drops it (`photo_facts.read_photo_facts`) and stored as
+  `document_metadata.capture`: `captured_at`, `latitude`, `longitude`,
+  `camera`. People who may open the file see it. `latitude` and `longitude`
+  never reach a model; `captured_at` (as a date) and `camera` may. A re-ingest
+  writes `capture` again from the new bytes. `captured_at` also feeds the
+  `document_date` payload field, where the title block's `revision_date` wins
+  when both exist (`_document_date` in `qdrant/payload.py`).
+
+A project document's Dokumentart is its type tag (`DOCUMENT_TYPE_TAGS` in
+`aiq_agent/knowledge/document_classification.py`, mirrored in
+`lib/documents/tag-vocabulary.ts`), not `doc_class`, which classifies the base
+corpus; a letter or minutes is `Sonstiges`. An upload carries no type
+(`ShelfUploadInput` has no field for it), so a person or a job can set it only
+once the metadata row exists, through `PATCH /api/documents/[id]/tags`; from
+then on `tags_set_by = 'person'` keeps ingest and the backfill from replacing
+it.
 
 ### A re-upload replaces the previous version once it has indexed
 
