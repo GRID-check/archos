@@ -110,6 +110,14 @@ export const files = {
     image: 'Image',
     unavailable: 'Preview unavailable',
   },
+  /**
+   * The Dokumentart where it is stored as an English token (`LABELLED_TAGS` in
+   * lib/documents/tag-vocabulary.ts). The older types are still stored as a
+   * German word and read as themselves.
+   */
+  documentTag: {
+    correspondence: 'Correspondence',
+  },
   preview: {
     closePreview: 'Close preview',
     expandPreview: 'Open large preview',

@@ -28,6 +28,7 @@ import { shelfSummaryUrl, type LevelPageRequest } from '@/lib/documents/level-cl
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { LiveShelf } from '@/lib/documents/shelf-live-events'
 import { offeredForRetry } from '@/lib/documents/retry-policy'
+import { tagLabel } from '@/lib/documents/tag-vocabulary'
 import { inferDocumentKind } from '../document-kind'
 import type { FileItem, FolderItem } from '../file-types'
 import { useDocParamSync, usePreviewChannel, type PreviewHandlers } from '../hooks/use-preview-channel'
@@ -662,7 +663,10 @@ export function FileWorkspace({
         : listedFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
     [listedFiles, selectedFolderId, tree.error]
   )
-  const tagOptions = useMemo(() => tagOptionsOf(paneFiles, locale), [paneFiles, locale])
+  const tagOptions = useMemo(
+    () => tagOptionsOf(paneFiles, locale, (tag) => tagLabel(tag, t)),
+    [paneFiles, locale, t]
+  )
 
   // What the server counted for the whole shelf: the folder tiles, the header
   // count, the brief and the delete confirmation read it on a paged level.
