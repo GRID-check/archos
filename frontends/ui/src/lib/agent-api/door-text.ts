@@ -54,13 +54,15 @@ const COUNT_LINE = /^Found (\d+) (?:relevant )?document\(s\)([^\n]*)$/m
  * The tool counts its hits as documents; they are passages, several to a
  * document, so the header says passages.
  */
-export function withRankedOrderNote(text: string): string {
+export function withRankedOrderNote(text: string, groupedByDocument = false): string {
   if (!COUNT_LINE.test(text)) return text
+  // Grouped by document, the count is documents (one best passage each); otherwise it counts passages.
+  const unit = groupedByDocument ? 'documents' : 'passages'
+  const limit = groupedByDocument ? '' : ' The number of hits is the platform’s configured limit.'
   return text.replace(
     COUNT_LINE,
-    'Found $1 passages$2\n(Ranked hits are in the search’s final order, after reranking and the per-document spread. ' +
-      'Each Relevance Score is that passage’s retrieval score, so it does not fall steadily down the list. ' +
-      'The number of hits is the platform’s configured limit.)',
+    `Found $1 ${unit}$2\n(Ranked hits are in the search’s final order, after reranking and the per-document spread. ` +
+      `Each Relevance Score is that passage’s retrieval score, so it does not fall steadily down the list.${limit})`,
   )
 }
 
@@ -93,6 +95,7 @@ function shortened(hit: string, share: number): string {
   const blank = hit.indexOf('\n\n')
   const meta = blank === -1 ? '' : hit.slice(0, blank + 2)
   const body = blank === -1 ? hit : hit.slice(blank + 2)
-  const room = Math.max(share - meta.length, 200)
+  // The share pays for the metadata first: a hit whose citation lines fill it keeps them and drops its text.
+  const room = Math.max(share - meta.length, 0)
   return body.length <= room ? hit : `${meta}${body.slice(0, room).trimEnd()}${CUT_NOTE}\n\n`
 }

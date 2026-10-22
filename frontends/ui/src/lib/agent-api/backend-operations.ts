@@ -394,7 +394,7 @@ export function doorText(
   const named = withOperationNames(text, OPERATION_NAMES)
   const literal = args.match === 'exact' || args.match === 'regex'
   if (op.name !== 'knowledge-search') return named
-  return literal ? named : fittedHits(withRankedOrderNote(named))
+  return literal ? named : fittedHits(withRankedOrderNote(named, args.group_by === 'document'))
 }
 
 /** `body` (the backend's `{ tool, result }`) with its text results put through {@link doorText}. */

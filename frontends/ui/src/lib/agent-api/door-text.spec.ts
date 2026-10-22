@@ -37,6 +37,12 @@ describe('withRankedOrderNote', () => {
     expect(out).toContain('--- Result 1 ---')
   })
 
+  it('counts documents, not passages, for a search grouped by document', () => {
+    const out = withRankedOrderNote('Found 7 relevant document(s):\n\n--- Result 1 ---', true)
+    expect(out).toMatch(/^Found 7 documents:\n/)
+    expect(out).not.toContain('configured limit')
+  })
+
   it('leaves an answer without a count line alone', () => {
     expect(withRankedOrderNote('No relevant documents found')).toBe('No relevant documents found')
   })
@@ -58,6 +64,15 @@ describe('fittedHits', () => {
     expect(out.length).toBeLessThanOrEqual(HIT_TEXT_BUDGET)
     for (let n = 1; n <= 25; n++) expect(out).toContain(`Citation: doc-${n}.pdf, p.${n}`)
     expect(out).toContain('read the whole passage with `passage-read`')
+  })
+
+  it('stays within budget when a hit’s metadata takes most of its share', () => {
+    const longMeta = (n: number) =>
+      `--- Result ${n} ---\nSource: ${'S'.repeat(600)}\nCitation: doc-${n}.pdf, p.${n}\n\n${'x'.repeat(2_000)}\n\n`
+    const text = `Found 50 passages:\n\n${Array.from({ length: 50 }, (_, i) => longMeta(i + 1)).join('')}`
+    const out = fittedHits(text)
+    expect(out.length).toBeLessThanOrEqual(HIT_TEXT_BUDGET)
+    for (let n = 1; n <= 50; n++) expect(out).toContain(`Citation: doc-${n}.pdf, p.${n}`)
   })
 
   it('stays under the cut the door makes at the end of every result', () => {
