@@ -14,9 +14,9 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { TaskList } from './task-list'
 import { cardTimeLabel } from './task-card'
-import type { TaskFilter, TaskWireRow } from '../lib/task-view'
+import type { TaskFilter, TaskRunView } from '../lib/task-view'
 
-const task = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
+const task = (overrides: Partial<TaskRunView> = {}): TaskRunView => ({
   id: 'task-1',
   kind: 'document',
   title: 'Aktenvermerk Fluchtwege',
@@ -27,7 +27,7 @@ const task = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
   filedDocumentId: null,
   conversationId: null,
   runMessageId: null,
-  backendJobId: null,
+  taskId: null,
   trigger: 'delegated',
   requesterUserId: 'user_anna',
   requesterName: 'Anna Berger',

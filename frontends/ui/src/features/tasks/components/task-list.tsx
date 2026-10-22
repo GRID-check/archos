@@ -39,18 +39,18 @@ import {
   groupByRecency,
   matchesFilter,
   type TaskFilter,
-  type TaskWireRow,
+  type TaskRunView,
 } from '../lib/task-view'
 import { TaskCard } from './task-card'
 
 export interface TaskListProps {
   projectId: string
-  tasks: readonly TaskWireRow[]
+  tasks: readonly TaskRunView[]
   loading?: boolean
   failed?: boolean
   filter: TaskFilter
   onFilterChange: (filter: TaskFilter) => void
-  onSelectTask: (task: TaskWireRow) => void
+  onSelectTask: (task: TaskRunView) => void
   /** Retries the tasks load after a failure. */
   onRetry?: () => void
 }

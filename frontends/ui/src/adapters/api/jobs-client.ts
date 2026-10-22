@@ -1,98 +1,36 @@
 /**
- * Jobs API Client
+ * Tasks API client
  *
- * Typed fetch client for the project-scoped job endpoints
- * (`/api/projects/[id]/jobs…`) plus the builder's skill picker
- * These are grid_app-owned BFF routes, so they are
- * always called same-origin and return the camelCase JSON envelope the BFF
- * service layer produces.
+ * Typed fetch client for a project's tasks (`/api/projects/[id]/tasks…`) and
+ * the runs of one task (`/api/projects/[id]/runs?taskId=…`). Same-origin BFF
+ * routes; the wire is `lib/tasks/task-wire.ts` (ADR-0131: a task is the
+ * definition, a task run one attempt at it).
  *
- * A **job is a prompt on a timer**, and what it produces is always the same: a
- * researched report, filed into the project. The server owns validation (cron /
- * min-interval, prompt length, name rules) and snapshot semantics; this client
- * only transports the documented shapes and surfaces the BFF error envelope
- * (`{ error, code }`).
+ * In this feature a task is still called a job (`Job`, `listJobs`): the
+ * schedule wizard, card and timetable were written against that name, and the
+ * name is this module's, not the wire's.
  *
- * Style follows src/adapters/api/skills-client.ts.
+ * A task's runs always produce the same thing: a researched report, filed
+ * into the project. The server owns validation (cron / min-interval, prompt
+ * length, name rules); this client only transports the documented shapes and
+ * surfaces the BFF error envelope (`{ error, code }`).
  */
 
+import type { TaskPage, TaskRunPage, TaskRunView, TaskView } from '@/lib/tasks/task-wire'
 import { ApiRequestError } from './api-error'
-import type { SkillSnapshot } from './skills-client'
 
 // ============================================================
-// Types (self-contained — mirror the documented JSON contract so the UI
-// stays decoupled from @/lib/jobs internals)
+// Types
 // ============================================================
 
-/**
- * What a job produces — the user's choice, and the only thing that decides
- * which agent runs it (`chat` → researcher, `deep-research` →
- * deep_researcher). Was `execution`, denormalised from skill metadata.
- */
-export type JobOutput = 'chat' | 'deep-research'
+/** A project's task, as the wire carries it. */
+export type Job = TaskView
 
-/** Manual vs scheduled trigger for a run. */
-export type JobRunTrigger = 'manual' | 'schedule'
+/** One run of a task, as the wire carries it. */
+export type JobRun = TaskRunView
 
-/** Submission outcome of a run (live job progress lives in the backend). */
-export type JobRunStatus = 'submitted' | 'skipped' | 'error'
-
-/** A project job row (`jobs`). */
-export interface Job {
-  id: string
-  projectId: string
-  name: string
-  /** The scheduled prompt — fires as if typed into a new chat. */
-  prompt: string
-  /** The attached skill's name, or null when the prompt runs alone. */
-  skillName: string | null
-  /** The pinned copy of that skill; null exactly when `skillName` is null. */
-  skillSnapshot: SkillSnapshot | null
-  output: JobOutput
-  dataSources: string[] | null
-  enabled: boolean
-  scheduleCron: string | null
-  scheduleTimezone: string
-  /**
-   * When a one-off task is due, ISO-8601. Null on a recurring or manual one.
-   *
-   * With `scheduleCron` this is what says WHICH of the three shapes a task is,
-   * and the two are mutually exclusive: a cron means recurring, a due date
-   * means once, neither means it only runs when somebody presses Run now.
-   */
-  dueAt: string | null
-  nextRunAt: string | null
-  lastRunAt: string | null
-  createdBy: string
-  createdByEmail: string | null
-  createdAt: string
-  updatedAt: string
-}
-
-/** A single append-only run-history entry (`job_runs`). */
-export interface JobRun {
-  id: string
-  /** The parent job's id (the column is still `schedule_id` — see 0043). */
-  scheduleId: string
-  /** The BACKEND async-job id, not the job's id. Null when skipped/error. */
-  jobId: string | null
-  trigger: JobRunTrigger
-  status: JobRunStatus
-  detail: string | null
-  /** Where an `output: 'chat'` run landed, when one was minted. */
-  conversationId: string | null
-  /** The job's snapshot at fire time; `{}` when no skill was attached. */
-  skillSnapshot: SkillSnapshot
-  triggeredBy: string | null
-  createdAt: string
-}
-
-/** Structured result of a manual `POST …/run`. */
-export interface RunJobResult {
-  status: JobRunStatus
-  jobId?: string | null
-  detail?: string | null
-}
+/** The page a project's task list is read in: every task the Tasks tab shows. */
+export const TASK_LIST_PAGE = 200
 
 /** Job create payload (`POST …/jobs`). */
 export interface CreateJobInput {
@@ -120,7 +58,6 @@ export type UpdateJobInput = Partial<CreateJobInput>
 
 export interface ListJobRunsParams {
   limit?: number
-  offset?: number
 }
 
 // ============================================================
@@ -150,7 +87,10 @@ export class JobApiError extends ApiRequestError {
 // ============================================================
 
 const jobsBase = (projectId: string): string =>
-  `/api/projects/${encodeURIComponent(projectId)}/jobs`
+  `/api/projects/${encodeURIComponent(projectId)}/tasks`
+
+const runsBase = (projectId: string): string =>
+  `/api/projects/${encodeURIComponent(projectId)}/runs`
 
 const parseErrorEnvelope = async (
   response: Response,
@@ -183,13 +123,16 @@ const jsonHeaders: HeadersInit = { 'Content-Type': 'application/json' }
 // Project jobs API
 // ============================================================
 
-/** List a project's jobs (BFF orders newest-created first). */
+/**
+ * A project's tasks, newest first: one page of {@link TASK_LIST_PAGE}, which
+ * is more than a project's Tasks tab has ever held. A project past it shows the
+ * newest page; the cursor is there for the day one needs the rest.
+ */
 export const listJobs = async (projectId: string): Promise<Job[]> => {
-  const response = await fetch(jobsBase(projectId), { headers: jsonHeaders })
-  if (!response.ok) await throwJobApiError(response, 'Failed to list jobs')
-  const data = (await response.json()) as { jobs?: Job[] } | Job[]
-  // Accept either a bare array or a `{ jobs }` envelope.
-  return Array.isArray(data) ? data : (data.jobs ?? [])
+  const response = await fetch(`${jobsBase(projectId)}?limit=${TASK_LIST_PAGE}`, { headers: jsonHeaders })
+  if (!response.ok) await throwJobApiError(response, 'Failed to list tasks')
+  const data = (await response.json()) as Partial<TaskPage>
+  return data.tasks ?? []
 }
 
 /** Fetch a single job with its saved skill snapshot, if it has one. */
@@ -212,10 +155,9 @@ export const createJob = async (projectId: string, input: CreateJobInput): Promi
     headers: jsonHeaders,
     body: JSON.stringify(input),
   })
-  if (!response.ok) await throwJobApiError(response, 'Failed to create job')
-  // The route answers `{ job }` on create; tolerate a bare row too.
-  const parsed = (await response.json()) as { job?: Job } | Job
-  return 'job' in parsed && parsed.job !== undefined ? parsed.job : (parsed as Job)
+  if (!response.ok) await throwJobApiError(response, 'Failed to create task')
+  const parsed = (await response.json()) as { task: Job }
+  return parsed.task
 }
 
 /** Patch a job (re-resolves the snapshot and recomputes next_run_at). */
@@ -233,7 +175,7 @@ export const updateJob = async (
   return (await response.json()) as Job
 }
 
-/** Delete a job (cascades its run history). */
+/** Delete a task. Its runs stay, no longer linked to it. */
 export const deleteJob = async (projectId: string, jobId: string): Promise<void> => {
   const response = await fetch(`${jobsBase(projectId)}/${encodeURIComponent(jobId)}`, {
     method: 'DELETE',
@@ -244,49 +186,31 @@ export const deleteJob = async (projectId: string, jobId: string): Promise<void>
 }
 
 /**
- * Fire a job manually. The route returns a structured result: `submitted` with
- * a backend job id, or a friendly `skipped` (e.g. org job caps / 429) — neither
- * is an error. A disabled job yields 409, surfaced as a thrown error.
+ * Fire a task manually. Answers the run that was recorded: `queued` or
+ * `running` when the backend took it, `skipped` (an org cap, a 429) or `error`
+ * with the reason in `error` — neither of those is a thrown error. A disabled
+ * task yields 409, surfaced as a thrown error.
  */
-export const runJob = async (projectId: string, jobId: string): Promise<RunJobResult> => {
+export const runJob = async (projectId: string, jobId: string): Promise<JobRun> => {
   const response = await fetch(`${jobsBase(projectId)}/${encodeURIComponent(jobId)}/run`, {
     method: 'POST',
     headers: jsonHeaders,
   })
-  if (!response.ok) await throwJobApiError(response, 'Failed to run job')
-  // The route returns the recorded run row; tolerate a wrapped result too.
-  // The run row carries { status, jobId, detail, … }. Narrow from `unknown`
-  // explicitly: the envelope/row ambiguity is a JSON boundary, not a type.
-  const parsed: unknown = await response.json()
-  const data: Partial<RunJobResult> =
-    parsed !== null &&
-    typeof parsed === 'object' &&
-    'run' in parsed &&
-    (parsed as { run?: object }).run !== undefined
-      ? (parsed as { run: Partial<RunJobResult> }).run
-      : (parsed as Partial<RunJobResult>)
-  return {
-    status: data.status === 'skipped' || data.status === 'error' ? data.status : 'submitted',
-    jobId: data.jobId ?? null,
-    detail: data.detail ?? null,
-  }
+  if (!response.ok) await throwJobApiError(response, 'Failed to run task')
+  const parsed = (await response.json()) as { run: JobRun }
+  return parsed.run
 }
 
-/** List a job's run history (newest first). */
+/** One task's runs, newest first: the first page of the project's run list, filtered to the task. */
 export const listJobRuns = async (
   projectId: string,
   jobId: string,
   params: ListJobRunsParams = {},
 ): Promise<JobRun[]> => {
-  const search = new URLSearchParams()
+  const search = new URLSearchParams({ taskId: jobId })
   if (params.limit !== undefined) search.set('limit', String(params.limit))
-  if (params.offset !== undefined) search.set('offset', String(params.offset))
-  const query = search.toString()
-  const response = await fetch(
-    `${jobsBase(projectId)}/${encodeURIComponent(jobId)}/runs${query ? `?${query}` : ''}`,
-    { headers: jsonHeaders },
-  )
-  if (!response.ok) await throwJobApiError(response, 'Failed to list job runs')
-  const data = (await response.json()) as { runs?: JobRun[] } | JobRun[]
-  return Array.isArray(data) ? data : (data.runs ?? [])
+  const response = await fetch(`${runsBase(projectId)}?${search.toString()}`, { headers: jsonHeaders })
+  if (!response.ok) await throwJobApiError(response, 'Failed to list task runs')
+  const data = (await response.json()) as Partial<TaskRunPage>
+  return data.runs ?? []
 }

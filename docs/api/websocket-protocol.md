@@ -580,7 +580,7 @@ into, and the status pill still reads them directly.
 two properties above allow and nothing more. It starts from the ledger stored on
 the run's message (`metadata.run_ledger`, read back sanitised by the message
 mapper); if that ledger is not terminal it reads
-`GET /api/projects/[id]/runs/[runId]` for `backendJobId`, opens the stream
+`GET /api/projects/[id]/runs/[runId]?include=stream` for `backendJobId`, opens the stream
 through the same-origin proxy (`/api/jobs/async/job/[jobId]/stream`, the SSE
 client in `frontends/ui/src/adapters/api/deep-research-client.ts`) with **no**
 `last_event_id`, so the replay runs from the first flush and the newest snapshot

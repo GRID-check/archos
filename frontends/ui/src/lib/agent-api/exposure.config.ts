@@ -395,7 +395,6 @@ export const EXPOSURE = {
   'task-run-commission': { external: true, piloti: 'native:create_task', reason: TASK },
   'task-run-document-add': OFFERED,
   'task-run-get': OFFERED,
-  'task-run-list': OFFERED,
   'task-run-review': OFFERED,
   'task-run-start': OFFERED,
   'task-run-write-now': OFFERED,

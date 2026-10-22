@@ -815,7 +815,7 @@
           "minLength": 1,
           "maxLength": 64
         },
-        "backendJobId": {
+        "taskId": {
           "anyOf": [
             {
               "type": "string"
@@ -846,7 +846,16 @@
           ]
         },
         "status": {
-          "type": "string"
+          "type": "string",
+          "enum": [
+            "queued",
+            "running",
+            "succeeded",
+            "failed",
+            "interrupted",
+            "skipped",
+            "error"
+          ]
         },
         "ledger": {
           "anyOf": [
@@ -1122,11 +1131,55 @@
               "type": "null"
             }
           ]
+        },
+        "report": {
+          "type": "object",
+          "properties": {
+            "text": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "truncated": {
+              "type": "boolean"
+            },
+            "filedDocumentId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "text",
+            "truncated",
+            "filedDocumentId"
+          ],
+          "additionalProperties": false
+        },
+        "backendJobId": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
         }
       },
       "required": [
         "runId",
-        "backendJobId",
+        "taskId",
         "conversationId",
         "messageId",
         "status",

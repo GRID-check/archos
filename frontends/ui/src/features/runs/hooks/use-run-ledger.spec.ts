@@ -7,10 +7,15 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+// One mock behind both reads: the block's mount read asks for the stream key
+// (`fetchLiveRunView`), the refresh after a refused stop does not, and the
+// specs below count them as one sequence of reads.
+const readRun = vi.hoisted(() => vi.fn())
 vi.mock('@/lib/runs/run-view-client', async (importOriginal) => ({
   // The real error class: the hook narrows on it.
   RunViewError: (await importOriginal<typeof import('@/lib/runs/run-view-client')>()).RunViewError,
-  fetchRunView: vi.fn(),
+  fetchRunView: readRun,
+  fetchLiveRunView: readRun,
   cancelRun: vi.fn(),
   addRunDocument: vi.fn(),
 }))
@@ -40,6 +45,7 @@ const ledger = (overrides: Partial<RunLedger> = {}): RunLedger => ({
 
 const view = (overrides: Partial<RunView> = {}): RunView => ({
   runId: RUN,
+  taskId: null,
   backendJobId: 'job-1',
   conversationId: 's_conv',
   messageId: 'msg-1',
@@ -265,7 +271,7 @@ describe('useRunLedger', () => {
 
   it('stops the run through the read door and takes the ledger the cancel returns', async () => {
     const stopped = ledger({ status: 'cancelled', updatedAt: '2026-09-16T08:02:00.000Z' })
-    vi.mocked(cancelRun).mockResolvedValue(view({ status: 'cancelled', ledger: stopped }))
+    vi.mocked(cancelRun).mockResolvedValue(view({ status: 'interrupted', ledger: stopped }))
 
     const { result } = renderHook(() => useRunLedger({ message: { id: 'msg-1', runLedger: ledger() }, projectId: 'p1' }))
     await waitFor(() => expect(result.current.cancel).not.toBeNull())

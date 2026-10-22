@@ -17,13 +17,11 @@ import type { Job } from '@/adapters/api/jobs-client'
 const base = {
   projectId: 'p1',
   skillName: null,
-  skillSnapshot: null,
   dataSources: null,
   scheduleTimezone: 'Europe/Vienna',
   dueAt: null,
   lastRunAt: null,
   createdBy: 'user_1',
-  createdByEmail: 'anna@example.com',
   createdAt: '2026-07-01T09:00:00Z',
   updatedAt: '2026-08-01T09:00:00Z',
 } satisfies Omit<
@@ -63,7 +61,7 @@ export const SCHEDULES: Job[] = [
     name: 'Monatlicher Schallschutz-Nachweis',
     // The playbook is NAMED in the prompt, the way a person names one in the
     // composer, so the wizard's field shows the chip the chat composer shows.
-    // `skillName`/`skillSnapshot` are a LEGACY row's leftovers: the wizard no
+    // `skillName` is a LEGACY row's leftover: the wizard no
     // longer reads them, and a fixture that still carries them is evidence
     // that an old job edits cleanly rather than losing its prompt.
     prompt: [
@@ -73,7 +71,6 @@ export const SCHEDULES: Job[] = [
       'welche Unterlage den Nachweis belegt — und wo noch keine vorliegt.',
     ].join('\n'),
     skillName: SCHEDULE_SKILL.name,
-    skillSnapshot: SCHEDULE_SKILL,
     dataSources: ['ris'],
     output: 'deep-research',
     enabled: true,
@@ -180,9 +177,9 @@ export function installScheduleShim(flag: string): void {
         vlm_available: false,
       })
     }
-    if (url.includes('/tasks')) return Response.json({ tasks: [] })
-    if (url.includes('/jobs') && !url.includes('/runs') && !url.includes('/async/')) {
-      return Response.json({ jobs: SCHEDULES })
+    if (url.includes('/runs')) return Response.json({ runs: [], nextCursor: null })
+    if (url.includes('/tasks') && !url.includes('/run')) {
+      return Response.json({ tasks: SCHEDULES, nextCursor: null })
     }
     return real(input, init)
   }

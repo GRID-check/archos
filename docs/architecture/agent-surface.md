@@ -532,8 +532,13 @@ method; never two on the same.
 
 The entity is the glossary's word: a `task` is a task definition (standing or
 one-off) and a `task-run` one attempt at it; `job` names only a claim-queue item
-and is never an operation's entity. The renames of October 2026 (`job-*` to
-`task-*`, `run-*` and `task-review` to `task-run-*`,
+and is never an operation's entity. The same holds on the wire (ADR-0131):
+tasks live at `/api/projects/[id]/tasks` and answer `task`/`tasks`, runs at
+`/api/projects/[id]/runs` and answer `run`/`runs`, a task is named by `taskId`
+and a run by `runId`, and a run's status is `TASK_RUN_STATUSES`, never a
+submission word. The renames of October 2026 (`job-*` to
+`task-*`, `run-*` and `task-review` to `task-run-*`, `task-run-list` merged into
+`project-task-run-list` as its `taskId` filter,
 `document-quarantine-release*` to `document-quarantine-allow*`) are accepted under
 their old names for one release (`RENAMED_OPERATIONS`, `catalog/index.ts`), for
 proposals filed before and agents that remember them. PostHog's

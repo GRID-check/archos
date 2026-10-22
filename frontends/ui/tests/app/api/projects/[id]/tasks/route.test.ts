@@ -12,20 +12,19 @@ vi.mock('@/lib/jobs/service', () => ({
   createJob: vi.fn(),
 }))
 
-import { GET, POST } from '@/app/api/projects/[id]/jobs/route'
+import { GET, POST } from '@/app/api/projects/[id]/tasks/route'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { listJobs, createJob } from '@/lib/jobs/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
-// The type the MOCKED service returns, not the legacy `jobs` table row: this
-// helper stands in for `listJobs`/`createJob` output, and pointing it at the
-// table row only ever compiled because the two shapes happened to overlap.
-import type { JobView } from '@/lib/jobs/service'
+// The type the MOCKED service returns, not a table row: this helper stands in
+// for `listJobs`/`createJob` output.
+import type { TaskView } from '@/lib/tasks/task-wire'
 
 const mockSession = vi.mocked(requireAuthorizedSession)
 const mockList = vi.mocked(listJobs)
 const mockCreate = vi.mocked(createJob)
 
-const asJob = (row: Pick<JobView, 'id' | 'name'>): JobView => row as unknown as JobView
+const asJob = (row: Pick<TaskView, 'id' | 'name'>): TaskView => row as unknown as TaskView
 
 const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: string[] | null } = {
   userId: 'user_1',
@@ -47,7 +46,7 @@ function makeParams(id: string): { params: Promise<{ id: string }> } {
 const validBody = { name: 'Weekly', prompt: 'Fasse die Woche zusammen.' }
 
 function req(body?: unknown): Request {
-  return new Request('http://localhost/api/projects/proj_1/jobs', {
+  return new Request('http://localhost/api/projects/proj_1/tasks', {
     method: body ? 'POST' : 'GET',
     ...(body ? { body: JSON.stringify(body), headers: { 'content-type': 'application/json' } } : {}),
   })
@@ -66,7 +65,7 @@ afterEach(() => {
   vi.unstubAllEnvs()
 })
 
-describe('GET /api/projects/[id]/jobs', () => {
+describe('GET /api/projects/[id]/tasks', () => {
   it('returns 403 feature-disabled when the gate is off (default)', async () => {
     const res = await GET(req(), makeParams('proj_1'))
     expect(res.status).toBe(403)
@@ -74,17 +73,17 @@ describe('GET /api/projects/[id]/jobs', () => {
     expect(mockList).not.toHaveBeenCalled()
   })
 
-  it('lists jobs when the skills flag is on', async () => {
+  it('lists tasks as a page when the skills flag is on', async () => {
     session.featureFlags = ['skills']
-    mockList.mockResolvedValue({ jobs: [asJob({ id: 'job-1', name: 'Weekly' })] })
+    mockList.mockResolvedValue({ tasks: [asJob({ id: 'job-1', name: 'Weekly' })], nextCursor: null })
     const res = await GET(req(), makeParams('proj_1'))
     expect(res.status).toBe(200)
-    expect(await res.json()).toEqual({ jobs: [{ id: 'job-1', name: 'Weekly' }] })
-    expect(mockList).toHaveBeenCalledWith(session, 'proj_1')
+    expect(await res.json()).toEqual({ tasks: [{ id: 'job-1', name: 'Weekly' }], nextCursor: null })
+    expect(mockList).toHaveBeenCalledWith(session, 'proj_1', { limit: 50 })
   })
 })
 
-describe('POST /api/projects/[id]/jobs', () => {
+describe('POST /api/projects/[id]/tasks', () => {
   it('returns 403 feature-disabled when off, before validating the body', async () => {
     const res = await POST(req(validBody), makeParams('proj_1'))
     expect(res.status).toBe(403)
@@ -115,7 +114,7 @@ describe('POST /api/projects/[id]/jobs', () => {
     mockCreate.mockResolvedValue(asJob({ id: 'job-new', name: 'Weekly' }))
     const res = await POST(req(validBody), makeParams('proj_1'))
     expect(res.status).toBe(201)
-    expect(await res.json()).toEqual({ job: { id: 'job-new', name: 'Weekly' } })
+    expect(await res.json()).toEqual({ task: { id: 'job-new', name: 'Weekly' } })
     expect(mockCreate).toHaveBeenCalledWith(
       session,
       'proj_1',

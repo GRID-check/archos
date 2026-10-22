@@ -1445,110 +1445,101 @@
   {
    "name": "project-task-run-list",
    "domain": "tasks",
-   "summary": "List every task run of a project",
-   "description": "The project’s delegated work, newest first: each task run with its status, the task it came from and its review state. Needs the skills and task-automation features on. A finished run awaits task-run-review.",
+   "summary": "List the task runs of a project",
+   "description": "A project’s task runs, newest first, with status, `taskId`, review and filed document. Filter by `taskId`, `status`, `review` (`none`: awaiting task-run-review). Answers `{ runs, nextCursor }`, at most 200 a page; pass `nextCursor` as `cursor` for the next.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"project-task-run-list\",\"domain\":\"tasks\",\"summary\":\"List every task run of a project\",\"description\":\"The project’s delegated work, newest first: each task run with its status, the task it came from and its review state. Needs the skills and task-automation features on. A finished run awaits task-run-review.\",\"annotations\":{\"title\":\"List every task run of a project\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"project-task-run-list\",\"domain\":\"tasks\",\"summary\":\"List the task runs of a project\",\"description\":\"A project’s task runs, newest first, with status, `taskId`, review and filed document. Filter by `taskId`, `status`, `review` (`none`: awaiting task-run-review). Answers `{ runs, nextCursor }`, at most 200 a page; pass `nextCursor` as `cursor` for the next.\",\"annotations\":{\"title\":\"List the task runs of a project\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\"},\"cursor\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"taskId\":{\"type\":\"string\",\"format\":\"uuid\"},\"status\":{\"type\":\"string\",\"enum\":[\"queued\",\"running\",\"succeeded\",\"failed\",\"interrupted\",\"skipped\",\"error\"]},\"review\":{\"type\":\"string\",\"enum\":[\"none\",\"accepted\",\"rejected\"]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "task-delete",
    "domain": "tasks",
    "summary": "Delete a task",
-   "description": "Delete a task and stop its schedule. Needs project:skills:manage. To keep the task but stop it firing, call task-update with `enabled: false` instead.",
+   "description": "Permanently delete a task; its runs stay, with `taskId` null. To pause it, task-update `enabled: false`.",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"task-delete\",\"domain\":\"tasks\",\"summary\":\"Delete a task\",\"description\":\"Delete a task and stop its schedule. Needs project:skills:manage. To keep the task but stop it firing, call task-update with `enabled: false` instead.\",\"annotations\":{\"title\":\"Delete a task\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"jobId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"jobId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"task-delete\",\"domain\":\"tasks\",\"summary\":\"Delete a task\",\"description\":\"Permanently delete a task; its runs stay, with `taskId` null. To pause it, task-update `enabled: false`.\",\"annotations\":{\"title\":\"Delete a task\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"taskId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"taskId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "task-get",
    "domain": "tasks",
    "summary": "Read one task",
-   "description": "One task by id: name, prompt, attached skill, data sources, schedule (cron and timezone, or a due time), enabled flag and next run. For what it produced, call task-run-list.",
+   "description": "One task: name, prompt, skill, data sources, schedule or due time, enabled flag, next run. Its runs: project-task-run-list with `taskId`.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"task-get\",\"domain\":\"tasks\",\"summary\":\"Read one task\",\"description\":\"One task by id: name, prompt, attached skill, data sources, schedule (cron and timezone, or a due time), enabled flag and next run. For what it produced, call task-run-list.\",\"annotations\":{\"title\":\"Read one task\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"jobId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"jobId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"task-get\",\"domain\":\"tasks\",\"summary\":\"Read one task\",\"description\":\"One task: name, prompt, skill, data sources, schedule or due time, enabled flag, next run. Its runs: project-task-run-list with `taskId`.\",\"annotations\":{\"title\":\"Read one task\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"taskId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"taskId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "task-list",
    "domain": "tasks",
    "summary": "List a project’s tasks",
-   "description": "The tasks of one project: standing (scheduled) or one-off prompts Piloti carries out as a task run that files a report, with their schedule, attached skill and next run. Needs the skills feature on. Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.",
+   "description": "A project’s tasks, newest first: scheduled, one-shot or manual prompts Piloti runs, with schedule and next run. Answers `{ tasks, nextCursor }`, at most 200 a page; pass `nextCursor` as `cursor` for the next.",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"task-list\",\"domain\":\"tasks\",\"summary\":\"List a project’s tasks\",\"description\":\"The tasks of one project: standing (scheduled) or one-off prompts Piloti carries out as a task run that files a report, with their schedule, attached skill and next run. Needs the skills feature on. Take a task id from here for task-get, task-update, task-delete, task-run-start and task-run-list.\",\"annotations\":{\"title\":\"List a project’s tasks\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"task-list\",\"domain\":\"tasks\",\"summary\":\"List a project’s tasks\",\"description\":\"A project’s tasks, newest first: scheduled, one-shot or manual prompts Piloti runs, with schedule and next run. Answers `{ tasks, nextCursor }`, at most 200 a page; pass `nextCursor` as `cursor` for the next.\",\"annotations\":{\"title\":\"List a project’s tasks\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"}},\"required\":[\"id\"]},\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\"},\"cursor\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "task-run-cancel",
    "domain": "tasks",
    "summary": "Stop a running task run",
-   "description": "Ask the backend to stop one run. Refuses with 409 when the run can no longer be stopped. Returns the run view as it stands; the ledger turns `cancelled` afterwards, so read it again with task-run-get.",
+   "description": "Stop a running run; 409 when it can no longer stop. Answers the run view; the ledger turns `cancelled` later (task-run-get).",
    "readOnly": false,
    "destructive": true,
-   "describe": "{\"name\":\"task-run-cancel\",\"domain\":\"tasks\",\"summary\":\"Stop a running task run\",\"description\":\"Ask the backend to stop one run. Refuses with 409 when the run can no longer be stopped. Returns the run view as it stands; the ledger turns `cancelled` afterwards, so read it again with task-run-get.\",\"annotations\":{\"title\":\"Stop a running task run\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"task-run-cancel\",\"domain\":\"tasks\",\"summary\":\"Stop a running task run\",\"description\":\"Stop a running run; 409 when it can no longer stop. Answers the run view; the ledger turns `cancelled` later (task-run-get).\",\"annotations\":{\"title\":\"Stop a running task run\",\"readOnlyHint\":false,\"destructiveHint\":true,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id, from project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "task-run-document-add",
    "domain": "tasks",
    "summary": "Add a document to a running run’s basis",
-   "description": "Name one more document (`name` as the inventory lists it, optional `title` and `shelf`) for a running run to read in full. Documents from a restricted folder are refused. Returns the run view.",
+   "description": "Give a running run one more document to read in full (`name` as listed, optional `title`, `shelf`). Restricted-folder documents are refused. Answers the run view.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"task-run-document-add\",\"domain\":\"tasks\",\"summary\":\"Add a document to a running run’s basis\",\"description\":\"Name one more document (`name` as the inventory lists it, optional `title` and `shelf`) for a running run to read in full. Documents from a restricted folder are refused. Returns the run view.\",\"annotations\":{\"title\":\"Add a document to a running run’s basis\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"shelf\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"task-run-document-add\",\"domain\":\"tasks\",\"summary\":\"Add a document to a running run’s basis\",\"description\":\"Give a running run one more document to read in full (`name` as listed, optional `title`, `shelf`). Restricted-folder documents are refused. Answers the run view.\",\"annotations\":{\"title\":\"Add a document to a running run’s basis\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id, from project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"title\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":256},\"shelf\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64}},\"required\":[\"name\"],\"additionalProperties\":false}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "task-run-get",
    "domain": "tasks",
-   "summary": "Read one task run",
-   "description": "One run by its public id: where its message sits in the conversation and what its ledger says (phase, status, the documents it reads). Poll it after task-run-commission or task-run-start. Needs project:view.",
+   "summary": "Read one task run and what it produced",
+   "description": "One task run: status, `taskId`, its message, ledger (phase, documents read) and `report`: `text` (first 20000 chars, `truncated` when cut; null while running or if its conversation is closed to you) and `filedDocumentId` (document-get).",
    "readOnly": true,
    "destructive": false,
-   "describe": "{\"name\":\"task-run-get\",\"domain\":\"tasks\",\"summary\":\"Read one task run\",\"description\":\"One run by its public id: where its message sits in the conversation and what its ledger says (phase, status, the documents it reads). Poll it after task-run-commission or task-run-start. Needs project:view.\",\"annotations\":{\"title\":\"Read one task run\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
-  },
-  {
-   "name": "task-run-list",
-   "domain": "tasks",
-   "summary": "List the runs of one task",
-   "description": "The run history of one task, newest first, paginated with `limit` (1 to 200, default 50) and `offset`. Use it to see whether a scheduled task fired and how each run ended. For every run in the project with its review state, call project-task-run-list.",
-   "readOnly": true,
-   "destructive": false,
-   "describe": "{\"name\":\"task-run-list\",\"domain\":\"tasks\",\"summary\":\"List the runs of one task\",\"description\":\"The run history of one task, newest first, paginated with `limit` (1 to 200, default 50) and `offset`. Use it to see whether a scheduled task fired and how each run ended. For every run in the project with its review state, call project-task-run-list.\",\"annotations\":{\"title\":\"List the runs of one task\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"jobId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"jobId\"]},\"query\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\"},\"offset\":{\"type\":\"integer\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
+   "describe": "{\"name\":\"task-run-get\",\"domain\":\"tasks\",\"summary\":\"Read one task run and what it produced\",\"description\":\"One task run: status, `taskId`, its message, ledger (phase, documents read) and `report`: `text` (first 20000 chars, `truncated` when cut; null while running or if its conversation is closed to you) and `filedDocumentId` (document-get).\",\"annotations\":{\"title\":\"Read one task run and what it produced\",\"readOnlyHint\":true,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id, from project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]},\"query\":{\"type\":\"object\",\"properties\":{\"include\":{\"type\":\"string\",\"enum\":[\"stream\"],\"description\":\"Browser only.\"}}}},\"additionalProperties\":false,\"required\":[\"params\",\"query\"]}}"
   },
   {
    "name": "task-run-review",
    "domain": "tasks",
    "summary": "Accept or reject a finished task run",
-   "description": "Record a person’s verdict on a finished task run: `decision` accepts or rejects it, and a rejection can carry a `reason` that the next run of the same task is told. Needs project:edit. Run ids come from project-task-run-list. Returns `{ task }`: the task run.",
+   "description": "Accept or reject a finished run (`decision`); a rejection’s `reason` is told to the task’s next run. Judge its `report` from task-run-get. Answers `{ run }`.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"task-run-review\",\"domain\":\"tasks\",\"summary\":\"Accept or reject a finished task run\",\"description\":\"Record a person’s verdict on a finished task run: `decision` accepts or rejects it, and a rejection can carry a `reason` that the next run of the same task is told. Needs project:edit. Run ids come from project-task-run-list. Returns `{ task }`: the task run.\",\"annotations\":{\"title\":\"Accept or reject a finished task run\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"taskId\":{\"type\":\"string\",\"description\":\"The task run id, from project-task-run-list.\"}},\"required\":[\"id\",\"taskId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"decision\":{\"type\":\"string\",\"enum\":[\"accepted\",\"rejected\"]},\"reason\":{\"type\":\"string\",\"maxLength\":1000}},\"required\":[\"decision\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"task-run-review\",\"domain\":\"tasks\",\"summary\":\"Accept or reject a finished task run\",\"description\":\"Accept or reject a finished run (`decision`); a rejection’s `reason` is told to the task’s next run. Judge its `report` from task-run-get. Answers `{ run }`.\",\"annotations\":{\"title\":\"Accept or reject a finished task run\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id, from project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"decision\":{\"type\":\"string\",\"enum\":[\"accepted\",\"rejected\"]},\"reason\":{\"type\":\"string\",\"maxLength\":1000}},\"required\":[\"decision\"]}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "task-run-start",
    "domain": "tasks",
    "summary": "Run a task now",
-   "description": "Start a task run immediately, outside the task’s schedule (\"Run now\"). Fails with 409 when the task is disabled; when the backend is at capacity the run comes back as `skipped` rather than failing. Needs project:skills:manage. Follow the result with task-run-get using the run id it returns.",
+   "description": "Run a task now. 409 when it is disabled; at capacity the run is `skipped`, the reason in `error`. Answers `{ run }`; poll task-run-get.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"task-run-start\",\"domain\":\"tasks\",\"summary\":\"Run a task now\",\"description\":\"Start a task run immediately, outside the task’s schedule (\\\"Run now\\\"). Fails with 409 when the task is disabled; when the backend is at capacity the run comes back as `skipped` rather than failing. Needs project:skills:manage. Follow the result with task-run-get using the run id it returns.\",\"annotations\":{\"title\":\"Run a task now\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"jobId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"jobId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"task-run-start\",\"domain\":\"tasks\",\"summary\":\"Run a task now\",\"description\":\"Run a task now. 409 when it is disabled; at capacity the run is `skipped`, the reason in `error`. Answers `{ run }`; poll task-run-get.\",\"annotations\":{\"title\":\"Run a task now\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"taskId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"taskId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "task-run-write-now",
    "domain": "tasks",
    "summary": "Tell a task run to write its report now",
-   "description": "Stop a research run gathering sources and make it write the report from what it has (the \"Write now\" button). Returns the run view; read it again with task-run-get to see the report arrive.",
+   "description": "Make a research run stop gathering and write its report now. Answers the run view; task-run-get shows the report.",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"task-run-write-now\",\"domain\":\"tasks\",\"summary\":\"Tell a task run to write its report now\",\"description\":\"Stop a research run gathering sources and make it write the report from what it has (the \\\"Write now\\\" button). Returns the run view; read it again with task-run-get to see the report arrive.\",\"annotations\":{\"title\":\"Tell a task run to write its report now\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id (the public key of a run), from task-run-commission, task-run-start, task-run-list or project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
+   "describe": "{\"name\":\"task-run-write-now\",\"domain\":\"tasks\",\"summary\":\"Tell a task run to write its report now\",\"description\":\"Make a research run stop gathering and write its report now. Answers the run view; task-run-get shows the report.\",\"annotations\":{\"title\":\"Tell a task run to write its report now\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":false,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"runId\":{\"type\":\"string\",\"description\":\"The task run id, from project-task-run-list.\"}},\"required\":[\"id\",\"runId\"]}},\"additionalProperties\":false,\"required\":[\"params\"]}}"
   },
   {
    "name": "task-update",
    "domain": "tasks",
    "summary": "Change a task",
-   "description": "Patch any of a task’s name, prompt, attached skill, data sources, enabled flag, schedule or due time. Changing the skill re-resolves it and changing the schedule recomputes the next run. Set `enabled: false` to pause a task without deleting it. Needs project:skills:manage.",
+   "description": "Patch a task’s name, prompt, skill, data sources, schedule, due time or `enabled` (false pauses it).",
    "readOnly": false,
    "destructive": false,
-   "describe": "{\"name\":\"task-update\",\"domain\":\"tasks\",\"summary\":\"Change a task\",\"description\":\"Patch any of a task’s name, prompt, attached skill, data sources, enabled flag, schedule or due time. Changing the skill re-resolves it and changing the schedule recomputes the next run. Set `enabled: false` to pause a task without deleting it. Needs project:skills:manage.\",\"annotations\":{\"title\":\"Change a task\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"jobId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"jobId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"prompt\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":8000},\"skillName\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]},\"dataSources\":{\"anyOf\":[{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1},\"maxItems\":50},{\"type\":\"null\"}]},\"enabled\":{\"type\":\"boolean\"},\"scheduleCron\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1},{\"type\":\"null\"}]},\"scheduleTimezone\":{\"type\":\"string\",\"minLength\":1},\"dueAt\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"date-time\"},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
+   "describe": "{\"name\":\"task-update\",\"domain\":\"tasks\",\"summary\":\"Change a task\",\"description\":\"Patch a task’s name, prompt, skill, data sources, schedule, due time or `enabled` (false pauses it).\",\"annotations\":{\"title\":\"Change a task\",\"readOnlyHint\":false,\"destructiveHint\":false,\"idempotentHint\":true,\"openWorldHint\":false},\"sensitivity\":null,\"inputSchema\":{\"type\":\"object\",\"properties\":{\"params\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"string\",\"description\":\"The project id, from project-list.\"},\"taskId\":{\"type\":\"string\",\"description\":\"The task id, from task-list.\"}},\"required\":[\"id\",\"taskId\"]},\"body\":{\"type\":\"object\",\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":200},\"prompt\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":8000},\"skillName\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1,\"maxLength\":64},{\"type\":\"null\"}]},\"dataSources\":{\"anyOf\":[{\"type\":\"array\",\"items\":{\"type\":\"string\",\"minLength\":1},\"maxItems\":50},{\"type\":\"null\"}]},\"enabled\":{\"type\":\"boolean\"},\"scheduleCron\":{\"anyOf\":[{\"type\":\"string\",\"minLength\":1},{\"type\":\"null\"}]},\"scheduleTimezone\":{\"type\":\"string\",\"minLength\":1},\"dueAt\":{\"anyOf\":[{\"type\":\"string\",\"format\":\"date-time\"},{\"type\":\"null\"}]}}}},\"additionalProperties\":false,\"required\":[\"params\",\"body\"]}}"
   },
   {
    "name": "skill-category-create",
@@ -1871,7 +1862,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
-   "task-list"
+   "project-person-add"
   ],
   "Projekte auflisten": [
    "project-list",
@@ -1883,7 +1874,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
-   "task-list"
+   "project-person-add"
   ],
   "create task": [
    "project-create",
@@ -1895,7 +1886,7 @@
    "task-list",
    "task-run-cancel",
    "task-run-get",
-   "task-run-list"
+   "task-run-review"
   ],
   "Aufgabe erstellen": [
    "project-create",
@@ -1907,7 +1898,7 @@
    "task-list",
    "task-run-cancel",
    "task-run-get",
-   "task-run-list"
+   "task-run-review"
   ],
   "inbox unread": [
    "inbox-list",
@@ -2180,7 +2171,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
-   "task-list"
+   "project-person-add"
   ],
   "(a+)+$": []
  }

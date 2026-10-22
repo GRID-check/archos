@@ -44,10 +44,10 @@ beforeEach(() => {
   vi.mocked(deleteJob).mockResolvedValue({ deleted: true })
 })
 
-describe('GET /api/projects/[id]/jobs/[jobId]', () => {
+describe('GET /api/projects/[id]/tasks/[taskId]', () => {
   it('returns the job row', async () => {
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs/${JOB}`)
-    const response = await GET(request, { params: Promise.resolve({ id: PROJECT, jobId: JOB }) })
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks/${JOB}`)
+    const response = await GET(request, { params: Promise.resolve({ id: PROJECT, taskId: JOB }) })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual(job)
@@ -55,14 +55,14 @@ describe('GET /api/projects/[id]/jobs/[jobId]', () => {
   })
 })
 
-describe('PATCH /api/projects/[id]/jobs/[jobId]', () => {
+describe('PATCH /api/projects/[id]/tasks/[taskId]', () => {
   it('returns the updated row', async () => {
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs/${JOB}`, {
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks/${JOB}`, {
       method: 'PATCH',
       body: JSON.stringify({ enabled: false }),
       headers: { 'Content-Type': 'application/json' },
     })
-    const response = await PATCH(request, { params: Promise.resolve({ id: PROJECT, jobId: JOB }) })
+    const response = await PATCH(request, { params: Promise.resolve({ id: PROJECT, taskId: JOB }) })
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({ ...job, enabled: false })
@@ -75,12 +75,12 @@ describe('PATCH /api/projects/[id]/jobs/[jobId]', () => {
   })
 })
 
-describe('DELETE /api/projects/[id]/jobs/[jobId]', () => {
+describe('DELETE /api/projects/[id]/tasks/[taskId]', () => {
   it('answers 204 with no body', async () => {
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs/${JOB}`, {
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks/${JOB}`, {
       method: 'DELETE',
     })
-    const response = await DELETE(request, { params: Promise.resolve({ id: PROJECT, jobId: JOB }) })
+    const response = await DELETE(request, { params: Promise.resolve({ id: PROJECT, taskId: JOB }) })
 
     expect(response.status).toBe(204)
     expect(await response.text()).toBe('')

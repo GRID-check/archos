@@ -1,30 +1,45 @@
 /**
- * Tasks API — a project's delegated work, newest first (ADR-0051). Thin
- * adapter; logic in `@/lib/tasks/service`.
+ * A project's tasks — the standing definitions (ADR-0131: a task is the
+ * definition, a task run one attempt at it, served at `../runs`). List, one
+ * keyset page at a time, and create. Thin adapters (ADR-0017); logic in
+ * `@/lib/jobs/service`.
+ *
+ * Until October 2026 this path served the runs and `/jobs` served the tasks;
+ * `/jobs` redirects here for one release (`lib/api/legacy-routes.ts`).
  */
 
-import { apiRoute } from '@/lib/api/handler'
-import { requireSkillsEnabled, requireTaskAutomationEnabled } from '@/lib/authz/feature-flags'
-import { listTaskViews } from '@/lib/tasks/service'
+import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
+import { requireSkillsEnabled } from '@/lib/authz/feature-flags'
+import { createJob, listJobs } from '@/lib/jobs/service'
+import { createJobSchema } from '@/lib/jobs/types'
+import { taskListQuerySchema } from '@/lib/tasks/task-wire'
 
 type Params = { id: string }
 
 export const GET = apiRoute<Params>(
-  async ({ session, params }) => {
-    // Both, and they are not redundant. `skills` decides whether the Automation
-    // section exists; `task-automation` decides whether work may be queued at
-    // all. An org can have the published toolbox in chat without the right to
-    // hand work over, which is the whole reason the second flag exists — so
-    // re-enabling the section must not quietly bring tasks back with it.
-    const gated = requireSkillsEnabled(session) ?? requireTaskAutomationEnabled(session)
+  async ({ session, params, request }) => {
+    const gated = requireSkillsEnabled(session)
     if (gated) return gated
-    // Projected explicitly: a drizzle row carries `Date`s and a plan whose
-    // prompt is a skill's whole body, and neither belongs on this wire.
-    return { tasks: await listTaskViews(session, params.id) }
+    return listJobs(session, params.id, parseQuery(request, taskListQuerySchema))
   },
   {
     authz: {
-      enforcedBy: 'listTaskViews -> listTasks (requireProjectAccess project:view)',
+      enforcedBy: 'listJobs (requireProjectAccess project:view)',
+    },
+  }
+)
+
+export const POST = apiRoute<Params>(
+  async ({ session, params, request }) => {
+    const gated = requireSkillsEnabled(session)
+    if (gated) return gated
+    const input = await parseJsonBody(request, createJobSchema)
+    const task = await createJob(session, params.id, input)
+    return Response.json({ task }, { status: 201 })
+  },
+  {
+    authz: {
+      enforcedBy: 'createJob (requireProjectAccess project:skills:manage)',
     },
   }
 )

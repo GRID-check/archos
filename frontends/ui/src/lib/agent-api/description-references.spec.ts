@@ -65,7 +65,6 @@ const BASELINE: readonly string[] = [
   'piloti: sharing-get → sharing-grant-update',
   'piloti: sharing-get → sharing-visibility-set',
   'piloti: skill-list → task-create',
-  'piloti: task-run-get → task-run-commission',
 ]
 
 describe('descriptions name only operations the door offers', () => {

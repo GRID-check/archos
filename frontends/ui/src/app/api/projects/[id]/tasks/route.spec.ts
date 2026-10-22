@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * Characterization of the project-scoped /jobs HTTP contract (slice 01 of the
+ * Characterization of the project-scoped /tasks HTTP contract (was /jobs) (slice 01 of the
  * task-model follow-up, PR #659). The routes are thin adapters; these pin the
  * wire shape and the service call they delegate to, both of which the
  * definitions/runs collapse must preserve.
@@ -47,24 +47,24 @@ const job = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.mocked(listJobs).mockResolvedValue({ jobs: [job as never] })
+  vi.mocked(listJobs).mockResolvedValue({ tasks: [job as never], nextCursor: null })
   vi.mocked(createJob).mockResolvedValue(job as never)
 })
 
-describe('GET /api/projects/[id]/jobs', () => {
-  it('returns the project job list as { jobs }', async () => {
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs`)
+describe('GET /api/projects/[id]/tasks', () => {
+  it('returns a page of the project’s tasks as { tasks, nextCursor }', async () => {
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks`)
     const response = await GET(request, { params: Promise.resolve({ id: PROJECT }) })
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual({ jobs: [job] })
-    expect(listJobs).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org_1' }), PROJECT)
+    expect(await response.json()).toEqual({ tasks: [job], nextCursor: null })
+    expect(listJobs).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org_1' }), PROJECT, { limit: 50 })
   })
 })
 
-describe('POST /api/projects/[id]/jobs', () => {
-  it('creates a job and answers 201 with { job }', async () => {
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs`, {
+describe('POST /api/projects/[id]/tasks', () => {
+  it('creates a task and answers 201 with { task }', async () => {
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks`, {
       method: 'POST',
       body: JSON.stringify({
         name: 'Wochencheck',
@@ -78,7 +78,7 @@ describe('POST /api/projects/[id]/jobs', () => {
     const response = await POST(request, { params: Promise.resolve({ id: PROJECT }) })
 
     expect(response.status).toBe(201)
-    expect(await response.json()).toEqual({ job })
+    expect(await response.json()).toEqual({ task: job })
     expect(createJob).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
       PROJECT,
@@ -87,7 +87,7 @@ describe('POST /api/projects/[id]/jobs', () => {
   })
 
   it('refuses a body with no prompt before calling the service', async () => {
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs`, {
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks`, {
       method: 'POST',
       body: JSON.stringify({ name: 'Wochencheck', output: 'chat' }),
       headers: { 'Content-Type': 'application/json' },

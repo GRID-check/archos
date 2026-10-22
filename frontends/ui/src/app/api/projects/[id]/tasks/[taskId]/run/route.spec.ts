@@ -37,18 +37,18 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('POST /api/projects/[id]/jobs/[jobId]/run', () => {
-  it('fires with the session and returns the run', async () => {
-    const run = { id: 'run_1', scheduleId: JOB, trigger: 'manual', status: 'submitted', jobId: 'backend-1' }
-    vi.mocked(runJobNow).mockResolvedValue(run as never)
+describe('POST /api/projects/[id]/tasks/[taskId]/run', () => {
+  it('fires with the session and answers { run }, the run view', async () => {
+    const run = { id: 'run_1', taskId: JOB, trigger: 'manual', status: 'queued' }
+    vi.mocked(runJobNow).mockResolvedValue({ run } as never)
 
-    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/jobs/${JOB}/run`, {
+    const request = new NextRequest(`https://grid.test/api/projects/${PROJECT}/tasks/${JOB}/run`, {
       method: 'POST',
     })
-    const response = await POST(request, { params: Promise.resolve({ id: PROJECT, jobId: JOB }) })
+    const response = await POST(request, { params: Promise.resolve({ id: PROJECT, taskId: JOB }) })
 
     expect(response.status).toBe(200)
-    expect(await response.json()).toEqual(run)
+    expect(await response.json()).toEqual({ run })
     expect(runJobNow).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'org_1' }), PROJECT, JOB)
   })
 })

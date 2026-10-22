@@ -66,7 +66,7 @@ import { formatAbsoluteTime, formatRelativeTime } from '@/lib/format'
 import type { ScheduleDraft } from '@/features/jobs/lib/schedule-draft'
 import { RunBlock } from '@/features/runs/components/RunBlock'
 import { useTaskRun } from '../hooks/use-task-run'
-import { isActiveTask, taskResultTarget, taskThreadHref, type TaskWireRow } from '../lib/task-view'
+import { isActiveTask, taskResultTarget, taskThreadHref, type TaskRunView } from '../lib/task-view'
 
 /**
  * One icon per place a result can live. Two of them, because a run's report and
@@ -82,7 +82,7 @@ const RESULT_ICON: Record<'document' | 'conversation', LucideIcon> = {
 interface TaskDetailProps {
   projectId: string
   /** The task the drawer is showing, or null when it is shut. */
-  task: TaskWireRow | null
+  task: TaskRunView | null
   /** True while the drawer is open — a selection may be open and unresolved. */
   open: boolean
   /**
@@ -169,7 +169,7 @@ function TaskDetailBody({
   onPromoteToTask,
 }: {
   projectId: string
-  task: TaskWireRow
+  task: TaskRunView
   canManageJobs: boolean
   onPromoteToTask: ((draft: ScheduleDraft) => void) | undefined
 }): JSX.Element {
@@ -327,7 +327,7 @@ function TaskDetailBody({
  * could not be given, and saying „Auftrag" over the goal would quietly imply
  * that is all there ever was.
  */
-function TaskDetailFallback({ task, failed }: { task: TaskWireRow; failed: boolean }): JSX.Element {
+function TaskDetailFallback({ task, failed }: { task: TaskRunView; failed: boolean }): JSX.Element {
   const t = useTranslations('tasks')
 
   return (
