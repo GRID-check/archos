@@ -226,3 +226,12 @@ describe("the signed internal routes at the edge", () => {
     }
   });
 });
+
+describe("the plain-HTTP listener", () => {
+  it("redirects every host to HTTPS permanently, so a favicon fetch over http finds the site", () => {
+    expect(named("HTTPRoute", "grid-https-redirect")).toEqual({
+      parentRefs: [{ name: "grid-gateway", sectionName: "http" }],
+      rules: [{ filters: [{ type: "RequestRedirect", requestRedirect: { scheme: "https", statusCode: 301 } }] }],
+    });
+  });
+});

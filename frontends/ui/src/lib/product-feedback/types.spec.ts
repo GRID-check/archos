@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 import { describe, expect, it } from 'vitest'
-import { submitProductFeedbackSchema } from './types'
+import { replyToProductFeedbackSchema, submitProductFeedbackSchema } from './types'
 
 const base = { kind: 'idea', message: 'Bitte eine Exportfunktion für Pläne.' }
 
@@ -13,16 +13,22 @@ describe('submitProductFeedbackSchema', () => {
       pagePath: null,
       allowContact: true,
       context: {},
-      posthog: { widgetSessionId: null, sessionId: null },
+      posthog: { sessionId: null },
     })
   })
 
-  it("keeps the browser's PostHog ids when they are id-shaped, and drops anything else", () => {
+  it("keeps the browser's replay session when it is id-shaped, and drops anything else", () => {
+    const parse = (sessionId: string) => submitProductFeedbackSchema.parse({ ...base, posthog: { sessionId } }).posthog
+    expect(parse('0199f9a0-0000-7000-8000-00000000c1a0')).toEqual({ sessionId: '0199f9a0-0000-7000-8000-00000000c1a0' })
+    expect(parse('javascript:alert(1)')).toEqual({ sessionId: null })
+  })
+
+  it('strips the widget session an older client still sends: the server opens its own', () => {
     const parsed = submitProductFeedbackSchema.parse({
       ...base,
-      posthog: { widgetSessionId: '0199f9a0-0000-7000-8000-00000000c1a0', sessionId: 'javascript:alert(1)' },
+      posthog: { widgetSessionId: '0199f9a0-0000-7000-8000-00000000c1a0', sessionId: null },
     })
-    expect(parsed.posthog).toEqual({ widgetSessionId: '0199f9a0-0000-7000-8000-00000000c1a0', sessionId: null })
+    expect(parsed.posthog).toEqual({ sessionId: null })
   })
 
   it('refuses a message too short to act on', () => {
@@ -46,5 +52,13 @@ describe('submitProductFeedbackSchema', () => {
       context: { viewport: '1440x900', cookie: 'session=abc' },
     })
     expect(parsed.context).toEqual({ viewport: '1440x900' })
+  })
+})
+
+describe('replyToProductFeedbackSchema', () => {
+  it('trims a reply and refuses an empty or oversized one', () => {
+    expect(replyToProductFeedbackSchema.parse({ message: '  Danke!  ' })).toEqual({ message: 'Danke!' })
+    expect(replyToProductFeedbackSchema.safeParse({ message: '   ' }).success).toBe(false)
+    expect(replyToProductFeedbackSchema.safeParse({ message: 'x'.repeat(5001) }).success).toBe(false)
   })
 })

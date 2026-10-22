@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Piloti's web addresses now forward plain http links to the secure site
+    instead of showing an empty page, which also lets Claude and other apps
+    find the Piloti icon for the connector.

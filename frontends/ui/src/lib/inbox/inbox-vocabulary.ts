@@ -71,6 +71,13 @@ export const INBOX_ITEM_TYPES = [
    */
   'feedback.submitted',
   /**
+   * Informational, operational tier: the team answered a member's own product
+   * feedback in PostHog Support (ADR-0118, second amendment). Addressed to the
+   * reporter, in the reporter's organization; one row per report, counting the
+   * replies since it was last read. Opens „Mein Feedback" on that thread.
+   */
+  'feedback.replied',
+  /**
    * Operational: everything an upload of yours brought in has been read
    * (ADR-0086, ticket „Was ist angekommen?"). Addressed to the uploader; the
    * row opens the upload's summary.

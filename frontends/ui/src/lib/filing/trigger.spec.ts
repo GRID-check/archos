@@ -70,7 +70,7 @@ describe('queueFilingReview', () => {
     expect(enqueueJob).not.toHaveBeenCalled()
   })
 
-  // Migration 0183: a batch a person placed on purpose (a mail they filed) is
+  // Migration 0185: a batch a person placed on purpose (a mail they filed) is
   // not re-judged, at the seal or at the settle, and its neighbours still are.
   it('queues neither review for a batch opened without filing reviews', async () => {
     const quiet = { ...BATCH, id: '00000000-0000-4000-8000-0000000000b3', reviewsFiling: false }

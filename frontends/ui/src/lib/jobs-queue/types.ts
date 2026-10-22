@@ -310,6 +310,8 @@ export const officeRenditionPayloadSchema = documentWorkPayloadSchema.extend({
     .optional(),
   /** The older file this upload was filed as the new Fassung of (ADR-0099); absent for every other. */
   revisionOf: z.string().nullable().optional(),
+  /** The older document's id beside `revisionOf`, recorded for a reviewer's release (`filing-choice`). */
+  revisionOfId: z.string().uuid().nullable().optional(),
   /**
    * The key a job queued before the rename carries (migration 0165 era). The queue
    * outlives a deploy, so a claimed job may still hold it; the consumer reads

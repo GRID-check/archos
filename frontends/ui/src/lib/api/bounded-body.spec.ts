@@ -91,6 +91,8 @@ describe('readBoundedBody', () => {
     ['names only algorithms we do not verify', 'md5=:AAAA:'],
     ['is not a structured dictionary', 'sha-256=not-bytes ((('],
     ['carries a string where bytes belong', 'sha-256="abc"'],
+    // An inherited property of a plain object, not an algorithm: once a 500 from createHash(Object).
+    ['names an inherited key, not an algorithm', 'constructor=:AAAA:'],
   ])('refuses a Content-Digest that %s', async (_, contentDigest) => {
     await expect(readBoundedBody(streamed([BODY]), { expectedLength: BODY.byteLength, maxBytes: 1024, contentDigest })).rejects.toBeInstanceOf(BadDigestError)
   })

@@ -70,6 +70,8 @@ export type ServerEvent =
   | 'organization_budget_snapshot'
   | 'agent_operation_called'
   | 'agent_operation_missing'
+  | 'product_feedback_ticket_opened'
+  | 'product_feedback_reply_sent'
   // The E-Mail-Eingang (ADR-0134). Codes, counts and buckets only: a mail is a
   // stranger's, and no sender, subject, file name or address is ever a property.
   | 'inbound_mail_received'

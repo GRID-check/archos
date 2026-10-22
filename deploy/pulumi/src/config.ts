@@ -136,15 +136,6 @@ export interface GridConfig {
      * § Encryption posture.
      */
     className: string;
-    /**
-     * The data volume of the pre-A2 backend (`data-aiq-agent-0`) whose base
-     * corpus the one-shot import Job carries into the corpus store (ADR-0082
-     * A2, `aiq_agent.legacy_corpus_import`). Set only on stacks that ran the
-     * backend before A2; a fresh stack has no such claim, and a Job mounting a
-     * missing claim would never schedule. Remove with the importer once every
-     * stack has run it.
-     */
-    legacyCorpusClaim?: string;
   };
 
   ingress: {
@@ -2947,7 +2938,6 @@ export function loadConfig(): GridConfig {
 
     storage: {
       className: cfg.require("storageClass"),
-      legacyCorpusClaim: cfg.get("legacyCorpusClaim"),
     },
 
     ingress: {
@@ -3088,9 +3078,15 @@ export function loadConfig(): GridConfig {
       enabled: bool(cfg, "geocoderEnabled", false),
       // Both official images, pinned by digest: there is no upstream Photon
       // image, and this pod sees every address a person types (ADR-0120).
+      // Temurin 21.0.12.1+1 on Ubuntu 24.04, the multi-arch index Docker Hub's
+      // `21.0.12.1_1-jre-noble` tag resolved to on 2026-10-22. Moved off
+      // 21.0.12_8 because its OpenSSL (libssl3t64 3.0.13-0ubuntu3.15) carried
+      // CVE-2026-84782; this one carries 0ubuntu3.16, read from its dpkg
+      // database by a local trivy scan, with the same entrypoint, JAVA_HOME and
+      // PATH, and still no fixed user.
       image:
         cfg.get("geocoderImage") ??
-        "eclipse-temurin:21.0.12_8-jre-noble@sha256:7739f0ffce786528961eea6bf46d9610ee968ac6127c9b2e93494757bdecce9f",
+        "eclipse-temurin:21.0.12.1_1-jre-noble@sha256:35501d3f93173b420ac9001658eb68157e813316b865087e345c187fca422c4c",
       fetchImage:
         cfg.get("geocoderFetchImage") ??
         "alpine:3.22.6@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8",
@@ -3393,13 +3389,18 @@ export function loadConfig(): GridConfig {
 
     observability: {
       enabled: collectorEnabled,
-      // Digest-pinned (supply chain): 0.161.0. Bump deliberately via config when
+      // Digest-pinned (supply chain): 0.163.2, the multi-arch index Docker Hub's
+      // `0.163.2` tag resolved to on 2026-10-22. Bump deliberately via config when
       // upgrading — the pin is scanned by the trivy job in
       // .github/workflows/security.yml, which blocks on fixable HIGH/CRITICAL, so
-      // a stale pin surfaces as a failing check.
+      // a stale pin surfaces as a failing check. Moved off 0.161.0 because its
+      // go1.26.8 standard library and golang.org/x/net v0.58.0 carried four HIGH
+      // advisories (CVE-2026-78667, -78669, -97031, -111943); the 0.163.2 amd64
+      // binary, read with `go version -m`, is go1.26.10 with x/net v0.61.0. The
+      // otelcol-contrib build in ci.yml (`OTELCOL_VERSION`) moves with this pin.
       collectorImage:
         cfg.get("collectorImage") ??
-        "otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1",
+        "otel/opentelemetry-collector-contrib@sha256:7f22d2a6748110ffb6a59bc0df448bccbf501cdb667d610ede4c61d3863d5849",
       oidcIssuer: otelOidcIssuer,
       oidcClientId: otelOidcClientId,
       oidcClientSecret: otelOidcClientSecret ?? pulumi.output(""),
@@ -3409,27 +3410,37 @@ export function loadConfig(): GridConfig {
       enabled: langfuseEnabled,
       domain: langfuseDomain,
       // Digest-pinned on the same terms as the ADR-0029 images, and scanned by
-      // the same trivy gate: langfuse 4.63.0 (web + worker, which MUST be the
-      // same version) and ClickHouse 26.8.15.10 LTS, which v4 needs (>= 25.12).
-      // The langfuse digests are what GHCR's `4.63.0` tags resolve to, read by
-      // the same manifest lookup as the 4.56.0 pin (checked 2026-10-18);
-      // `26.8` is a moving tag upstream and this is the digest it resolved to
-      // when pinned. Moved off 4.56.0 because trivy flagged three HIGH pcre2
-      // advisories (CVE-2026-103111, -86145, -89161) against 10.40-6.el9 in
-      // the UBI 9 base both 4.56.0 images share; 10.40-7.el9_8 is the fixed
-      // build. 4.56.0 had moved both images off node:24-alpine onto UBI 9
-      // micro, and the uid (1001) and the `node` binary the preStop hook runs
-      // are unchanged between the two. v3 (3.225.11) shipped next 16.2.11,
-      // whose next/og RCE (GHSA-vcvr-r3jv-pc5j) no 3.x release fixes.
+      // the same trivy gate: langfuse 4.68.0 (web + worker, which MUST be the
+      // same version) and ClickHouse 26.8.33.10 LTS, which v4 needs (>= 25.12).
+      // The langfuse digests are what GHCR's `4.68.0` tags resolve to (multi-arch
+      // index, read anonymously from the registry on 2026-10-22, the day 4.68.0
+      // was published); `26.8` is a moving tag upstream and this is the digest
+      // it resolved to when pinned (2026-10-22, 26.8.33.10; moved within the
+      // 26.8 line off 26.8.15.10, whose Ubuntu 22.04 base had OpenSSL
+      // 3.0.2-0ubuntu1.29, CVE-2026-84782; 26.8.33.10 carries 0ubuntu1.30, read
+      // from its dpkg database by a local trivy scan, and the same entrypoint,
+      // ports and TZ=UTC). Langfuse moved off 4.63.0 because both images
+      // bundled @modelcontextprotocol/sdk 1.31.0 (CVE-2026-111767, -111768) and
+      // follow-redirects 1.16.0 (CVE-2026-111755, -111756), and the web image's
+      // `usr/bin/migrate` was built with go1.26.9 (CVE-2026-111943). 4.64.0
+      // through 4.67.0 still carry all of them; 4.68.0 ships sdk 1.32.0,
+      // follow-redirects 1.16.1 and a go1.26.10 migrate, read from the images'
+      // package manifests and build info by a local trivy scan, not from
+      // release notes. 4.68.0 also turns on project API key permissions by
+      // default (API_AUTH_MIGRATION=enforce); keys without a role assignment are
+      // backfilled with their legacy role on first use. 4.56.0 moved both images
+      // off node:24-alpine onto UBI 9 micro; the uid (1001), entrypoints and
+      // commands are unchanged since. v3 (3.225.11) shipped next 16.2.11, whose
+      // next/og RCE (GHSA-vcvr-r3jv-pc5j) no 3.x release fixes.
       webImage:
         cfg.get("langfuseWebImage") ??
-        "ghcr.io/langfuse/langfuse@sha256:67f48d12a190e4ad585249c75ae1ce172b449de3dbbe7486b8179cd28e21408e",
+        "ghcr.io/langfuse/langfuse@sha256:b29c245d72ab49b2b109190618829f9d5fbba229b11468d501cfe4f493885bf0",
       workerImage:
         cfg.get("langfuseWorkerImage") ??
-        "ghcr.io/langfuse/langfuse-worker@sha256:ca32a8fb2a214c7b5f42dd9c540c8072e41db659cb621f317911ce695ad6bca2",
+        "ghcr.io/langfuse/langfuse-worker@sha256:f3afef571845b2365a3b991aab4977a53d75862077e3c9e9e4d1e32949ab15f7",
       clickhouseImage:
         cfg.get("clickhouseImage") ??
-        "clickhouse/clickhouse-server@sha256:3043f691ec1a847f38b446ff43708893fcbf9815bd9bd88c0f84bfe064ce852f",
+        "clickhouse/clickhouse-server@sha256:1c0b76ac42e16b4eeb0be84013c67269b660701971d29bab9ad0d01b0ba6c10d",
       v4HistoricBackfill: bool(cfg, "langfuseV4HistoricBackfill", false),
       // 50 Gi: fourteen days of TTL-bounded system logs plus headroom for the
       // trace store itself, which still grows without bound (OSS has no

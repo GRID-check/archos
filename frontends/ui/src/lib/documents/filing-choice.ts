@@ -17,7 +17,9 @@
  * release reads it back from the row it already loaded, the same "read the
  * row, never trust the caller" argument `dispatchDocument` makes about the
  * file name, and only while the recorded digest is the row's: a choice made for
- * other bytes is not this file's.
+ * other bytes is not this file's. The Fassung is kept as the older document's
+ * id and checked again at release (`resolveReleasedRevisionOf`), which sends
+ * its name as it is then, or drops the choice when it no longer resolves.
  *
  * Only the release reads it. Every dispatch rewrites the metadata, so the next
  * one without a choice (a re-index, a placement move) drops it; were a re-index
@@ -26,16 +28,22 @@
  */
 
 import type { Document } from '@/lib/db/schema'
-import { REVISION_MAX_NAME_LENGTH } from './revision-links'
 import { documentTypeOf, type DocumentTypeTag } from './tag-vocabulary'
+
+/** A document id as the row's primary key holds it. */
+const DOCUMENT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 /** The `documents.metadata` key the choice is kept under. */
 export const FILING_CHOICE_METADATA_KEY = 'filingChoice'
 
 export interface FilingChoice {
   documentType: DocumentTypeTag | null
-  /** The FILE NAME of the older document in the same collection, as `resolveRevisionOf` checked it at upload. */
-  revisionOf: string | null
+  /**
+   * The ID of the older document, as `resolveRevisionOf` checked it at upload. Never its
+   * name: the release re-resolves it (`resolveReleasedRevisionOf`), since by then it may
+   * be archived or renamed, or another file may carry its name.
+   */
+  revisionOfId: string | null
 }
 
 /**
@@ -45,7 +53,7 @@ export interface FilingChoice {
 export function filingChoiceRecord(choice: Partial<FilingChoice>): Record<string, string> | null {
   const record: Record<string, string> = {}
   if (choice.documentType) record.documentType = choice.documentType
-  if (choice.revisionOf) record.revisionOf = choice.revisionOf
+  if (choice.revisionOfId) record.revisionOfId = choice.revisionOfId
   return Object.keys(record).length > 0 ? record : null
 }
 
@@ -60,11 +68,9 @@ export function storedFilingChoice(row: Pick<Document, 'metadata' | 'contentHash
   if (!metadata || !stored) return null
   if (!row.contentHash || metadata.ingestContentHash !== row.contentHash) return null
   const documentType = typeof stored.documentType === 'string' ? (documentTypeOf([stored.documentType]) ?? null) : null
-  const revisionOf =
-    typeof stored.revisionOf === 'string' && stored.revisionOf.trim() && stored.revisionOf.length <= REVISION_MAX_NAME_LENGTH
-      ? stored.revisionOf
-      : null
-  return documentType || revisionOf ? { documentType, revisionOf } : null
+  const revisionOfId =
+    typeof stored.revisionOfId === 'string' && DOCUMENT_ID.test(stored.revisionOfId) ? stored.revisionOfId : null
+  return documentType || revisionOfId ? { documentType, revisionOfId } : null
 }
 
 function asRecord(value: unknown): Record<string, unknown> | null {

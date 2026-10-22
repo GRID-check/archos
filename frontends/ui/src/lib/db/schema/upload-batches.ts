@@ -14,7 +14,7 @@ import { projects } from './projects'
  * machine and how many files each kept (ADR-0086) — never their names, which
  * did not reach the server as files and may themselves be personal data.
  *
- * The five effect columns (migration 0183) say what settling the batch sets
+ * The five effect columns (migration 0185) say what settling the batch sets
  * off. A person's upload sets off all five; a server-side caller filing on a
  * person's decision (an E-Mail-Verlauf's next Fassung) opens it quieter. See
  * {@link UploadBatchEffects}.
@@ -38,7 +38,7 @@ export const UPLOAD_BATCH_REVISION_NOTICES = ['all', 'marks_only'] as const
 export type UploadBatchRevisionNotice = (typeof UPLOAD_BATCH_REVISION_NOTICES)[number]
 
 /**
- * What settling a batch sets off (migration 0183). Each switch off suppresses
+ * What settling a batch sets off (migration 0185). Each switch off suppresses
  * exactly its own effect and nothing else:
  *
  * - `announcesCompletion`: the uploader's `upload.completed` item (`./settle`);

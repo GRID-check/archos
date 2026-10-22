@@ -294,6 +294,7 @@ export function installHttpRoutes(
   signed: k8s.apiextensions.CustomResource;
   s3: k8s.apiextensions.CustomResource;
   web: k8s.apiextensions.CustomResource;
+  httpsRedirect: k8s.apiextensions.CustomResource;
 } {
   const appRouteSpec: IHTTPRouteSpec = {
     parentRefs: [{ name: GATEWAY_NAME, sectionName: "https-app" }],
@@ -433,5 +434,27 @@ export function installHttpRoutes(
     { provider, dependsOn: web },
   );
 
-  return { app, signed, s3, web };
+  // Plain HTTP answers with a permanent redirect to HTTPS, on every host the
+  // port-80 listener serves. It answered 404 before: the listener existed only
+  // for cert-manager's HTTP-01 challenge. Google's favicon service fetches
+  // `http://<apex>`, and Claude's connector tile takes its icon from that
+  // service, so the 404 left Piloti's connector with a blank globe. The ACME
+  // solver's own route matches its token path Exactly, which outranks this
+  // catch-all prefix, so certificate renewal keeps working.
+  const httpsRedirectSpec: IHTTPRouteSpec = {
+    parentRefs: [{ name: GATEWAY_NAME, sectionName: "http" }],
+    rules: [{ filters: [{ type: "RequestRedirect", requestRedirect: { scheme: "https", statusCode: 301 } }] }],
+  };
+  const httpsRedirect = new k8s.apiextensions.CustomResource(
+    "grid-https-redirect-route",
+    {
+      apiVersion: "gateway.networking.k8s.io/v1",
+      kind: "HTTPRoute",
+      metadata: { name: "grid-https-redirect", namespace, labels: commonLabels("gateway") },
+      spec: httpsRedirectSpec,
+    },
+    { provider, dependsOn },
+  );
+
+  return { app, signed, s3, web, httpsRedirect };
 }

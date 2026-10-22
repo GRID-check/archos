@@ -35,6 +35,7 @@ export const feedback: typeof en.feedback = {
       body: 'Ihr Feedback ist beim Piloti-Team angekommen. Jede Meldung wird gelesen.',
       another: 'Weiteres senden',
       close: 'Schließen',
+      viewThread: 'Chat öffnen',
     },
   },
   kinds: {
@@ -67,13 +68,109 @@ export const feedback: typeof en.feedback = {
     on_hold: 'Pausiert',
     resolved: 'Erledigt',
   },
+  /** Die eigenen Meldungen: was gesendet wurde und was das Team geantwortet hat. */
+  threads: {
+    open: 'Mein Feedback',
+    title: 'Mein Feedback',
+    description: 'Was Sie gemeldet haben und was das Piloti-Team antwortet. Sie können direkt hier zurückschreiben.',
+    newCount: '{count} neu',
+    empty: {
+      title: 'Noch kein Feedback',
+      description: 'Sobald Sie Feedback senden, erscheint hier Ihr Chat mit dem Team.',
+    },
+    send: 'Feedback senden',
+    loadError: 'Ihr Feedback konnte nicht geladen werden.',
+    threadLoadError: 'Dieser Chat konnte nicht geladen werden.',
+    retry: 'Erneut versuchen',
+    loadMore: 'Mehr laden',
+    loadingMore: 'Wird geladen …',
+    loadMoreFailed: 'Konnte nicht mehr laden. Erneut versuchen',
+    back: 'Alle Meldungen',
+    hasUpdate: 'Neu',
+    me: 'Sie',
+    team: 'Piloti-Team',
+    teamMember: '{name}, Piloti-Team',
+    notLive: 'Die Antworten des Teams können gerade nicht geladen werden. Ihre Meldung ist angekommen und sicher.',
+    cannotReply: 'Auf diese Meldung kann hier nicht geantwortet werden. Senden Sie neues Feedback, um den Chat fortzusetzen.',
+    waiting: 'Das Team hat noch nicht geantwortet. Die Antwort erscheint hier.',
+    replyPlaceholder: 'Antwort schreiben …',
+    replySend: 'Senden',
+    replyError: 'Ihre Antwort konnte nicht gesendet werden. Bitte versuchen Sie es erneut.',
+    replyRateLimited: 'Sie haben in der letzten Stunde schon viele Antworten gesendet. Bitte versuchen Sie es später erneut.',
+    /** Der Punkt auf dem Avatar und auf „Mehr“, für Screenreader. */
+    newsDot: 'Neue Antworten auf Ihr Feedback',
+    /** Umschalter über der Liste, nur für Büro-Admins. */
+    scopeLabel: 'Ansicht',
+    scope: {
+      mine: 'Meine',
+      office: 'Unser Büro',
+    },
+    officeTitle: 'Feedback unseres Büros',
+    officeDescription: 'Alle Meldungen aus Ihrem Büro und wo sie stehen. Antworten kann nur, wer gemeldet hat.',
+    officeEmpty: {
+      title: 'Noch kein Feedback aus Ihrem Büro',
+      description: 'Sobald jemand aus Ihrem Büro Feedback sendet, steht es hier.',
+    },
+    officeLoadError: 'Das Feedback Ihres Büros konnte nicht geladen werden.',
+    /** Die zwei Gruppen der Liste: offene Fälle zuerst. */
+    groups: {
+      active: 'Aktiv',
+      done: 'Erledigt',
+    },
+    /** Die Nummer, unter der das Team den Fall führt. */
+    ticketNumber: 'Nr. {number}',
+    /** Vor einer relativen Zeit: „Aktualisiert vor 3 Stunden“. */
+    updated: 'Aktualisiert',
+    unknownReporter: 'Unbekannt',
+    readOnly: 'Nur {name} kann auf diese Meldung antworten.',
+    readOnlyUnnamed: 'Nur die Person, die gemeldet hat, kann hier antworten.',
+    /** Der Stand eines Falls, in einfachen Worten, aus Sicht der Person, die gemeldet hat. */
+    statuses: {
+      new: 'Eingegangen',
+      open: 'In Bearbeitung',
+      pending: 'Wartet auf Sie',
+      on_hold: 'Pausiert',
+      resolved: 'Erledigt',
+      /** Ohne lesbares Ticket: gesendet, aber kein Stand bekannt. */
+      unknown: 'Gesendet',
+    },
+    /** Derselbe Stand in der Büroansicht, wo „Sie“ die falsche Person wäre. */
+    officeStatuses: {
+      pending: 'Wartet auf Rückmeldung',
+    },
+  },
   platform: {
     filters: {
       label: 'Nach Status filtern',
+      active: 'Aktiv',
       all: 'Alle',
       kindLabel: 'Art',
       allKinds: 'Alle Arten',
+      assigneeLabel: 'Nach Zuständigkeit filtern',
+      assignees: {
+        all: 'Alle Personen',
+        mine: 'Meine',
+        unassigned: 'Nicht zugewiesen',
+      },
     },
+    case: {
+      unassigned: 'Nicht zugewiesen',
+      assignedToYou: 'Ihnen zugewiesen',
+      assignedTo: 'Bei {name}',
+      unnamedAssignee: 'jemandem im Team',
+      lastActivity: 'Zuletzt aktiv',
+      awaiting: {
+        team: 'Unsere Antwort fehlt',
+        reporter: 'Wartet auf Rückmeldung',
+      },
+      claim: 'Übernehmen',
+    },
+    viewerNotInPosthog: {
+      title: 'Ihnen ist in PostHog nichts zugewiesen.',
+      description:
+        'Niemand in PostHog hat Ihre Piloti-E-Mail. Melden Sie sich mit derselben Adresse bei PostHog an, dann erscheinen Ihre Tickets hier.',
+    },
+    openInPosthog: 'In PostHog öffnen',
     empty: {
       title: 'Hier ist kein Feedback',
       description: 'Sobald ein Mitglied Feedback sendet, erscheint es hier und in Ihrem Postfach.',
@@ -87,14 +184,15 @@ export const feedback: typeof en.feedback = {
     onPage: 'auf {page}',
     contact: 'Per E-Mail antworten',
     noContact: 'Möchte nicht kontaktiert werden',
+    claimed: 'Ticket #{number} ist Ihnen jetzt in PostHog zugewiesen.',
+    claimedUnnumbered: 'Das Ticket ist Ihnen jetzt in PostHog zugewiesen.',
+    claimError: 'Das Ticket konnte Ihnen nicht zugewiesen werden. Ist Ihre Piloti-E-Mail auch Ihr PostHog-Login?',
     statusLabel: 'Status',
     triaged: 'Auf „{status}“ gesetzt.',
     triageError: 'Der Status konnte nicht geändert werden.',
     details: 'Browserdetails',
     listTitle: 'Meldungen',
     linked: 'Aus dem Postfach',
-    ticketLink: 'Ticket #{number} in PostHog',
-    ticketLinkUnnumbered: 'Ticket in PostHog',
     recordingsLink: 'Aufzeichnungen in PostHog',
     localSource: {
       title: 'PostHog Support kann gerade nicht gelesen werden.',

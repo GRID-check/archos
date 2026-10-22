@@ -53,7 +53,7 @@ from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 
-from ..object_store_url import assert_fetchable_object_store_url
+from ..object_store_url import object_store_request_url
 from . import lease_policy
 from . import payload_crypto
 
@@ -227,7 +227,9 @@ def decode(stored: str) -> PreparedIngestJob:
             config[key] = [_decode_entry(e) for e in config[key]]
     for key in _URL_CONFIG_KEYS:
         if config.get(key):
-            assert_fetchable_object_store_url(config[key], field=key)
+            # Gated again, and rebuilt on the configured store's origin, so the
+            # worker requests the store whatever spelling the row carries.
+            config[key] = object_store_request_url(config[key], field=key)
     return PreparedIngestJob(
         job_id=data["job_id"],
         status=IngestionJobStatus.model_validate(data["status"]),

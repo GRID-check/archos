@@ -486,6 +486,16 @@ export const collaboration = {
         title: '{actor} sent feedback',
         body: 'from {subject} — open it to triage.',
       },
+      // The team answered the reader's own report in PostHog. {subject} is the
+      // start of the report, {related} whoever answered last.
+      feedbackReplied: {
+        title: 'The Piloti team answered your feedback',
+        titleMany: '{count} new replies to your feedback',
+        titleRelated: '{related} from the Piloti team answered your feedback',
+        titleRelatedMany: '{count} new replies to your feedback, latest from {related}',
+        body: 'On “{subject}” — read and reply in My feedback.',
+        bodyNoSubject: 'Read and reply in My feedback.',
+      },
       storageQuotaWarning: {
         title: 'Your organization is running out of storage',
         body: '{subject} of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs Piloti for you to raise the quota.',

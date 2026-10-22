@@ -55,7 +55,7 @@ export async function enqueueIntakeRead(organizationId: string, projectId: strin
 /**
  * After these batches completed: one reading per project with an open intake,
  * as the uploader of the first of its batches that starts one. A batch opened
- * with `startsIntake` off (migration 0183) starts none. The projects queued.
+ * with `startsIntake` off (migration 0185) starts none. The projects queued.
  */
 export async function queueIntakeReadsAfterUpload(
   organizationId: string,

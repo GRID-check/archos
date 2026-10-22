@@ -15,7 +15,7 @@
  * (migration 0119): a status write lands only on the dispatch it resolved,
  * records one decision per dispatch, and the decision stays owed to the audit
  * trail, outliving its document, until it is marked once; then the retention
- * sweep, and only it, deletes it. And the batch's effects (migration 0183):
+ * sweep, and only it, deletes it. And the batch's effects (migration 0185):
  * a person's upload by default, quieter only where a caller said so.
  */
 
@@ -188,7 +188,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
   it("keeps the dispatch's filing choice through a quarantine, and drops it with the next dispatch that carries none", async () => {
     const { storedFilingChoice } = await import('@/lib/documents/filing-choice')
     const { DOCUMENT_TYPE_TAGS } = await import('@/lib/documents/tag-vocabulary')
-    const choice = { documentType: DOCUMENT_TYPE_TAGS[0], revisionOf: 'Index_B.pdf' }
+    const choice = { documentType: DOCUMENT_TYPE_TAGS[0], revisionOfId: '0b6c8a52-3f1e-4c7a-9d2b-5e8f1a2b3c4d' }
     const id = await insertDocument('index_c.pdf', 'uploaded', { hash: 'sha256:filed' })
     const row = async () => {
       const found = await documentsRepo.findDocumentInOrg(id, ORG, internalRead('quarantine-review'))
@@ -397,7 +397,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
     ).rejects.toThrow()
   })
 
-  // Migration 0183: the effects a settle sets off. A batch opened without
+  // Migration 0185: the effects a settle sets off. A batch opened without
   // them is a person's upload; only the server opens one quieter.
   it("opens a batch with every effect of a person's upload, and keeps the quieter ones a caller set", async () => {
     expect(await repo.findUploadBatch(ORG, BATCH)).toMatchObject({

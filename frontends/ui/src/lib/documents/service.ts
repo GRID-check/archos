@@ -350,6 +350,11 @@ export interface DispatchIngestExtras {
    */
   revisionOf?: string | null
   /**
+   * The older document's ID, beside `revisionOf`: recorded with the job, never sent,
+   * so a reviewer's release re-resolves the choice (`./filing-choice`).
+   */
+  revisionOfId?: string | null
+  /**
    * The document type the one filing these bytes chose (`ShelfUploadInput.documentType`).
    * Sent as `document_type`; the ingest job stores it as the person's type tag,
    * which no classifier pass replaces. Absent for every other dispatch, and then
@@ -522,7 +527,10 @@ export async function dispatchIngest(
   if (ingestJobId) {
     // The choice rides on the row with the job, so a reviewer's release of a
     // file this reading holds sends it again (`./filing-choice`).
-    const filingChoice = filingChoiceRecord({ documentType: extras.documentType, revisionOf: extras.revisionOf })
+    const filingChoice = filingChoiceRecord({
+      documentType: extras.documentType,
+      revisionOfId: extras.revisionOf ? extras.revisionOfId : null,
+    })
     await setDocumentIngestJob(documentId, organizationId, ingestJobId, filingChoice)
     return { jobId: ingestJobId, status: 'pending' }
   }
@@ -1164,6 +1172,8 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
    * only: an IFC model's digest is not the file the row names.
    */
   revisionOf?: string | null
+  /** The older document's id, beside `revisionOf`; recorded for a release, never sent. */
+  revisionOfId?: string | null
   /**
    * The document type the filing chose (`ShelfUploadInput.documentType`). Read
    * by the ingest paths only, like `revisionOf`.
@@ -1320,6 +1330,7 @@ export async function dispatchDocument(
       provenance: input.provenance ?? null,
       priority: input.priority,
       revisionOf: input.revisionOf ?? null,
+      revisionOfId: input.revisionOfId ?? null,
       documentType: input.documentType ?? null,
     }
   )
@@ -1589,6 +1600,7 @@ export async function beginRenditionIngest(
     fileName,
     provenance: input.provenance ?? null,
     revisionOf: input.revisionOf ?? null,
+    revisionOfId: input.revisionOfId ?? null,
     documentType: input.documentType ?? null,
   })
 }
@@ -1611,6 +1623,7 @@ export async function runOfficeRenditionJob(
     ...dispatchInputOf(organizationId, payload),
     provenance: payload.provenance ?? null,
     revisionOf: payload.revisionOf ?? payload.fassungOf ?? null,
+    revisionOfId: payload.revisionOfId ?? null,
     // Read through the vocabulary: a queued value it no longer holds is no choice.
     documentType: documentTypeOf([payload.documentType ?? '']) ?? null,
   }
@@ -1652,6 +1665,7 @@ async function ingestThroughRendition(input: DispatchDocumentInput, fileName: st
       extractionRef: indexesRendition ? renditionRef : null,
       priority: input.priority,
       revisionOf: input.revisionOf ?? null,
+      revisionOfId: input.revisionOfId ?? null,
       documentType: input.documentType ?? null,
     }
   )

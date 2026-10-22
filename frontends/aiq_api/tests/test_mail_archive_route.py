@@ -133,6 +133,20 @@ def test_a_caller_without_the_token_learns_nothing_about_the_url_gate(client):
     assert response.status_code == 403
 
 
+def test_the_archive_is_read_at_the_configured_origin_whatever_the_spelling(client):
+    """Same origin in another spelling: the archive is opened at the store as
+    configured, with only the object's path and presigned query from the caller."""
+    spelled = {**ARCHIVE, "url": "HTTP://SeaweedFS:8333/x?sig"}
+    response = client.post(
+        "/v1/mail-archive/messages",
+        json={"archive": spelled, "start": 0, "limit": 1},
+        headers={"x-grid-internal-token": TOKEN},
+    )
+
+    assert response.status_code == 200
+    assert client.holder["opened"] == ["http://seaweedfs:8333/x?sig"]
+
+
 def test_a_page_carries_mail_in_full_and_other_items_by_class(client):
     response = client.post(
         "/v1/mail-archive/messages",

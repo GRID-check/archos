@@ -41,9 +41,6 @@ const sdk = vi.hoisted(() => ({
   opt_in_capturing: vi.fn(),
   has_opted_out_capturing: vi.fn(() => false),
   get_session_id: vi.fn((): unknown => '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70'),
-  conversations: {
-    getWidgetSessionId: vi.fn((): unknown => '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c'),
-  } as { getWidgetSessionId?: () => unknown } | undefined,
 }))
 
 vi.mock('posthog-js', () => ({ default: sdk }))
@@ -71,7 +68,7 @@ describe('posthog analytics facade', () => {
       resetPosthog()
     }).not.toThrow()
     expect(isPosthogOptedOut()).toBe(false)
-    expect(getPosthogSupportContext()).toEqual({ widgetSessionId: null, sessionId: null })
+    expect(getPosthogSupportContext()).toEqual({ sessionId: null })
     expect(isPosthogEnabled()).toBe(false)
   })
 
@@ -430,9 +427,6 @@ describe('posthog enabled path', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
-    sdk.conversations = {
-      getWidgetSessionId: vi.fn((): unknown => '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c'),
-    }
     sdk.get_session_id.mockReturnValue('0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70')
   })
 
@@ -505,42 +499,17 @@ describe('posthog enabled path', () => {
     expect(sdk.reset).toHaveBeenCalledTimes(1)
   })
 
-  test('support context: hands the server the widget session and the replay session', async () => {
+  test('support context: hands the server the replay session, and no widget session', async () => {
     const mod = await load()
-    expect(mod.getPosthogSupportContext()).toEqual({
-      widgetSessionId: '5f0c1b2a-8d3e-4f6a-9b7c-1d2e3f4a5b6c',
-      sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
-    })
-  })
-
-  test('support context: no widget session while Support is not loaded', async () => {
-    sdk.conversations = undefined
-    const mod = await load()
-    expect(mod.getPosthogSupportContext()).toEqual({
-      widgetSessionId: null,
-      sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
-    })
-  })
-
-  test('support context: an SDK without the method, or an empty id, is null', async () => {
-    sdk.conversations = {}
-    const mod = await load()
-    expect(mod.getPosthogSupportContext().widgetSessionId).toBeNull()
-    sdk.conversations = { getWidgetSessionId: () => '' }
-    expect(mod.getPosthogSupportContext().widgetSessionId).toBeNull()
+    expect(mod.getPosthogSupportContext()).toEqual({ sessionId: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })
   })
 
   test('support context: a throwing SDK never fails the submit', async () => {
-    sdk.conversations = {
-      getWidgetSessionId: () => {
-        throw new Error('not ready')
-      },
-    }
     sdk.get_session_id.mockImplementation(() => {
       throw new Error('not ready')
     })
     const mod = await load()
-    expect(mod.getPosthogSupportContext()).toEqual({ widgetSessionId: null, sessionId: null })
+    expect(mod.getPosthogSupportContext()).toEqual({ sessionId: null })
   })
 })
 

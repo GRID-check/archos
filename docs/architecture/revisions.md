@@ -178,7 +178,11 @@ collection no longer holds, or a link that would close a loop, falls back to the
 ordinary suggestion. A file the screening holds (ADR-0086) is
 never read that far; the dispatch keeps the choice on the BFF row
 (`documents.metadata.filingChoice`, `lib/documents/filing-choice.ts`) and the
-reviewer's release sends the same `revision_of` again, for the same bytes only.
+reviewer's release sends it again, for the same bytes only. The choice is kept as
+the older document's id, and the release checks it again
+(`resolveReleasedRevisionOf`: active, past screening, same shelf and collection)
+and sends the older file's name as it is then; a choice that no longer resolves
+is dropped, since the release can come days later.
 
 **After reading.** `PUT /api/documents/[id]/revision` takes `{ older, linked }`.
 `setRevisionLink` loads both documents with write access and refuses a held
@@ -357,7 +361,7 @@ name, each labelled as what it is.
   Prüfansicht ([`document-annotations.md`](document-annotations.md#a-mark-goes-on-with-a-new-fassung)).
 - **Who, for a quiet upload.** The upload batch that brought the newer
   document can narrow that to the mark participants alone
-  (`upload_batches.revision_notice = 'marks_only'`, migration 0183):
+  (`upload_batches.revision_notice = 'marks_only'`, migration 0185):
   `announceSettledVersions` looks up the batch each settled document carries
   (`findMarksOnlyBatchIds`) and passes `audience: 'marks_only'`, which drops the
   assignees and uploaders before the access cut. The next Fassung of an

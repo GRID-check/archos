@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import threading
+from urllib.parse import parse_qs
 
+import httpx
 import pytest
 
 from aiq_api.mail_archive import archives
+from aiq_api.mail_archive.remote_file import RemoteFileError
 
 
 class FakeArchive:
@@ -29,12 +32,33 @@ def fake_open(monkeypatch):
 
     monkeypatch.setattr(archives, "open_archive", open_archive)
     monkeypatch.setattr(archives, "_ensure_janitor", lambda: None)
+    monkeypatch.setattr(archives, "_CLIENT", _store())
     archives.reset_open_archives()
     yield opened
     archives.reset_open_archives()
 
 
 STORE = "http://seaweedfs:8333"
+
+#: The signatures the fake store honours; anything else is a 403, as SigV4 answers.
+VALID_SIGNATURES = {"1", "2"}
+
+#: The URLs the fake store was asked for, in order.
+store_requests: list[str] = []
+
+
+def _store() -> httpx.Client:
+    store_requests.clear()
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        store_requests.append(str(request.url))
+        signature = parse_qs(request.url.query.decode()).get("X-Amz-Signature", [""])[0]
+        if signature not in VALID_SIGNATURES:
+            return httpx.Response(403)
+        first, last = (int(part) for part in request.headers["range"].removeprefix("bytes=").split("-"))
+        return httpx.Response(206, content=b"x" * (last - first + 1))
+
+    return httpx.Client(transport=httpx.MockTransport(handler))
 
 
 def url(path: str, signature: str = "1") -> str:
@@ -113,3 +137,22 @@ def test_a_caller_naming_another_offices_key_gets_its_own_object_through_the_rou
         assert response.status_code == 200
 
     assert len(fake_open) == 2
+
+
+@pytest.mark.parametrize("unproven", [f"{STORE}/staging/org_a/a.pst", url("staging/org_a/a.pst", "forged")])
+def test_a_url_the_store_does_not_honour_never_reaches_an_open_archive(fake_open, unproven):
+    """Naming the object is not holding a right to it: an unsigned or forged URL
+    for an open archive's path gets nothing from the cache, and the archive goes
+    on reading through the URL it had, so its other holders lose nothing."""
+    with archives.use_archive(url("staging/org_a/a.pst", "1"), 10) as theirs:
+        pass
+
+    with pytest.raises(RemoteFileError), archives.use_archive(unproven, 10):
+        pytest.fail("an unproven URL was handed the open archive")
+
+    entry = archives._open[archives.object_of(unproven)]
+    assert entry.file._url == url("staging/org_a/a.pst", "1")
+    assert entry.holders == 0
+    with archives.use_archive(url("staging/org_a/a.pst", "2"), 10) as again:
+        assert again is theirs
+    assert len(fake_open) == 1

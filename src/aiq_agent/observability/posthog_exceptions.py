@@ -22,6 +22,11 @@ both see the same record.
 An ``ERROR`` or above record that carries ``exc_info``. An ERROR with no
 exception is a message, not an exception, and PostHog groups by stack.
 
+Not an exception whose class sets ``expected_outcome = True``: an exhausted
+LLM budget (``cost_tracking.BudgetExceededError``,
+``budget_guard.RunBudgetExceededError``) is a limit doing its job, and a call
+site that logs one at ERROR must not open an issue for it.
+
 ## What is sent
 
 The exception itself (type, message, stack: the SDK builds the ``$exception``
@@ -164,6 +169,8 @@ class PosthogExceptionHandler(logging.Handler):
         if not record.exc_info or record.exc_info[1] is None:
             return
         if record.name.startswith(_SKIPPED_LOGGER_PREFIXES):
+            return
+        if getattr(record.exc_info[1], "expected_outcome", False):
             return
         if not self._admit(fingerprint(record)):
             return

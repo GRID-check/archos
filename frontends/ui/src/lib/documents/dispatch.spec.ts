@@ -557,11 +557,17 @@ describe('the ingest dispatch sends the document folder path', () => {
       ...input('Grundriss_EG_Index_C.pdf'),
       documentType: DOCUMENT_TYPE_TAGS[2],
       revisionOf: 'Grundriss_EG_Index_B.pdf',
+      revisionOfId: '0b6c8a52-3f1e-4c7a-9d2b-5e8f1a2b3c4d',
     })
     await dispatchDocument(input('plan.pdf'))
 
     const recorded = vi.mocked(setDocumentIngestJob).mock.calls.map((call) => call[3])
-    expect(recorded).toEqual([{ documentType: DOCUMENT_TYPE_TAGS[2], revisionOf: 'Grundriss_EG_Index_B.pdf' }, null])
+    // The id, never the name: a release re-resolves it.
+    expect(recorded).toEqual([
+      { documentType: DOCUMENT_TYPE_TAGS[2], revisionOfId: '0b6c8a52-3f1e-4c7a-9d2b-5e8f1a2b3c4d' },
+      null,
+    ])
+    expect(bodyOf(0)).not.toHaveProperty('revision_of_id')
   })
 
   it('sends null for a document at the project root', async () => {

@@ -37,8 +37,10 @@ import { usePathname } from 'next/navigation'
 import { motion, springGlide } from '@/components/motion'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
+import { AttentionDot } from '@/components/ui/attention-dot'
 import { InboxBadge } from '@/features/collaboration/components'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
+import { useFeedbackUpdatedCount } from '@/features/product-feedback/components'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -75,6 +77,9 @@ export function PhoneTabBar({
   const { pending } = useInboxBadge(canAccessInbox && isMobile)
   const moreOpen = useShellOverlays((s) => s.moreSheetOpen)
   const setMoreOpen = useShellOverlays((s) => s.setMoreSheetOpen)
+  // „Mein Feedback" lives in the „Mehr" sheet: a team reply marks the tab.
+  const feedbackNews = useFeedbackUpdatedCount() > 0
+  const tFeedback = useTranslations('feedback')
   // One shared-layout id per mounted bar, never a module constant: the scopes
   // preview mounts two bars at once, and a constant would fly the chip
   // between them.
@@ -111,6 +116,7 @@ export function PhoneTabBar({
               label={label(tab.label)}
               pillId={pillId}
               badgeCount={tab.key === 'inbox' ? pending : 0}
+              newsLabel={tab.key === 'more' && feedbackNews ? tFeedback('threads.newsDot') : null}
               expanded={tab.key === 'more' ? moreOpen : undefined}
               onOpenMore={() => setMoreOpen(true)}
             />
@@ -126,6 +132,7 @@ function PhoneTabItem({
   label,
   pillId,
   badgeCount,
+  newsLabel,
   expanded,
   onOpenMore,
 }: {
@@ -133,6 +140,8 @@ function PhoneTabItem({
   label: string
   pillId: string
   badgeCount: number
+  /** Something new one level down (a feedback reply under „Mehr"): a dot, and this said to a screen reader. */
+  newsLabel: string | null
   expanded?: boolean
   onOpenMore: () => void
 }): JSX.Element {
@@ -161,6 +170,7 @@ function PhoneTabItem({
         )}
         <Icon aria-hidden className="relative size-[1.125rem]" />
         <InboxBadge pending={badgeCount} className="absolute -right-0.5 -top-1.5" />
+        <AttentionDot show={newsLabel !== null} label={newsLabel ?? undefined} className="absolute top-0 right-2.5" />
       </span>
       <span
         data-slot="phone-tab-label"

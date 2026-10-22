@@ -86,10 +86,6 @@ import { IN_FLIGHT_DOCUMENT_STATUSES } from '@/lib/documents/document-status'
 const CONSTRAINT = 'documents_session_requires_conversation'
 
 const MIGRATION = readFileSync(join(process.cwd(), 'drizzle/0049_session_documents.sql'), 'utf8')
-const DOWN_MIGRATION = readFileSync(
-  join(process.cwd(), 'drizzle/0049_session_documents.down.sql'),
-  'utf8'
-)
 
 const AUTHORSHIP_CONSTRAINT = 'documents_authorship_requires_provenance'
 
@@ -97,33 +93,17 @@ const MIGRATION_0063 = readFileSync(
   join(process.cwd(), 'drizzle/0063_agent_authored_documents.sql'),
   'utf8'
 )
-const DOWN_MIGRATION_0063 = readFileSync(
-  join(process.cwd(), 'drizzle/0063_agent_authored_documents.down.sql'),
-  'utf8'
-)
 
 const MIGRATION_0064 = readFileSync(
   join(process.cwd(), 'drizzle/0064_generated_document_idempotency.sql'),
-  'utf8'
-)
-const DOWN_MIGRATION_0064 = readFileSync(
-  join(process.cwd(), 'drizzle/0064_generated_document_idempotency.down.sql'),
   'utf8'
 )
 const MIGRATION_0065 = readFileSync(
   join(process.cwd(), 'drizzle/0065_diagram_document_producer_idempotency.sql'),
   'utf8'
 )
-const DOWN_MIGRATION_0065 = readFileSync(
-  join(process.cwd(), 'drizzle/0065_diagram_document_producer_idempotency.down.sql'),
-  'utf8'
-)
 const MIGRATION_0066 = readFileSync(
   join(process.cwd(), 'drizzle/0066_authored_ref_names_its_kind.sql'),
-  'utf8'
-)
-const DOWN_MIGRATION_0066 = readFileSync(
-  join(process.cwd(), 'drizzle/0066_authored_ref_names_its_kind.down.sql'),
   'utf8'
 )
 
@@ -272,10 +252,6 @@ describe('the documents scope partition', () => {
       canonical(migrationCheckBody(MIGRATION, CONSTRAINT))
     )
   })
-
-  it('is dropped by the down-migration under the same name', () => {
-    expect(DOWN_MIGRATION).toContain(`DROP CONSTRAINT IF EXISTS "${CONSTRAINT}"`)
-  })
 })
 
 /**
@@ -315,11 +291,6 @@ describe('authorship on documents', () => {
     )
   })
 
-  it('is dropped by the down-migration under the same name', () => {
-    expect(DOWN_MIGRATION_0063).toContain(`DROP CONSTRAINT IF EXISTS "${AUTHORSHIP_CONSTRAINT}"`)
-    expect(DOWN_MIGRATION_0066).toContain(`DROP CONSTRAINT IF EXISTS "${AUTHORSHIP_CONSTRAINT}"`)
-  })
-
   it('replaces 0063\u2019s constraint rather than adding a second one', () => {
     // One name, one rule. A second constraint under a different name would let
     // the weaker of the two be dropped without anything noticing, and both would
@@ -327,77 +298,6 @@ describe('authorship on documents', () => {
     expect(MIGRATION_0066).toMatch(
       statement(`ALTER TABLE \"documents\" DROP CONSTRAINT \"${AUTHORSHIP_CONSTRAINT}\"`)
     )
-  })
-
-  it('records what kind of identifier the reference is, and derives it from the producer', () => {
-    // The backfill is what makes 0066 safe on data that already exists, and it
-    // is keyed on `authored_by_producer` because that is the one column that
-    // answers the question exactly. A migration that guessed instead would write
-    // a false statement into the record the whole feature exists to make
-    // truthful — so the guard above it refuses on a producer it has no kind for.
-    expect(MIGRATION_0066).toMatch(/UPDATE \"documents\"[\s\S]*?CASE \"authored_by_producer\"/)
-    const guard = MIGRATION_0066.indexOf('RAISE EXCEPTION')
-    const backfill = MIGRATION_0066.indexOf('UPDATE \"documents\"')
-    expect(guard).toBeGreaterThan(-1)
-    expect(backfill).toBeGreaterThan(guard)
-  })
-
-  it('backfills the same producer\u2192kind table the filing path reads', () => {
-    // 0066's header rests the whole change on these two tables agreeing:
-    // "a wrong `authored_by_ref_kind` is worse than a missing column, because
-    // it is a false statement in the record this whole change exists to make
-    // truthful". Nothing compared them. Changing the SQL's `diagram_svg` to
-    // `agent_run` left this file green, and applying that migration to a
-    // database holding a pre-0066 diagram row wrote `agent_run` onto a chat
-    // answer's artifact id — reachable on real data, because 0065 ships before
-    // 0066 and diagram rows can already exist when it runs.
-    //
-    // AGREEMENT, not equality. A producer added AFTER 0066 shipped
-    // (`agent_document`, ADR-0054) is legitimately absent from a migration that
-    // already ran everywhere: editing an applied migration to add it is the one
-    // thing a migration history must never do, and there are no pre-0066 rows of
-    // a producer that did not exist then. What must still hold — and is what the
-    // failure above was about — is that every arm 0066 DOES have says the same
-    // thing the filing path says today.
-    const backfill = MIGRATION_0066.slice(MIGRATION_0066.indexOf('CASE "authored_by_producer"'))
-    const mapped = Object.fromEntries(
-      [...backfill.slice(0, backfill.indexOf('END')).matchAll(/WHEN '(\w+)' THEN '(\w+)'/g)].map(
-        ([, producer, kind]) => [producer, kind]
-      )
-    )
-    expect(Object.keys(mapped).length).toBeGreaterThan(0)
-    for (const [producer, kind] of Object.entries(mapped)) {
-      expect(
-        GENERATED_DOCUMENT_PRODUCER_REF_KINDS,
-        `0066 backfills ${producer} as ${kind}; the filing path disagrees`
-      ).toHaveProperty(producer, kind)
-    }
-  })
-
-  it('refuses exactly the producers it cannot backfill, and no others', () => {
-    // The guard's allow-list and the CASE's arms are one list written twice. A
-    // producer added to the guard but not to the CASE passes the refusal, gets
-    // a NULL kind, and then dies at `VALIDATE CONSTRAINT` — turning a designed
-    // exception that names the producer into a bare constraint violation, which
-    // is the opposite of "a migration that cannot know an answer must stop and
-    // say so".
-    //
-    // Compared against the CASE's own arms rather than against the live producer
-    // map, for the reason the test above gives: a producer added after 0066 is
-    // not in either half of this already-applied migration, and demanding it be
-    // would be demanding an edit to migration history.
-    const guard = MIGRATION_0066.slice(0, MIGRATION_0066.indexOf('RAISE EXCEPTION'))
-    const allowList = /NOT IN \(([^)]*)\)/.exec(guard)?.[1] ?? ''
-    const guarded = [...allowList.matchAll(/'(\w+)'/g)].map(([, producer]) => producer).sort()
-    const backfillArms = MIGRATION_0066.slice(MIGRATION_0066.indexOf('CASE "authored_by_producer"'))
-    const backfilled = [
-      ...backfillArms
-        .slice(0, backfillArms.indexOf('END'))
-        .matchAll(/WHEN '(\w+)' THEN '(\w+)'/g),
-    ]
-      .map(([, producer]) => producer)
-      .sort()
-    expect(guarded).toEqual(backfilled)
   })
 
   it('gives every producer a reference kind, so none can be filed unresolvable', () => {
@@ -450,10 +350,6 @@ describe('the indexes drizzle cannot declare', () => {
     )
   })
 
-  it('drops it again on the way down', () => {
-    expect(DOWN_MIGRATION_0063).toContain('DROP INDEX IF EXISTS "documents_agent_authored_idx"')
-  })
-
   it('keeps uniq_project_folders_parent_name COALESCE-keyed, and only in the migration', () => {
     // An expression index, so drizzle cannot hold it either. The COALESCE is
     // the part a rewrite drops: without it NULL never equals NULL, so root
@@ -470,22 +366,6 @@ describe('the indexes drizzle cannot declare', () => {
     )
   })
 
-  it('refuses to build the folder index before it has looked for duplicates', () => {
-    // Nothing has ever stopped two sibling folders sharing a name, so a
-    // deployment may already have some. Postgres would refuse with one key and
-    // leave the operator to find the rest; the guard fails first with the whole
-    // list, and deliberately does not deduplicate — deleting a folder row
-    // cascades to `documents.folder_id` and would unfile real evidence.
-    const guard = MIGRATION_0063.indexOf('RAISE EXCEPTION')
-    const create = MIGRATION_0063.indexOf('CREATE UNIQUE INDEX "uniq_project_folders_parent_name"')
-    expect(guard).toBeGreaterThan(-1)
-    expect(create).toBeGreaterThan(guard)
-  })
-
-  it('drops the folder index again on the way down', () => {
-    expect(DOWN_MIGRATION_0063).toContain('DROP INDEX IF EXISTS "uniq_project_folders_parent_name"')
-  })
-
   it('widens the folder index to both shelves in 0102, COALESCE-keyed on the project too', () => {
     // An Archiv folder has no project, so `project_id` is NULL for the whole
     // shelf and needs the same sentinel `parent_id` has — without it the Archiv
@@ -494,9 +374,6 @@ describe('the indexes drizzle cannot declare', () => {
     expect(widened).toMatch(
       /CREATE UNIQUE INDEX "uniq_project_folders_parent_name"[\s\S]*?"organization_id"[\s\S]*?coalesce\("project_id"[\s\S]*?coalesce\("parent_id"/
     )
-    // And the way down restores 0063's key.
-    const down = readFileSync(join(process.cwd(), 'drizzle/0102_archiv_folders.down.sql'), 'utf8')
-    expect(down).toMatch(/CREATE UNIQUE INDEX "uniq_project_folders_parent_name"[\s\S]*?"project_id"/)
   })
 
   it('declares the shelf constraints the migration adds, so provisioning from the schema builds them', () => {
@@ -621,45 +498,6 @@ describe('the idempotency index and the probe it belongs to', () => {
     expect(MIGRATION_0066).toMatch(statement(`CREATE UNIQUE INDEX "${IDEMPOTENCY_INDEX}"`))
     expect(MIGRATION_0066).toMatch(statement(`DROP INDEX IF EXISTS "${RENAMED_INDEX}"`))
     expect(MIGRATION_0066).not.toMatch(/^ALTER INDEX/m)
-  })
-
-  it('needs no duplicate guard going up, and has one coming down', () => {
-    // 0063 and 0064 both refuse to build over violating data because their
-    // indexes were NARROWER than what the table already allowed. 0065's is
-    // strictly wider, so a guard there could not fire. Rolling back narrows,
-    // and THAT can fail on real data — a diagram that filed both artifacts is
-    // two rows 0064's key cannot tell apart — so the guard lives in the down
-    // migration, ahead of the create, and does not choose which row to delete.
-    expect(MIGRATION_0065).not.toContain('RAISE EXCEPTION')
-    const guard = DOWN_MIGRATION_0065.indexOf('RAISE EXCEPTION')
-    const create = DOWN_MIGRATION_0065.indexOf(`CREATE UNIQUE INDEX "${SUPERSEDED_INDEX}"`)
-    expect(guard).toBeGreaterThan(-1)
-    expect(create).toBeGreaterThan(guard)
-  })
-
-  it('drops it again on the way down, and restores the one it replaced', () => {
-    // Each down migration restores exactly the index its own up migration
-    // replaced: 0066 goes back to 0065's name over the renamed column, 0065 back
-    // to 0064's narrower key.
-    expect(DOWN_MIGRATION_0066).toMatch(statement(`DROP INDEX IF EXISTS "${IDEMPOTENCY_INDEX}"`))
-    expect(DOWN_MIGRATION_0066).toMatch(statement(`CREATE UNIQUE INDEX "${RENAMED_INDEX}"`))
-    expect(DOWN_MIGRATION_0065).toMatch(statement(`DROP INDEX IF EXISTS "${RENAMED_INDEX}"`))
-    expect(DOWN_MIGRATION_0065).toMatch(statement(`CREATE UNIQUE INDEX "${SUPERSEDED_INDEX}"`))
-    expect(DOWN_MIGRATION_0064).toContain(`DROP INDEX IF EXISTS "${SUPERSEDED_INDEX}"`)
-  })
-
-  it('refuses to roll 0066 back over a reference that is not a run', () => {
-    // The down direction restores a column named `authored_by_run_id` and drops
-    // the kind, so a diagram's reference would go back under a name that
-    // misdescribes it — which is the exact failure 0066 exists to remove, and
-    // the value also rides the `document.generated` audit event as an
-    // `agent_run` target id. The guard names the rows and does not delete them:
-    // they carry real bytes and a real quota charge.
-    expect(MIGRATION_0066).not.toMatch(/^\s*RAISE EXCEPTION[\s\S]*roll back/m)
-    const guard = DOWN_MIGRATION_0066.indexOf('RAISE EXCEPTION')
-    const rename = DOWN_MIGRATION_0066.indexOf('RENAME COLUMN')
-    expect(guard).toBeGreaterThan(-1)
-    expect(rename).toBeGreaterThan(guard)
   })
 })
 

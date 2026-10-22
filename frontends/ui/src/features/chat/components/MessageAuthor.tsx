@@ -25,8 +25,10 @@
  *     (`thread.authorAria`, or `thread.groupedAria` for a continuation), and the
  *     visible text is hidden from the accessibility tree, so a screen reader hears
  *     "Message from Anna Berger" once instead of the name plus a stray avatar.
- *   - **It always sits over the right-hand bubble**, reversed and inset to line up
- *     with it. There is no `align` choice to make: the bubble never moves.
+ *   - **It sits over the right-hand bubble**, reversed and inset to line up
+ *     with it, as every human bubble in the Piloti chat does. `side="start"` is
+ *     the one exception, for the other party of a two-party thread (see
+ *     `UserMessage`): avatar first, then name, inset from the left.
  */
 
 'use client'
@@ -58,6 +60,8 @@ export interface MessageAuthorProps {
    * reader (spec `thread.groupedAria`).
    */
   grouped?: boolean
+  /** The side of the bubble it heads; `'start'` only for a two-party thread. */
+  side?: 'end' | 'start'
   className?: string
 }
 
@@ -77,6 +81,7 @@ export const MessageAuthor: FC<MessageAuthorProps> = ({
   isYou = false,
   timestamp,
   grouped = false,
+  side = 'end',
   className,
 }) => {
   const t = useTranslations('collaboration')
@@ -101,7 +106,11 @@ export const MessageAuthor: FC<MessageAuthorProps> = ({
     <div
       // Reversed and inset to match the bubble it sits over: every human message
       // is right-aligned, whoever wrote it, so this header always is too.
-      className={cn('flex flex-row-reverse items-center gap-2 pr-[14px]', className)}
+      className={cn(
+        'flex items-center gap-2',
+        side === 'start' ? 'flex-row pl-[14px]' : 'flex-row-reverse pr-[14px]',
+        className,
+      )}
       // One accessible name for the whole header, so the avatar and the visible
       // name are not announced separately.
       role="group"

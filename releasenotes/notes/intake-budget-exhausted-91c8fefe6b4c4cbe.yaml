@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    When the office's usage budget runs out while Piloti is reading a new
+    project's documents, the reading now says the budget is used up instead
+    of reporting an error.

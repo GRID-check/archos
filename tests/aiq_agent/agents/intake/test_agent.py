@@ -7,6 +7,7 @@ graph); the BFF's route and the project's pages are the conftest doubles.
 from __future__ import annotations
 
 import asyncio
+import logging
 from typing import Any
 
 import pytest
@@ -21,6 +22,7 @@ from aiq_agent.agents.intake.agent import ProjectIntakeAgent
 from aiq_agent.agents.intake.models import IntakeAgentState
 from aiq_agent.agents.intake.read_log import current_read_log
 from aiq_agent.common import LLMProvider
+from aiq_agent.common.cost_tracking import BudgetExceededError
 from tests.aiq_agent.agents.intake.conftest import JOB
 from tests.aiq_agent.agents.intake.conftest import NEEDS
 from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
@@ -221,6 +223,20 @@ class TestTheLoop:
 
         assert len(fake.bodies("finish")) == 1
         assert result.outcome["ended"] == "error"
+
+    async def test_an_exhausted_budget_finishes_without_an_error_log(self, signed_run, route, project, caplog):
+        class BudgetModel(ScriptedModel):
+            def _generate(self, messages, stop=None, run_manager=None, **kwargs):
+                raise BudgetExceededError("organization")
+
+        fake = route()
+        with caplog.at_level(logging.INFO):
+            result = await _agent(BudgetModel([AIMessage(content="x")])).run(_state())
+
+        (finish,) = fake.bodies("finish")
+        assert "Nutzungsbudget" in finish["summary"]
+        assert result.outcome["ended"] == "llm_budget"
+        assert not [record for record in caplog.records if record.levelno >= logging.ERROR]
 
 
 class TestTheFinishHold:

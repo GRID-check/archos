@@ -1460,16 +1460,15 @@ ingestion in the web process. See [`oib-sync.md`](../technical-reference/oib-syn
 `volumeClaimTemplates`, an immutable field, so the first `pulumi up` plans a
 **replace** of `aiq-agent` (delete-before-replace: a short outage of the chat
 tier). The old `data-aiq-agent-*` claims are retained by Kubernetes and nothing
-the new pods mount them. The `legacy-corpus-import` Job carries the corpus off
-`data-aiq-agent-0` instead: once the new StatefulSet and the frontend are up, it
-mounts the claim read-only and stores every operator PDF (minus the exclusions)
-and admin upload through the same path an admin upload takes
-(`aiq_agent.legacy_corpus_import`); the next `housekeeping-base-corpus` run
-queues their ingestion. It runs where the stack names the claim
-(`grid-oib:legacyCorpusClaim`, set in `Pulumi.prod.yaml` and `Pulumi.dev.yaml`;
-a fresh stack has none) and stores nothing on a rerun. Delete the old claims
-once the knowledge view lists the corpus; then remove the key, the Job and the
-importer.
+the new pods mount them. A one-shot `legacy-corpus-import` Job carried the
+corpus off `data-aiq-agent-0` into the corpus store
+(`aiq_agent.legacy_corpus_import`). It ran on staging and on production
+(2026-10-11) and has been removed from this program with its
+`grid-oib:legacyCorpusClaim` key. A stack that still holds a pre-A2 claim
+runs the importer by hand, from a pod that mounts the claim read-only:
+`python -m aiq_agent.legacy_corpus_import <mount>`. Deleting the old
+`data-aiq-agent-*` claims stays an operator step, once the knowledge view lists
+the corpus.
 
 ### 6.4b Chat scale-out: affinity off, KEDA on running turns (ADR-0080)
 
@@ -2487,7 +2486,7 @@ depends on §9, whose guard already refuses `networkPolicies=false`.
 - **Web and worker images must be the same Langfuse version.** They are two
   config keys because upstream publishes two images; digests are opaque, so
   nothing can verify it for you. Both defaults are pinned from the same tag
-  (4.63.0). Bump them together.
+  (4.68.0). Bump them together.
 - **ClickHouse must run UTC.** On any other server timezone Langfuse's queries
   return empty or shifted results — a dashboard reporting "no data" for a system
   that is plainly running. `TZ=UTC` is pinned on the container; do not override.

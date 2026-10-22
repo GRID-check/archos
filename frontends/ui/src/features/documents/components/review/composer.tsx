@@ -361,6 +361,10 @@ export function Composer({
             onSelect={(event) => syncQuery(event.currentTarget.value, event.currentTarget.selectionStart)}
             onBlur={() => setQuery(null)}
             onKeyDown={onKeyDown}
+            // Enter sends (`onKeyDown`), so the phone's action key says so
+            // rather than drawing the return glyph over a key that sends half a
+            // sentence, as the chat's composer does (`InputArea`).
+            enterKeyHint="send"
             // 16px on a coarse pointer, as the field atoms (`input.tsx`): under it
             // iOS zooms the page on focus and does not zoom back out.
             className="placeholder:text-muted-foreground min-h-6 flex-1 resize-none border-0 bg-transparent py-0.5 text-[13px] leading-5 shadow-none outline-none! ring-0 focus-visible:ring-0 pointer-coarse:text-base"
@@ -369,11 +373,21 @@ export function Composer({
           <Button
             type="button"
             size="icon"
-            className="size-6 shrink-0 rounded-full [&_svg]:size-3.5"
+            // 24px under a mouse; under a finger a 32px disc with the 44px
+            // catchment the touch floor asks for (`touch-target`), instead of
+            // the atom's `min-w-11`, which stretched the 24px disc into an oval.
+            className="touch-target size-6 shrink-0 rounded-full pointer-coarse:size-8 pointer-coarse:min-w-0 [&_svg]:size-3.5 pointer-coarse:[&_svg]:size-4"
             disabled={!body.trim() || busy}
             aria-label={submitLabel}
             title={`${submitLabel} (Enter)`}
             data-testid={`${testId}-send`}
+            // A press on Send keeps the focus in the box: the click still
+            // arrives, the caret stays for the next line, and on a phone the
+            // keyboard stays up instead of dropping after every message (the
+            // button disables itself once the box is empty, which would leave
+            // the focus on <body>).
+            onPointerDown={(event) => event.preventDefault()}
+            onMouseDown={(event) => event.preventDefault()}
             onClick={() => void submit()}
           >
             <ArrowUp aria-hidden />

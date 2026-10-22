@@ -25,8 +25,9 @@ const SECRETS_NAME = "langfuse-secrets"; // pragma: allowlist secret (Kubernetes
 export const LANGFUSE_SECRETS_NAME = SECRETS_NAME;
 
 /**
- * The uid/gid both Langfuse images run as. Re-checked on the 4.63.0 bump from
- * the images' own config, where `User` is `"1001"` on both, and it matches
+ * The uid/gid both Langfuse images run as. Re-checked on the 4.68.0 bump from
+ * the images' own config, where `User` is `"1001"` on both (as on 4.63.0,
+ * with identical entrypoints, commands and PATH), and it matches
  * 4.56.0's Dockerfiles (`ARG UID=1001` / `ARG GID=1001`, the `nextjs` and
  * `expressjs` users baked into the UBI 9 micro rootfs, `/app` chowned to them,
  * and a numeric `USER ${UID}`).

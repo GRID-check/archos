@@ -170,7 +170,7 @@ once more, so every second spent before the job id is returned is a false
 and a retry landing on another replica while the first attempt was still
 downloading.
 
-1. Validates the body: `file_ref`, `extraction_ref`, `preview_ref` and `thumbnail_upload_url` are each an `ObjectStoreUrl` (`aiq_api.object_store_url`), so a URL whose origin is not the configured object store is refused with 422 before the handler runs; `collection` must be present (400); a `document_type` outside `DOCUMENT_TYPE_TAGS` is a 422. The durable queue's worker checks the URLs once more when it reads the row back; nothing else does
+1. Validates the body: `file_ref`, `extraction_ref`, `preview_ref` and `thumbnail_upload_url` are each an `ObjectStoreUrl` (`aiq_api.object_store_url`), so a URL whose origin is not the configured object store is refused with 422 before the handler runs; `collection` must be present (400); a `document_type` outside `DOCUMENT_TYPE_TAGS` is a 422. The durable queue's worker checks the URLs once more when it reads the row back; nothing else does. Every request to one of them, the download (`DeferredObjectDownload`) and the thumbnail upload, goes to the URL rebuilt on the configured endpoint's origin (`object_store_request_url`): only the object's path and its presigned query come from the caller, never the host it names
 2. With a `document_id`, looks for a live job under the dispatch key (sha256 of `document_id` and the object path of `file_ref`), under a per-key lock on this replica, and answers with that job's id when one exists
 3. Otherwise submits to the active ingestor: `ingestor.submit_job([DeferredObjectDownload(file_ref)], collection, config={cleanup_files: True, original_filenames: [...], ...})`. `original_filenames` is `file_name` when the BFF stated one and the URL basename otherwise; it becomes each chunk's `file_name` metadata. A rendition goes in as `extraction_paths: [DeferredObjectDownload(extraction_ref, suffix=".pdf")]`, positional like `original_filenames`, so the chunks are read from the PDF and still carry the original's name (`Bericht.docx`). `DeferredObjectDownload`'s `repr` is `<deferred object download>`: no presigned URL is logged or visible in the job config
 4. Returns `{ job_id, status: 'pending', document_id }` (202) and fetches nothing itself. An office original with `preview_ref` and no `extraction_ref` (a spreadsheet) gets the rendition as the job's second deferred download (`preview_paths`), drawn into its thumbnail only after the screen passes (ADR-0086)
@@ -354,10 +354,14 @@ a person's edit in the tag editor does. The same bytes already filed
 verdict, before anything is stored, so its reading never stores the choice. The
 dispatch therefore records what it carried on the BFF row, beside the job id and
 the digest of the bytes that job reads: `documents.metadata.filingChoice`
-(`{documentType?, revisionOf?}`, `setDocumentIngestJob`). The reviewer's release
-(`releaseQuarantinedDocument`) reads it back from the row it loaded and sends it
-again, `revision_of` included, but only while that digest is the row's
-(`storedFilingChoice`, `lib/documents/filing-choice.ts`). Every later dispatch
+(`{documentType?, revisionOfId?}`, `setDocumentIngestJob`). The Fassung is the
+older document's id, never its name. The reviewer's release
+(`releaseQuarantinedDocument`) reads the choice back from the row it loaded and
+sends it again, but only while that digest is the row's (`storedFilingChoice`,
+`lib/documents/filing-choice.ts`); the id is first resolved again
+(`resolveReleasedRevisionOf`: active, past screening, same shelf and
+collection), `revision_of` carries the older file's name as it is then, and a
+choice that no longer resolves is dropped. Every later dispatch
 rewrites the metadata, and one that carries no choice (a re-index, a placement
 move) drops it: were a re-index to send the type again, it would overwrite a
 person's later edit in the tag editor, since the job treats it as the newest
