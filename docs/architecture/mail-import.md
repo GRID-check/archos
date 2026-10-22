@@ -150,6 +150,20 @@ dropped folder gets.
   it during a backoff longer than that, and the next slice then opens the next
   generation.
 
+**The list of imports** (`GET /api/projects/[id]/mail-imports`,
+`mail-import-list`) is a keyset page, newest first: 20 by default, at most 50
+(`MAIL_IMPORT_LIST_PAGE_SIZE`, `MAIL_IMPORT_LIST_PAGE_MAX` in
+`lib/mail-import/types.ts`), with `nextCursor` for the next. The import dialog
+reads the first page. Whether the person already has an import open is asked
+on its own (`findOpenMailImportOf`), never read off a page, so an open import
+older than a page of finished ones still refuses a second start with its id.
+
+**Who may run it.** An outside agent on the office door can do everything the
+dialog does. Piloti is offered only the list, the read and the cancel:
+`mail-import-start`, `-part-upload` and `-complete` are `piloti: false`
+(`exposure.config.ts`), because Piloti holds no archive and one 32 MiB part is
+far past what a proposal may carry.
+
 ## Endings
 
 | Ending | When | What the person sees |
@@ -203,10 +217,6 @@ there (`purger/storage.js`, `abortMultipartUploads`).
 - `libpff-python` is pinned to its first cp314 release and is labelled alpha
   upstream; `GRID_PST_FIXTURE_DIR` runs `test_mail_archive_reader.py` over real
   archives when it moves.
-- `mail-import-list` and the project's import list show the newest 20 imports
-  (`MAIL_IMPORT_LIST_LIMIT`, `lib/mail-import/repository.ts`); older ones have
-  no cursor to reach them. The operation is in the `list-paging.spec.ts`
-  baseline.
 - The import emits no PostHog event and no Langfuse trace (it makes no model
   call). What happened is on the `mail_imports` row (counts, `skipped_samples`,
   `error_code`), in the inbox item, and in the `bff` queue meters, which count

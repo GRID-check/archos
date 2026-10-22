@@ -680,7 +680,7 @@ An archive is sent in parts of exactly `partSize` bytes (32 MiB; the last one sh
 
 | Method | Path | Auth | Description | Request Body | Response |
 |--------|------|------|-------------|-------------|----------|
-| `GET` | `/api/projects/[id]/mail-imports` | Required | The project's last 20 imports, newest first, with the deployment's ceiling. | — | `{ imports: MailImportView[], maxSizeBytes, partSize }` |
+| `GET` | `/api/projects/[id]/mail-imports` | Required | A page of the project's imports, newest first (20 by default, at most 50), with the deployment's ceiling. A cursor this list did not write, or a larger `limit`, is a 400. | `?limit=&cursor=` (the previous page's `nextCursor`) | `{ imports: MailImportView[], nextCursor, maxSizeBytes, partSize }` |
 | `POST` | `/api/projects/[id]/mail-imports` | Required | Start an import: checks the extension (`.pst`, `.ost`), the ceiling (`GRID_MAIL_IMPORT_MAX_BYTES`) and the storage quota, and begins the multipart upload. One open import per person per project (409). | `{ filename, sizeBytes }` | `{ import, partSize, partCount, uploadedParts: [] }` (201) |
 | `GET` | `/api/projects/[id]/mail-imports/[importId]` | Required | The upload plan for resuming a send that broke off: which parts the store already holds. 409 once the upload is complete or ended. | — | `{ import, partSize, partCount, uploadedParts }` |
 | `PUT` | `/api/projects/[id]/mail-imports/[importId]/parts/[n]` | Required | One part, raw bytes. Refused (400) unless exactly the part's size; sending a part again replaces it. Budget: `DOCUMENT_UPLOAD_LIMIT`. | the bytes | `{ partNumber }` |

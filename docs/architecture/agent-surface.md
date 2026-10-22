@@ -475,9 +475,9 @@ ceiling.
 | Column | Count |
 |---|---|
 | `external: true` | 232 |
-| `piloti: true` | 195 |
+| `piloti: true` | 192 |
 | `piloti: 'native:…'` | 17 |
-| `piloti: false` | 123 (49 withheld, 54 platform, 12 sensitive, 3 asks, 3 decisions, 2 skill reads) |
+| `piloti: false` | 126 (49 withheld, 54 platform, 12 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 skill reads) |
 | `platform: true` | 54 |
 | `withheld` | 49 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`) |
 
@@ -827,7 +827,8 @@ The schemas are `uploadBodySchemaWith({ ...fields })` and `rawBodySchema` in
 size). The route's own parsing stays the gate, so name the real form fields in `fields` and add a
 `agent-upload.spec.ts` beside the route that proves the dispatcher's form passes its parser. An
 Outlook archive is three operations: `mail-import-start`, `mail-import-part-upload` (once per
-part), `mail-import-complete`.
+part), `mail-import-complete`. They are offered to outside agents only: Piloti has no archive to
+send, and a part is far past what a proposal may carry (`MAX_PROPOSED_INPUT_CHARS`).
 
 ### Links into the app
 
