@@ -89,14 +89,14 @@ beforeEach(() => vi.clearAllMocks())
 
 describe('GET /api/inbox', () => {
   it('reads the slice and the page the client names, and hands back the next cursor', async () => {
-    const page = await client.list({ filter: 'requests', cursor: 'abc' })
-    expect(listInbox).toHaveBeenCalledWith(SESSION, { filter: 'requests', cursor: 'abc' })
+    const page = await client.list({ filter: 'requests', cursor: 'abc', type: undefined, projectId: undefined, limit: 50 })
+    expect(listInbox).toHaveBeenCalledWith(SESSION, { filter: 'requests', cursor: 'abc', type: undefined, projectId: undefined, limit: 50 })
     expect(page).toMatchObject({ pending: 2, counts: { requests: 1, unread: 2 }, hasMore: true, nextCursor: 'next' })
   })
 
   it('reads everything unarchived by default', async () => {
     await client.list()
-    expect(listInbox).toHaveBeenLastCalledWith(SESSION, { filter: 'all', cursor: undefined })
+    expect(listInbox).toHaveBeenLastCalledWith(SESSION, { filter: 'all', cursor: undefined, type: undefined, projectId: undefined, limit: 50 })
   })
 
   it('refuses a slice it does not know', async () => {

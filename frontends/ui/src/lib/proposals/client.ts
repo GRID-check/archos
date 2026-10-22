@@ -79,6 +79,8 @@ export function proposalListPath(query: ProposalListQuery): string {
   if (query.projectId) params.set('projectId', query.projectId)
   else params.set('shelf', 'office_shelf')
   if (query.kind) params.set('kind', query.kind)
+  if (query.limit) params.set('limit', String(query.limit))
+  if (query.cursor) params.set('cursor', query.cursor)
   return `/api/proposals?${params.toString()}`
 }
 

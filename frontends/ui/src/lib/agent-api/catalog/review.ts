@@ -11,6 +11,7 @@ import {
 import { revisionLinkSchema } from '@/lib/documents/document-wire'
 import {
   approveRequestSchema,
+  reviewQueueQuerySchema,
   forkDraftRequestSchema,
   refuseRequestSchema,
   replaceContentRequestSchema,
@@ -55,14 +56,26 @@ const versionDiffQuery = z.object({
 })
 
 export const reviewOperations = [
+  {
+    name: 'document-review-list',
+    domain: 'review',
+    summary: 'List what waits for the person’s review, across projects',
+    description:
+      'Versions in review waiting for the person’s decision (`role: reviewer`, default) or sent by them (`submitter`), newest first, ' +
+      'across projects. `documentId` and `versionId` feed document-version-get and the decisions.',
+    method: 'GET',
+    path: '/api/review/queue',
+    query: reviewQueueQuerySchema,
+    spansProjects: 'unlessScoped',
+    load: () => import('@/app/api/review/queue/route'),
+  },
   // ---- Versions: the document lifecycle (draft, in review, approved, published) ----
   {
     name: 'document-version-list',
     domain: 'review',
     summary: 'List a document’s versions',
     description:
-      'Every version of a document (the approval record of each revision) with its lifecycle state, author and content hash. ' +
-      'Start here to get a `versionId` for the other document-version operations.',
+      'Every version of a document with its lifecycle state, author and content hash. Start here for a `versionId`.',
     method: 'GET',
     path: '/api/documents/[id]/versions',
     params: documentParams,
@@ -73,8 +86,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Start a new draft from the published version',
     description:
-      'Forks an editable draft from the document’s published version and returns it. Send an empty body. ' +
-      'Next: document-version-content-replace to write the draft, then document-version-submit to send it to review.',
+      'Forks an editable draft from the published version and returns it; empty body. Next: document-version-content-replace, then document-version-submit.',
     method: 'POST',
     path: '/api/documents/[id]/versions',
     params: documentParams,
@@ -107,8 +119,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Replace the text of a draft version',
     description:
-      'Writes the whole body of a draft version. `ifMatch` is the `contentHash` you last read (document-version-get); a mismatch is a 409 ' +
-      'and nothing is overwritten. Only drafts are editable. Next: document-version-submit.',
+      'Writes the whole body of a draft version. `ifMatch` is the `contentHash` last read (document-version-get); a mismatch is a 409. Drafts only. Next: document-version-submit.',
     method: 'PUT',
     path: '/api/documents/[id]/versions/[versionId]/content',
     params: versionParams,
@@ -120,8 +131,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Compare the text of two versions',
     description:
-      'Returns both versions (state and full text) side by side so you can see what changed between `from` and `to`. ' +
-      'Both ids come from document-version-list.',
+      'Both versions (state and full text) side by side, `from` and `to`, ids from document-version-list.',
     method: 'GET',
     path: '/api/documents/[id]/versions/diff',
     params: documentParams,
@@ -145,8 +155,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Send a draft version to review',
     description:
-      'Submits a draft for review. `reviewerUserIds` names who is asked (from document-version-reviewer-list; empty asks the item’s assignees), ' +
-      '`orderMessage` is the one-sentence order and `dueAt` an optional date. Reviewers then call document-version-approve, -reject or -request-changes.',
+      'Submits a draft for review. `reviewerUserIds` (from document-version-reviewer-list; empty asks the assignees), `orderMessage` the one-sentence order, `dueAt` optional. ' +
+      'Reviewers then approve, reject or request changes.',
     method: 'POST',
     path: '/api/documents/[id]/versions/[versionId]/submit',
     params: versionParams,
@@ -158,8 +168,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Approve a version under review',
     description:
-      'Records the reviewer’s approval of a version in review. `ifMatch` is the `contentHash` the reviewer read; a mismatch is a 409. ' +
-      'Next: document-version-publish makes an approved version current.',
+      'Approves a version in review. `ifMatch` is the `contentHash` the reviewer read; a mismatch is a 409. Next: document-version-publish.',
     method: 'POST',
     path: '/api/documents/[id]/versions/[versionId]/approve',
     params: versionParams,
@@ -183,8 +192,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Ask for changes on a version under review',
     description:
-      'Sends a version in review back for rework. A `comment` is required; set `delegateRevision` to hand the rework to Piloti as a task ' +
-      'instead of leaving it with the author.',
+      'Sends a version in review back for rework. `comment` is required; `delegateRevision` hands the rework to Piloti as a task.',
     method: 'POST',
     path: '/api/documents/[id]/versions/[versionId]/changes',
     params: versionParams,
@@ -210,7 +218,7 @@ export const reviewOperations = [
     summary: 'List the annotations on a document',
     description:
       'Every annotation on the document with its place, status, assignee and replies, including Piloti’s open proposals. ' +
-      'The ids feed annotation-get, annotation-update and annotation-reply-create.',
+      'The ids feed annotation-get.',
     method: 'GET',
     path: '/api/documents/[id]/annotations',
     params: documentParams,
@@ -221,8 +229,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Place an annotation on a document',
     description:
-      'Sets a new annotation at a place on the document (page position or text range, as the schema describes) with a kind and a body. ' +
-      'Returns the annotation with its number. Colleagues named in `mentions` are told.',
+      'Sets an annotation at a place on the document (page position or text range) with a kind and a body. ' +
+      'Returns it with its number. Colleagues in `mentions` are told.',
     method: 'POST',
     path: '/api/documents/[id]/annotations',
     params: documentParams,
@@ -251,8 +259,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Change, resolve or reassign an annotation',
     description:
-      'Edits an annotation: reword it, assign it, set a due day, or move its status (open, resolved, dismissed). Send at least one field. ' +
-      '`expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries an open annotation onto the current revision.',
+      'Rewords, assigns, dates or moves the status (open, resolved, dismissed) of an annotation; send at least one field. ' +
+      '`expectedStatus` guards against overwriting a colleague’s change; `carryToCurrent` carries it onto the current revision.',
     method: 'PATCH',
     path: '/api/documents/[id]/annotations/[annotationId]',
     params: annotationParams,
@@ -264,8 +272,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Delete one of your own annotations',
     description:
-      'Removes an annotation its author set. One that has been discussed or carried to another revision is refused with a 409; resolve it instead ' +
-      '(annotation-update). Deleting cannot be undone.',
+      'Deletes an annotation its author set, permanently. A discussed or carried one is refused (409): resolve it with annotation-update.',
     method: 'DELETE',
     path: '/api/documents/[id]/annotations/[annotationId]',
     params: annotationParams,
@@ -277,7 +284,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Reply in an annotation’s thread',
     description:
-      'Adds a reply to an annotation. Set `addressesPiloti` or mention Piloti to ask it to answer. Returns the annotation with its thread.',
+      'Replies in an annotation’s thread; `addressesPiloti` or a Piloti mention asks it to answer. Returns the annotation with its thread.',
     method: 'POST',
     path: '/api/documents/[id]/annotations/[annotationId]/replies',
     params: annotationParams,
@@ -289,7 +296,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Reword one of your own replies',
     description:
-      'Rewords a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). Returns the annotation with its thread.',
+      'Rewords one’s own reply while the annotation is live and Piloti has not taken it up (else 409). Returns the annotation with its thread.',
     method: 'PATCH',
     path: '/api/documents/[id]/annotations/[annotationId]/replies/[replyId]',
     params: replyParams,
@@ -302,7 +309,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Take back one of your own replies',
     description:
-      'Deletes a reply its author wrote, while the annotation is live and Piloti has not taken it up (otherwise a 409). It cannot be undone.',
+      'Deletes one’s own reply while the annotation is live and Piloti has not taken it up (else 409), permanently.',
     method: 'DELETE',
     path: '/api/documents/[id]/annotations/[annotationId]/replies/[replyId]',
     params: replyParams,
@@ -314,8 +321,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Open the caller’s conversation about a document',
     description:
-      'Returns the id of the caller’s own conversation about this document, creating it (with an optional `title`) the first time. ' +
-      'Use the conversation operations with that id to read or post in it.',
+      'The id of the caller’s own conversation about this document, created (optional `title`) the first time. Use it with the conversation operations.',
     method: 'POST',
     path: '/api/documents/[id]/thread',
     params: documentParams,
@@ -331,7 +337,7 @@ export const reviewOperations = [
     summary: 'Read why a document is held and who may allow it',
     description:
       'For a document held back by upload screening: the reason and what the caller may do (ask for it to be allowed, or allow it as a reviewer). ' +
-      'Next: document-quarantine-allow-request or document-quarantine-allow.',
+      'The uploader’s next call is document-quarantine-allow-request; allowing it is a reviewer’s own decision.',
     method: 'GET',
     path: '/api/documents/[id]/quarantine',
     params: documentParams,
@@ -342,7 +348,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Ask a reviewer to allow a held upload',
     description:
-      'The uploader asks the project’s reviewers to allow their held file through. Notifies the reviewers; changes nothing about the file itself. Send no body.',
+      'The uploader asks the project’s reviewers to allow their held file through; notifies them, changes nothing else. No body.',
     method: 'POST',
     path: '/api/documents/[id]/quarantine/request-release',
     params: documentParams,
@@ -354,8 +360,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Allow a held document through screening',
     description:
-      'A reviewer allows a held file through screening so it is read and shown like any other document. Needs the reviewer permission ' +
-      '(see document-quarantine-get). Send no body; the decision is recorded and cannot be taken back.',
+      'A reviewer allows a held file through screening so it reads like any other document. Needs the reviewer permission ' +
+      '(see document-quarantine-get). No body; the decision cannot be taken back.',
     method: 'POST',
     path: '/api/documents/[id]/quarantine/release',
     params: documentParams,
@@ -370,8 +376,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Compare a document visually with the one it replaces',
     description:
-      'Marks what changed on one page between the older document (`older`, an id) and this newer one: boxed regions plus short sentences. ' +
-      'Read-only; both documents must be readable and screened. Candidates for `older` come from document-revision-candidates.',
+      'Marks what changed on one page between the older document (`older`, an id) and this one: boxed regions plus short sentences. ' +
+      'Both must be readable and screened. Candidates: document-revision-candidates.',
     method: 'POST',
     path: '/api/documents/[id]/revision-compare',
     params: documentParams,
@@ -397,8 +403,7 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Find documents a new file could replace',
     description:
-      'For file names about to be added to a project (`projectId`, `names`, optional target `folders`), lists existing documents each ' +
-      'could be a new revision of. Read-only; feeds document-revision-link-set.',
+      'For file names about to be added to a project (`projectId`, `names`, optional `folders`), lists the documents each could revise. Feeds document-revision-link-set.',
     method: 'POST',
     path: '/api/documents/revision-candidates',
     body: projectRevisionCandidatesRequestSchema,
@@ -410,9 +415,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Export a document’s annotations as a minutes file',
     description:
-      'The document’s annotations as one file: PDF (default), Word (docx) or Markdown (md), the open ones or all, for the current revision or ' +
-      'every one. Returned as an attached resource up to 5 MiB; Markdown comes back as text. Records an audit event. ' +
-      'For the data itself use annotation-list. Needs read access to the document.',
+      'The document’s annotations as one file: PDF (default), Word (docx) or Markdown (md), open or all, current revision or ' +
+      'every one. An attached resource up to 5 MiB; Markdown comes back as text. For the data use annotation-list.',
     method: 'GET',
     path: '/api/documents/[id]/annotations/export',
     params: documentParams,
@@ -431,9 +435,8 @@ export const reviewOperations = [
     domain: 'review',
     summary: 'Export a project’s open items as a minutes file',
     description:
-      'The project’s open items as one set of minutes: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list ' +
-      '(`status`, `assignee`, `due`, `order`). Returned as an attached resource up to 5 MiB; Markdown comes back as text. ' +
-      'Refused when more than 1000 annotations match: narrow the filters. Records an audit event.',
+      'The project’s open items as minutes: PDF (default), Word (docx) or Markdown (md), filtered like project-annotation-list. ' +
+      'An attached resource up to 5 MiB; Markdown comes back as text. Refused above 1000 matches: narrow the filters.',
     method: 'GET',
     path: '/api/projects/[id]/annotations/export',
     params: projectParams,

@@ -255,6 +255,7 @@ export const EXPOSURE = {
   'document-quarantine-allow-request': OFFERED,
   'document-quarantine-get': OFFERED,
   'document-revision-candidates': OFFERED,
+  'document-review-list': OFFERED,
   'document-revision-compare': OFFERED,
   'document-revision-link-set': OFFERED,
   'document-thread-ensure': OFFERED,
@@ -322,7 +323,11 @@ export const EXPOSURE = {
   'assignment-remove': OFFERED,
   'conversation-awaiting-get': OFFERED,
   'conversation-mention-candidate-list': OFFERED,
-  'inbox-item-archive': OFFERED,
+  'inbox-item-archive': {
+    external: false,
+    piloti: false,
+    withheld: { category: 'ui-state', reason: 'puts a request away from the person, who has not seen it; the same reason mark-read is withheld' },
+  },
   'inbox-item-mark-read': {
     external: false,
     piloti: false,
@@ -333,7 +338,11 @@ export const EXPOSURE = {
     piloti: false,
     withheld: { category: 'ui-state', reason: 'what the person has seen; theirs to mark' },
   },
-  'inbox-item-restore': OFFERED,
+  'inbox-item-restore': {
+    external: false,
+    piloti: false,
+    withheld: { category: 'ui-state', reason: 'the reverse of archive, which an agent cannot do; what the person put away is theirs to bring back' },
+  },
   'inbox-list': OFFERED,
   'inbox-summary-get': OFFERED,
   'inbox-unread-anchor-list': {

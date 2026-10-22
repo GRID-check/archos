@@ -41,17 +41,18 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { fetchThreadHistory } from '@/lib/conversations/history-client'
 import type { CollaborationEvent } from '@/lib/events/types'
 import type { DirectoryPerson, ResourceRole, ResourceSharingState } from '@/lib/sharing/types'
 import { useChatStore } from '@/features/chat/store'
 import type { ChatMessage } from '@/features/chat/types'
 import type { MessagesSlice } from '@/features/chat/stores/messages-store'
-import { mapServerMessagesToChatMessages } from '@/features/chat/lib/server-message-mapper'
+import { mapServerMessagesToChatMessages, type ServerMessageInput } from '@/features/chat/lib/server-message-mapper'
 import {
   isConversationOnServer,
   useConversationOnServer,
 } from '@/features/chat/lib/conversation-on-server'
-import type { ConversationEngagement, Message } from '@/lib/db/schema'
+import type { ConversationEngagement } from '@/lib/db/schema'
 import {
   publishThreadRole,
   publishThreadSharing,
@@ -370,7 +371,7 @@ export function useSharedThread(options: UseSharedThreadOptions): UseSharedThrea
    * the store dedupes by id, so an echo of our own write cannot double-render.
    */
   const applyMessages = useCallback(
-    (targetConversationId: string, rows: Message[], replace: boolean) => {
+    (targetConversationId: string, rows: ServerMessageInput[], replace: boolean) => {
       const mapped = withAuthorIdentity(mapServerMessagesToChatMessages(rows), directoryRef.current)
 
       // `insertRemoteMessages` is declared on the messages slice; `ChatActions`
@@ -439,20 +440,18 @@ export function useSharedThread(options: UseSharedThreadOptions): UseSharedThrea
       replace: boolean
     ): Promise<'ok' | 'denied' | 'failed'> => {
       try {
-        const response = await fetch(
-          `/api/conversations/${encodeURIComponent(targetConversationId)}/messages`
-        )
-        if (!response.ok) {
+        const history = await fetchThreadHistory(targetConversationId)
+        if (!history.ok) {
           // A denial on a thread believed shared is the revocation signal when
           // no live event arrived — the caller re-reads the access fact.
-          if (response.status === 401 || response.status === 403 || response.status === 404) {
+          const { status } = history.response
+          if (status === 401 || status === 403 || status === 404) {
             return 'denied'
           }
           return 'failed'
         }
-        const rows = (await response.json()) as Message[]
+        const rows = history.messages
         if (current !== seq.current) return 'failed'
-        if (!Array.isArray(rows)) return 'failed'
         applyMessages(targetConversationId, rows, replace)
         return 'ok'
       } catch {

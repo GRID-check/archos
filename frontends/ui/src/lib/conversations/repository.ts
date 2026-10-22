@@ -104,9 +104,9 @@ function grantNamesCaller(organizationId: string, userId: string) {
 export async function listVisibleConversations(
   organizationId: string,
   userId: string,
-  options: { projectId?: string; limit?: number } = {},
+  options: { projectId?: string; limit?: number; after?: string } = {},
 ): Promise<Conversation[]> {
-  const { projectId, limit = CONVERSATION_LIST_LIMIT } = options
+  const { projectId, limit = CONVERSATION_LIST_LIMIT, after } = options
   const db = getDb()
   const orgScope = eq(conversations.organizationId, organizationId)
   const mine = eq(conversations.createdBy, userId)
@@ -135,7 +135,15 @@ export async function listVisibleConversations(
       )
     : and(orgScope, withoutContainer)
 
-  return db.select().from(conversations).where(scope).orderBy(desc(conversations.updatedAt)).limit(limit)
+  const afterCursor = after
+    ? sql`(${conversations.updatedAt}, ${conversations.id}) < (select c.updated_at, c.id from conversations c where c.id = ${after} and c.organization_id = ${organizationId})`
+    : undefined
+  return db
+    .select()
+    .from(conversations)
+    .where(and(scope, afterCursor))
+    .orderBy(desc(conversations.updatedAt), desc(conversations.id))
+    .limit(limit)
 }
 
 /**
@@ -682,6 +690,29 @@ export async function listMessagesForConversation(
     .orderBy(desc(messages.createdAt), desc(messages.id))
     .limit(limit)
   return newestFirst.reverse()
+}
+
+/**
+ * One page of a conversation's history: the `limit` messages written before
+ * `before` (a message id of this conversation; the newest when omitted), oldest
+ * first. One more is read than asked, so the caller can tell a further page exists.
+ */
+export async function listMessagePage(
+  conversationId: string,
+  options: { limit: number; before?: string }
+): Promise<{ rows: Message[]; hasMore: boolean }> {
+  const db = getDb()
+  const before = options.before
+    ? sql`(${messages.createdAt}, ${messages.id}) < (select m.created_at, m.id from messages m where m.id = ${options.before}::uuid and m.conversation_id = ${conversationId})`
+    : undefined
+  const newestFirst = await db
+    .select()
+    .from(messages)
+    .where(and(eq(messages.conversationId, conversationId), before))
+    .orderBy(desc(messages.createdAt), desc(messages.id))
+    .limit(options.limit + 1)
+  const hasMore = newestFirst.length > options.limit
+  return { rows: newestFirst.slice(0, options.limit).reverse(), hasMore }
 }
 
 /**

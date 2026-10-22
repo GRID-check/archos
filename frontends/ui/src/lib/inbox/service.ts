@@ -28,6 +28,7 @@ import type {
   ShareableResourceType,
 } from '@/lib/db/schema'
 import { enqueueInboxPushes } from '@/lib/push/enqueue'
+import { listProjectNamesInOrg } from '@/lib/projects/repository'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { unreadableRunIds, type RunRef } from '@/lib/tasks/subject-access'
 import { findInboxTarget, type InboxTargetAccess, type RunMessageRef } from './targets'
@@ -320,6 +321,12 @@ export interface ListInboxParams {
   filter?: InboxListFilter
   /** The previous page's `nextCursor`; the first page when omitted. */
   cursor?: string | null
+  /** Only items of this type. */
+  type?: InboxItemType
+  /** Only items about this project (itself, or a conversation or document in it). */
+  projectId?: string
+  /** Items per page; {@link INBOX_LIST_LIMIT} when omitted, and never more. */
+  limit?: number
 }
 
 /**
@@ -662,6 +669,7 @@ function toItemView(
   actorNames: Map<string, string>,
   withheld: ReadonlySet<string>,
   answers: MarkAnswers,
+  projectNames: ReadonlyMap<string, string>,
 ): InboxItemView {
   const access =
     row.inertAt || withheld.has(row.id) ? null : (targets.get(targetKey(row.resourceType, row.resourceId)) ?? null)
@@ -691,6 +699,8 @@ function toItemView(
     actionable: row.actionable,
     resourceType: row.resourceType,
     resourceId: row.resourceId,
+    projectId: access?.projectId ?? null,
+    projectName: access?.projectId ? (projectNames.get(access.projectId) ?? null) : null,
     anchorId: row.anchorId,
     // Unknown ids stay null rather than falling back to the raw WorkOS id: the
     // client still has `actorUserId` and can render initials without us leaking
@@ -740,26 +750,32 @@ export async function listInbox(
 ): Promise<InboxListResponse> {
   const filter: InboxListFilter = params.filter ?? 'all'
   const cursor = params.cursor ? decodeInboxCursor(params.cursor) : null
+  const pageSize = Math.min(Math.max(1, Math.trunc(params.limit ?? INBOX_LIST_LIMIT)), INBOX_LIST_LIMIT)
   const lanes = await lanesFor(session)
+  // A type the reader may not see is in no lane, so the page is empty rather than refused.
+  const listed = params.type
+    ? lanes.map((lane) => ({ ...lane, types: lane.types.filter((type) => type === params.type) }))
+    : lanes
   // One more than a page per lane: the extra row is how the page knows there
   // is a further one, without a count.
   const perLane = await Promise.all(
-    lanes.map((lane) =>
+    listed.map((lane) =>
       inLane(session, lane, () =>
         listInboxItems(lane.organizationId, session.userId, {
           filter,
           cursor,
-          limit: INBOX_LIST_LIMIT + 1,
+          limit: pageSize + 1,
           types: lane.types,
+          projectId: params.projectId,
         }),
       ),
     ),
   )
   // Each lane is already newest-first and bounded, so the merged page is the
-  // newest INBOX_LIST_LIMIT across them — the same bound one lane had.
+  // newest `pageSize` across them — the same bound one lane had.
   const merged = perLane.flat().sort(newestFirst)
-  const rows = merged.slice(0, INBOX_LIST_LIMIT)
-  const hasMore = merged.length > INBOX_LIST_LIMIT
+  const rows = merged.slice(0, pageSize)
+  const hasMore = merged.length > pageSize
   const last = rows.at(-1)
 
   const actorIds = [...new Set(rows.flatMap((row) => (row.actorUserId ? [row.actorUserId] : [])))]
@@ -774,14 +790,22 @@ export async function listInbox(
 
   const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
   const answers = await markAnswersFor(session, rows, targets)
+  const projectNames = await listProjectNamesInOrg(session.organizationId, projectIdsOf(targets))
 
   return {
-    items: rows.map((row) => toItemView(row, targets, actorNames, withheld, answers)),
+    items: rows.map((row) => toItemView(row, targets, actorNames, withheld, answers, projectNames)),
     pending,
     counts,
     hasMore,
     nextCursor: hasMore && last ? encodeInboxCursor({ micros: microsOf(last).toString(), id: last.id }) : null,
   }
+}
+
+/** The distinct projects the reachable targets belong to. */
+function projectIdsOf(targets: ReadonlyMap<string, InboxTargetAccess | null>): string[] {
+  const ids = new Set<string>()
+  for (const access of targets.values()) if (access?.projectId) ids.add(access.projectId)
+  return [...ids]
 }
 
 /** The numbers beside the filters, across every lane. */
@@ -822,7 +846,8 @@ export async function viewInboxItemAs(session: AuthorizedSession, row: InboxItem
     resolvePeople(session.organizationId, row.actorUserId ? [row.actorUserId] : []),
   ])
   const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
-  const view = toItemView(row, targets, actorNames, withheld, await markAnswersFor(session, [row], targets))
+  const projectNames = await listProjectNamesInOrg(session.organizationId, projectIdsOf(targets))
+  const view = toItemView(row, targets, actorNames, withheld, await markAnswersFor(session, [row], targets), projectNames)
   return view.href ? view : null
 }
 

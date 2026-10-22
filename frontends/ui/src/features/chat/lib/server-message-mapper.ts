@@ -32,7 +32,15 @@
  * conversation's roster, so a renamed colleague is renamed everywhere at once.
  */
 
-import type { Message } from '@/lib/db/schema'
+/** What the mapper reads of a stored message: a database row and an API message view both fit. */
+export interface ServerMessageInput {
+  id: string
+  role: string
+  content: string
+  createdAt: Date | string
+  metadata?: unknown
+  authorUserId?: string | null
+}
 import { CAPPED_REASONS, sanitizeThinkingSteps } from '@/lib/conversations/message-provenance'
 import { sanitizeAnswerMeta } from '@/lib/conversations/message-answer-meta'
 import { sanitizeFindings } from '@/lib/conversations/message-findings'
@@ -104,7 +112,7 @@ function markedAt(mark: unknown): string | undefined {
  * Returns null for roles the chat window never renders (system/tool) so a
  * future backend writer can't inject blank bubbles into restored history.
  */
-export const mapServerMessageToChatMessage = (message: Message): ChatMessage | null => {
+export const mapServerMessageToChatMessage = (message: ServerMessageInput): ChatMessage | null => {
   if (message.role !== 'user' && message.role !== 'assistant') return null
 
   const metadata = (message.metadata ?? {}) as Record<string, unknown>
@@ -112,7 +120,7 @@ export const mapServerMessageToChatMessage = (message: Message): ChatMessage | n
   const messageType =
     asMessageType(metadata.messageType) ?? (message.role === 'user' ? 'user' : 'agent_response')
   // Over JSON the timestamp arrives as an ISO string despite the Date type.
-  const timestamp = new Date(message.createdAt as unknown as string)
+  const timestamp = new Date(message.createdAt)
   // The message's own time, not the clock: a citation restored from history was
   // captured when the answer was written, not when the page was reopened.
   const citations = decodeCitations(metadata.citations, timestamp)
@@ -377,7 +385,7 @@ const isCappedReason = (value: unknown): value is AnswerConfidenceCappedReason =
   CAPPED_REASONS.includes(value as AnswerConfidenceCappedReason)
 
 /** Map a full server history, dropping rows the chat window can't render. */
-export const mapServerMessagesToChatMessages = (messages: Message[]): ChatMessage[] =>
+export const mapServerMessagesToChatMessages = (messages: ServerMessageInput[]): ChatMessage[] =>
   messages
     .map(mapServerMessageToChatMessage)
     .filter((message): message is ChatMessage => message !== null)

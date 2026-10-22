@@ -22,6 +22,7 @@ import {
   fileDraftBodySchema,
   generateTitleSchema,
   listConversationsQuerySchema,
+  listMessagesQuerySchema,
   markReadSchema,
   updateConversationSchema,
   updateMessageSchema,
@@ -50,8 +51,8 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'List the conversations the person can see',
     description:
-      'Every conversation the person may open, their own and those shared with them, newest first, with id, title, ' +
-      'project and unread state. Pass projectId to narrow to one project (ids from project-list). ' +
+      'The conversations the person may open, their own and shared ones, most recently active first, with id, title, project and ' +
+      'unread state. Pass projectId (from project-list) to narrow; page with `nextCursor`. ' +
       'Take a conversation id from here for conversation-get and conversation-message-list.',
     method: 'GET',
     path: '/api/conversations',
@@ -64,9 +65,8 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Start a new conversation',
     description:
-      'Creates an empty private conversation, optionally inside a project (projectId from project-list) or about one ' +
-      'document. You choose the id: `s_` followed by a UUID with underscores for the hyphens. Returns the conversation. ' +
-      'Share it deliberately afterwards (sharing-get shows who has access).',
+      'Creates an empty private conversation, optionally in a project (projectId from project-list) or about one document. ' +
+      'You choose the id: `s_` plus a UUID with underscores. Returns it. Share it deliberately afterwards.',
     method: 'POST',
     path: '/api/conversations',
     body: createConversationSchema,
@@ -77,8 +77,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Read one conversation',
     description:
-      'One conversation by id: title, project, visibility, engagement mode (when Piloti answers) and the person’s ' +
-      'role in it. Messages come from conversation-message-list.',
+      'One conversation: title, project, visibility, engagement mode (when Piloti answers) and the person’s role. Messages: conversation-message-list.',
     method: 'GET',
     path: '/api/conversations/[id]',
     params: conversationParams,
@@ -89,8 +88,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Rename a conversation or change when Piloti answers',
     description:
-      'Set a new `title` (needs the owner role) and/or the `engagement` mode that decides when Piloti answers ' +
-      '(needs the collaborator role). Provide at least one of the two. Returns the updated conversation.',
+      'Sets `title` (owner role) and/or the `engagement` mode that decides when Piloti answers (collaborator role); at least one. Returns it.',
     method: 'PATCH',
     path: '/api/conversations/[id]',
     params: conversationParams,
@@ -103,8 +101,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Delete a conversation',
     description:
-      'Deletes a conversation and its messages for everyone in it. This cannot be undone. The answer is the same ' +
-      'whether or not the id existed or was the person’s, so it never reveals which ids are real.',
+      'Deletes a conversation and its messages for everyone in it, permanently. The answer is the same whether or not the id was real.',
     method: 'DELETE',
     path: '/api/conversations/[id]',
     params: conversationParams,
@@ -115,11 +112,12 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Read the messages of a conversation',
     description:
-      'The whole history of a conversation, oldest first: each message with id, role, content, structured mentions ' +
-      'and the answer details Piloti stored. Message ids from here feed conversation-message-changes.',
+      'The newest messages of a conversation, oldest first within the page; earlier ones through `nextCursor`. Each has id, role, ' +
+      'content, author, time and mentions; `include` adds citations, steps or metadata. Message ids feed conversation-message-changes.',
     method: 'GET',
     path: '/api/conversations/[id]/messages',
     params: conversationParams,
+    query: listMessagesQuerySchema,
     load: () => import('@/app/api/conversations/[id]/messages/route'),
   },
   {
@@ -127,10 +125,9 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Store a message in a conversation',
     description:
-      'Appends one message, or an array of up to the per-request limit, to a thread the person may write in. ' +
-      'You supply each message id. Use `mentions` (user ids from conversation-mention-candidate-list) to address ' +
-      'colleagues; they get an inbox item. This stores the message only: it does not open a turn with Piloti, which ' +
-      'runs over the chat WebSocket. Returns the stored rows with the addressee ruling.',
+      'Appends one message, or an array of them, to a thread the person may write in; you supply each id. `mentions` ' +
+      '(ids from conversation-mention-candidate-list) address colleagues, who get an inbox item. Stores only: it opens no ' +
+      'turn with Piloti. Returns the stored rows.',
     method: 'POST',
     path: '/api/conversations/[id]/messages',
     params: conversationParams,
@@ -142,9 +139,8 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Record a card decision or details on an answer',
     description:
-      'Saves the person’s decisions on an answer’s interactive cards (`cardInteractions`, keyed like ' +
-      '`memory_proposal-0`) and the answer’s own details (`provenance`, `promptState`, `stages`). Provide at least ' +
-      'one field. The service whitelists the free-form parts; to act on a proposal use proposal-apply instead.',
+      'Saves the person’s decisions on an answer’s cards (`cardInteractions`, keyed like `memory_proposal-0`) and its ' +
+      'details (`provenance`, `promptState`, `stages`). Provide at least one field. The service whitelists the free-form parts. A proposal is decided on its own card, not here.',
     method: 'PATCH',
     path: '/api/conversations/[id]/messages/[messageId]',
     params: messageParams,
@@ -158,7 +154,7 @@ export const conversationsOperations = [
     summary: 'List what one answer changed',
     description:
       'The changes Piloti made while producing one answer, each as it stands now, with `canUndo`. Changes on ' +
-      'documents the person may not see are left out. Pass a change id to piloti-change-undo to reverse it.',
+      'documents the person may not see are left out. Each change carries the id the person’s undo takes.',
     method: 'GET',
     path: '/api/conversations/[id]/messages/[messageId]/changes',
     params: messageParams,
@@ -181,8 +177,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Mark a conversation read',
     description:
-      'Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. ' +
-      'Read state is per person. Send an empty object to mark everything read.',
+      'Moves the person’s read marker to now, or to `lastReadMessageId`, and clears the thread’s inbox items. Empty object: mark all read.',
     method: 'POST',
     path: '/api/conversations/[id]/read',
     params: conversationParams,
@@ -208,9 +203,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Read an unfiled draft Piloti wrote',
     description:
-      'The content of one draft in the conversation’s working directory, so it can be read before filing. ' +
-      '`path` is the draft path the answer’s card names (such as `/entwuerfe/….md`). Read-only. ' +
-      'To keep it, call conversation-draft-file.',
+      'One draft in the conversation’s working directory, to read before filing; `path` is the one the answer’s card names. To keep it: conversation-draft-file.',
     method: 'GET',
     path: '/api/conversations/[id]/draft',
     params: conversationParams,
@@ -222,9 +215,8 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'File an unfiled draft into the project',
     description:
-      'Files the content of a draft (path from the answer’s card or conversation-draft-get) as a document in the ' +
-      'conversation’s project, as the person. A same-name collision answers 409 with the existing document; ' +
-      'repeat with `force: true` only after the person confirmed filing anyway. Returns the filed document.',
+      'Files a draft (path from the answer’s card or conversation-draft-get) as a document in the conversation’s project. A same-name ' +
+      'collision answers 409 with the existing document; repeat with `force: true` only after the person confirmed. Returns the document.',
     method: 'POST',
     path: '/api/conversations/[id]/draft/file',
     params: conversationParams,
@@ -236,8 +228,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Read the person’s votes in a conversation',
     description:
-      'The thumbs-up and thumbs-down votes the person has given to answers in one conversation (conversationId ' +
-      'from conversation-list). Only their own votes are returned.',
+      'The person’s own thumbs-up and thumbs-down votes on answers in one conversation (conversationId from conversation-list).',
     method: 'GET',
     path: '/api/feedback/answers',
     query: conversationFeedbackQuerySchema,
@@ -248,8 +239,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Vote on an answer',
     description:
-      'Records a verdict on one answer (messageId from conversation-message-list). Voting again replaces the ' +
-      'earlier vote. A down-vote feeds Piloti’s failure learning, so add the reason when the answer was wrong.',
+      'Votes on one answer (messageId from conversation-message-list); voting again replaces the vote. A down-vote feeds Piloti’s failure learning: add the reason.',
     method: 'POST',
     path: '/api/feedback/answers',
     body: upsertAnswerFeedbackSchema,
@@ -274,9 +264,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Send product feedback to the Piloti team',
     description:
-      'Sends a bug report, idea, praise or question to the platform owners (`kind` and `message`, plus the ' +
-      '`pagePath` it concerns). Opens a support ticket. This is not an answer vote: use answer-feedback-submit ' +
-      'for that. Rate limited per person.',
+      'Sends a bug report, idea, praise or question to the Piloti team and opens a ticket. Not an answer vote (that is answer-feedback-submit).',
     method: 'POST',
     path: '/api/feedback/reports',
     body: submitProductFeedbackSchema,
@@ -300,9 +288,8 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Find passages like one in the office’s documents',
     description:
-      'Given a passage the person is reading (its document by id or by legal-corpus file name, and its text), ' +
-      'finds similar passages across the projects and documents they may read, grouped project, document, passage. ' +
-      'Read-only. Use it to see how the office handled the same question before.',
+      'Given a passage (its document by id or legal-corpus file name, and its text), finds similar passages across the projects ' +
+      'and documents the person may read, grouped project, document, passage. Shows how the office handled it before.',
     method: 'POST',
     path: '/api/passages/similar',
     body: similarPassagesRequestSchema,
@@ -315,9 +302,7 @@ export const conversationsOperations = [
     domain: 'conversations',
     summary: 'Export one saved answer as a Word document',
     description:
-      'One answer of a conversation as a .docx, built from the stored message with its sources. Returned as an attached ' +
-      'resource (base64 `blob`) up to 5 MiB. Needs access to the conversation. Message ids come from conversation-message-list; ' +
-      'only an answer from Piloti can be exported.',
+      'One answer from Piloti as a .docx with its sources, an attached resource (base64 `blob`) up to 5 MiB. Message ids: conversation-message-list.',
     method: 'GET',
     path: '/api/conversations/[id]/messages/[messageId]/export',
     params: messageParams,

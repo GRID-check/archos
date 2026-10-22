@@ -47,6 +47,7 @@ import 'server-only'
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { isFolderVisibleTo } from '@/lib/authz/folder-access'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { filedInOf } from '@/lib/audit/document-names'
 import { publishToUsers } from '@/lib/events/bus'
@@ -70,7 +71,7 @@ import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
 import { documentDisplayName } from './display-name'
 import { announceNewRevision } from './revision-notify'
 import { findDocumentInOrg } from './repository'
-import { hasPassedScreening, internalRead } from '@/lib/documents/document-reader'
+import { hasPassedScreening, internalRead, memberReader } from '@/lib/documents/document-reader'
 import { resolveDocumentFolderPath } from './folder-path'
 import { listReviewCandidates, resolveReviewers } from './reviewers'
 import { DocumentDeletedError, OpenVersionExistsError } from './unique-conflicts'
@@ -92,12 +93,15 @@ import {
   type DocumentVersionListResponse,
   type DocumentVersionTransition,
   type DocumentVersionView,
+  type ReviewQueueQuery,
+  type ReviewQueueResponse,
 } from './lifecycle-types'
 import {
   compareAndSwapVersionState,
   type ReviewRoundWrite,
   findDocumentVersion,
   listDocumentVersionSummaries,
+  listReviewQueue,
   findOpenVersion,
   findPreviousVersion,
   findPublishedVersion,
@@ -1464,6 +1468,67 @@ async function openReviewRound(
   )
   if (newest?.state !== 'in_review') return []
   return openRecipientsOf(organizationId, reviewGroupKey(documentId, newest.id))
+}
+
+/**
+ * `GET /api/review/queue`: what waits for the person's Freigabe (or what they sent to review), across
+ * projects. The documents are narrowed by the screening reader, then project and folder access are
+ * asked again per row; the cursor follows the rows read, so a page of hidden ones still moves on.
+ */
+export async function listReviewQueueViews(
+  session: AuthorizedSession,
+  query: ReviewQueueQuery,
+): Promise<ReviewQueueResponse> {
+  if (query.projectId) await requireProjectAccess(session, query.projectId, 'project:view')
+  const fetched = await listReviewQueue(session.organizationId, memberReader(session.userId), {
+    role: query.role,
+    userId: session.userId,
+    projectId: query.projectId,
+    after: query.cursor,
+    limit: query.limit,
+  })
+  const hasMore = fetched.length > query.limit
+  const rows = hasMore ? fetched.slice(0, query.limit) : fetched
+  const reachable = new Map<string, Promise<boolean>>()
+  const mayRead = (projectId: string) => {
+    let known = reachable.get(projectId)
+    if (!known) {
+      known = requireProjectAccess(session, projectId, 'project:view').then(
+        () => true,
+        () => false,
+      )
+      reachable.set(projectId, known)
+    }
+    return known
+  }
+  const shown = (
+    await Promise.all(
+      rows.map(async (row) =>
+        !row.projectId ||
+        ((await mayRead(row.projectId)) && (await isFolderVisibleTo(session, row.projectId, row.folderId)))
+          ? row
+          : null,
+      ),
+    )
+  ).filter((row) => row !== null)
+  const people = await resolvePeople(
+    session.organizationId,
+    shown.flatMap((row) => (row.submittedBy ? [row.submittedBy] : [])),
+  )
+  return {
+    versions: shown.map((row) => ({
+      documentId: row.documentId,
+      documentName: row.documentName,
+      projectId: row.projectId,
+      projectName: row.projectName,
+      versionId: row.versionId,
+      versionNumber: row.versionNumber,
+      submittedBy: row.submittedBy,
+      submittedByName: row.submittedBy ? (people.get(row.submittedBy)?.name ?? null) : null,
+      submittedAt: row.submittedAt?.toISOString() ?? null,
+    })),
+    nextCursor: hasMore ? (rows.at(-1)?.versionId ?? null) : null,
+  }
 }
 
 /** Every user id the versions name as having done something to them. */

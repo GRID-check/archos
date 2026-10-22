@@ -5,7 +5,8 @@
  * there is no id a caller could swap. `?filter=` picks the slice
  * (`InboxListFilter`: `requests` waits on the reader, `unread` is not opened
  * yet, `all` is everything unarchived, `archived` what was put away, `pending`
- * the badge's own set). `?cursor=` is the previous page's `nextCursor`.
+ * the badge's own set). `?type=` and `?projectId=` narrow it to one item type or one project;
+ * `?limit=` sizes the page (at most 50) and `?cursor=` is the previous page's `nextCursor`.
  *
  * **There is deliberately no `requireCollaborationEnabled` here any more.** The
  * gate moved into the item-type registry (`@/lib/inbox/registry`'s `gate`) and
@@ -24,8 +25,8 @@ import { inboxListQuerySchema } from '@/lib/inbox/inbox-wire'
 
 export const GET = apiRoute(
   async ({ session, request }) => {
-    const { filter, cursor } = parseQuery(request, inboxListQuerySchema)
-    return listInbox(session, { filter: filter ?? 'all', cursor })
+    const { filter, cursor, type, projectId, limit } = parseQuery(request, inboxListQuerySchema)
+    return listInbox(session, { filter: filter ?? 'all', cursor, type, projectId, limit })
   },
   { authz: { enforcedBy: 'listInbox (rows are keyed to session.userId)' } }
 )
