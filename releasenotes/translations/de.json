@@ -3672,6 +3672,10 @@
     "de": "Wenn die KI kurz überlastet ist, bricht Piloti Ihre Frage nicht mehr mit einem Fehler ab, sondern wartet einen Moment und versucht es erneut."
   },
   {
+    "en": "When the Piloti team answers your feedback, you now read the answer in Piloti under My feedback and can reply right there in the chat; a count shows when something new arrived.",
+    "de": "Wenn das Piloti-Team auf Ihr Feedback antwortet, sehen Sie die Antwort jetzt in Piloti unter „Mein Feedback“ und können direkt im Chat darauf antworten. Ein Zähler zeigt an, wenn es etwas Neues gibt."
+  },
+  {
     "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
     "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
   },
