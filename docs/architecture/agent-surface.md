@@ -231,8 +231,24 @@ a client that lists 300 tools pays for them in every conversation.
 | `tools` | One MCP tool per operation, each with its annotations | A client or model that copes with a long list |
 
 `report-missing-operation` is how an agent says "I wanted to do X and found
-nothing". It emits `agent_operation_missing`, which carries the length of the
-description and never its words; the tool's own description says so.
+nothing", or that an operation it did find confused it. An optional `category`
+(`missing_operation` by default, `tool_description`, `input_schema`,
+`error_message`, `result_shape`, `other`) says which. It emits
+`agent_operation_missing`, which carries the length of the description and the
+category and never the words; the tool's own description says so. The name stays,
+because Piloti and clients call it by that name.
+
+Three habits borrowed from PostHog's MCP keep an agent from needing a second
+round. A validation refusal quotes the description of the field it names
+(`query.limit: Expected number, received string (Number of results to return per
+page)`), looked up once in `dispatch.ts` through `field-description.ts`. A
+schema larger than 4,000 characters (`layered-schema.ts`; the catalog's median is
+333, p95 1,040, and only `bim-model-query` and `project-profile-replace` pass
+4,000) comes back from `describe-operation` as an outline: small fields whole,
+each large one reduced to its type, description and field names with the
+`field` path that opens it. `describe-operation` takes that optional `field`
+(a dot path, array items stepped through) and returns just that subtree, layered
+again if it is still large. The result carries `layered: true` and `field`.
 
 The meta-tools are written once, `metaToolsFor` in `discovery.ts`, per caller:
 the domain list is the office door's (never `platform`), and Piloti's

@@ -105,7 +105,7 @@ export function recordOperationCalled(
   })
 }
 
-export function recordOperationMissing(ctx: McpCallContext, descriptionLength: number): void {
+export function recordOperationMissing(ctx: McpCallContext, descriptionLength: number, category: string): void {
   const { principal, mode } = ctx
   captureServer({
     event: 'agent_operation_missing',
@@ -113,6 +113,7 @@ export function recordOperationMissing(ctx: McpCallContext, descriptionLength: n
     organizationId: principal.session.organizationId,
     properties: {
       description_length: descriptionLength,
+      category,
       door: doorOf(ctx),
       mode,
       client_id: principal.clientId,

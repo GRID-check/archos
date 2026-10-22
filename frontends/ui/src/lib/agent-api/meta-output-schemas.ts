@@ -45,7 +45,12 @@ export const DESCRIBE_OUTPUT_SCHEMA = {
     description: { type: 'string' },
     annotations: { type: 'object', description: 'The MCP tool annotations: readOnlyHint, destructiveHint, idempotentHint, openWorldHint.' },
     sensitivity: { type: ['string', 'null'], description: 'Why a call needs the person’s confirmation, or null.' },
-    inputSchema: { type: 'object', description: 'JSON Schema of the `input` call-operation takes.' },
+    inputSchema: {
+      type: 'object',
+      description: 'JSON Schema of the `input` call-operation takes; an outline of the large fields when layered, or the subtree at `field`.',
+    },
+    field: { type: 'string', description: 'Set when the request named a field: inputSchema is that part of the input.' },
+    layered: { type: 'boolean', description: 'True when inputSchema is an outline: each large field names its own describe-operation call.' },
   },
   required: ['name', 'domain', 'summary', 'description', 'annotations', 'sensitivity', 'inputSchema'],
 } as const
