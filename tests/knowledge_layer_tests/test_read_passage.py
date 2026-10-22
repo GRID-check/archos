@@ -261,6 +261,13 @@ class TestTheFilterIsTheAnswer:
         (call,) = store.calls
         assert call["top_k"] > _MAX_PASSAGE_CHUNKS, "the window is fetched whole, then filtered"
 
+    async def test_a_passage_read_says_it_read_a_locus_not_that_it_found_documents(self, store):
+        """The header of a read names what was opened, in reading order; it is not a search's count."""
+        out = await _read(document=OIB, page=13)
+
+        assert out.startswith(f"Read 1 passage(s) of {OIB}, S. 13, in reading order:")
+        assert "relevant document(s)" not in out
+
     async def test_a_page_read_keeps_a_chunk_without_page_end_to_its_own_page(self, store):
         out = await _read(document=OIB, page=13)
         assert "Rauchabzug" in out and "Fluchtweglänge" not in out
@@ -358,6 +365,7 @@ class TestFormatParity:
                 success=True,
             ),
             f"{OIB}, Pkt. 3.5.2",
+            reading_of=f"{OIB}, Pkt. 3.5.2",
         )
         assert out == expected
 

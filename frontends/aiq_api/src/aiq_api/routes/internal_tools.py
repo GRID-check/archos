@@ -43,6 +43,7 @@ from pydantic import ValidationError
 from pydantic_core import to_jsonable_python
 
 from aiq_agent.common.backend_tools import is_backend_read_tool
+from aiq_agent.common.grounding_block import strip_trace_lanes
 from aiq_agent.project_context import ORGANIZATION_ID_HEADER
 from aiq_agent.project_context import PROJECT_ID_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
@@ -152,8 +153,16 @@ def _metered_call() -> Iterator[None]:
 
 
 def _wire(result: Any) -> Any:
-    """What a tool returned, as JSON: text stays text, content blocks stay blocks."""
-    return result if isinstance(result, str) else to_jsonable_python(result, fallback=str)
+    """What a tool returned, as JSON: text stays text, content blocks stay blocks.
+
+    The evidence tools end their text with a ``## Trace-Lanes`` JSON line. It is
+    the product's own trace (the Herleitung reads the records the renderer filed,
+    never this line) and noise to an outside agent, so the door drops it here;
+    the in-product path never passes through this route and keeps it.
+    """
+    if isinstance(result, str):
+        return strip_trace_lanes(result)
+    return to_jsonable_python(result, fallback=str)
 
 
 def add_internal_tool_routes(router: APIRouter) -> None:

@@ -1663,6 +1663,7 @@ def _format_results(
     preamble_note: str = "",
     opened_files: frozenset[str] = frozenset(),
     coverage_gap: str | None = None,
+    reading_of: str | None = None,
 ) -> str:
     """Build this result set's grounding hits and render them for the LLM.
 
@@ -1687,6 +1688,10 @@ def _format_results(
     says „Abdeckung: unzureichend" under a preamble that no longer calls the
     hits relevant; the line itself says how many were judged, and the preamble
     claims nothing about the rest.
+
+    ``reading_of`` names what ``read_passage`` opened. That call searched for
+    nothing and ranked nothing, so its header says which passages were read, in
+    reading order, instead of "Found N relevant document(s)".
     """
     # The two answers below carry no block, so they carry no hash to protect
     # either; there the trailer is simply appended, which keeps it stated
@@ -1716,11 +1721,12 @@ def _format_results(
     from aiq_agent.common.turn_status import current_lane_tool
 
     hits = _grounding_hits(retrieval_result.chunks)
-    preamble = (
-        f"Found {len(hits)} document(s); none of the judged ones answers the question:"
-        if coverage_gap
-        else f"Found {len(hits)} relevant document(s):"
-    )
+    if reading_of:
+        preamble = f"Read {len(hits)} passage(s) of {reading_of}, in reading order:"
+    elif coverage_gap:
+        preamble = f"Found {len(hits)} document(s); none of the judged ones answers the question:"
+    else:
+        preamble = f"Found {len(hits)} relevant document(s):"
     return render_grounding_block(
         GroundingBlock(
             preamble=f"{preamble}\n{preamble_note}" if preamble_note else preamble,
@@ -2895,7 +2901,9 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             search,
             description=(
                 f"{knowledge_search_description(config.match_modes)} "
-                f"Returns up to {top_k} excerpts (platform-configurable), {diversity_clause}"
+                f"Returns up to {top_k} excerpts by default "
+                "(platform-configurable up to 50; the result header counts them), "
+                f"{diversity_clause}"
             ),
         )
     finally:
