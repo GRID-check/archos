@@ -59,8 +59,11 @@ describe('PageExcerpt', () => {
         { status: 200 }
       )
     })
+    // One route answers both shelves; only the project's own is counted, the office shelf answers empty.
     setDocumentsByNameFetch(async (path, init) =>
-      path === '/api/documents/by-name' ? byName(path, init) : new Response('{"documents":[]}')
+      path === '/api/documents/by-name' && !String(init?.body).includes('"office_shelf"')
+        ? byName(path, init)
+        : new Response('{"documents":[]}')
     )
   })
   afterEach(() => {

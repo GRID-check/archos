@@ -63,7 +63,7 @@ describe('fetchListingPages', () => {
       from: { cursor: 'c2', pagesRead: 1 },
     })
     // Page one is never asked for again: the first request already carries the cursor.
-    expect(urls).toEqual(['/api/documents?projectId=p&cursor=c2', '/api/documents?projectId=p&cursor=c3'])
+    expect(urls).toEqual(['/api/documents?projectId=p&limit=500&cursor=c2', '/api/documents?projectId=p&limit=500&cursor=c3'])
     expect(result).toMatchObject({ documents: ['b', 'c'], truncated: false })
 
     const endless = Array.from({ length: MAX_LISTING_PAGES }, (_, i) => ({ documents: [String(i)], nextCursor: `c${i}` }))

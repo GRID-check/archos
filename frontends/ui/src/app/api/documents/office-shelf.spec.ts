@@ -97,7 +97,7 @@ describe('GET /api/documents?scope=office_shelf', () => {
     expect(listOfficeShelf).toHaveBeenCalledWith(expect.anything(), {
       authoredBy: undefined,
       includeArchived: false,
-      cursor: undefined,
+      level: { folderId: undefined, sort: 'added', dir: 'desc', limit: 100 },
     })
   })
 
