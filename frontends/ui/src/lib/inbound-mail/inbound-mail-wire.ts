@@ -149,18 +149,18 @@ export const inboundMailListQuerySchema = z
     status: z
       .enum(INBOUND_MAIL_LIST_STATUSES)
       .default('waiting')
-      .describe('"waiting": a part still waits for a person (the default). "handled": nothing waits any more.'),
+      .describe('"waiting": a part waits for a person. "handled": none does.'),
     outcome: z
       .enum(INBOUND_MAIL_OUTCOMES)
       .optional()
-      .describe('With status "handled": only mails with a part filed, dismissed or expired. Ignored for "waiting".'),
+      .describe('With "handled": mails with a part that ended so.'),
     limit: z.coerce
       .number()
       .int()
       .min(1)
       .max(INBOUND_MAIL_LIST_MAX_LIMIT)
       .default(INBOUND_MAIL_LIST_LIMIT)
-      .describe(`Page size (default ${INBOUND_MAIL_LIST_LIMIT}, at most ${INBOUND_MAIL_LIST_MAX_LIMIT}).`),
+      .describe(`Default ${INBOUND_MAIL_LIST_LIMIT}, max ${INBOUND_MAIL_LIST_MAX_LIMIT}.`),
     cursor: z.string().min(1).max(200).optional().describe('The previous page’s `nextCursor`.'),
   })
 export type InboundMailListQuery = z.infer<typeof inboundMailListQuerySchema>
@@ -325,16 +325,16 @@ export interface InboundMailTextView {
 
 const partDecisionSchema = z
   .object({
-    partId: uuid.describe('An attachment part from inbound-mail-get.'),
+    partId: uuid.describe('From inbound-mail-get `parts`.'),
     folderId: uuid
       .nullable()
-      .describe('Target folder, or null (root or `newFolderPath`).'),
+      .describe('null: root or `newFolderPath`.'),
     newFolderPath: z
       .string()
       .min(1)
       .max(INBOUND_MAIL_FOLDER_PATH_MAX)
       .nullable()
-      .describe('A folder path to create ("Authorities/Permits"), or null.'),
+      .describe('Created if missing, e.g. "Permits/Fire".'),
     name: z
       .string()
       .min(1)
@@ -346,14 +346,14 @@ const partDecisionSchema = z
       .max(64)
       .refine((value) => (DOCUMENT_TYPE_TAGS as readonly string[]).includes(value), 'Not a document type of the vocabulary')
       .optional()
-      .describe('A document type tag, when the person chose one.'),
+      .describe('A document type tag.'),
     revisionOf: uuid
       .optional()
       .describe('File as the next version of this document.'),
     screeningRelease: z
       .literal('name')
       .optional()
-      .describe('Override the name check (the person’s, audited).'),
+      .describe('The person overrides the name check.'),
   })
   .strict()
   .refine((part) => part.folderId === null || part.newFolderPath === null, {
@@ -366,20 +366,20 @@ const threadTargetSchema = z.discriminatedUnion('action', [
   z
     .object({
       action: z.literal('append'),
-      mailThreadId: uuid.describe('A thread from `threadCandidates` or mail-thread-list.'),
+      mailThreadId: uuid.describe('From `threadCandidates` or mail-thread-list.'),
     })
     .strict(),
   z
     .object({
       action: z.literal('create'),
-      folderId: uuid.nullable().describe('Folder, or null (root or `newFolderPath`).'),
-      newFolderPath: z.string().min(1).max(INBOUND_MAIL_FOLDER_PATH_MAX).nullable().describe('A folder path to create, or null.'),
+      folderId: uuid.nullable().describe('null: root or `newFolderPath`.'),
+      newFolderPath: z.string().min(1).max(INBOUND_MAIL_FOLDER_PATH_MAX).nullable().describe('Created if missing.'),
       name: z
         .string()
         .min(1)
         .max(INBOUND_MAIL_FILE_NAME_MAX)
         .describe('The thread document’s name; name-screened.'),
-      screeningRelease: z.literal('name').optional().describe('Override the name check (audited).'),
+      screeningRelease: z.literal('name').optional().describe('The person overrides the name check.'),
     })
     .strict(),
 ])
@@ -387,13 +387,11 @@ export type InboundMailThreadTarget = z.infer<typeof threadTargetSchema>
 
 const messageDecisionSchema = z
   .object({
-    partId: uuid.describe('The mail’s text part (kind "message").'),
+    partId: uuid.describe('The part of kind "message".'),
     text: z
       .enum(INBOUND_MAIL_MESSAGE_TEXTS)
-      .describe(
-'"masked" (only with `contentFindings`) or "full".'
-      ),
-    thread: threadTargetSchema.describe('Append to a thread, or create one.'),
+      .describe('"masked" only with `contentFindings`.'),
+    thread: threadTargetSchema,
   })
   .strict()
   .refine((message) => message.thread.action === 'append' || message.thread.folderId === null || message.thread.newFolderPath === null, {
@@ -404,24 +402,24 @@ export type InboundMailMessageDecision = z.infer<typeof messageDecisionSchema>
 
 const mailDecisionSchema = z
   .object({
-    mailId: uuid.describe('A mail id.'),
-    ifMatch: z.string().min(1).max(100).describe('The mail’s `ifMatch` from inbound-mail-get.'),
+    mailId: uuid,
+    ifMatch: z.string().min(1).max(100).describe('From inbound-mail-get.'),
     parts: z
       .array(partDecisionSchema)
       .max(INBOUND_MAIL_DECISION_MAX_PARTS - 1)
-      .describe('Attachments to file; the others are dismissed.'),
+      .describe('To file; the others are dismissed.'),
     message: messageDecisionSchema
       .nullable()
-      .describe('How the text is filed, or null.'),
+      .describe('null dismisses the text.'),
     acknowledgeSender: z
       .literal(true)
       .optional()
-      .describe('The person accepts an unconfirmed sender (one mail only).'),
+      .describe('The person accepts an unconfirmed sender; one mail only.'),
     acknowledgeRisk: z
       .array(uuid)
       .max(INBOUND_MAIL_DECISION_MAX_PARTS)
       .optional()
-      .describe('Parts whose risk flag the person accepts (one mail only).'),
+      .describe('Parts whose risk the person accepts; one mail only.'),
   })
   .strict()
   .refine((mail) => new Set(mail.parts.map((part) => part.partId)).size === mail.parts.length, {
@@ -444,8 +442,7 @@ export const fileInboundMailsBodySchema = z
     mails: z
       .array(mailDecisionSchema)
       .min(1)
-      .max(INBOUND_MAIL_DECISION_MAX_MAILS)
-      .describe(`1 to ${INBOUND_MAIL_DECISION_MAX_MAILS} mails.`),
+      .max(INBOUND_MAIL_DECISION_MAX_MAILS),
   })
   .strict()
   .refine((body) => new Set(body.mails.map((mail) => mail.mailId)).size === body.mails.length, {
@@ -461,7 +458,7 @@ export const dismissInboundMailsBodySchema = z
       .array(uuid)
       .min(1)
       .max(INBOUND_MAIL_DECISION_MAX_MAILS)
-      .describe('Mails from inbound-mail-list; each waiting part of each is dismissed.'),
+      .describe('From inbound-mail-list.'),
   })
   .strict()
   .refine((body) => new Set(body.mailIds).size === body.mailIds.length, { message: 'A mail is named twice', path: ['mailIds'] })

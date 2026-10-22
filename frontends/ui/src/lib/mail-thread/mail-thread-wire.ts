@@ -115,14 +115,14 @@ export const threadMatchListSchema = z.array(threadMatchSchema).max(50)
 // ------------------------------------------------------------ requests
 
 export const mailThreadListQuerySchema = z.object({
-  documentId: uuid.optional().describe('Only the thread whose document this is.'),
+  documentId: uuid.optional().describe('Finds this document’s thread.'),
   limit: z.coerce
     .number()
     .int()
     .min(1)
     .max(MAIL_THREAD_LIST_LIMIT)
     .default(MAIL_THREAD_LIST_LIMIT)
-    .describe(`Page size (default and most ${MAIL_THREAD_LIST_LIMIT}).`),
+    .describe(`Default and max ${MAIL_THREAD_LIST_LIMIT}.`),
   cursor: z.string().min(1).max(200).optional().describe('The previous `nextCursor`.'),
 })
 export type MailThreadListQuery = z.infer<typeof mailThreadListQuerySchema>
