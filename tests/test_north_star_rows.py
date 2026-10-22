@@ -343,7 +343,7 @@ class TestTheNoticeRows:
         assert "Wohnungen gesamt: 10" in pages["EP-01_Grundrisse_Index-B.pdf"]
         assert "Wohnungen gesamt: 11" in pages["EP-01_Grundrisse_Index-A.pdf"], "Index A is the older Fassung"
 
-    def test_the_agreeing_row_asks_about_a_letter_that_repeats_the_bescheids_number(self):
+    def test_the_agreeing_row_asks_about_a_letter_that_repeats_the_permit_decision_number(self):
         pages = {file.name: "\n".join(file.pages) for file in FILES_PROJECT.files}
         zahl = "MA 37/567812-2026-1"
         assert zahl in pages["Schreiben_MA37_Baubeginn.pdf"] and zahl in pages["Bescheid_MA37_Baubewilligung.pdf"]
