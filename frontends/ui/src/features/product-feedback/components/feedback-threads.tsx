@@ -382,8 +382,8 @@ function ThreadMessages({
       <ScrollArea className={cn('min-h-0 flex-1', FIT_VIEWPORT)}>
         <div className="flex flex-col gap-4 p-4" data-testid="feedback-thread-messages" data-chat-surface="feedback">
           {/* The chat's own attributed message: the header names who spoke
-              (you, or the team member), and every message keeps the chat's
-              one column, as a shared thread does. */}
+              (you, or the team member). Unlike the Piloti chat this is a
+              two-party conversation, so the team speaks from the left. */}
           {thread.messages.map((message, index) => {
             const previous = thread.messages[index - 1]
             const sameSpeaker =
@@ -394,6 +394,9 @@ function ThreadMessages({
                 content={message.content}
                 timestamp={message.createdAt}
                 grouped={sameSpeaker}
+                // Two parties, two sides: the reporter on the right as in any
+                // messenger, the team on the left (UserMessage's `side`).
+                side={message.author === 'team' ? 'start' : 'end'}
                 author={
                   message.author === 'me'
                     ? { isYou: true, userId: 'feedback-reporter' }

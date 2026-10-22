@@ -66,6 +66,9 @@ describe('FeedbackThreadsSheet', () => {
       screen.getByText('The upload stops at 99 percent.').closest('[data-shared-author]'),
     ).toHaveAttribute('data-shared-author', 'feedback-reporter')
     expect(screen.getByText(/Matthias, Piloti team/)).toBeInTheDocument()
+    // Two parties, two sides: the team speaks from the start, the reporter from the end.
+    expect(screen.getByText('Since when does it happen?').closest('[data-side]')).toHaveAttribute('data-side', 'start')
+    expect(screen.getByText('The upload stops at 99 percent.').closest('[data-side]')).toHaveAttribute('data-side', 'end')
   })
 
   test('sends a reply with Enter and shows it in the thread', async () => {

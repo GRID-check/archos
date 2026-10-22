@@ -144,6 +144,34 @@ Line 3`
       }
     })
 
+    test('without `side` an attributed bubble sits at the end, exactly as before', () => {
+      const { container } = render(
+        <UserMessage content="x" author={{ userId: 'user_anna', name: 'Anna Berger' }} />
+      )
+      const root = container.querySelector('[data-shared-author]')
+      expect(root).toHaveAttribute('data-side', 'end')
+      expect(root).toHaveClass('items-end')
+      expect(container.querySelector('.rounded-tr-\\[4px\\]')).toBeInTheDocument()
+      expect(container.querySelector('.bg-card')).toBeInTheDocument()
+      expect(screen.getByTestId('message-author')).toHaveClass('flex-row-reverse')
+    })
+
+    test('side="start" mirrors the bubble for the other party of a two-party thread', () => {
+      // Only the feedback thread passes it (person and team); the Piloti chat never does.
+      const { container } = render(
+        <UserMessage content="x" side="start" author={{ userId: 'piloti-team:Matthias', name: 'Matthias' }} />
+      )
+      const root = container.querySelector('[data-shared-author]')
+      expect(root).toHaveAttribute('data-side', 'start')
+      expect(root).toHaveClass('items-start')
+      expect(root).not.toHaveClass('items-end')
+      expect(container.querySelector('.rounded-tl-\\[4px\\]')).toBeInTheDocument()
+      expect(container.querySelector('.rounded-tr-\\[4px\\]')).toBeNull()
+      expect(container.querySelector('.bg-muted')).toBeInTheDocument()
+      expect(screen.getByTestId('message-author')).not.toHaveClass('flex-row-reverse')
+      expect(screen.getByRole('button', { name: /copy/i })).toHaveClass('left-2')
+    })
+
     test('a grouped message repeats no header and stays attributable to a screen reader', () => {
       render(
         <UserMessage
