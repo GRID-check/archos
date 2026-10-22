@@ -203,7 +203,7 @@ const statik = (overrides: Partial<InboundMailPartView> = {}) =>
     ...overrides,
   })
 
-const bescheid = (overrides: Partial<InboundMailPartView> = {}) =>
+const permitDecision = (overrides: Partial<InboundMailPartView> = {}) =>
   part({
     name: 'Bescheid_MA37_2026-10-14.pdf',
     sizeBytes: 412_000,
@@ -233,7 +233,7 @@ const memberVerified = mail({
     reason: 'dkim_pass',
     flags: [],
   },
-  parts: [messagePart({ id: fixtureId('message:member') }), bescheid()],
+  parts: [messagePart({ id: fixtureId('message:member') }), permitDecision()],
   threadCandidates: [thread()],
 })
 
@@ -285,7 +285,7 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
       key: 'forwarded',
       subject: 'WG: Verhandlungsschrift Bauverhandlung 04.11.',
       sender: { name: 'Miriam Huber', address: 'm.huber@huber-architektur.at', domain: 'huber-architektur.at', signerDomain: 'huber-architektur.at', trust: 'member_verified', reason: 'dkim_pass', flags: [] },
-      parts: [messagePart({ id: fixtureId('message:fwd') }), bescheid({ filename: 'Verhandlungsschrift_2026-11-04.pdf' })],
+      parts: [messagePart({ id: fixtureId('message:fwd') }), permitDecision({ filename: 'Verhandlungsschrift_2026-11-04.pdf' })],
       threadCandidates: [],
     }),
     text: text({
@@ -353,11 +353,11 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     text: text(),
   },
   'scan-pending': {
-    view: mail({ key: 'scan-pending', parts: [messagePart({ id: fixtureId('message:sp') }), statik({ scan: 'pending', scannedAt: null }), bescheid({ scan: 'failed' })] }),
+    view: mail({ key: 'scan-pending', parts: [messagePart({ id: fixtureId('message:sp') }), statik({ scan: 'pending', scannedAt: null }), permitDecision({ scan: 'failed' })] }),
     text: text(),
   },
   infected: {
-    view: mail({ key: 'infected', parts: [messagePart({ id: fixtureId('message:inf') }), part({ name: 'Rechnung_Oktober.pdf.exe', contentType: 'application/x-msdownload', scan: 'infected' }), bescheid()] }),
+    view: mail({ key: 'infected', parts: [messagePart({ id: fixtureId('message:inf') }), part({ name: 'Rechnung_Oktober.pdf.exe', contentType: 'application/x-msdownload', scan: 'infected' }), permitDecision()] }),
     text: text(),
   },
   'original-infected': {
@@ -426,7 +426,7 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     view: mail({
       key: 'decided-by-other',
       status: 'handled',
-      parts: [messagePart({ id: fixtureId('message:dbo'), state: 'filed', documentId: fixtureId('doc:stellplatz') }), bescheid({ state: 'filed', documentId: fixtureId('doc:bescheid-neu') })],
+      parts: [messagePart({ id: fixtureId('message:dbo'), state: 'filed', documentId: fixtureId('doc:stellplatz') }), permitDecision({ state: 'filed', documentId: fixtureId('doc:bescheid-neu') })],
     }),
     text: text(),
     decidedByOther: true,
@@ -437,13 +437,13 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
       parts: [
         messagePart({ id: fixtureId('message:pf'), state: 'filed', documentId: fixtureId('doc:stellplatz') }),
         statik({ state: 'filed', documentId: fixtureId('doc:s101') }),
-        bescheid({ lastFailure: 'name_taken' }),
+        permitDecision({ lastFailure: 'name_taken' }),
       ],
     }),
     text: text(),
   },
   'quota-full': {
-    view: mail({ key: 'quota-full', parts: [messagePart({ id: fixtureId('message:qf') }), statik({ lastFailure: 'quota' }), bescheid({ lastFailure: 'quota' })] }),
+    view: mail({ key: 'quota-full', parts: [messagePart({ id: fixtureId('message:qf') }), statik({ lastFailure: 'quota' }), permitDecision({ lastFailure: 'quota' })] }),
     text: text(),
   },
   'filed-outcome': {
@@ -452,7 +452,7 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
       status: 'handled',
       sender: { name: 'Mag. Huber', address: 'k.huber@ma37.wien.gv.at', domain: 'ma37.wien.gv.at', signerDomain: 'wien.gv.at', trust: 'external_verified', reason: 'dkim_pass', flags: [] },
       originalHeld: false,
-      parts: [messagePart({ id: fixtureId('message:fo'), state: 'filed', documentId: fixtureId('doc:stellplatz') }), bescheid({ state: 'filed', documentId: fixtureId('doc:bescheid-neu') }), part({ name: 'Beilage_alt.pdf', state: 'dismissed', restorableUntil: daysAhead(7) })],
+      parts: [messagePart({ id: fixtureId('message:fo'), state: 'filed', documentId: fixtureId('doc:stellplatz') }), permitDecision({ state: 'filed', documentId: fixtureId('doc:bescheid-neu') }), part({ name: 'Beilage_alt.pdf', state: 'dismissed', restorableUntil: daysAhead(7) })],
     }),
     text: text(),
   },
@@ -473,17 +473,17 @@ export const DETAIL_VARIANTS: Record<string, DetailFixture> = {
     }),
     text: text(),
   },
-  closed: { view: mail({ key: 'closed', projectClosed: true, parts: [messagePart({ id: fixtureId('message:cl') }), bescheid()] }), text: text() },
+  closed: { view: mail({ key: 'closed', projectClosed: true, parts: [messagePart({ id: fixtureId('message:cl') }), permitDecision()] }), text: text() },
   expired: {
-    view: mail({ key: 'expired', status: 'handled', parts: [messagePart({ id: fixtureId('message:exp'), state: 'expired', restorableUntil: daysAhead(5) }), bescheid({ state: 'expired', restorableUntil: daysAhead(5) })] }),
+    view: mail({ key: 'expired', status: 'handled', parts: [messagePart({ id: fixtureId('message:exp'), state: 'expired', restorableUntil: daysAhead(5) }), permitDecision({ state: 'expired', restorableUntil: daysAhead(5) })] }),
     text: text(),
   },
   dismissed: {
-    view: mail({ key: 'dismissed', status: 'handled', parts: [messagePart({ id: fixtureId('message:dis'), state: 'dismissed', restorableUntil: daysAhead(6) }), bescheid({ state: 'dismissed', restorableUntil: daysAhead(6) })] }),
+    view: mail({ key: 'dismissed', status: 'handled', parts: [messagePart({ id: fixtureId('message:dis'), state: 'dismissed', restorableUntil: daysAhead(6) }), permitDecision({ state: 'dismissed', restorableUntil: daysAhead(6) })] }),
     text: text(),
   },
   'unreadable-text': {
-    view: mail({ key: 'unreadable', parts: [messagePart({ id: fixtureId('message:unr'), riskFlags: ['unreadable'] }), bescheid()] }),
+    view: mail({ key: 'unreadable', parts: [messagePart({ id: fixtureId('message:unr'), riskFlags: ['unreadable'] }), permitDecision()] }),
     text: text({ ownText: '', quoted: [], unreadable: true }),
   },
   loading: { view: memberVerified, text: text(), load: 'loading' },

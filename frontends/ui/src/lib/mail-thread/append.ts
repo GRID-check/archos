@@ -477,7 +477,7 @@ export async function renderEntriesOf(
 // ---------------------------------------------------------------------------
 
 /** One Fassung of a thread document to upload. */
-export interface FassungUpload {
+export interface ThreadVersionUpload {
   session: AuthorizedSession
   projectId: string
   folderId: string | null
@@ -492,7 +492,7 @@ export interface FassungUpload {
   request: Request
 }
 
-export type FassungResult =
+export type ThreadVersionResult =
   | { ok: true; documentId: string; versionId: string | null }
   | { ok: false; failure: InboundMailFilingFailure }
 
@@ -503,7 +503,7 @@ export type FassungResult =
  * document holds is `name_taken`, never that document's next version: the
  * upload path would replace it.
  */
-export async function uploadFassung(upload: FassungUpload): Promise<FassungResult> {
+export async function uploadThreadVersion(upload: ThreadVersionUpload): Promise<ThreadVersionResult> {
   const bytes = Buffer.from(upload.markdown, 'utf8')
   const digest = contentDigest(bytes)
   const reader = memberReader(upload.session.userId)
@@ -742,7 +742,7 @@ async function appendTo(request: AppendRequest, target: AppendTarget): Promise<A
   })
   if (rendition.bytes > MAIL_THREAD_MAX_RENDERED_BYTES) return { kind: 'failed', failure: 'size' }
 
-  const uploaded = await uploadFassung({
+  const uploaded = await uploadThreadVersion({
     session: request.session,
     projectId: mail.projectId,
     folderId: threadFolderId,

@@ -51,8 +51,8 @@ import {
   renderEntriesOf,
   threadDocumentFilename,
   threadTitleOf,
-  uploadFassung,
-  type FassungResult,
+  uploadThreadVersion,
+  type ThreadVersionResult,
 } from './append'
 import { mailThreadIngestFacts } from './ingest-facts'
 import { clampSentAt, domainOf } from './mail-threading'
@@ -299,7 +299,7 @@ async function moveEntry(
   const batchId = await openQuietBatch(session, projectId, INBOUND_THREAD_APPEND_EFFECTS)
   try {
     const left = refusedOr(
-      await uploadFassung({
+      await uploadThreadVersion({
         session,
         projectId,
         folderId: source.document.folderId,
@@ -324,7 +324,7 @@ async function moveEntry(
         failure: folder.failure,
       })
     const joined = refusedOr(
-      await uploadFassung({
+      await uploadThreadVersion({
         session,
         projectId,
         folderId:
@@ -403,7 +403,7 @@ async function moveEntry(
 }
 
 /** The uploaded Fassung, or the refusal the upload path gave as the thread's 409. */
-function refusedOr(result: FassungResult): { documentId: string; versionId: string | null } {
+function refusedOr(result: ThreadVersionResult): { documentId: string; versionId: string | null } {
   if (result.ok) return result
   if (result.failure === 'name_taken')
     throw threadRefusal(

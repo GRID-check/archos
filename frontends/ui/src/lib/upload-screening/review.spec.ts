@@ -129,16 +129,16 @@ describe('releaseQuarantinedDocument', () => {
       filingChoice: { documentType: DOCUMENT_TYPE_TAGS[0], revisionOfId: OLDER_ID },
     },
   }
-  const olderFassung = makeDocument({ id: OLDER_ID, filename: 'EG_Grundriss_Index_B.pdf' })
+  const olderVersion = makeDocument({ id: OLDER_ID, filename: 'EG_Grundriss_Index_B.pdf' })
   /** The repository holding the held upload and, as `older` says, the document it was filed as the Fassung of. */
-  const holding = (older: typeof olderFassung | null) =>
+  const holding = (older: typeof olderVersion | null) =>
     vi.mocked(findDocumentInOrg).mockImplementation(async (id, _org, reader) => {
       const row = id === OLDER_ID ? older : heldWithChoice
       return row && mayReadDocument(row, reader) ? row : null
     })
 
   it("sends the uploader's document type and Fassung again, as the held reading's dispatch recorded them", async () => {
-    holding(olderFassung)
+    holding(olderVersion)
 
     await releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))
 
@@ -150,7 +150,7 @@ describe('releaseQuarantinedDocument', () => {
   // The release can come days after the upload: the Fassung is checked again,
   // by the older document's id, never trusted by a name recorded back then.
   it("sends the older document's name as it is at the release, not as it was at upload", async () => {
-    holding({ ...olderFassung, filename: 'EG_Grundriss_Index_B_rev.pdf' })
+    holding({ ...olderVersion, filename: 'EG_Grundriss_Index_B_rev.pdf' })
 
     await releaseQuarantinedDocument(orgAdmin, 'doc-q', new Request('http://x'))
 
@@ -159,9 +159,9 @@ describe('releaseQuarantinedDocument', () => {
 
   it.each([
     ['was deleted', null],
-    ['was archived', { ...olderFassung, lifecycle: 'archived' as const }],
-    ['is now held itself', { ...olderFassung, status: 'quarantined' as const }],
-    ['moved to another collection', { ...olderFassung, collectionName: 'proj_restricted' }],
+    ['was archived', { ...olderVersion, lifecycle: 'archived' as const }],
+    ['is now held itself', { ...olderVersion, status: 'quarantined' as const }],
+    ['moved to another collection', { ...olderVersion, collectionName: 'proj_restricted' }],
   ])('drops the Fassung when the older document %s, and still sends the type', async (_, older) => {
     holding(older)
 

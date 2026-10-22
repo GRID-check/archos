@@ -18,7 +18,7 @@ import {
 } from './draft'
 
 const copy: DraftCopy = { unnamedAttachment: (position) => `Attachment ${position}`, untitledThread: '(no subject)' }
-const bescheid = part({ name: 'Bescheid.pdf', suggestion: { folderId: null, folderPath: 'Behörde/Bescheide', newFolder: false, documentType: 'Bescheid', reason: 'MA 37' } })
+const permitDecision = part({ name: 'Bescheid.pdf', suggestion: { folderId: null, folderPath: 'Behörde/Bescheide', newFolder: false, documentType: 'Bescheid', reason: 'MA 37' } })
 const message = messagePart({ id: '11111111-1111-4111-8111-111111111111' })
 
 describe('targetForPath', () => {
@@ -31,7 +31,7 @@ describe('targetForPath', () => {
 
 describe('initialDraft', () => {
   it('takes Piloti’s suggestion and the pre-selected thread', () => {
-    const view = mail({ parts: [message, bescheid] })
+    const view = mail({ parts: [message, permitDecision] })
     const draft = initialDraft(view, FOLDERS, copy)
     expect(draft.message).toMatchObject({ checked: true, target: { kind: 'append', threadId: view.threadCandidates[0].threadId } })
     expect(draft.attachments[0]).toMatchObject({
@@ -67,11 +67,11 @@ describe('initialDraft', () => {
 
 describe('edits', () => {
   it('a field stops being Piloti’s once the person gives it another value', () => {
-    const view = mail({ parts: [message, bescheid] })
+    const view = mail({ parts: [message, permitDecision] })
     const draft = initialDraft(view, FOLDERS, copy)
-    const same = updateAttachment(draft, bescheid.id, { name: 'Bescheid.pdf', documentType: 'Bescheid' })
+    const same = updateAttachment(draft, permitDecision.id, { name: 'Bescheid.pdf', documentType: 'Bescheid' })
     expect(same.attachments[0].suggested).toEqual({ folder: true, name: false, documentType: true })
-    const edited = updateAttachment(draft, bescheid.id, { documentType: 'Gutachten' })
+    const edited = updateAttachment(draft, permitDecision.id, { documentType: 'Gutachten' })
     expect(edited.attachments[0].suggested.documentType).toBe(false)
   })
 
@@ -85,13 +85,13 @@ describe('edits', () => {
 
 describe('draftSummary', () => {
   it('counts what will be filed and names the thread', () => {
-    const view = mail({ parts: [message, bescheid] })
+    const view = mail({ parts: [message, permitDecision] })
     const summary = draftSummary(view, initialDraft(view, FOLDERS, copy))
     expect(summary).toMatchObject({ files: 1, text: true, thread: { name: 'Stellplatznachweis', nextVersion: 4 }, originalErased: false, blockers: [] })
   })
 
   it('says the original is erased when the text stays out (D6)', () => {
-    const view = mail({ parts: [message, bescheid] })
+    const view = mail({ parts: [message, permitDecision] })
     const draft = updateMessage(initialDraft(view, FOLDERS, copy), { checked: false })
     expect(draftSummary(view, draft)).toMatchObject({ text: false, originalErased: true })
   })
@@ -122,11 +122,11 @@ describe('decisionOf', () => {
   it('names only the checked parts, with the folder as id or path', () => {
     const fotos = part({ name: 'f.jpg', suggestion: { folderId: null, folderPath: 'Fotos', newFolder: true, documentType: null, reason: 'x' } })
     const unsuggested = part({ name: 'x.pdf' })
-    const view = mail({ parts: [message, bescheid, fotos, unsuggested] })
+    const view = mail({ parts: [message, permitDecision, fotos, unsuggested] })
     const draft = updateAttachment(initialDraft(view, FOLDERS, copy), unsuggested.id, { checked: false })
     const decision = decisionOf(view, draft)
     expect(decision.parts).toEqual([
-      { partId: bescheid.id, folderId: FOLDERS[1].id, newFolderPath: null, name: 'Bescheid.pdf', documentType: 'Bescheid' },
+      { partId: permitDecision.id, folderId: FOLDERS[1].id, newFolderPath: null, name: 'Bescheid.pdf', documentType: 'Bescheid' },
       { partId: fotos.id, folderId: null, newFolderPath: 'Fotos', name: 'f.jpg' },
     ])
     expect(decision.message).toEqual({ partId: message.id, text: 'full', thread: { action: 'append', mailThreadId: view.threadCandidates[0].threadId } })
