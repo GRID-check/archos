@@ -154,6 +154,7 @@ Line 3`
       expect(container.querySelector('.rounded-tr-\\[4px\\]')).toBeInTheDocument()
       expect(container.querySelector('.bg-card')).toBeInTheDocument()
       expect(screen.getByTestId('message-author')).toHaveClass('flex-row-reverse')
+      expect(container.querySelector('.max-w-\\[85\\%\\]')).toBeNull()
     })
 
     test('side="start" mirrors the bubble for the other party of a two-party thread', () => {
@@ -170,6 +171,8 @@ Line 3`
       expect(container.querySelector('.bg-muted')).toBeInTheDocument()
       expect(screen.getByTestId('message-author')).not.toHaveClass('flex-row-reverse')
       expect(screen.getByRole('button', { name: /copy/i })).toHaveClass('left-2')
+      // A two-party thread leaves room on the other side, so the sides read on a phone.
+      expect(container.querySelector('.max-w-\\[85\\%\\]')).toBeInTheDocument()
     })
 
     test('a grouped message repeats no header and stays attributable to a screen reader', () => {

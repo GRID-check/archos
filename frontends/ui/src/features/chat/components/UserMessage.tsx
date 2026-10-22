@@ -130,8 +130,10 @@ export interface UserMessageProps {
    * Which side of the column the attributed bubble sits on. `'end'` (the
    * default) is every human in the Piloti chat. `'start'` is the other party of a
    * two-party conversation (the team in a feedback thread): left-aligned,
-   * mirrored, on the muted surface. Never passed in the Piloti chat; ignored
-   * without `author`.
+   * mirrored, on the muted surface. Passing `side` at all marks a two-party
+   * thread: both sides' bubbles then stop at 85% of the column, so the two
+   * sides still read on a phone, where a 400px bubble is the whole width.
+   * Never passed in the Piloti chat; ignored without `author`.
    */
   side?: 'end' | 'start'
 }
@@ -146,7 +148,7 @@ export const UserMessage: FC<UserMessageProps> = ({
   grouped = false,
   mentions,
   currentUserId,
-  side = 'end',
+  side,
 }) => {
   const t = useTranslations('chat')
   const swap = useIconSwapTransition()
@@ -236,6 +238,7 @@ export const UserMessage: FC<UserMessageProps> = ({
   // ── Shared thread: the same bubble, in the same column, now attributed ──────
   const isYou = author.isYou === true
   const start = side === 'start'
+  const twoParty = side !== undefined
 
   return (
     <div
@@ -248,7 +251,7 @@ export const UserMessage: FC<UserMessageProps> = ({
         grouped ? '-mt-2' : 'mt-1'
       )}
       data-shared-author={author.userId ?? 'unknown'}
-      data-side={side}
+      data-side={side ?? 'end'}
     >
       <MessageAuthor
         userId={author.userId}
@@ -257,7 +260,7 @@ export const UserMessage: FC<UserMessageProps> = ({
         isYou={isYou}
         timestamp={timestamp}
         grouped={grouped}
-        side={side}
+        side={side ?? 'end'}
         className="mb-1.5"
       />
 
@@ -272,6 +275,7 @@ export const UserMessage: FC<UserMessageProps> = ({
           // The notch points at the header, on whichever side the bubble sits;
           // the other party of a two-party thread speaks on the muted surface.
           start ? 'rounded-tl-[4px] bg-muted' : 'rounded-tr-[4px] bg-card',
+          twoParty && 'max-w-[85%]',
           // Room for the copy control, which is 44px and ALWAYS VISIBLE on a
           // coarse pointer (see COPY_BUTTON_CLASS). On a mouse it fades in over
           // the text and that is fine — it is only there while the cursor is —
