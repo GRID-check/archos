@@ -62,11 +62,15 @@ DROP TRIGGER IF EXISTS "inbound_mail_decisions_guard" ON "inbound_mail_decisions
 --> statement-breakpoint
 DROP TRIGGER IF EXISTS "inbound_mail_parts_decision_guard" ON "inbound_mail_parts";
 --> statement-breakpoint
+DROP TRIGGER IF EXISTS "inbound_mail_parts_document_guard" ON "inbound_mail_parts";
+--> statement-breakpoint
 DROP FUNCTION IF EXISTS grid_refuse_held_project_row_delete();
 --> statement-breakpoint
 DROP FUNCTION IF EXISTS grid_inbound_mail_decisions_guard();
 --> statement-breakpoint
 DROP FUNCTION IF EXISTS grid_inbound_mail_parts_decision_guard();
+--> statement-breakpoint
+DROP FUNCTION IF EXISTS grid_inbound_mail_parts_document_guard();
 --> statement-breakpoint
 DROP FUNCTION IF EXISTS grid_mail_thread_entry_attachments_guard();
 --> statement-breakpoint

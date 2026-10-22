@@ -1096,6 +1096,27 @@ CREATE TRIGGER "inbound_mail_parts_decision_guard"
   BEFORE INSERT OR UPDATE OF "decision_id" ON "inbound_mail_parts"
   FOR EACH ROW EXECUTE FUNCTION grid_inbound_mail_parts_decision_guard();
 --> statement-breakpoint
+-- A filed part's Fassung goes with its document. Deleting the document sets
+-- `document_id` NULL first (its key), and from then on the composite key to the
+-- Fassung is MATCH SIMPLE-unchecked, so that key's own SET NULL never fires and
+-- the part would keep a dangling `document_version_id`. The guard clears it,
+-- as `grid_mail_thread_entry_attachments_guard` does for D36's rows.
+CREATE OR REPLACE FUNCTION grid_inbound_mail_parts_document_guard() RETURNS trigger
+  LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.document_id IS NULL THEN
+    NEW.document_version_id := NULL;
+  END IF;
+  RETURN NEW;
+END
+$$;
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "inbound_mail_parts_document_guard" ON "inbound_mail_parts";
+--> statement-breakpoint
+CREATE TRIGGER "inbound_mail_parts_document_guard"
+  BEFORE UPDATE OF "document_id" ON "inbound_mail_parts"
+  FOR EACH ROW EXECUTE FUNCTION grid_inbound_mail_parts_document_guard();
+--> statement-breakpoint
 -- The decisions' three rules no CHECK can state, one per operation:
 --
 --   INSERT  a thread is chosen for the mail's text and nothing else, and a

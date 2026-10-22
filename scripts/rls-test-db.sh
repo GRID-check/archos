@@ -2474,6 +2474,9 @@ INSERT INTO mail_thread_entry_attachments (id, organization_id, project_id, entr
   ('fa200000-0000-4000-8000-000000000184', 'org_0184_a', 'a0000000-0000-4000-8000-000000000184', 'e1000000-0000-4000-8000-000000000184', 2, 'Rechnung.docm', 'not_filed', 'pending', NULL, NULL, NULL, NULL),
   ('fa300000-0000-4000-8000-000000000184', 'org_0184_a', 'c0000000-0000-4000-8000-000000000184', 'e3000000-0000-4000-8000-000000000184', 1, 'Gehalten.pdf', 'not_filed', 'dismissed', NULL, NULL, NULL, NULL),
   ('fa400000-0000-4000-8000-000000000184', 'org_0184_b', 'b0000000-0000-4000-8000-000000000184', 'e4000000-0000-4000-8000-000000000184', 1, NULL, 'not_filed', 'size', NULL, NULL, NULL, NULL);
+-- The filed part names the Fassung it became, as the filing job records it.
+UPDATE inbound_mail_parts SET document_version_id = 'f1000000-0000-4000-8000-000000000184'
+ WHERE id = '2b000000-0000-4000-8000-000000000184';
 SQL
 ATT184="INSERT INTO mail_thread_entry_attachments (organization_id, project_id, entry_id, position, disposition, not_filed_reason, document_id, document_version_id, section_name, section_folder_path) VALUES ($PA184, 'e1000000-0000-4000-8000-000000000184'"
 refused_in grid_inbound "$ATT184, 1, 'not_filed', 'dismissed', NULL, NULL, NULL, NULL)" "mail_thread_entry_attachments_entry_position_key" "two rows for one attachment"
@@ -2565,8 +2568,11 @@ sql_in grid_inbound <<<"UPDATE legal_holds SET released_at = now() WHERE entity_
 # The document goes: the thread and the filed part lose it, the entries stay
 # until the sweep deletes the thread.
 sql_in grid_inbound <<<"DELETE FROM documents WHERE id = 'd1000000-0000-4000-8000-000000000184';"
-check_in grid_inbound "SELECT (SELECT coalesce(document_id::text, 'gone') FROM mail_threads WHERE id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT state || ':' || coalesce(document_id::text, 'gone') FROM inbound_mail_parts WHERE id = '2b000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_entries WHERE thread_id = 'ea000000-0000-4000-8000-000000000184')" \
-  "gone,filed:gone,1" "0186: deleting the document keeps the filed part and the entries until the sweep"
+# The part's Fassung goes too: once its document key has set `document_id`
+# NULL, the composite key to the Fassung is no longer checked and its own SET
+# NULL never fires, so the parts' guard clears the Fassung itself.
+check_in grid_inbound "SELECT (SELECT coalesce(document_id::text, 'gone') FROM mail_threads WHERE id = 'ea000000-0000-4000-8000-000000000184') || ',' || (SELECT state || ':' || coalesce(document_id::text, 'gone') || ':' || coalesce(document_version_id::text, 'gone') FROM inbound_mail_parts WHERE id = '2b000000-0000-4000-8000-000000000184') || ',' || (SELECT count(*) FROM mail_thread_entries WHERE thread_id = 'ea000000-0000-4000-8000-000000000184')" \
+  "gone,filed:gone:gone,1" "0186: deleting the document keeps the filed part, without its document or Fassung, and the entries until the sweep"
 check_in grid_inbound "SELECT string_agg(position || ':' || disposition || ':' || coalesce(document_id::text, 'gone') || ':' || coalesce(document_version_id::text, 'gone') || ':' || coalesce(section_name, '-'), ',' ORDER BY position) FROM mail_thread_entry_attachments WHERE entry_id = 'e1000000-0000-4000-8000-000000000184'" \
   "1:filed:gone:gone:S-101.pdf,2:filed:gone:gone:-" "0186: deleting the document keeps the record that it came, and the section's words (D36)"
 # Sweep 9 deletes the thread: it waits for the follower's decision to be audited (RT-S8) ...
@@ -2601,7 +2607,7 @@ SQL
 apply_in grid_inbound 0186_inbound_mail.down.sql
 check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "0" "0186 down drops the nine tables"
 check_in grid_inbound "SELECT string_agg(type, ',') FROM inbox_items WHERE organization_id = 'org_0184_b'" "document.new_revision" "0186 down removes the mail notices and nothing else"
-check_in grid_inbound "SELECT count(*) FROM pg_proc WHERE proname IN ('grid_inbound_mail_decisions_guard', 'grid_inbound_mail_parts_decision_guard', 'grid_refuse_held_project_row_delete', 'grid_mail_thread_entry_attachments_guard')" "0" "0186 down drops its functions"
+check_in grid_inbound "SELECT count(*) FROM pg_proc WHERE proname IN ('grid_inbound_mail_decisions_guard', 'grid_inbound_mail_parts_decision_guard', 'grid_inbound_mail_parts_document_guard', 'grid_refuse_held_project_row_delete', 'grid_mail_thread_entry_attachments_guard')" "0" "0186 down drops its functions"
 check_in grid_inbound "SELECT count(*) FROM documents WHERE id = 'd3000000-0000-4000-8000-000000000184'" "1" "0186 down leaves the documents"
 apply_in grid_inbound 0186_inbound_mail.sql
 check_in grid_inbound "SELECT count(*) FROM pg_tables WHERE tablename LIKE 'inbound\_mail%' OR tablename LIKE 'mail\_thread%'" "9" "0186 applies again after its down"
