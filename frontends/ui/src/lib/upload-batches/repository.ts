@@ -14,6 +14,7 @@ import {
   type Document,
   type NewUploadBatch,
   type UploadBatch,
+  type UploadBatchEffects,
   type UploadBatchExclusion,
 } from '@/lib/db/schema'
 import { IN_FLIGHT_DOCUMENT_STATUSES, columnStatuses } from '@/lib/documents/document-status'
@@ -211,28 +212,34 @@ export async function batchIdsOfDocuments(organizationId: string, documentIds: r
   return rows.map((row) => row.batchId).filter((id): id is string => id !== null)
 }
 
+/** What a settled document's batch decides about the Fassung it brought (migration 0183). */
+export type BatchSettleEffects = Pick<UploadBatchEffects, 'revisionNotice' | 'runsDocumentCheck'>
+
 /**
- * Which of these batches announce a new Fassung to mark participants only
- * (`revision_notice = 'marks_only'`, migration 0183). A batch not returned
- * announces to everyone, as a person's upload does. Read by
- * `announceSettledVersions` for the documents that just came to rest.
+ * The effects of these batches that apply per settled document: who hears
+ * about a new Fassung (`revision_notice`) and whether Piloti checks it
+ * (`runs_document_check`, ADR-0130). A batch not returned (another
+ * organization's, or gone) is a person's upload: callers default to
+ * `DEFAULT_UPLOAD_BATCH_EFFECTS`. Read by `announceSettledVersions` for the
+ * documents that just came to rest.
  */
-export async function findMarksOnlyBatchIds(organizationId: string, batchIds: readonly string[]): Promise<Set<string>> {
-  if (batchIds.length === 0) return new Set()
+export async function findBatchSettleEffects(
+  organizationId: string,
+  batchIds: readonly string[]
+): Promise<Map<string, BatchSettleEffects>> {
+  if (batchIds.length === 0) return new Map()
   const db = getDb()
   const rows = await withTenant({ organizationId }, () =>
     db
-      .select({ id: uploadBatches.id })
+      .select({
+        id: uploadBatches.id,
+        revisionNotice: uploadBatches.revisionNotice,
+        runsDocumentCheck: uploadBatches.runsDocumentCheck,
+      })
       .from(uploadBatches)
-      .where(
-        and(
-          eq(uploadBatches.organizationId, organizationId),
-          inArray(uploadBatches.id, [...batchIds]),
-          eq(uploadBatches.revisionNotice, 'marks_only')
-        )
-      )
+      .where(and(eq(uploadBatches.organizationId, organizationId), inArray(uploadBatches.id, [...batchIds])))
   )
-  return new Set(rows.map((row) => row.id))
+  return new Map(rows.map(({ id, ...effects }) => [id, effects]))
 }
 
 /**

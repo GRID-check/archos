@@ -14,8 +14,8 @@ import { projects } from './projects'
  * machine and how many files each kept (ADR-0086) — never their names, which
  * did not reach the server as files and may themselves be personal data.
  *
- * The four effect columns (migration 0183) say what settling the batch sets
- * off. A person's upload sets off all four; a server-side caller filing on a
+ * The five effect columns (migration 0183) say what settling the batch sets
+ * off. A person's upload sets off all five; a server-side caller filing on a
  * person's decision (an E-Mail-Verlauf's next Fassung) opens it quieter. See
  * {@link UploadBatchEffects}.
  */
@@ -46,13 +46,17 @@ export type UploadBatchRevisionNotice = (typeof UPLOAD_BATCH_REVISION_NOTICES)[n
  *   content review at the settle (`lib/filing/trigger.ts`), each a model call;
  * - `startsIntake`: the reading of a project whose intake is open
  *   (`lib/project-intake/trigger.ts`, ADR-0111);
- * - `revisionNotice`: who `document.new_revision` reaches.
+ * - `revisionNotice`: who `document.new_revision` reaches;
+ * - `runsDocumentCheck`: Piloti's check of each settled project document
+ *   against the project's others, where the office switched it on
+ *   (`lib/documents/revision-notify.ts`, ADR-0130), a model call each.
  */
 export interface UploadBatchEffects {
   announcesCompletion: boolean
   reviewsFiling: boolean
   startsIntake: boolean
   revisionNotice: UploadBatchRevisionNotice
+  runsDocumentCheck: boolean
 }
 
 /** Today's upload: everything on, everyone told. The columns' defaults. */
@@ -61,6 +65,7 @@ export const DEFAULT_UPLOAD_BATCH_EFFECTS: Readonly<UploadBatchEffects> = Object
   reviewsFiling: true,
   startsIntake: true,
   revisionNotice: 'all',
+  runsDocumentCheck: true,
 })
 
 export const uploadBatches = pgTable(
@@ -86,6 +91,7 @@ export const uploadBatches = pgTable(
     reviewsFiling: boolean('reviews_filing').notNull().default(true),
     startsIntake: boolean('starts_intake').notNull().default(true),
     revisionNotice: text('revision_notice').$type<UploadBatchRevisionNotice>().notNull().default('all'),
+    runsDocumentCheck: boolean('runs_document_check').notNull().default(true),
     createdAt: timestamp('created_at', { withTimezone: true, precision: 3 }).notNull().defaultNow(),
   },
   (table) => ({

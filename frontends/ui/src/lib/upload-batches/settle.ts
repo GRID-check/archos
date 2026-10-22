@@ -82,7 +82,8 @@ export async function onDocumentsSettled(organizationId: string, settled: readon
  *
  * What a completion sets off is the batch's own (`UploadBatchEffects`,
  * migration 0183): a batch opened with `announcesCompletion` off tells nobody
- * here, and the intake and filing triggers read their own switch. All four
+ * here, and the intake and filing triggers read their own switch (the revision
+ * notice and the document check read theirs per document). All five
  * are on unless a server-side caller opened the batch quiet.
  */
 export async function settleUploadBatches(organizationId: string, batchIds: readonly string[]): Promise<UploadBatch[]> {

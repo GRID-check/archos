@@ -20,7 +20,7 @@ vi.mock('./reconcile-status', () => ({ readRevisionLinkNames: vi.fn(), refreshCo
 vi.mock('./version-repository', () => ({ findPublishedVersion: vi.fn(), findPreviousVersion: vi.fn() }))
 vi.mock('@/lib/revision-notice/queue', () => ({ queueRevisionNotice: vi.fn().mockResolvedValue(true) }))
 vi.mock('@/lib/document-check/queue', () => ({ queueDocumentCheck: vi.fn().mockResolvedValue(true) }))
-vi.mock('@/lib/upload-batches/repository', () => ({ findMarksOnlyBatchIds: vi.fn() }))
+vi.mock('@/lib/upload-batches/repository', () => ({ findBatchSettleEffects: vi.fn() }))
 vi.mock('./revision-announcement-repository', () => ({
   claimRevisionAnnouncement: vi.fn(),
   releaseRevisionAnnouncement: vi.fn(),
@@ -36,7 +36,7 @@ import type { DirectoryPerson } from '@/lib/sharing/types'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { queueDocumentCheck } from '@/lib/document-check/queue'
 import { queueRevisionNotice } from '@/lib/revision-notice/queue'
-import { findMarksOnlyBatchIds } from '@/lib/upload-batches/repository'
+import { findBatchSettleEffects } from '@/lib/upload-batches/repository'
 import { SCREENED_ONLY } from './document-reader'
 import { claimRevisionAnnouncement, releaseRevisionAnnouncement } from './revision-announcement-repository'
 import {
@@ -145,8 +145,8 @@ beforeEach(() => {
   vi.mocked(claimRevisionAnnouncement).mockResolvedValue(true)
   vi.mocked(releaseRevisionAnnouncement).mockReset()
   vi.mocked(releaseRevisionAnnouncement).mockResolvedValue(undefined)
-  vi.mocked(findMarksOnlyBatchIds).mockReset()
-  vi.mocked(findMarksOnlyBatchIds).mockResolvedValue(new Set())
+  vi.mocked(findBatchSettleEffects).mockReset()
+  vi.mocked(findBatchSettleEffects).mockResolvedValue(new Map())
 })
 
 describe('revisionRecipients', () => {
@@ -606,7 +606,12 @@ describe('announceSettledVersions', () => {
     vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
       id === 'doc-a' ? doc({ id: 'doc-a', uploadBatchId: 'batch-quiet' }) : doc({ id, uploadBatchId: 'batch-loud' }),
     )
-    vi.mocked(findMarksOnlyBatchIds).mockResolvedValue(new Set(['batch-quiet']))
+    vi.mocked(findBatchSettleEffects).mockResolvedValue(
+      new Map([
+        ['batch-quiet', { revisionNotice: 'marks_only', runsDocumentCheck: true }],
+        ['batch-loud', { revisionNotice: 'all', runsDocumentCheck: true }],
+      ])
+    )
     vi.mocked(findPublishedVersion).mockResolvedValue(version({}))
     vi.mocked(findPreviousVersion).mockResolvedValue(version({ id: 'v1', versionNumber: 1, createdBy: 'first-uploader' }))
     vi.mocked(listDocumentAnnotations).mockImplementation(async (_org, documentId) =>
@@ -615,7 +620,7 @@ describe('announceSettledVersions', () => {
 
     await announceSettledVersions('org-1', ['doc-a', 'doc-c'])
 
-    expect(findMarksOnlyBatchIds).toHaveBeenCalledWith('org-1', ['batch-quiet', 'batch-loud'])
+    expect(findBatchSettleEffects).toHaveBeenCalledWith('org-1', ['batch-quiet', 'batch-loud'])
     const byDocument = (id: string) => emitted().filter((item) => item.resourceId === id).map((item) => item.recipientUserId).sort()
     expect(byDocument('doc-a')).toEqual(['marker'])
     expect(byDocument('doc-c')).toEqual(['first-uploader', 'uploader'])
@@ -626,7 +631,35 @@ describe('announceSettledVersions', () => {
 
     await announceSettledVersions('org-1', ['doc-a'])
 
-    expect(findMarksOnlyBatchIds).not.toHaveBeenCalled()
+    expect(findBatchSettleEffects).not.toHaveBeenCalled()
+  })
+
+  // Migration 0183 `runs_document_check`: the next Fassung of an E-Mail-Verlauf
+  // is filed by a batch that turns the check off; a mail's attachments keep it.
+  it('checks only the documents whose batch keeps the document check', async () => {
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
+      doc({ id, uploadBatchId: id === 'thread' ? 'batch-thread' : 'batch-attachments' }),
+    )
+    vi.mocked(findBatchSettleEffects).mockResolvedValue(
+      new Map([
+        ['batch-thread', { revisionNotice: 'marks_only', runsDocumentCheck: false }],
+        ['batch-attachments', { revisionNotice: 'all', runsDocumentCheck: true }],
+      ])
+    )
+    vi.mocked(findPublishedVersion).mockResolvedValue(version({ versionNumber: 1 }))
+
+    await announceSettledVersions('org-1', ['thread', 'drawing'])
+
+    expect(vi.mocked(queueDocumentCheck).mock.calls.map(([input]) => input.documentId)).toEqual(['drawing'])
+  })
+
+  it('checks a document whose batch is not found, as a person\'s upload', async () => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(doc({ id: 'doc-a', uploadBatchId: 'batch-gone' }))
+    vi.mocked(findPublishedVersion).mockResolvedValue(version({ versionNumber: 1 }))
+
+    await announceSettledVersions('org-1', ['doc-a'])
+
+    expect(queueDocumentCheck).toHaveBeenCalledTimes(1)
   })
 
   it('says nothing for a first version', async () => {

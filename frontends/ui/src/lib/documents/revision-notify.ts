@@ -65,8 +65,8 @@ import { documentCheckMaxBatch } from '@/lib/document-check/check'
 import { queueDocumentCheck } from '@/lib/document-check/queue'
 import { listDocumentAnnotations, type AnnotationRecord } from '@/lib/annotations/repository'
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
-import type { Document, UploadBatchRevisionNotice } from '@/lib/db/schema'
-import { findMarksOnlyBatchIds } from '@/lib/upload-batches/repository'
+import { DEFAULT_UPLOAD_BATCH_EFFECTS, type Document, type UploadBatchRevisionNotice } from '@/lib/db/schema'
+import { findBatchSettleEffects, type BatchSettleEffects } from '@/lib/upload-batches/repository'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { recipientsHoldingGroup } from '@/lib/inbox/repository'
 import { emitInboxItems } from '@/lib/inbox/service'
@@ -414,10 +414,12 @@ async function queueSettledDocumentCheck(organizationId: string, document: Docum
  * neither does a Fassung announced before: a re-read settles the document
  * again, and {@link notifyNewRevision} announces each Fassung once.
  *
- * Who is told is the batch's (`revision_notice`, migration 0183): a document
- * whose batch says `marks_only` reaches the people on its open marks alone. A
- * document carries the batch of its newest upload, which is the upload whose
- * Fassung settles here.
+ * Who is told, and whether Piloti checks it, is the batch's (migration 0183):
+ * a document whose batch says `revision_notice = 'marks_only'` reaches the
+ * people on its open marks alone, and one whose batch has
+ * `runs_document_check` off is not checked (the next Fassung of an
+ * E-Mail-Verlauf is no drawing to check). A document carries the batch of its
+ * newest upload, which is the upload whose Fassung settles here.
  *
  * Bounded by {@link SETTLE_LOOKUP_LIMIT}. The collection listings are read
  * fresh once per collection, because the cached one may predate the link.
@@ -430,19 +432,27 @@ export async function announceSettledVersions(organizationId: string, documentId
   }
   const collections = new Set(settled.filter((document) => collectionFileRef(document)).map((d) => d.collectionName))
   await Promise.all([...collections].map((collection) => refreshCollectionFiles(collection).catch(() => undefined)))
-  const marksOnly = await marksOnlyBatchesOf(organizationId, settled)
+  const effectsOf = await settleEffectsOf(organizationId, settled)
   // A bulk import is not checked file by file: that is not what a colleague does.
   const checkBatch = settled.length <= documentCheckMaxBatch()
   for (const document of settled) {
-    const audience = document.uploadBatchId && marksOnly.has(document.uploadBatchId) ? 'marks_only' : 'all'
-    await announceSettledVersion(organizationId, document, audience)
-    await announceSettledLinks(organizationId, document, audience)
-    if (checkBatch) await queueSettledDocumentCheck(organizationId, document)
+    const effects = effectsOf(document)
+    await announceSettledVersion(organizationId, document, effects.revisionNotice)
+    await announceSettledLinks(organizationId, document, effects.revisionNotice)
+    if (checkBatch && effects.runsDocumentCheck) await queueSettledDocumentCheck(organizationId, document)
   }
 }
 
-/** The batches among these documents' that announce to mark participants only; none asked when no document has one. */
-async function marksOnlyBatchesOf(organizationId: string, documents: readonly Document[]): Promise<Set<string>> {
+/**
+ * The batch effects each document settles under, a person's upload's where it
+ * carries no batch or its batch is not found; no batch is asked when no
+ * document carries one.
+ */
+async function settleEffectsOf(
+  organizationId: string,
+  documents: readonly Document[]
+): Promise<(document: Document) => BatchSettleEffects> {
   const batchIds = new Set(documents.flatMap((document) => (document.uploadBatchId ? [document.uploadBatchId] : [])))
-  return batchIds.size === 0 ? new Set() : findMarksOnlyBatchIds(organizationId, [...batchIds])
+  const byBatch = batchIds.size === 0 ? new Map<string, BatchSettleEffects>() : await findBatchSettleEffects(organizationId, [...batchIds])
+  return (document) => (document.uploadBatchId && byBatch.get(document.uploadBatchId)) || DEFAULT_UPLOAD_BATCH_EFFECTS
 }

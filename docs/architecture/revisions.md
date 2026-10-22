@@ -365,16 +365,20 @@ name, each labelled as what it is.
   the column. The `upload` transition's own announcement (`lifecycle.ts`)
   carries no audience; for a person's upload it says nothing, because the new
   bytes are held until screened, and the settle hook is the one that tells.
-  Piloti's notice of a cross-name Fassung and the document check
-  (ADR-0130) are not people being told and do not read the column.
+  Piloti's notice of a cross-name Fassung is not people being told and does
+  not read the column. The document check (ADR-0130) reads its own,
+  `runs_document_check`: off, no document of the batch is checked, so a
+  conversation's next Fassung buys no model call, while a mail's attachments
+  keep the check a filed drawing is worth.
 
-  | Upload batch | `upload.completed` | Filing reviews | Intake reading | `document.new_revision` |
-  |---|---|---|---|---|
-  | A person's upload (default) | yes | yes | yes | `all` |
-  | `announces_completion` off | no | | | |
-  | `reviews_filing` off | | no | | |
-  | `starts_intake` off | | | no | |
-  | `revision_notice = 'marks_only'` | | | | mark participants only |
+  | Upload batch | `upload.completed` | Filing reviews | Intake reading | `document.new_revision` | Document check |
+  |---|---|---|---|---|---|
+  | A person's upload (default) | yes | yes | yes | `all` | yes, where the office has it on |
+  | `announces_completion` off | no | | | | |
+  | `reviews_filing` off | | no | | | |
+  | `starts_intake` off | | | no | | |
+  | `revision_notice = 'marks_only'` | | | | mark participants only | |
+  | `runs_document_check` off | | | | | no |
 - **What.** The first line of the change summary, at most 200 characters, and
   only when the summary was written against the older document of THIS
   notification (its basis). A summary against the earlier upload under the

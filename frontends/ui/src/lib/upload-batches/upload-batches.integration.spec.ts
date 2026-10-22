@@ -368,6 +368,7 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
       reviewsFiling: true,
       startsIntake: true,
       revisionNotice: 'all',
+      runsDocumentCheck: true,
     })
     const quiet = '7c1f0f8e-0b6a-4f41-9d3b-5a0b2f9e1a83'
     await repo.insertUploadBatch({
@@ -381,16 +382,23 @@ describe.skipIf(!url)('upload batches against Postgres', () => {
       reviewsFiling: false,
       startsIntake: false,
       revisionNotice: 'marks_only',
+      runsDocumentCheck: false,
     })
     expect(await repo.findUploadBatch(ORG, quiet)).toMatchObject({
       announcesCompletion: false,
       reviewsFiling: false,
       startsIntake: false,
       revisionNotice: 'marks_only',
+      runsDocumentCheck: false,
     })
-    expect([...(await repo.findMarksOnlyBatchIds(ORG, [BATCH, quiet]))]).toEqual([quiet])
-    // Another organization learns nothing about the batch, its notice included.
-    expect([...(await repo.findMarksOnlyBatchIds(OTHER_ORG, [quiet]))]).toEqual([])
+    expect(await repo.findBatchSettleEffects(ORG, [BATCH, quiet])).toEqual(
+      new Map([
+        [BATCH, { revisionNotice: 'all', runsDocumentCheck: true }],
+        [quiet, { revisionNotice: 'marks_only', runsDocumentCheck: false }],
+      ])
+    )
+    // Another organization learns nothing about the batch, its effects included.
+    expect(await repo.findBatchSettleEffects(OTHER_ORG, [quiet])).toEqual(new Map())
   })
 
   it('refuses an unknown revision notice at the CHECK', async () => {
