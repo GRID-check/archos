@@ -3692,6 +3692,10 @@
     "de": "Wenn die bisherigen Projekte des Büros nichts Vergleichbares enthalten, sagt Piloti das jetzt. Bisher meldet es, dass die Suche nicht verfügbar ist, und bittet Sie, es erneut zu versuchen."
   },
   {
+    "en": "When the office's usage budget runs out while Piloti is reading a new project's documents, the reading now says the budget is used up instead of reporting an error.",
+    "de": "Wenn das Nutzungsbudget des Büros aufgebraucht ist, während Piloti die Dokumente eines neuen Projekts liest, wird nun angezeigt, dass das Budget aufgebraucht ist, statt einen Fehler zu melden."
+  },
+  {
     "en": "When the on-screen keyboard opens, the app now makes room for it instead of letting it cover the composer, so you can see what you are typing.",
     "de": "Wenn sich die Bildschirmtastatur öffnet, macht die App jetzt Platz für sie, statt das Eingabefeld zu verdecken – so sehen Sie, was Sie eingeben."
   },

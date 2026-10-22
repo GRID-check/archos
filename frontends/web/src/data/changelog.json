@@ -329,6 +329,10 @@
               "de": "Wenn Ihr Büro ein Modell ausgewählt hat, das vor jeder Antwort immer nachdenkt, erscheinen jetzt unter jeder Antwort Folgefragen. Bisher wurden diese Vorschläge bei solchen Modellen nicht angezeigt."
             },
             {
+              "en": "When the office's usage budget runs out while Piloti is reading a new project's documents, the reading now says the budget is used up instead of reporting an error.",
+              "de": "Wenn das Nutzungsbudget des Büros aufgebraucht ist, während Piloti die Dokumente eines neuen Projekts liest, wird nun angezeigt, dass das Budget aufgebraucht ist, statt einen Fehler zu melden."
+            },
+            {
               "en": "Going back in the browser returns a page to where you had scrolled it, instead of keeping the scroll position of the page you just left.",
               "de": "Wenn Sie im Browser zurückgehen, springt die Seite zu ihrer vorherigen Scrollposition zurück, statt die Scrollposition der gerade verlassenen Seite beizubehalten."
             },
