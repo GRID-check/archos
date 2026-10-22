@@ -63,6 +63,7 @@ is not the turn as it ran before the decisions.
 from __future__ import annotations
 
 import logging
+import re
 from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -479,7 +480,7 @@ def prefetch_calls(
     query = prefetch_query(question)
     if not query:
         return []
-    calls = _corpus_prefetch(decisions, query, focus_file_name)
+    calls = _corpus_prefetch(decisions, query, focus_file_name, question)
     if reference_projects > 0 and decisions.wants_reference:
         calls.append(
             {
@@ -490,7 +491,39 @@ def prefetch_calls(
     return calls
 
 
-def _corpus_prefetch(decisions: TurnDecisions, query: str, focus_file_name: str | None) -> list[dict[str, Any]]:
+#: At most this many literal searches ride beside the meaning search in round 0.
+MAX_LITERAL_PREFETCH = 2
+
+#: The shelf an exact prefetch reads, per chosen corpus. The legal base corpus has no literal path here.
+_LITERAL_SHELF = {"projekt": "project", "buero": "office"}
+
+_QUOTED = re.compile(r"[„“\"»]([^„“”\"«»\n]{2,60})[“”\"«]|(?<!\w)'([^'\n]{2,60})'(?!\w)")
+_CODE = re.compile(
+    r"(?<![\w-])(?:[A-Za-z]{1,3}[-_]\d{1,4}(?:[-_]\d{1,3})?|\d{2,3}-\d{2,4})(?![\w-])"
+    r"|(?<![\w.])[\w-]+\.(?:pdf|docx?|xlsx?|dwg|dxf|ifc|png|jpe?g|txt|csv)\b",
+    re.IGNORECASE,
+)
+
+
+def literal_terms(question: str) -> list[str]:
+    """The quoted terms and document or plan codes the question carries, in order, at most two.
+
+    A quoted word or a code like ``A-101``, ``EG_02``, ``04-112`` or ``Grundriss_EG.pdf`` is a
+    string the reader expects found where it is written, which a meaning search ranks poorly.
+    """
+    found = [m.group(1) or m.group(2) for m in _QUOTED.finditer(question or "")]
+    found += [m.group(0) for m in _CODE.finditer(question or "")]
+    terms: list[str] = []
+    for raw in found:
+        term = " ".join(raw.split()).strip()
+        if len(term) >= 2 and term.casefold() not in {t.casefold() for t in terms}:
+            terms.append(term)
+    return terms[:MAX_LITERAL_PREFETCH]
+
+
+def _corpus_prefetch(
+    decisions: TurnDecisions, query: str, focus_file_name: str | None, question: str
+) -> list[dict[str, Any]]:
     """The chosen corpus's own search, and the chosen families' overviews for a law question."""
     if decisions.corpus not in {"baurecht", "projekt", "buero"} or decisions.corpus_p < CORPUS_THRESHOLD:
         return []
@@ -500,6 +533,12 @@ def _corpus_prefetch(decisions: TurnDecisions, query: str, focus_file_name: str 
     if focus_file_name and decisions.corpus in {"projekt", "buero"}:
         args["file_name"] = focus_file_name
     calls: list[dict[str, Any]] = [{"name": KNOWLEDGE_SEARCH, "args": args}]
+    shelf = _LITERAL_SHELF.get(decisions.corpus)
+    if shelf:
+        calls.extend(
+            {"name": KNOWLEDGE_SEARCH, "args": {"query": term, "match": "exact", "shelf": shelf}}
+            for term in literal_terms(question)
+        )
     if decisions.corpus == "baurecht" and family_query_number(query) is None:
         calls.extend(
             {"name": KNOWLEDGE_SEARCH, "args": {"query": f"OIB-Richtlinie {key}"}}
