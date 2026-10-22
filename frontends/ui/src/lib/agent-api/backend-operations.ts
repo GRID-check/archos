@@ -122,7 +122,7 @@ const ENTRIES = [
       'entry per document, its best passage and how many passages of the ranked pool it held, for which documents deal with a topic. ' +
       'A query that names only a guideline (`OIB 2`) returns every part of it with its ' +
       'scope and outline. Pass `conclusion`: one sentence on what you know and what you still need (empty on the first call). ' +
-      'Returns up to the platform’s configured number of excerpts (16 by default; the header counts them) across several documents, each with its source, citation key, document type, folder and page. ' +
+      'Returns up to 16 excerpts by default (the header counts them), each with source, citation key, document type, folder and page. ' +
       'A `Folder:` line after them is a folder whose summary matches: a pointer to look inside with files-list or `folder`, never a source. ' +
       'A hit marked as a Piloti document is knowledge the office approved, never a source for a normative value. When you know ' +
       'which document holds the answer, call passage-read instead; for Austrian law itself call law-lookup. Never invent a ' +
