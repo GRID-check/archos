@@ -53,6 +53,7 @@ import { DoorEventBus, listeningAs } from './door/event-bus'
 import { META_TOOL_ICONS, SERVER_ICONS } from './icons'
 import { META_OUTPUT_SCHEMAS } from './meta-output-schemas'
 import { configuredAppOrigin } from '@/lib/app-origin'
+import { ASK_CREATE, TASKS_EXTENSION, offersAskTasks, registerAskTasks, runAskCreate } from './ask-calls'
 import type { McpCallContext, McpMode } from './telemetry'
 
 export const MODE_HEADER = 'x-piloti-mcp-mode'
@@ -147,14 +148,27 @@ function outputSchemaOf(name: string): { outputSchema?: StandardSchemaWithJSON }
   return schema ? { outputSchema: fromJsonSchema(schema as JsonSchemaInput) } : {}
 }
 
+/**
+ * call-operation. Asking Piloti on the 2026-07-28 era may report progress or
+ * become a task (`ask-calls.ts`); it is no destructive write, so it is never put
+ * to the person first. Every other call goes through `confirmThenRun`.
+ */
 type ToolAnswer = CallToolResult | InputRequiredResult | Promise<CallToolResult | InputRequiredResult>
 
-function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
+function callOperationFor(ctx: McpCallContext, args: unknown, req: ServerContext, era: McpEra): ToolAnswer {
+  const asks = era === 'modern' && typeof args === 'object' && args !== null && (args as { name?: unknown }).name === ASK_CREATE
+  const input = asks ? (args as { input?: unknown }).input : undefined
+  if (asks && (input === undefined || (typeof input === 'object' && input !== null && !Array.isArray(input)))) {
+    return runAskCreate(ctx, (input ?? {}) as OperationInput, req)
+  }
+  return confirmThenRun(ctx, req, catalogCallOf(ctx.principal, args), (runCtx) => callOperationTool(runCtx, args))
+}
+
+function registerMetaTools(server: McpServer, ctx: McpCallContext, era: McpEra): void {
   const handlers: Record<MetaToolName, (args: unknown, req: ServerContext) => ToolAnswer> = {
     'search-operations': (args) => searchOperations(ctx, args),
     'describe-operation': (args) => describeOperation(ctx, args),
-    'call-operation': (args, req) =>
-      confirmThenRun(ctx, req, catalogCallOf(ctx.principal, args), (runCtx) => callOperationTool(runCtx, args)),
+    'call-operation': (args, req) => callOperationFor(ctx, args, req, era),
     'report-missing-operation': (args) => reportMissingOperation(ctx, args),
   }
   for (const [name, tool] of Object.entries(metaToolsFor(ctx.principal)) as [MetaToolName, ReturnType<typeof metaToolsFor>[MetaToolName]][]) {
@@ -180,7 +194,7 @@ function registerMetaTools(server: McpServer, ctx: McpCallContext): void {
   }
 }
 
-function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
+function registerOperationTools(server: McpServer, ctx: McpCallContext, era: McpEra): void {
   for (const op of visibleOperations(ctx.principal)) {
     server.registerTool(
       op.name,
@@ -191,10 +205,12 @@ function registerOperationTools(server: McpServer, ctx: McpCallContext): void {
         annotations: listedAnnotations(annotationsOf(op)),
         ...(ALWAYS_LOAD.has(op.name) ? { _meta: ALWAYS_LOAD_META } : {}),
       },
-      (args: unknown, req: ServerContext) => {
-        const input = (args ?? {}) as OperationInput
-        return confirmThenRun(ctx, req, { operation: op.name, input }, (runCtx) => runOperation(runCtx, op.name, input))
-      },
+      op.name === ASK_CREATE && era === 'modern'
+        ? (args: unknown, req: ServerContext) => runAskCreate(ctx, (args ?? {}) as OperationInput, req)
+        : (args: unknown, req: ServerContext) => {
+            const input = (args ?? {}) as OperationInput
+            return confirmThenRun(ctx, req, { operation: op.name, input }, (runCtx) => runOperation(runCtx, op.name, input))
+          },
     )
   }
   // The Python agent's read tools: flat arguments, read-only, and open-world only where they reach beyond the workspace.
@@ -237,8 +253,11 @@ export type McpEra = 'modern' | 'legacy'
  */
 function capabilitiesFor(ctx: McpCallContext, era: McpEra) {
   const live = era === 'modern' && offersProjectResource(ctx)
+  const tasks = era === 'modern' && offersAskTasks(ctx.principal)
   return {
     tools: { listChanged: false },
+    // The tasks extension, to a caller that may ask Piloti (`ask-calls.ts`).
+    ...(tasks ? { extensions: { [TASKS_EXTENSION]: {} } } : {}),
     ...(offersDoorGuide(ctx)
       ? { prompts: { listChanged: false }, resources: live ? { listChanged: true, subscribe: true } : { listChanged: false } }
       : {}),
@@ -250,7 +269,8 @@ function capabilitiesFor(ctx: McpCallContext, era: McpEra) {
  * 2026-07-28 request can carry a question back to the person (`inputRequired`),
  * so only there is an outside agent's destructive write put to them first
  * (`confirmation.ts`), with `requestState` verified before any handler runs. A
- * 2025-era server is built exactly as before.
+ * 2025-era server is built exactly as before. A modern server also reports a
+ * Piloti ask's progress and may hand it out as a task.
  */
 export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: McpEra = 'legacy'): McpServer {
   const { name, title, instructions } = SERVER_IDENTITY[doorOfPrincipal(principal)]
@@ -263,9 +283,10 @@ export function buildMcpServer(principal: AgentPrincipal, mode: McpMode, era: Mc
     { name, title, version: '1.0.0', icons: SERVER_ICONS, ...(websiteUrl ? { websiteUrl } : {}) },
     confirmation ? { instructions, capabilities, requestState: { verify: confirmation.codec.verify } } : { instructions, capabilities },
   )
-  if (mode === 'tools') registerOperationTools(server, ctx)
-  else registerMetaTools(server, ctx)
+  if (mode === 'tools') registerOperationTools(server, ctx, era)
+  else registerMetaTools(server, ctx, era)
   registerDoorGuide(server, ctx)
+  if (era === 'modern' && offersAskTasks(principal)) registerAskTasks(server, ctx)
   return server
 }
 
@@ -317,11 +338,18 @@ async function serveLegacyAsJson(request: Request, authInfo: AuthInfo | undefine
 }
 
 /**
- * The agent door's MCP handler: 2026-07-28 traffic through the SDK's handler,
- * JSON only; 2025-era traffic (Piloti's own client among it) through
- * {@link serveLegacyAsJson}, so both eras answer JSON to a client that accepts
- * it. The principal and mode travel in `authInfo.extra`, the SDK's documented
- * pass-through for keying a factory off the caller.
+ * The agent door's MCP handler: 2026-07-28 traffic through the SDK's handler;
+ * 2025-era traffic (Piloti's own client among it) through
+ * {@link serveLegacyAsJson}, which answers one JSON body.
+ *
+ * The modern handler answers `auto`: a call that sends no message before its
+ * result (every call but a `piloti-ask-create` that carries a progress token)
+ * is one JSON body; that one call is upgraded to an SSE stream carrying its
+ * `notifications/progress` and then the result. Nothing else here emits a
+ * message before a result: the server declares no `logging`, and asking for
+ * input is a result (`input_required`), not a message. The principal and mode
+ * travel in `authInfo.extra`, the SDK's documented pass-through for keying a
+ * factory off the caller.
  */
 export function createAgentDoorHandler(
   onerror: (error: Error) => void = (error) => console.error('[mcp]', error.message),
@@ -332,7 +360,7 @@ export function createAgentDoorHandler(
       const { principal, mode } = context.authInfo?.extra as unknown as AgentDoorRequest
       return buildMcpServer(principal, mode, 'modern')
     },
-    { legacy: 'reject', responseMode: 'json', onerror, bus },
+    { legacy: 'reject', responseMode: 'auto', onerror, bus },
   )
   return {
     /** The bus listen streams hear; publish through `realtime/door-events.ts`, which stamps the organization. */

@@ -199,7 +199,7 @@ function refusalResult(result: OperationResult): CallToolResult {
 }
 
 /** A route's answer as the tool result. */
-function fromOperationResult(op: AgentOperation, result: OperationResult): CallToolResult {
+export function fromOperationResult(op: AgentOperation, result: OperationResult): CallToolResult {
   const opName = op.name
   if (isOversizedBody(result.body)) return oversizedResult(op, result.body)
   if (!result.ok) return refusalResult(result)
@@ -379,8 +379,8 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
   const record = (status: number) =>
     recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision, status, startedAt })
 
-  try {
-    if (decision === 'propose') {
+  if (decision === 'propose') {
+    try {
       const parsed = validateOperationInput(op, input)
       const proposal = await proposeOperation({ principal: ctx.principal, op, input: parsed })
       record(202)
@@ -395,32 +395,60 @@ export async function runOperation(ctx: McpCallContext, name: string, input: Ope
           operation: op.name,
         },
       }
+    } catch (error) {
+      return operationFailure(op, error, record)
     }
+  }
+  const outcome = await executeOperation(ctx, op, input, startedAt)
+  return 'refusal' in outcome ? outcome.refusal : fromOperationResult(op, outcome.result)
+}
+
+/**
+ * Run `op`, which the caller may run (its decision is `run`): the read gate,
+ * the route as the person, the telemetry. The route's own answer, or the
+ * refusal the caller reads instead. {@link runOperation} renders the answer;
+ * the ask's progress and task (`ask-calls.ts`) read its state from the body,
+ * through this same path.
+ */
+export async function executeOperation(
+  ctx: McpCallContext,
+  op: AgentOperation,
+  input: OperationInput,
+  startedAt = Date.now(),
+): Promise<{ result: OperationResult } | { refusal: CallToolResult }> {
+  const record = (status: number) =>
+    recordOperationCalled(ctx, { operation: op.name, domain: op.domain, decision: 'run', status, startedAt })
+  try {
     const gate = readGateFor(ctx.principal)
     const refused = await gate.beforeRead(op, input)
     if (refused) {
       record(403)
-      return failure(refused)
+      return { refusal: failure(refused) }
     }
     // An agent reads the answer: a route that words its refusal in the person's locale words it in English.
     const result = await callOperation(op, input, ctx.principal.session, 'agent')
     record(result.status)
     // A link works for whoever holds it, with the requester's access: never into a transcript others read.
-    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return failure(sharedConversationReadRefusal())
-    return fromOperationResult(op, result)
+    if (isRedirectBody(result.body) && !(await gate.mayHandOnLink())) return { refusal: failure(sharedConversationReadRefusal()) }
+    return { result }
   } catch (error) {
-    if (error instanceof OperationInputError) {
-      record(400)
-      return failure(inputRefusal(op, error))
-    }
-    if (error instanceof ApiError) {
-      record(error.status)
-      return failure(`${error.message} (HTTP ${error.status}, ${error.code})`)
-    }
-    console.error('[mcp] operation failed', op.name, error)
-    record(500)
-    return failure(`${op.name} failed on the server. Try again; if it persists, report it.`)
+    return { refusal: operationFailure(op, error, record) }
   }
+}
+
+/** What the caller reads when running `op` threw, recorded with its status. */
+function operationFailure(op: AgentOperation, error: unknown, record: (status: number) => void): CallToolResult {
+  if (error instanceof OperationInputError) {
+    record(400)
+    return failure(inputRefusal(op, error))
+  }
+  if (error instanceof ApiError) {
+    record(error.status)
+    return failure(`${error.message} (HTTP ${error.status}, ${error.code})`)
+  }
+  console.error('[mcp] operation failed', op.name, error)
+  record(500)
+  return failure(`${op.name} failed on the server. Try again; if it persists, report it.`)
 }
 
 /** Longest input schema quoted in a refusal; a larger one is a describe-operation away. */
