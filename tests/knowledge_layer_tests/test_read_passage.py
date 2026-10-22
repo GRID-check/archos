@@ -423,17 +423,13 @@ class TestLaneToolStamp:
 
 
 class TestTheContract:
-    def test_the_description_says_when_not_to_call_it(self):
-        assert "WHEN NOT TO CALL" in _READ_PASSAGE_DESCRIPTION
-        assert "knowledge_search" in _READ_PASSAGE_DESCRIPTION
+    def test_the_description_names_the_search_as_the_boundary(self):
+        assert "WHEN NOT TO CALL" not in _READ_PASSAGE_DESCRIPTION
+        assert "cannot find a document from a topic (`knowledge_search` does)" in _READ_PASSAGE_DESCRIPTION
 
-    def test_it_names_the_search_as_the_tool_for_an_unknown_document(self):
-        when_not = _READ_PASSAGE_DESCRIPTION.split("WHEN NOT TO CALL")[1]
-        assert "do not know WHICH document" in when_not
-
-    def test_it_asks_for_the_checkpoint_sentence_in_an_argument(self):
-        """The slot, not a hope that the model narrates."""
-        assert "`conclusion=`" in _READ_PASSAGE_DESCRIPTION
+    def test_the_checkpoint_sentence_is_an_optional_argument(self):
+        """The slot exists; the model is not required to fill it."""
+        assert "`conclusion=` is optional" in _READ_PASSAGE_DESCRIPTION
 
     async def test_a_conclusion_changes_nothing_about_what_is_opened(self, store):
         """It is a checkpoint channel. A sentence that steered retrieval would

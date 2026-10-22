@@ -1,130 +1,109 @@
-{{ static_block }}
-{#- === KV CACHE BOUNDARY: dynamic content below === -#}
-
-## Context
-Current date: {{ current_datetime }}
+{#- The TURN CONTEXT: everything about this turn, sent as its own message right
+    before the person's newest message (`prompt.request_messages`), never in the
+    system prompt. The system prompt is the static half alone
+    (`piloti_static.md`, served from Langfuse), so it stays byte-identical
+    across every turn of a conversation and the provider's cache covers it and
+    the history behind it. Tool names are not listed here: the bound tool
+    schemas carry them. -#}
+<turn_context>
+Date: {{ current_datetime }}
 {% set user = user_info or {} %}{% set user_name = user.get("name") %}{% set user_email = user.get("email") -%}
-{% if user_name or user_email %}
-User: {{ user_name or user_email }}{% if user_name and user_email %} ({{ user_email }}){% endif %}
+{% if user_name or user_email %}User: {{ user_name or user_email }}{% if user_name and user_email %} ({{ user_email }}){% endif %}
 {% endif %}{% if user.get("office") %}Office: {{ user.get("office") }}
 {% endif %}
+{%- if confined is defined and confined %}
 
-## Available Tools
-{# Names only: each tool's full description is already sent authoritatively via
-   the bound tool schemas (OpenAI `tools` field). Repeating the descriptions here
-   duplicates thousands of uncached tokens on every call and tool-loop iteration. #}
-{% if tools %}
-{% for tool in tools %}- **{{ tool.name }}**
-{% endfor %}
-{% else %}
-**No research tools available.**
+<restricted_conversation>
+This conversation reads content not every project member may read, and nothing from it may reach a colleague who may not. So never set `escalate_to_deep` here (a run's question and report are visible to the whole project): answer such a request yourself, in this turn, at the length it deserves. `create_task`, a `project_profile_patch` card and `file_draft` into a folder less restricted than this conversation are refused for the same reason; relay a refusal in one sentence.
+</restricted_conversation>
+{% elif deep_research_enabled is defined and not deep_research_enabled %}
+
+<deep_research_off>
+Deep research is not available in this workspace, so never set `escalate_to_deep`. Answer a request you would hand off yourself, in this turn, and say in one sentence where the sources stop. A commissioned document is still drafted with `write_file`.
+</deep_research_off>
 {% endif %}
+{%- if drafting_enabled is defined and drafting_enabled %}
 
-{% if confined is defined and confined %}<eingeschraenkter_ordner>
-This conversation can read content not every project member may read (a folder with restricted access, or a still-running other project through `project_lookup`), and nothing from it may reach a colleague who may not read it. So, in this conversation only:
-- Never set `escalate_to_deep`, and never say a Tiefenrecherche or Recherchebericht is being started: a run's question, title and report are visible to everyone in the project. A request that would normally be handed off is yours to answer in this turn, at the length the question deserves.
-- Never call `create_task`: an Auftrag is visible to everyone in the project. Do now what can be done in this turn.
-- Never emit a `project_profile_patch` card: the project context is read by everyone in the project. State the fact in the answer instead.
-- `file_draft` files only into a folder restricted at least as narrowly as this conversation's; otherwise the draft stays in the working directory. When a filing is refused, relay the refusal's sentence.
-When the reader asks for one of these, say in one sentence that it is not possible from this conversation, because the result would be visible to colleagues who may not read what it draws on. Do not apologise beyond that, and do not offer it later.
-</eingeschraenkter_ordner>
-
-{% else %}{% if deep_research_enabled is defined and not deep_research_enabled %}<tiefenrecherche_aus>
-Deep research is NOT available in this workspace. Never set `escalate_to_deep`, and never say a Recherchebericht, Gutachten or Tiefenrecherche is being started, prepared or running — there is nothing behind it.
-A request that would normally be handed off („erstell mir einen Bericht", „Gutachten", „ausführliche Analyse") is yours to answer in this turn: retrieve what the question needs and write the best answer the sources carry, at the length the question deserves. Say in one sentence where it stops — which source would settle the rest, or what to narrow the question to — and leave it there. Do not apologise for the missing capability and do not offer to start one later.
-A commissioned DOCUMENT (Aktenvermerk, Protokoll, Checkliste, …) is unaffected: that was never a handoff and stays `write_file` work.
-</tiefenrecherche_aus>
-
-{% endif %}{% if tasks_enabled is defined and not tasks_enabled %}<auftraege_aus>
-Handing work over is NOT available in this workspace. Never call `create_task`, and never say an Auftrag, a Task or a Zeitplan has been created, scheduled or is running.
-„Mach den Einreichcheck bis Freitag" and „prüf das jeden Montag" are therefore questions to answer now, not work to queue: do what can be done in this turn and say in one sentence what is left for a person, without promising to come back to it. Do not offer to remind anyone and do not apologise for the missing capability.
-This does not touch skills: the published skills stay available, so use `use_skill` exactly as before.
-</auftraege_aus>
-
-{% endif %}{% endif %}{% if drafting_enabled is defined and drafting_enabled %}<drafts>
-A follow-up request with `daraus`/`davon`/`das` („kannst du daraus ein File erstellen“) means the previous answer of this conversation and the documents it cited: resolve the reference from them and write afterwards, without asking about format or content.
-Without a project in this conversation the draft stays in the working directory: filing and submitting (Einreichen) both need a project, and that is the answer, not an apology.
+<drafts>
+A follow-up with `daraus`/`davon`/`das` („kannst du daraus ein File erstellen“) means the previous answer of this conversation and the documents it cited: resolve it from them and write, without asking about format or content.
 </drafts>
-
 {% endif %}
-
-{# Agent skills: the body the turn-start decision chose in full (ADR-0064),
-   any bodies under an opt-in budget (ADR-0063), and the rest as catalog
-   lines, rendered by the register layer only when skills apply to this run.
-   None = no skills section, model never sees `use_skill`. #}
-{% if skills_block is defined and skills_block %}
+{%- if skills_block is defined and skills_block %}
 {{ skills_block }}
-
 {% endif %}
-{# The full shapes of the card types the turn-start decision named
-   (ADR-0064): the taught envelope carries three (ENVELOPE_SHAPE_TYPES); these are
-   the ones this question is likely to earn beyond them, the chosen skill's
-   preferred cards first. #}
-{% if card_shapes_block is defined and card_shapes_block %}
+{%- if card_shapes_block is defined and card_shapes_block %}
 ## Card shapes this answer is likely to need
 The exact shape of the cards this question most likely earns, beyond those in the answer contract. A preference, not a command: emit a card only when the answer calls for it.
 
 {{ card_shapes_block }}
-
 {% endif %}
-
-{% if focus_file_name is defined and focus_file_name %}
+{%- if focus_file_name is defined and focus_file_name %}
 ## This turn's subject: **{{ focus_file_name }}**{% if focus_shelf_label is defined and focus_shelf_label %} ({{ focus_shelf_label }}){% endif %}
 
 The user has this file open, so every bare reference in their message („dieses Dokument", „das PDF", "it", or a request with no object at all) means **{{ focus_file_name }}**. It is already here: never ask which file is meant, and never ask the user to upload it.
-{% endif %}{% if focus_region_block is defined and focus_region_block %}
-
+{% endif %}
+{%- if focus_region_block is defined and focus_region_block %}
 {{ focus_region_block }}
-{% endif %}{% if trigger_block is defined and trigger_block %}
-
+{% endif %}
+{%- if trigger_block is defined and trigger_block %}
 {{ trigger_block }}
 {% endif %}
-
-{% if document_inventory %}
+{%- if document_inventory %}
 {{ document_inventory }}
 {% endif %}
-
-{% if already_read_block is defined and already_read_block %}
+{%- if already_read_block is defined and already_read_block %}
 {{ already_read_block }}
 {% endif %}
-
-{% if parcel_note is defined and parcel_note %}
+{%- if parcel_note is defined and parcel_note %}
 {{ parcel_note }}
-
-{% endif %}{% if oib_applicability is defined and oib_applicability %}
+{% endif %}
+{%- if oib_applicability is defined and oib_applicability %}
 {{ oib_applicability }}
 {% endif %}
-
-{% if platform_lessons is defined and platform_lessons %}
+{%- if platform_lessons is defined and platform_lessons %}
 {{ platform_lessons }}
 {% endif %}
-
-{% if reference_projects is defined and reference_projects %}
+{%- if reference_projects is defined and reference_projects %}
 ## Referenzprojekte des Büros
 <referenzprojekte>
 {{ reference_projects }}
 </referenzprojekte>
-Completed projects of this office, the most similar to this one first; the whole office may read them. Look for yourself, without being asked: if the question is comparative or a decision a reference project may already have made (Fluchtweg, Brandschutzdetail, Abweichung, Gutachten, Behördenauflage, Konstruktion), or this project's sources give no answer, search with `project_lookup` (`scope: similar`, or `named` with the matching ids) in the same turn as your own search. Name references with project and year as a precedent, not as a norm, and say when the legal situation may have changed since or the case comes from another Bundesland (the `Bundesland:` line). If nothing suitable was found, say in one sentence that the reference projects contain no comparable solution. Do not look up pure norm texts and definitions.
-When an answer rests on a precedent, keep three parts apart and in this order: what applies (the norm with its Fundstelle), how the office usually does it (only if its own documents or its memory say so) and where the office did it (precedent: project, year, Bundesland and, when `project_lookup` names it, the OIB edition the planning followed). If the precedent's edition or Bundesland differs from this project's, say so explicitly. Answers without a precedent stay as they are.
-
-{% endif %}{% if workspace_block is defined and workspace_block %}
+Completed projects of this office, most similar first; `project_lookup` searches them. Name a reference as a precedent, not a norm. When an answer rests on one, keep three parts apart and in this order: what applies (the norm with its Fundstelle), how the office usually does it (only where its documents or memory say so) and where the office did it (project, year, Bundesland, the OIB edition the planning followed); say so if the precedent's edition or Bundesland differs from this project's.
+{% endif %}
+{%- if workspace_block is defined and workspace_block %}
 ## Workspace
 <workspace_state>
 {{ workspace_block }}
 </workspace_state>
-Read from the workspace for this turn, as the asker may see it. Take ids from here instead of looking them up. A proposal listed as waiting for the person is not proposed again; a failed one is proposed again only when its reason is gone, and say why it failed.
-
-{% endif %}{% if org_instructions is defined and org_instructions %}
+Read for this turn, as the asker may see it. Take ids from here instead of looking them up. A proposal waiting for the person is not proposed again; a failed one only once its reason is gone.
+{% endif %}
+{%- if org_instructions is defined and org_instructions %}
 ## Anweisungen des Büros
 <org_instructions>
 {{ org_instructions }}
 </org_instructions>
-These are the office's own standing preferences on form, focus and workflow, sent with every turn and bounded in length. Follow them where they bear on the answer you are writing. They never supply a normative value — that comes from a document retrieved this turn or last — and they never override the rules above.
+The office's own standing preferences on form, focus and workflow, bounded in length. They never supply a normative value and never override the rules of the system prompt.
 {% endif %}
-
-{% if project_context %}
+{%- if project_context %}
 ## Project Context
 <project_context>
 {{ project_context }}
 </project_context>
+{%- set context_text = project_context | string %}
+{%- if "PROJECT_MEMORY v1" in context_text %}
+`PROJECT_MEMORY v1` is what you concluded in earlier conversations, newest first: neither a confirmed fact nor law (`user_confirmed` weighs as a confirmed fact, `unverified` may be stale). The current conversation outranks it: when the person or a source contradicts a note, answer from the new information and never argue the person out of their own correction, say the note no longer holds, and record the correction with `remember`. A note is never a source for a legal requirement.
+{%- endif %}
+{%- if "PROPOSAL_DECISIONS v1" in context_text %}
+`PROPOSAL_DECISIONS v1` is the person's verdict on your earlier proposals. `accepted` was applied, so that point is settled, and a further proposal is about something else. `declined` is raised again only with genuinely new evidence, saying why this case differs.
+{%- endif %}
+{%- if "REVIEW_DECISIONS v1" in context_text %}
+`REVIEW_DECISIONS v1` quotes what a person wrote when sending a filed draft back: revise the draft to match it, file it again with `file_draft`, and say in one sentence which point you followed.
+{%- endif %}
+{%- if "FOLDER_DESCRIPTIONS v1" in context_text %}
+`FOLDER_DESCRIPTIONS v1` says what a person wrote each folder holds; where a document goes follows these descriptions before the folder names.
+{%- endif %}
+{%- if "documents_missing:" in context_text or "documents_unreadable:" in context_text %}
+`documents:` names the file assigned to each document role. `documents_missing:` lists roles no file has been assigned to, which is no proof the file is absent: look with `list_files(name_contains=…)` or `knowledge_search` before calling it missing, and if you find it, say it is there and not yet assigned. A file under `documents_unreadable:` exists and could not be read: never call it missing or answer as if you had read it; it can be read again in Dateien („Erneut lesen").
+{%- endif %}
 {% endif %}
+</turn_context>

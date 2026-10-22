@@ -18,7 +18,7 @@ what kept the previous country abstraction honest-free and got it deleted).
 |---|---|---|
 | `states` / `state_probe_order` | data (registry-overridable) | jurisdiction resolution (`extract_federal_state`/`resolve_federal_state`) |
 | `language` | data | classification/prompt language (consumer grows with i18n work below) |
-| `doctrine` | data | `{{ norm_doctrine }}` in researcher/planner/writer prompts. Piloti holds the AT text inline in `prompts/piloti_static.md` (`<dokumentrollen>`), above its KV-cache boundary, because only `at` is registered and the text is therefore constant per deployment. **Registering a second country moves it back to a rendered variable below that boundary** — ADR-0060 amendment |
+| `doctrine` | data | `{{ norm_doctrine }}` in researcher/planner/writer prompts. Piloti holds the AT text inline in its system prompt `prompts/piloti_static.md` (`<building_law>`), because only `at` is registered and the text is therefore constant per deployment. **Registering a second country moves it back to a rendered variable in the turn context (`piloti.j2`)** — ADR-0060 amendment |
 | `corpus_collection` | data | retrieval base-collection routing; admin store |
 | `corpus_note` | data | catalog prompt block corpus section |
 | `parcel_tags` | data | `parcel_note` per-parcel source-of-truth signal |

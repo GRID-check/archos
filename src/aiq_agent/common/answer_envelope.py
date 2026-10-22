@@ -1349,11 +1349,15 @@ def render_envelope_schema() -> str:
             lines.append(f"takeaways: [{_shape(AnswerMetaTakeaway)}] (2-{TAKEAWAYS_MAX_ITEMS} items)")
             continue
         if field.name == "work":
-            item = _shape(AnswerMetaWorkItem)
+            # The item shape once, the four lists by reference: spelled out per
+            # list it was the same ~100 tokens four times on every call.
             sections = ", ".join(
-                f"{name}: [{item}] ({AnswerMetaWork.model_fields[name].description})" for name in WORK_SECTIONS
+                f"{name}: [item] ({AnswerMetaWork.model_fields[name].description})" for name in WORK_SECTIONS
             )
-            lines.append(f"work: {{ {sections} }} (only for kind=work; up to {WORK_ITEMS_MAX} lines each)")
+            lines.append(
+                f"work: {{ {sections} }} (only for kind=work; up to {WORK_ITEMS_MAX} lines each; "
+                f"item = {_shape(AnswerMetaWorkItem)})"
+            )
             continue
         model_cls = field_models.get(field.name)
         if model_cls is not None:

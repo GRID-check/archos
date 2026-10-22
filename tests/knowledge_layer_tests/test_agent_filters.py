@@ -121,37 +121,23 @@ def test_empty_search_message_steers_and_forbids_invented_citations() -> None:
     assert "surface_documents" in text
 
 
-def test_knowledge_search_description_is_the_evidence_tool() -> None:
+def test_knowledge_search_description_is_a_contract_for_the_evidence_tool() -> None:
     desc = _KNOWLEDGE_SEARCH_DESCRIPTION
     assert "evidence" in desc.lower()
+    # The boundary with the nearest tool, stated once.
     assert "surface_documents" in desc
-    assert "file_name=" in desc
-    assert "do not also call" in desc.lower() or "do not also call" in desc
-    assert "WHEN TO CALL" in desc
-    assert "WHEN NOT TO CALL" in desc
+    assert "file_name=" in desc and "never invent" in desc
     assert "Citation" in desc
-    # The numeric budget is the ceiling. A two-call cap here told the model
-    # not to loop even after the prompt stopped saying so.
-    assert "At most 2 calls" not in desc
-    # …and a conclusion that NAMES its passage is now a lookup rather than a
-    # tighter search: `read_passage` opens it, and this description is where
-    # the model is told so. Searching again for a passage you can already
-    # address is the round the second landing exists to remove.
-    assert "`read_passage`" in desc
-    assert "search again only when you still do not know" in desc
+    # A contract, not a procedure: no when-to blocks and no sequencing.
+    assert "WHEN TO CALL" not in desc and "WHEN NOT TO CALL" not in desc
+    assert "ALWAYS" not in desc
 
 
-def test_knowledge_search_asks_for_the_checkpoint_in_an_argument() -> None:
-    """The Herleitung checkpoint has a SLOT now.
-
-    Prose beside the tool calls was the only channel, and a tool-calling model
-    routinely writes none — which is why `hasConclusion` was worth counting at
-    all. A declared argument is filled the way every other argument is filled.
-    """
+def test_knowledge_search_takes_the_checkpoint_as_an_optional_argument() -> None:
+    """The Herleitung checkpoint has a slot, and filling it is the model's option."""
     desc = _KNOWLEDGE_SEARCH_DESCRIPTION
-    assert "`conclusion=`" in desc
-    assert "Empty on your first call" in desc
-    assert "never appears in `answer`" in desc
+    assert "`conclusion=` is optional" in desc
+    assert "no effect on the call" in desc
 
 
 def test_the_description_says_what_a_piloti_document_may_be_cited_for() -> None:

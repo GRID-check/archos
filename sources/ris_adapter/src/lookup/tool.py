@@ -34,50 +34,33 @@ from nat.plugin_api import register_function
 
 logger = logging.getLogger(__name__)
 
-RIS_LOOKUP_DESCRIPTION = """Answer a question about Austrian law from RIS \
-(Rechtsinformationssystem des Bundes) with the actual paragraphs, quotable and citable.
+RIS_LOOKUP_DESCRIPTION = """Answers a question about Austrian law from RIS \
+(Rechtsinformationssystem des Bundes) with the actual paragraphs, quotable and citable: \
+Bauordnungen, Bautechnikgesetze, Garagengesetze and other Landesgesetze, the federal acts behind \
+them, and court decisions; also whether an OIB requirement binds. The text of the OIB-Richtlinien \
+themselves and the office's uploads are in \
+knowledge_search, not here.
 
-WHEN TO CALL — the question turns on what an Austrian law says: Bauordnungen, \
-Bautechnikgesetze, Garagengesetze and every other Landesgesetz, the federal acts \
-behind them, and court decisions. OIB-Richtlinien become binding through these \
-laws, so a question about the binding force of an OIB requirement belongs here too.
-
-WHEN NOT TO CALL — the CONTENT of the OIB-Richtlinien themselves, or anything the \
-office uploaded: that is knowledge_search. Non-Austrian law, news or products: web search.
-
-WHAT IT DOES — one call covers the whole path: it reads the address out of your \
-question (§/Artikel, the named law, the Bundesland), takes the verified catalog \
-pointer or searches RIS live, downloads at most two documents, and cuts the \
-paragraphs that answer the question out of them. You never pass a document number \
-and never fetch a document yourself.
+One call covers the whole path: it reads the address out of the question (§/Artikel, the named law, the \
+Bundesland), takes the verified catalog pointer or searches RIS live, downloads at most two documents and \
+cuts the paragraphs that answer the question out of them. No document number is passed.
 
 Args:
-    question (str): The legal question, in German, as the user means it — not a \
-search string. "Welche Unterlagen verlangt die Baubehörde in Wien für die \
-Einreichung?" works; "Unterlagen Einreichung" is worse, because the terms are \
-rewritten inside.
-    conclusion (str): One sentence saying what you now know and what you still \
-need, which is why you are making THIS call. Empty on your first call of the turn. \
-It is the Herleitung checkpoint the reader sees; it changes nothing about the lookup.
-    jurisdiction (str): The Bundesland ("Wien", "Tirol", …). Pass it when the user \
-named one; otherwise it is taken from the instrument, the question, then the \
-project brief, and the answer states which.
-    instrument (str): An address when you have one: "Bauordnung für Wien", \
-"§ 63 BO Wien", a RIS document number, or a ris.bka.gv.at URL. Naming a § makes \
-the lookup deterministic — no model reads the law, the paragraph is cut out by its number. \
-Name every § you already know you need in ONE call ("§§ 75 und 81 BO Wien", \
-"§§ 2 bis 4 Baupolizeigesetz Salzburg", up to six; past six it names those it did not read): \
-each is cut out of the same law, where a call per § is a round per §.
-    application (str): Only for the non-statute corpora: "Vfgh", "Vwgh", "Justiz", \
-"Bvwg", "Lvwg" for case law, "BgblAuth"/"LgblAuth" for the authentic gazettes, \
-"Begut"/"RegV" for drafts. Leave empty for statute law — it is decided internally.
+    question (str): The legal question, in German, as the user means it, not a search string.
+    conclusion (str): Optional. One line on what you are looking for; no effect on the call.
+    jurisdiction (str): The Bundesland ("Wien", "Tirol", …). When omitted it is taken from the instrument, \
+the question, then the project brief, and the answer states which.
+    instrument (str): An address: "Bauordnung für Wien", "§ 63 BO Wien", a RIS document number or a \
+ris.bka.gv.at URL. Naming a § makes the lookup deterministic: the paragraph is cut out by its number. Up to \
+six §§ in one call ("§§ 75 und 81 BO Wien", "§§ 2 bis 4 Baupolizeigesetz Salzburg"); past six it names \
+those it did not read.
+    application (str): Only for the non-statute corpora: "Vfgh", "Vwgh", "Justiz", "Bvwg", "Lvwg" for case \
+law, "BgblAuth"/"LgblAuth" for the authentic gazettes, "Begut"/"RegV" for drafts. Empty for statute law.
 
 Returns:
-    str: Numbered passages, each with Source, Dokumentart, Punkt, a \
-Citation key to copy verbatim, and the paragraph text. A miss says what was \
-searched, which Bundesland was assumed and where that came from, what matched but \
-was not read, and one concrete retry — never an empty result, and never a reason \
-to invent a citation."""
+    str: Numbered passages, each with Source, Dokumentart, Punkt, a Citation key to copy verbatim, and the \
+paragraph text. A miss says what was searched, which Bundesland was assumed and where that came from, what \
+matched but was not read, and one concrete retry."""
 
 
 class RisLookupToolConfig(FunctionBaseConfig, name="ris_lookup"):
