@@ -2,7 +2,7 @@
 
 import { z } from 'zod'
 import { geocodeQuerySchema } from '@/lib/geocoding/types'
-import { risDocumentQuerySchema } from '@/lib/ris/document-wire'
+import { listNormsQuerySchema } from '@/lib/norms/norm-list-wire'
 import type { AgentOperation } from '../operation'
 
 export const knowledgeOperations = [
@@ -12,25 +12,24 @@ export const knowledgeOperations = [
     summary: 'See what the building-law corpus contains',
     description:
       'The status of the platform-owned base corpus (OIB guidelines and the like): which documents it holds and ' +
-      'whether they are indexed. Identical for every organization. To search the corpus, ask a question in a ' +
-      'conversation; this only lists what is there.',
+      'whether they are indexed. Identical for every organization. To search it use the document search with ' +
+      '`shelf: "base"` (no project needed); for Austrian law itself the law lookup. This only lists what is there.',
     method: 'GET',
     path: '/api/knowledge-base',
     load: () => import('@/app/api/knowledge-base/route'),
   },
   {
-    name: 'ris-document-get',
+    name: 'norm-list',
     domain: 'knowledge',
-    summary: 'Read the text of a RIS legal document',
+    summary: 'List the norm register',
     description:
-      'Fetch the text of an Austrian RIS document from a citation: `reference` is a document number ' +
-      '(NOR40217157) or a https://www.ris.bka.gv.at/ URL, `application` disambiguates a bare number, and ' +
-      '`passage` windows a long document around the cited passage. Answers 404 when RIS serves no text for it ' +
-      'and 502 when RIS is unreachable. Rate limited.',
+      'Austrian laws and authority guidance Piloti knows by number: `{ norms: [{ id, short, title, rank, federalState, topics, citationUrl, documentNumber, bindingNote }], nextCursor }`. ' +
+      '`federalState` ("Wien" or "vienna") keeps that state’s norms plus federal ones; `topic` matches topics, title or short name. `bindingNote` (German) says how it becomes binding. ' +
+      'Pass `documentNumber` as the `instrument` of the law lookup to read it.',
     method: 'GET',
-    path: '/api/ris/document',
-    query: risDocumentQuerySchema,
-    load: () => import('@/app/api/ris/document/route'),
+    path: '/api/norms',
+    query: listNormsQuerySchema,
+    load: () => import('@/app/api/norms/route'),
   },
   {
     name: 'address-search',

@@ -37,3 +37,16 @@ export const generateSummaryRequestSchema = z.object({
     .optional()
     .describe('The language to write the summary in, "de" or "en". Defaults to the person’s UI language.'),
 })
+
+/**
+ * A profile route's answer: the stored state without `profilePromptView`, the
+ * text rendering of the profile that goes into Piloti's prompt. It is an
+ * internal rendering of `profile` (no client reads it), and an agent would read
+ * the same facts twice.
+ */
+export function toProfileWire<T extends { profilePromptView?: unknown }>(
+  state: T
+): Omit<T, 'profilePromptView'> {
+  const { profilePromptView: _promptView, ...wire } = state
+  return wire
+}

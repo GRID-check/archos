@@ -58,6 +58,10 @@ interface Exemption {
  * here: it is catalogued and withheld in `exposure.config.ts`.
  */
 const NOT_AN_AGENT_CAPABILITY: Record<string, Exemption> = {
+  'GET /api/ris/document': {
+    category: 'external-service',
+    reason: 'the RIS text dialog proxies the public legal text service; an agent reads a RIS document by number or URL through law-lookup (`instrument`)',
+  },
   '* /api/auth/callback': {
     category: 'other',
     reason: 'the AuthKit OAuth callback; it creates the browser session an agent does not have',

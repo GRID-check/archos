@@ -36,10 +36,20 @@ export interface ApplicableStandard {
   oibUrl: string
   status: ApplicableStatus
   reason: string
+  /**
+   * For a `check`: the profile key whose answer would settle it (`escape_level`
+   * decides whether a GK5 building is a Hochhaus). Absent for the other verdicts.
+   */
+  decidingFact?: string
 }
 
 /** Build an {@link ApplicableStandard} from a catalog code + a verdict. */
-function annotate(code: string, status: ApplicableStatus, reason: string): ApplicableStandard {
+function annotate(
+  code: string,
+  status: ApplicableStatus,
+  reason: string,
+  decidingFact?: string
+): ApplicableStandard {
   const entry = getOibStandard(code)
   if (!entry) {
     // Every code passed here is a literal from the catalog, so this is unreachable
@@ -54,6 +64,7 @@ function annotate(code: string, status: ApplicableStatus, reason: string): Appli
     oibUrl: entry.oibUrl,
     status,
     reason,
+    ...(decidingFact ? { decidingFact } : {}),
   }
 }
 
@@ -213,7 +224,7 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
     mainUse === undefined
   ) {
     standards.push(
-      annotate('OIB 2.1', 'check', 'Applies if the building qualifies as a Betriebsbau.')
+      annotate('OIB 2.1', 'check', 'Applies if the building qualifies as a Betriebsbau.', 'main_use')
     )
   }
   // else: omit (clearly not a Betriebsbau).
@@ -221,7 +232,12 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
   // OIB 2.2 — garages & covered parking.
   if (storeysBelowGround !== undefined && storeysBelowGround >= 1) {
     standards.push(
-      annotate('OIB 2.2', 'check', 'Applies if the project includes a garage or covered parking.')
+      annotate(
+        'OIB 2.2',
+        'check',
+        'Applies if the project includes a garage or covered parking.',
+        'uses'
+      )
     )
   }
   // else: omit.
@@ -236,7 +252,8 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
       annotate(
         'OIB 2.3',
         'check',
-        'GK5 building — confirm whether the top escape level exceeds 22 m.'
+        'GK5 building — confirm whether the top escape level exceeds 22 m.',
+        'escape_level'
       )
     )
   }
@@ -286,7 +303,8 @@ export function getApplicableStandards(profile: ProjectProfile | null): Applicab
       annotate(
         'OIB 6',
         'check',
-        'Unconditioned storage/agricultural buildings may be partly exempt from OIB 6.'
+        'Unconditioned storage/agricultural buildings may be partly exempt from OIB 6.',
+        'main_use'
       )
     )
   } else {

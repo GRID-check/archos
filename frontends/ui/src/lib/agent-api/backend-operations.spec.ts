@@ -143,13 +143,23 @@ describe('the operations', () => {
       } else {
         expect(op.needsProject).toBe(true)
         expect(Object.keys(schema.properties ?? {})[0]).toBe('projectId')
-        expect(schema.required?.[0]).toBe('projectId')
+        // The shared corpus belongs to no project: the search may leave it out with `shelf: "base"`.
+        if (op.name === 'knowledge-search') expect(schema.required).not.toContain('projectId')
+        else expect(schema.required?.[0]).toBe('projectId')
       }
     }
   })
 })
 
 describe('callBackendOperation', () => {
+  it('searches the shared corpus without a project, and refuses any other search without one', async () => {
+    backendAnswers(200, { tool: 'knowledge_search', result: 'x' })
+    const base = await callBackendOperation('knowledge-search', { query: 'OIB 2', shelf: 'base' }, session, {})
+    expect(base.status).not.toBe(400)
+    const other = await callBackendOperation('knowledge-search', { query: 'OIB 2' }, session, {})
+    expect(other).toMatchObject({ status: 400, ok: false })
+  })
+
   it('signs the person’s turn context for the project and posts it with the internal token', async () => {
     const result = await callBackendOperation(
       'knowledge-search',

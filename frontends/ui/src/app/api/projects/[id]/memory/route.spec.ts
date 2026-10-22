@@ -18,7 +18,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
   authzErrorResponse: () => null,
 }))
 
-const service = vi.hoisted(() => ({ getProjectMemory: vi.fn(), addProjectMemoryItem: vi.fn() }))
+const service = vi.hoisted(() => ({ getProjectMemoryPage: vi.fn(), addProjectMemoryItem: vi.fn() }))
 vi.mock('@/lib/projects/service', () => service)
 
 import { GET, POST } from './route'
@@ -36,7 +36,7 @@ describe('project memory routes', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('lists items without embedding fields', async () => {
-    service.getProjectMemory.mockResolvedValue([embedded()])
+    service.getProjectMemoryPage.mockResolvedValue({ items: [embedded()], nextCursor: null })
     const res = await GET(new Request('https://grid.example/api/projects/proj-1/memory'), ctx)
     const text = await res.text()
     const body = JSON.parse(text)

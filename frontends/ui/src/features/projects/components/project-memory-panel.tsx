@@ -1,5 +1,6 @@
 'use client'
 
+import { collectPages } from '@/lib/api/offset-page'
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import type { JSX } from 'react'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
@@ -164,10 +165,16 @@ export function ProjectMemoryPanel({
       // skeleton or clear an existing error banner — it only swaps in fresh
       // items when they arrive. The initial load is non-silent.
       if (!silent) setError(null)
-      requestJson<{ items: MemoryItem[] }>(baseUrl, undefined, t)
-        .then((response) => {
+      collectPages<MemoryItem>((cursor) =>
+        requestJson<{ items: MemoryItem[]; nextCursor: string | null }>(
+          `${baseUrl}?limit=200${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}`,
+          undefined,
+          t
+        )
+      )
+        .then((all) => {
           if (signal.cancelled) return
-          setItems(response.items)
+          setItems(all)
           if (silent) setError(null)
         })
         .catch((err: unknown) => {

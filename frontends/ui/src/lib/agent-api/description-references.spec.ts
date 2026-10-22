@@ -56,8 +56,6 @@ const BASELINE: readonly string[] = [
   'piloti: hold-create → hold-release',
   'piloti: hold-list → hold-release',
   'piloti: project-folder-access-get → project-folder-access-set',
-  'piloti: project-member-list → project-member-remove',
-  'piloti: project-person-add → project-member-add',
   'piloti: proposal-list → proposal-apply',
   'piloti: proposal-list → proposal-dismiss',
   'piloti: sharing-get → sharing-grant-add',

@@ -150,6 +150,7 @@ export const EXPOSURE = {
   'project-rename': OFFERED,
   'project-restore': OFFERED,
   'project-same-address-list': OFFERED,
+  'project-standards-get': OFFERED,
   'project-status-set': OFFERED,
   'project-summary-generate': OFFERED,
   'project-upload-screening-get': {
@@ -429,12 +430,8 @@ export const EXPOSURE = {
     withheld: { category: 'external-service', reason: 'proxies a public geocoder; a calling agent has its own map and web tools' },
   },
   'knowledge-base-get': OFFERED,
+  'norm-list': OFFERED,
   'knowledge-document-get': OFFERED,
-  'ris-document-get': {
-    external: false,
-    piloti: false,
-    withheld: { category: 'external-service', reason: 'proxies the public RIS legal text service, which any agent can fetch itself' },
-  },
   'widget-token-get': {
     external: false,
     piloti: false,

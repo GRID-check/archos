@@ -331,6 +331,16 @@
    "withheld": null,
    "reason": null
   },
+  "project-standards-get": {
+   "kind": "catalog",
+   "domain": "projects",
+   "sensitivity": null,
+   "external": true,
+   "piloti": true,
+   "platform": false,
+   "withheld": null,
+   "reason": null
+  },
   "project-status-set": {
    "kind": "catalog",
    "domain": "projects",
@@ -2305,17 +2315,14 @@
    "withheld": null,
    "reason": null
   },
-  "ris-document-get": {
+  "norm-list": {
    "kind": "catalog",
    "domain": "knowledge",
    "sensitivity": null,
-   "external": false,
-   "piloti": false,
+   "external": true,
+   "piloti": true,
    "platform": false,
-   "withheld": {
-    "category": "external-service",
-    "reason": "proxies the public RIS legal text service, which any agent can fetch itself"
-   },
+   "withheld": null,
    "reason": null
   },
   "widget-token-get": {

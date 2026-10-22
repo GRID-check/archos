@@ -87,7 +87,7 @@ const ADMIN = {
 beforeEach(() => {
   vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
     const url = String(input)
-    if (url.endsWith('/memory')) {
+    if (url.includes('/memory')) {
       return Response.json({
         items: [
           {
@@ -100,7 +100,7 @@ beforeEach(() => {
         ],
       })
     }
-    if (url.endsWith('/members')) {
+    if (url.includes('/members')) {
       return Response.json({
         members: [
           { userId: 'u1', name: 'Anna Berger', profilePictureUrl: null, role: 'project-admin' },
