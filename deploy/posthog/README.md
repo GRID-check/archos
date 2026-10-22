@@ -20,7 +20,7 @@ The flow is described in
 |---|---|---|---|
 | [`slack-alert.hog`](support/slack-alert.hog) | „Piloti feedback → Slack (per deployment)" `01a16483-aaa2-0000-9400-98b42243aa65` | `product_feedback_ticket_opened`, `product_feedback_reply_sent` (the BFF's server events) | Posts a new report to `#posthog-inbox` per kind, with „Übernehmen" pointing at the event's `app_host`; stores the alert's ts on the ticket as `slack-ts:<ts>`. A reporter's reply goes into the alert's thread. Bugs page `@here` on production only |
 | [`claim-update.hog`](support/claim-update.hog) | „Piloti feedback: mark Slack alert claimed" `01a16445-c91c-0000-5f64-2f70e9c0e3b3` | `$conversation_ticket_assigned`, `assignee_type = user` | Rewrites the alert: the claim button goes, „✅ Übernommen von <Name>" appears |
-| [`reply-poke.hog`](support/reply-poke.hog) | „Piloti feedback: tell Piloti about a team reply" (create it from this file) | `$conversation_message_sent`, `author_type = team` | POSTs `{ ticketId }` to `https://<origin>/api/webhooks/posthog-support`; the host comes from the ticket's `origin:<host>` tag and must be in the `allowed_hosts` input |
+| [`reply-poke.hog`](support/reply-poke.hog) | „Piloti feedback: tell Piloti about a team reply" `01a16498-573f-0000-1b68-8fb6438e0cc0` (disabled until the endpoint is deployed) | `$conversation_message_sent`, `author_type = team` | POSTs `{ ticketId }` to `https://<origin>/api/webhooks/posthog-support`; the host comes from the ticket's `origin:<host>` tag and must be in the `allowed_hosts` input |
 
 Inputs each destination needs: the Slack integration (`slack_workspace`,
 integration 91399) and `channel` (`C0CAHK8EYAF`) for the two Slack ones;
