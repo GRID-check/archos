@@ -22,6 +22,7 @@ import { DOCUMENT_TYPE_TAGS, type DocumentTypeTag } from '@/lib/documents/tag-vo
 import type { PreselectionBlock } from '@/lib/mail-thread/mail-threading'
 import type { ThreadMatchStrength } from '@/lib/mail-thread/mail-thread-vocabulary'
 import type { NotStagedReason } from './inbound-mail-vocabulary'
+import type { InboundMailSuggestion } from './suggest'
 import {
   INBOUND_MAIL_MESSAGE_TEXTS,
   type InboundMailContentFinding,
@@ -259,8 +260,8 @@ export interface InboundMailPartView {
   revisionCandidate: (InboundMailDocumentRefView & { nextVersion: number }) | null
   /** A possible earlier Fassung exists in a folder the viewer does not see („1 mögliche Fassung …“). */
   revisionCandidateHidden: boolean
-  /** Piloti's suggestion (D21), as the suggest job stored it; null while there is none. */
-  suggestion: Record<string, unknown> | null
+  /** Piloti's suggestion (D21): folder, Dokumentart and a one-line reason; null while there is none. */
+  suggestion: InboundMailSuggestion | null
   /** Until when a dismissed or expired part can be restored. */
   restorableUntil: string | null
 }

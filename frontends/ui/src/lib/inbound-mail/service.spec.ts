@@ -83,10 +83,12 @@ vi.mock('@/lib/agent-api/acting-session', () => ({
 }))
 vi.mock('@/lib/audit/after-commit', () => ({ recordAuditEventAfterCommit: vi.fn() }))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
+vi.mock('./suggest-scores', () => ({ scoreMailDecision: vi.fn(() => 'all') }))
 vi.mock('@/lib/realtime/door-events', () => ({ publishProjectChanged: vi.fn() }))
 vi.mock('@/lib/inbox/service', () => ({ resolveInboxItemsAnchoredOn: vi.fn(async () => 1) }))
 vi.mock('@/lib/inbox/best-effort', () => ({ bestEffortInbox: vi.fn(async (_l: string, _o: string, write: () => Promise<unknown>) => write()) }))
 
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { recordAuditEventAfterCommit } from '@/lib/audit/after-commit'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
@@ -94,7 +96,8 @@ import { FILE_PART_ID, FOLDER_ID, MAIL_ID, PERSON, PROJECT_ID, filePart, heldMai
 import { auditDecisions } from './audit'
 import { mailIfMatch } from './decision'
 import { MailChangedError } from './repository'
-import { decisionActor, fileInboundMails, filingJobId, getInboundMail, readInboundMailOriginal, readInboundMailPart } from './service'
+import { scoreMailDecision } from './suggest-scores'
+import { decisionActor, dismissInboundMails, fileInboundMails, filingJobId, getInboundMail, readInboundMailOriginal, readInboundMailPart } from './service'
 
 const session = {
   userId: PERSON,
@@ -178,6 +181,29 @@ describe('a decision', () => {
     expect(job.payload).toMatchObject({ projectId: PROJECT_ID, mailIds: [MAIL_ID], requester: { userId: PERSON } })
     expect(result.filingJobId).toBe(job.jobId)
     expect(auditDecisions).toHaveBeenCalledTimes(1)
+  })
+
+  it('scores Piloti’s suggestion against the parts as they were, and tells PostHog whether it was followed', async () => {
+    const before = [textPart(), filePart({ suggestion: { folderId: FOLDER_ID, folderPath: 'Tragwerk' } })]
+    store.parts = before
+    await fileInboundMails(session, PROJECT_ID, body())
+    const scored = vi.mocked(scoreMailDecision).mock.calls[0]![0]
+    expect(scored).toMatchObject({ organizationId: 'org_1', decidedBy: PERSON, via: 'app', parts: before, decision: body().mails[0] })
+    expect(scored.folderPathOf(FOLDER_ID)).toBe('Tragwerk')
+    expect(captureServer).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'inbound_mail_decided', properties: expect.objectContaining({ suggestion_followed: 'all' }) }),
+    )
+  })
+
+  it('scores a dismissed mail’s suggestions as not followed', async () => {
+    const { dismissMails } = await import('./repository')
+    vi.mocked(dismissMails).mockResolvedValueOnce({ decisions: [{ mailId: MAIL_ID, action: 'dismiss' }] } as never)
+    vi.mocked(scoreMailDecision).mockReturnValueOnce('none')
+    await dismissInboundMails(session, PROJECT_ID, { mailIds: [MAIL_ID] })
+    expect(vi.mocked(scoreMailDecision).mock.calls[0]![0]).toMatchObject({ decision: null, parts: [textPart(), filePart()] })
+    expect(captureServer).toHaveBeenCalledWith(
+      expect.objectContaining({ properties: expect.objectContaining({ suggestion_followed: 'none', files: 0, dismissed: 1 }) }),
+    )
   })
 
   it('settles the waiting notice once nothing of the mail waits', async () => {
