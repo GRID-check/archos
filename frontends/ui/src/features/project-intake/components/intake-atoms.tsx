@@ -33,7 +33,7 @@ export function IntakeSection({
         <div className="min-w-0 space-y-1">
           <div className="flex items-center gap-2">
             <h2 className="text-lg font-semibold tracking-tight">{label}</h2>
-            {count !== undefined && <CountPill>{count}</CountPill>}
+            {count !== undefined && <CountPill count={count} />}
           </div>
           {description && <p className="text-muted-foreground max-w-prose text-sm">{description}</p>}
         </div>

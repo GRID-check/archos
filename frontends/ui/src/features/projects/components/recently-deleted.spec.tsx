@@ -68,7 +68,7 @@ describe('RecentlyDeleted', () => {
 
     expect(await screen.findByText(/Could not load recently deleted projects/i)).toBeDefined()
 
-    await userEvent.click(screen.getByRole('button', { name: /Retry/i }))
+    await userEvent.click(screen.getByRole('button', { name: /Try again/i }))
 
     expect(await screen.findByText('Neubau Wohnbau')).toBeDefined()
     expect(fetchSpy).toHaveBeenCalledTimes(2)

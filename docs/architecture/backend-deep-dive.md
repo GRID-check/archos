@@ -1476,8 +1476,8 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   already holds, and the doctrine is constant per deployment, so it belongs in
   the cacheable prefix. Piloti renders the applicability section alone
   (`prompt.oib_applicability`, derived from this project's `confirmed:` facts)
-  and keeps the doctrine above the KV-cache boundary in `piloti_static.md`
-  (`<dokumentrollen>`). See the ADR-0060 amendment.
+  and keeps the doctrine in its system prompt, `piloti_static.md`
+  (`<building_law>`). See the ADR-0060 amendment.
 - **Jurisdiction** — `resolve_country(project_context)` regexes the structured
    `country=<cc>` fact from the prompt text (`at`/`de`/`ch`/`other`, authored
    by the intake wizard's new A2_country question); absent → `"at"`. Every
@@ -1865,43 +1865,53 @@ refactor that should be verified against a running stack before merge.
 
 ### Prompts: three layers, and where each is authored
 
-What reaches a model as its system prompt is assembled from three layers with
-three different owners. Confusing them is how a prompt change lands in the
-wrong place and appears not to work.
+What reaches a model besides the transcript is assembled from three layers
+with three different owners, in two messages. Confusing them is how a prompt
+change lands in the wrong place and appears not to work.
 
-1. **The platform prompt** — the static half of `piloti.j2`, everything above
-   the `KV CACHE BOUNDARY` marker. Identical for every tenant and every turn,
-   which is what makes it both cacheable by the provider and manageable outside
-   a release. **Authored and versioned in Langfuse**, under the prompt name
-   `piloti-system-static` and the label `production`, and pulled by the agent
-   at render time (`src/aiq_agent/common/prompt_store.py`).
+A request is `[system prompt, *earlier turns, turn context, newest question,
+*this turn]` (`prompt.request_messages`). The system prompt is the static half
+alone, the same bytes on every turn; the turn context (`piloti.j2`) is its own
+message right before the newest question, request-only (never stored in the
+transcript). So the system prompt and every earlier turn are a prefix the next
+round and the next turn share byte for byte, and the provider's cache reaches
+past the system prompt into the history.
+
+1. **The platform prompt** — the system prompt, `piloti_static.md` (≤ 5,000
+   tokens plus the envelope schema rendered from the models). Identical for
+   every tenant and every turn, which is what makes it both cacheable by the
+   provider and manageable outside a release. **Authored and versioned in
+   Langfuse**, under the prompt name `piloti-system-static` and the label
+   `production`, and pulled by the agent at render time
+   (`src/aiq_agent/common/prompt_store.py`). What each line of it is for, and
+   what was cut and why: [`prompt-value-audit-2026-10.md`](prompt-value-audit-2026-10.md).
 2. **The office's standing instructions** — the tenant's own preferences,
    arriving per request on the `x-grid-org-instructions` header
-   (`project_context.py`, bounded at 1500 characters) and rendered BELOW the
-   boundary, because they vary per tenant. The template frames them as
+   (`project_context.py`, bounded at 1500 characters) and rendered in the turn
+   context, because they vary per tenant. The template frames them as
    preferences that neither supply a normative value nor outrank the static
-   rules.
+   rules, and the system prompt's `<rules>` says so too.
 3. **Skills** — chosen by the model, per turn, from the L1 catalog the register
    layer collates (ADR-0046, §8d). Nothing here is authored in a prompt file at
    all: a skill is a document the agent decides to read.
 
-**What the dynamic half still carries, and why it is short.** Below the
-boundary `piloti.j2` renders per-turn FACTS and nothing standing: the date and
-user, the tool-name index (the model's only namespace listing under deferred
-loading, ADR-0048), the skills catalog, which file the composer has open, the
-knowledge-base inventory, what this conversation already read, the project's
-parcel documents, the OIB-Richtlinien this project's own facts make applicable,
-the platform lessons, the office block and the Project Context. Two sentences
-of rule survive, in `<entwuerfe>`: what „mach daraus ein File" refers to, which
-only the transcript knows, and that filing needs a project.
+**What the turn context carries, and why it is short.** `piloti.j2`
+renders per-turn FACTS and nothing standing: the date and user, what this turn
+cannot do (a restricted conversation, deep research off), the one drafting
+sentence no tool can carry (what „mach daraus ein File" refers to), the skills
+catalog, which file the composer has open, the knowledge-base inventory, what
+this conversation already read, the project's parcel documents, the
+OIB-Richtlinien this project's own facts make applicable, the platform lessons,
+the office block and the Project Context, followed by a one-line legend for
+each record block the Project Context actually holds (`PROJECT_MEMORY`,
+`PROPOSAL_DECISIONS`, `REVIEW_DECISIONS`, `FOLDER_DESCRIPTIONS`,
+`documents_missing:`). It lists no tool names: the bound schemas carry them.
+If deferred tool loading (ADR-0048, off since 2026-09-25) is turned back on,
+check whether the model still finds the deferred tools without a name index.
 
-Everything else that used to sit here is either a tool's own contract, which
-now lives in the tool description that owns it (ADR-0060 (d)), or standing
-platform doctrine, which moved ABOVE the boundary into `piloti_static.md`
-(`<dokumentrollen>`, `<project_record>`). The measured dynamic half on a
-realistic turn fell from 7,724 tokens to 2,962. The amendment section of
-[ADR-0060](../adr/0060-three-instruction-layers-and-tools-that-answer.md)
-records what moved where.
+Everything else that used to sit in the prompt is either a tool's own contract,
+which lives in the tool description that owns it (ADR-0060 (d)), a rail code
+enforces, or gone; the 2026-10 audit lists each line.
 
 **Git is the source of truth** (ADR-0060 (a)).
 `src/aiq_agent/agents/piloti/prompts/piloti_static.md` is the prompt review
@@ -2066,7 +2076,7 @@ calls the `use_skill` tool. Per-run `SkillRuntime` (ADR-0018 — never cached on
 the shared agent) records what was DELIVERED for `skills_activated` on the
 terminal frame. Standing instructions are prompt text instead: the platform
 prompt, and the office's own bounded block (`X-Grid-Org-Instructions`, rendered
-below the KV-cache boundary as `## Anweisungen des Büros`).
+in the turn context as `## Anweisungen des Büros`).
 
 The set per run = builtin (`src/aiq_agent/skills/builtin/`, discovered
 deterministically, validated strictly) + org rows from the BFF internal

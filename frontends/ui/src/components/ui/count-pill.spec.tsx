@@ -27,3 +27,56 @@ describe('CountPill', () => {
     expect(screen.getByText('2')).toHaveClass('absolute')
   })
 })
+
+describe('CountPill with a count', () => {
+  const pill = (count: number, max?: number): HTMLElement => {
+    const { container } = render(<CountPill count={count} max={max} />)
+    return container.querySelector('[data-slot="count-pill"]') as HTMLElement
+  }
+  /** What a sighted reader sees: the text outside the screen-reader-only span. */
+  const visible = (element: HTMLElement): string =>
+    Array.from(element.childNodes)
+      .filter((node) => !(node instanceof HTMLElement && node.classList.contains('sr-only')))
+      .map((node) => node.textContent)
+      .join('')
+
+  it('shows zero as zero — an absent number would read as "unknown"', () => {
+    const element = pill(0)
+    expect(visible(element)).toBe('0')
+    expect(element).not.toHaveAttribute('title')
+    expect(element).toHaveAttribute('data-count', '0')
+  })
+
+  it('shows 99 whole: the cap is inclusive', () => {
+    const element = pill(99)
+    expect(visible(element)).toBe('99')
+    expect(element.querySelector('.sr-only')).toBeNull()
+  })
+
+  it('caps 100 at 99+, and the exact count stays readable to assistive tech and on hover', () => {
+    const element = pill(100)
+    expect(visible(element)).toBe('99+')
+    expect(element.querySelector('[aria-hidden]')).toHaveTextContent('99+')
+    expect(element.querySelector('.sr-only')).toHaveTextContent(/^100$/)
+    expect(element).toHaveAttribute('title', '100')
+  })
+
+  it('caps 12345 at 99+ without widening, and keeps the tabular numerals', () => {
+    const element = pill(12345)
+    expect(visible(element)).toBe('99+')
+    expect(element.querySelector('.sr-only')).toHaveTextContent(/^12345$/)
+    expect(element).toHaveAttribute('title', '12345')
+    expect(element).toHaveAttribute('data-count', '12345')
+    expect(element).toHaveClass('tabular-nums')
+  })
+
+  it('takes a different cap where a surface needs one', () => {
+    expect(visible(pill(10, 9))).toBe('9+')
+    expect(visible(pill(12345, Number.POSITIVE_INFINITY))).toBe('12345')
+  })
+
+  it('reads a fraction or a negative as the whole count it stands for', () => {
+    expect(visible(pill(3.7))).toBe('3')
+    expect(visible(pill(-2))).toBe('0')
+  })
+})

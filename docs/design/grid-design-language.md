@@ -284,7 +284,7 @@ a rule and not a filing convention.
 | Layer | Where it lives | What it is |
 |---|---|---|
 | Atom | `components/ui/` for the product-wide kit; a local `*-atoms.tsx` or a `viewer/`-style kit folder for a surface's own | One decision each: a shape, a control, a piece of material. Knows no domain |
-| Molecule | `components/ui/`, `components/<area>/` | A few atoms with one job. `SearchField`, `PageHeader`, `RaisedCard` |
+| Molecule | `components/ui/`, `components/<area>/` | A few atoms with one job. `SearchField`, `PageHeader`, `RaisedCard`, `LoadError` |
 | Organism | `components/<area>/`, `features/<domain>/components/` | A meaningful chunk of a screen. `ProjectCard`, the viewer rail, the model stage |
 | Route | `app/**` | Composition and data, not markup |
 
@@ -516,9 +516,9 @@ surface that already has a border.
 
 **Loading** — Skeletons matched to the real content's shape (never a spinner for page-level loads; spinner only for inline/button-level). Match row heights and counts to the eventual layout.
 
-**Error** — `Alert variant="destructive"` for load failures with a helpful message + retry; `sonner` toast for transient action failures; inline field errors for forms (already handled by the TanStack Form FieldShell). Error red (`--signal-error`) is for errors only — never for emphasis.
+**Error** — a load that failed where its content should be is `LoadError` (`components/ui/load-error.tsx`): a destructive `Alert` with the warning glyph, the failure in the surface's own words as its title, an optional hint, and a retry that is a `BusyButton` (busy is not disabled; it stays busy while the promise `onRetry` returns is in flight, or while the caller's `retrying` says so), plus any further `actions` (Answer feedback's „clear filters"). Never compose `Alert` + `Button` for this by hand: the twenty-one copies it replaced had drifted on glyph, title-vs-description and `disabled`. A pane the failure empties entirely (the task list, the file workspace) keeps `EmptyState tone="destructive"` with a retry action. `sonner` toast for transient action failures; inline field errors for forms (already handled by the TanStack Form FieldShell). Error red (`--signal-error`) is for errors only — never for emphasis.
 
-**Counts** — `CountPill` (`components/ui/count-pill.tsx`) is the one rounded-full numeric pill. `tone="muted"` (default) for a quiet number beside a heading or tab label; `tone="attention"` — near-black action ink — only when the count *is* the signal that something waits for the reader (the inbox badge). Never hand-roll a third shape; never reach for chroma here (ink, because chroma belongs to provenance).
+**Counts** — `CountPill` (`components/ui/count-pill.tsx`) is the one rounded-full numeric pill. `tone="muted"` (default) for a quiet number beside a heading or tab label; `tone="attention"` — near-black action ink — only when the count *is* the signal that something waits for the reader (the inbox badge). Never hand-roll a third shape; never reach for chroma here (ink, because chroma belongs to provenance). A number goes in as `count={n}`, never as children: the pill caps it at `max` (default 99) and shows `99+`, so a big figure cannot widen a filter segment or a nav row, and the exact figure stays in the pill's `title` and in a screen-reader-only span. `children` is for words and ratios the caller composed („3/8 erfasst", `+4`, a locale-formatted analytics figure), which the pill shows as given. `max={Number.POSITIVE_INFINITY}` only where the exact number is the content and the row has room (the IFC explorer's element counts).
 
 **People** — a group of people is `AvatarStack` (`components/ui/avatar-stack.tsx`): overlapping `Avatar` discs in the order given (it never re-sorts — ordering is the caller's information), ring-separated, tail collapsed into a neutral `+N`. `sm` is 28px, not 24px: below that the overlap plus the ring clips the second initial. A single disc is `PersonAvatar` from the same module. Identity colour and initials come from `components/ui/avatar-identity.ts` — keyed on the **user id** so one colleague is one colour on every surface, and generated as a hue only: lightness comes from `color-mix()` against `--card`/`--foreground`, so dark mode needs no second palette. **Identity is not signal**: these tints carry no meaning, always ride with initials or a photo, and are deliberately off the provenance hues.
 
@@ -692,6 +692,18 @@ times stops being a physical cue and becomes texture.
 - **State changes inside an arrived turn are transitions, not entrances**:
   `AgentPrompt` dims to `opacity-75`; the answer's meta row is reserved at chip
   height (`min-h-6`) so late chips cannot grow the footer.
+- **A card that moves glides; a filter press does not.** A task card that
+  changes place under the reader (into another recency bucket, out of a
+  narrow filter it no longer matches, pushed down by a new run) travels on
+  `springGlide` with `layout="position"` and a `layoutId` per task, and the
+  cards and bucket sections around it make room on the same spring. Position
+  only: a card that grew takes its height at once. A filter swap must not move
+  anything, so the shared layout is scoped to the filter: the group is keyed
+  by it (every card remounts) and the filter is part of every `layoutId`, so
+  no card has a namespace-mate in the old list to fly from; `useSwapFade`
+  fades the new rows in. Reduced motion lands the card in one frame
+  (`useMotionToken`). `features/tasks/components/task-list.tsx`; the ids are
+  mirrored onto `data-layout-id` and asserted in `task-list.spec.tsx`.
 - **Staggers are always capped** — `Stagger` ships a ceiling
   (`staggerMaxSteps`), because an uncapped stagger delayed one screen's seventh
   row by 350ms. Never on a list the reader opened to reach one specific row.

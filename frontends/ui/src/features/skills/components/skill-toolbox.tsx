@@ -33,11 +33,11 @@
 
 import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { AlertCircle, BookOpen, ChevronDown, Library, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
+import { BookOpen, ChevronDown, Library, Pencil, Plus, Search, Sparkles, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { LoadError } from '@/components/ui/load-error'
 import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/raised-card'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -265,15 +265,7 @@ export function SkillToolbox({
       )}
 
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle className="size-4" aria-hidden />
-          <AlertTitle>{t('toolbox.loadError')}</AlertTitle>
-          <AlertDescription>
-            <Button variant="outline" size="sm" onClick={load}>
-              {t('tryAgain')}
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadError title={t('toolbox.loadError')} onRetry={load} />
       )}
 
       {skills !== null && !error && (skills.length > 0 || searching) && (

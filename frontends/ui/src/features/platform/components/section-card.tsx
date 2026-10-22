@@ -21,9 +21,8 @@
 
 import type { JSX } from 'react'
 import { type ReactNode } from 'react'
-import { AlertTriangle, RefreshCw, type LucideIcon } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Button } from '@/components/ui/button'
+import { type LucideIcon } from 'lucide-react'
+import { LoadError } from '@/components/ui/load-error'
 import {
   Card,
   CardAction,
@@ -102,28 +101,12 @@ export function SectionCard({
     // flipping back to a skeleton would hide the thing the user just clicked.
     if (error) {
       return (
-        <Alert variant="destructive">
-          <AlertTriangle aria-hidden />
-          <AlertTitle className="line-clamp-none">{errorMessage ?? t('loadError')}</AlertTitle>
-          <AlertDescription>
-            <p>{t('loadErrorHint')}</p>
-            {onRetry ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={onRetry}
-                disabled={loading}
-              >
-                <RefreshCw
-                  className={cn('size-3.5', loading && 'animate-spin motion-reduce:animate-none')}
-                  aria-hidden
-                />
-                {t('retry')}
-              </Button>
-            ) : null}
-          </AlertDescription>
-        </Alert>
+        <LoadError
+          title={errorMessage ?? t('loadError')}
+          description={t('loadErrorHint')}
+          onRetry={onRetry}
+          retrying={loading}
+        />
       )
     }
     if (loading) {

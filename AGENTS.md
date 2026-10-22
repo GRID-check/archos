@@ -93,6 +93,12 @@ for. Deviate only with the reason written in an ADR. Anything an agent reads
 (tool names, descriptions, errors, cards over the wire) is English, with one
 word per concept; German is for people, through i18n, and for domain data.
 
+**Prompting advice is dated.** Advice on prompts, tool descriptions or context
+comes from the vendor's live sources of the last three months, each cited with
+its date; the consultant that gathers it runs on the strongest model. Say what
+the agent is for and give it tools; do not script how it thinks.
+[`working-style.md`](docs/contributing/working-style.md#prompting-advice-has-a-three-month-shelf-life).
+
 **Question the rules, including these.** A rule here records a decision someone
 made with what they knew then. When one blocks the better result, or a new
 standard makes it wrong, say so and change the rule in the same change, with the

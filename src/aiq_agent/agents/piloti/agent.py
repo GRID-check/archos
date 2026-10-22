@@ -41,7 +41,6 @@ from typing import runtime_checkable
 from langchain_core.language_models import BaseChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.messages import HumanMessage
-from langchain_core.messages import SystemMessage
 from langchain_core.messages import ToolMessage
 from langchain_core.runnables import RunnableConfig
 from langchain_core.tools import BaseTool
@@ -89,7 +88,6 @@ from aiq_agent.common.steering import SteerNote
 from aiq_agent.common.steering import current_steer_inbox
 from aiq_agent.common.steering import is_write_call
 from aiq_agent.common.steering import render_note
-from aiq_agent.common.steering import with_steering
 from aiq_agent.common.tool_errors import render_tool_error
 from aiq_agent.common.turn_status import begin_lane_capture
 from aiq_agent.common.turn_status import emit
@@ -134,8 +132,10 @@ from .envelope_call import ainvoke_with_envelope_json_mode
 from .grounding import tool_result_is_measurement
 from .ledger import assemble_result
 from .models import ResearchAgentState
+from .prompt import TurnPrompt
 from .prompt import build_tools_info
-from .prompt import render_system_prompt
+from .prompt import render_turn_prompt
+from .prompt import request_messages
 from .prompt import shelf_label
 from .prompt import stamp_static_prompt_for_turn
 from .prompt import system_prompt_template
@@ -237,10 +237,9 @@ _TURN_BINDING_KEY = "piloti_turn"
 STEERED_TAG = "steered"
 
 _SYNTHESIS_ANCHOR = (
-    "You have exhausted your research budget. Synthesize the final answer now "
-    "as your ```answer_json envelope object, "
-    "using the citations [1], [2] and the '## References' format. "
-    "Do not attempt any further tool calls."
+    "The research limit for this turn is reached; answer from what you have and say what you could not check. "
+    "Answer as your ```answer_json envelope object, using the citations [1], [2] and the '## References' format. "
+    "No further tool calls."
 )
 
 
@@ -980,6 +979,13 @@ def _bind_registry() -> tuple[SourceRegistry, Any]:
     return registry, set_session_registry(registry)
 
 
+#: What the model reads beside the round-0 calls: their provenance, the one place it is said.
+PREFETCH_NOTE = (
+    "Passages retrieved automatically for this message follow. Use them if they answer the question; "
+    "search further if they don't."
+)
+
+
 class PilotiAgent:
     """Fast, bounded research with tool-calling.
 
@@ -1022,8 +1028,9 @@ class PilotiAgent:
         Args:
             llm_provider: LLMProvider for role-based LLM access.
             tools: The boot tool set. A turn may narrow or extend it.
-            system_prompt: Optional custom template; the default is
-                ``prompts/piloti.j2``, read once per process.
+            system_prompt: Optional custom turn-context template; the default
+                is ``prompts/piloti.j2``, read once per process. The system
+                prompt itself is the static half (``prompt.render_turn_prompt``).
             max_tool_iterations: The RESEARCH budget, in tool-calling ROUNDS —
                 LLM decisions that asked for tools — the turn may spend before
                 synthesis is forced. A round costs one whatever it asked for:
@@ -1275,10 +1282,14 @@ class PilotiAgent:
         tools_info = state.tools_info if state.tools_info else binding.tools_info
         llm_with_tools, tools_info = self._research_tool_binding(state.messages, tools_info, binding)
         # Rendered once per run and cached on the state: every input is fixed
-        # for the life of one run(), so the string is byte-identical across
+        # for the life of one run(), so both strings are byte-identical across
         # tool-loop iterations and the norm-block computation runs once.
-        system_prompt = state.cached_system_prompt
-        if system_prompt is None:
+        prompt = (
+            TurnPrompt(system=state.cached_system_prompt, context=state.cached_turn_context)
+            if state.cached_system_prompt is not None and state.cached_turn_context is not None
+            else None
+        )
+        if prompt is None:
             # In a THREAD, because the render resolves the static half through
             # the prompt store: with Langfuse prompt management on, that is one
             # bounded HTTP call (2 s) on the first render of a TTL window, and
@@ -1287,7 +1298,7 @@ class PilotiAgent:
             # context, so every ContextVar the render reads is the turn's own,
             # and nothing in it depends on the thread it runs on.
             # ``register.py`` moves its blocking reads the same way.
-            system_prompt = await asyncio.to_thread(render_system_prompt, self.system_prompt, state, tools_info)
+            prompt = await asyncio.to_thread(render_turn_prompt, self.system_prompt, state, tools_info)
         # What the person typed since the last decision, read before this one
         # (``common/steering.py``). Never into ``state.messages``: only into
         # the request, at the index it arrived at, every round from now on.
@@ -1295,9 +1306,9 @@ class PilotiAgent:
         steering = state.steering if taken is None else taken
         cutoff = _turn_cutoff(state, binding)
         if cutoff is not None:
-            return await self._forced_synthesis(state, binding, system_prompt, cutoff=cutoff, steering=steering)
+            return await self._forced_synthesis(state, binding, prompt, cutoff=cutoff, steering=steering)
 
-        messages = with_steering([SystemMessage(content=system_prompt), *state.messages], steering)
+        messages = request_messages(prompt, state.messages, steering)
         # Every round may be the answer, and only its tokens say so; each
         # streams, and the reader shows nothing from a round that is not an
         # envelope. The deferred binding stays buffered (its fallback would
@@ -1323,7 +1334,8 @@ class PilotiAgent:
             "messages": [response],
             "tool_iterations": rounds,
             "retrieval_round": retrieval_round,
-            "cached_system_prompt": system_prompt,
+            "cached_system_prompt": prompt.system,
+            "cached_turn_context": prompt.context,
         }
         if round_record is not None:
             update["retrieval_rounds"] = [*state.retrieval_rounds, round_record]
@@ -1379,7 +1391,7 @@ class PilotiAgent:
         self,
         state: ResearchAgentState,
         binding: TurnBinding,
-        system_prompt: str,
+        prompt: TurnPrompt,
         *,
         cutoff: str,
         steering: Sequence[AppliedSteer] = (),
@@ -1403,7 +1415,7 @@ class PilotiAgent:
         # Anchored at the end to combat "Loss in the Middle".
         # The notes keep their places; the anchor stays last.
         messages = [
-            *with_steering([SystemMessage(content=system_prompt), *state.messages], steering),
+            *request_messages(prompt, state.messages, steering),
             HumanMessage(content=_SYNTHESIS_ANCHOR),
         ]
         answering, call_config = streaming_call(binding.llm, live=_live_answer(state))
@@ -1411,7 +1423,8 @@ class PilotiAgent:
         return {
             "messages": [response],
             "tool_iterations": state.tool_iterations,
-            "cached_system_prompt": system_prompt,
+            "cached_system_prompt": prompt.system,
+            "cached_turn_context": prompt.context,
             "research_truncated": True,
             "steering": list(steering),
         }
@@ -1586,7 +1599,7 @@ class PilotiAgent:
         ]
         if not calls:
             return {}
-        announcement = AIMessage(content="", tool_calls=calls)
+        announcement = AIMessage(content=PREFETCH_NOTE, tool_calls=calls)
         announced = state.model_copy(update={"messages": [*state.messages, announcement]})
         split = _split_round(announced, binding.disabled_sources, binding.max_calls_per_round)
         if not split.ran or not is_retrieval_round(split.ran):
@@ -1646,10 +1659,10 @@ class PilotiAgent:
         # with, including the render thread's own resolution, lands in it and
         # is what this turn's generation spans name.
         prompt_link = begin_turn_prompt_link()
-        # The static half is what every call of every turn of this tenant
-        # shares; naming it keeps the provider's cache key, and so its shard,
-        # stable across turns while the dynamic half moves (already-read
-        # digest, date, inventory).
+        # The static half is the system prompt every call of every turn of
+        # this tenant shares; naming it keeps the provider's cache key, and so
+        # its shard, stable across turns while the turn context (already-read
+        # digest, date, inventory) moves in its own message.
         stable_prefix = begin_stable_prefix(await stamp_static_prompt_for_turn())
         registry, registry_token = _bind_registry()
         turn_capture = begin_turn_capture()

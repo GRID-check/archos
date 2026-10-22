@@ -602,11 +602,8 @@ class TestTheContract:
         assert "Provide `clause=`" not in rp._READ_PASSAGE_DESCRIPTION
         assert "Provide `clause=`" not in (rp.read_passage.__doc__ or "")
 
-    def test_it_still_says_not_to_read_the_same_clause_twice(self):
-        assert "Do not call it twice for the same Punkt" in rp._READ_PASSAGE_DESCRIPTION
-
     def test_returns_describes_the_outline_as_an_index(self):
-        returns = rp._READ_PASSAGE_DESCRIPTION.split("RETURNS")[1]
+        returns = rp._READ_PASSAGE_DESCRIPTION.split("Returns:")[1]
 
         assert "Gliederung" in returns
         assert "not evidence" in returns

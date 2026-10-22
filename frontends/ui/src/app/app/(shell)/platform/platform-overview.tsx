@@ -35,9 +35,9 @@ import { WorkOsWidgets, UsersManagement } from '@workos-inc/widgets'
 // reads. Checked against the installed sheet before keeping the import here.
 import '@radix-ui/themes/styles.css'
 import Link from 'next/link'
-import { AlertTriangle, Building2, RefreshCw, SearchX } from 'lucide-react'
+import { Building2, SearchX } from 'lucide-react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { LoadError } from '@/components/ui/load-error'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { DataToolbar } from '@/components/ui/data-toolbar'
@@ -288,22 +288,14 @@ const LoadErrorAlert: FC<{
   retrying: boolean
   testId?: string
 }> = ({ title, hint, onRetry, retrying, testId }) => {
-  const t = useTranslations('platform')
   return (
-    <Alert variant="destructive" data-testid={testId}>
-      <AlertTriangle aria-hidden />
-      <AlertTitle className="line-clamp-none">{title}</AlertTitle>
-      <AlertDescription>
-        {hint ? <p>{hint}</p> : null}
-        <Button variant="outline" size="sm" className="mt-2" onClick={onRetry} disabled={retrying}>
-          <RefreshCw
-            className={cn('size-3.5', retrying && 'animate-spin motion-reduce:animate-none')}
-            aria-hidden
-          />
-          {t('retry')}
-        </Button>
-      </AlertDescription>
-    </Alert>
+    <LoadError
+      title={title}
+      description={hint}
+      onRetry={onRetry}
+      retrying={retrying}
+      data-testid={testId}
+    />
   )
 }
 

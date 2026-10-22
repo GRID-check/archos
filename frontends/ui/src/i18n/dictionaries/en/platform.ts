@@ -11,7 +11,6 @@ export const platform = {
     title: 'Nothing here yet',
   },
   loadErrorHint: 'Something went wrong while fetching the data. Please try again.',
-  retry: 'Retry',
   refreshing: 'Updating…',
   // Shared by every number field on the platform forms (price list, allowance,
   // storage quota), which all read input through `lib/text/parse-decimal`.
@@ -1206,7 +1205,6 @@ export const platform = {
     description:
       'Per-conversation execution timeline — how long the agent spent on each step (graph node, LLM call, tool call), across every organization.',
     loadError: 'Could not load the profiler data.',
-    retry: 'Retry',
     search: 'Search conversations…',
     empty: 'No profiled conversations in this period.',
     capped: 'Showing the {count} most recently active conversations.',

@@ -448,12 +448,12 @@ class TestDescriptionFollowsMatchModes:
         search_with(_Store([]))
         text = await self._description(["exact", "regex"])
         assert text.startswith('In this configuration the search is literal only: pass `match="exact"` or')
-        assert '`match="exact"` turns the search into Ctrl+F' in text
+        assert '`match="exact"` returns EVERY passage' in text
 
     async def test_production_offers_every_mode(self, search_with):
         search_with(_Store([]))
         text = await self._description(["meaning", "exact", "regex"])
-        assert '`match="exact"` turns' in text and '`match="regex"` is the same search' in text
+        assert '`match="exact"` returns' in text and '`match="regex"` is the same search' in text
         assert "literal only" not in text
 
 
@@ -461,7 +461,7 @@ def _regex_examples(description: str) -> list[str]:
     """Every backticked regex in the parenthesis after „for a pattern“ in the regex paragraph."""
     import re
 
-    paragraph = description[description.index('`match="regex"`') : description.index("WHEN NOT TO CALL")]
+    paragraph = description[description.index('`match="regex"`') : description.index("Returns: numbered")]
     offered = paragraph[paragraph.index("for a pattern (") : paragraph.index("`|` is then")]
     return re.findall(r"`([^`]+)`", offered)
 

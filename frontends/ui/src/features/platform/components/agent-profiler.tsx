@@ -34,15 +34,13 @@ import {
   Bot,
   Clock,
   MessageSquare,
-  RefreshCw,
   SearchX,
   Workflow,
   Wrench,
   type LucideIcon,
 } from 'lucide-react'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { LoadError } from '@/components/ui/load-error'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
@@ -347,28 +345,7 @@ function ErrorAlert({
   onRetry: () => void
   busy: boolean
 }): JSX.Element {
-  const t = useTranslations('platform')
-  return (
-    <Alert variant="destructive">
-      <AlertTriangle aria-hidden />
-      <AlertTitle className="line-clamp-none">{title}</AlertTitle>
-      <AlertDescription>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRetry}
-          disabled={busy}
-          className="mt-2 w-fit"
-        >
-          <RefreshCw
-            className={cn('size-3.5', busy && 'animate-spin motion-reduce:animate-none')}
-            aria-hidden
-          />
-          {t('profiler.retry')}
-        </Button>
-      </AlertDescription>
-    </Alert>
-  )
+  return <LoadError title={title} onRetry={onRetry} retrying={busy} />
 }
 
 interface ConversationListDto {

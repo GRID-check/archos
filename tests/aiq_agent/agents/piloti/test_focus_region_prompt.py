@@ -13,12 +13,12 @@ from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
 from aiq_agent.agents.piloti.prompt import focus_region_block
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.common.wire_v2 import FocusRegion
 
 HEADING = "## Focus region"
-BOUNDARY_ANCHOR = "## Context"
+BOUNDARY_ANCHOR = "<turn_context>"
 CANVAS = [{"name": "look", "description": "x"}] + [
     {"name": f"canvas__{tool}", "description": "x"} for tool in ("highlight", "point", "mark", "reply")
 ]
@@ -35,7 +35,7 @@ def _state(**fields) -> ResearchAgentState:
 
 
 def _render(tools=CANVAS, **fields) -> str:
-    return render_system_prompt(system_prompt_template(), _state(**fields), tools)
+    return render_turn_context(system_prompt_template(), _state(**fields), tools)
 
 
 class TestTheBlockReachesTheModel:

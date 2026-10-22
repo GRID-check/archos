@@ -17,7 +17,7 @@ import pytest
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.auth import utils as auth_utils
 from aiq_agent.project_context import GridRequestContext
@@ -29,8 +29,10 @@ ANNA = {"name": "Anna Weber", "email": "anna@example.at", "organizationName": "A
 
 def _context_block(user_info) -> str:
     state = ResearchAgentState(messages=[HumanMessage(content="?")], user_info=user_info)
-    rendered = render_system_prompt(system_prompt_template(), state, [])
-    return rendered[rendered.index("## Context") : rendered.index("## Available Tools")]
+    rendered = render_turn_context(system_prompt_template(), state, [])
+    # The head of the turn context: the date and who asks, up to the first section.
+    head = rendered[rendered.index("<turn_context>") :]
+    return head.split("\n\n", 1)[0] + "\n"
 
 
 def _signed(payload: dict, secret: str = SECRET) -> GridRequestContext | None:

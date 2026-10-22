@@ -26,6 +26,12 @@ export const common = {
     empty: 'Nothing here yet',
     copyFailed: 'Could not copy',
   },
+  /** The shared „failed to load, retry" block (`components/ui/load-error.tsx`). */
+  loadError: {
+    retry: 'Try again',
+    title: 'Could not be loaded',
+    retrying: 'Retrying…',
+  },
   codeBlock: {
     copy: 'Copy',
     copied: 'Copied',

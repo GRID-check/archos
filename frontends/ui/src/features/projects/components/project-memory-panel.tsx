@@ -6,7 +6,6 @@ import type { JSX } from 'react'
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
 import {
-  AlertCircle,
   Brain,
   Check,
   CircleAlert,
@@ -21,13 +20,13 @@ import {
   type ProjectMemoryItem,
   type ProjectMemoryKind,
 } from '@/lib/db/schema'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
+import { LoadError } from '@/components/ui/load-error'
 import { RaisedCard, RaisedCardBody } from '@/components/ui/raised-card'
 import { SectionLabel } from '@/components/ui/section-label'
 import {
@@ -425,23 +424,14 @@ export function ProjectMemoryPanel({
       )}
 
       {error && (
-        <Alert variant="destructive">
-          <AlertCircle />
-          <AlertTitle>{t('memory.errors.title')}</AlertTitle>
-          <AlertDescription className="flex flex-col items-start gap-3">
-            <span>{error}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setItems(null)
-                load({ cancelled: false })
-              }}
-            >
-              {t('memory.tryAgain')}
-            </Button>
-          </AlertDescription>
-        </Alert>
+        <LoadError
+          title={t('memory.errors.title')}
+          description={error}
+          onRetry={() => {
+            setItems(null)
+            return load({ cancelled: false })
+          }}
+        />
       )}
 
       {!error && items === null && (

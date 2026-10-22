@@ -381,7 +381,7 @@ export const PlatformLessons: FC = () => {
           <section key={group.status} className="space-y-1">
             <SectionLabel as="h3" className="flex items-center gap-2">
               {t(`lessons.groups.${group.status}`)}
-              <CountPill>{counts[group.status] ?? group.lessons.length}</CountPill>
+              <CountPill count={counts[group.status] ?? group.lessons.length} />
             </SectionLabel>
             <ul className="flex flex-col divide-y">
               {group.lessons.map((lesson) => {

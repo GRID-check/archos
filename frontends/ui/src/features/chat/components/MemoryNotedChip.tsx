@@ -61,7 +61,7 @@ export const MemoryNotedChip: FC<MemoryNotedChipProps> = ({ items }) => {
           <button type="button">
             <Brain aria-hidden="true" />
             {t('memory.noted')}
-            <ChipCount>{items.length}</ChipCount>
+            <ChipCount count={items.length} />
           </button>
         </Chip>
       </PopoverTrigger>

@@ -26,14 +26,13 @@
  * **States.** Skeletons only on the first load. A refetch after a filter
  * change keeps the figures on screen, dims them, and spins the refresh glyph;
  * an AbortController drops the response a newer request has replaced. A failed
- * read is an `Alert` with a retry, never an empty state that reads as "no
+ * read is a `LoadError` with a retry, never an empty state that reads as "no
  * feedback".
  */
 
 import type { JSX } from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
-  AlertCircle,
   ChevronRight,
   ExternalLink,
   Filter,
@@ -46,7 +45,7 @@ import {
   X,
 } from 'lucide-react'
 
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { LoadError } from '@/components/ui/load-error'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Chip } from '@/components/ui/chip'
@@ -278,28 +277,21 @@ export function AnswerFeedbackHealth({
   const body = (): JSX.Element => {
     if (failed) {
       return (
-        <Alert variant="destructive" data-testid="answer-feedback-error">
-          <AlertCircle aria-hidden />
-          <AlertTitle>{t('answerFeedback.errorTitle')}</AlertTitle>
-          <AlertDescription>
-            <p>{t('answerFeedback.errorBody')}</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => void load()} disabled={loading}>
-                <RefreshCw
-                  className={cn('size-3.5', loading && 'animate-spin motion-reduce:animate-none')}
-                  aria-hidden
-                />
-                {t('retry')}
+        <LoadError
+          title={t('answerFeedback.errorTitle')}
+          description={t('answerFeedback.errorBody')}
+          onRetry={load}
+          retrying={loading}
+          data-testid="answer-feedback-error"
+          actions={
+            filtered ? (
+              <Button variant="ghost" size="sm" onClick={clearFilters}>
+                <X className="size-3.5" aria-hidden />
+                {t('answerFeedback.filters.clearAll')}
               </Button>
-              {filtered ? (
-                <Button variant="ghost" size="sm" onClick={clearFilters}>
-                  <X className="size-3.5" aria-hidden />
-                  {t('answerFeedback.filters.clearAll')}
-                </Button>
-              ) : null}
-            </div>
-          </AlertDescription>
-        </Alert>
+            ) : null
+          }
+        />
       )
     }
     if (!data) return <HealthSkeleton />

@@ -511,7 +511,7 @@ describe('CitationHealth', () => {
     const alert = await screen.findByRole('alert')
     expect(alert.textContent).toContain('Could not load citation health.')
 
-    await userEvent.click(within(alert).getByRole('button', { name: /Retry/i }))
+    await userEvent.click(within(alert).getByRole('button', { name: /Try again/i }))
     expect(await screen.findByText('88%')).toBeDefined()
   })
 

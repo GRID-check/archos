@@ -20,10 +20,10 @@ Three things about it are load-bearing and each has a test here:
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 
-BOUNDARY_ANCHOR = "## Context"
+BOUNDARY_ANCHOR = "<turn_context>"
 HEADING = "## Anweisungen des Büros"
 TOOLS = [{"name": "knowledge_search", "description": "Search the knowledge base."}]
 INSTRUCTIONS = "Antworten kurz halten.\nImmer die Wiener Bauordnung zuerst prüfen."
@@ -31,7 +31,7 @@ INSTRUCTIONS = "Antworten kurz halten.\nImmer die Wiener Bauordnung zuerst prüf
 
 def _render(**overrides) -> str:
     state = ResearchAgentState(messages=[HumanMessage(content="Wie hoch darf das Gebäude sein?")], **overrides)
-    return render_system_prompt(system_prompt_template(), state, TOOLS)
+    return render_turn_context(system_prompt_template(), state, TOOLS)
 
 
 class TestTheBlockReachesTheModel:
@@ -55,7 +55,7 @@ class TestTheBlockReachesTheModel:
         block = rendered.split(HEADING)[1]
 
         assert "never supply a normative value" in block
-        assert "never override the rules above" in block
+        assert "never override the rules of the system prompt" in block
         assert "bounded" in block
 
 
@@ -75,18 +75,20 @@ class TestWhereItSits:
         assert rendered.index(HEADING) < rendered.index("## Project Context")
 
     def test_the_static_half_says_the_rules_win(self):
-        """The precedence rule is in the CACHED half, above the boundary.
+        """The precedence rule is in the system prompt, not only in the turn context.
 
         Stated only beside the office's own text, it would be a sentence the
-        tenant's instructions sit next to; stated in `<conduct>`, it is one the
+        tenant's instructions sit next to; stated in `<rules>`, it is one the
         model has read before it reaches them — and it is there whether or not
         this organization sent anything.
         """
-        for rendered in (_render(), _render(org_instructions=INSTRUCTIONS)):
-            conduct = rendered.split("<conduct>")[1].split("</conduct>")[0]
-            assert "the rules win" in conduct
-            assert "never a source" in conduct
-            assert rendered.index("</conduct>") < rendered.index(BOUNDARY_ANCHOR)
+        from aiq_agent.agents.piloti.prompt import bundled_static_block
+
+        rules = bundled_static_block().text.split("<rules>")[1].split("</rules>")[0]
+        office = rules.split("The office's own instructions")[1].split("\n")[0]
+        assert "never override these rules" in office
+        assert "never supply a normative value" in office
+        assert "<rules>" not in _render(org_instructions=INSTRUCTIONS)
 
 
 class TestTheLift:

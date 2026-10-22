@@ -149,9 +149,8 @@ export function FileFilterMenu({
               aria-hidden
               className={compact ? 'absolute -right-1.5 -top-1.5' : undefined}
               data-testid="file-filter-count"
-            >
-              {count}
-            </CountPill>
+              count={count}
+            />
           )}
         </Button>
       </PopoverTrigger>

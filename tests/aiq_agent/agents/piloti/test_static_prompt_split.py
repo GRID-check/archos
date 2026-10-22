@@ -1,11 +1,13 @@
-"""The rendered prompt, pinned: two files and a store, one string.
+"""The rendered prompt, pinned: two files and a store, two messages.
 
-The static half lives in `piloti_static.md` so it can be managed in Langfuse,
-and `piloti.j2` holds the dynamic half. The seam between them is bytes: a stray
-newline there is a different prefix, which costs every tenant their provider
-prompt-cache hit on every turn and shows up as latency rather than as a
-failure. So the first test renders both halves with pinned inputs and compares
-the result, byte for byte, with the committed fixture.
+The system prompt is the static half alone, `piloti_static.md`, so it can be
+managed in Langfuse and stays the same bytes on every turn of a conversation.
+`piloti.j2` is the turn context, its own message right before the newest human
+message (`prompt.request_messages`). A byte of drift in the system prompt
+between turns is a different prefix, which costs every tenant their provider
+prompt-cache hit on the system prompt AND the history behind it, and shows up
+as latency rather than as a failure. So the first test renders both with pinned
+inputs and compares the result, byte for byte, with the committed fixture.
 
 The fixture is a GOLDEN FILE, not a claim about any past version. A deliberate
 prompt edit changes it, and the diff is what review reads; an accidental one
@@ -50,9 +52,7 @@ PINNED = dict(
     answer_envelope_schema="<<ENVELOPE SCHEMA>>",
     document_inventory="<<DOCUMENT INVENTORY>>",
     current_datetime="2026-01-02",
-    tools=[{"name": "search_documents"}, {"name": "write_file"}, {"name": "move_document"}, {"name": "create_task"}],
     user_info={"name": "Test User", "email": "test@example.invalid"},
-    drafting_enabled=True,
     already_read_block="<<ALREADY READ>>",
     org_instructions="<<ORG INSTRUCTIONS>>",
     focus_file_name="Einreichplan.pdf",
@@ -60,9 +60,12 @@ PINNED = dict(
     oib_applicability="<<OIB APPLICABILITY>>",
     parcel_note="<<PARCEL NOTE>>",
     platform_lessons="<<PLATFORM LESSONS>>",
-    project_context={"name": "Testprojekt"},
+    project_context="name: Testprojekt\nPROPOSAL_DECISIONS v1\ndocuments_missing:\n- Bebauungsplan",
     skills_block="<<SKILLS>>",
 )
+
+#: The line between the two messages in the fixture; it is in neither.
+MESSAGE_SEAM = "\n\n===== turn context message =====\n\n"
 
 
 def _forget_what_resolving_recorded() -> None:
@@ -80,9 +83,13 @@ def _clean_trace_state():
 
 
 def _render(static_text: str) -> str:
-    """The two-pass render, with the pinned inputs instead of the injected ones."""
-    block = render_prompt_template(static_text, **PINNED).rstrip("\n")
-    return render_prompt_template(system_prompt_template(), static_block=block, **PINNED)
+    """Both messages, with the pinned inputs instead of the injected ones, and the seam between them.
+
+    The fixture ends with a newline the turn context does not have, because
+    the repo's end-of-file hook gives every committed text file one.
+    """
+    system = render_prompt_template(static_text, **PINNED).rstrip("\n")
+    return system + MESSAGE_SEAM + render_prompt_template(system_prompt_template(), **PINNED) + "\n"
 
 
 def regenerate() -> None:
@@ -97,16 +104,17 @@ class TestByteIdentity:
 
         assert _render(committed) == FIXTURE.read_text(encoding="utf-8")
 
-    def test_the_seam_carries_no_whitespace_of_its_own(self):
+    def test_the_turn_context_is_one_tagged_block_and_no_system_prompt(self):
         """
-        The KV-cache boundary marker used to eat the blank lines between the
-        halves; `{{ static_block }}` plus the marker has to eat exactly the same
-        ones. A test on the joint alone, so a failure says WHERE rather than
-        just that 46 KB differ.
+        The turn context reaches the model as a human-role message, so it says
+        what it is: one `<turn_context>` block, and nothing of the static half
+        in it (the template no longer opens with `{{ static_block }}`).
         """
-        rendered = _render("STATIC HALF\n\n")
+        context = render_prompt_template(system_prompt_template(), **PINNED)
 
-        assert "STATIC HALF## Context" in rendered
+        assert context.startswith("<turn_context>\n")
+        assert context.rstrip().endswith("</turn_context>")
+        assert "static_block" not in system_prompt_template()
 
     def test_the_static_half_is_where_the_cacheable_text_lives(self):
         """
@@ -121,6 +129,17 @@ class TestByteIdentity:
         assert committed.count("{{") == 1
         assert "{{ answer_envelope_schema }}" in committed
 
+    def test_the_static_prompt_stays_within_its_budget(self):
+        """
+        The system prompt is paid on every call of every turn. It was cut from
+        ~13.8k to under 5k tokens (characters / 4) in 2026-10 by a value test
+        per line (`docs/architecture/prompt-value-audit-2026-10.md`); a line
+        that does not pass it is what grows the file back.
+        """
+        committed = (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")
+
+        assert len(committed) // 4 <= 5_000
+
 
 class TestTheRulesThePolishMustNotInvert:
     """Wordings whose meaning flips on one verb, asserted on the rendered text.
@@ -133,7 +152,7 @@ class TestTheRulesThePolishMustNotInvert:
     def test_an_accepted_proposal_reads_as_settled(self):
         rendered = FIXTURE.read_text(encoding="utf-8")
 
-        assert "That point is settled, and a further proposal is about something else." in rendered
+        assert "that point is settled, and a further proposal is about something else." in rendered
         assert "and propose something else" not in rendered
 
 
@@ -161,11 +180,11 @@ class TestStoreSeam:
         monkeypatch.setattr(prompt_module, "prompt_store", lambda: served)
 
         resolved = resolve_static_block()
-        rendered = render_prompt_template(template, static_block=resolved.text, **PINNED)
+        context = render_prompt_template(template, **PINNED)
 
         assert served.asked == [STATIC_PROMPT_NAME]
-        assert rendered.startswith("MANAGED STATIC HALF## Context")
-        assert "## Available Tools" in rendered
+        assert resolved.text == "MANAGED STATIC HALF"
+        assert "MANAGED" not in context and context.startswith("<turn_context>")
 
     def test_the_fallback_handed_to_the_store_is_the_bundled_text(self, monkeypatch):
         served = _FakeStore(None)
@@ -236,19 +255,21 @@ class TestPromptLink:
             "prompt_version": bundled_static_block().version,
         }
 
-    async def test_the_stamp_returns_the_bytes_the_prompt_opens_with(self, monkeypatch):
+    async def test_the_stamp_returns_the_bytes_the_system_prompt_is(self, monkeypatch):
         """
         The stamp's return names the provider cache's stable prefix, so it
-        must be exactly what the rendered system prompt STARTS with: the
-        template's first line is `{{ static_block }}`, and a byte of drift
-        between the two would key every turn on the whole prompt again.
+        must be exactly the system prompt the turn sends: a byte of drift
+        between the two would key every turn on a prefix nobody sends.
         """
+        from aiq_agent.agents.piloti.models import ResearchAgentState
+        from aiq_agent.agents.piloti.prompt import render_turn_prompt
+
         monkeypatch.setattr(prompt_module, "prompt_store", lambda: PromptStore(enabled=False))
 
         static = await stamp_static_prompt_for_turn()
-        rendered = render_prompt_template(system_prompt_template(), static_block=static, **PINNED)
+        sent = render_turn_prompt(system_prompt_template(), ResearchAgentState(messages=[]), []).system
 
-        assert static and rendered.startswith(static)
+        assert static and sent == static
 
     async def test_the_turn_stamp_names_what_this_turn_resolved(self, monkeypatch):
         """
@@ -362,7 +383,20 @@ class TestTheRoundCostIsStatedAsAFact:
     def test_the_prompt_says_a_round_costs_one_whatever_it_holds(self):
         rendered = FIXTURE.read_text(encoding="utf-8")
 
-        assert "a round costs one however many calls it holds" in rendered
+        assert "a round is one decision, however many calls it holds" in rendered
+
+    def test_the_prompt_names_the_round_budget_the_config_sets(self):
+        """The model cannot see its budget, so the prompt states it: a number that drifts from the config lies."""
+        import re
+
+        config = (Path(__file__).resolve().parents[4] / "configs" / "config_oib_openrouter.yml").read_text(
+            encoding="utf-8"
+        )
+        configured = re.search(r"^\s*max_tool_iterations:\s*(\d+)", config, re.MULTILINE)
+        assert configured, "the production config no longer sets max_tool_iterations"
+        rendered = FIXTURE.read_text(encoding="utf-8")
+
+        assert f"You have up to {configured.group(1)} tool rounds this turn" in rendered
 
     def test_the_family_search_is_stated_as_the_members_opened(self):
         """
@@ -372,11 +406,10 @@ class TestTheRoundCostIsStatedAsAFact:
         spent the round after the family result re-opening the same three
         documents and read back what it was already holding.
         """
-        rendered = FIXTURE.read_text(encoding="utf-8")
+        from sources.knowledge_layer.src.register import _KNOWLEDGE_SEARCH_DESCRIPTION as description
 
-        assert "every member the corpus holds, each with that same scope passage and Gliederung" in rendered
-        assert "what is left to open is a Punkt by number" in rendered
-        assert "was opened, in one round" not in rendered
+        assert "every member is then open at the level `read_passage(document=…)` opens it" in description
+        assert "what is left to open is a Punkt by number" in description
 
 
 class _FakeStore:
@@ -396,12 +429,14 @@ class _FakeStore:
 def test_project_record_names_the_three_file_blocks_and_says_look_before_missing():
     """The agent must not call a file missing because no list shows it, nor read an unreadable one as absent.
 
-    Contract tokens only: the block keys, and the two tools the prompt sends the agent to look with.
+    Contract tokens only: the block keys, and the two tools the context sends the agent to look with. The
+    legend moved from the static prompt into the turn context, beside the project context that carries the
+    blocks, and renders only when one of them is there.
     """
-    committed = (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")
-    assert "<project_record>" in committed
-    record = committed.split("<project_record>", 1)[1].split("</project_record>", 1)[0]
+    record = render_prompt_template(system_prompt_template(), **PINNED)
 
     for key in ("documents:", "documents_missing:", "documents_unreadable:"):
         assert key in record
     assert "list_files" in record and "knowledge_search" in record
+    without = render_prompt_template(system_prompt_template(), **{**PINNED, "project_context": "name: X"})
+    assert "documents_missing:" not in without

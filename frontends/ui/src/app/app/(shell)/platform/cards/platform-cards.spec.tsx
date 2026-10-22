@@ -152,7 +152,7 @@ describe('PlatformCards', () => {
     expect(screen.queryByTestId('platform-card-stair_diagram')).not.toBeInTheDocument()
 
     fetchMock.mockResolvedValueOnce(jsonResponse(catalog))
-    await user.click(screen.getByRole('button', { name: /retry/i }))
+    await user.click(screen.getByRole('button', { name: /try again/i }))
     expect(await screen.findByTestId('platform-card-stair_diagram')).toBeInTheDocument()
   })
 

@@ -525,9 +525,8 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                     <CountPill
                       className={cn((deepResearchRuns?.length ?? 0) === 0 && 'invisible')}
                       aria-hidden={(deepResearchRuns?.length ?? 0) === 0 || undefined}
-                    >
-                      {deepResearchRuns?.length ?? 0}
-                    </CountPill>
+                      count={deepResearchRuns?.length ?? 0}
+                    />
                   )}
                 </ToggleGroupItem>
               ))}
@@ -559,9 +558,8 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                 <CountPill
                   className={cn(filteredRuns.length === 0 && 'invisible')}
                   aria-hidden={filteredRuns.length === 0 || undefined}
-                >
-                  {filteredRuns.length}
-                </CountPill>
+                  count={filteredRuns.length}
+                />
               </SectionLabel>
 
               {isResearchLoading ? (

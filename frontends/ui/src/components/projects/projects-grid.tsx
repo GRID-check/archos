@@ -77,7 +77,7 @@ function SectionHeading({ id, children, count }: { id: string; children: string;
       <SectionLabel as="h2" id={id}>
         {children}
       </SectionLabel>
-      {count !== undefined && <CountPill>{count}</CountPill>}
+      {count !== undefined && <CountPill count={count} />}
     </div>
   )
 }
@@ -189,7 +189,7 @@ export function ProjectsGrid({
           {statusOptions.map((option) => (
             <ToggleGroupItem key={option} value={option} data-testid={`project-status-filter-${option}`}>
               {t(`list.filter.${option}`)}
-              <CountPill>{statusCounts[option]}</CountPill>
+              <CountPill count={statusCounts[option]} />
             </ToggleGroupItem>
           ))}
         </ToggleGroup>
