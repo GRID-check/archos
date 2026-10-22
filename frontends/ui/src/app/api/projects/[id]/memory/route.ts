@@ -5,7 +5,7 @@
 
 import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { addProjectMemoryItem, getProjectMemory } from '@/lib/projects/service'
-import { createMemorySchema, listMemoryQuerySchema } from '@/lib/projects/project-memory-wire'
+import { createMemorySchema, listMemoryQuerySchema, toMemoryWireItem } from '@/lib/projects/project-memory-wire'
 
 type Params = { id: string }
 
@@ -16,7 +16,7 @@ export const GET = apiRoute<Params>(
       includeArchived: query.includeArchived === 'true',
       sourceConversationId: query.conversationId || undefined,
     })
-    return { items }
+    return { items: items.map(toMemoryWireItem) }
   },
   { authz: { enforcedBy: 'getProjectMemory (requireProjectAccess project:view)' } }
 )
@@ -24,7 +24,7 @@ export const GET = apiRoute<Params>(
 export const POST = apiRoute<Params>(
   async ({ session, params, request }) => {
     const input = await parseJsonBody(request, createMemorySchema)
-    return { item: await addProjectMemoryItem(session, params.id, input) }
+    return { item: toMemoryWireItem(await addProjectMemoryItem(session, params.id, input)) }
   },
   {
     status: 201,

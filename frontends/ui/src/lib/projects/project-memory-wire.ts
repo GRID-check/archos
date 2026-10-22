@@ -5,6 +5,7 @@
  */
 
 import { z } from 'zod'
+import type { ProjectMemoryItem } from '@/lib/db/schema/project-memory'
 import {
   PROJECT_MEMORY_CONFIDENCES,
   PROJECT_MEMORY_KINDS,
@@ -35,3 +36,15 @@ export const patchMemorySchema = z
     pinned: z.boolean().optional(),
   })
   .refine((value) => Object.keys(value).length > 0, { message: 'Empty patch' })
+
+/**
+ * A memory item as it leaves the server: the row without its embedding. The
+ * vector (about 6 KB per item) is for recall and dedup on the server; no client
+ * reads it, and an MCP list of one project was 3.5 MB with it.
+ */
+export type ProjectMemoryWireItem = Omit<ProjectMemoryItem, 'embedding' | 'embeddingModel' | 'embeddedAt'>
+
+export function toMemoryWireItem(item: ProjectMemoryItem): ProjectMemoryWireItem {
+  const { embedding: _embedding, embeddingModel: _model, embeddedAt: _at, ...wire } = item
+  return wire
+}
