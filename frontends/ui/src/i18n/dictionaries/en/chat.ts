@@ -1007,7 +1007,7 @@ export const chat = {
       running: 'running',
       shelf: {
         project: 'in the project',
-        office: 'in the office archive',
+        office: 'in the office filing',
         base: 'in the knowledge base',
         web: 'on the web',
         session: 'in this chat',
