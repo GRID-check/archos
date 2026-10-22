@@ -41,6 +41,7 @@ from __future__ import annotations
 import os
 from typing import Annotated
 from urllib.parse import urlsplit
+from urllib.parse import urlunsplit
 
 from pydantic import AfterValidator
 from pydantic import StringConstraints
@@ -92,6 +93,32 @@ def assert_fetchable_object_store_url(url: str, field: str = "url") -> None:
         raise ObjectStoreUrlError(f"{field} must be printable ASCII without spaces or backslashes")
     if _origin(url, field) not in object_store_origins():
         raise ObjectStoreUrlError(f"{field} must point at the configured object store")
+
+
+def object_store_request_url(url: str, field: str = "url") -> str:
+    """``url`` rebuilt on the configured endpoint it names: the endpoint's origin, the URL's path and query.
+
+    The gate above proves that the URL's origin equals a configured one; this
+    makes the request go there by construction, so the host a fetch reaches
+    comes from configuration and only the object's path and its presigned
+    query come from the caller. Fetch with this, never with the raw string.
+    """
+    assert_fetchable_object_store_url(url, field)
+    wanted = _origin(url, field)
+    for variable in ENDPOINT_VARIABLES:
+        endpoint = os.environ.get(variable, "").strip()
+        if not endpoint:
+            continue
+        try:
+            origin = _origin(endpoint)
+        except ObjectStoreUrlError:
+            continue
+        if origin != wanted:
+            continue
+        configured = urlsplit(endpoint)
+        requested = urlsplit(url)
+        return urlunsplit((configured.scheme, configured.netloc, requested.path, requested.query, ""))
+    raise ObjectStoreUrlError(f"{field} must point at the configured object store")
 
 
 def _origin(url: str, field: str = "url") -> Origin:

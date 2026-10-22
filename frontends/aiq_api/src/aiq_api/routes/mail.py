@@ -37,6 +37,7 @@ from ..mail.models import MailRead
 from ..mail.models import UnreadableReason
 from ..mail.read import read_message_within
 from ..object_store_url import ObjectStoreUrl
+from ..object_store_url import object_store_request_url
 from .internal_auth import _require_internal_token
 
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ def add_mail_routes(router: APIRouter) -> None:
     )
     async def read_mail(request: MailReadRequest) -> MailRead:
         try:
-            raw = await fetch_message(request.file_ref)
+            raw = await fetch_message(object_store_request_url(request.file_ref, field="file_ref"))
         except MessageTooLargeError:
             return MailRead.unread(UnreadableReason.MESSAGE_TOO_LARGE)
         except httpx.HTTPError as error:

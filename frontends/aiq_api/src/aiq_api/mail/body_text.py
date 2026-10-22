@@ -73,7 +73,7 @@ _MARKUP_SPACE = re.compile(r"\s+")
 _LINE_START_SPACE = re.compile(r"\n ")
 #: Characters XML 1.0 does not allow. libxml2 reads past some of them, and lxml
 #: then refuses to write a text node that holds one (``ValueError``).
-_NOT_XML = re.compile("[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
+_NOT_XML = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\ud800-\udfff\ufffe\uffff]")
 _BLANK_RUN = re.compile(r"\n[ \t]*\n(?:[ \t]*\n)+")
 _TRAILING_SPACE = re.compile(r"[ \t]+\n")
 
