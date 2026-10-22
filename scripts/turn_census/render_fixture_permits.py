@@ -12,8 +12,8 @@ over every document of ``office.json`` the ingest's own type decision tagged
     PYTHONPATH=src .venv/bin/python scripts/turn_census/render_fixture_permits.py
 
 Needs the network and an OpenRouter key (``BACKFILL_SUMMARY_API_KEY``, or the
-provider key its base URL implies). The model is the one the backfill builds:
-the ingest's summary model, pinned to zero-data-retention endpoints through the
+provider key its base URL implies). The model is the
+ingest's summary model, pinned to zero-data-retention endpoints through the
 OpenRouter seam (``PLATFORM_FIXED``). Nothing is written when a document yields
 no record, so an outage cannot commit half a fixture; re-run it.
 
@@ -25,21 +25,18 @@ about the pen.
 from __future__ import annotations
 
 import json
+import os
 import sys
 from pathlib import Path
 
+from aiq_agent.common.openrouter import PLATFORM_FIXED
+from aiq_agent.common.openrouter import pin_chat_model
+from aiq_agent.knowledge.permit_extraction import extract_permit_record
+from aiq_agent.knowledge.permit_extraction import is_permit_decision
+from aiq_agent.knowledge.permit_extraction import llm_model_name
+from aiq_agent.knowledge.permit_extraction import pages_with_markers
+
 ROOT = Path(__file__).resolve().parent.parent.parent
-# The backfill builds the platform-fixed extraction model; one place knows how.
-sys.path.insert(0, str(ROOT / "scripts"))
-
-from backfill_permit_records import build_extraction_llm  # noqa: E402
-
-from aiq_agent.common.openrouter import PLATFORM_FIXED  # noqa: E402
-from aiq_agent.common.openrouter import pin_chat_model  # noqa: E402
-from aiq_agent.knowledge.permit_extraction import extract_permit_record  # noqa: E402
-from aiq_agent.knowledge.permit_extraction import is_permit_decision  # noqa: E402
-from aiq_agent.knowledge.permit_extraction import llm_model_name  # noqa: E402
-from aiq_agent.knowledge.permit_extraction import pages_with_markers  # noqa: E402
 
 FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
 OFFICE = FIXTURES / "office.json"
@@ -49,6 +46,36 @@ COMMENT = (
     "(aiq_agent.knowledge.permit_extraction.extract_permit_record) over each Bescheid of office.json; "
     "do not edit by hand."
 )
+
+
+def build_extraction_llm():
+    """The platform-fixed chat model the ingest's summary step uses, built outside NAT.
+
+    Wrapped in the request contract (``enforce_chat_request_contract``), the seam
+    where every chat call takes its provider slot (ADR-0081).
+    """
+    from langchain_openai import ChatOpenAI
+
+    from aiq_agent.common.credential_resolution import resolve_llm_credential
+    from aiq_agent.common.llm_factory import apply_openrouter_structured_defaults
+    from aiq_agent.common.llm_factory import enforce_chat_request_contract
+
+    cred = resolve_llm_credential(
+        primary_env="BACKFILL_SUMMARY_API_KEY",
+        default_base_url="https://openrouter.ai/api/v1",
+        default_model=os.environ.get("GRID_DEFAULT_MODEL", "openai/gpt-6-luna"),
+        base_url_env="BACKFILL_SUMMARY_BASE_URL",
+        model_env="BACKFILL_SUMMARY_MODEL",
+        organization_id=None,
+        data_policy=PLATFORM_FIXED,
+    )
+    if not cred.api_key:
+        raise RuntimeError(
+            "No API key: set BACKFILL_SUMMARY_API_KEY (or the provider key for "
+            "BACKFILL_SUMMARY_BASE_URL) to the key for the summary model configured in configs/config_*.yml."
+        )
+    llm = ChatOpenAI(model=cred.model, api_key=cred.api_key, base_url=cred.base_url, temperature=0, timeout=120)
+    return pin_chat_model(enforce_chat_request_contract(apply_openrouter_structured_defaults(llm)), PLATFORM_FIXED)
 
 
 def render(llm: object, office: dict) -> tuple[dict[str, dict], list[str]]:
@@ -70,7 +97,7 @@ def render(llm: object, office: dict) -> tuple[dict[str, dict], list[str]]:
 
 def main() -> int:
     office = json.loads(OFFICE.read_text(encoding="utf-8"))
-    llm = pin_chat_model(build_extraction_llm(), PLATFORM_FIXED)
+    llm = build_extraction_llm()
     records, missing = render(llm, office)
     if missing:
         print(

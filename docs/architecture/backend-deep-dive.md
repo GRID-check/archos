@@ -502,17 +502,17 @@ WebSocket handshake.
 
 ## 5. Project summary / fact-sheet
 
-The Project Overview "Project Brief" panel (`project-brief.tsx`, mounted by
-`project-overview.tsx`) renders the AI `summary` from `projects.profile_display`
-plus a fact sheet derived **at render time from the raw `projects.profile`** via
-`buildProjectBriefView` (`lib/project-profile/brief-view.ts`): facts grouped in
-intake-stage order with question/option labels ("Main use: Residential", not
-"hauptnutzung: wohnen"), goal focus areas, unanswered questions as links back
-into the wizard, a completeness count, and agent-suggested `assumptions` with
-confirm/dismiss actions (confirm graduates the value into a `user_confirmed`
-fact through the same patches endpoint the agent's `project_profile_patch`
-cards use). `buildProjectProfileDisplay` (the stored `profile_display`
-projection) uses the same labels.
+The project brief is the AI `summary` from `projects.profile_display` plus a
+fact sheet derived from the raw `projects.profile` via `buildProjectBriefView`
+(`lib/project-profile/brief-view.ts`): facts grouped in intake-stage order with
+question/option labels ("Main use: Residential", not "hauptnutzung: wohnen"),
+goal focus areas, the unanswered questions, a completeness count, and the
+agent-suggested `assumptions`. The prompt view, the patch preview, the profile
+service and the research report read it; no panel shows it any longer (the
+overview's brief panel, `project-brief.tsx`, was mounted by nothing and was
+removed on 2026-10-22, with its wizard links and confirm/dismiss actions).
+`buildProjectProfileDisplay` (the stored `profile_display` projection) uses the
+same labels.
 
 ### Agent-driven brief updates (project_profile_patch)
 
@@ -691,8 +691,7 @@ to the shelves retrieval may keep; the knowledge layer **subtracts** other
 shelves from the ceiling at the retrieve site and, when the focused file has
 hits, does not pad the merge with Archiv/project leftovers (#429, #436).
 A subject shelf wins over a preset. Absence of both leaves the signed scope
-intact (ADR-0024: Archiv stays in every unscoped project turn). The TS twin
-is `includeShelvesForTurn` in `frontends/ui/src/features/layout/lib/retrieval-scope.ts`.
+intact (ADR-0024: Archiv stays in every unscoped project turn).
 
 **A subject file never subtracts `base`.** A subject narrows which *documents*
 a turn reads, which is what #429 and #436 asked for; neither was about the

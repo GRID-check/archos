@@ -230,7 +230,11 @@ jobs:
           key: pre-commit-${{ runner.os }}-${{ env.pythonLocation }}-${{ hashFiles('.pre-commit-config.yaml') }}
           restore-keys: |
             pre-commit-${{ runner.os }}-${{ env.pythonLocation }}-
+      # Ruff runs once, in `Backend lint` below, where its findings become
+      # annotations on the diff.
       - name: Pre-commit (all hooks, all files)
+        env:
+          SKIP: ruff-check,ruff-format
         run: |
           . .venv/bin/activate
           pre-commit run --all-files
@@ -271,15 +275,23 @@ jobs:
             exit 0
           fi
           python3 ci/require_release_note.py "$BASE_SHA" "$HEAD_SHA"
-      # The full history of the commit under test, so a secret is caught in the
-      # commit that added it. Not `--all`, gitleaks' default: a full-depth
-      # checkout fetches every branch, and an open PR's fixture then failed
-      # every other PR's run. Exceptions: CONTRIBUTING.md "Secret scanning".
+      # Every commit the change adds, not only its final diff, so a secret is
+      # caught in the commit that added it even when a later one deletes it.
+      # On a pull request that is base..HEAD: the commits under the base were
+      # scanned when they landed, and the weekly Security run reads the whole
+      # history of every branch. A push reads its own full history. Not
+      # `--all`, gitleaks' default: a full-depth checkout fetches every
+      # branch, and an open PR's fixture then failed every other PR's run.
+      # Exceptions: CONTRIBUTING.md "Secret scanning".
       - name: Secret scan (gitleaks)
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          range="--full-history HEAD"
+          if [ -n "$BASE_SHA" ]; then range="$BASE_SHA..HEAD"; fi
           docker run --rm -v "$GITHUB_WORKSPACE:/repo" \
             zricethezav/gitleaks:v8.30.1 detect --source /repo --redact -v \
-            --log-opts="--full-history HEAD"
+            --log-opts="$range"
 
   # Diff-aware: `semgrep ci` on a pull request reports only findings the change
   # introduces, so it blocks a new finding without failing on the backlog. A
@@ -401,14 +413,19 @@ jobs:
           title: Backend coverage (src/aiq_agent)
           unique-id-for-comment: backend-coverage
 
-  # Every Python suite but the core one: they share the environment and fit
-  # beside a core shard.
+  # Every Python suite but the core one, one job each. Run back to back in one
+  # job they took 4:50 (sources 2:32, aiq_api 1:00, the rest 0:36), the
+  # longest job of a full pull request; side by side the longest is sources.
   backend-suites:
-    name: Backend suites (aiq_api, sources, migration, claim queues)
+    name: Backend suites (${{ matrix.suite }})
     needs: changes
     if: needs.changes.outputs.backend == 'true' && (github.event_name == 'push' || needs.changes.outputs.backend_mode == 'full')
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [aiq_api, sources, migration and claim queues]
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -425,10 +442,13 @@ jobs:
           python-version: "3.14"
       - uses: ./.github/actions/setup-task
       - name: aiq_api plugin suite
+        if: matrix.suite == 'aiq_api'
         run: task be:test:api
       - name: sources/ package suites
+        if: matrix.suite == 'sources'
         run: task be:test:sources
       - name: Chroma exporter and the one-time migration, end to end
+        if: matrix.suite == 'migration and claim queues'
         run: task be:test:migration
 
       # The suites above run each claim queue on SQLite only: their Postgres
@@ -436,6 +456,7 @@ jobs:
       # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script
       # builds the throwaway cluster, as in the frontend job.
       - name: Claim queues on real Postgres
+        if: matrix.suite == 'migration and claim queues'
         run: task be:test:postgres
         env:
           # Turns "the Postgres branch skipped" into a failure for THIS step only.
@@ -447,8 +468,15 @@ jobs:
   # run on every push to develop, which the deploy waits for, so a test this
   # selection misses still turns develop red before staging. What forces the
   # full suite on a pull request instead: ci/pr_selection.py.
+  #
+  # The core selection runs in four shards. A change to a module every test
+  # imports (logging, the conftest) selects the whole suite, and half the
+  # selections measured on 2026-10-22 were that: 15,200 tests in 4-5.5 minutes
+  # in one job, longer than the full suite's shards. pytest-split splits what
+  # testmon selected, so the shards must select from the same database: they
+  # read develop's and keep none of their own.
   backend-affected:
-    name: Backend affected tests (${{ matrix.suite }})
+    name: Backend affected tests (${{ matrix.suite }}${{ matrix.shard && format(' {0}/4', matrix.shard) || '' }})
     needs: changes
     if: github.event_name == 'pull_request' && needs.changes.outputs.backend == 'true' && needs.changes.outputs.backend_mode == 'select'
     runs-on: ubuntu-latest
@@ -456,7 +484,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [core, api, sources]
+        include:
+          - { suite: core, shard: 1 }
+          - { suite: core, shard: 2 }
+          - { suite: core, shard: 3 }
+          - { suite: core, shard: 4 }
+          - { suite: api }
+          - { suite: sources }
     services:
       qdrant:
         image: qdrant/qdrant:v1.19.2
@@ -474,28 +508,46 @@ jobs:
       - uses: ./.github/actions/setup-task
       # This pull request's own database first: it carries what the last push
       # ran, so the next push re-runs only what it changed (and anything that
-      # failed, which testmon keeps selecting until it passes). Else develop's.
-      - name: Restore the recorded test database
+      # failed, which testmon keeps selecting until it passes). Else develop's,
+      # which is all a core shard reads (above).
+      - name: Restore this pull request's test database
+        id: own-db
+        if: ${{ !matrix.shard }}
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .testmondata-${{ matrix.suite }}
           key: testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-${{ github.sha }}
           restore-keys: |
             testmon-pr-${{ github.event.pull_request.number }}-${{ matrix.suite }}-
-            testmon-
+      # Its own step, with the path `backend-testmon` saves under: a cache is
+      # found only by the paths it was saved with, and when this was one step
+      # with the suite's own path, develop's database was never found and a
+      # first push ran every test.
+      - name: Restore develop's test database
+        if: steps.own-db.outputs.cache-matched-key == ''
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .testmondata-*
+          key: testmon-develop-${{ github.event.pull_request.base.sha }}
+          restore-keys: |
+            testmon-develop-
       - name: The ${{ matrix.suite }} tests this change reaches
         id: affected
         env:
           SUITE: ${{ matrix.suite }}
+          SHARD: ${{ matrix.shard && format('{0}/4', matrix.shard) || '' }}
           EXTRA_JSON: ${{ needs.changes.outputs.py_extra }}
         run: |
-          # The named test files that belong to this suite.
+          # The named test files that belong to this suite, in its first shard.
           case "$SUITE" in core) root=tests/ ;; api) root=frontends/aiq_api/tests/ ;; sources) root=sources/ ;; esac
-          extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
-          task be:test:affected SUITE="$SUITE" EXTRA="$extra"
+          extra=""
+          if [ -z "$SHARD" ] || [ "${SHARD%%/*}" = 1 ]; then
+            extra="$(jq -r --arg root "$root" '[.[] | select(startswith($root))] | join(" ")' <<<"$EXTRA_JSON")"
+          fi
+          task be:test:affected SUITE="$SUITE" SHARD="$SHARD" EXTRA="$extra"
       # Saved red or green: a failed test is recorded as failed and re-runs.
       - name: Keep this pull request's database for its next push
-        if: always() && steps.affected.outcome != 'skipped'
+        if: always() && steps.affected.outcome != 'skipped' && !matrix.shard
         continue-on-error: true
         uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -539,7 +591,9 @@ jobs:
       - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .testmondata-*
-          key: testmon-${{ github.sha }}
+          # Its own prefix: `testmon-` alone also matches a pull request's
+          # `testmon-pr-…` entries, another suite's among them.
+          key: testmon-develop-${{ github.sha }}
 
   # Everything on the UI's toolchain except the test shards. The production
   # build is NOT here: the frontend image build (`image`) runs the same
@@ -588,7 +642,7 @@ jobs:
           GRID_RLS_MIGRATION_CHECKS: ${{ needs.changes.outputs.migrations == 'true' && '1' || '0' }}
 
   frontend-test:
-    name: Frontend tests (shard ${{ matrix.shard }}/6)
+    name: Frontend tests (shard ${{ matrix.shard }}/8)
     needs: changes
     # A pull request whose change no UI spec reads since its last green run
     # ('none') runs none; one that a selection can see runs only the specs
@@ -599,13 +653,16 @@ jobs:
     strategy:
       # One shard's failure should not hide the others' results.
       fail-fast: false
-      # Six. The suite is mostly per-file startup (import and setup are ~60%
+      # Eight. The suite is mostly per-file startup (import and setup are ~60%
       # of a shard), so it scales with shards, and by 2026-10-19 four shards
       # took 7-11 minutes each against ~3:30 for a backend core shard. The
       # old reason for four, queued runner slots, did not hold up: job-level
-      # queueing was under three seconds in every run measured then.
+      # queueing was under three seconds in every run measured then. Six
+      # shards split by time (duration-sequencer.ts) all took 3.4-4.2 min on
+      # 2026-10-22, the longest job of the run: with no shard left heavier
+      # than the rest, only more of them shorten it.
       matrix:
-        shard: [1, 2, 3, 4, 5, 6]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -616,13 +673,14 @@ jobs:
       - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       - run: task fe:install
-      - name: All specs, shard ${{ matrix.shard }}/6
+      - name: All specs, shard ${{ matrix.shard }}/8
         if: github.event_name == 'push' || needs.changes.outputs.ui_mode == 'full'
-        run: task fe:test:shard SHARD=${{ matrix.shard }}/6
-      - name: The specs this change reaches, shard ${{ matrix.shard }}/6
+        # Coverage only where the comment is built from it.
+        run: task fe:test:shard SHARD=${{ matrix.shard }}/8 COVERAGE=${{ github.event_name == 'pull_request' }}
+      - name: The specs this change reaches, shard ${{ matrix.shard }}/8
         if: github.event_name == 'pull_request' && needs.changes.outputs.ui_mode == 'select'
         env:
-          SHARD: ${{ matrix.shard }}/6
+          SHARD: ${{ matrix.shard }}/8
           FILES_JSON: ${{ needs.changes.outputs.ui_files }}
         run: task fe:test:related SHARD="$SHARD" FILES="$(jq -r 'join(" ")' <<<"$FILES_JSON")"
       # Coverage is collected per shard and merged below: a shard only loads

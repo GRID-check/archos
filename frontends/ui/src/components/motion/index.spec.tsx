@@ -14,7 +14,6 @@ import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  easeQuiet,
   iconSwapExitTransition,
   iconSwapTransition,
   motionBase,
@@ -30,13 +29,11 @@ import {
   springGlide,
   springDrawerLinear,
   springDrawerLinearDuration,
-  springGentle,
   springPress,
   springSnap,
   springSnapLinear,
   springSnapLinearDuration,
   springSnapSettleSeconds,
-  springSnappy,
   staggerMaxSteps,
   staggerParent,
   staggerStepSeconds,
@@ -235,14 +232,6 @@ describe('tween scale', () => {
     // the curve into a slow start. An arrival must be decided at the start.
     const [x1, y1] = motionEntrance.ease as [number, number, number, number]
     expect(y1).toBeGreaterThan(x1)
-  })
-})
-
-describe('backward compatibility', () => {
-  it('keeps the deprecated names pointing at their replacements', () => {
-    expect(springSnappy).toBe(springPress)
-    expect(springGentle).toBe(springDrawer)
-    expect(easeQuiet).toBe(motionBase)
   })
 })
 

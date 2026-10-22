@@ -71,14 +71,19 @@ tasks:
         cmd: '{{.TESTMON_ENV}}{{.ITEM}} "{{.PY}}" -X faulthandler -m pytest {{index .TESTMON_PATHS .ITEM}} -q {{.XDIST}} --testmon'
 
   be:test:affected:
-    desc: 'The tests a change reaches, from the recorded database (CI: SUITE=core|api|sources, EXTRA="test files")'
+    desc: 'The tests a change reaches, from the recorded database (CI: SUITE=core|api|sources, EXTRA="test files", SHARD=1/4 for one shard of the selection)'
     requires:
       vars: [SUITE]
+    vars:
+      # pytest-split deselects after testmon has (both trylast; split's runs
+      # second), so every shard splits the same selection and the shards
+      # together run exactly it. They must start from the same database.
+      SPLIT: '{{if .SHARD}}--splits {{splitList "/" .SHARD | last}} --group {{splitList "/" .SHARD | first}} --splitting-algorithm least_duration --durations-path tests/.test_durations{{end}}'
     cmds:
       # --testmon-forceselect, because pyproject's addopts carries `-m` and
       # testmon otherwise switches selection off whenever `-m` is set. Exit 5
       # (nothing selected) is a pass: the change reached nothing in this suite.
-      - '{{.TESTMON_ENV}}{{.SUITE}} "{{.PY}}" -X faulthandler -m pytest {{index .TESTMON_PATHS .SUITE}} -q {{.XDIST}} --testmon-forceselect || [ $? -eq 5 ]'
+      - '{{.TESTMON_ENV}}{{.SUITE}} "{{.PY}}" -X faulthandler -m pytest {{index .TESTMON_PATHS .SUITE}} -q {{.XDIST}} --testmon-forceselect {{.SPLIT}} || [ $? -eq 5 ]'
       # Test files that name a changed non-Python file (ci/pr_selection.py),
       # which coverage cannot connect to the change.
       - cmd: '"{{.PY}}" -X faulthandler -m pytest {{.EXTRA}} -q {{.XDIST}}'

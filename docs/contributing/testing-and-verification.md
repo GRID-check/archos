@@ -11,6 +11,11 @@ task verify:fast   # the same, minus the slow production build
 task setup         # first-time toolchain install
 ```
 
+Both run `lint:repo` first, then the tiers side by side (`task --parallel
+--output=group`), so a tier's output arrives whole when it finishes. They skip
+the hooks a tier repeats (ruff, the English-names test: `VERIFY_SKIP` in
+`Taskfile.yml`) and run the UI suite without coverage, which CI only comments.
+
 `Taskfile.yml` and the per-tier files in `taskfiles/` (included flat, so task names
 are unchanged) are the source of truth for what each check actually runs, and
 `task --list` prints the full set with descriptions. This page holds only what
@@ -169,7 +174,7 @@ task pkg:install    # both toolchains (`task setup` does this too now)
 task pkg:test       # both suites
 ```
 
-`task verify` deliberately leaves them out. `pkg:test:py` is 636 tests in 3m55s
+`task verify` deliberately leaves them out. `pkg:test:py` is 636 tests in 1m40s on four workers (2026-10-22)
 (measured 2026-09-10) against its own IfcOpenShell/shapely environment; adding
 that to every local gate run is the fastest way to get people to stop running
 the gate. `pkg:test:ts` is ~10 seconds and runs **both** tsconfigs, the source
@@ -341,7 +346,7 @@ CI, with no GitHub Advanced Security licence and no SonarQube subscription.
 
 | Tool | Covers | In CI (blocking) | Weekly |
 |---|---|---|---|
-| gitleaks | Secret scan over full history | **Yes**, every run (Repo checks job) | Yes |
+| gitleaks | Secret scan over the commits a PR adds (a push: its full history; weekly: every branch) | **Yes**, every run (Repo checks job) | Yes |
 | Semgrep | SAST for Python, TS/JS and Actions. Replaces Sonar's security rules | **Yes, on a PR**, diff-aware: blocks a *new* finding without failing on the backlog | Full tree, advisory |
 | trivy | The digest-pinned third-party images in `deploy/pulumi/src` | **Yes**, for the pins a change adds or moves, on fixable HIGH/CRITICAL (`--ignore-unfixed`) | Every pin, blocking |
 | OSV-Scanner | Dependency CVEs from **every** lockfile: both npm ones, `bun.lock`, both `uv.lock`s. Replaces Sonar SCA and the old `pip-audit`/`bun audit`/`npm audit` job | No | Advisory |
