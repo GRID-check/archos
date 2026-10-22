@@ -74,7 +74,7 @@ describe('GET /api/internal/stages', () => {
     expect(res.status).toBe(200)
     await expect(res.json()).resolves.toEqual({
       enabled: ['memory_reflection'],
-      features: { deepResearch: true, tasks: true },
+      features: { deepResearch: true, tasks: true, folderCards: false },
     })
     expect(mockEnabled).toHaveBeenCalledWith('org_123')
   })
