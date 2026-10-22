@@ -390,6 +390,7 @@ exposure config (`withheld: { category, reason }`, [below](#the-exposure-config)
 | `product-config` | How Piloti itself works: settings, standing instructions, models and versions, zero data retention, LLM keys and provider mode, budgets and usage, upload screening, retention policies, curated skills on or off |
 | `model-compute` | Model work the caller can do itself, whose result is no office artifact (titles, citation formatting, skill review) |
 | `ui-state` | This person's own screen or device (push devices and preferences, the preference bag, read and unread marks) |
+| `evidence` | Bytes kept as proof, which no model reads (a held or filed mail's original `.eml`, ADR-0134) |
 
 A withheld operation reads as an unknown name everywhere: `tools/list`,
 `search-operations` (and no hint that it exists), `describe-operation`,
@@ -471,7 +472,7 @@ is no operation, or an operation without an entry, does not compile (the object
 | `external` | an outside agent on an office door (`/api/mcp`, `/api/a2a`), and the OpenAPI document | `true` / `false` |
 | `piloti` | in-product Piloti on its workspace door | `true`; `false`; `'native:<tool>'`: Piloti does it with that native tool, so the door hides the operation from it |
 | `platform` | platform staff on the platform door (ADR-0126) | `true` for the `platform` domain, absent elsewhere |
-| `withheld` | nobody | `{ category, reason }`: `external-service`, `product-config`, `model-compute`, `ui-state` |
+| `withheld` | nobody | `{ category, reason }`: `external-service`, `product-config`, `model-compute`, `ui-state`, `evidence` |
 | `reason` | the reviewer | why the entry is not simply offered to both office audiences |
 
 The constants at the top name the common rows: `OFFERED` (both office
@@ -506,16 +507,16 @@ ceiling.
    ([testing-and-verification.md](../contributing/testing-and-verification.md#the-workspace-set));
    its `uses` rows check the job got done with the native tool.
 
-**What it holds today** (335 entries: 328 operations, 7 read tools):
+**What it holds today** (356 entries: 349 operations, 7 read tools):
 
 | Column | Count |
 |---|---|
-| `external: true` | 232 |
-| `piloti: true` | 192 |
+| `external: true` | 250 |
+| `piloti: true` | 208 |
 | `piloti: 'native:…'` | 17 |
-| `piloti: false` | 126 (49 withheld, 54 platform, 12 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 skill reads) |
-| `platform: true` | 54 |
-| `withheld` | 49 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`) |
+| `piloti: false` | 131 (51 withheld, 55 platform, 12 sensitive, 3 asks, 3 decisions, 3 Outlook archive bytes, 2 held mail text and bytes, 2 skill reads) |
+| `platform: true` | 55 |
+| `withheld` | 51 (29 `product-config`, 13 `ui-state`, 4 `external-service`, 3 `model-compute`, 2 `evidence`) |
 
 | Piloti uses | Instead of |
 |---|---|
