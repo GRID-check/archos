@@ -245,3 +245,31 @@ class TestActionRow:
         await _run_search(TavilyWebSearchToolConfig(max_retries=2))
 
         assert self._call(rows)[1].status == "error"
+
+
+class TestStandaloneWithoutTheAgent:
+    """The standalone dist depends on no ``aiq_agent``: it imports and searches without one, drawing no row."""
+
+    async def test_imports_and_searches_without_aiq_agent(self, fake_langchain_tavily, monkeypatch):
+        import importlib.util
+        from pathlib import Path
+
+        import tavily_web_search.register as installed
+
+        from nat.cli.type_registry import GlobalTypeRegistry
+
+        for name in [name for name in sys.modules if name == "aiq_agent" or name.startswith("aiq_agent.")]:
+            monkeypatch.setitem(sys.modules, name, None)
+        monkeypatch.setitem(sys.modules, "aiq_agent", None)
+        spec = importlib.util.spec_from_file_location("tavily_standalone_register", Path(installed.__file__))
+        module = importlib.util.module_from_spec(spec)
+        monkeypatch.setitem(sys.modules, spec.name, module)
+        with GlobalTypeRegistry.push():  # the second copy registers itself; the suite's registry never sees it
+            spec.loader.exec_module(module)
+
+        assert module.ActionRow is module._NoRow
+        async with module.tavily_web_search(module.TavilyWebSearchToolConfig(max_results=5), MagicMock()) as info:
+            result = await info.single_fn("Stellplatzschlüssel Wien")
+
+        assert "https://a.example" in result
+        assert fake_langchain_tavily.call_args.kwargs["max_results"] == 5
