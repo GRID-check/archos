@@ -17,8 +17,7 @@
  *   which ends a line at `\v`, `\f`, `\x1c`–`\x1e`, `\x85`, `\u2028` and
  *   `\u2029` as well as at `\r` and `\n`, and its `\s` also matches `\x1c`–`\x1f`
  *   and `\x85`. A mail body is untrusted, so a line start or a space is
- *   whatever either reader counts as one ({@link LINE_START},
- *   {@link SPACE}): a body line `## 14.10.2026 · MA 37` after a form feed
+ *   whatever either reader counts as one (the pieces below): a body line `## 14.10.2026 · MA 37` after a form feed
  *   would otherwise be a citable section of the note under a heading nobody
  *   wrote.
  *
@@ -27,19 +26,31 @@
  * backslash in the raw file and nothing on screen.
  */
 
-/** Where either reader starts a line: the input's start, or after any terminator Python's `splitlines` honours. */
-const LINE_START = String.raw`(?<=^|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])`
-/** What either reader counts as a space after a marker: JavaScript's `\s` plus the separators only Python's `\s` holds. */
-const SPACE = String.raw`[\s\x1c-\x1f\x85]`
-/** Where a line ends for either reader. */
-const LINE_END = String.raw`(?=$|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])`
+/*
+ * The expressions are literals, so a scanner sees each one whole, and they
+ * share four pieces, spelled out in each:
+ *
+ * - line start, where either reader starts a line: the input's start, or
+ *   after any terminator Python's `splitlines` honours,
+ *   `(?<=^|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])`;
+ * - line end, the same terminators ahead, `(?=$|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])`;
+ * - space after a marker, what either reader counts as one: JavaScript's `\s`
+ *   plus the separators only Python's `\s` holds, `[\s\x1c-\x1f\x85]`;
+ * - indent, whitespace that is no line terminator, `[^\S\n\r\v\f\u2028\u2029]`.
+ *   It must not cross a line end: a `\s*` indent ran on from every line start
+ *   over all the blank lines after it, so a mail of whitespace-only lines
+ *   took quadratic time (50,000 lines, 44 seconds).
+ */
 
 /** `#` to `######`, or a `+`/`-` bullet, at a line's start (a dash run is a thematic break or a setext underline). */
-const MARKER_AT_START = new RegExp(`${LINE_START}(\\s*)(#{1,6}|[+-])(?=${SPACE}|[+-]|$)`, 'g')
+// eslint-disable-next-line no-control-regex -- the separators are the point: Python's splitlines ends a line at them
+const MARKER_AT_START = /(?<=^|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])([^\S\n\r\v\f\u2028\u2029]*)(#{1,6}|[+-])(?=[\s\x1c-\x1f\x85]|[+-]|$)/g
 /** `1.` or `1)`: an ordered list item. */
-const ORDINAL_AT_START = new RegExp(`${LINE_START}(\\s*\\d{1,9})([.)])(?=${SPACE}|$)`, 'g')
+// eslint-disable-next-line no-control-regex -- as above
+const ORDINAL_AT_START = /(?<=^|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])([^\S\n\r\v\f\u2028\u2029]*\d{1,9})([.)])(?=[\s\x1c-\x1f\x85]|$)/g
 /** A line of `=` alone: a setext underline that would make the line above a heading. */
-const SETEXT_LINE = new RegExp(`${LINE_START}(\\s*)(=+\\s*)${LINE_END}`, 'g')
+// eslint-disable-next-line no-control-regex -- as above
+const SETEXT_LINE = /(?<=^|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])([^\S\n\r\v\f\u2028\u2029]*)(=+[^\S\n\r\v\f\u2028\u2029]*)(?=$|[\n\r\v\f\x1c-\x1e\x85\u2028\u2029])/g
 
 /**
  * Text, escaped so that it stays text: an Anmerkung that carries a `*` or a
