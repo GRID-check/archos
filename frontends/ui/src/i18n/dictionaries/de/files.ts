@@ -113,6 +113,13 @@ export const files: typeof en.files = {
     image: 'Bild',
     unavailable: 'Vorschau nicht verfügbar',
   },
+  // Die Dokumentart, wo sie als englisches Token gespeichert ist
+  // (`LABELLED_TAGS` in lib/documents/tag-vocabulary.ts). Die älteren
+  // Dokumentarten sind noch als deutsches Wort gespeichert und brauchen keinen
+  // Eintrag.
+  documentTag: {
+    correspondence: 'Korrespondenz',
+  },
   preview: {
     closePreview: 'Vorschau schließen',
     expandPreview: 'Große Vorschau öffnen',

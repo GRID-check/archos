@@ -320,8 +320,14 @@ Three things change for an uploaded image.
 
 A project document's Dokumentart is its type tag (`DOCUMENT_TYPE_TAGS` in
 `aiq_agent/knowledge/document_classification.py`, mirrored in
-`lib/documents/tag-vocabulary.ts`), not `doc_class`, which classifies the base
-corpus; a letter or minutes is `Sonstiges`.
+`lib/documents/tag-vocabulary.ts`, both held to one order by
+`tests/test_tag_vocabulary_parity.py`), not `doc_class`, which classifies the
+base corpus. A letter or an e-mail is `correspondence` (an E-Mail-Verlauf is
+one), minutes are `Sonstiges`. `correspondence` is the first type stored as an
+English token: a person reads it through i18n (`files.documentTag`, via
+`tagLabel`), and every surface that shows, counts, filters or searches tags goes
+through that label. The older types are still stored as German words and read as
+themselves until their rename.
 
 **A type chosen at filing.** Whoever files a file can say what it is:
 `ShelfUploadInput.documentType` (a `DocumentTypeTag`), which the dispatch sends
