@@ -202,6 +202,14 @@
             {
               "en": "Sorting all files into folders now shows its progress as it happens: the four steps, how many files are done, about how long is left and the files it just placed, and it finishes noticeably sooner. Once you apply or cancel a sort, its notice in your inbox is cleared.",
               "de": "Das Sortieren aller Dateien in Ordnern zeigt jetzt den Fortschritt live an: die vier Schritte, die Anzahl der erledigten Dateien, die ungefähre Restdauer und die zuletzt abgelegten Dateien. Außerdem ist der Vorgang spürbar schneller abgeschlossen. Sobald Sie eine Sortierung anwenden oder abbrechen, wird die entsprechende Benachrichtigung in Ihrem Posteingang entfernt."
+            },
+            {
+              "en": "When the Tasks list updates while you read it, a card that changes place now glides there and the cards around it make room, instead of jumping. Switching the filter still simply fades the new list in.",
+              "de": "Wenn die Aufgabenliste aktualisiert wird, während Sie sie lesen, gleitet eine Karte, die ihre Position ändert, nun an ihre neue Stelle, während die umliegenden Karten Platz machen, statt zu springen. Beim Wechsel des Filters wird die neue Liste weiterhin einfach eingeblendet."
+            },
+            {
+              "en": "Large counts on filters, tabs and the inbox now read 99+ so they never stretch the row, while the exact number stays available on hover and to screen readers.",
+              "de": "Hohe Zahlen in Filtern, Tabs und Inbox werden jetzt als 99+ angezeigt, damit sie die Zeile nicht mehr verbreitern; die genaue Zahl bleibt beim Hover und für Screenreader verfügbar."
             }
           ]
         },
@@ -279,6 +287,10 @@
             {
               "en": "A plan set that contains an extremely large scanned image no longer fails partway through: the oversized image is left out so the rest of the set still uploads and becomes searchable.",
               "de": "Ein Plansatz mit einem extrem großen gescannten Bild bricht nicht mehr mitten im Upload ab: Das übergroße Bild wird ausgelassen, sodass der restliche Plansatz weiterhin hochgeladen und durchsuchbar wird."
+            },
+            {
+              "en": "Settings, platform and project panels that fail to load now say what failed and offer the same Try again button, which keeps its place and focus while it works instead of greying out.",
+              "de": "Einstellungs-, Plattform- und Projektbereiche, die nicht geladen werden, zeigen jetzt an, was fehlgeschlagen ist, und bieten dieselbe Schaltfläche „Erneut versuchen“, die während des Vorgangs an ihrer Stelle und im Fokus bleibt, statt ausgegraut zu werden."
             }
           ]
         },
