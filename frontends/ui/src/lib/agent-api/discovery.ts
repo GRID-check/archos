@@ -19,7 +19,7 @@ import type { CallToolResult } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { ApiError } from '@/lib/api/errors'
 import { type JsonSchemaNode, toJsonSchema } from '@/lib/api/zod-json-schema'
-import { operationScorer } from '@/lib/text/operation-search'
+import { type SearchableOperation, operationScorer } from '@/lib/text/operation-search'
 import {
   type BinaryBody,
   MAX_INLINE_BYTES,
@@ -400,11 +400,20 @@ interface Hit {
 }
 
 /**
+ * The scorer for `query` on `ctx`'s door: a word weighs by how rare it is among
+ * every operation this caller can see, so the weights do not move with a domain
+ * filter and a hidden operation is never part of them.
+ */
+function scorerFor(ctx: McpCallContext, query: string): (op: SearchableOperation) => number {
+  return operationScorer(query, [...visibleOperations(ctx.principal), ...visibleBackendOperations(ctx.principal)])
+}
+
+/**
  * Ranks with {@link operationScorer}: German and English words find the same operation (ADR-0123).
  * `query` is at most {@link MAX_SEARCH_QUERY_LENGTH} characters: the search schema refuses a longer one.
  */
 function rank(ctx: McpCallContext, query: string, domain: string | undefined): Hit[] {
-  const score = operationScorer(query)
+  const score = scorerFor(ctx, query)
   const catalog: Hit[] = visibleOperations(ctx.principal)
     .filter((op) => !domain || op.domain === domain)
     .map((op) => {
@@ -455,7 +464,7 @@ export const SENSITIVE_MATCH_NOTE =
   'is not offered to you: none of the operations listed does that. Tell the person to make that change in Piloti themselves.'
 
 function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: string | undefined, best: number): boolean {
-  const score = operationScorer(query)
+  const score = scorerFor(ctx, query)
   return AGENT_OPERATIONS.some(
     (op) =>
       op.sensitivity !== undefined &&
@@ -468,6 +477,32 @@ function sensitiveMatchOutranks(ctx: McpCallContext, query: string, domain: stri
   )
 }
 
+/**
+ * Where to go when no operation matched. The words of a question about what a
+ * document or the law SAYS (`Brandschutz Anforderungen Gebäudeklasse 5`) are
+ * in the documents, not in the catalog, so the search finds nothing and the
+ * agent concluded the door could not answer. It names the operations that read
+ * content, when this caller can see them.
+ */
+export function nothingMatched(ctx: McpCallContext): string {
+  const visible = new Set(visibleBackendOperations(ctx.principal).map((op) => op.name))
+  for (const op of visibleOperations(ctx.principal)) visible.add(op.name)
+  const readers = CONTENT_READERS.filter(({ name }) => visible.has(name)).map(({ name, what }) => `${name} (${what})`)
+  const retry = 'try other words (the catalog is English), drop the domain filter, or call report-missing-operation.'
+  if (readers.length === 0) return `Nothing matched. Try ${retry.slice(4)}`
+  return (
+    "Nothing matched. The catalog lists actions, not what documents say: for a question about a document's or " +
+    `the law's content, call ${readers.join(', or ')}. Otherwise ${retry}`
+  )
+}
+
+/** The operations that answer from content rather than act, in the order an agent should try them. */
+const CONTENT_READERS = [
+  { name: 'knowledge-search', what: 'quotable passages from the project, the office and the building-law corpus' },
+  { name: 'law-lookup', what: 'a provision of Austrian law' },
+  { name: 'piloti-ask-create', what: 'Piloti answers it with sources' },
+] as const
+
 export function searchOperations(ctx: McpCallContext, args: unknown): CallToolResult {
   const startedAt = Date.now()
   const parsed = searchInput(ctx.principal).safeParse(args)
@@ -478,7 +513,7 @@ export function searchOperations(ctx: McpCallContext, args: unknown): CallToolRe
   recordOperationCalled(ctx, { operation: 'search-operations', domain: domain ?? null, decision: 'run', status: 200, startedAt })
   const next =
     shown.length === 0
-      ? 'Nothing matched. Try other words, drop the domain filter, or call report-missing-operation.'
+      ? nothingMatched(ctx)
       : 'Call call-operation with the name; call describe-operation first when you do not know its input.'
   const hidden = query.trim() !== '' && sensitiveMatchOutranks(ctx, query, domain, hits[0]?.score ?? 0)
   return success({ total: hits.length, operations: shown, next: hidden ? `${SENSITIVE_MATCH_NOTE} ${next}` : next })

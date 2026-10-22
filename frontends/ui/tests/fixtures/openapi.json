@@ -1241,7 +1241,7 @@
     "/api/projects/{id}/members": {
       "post": {
         "operationId": "project-member-add",
-        "summary": "Give someone a role on a project",
+        "summary": "Add a member to a project with a role",
         "description": "Assigns a project role (`project-viewer`, `project-contributor`, `project-editor`, `project-admin`) to an organization member, or an empty `roleSlug` to clear their project role. `organizationMembershipId` comes from organization-member-list, not a user id. Needs project:members:manage. Check the result with project-member-list.",
         "tags": [
           "projects"
@@ -1322,7 +1322,7 @@
         },
         "x-piloti-sensitivity": "access",
         "x-mcp-annotations": {
-          "title": "Give someone a role on a project",
+          "title": "Add a member to a project with a role",
           "readOnlyHint": false,
           "destructiveHint": true,
           "idempotentHint": true,

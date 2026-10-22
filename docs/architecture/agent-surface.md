@@ -492,7 +492,7 @@ Do this in the same change that adds or changes the route. The exemplar is
    {
      name: 'project-member-add',
      domain: 'projects',
-     summary: 'Give someone a role on a project',
+     summary: 'Add a member to a project with a role',
      description:
        'Assigns a project role to an organization member, or an empty `roleSlug` to clear it. ' +
        '`organizationMembershipId` comes from organization-member-list, not a user id. ' +

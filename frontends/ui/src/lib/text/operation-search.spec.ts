@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { foldSearchText, operationScorer, searchWordGroups } from './operation-search'
+import { foldSearchText, operationScorer, searchWordGroups, stemSearchWord } from './operation-search'
 
 const memberAdd = {
   name: 'project-member-add',
@@ -94,5 +94,33 @@ describe('operationScorer', () => {
     expect(searchWordGroups('a member')).toEqual([['member']])
     expect(operationScorer('a')(memberAdd)).toBe(0)
     expect(operationScorer('(a+)+$')(memberAdd)).toBe(0)
+  })
+
+  it('matches whole words, never a fragment inside one', () => {
+    const restore = { name: 'project-restore', summary: 'Restore a deleted project', description: 'Brings it back.' }
+    expect(operationScorer('to')(restore)).toBe(0)
+  })
+
+  it('weighs a word by how rare it is among the operations ranked', () => {
+    const knowledge = { name: 'knowledge-search', summary: 'Search the OIB guidelines of a project', description: 'Passages.' }
+    const corpus = [memberAdd, summaryGenerate, knowledge]
+    const score = operationScorer('OIB project', corpus)
+    expect(score(knowledge)).toBeGreaterThan(score(memberAdd))
+  })
+
+  it('ignores the grammar of a question unless nothing else is left', () => {
+    expect(operationScorer('which of the member')(memberAdd)).toBe(operationScorer('member')(memberAdd))
+    expect(operationScorer('what')(memberAdd)).toBe(0)
+  })
+})
+
+describe('stemSearchWord', () => {
+  it('meets the plural and the past at the stem, and leaves short words alone', () => {
+    expect(stemSearchWord('guidelines')).toBe(stemSearchWord('guideline'))
+    expect(stemSearchWord('failed')).toBe('fail')
+    expect(stemSearchWord('tasks')).toBe('task')
+    expect(stemSearchWord('searches')).toBe('search')
+    expect(stemSearchWord('access')).toBe('access')
+    expect(stemSearchWord('ask')).toBe('ask')
   })
 })

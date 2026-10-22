@@ -26,6 +26,7 @@ what it answered, so a check reads what the turn did on the door.
 from __future__ import annotations
 
 import json
+import math
 import re
 import threading
 import uuid
@@ -102,33 +103,93 @@ class Vocabulary:
         return groups
 
 
-def _scorer(query: str, groups: list[list[str]]) -> Any:
+#: ``STOPWORDS``: the question's grammar and the person asking, which no catalog word answers.
+STOPWORDS = frozenset(
+    "a about all am an and any are as at be by can do does for from get give has have how i in into is it its me my "
+    "of on or our please show some tell that the their there this to under us want was we what when where which who "
+    "why will with you your auf aus bei bitte das dem den der des die ein eine einem einen einer eines es fuer gibt "
+    "hat ich im ist mir mit sagt sind und unser unsere von vom was welche welcher welches wer wie wir zu zum "
+    "zur".split()
+)
+WORD_PREFIX_MIN_LENGTH = 4
+_ES_PLURAL = re.compile(r"(?:ss|x|z|ch|sh)es$")
+
+
+def _stem(word: str) -> str:
+    """``stemSearchWord``: common English endings removed."""
+    if len(word) <= 4:
+        return word
+    if word.endswith("ies"):
+        return word[:-3] + "y"
+    if word.endswith("ing") and len(word) >= 6:
+        return word[:-3]
+    if word.endswith("ed") and len(word) >= 5:
+        return word[:-2]
+    if _ES_PLURAL.search(word):
+        return word[:-2]
+    if word.endswith("s") and not word.endswith("ss"):
+        return word[:-1]
+    return word
+
+
+def _words(text: str) -> list[str]:
+    return [word for word in _NOT_ALNUM.split(_fold(text)) if len(word) >= MIN_WORD_LENGTH]
+
+
+def _matches(word: str, token: str) -> bool:
+    """``wordMatches``: the same word, the same stem, or the start of a longer word; never a fragment inside one."""
+    if token == word:
+        return True
+    if len(word) >= WORD_PREFIX_MIN_LENGTH and token.startswith(word):
+        return True
+    return _stem(token) == _stem(word)
+
+
+def _contains(words: list[str], word: str) -> bool:
+    return any(_matches(word, token) for token in words)
+
+
+def _index(op: dict[str, Any]) -> tuple[list[str], list[str], list[str]]:
+    return _words(op["name"]), _words(op["summary"]), _words(op["description"])
+
+
+def _scorer(query: str, groups: list[list[str]], corpus: list[dict[str, Any]]) -> Any:
     """``operationScorer``: a blank query lists every operation, text with no usable word in it matches none."""
     lists_all = query.strip() == ""
+    meaningful = [group for group in groups if group[0] not in STOPWORDS]
+    groups = meaningful or groups
+    indexed = [_index(op) for op in corpus]
+    rarity: dict[str, float] = {}
 
-    def score(op: dict[str, Any]) -> int:
+    def weight(word: str) -> float:
+        if not indexed:
+            return 1.0
+        if word not in rarity:
+            df = sum(1 for fields in indexed if any(_contains(field, word) for field in fields))
+            rarity[word] = math.log(1 + len(indexed) / (1 + df))
+        return rarity[word]
+
+    def score(op: dict[str, Any]) -> float:
         if not groups:
             return 1 if lists_all else 0
-        name = _fold(op["name"])
-        segments = name.split("-")
-        summary = _fold(op["summary"])
-        description = _fold(op["description"])
+        name, summary, description = _index(op)
+        lead = summary[0] if summary else None
 
-        def of(word: str) -> int:
+        def place(word: str) -> int:
             return (
-                (3 if word in name else 0)
-                + (1 if word in segments else 0)
-                + (2 if word in summary else 0)
-                + (1 if word in description else 0)
+                (3 if _contains(name, word) else 0)
+                + (2 if _contains(summary, word) else 0)
+                + (1 if _contains(description, word) else 0)
+                + (1 if lead is not None and _matches(word, lead) else 0)
             )
 
-        total = 0
+        total = 0.0
         matched = 0
         for group in groups:
-            best = max(of(word) for word in group)
+            best = max(place(word) * weight(word) for word in group)
             matched += 1 if best > 0 else 0
             total += best
-        return total + (5 if matched == len(groups) else 0)
+        return math.floor(total * (matched / len(groups)) * 1e6 + 0.5) / 1e6
 
     return score
 
@@ -181,7 +242,7 @@ class FixtureWorkspace:
 
     def rank(self, query: str, domain: str | None = None) -> list[dict[str, Any]]:
         query = query[:MAX_SEARCH_QUERY_LENGTH]
-        score = _scorer(query, self.vocabulary.groups(query))
+        score = _scorer(query, self.vocabulary.groups(query), self.operations)
         hits = [
             {
                 "name": op["name"],
@@ -212,7 +273,8 @@ class FixtureWorkspace:
                 "total": len(hits),
                 "operations": shown,
                 "next": (
-                    "Nothing matched. Try other words, drop the domain filter, or call report-missing-operation."
+                    "Nothing matched. Try other words (the catalog is English), drop the domain filter, "
+                    "or call report-missing-operation."
                     if not shown
                     else "Call describe-operation for the input schema, then call-operation."
                 ),

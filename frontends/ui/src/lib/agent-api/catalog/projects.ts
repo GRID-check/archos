@@ -202,7 +202,7 @@ export const projectsOperations = [
   {
     name: 'project-member-add',
     domain: 'projects',
-    summary: 'Give someone a role on a project',
+    summary: 'Add a member to a project with a role',
     description:
       'Assigns a project role (`project-viewer`, `project-contributor`, `project-editor`, `project-admin`) to an organization member, ' +
       'or an empty `roleSlug` to clear their project role. `organizationMembershipId` comes from organization-member-list, not a user id. ' +

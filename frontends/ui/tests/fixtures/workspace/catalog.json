@@ -1816,62 +1816,62 @@
   "add member project": [
    "project-person-add",
    "project-member-list",
-   "project-same-address-list",
+   "assignment-candidate-list",
    "project-create",
    "project-record-get",
-   "assignment-candidate-list",
-   "project-delete",
-   "project-experience-extract",
-   "project-get",
-   "project-intake-get"
+   "task-run-document-add",
+   "organization-member-list",
+   "project-profile-patch",
+   "document-name-match",
+   "conversation-message-add"
   ],
   "Mitglied zu Projekt hinzufügen": [
    "project-person-add",
    "project-member-list",
-   "project-same-address-list",
+   "assignment-candidate-list",
    "project-create",
    "project-record-get",
-   "project-delete",
-   "project-experience-extract",
-   "project-get",
-   "project-intake-get",
-   "project-list"
+   "task-run-document-add",
+   "organization-member-list",
+   "project-profile-patch",
+   "document-name-match",
+   "conversation-message-add"
   ],
   "list project members": [
    "project-member-list",
+   "organization-member-list",
+   "project-person-add",
+   "office-shelf-folder-list",
+   "assignment-candidate-list",
+   "sharing-candidate-list",
+   "office-conventions-list",
+   "organization-memory-list",
+   "project-list",
+   "project-document-list"
+  ],
+  "Projektmitglieder anzeigen": [
+   "project-member-list",
+   "organization-member-list",
+   "project-record-get",
+   "project-person-add",
+   "office-shelf-folder-list",
+   "assignment-candidate-list",
+   "sharing-candidate-list",
+   "office-conventions-list",
+   "organization-memory-list",
+   "project-list"
+  ],
+  "list projects": [
    "project-list",
    "project-document-list",
    "project-folder-list",
+   "project-member-list",
    "project-memory-list",
    "project-upload-list",
    "project-folder-bin-list",
    "project-annotation-list",
-   "assignment-candidate-list",
-   "sharing-candidate-list"
-  ],
-  "Projektmitglieder anzeigen": [
-   "project-member-list",
-   "project-record-get",
-   "project-person-add",
-   "project-list",
-   "project-document-list",
-   "office-shelf-folder-list",
-   "project-folder-list",
-   "organization-member-list",
-   "project-memory-list",
-   "project-upload-list"
-  ],
-  "list projects": [
-   "project-list",
-   "quarantine-list",
-   "project-same-address-list",
-   "office-conventions-list",
-   "office-shelf-document-list",
-   "project-document-list",
-   "office-shelf-folder-list",
-   "project-folder-list",
-   "conversation-list",
-   "proposal-list"
+   "project-task-run-list",
+   "task-list"
   ],
   "Projekte auflisten": [
    "project-list",
@@ -1883,7 +1883,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
-   "project-same-address-list"
+   "task-list"
   ],
   "create task": [
    "project-create",
@@ -1926,58 +1926,58 @@
    "inbox-summary-get",
    "conversation-message-add",
    "conversation-message-list",
-   "mail-import-cancel",
-   "mail-import-get",
-   "mail-import-list",
-   "mail-import-start"
+   "mention-request-release",
+   "conversation-list",
+   "conversation-message-export",
+   "conversation-message-changes"
   ],
   "rename document": [
    "document-rename",
+   "project-rename",
+   "office-shelf-folder-update",
+   "project-folder-update",
+   "conversation-update",
    "document-archive",
    "document-delete",
    "document-download",
    "document-get",
-   "document-ingest-cancel",
-   "document-model-get",
-   "document-move",
-   "document-preview-get",
-   "document-reingest"
+   "document-ingest-cancel"
   ],
   "Dokument umbenennen": [
    "document-rename",
+   "project-rename",
+   "office-shelf-folder-update",
+   "project-folder-update",
+   "conversation-update",
    "document-archive",
    "document-delete",
    "document-download",
    "document-get",
-   "document-ingest-cancel",
-   "document-model-get",
-   "document-move",
-   "document-preview-get",
-   "document-reingest"
+   "document-ingest-cancel"
   ],
   "move document folder": [
    "document-move",
    "project-folder-delete",
-   "office-shelf-folder-delete",
-   "office-shelf-document-summary",
    "office-shelf-folder-update",
    "project-folder-update",
-   "document-get",
-   "document-role-clear",
-   "office-shelf-document-list",
-   "project-document-list"
+   "office-shelf-document-summary",
+   "office-shelf-folder-delete",
+   "office-shelf-folder-list",
+   "project-folder-bin-purge",
+   "project-folder-ensure",
+   "project-folder-list"
   ],
   "Datei in Ordner verschieben": [
    "document-move",
    "project-folder-delete",
    "office-shelf-root-sort-start",
    "project-root-sort-start",
-   "project-folder-bin-purge",
-   "document-ingest-cancel",
-   "document-reingest",
-   "organization-failed-document-reingest",
-   "document-get",
-   "document-role-clear"
+   "office-shelf-folder-update",
+   "project-folder-update",
+   "root-sort-run-undo",
+   "diagram-file",
+   "office-shelf-folder-delete",
+   "project-folder-list"
   ],
   "create folder": [
    "office-shelf-folder-create",
@@ -1987,9 +1987,9 @@
    "project-folder-list",
    "hold-create",
    "project-create",
+   "skill-category-create",
    "office-shelf-folder-delete",
-   "office-shelf-folder-list",
-   "office-shelf-folder-update"
+   "office-shelf-folder-list"
   ],
   "Ordner anlegen": [
    "office-shelf-folder-create",
@@ -1999,9 +1999,9 @@
    "project-folder-list",
    "hold-create",
    "project-create",
+   "skill-category-create",
    "office-shelf-folder-delete",
-   "office-shelf-folder-list",
-   "office-shelf-folder-update"
+   "office-shelf-folder-list"
   ],
   "document versions": [
    "document-version-list",
@@ -2013,57 +2013,45 @@
    "document-version-fork",
    "document-version-get",
    "document-version-publish",
-   "document-version-reviewer-list"
+   "document-version-submit"
   ],
   "Fassungen eines Dokuments": [
    "document-version-list",
    "document-version-file-get",
-   "office-shelf-document-revision-probe",
-   "document-revision-candidates",
-   "document-revision-compare",
    "document-version-approve",
    "document-version-content-get",
    "document-version-content-replace",
    "document-version-diff",
-   "document-version-fork"
+   "document-version-fork",
+   "document-version-get",
+   "document-version-publish",
+   "document-version-submit"
   ],
   "request review release": [
    "mention-request-release",
    "document-quarantine-allow-request",
    "document-version-request-changes",
-   "document-preview-get",
-   "document-version-reviewer-list",
    "document-version-submit",
-   "task-run-review",
+   "document-version-reviewer-list",
+   "conversation-awaiting-get",
+   "document-quarantine-get",
+   "assignment-remove",
    "project-intake-complete",
-   "document-version-approve",
-   "document-version-reject"
+   "document-version-approve"
   ],
   "Freigabe anfordern": [
    "document-version-approve",
-   "document-preview-get",
    "document-version-reviewer-list",
-   "task-run-review",
+   "document-version-publish",
    "project-intake-complete",
    "document-quarantine-allow-request",
-   "document-version-publish",
    "document-version-reject",
    "document-version-request-changes",
-   "document-version-submit"
-  ],
-  "project memory": [
-   "project-memory-list",
-   "project-memory-delete",
-   "project-memory-update",
-   "project-experience-extract",
-   "organization-memory-list",
-   "project-intake-start",
-   "project-create",
-   "project-delete",
-   "project-get",
+   "document-version-submit",
+   "task-run-review",
    "project-intake-get"
   ],
-  "Projektgedächtnis merken": [
+  "project memory": [
    "project-memory-list",
    "project-memory-delete",
    "project-memory-update",
@@ -2075,17 +2063,29 @@
    "project-create",
    "project-delete"
   ],
+  "Projektgedächtnis merken": [
+   "project-memory-list",
+   "project-memory-delete",
+   "project-memory-update",
+   "organization-memory-list",
+   "organization-memory-delete",
+   "organization-memory-update",
+   "project-experience-extract",
+   "project-intake-start",
+   "conversation-message-update",
+   "project-create"
+  ],
   "list proposals": [
    "proposal-list",
    "annotation-list",
+   "proposal-get",
    "project-list",
    "office-shelf-document-list",
    "project-document-list",
    "quarantine-list",
    "office-shelf-folder-list",
    "project-folder-list",
-   "conversation-list",
-   "session-document-list"
+   "conversation-list"
   ],
   "offene Vorschläge": [
    "proposal-get",
@@ -2096,16 +2096,16 @@
    "conversation-message-update"
   ],
   "assign document responsible": [
+   "assignment-candidate-list",
+   "assignment-add",
+   "assignment-list",
+   "document-version-submit",
+   "annotation-list",
+   "assignment-remove",
+   "project-annotation-list",
    "document-archive",
    "document-delete",
-   "document-download",
-   "document-get",
-   "document-ingest-cancel",
-   "document-model-get",
-   "document-move",
-   "document-preview-get",
-   "document-reingest",
-   "document-rename"
+   "document-download"
   ],
   "Verantwortlich zuweisen": [
    "assignment-add",
@@ -2147,11 +2147,11 @@
    "sharing-get"
   ],
   "Unterhaltung teilen": [
-   "conversation-create",
    "sharing-get",
+   "conversation-create",
+   "conversation-list",
    "conversation-delete",
    "conversation-get",
-   "conversation-list",
    "conversation-message-add",
    "conversation-message-list",
    "conversation-update",
@@ -2180,7 +2180,7 @@
    "project-folder-bin-list",
    "project-annotation-list",
    "project-task-run-list",
-   "project-same-address-list"
+   "task-list"
   ],
   "(a+)+$": []
  }
