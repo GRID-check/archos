@@ -34,6 +34,7 @@ import {
 import { projectPeriodSchema, projectPersonSchema } from '@/lib/projects/project-record-types'
 import {
   deleteProjectSchema,
+  listProjectsQuerySchema,
   projectStatusSchema,
   renameProjectSchema,
   sameAddressQuerySchema,
@@ -65,10 +66,13 @@ export const projectsOperations = [
     domain: 'projects',
     summary: 'List the projects the person can see',
     description:
-      'Every project the person may open in this organization, with its id, name and lifecycle status. ' +
+      'Every project the person may open in this organization, one short row each: `id`, `name`, `status`, `projectName` (the name people say aloud, from the profile; it can differ from `name`), ' +
+      '`siteAddress`, `createdAt`, `pausedAt`, `closedAt`. Pass `nameContains` to find one by either name. ' +
+      '`view: "full"` returns the whole stored row with the profile, which is large; read one project with project-get instead. ' +
       'Start here: most other operations take a project id from this list.',
     method: 'GET',
     path: '/api/projects',
+    query: listProjectsQuerySchema,
     spansProjects: 'always',
     load: () => import('@/app/api/projects/route'),
   },

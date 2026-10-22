@@ -8,14 +8,23 @@
  * is carried out when the review is finished, not at creation.
  */
 
-import { apiRoute, parseJsonBody } from '@/lib/api/handler'
+import { apiRoute, parseJsonBody, parseQuery } from '@/lib/api/handler'
 import { ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { createProjectSchema } from '@/lib/projects/create-project-schema'
+import { listProjectsQuerySchema, projectNameMatches, toProjectSummary } from '@/lib/projects/project-wire'
 import { createProject, listProjects } from '@/lib/projects/service'
 
-export const GET = apiRoute(async ({ session }) => listProjects(session), {
-  authz: { enforcedBy: 'listProjects (per-project FGA filter, ADR-0038)' },
-})
+export const GET = apiRoute(
+  async ({ session, request }) => {
+    const query = parseQuery(request, listProjectsQuerySchema)
+    const needle = query.nameContains
+    const projects = (await listProjects(session)).filter(
+      (project) => !needle || projectNameMatches(toProjectSummary(project), needle)
+    )
+    return query.view === 'full' ? projects : projects.map(toProjectSummary)
+  },
+  { authz: { enforcedBy: 'listProjects (per-project FGA filter, ADR-0038)' } }
+)
 
 export const POST = apiRoute(
   async ({ session, request }) => {
