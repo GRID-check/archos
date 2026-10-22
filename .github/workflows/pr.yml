@@ -71,43 +71,6 @@ jobs:
               print("::error::A closing keyword is followed by a list of issues, and GitHub closes only the first. Write the keyword before every number: 'Fixes #1, fixes #2'.")
               raise SystemExit(1)
 
-  learnings:
-    name: What we learned
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-      # AGENTS.md, "Everything you learn is written down": a fact somebody had
-      # to find out, by hand or through a subagent's report, is written into
-      # the repo in the same change, and the PR lists each one with the file it
-      # went to. The scratch reports die with the session; this section is the
-      # receipt that nothing was left there. The body is read from the event
-      # payload through the environment, never interpolated into the script.
-      - name: The section is present and filled
-        shell: python
-        env:
-          BODY: ${{ github.event.pull_request.body }}
-          AUTHOR: ${{ github.event.pull_request.user.login }}
-        run: |
-          import os
-          import re
-
-          # Dependency bumps carry no research of their own.
-          if os.environ.get("AUTHOR", "").endswith("[bot]"):
-              raise SystemExit(0)
-          body = re.sub(r"<!--.*?-->", "", os.environ.get("BODY", ""), flags=re.DOTALL)
-          section = re.search(
-              r"^#{2,4}\s*What we learned\s*$(.*?)(?=^#{1,4}\s|\Z)",
-              body,
-              flags=re.IGNORECASE | re.MULTILINE | re.DOTALL,
-          )
-          if not section:
-              print("::error::The PR body has no '#### What we learned' section. List each fact about the system you had to find out, re-checked in the code, with the file it now lives in; or write 'Nothing new, because ...'. AGENTS.md, 'Everything you learn is written down'.")
-              raise SystemExit(1)
-          text = section.group(1).strip()
-          if len(text) < 20:
-              print("::error::'What we learned' is empty. Name each fact and the file it went to, or write 'Nothing new, because ...' with the reason.")
-              raise SystemExit(1)
-
   label:
     name: Auto-label by path
     runs-on: ubuntu-latest

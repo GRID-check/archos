@@ -274,18 +274,12 @@ session. The owner's verdict: everything we learn about the system is written
 down, and that is a hard rule, not a courtesy.
 
 Before, the obligation said "Nothing, once" in its failure column: a fact left
-unwritten cost nothing until the next person re-earned it. Now three layers hold
-it:
-
-- **The rule** in `AGENTS.md`, which counts a subagent's report as your own
-  research and asks for each fact to be re-checked in the code first. A
-  consultant can be confidently wrong, and a wrong note costs more than a
-  missing one.
-- **The PR section** *What we learned*, one line per fact and the file it went
-  to, or "Nothing new, because …".
-- **The `What we learned` job** in `.github/workflows/pr.yml`, which fails a PR
-  without that section. It cannot judge whether the list is complete; review
-  does that. What it removes is the option to forget the question.
+unwritten cost nothing until the next person re-earned it. Now the rule in
+`AGENTS.md` counts a subagent's report as your own research, asks for each fact
+to be re-checked in the code first (a consultant can be confidently wrong, and a
+wrong note costs more than a missing one), and the closing checklist of the
+definition of done carries a **What we learned** line: each fact and the file it
+went to, or "none, because …".
 
 A discrepancy between a doc and the code is fixed in the same change, in
 whichever of the two is wrong. Writing "the doc says 400, the code says 409" in
