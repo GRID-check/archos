@@ -17,6 +17,7 @@ from fastapi import Depends
 from fastapi import Header
 from fastapi import HTTPException
 
+from aiq_agent.common.source_kinds import MAIL_SOURCE_FORMAT
 from aiq_agent.knowledge.base import BaseIngestor
 
 from ..models.requests import IngestRequest
@@ -169,6 +170,14 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
     # job stores it as their type tag, which no classifier pass replaces.
     if request.document_type:
         config["document_type"] = request.document_type
+    # A filed mail (ADR-0134): the Verlauf's chunks carry its format, and its row and an
+    # attachment's row carry what a reader attributes a passage by. Plain JSON, so both ride
+    # the durable queue's payload unchanged; the job stores them through the store's normaliser.
+    if request.mail_thread is not None:
+        config["source_format"] = MAIL_SOURCE_FORMAT
+        config["mail_thread"] = request.mail_thread.model_dump(mode="json")
+    if request.mail_origin is not None:
+        config["mail_origin"] = request.mail_origin.model_dump(mode="json", exclude_none=True)
     # The org id, so the detached ingest thread resolves the tenant's BYOK
     # VLM credential and runtime model override.
     if organization_id:

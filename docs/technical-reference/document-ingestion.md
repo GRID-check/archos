@@ -152,6 +152,10 @@ Body: {
   revision_of: str | None,
   # the document type a person chose when filing it, one of DOCUMENT_TYPE_TAGS (422 otherwise)
   document_type: str | None,
+  # a filed mail (ADR-0134): the E-Mail-Verlauf's newest message, or the message an attachment came with
+  mail_thread: {latest_sent_at, message_count, locale} | None,
+  mail_origin: {sent_at, received_at?, from_name?, from_domain?, signer_domain?, sender_trust,
+                thread_document_id?, locale} | None,
   # office renditions (ADR-0070, ADR-0071): presigned GETs of _render.pdf
   preview_ref: str | None, extraction_ref: str | None,
   # provenance, all four together or none (ADR-0054)
@@ -359,6 +363,33 @@ move) drops it: were a re-index to send the type again, it would overwrite a
 person's later edit in the tag editor, since the job treats it as the newest
 choice. A file stranded at `processing` on the rendition path still carries its
 choice in the queued job's payload, not on the row.
+
+**A filed mail (ADR-0134).** A conversation a person files from a project's
+E-Mail-Eingang is one document, the E-Mail-Verlauf: the BFF renders it as
+Markdown with one `##` section per message (`lib/mail-thread/render.ts`) and
+dispatches it with `mail_thread`; every attachment the person files is its own
+document and is dispatched with `mail_origin`. Both models refuse any key they
+do not know (`extra="forbid"`), an address as a name, a trust outside
+`SENDER_TRUSTS` and a time without an offset (422), and the two together. The
+job does three things with them:
+
+| Step | What happens |
+|---|---|
+| chunking | nothing new: a `.md` is cut by `text_formats.markdown_documents`, one section per ATX heading, cited by its heading (`clause_id`), so each message is one passage and a quote (`### Zitat in der Nachricht von …`) is cited under the message that kept it. A body line that looks like a heading was escaped by the renderer and stays inside its real sender's section |
+| stamping (`_stamp_chunk_metadata`) | `mail_thread` puts `source_format: mail` on every chunk (excluded from the embedding and the LLM header, indexed as a keyword). `norm_registry.lane_for_hit` reads it after the stated author and before the doc_class: `project_mail` on a project, `office_mail` on the Büroablage, label „E-Mail“, the shelf's kind. A mail from `ma37.wien.gv.at` never reaches the authority lane. The grounding block states it as `Format: mail — E-Mail` (ADR-0061), so a replayed turn places it the same way |
+| after the summary row (`_store_mail_facts`) | `mail_thread` and `mail_origin` land on the row through `aiq_agent.knowledge.mail_facts`, which keeps no address. The Verlauf's `latest_sent_at` is its `document_date` in the payload; an attachment keeps its own date (the day it was mailed is where it came from, not when it was written). A re-upload of the name without them clears both |
+
+`list_files` prints a Verlauf as `E-Mail-Verlauf · 5 E-Mails, zuletzt
+14.05.2026` and an attachment as `kam mit der E-Mail vom 04.05.2026 08:30 von
+Ing. Paul Gruber (verkehrsplanung-gruber.at)`; `read_passage` opens an
+attachment's read with the same line. The domain in brackets is the signing
+domain only when the sender was verified (`member_verified`,
+`external_verified`); every other sender's From domain carries „Domain nicht
+bestätigt“ (an archive entry's „aus dem Outlook-Archiv“), the words of the
+Verlauf's own headings, in the thread's locale. So Piloti attributes a statement
+to its mail and never presents an unconfirmed sender as the Behörde. The
+original `.eml` is never dispatched. A held Verlauf released by a reviewer does
+not carry the records yet: the release re-dispatch reads only `filingChoice`.
 
 `PATCH /api/documents/[id]/tags` (`document-tags-update`) cannot do this job:
 it needs the metadata row, which only the ingest job writes, and a type set
