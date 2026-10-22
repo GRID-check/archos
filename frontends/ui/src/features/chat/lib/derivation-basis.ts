@@ -60,27 +60,33 @@ export const documentLocation = (t: Translator, doc: CitedDocument): string | un
   return labels.length > 0 ? labels.slice(0, 2).join(', ') : undefined
 }
 
-/** „[1] OIB-Richtlinie 2, Ausgabe Mai 2023, Pkt. 3.1.1“. */
-const basisLine = (t: Translator, doc: CitedDocument): string => {
+/**
+ * One line of „Grundlagen“: the `[N]` the answer cites the document by, and
+ * „OIB-Richtlinie 2, Ausgabe Mai 2023, Pkt. 3.1.1“. The numbers stay numbers so
+ * the card draws the answer's own marker for them rather than their text.
+ */
+export interface BasisLine {
+  numbers: number[]
+  text: string
+}
+
+const basisLine = (t: Translator, doc: CitedDocument): BasisLine => {
   const name = doc.fileName ?? doc.title
-  const markers = citationNumbers(doc)
-    .map((n) => `[${n}]`)
-    .join(' ')
-  const body = [
+  const text = [
     documentShortName(name, doc.title),
     documentEdition(name, doc.title),
     documentLocation(t, doc),
   ]
     .filter(Boolean)
     .join(', ')
-  return markers ? `${markers} ${body}` : body
+  return { numbers: citationNumbers(doc), text }
 }
 
 export interface BasisLines {
   /** The cited normative sources, with their edition: „Rechtsgrundlage“. */
-  law: string[]
+  law: BasisLine[]
   /** The cited project, office and web sources, with their place: „Belegt durch“. */
-  evidence: string[]
+  evidence: BasisLine[]
 }
 
 /** The cited documents of the turn, by their first `[N]`, split into the law and the rest. */

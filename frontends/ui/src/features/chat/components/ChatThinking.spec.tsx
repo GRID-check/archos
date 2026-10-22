@@ -746,9 +746,17 @@ describe('ChatThinking', () => {
       )
       expect(screen.getByText('Basis · Draft')).toBeVisible()
       expect(screen.getByText('Legal basis')).toBeVisible()
-      expect(screen.getByText('[1] OIB-Richtlinie 2, Ausgabe Mai 2023, Sec. 3.1.1')).toBeVisible()
+      // Each cited line leads with the answer's own marker, then the document.
+      const lines = screen.getAllByTestId('basis-group')
+      expect(lines[0]).toHaveTextContent('1 OIB-Richtlinie 2, Ausgabe Mai 2023, Sec. 3.1.1')
+      expect(
+        within(lines[0]!).getByRole('button', { name: /^Source 1:/ })
+      ).toHaveAttribute('data-citation-marker', '1')
       expect(screen.getByText('Supported by')).toBeVisible()
-      expect(screen.getByText('[2] Einreichplan EG, p. 2')).toBeVisible()
+      expect(lines[1]).toHaveTextContent('2 Einreichplan EG, p. 2')
+      expect(within(lines[1]!).getByRole('button', { name: /^Source 2:/ })).toBeVisible()
+      // No text marker is left behind.
+      expect(lines[0]).not.toHaveTextContent('[1]')
       expect(screen.getByTestId('basis-open')).toHaveTextContent(
         'Cannot be judged, because OIB-RL 2, Ausgabe 2023 has no passage on “Brandabschnitt Tiefgarage”.'
       )
@@ -765,6 +773,50 @@ describe('ChatThinking', () => {
       await expandChain(user)
 
       expect(screen.queryByText('Backed by')).not.toBeInTheDocument()
+    })
+  })
+
+  describe("the Herleitung cites with the answer's marker", () => {
+    const renderSettled = () =>
+      render(
+        <ChatThinking
+          steps={foldScene(mockupScene())}
+          citations={mockupCitations()}
+          answerId="answer-1"
+          isThinking={false}
+          defaultOpen
+          userQuestion={MOCKUP_QUESTION}
+        />
+      )
+
+    test('a cited source card carries a marker button, not the text „[N]“', () => {
+      renderSettled()
+      const groups = Array.from(document.querySelectorAll('[data-source-card-markers]'))
+      expect(groups.length).toBeGreaterThan(0)
+      for (const group of groups) {
+        expect(group.querySelector('button[data-citation-marker]')).not.toBeNull()
+        expect(group).not.toHaveTextContent(/\[\d+\]/)
+      }
+    })
+
+    test('no button sits inside another button', () => {
+      renderSettled()
+      expect(document.querySelectorAll('button button')).toHaveLength(0)
+    })
+
+    test("a press on a card's marker is not a tap on the card", async () => {
+      const user = userEvent.setup()
+      renderSettled()
+      const marker = document.querySelector<HTMLElement>(
+        '[data-source-card-markers] button[data-citation-marker]'
+      )!
+      const card = marker.closest<HTMLElement>('[data-source-card]')!
+      expect(card).not.toHaveAttribute('data-link')
+      await user.click(marker)
+      expect(card).not.toHaveAttribute('data-link', 'selected')
+      // The card's own tap still links it to the rows of its calls.
+      await user.click(card)
+      expect(card).toHaveAttribute('data-link', 'selected')
     })
   })
 
@@ -826,10 +878,11 @@ describe('ChatThinking', () => {
           isThinking={false}
         />
       )
-      expect(screen.getByTestId('derivation-single')).toHaveTextContent(
-        'Reads Brandschutzkonzeptp. 7 · cited [1]'
-      )
-      expect(screen.queryByRole('button')).not.toBeInTheDocument()
+      const single = screen.getByTestId('derivation-single')
+      expect(single).toHaveTextContent('Reads Brandschutzkonzeptp. 7 · cited 1')
+      // The one control is the answer's marker for [1]; nothing opens a panel.
+      expect(within(single).getByRole('button')).toHaveAttribute('data-citation-marker', '1')
+      expect(document.querySelector('[data-derivation-trigger]')).not.toBeInTheDocument()
       expect(screen.queryByTestId('reasoning-flow')).not.toBeInTheDocument()
     })
 

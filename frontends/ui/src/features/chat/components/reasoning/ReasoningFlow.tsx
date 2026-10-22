@@ -164,7 +164,7 @@ import {
   type LinkSelection,
   type WorkRound,
 } from '../../lib/work-list'
-import { basisLines, openPoints } from '../../lib/derivation-basis'
+import { basisLines, openPoints, type BasisLine } from '../../lib/derivation-basis'
 import type { CitationSource } from '../../types'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import { deriveTraceLanes } from '../../lib/trace-lanes'
@@ -178,6 +178,7 @@ import {
 } from '../../lib/citations'
 import { documentShortName } from '../../lib/document-names'
 import { BareSourceCard, SourceCard, type CardLink } from './SourceCard'
+import { CitationMarkers } from '../CitationMarker'
 import { SectionLabel } from '@/components/ui/section-label'
 import {
   answerDegradations,
@@ -306,7 +307,7 @@ type FindingsData = {
    * their place, and what stayed open (a call that failed or found nothing).
    * Never „nachgewiesen“: this is the basis of a draft, not a verdict.
    */
-  basis: Array<{ label: string; lines: string[]; open?: boolean }>
+  basis: Array<{ label: string; lines: BasisLine[]; open?: boolean }>
   /** Phone width: each label sits over its lines instead of beside them. */
   compact: boolean
   /**
@@ -684,8 +685,17 @@ const FindingsFlowNode: FC<NodeProps<Node<FindingsData>>> = ({ data }) => (
               {group.label}
             </dt>
             <dd className="min-w-0 [overflow-wrap:anywhere]">
+              {/* A cited line leads with the answer's own marker, so „1“
+                  here peeks and opens what „1“ in the prose does. */}
               {group.lines.map((line) => (
-                <p key={line}>{line}</p>
+                <p key={line.text}>
+                  {line.numbers.length > 0 && (
+                    <>
+                      <CitationMarkers numbers={line.numbers} className="font-semibold tabular-nums" />{' '}
+                    </>
+                  )}
+                  {line.text}
+                </p>
               ))}
             </dd>
           </div>
@@ -1351,7 +1361,9 @@ export function buildGraph(
     ? [
         ...(basis.law.length > 0 ? [{ label: t(`${B}law`), lines: basis.law }] : []),
         ...(basis.evidence.length > 0 ? [{ label: t(`${B}evidence`), lines: basis.evidence }] : []),
-        ...(open.length > 0 ? [{ label: t(`${B}open`), lines: open, open: true }] : []),
+        ...(open.length > 0
+          ? [{ label: t(`${B}open`), lines: open.map((text) => ({ numbers: [], text })), open: true }]
+          : []),
       ]
     : []
   const hasFindings =

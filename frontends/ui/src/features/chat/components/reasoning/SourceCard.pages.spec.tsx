@@ -12,6 +12,7 @@
 import { render, screen } from '@/test-utils'
 import { describe, test, expect } from 'vitest'
 import { BareSourceCard, SourceCard } from './SourceCard'
+import { CitationScope } from '../CitationScope'
 import type { CitedDocument } from '../../lib/citations'
 
 const document = (loci: CitedDocument['loci']): CitedDocument => ({
@@ -154,5 +155,33 @@ describe('SourceCard — a ledger round speaks for its own slot', () => {
     // No preview chip, no markers: there is no card behind this name, so every
     // control would open nothing.
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
+  })
+})
+
+/**
+ * The card's `[N]` is the answer's marker when a citation scope holds the
+ * document, and the plain text it always was outside one.
+ */
+describe('SourceCard — markers', () => {
+  const cited = document([{ key: 'p:9', page: 9, isCited: true, number: 1 }])
+  // `document` is this file's fixture factory; the DOM's is reached by name.
+  const document_ = (): Document => globalThis.document
+
+  test('inside a scope the number is the marker button, beside the card, not in its chip', () => {
+    render(
+      <CitationScope documents={[cited]} anchorPrefix="answer-source-a-">
+        <SourceCard document={cited} />
+      </CitationScope>
+    )
+    const marker = screen.getByRole('button', { name: /^Source 1:/ })
+    expect(marker).toHaveAttribute('data-citation-marker', '1')
+    expect(marker.parentElement?.closest('button')).toBeNull()
+    expect(document_().querySelectorAll('button button')).toHaveLength(0)
+  })
+
+  test('outside a scope it stays the text „[1]“', () => {
+    render(<SourceCard document={cited} />)
+    expect(screen.getByText('[1]')).toBeInTheDocument()
+    expect(document_().querySelector('[data-citation-marker]')).toBeNull()
   })
 })

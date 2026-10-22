@@ -40,6 +40,7 @@ import {
 import type { RoundLocus } from '../../lib/retrieval-rounds'
 import { Ruler } from 'lucide-react'
 import { SourcePreviewChip } from '../SourcePreview'
+import { CitationMarkers } from '../CitationMarker'
 import { documentEdition, documentShortName } from '../../lib/document-names'
 import { documentLocation } from '../../lib/derivation-basis'
 
@@ -239,9 +240,19 @@ export const SourceCard: FC<{
             )}
             {/* Which markers in the answer this document carries — the link
                 between "what was read" and "what was used". */}
+            {/* The answer's own marker: it peeks the passage and opens the
+                document at its page, as the `[N]` in the prose does. Its press
+                stays its own: the card's tap links the rows of the calls, and
+                a press on the marker (or inside the peek and the viewer it
+                opens, which bubble through React's tree from their portals)
+                is not a tap on the card. */}
             {numbers.length > 0 && (
-              <span className="text-foreground ml-auto font-semibold tabular-nums">
-                {numbers.map((n) => `[${n}]`).join(' ')}
+              <span
+                data-source-card-markers=""
+                className="text-foreground ml-auto text-[15px] font-semibold tabular-nums"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <CitationMarkers numbers={numbers} />
               </span>
             )}
           </div>

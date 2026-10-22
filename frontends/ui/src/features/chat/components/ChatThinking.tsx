@@ -20,6 +20,7 @@ import {
   forwardRef,
   memo,
   useEffect,
+  useId,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -67,7 +68,9 @@ import { ReasoningFlow } from './reasoning/ReasoningFlow'
 import { derivationOverview, documentLocation } from '../lib/derivation-basis'
 import { hasActions } from '../lib/work-list'
 import { workParts } from '../lib/work-sentence'
-import { citationNumbers, isCited } from '../lib/citations'
+import { answerSourceAnchorPrefix, citationNumbers, isCited } from '../lib/citations'
+import { CitationScope } from './CitationScope'
+import { CitationMarkers } from './CitationMarker'
 import { documentEdition, documentShortName } from '../lib/document-names'
 
 /**
@@ -128,6 +131,13 @@ export interface ChatThinkingProps {
   answerConfidence?: 'low' | 'medium' | 'high'
   /** The turn's structured citations, if any (assessment node). */
   citations?: CitationSource[]
+  /**
+   * The id of the turn's answer message. Its `[N]` anchors are named after it
+   * (`answerSourceAnchorPrefix`), and the Herleitung's markers use the same
+   * names, so a citation is addressed the same way in both. Absent while the
+   * turn has no answer yet.
+   */
+  answerId?: string
   /** Set when this turn escalated shallow→deep — framing-node narration. */
   escalationReason?: string
   /**
@@ -257,6 +267,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   userQuestion = '',
   answerConfidence,
   citations,
+  answerId,
   escalationReason,
   retrievalLedger,
   answering = false,
@@ -297,6 +308,18 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
   const sourceCards = useMemo(
     () => buildCitationModel({ traceLanes: deriveTraceLanes(steps), citations }),
     [steps, citations]
+  )
+  // The Herleitung's `[N]` are the answer's citation markers (peek, open at the
+  // page), read through a scope over the cards it draws. A scope of its own,
+  // beside the answer's: the Herleitung hangs on the question's row and the
+  // answer on its own, so no provider above both holds the answer's model.
+  // The numbers are the wire's in both, so `[N]` names one document in each.
+  const fallbackId = useId()
+  const anchorPrefix = answerSourceAnchorPrefix(answerId ?? fallbackId)
+  const citationScope = (node: ReactNode) => (
+    <CitationScope documents={sourceCards} anchorPrefix={anchorPrefix}>
+      {node}
+    </CitationScope>
   )
   // Unique source cards (hits + gaps) — bar "m Quellen", not sum of Treffer.
   const sourceCount = sourceCards.length
@@ -531,12 +554,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     const call = overview.single
     const parts = workParts(t, call.action)
     const card = sourceCards[0]
-    const cited =
-      card && isCited(card)
-        ? citationNumbers(card)
-            .map((n) => `[${n}]`)
-            .join(' ')
-        : ''
+    const cited = card && isCited(card) ? citationNumbers(card) : []
     // The document by its name, and its place on the second line beside the
     // edition and the marker: „Liest Brandschutzkonzept“ / „S. 7 · zitiert [1]“.
     // Without a card the call's own words and its result stand.
@@ -545,9 +563,19 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
     const detail = [
       card ? documentEdition(card.fileName ?? card.title, card.title) : undefined,
       card ? documentLocation(t, card) : parts.result || undefined,
-      cited ? t('thinking.singleCited', { markers: cited }) : undefined,
     ].filter(Boolean)
-    return (
+    // „zitiert {markers}“ around the answer's own marker, so „1“ here peeks
+    // and opens what „1“ in the prose does.
+    const [citedBefore = '', citedAfter = ''] = t('thinking.singleCited').split('{markers}')
+    const citedPart =
+      cited.length > 0 ? (
+        <>
+          {citedBefore}
+          <CitationMarkers numbers={cited} />
+          {citedAfter}
+        </>
+      ) : null
+    return citationScope(
       <div
         data-testid="derivation-single"
         className="bg-muted grid w-full grid-cols-[20px_minmax(0,1fr)] gap-x-2 rounded-2xl px-4 py-3 shadow-xs"
@@ -555,9 +583,11 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
         <CheckCircle2 aria-hidden className="text-success size-5" />
         <p className="text-sm leading-5 [overflow-wrap:anywhere]">
           <span className="text-foreground font-semibold">{head}</span>
-          {detail.length > 0 && (
+          {(detail.length > 0 || citedPart) && (
             <span className="text-muted-foreground block text-[13px] leading-[19px]">
               {detail.join(' · ')}
+              {detail.length > 0 && citedPart && ' · '}
+              {citedPart}
             </span>
           )}
         </p>
@@ -567,7 +597,7 @@ const ChatThinkingView: FC<ChatThinkingProps> = ({
 
   // No entrance of its own: it mounts with its question, and the thread row
   // (`ChatArea`) owns that entrance, gated so a restored turn does not replay it.
-  return (
+  return citationScope(
     <div className="w-full rounded-2xl bg-muted shadow-xs">
       <Collapsible open={open || opening} onOpenChange={handleOpenChange}>
         <CollapsibleTrigger asChild>
