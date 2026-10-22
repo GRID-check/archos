@@ -980,6 +980,15 @@ def _bind_registry() -> tuple[SourceRegistry, Any]:
     return registry, set_session_registry(registry)
 
 
+#: What the model reads beside the round-0 calls: the prefetch is a first search on the question, never the
+#: last. Without it a model that sees a search it did not issue treats retrieval as done (the "RAG comes
+#: first, then never again" report, 2026-10).
+PREFETCH_NOTE = (
+    "Initial context, run for you before your first round: a first search on the question, not an exhaustive one. "
+    "Search again whenever a new sub-question, concept or cross-reference comes up, beside any reads."
+)
+
+
 class PilotiAgent:
     """Fast, bounded research with tool-calling.
 
@@ -1586,7 +1595,7 @@ class PilotiAgent:
         ]
         if not calls:
             return {}
-        announcement = AIMessage(content="", tool_calls=calls)
+        announcement = AIMessage(content=PREFETCH_NOTE, tool_calls=calls)
         announced = state.model_copy(update={"messages": [*state.messages, announcement]})
         split = _split_round(announced, binding.disabled_sources, binding.max_calls_per_round)
         if not split.ran or not is_retrieval_round(split.ran):
