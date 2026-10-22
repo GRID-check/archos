@@ -27,6 +27,7 @@ from sources.knowledge_layer.src.chunk_noise import judge_text
 from sources.knowledge_layer.src.chunk_noise import noise_filter_enabled
 from sources.knowledge_layer.src.chunk_noise import without_noise
 from sources.knowledge_layer.src.register import KnowledgeRetrievalConfig
+from sources.knowledge_layer.src.register import _without_noise
 from sources.knowledge_layer.src.register import knowledge_retrieval
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "ocr_noise"
@@ -129,6 +130,22 @@ class TestWhichChunksAreJudged:
     @pytest.mark.parametrize("kind", [ContentType.DRAWING, ContentType.CHART, ContentType.TABLE, ContentType.IMAGE])
     def test_a_visual_or_table_chunk_is_never_judged(self, kind):
         assert not is_noise_chunk(_chunk("v", _fixture("noise_rotated_wall_labels"), content_type=kind))
+
+    def test_a_passage_left_out_of_the_first_and_the_widened_pool_counts_once(self):
+        # A requery widens the pool: the debris left out of the first pool still
+        # counts though the fusion may drop it, and one left out of both counts once.
+        shared = _chunk("n1", _fixture("noise_rotated_wall_labels"))
+        first_only = _chunk("n2", _fixture("noise_shredded_building_class_labels"))
+        widened_only = _chunk("n3", ROTATED_WALL_LABELS * 8)
+        prose = _chunk("a", _fixture("prose_clause_with_list"))
+
+        def pool(*chunks):
+            return RetrievalResult(chunks=list(chunks), query="q", backend="test")
+
+        _, first = _without_noise(pool(shared, first_only, prose), enabled=True)
+        _, widened = _without_noise(pool(shared, widened_only, prose), enabled=True)
+
+        assert len(first | widened) == 3
 
     def test_without_noise_keeps_the_order_and_counts_what_went(self):
         a, noise, b = (

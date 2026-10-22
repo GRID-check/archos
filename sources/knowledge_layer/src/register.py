@@ -734,19 +734,28 @@ def _apply_diversity_cap(ordered, top_k: int, max_per_document: int) -> list:
     return [ordered[index] for index in sorted(selected)]
 
 
-def _without_noise(pool, *, enabled: bool):
-    """``pool`` without its OCR-debris passages (``chunk_noise``), and how many went.
+def _noise_key(chunk) -> str:
+    """One passage, the same in every pool it turns up in."""
+    return getattr(chunk, "chunk_id", None) or str(getattr(chunk, "content", ""))
+
+
+def _without_noise(pool, *, enabled: bool) -> tuple[object, frozenset[str]]:
+    """``pool`` without its OCR-debris passages (``chunk_noise``), and which went.
 
     Off, the pool comes back as it came in, the same object: the search is then
-    exactly what it was before the filter existed.
+    exactly what it was before the filter existed. What went is keyed by
+    passage, so a requery that widens the pool counts a passage left out of
+    both pools once.
     """
     if not enabled:
-        return pool, 0
+        return pool, frozenset()
     kept, dropped = without_noise(pool.chunks)
     if not dropped:
-        return pool, 0
+        return pool, frozenset()
+    kept_ids = {id(chunk) for chunk in kept}
+    gone = frozenset(_noise_key(chunk) for chunk in pool.chunks if id(chunk) not in kept_ids)
     logger.info("OCR noise filter left out %d of %d ranked candidate(s)", dropped, len(pool.chunks))
-    return pool.model_copy(update={"chunks": kept}), dropped
+    return pool.model_copy(update={"chunks": kept}), gone
 
 
 def _merge_results(results, query: str, top_k: int, backend_name: str, max_per_document: int = _MAX_CHUNKS_PER_DOC):
@@ -2500,7 +2509,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # OCR debris out of the RANKED pool only, before the reranker, the
             # judge and the cap see it, so its slots go to real passages. The
             # literal modes returned above and keep every passage.
-            merged, dropped_as_noise = _without_noise(merged, enabled=drop_noise)
+            merged, noise_left_out = _without_noise(merged, enabled=drop_noise)
+            dropped_as_noise = len(noise_left_out)
 
             # Reranking: cross-encoder first when configured, LLM judge as the
             # fallback (fail-open: any error keeps the fused order).
@@ -2633,7 +2643,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                         widened, widened_noise = _without_noise(widened, enabled=drop_noise)
                         reranked = await _reranked(widened.chunks)
                         merged = widened
-                        dropped_as_noise = widened_noise
+                        # A passage left out of both pools counts once; one left
+                        # out of the first only still counts, though the fusion
+                        # may not have carried it into the widened pool.
+                        noise_left_out = noise_left_out | widened_noise
+                        dropped_as_noise = len(noise_left_out)
                         requery_queries = list(verdict.queries)
                         requery_fired = True
                         logger.info(
