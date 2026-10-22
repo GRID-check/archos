@@ -23,6 +23,7 @@ owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id>
 Platform → Feedback ──▶ reads PostHog tickets live ──▶ PATCH status on the ticket
 BFF server event ──▶ PostHog destination ──▶ #posthog-inbox ──▶ „Übernehmen" ──▶ <app_host>/app/platform/feedback?claim=<ticket id>
 team answers in PostHog ──▶ Mein Feedback (GET …/reports/<id>/messages) ──▶ member replies (POST, onto the ticket)
+team answers in PostHog ──▶ PostHog workflow ──▶ POST /api/webhooks/posthog-support ──▶ feedback.replied inbox row for the reporter
 ```
 
 | Step | Code |
@@ -76,7 +77,8 @@ report text to PostHog.
   replay session id (`getPosthogSupportContext`), so the ticket links the
   recording.
 - **Tagged.** Every ticket carries `piloti-feedback`, which is how the platform
-  page finds it and keeps tickets opened by hand out, and `kind:<kind>`. A
+  page finds it and keeps tickets opened by hand out, `kind:<kind>`, and
+  `origin:<host>`, the deployment that opened it (see the reply notice below). A
   reporter who did not tick "You may contact me about this" still gets a ticket,
   tagged `no-contact`: read it, never reply.
 - **Remembered.** The ticket id lands in `product_feedback.posthog_ticket_id`.
@@ -170,6 +172,59 @@ message the shared chat renders (`UserMessage` with an author), one column.
   user id; a colleague's report is a 404. Agents reach the same three routes as
   `feedback-report-list`, `feedback-thread-get` and `feedback-thread-reply`.
 
+## The reply notice: PostHog pokes, Piloti reads
+
+A member learns that the team answered without opening the sheet: every team
+reply becomes a `feedback.replied` row in their inbox, pushed like any inbox
+row the person has push on for, and never mailed (ADR-0118, second amendment).
+
+```
+team replies in PostHog ──▶ $conversation_message_sent
+  └──▶ PostHog workflow reads the ticket's origin:<host> tag
+         └──▶ POST https://<host>/api/webhooks/posthog-support  {"ticketId": "<uuid>"}
+                ├──▶ product_feedback by posthog_ticket_id (platform bypass, the one cross-tenant read)
+                ├──▶ GET the ticket's messages from PostHog (the server's own key)
+                ├──▶ team replies after reporter_seen_at and reporter_notified_at
+                └──▶ as the report's organization: move reporter_notified_at (compare-and-set),
+                     then one feedback.replied row for the reporter ──▶ /app/projects?feedback=<report id>
+```
+
+- **The origin tag.** Every ticket carries `origin:<host>` (`originTicketTag`
+  in `lib/posthog-support/types.ts`), the host of the deployment's pinned app
+  origin (`configuredAppOrigin`): `origin:app.piloti.at`,
+  `origin:app.dev.piloti.at`. Dev and prod share one PostHog project, so the
+  workflow needs it to know whom to poke. A deployment without a pinned origin
+  tags none and is never poked.
+- **A poke, not a payload.** The route (`app/api/webhooks/posthog-support/route.ts`,
+  `publicApiRoute`, listed in `proxy.ts`'s unauthenticated paths) reads one
+  field, `ticketId`, a UUID. Everything else comes from PostHog through
+  `listCustomerVisibleMessages`: only `sent_reply` messages that are not private
+  count, so a note, an AI draft or the reporter's own message announces
+  nothing. There is no shared secret: a forged poke can only make the server
+  re-read a real ticket, which announces nothing new.
+- **Answers.** `202` with no body whatever it found, so the endpoint does not
+  say which tickets exist; `400` for a body that is not one ticket id; `429`
+  past `POSTHOG_SUPPORT_POKE_TICKET_LIMIT` (30 per ticket per ten minutes) or
+  `POSTHOG_SUPPORT_POKE_LIMIT` (600 per ten minutes for the deployment, 60 in
+  five seconds); `502` when PostHog cannot be read. Nothing is written then, and
+  the next message pokes again.
+- **Idempotent.** `product_feedback.reporter_notified_at` (migration `0184`) is
+  the newest reply announced. A poke announces only replies after it and after
+  `reporter_seen_at` (a reply already read in the sheet needs no notice), and
+  moves it with a compare-and-set, so a replayed or concurrent poke writes no
+  second row. If the row cannot be written the watermark is put back.
+- **One row per report.** `feedback.replied` collapses on the report: several
+  replies are one row that counts them and quotes the latest, naming its
+  author when PostHog does. Operational, so every member gets it, chat or not;
+  pushed under „results", email `never` (a product decision: the inbox and the
+  push are the notice). Code:
+  `lib/product-feedback/reply-notice.ts`.
+- **Where it lands.** The `product_feedback` inbox target opens the reporter's
+  own report as `/app/projects?feedback=<report id>`
+  (`feedbackThreadHref`); `FeedbackProvider` reads the parameter on any shell
+  page, opens „Mein Feedback" on that thread and takes it off the address. A
+  platform owner's `feedback.submitted` row still opens the triage page.
+
 ## The Slack alert
 
 The alert is a PostHog destination, „Piloti feedback → Slack (per deployment)",
@@ -238,7 +293,7 @@ Every inbox type states its email default in the registry
   cancels the mail.
 
 `feedback.submitted` is `if-unread` after 0 minutes, so it is mailed as soon as
-a sender exists. **Nothing sends mail yet.** `frontends/ui/src/lib/inbox/delivery.ts`
+a sender exists; `feedback.replied` is `never`, in-app and push only. **Nothing sends mail yet.** `frontends/ui/src/lib/inbox/delivery.ts`
 is the tested contract a sender is built against. Its module comment lists the
 steps. The one to get right: the `emailed_at` column ships in the same
 migration as the sender. Added earlier, every existing row reads as "due,

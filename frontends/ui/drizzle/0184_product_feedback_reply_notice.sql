@@ -1,0 +1,22 @@
+-- 0184: the reporter is told in their inbox when the team answers their
+-- feedback ticket (ADR-0118, second amendment).
+--
+-- ## Why
+--
+-- The team answers a report in PostHog Support, and the reporter read the
+-- answer only if they happened to open „Mein Feedback". PostHog now pokes the
+-- deployment that opened the ticket (`POST /api/webhooks/posthog-support`,
+-- body `{ ticketId }`), the BFF reads the ticket's thread itself, and every team
+-- reply the reporter has not been told about becomes one `feedback.replied`
+-- inbox row for them (one row per report, which counts up).
+--
+-- ## reporter_notified_at
+--
+-- The newest team reply already announced. A poke announces only replies
+-- after it (and after `reporter_seen_at`: a reply the reporter already read
+-- needs no notice), and moves it with a compare-and-set
+-- (`... WHERE reporter_notified_at IS NULL OR reporter_notified_at < $new`),
+-- so a replayed or concurrent poke writes no second notice. NULL: nothing
+-- announced yet. No backfill: a report filed before this migration counts
+-- from `reporter_seen_at`, which 0183 already sets when the ticket opens.
+ALTER TABLE "product_feedback" ADD COLUMN IF NOT EXISTS "reporter_notified_at" timestamp with time zone;

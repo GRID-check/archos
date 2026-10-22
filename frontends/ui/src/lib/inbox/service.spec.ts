@@ -130,6 +130,8 @@ const ALL_TYPES = [
   'task_run.failed',
   'task_run.waiting',
   'document.review_requested',
+  // The team answered your own feedback: every member sends feedback, chat or not.
+  'feedback.replied',
   'upload.completed',
   'document.quarantined',
   'document.release_requested',
@@ -168,6 +170,8 @@ const OPERATIONAL_TYPES = [
   // collaboration still has documents to approve, and gating the one review
   // queue in the product would make it invisible for exactly them.
   'document.review_requested',
+  // The team answered your own feedback (ADR-0118): every member sends feedback, chat or not.
+  'feedback.replied',
   // ADR-0086: an upload being read and a file held back by the content check
   // are about the office's own files, not about working together.
   'upload.completed',

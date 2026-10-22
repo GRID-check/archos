@@ -296,3 +296,27 @@ export interface OwnProductFeedbackThread {
   /** `false` while the ticket cannot be read: only the report itself is shown. */
   live: boolean
 }
+
+/**
+ * The query parameter that opens „Mein Feedback" on one thread from any page
+ * of the shell (`FeedbackProvider` reads it and takes it off the address). The
+ * inbox row for a team reply links here, so a click, a push and a mail all land
+ * on the conversation.
+ */
+export const FEEDBACK_THREAD_PARAM = 'feedback'
+
+/** Where a member reads their thread on report `reportId`. */
+export function feedbackThreadHref(reportId: string): string {
+  return `/app/projects?${FEEDBACK_THREAD_PARAM}=${encodeURIComponent(reportId)}`
+}
+
+/**
+ * `POST /api/webhooks/posthog-support`: PostHog's poke that a ticket has a new
+ * message. The id is the only thing read from it: the thread itself is read
+ * back from PostHog with the server's own key, so a forged poke can at most
+ * make the server look at a real ticket again.
+ */
+export const posthogSupportPokeSchema = z.object({
+  ticketId: z.string().trim().uuid(),
+})
+export type PosthogSupportPoke = z.infer<typeof posthogSupportPokeSchema>

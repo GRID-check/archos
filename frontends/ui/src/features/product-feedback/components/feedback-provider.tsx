@@ -18,8 +18,9 @@
 
 import type { JSX } from 'react'
 import * as React from 'react'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchOwnFeedback } from '@/lib/product-feedback/client'
-import type { ProductFeedbackKind } from '@/lib/product-feedback/types'
+import { FEEDBACK_THREAD_PARAM, type ProductFeedbackKind } from '@/lib/product-feedback/types'
 import { FeedbackDialog } from './feedback-dialog'
 import { FeedbackThreadsSheet } from './feedback-threads'
 
@@ -94,6 +95,31 @@ function useUpdatedCount(): [number, (count: number) => void] {
   return [count, remember]
 }
 
+/**
+ * Opens „Mein Feedback" on the thread the address names (`?feedback=<report
+ * id>`, `feedbackThreadHref`) and takes the parameter off again, so a reload
+ * or a back step does not reopen it. This is where an inbox row, a push or a
+ * mail about a team reply lands. Its own component behind a Suspense
+ * boundary: reading the query string must not hold up the shell.
+ */
+function ThreadFromAddress({ onThread }: { onThread: (reportId: string) => void }): null {
+  const params = useSearchParams()
+  const pathname = usePathname()
+  const router = useRouter()
+  const reportId = params?.get(FEEDBACK_THREAD_PARAM) ?? null
+
+  React.useEffect(() => {
+    if (!reportId) return
+    onThread(reportId)
+    const rest = new URLSearchParams(params?.toString() ?? '')
+    rest.delete(FEEDBACK_THREAD_PARAM)
+    const query = rest.toString()
+    router.replace(`${pathname ?? '/app/projects'}${query ? `?${query}` : ''}`, { scroll: false })
+  }, [reportId, onThread, params, pathname, router])
+
+  return null
+}
+
 export function FeedbackProvider({
   userEmail = null,
   children,
@@ -125,6 +151,9 @@ export function FeedbackProvider({
   return (
     <FeedbackContext.Provider value={value}>
       {children}
+      <React.Suspense fallback={null}>
+        <ThreadFromAddress onThread={openThreads} />
+      </React.Suspense>
       <FeedbackDialog
         open={open}
         onOpenChange={setOpen}

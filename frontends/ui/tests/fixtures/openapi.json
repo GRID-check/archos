@@ -14410,6 +14410,7 @@
                 "task_run.waiting",
                 "document.review_requested",
                 "feedback.submitted",
+                "feedback.replied",
                 "upload.completed",
                 "document.quarantined",
                 "document.release_requested",

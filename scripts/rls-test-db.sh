@@ -1976,6 +1976,28 @@ check_in grid_feedbackthread "SELECT count(*) FROM information_schema.columns WH
 echo "==> 0183 product feedback thread and down migration verified"
 
 # ---------------------------------------------------------------------------
+# 0184: the reporter's notice of a team reply (ADR-0118, second amendment). The
+# watermark is nullable and moves only forward under its compare-and-set; the
+# down drops it and 0184 applies again after it.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0184 product feedback reply notice column and its down migration on grid_feedbacknotice"
+migrate_until grid_feedbacknotice 0184_product_feedback_reply_notice
+sql_in grid_feedbacknotice <<'SQL'
+INSERT INTO product_feedback (organization_id, user_id, kind, message, posthog_ticket_id) VALUES
+  ('org_0184_a', 'user_a', 'bug', 'The upload stops at 99 percent', 'ticket-0184');
+SQL
+check_in grid_feedbacknotice "SELECT count(*) FROM product_feedback WHERE reporter_notified_at IS NULL" "1" "0184: nothing announced yet"
+check_in grid_feedbacknotice "WITH u AS (UPDATE product_feedback SET reporter_notified_at = '2026-10-22T10:00:00Z' WHERE posthog_ticket_id = 'ticket-0184' AND (reporter_notified_at IS NULL OR reporter_notified_at < '2026-10-22T10:00:00Z') RETURNING 1) SELECT count(*) FROM u" "1" "0184: the first poke moves the watermark"
+check_in grid_feedbacknotice "WITH u AS (UPDATE product_feedback SET reporter_notified_at = '2026-10-22T10:00:00Z' WHERE posthog_ticket_id = 'ticket-0184' AND (reporter_notified_at IS NULL OR reporter_notified_at < '2026-10-22T10:00:00Z') RETURNING 1) SELECT count(*) FROM u" "0" "0184: a replayed poke moves nothing"
+apply_in grid_feedbacknotice 0184_product_feedback_reply_notice.sql
+check_in grid_feedbacknotice "SELECT count(*) FROM product_feedback WHERE reporter_notified_at IS NOT NULL" "1" "0184 re-applies and keeps the watermark"
+apply_in grid_feedbacknotice 0184_product_feedback_reply_notice.down.sql
+check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WHERE table_name = 'product_feedback' AND column_name = 'reporter_notified_at'" "0" "0184 down drops the column"
+apply_in grid_feedbacknotice 0184_product_feedback_reply_notice.sql
+check_in grid_feedbacknotice "SELECT count(*) FROM information_schema.columns WHERE table_name = 'product_feedback' AND column_name = 'reporter_notified_at'" "1" "0184 applies again after its down"
+echo "==> 0184 product feedback reply notice and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migrations 0159 to 0162: the project profile's names in English, and their DOWNs.
 #
 # On a database of its own, migrated to what precedes 0159, with a project whose
