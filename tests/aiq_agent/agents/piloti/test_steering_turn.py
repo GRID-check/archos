@@ -273,7 +273,8 @@ class TestWithoutAnInbox:
 
         # One round runs its calls concurrently: what ran is the claim, not the order.
         assert sorted(RAN) == ["look:1", "mark:Tür"]
-        assert all(not isinstance(m, HumanMessage) for m in model.requests[1][2:])
+        # System prompt, turn context, the question: nothing human after them.
+        assert all(not isinstance(m, HumanMessage) for m in model.requests[1][3:])
         assert result.steering == []
 
     async def test_a_note_the_final_call_never_read_is_left_for_the_next_question(self, inbox):

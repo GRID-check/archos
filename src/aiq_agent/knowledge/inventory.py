@@ -459,7 +459,7 @@ def _family_lines(families: Sequence[Any]) -> list[str]:
     "OIB-Richtlinien 1–6" is a range, and a range names no members. OIB-RL 2 is
     four documents — 2, 2.1, 2.2, 2.3 — and until this line the prompt never
     said so, so „Was weißt du über die OIB 2?“ could open three of them and
-    read as complete. The rule that acts on this is in ``<working>``;
+    read as complete. The rule that acts on this is in ``<rules>``;
     this is the fact it needs.
     """
     if not families:

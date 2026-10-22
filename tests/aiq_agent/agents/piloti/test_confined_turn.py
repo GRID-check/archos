@@ -12,7 +12,7 @@ from __future__ import annotations
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.cards import envelope
 from aiq_agent.cards.catalog import CARD_EXAMPLES
@@ -26,7 +26,7 @@ from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.knowledge.restricted_use import reset_restricted_use
 
 TOOLS = [{"name": "knowledge_search", "description": "Search the knowledge base."}]
-CONFINED_TAG = "<eingeschraenkter_ordner>"
+CONFINED_TAG = "<restricted_conversation>"
 PATCH = {
     "type": "project_profile_patch",
     "title": "Projektkontext aktualisieren: Honorar",
@@ -37,7 +37,7 @@ PATCH = {
 
 def _render(**overrides) -> str:
     state = ResearchAgentState(messages=[HumanMessage(content="Was ist vereinbart?")], **overrides)
-    return render_system_prompt(system_prompt_template(), state, TOOLS)
+    return render_turn_context(system_prompt_template(), state, TOOLS)
 
 
 class TestThePromptSaysWhichDoorsAreShutAndWhy:
@@ -48,18 +48,23 @@ class TestThePromptSaysWhichDoorsAreShutAndWhy:
         for door in ("escalate_to_deep", "create_task", "project_profile_patch", "file_draft"):
             assert door in rendered.split(CONFINED_TAG, 1)[1]
         # Not the per-tenant reason: the capability exists, this thread may not use it.
-        assert "<tiefenrecherche_aus>" not in rendered
-        assert "<auftraege_aus>" not in rendered
+        assert "<deep_research_off>" not in rendered
 
     def test_an_open_turn_renders_no_such_block(self):
         rendered = _render()
         assert CONFINED_TAG not in rendered
 
     def test_a_tenant_without_the_capabilities_still_hears_its_own_reason(self):
+        """Deep research off is said up front: a refused hand-off would ship the note instead of an answer.
+
+        Tasks off is not: `create_task` is refused by the BFF and the tool relays
+        that sentence („Nothing was created", `tests/aiq_agent/tools/tasks`), so
+        the model finds out at the moment it matters.
+        """
         rendered = _render(deep_research_allowed=False, tasks_allowed=False)
         assert CONFINED_TAG not in rendered
-        assert "<tiefenrecherche_aus>" in rendered
-        assert "<auftraege_aus>" in rendered
+        assert "<deep_research_off>" in rendered
+        assert "create_task" not in rendered
 
 
 class TestAProfilePatchCardIsRefusedInAConfinedTurn:

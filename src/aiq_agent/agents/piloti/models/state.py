@@ -324,15 +324,17 @@ class ResearchAgentState(BaseModel):
     # "N Quellenangabe(n) entfernt (nicht verifizierbar)".
     citations_removed: dict[str, Any] | None = None
     # INTERNAL per-run render cache — NOT part of the public state contract.
-    # Every input to the system-prompt render (system_prompt, tools_info,
-    # user_info, current_datetime at DATE precision, available_documents,
-    # project_context, the three norm blocks) is fixed for the
-    # life of a single ``run()``, so the rendered prompt is byte-identical across
-    # tool-loop iterations. ``agent_node`` renders it once, returns it here, and
-    # LangGraph persists it across the loop; state is per-invocation, so
-    # concurrent runs of the shared compiled graph never collide. Defaults to
-    # None (first call / graph-direct path renders inline as before).
+    # The system prompt (the static half alone) and the turn context (the
+    # per-turn message sent right before the newest human message) are fixed
+    # for the life of a single ``run()``, so both are byte-identical across
+    # tool-loop iterations. ``agent_node`` renders them once, returns them
+    # here, and LangGraph persists them across the loop; state is
+    # per-invocation, so concurrent runs of the shared compiled graph never
+    # collide. Request-only: neither ever enters ``messages``, so the stored
+    # transcript carries no turn context. Defaults to None (first call /
+    # graph-direct path renders inline).
     cached_system_prompt: str | None = None
+    cached_turn_context: str | None = None
 
     # -- derived signals --------------------------------------------------------
     # Read-only properties, NOT fields: they are pure functions of the signals

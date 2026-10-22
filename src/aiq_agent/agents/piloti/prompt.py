@@ -1,24 +1,25 @@
-"""System-prompt assembly for Piloti.
+"""System-prompt and turn-context assembly for Piloti.
 
-``piloti.j2`` is read from disk ONCE per process
-(:func:`system_prompt_template`) and rendered once per ``run()``: every input
-to the render is fixed for the life of one turn, so ``agent_node`` caches the
-rendered string on the state and the tool loop never renders twice.
+A request to the model is ``[system, *history, turn context, newest human
+message, *this turn's tool calls]`` (:func:`request_messages`).
 
-THE PROMPT IS TWO HALVES, AND ONLY ONE OF THEM IS IN THIS FILE'S GIFT.
-``piloti.j2`` now holds the DYNAMIC half alone — everything below the
-``KV CACHE BOUNDARY`` marker, which varies per turn — and opens with
-``{{ static_block }}``. The STATIC half is the platform prompt: the same bytes
-for every tenant and every turn, authored and versioned in **Langfuse**, and
-pulled from there by :func:`resolve_static_block` through
-``common/prompt_store.py``.
+THE SYSTEM PROMPT IS THE STATIC HALF ALONE: the same bytes for every tenant,
+every turn and every round, authored and versioned in **Langfuse** and pulled
+by :func:`resolve_static_block` through ``common/prompt_store.py``.
+``prompts/piloti_static.md`` is the BUNDLED FALLBACK for it — what is rendered
+when prompt management is off (the default), when the credentials are absent,
+when Langfuse is unreachable or when it holds no such prompt. It is allowed to
+lag the live version; ``task prompts:pull`` refreshes it.
 
-``prompts/piloti_static.md`` is the BUNDLED FALLBACK for that half — what is
-rendered when prompt management is off (the default), when the credentials are
-absent, when Langfuse is unreachable or when it holds no such prompt. It is
-allowed to lag the live version; ``task prompts:pull`` refreshes it. With the
-store disabled the render is byte-identical to the one-file template it
-replaced.
+THE TURN CONTEXT is ``piloti.j2``: the date, the asker, the inventory, what
+this conversation already read, the workspace, the project. It is rendered once
+per ``run()`` and sent as its own message right before the newest human
+message, never appended to the system prompt. Appended there it made every
+turn's system message unique, so the provider's prefix cache stopped at the
+static half and never reached the history behind it, and a model that keeps
+its reasoning across turns saw the instructions change under it. Request-only:
+it never enters ``state.messages``, so the transcript the checkpointer stores
+carries none of it and the next turn sends only its own.
 """
 
 from __future__ import annotations
@@ -31,6 +32,11 @@ from collections.abc import Sequence
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from typing import NamedTuple
+
+from langchain_core.messages import BaseMessage
+from langchain_core.messages import HumanMessage
+from langchain_core.messages import SystemMessage
 
 from aiq_agent.common import load_prompt
 from aiq_agent.common import render_prompt_template
@@ -45,6 +51,8 @@ from aiq_agent.common.prompt_store import prompt_store
 from aiq_agent.common.prompt_utils import PromptError
 from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import parse_shelf
+from aiq_agent.common.steering import AppliedSteer
+from aiq_agent.common.steering import with_steering
 from aiq_agent.knowledge.already_read import render_already_read_block
 from aiq_agent.observability.langfuse_trace_attributes import current_fallback_identity
 from aiq_agent.observability.langfuse_trace_attributes import record_prompt_link
@@ -71,7 +79,7 @@ STATIC_PROMPT_NAME = "piloti-system-static"
 
 @functools.cache
 def system_prompt_template() -> str:
-    """Piloti's prompt template, read from disk once per process.
+    """Piloti's turn-context template, read from disk once per process.
 
     A missing or unreadable prompt raises ``PromptError`` at the first
     construction, which is boot: production must never run on a stub prompt,
@@ -147,11 +155,11 @@ async def stamp_static_prompt_for_turn() -> str:
     identity. Never raises: the store never raises into a turn, and
     ``record_trace_metadata`` absorbs its own failures.
 
-    Returns the rendered static half, the bytes ``render_system_prompt`` opens
-    with this turn, so the caller can name it as the provider cache's stable
-    prefix (``prompt_caching.begin_stable_prefix``). Rendered here from the
-    same resolution, so it cannot differ from what the turn's prompt starts
-    with; the render is cached on the text, so this costs a hash.
+    Returns the rendered static half, the system prompt this turn sends, so
+    the caller can name it as the provider cache's stable prefix
+    (``prompt_caching.begin_stable_prefix``). Rendered here from the same
+    resolution, so it cannot differ from what the turn sends; the render is
+    cached on the text, so this costs a hash.
     """
     static_text = await asyncio.to_thread(_render_resolved_static_block)
     record_static_prompt_metadata()
@@ -202,9 +210,8 @@ def render_static_block(static_text: str) -> str:
 
     Cached on the text, so a re-render costs a hash of ~33 KB rather than a
     Jinja pass, and a new Langfuse version re-renders exactly once. The
-    trailing newlines come off because the boundary marker in ``piloti.j2``
-    owned that joint before the split: the file's mandatory final newline and a
-    Langfuse-stored text that has none must produce the same bytes.
+    trailing newlines come off so that the file's mandatory final newline and a
+    Langfuse-stored text that has none produce the same system prompt bytes.
     """
     return render_prompt_template(static_text, document_inventory="").rstrip("\n")
 
@@ -343,86 +350,106 @@ def build_tools_info(tools: Sequence[Any]) -> list[dict[str, str]]:
     ]
 
 
-def render_system_prompt(
+class TurnPrompt(NamedTuple):
+    """What one turn sends besides the transcript: the system prompt and the turn context."""
+
+    system: str
+    context: str
+
+
+def render_turn_prompt(template: str, state: ResearchAgentState, tools_info: Sequence[dict[str, str]]) -> TurnPrompt:
+    """The system prompt (the static half, resolved through the store) and this turn's context."""
+    return TurnPrompt(
+        system=render_static_block(resolve_static_block().text),
+        context=render_turn_context(template, state, tools_info),
+    )
+
+
+def request_messages(
+    prompt: TurnPrompt,
+    history: Sequence[BaseMessage],
+    steering: Sequence[AppliedSteer] = (),
+) -> list[BaseMessage]:
+    """The request for one model call: system, history, turn context, newest human message, this turn. Pure.
+
+    The turn context goes right BEFORE the last human message, so everything
+    in front of it — the system prompt and every earlier turn — is a prefix
+    the next round and the next turn share byte for byte. A transcript with no
+    human message gets it right after the system prompt. Steering notes are
+    spliced after it: they arrive while the turn runs, so they index past the
+    newest human message, and two messages (system, context) precede the
+    transcript they index into.
+    """
+    newest = next(
+        (index for index in range(len(history) - 1, -1, -1) if isinstance(history[index], HumanMessage)),
+        0,
+    )
+    request = [
+        SystemMessage(content=prompt.system),
+        *history[:newest],
+        HumanMessage(content=prompt.context),
+        *history[newest:],
+    ]
+    return with_steering(request, steering, offset=2)
+
+
+def render_turn_context(
     template: str,
     state: ResearchAgentState,
     tools_info: Sequence[dict[str, str]],
 ) -> str:
-    """Render the system prompt for one run.
+    """Render this turn's context message for one run.
 
-    The date is rendered at DAY precision: a second-precision timestamp made
-    every rendered prompt unique, defeating provider prompt caching across
-    tool-loop iterations and turns. Research needs the date, not the clock.
-    ``answer_envelope_schema`` is injected by the renderer itself, so no caller
-    can teach an empty schema by forgetting a kwarg.
+    The date is rendered at DAY precision: research needs the date, not the
+    clock, and a stable context keeps the rounds of one turn byte-identical.
     """
     documents = [doc.model_dump() for doc in (state.available_documents or [])]
+    tool_names = [str(tool.get("name", "")) for tool in tools_info]
     rendered = render_prompt_template(
         template,
-        # Everything above the KV-cache boundary, resolved through the prompt
-        # store: the committed file unless a Langfuse version is being served.
-        static_block=render_static_block(resolve_static_block().text),
-        tools=list(tools_info),
-        # The <drafts> block is rendered only for a turn that HAS the working
-        # directory bound (`tools/documents`). A turn without a conversation to
-        # namespace by gets no file verbs, and a prompt telling that model to
-        # write a document would be describing a tool it cannot call. What the
-        # block still carries is the two sentences no tool description can: the
-        # anaphora („mach daraus ein File") and what happens without a project.
-        # Everything else it used to say is in `write_file`, `edit_file` and
-        # `file_draft` (ADR-0060 (d)).
-        drafting_enabled=any(tool.get("name") == "write_file" for tool in tools_info),
-        # Per TENANT, so it renders below the KV-cache boundary with the other
-        # per-tenant blocks rather than narrowing the static contract. The
-        # envelope's `escalate_to_deep` stays in the schema either way: a field
-        # described and then refused is one the model can decline out loud,
-        # where a field removed per org is a cache shard on a workload that is
-        # ~99 % input tokens.
+        # Per TENANT. The envelope's `escalate_to_deep` stays in the schema
+        # either way: a field described and then refused is one the model can
+        # decline out loud. A hand-off that is refused anyway is replaced by a
+        # note (`conversation._finalize_answer`), so without this sentence the
+        # reader would get the note and no answer.
         deep_research_enabled=state.deep_research_allowed,
-        # Same shape, different flag. `create_task` stays bound either way: the
-        # BFF refuses the call and returns a sentence the tool relays, so a
-        # model that asks anyway is answered rather than left guessing.
-        tasks_enabled=state.tasks_allowed,
         # The turn's signed scope holds a restricted folder's collection
-        # (ADR-0087): the block says which doors stay shut and why, in place of
-        # the two per-tenant blocks above, whose reason ("not in this
-        # workspace") would be the wrong one to give the reader.
+        # (ADR-0087): every door it shuts is refused in code too, and the block
+        # says why, in place of the per-tenant one above.
         confined=state.confined,
+        # The one sentence about drafting no tool description can carry: what
+        # „mach daraus ein File" refers to. Only for a turn that HAS the
+        # working directory bound; everything else is in `write_file`,
+        # `edit_file` and `file_draft` (ADR-0060 (d)).
+        drafting_enabled="write_file" in tool_names,
         user_info=state.user_info,
         current_datetime=datetime.now().strftime("%Y-%m-%d"),
         available_documents=documents,
         # The conversation's "already read" digest, rendered right after the
-        # inventory: what THIS conversation opened, for the locator-first rule.
-        # None renders no section (the template guards it).
+        # inventory. None renders no section (the template guards it).
         already_read_block=render_already_read_block(state.already_read_digest),
         # Not a document list: the files that are NOT yet in one. The renderer
         # hands it to the inventory block.
         in_flight_documents=state.in_flight_documents,
         project_context=state.project_context,
         platform_lessons=render_lessons_block(state.platform_lessons),
-        # The office's own standing instructions, below the KV-cache boundary
-        # because they vary per tenant. Bounded at the header boundary
-        # (``project_context.ORG_INSTRUCTIONS_MAX_CHARS``), so nothing here has
-        # to remember a cap; the template frames them as preferences that
-        # neither supply a normative value nor outrank the static rules.
+        # The office's own standing instructions. Bounded at the header
+        # boundary (``project_context.ORG_INSTRUCTIONS_MAX_CHARS``), so nothing
+        # here has to remember a cap.
         org_instructions=state.org_instructions,
         # The office's reference projects: only when the turn can look into
-        # them (`project_lookup` bound), else the catalog promises a door the
+        # them (`project_lookup` bound), else the block promises a door the
         # model does not have.
-        reference_projects=(
-            state.reference_projects if any(tool.get("name") == "project_lookup" for tool in tools_info) else None
-        ),
+        reference_projects=state.reference_projects if "project_lookup" in tool_names else None,
         # Who asks, where, and what is open now (ADR-0123): only when the turn
         # can act on it through the workspace tools.
         workspace_block=(
-            state.workspace_block
-            if any(str(tool.get("name", "")).startswith(WORKSPACE_TOOL_PREFIX) for tool in tools_info)
-            else None
+            state.workspace_block if any(name.startswith(WORKSPACE_TOOL_PREFIX) for name in tool_names) else None
         ),
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),
-        focus_region_block=focus_region_block(state, [tool.get("name", "") for tool in tools_info]),
-        trigger_block=trigger_block(state, [tool.get("name", "") for tool in tools_info]),
+        focus_region_block=focus_region_block(state, tool_names),
+        trigger_block=trigger_block(state, tool_names),
         oib_applicability=oib_applicability(state.project_context),
         parcel_note=parcel_note(documents),
         # The L1 skills catalog, collated by the register layer; None renders
@@ -433,5 +460,5 @@ def render_system_prompt(
         card_shapes_block=state.card_shapes_block,
     )
     if os.environ.get("DEBUG_PROMPTS"):
-        logger.debug("Rendered system prompt:\n%s", rendered)
+        logger.debug("Rendered turn context:\n%s", rendered)
     return rendered

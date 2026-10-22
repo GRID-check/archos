@@ -14,7 +14,7 @@ from pathlib import Path
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -29,7 +29,7 @@ KNOWLEDGE = {"name": "knowledge_search", "description": "Search the knowledge ba
 
 def _render(tools, **overrides) -> str:
     state = ResearchAgentState(messages=[HumanMessage(content="Leg einen Ordner Fotos an.")], **overrides)
-    return render_system_prompt(system_prompt_template(), state, tools)
+    return render_turn_context(system_prompt_template(), state, tools)
 
 
 def test_the_block_reaches_the_model_below_the_cache_boundary_with_how_to_read_it():
@@ -37,7 +37,7 @@ def test_the_block_reaches_the_model_below_the_cache_boundary_with_how_to_read_i
 
     assert HEADING in rendered
     assert BLOCK in rendered
-    assert rendered.index("## Context") < rendered.index(HEADING)
+    assert rendered.index("<turn_context>") < rendered.index(HEADING)
     after = rendered.split(HEADING)[1]
     assert "Take ids from here instead of looking them up" in after
     assert "is not proposed again" in after
@@ -62,11 +62,19 @@ def test_the_conversation_state_hands_the_block_to_the_research_state():
 
 
 def test_the_static_prompt_teaches_the_workspace_facts_and_the_work_kind():
-    """The contract, not the prose: English queries, proposals not claimed done, records not cited."""
+    """The contract, not the prose: English queries, records not cited, the work kind.
+
+    That a proposal is not done is said where it matters, by the tool that
+    proposes: `workspace__call`'s description and its "Proposed" result. The
+    server enforces it (a write never runs), so the static prompt no longer
+    repeats it.
+    """
+    from aiq_agent.tools.workspace.register import DESCRIPTIONS
+
     static = (ROOT / "src/aiq_agent/agents/piloti/prompts/piloti_static.md").read_text(encoding="utf-8")
-    section = static.split("<workspace>")[1].split("</workspace>")[0]
-    assert "write the search query in English" in section
-    assert "never that it is done" in section
-    assert "never with `[N]`" in section
+    rules = static.split("<rules>")[1].split("</rules>")[0]
+    assert "write the search query in English" in rules
+    assert "never with `[N]`" in static.split("CITATIONS.")[1]
+    assert "never claim it is done" in DESCRIPTIONS["call"]
     assert "`kind` to one of `direct`, `walkthrough`, `ruling`, `handoff`, `work`" in static
     assert '"kind": "work"' in static

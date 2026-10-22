@@ -303,15 +303,16 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
     the condensation — a dense rewrite that keeps the headings and loses a rule
     reads fine in review and quietly stops teaching it.
     """
-    section = _prompt_section("stimme")
+    section = _prompt_section("voice")
     body = _unwrapped(_effective_row("piloti-voice")["body"])
+    # The answer-first rule lives with the `ruling` kind it belongs to, so a
+    # walkthrough does not open as a Bescheid; the rest is the `<voice>`.
+    ruling = _prompt_section("answer_envelope").split("- `ruling`")[1].split("\n- `")[0]
 
-    # The answer-first rule, and where a caveat may NOT sit. Headings moved
-    # under kind=ruling so a walkthrough does not open as a Bescheid.
-    assert "The first sentence is the answer" in section
-    assert "kind=ruling" in section
-    assert "Reservations" in section
-    assert "never mid-paragraph" in section
+    # The answer-first rule, and where a caveat may NOT sit.
+    assert "The first sentence is the answer" in ruling
+    assert "Reservations" in ruling
+    assert "never mid-paragraph" in ruling
     # The wrong-premise correction: leads, about the Richtlinie, Fundstelle in
     # the same sentence, no softener, and the origin of the wrong value named.
     assert "the correction is the answer" in section
@@ -321,26 +322,27 @@ def test_the_prompt_carries_the_voice_craft_the_retired_seed_taught():
     # Uncertainty once, concretely, per PART — and why the confidence line
     # cannot carry the split.
     assert "per PART, not per answer" in section
-    assert "follows the weaker part" in section
+    assert "follows the weaker part" in _prompt_section("answer_envelope")
     # Liability is identity, not a ban on helping apply a rule. A Bescheid is
     # still not this answer; a colleague who cites and applies is.
-    assert "Entwurfsverfasser" in section
-    assert "Behörde" in section
-    assert "Bescheid" in section
-    assert "Einschätzung, nicht Empfehlung" not in section
+    good = _prompt_section("good_answer")
+    assert "Entwurfsverfasser" in good
+    assert "Behörde" in good
+    assert "Bescheid" in good
+    assert "Einschätzung, nicht Empfehlung" not in _piloti_prompt_text()
     # Notation: the rules a reader copies into an Einreichung.
     assert "Decimal comma" in section and "Thousands point" in section
     assert "U+00A0" in section
     assert "EI₂ 30-C" in section
     # The warmth rule, with its one forbidden placement.
     assert "never as padding before a contradiction" in section
-    # The smallest form, and the heading rules.
     # The size rule survives the move to structured answers (2026-09-24): the
     # form follows the content, and structure is never a licence for length.
-    assert "The form the content has" in section
-    assert "Structure is not length" in section
-    assert "A long answer to a short question is no service" in section
-    assert "never as the first line" in section
+    formatting = _prompt_section("formatting")
+    assert "The form follows the content" in formatting
+    assert "Structure is not length" in formatting
+    assert "never as the first line" in formatting
+    assert "A long answer to a short question is no service" in _prompt_section("good_answer")
     assert "never answered instead from another Regelwerk" in section
 
     # Every rule asserted above must have been in the seed it condenses — the
@@ -1175,11 +1177,15 @@ def test_the_card_craft_the_retired_seed_taught_lives_in_the_tool():
     # The deletion test rides the tool description's opening line.
     assert "delete the cards mentally" in _build_tool_description().lower()
 
-    section = _prompt_section("cards")
-    assert "[[card:" in section
-    assert "NOT cards" in section
+    # The card contract the model reads is rendered from the catalog into the
+    # system prompt (placement included); the prompt file teaches no craft.
+    from aiq_agent.agents.piloti.prompt import bundled_static_block
+    from aiq_agent.agents.piloti.prompt import render_static_block
+
+    system = render_static_block(bundled_static_block().text)
+    assert "[[card:N]]" in system
     for craft in ("does ONE row hold", "stations must CARRY", "describe_card"):
-        assert craft not in section, craft
+        assert craft not in _piloti_prompt_text(), craft
 
 
 def test_the_answer_envelope_replaces_the_envelope_cards():
@@ -1199,7 +1205,7 @@ def test_the_answer_envelope_replaces_the_envelope_cards():
     # The rhetorical fields, each with its earning condition.
     assert "`verdict`" in section and "60 characters" in section
     assert "`takeaways`" in section and "2 to 5" in section
-    assert "`callout`" in section and "at most ONE" in section
+    assert "`callout`" in section and "at most one" in section
     # The model owns content; placement is the platform's, with ONE granted
     # freedom — anchoring the callout via its marker. Honesty outranks a field.
     assert "masthead" in section

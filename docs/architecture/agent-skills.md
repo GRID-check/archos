@@ -404,8 +404,8 @@ skill onto a turn: not the request, not the deployment, not a job.
   their skills the deepagents-native way (see Config).
 - Standing instructions are not skills. What must hold on every answer is
   prompt text: the platform prompt, and the office's own bounded block
-  (`X-Grid-Org-Instructions` → `## Anweisungen des Büros`, rendered below the
-  KV-cache boundary, never a source and never above the rules it may not
+  (`X-Grid-Org-Instructions` → `## Anweisungen des Büros`, rendered in the
+  turn context, never a source and never above the rules it may not
   override).
 
 Progressive disclosure has two levels, and a measured shortcut (ADR-0063 as

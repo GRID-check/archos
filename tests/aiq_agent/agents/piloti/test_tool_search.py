@@ -518,15 +518,15 @@ class TestTheAgentBindsWhatWasRetrieved:
 
         result = await agent.run(state)
 
-        prompt = result.cached_system_prompt or ""
+        prompt = (result.cached_system_prompt or "") + (result.cached_turn_context or "")
         selection = agent._select_tools_for_query(state.messages)
-        # The prompt lists tools as `- **name**` bullets under "Available Tools"
-        # (names only — descriptions travel in the bound schemas). A withheld
-        # tool must not appear as a bullet; the prose elsewhere may still
-        # mention `remember` by name, which is not an offer of the tool.
+        # Tools are offered by the bound schemas alone: neither the system
+        # prompt nor the turn context lists them, so neither can advertise a
+        # withheld one. The prose may still mention `remember` by name, which
+        # is not an offer of the tool.
+        assert "Available Tools" not in prompt
         for withheld in selection.withheld:
             assert f"- **{withheld}**" not in prompt, f"prompt advertises withheld tool {withheld}"
-        assert "- **ifc_measure**" in prompt
         # And the narrowed list handed to the renderer IS the bound set.
         _, tools_info = agent._research_tool_binding(state.messages, agent.tools_info)
         assert [ti["name"] for ti in tools_info] == list(selection.selected)

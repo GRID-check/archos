@@ -8,7 +8,7 @@ locator-first rule names its tools — never the model's wording.
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.knowledge.already_read import DIGEST_HEADING
 from aiq_agent.knowledge.schema import AvailableDocument
@@ -33,7 +33,7 @@ def _render(**overrides) -> str:
         ],
         **overrides,
     )
-    return render_system_prompt(system_prompt_template(), state, TOOLS)
+    return render_turn_context(system_prompt_template(), state, TOOLS)
 
 
 class TestDigestBlock:
@@ -57,8 +57,7 @@ class TestDigestBlock:
     def test_no_digest_renders_no_section(self):
         rendered = _render(already_read_digest=None)
 
-        # The rule still names the heading (static prompt text); the BLOCK —
-        # its entries and its index-not-evidence sentence — must be absent.
+        # The BLOCK — its entries and its index-not-evidence sentence — must be absent.
         assert "NOT evidence" not in rendered
         assert DIGEST[0] not in rendered
 
@@ -73,13 +72,14 @@ class TestLocatorFirstRule:
         rendered = _render(already_read_digest=list(DIGEST))
 
         assert "## Bereits gelesen (diese Unterhaltung)" in rendered
-        assert "exact names `read_passage` accepts" in rendered
+        # The block says it itself; the static prompt no longer repeats it.
+        assert "`read_passage` and the exact name from the line" in rendered
 
     def test_a_stale_entry_is_named_and_search_resolves_it(self):
         rendered = _render(already_read_digest=list(DIGEST))
 
         assert "unknown document" in rendered
-        assert "a search resolves it again" in rendered
+        assert "resolve again with `knowledge_search`" in rendered
 
     def test_the_rule_states_an_outcome_and_prescribes_no_round_shape(self):
         """What must be true, not how many calls to make when, or which tool

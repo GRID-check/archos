@@ -14,7 +14,7 @@ import json
 from langchain_core.messages import HumanMessage
 
 from aiq_agent.agents.piloti.models import ResearchAgentState
-from aiq_agent.agents.piloti.prompt import render_system_prompt
+from aiq_agent.agents.piloti.prompt import render_turn_context
 from aiq_agent.agents.piloti.prompt import system_prompt_template
 from aiq_agent.agents.piloti.prompt import trigger_block
 from aiq_agent.common.wire_v2 import TurnTrigger
@@ -25,7 +25,7 @@ from aiq_agent.turn.context import user_info_for
 from aiq_agent.turn.payload import extract_turn_inputs
 
 HEADING = "## Woken by"
-BOUNDARY_ANCHOR = "## Context"
+BOUNDARY_ANCHOR = "<turn_context>"
 CANVAS = [{"name": f"canvas__{tool}", "description": "x"} for tool in ("look", "mark", "reply")]
 MENTION = TurnTrigger(kind="thread_mention", event_id="reply-7", annotation_id="a-1")
 
@@ -39,14 +39,14 @@ def _state(**fields) -> ResearchAgentState:
 
 
 def test_a_woken_turn_renders_its_block_below_the_cache_boundary():
-    rendered = render_system_prompt(system_prompt_template(), _state(trigger=MENTION), CANVAS)
+    rendered = render_turn_context(system_prompt_template(), _state(trigger=MENTION), CANVAS)
 
     assert HEADING in rendered
     assert rendered.index(BOUNDARY_ANCHOR) < rendered.index(HEADING)
 
 
 def test_a_typed_turn_renders_none():
-    assert HEADING not in render_system_prompt(system_prompt_template(), _state(), CANVAS)
+    assert HEADING not in render_turn_context(system_prompt_template(), _state(), CANVAS)
 
 
 def test_it_says_who_what_and_where_to_answer():
